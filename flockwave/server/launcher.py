@@ -5,6 +5,7 @@ from __future__ import absolute_import
 import click
 import logging
 
+from . import logger
 from .logger import log
 
 
@@ -22,7 +23,7 @@ def start(debug=False, port=5000):
     eventlet_log = log.getChild("eventlet")
 
     # Set up the logging format
-    logging.basicConfig(level=logging.DEBUG if debug else logging.INFO)
+    logger.install(level=logging.DEBUG if debug else logging.INFO)
 
     # Start the SocketIO server
     socketio.run(app, port=port, debug=debug, use_reloader=False,

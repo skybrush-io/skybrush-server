@@ -3,11 +3,11 @@
 from __future__ import absolute_import
 
 from flask import Flask, request
-from flask.ext.socketio import SocketIO
+from flask.ext.socketio import SocketIO, emit
 
 from .logger import log
-from .model import FlockwaveMessage
-
+from .model import FlockwaveMessage, FlockwaveMessageBuilder
+from .version import __version__ as server_version
 
 __all__ = ()
 
@@ -16,6 +16,8 @@ app = Flask(__name__)
 app.secret_key = b'\xa6\xd6\xd3a\xfd\xd9\x08R\xd2U\x05\x10'\
     b'\xbf\x8c2\t\t\x94\xb5R\x06z\xe5\xef'
 socketio = SocketIO(app)
+
+message_builder = FlockwaveMessageBuilder()
 
 
 @socketio.on("connect")
@@ -50,3 +52,45 @@ def handle_flockwave_message(message):
             "semantics": "request"
         }
     )
+
+    if message.body["type"] == "SYS-VER":
+        response = {
+            "software": "flockwave-server",
+            "version": server_version
+        }
+        send_response(message, response)
+    else:
+        log.warning(
+            "Unhandled message: {0.body[type]}".format(message),
+            extra={
+                "id": message.id
+            }
+        )
+
+
+def send_response(message, body):
+    """Sends a response to a message.
+
+    Arguments:
+        message (FlockwaveMessage): the message to respond to
+        body (object): the body of the response to the message
+
+    Returns:
+        the newly constructed response that was sent back to the client
+    """
+    if "type" not in body:
+        body["type"] = message.body["type"]
+
+    response = message_builder.create_response_to(message)
+    response.body = body
+
+    log.info(
+        "Sending {0.body[type]} response".format(response),
+        extra={
+            "id": message.id,
+            "semantics": "response_success"
+        }
+    )
+
+    emit("fw", response, json=True)
+    return response

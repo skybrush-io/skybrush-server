@@ -21,13 +21,13 @@ socketio = SocketIO(app)
 @socketio.on("connect")
 def handle_connection():
     """Handler called when a client connects to the Flockwave server socket."""
-    log.info("Client {0} connected".format(request.sid))
+    log.info("Client connected", extra={"id": request.sid})
 
 
 @socketio.on("disconnect")
 def handle_disconnection():
     """Handler called when a client disconnects from the server socket."""
-    log.info("Client {0} disconnected".format(request.sid))
+    log.info("Client disconnected", extra={"id": request.sid})
 
 
 @socketio.on("fw")
@@ -39,7 +39,14 @@ def handle_flockwave_message(message):
         log.exception("Flockwave message does not match schema")
         return
 
+    if "error" in message:
+        log.warning("Error message from Flockwave client silently dropped")
+        return
+
     log.info(
-        "Got message! {0!r}".format(message),
-        extra={"semantics": "request"}
+        "Received {0.body[type]} message".format(message),
+        extra={
+            "id": message.id,
+            "semantics": "request"
+        }
     )

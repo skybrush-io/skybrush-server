@@ -61,12 +61,17 @@ class ColoredFormatter(logging.Formatter):
         """Format a message from a log record object."""
         if not hasattr(record, "semantics"):
             record.semantics = None
+        if not hasattr(record, "id"):
+            record.id = ""
+
         record = ColoredRecord(record)
         record.log_color = self.get_preferred_color(record)
         record.log_symbol = self.get_preferred_symbol(record)
         message = super(ColoredFormatter, self).format(record)
+
         if not message.endswith(escape_codes['reset']):
             message += escape_codes['reset']
+
         return message
 
     def get_preferred_color(self, record):
@@ -115,7 +120,9 @@ def install(level=logging.INFO):
         failure=u"\u2718"            # BALLOT X
     )
     formatter = ColoredFormatter(
-        "%(log_color)s%(log_symbol)s %(message)s",
+        "%(fg_bold_black)s%(id)-7.7s "
+        "%(log_color)s%(log_symbol)s "
+        "%(message)s",
         log_colors=log_colors, log_symbols=log_symbols
     )
 

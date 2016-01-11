@@ -2,7 +2,16 @@
 
 from setuptools import setup, find_packages
 
-requires = [line.strip() for line in open("requirements.txt")]
+requires = [
+    "bitstring>=3.1.3",
+    "click>=6.2",
+    "eventlet>=0.17.4",
+    "Flask>=0.10.1",
+    "flask-socketio>=1.0",
+    "jsonschema>=2.5.1",
+    "pyserial>=2.7",
+    "python-socketio>=0.6.1"
+]
 
 __version__ = None
 exec(open("flockwave/server/version.py").read())

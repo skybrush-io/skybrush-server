@@ -21,11 +21,13 @@ def start(debug=False, port=5000):
     # Create a child logger for Eventlet so we can silence things
     # from Eventlet by default
     eventlet_log = log.getChild("eventlet")
+    eventlet_log.setLevel(logging.ERROR)
 
     # Set up the logging format
     logger.install(level=logging.DEBUG if debug else logging.INFO)
 
     # Start the SocketIO server
+    log.info("Starting Flockwave server on port {0}...".format(port))
     socketio.run(app, port=port, debug=debug, use_reloader=False,
                  log=eventlet_log)
 

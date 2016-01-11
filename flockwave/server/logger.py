@@ -97,6 +97,7 @@ def install(level=logging.INFO):
     """
     log_colors = dict(default_log_colors)
     log_colors.update(
+        DEBUG="bold_black",
         INFO="reset",
         request="bold_blue",
         response_success="bold_green",
@@ -110,8 +111,8 @@ def install(level=logging.INFO):
         response_success=u"\u2192",  # RIGHTWARDS ARROW
         response_error=u"\u2192",    # RIGHTWARDS ARROW
         notification=u"\u2192",      # RIGHTWARDS ARROW
-        success=u"\u2713",           # CHECK MARK
-        failure=u"\u2717"            # BALLOT X
+        success=u"\u2714",           # CHECK MARK
+        failure=u"\u2718"            # BALLOT X
     )
     formatter = ColoredFormatter(
         "%(log_color)s%(log_symbol)s %(message)s",

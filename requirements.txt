@@ -1,2 +1,2 @@
--e git+ssh://git@biolfiz1.elte.hu/flockwave-spec.git#egg=flockwave-spec
+--find-links http://pypi.collmot.com
 -e .

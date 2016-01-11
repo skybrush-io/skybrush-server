@@ -1,0 +1,104 @@
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+
+        <title>Flockwave Test Client</title>
+
+        <link href="https://maxcdn.bootstrapcdn.com/bootswatch/3.3.6/lumen/bootstrap.min.css" rel="stylesheet">
+
+        <style>
+        #messageToSend {
+            font-family: Menlo, Monaco, Consolas, "Courier New", monospace;
+            font-size: 1em;
+        }
+        </style>
+    </head>
+    <body>
+
+        <div class="container">
+
+            <h1>Flockwave test client</h1>
+
+            <p class="lead">Use the form below to send test messages to this
+                Flockwave server.
+            </p>
+
+            <form>
+                <fieldset class="form-group">
+                    <label for="messageToSend">Message</label>
+                    <textarea id="messageToSend" class="form-control" rows="8"
+                        placeholder="Send a message to the server...">
+{
+    "type": "SYS-VER"
+}
+                    </textarea>
+                </fieldset>
+
+                <button type="button" class="btn btn-primary" onclick="send(); return false;">Send</button>
+                <button type="button" class="btn" onclick="disconnect(); return false;">Disconnect</button>
+            </form>
+
+            <h2>Server response</h2>
+
+            <div id="response">
+                <p id="response-hint" class="lead">Response from the server will appear here.</p>
+            </div>
+        </div>
+
+        <!-- ########################################################## -->
+
+        <script type="text/javascript" src="//cdn.socket.io/socket.io-1.3.7.js"></script>
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
+        <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js"></script>
+
+        <script type="text/javascript" charset="utf-8">
+            var socket = io();
+
+            socket.on('fw', function(data) {
+                $('#response-hint').hide();
+                $('<pre>').text(
+                    JSON.stringify(data, null, '    ')
+                ).hide().fadeIn().appendTo($('#response'));
+            });
+
+            function guid() {
+                return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+                    var r = crypto.getRandomValues(new Uint8Array(1))[0]%16|0, v = c == 'x' ? r : (r&0x3|0x8);
+                    return v.toString(16);
+                });
+            }
+
+            function disconnect(){
+                socket.disconnect();
+            }
+
+            function send() {
+                var body = $('#messageToSend').val();
+                var parsedBody;
+                var message;
+
+                try {
+                    parsedBody = JSON.parse(body);
+                } catch (e) {
+                    alert("Message is not a valid JSON object.");
+                    return;
+                }
+
+                if (!parsedBody.hasOwnProperty("type")) {
+                    alert("Message must have a 'type' property.");
+                    return;
+                }
+
+                message = {
+                    "$fw.version": "1.0",
+                    "id": guid(),
+                    "body": parsedBody
+                }
+
+                socket.emit("fw", message);
+            }
+        </script>
+    </body>
+</html>

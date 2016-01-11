@@ -12,12 +12,17 @@ from .version import __version__ as server_version
 __all__ = ()
 
 
-app = Flask(__name__)
+app = Flask(__name__.rpartition(".")[0])
 app.secret_key = b'\xa6\xd6\xd3a\xfd\xd9\x08R\xd2U\x05\x10'\
     b'\xbf\x8c2\t\t\x94\xb5R\x06z\xe5\xef'
 socketio = SocketIO(app)
 
 message_builder = FlockwaveMessageBuilder()
+
+
+@app.route("/")
+def index():
+    return app.send_static_file("index.html")
 
 
 @socketio.on("connect")

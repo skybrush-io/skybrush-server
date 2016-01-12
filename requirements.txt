@@ -1,2 +1,2 @@
---find-links http://pypi.collmot.com
+--find-links https://pypi.collmot.com
 -e .

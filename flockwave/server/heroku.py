@@ -12,7 +12,7 @@ __all__ = ("start", )
 def start():
     """Start the Flockwave server in a Heroku dyno."""
     port = os.environ.get("PORT", 5000)
-    return plain_start(["-p", port])
+    return plain_start(["-h", "0.0.0.0", "-p", port])
 
 
 if __name__ == "__main__":

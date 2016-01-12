@@ -12,9 +12,11 @@ from .logger import log
 @click.command()
 @click.option("--debug/--no-debug", default=False,
               help="Start the server in debug mode")
+@click.option("-h", "--host", default="127.0.0.1",
+              help="The IP address that the server will bind to")
 @click.option("-p", "--port", default=5000,
               help="The port that the server will listen on")
-def start(debug=False, port=5000):
+def start(debug, host, port):
     """Start the Flockwave server."""
     from flockwave.server.app import app, socketio
 
@@ -28,7 +30,7 @@ def start(debug=False, port=5000):
 
     # Start the SocketIO server
     log.info("Starting Flockwave server on port {0}...".format(port))
-    socketio.run(app, port=port, debug=debug, use_reloader=False,
+    socketio.run(app, host=host, port=port, debug=debug, use_reloader=False,
                  log=eventlet_log)
 
 

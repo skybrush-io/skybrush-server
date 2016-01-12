@@ -1,1 +1,1 @@
-web: python -m flockwave.server.launcher
+web: python -m flockwave.server.heroku

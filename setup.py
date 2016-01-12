@@ -6,6 +6,7 @@ requires = [
     "bitstring>=3.1.3",
     "click>=6.2",
     "colorama>=0.3.5",
+    "colorlog>=2.6.0",
     "eventlet>=0.17.4",
     "Flask>=0.10.1",
     "flask-socketio>=1.0",

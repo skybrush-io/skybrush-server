@@ -20,6 +20,21 @@ class UAVRegistry(object):
         """Constructor."""
         self._uavs = {}
 
+    def find_uav_by_id(self, uav_id):
+        """Returns an UAV given its ID.
+
+        Parameters:
+            uav_id (str): the ID of the UAV to retrieve
+
+        Returns:
+            object: the UAV with the given ID
+
+        Raises:
+            KeyError: if the given ID does not refer to an UAV in the
+                registry
+        """
+        return self._uavs[uav_id]
+
     @property
     def ids(self):
         """Returns an iterable that iterates over all the UAV identifiers

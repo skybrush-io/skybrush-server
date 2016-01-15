@@ -12,10 +12,36 @@ from .version import __version__ as server_version
 
 __all__ = ()
 
+PACKAGE_NAME = __name__.rpartition(".")[0]
 
-app = Flask(__name__.rpartition(".")[0])
-app.secret_key = b'\xa6\xd6\xd3a\xfd\xd9\x08R\xd2U\x05\x10'\
-    b'\xbf\x8c2\t\t\x94\xb5R\x06z\xe5\xef'
+
+class FlockwaveServer(Flask):
+    """Flask application object for the Flockwave server."""
+
+    def __init__(self, *args, **kwds):
+        super(FlockwaveServer, self).__init__(
+            PACKAGE_NAME, *args, **kwds
+        )
+        self.prepare()
+
+    def prepare(self):
+        """Hook function that contains preparation steps that should be
+        performed by the server before it starts serving requests.
+
+        Logging is not set up by the time when this function is called;
+        invocations of logging methods will not produce any output on the
+        console.
+        """
+        # Import and configure the extensions that we want to use.
+        # This is hardcoded now but should be done in a configuration file
+        # later on.
+        pass
+
+
+app = FlockwaveServer()
+app.config.from_object(".".join([PACKAGE_NAME, "config"]))
+app.config.from_envvar("FLOCKWAVE_SETTINGS", silent=True)
+
 socketio = SocketIO(app)
 
 message_hub = MessageHub()
@@ -70,3 +96,6 @@ def handle_SYS_VER(message, hub):
     }
     hub.send_response(message, response)
     return True
+
+
+# ######################################################################## #

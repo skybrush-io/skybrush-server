@@ -4,6 +4,7 @@ from __future__ import absolute_import
 
 from collections import defaultdict
 from flask.ext.socketio import emit
+from itertools import chain
 
 from .logger import log as base_log
 from .model import FlockwaveMessageBuilder
@@ -24,6 +25,12 @@ class MessageHub(object):
     generic message handlers that are invoked for all messages. Specific
     handlers are always invoked before generic ones; otherwise the handlers
     are called in the order they were registered.
+
+    Message handler functions are required to return ``False`` or ``None``
+    if they decided not to handle the message they were given. Handler
+    functions may also return ``True`` to indicate that they have handled
+    the message and no further action is needed, or a ``dict`` that contains
+    a response body that should be sent back to the caller.
     """
 
     def __init__(self):
@@ -51,12 +58,17 @@ class MessageHub(object):
 
         handled = False
         message_type = message.body["type"]
-        for handler in self._handlers_by_type.get(message_type, ()):
-            # order is important below; we need to prevent short-circuiting
-            handled = handler(message, self) or handled
-        for handler in self._handlers_by_type[None]:
-            # order is important below; we need to prevent short-circuiting
-            handled = handler(message, self) or handled
+        all_handlers = chain(
+            self._handlers_by_type.get(message_type, ()),
+            self._handlers_by_type[None]
+        )
+        for handler in all_handlers:
+            response = handler(message, self)
+            if response or isinstance(response, dict):
+                handled = True
+                if isinstance(response, dict):
+                    self.send_response(message, response)
+
         return handled
 
     def on(self, *args):

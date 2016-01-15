@@ -23,7 +23,8 @@
             <h1>Flockwave test client</h1>
 
             <p class="lead">Use the form below to send test messages to this
-                Flockwave server.
+                Flockwave server. Predefined message templates may be loaded
+                with the buttons on the right.
             </p>
 
             <form>
@@ -31,14 +32,17 @@
                     <label for="messageToSend">Message</label>
                     <textarea id="messageToSend" class="form-control" rows="8"
                         placeholder="Send a message to the server...">
-{
-    "type": "SYS-VER"
-}
                     </textarea>
                 </fieldset>
 
                 <button type="button" class="btn btn-primary" onclick="send(); return false;">Send</button>
                 <button type="button" class="btn" onclick="disconnect(); return false;">Disconnect</button>
+
+                <div class="pull-right">
+                    <strong>Presets:</strong>
+                    <span id="preset-buttons">
+                    </span>
+                </div>
             </form>
 
             <h2>Server response</h2>
@@ -55,6 +59,18 @@
         <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js"></script>
 
         <script type="text/javascript">
+            var presets = {
+                "SYS-VER": {
+                    "type": "SYS-VER"
+                },
+                "UAV-INF": {
+                    "type": "UAV-INF",
+                    "ids": ["FAKE-01", "FAKE-02"]
+                },
+                "UAV-LIST": {
+                    "type": "UAV-LIST"
+                }
+            };
             var socket = io();
 
             socket.on('fw', function(data) {
@@ -73,6 +89,31 @@
 
             function disconnect(){
                 socket.disconnect();
+            }
+
+            function loadPreset(name) {
+                $('#messageToSend').val(JSON.stringify(presets[name], null, "    "));
+            }
+
+            function preparePresetButtons() {
+                var $presetButtons = $('#preset-buttons');
+                var presetNames = $.map(presets,
+                    function(preset, presetName) {
+                        return presetName;
+                    });
+                presetNames.sort();
+
+                $.each(presetNames, function(index, presetName) {
+                    $('<button>')
+                        .addClass('btn')
+                        .on("click", function() {
+                            loadPreset(presetName);
+                            return false;
+                        })
+                        .text(presetName)
+                        .appendTo($presetButtons);
+                    $('<span>').text(' ').appendTo($presetButtons);
+                });
             }
 
             function send() {
@@ -100,6 +141,11 @@
 
                 socket.emit("fw", message);
             }
+
+            $(function() {
+                preparePresetButtons();
+                loadPreset('SYS-VER');
+            });
         </script>
     </body>
 </html>

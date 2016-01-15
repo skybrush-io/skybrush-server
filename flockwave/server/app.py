@@ -9,6 +9,7 @@ from .ext.manager import ExtensionManager
 from .logger import log
 from .message_hub import MessageHub
 from .model import FlockwaveMessage
+from .uav_registry import UAVRegistry
 from .version import __version__ as server_version
 
 __all__ = ()
@@ -36,6 +37,10 @@ class FlockwaveServer(Flask):
         # Create a message hub that will handle incoming and outgoing
         # messages
         self.message_hub = MessageHub()
+
+        # Create an object to hold information about all the UAVs that
+        # the server knows about
+        self.uav_registry = UAVRegistry()
 
         # Import and configure the extensions that we want to use.
         self.extension_manager = ExtensionManager(self)
@@ -84,12 +89,30 @@ def handle_flockwave_message(message):
 
 @app.message_hub.on("SYS-VER")
 def handle_SYS_VER(message, hub):
-    response = {
+    return {
         "software": "flockwave-server",
         "version": server_version
     }
-    hub.send_response(message, response)
-    return True
+
+
+@app.message_hub.on("UAV-INF")
+def handle_UAV_INF(message, hub):
+    response = {
+        "status": {},
+        "failure": [],
+        "reasons": {}
+    }
+    for uav_id in message.body["ids"]:
+        response["failure"].append(uav_id)
+        response["reasons"][uav_id] = "No such UAV."
+    return response
+
+
+@app.message_hub.on("UAV-LIST")
+def handle_UAV_LIST(message, hub):
+    return {
+        "ids": list(app.uav_registry.ids)
+    }
 
 
 # ######################################################################## #

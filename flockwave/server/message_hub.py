@@ -7,7 +7,7 @@ from flask.ext.socketio import emit
 from itertools import chain
 
 from .logger import log as base_log
-from .model import FlockwaveMessageBuilder
+from .model import FlockwaveMessageBuilder, FlockwaveResponse
 
 __all__ = ("MessageHub", )
 
@@ -26,17 +26,46 @@ class MessageHub(object):
     handlers are always invoked before generic ones; otherwise the handlers
     are called in the order they were registered.
 
-    Message handler functions are required to return ``False`` or ``None``
-    if they decided not to handle the message they were given. Handler
-    functions may also return ``True`` to indicate that they have handled
-    the message and no further action is needed, or a ``dict`` that contains
-    a response body that should be sent back to the caller.
+    Message handler functions are required to return one of the following
+    values:
+
+    - ``False`` or ``None`` if they decided not to handle the message they
+      were given.
+
+    - ``True`` to indicate that they have handled the message and no further
+      action is needed
+
+    - A ``dict`` that contains a response body that should be sent back to
+      the caller. In this case, the hub will wrap the body in an appropriate
+      message envelope that refers to the ID of the message that the
+      object responds to.
+
+    - A FlockwaveResponse_ object that is *already* constructed in a way
+      that it responds to the original message.
+
+    When the body of the response returned from the handler does not contain
+    a message type (i.e. a ``type`` key), it will be added automatically,
+    assuming that it is equal to the type of the incoming message.
     """
 
     def __init__(self):
         """Constructor."""
         self._handlers_by_type = defaultdict(list)
         self._message_builder = FlockwaveMessageBuilder()
+
+    def create_response_to(self, message, body=None):
+        """Creates a new Flockwave response object that will respond to the
+        given message.
+
+        Parameters:
+            message (FlockwaveMessage): the message to respond to
+            body (object): the body of the response.
+
+        Returns:
+            FlockwaveResponse: a response object that will respond to the
+                given message
+        """
+        return self._message_builder.create_response_to(message, body)
 
     def handle_incoming_message(self, message):
         """Handles an incoming Flockwave message by calling the appropriate
@@ -63,11 +92,23 @@ class MessageHub(object):
             self._handlers_by_type[None]
         )
         for handler in all_handlers:
-            response = handler(message, self)
-            if response or isinstance(response, dict):
+            try:
+                response = handler(message, self)
+            except Exception:
+                log.exception("Error while calling handler {0!r} "
+                              "for incoming message; proceeding with "
+                              "next handler (if any)".format(handler))
+                response = None
+            if response is True:
+                # Message was handled by the handler
                 handled = True
-                if isinstance(response, dict):
-                    self.send_response(message, response)
+            elif response is False or response is None:
+                # Message was rejected by the handler, nothing to do
+                pass
+            elif isinstance(response, (dict, FlockwaveResponse)):
+                # Handler returned a dict or a response; we must send it
+                self._send_response(response, in_response_to=message)
+                handled = True
 
         return handled
 
@@ -111,26 +152,39 @@ class MessageHub(object):
                 message_type = message_type.decode("utf-8")
             self._handlers_by_type[message_type].append(func)
 
-    def send_response(self, message, body):
+    def _send_response(self, message, in_response_to):
         """Sends a response to a message from this message hub.
 
-        Arguments:
-            message (FlockwaveMessage): the message to respond to
-            body (object): the body of the response to the message
+        Parameters:
+            message (FlockwaveResponse or object): the response, or the body
+                of the response. When it is a FlockwaveResponse_ object, the
+                function will check whether the response indeed refers to
+                the given message (in the ``in_response_to`` parameter).
+                When it is any other object, it will be wrapped in a
+                FlockwaveResponse_ object first. In both cases, the type
+                of the message body will be filled from the type of the
+                original message if it is not given.
+            in_response_to (FlockwaveMessage): the message that the given
+                object is responding to
 
         Returns:
-            the newly constructed response that was sent back to the client
+            FlockwaveResponse: the response that was sent back to the client
         """
-        if "type" not in body:
-            body["type"] = message.body["type"]
-
-        response = self._message_builder.create_response_to(message)
-        response.body = body
+        if isinstance(message, FlockwaveResponse):
+            assert message.correlationId == in_response_to.id
+            response = message
+        else:
+            try:
+                response = self._message_builder.create_response_to(
+                    in_response_to, body=message
+                )
+            except Exception:
+                log.exception("Failed to create response")
 
         log.info(
             "Sending {0.body[type]} response".format(response),
             extra={
-                "id": message.id,
+                "id": in_response_to.id,
                 "semantics": "response_success"
             }
         )

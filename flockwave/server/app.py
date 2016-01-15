@@ -97,14 +97,12 @@ def handle_SYS_VER(message, hub):
 
 @app.message_hub.on("UAV-INF")
 def handle_UAV_INF(message, hub):
-    response = {
-        "status": {},
-        "failure": [],
-        "reasons": {}
+    body = {
+        "status": {}
     }
+    response = app.message_hub.create_response_to(message, body=body)
     for uav_id in message.body["ids"]:
-        response["failure"].append(uav_id)
-        response["reasons"][uav_id] = "No such UAV."
+        response.add_failure(uav_id, "No such UAV")
     return response
 
 

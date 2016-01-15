@@ -5,6 +5,7 @@ from __future__ import absolute_import
 from flask import Flask, request
 from flask.ext.socketio import SocketIO
 
+from .ext.manager import ExtensionManager
 from .logger import log
 from .message_hub import MessageHub
 from .model import FlockwaveMessage
@@ -27,29 +28,22 @@ class FlockwaveServer(Flask):
     def prepare(self):
         """Hook function that contains preparation steps that should be
         performed by the server before it starts serving requests.
-
-        Logging is not set up by the time when this function is called;
-        invocations of logging methods will not produce any output on the
-        console.
         """
+        # Load the configuration
+        self.config.from_object(".".join([PACKAGE_NAME, "config"]))
+        self.config.from_envvar("FLOCKWAVE_SETTINGS", silent=True)
+
+        # Create a message hub that will handle incoming and outgoing
+        # messages
+        self.message_hub = MessageHub()
+
         # Import and configure the extensions that we want to use.
-        # This is hardcoded now but should be done in a configuration file
-        # later on.
-        pass
+        self.extension_manager = ExtensionManager(self)
+        self.extension_manager.configure(self.config.get("EXTENSIONS", {}))
 
 
 app = FlockwaveServer()
-app.config.from_object(".".join([PACKAGE_NAME, "config"]))
-app.config.from_envvar("FLOCKWAVE_SETTINGS", silent=True)
-
 socketio = SocketIO(app)
-
-message_hub = MessageHub()
-
-
-@app.route("/")
-def index():
-    return app.send_static_file("index.html")
 
 
 @socketio.on("connect")
@@ -77,7 +71,7 @@ def handle_flockwave_message(message):
         log.warning("Error message from Flockwave client silently dropped")
         return
 
-    if not message_hub.handle_incoming_message(message):
+    if not app.message_hub.handle_incoming_message(message):
         log.warning(
             "Unhandled message: {0.body[type]}".format(message),
             extra={
@@ -88,7 +82,7 @@ def handle_flockwave_message(message):
 # ######################################################################## #
 
 
-@message_hub.on("SYS-VER")
+@app.message_hub.on("SYS-VER")
 def handle_SYS_VER(message, hub):
     response = {
         "software": "flockwave-server",

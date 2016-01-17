@@ -189,5 +189,5 @@ class MessageHub(object):
             }
         )
 
-        emit("fw", response, json=True)
+        emit("fw", response.json, json=True)
         return response

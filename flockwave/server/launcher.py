@@ -24,7 +24,7 @@ def start(debug, host, port):
     # Create a child logger for Eventlet so we can silence things
     # from Eventlet by default.
     eventlet_log = log.getChild("eventlet")
-    eventlet_log.setLevel(logging.ERROR)
+    eventlet_log.setLevel(logging.INFO)
 
     # Also silence Engine.IO and Socket.IO
     for logger_name in ("engineio", "socketio"):

@@ -67,8 +67,8 @@ def handle_disconnection():
 def handle_flockwave_message(message):
     """Handler called for all incoming Flockwave JSON messages."""
     try:
-        message = FlockwaveMessage(message)
-    except:
+        message = FlockwaveMessage.from_json(message)
+    except Exception:
         log.exception("Flockwave message does not match schema")
         return
 

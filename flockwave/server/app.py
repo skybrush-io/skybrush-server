@@ -84,6 +84,15 @@ def handle_flockwave_message(message):
             }
         )
 
+
+@socketio.on_error_default
+def handle_exception(exc):
+    """Handler that is called when an exception happens during Socket.IO
+    message handling.
+    """
+    log.exception("Exception while handling message")
+
+
 # ######################################################################## #
 
 

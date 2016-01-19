@@ -13,11 +13,6 @@ def load(app, configuration, logger):
     global log
     log = logger
     app.add_url_rule("/", "index", index)
-    pass
-
-
-def unload():
-    log.info("Unloaded!")
 
 
 def index():

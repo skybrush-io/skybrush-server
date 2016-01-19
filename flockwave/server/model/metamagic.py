@@ -8,6 +8,7 @@ a JSON schema description.
 import jsonschema
 
 from collections import namedtuple
+from flockwave.spec.schema import ref_resolver as flockwave_schema_ref_resolver
 
 __all__ = ("ModelMeta", )
 
@@ -111,10 +112,11 @@ class ModelMetaHelpers(object):
         orig_init = dct.get("__init__", None)
 
         def __init__(self, json=None, *args, **kwds):
+            self.__dict__["_json"] = {}
             if orig_init is not None:
                 orig_init(self, *args, **kwds)
-            self.__dict__["_json"] = {}
-            self.json = json
+            if json is not None:
+                self.json = json
 
         if orig_init and hasattr(orig_init, "__doc__"):
             __init__.__doc__ = orig_init.__doc__
@@ -200,13 +202,6 @@ class ModelMetaHelpers(object):
         def __getitem__(self, key):
             return self._json[key]
 
-        # TODO: don't use this hackery; add properties instead
-        def __getattr__(self, key):
-            try:
-                return self.__getitem__(key)
-            except KeyError:
-                raise AttributeError(key)
-
         for name in ["__contains__", "__getitem__"]:
             if name not in dct:
                 dct[name] = locals()[name]
@@ -251,8 +246,8 @@ class ModelMetaHelpers(object):
 
         dct["validate"] = validate
 
-    @staticmethod
-    def find_schema_and_resolver(dct, bases):
+    @classmethod
+    def find_schema_and_resolver(cls, dct, bases):
         """Finds the JSON schema that the class being constructed must
         adhere to. This is done by looking up the ``schema`` attribute
         in the class dictionary. If no such attribute is found, one of
@@ -281,9 +276,22 @@ class ModelMetaHelpers(object):
         schema = getattr(dct, "schema", None)
         resolver = getattr(dct, "ref_resolver", None)
 
+        if schema is not None:
+            if resolver is None:
+                resolver = jsonschema.RefResolver.from_schema(
+                    schema, handlers={"http": flockwave_schema_ref_resolver}
+                )
+            elif not isinstance(resolver, jsonschema.RefResolver):
+                if callable(resolver):
+                    resolver = jsonschema.RefResolver.from_schema(
+                        schema, handlers={"http": resolver}
+                    )
+                else:
+                    resolver = jsonschema.RefResolver.from_schema(
+                        schema, handlers=resolver
+                    )
+
         if schema is not None or bases_have_schema:
-            if resolver is None and schema is not None:
-                resolver = jsonschema.RefResolver.from_schema(schema)
             return schema, resolver
         else:
             raise TypeError("Model classes must either have a 'schema' "

@@ -2,6 +2,9 @@
 
 from __future__ import absolute_import
 
+import json
+
+from datetime import datetime
 from flask import Flask, request
 from flask.ext.socketio import SocketIO
 
@@ -47,8 +50,69 @@ class FlockwaveServer(Flask):
         self.extension_manager.configure(self.config.get("EXTENSIONS", {}))
 
 
+class _JSONEncoder(object):
+    """Custom JSON encoder and decoder function to be used by Socket.IO."""
+
+    def __init__(self):
+        self.encoder = json.JSONEncoder(
+            separators=(",", ":"), sort_keys=False, indent=None,
+            default=self._encode
+        )
+        self.decoder = json.JSONDecoder()
+
+    def _encode(self, obj):
+        """Encodes an object that could otherwise not be encoded into JSON.
+
+        This function performs the following conversions:
+
+        - ``datetime.datetime`` objects are converted into a standard
+          ISO-8601 string representation
+
+        - Objects having a ``json`` property will be replaced by the value
+          of this property
+
+        Parameters:
+            obj (object): the object to encode
+
+        Returns:
+            object: the JSON representation of the object
+        """
+        if isinstance(obj, datetime):
+            return obj.isoformat()
+        elif hasattr(obj, "json"):
+            return obj.json
+        else:
+            raise TypeError("cannot encode {0!r} into JSON".format(obj))
+
+    def dumps(self, obj, *args, **kwds):
+        """Converts the given object into a JSON string representation.
+        Additional positional or keyword arguments that may be passed by
+        Socket.IO are silently ignored.
+
+        Parameters:
+            obj (object): the object to encode into a JSON string
+
+        Returns:
+            str: a string representation of the given object in JSON
+        """
+        return self.encoder.encode(obj)
+
+    def loads(self, data, *args, **kwds):
+        """Loads a JSON-encoded object from the given string representation.
+        Additional positional or keyword arguments that may be passed by
+        Socket.IO are silently ignored.
+
+        Parameters:
+            data (str): the string to decode
+
+        Returns:
+            object: the constructed object
+        """
+        return self.decoder.decode(data)
+
+
 app = FlockwaveServer()
-socketio = SocketIO(app)
+socketio = SocketIO(app, json=_JSONEncoder())
 
 
 @socketio.on("connect")
@@ -116,9 +180,7 @@ def handle_UAV_INF(message, hub):
         except KeyError:
             response.add_failure(uav_id, "No such UAV")
             continue
-
-        # TODO
-        statuses[uav_id] = {}
+        statuses[uav_id] = uav.json
 
     return response
 

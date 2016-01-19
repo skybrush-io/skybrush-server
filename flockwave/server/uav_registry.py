@@ -4,6 +4,8 @@ server knows.
 
 __all__ = ("UAVRegistry", )
 
+from .model import UAVStatusInfo
+
 
 class UAVRegistry(object):
     """Registry that contains information about all the UAVs seen by the
@@ -41,3 +43,14 @@ class UAVRegistry(object):
         that are known to the registry.
         """
         return sorted(self._uavs.keys())
+
+    def update_uav_status(self, uav_id, status=None):
+        """Updates the status information of the given UAV.
+
+        Parameters:
+            uav_id (str): the ID of the UAV to update
+            status (UAVStatusInfo): the status of the UAV
+        """
+        if uav_id not in self._uavs:
+            self._uavs[uav_id] = UAVStatusInfo(id=uav_id)
+        # TODO: process status

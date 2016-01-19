@@ -2,9 +2,7 @@
 
 from __future__ import absolute_import
 
-import jsonschema
-
-from flockwave.spec.schema import get_message_schema, ref_resolver
+from flockwave.spec.schema import get_message_schema
 from .metamagic import ModelMeta
 
 
@@ -18,9 +16,6 @@ class FlockwaveMessage(object):
 
     class __meta__:
         schema = get_message_schema()
-        ref_resolver = jsonschema.RefResolver.from_schema(
-            schema, handlers={"http": ref_resolver}
-        )
 
 
 class FlockwaveResponse(FlockwaveMessage):

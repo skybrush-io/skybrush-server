@@ -13,7 +13,8 @@ requires = [
     "flockwave-spec>=0.1.0",
     "jsonschema>=2.5.1",
     "pyserial>=2.7",
-    "python-socketio>=0.6.1"
+    "python-socketio>=0.6.1",
+    "pytz>=2015.7"
 ]
 
 __version__ = None

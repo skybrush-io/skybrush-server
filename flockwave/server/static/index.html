@@ -77,7 +77,7 @@
                 $('#response-hint').hide();
                 $('<pre>').text(
                     JSON.stringify(data, null, '    ')
-                ).hide().fadeIn().appendTo($('#response'));
+                ).hide().prependTo($('#response')).slideDown();
             });
 
             function guid() {

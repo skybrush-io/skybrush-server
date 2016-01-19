@@ -4,6 +4,7 @@ from setuptools import setup, find_packages
 
 requires = [
     "bitstring>=3.1.3",
+    "blinker>=1.4",
     "click>=6.2",
     "colorama>=0.3.5",
     "colorlog>=2.6.0",

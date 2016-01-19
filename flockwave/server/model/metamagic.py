@@ -7,40 +7,106 @@ a JSON schema description.
 
 import jsonschema
 
+from collections import namedtuple
+
 __all__ = ("ModelMeta", )
 
 
-class ModelMeta(type):
-    """Metaclass for our model objects. Adds JSON validation automatically
-    when the model objects are constructed from JSON.
+class PropertyInfo(namedtuple("PropertyInfo",
+                              "name title description default")):
+    """Simple tuple subclass to hold information about a single property
+    in a JSON schema.
     """
 
-    def __new__(cls, clsname, bases, dct):
-        """Metaclass constructor method.
+    @classmethod
+    def from_json_schema(cls, name, definition):
+        """Constructs a property information object from its JSON schema
+        representation.
 
-        Arguments:
-            clsname (str): the name of the class being constructed
-            bases (list of type): base classes for the class being
-                constructed
-            dct (dict): namespace of the class body
+        Parameters:
+            name (str): the name of the property that appears as a key in a
+                ``properties`` stanza of a JSON schema object
+            definition (object): the JSON schema definition of the property
+
+        Returns:
+            PropertyInfo: the property information object
         """
-        bases_have_schema = any(
-            getattr(base, "__metaclass__", type) is ModelMeta
-            for base in bases
+        return PropertyInfo(
+            name=name,
+            title=definition.get("title"),
+            description=definition.get("description"),
+            default=definition.get("default")
         )
-        schema, resolver = cls.find_schema_and_resolver(dct, bases)
-        if schema is not None:
-            if not bases_have_schema:
-                cls.add_json_property(dct)
-                cls.add_special_methods(dct)
-            cls.add_validator_method(dct, schema, resolver)
-        return type.__new__(cls, clsname, bases, dct)
+
+
+def collect_properties(schema, resolver, result=None):
+    """Collects information about all the properties defined on a JSON
+    schema.
+
+    Parameters:
+        schema (object): the JSON schema
+        resolver (jsonschema.RefResolver): reference resolver for the
+            JSON schema
+        result (dict or None): dictionary to extend with the property
+            information. ``None`` means to construct and return a new
+            dictionary.
+
+    Returns:
+        dict: dictionary mapping property names to PropertyInfo_ objects.
+            Identical to the ``result`` parameter if it was a dict.
+    """
+    if result is None:
+        result = {}
+
+    # Handle '$ref' keyword
+    if "$ref" in schema:
+        with resolver.resolving(schema["$ref"]) as subschema:
+            return collect_properties(subschema, resolver, result)
+
+    # Handle 'allOf' keyword
+    if "allOf" in schema:
+        for subschema in schema["allOf"]:
+            collect_properties(subschema, resolver, result)
+        return result
+
+    # Handle 'anyOf' keyword
+    if "anyOf" in schema:
+        for subschema in schema["anyOf"]:
+            collect_properties(subschema, resolver, result)
+        return result
+
+    # Handle 'oneOf' keyword
+    if "oneOf" in schema:
+        for subschema in schema["oneOf"]:
+            collect_properties(subschema, resolver, result)
+        return result
+
+    # Warn that we don't support NOT
+    if "not" in schema:
+        raise NotImplementedError("JSON schema negations are not supported")
+
+    # Handle 'properties' keyword
+    if "properties" in schema:
+        for name, definition in schema["properties"].iteritems():
+            result[name] = PropertyInfo.from_json_schema(name, definition)
+
+    return result
+
+
+class ModelMetaHelpers(object):
+    """Helper methods for the ModelMeta_ metaclass. These are defined here
+    and not in ModelMeta_ to ensure that they do not appear as methods of
+    the classes that ModelMeta_ constructs.
+    """
 
     @staticmethod
     def add_json_property(dct):
         """Extends the class being constructed with a ``json`` property
         that contains the instance data in JSON format. Setting the property
         will trigger a full JSON schema validation.
+
+        Parameters:
+            dct (dict): the class dictionary
         """
         orig_init = dct.get("__init__", None)
 
@@ -77,25 +143,71 @@ class ModelMeta(type):
         )
 
     @staticmethod
+    def add_proxy_property(dct, name, property_info):
+        """Extends the class being constructed with a single proxy property
+        that accesses an entry in the underlying JSON object directly.
+
+        Parameters:
+            dct (dict): the class dictionary
+            name (str): the name of the property
+            property_info (PropertyInfo): an object that describes the
+                underlying JSON property based on the schema
+        """
+        name = name.encode("ascii")
+
+        def getter(self):
+            try:
+                return self._json[name]
+            except KeyError:
+                raise AttributeError(name)
+
+        def setter(self, value):
+            self._json[name] = value
+
+        def deleter(self):
+            del self.__dict__[name]
+
+        getter.__name__ = name
+        setter.__name__ = name
+        deleter.__name__ = name
+        doc = property_info.description or None
+
+        dct[name] = property(getter, setter, deleter, doc)
+
+    @classmethod
+    def add_proxy_properties(cls, dct, property_info):
+        """Extends the class being constructed with proxy properties that
+        access specific entries in the JSON object directly.
+
+        Parameters:
+            dct (dict): the class dictionary
+            property_info (dict): dictionary mapping property names to
+                PropertyInfo_ objects that describe the underlying JSON
+                property based on the schema
+        """
+        for name, info in property_info.iteritems():
+            cls.add_proxy_property(dct, name, info)
+
+    @staticmethod
     def add_special_methods(dct):
         """Adds some special methods to the class dictionary that allows
         attributes of the wrapped JSON object to be accessed with member
         and dictionary notation.
         """
-        # TODO: don't use this hackery; add properties instead
         def __contains__(self, key):
             return key in self._json
 
+        def __getitem__(self, key):
+            return self._json[key]
+
+        # TODO: don't use this hackery; add properties instead
         def __getattr__(self, key):
             try:
                 return self.__getitem__(key)
             except KeyError:
                 raise AttributeError(key)
 
-        def __getitem__(self, key):
-            return self._json[key]
-
-        for name in ["__contains__", "__getattr__", "__getitem__"]:
+        for name in ["__contains__", "__getitem__"]:
             if name not in dct:
                 dct[name] = locals()[name]
 
@@ -139,8 +251,8 @@ class ModelMeta(type):
 
         dct["validate"] = validate
 
-    @classmethod
-    def find_schema_and_resolver(cls, dct, bases):
+    @staticmethod
+    def find_schema_and_resolver(dct, bases):
         """Finds the JSON schema that the class being constructed must
         adhere to. This is done by looking up the ``schema`` attribute
         in the class dictionary. If no such attribute is found, one of
@@ -160,14 +272,50 @@ class ModelMeta(type):
                 object is the JSON schema resolver to use or ``None`` if
                 the default JSON schema resolver should be used
         """
-        if "ref_resolver" in dct:
-            resolver = dct.pop("ref_resolver")
+        bases_have_schema = any(
+            getattr(base, "__metaclass__", type) is ModelMeta
+            for base in bases
+        )
+
+        dct = dct.get("__meta__")
+        schema = getattr(dct, "schema", None)
+        resolver = getattr(dct, "ref_resolver", None)
+
+        if schema is not None or bases_have_schema:
+            if resolver is None and schema is not None:
+                resolver = jsonschema.RefResolver.from_schema(schema)
+            return schema, resolver
         else:
-            resolver = None
-        if "schema" in dct:
-            return dct.pop("schema"), resolver
-        if any(getattr(base, "__metaclass__", type) is cls for base in bases):
-            return None, resolver
-        raise TypeError("Model classes must either have a 'schema' "
-                        "attribute or derive from another model class "
-                        "with a schema")
+            raise TypeError("Model classes must either have a 'schema' "
+                            "attribute or derive from another model class "
+                            "with a schema")
+
+
+class ModelMeta(type):
+    """Metaclass for our model objects. Adds JSON validation automatically
+    when the model objects are constructed from JSON.
+    """
+
+    def __new__(cls, clsname, bases, dct):
+        """Metaclass constructor method.
+
+        Arguments:
+            clsname (str): the name of the class being constructed
+            bases (list of type): base classes for the class being
+                constructed
+            dct (dict): namespace of the class body
+        """
+        bases_have_schema = any(
+            getattr(base, "__metaclass__", type) is ModelMeta
+            for base in bases
+        )
+        schema, resolver = \
+            ModelMetaHelpers.find_schema_and_resolver(dct, bases)
+        if schema is not None:
+            if not bases_have_schema:
+                ModelMetaHelpers.add_json_property(dct)
+                ModelMetaHelpers.add_special_methods(dct)
+                property_info = collect_properties(schema, resolver)
+                ModelMetaHelpers.add_proxy_properties(dct, property_info)
+            ModelMetaHelpers.add_validator_method(dct, schema, resolver)
+        return type.__new__(cls, clsname, bases, dct)

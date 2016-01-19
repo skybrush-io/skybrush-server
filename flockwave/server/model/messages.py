@@ -15,10 +15,12 @@ class FlockwaveMessage(object):
     """Class representing a single Flockwave message."""
 
     __metaclass__ = ModelMeta
-    schema = get_message_schema()
-    ref_resolver = jsonschema.RefResolver.from_schema(
-        schema, handlers={"http": ref_resolver}
-    )
+
+    class __meta__:
+        schema = get_message_schema()
+        ref_resolver = jsonschema.RefResolver.from_schema(
+            schema, handlers={"http": ref_resolver}
+        )
 
 
 class FlockwaveResponse(FlockwaveMessage):

@@ -21,12 +21,41 @@ class ExtensionManager(object):
         """Constructor.
 
         Parameters:
-            app (object): the "application context" of the extension
-                manager. This is an opaque object that will be passed on
-                to the extensions when they are initialized.
+            app (FlockwaveServer): the "application context" of the
+                extension manager.
         """
-        self.app = app
+        self._app = None
         self._extensions = {}
+        self._num_clients = 0
+        self.app = app
+
+    @property
+    def app(self):
+        """The application context of the extension manager. This will also
+        be passed on to the extensions when they are initialized.
+        """
+        return self._app
+
+    @app.setter
+    def app(self, value):
+        if self._app is value:
+            return
+
+        if self._app is not None:
+            self._app.num_clients_changed.disconnect(
+                self._app_client_count_changed, sender=self._app
+            )
+
+        self._spindown_all_extensions()
+        self._app = value
+        self._num_clients = self._app.num_clients if self._app else 0
+        if self._num_clients > 0:
+            self._spinup_all_extensions()
+
+        if self._app is not None:
+            self._app.num_clients_changed.connect(
+                self._app_client_count_changed, sender=self._app
+            )
 
     def configure(self, configuration):
         """Conigures the extension manager.
@@ -94,16 +123,19 @@ class ExtensionManager(object):
         instance_factory = getattr(module, "construct", None)
         extension = instance_factory() if instance_factory else module
 
-        if callable(getattr(extension, "load", None)):
+        func = getattr(extension, "load", None)
+        if callable(func):
             try:
                 extension_log = base_log.getChild(extension_name)
-                extension.load(self.app, configuration, extension_log)
-            except ImportError:
+                func(self.app, configuration, extension_log)
+            except Exception:
                 log.exception("Error while loading extension {0!r}"
                               .format(extension_name))
                 return
 
         self._extensions[extension_name] = extension
+        if self._num_clients > 0:
+            self._spinup_extension(extension)
 
     @property
     def loaded_extensions(self):
@@ -129,10 +161,14 @@ class ExtensionManager(object):
                         "not loaded".format(extension_name))
             return
 
+        if self._num_clients > 0:
+            self._spindown_extension(extension)
+
         clean_unload = True
-        if callable(getattr(extension, "unload", None)):
+        func = getattr(extension, "unload", None)
+        if callable(func):
             try:
-                extension.unload()
+                func()
             except Exception:
                 clean_unload = False
                 log.exception("Error while unloading extension {0!r}; "
@@ -145,3 +181,66 @@ class ExtensionManager(object):
             log.info(message)
         else:
             log.warning(message)
+
+    def _app_client_count_changed(self, sender):
+        """Signal handler that is called whenever the number of clients
+        connected to the app has changed.
+        """
+        old_value = self._num_clients
+        self._num_clients = self.app.num_clients
+        if self._num_clients == 0 and old_value != 0:
+            self._spindown_all_extensions()
+        elif self._num_clients != 0 and old_value == 0:
+            self._spinup_all_extensions()
+
+    def _spindown_all_extensions(self):
+        """Iterates over all loaded extensions and spins down each one of
+        them.
+        """
+        for extension_name in self._extensions:
+            self._spindown_extension(extension_name)
+
+    def _spinup_all_extensions(self):
+        """Iterates over all loaded extensions and spins up each one of
+        them.
+        """
+        for extension_name in self._extensions:
+            self._spinup_extension(extension_name)
+
+    def _spindown_extension(self, extension_name):
+        """Spins down the given extension.
+
+        This is done by calling the ``spindown()`` method or function of
+        the extension, if any.
+
+        Arguments:
+            extension_name (str): the name of the extension to spin down.
+        """
+        extension = self._get_extension_by_name(extension_name)
+        func = getattr(extension, "spindown", None)
+        if callable(func):
+            try:
+                func()
+            except Exception:
+                log.exception("Error while spinning down extension {0!r}"
+                              .format(extension_name))
+                return
+
+    def _spinup_extension(self, extension_name):
+        """Spins up the given extension.
+
+        This is done by calling the ``spinup()`` method or function of
+        the extension, if any.
+
+        Arguments:
+            extension_name (str): the name of the extension to spin up.
+        """
+        extension = self._get_extension_by_name(extension_name)
+        func = getattr(extension, "spinup", None)
+        if callable(func):
+            try:
+                func()
+            except Exception:
+                log.exception("Error while spinning up extension {0!r}"
+                              .format(extension_name))
+                return

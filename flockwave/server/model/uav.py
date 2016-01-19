@@ -39,5 +39,3 @@ class UAVStatusInfo(object):
         assert timestamp.tzinfo is not None, \
             "UAV status information timestamp must be timezone-aware"
         self.timestamp = timestamp
-        print(repr(self))
-        print(repr(self._json))

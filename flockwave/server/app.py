@@ -4,11 +4,13 @@ from __future__ import absolute_import
 
 import json
 
+from blinker import Signal
 from datetime import datetime
 from flask import Flask, request
 from flask.ext.socketio import SocketIO
 
 from .ext.manager import ExtensionManager
+from .client_registry import ClientRegistry
 from .logger import log
 from .message_hub import MessageHub
 from .model import FlockwaveMessage
@@ -21,13 +23,33 @@ PACKAGE_NAME = __name__.rpartition(".")[0]
 
 
 class FlockwaveServer(Flask):
-    """Flask application object for the Flockwave server."""
+    """Flask application object for the Flockwave server.
+
+    Attributes:
+        client_registry (ClientRegistry): central registry for the clients
+            that are currently connected to the server
+        client_count_changed (Signal): signal that is emitted when the
+            number of clients connected to the server changes
+        extension_manager (ExtensionManager): object that manages the
+            loading and unloading of server extensions
+        message_hub (MessageHub): central messaging hub via which one can
+            send Flockwave messages
+        uav_registry (UAVRegistry): central registry for the UAVs known to
+            the server
+    """
+
+    num_clients_changed = Signal()
 
     def __init__(self, *args, **kwds):
         super(FlockwaveServer, self).__init__(
             PACKAGE_NAME, *args, **kwds
         )
         self.prepare()
+
+    @property
+    def num_clients(self):
+        """The number of clients connected to the server."""
+        return self.client_registry.num_clients
 
     def prepare(self):
         """Hook function that contains preparation steps that should be
@@ -36,6 +58,14 @@ class FlockwaveServer(Flask):
         # Load the configuration
         self.config.from_object(".".join([PACKAGE_NAME, "config"]))
         self.config.from_envvar("FLOCKWAVE_SETTINGS", silent=True)
+
+        # Create an object to hold information about all the connected
+        # clients that the server can talk to
+        self.client_registry = ClientRegistry()
+        self.client_registry.count_changed.connect(
+            self._on_client_count_changed,
+            sender=self.client_registry
+        )
 
         # Create a message hub that will handle incoming and outgoing
         # messages
@@ -48,6 +78,9 @@ class FlockwaveServer(Flask):
         # Import and configure the extensions that we want to use.
         self.extension_manager = ExtensionManager(self)
         self.extension_manager.configure(self.config.get("EXTENSIONS", {}))
+
+    def _on_client_count_changed(self, sender):
+        self.num_clients_changed.send(self)
 
 
 class _JSONEncoder(object):
@@ -118,13 +151,13 @@ socketio = SocketIO(app, json=_JSONEncoder())
 @socketio.on("connect")
 def handle_connection():
     """Handler called when a client connects to the Flockwave server socket."""
-    log.info("Client connected", extra={"id": request.sid})
+    app.client_registry.add(request.sid)
 
 
 @socketio.on("disconnect")
 def handle_disconnection():
     """Handler called when a client disconnects from the server socket."""
-    log.info("Client disconnected", extra={"id": request.sid})
+    app.client_registry.remove(request.sid)
 
 
 @socketio.on("fw")

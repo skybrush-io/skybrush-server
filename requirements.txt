@@ -1,2 +1,2 @@
-http://biolfiz1.elte.hu/pypi/flockwave-spec-0.1.0.tar.gz
+http://biolfiz1.elte.hu/pypi/flockwave-spec-0.2.0.tar.gz
 -e .

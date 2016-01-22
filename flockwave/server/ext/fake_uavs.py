@@ -63,9 +63,15 @@ class StatusReporter(object):
 
     def report_status(self):
         """Reports the status of all the UAVs to the UAV registry."""
-        while True:
-            self.ext.log.info("Reporting UAV status")             # TODO
-            sleep(self._delay)
+        hub = self.ext.app.message_hub
+        with self.ext.app.app_context():
+            while True:
+                body = {
+                    "type": "UAV-INF"
+                }
+                message = hub.create_notification(body=body)
+                hub.send_message(message)
+                sleep(self._delay)
 
     @property
     def running(self):

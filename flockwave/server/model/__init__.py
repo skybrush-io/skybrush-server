@@ -3,11 +3,12 @@
 from __future__ import absolute_import
 
 from .builders import FlockwaveMessageBuilder
-from .messages import FlockwaveMessage, FlockwaveResponse
+from .messages import FlockwaveMessage, FlockwaveNotification, \
+    FlockwaveResponse
 from .uav import UAVStatusInfo
 
 
 __all__ = (
-    "FlockwaveMessage", "FlockwaveMessageBuilder", "FlockwaveResponse",
-    "UAVStatusInfo"
+    "FlockwaveMessage", "FlockwaveMessageBuilder", "FlockwaveNotification",
+    "FlockwaveResponse", "UAVStatusInfo"
 )

@@ -107,7 +107,7 @@ def install(level=logging.INFO):
         request="bold_blue",
         response_success="bold_green",
         response_error="bold_red",
-        notification="bold_blue",
+        notification="bold_yellow",
         success="bold_green"
     )
     log_symbols = dict(default_log_symbols)

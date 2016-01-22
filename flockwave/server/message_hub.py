@@ -7,7 +7,8 @@ from flask.ext.socketio import emit
 from itertools import chain
 
 from .logger import log as base_log
-from .model import FlockwaveMessageBuilder, FlockwaveResponse
+from .model import FlockwaveMessageBuilder, FlockwaveNotification, \
+    FlockwaveResponse
 
 __all__ = ("MessageHub", )
 
@@ -52,6 +53,17 @@ class MessageHub(object):
         """Constructor."""
         self._handlers_by_type = defaultdict(list)
         self._message_builder = FlockwaveMessageBuilder()
+
+    def create_notification(self, body=None):
+        """Creates a new Flockwave notification to be sent by the server.
+
+        Parameters:
+            body (object): the body of the notification.
+
+        Returns:
+            FlockwaveNotification: a notification object
+        """
+        return self._message_builder.create_notification(body)
 
     def create_response_to(self, message, body=None):
         """Creates a new Flockwave response object that will respond to the
@@ -152,6 +164,42 @@ class MessageHub(object):
                 message_type = message_type.decode("utf-8")
             self._handlers_by_type[message_type].append(func)
 
+    def send_message(self, message, in_response_to=None):
+        """Sends a message or notification from this message hub.
+
+        Parameters:
+            message (FlockwaveMessage): the message to send.
+        """
+        broadcast = False
+        if in_response_to is not None:
+            log.info(
+                "Sending {0.body[type]} response".format(message),
+                extra={
+                    "id": in_response_to.id,
+                    "semantics": "response_success"
+                }
+            )
+        elif isinstance(message, FlockwaveNotification):
+            log.info(
+                "Sending {0.body[type]} notification".format(message),
+                extra={
+                    "id": message.id,
+                    "semantics": "notification"
+                }
+            )
+            broadcast = True
+        else:
+            log.info(
+                "Sending {0.body[type]} message".format(message),
+                extra={
+                    "id": message.id,
+                    "semantics": "response_success"
+                }
+            )
+
+        emit("fw", message.json, json=True, broadcast=broadcast,
+             namespace="/")
+
     def _send_response(self, message, in_response_to):
         """Sends a response to a message from this message hub.
 
@@ -180,14 +228,5 @@ class MessageHub(object):
                 )
             except Exception:
                 log.exception("Failed to create response")
-
-        log.info(
-            "Sending {0.body[type]} response".format(response),
-            extra={
-                "id": in_response_to.id,
-                "semantics": "response_success"
-            }
-        )
-
-        emit("fw", response.json, json=True)
+        self.send_message(response, in_response_to)
         return response

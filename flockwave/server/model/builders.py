@@ -4,7 +4,8 @@ from __future__ import absolute_import
 
 from uuid import uuid4
 
-from .messages import FlockwaveMessage, FlockwaveResponse
+from .messages import FlockwaveMessage, FlockwaveNotification, \
+    FlockwaveResponse
 
 __all__ = ("FlockwaveMessageBuilder", )
 
@@ -39,6 +40,22 @@ class FlockwaveMessageBuilder(object):
             "body": body
         }
         return FlockwaveMessage.from_json(result)
+
+    def create_notification(self, body=None):
+        """Creates a new Flockwave notification with the given body.
+
+        Parameters:
+            body (object): the body of the notification.
+
+        Returns:
+            FlockwaveNotification: the newly created notification
+        """
+        result = {
+            "$fw.version": self.version,
+            "id": unicode(self.id_generator()),
+            "body": body
+        }
+        return FlockwaveNotification.from_json(result)
 
     def create_response_to(self, message, body=None):
         """Creates a new Flockwave message that is a response to the

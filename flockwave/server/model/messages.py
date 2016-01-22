@@ -6,7 +6,7 @@ from flockwave.spec.schema import get_message_schema
 from .metamagic import ModelMeta
 
 
-__all__ = ("FlockwaveMessage", "FlockwaveResponse")
+__all__ = ("FlockwaveMessage", "FlockwaveNotification", "FlockwaveResponse")
 
 
 class FlockwaveMessage(object):
@@ -16,6 +16,11 @@ class FlockwaveMessage(object):
 
     class __meta__:
         schema = get_message_schema()
+
+
+class FlockwaveNotification(FlockwaveMessage):
+    """Class representing a single Flockwave notification."""
+    pass
 
 
 class FlockwaveResponse(FlockwaveMessage):

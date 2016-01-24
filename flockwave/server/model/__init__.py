@@ -6,9 +6,12 @@ from .builders import FlockwaveMessageBuilder
 from .messages import FlockwaveMessage, FlockwaveNotification, \
     FlockwaveResponse
 from .uav import UAVStatusInfo
+from .vectors import GPSCoordinate, FlatEarthCoordinate, \
+    FlatEarthToGPSCoordinateTransformation
 
 
 __all__ = (
     "FlockwaveMessage", "FlockwaveMessageBuilder", "FlockwaveNotification",
-    "FlockwaveResponse", "UAVStatusInfo"
+    "FlockwaveResponse", "GPSCoordinate", "UAVStatusInfo",
+    "FlatEarthCoordinate", "FlatEarthToGPSCoordinateTransformation"
 )

@@ -44,13 +44,21 @@ class UAVRegistry(object):
         """
         return sorted(self._uavs.keys())
 
-    def update_uav_status(self, uav_id, status=None):
+    def update_uav_status(self, uav_id, position=None):
         """Updates the status information of the given UAV.
 
         Parameters:
             uav_id (str): the ID of the UAV to update
-            status (UAVStatusInfo): the status of the UAV
+            position (GPSCoordinate): the position of the UAV. It will be
+                cloned to ensure that modifying this position object from
+                the caller will not affect the UAV itself.
         """
-        if uav_id not in self._uavs:
-            self._uavs[uav_id] = UAVStatusInfo(id=uav_id)
-        # TODO: process status
+        uav_info = self._uavs.get(uav_id)
+        if uav_info is None:
+            uav_info = UAVStatusInfo(id=uav_id)
+            self._uavs[uav_id] = uav_info
+
+        if position is not None:
+            uav_info.position.update_from(position)
+
+        uav_info.update_timestamp()

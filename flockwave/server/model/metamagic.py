@@ -101,6 +101,26 @@ class ModelMetaHelpers(object):
     """
 
     @staticmethod
+    def add_clone_method(dct):
+        """Extends the class being constructed with a ``clone()`` method
+        that returns a shallow copy of the object.
+
+        If the dictionary already has a ``clone()`` method, no new method
+        will be added and the original method will be left intact.
+
+        Parameters:
+            dct (dict): the class dictionary
+        """
+        if "clone" in dct:
+            return
+
+        def clone(self):
+            """Returns a shallow copy of the object."""
+            return self.__class__(json=self.json)
+
+        dct["clone"] = clone
+
+    @staticmethod
     def add_json_property(dct):
         """Extends the class being constructed with a ``json`` property
         that contains the instance data in JSON format. Setting the property
@@ -325,5 +345,6 @@ class ModelMeta(type):
                 ModelMetaHelpers.add_special_methods(dct)
                 property_info = collect_properties(schema, resolver)
                 ModelMetaHelpers.add_proxy_properties(dct, property_info)
+                ModelMetaHelpers.add_clone_method(dct)
             ModelMetaHelpers.add_validator_method(dct, schema, resolver)
         return type.__new__(cls, clsname, bases, dct)

@@ -46,6 +46,38 @@ class FlockwaveServer(Flask):
         )
         self.prepare()
 
+    def create_UAV_INF_message_for(self, uav_ids, in_response_to=None):
+        """Creates an UAV-INF message that contains information regarding
+        the UAVs with the given IDs.
+
+        Parameters:
+            uav_ids (iterable): list of UAV IDs
+            in_response_to (FlockwaveMessage or None): the message that the
+                constructed message will respond to. ``None`` means that the
+                constructed message will be a notification.
+
+        Returns:
+            FlockwaveMessage: the UAV-INF message with the status info of
+                the given UAVs
+        """
+        statuses = {}
+        body = {"status": statuses, "type": "UAV-INF"}
+        if in_response_to is None:
+            response = self.message_hub.create_notification(body=body)
+        else:
+            response = self.message_hub.create_response_to(
+                in_response_to, body=body)
+
+        for uav_id in uav_ids:
+            try:
+                uav = self.uav_registry.find_uav_by_id(uav_id)
+            except KeyError:
+                response.add_failure(uav_id, "No such UAV")
+                continue
+            statuses[uav_id] = uav.json
+
+        return response
+
     @property
     def num_clients(self):
         """The number of clients connected to the server."""
@@ -203,19 +235,9 @@ def handle_SYS_VER(message, hub):
 
 @app.message_hub.on("UAV-INF")
 def handle_UAV_INF(message, hub):
-    statuses = {}
-    body = {"status": statuses}
-    response = app.message_hub.create_response_to(message, body=body)
-
-    for uav_id in message.body["ids"]:
-        try:
-            uav = app.uav_registry.find_uav_by_id(uav_id)
-        except KeyError:
-            response.add_failure(uav_id, "No such UAV")
-            continue
-        statuses[uav_id] = uav.json
-
-    return response
+    return app.create_UAV_INF_message_for(
+        message.body["ids"], in_response_to=message
+    )
 
 
 @app.message_hub.on("UAV-LIST")

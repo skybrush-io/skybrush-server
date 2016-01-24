@@ -13,7 +13,10 @@ EXTENSIONS = {
         "id_format": "FAKE-{0:02}",
         "center": {
             "lat": 47.473360,
-            "lon": 19.062159
-        }
+            "lon": 19.062159,
+            "altRel": 20
+        },
+        "radius": 50,
+        "time_of_single_cycle": 10
     }
 }

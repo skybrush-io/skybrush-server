@@ -72,12 +72,19 @@
                 }
             };
             var socket = io();
+            var $responsePanel = $('#response');
 
             socket.on('fw', function(data) {
                 $('#response-hint').hide();
                 $('<pre>').text(
                     JSON.stringify(data, null, '    ')
-                ).hide().prependTo($('#response')).slideDown();
+                ).hide().prependTo($responsePanel).slideDown();
+                if ($responsePanel.children().length > 3) {
+                    var $lastResponse = $responsePanel.children().last();
+                    $lastResponse.fadeOut("normal", function() {
+                        $lastResponse.remove();
+                    });
+                }
             });
 
             function guid() {

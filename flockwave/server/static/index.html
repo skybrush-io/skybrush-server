@@ -79,7 +79,7 @@
                 $('<pre>').text(
                     JSON.stringify(data, null, '    ')
                 ).hide().prependTo($responsePanel).slideDown();
-                if ($responsePanel.children().length > 3) {
+                if ($responsePanel.children().length > 50) {
                     var $lastResponse = $responsePanel.children().last();
                     $lastResponse.fadeOut("normal", function() {
                         $lastResponse.remove();

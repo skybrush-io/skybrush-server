@@ -107,7 +107,7 @@ class FlatEarthCoordinate(object):
     @property
     def y(self):
         """The Y coordinate."""
-        return self._x
+        return self._y
 
     @y.setter
     def y(self, value):

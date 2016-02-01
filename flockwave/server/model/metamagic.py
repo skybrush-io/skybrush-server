@@ -247,8 +247,11 @@ class ModelMetaHelpers(object):
         if orig_validator is not None and not callable(orig_validator):
             raise TypeError("validate() method must be callable")
 
-        def _validate_object(obj):
-            jsonschema.validate(obj, schema, resolver=resolver)
+        json_schema_validator_class = jsonschema.validators.validator_for(
+            schema
+        )
+        json_schema_validator = json_schema_validator_class(
+            schema, resolver=resolver)
 
         def validate(self, *args, **kwds):
             """Validates this class instance against its JSON schema.
@@ -257,7 +260,7 @@ class ModelMetaHelpers(object):
                 jsonschema.ValidationError: if the class instance does not
                     match its schema
             """
-            _validate_object(self._json)
+            json_schema_validator.validate(self._json)
             if orig_validator is not None:
                 return orig_validator(*args, **kwds)
 

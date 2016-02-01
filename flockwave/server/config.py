@@ -9,7 +9,7 @@ EXTENSIONS = {
     },
     "fake_uavs": {
         "count": 3,
-        "delay": 2,
+        "delay": 0.04,
         "id_format": "FAKE-{0:02}",
         "center": {
             "lat": 47.473360,

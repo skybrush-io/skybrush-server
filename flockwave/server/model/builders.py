@@ -39,7 +39,7 @@ class FlockwaveMessageBuilder(object):
             "id": unicode(self.id_generator()),
             "body": body
         }
-        return FlockwaveMessage.from_json(result)
+        return FlockwaveMessage.from_json(result, validate=False)
 
     def create_notification(self, body=None):
         """Creates a new Flockwave notification with the given body.
@@ -55,7 +55,7 @@ class FlockwaveMessageBuilder(object):
             "id": unicode(self.id_generator()),
             "body": body
         }
-        return FlockwaveNotification.from_json(result)
+        return FlockwaveNotification.from_json(result, validate=False)
 
     def create_response_to(self, message, body=None):
         """Creates a new Flockwave message that is a response to the
@@ -80,4 +80,4 @@ class FlockwaveMessageBuilder(object):
             "correlationId": message.id,
             "body": body
         }
-        return FlockwaveResponse.from_json(result)
+        return FlockwaveResponse.from_json(result, validate=False)

@@ -8,6 +8,7 @@ a JSON schema description.
 import jsonschema
 
 from collections import namedtuple
+from contextlib import contextmanager
 from flockwave.spec.schema import ref_resolver as flockwave_schema_ref_resolver
 
 __all__ = ("ModelMeta", )
@@ -133,6 +134,7 @@ class ModelMetaHelpers(object):
 
         def __init__(self, json=None, *args, **kwds):
             self.__dict__["_json"] = {}
+            self.__dict__["_validation_suppressed"] = False
             if orig_init is not None:
                 orig_init(self, *args, **kwds)
             if json is not None:
@@ -151,12 +153,26 @@ class ModelMetaHelpers(object):
             if self._json is value:
                 return
             self._json = value
-            self.validate()
+            if not self._validation_suppressed:
+                self.validate()
 
         @classmethod
-        def from_json(cls, data):
-            """Constructs this model object from its JSON representation."""
-            return cls(json=data)
+        def from_json(cls, data, validate=True):
+            """Constructs this model object from its JSON representation.
+
+            Parameters:
+                data (object): the JSON representation of the model object
+                validate (bool): whether to validate the JSON
+                    representation before trying to set it on the model
+                    object
+            """
+            if validate:
+                return cls(json=data)
+            else:
+                result = cls()
+                with result.suppressed_validation():
+                    result.json = data
+                return result
 
         dct.update(
             __init__=__init__,
@@ -225,6 +241,34 @@ class ModelMetaHelpers(object):
         for name in ["__contains__", "__getitem__"]:
             if name not in dct:
                 dct[name] = locals()[name]
+
+    @staticmethod
+    def add_suppressed_validation_context_manager(dct):
+        """Adds a ``suppressed_validation()`` context manager to the given
+        class dictionary.
+
+        If the dictionary already has a ``suppressed_validation()`` context
+        manager, no modification will be performed.
+
+        Parameters:
+            dct (dict): the class dictionary
+        """
+        if "suppressed_validation" in dct:
+            return
+
+        @contextmanager
+        def suppressed_validation(self):
+            """Context manager that suppresses validation on the model
+            object while the execution is within the context.
+            """
+            old_value = self._validation_suppressed
+            self._validation_suppressed = True
+            try:
+                yield
+            finally:
+                self._validation_suppressed = old_value
+
+        dct["suppressed_validation"] = suppressed_validation
 
     @staticmethod
     def add_validator_method(dct, schema, resolver):
@@ -349,5 +393,6 @@ class ModelMeta(type):
                 property_info = collect_properties(schema, resolver)
                 ModelMetaHelpers.add_proxy_properties(dct, property_info)
                 ModelMetaHelpers.add_clone_method(dct)
+                ModelMetaHelpers.add_suppressed_validation_context_manager(dct)
             ModelMetaHelpers.add_validator_method(dct, schema, resolver)
         return type.__new__(cls, clsname, bases, dct)

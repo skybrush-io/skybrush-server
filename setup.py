@@ -8,6 +8,7 @@ requires = [
     "click>=6.2",
     "colorama>=0.3.5",
     "colorlog>=2.6.0",
+    "enum34>=1.1.2",
     "eventlet>=0.17.4",
     "Flask>=0.10.1",
     "flask-socketio>=1.0",

@@ -3,8 +3,10 @@
 from __future__ import absolute_import
 
 from .builders import FlockwaveMessageBuilder
+from .connection import ConnectionPurpose, ConnectionInfo, ConnectionStatus
 from .messages import FlockwaveMessage, FlockwaveNotification, \
     FlockwaveResponse
+from .registry import RegistryBase, Registry
 from .uav import UAVStatusInfo
 from .vectors import GPSCoordinate, FlatEarthCoordinate, \
     FlatEarthToGPSCoordinateTransformation
@@ -13,5 +15,7 @@ from .vectors import GPSCoordinate, FlatEarthCoordinate, \
 __all__ = (
     "FlockwaveMessage", "FlockwaveMessageBuilder", "FlockwaveNotification",
     "FlockwaveResponse", "GPSCoordinate", "UAVStatusInfo",
-    "FlatEarthCoordinate", "FlatEarthToGPSCoordinateTransformation"
+    "FlatEarthCoordinate", "FlatEarthToGPSCoordinateTransformation",
+    "RegistryBase", "Registry",
+    "ConnectionInfo", "ConnectionPurpose", "ConnectionStatus"
 )

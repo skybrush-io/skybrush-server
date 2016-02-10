@@ -2,17 +2,16 @@
 
 from __future__ import absolute_import
 
-from datetime import datetime
 from flockwave.spec.schema import get_complex_object_schema
-from pytz import utc
 from .metamagic import ModelMeta
+from .mixins import TimestampMixin
 from .vectors import GPSCoordinate
 
 
 __all__ = ("UAVStatusInfo", )
 
 
-class UAVStatusInfo(object):
+class UAVStatusInfo(TimestampMixin):
     """Class representing the status information available about a single
     UAV.
     """
@@ -31,23 +30,6 @@ class UAVStatusInfo(object):
                 was received. ``None`` means to use the current date and
                 time.
         """
+        TimestampMixin.__init__(self, timestamp)
         self.id = id
         self.position = GPSCoordinate()
-        self.update_timestamp(timestamp)
-
-    def update_timestamp(self, timestamp=None):
-        """Updates the timestamp of the UAV status information.
-
-        Parameters:
-            timestamp (datetime or None): the new timestamp; ``None`` means
-            to use the current date and time.
-        """
-        if timestamp is None:
-            # datetime.utcnow() is not okay here because it returns a
-            # datetime object with tzinfo set to None. As a consequence,
-            # isoformat() will not add the timezone information correctly
-            # when the datetime object is formatted into JSON
-            timestamp = utc.localize(datetime.now())
-        assert timestamp.tzinfo is not None, \
-            "UAV status information timestamp must be timezone-aware"
-        self.timestamp = timestamp

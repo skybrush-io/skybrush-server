@@ -6,11 +6,13 @@ import json
 
 from blinker import Signal
 from datetime import datetime
+from enum import Enum
 from flask import Flask, request
 from flask.ext.socketio import SocketIO
 
 from .ext.manager import ExtensionManager
 from .client_registry import ClientRegistry
+from .connection_registry import ConnectionRegistry
 from .logger import log
 from .message_hub import MessageHub
 from .model import FlockwaveMessage
@@ -46,6 +48,37 @@ class FlockwaveServer(Flask):
         )
         self.prepare()
 
+    def create_CONN_INF_message_for(self, connection_ids,
+                                    in_response_to=None):
+        """Creates a CONN-INF message that contains information regarding
+        the connections with the given IDs.
+
+        Parameters:
+            connection_ids (iterable): list of connection IDs
+            in_response_to (FlockwaveMessage or None): the message that the
+                constructed message will respond to. ``None`` means that the
+                constructed message will be a notification.
+
+        Returns:
+            FlockwaveMessage: the CONN-INF message with the status info of
+                the given connections
+        """
+        statuses = {}
+
+        body = {"status": statuses, "type": "CONN-INF"}
+        response = self.message_hub.create_response_or_notification(
+            body=body, in_response_to=in_response_to)
+
+        for connection_id in connection_ids:
+            try:
+                entry = self.connection_registry.find_by_id(connection_id)
+            except KeyError:
+                response.add_failure(connection_id, "No such connection")
+                continue
+            statuses[connection_id] = entry.json
+
+        return response
+
     def create_UAV_INF_message_for(self, uav_ids, in_response_to=None):
         """Creates an UAV-INF message that contains information regarding
         the UAVs with the given IDs.
@@ -61,16 +94,14 @@ class FlockwaveServer(Flask):
                 the given UAVs
         """
         statuses = {}
+
         body = {"status": statuses, "type": "UAV-INF"}
-        if in_response_to is None:
-            response = self.message_hub.create_notification(body=body)
-        else:
-            response = self.message_hub.create_response_to(
-                in_response_to, body=body)
+        response = self.message_hub.create_response_or_notification(
+            body=body, in_response_to=in_response_to)
 
         for uav_id in uav_ids:
             try:
-                uav = self.uav_registry.find_uav_by_id(uav_id)
+                uav = self.uav_registry.find_by_id(uav_id)
             except KeyError:
                 response.add_failure(uav_id, "No such UAV")
                 continue
@@ -81,7 +112,7 @@ class FlockwaveServer(Flask):
     @property
     def num_clients(self):
         """The number of clients connected to the server."""
-        return self.client_registry.num_clients
+        return self.client_registry.num_entries
 
     def prepare(self):
         """Hook function that contains preparation steps that should be
@@ -98,6 +129,10 @@ class FlockwaveServer(Flask):
             self._on_client_count_changed,
             sender=self.client_registry
         )
+
+        # Creates an object to hold information about all the connections
+        # to external data sources that the server manages
+        self.connection_registry = ConnectionRegistry()
 
         # Create a message hub that will handle incoming and outgoing
         # messages
@@ -133,6 +168,8 @@ class _JSONEncoder(object):
         - ``datetime.datetime`` objects are converted into a standard
           ISO-8601 string representation
 
+        - Enum instances are converted to their names
+
         - Objects having a ``json`` property will be replaced by the value
           of this property
 
@@ -144,6 +181,8 @@ class _JSONEncoder(object):
         """
         if isinstance(obj, datetime):
             return obj.isoformat()
+        elif isinstance(obj, Enum):
+            return obj.name
         elif hasattr(obj, "json"):
             return obj.json
         else:
@@ -223,6 +262,20 @@ def handle_exception(exc):
 
 
 # ######################################################################## #
+
+
+@app.message_hub.on("CONN-INF")
+def handle_CONN_INF(message, hub):
+    return app.create_CONN_INF_message_for(
+        message.body["ids"], in_response_to=message
+    )
+
+
+@app.message_hub.on("CONN-LIST")
+def handle_CONN_LIST(message, hub):
+    return {
+        "ids": list(app.connection_registry.ids)
+    }
 
 
 @app.message_hub.on("SYS-VER")

@@ -2,16 +2,19 @@
 server is currently connected to.
 """
 
+from __future__ import absolute_import
+
 from blinker import Signal
 
 from .logger import log as base_log
+from .model import RegistryBase
 
 __all__ = ("ClientRegistry", )
 
 log = base_log.getChild("client_registry")
 
 
-class ClientRegistry(object):
+class ClientRegistry(RegistryBase):
     """Registry that contains information about all the clients that the
     server is currently connected to.
 
@@ -24,10 +27,6 @@ class ClientRegistry(object):
 
     count_changed = Signal()
 
-    def __init__(self):
-        """Constructor."""
-        self._clients = set()
-
     def add(self, client_id):
         """Adds a new client to the set of clients connected to the server.
 
@@ -38,20 +37,20 @@ class ClientRegistry(object):
         Arguments:
             client_id (str): the ID of the client
         """
-        if client_id in self._clients:
+        if client_id in self:
             return
 
-        self._clients.add(client_id)
+        self._entries[client_id] = True
         log.info("Client connected", extra={"id": client_id})
 
         self.count_changed.send(self)
 
     @property
-    def num_clients(self):
+    def num_entries(self):
         """Returns the number of clients currently connected to the
         server.
         """
-        return len(self._clients)
+        return len(self._entries)
 
     def remove(self, client_id):
         """Removes a client from the set of clients connected to the server.
@@ -62,7 +61,7 @@ class ClientRegistry(object):
             client_id (str): the ID of the client to remove
         """
         try:
-            self._clients.remove(client_id)
+            del self._entries[client_id]
         except KeyError:
             return
 

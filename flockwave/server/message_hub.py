@@ -65,6 +65,24 @@ class MessageHub(object):
         """
         return self._message_builder.create_notification(body)
 
+    def create_response_or_notification(self, body=None, in_response_to=None):
+        """Creates a new Flockwave response or notification object,
+        depending on whether the caller specifies a message to respond to
+        or not.
+
+        Parameters:
+            body (object): the body of the response.
+            message (FlockwaveMessage or None): the message to respond to
+                or ``None`` if we want to createa a notification instead.
+
+        Returns:
+            FlockwaveMessage: a response or notification object
+        """
+        if in_response_to is None:
+            return self.create_notification(body)
+        else:
+            return self.create_response_to(in_response_to, body)
+
     def create_response_to(self, message, body=None):
         """Creates a new Flockwave response object that will respond to the
         given message.

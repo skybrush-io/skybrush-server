@@ -2,13 +2,17 @@
 
 from blinker import Signal
 from enum import Enum
-from Queue import Empty, Queue
-from threading import RLock, Lock, Thread
+from eventlet import spawn
+from eventlet.queue import Queue as GreenQueue
+from eventlet.queue import Empty as GreenQueueEmpty
+from Queue import Queue as ThreadingQueue
+from Queue import Empty as ThreadingQueueEmpty
+from threading import RLock, Thread
 from weakref import ref as weakref
 
 
 __all__ = ("ConnectionState", "Connection", "ConnectionBase",
-           "ReconnectionWrapper", "ReconnectionWatchdog", "reconnecting")
+           "ReconnectionWrapper", "reconnecting")
 
 ConnectionState = Enum("ConnectionState",
                        "DISCONNECTED CONNECTING CONNECTED DISCONNECTING")
@@ -57,27 +61,6 @@ class Connection(object):
         """
         raise NotImplementedError
 
-    @property
-    def swallow_exceptions(self):
-        """Whether the connection should swallow read/write and connection
-        errors and respond to them simply by closing the connection instead.
-        Useful when the connection is wrapped in a ReconnectionWrapper_.
-        """
-        return self._swallow_exceptions
-
-    @swallow_exceptions.setter
-    def swallow_exceptions(self, value):
-        self._swallow_exceptions = bool(value)
-
-    def _handle_error(self):
-        """Handles exceptions that have happened during reads and writes."""
-        if self._swallow_exceptions:
-            # Just close the connection
-            self.close()
-        else:
-            # Let the user handle the exception
-            raise
-
 
 class ConnectionBase(Connection):
     """Base class for stateful connection objects.
@@ -122,6 +105,9 @@ class ConnectionBase(Connection):
         """Sets the state of the connection to a new value and sends the
         appropriate signals.
         """
+        # Locking is actually not needed here because we are using green
+        # threads using Eventlet, but this way we can make use of this
+        # class in threaded environments as well.
         with self._state_lock:
             old_state = self._state
             if new_state == old_state:
@@ -140,6 +126,27 @@ class ConnectionBase(Connection):
                 self._is_connected = False
                 self.disconnected.send(self)
 
+    @property
+    def swallow_exceptions(self):
+        """Whether the connection should swallow read/write and connection
+        errors and respond to them simply by closing the connection instead.
+        Useful when the connection is wrapped in a ReconnectionWrapper_.
+        """
+        return self._swallow_exceptions
+
+    @swallow_exceptions.setter
+    def swallow_exceptions(self, value):
+        self._swallow_exceptions = bool(value)
+
+    def _handle_error(self):
+        """Handles exceptions that have happened during reads and writes."""
+        if self._swallow_exceptions:
+            # Just close the connection
+            self.close()
+        else:
+            # Let the user handle the exception
+            raise
+
 
 class ReconnectionWrapper(ConnectionBase):
     """Wraps a connection object and attempts to silently reconnect the
@@ -152,10 +159,12 @@ class ReconnectionWrapper(ConnectionBase):
         :param wrapped: the wrapped connection
         :type wrapped: groundctrl.connection.base.Connection
         """
+        self._use_green_threads = True
         self._wrapped = wrapped
         self._wrapped.swallow_exceptions = True
-        self._lock = Lock()
+        self._lock = RLock()
         self._watchdog = None
+        self._watchdog_thread = None
 
     def __del__(self):
         """Destructor. Kills the watchdog when the wrapper is garbage
@@ -170,7 +179,14 @@ class ReconnectionWrapper(ConnectionBase):
             return
 
         if self._watchdog is None:
-            self._watchdog = ReconnectionWatchdog(self._wrapped, self._lock)
+            if self._use_green_threads:
+                queue, empty_exc = GreenQueue(), GreenQueueEmpty
+            else:
+                queue, empty_exc = ThreadingQueue(), ThreadingQueueEmpty
+
+            self._watchdog = ReconnectionWatchdog(
+                self._wrapped, self._lock, queue, empty_exc
+            )
             self._watchdog.recovery_state_changed.connect(
                 self._watchdog_recovery_state_changed,
                 sender=self._watchdog
@@ -179,7 +195,13 @@ class ReconnectionWrapper(ConnectionBase):
         self._set_state(ConnectionState.CONNECTING
                         if self._wrapped.state is ConnectionState.DISCONNECTED
                         else ConnectionState.CONNECTED)
-        self._watchdog.start()
+
+        if self._use_green_threads:
+            self._watchdog_thread = spawn(self._watchdog.run)
+        else:
+            self._watchdog_thread = Thread()
+            self._watchdog_thread.daemon = True
+            self._watchdog_thread.start()
 
     def close(self):
         """Closes the connection. No-op if the connection is closed already."""
@@ -197,9 +219,15 @@ class ReconnectionWrapper(ConnectionBase):
             return
 
         self._watchdog.shutdown()
+
         if wait:
-            self._watchdog.join()
+            if self._use_green_threads:
+                self._watchdog_thread.wait()
+            else:
+                self._watchdog_thread.join()
+
         self._watchdog = None
+        self._watchdog_thread = None
 
     def _watchdog_recovery_state_changed(self, watchdog, old_state, new_state):
         """Signal handler called when the recovery state of the watchdog
@@ -222,14 +250,18 @@ class ReconnectionWrapper(ConnectionBase):
         return getattr(self._wrapped, name)
 
 
-class ReconnectionWatchdog(Thread):
-    """Watchdog thread that holds a weak reference to a connection and tries to
+class ReconnectionWatchdog(object):
+    """Watchdog object that holds a weak reference to a connection and tries to
     keep it open even if it is closed.
+
+    The ``run()`` method of this object is typically run in a separate
+    thread or greeen thread.
     """
 
     recovery_state_changed = Signal()
 
-    def __init__(self, connection, lock, retry_interval=1):
+    def __init__(self, connection, lock, queue, queue_empty_exc,
+                 retry_interval=1):
         """Constructor.
 
         :param connection: the connection object
@@ -237,6 +269,19 @@ class ReconnectionWatchdog(Thread):
         :param lock: a lock that we must hold whenever we mess around with
             the connection
         :type lock: Lock
+        :param queue: a queue that we use to communicate with other (green)
+            threads. This must be constructed by the caller. If the caller
+            spawns the watchdog as a green thread, the queue must be a
+            green thread compatible queue; if the caller runs the watchdog
+            in a separate (real) thread, the queue must be a threading
+            compatible queue. The API of the queue must match the one
+            from Python's ``Queue`` module. Initially, the queue must be
+            empty.
+        :type queue: object
+        :param queue_empty_exc: exception that is raised by the queue when
+            the caller attempts to get an item from the queue while it is
+            empty
+        :type queue_empty_exc: Exception
         :param retry_interval: number of seconds that must pass betweeen two
             connection attempts
         """
@@ -247,7 +292,8 @@ class ReconnectionWatchdog(Thread):
         self.retry_interval = retry_interval
 
         connection.state_changed.connect(self._on_state_changed, connection)
-        self._queue = Queue()
+        self._queue = queue
+        self._queue_empty_exc = queue_empty_exc
 
         self._recovering = False
 
@@ -270,7 +316,7 @@ class ReconnectionWatchdog(Thread):
                                          old_state=not self._recovering)
 
     def run(self):
-        """Runs the thread. The thread executes an infinite loop that
+        """Runs the watchdog. The function executes an infinite loop that
         checks the state of the connection and acts according to the following
         simple rules:
 
@@ -287,9 +333,9 @@ class ReconnectionWatchdog(Thread):
         or someone requests the watchdog to shut down. This is implemented
         using a message queue. The watchdog subscribes to the ``state_changed``
         signal of the connection and posts a message into the queue (for
-        itself) when the state changed. Similarly, other threads may call the
-        ``shutdown()`` method of the watchdog to post a message into the
-        queue which asks the watchdog to shut down.
+        itself) when the state changed. Similarly, other (green) threads may
+        call the ``shutdown()`` method of the watchdog to post a message
+        into the queue which asks the watchdog to shut down.
         """
         # Before entering the loop, check the current state of the
         # connection. If we are connected, there's nothing to do. If
@@ -308,7 +354,7 @@ class ReconnectionWatchdog(Thread):
                     block=True,
                     timeout=self.retry_interval if self._recovering else None
                 )
-            except Empty:
+            except self._queue_empty_exc:
                 continue
 
             try:

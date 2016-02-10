@@ -4,10 +4,10 @@ server knows.
 
 __all__ = ("UAVRegistry", )
 
-from .model import UAVStatusInfo
+from .model import RegistryBase, UAVStatusInfo
 
 
-class UAVRegistry(object):
+class UAVRegistry(RegistryBase):
     """Registry that contains information about all the UAVs seen by the
     server.
 
@@ -18,32 +18,6 @@ class UAVRegistry(object):
     not been seen for a while.
     """
 
-    def __init__(self):
-        """Constructor."""
-        self._uavs = {}
-
-    def find_uav_by_id(self, uav_id):
-        """Returns an UAV given its ID.
-
-        Parameters:
-            uav_id (str): the ID of the UAV to retrieve
-
-        Returns:
-            object: the UAV with the given ID
-
-        Raises:
-            KeyError: if the given ID does not refer to an UAV in the
-                registry
-        """
-        return self._uavs[uav_id]
-
-    @property
-    def ids(self):
-        """Returns an iterable that iterates over all the UAV identifiers
-        that are known to the registry.
-        """
-        return sorted(self._uavs.keys())
-
     def update_uav_status(self, uav_id, position=None):
         """Updates the status information of the given UAV.
 
@@ -53,10 +27,11 @@ class UAVRegistry(object):
                 cloned to ensure that modifying this position object from
                 the caller will not affect the UAV itself.
         """
-        uav_info = self._uavs.get(uav_id)
-        if uav_info is None:
+        try:
+            uav_info = self.find_by_id(uav_id)
+        except KeyError:
             uav_info = UAVStatusInfo(id=uav_id)
-            self._uavs[uav_id] = uav_info
+            self._entries[uav_id] = uav_info
 
         if position is not None:
             uav_info.position.update_from(position)

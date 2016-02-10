@@ -45,10 +45,16 @@
                 </div>
             </form>
 
-            <h2>Server response</h2>
+            <h2>Server responses</h2>
 
-            <div id="response">
-                <p id="response-hint" class="lead">Response from the server will appear here.</p>
+            <div id="responses">
+                <p class="lead hint">Responses from the server will appear here.</p>
+            </div>
+
+            <h2>Notifications</h2>
+
+            <div id="notifications">
+                <p class="lead hint">Notifications from the server will appear here.</p>
             </div>
         </div>
 
@@ -60,6 +66,13 @@
 
         <script type="text/javascript">
             var presets = {
+                "CONN-INF": {
+                    "type": "CONN-INF",
+                    "ids": ["fakeConnection0", "fakeConnection1"]
+                },
+                "CONN-LIST": {
+                    "type": "CONN-LIST"
+                },
                 "SYS-VER": {
                     "type": "SYS-VER"
                 },
@@ -72,20 +85,29 @@
                 }
             };
             var socket = io();
-            var $responsePanel = $('#response');
+            var $responsePanel = $('#responses');
+            var $notificationPanel = $('#notifications');
 
             socket.on('fw', function(data) {
-                $('#response-hint').hide();
+                if (data.hasOwnProperty("correlationId")) {
+                    addEntryToPanel(data, $responsePanel);
+                } else {
+                    addEntryToPanel(data, $notificationPanel);
+                }
+            });
+
+            function addEntryToPanel(data, $panel) {
+                $panel.find('.hint').hide();
                 $('<pre>').text(
                     JSON.stringify(data, null, '    ')
-                ).hide().prependTo($responsePanel).slideDown();
-                if ($responsePanel.children().length > 50) {
-                    var $lastResponse = $responsePanel.children().last();
+                ).hide().prependTo($panel).slideDown();
+                if ($panel.children().length > 50) {
+                    var $lastResponse = $panel.children().last();
                     $lastResponse.fadeOut("normal", function() {
                         $lastResponse.remove();
                     });
                 }
-            });
+            }
 
             function guid() {
                 return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {

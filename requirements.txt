@@ -1,2 +1,2 @@
-https://pypi.collmot.com/flockwave-spec-0.3.0.tar.gz
+http://pypi.collmot.com/flockwave-spec-0.4.0.tar.gz
 -e .

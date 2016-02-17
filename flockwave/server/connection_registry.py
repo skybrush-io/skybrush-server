@@ -4,9 +4,14 @@ server knows.
 
 from __future__ import absolute_import
 
+from blinker import Signal
+
+from .logger import log as base_log
 from .model import ConnectionInfo, ConnectionPurpose, RegistryBase
 
 __all__ = ("ConnectionRegistry", )
+
+log = base_log.getChild("connection_registry")
 
 
 class ConnectionRegistry(RegistryBase):
@@ -16,6 +21,19 @@ class ConnectionRegistry(RegistryBase):
     The registry allows us to quickly retrieve information about a
     connection by its identifier.
     """
+
+    connection_state_changed = Signal(
+        doc="""\
+        Signal sent whenever the state of a connection in the registry
+        changes.
+
+        Parameters:
+            entry (ConnectionEntry): the connection entry whose state
+                changed
+            new_state (str): the new state
+            old_state (str): the old state
+        """
+    )
 
     def add(self, connection, name, description=None,
             purpose=ConnectionPurpose.other):
@@ -66,14 +84,25 @@ class ConnectionRegistry(RegistryBase):
             ConnectionRegistryEntry: the entry in the registry that was
                 created to hold information about the connection
         """
-        return ConnectionRegistryEntry(connection, name)
+        return ConnectionRegistryEntry(self, connection, name)
+
+    def _on_connection_state_changed(self, entry, old_state, new_state):
+        """Handler that is called when the state of a connection changes."""
+        log.debug("Connection {0.id!r}: {1!r} --> {2!r}"
+                  .format(entry, old_state, new_state))
+        self.connection_state_changed.send(
+            self, entry=entry, old_state=old_state,
+            new_state=new_state
+        )
 
 
 class ConnectionRegistryEntry(object):
     """A single entry in the connection registry."""
 
-    def __init__(self, connection=None, name=None):
+    def __init__(self, registry, connection=None, name=None):
         self._connection = None
+        self._registry = registry
+
         self.connection = connection
         self.info = ConnectionInfo(id=name)
 
@@ -87,7 +116,19 @@ class ConnectionRegistryEntry(object):
         if value == self._connection:
             return
 
+        if self._connection is not None:
+            self._connection.state_changed.disconnect(
+                self._on_connection_state_changed,
+                sender=self._connection
+            )
+
         self._connection = value
+
+        if self._connection is not None:
+            self._connection.state_changed.connect(
+                self._on_connection_state_changed,
+                sender=self._connection
+            )
 
     @property
     def description(self):
@@ -97,6 +138,11 @@ class ConnectionRegistryEntry(object):
     @description.setter
     def description(self, value):
         self.info.description = value
+
+    @property
+    def id(self):
+        """The ID of the connection; proxied to the info object."""
+        return self.info.id
 
     @property
     def json(self):
@@ -111,3 +157,10 @@ class ConnectionRegistryEntry(object):
     @purpose.setter
     def purpose(self, value):
         self.info.purpose = value
+
+    def _on_connection_state_changed(self, sender, old_state, new_state):
+        """Handler that is called when the state of a connection changes."""
+        self.info.update_status_from(self._connection)
+        self._registry._on_connection_state_changed(
+            entry=self, old_state=old_state, new_state=new_state
+        )

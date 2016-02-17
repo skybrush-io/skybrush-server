@@ -133,6 +133,10 @@ class FlockwaveServer(Flask):
         # Creates an object to hold information about all the connections
         # to external data sources that the server manages
         self.connection_registry = ConnectionRegistry()
+        self.connection_registry.connection_state_changed.connect(
+            self._on_connection_state_changed,
+            sender=self.connection_registry
+        )
 
         # Create a message hub that will handle incoming and outgoing
         # messages
@@ -148,6 +152,23 @@ class FlockwaveServer(Flask):
 
     def _on_client_count_changed(self, sender):
         self.num_clients_changed.send(self)
+
+    def _on_connection_state_changed(self, sender, entry, old_state,
+                                     new_state):
+        """Handler called when the state of a connection changes somewhere
+        within the server. Dispatches an appropriate ``CONN-INF`` message.
+
+        Parameters:
+            sender (ConnectionRegistry): the connection registry
+            entry (ConnectionEntry): a connection entry from the connection
+                registry
+            old_state (ConnectionState): the old state of the connection
+            new_state (ConnectionState): the old state of the connection
+        """
+        if "socketio" in self.extensions:
+            message = self.create_CONN_INF_message_for([entry.id])
+            with self.app_context():
+                self.message_hub.send_message(message)
 
 
 class _JSONEncoder(object):

@@ -5,6 +5,7 @@ import logging
 from colorlog import default_log_colors
 from colorlog.colorlog import ColoredRecord
 from colorlog.escape_codes import escape_codes, parse_colors
+from six import iteritems
 
 __all__ = ("log", "install")
 
@@ -51,7 +52,7 @@ class ColoredFormatter(logging.Formatter):
 
         self.log_colors = {
             k: parse_colors(v)
-            for k, v in log_colors.iteritems()
+            for k, v in iteritems(log_colors)
         }
         self.log_symbols = (
             log_symbols if log_symbols is not None else default_log_symbols

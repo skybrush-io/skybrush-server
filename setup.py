@@ -16,7 +16,8 @@ requires = [
     "jsonschema>=2.5.1",
     "pyserial>=2.7",
     "python-socketio>=0.6.1",
-    "pytz>=2015.7"
+    "pytz>=2015.7",
+    "six>=1.10.0"
 ]
 
 __version__ = None

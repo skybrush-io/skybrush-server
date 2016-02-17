@@ -10,6 +10,7 @@ import jsonschema
 from collections import namedtuple
 from contextlib import contextmanager
 from flockwave.spec.schema import ref_resolver as flockwave_schema_ref_resolver
+from six import iteritems
 
 __all__ = ("ModelMeta", )
 
@@ -89,7 +90,7 @@ def collect_properties(schema, resolver, result=None):
 
     # Handle 'properties' keyword
     if "properties" in schema:
-        for name, definition in schema["properties"].iteritems():
+        for name, definition in iteritems(schema["properties"]):
             result[name] = PropertyInfo.from_json_schema(name, definition)
 
     return result

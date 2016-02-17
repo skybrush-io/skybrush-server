@@ -28,10 +28,9 @@ class Connection(object):
         doc="""\
         Signal sent whenever the state of the connection changes.
 
-        :param new_state: the new state
-        :type new_state: str
-        :param old_state: the old state
-        :type old_state: str
+        Parameters:
+            new_state (str): the new state
+            old_state (str): the old state
         """
     )
 
@@ -409,18 +408,12 @@ class ReconnectionWatchdog(object):
         if connection is None:
             return
         with self._lock:
-            f = open("/tmp/debug.txt", "a")
-            f.write("Trying to open the connection...\n")
             try:
                 connection.open()
-                f.write("Returned from open()...\n")
             except (IOError, RuntimeError):
                 # Swallow any runtime and/or IO errors -- this is a connection
                 # failure so we will retry later
-                import traceback
-                f.write(traceback.format_exc() + "\n")
                 pass
-            f.close()
 
 
 reconnecting = ReconnectionWrapper

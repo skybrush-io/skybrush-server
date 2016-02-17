@@ -1,2 +1,3 @@
 http://pypi.collmot.com/flockwave-spec-0.4.1.tar.gz
+git+git://github.com/collmot/Flask-SocketIO@fix-request-context-in-emit
 -e .

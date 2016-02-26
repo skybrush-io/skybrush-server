@@ -8,14 +8,11 @@ from .messages import FlockwaveMessage, FlockwaveNotification, \
     FlockwaveResponse
 from .registry import RegistryBase, Registry
 from .uav import UAVStatusInfo
-from .vectors import GPSCoordinate, FlatEarthCoordinate, \
-    FlatEarthToGPSCoordinateTransformation
 
 
 __all__ = (
     "FlockwaveMessage", "FlockwaveMessageBuilder", "FlockwaveNotification",
-    "FlockwaveResponse", "GPSCoordinate", "UAVStatusInfo",
-    "FlatEarthCoordinate", "FlatEarthToGPSCoordinateTransformation",
+    "FlockwaveResponse", "UAVStatusInfo",
     "RegistryBase", "Registry",
     "ConnectionInfo", "ConnectionPurpose", "ConnectionStatus"
 )

@@ -9,8 +9,8 @@ from __future__ import absolute_import, division
 from .base import ExtensionBase
 from eventlet.greenthread import sleep, spawn
 from flask import copy_current_request_context
-from flockwave.server.model import GPSCoordinate, FlatEarthCoordinate, \
-    FlatEarthToGPSCoordinateTransformation
+from flockwave.gps.vectors import Altitude, FlatEarthCoordinate, \
+    FlatEarthToGPSCoordinateTransformation, GPSCoordinate
 from math import cos, sin, pi
 from time import time
 
@@ -32,7 +32,12 @@ class FakeUAVProviderExtension(ExtensionBase):
         count = configuration.get("count", 0)
         id_format = configuration.get("id_format", "FAKE-{0}")
         self._status_reporter.delay = configuration.get("delay", 1)
-        self.center = GPSCoordinate(json=configuration.get("center"))
+
+        center = configuration.get("center")
+        self.center = GPSCoordinate(
+            lat=center["lat"], lon=center["lon"],
+            alt=Altitude.relative_to_home(center["alt"])
+        )
         self.radius = float(configuration.get("radius", 10))
         self.time_of_single_cycle = float(
             configuration.get("time_of_single_cycle", 10)

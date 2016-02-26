@@ -2,10 +2,10 @@
 
 from __future__ import absolute_import
 
+from flockwave.gps.vectors import GPSCoordinate
 from flockwave.spec.schema import get_complex_object_schema
 from .metamagic import ModelMeta
 from .mixins import TimestampMixin
-from .vectors import GPSCoordinate
 
 
 __all__ = ("UAVStatusInfo", )

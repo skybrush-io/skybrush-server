@@ -3,13 +3,10 @@
 from blinker import Signal
 from enum import Enum
 from eventlet import spawn
-from eventlet.queue import Queue as GreenQueue
-from eventlet.queue import Empty as GreenQueueEmpty
-from Queue import Queue as ThreadingQueue
-from Queue import Empty as ThreadingQueueEmpty
-from threading import RLock, Thread
+from eventlet.green.threading import RLock
+from eventlet.green.Queue import Queue
+from eventlet.green.Queue import Empty as EmptyQueue
 from weakref import ref as weakref
-
 
 __all__ = ("ConnectionState", "Connection", "ConnectionBase",
            "ReconnectionWrapper", "reconnecting")
@@ -158,7 +155,6 @@ class ReconnectionWrapper(ConnectionBase):
         :param wrapped: the wrapped connection
         :type wrapped: groundctrl.connection.base.Connection
         """
-        self._use_green_threads = True
         self._wrapped = wrapped
         self._wrapped.swallow_exceptions = True
         self._lock = RLock()
@@ -178,14 +174,7 @@ class ReconnectionWrapper(ConnectionBase):
             return
 
         if self._watchdog is None:
-            if self._use_green_threads:
-                queue, empty_exc = GreenQueue(), GreenQueueEmpty
-            else:
-                queue, empty_exc = ThreadingQueue(), ThreadingQueueEmpty
-
-            self._watchdog = ReconnectionWatchdog(
-                self._wrapped, self._lock, queue, empty_exc
-            )
+            self._watchdog = ReconnectionWatchdog(self._wrapped, self._lock)
             self._watchdog.recovery_state_changed.connect(
                 self._watchdog_recovery_state_changed,
                 sender=self._watchdog
@@ -195,12 +184,7 @@ class ReconnectionWrapper(ConnectionBase):
                         if self._wrapped.state is ConnectionState.DISCONNECTED
                         else ConnectionState.CONNECTED)
 
-        if self._use_green_threads:
-            self._watchdog_thread = spawn(self._watchdog.run)
-        else:
-            self._watchdog_thread = Thread()
-            self._watchdog_thread.daemon = True
-            self._watchdog_thread.start()
+        self._watchdog_thread = spawn(self._watchdog.run)
 
     def close(self):
         """Closes the connection. No-op if the connection is closed already."""
@@ -220,10 +204,7 @@ class ReconnectionWrapper(ConnectionBase):
         self._watchdog.shutdown()
 
         if wait:
-            if self._use_green_threads:
-                self._watchdog_thread.wait()
-            else:
-                self._watchdog_thread.join()
+            self._watchdog_thread.wait()
 
         self._watchdog = None
         self._watchdog_thread = None
@@ -259,8 +240,7 @@ class ReconnectionWatchdog(object):
 
     recovery_state_changed = Signal()
 
-    def __init__(self, connection, lock, queue, queue_empty_exc,
-                 retry_interval=1):
+    def __init__(self, connection, lock, retry_interval=1):
         """Constructor.
 
         :param connection: the connection object
@@ -268,19 +248,6 @@ class ReconnectionWatchdog(object):
         :param lock: a lock that we must hold whenever we mess around with
             the connection
         :type lock: Lock
-        :param queue: a queue that we use to communicate with other (green)
-            threads. This must be constructed by the caller. If the caller
-            spawns the watchdog as a green thread, the queue must be a
-            green thread compatible queue; if the caller runs the watchdog
-            in a separate (real) thread, the queue must be a threading
-            compatible queue. The API of the queue must match the one
-            from Python's ``Queue`` module. Initially, the queue must be
-            empty.
-        :type queue: object
-        :param queue_empty_exc: exception that is raised by the queue when
-            the caller attempts to get an item from the queue while it is
-            empty
-        :type queue_empty_exc: Exception
         :param retry_interval: number of seconds that must pass betweeen two
             connection attempts
         """
@@ -291,8 +258,7 @@ class ReconnectionWatchdog(object):
         self.retry_interval = retry_interval
 
         connection.state_changed.connect(self._on_state_changed, connection)
-        self._queue = queue
-        self._queue_empty_exc = queue_empty_exc
+        self._queue = Queue()
 
         self._recovering = False
 
@@ -353,7 +319,7 @@ class ReconnectionWatchdog(object):
                     block=True,
                     timeout=self.retry_interval if self._recovering else None
                 )
-            except self._queue_empty_exc:
+            except EmptyQueue:
                 continue
 
             try:

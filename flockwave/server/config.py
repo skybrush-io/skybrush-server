@@ -12,7 +12,7 @@ EXTENSIONS = {
         "route": "/"
     },
     "fake_connections": {
-        "count": 2,
+        "count": 1,
         "id_format": "fakeConnection{0}"
     },
     "fake_uavs": {

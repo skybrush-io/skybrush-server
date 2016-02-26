@@ -13,6 +13,7 @@ from __future__ import absolute_import
 
 from .base import ExtensionBase
 from eventlet import spawn_after
+from eventlet.greenthread import sleep
 from flockwave.server.connection import ConnectionBase, ConnectionState, \
     ReconnectionWrapper
 from flockwave.server.model import ConnectionPurpose
@@ -54,7 +55,13 @@ class FakeConnectionProviderExtension(ExtensionBase):
 
 
 class FakeConnection(ConnectionBase):
-    """Fake connection class used by this extension."""
+    """Fake connection class used by this extension.
+
+    This connection class breaks the connection two seconds after it was
+    opened. Subsequent attempts to open the connection will be blocked
+    up to at least three seconds after the connection was closed the last
+    time.
+    """
 
     def __init__(self):
         """Constructor."""
@@ -71,11 +78,13 @@ class FakeConnection(ConnectionBase):
             return
 
         self._set_state(ConnectionState.CONNECTING)
-        if self._is_open_allowed():
-            self._set_state(ConnectionState.CONNECTED)
-            spawn_after(seconds=2, func=self.close)
-        else:
-            self._set_state(ConnectionState.DISCONNECTED)
+        if self._open_disallowed_until is not None:
+            now = time()
+            if now < self._open_disallowed_until:
+                sleep(self._open_disallowed_until - now)
+
+        self._set_state(ConnectionState.CONNECTED)
+        spawn_after(seconds=2, func=self.close)
 
     def close(self):
         """Closes the connection and blocks reopening attempts in the next
@@ -88,11 +97,6 @@ class FakeConnection(ConnectionBase):
         self._set_state(ConnectionState.DISCONNECTING)
         self._set_state(ConnectionState.DISCONNECTED)
         self._open_disallowed_until = time() + 3
-
-    def _is_open_allowed(self):
-        """Returns whether the connection can currently be opened."""
-        return self._open_disallowed_until is None or \
-            time() >= self._open_disallowed_until
 
 
 construct = FakeConnectionProviderExtension

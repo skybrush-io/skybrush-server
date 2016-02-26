@@ -54,6 +54,24 @@ class MessageHub(object):
         self._handlers_by_type = defaultdict(list)
         self._message_builder = FlockwaveMessageBuilder()
 
+    def acknowledge(self, message=None, outcome=True):
+        """Creates a new positive or negative acknowledgment of the given
+        message.
+
+        Parameters:
+            message (FlockwaveMessage): the message to respond to with a
+                positive or negative acknowledgmnt
+            outcome (bool): ``True`` to construct a positive acknowledgment,
+                ``False`` otherwise.
+
+        Returns:
+            FlockwaveResponse: a response object that acknowledges the
+                given message
+        """
+        return self._message_builder.create_response_to(message, {
+            "type": "ACK-ACK" if outcome else "ACK-NAK"
+        })
+
     def create_notification(self, body=None):
         """Creates a new Flockwave notification to be sent by the server.
 

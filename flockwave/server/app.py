@@ -299,6 +299,11 @@ def handle_CONN_LIST(message, hub):
     }
 
 
+@app.message_hub.on("SYS-PING")
+def handle_SYS_PING(message, hub):
+    return app.message_hub.acknowledge(message)
+
+
 @app.message_hub.on("SYS-VER")
 def handle_SYS_VER(message, hub):
     return {

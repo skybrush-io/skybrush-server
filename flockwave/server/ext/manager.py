@@ -109,6 +109,10 @@ class ExtensionManager(object):
             configuration (dict or None): the configuration dictionary for
                 the extension. ``None`` is equivalent to an empty dict.
         """
+        if extension_name in ("logger", "manager", "base", "__init__"):
+            raise ValueError("invalid extension name: {0!r}"
+                             .format(extension_name))
+
         log.info("Loading extension {0!r}".format(extension_name))
 
         module_name = "{0}.{1}".format(EXT_PACKAGE_NAME, extension_name)

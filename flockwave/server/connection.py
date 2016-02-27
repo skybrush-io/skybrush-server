@@ -1,11 +1,13 @@
 """Base classes for stateful connection objects."""
 
+from abc import ABCMeta, abstractmethod, abstractproperty
 from blinker import Signal
 from enum import Enum
 from eventlet import spawn
 from eventlet.green.threading import RLock
 from eventlet.green.Queue import Queue
 from eventlet.green.Queue import Empty as EmptyQueue
+from six import with_metaclass
 from weakref import ref as weakref
 
 __all__ = ("ConnectionState", "Connection", "ConnectionBase",
@@ -15,7 +17,7 @@ ConnectionState = Enum("ConnectionState",
                        "DISCONNECTED CONNECTING CONNECTED DISCONNECTING")
 
 
-class Connection(object):
+class Connection(with_metaclass(ABCMeta, object)):
     """Interface specification for stateful connection objects."""
 
     connected = Signal(doc="Signal sent after the connection was established.")
@@ -31,10 +33,12 @@ class Connection(object):
         """
     )
 
+    @abstractmethod
     def open(self):
         """Opens the connection. No-op if the connection is open already."""
         raise NotImplementedError
 
+    @abstractmethod
     def close(self):
         """Closes the connection. No-op if the connection is closed already."""
         raise NotImplementedError
@@ -50,7 +54,7 @@ class Connection(object):
         return self.state in (ConnectionState.CONNECTING,
                               ConnectionState.DISCONNECTING)
 
-    @property
+    @abstractproperty
     def state(self):
         """Returns the state of the connection; one of the constants from
         the ``ConnectionState`` enum.
@@ -92,7 +96,7 @@ class ConnectionBase(Connection):
         self._state_lock = RLock()
         self._is_connected = False
 
-    @Connection.state.getter
+    @property
     def state(self):
         """The state of the connection."""
         return self._state

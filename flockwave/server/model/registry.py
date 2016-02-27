@@ -2,14 +2,18 @@
 string identifiers.
 """
 
+from abc import ABCMeta, abstractmethod, abstractproperty
+from six import with_metaclass
+
 __all__ = ("Registry", "RegistryBase")
 
 
-class Registry(object):
+class Registry(with_metaclass(ABCMeta, object)):
     """Interface specification for registries that keep track of "things"
     by string identifiers.
     """
 
+    @abstractmethod
     def contains(self, entry_id):
         """Returns whether the given entry ID is already used in this
         registry.
@@ -22,6 +26,7 @@ class Registry(object):
         """
         raise NotImplementedError
 
+    @abstractmethod
     def find_by_id(self, entry_id):
         """Returns an entry from this registry given its ID.
 
@@ -37,14 +42,14 @@ class Registry(object):
         """
         raise NotImplementedError
 
-    @property
+    @abstractproperty
     def ids(self):
         """Returns an iterable that iterates over all the identifiers
         that are known to the registry.
         """
         raise NotImplementedError
 
-    @property
+    @abstractproperty
     def num_entries(self):
         """Returns the number of entries in the registry."""
         raise NotImplementedError
@@ -96,14 +101,14 @@ class RegistryBase(Registry):
         """
         return self._entries[entry_id]
 
-    @Registry.ids.getter
+    @property
     def ids(self):
         """Returns an iterable that iterates over all the identifiers
         that are known to the registry.
         """
         return sorted(self._entries.keys())
 
-    @Registry.num_entries.getter
+    @property
     def num_entries(self):
         """Returns the number of entries in the registry."""
         return len(self._entries)

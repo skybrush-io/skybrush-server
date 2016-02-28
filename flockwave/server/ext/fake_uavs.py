@@ -11,11 +11,35 @@ from eventlet.greenthread import sleep, spawn
 from flask import copy_current_request_context
 from flockwave.gps.vectors import Altitude, FlatEarthCoordinate, \
     FlatEarthToGPSCoordinateTransformation, GPSCoordinate
+from flockwave.server.model.uav import UAVBase, UAVDriver
 from math import cos, sin, pi
 from time import time
 
 
 __all__ = ()
+
+
+class FakeUAVDriver(UAVDriver):
+    """Fake UAV driver that manages a group of fake UAVs provided by this
+    extension.
+    """
+
+    def create_uav(self, id):
+        """Creates a new UAV that is to be managed by this driver.
+
+        Parameters:
+            id (str): the identifier of the UAV to create
+
+        Returns:
+            FakeUAV: an appropriate fake UAV object
+        """
+        return FakeUAV(id, driver=self)
+
+
+class FakeUAV(UAVBase):
+    """Model object representing a fake UAV provided by this extension."""
+
+    pass
 
 
 class FakeUAVProviderExtension(ExtensionBase):
@@ -26,6 +50,8 @@ class FakeUAVProviderExtension(ExtensionBase):
         super(FakeUAVProviderExtension, self).__init__()
         self.center = None
         self.uavs = []
+        self.uav_ids = []
+        self._driver = FakeUAVDriver()
         self._status_reporter = StatusReporter(self)
 
     def configure(self, configuration):
@@ -43,11 +69,11 @@ class FakeUAVProviderExtension(ExtensionBase):
             configuration.get("time_of_single_cycle", 10)
         )
 
-        self.uavs = [id_format.format(index) for index in xrange(count)]
-        for uav_id in self.uavs:
-            self.app.uav_registry.update_uav_status(
-                uav_id, position=self.center
-            )
+        self.uav_ids = [id_format.format(index) for index in xrange(count)]
+        self.uavs = [self._driver.create_uav(id) for id in self.uav_ids]
+        for uav in self.uavs:
+            uav.status.position = self.center
+            self.app.uav_registry.add(uav)
 
     def spindown(self):
         self._status_reporter.stop()
@@ -77,11 +103,10 @@ class StatusReporter(object):
         broadcast via the message hub. The notification will contain the
         status information of all the UAVs managed by this extension.
         """
-        return self.ext.app.create_UAV_INF_message_for(self.ext.uavs)
+        return self.ext.app.create_UAV_INF_message_for(self.ext.uav_ids)
 
     def _update_uav_statuses(self):
         """Updates the status of all the UAVs managed by this extension."""
-        uav_registry = self.ext.app.uav_registry
         radius = self.ext.radius
         trans = FlatEarthToGPSCoordinateTransformation(origin=self.ext.center)
         flat_coords = FlatEarthCoordinate()
@@ -104,8 +129,8 @@ class StatusReporter(object):
             # Recalculate the position of the UAV in lat-lon
             position = trans.to_gps(flat_coords)
 
-            # Update the status of the UAV in the registry
-            uav_registry.update_uav_status(uav, position=position)
+            # Update the status of the UAV
+            uav.update_status(position=position)
 
     @property
     def delay(self):

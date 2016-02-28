@@ -105,7 +105,7 @@ class FlockwaveServer(Flask):
             except KeyError:
                 response.add_failure(uav_id, "No such UAV")
                 continue
-            statuses[uav_id] = uav.json
+            statuses[uav_id] = uav.status.json
 
         return response
 

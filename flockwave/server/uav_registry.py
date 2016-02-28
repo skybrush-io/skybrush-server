@@ -4,7 +4,7 @@ server knows.
 
 __all__ = ("UAVRegistry", )
 
-from .model import RegistryBase, UAVStatusInfo
+from .model import RegistryBase
 
 
 class UAVRegistry(RegistryBase):
@@ -18,22 +18,46 @@ class UAVRegistry(RegistryBase):
     not been seen for a while.
     """
 
-    def update_uav_status(self, uav_id, position=None):
-        """Updates the status information of the given UAV.
+    def add(self, uav):
+        """Registers a UAV with the given identifier in the registry.
+
+        This function is a no-op if the UAV is already registered.
 
         Parameters:
-            uav_id (str): the ID of the UAV to update
-            position (GPSCoordinate): the position of the UAV. It will be
-                cloned to ensure that modifying this position object from
-                the caller will not affect the UAV itself.
+            uav (UAV): the UAV to register
+
+        Throws:
+            KeyError: if the ID is already registered for a different UAV
         """
-        try:
-            uav_info = self.find_by_id(uav_id)
-        except KeyError:
-            uav_info = UAVStatusInfo(id=uav_id)
-            self._entries[uav_id] = uav_info
+        old_uav = self._entries.get(uav.id, None)
+        if old_uav is not None and old_uav != uav:
+            raise KeyError("UAV ID already taken: {0!r}".format(uav.id))
+        self._entries[uav.id] = uav
 
-        if position is not None:
-            uav_info.position.update_from(position)
+    def remove(self, uav):
+        """Removes the given UAV from the registry.
 
-        uav_info.update_timestamp()
+        This function is a no-op if the UAV is not registered.
+
+        Parameters:
+            uav (UAV): the UAV to deregister
+
+        Returns:
+            UAV or None: the UAV that was deregistered, or ``None`` if the
+                UAV was not registered
+        """
+        return self.remove_by_id(uav.id)
+
+    def remove_by_id(self, uav_id):
+        """Removes the UAV with the given ID from the registry.
+
+        This function is a no-op if the UAV is not registered.
+
+        Parameters:
+            uav_id (str): the ID of the UAV to deregister
+
+        Returns:
+            UAV or None: the UAV that was deregistered, or ``None`` if the
+                UAV was not registered
+        """
+        return self._entries.pop(uav_id)

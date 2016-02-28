@@ -72,7 +72,7 @@ class FakeUAVProviderExtension(ExtensionBase):
         self.uav_ids = [id_format.format(index) for index in xrange(count)]
         self.uavs = [self._driver.create_uav(id) for id in self.uav_ids]
         for uav in self.uavs:
-            uav.status.position = self.center
+            uav.update_status(position=self.center)
             self.app.uav_registry.add(uav)
 
     def spindown(self):

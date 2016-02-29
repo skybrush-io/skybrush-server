@@ -1,4 +1,4 @@
-http://pypi.collmot.com/flockwave-gps-0.1.0.tar.gz
+http://pypi.collmot.com/flockwave-gps-0.2.0.tar.gz
 http://pypi.collmot.com/flockwave-spec-0.5.0.tar.gz
 git+git://github.com/collmot/Flask-SocketIO@fix-request-context-in-emit
 -e .

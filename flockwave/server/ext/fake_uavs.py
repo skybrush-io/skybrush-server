@@ -10,10 +10,10 @@ from .base import ExtensionBase
 from enum import Enum
 from eventlet.greenthread import sleep, spawn
 from flask import copy_current_request_context
-from flockwave.gps.vectors import Altitude, FlatEarthCoordinate, \
-    FlatEarthToGPSCoordinateTransformation, GPSCoordinate
+from flockwave.gps.vectors import Altitude, AltitudeReference, Vector3D, \
+    FlatEarthCoordinate, GPSCoordinate, FlatEarthToGPSCoordinateTransformation
 from flockwave.server.model.uav import UAVBase, UAVDriver
-from math import cos, sin, pi
+from math import atan2, cos, hypot, sin, pi
 from time import time
 
 
@@ -43,7 +43,7 @@ class FakeUAVDriver(UAVDriver):
         uav = FakeUAV(id, driver=self)
         uav.angle = angle
         uav.angular_velocity = angular_velocity
-        uav.center = center
+        uav.home = center
         uav.radius = radius
         return uav
 
@@ -58,35 +58,73 @@ class FakeUAVState(Enum):
 
 
 class FakeUAV(UAVBase):
-    """Model object representing a fake UAV provided by this extension."""
+    """Model object representing a fake UAV provided by this extension.
+
+    The fake UAV will circle around a given target position by default, with
+    a given angular velocity and a given radius. The radius is scaled down
+    to half of the original radius during landing (this is to make it easier
+    to see the landing process on the web UI even if the altitude display
+    is not shown or not implemented). Similarly, the radius is scaled up
+    from half the original size to the full radius during takeoff.
+
+    The UAV may be given a new target position (and a new altitude), in
+    which case it will approach the new target with a reasonable maximum
+    velocity. No attempts are made to make the acceleration realistic.
+
+    Attributes:
+        angle (float): the current angle of the UAV on the circle around the
+            target.
+        angular_velocity (float): the angular velocity of the UAV along the
+            circle around the target
+        home (GPSCoordinate): the home coordinate of the UAV and the origin
+            of the flat Earth transformation that the UAV uses
+        max_ascent_rate (float): the maximum ascent rate of the UAV along
+            the Z axis (perpendicular to the surface of the Earth), in
+            metres per second
+        max_velocity (float): the maximum velocity of the UAV along the
+            X-Y plane (parallel to the surface to the Earth), in metres
+            per second
+        position (GPSCoordinate): the current position of the center of the
+            circle that the UAV traverses; altitude is given as relative to
+            home.
+        radius (float): the radius of the circle
+        state (FakeUAVState): the state of the UAV
+        target (GPSCoordinate): the target coordinates of the UAV; altitude
+            must be given as relative to home. Note that this is not the
+            coordinate that the UAV will reach; this is the coordinate of
+            the center of the circle that the UAV will traverse when it
+            reaches its destination.
+    """
 
     def __init__(self, *args, **kwds):
         super(FakeUAV, self).__init__(*args, **kwds)
 
-        self._center = None
-        self._pos_flat = FlatEarthCoordinate(x=0, y=0)
+        self._pos_flat = Vector3D()
+        self._pos_flat_circle = FlatEarthCoordinate()
         self._state = None
-        self._trans = None
+        self._target_xyz = None
+        self._trans = FlatEarthToGPSCoordinateTransformation(
+            origin=GPSCoordinate(lat=0, lon=0)
+        )
         self._transition_progress = 0.0
 
         self.angle = 0.0
-        self.radius = 0.0
-        self.landing_radius = 0.0
         self.angular_velocity = 0.0
+        self.max_ascent_rate = 2
+        self.max_velocity = 10
+        self.radius = 0.0
         self.state = FakeUAVState.TAKEOFF
+        self.target = None
+
         self.step(0)
 
     @property
-    def center(self):
-        """Returns the point around which the UAV is circling."""
-        return self._center
+    def home(self):
+        return self._trans.origin
 
-    @center.setter
-    def center(self, value):
-        self._center = value.copy()
-        self._pos_flat.alt = self._center.alt.copy()
-        self._trans = FlatEarthToGPSCoordinateTransformation(
-            origin=self._center)
+    @home.setter
+    def home(self, value):
+        self._trans.origin = value
 
     @property
     def state(self):
@@ -103,6 +141,41 @@ class FakeUAV(UAVBase):
         self._state = value
         self._transition_progress = 0.0
 
+    @property
+    def target(self):
+        """The target coordinates of the UAV."""
+        return self._target
+
+    @target.setter
+    def target(self, value):
+        self._target = value
+        if self._target is None:
+            self._target_xyz = None
+            return
+
+        # Calculate the real altitude component of the target
+        if value.alt is None:
+            new_altitude = Altitude.relative_to_home(self._pos_flat.z)
+        elif value.alt.reference != AltitudeReference.relative_to_home:
+            raise ValueError("altitude must be specified relative to home")
+        else:
+            new_altitude = value.alt.copy()
+
+        # Update the target and its XYZ representation
+        self._target.update(altitude=new_altitude)
+        flat = self._trans.to_flat_earth(value)
+        self._target_xyz = Vector3D(x=flat.x, y=flat.y, z=new_altitude)
+
+    def land(self):
+        """Starts a simulated landing with the fake UAV."""
+        if self.state == FakeUAVState.LANDED:
+            return
+
+        if self._target_xyz is None:
+            self._target_xyz = self._pos_flat.copy()
+        self._target_xyz.z = 0
+        self.state = FakeUAVState.LANDING
+
     def step(self, dt):
         """Simulates a single step of the trajectory of the fake UAV based
         on its state and the amount of time that has passed.
@@ -110,10 +183,6 @@ class FakeUAV(UAVBase):
         Parameters:
             dt (float): the time that has passed, in seconds.
         """
-        if self._trans is None:
-            # We don't have a center for the circle yet so do nothing
-            return
-
         state = self._state
 
         # Update the angle
@@ -123,40 +192,66 @@ class FakeUAV(UAVBase):
             # not change.
             self.angle += self.angular_velocity * dt
 
-        # Calculate the radius and altitude
-        altitude, radius = self._center.alt.copy(), self.radius
-        if state in (FakeUAVState.LANDING, FakeUAVState.TAKEOFF):
-            # During landing or takeoff, the transition progress variable
-            # is increased from zero to one in a three-second interval, and
-            # the altitude and radius is adjusted according to an easing
-            # function.
-            remaining_progress = 1.0 - self._transition_progress
-            progress_increase = dt / 3
-            if remaining_progress < progress_increase:
-                self._transition_progress = 1.0
-                dt -= remaining_progress
+        # Do we have a target?
+        if self._target_xyz is not None:
+            # We aim for the target in the XYZ plane only if we are airborne
+            if state == FakeUAVState.AIRBORNE:
+                dx = self._target_xyz.x - self._pos_flat.x
+                dy = self._target_xyz.y - self._pos_flat.y
             else:
-                self._transition_progress += progress_increase
-                dt = 0
+                dx, dy = 0, 0
 
+            dz = self._target_xyz.z - self._pos_flat.z
+
+            angle = atan2(dy, dx)
+            dist = hypot(dx, dy)
+            if dist < 1e-6:
+                dist = 0
+            displacement_xy = min(dist, dt * self.max_velocity)
+
+            displacement_z = min(abs(dz), dt * self.max_ascent_rate)
+            if dz < 0:
+                displacement_z *= -1
+
+            self._pos_flat.x += cos(angle) * displacement_xy
+            self._pos_flat.y += sin(angle) * displacement_xy
+            self._pos_flat.z += displacement_z
+
+        # Scale the radius according to the progress of the transition if
+        # we are currently in a transition
+        if state in (FakeUAVState.LANDING, FakeUAVState.TAKEOFF):
+            delta_progress = dt / 3
+            remaining_progress = 1 - self._transition_progress
+            if delta_progress < remaining_progress:
+                self._transition_progress += delta_progress
+            else:
+                self._transition_progress = 1
             eased_progress = self._transition_progress
             if state == FakeUAVState.LANDING:
                 eased_progress = 1 - eased_progress
+            radius = self.radius * (eased_progress + 1) / 2
+        elif state == FakeUAVState.LANDED:
+            radius = self.radius * 0.5
+        else:
+            radius = self.radius
 
-            altitude.value = eased_progress * altitude.value
-            radius = radius * (0.5 + eased_progress * 0.5)
+        # Finish the transition and enter the new state if needed
+        if self._transition_progress >= 1:
+            if state == FakeUAVState.LANDING:
+                self.state = FakeUAVState.LANDED
+            else:
+                self.state = FakeUAVState.AIRBORNE
 
-            if self._transition_progress >= 1:
-                # Transition finished.
-                if state == FakeUAVState.LANDING:
-                    self.state = FakeUAVState.LANDED
-                else:
-                    self.state = FakeUAVState.AIRBORNE
+        # Calculate our coordinates around the circle in flat Earth
+        self._pos_flat_circle.x = self._pos_flat.x + cos(self.angle) * radius
+        self._pos_flat_circle.y = self._pos_flat.y + sin(self.angle) * radius
+        self._pos_flat_circle.alt = \
+            Altitude.relative_to_home(self._pos_flat.z)
 
-        x = cos(self.angle) * radius
-        y = sin(self.angle) * radius
-        self._pos_flat.update(x=x, y=y, alt=altitude)
-        self.update_status(position=self._trans.to_gps(self._pos_flat))
+        # Transform the flat Earth coordinates to GPS around our
+        # current position as origin
+        self.update_status(position=self._trans.to_gps(
+            self._pos_flat_circle))
 
 
 class FakeUAVProviderExtension(ExtensionBase):

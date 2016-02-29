@@ -25,8 +25,8 @@ class UAVStatusInfo(with_metaclass(ModelMeta, TimestampMixin)):
         """Constructor.
 
         Parameters:
-            id (str or None): ID of the UAV
-            timestamp (datetime or None): time when the status information
+            id (Optional[str]): ID of the UAV
+            timestamp (Optional[datetime]): time when the status information
                 was received. ``None`` means to use the current date and
                 time.
         """
@@ -125,6 +125,36 @@ class UAVDriver(with_metaclass(ABCMeta, object)):
     """Interface specification for UAV drivers that are responsible for
     handling communication with a given group of UAVs via a common
     communication channel (e.g., an XBee radio).
+
+    Many of the methods in this class take a list of UAVs as an argument.
+    These lists contain the UAVs to address with a specific request from
+    the server, and it is the responsibility of the driver to translate
+    these requests to actual commands that the UAVs understand, and
+    transmit these commands to the UAVs. Implementors of methods receiving
+    a list of UAVs may reasonably assume that all the UAVs are managed by
+    this driver; it is the responsibility of the caller to ensure this.
     """
 
-    pass
+    def send_landing_signal(self, uavs):
+        """Asks the driver to send a landing signal to the given UAVs, each
+        of which are assumed to be managed by this driver.
+
+        Parameters:
+            uavs (List[UAV]): the UAVs to address with this request.
+
+        Returns:
+            TODO
+        """
+        raise NotImplementedError
+
+    def send_takeoff_signal(self, uavs):
+        """Asks the driver to send a takeoff signal to the given UAVs, each
+        of which are assumed to be managed by this driver.
+
+        Parameters:
+            uavs (List[UAV]): the UAVs to address with this request.
+
+        Returns:
+            TODO
+        """
+        raise NotImplementedError

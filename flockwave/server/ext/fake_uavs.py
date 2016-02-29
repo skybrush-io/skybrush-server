@@ -65,12 +65,15 @@ class FakeUAV(UAVBase):
 
         self._center = None
         self._pos_flat = FlatEarthCoordinate(x=0, y=0)
+        self._state = None
         self._trans = None
+        self._transition_progress = 0.0
 
         self.angle = 0.0
         self.radius = 0.0
+        self.landing_radius = 0.0
         self.angular_velocity = 0.0
-        self.state = FakeUAVState.LANDED
+        self.state = FakeUAVState.TAKEOFF
         self.step(0)
 
     @property
@@ -85,6 +88,21 @@ class FakeUAV(UAVBase):
         self._trans = FlatEarthToGPSCoordinateTransformation(
             origin=self._center)
 
+    @property
+    def state(self):
+        """The state of the UAV; one of the constants from the FakeUAVState_
+        enum class.
+        """
+        return self._state
+
+    @state.setter
+    def state(self, value):
+        if self._state == value:
+            return
+
+        self._state = value
+        self._transition_progress = 0.0
+
     def step(self, dt):
         """Simulates a single step of the trajectory of the fake UAV based
         on its state and the amount of time that has passed.
@@ -93,13 +111,51 @@ class FakeUAV(UAVBase):
             dt (float): the time that has passed, in seconds.
         """
         if self._trans is None:
+            # We don't have a center for the circle yet so do nothing
             return
 
-        self.angle += self.angular_velocity * dt
+        state = self._state
 
-        x = cos(self.angle) * self.radius
-        y = sin(self.angle) * self.radius
-        self._pos_flat.update(x=x, y=y)
+        # Calculate the radius and altitude
+        altitude, radius = self._center.alt.copy(), self.radius
+        if state in (FakeUAVState.LANDING, FakeUAVState.TAKEOFF):
+            # During landing or takeoff, the transition progress variable
+            # is increased from zero to one in a three-second interval, and
+            # the altitude and radius is adjusted according to an easing
+            # function.
+            remaining_progress = 1.0 - self._transition_progress
+            progress_increase = dt / 30
+            if remaining_progress < progress_increase:
+                self._transition_progress = 1.0
+                dt -= remaining_progress
+            else:
+                self._transition_progress += progress_increase
+                dt = 0
+
+            eased_progress = self._transition_progress
+            if state == FakeUAVState.LANDING:
+                eased_progress = 1 - eased_progress
+
+            altitude.value = eased_progress * altitude.value
+            radius = radius * eased_progress * 0.5
+
+            if self._transition_progress >= 1:
+                # Transition finished.
+                if state == FakeUAVState.LANDING:
+                    self.state = FakeUAVState.LANDED
+                else:
+                    self.state = FakeUAVState.AIRBORNE
+
+        # Update the angle
+        if state != FakeUAVState.LANDED:
+            # When not landed, the UAV is circling in the air with a
+            # prescribed angular velocity. Otherwise, the angle does
+            # not change.
+            self.angle += self.angular_velocity * dt
+
+        x = cos(self.angle) * radius
+        y = sin(self.angle) * radius
+        self._pos_flat.update(x=x, y=y, alt=altitude)
         self.update_status(position=self._trans.to_gps(self._pos_flat))
 
 
@@ -209,6 +265,10 @@ class StatusUpdater(object):
             hub.send_message(message)
 
             sleep(self._delay)
+
+        for uav in self.ext.uavs:
+            uav.state = FakeUAVState.LANDED
+            uav.state = FakeUAVState.TAKEOFF
 
     def _update_uavs(self):
         """Updates the status of all the UAVs."""

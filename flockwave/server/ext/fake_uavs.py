@@ -7,6 +7,7 @@ having access to real hardware that provides UAV position and velocity data.
 from __future__ import absolute_import, division
 
 from .base import ExtensionBase
+from enum import Enum
 from eventlet.greenthread import sleep, spawn
 from flask import copy_current_request_context
 from flockwave.gps.vectors import Altitude, FlatEarthCoordinate, \
@@ -24,22 +25,82 @@ class FakeUAVDriver(UAVDriver):
     extension.
     """
 
-    def create_uav(self, id):
+    def create_uav(self, id, center, radius, angle, angular_velocity):
         """Creates a new UAV that is to be managed by this driver.
 
         Parameters:
             id (str): the identifier of the UAV to create
+            center (GPSCoordinate): the point around which the UAV will be
+                circling
+            radius (float): the radius of the circle
+            angle (float): the initial angle of the UAV along the circle
+            angular_velocity (float): the angular velocity of the UAV when
+                circling, in radians per second
 
         Returns:
             FakeUAV: an appropriate fake UAV object
         """
-        return FakeUAV(id, driver=self)
+        uav = FakeUAV(id, driver=self)
+        uav.angle = angle
+        uav.angular_velocity = angular_velocity
+        uav.center = center
+        uav.radius = radius
+        return uav
+
+
+class FakeUAVState(Enum):
+    """Enum class that represents the possible states of a fake UAV."""
+
+    LANDED = 0
+    TAKEOFF = 1
+    AIRBORNE = 2
+    LANDING = 3
 
 
 class FakeUAV(UAVBase):
     """Model object representing a fake UAV provided by this extension."""
 
-    pass
+    def __init__(self, *args, **kwds):
+        super(FakeUAV, self).__init__(*args, **kwds)
+
+        self._center = None
+        self._pos_flat = FlatEarthCoordinate(x=0, y=0)
+        self._trans = None
+
+        self.angle = 0.0
+        self.radius = 0.0
+        self.angular_velocity = 0.0
+        self.state = FakeUAVState.LANDED
+        self.step(0)
+
+    @property
+    def center(self):
+        """Returns the point around which the UAV is circling."""
+        return self._center
+
+    @center.setter
+    def center(self, value):
+        self._center = value.copy()
+        self._pos_flat.alt = self._center.alt.copy()
+        self._trans = FlatEarthToGPSCoordinateTransformation(
+            origin=self._center)
+
+    def step(self, dt):
+        """Simulates a single step of the trajectory of the fake UAV based
+        on its state and the amount of time that has passed.
+
+        Parameters:
+            dt (float): the time that has passed, in seconds.
+        """
+        if self._trans is None:
+            return
+
+        self.angle += self.angular_velocity * dt
+
+        x = cos(self.angle) * self.radius
+        y = sin(self.angle) * self.radius
+        self._pos_flat.update(x=x, y=y)
+        self.update_status(position=self._trans.to_gps(self._pos_flat))
 
 
 class FakeUAVProviderExtension(ExtensionBase):
@@ -48,45 +109,44 @@ class FakeUAVProviderExtension(ExtensionBase):
     def __init__(self):
         """Constructor."""
         super(FakeUAVProviderExtension, self).__init__()
-        self.center = None
         self.uavs = []
         self.uav_ids = []
         self._driver = FakeUAVDriver()
-        self._status_reporter = StatusReporter(self)
+        self._status_updater = StatusUpdater(self)
 
     def configure(self, configuration):
         count = configuration.get("count", 0)
         id_format = configuration.get("id_format", "FAKE-{0}")
-        self._status_reporter.delay = configuration.get("delay", 1)
+        self._status_updater.delay = configuration.get("delay", 1)
 
         center = configuration.get("center")
-        self.center = GPSCoordinate(
+        center = GPSCoordinate(
             lat=center["lat"], lon=center["lon"],
             alt=Altitude.relative_to_home(center["alt"])
         )
-        self.radius = float(configuration.get("radius", 10))
-        self.time_of_single_cycle = float(
-            configuration.get("time_of_single_cycle", 10)
-        )
+
+        radius = float(configuration.get("radius", 10))
+        beta = 2 * pi / configuration.get("time_of_single_cycle", 10)
 
         self.uav_ids = [id_format.format(index) for index in xrange(count)]
-        self.uavs = [self._driver.create_uav(id) for id in self.uav_ids]
+        self.uavs = [
+            self._driver.create_uav(id, center=center, radius=radius,
+                                    angle=2 * pi / count * index,
+                                    angular_velocity=beta)
+            for index, id in enumerate(self.uav_ids)
+        ]
         for uav in self.uavs:
-            uav.update_status(position=self.center)
             self.app.uav_registry.add(uav)
 
     def spindown(self):
-        self._status_reporter.stop()
+        self._status_updater.stop()
 
     def spinup(self):
-        self._status_reporter.start()
+        self._status_updater.start()
 
 
-# TODO: StatusReporter is not really nice; basically all it does requires
-# it to reach out to self.ext
-
-class StatusReporter(object):
-    """Status reporter object that manages a green thread that will report
+class StatusUpdater(object):
+    """Status updater object that manages a green thread that will report
     the status of the fake UAVs periodically.
     """
 
@@ -105,33 +165,6 @@ class StatusReporter(object):
         """
         return self.ext.app.create_UAV_INF_message_for(self.ext.uav_ids)
 
-    def _update_uav_statuses(self):
-        """Updates the status of all the UAVs managed by this extension."""
-        radius = self.ext.radius
-        trans = FlatEarthToGPSCoordinateTransformation(origin=self.ext.center)
-        flat_coords = FlatEarthCoordinate()
-
-        num_uavs = len(self.ext.uavs)
-        dt = time() - self._started_at
-        full_circle = 2 * pi
-        angle_base_rad = dt * full_circle / self.ext.time_of_single_cycle
-
-        for index, uav in enumerate(self.ext.uavs):
-            # Calculate the angle of the UAV
-            angle_rad = angle_base_rad + index * full_circle / num_uavs
-
-            # Calculate the coordinates of the UAV in flat Earth
-            flat_coords.update(
-                x=cos(angle_rad) * radius,
-                y=sin(angle_rad) * radius
-            )
-
-            # Recalculate the position of the UAV in lat-lon
-            position = trans.to_gps(flat_coords)
-
-            # Update the status of the UAV
-            uav.update_status(position=position)
-
     @property
     def delay(self):
         """Number of seconds that must pass between two consecutive
@@ -143,15 +176,6 @@ class StatusReporter(object):
     def delay(self, value):
         self._delay = max(float(value), 0)
 
-    def report_status(self):
-        """Reports the status of all the UAVs to the UAV registry."""
-        hub = self.ext.app.message_hub
-        while not self.stopping:
-            self._update_uav_statuses()
-            message = self._create_status_notification()
-            hub.send_message(message)
-            sleep(self._delay)
-
     @property
     def running(self):
         """Returns whether the status reporter thread is running."""
@@ -162,9 +186,10 @@ class StatusReporter(object):
         if self.running:
             return
 
-        status_reporter = copy_current_request_context(self.report_status)
+        status_updater = copy_current_request_context(
+            self.update_and_report_status)
         self.stopping = False
-        self._thread = spawn(status_reporter)
+        self._thread = spawn(status_updater)
         self._thread.link(self._on_thread_stopped)
 
     def stop(self):
@@ -173,6 +198,22 @@ class StatusReporter(object):
             return
 
         self.stopping = True
+
+    def update_and_report_status(self):
+        """Updates and reports the status of all the UAVs."""
+        hub = self.ext.app.message_hub
+        while not self.stopping:
+            self._update_uavs()
+
+            message = self._create_status_notification()
+            hub.send_message(message)
+
+            sleep(self._delay)
+
+    def _update_uavs(self):
+        """Updates the status of all the UAVs."""
+        for uav in self.ext.uavs:
+            uav.step(dt=self._delay)
 
     def _on_thread_stopped(self, thread):
         """Handler called when the status reporter thread stops."""

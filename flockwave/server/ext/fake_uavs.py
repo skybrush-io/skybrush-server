@@ -124,7 +124,7 @@ class FakeUAV(UAVBase):
             # the altitude and radius is adjusted according to an easing
             # function.
             remaining_progress = 1.0 - self._transition_progress
-            progress_increase = dt / 30
+            progress_increase = dt / 3
             if remaining_progress < progress_increase:
                 self._transition_progress = 1.0
                 dt -= remaining_progress

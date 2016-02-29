@@ -116,6 +116,13 @@ class FakeUAV(UAVBase):
 
         state = self._state
 
+        # Update the angle
+        if state != FakeUAVState.LANDED:
+            # When not landed, the UAV is circling in the air with a
+            # prescribed angular velocity. Otherwise, the angle does
+            # not change.
+            self.angle += self.angular_velocity * dt
+
         # Calculate the radius and altitude
         altitude, radius = self._center.alt.copy(), self.radius
         if state in (FakeUAVState.LANDING, FakeUAVState.TAKEOFF):
@@ -137,7 +144,7 @@ class FakeUAV(UAVBase):
                 eased_progress = 1 - eased_progress
 
             altitude.value = eased_progress * altitude.value
-            radius = radius * eased_progress * 0.5
+            radius = radius * (0.5 + eased_progress * 0.5)
 
             if self._transition_progress >= 1:
                 # Transition finished.
@@ -145,13 +152,6 @@ class FakeUAV(UAVBase):
                     self.state = FakeUAVState.LANDED
                 else:
                     self.state = FakeUAVState.AIRBORNE
-
-        # Update the angle
-        if state != FakeUAVState.LANDED:
-            # When not landed, the UAV is circling in the air with a
-            # prescribed angular velocity. Otherwise, the angle does
-            # not change.
-            self.angle += self.angular_velocity * dt
 
         x = cos(self.angle) * radius
         y = sin(self.angle) * radius

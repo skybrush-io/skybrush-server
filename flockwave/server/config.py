@@ -17,7 +17,7 @@ EXTENSIONS = {
     },
     "fake_uavs": {
         "count": 3,
-        "delay": 0.04 if IN_HEROKU else 2,
+        "delay": 0.04 if True or IN_HEROKU else 2,
         "id_format": "FAKE-{0:02}",
         "center": {
             "lat": 47.473360,

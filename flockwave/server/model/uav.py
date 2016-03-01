@@ -133,6 +133,16 @@ class UAVDriver(with_metaclass(ABCMeta, object)):
     transmit these commands to the UAVs. Implementors of methods receiving
     a list of UAVs may reasonably assume that all the UAVs are managed by
     this driver; it is the responsibility of the caller to ensure this.
+    The UAV lists are assumed to contain UAVs with unique IDs only.
+
+    These methods return a dictionary mapping UAVs to the results of
+    executing the operation on the UAV. The result should be ``True`` if
+    the operation succeeded; anything else means failure. Failures should
+    be denoted by strings explaining the reason of the failure.
+
+    It is the responsibility of the implementor of these methods to ensure
+    that all the UAVs that appeared in the input UAV list are also mentioned
+    in the dictionary that is returned from the method.
     """
 
     def send_landing_signal(self, uavs):
@@ -143,7 +153,13 @@ class UAVDriver(with_metaclass(ABCMeta, object)):
             uavs (List[UAV]): the UAVs to address with this request.
 
         Returns:
-            TODO
+            Dict[UAV,object]: dict mapping UAVs to the corresponding results.
+
+        Raises:
+            NotImplementedError: if the operation is not supported by the
+                driver yet, but there are plans to implement it
+            NotSupportedError: if the operation is not supported by the
+                driver and will not be supported in the future either
         """
         raise NotImplementedError
 
@@ -155,6 +171,12 @@ class UAVDriver(with_metaclass(ABCMeta, object)):
             uavs (List[UAV]): the UAVs to address with this request.
 
         Returns:
-            TODO
+            Dict[UAV,object]: dict mapping UAVs to the corresponding results.
+
+        Raises:
+            NotImplementedError: if the operation is not supported by the
+                driver at all
+            NotSupportedError: if the operation is not supported by the
+                driver and will not be supported in the future either
         """
         raise NotImplementedError

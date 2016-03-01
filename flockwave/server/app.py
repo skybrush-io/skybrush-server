@@ -5,11 +5,14 @@ from __future__ import absolute_import
 import json
 
 from blinker import Signal
+from collections import defaultdict
 from datetime import datetime
 from enum import Enum
 from flask import Flask, request
 from flask.ext.socketio import SocketIO
+from six import iteritems
 
+from .errors import NotSupportedError
 from .ext.manager import ExtensionManager
 from .client_registry import ClientRegistry
 from .connection_registry import ConnectionRegistry
@@ -70,12 +73,9 @@ class FlockwaveServer(Flask):
             body=body, in_response_to=in_response_to)
 
         for connection_id in connection_ids:
-            try:
-                entry = self.connection_registry.find_by_id(connection_id)
-            except KeyError:
-                response.add_failure(connection_id, "No such connection")
-                continue
-            statuses[connection_id] = entry.json
+            entry = self._find_connection_by_id(connection_id, response)
+            if entry:
+                statuses[connection_id] = entry.json
 
         return response
 
@@ -85,7 +85,7 @@ class FlockwaveServer(Flask):
 
         Parameters:
             uav_ids (iterable): list of UAV IDs
-            in_response_to (FlockwaveMessage or None): the message that the
+            in_response_to (Optional[FlockwaveMessage]): the message that the
                 constructed message will respond to. ``None`` means that the
                 constructed message will be a notification.
 
@@ -100,12 +100,77 @@ class FlockwaveServer(Flask):
             body=body, in_response_to=in_response_to)
 
         for uav_id in uav_ids:
+            uav = self._find_uav_by_id(uav_id, response)
+            if uav:
+                statuses[uav_id] = uav.status.json
+
+        return response
+
+    def dispatch_to_uavs(self, message):
+        """Dispatches a message intended for multiple UAVs to the appropriate
+        UAV drivers.
+
+        Parameters:
+            message (FlockwaveMessage): the message that contains a request
+                that is to be forwarded to multiple UAVs. The message is
+                expected to have an ``ids`` property that lists the UAVs
+                to dispatch the message to.
+
+        Returns:
+            FlockwaveMessage: a response to the original message that lists
+                the IDs of the UAVs for which the message has been sent
+                successfully and also the IDs of the UAVs for which the
+                dispatch failed (in the ``success`` and ``failure`` keys).
+        """
+        # Create the response
+        response = self.message_hub.create_response_or_notification(
+            body={}, in_response_to=message)
+
+        # Process the body
+        message_type = message.body["type"]
+        uav_ids = message.body["ids"]
+
+        # Sort the UAVs being targeted by drivers
+        uavs_by_drivers = self._sort_uavs_by_drivers(uav_ids, response)
+
+        # Find the method to invoke on the driver
+        method_name = {
+            "UAV-LAND": "send_landing_signal",
+            "UAV-TAKEOFF": "send_takeoff_signal"
+        }.get(message_type, None)
+
+        # Ask each affected driver to send the message to the UAV
+        for driver, uavs in iteritems(uavs_by_drivers):
+            # Look up the method in the driver
+            common_error, results = None, None
             try:
-                uav = self.uav_registry.find_by_id(uav_id)
-            except KeyError:
-                response.add_failure(uav_id, "No such UAV")
-                continue
-            statuses[uav_id] = uav.status.json
+                method = getattr(driver, method_name)
+            except (RuntimeError, TypeError):
+                common_error = "Operation not supported"
+                method = None
+
+            # Execute the method and catch all runtime errors
+            if method is not None:
+                try:
+                    results = method(uavs)
+                except NotImplementedError:
+                    common_error = "Operation not implemented"
+                except NotSupportedError:
+                    common_error = "Operation not supported"
+                except RuntimeError as ex:
+                    common_error = "Unexpected error: {0}".format(ex)
+                    log.exception(ex)
+
+            # Update the response
+            if common_error is not None:
+                for uav in uavs:
+                    response.add_failure(uav.id, common_error)
+            else:
+                for uav, result in iteritems(results):
+                    if result is True:
+                        response.add_success(uav.id)
+                    else:
+                        response.add_failure(uav.id, result)
 
         return response
 
@@ -150,6 +215,67 @@ class FlockwaveServer(Flask):
         self.extension_manager = ExtensionManager(self)
         self.extension_manager.configure(self.config.get("EXTENSIONS", {}))
 
+    def _find_connection_by_id(self, connection_id, response=None):
+        """Finds the conenction with the given ID in the connection registry
+        or registers a failure in the given response object if there is no
+        connection with the given ID.
+
+        Parameters:
+            connection_id (str): the ID of the connection to find
+            response (Optional[FlockwaveResponse]): the response in which
+                the failure can be registered
+
+        Returns:
+            Optional[ConnectionRegistryEntry]: the entry in the connection
+                registry with the given ID or ``None`` if there is no such
+                connection
+        """
+        return self._find_in_registry(self.connection_registry,
+                                      connection_id, response,
+                                      "No such connection")
+
+    def _find_uav_by_id(self, uav_id, response=None):
+        """Finds the UAV with the given ID in the UAV registry or registers
+        a failure in the given response object if there is no UAV with the
+        given ID.
+
+        Parameters:
+            uav_id (str): the ID of the UAV to find
+            response (Optional[FlockwaveResponse]): the response in which
+                the failure can be registered
+
+        Returns:
+            Optional[UAV]: the UAV with the given ID or ``None`` if there
+                is no such UAV
+        """
+        return self._find_in_registry(self.uav_registry, uav_id, response,
+                                      "No such UAV")
+
+    @staticmethod
+    def _find_in_registry(registry, entry_id, response=None,
+                          failure_reason=None):
+        """Finds an entry in the given registry with the given ID or
+        registers a failure in the given response object if there is no
+        such entry in the registry.
+
+        Parameters:
+            entry_id (str): the ID of the entry to find
+            registry (Registry): the registry in which to find the entry
+            response (Optional[FlockwaveResponse]): the response in which
+                the failure can be registered
+            failure_reason (Optional[str]): the failure reason to register
+
+        Returns:
+            Optional[object]: the entry from the UAV with the given ID or
+                ``None`` if there is no such entry
+        """
+        try:
+            return registry.find_by_id(entry_id)
+        except KeyError:
+            if response is not None:
+                response.add_failure(entry_id, failure_reason)
+            return None
+
     def _on_client_count_changed(self, sender):
         self.num_clients_changed.send(self)
 
@@ -169,6 +295,26 @@ class FlockwaveServer(Flask):
             message = self.create_CONN_INF_message_for([entry.id])
             with self.app_context():
                 self.message_hub.send_message(message)
+
+    def _sort_uavs_by_drivers(self, uav_ids, response=None):
+        """Given a list of UAV IDs, returns a mapping that maps UAV drivers
+        to the UAVs specified by the IDs.
+
+        Parameters:
+            uav_ids (List[str]): list of UAV IDs
+            response (Optional[FlockwaveResponse]): optional response in
+                which UAV lookup failures can be registered
+
+        Returns:
+            Dict[UAVDriver,UAV]: mapping of UAV drivers to the UAVs that
+                were selected by the given UAV IDs
+        """
+        result = defaultdict(list)
+        for uav_id in uav_ids:
+            uav = self._find_uav_by_id(uav_id, response)
+            if uav:
+                result[uav.driver].append(uav)
+        return result
 
 
 class _JSONEncoder(object):
@@ -301,7 +447,7 @@ def handle_CONN_LIST(message, hub):
 
 @app.message_hub.on("SYS-PING")
 def handle_SYS_PING(message, hub):
-    return app.message_hub.acknowledge(message)
+    return hub.acknowledge(message)
 
 
 @app.message_hub.on("SYS-VER")
@@ -324,6 +470,11 @@ def handle_UAV_LIST(message, hub):
     return {
         "ids": list(app.uav_registry.ids)
     }
+
+
+@app.message_hub.on("UAV-LAND", "UAV-TAKEOFF")
+def handle_UAV_operations(message, hub):
+    return app.dispatch_to_uavs(message)
 
 
 # ######################################################################## #

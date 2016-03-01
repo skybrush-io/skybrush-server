@@ -43,9 +43,24 @@ class FakeUAVDriver(UAVDriver):
         uav = FakeUAV(id, driver=self)
         uav.angle = angle
         uav.angular_velocity = angular_velocity
+        uav.cruise_altitude = center.alt.value
         uav.home = center
         uav.radius = radius
         return uav
+
+    def send_landing_signal(self, uavs):
+        result = {}
+        for uav in uavs:
+            uav.land()
+            result[uav] = True
+        return result
+
+    def send_takeoff_signal(self, uavs):
+        result = {}
+        for uav in uavs:
+            uav.takeoff()
+            result[uav] = True
+        return result
 
 
 class FakeUAVState(Enum):
@@ -76,8 +91,12 @@ class FakeUAV(UAVBase):
             target.
         angular_velocity (float): the angular velocity of the UAV along the
             circle around the target
+        cruise_altitude (float): the altitude (relative to home) where the
+            UAV will consider a take-off attempt as finished
         home (GPSCoordinate): the home coordinate of the UAV and the origin
-            of the flat Earth transformation that the UAV uses
+            of the flat Earth transformation that the UAV uses. Altitude
+            component is used to define the cruise altitude where a take-off
+            attempt will stop.
         max_ascent_rate (float): the maximum ascent rate of the UAV along
             the Z axis (perpendicular to the surface of the Earth), in
             metres per second
@@ -110,6 +129,7 @@ class FakeUAV(UAVBase):
 
         self.angle = 0.0
         self.angular_velocity = 0.0
+        self.cruise_altitude = 20
         self.max_ascent_rate = 2
         self.max_velocity = 10
         self.radius = 0.0
@@ -168,7 +188,7 @@ class FakeUAV(UAVBase):
 
     def land(self):
         """Starts a simulated landing with the fake UAV."""
-        if self.state == FakeUAVState.LANDED:
+        if self.state != FakeUAVState.AIRBORNE:
             return
 
         if self._target_xyz is None:
@@ -253,6 +273,16 @@ class FakeUAV(UAVBase):
         self.update_status(position=self._trans.to_gps(
             self._pos_flat_circle))
 
+    def takeoff(self):
+        """Starts a simulated take-off with the fake UAV."""
+        if self.state != FakeUAVState.LANDED:
+            return
+
+        if self._target_xyz is None:
+            self._target_xyz = self._pos_flat.copy()
+        self._target_xyz.z = self.cruise_altitude
+        self.state = FakeUAVState.TAKEOFF
+
 
 class FakeUAVProviderExtension(ExtensionBase):
     """Extension that creates one or more fake UAVs in the server."""
@@ -277,13 +307,13 @@ class FakeUAVProviderExtension(ExtensionBase):
         )
 
         radius = float(configuration.get("radius", 10))
-        beta = 2 * pi / configuration.get("time_of_single_cycle", 10)
+        omega = 2 * pi / configuration.get("time_of_single_cycle", 10)
 
         self.uav_ids = [id_format.format(index) for index in xrange(count)]
         self.uavs = [
             self._driver.create_uav(id, center=center, radius=radius,
                                     angle=2 * pi / count * index,
-                                    angular_velocity=beta)
+                                    angular_velocity=omega)
             for index, id in enumerate(self.uav_ids)
         ]
         for uav in self.uavs:

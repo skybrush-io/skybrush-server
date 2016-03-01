@@ -26,10 +26,11 @@ def start(debug, host, port):
     eventlet_log = log.getChild("eventlet")
     eventlet_log.setLevel(logging.INFO)
 
-    # Also silence Engine.IO and Socket.IO
-    for logger_name in ("engineio", "socketio"):
-        log_handler = logging.getLogger(logger_name)
-        log_handler.setLevel(logging.ERROR)
+    # Also silence Engine.IO and Socket.IO when not in debug mode
+    if not debug:
+        for logger_name in ("engineio", "socketio"):
+            log_handler = logging.getLogger(logger_name)
+            log_handler.setLevel(logging.ERROR)
 
     # Start the SocketIO server. Note the lazy import; this is to ensure
     # that the logging is set up by the time we start configuring the app.

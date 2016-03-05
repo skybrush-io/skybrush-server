@@ -1,4 +1,4 @@
-"""Application object for the Flockwave server."""
+"""Application and authentication objects for the Flockwave server."""
 
 from __future__ import absolute_import
 
@@ -9,9 +9,11 @@ from collections import defaultdict
 from datetime import datetime
 from enum import Enum
 from flask import Flask, request
-from flask.ext.socketio import SocketIO
+from flask.ext.jwt import current_identity as jwt_identity
+from flask.ext.socketio import SocketIO, disconnect
 from six import iteritems
 
+from .authentication import jwt_authentication, jwt_optional
 from .errors import NotSupportedError
 from .ext.manager import ExtensionManager
 from .client_registry import ClientRegistry
@@ -22,7 +24,7 @@ from .model import FlockwaveMessage
 from .uav_registry import UAVRegistry
 from .version import __version__ as server_version
 
-__all__ = ()
+__all__ = ("app", "socketio")
 
 PACKAGE_NAME = __name__.rpartition(".")[0]
 
@@ -383,13 +385,24 @@ class _JSONEncoder(object):
 
 
 app = FlockwaveServer()
+app.config["JWT_AUTH_URL_RULE"] = None      # Disable default JWT auth rule
+jwt_authentication.init_app(app)
+
+############################################################################
+
 socketio = SocketIO(app, json=_JSONEncoder())
 
 
 @socketio.on("connect")
+@jwt_optional()
 def handle_connection():
     """Handler called when a client connects to the Flockwave server socket."""
-    app.client_registry.add(request.sid)
+    # Update the condition below to enable mandatory JWT authentication 
+    if False and not jwt_identity:
+        log.warning("Access denied because of lack of JWT identity")
+        return False
+    else:
+        app.client_registry.add(request.sid)
 
 
 @socketio.on("disconnect")

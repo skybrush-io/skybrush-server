@@ -10,7 +10,7 @@ from datetime import datetime
 from enum import Enum
 from flask import Flask, request
 from flask.ext.jwt import current_identity as jwt_identity
-from flask.ext.socketio import SocketIO, disconnect
+from flask.ext.socketio import SocketIO
 from six import iteritems
 
 from .authentication import jwt_authentication, jwt_optional
@@ -397,7 +397,7 @@ socketio = SocketIO(app, json=_JSONEncoder())
 @jwt_optional()
 def handle_connection():
     """Handler called when a client connects to the Flockwave server socket."""
-    # Update the condition below to enable mandatory JWT authentication 
+    # Update the condition below to enable mandatory JWT authentication
     if False and not jwt_identity:
         log.warning("Access denied because of lack of JWT identity")
         return False

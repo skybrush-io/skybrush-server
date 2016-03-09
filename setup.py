@@ -20,7 +20,8 @@ requires = [
     "pyserial>=2.7",
     "python-socketio>=0.6.1",
     "pytz>=2015.7",
-    "six>=1.10.0"
+    "six>=1.10.0",
+    "XBee>=2.2.3"
 ]
 
 __version__ = None

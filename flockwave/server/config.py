@@ -27,5 +27,8 @@ EXTENSIONS = {
         },
         "radius": 50,
         "time_of_single_cycle": 10
+    },
+    "flockctrl": {
+        "id_format": "{0:02}"
     }
 }

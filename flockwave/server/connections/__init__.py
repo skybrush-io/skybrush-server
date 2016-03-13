@@ -6,8 +6,10 @@ Each connection class provided by this package has a common notion of a
 disconnecting. Connection instances send signals when their state changes.
 """
 
-__all__ = ("Connection", "ConnectionBase", "ConnectionState",
-           "reconnecting")
-
 from .base import Connection, ConnectionBase, ConnectionState
+from .file import FileConnection
+from .serial import SerialPortConnection
 from .reconnection import reconnecting
+
+__all__ = ("Connection", "ConnectionBase", "ConnectionState",
+           "FileConnection", "SerialPortConnection", "reconnecting")

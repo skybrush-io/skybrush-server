@@ -14,8 +14,8 @@ from __future__ import absolute_import
 from .base import ExtensionBase
 from eventlet import spawn_after
 from eventlet.greenthread import sleep
-from flockwave.server.connection import ConnectionBase, ConnectionState, \
-    ReconnectionWrapper
+from flockwave.server.connections import ConnectionBase, ConnectionState, \
+    reconnecting
 from flockwave.server.model import ConnectionPurpose
 from six import itervalues
 from time import time
@@ -35,7 +35,7 @@ class FakeConnectionProviderExtension(ExtensionBase):
         count = configuration.get("count", 0)
         id_format = configuration.get("id_format", "fakeConnection{0}")
         for index in xrange(count):
-            connection = ReconnectionWrapper(FakeConnection())
+            connection = reconnecting(FakeConnection())
             name = id_format.format(index)
             self.connections[name] = connection
             self.app.connection_registry.add(

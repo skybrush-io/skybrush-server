@@ -5,6 +5,7 @@ from __future__ import absolute_import, print_function
 import csv
 
 from .base import ConnectionBase, ConnectionState
+from .factory import create_connection
 from serial import Serial, STOPBITS_ONE, STOPBITS_ONE_POINT_FIVE, \
     STOPBITS_TWO
 from time import time
@@ -14,6 +15,7 @@ __all__ = ("SerialPortConnection", )
 # TODO: recording and replaying should be made more generic
 
 
+@create_connection.register("serial")
 class SerialPortConnection(ConnectionBase):
     """Connection for a serial port.
 

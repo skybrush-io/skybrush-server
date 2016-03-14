@@ -7,9 +7,11 @@ disconnecting. Connection instances send signals when their state changes.
 """
 
 from .base import Connection, ConnectionBase, ConnectionState
+from .factory import ConnectionFactory, create_connection
 from .file import FileConnection
 from .serial import SerialPortConnection
 from .reconnection import reconnecting
 
-__all__ = ("Connection", "ConnectionBase", "ConnectionState",
-           "FileConnection", "SerialPortConnection", "reconnecting")
+__all__ = ("Connection", "ConnectionBase", "ConnectionFactory",
+           "ConnectionState", "FileConnection", "SerialPortConnection",
+           "create_connection", "reconnecting")

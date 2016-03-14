@@ -3,10 +3,12 @@
 from __future__ import absolute_import, print_function
 
 from .base import ConnectionBase, ConnectionState
+from .factory import create_connection
 
 __all__ = ("FileConnection", )
 
 
+@create_connection.register("file")
 class FileConnection(ConnectionBase):
     """Connection object that reads its incoming data from a file or
     file-like object.

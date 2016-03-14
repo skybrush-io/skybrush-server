@@ -2,7 +2,8 @@
 ``flockctrl`` protocol.
 """
 
-from ..base import ExtensionBase
+from flockwave.server.connections import create_connection
+from flockwave.server.ext.base import ExtensionBase
 
 __all__ = ("construct", )
 
@@ -12,8 +13,8 @@ class FlockCtrlDronesExtension(ExtensionBase):
     protocol.
     """
 
-    def load(self, app, configuration, logger):
-        """Loads the extension."""
-        pass
+    def configure(self, configuration):
+        conn = create_connection(configuration.get("connection"))
+
 
 construct = FlockCtrlDronesExtension

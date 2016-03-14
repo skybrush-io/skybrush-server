@@ -29,6 +29,7 @@ EXTENSIONS = {
         "time_of_single_cycle": 10
     },
     "flockctrl": {
-        "id_format": "{0:02}"
+        "id_format": "{0:02}",
+        "connection": "serial:/dev/xbee?baud=115200"
     }
 }

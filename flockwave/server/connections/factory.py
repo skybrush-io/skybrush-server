@@ -26,25 +26,26 @@ class ConnectionFactory(object):
         When the specification is a string, it must follow the following
         URL-like format::
 
-            scheme://location?param1=value1&param2=value2&...
+            scheme:[//host:port]/path?param1=value1&param2=value2&...
 
         where ``scheme`` defines the registered name of the connection class
         (e.g., ``serial`` for serial ports, ``file`` for files and so on),
-        ``location`` defines the target of the connection (e.g., the serial
-        port itself or the name of the file), and the remaining parameters
-        and values define optional connection arguments. The ``scheme``
+        ``path`` defines the target of the connection (e.g., the serial
+        port itself or the name of the file), ``host`` and ``port`` define
+        the hostname and the port where the path is found (if it makes sense
+        for the given type of connetion) and the remaining parameters
+        and values define additional connection arguments. The ``scheme``
         will be used to look up the connection class (or callable) registered
-        in this factory, then it will be called with the ``location`` as
-        the first (and only) positional argument and with the additional
-        parameters and their values as keyword arguments. For instance,
-        assuming that the ``serial`` scheme resolves to the
+        in this factory, then it will be called with ``host``, ``port``,
+        ``path`` and the additional parameters as keyword arguments. For
+        instance, assuming that the ``serial`` scheme resolves to the
         SerialConnection_ class, the following URL::
 
-            serial:///dev/ttyUSB0?baud=115200
+            serial:/dev/ttyUSB0?baud=115200
 
         is resolved to the following call::
 
-            SerialConnection("/dev/ttyUSB0", baud=115200)
+            SerialConnection(path="/dev/ttyUSB0", baud=115200)
 
         Parameter value that contain digits and positive/negative signs
         only will be cast to an integer before passing them to the
@@ -57,7 +58,7 @@ class ConnectionFactory(object):
 
             {
                 "type": "serial",
-                "location": "/dev/ttyUSB0",
+                "path": "/dev/ttyUSB0",
                 "parameters": {
                     "param1": "value1",
                     "param2": "value2"
@@ -66,14 +67,12 @@ class ConnectionFactory(object):
 
         When this specification is used, the ``type`` member of the
         dictionary will be used to look up the connection class (or
-        callable) in the factory, the ``location`` member will be passed
-        as the first (and only) positional argument, and the keys and
-        values from the ``parameters`` member (if any) will be passed as
-        keyword arguments. ``location`` is optional and when omitted, it
-        will *not* be added as a positional argument at all (not even as
-        ``None``). ``parameters`` is also optional and defaults to an empty
-        dictionary. No automatic type conversion is performed on the
-        members of the ``parameters`` dict.
+        callable) in the factory, the ``host``, ``port`` and ``path``
+        members will be merged with the ``parameters`` dictionary (if any)
+        and the merged dictionary will be passed as keyword arguments.
+        ``host``, ``port``, ``path`` and ``parameters`` are all optional.
+        No automatic type conversion is performed on the members of the
+        ``parameters`` dict.
 
         Parameters:
             specification (str or dict): the specification of the connection
@@ -86,11 +85,12 @@ class ConnectionFactory(object):
             specification = self._url_specification_to_dict(specification)
 
         func = self._registry[specification["type"]]
-        parameters = specification.get("parameters", {})
-        if "location" in specification:
-            return func(specification["location"], **parameters)
-        else:
-            return func(**parameters)
+        parameters = {}
+        for name in ("host", "port", "path"):
+            if name in specification:
+                parameters[name] = specification[name]
+        parameters.update(specification.get("parameters", {}))
+        return func(**parameters)
 
     def register(self, name, klass=None):
         """Registers the given class for this connection factory with the
@@ -130,14 +130,9 @@ class ConnectionFactory(object):
         # Break up the URL into parts
         parts = urlparse(specification, allow_fragments=False)
 
-        # Join the path and the netloc if we have a netloc
-        if parts.path:
-            if parts.netloc:
-                location = "{0.netloc}/{0.path}".format(parts)
-            else:
-                location = parts.path
-        else:
-            location = parts.netloc
+        # Split the netloc into hostname and port if needed
+        host, _, port = parts.netloc.partition(':')
+        port = int(port) if port else None
 
         # Parse the parameters into a dict, turning values into integers
         # where applicable
@@ -157,8 +152,12 @@ class ConnectionFactory(object):
             "type": parts.scheme,
             "parameters": parameters
         }
-        if location:
-            result["location"] = location
+        if host:
+            result["host"] = host
+        if port is not None:
+            result["port"] = port
+        if parts.path:
+            result["path"] = parts.path
         return result
 
     def __call__(self, *args, **kwds):

@@ -14,11 +14,11 @@ class FileConnection(ConnectionBase):
     file-like object.
     """
 
-    def __init__(self, filename, mode="rb", autoflush=False):
+    def __init__(self, path, mode="rb", autoflush=False):
         """Constructor.
 
         Parameters:
-            filename (str): name of the file to read the incoming data from
+            path (str): path to the file to read the incoming data from
             mode (str): the mode to open the file with
             autoflush (bool): whether to flush the file automatically after
                 each write
@@ -26,7 +26,7 @@ class FileConnection(ConnectionBase):
         super(FileConnection, self).__init__()
 
         self.autoflush = bool(autoflush)
-        self._filename = filename
+        self._path = path
         self._mode = mode
         self._fp = None
 
@@ -47,7 +47,7 @@ class FileConnection(ConnectionBase):
             return
 
         self._set_state(ConnectionState.CONNECTING)
-        self._fp = open(self._filename, self._mode)
+        self._fp = open(self._path, self._mode)
         self._set_state(ConnectionState.CONNECTED)
 
     @property

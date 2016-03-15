@@ -31,18 +31,18 @@ class SerialPortConnection(ConnectionBase):
         - ``write()``
     """
 
-    def __init__(self, port, baud, stopbits=1):
+    def __init__(self, path, baud, stopbits=1):
         """Constructor.
 
         Parameters:
-            port (str or int): the serial port to open. Must be a name or a
-                file descriptor.
+            path (str or int): full path to the serial port to open, or a
+                file descriptor for an already opened serial port.
             baud (int): the baud rate to use when opening the port
             stopbits (int or float): the number of stop bits to use. Must be
                 1, 1.5 or 2.
         """
         super(SerialPortConnection, self).__init__()
-        self._port = port
+        self._path = path
         self._baud = baud
         self._stopbits = stopbits
         self._serial = None
@@ -70,7 +70,7 @@ class SerialPortConnection(ConnectionBase):
             raise ValueError("unsupported stop bit count: {0!r}"
                              .format(self._stopbits))
 
-        self._serial = Serial(self._port, self._baud, stopbits=stopbits)
+        self._serial = Serial(self._path, self._baud, stopbits=stopbits)
         self._set_state(ConnectionState.CONNECTED)
 
     def inWaiting(self):

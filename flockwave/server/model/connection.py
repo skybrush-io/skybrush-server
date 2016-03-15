@@ -56,5 +56,5 @@ class ConnectionInfo(TimestampMixin):
             connection (Connection): the connection from which the status
                 is to be updated
         """
-        conn_status = connection.state if connection is not None else None
-        self.status = self._STATUS_MAPPING.get(connection, conn_status)
+        status = connection.state.name if connection is not None else None
+        self.status = self._STATUS_MAPPING.get(status, status)

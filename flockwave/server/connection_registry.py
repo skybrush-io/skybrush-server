@@ -103,8 +103,8 @@ class ConnectionRegistryEntry(object):
         self._connection = None
         self._registry = registry
 
-        self.connection = connection
         self.info = ConnectionInfo(id=name)
+        self.connection = connection
 
     @property
     def connection(self):
@@ -125,6 +125,7 @@ class ConnectionRegistryEntry(object):
         self._connection = value
 
         if self._connection is not None:
+            self.info.update_status_from(self._connection)
             self._connection.state_changed.connect(
                 self._on_connection_state_changed,
                 sender=self._connection

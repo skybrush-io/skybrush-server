@@ -32,6 +32,19 @@ class FakeConnectionProviderExtension(ExtensionBase):
         self.connections = {}
 
     def configure(self, configuration):
+        """Configures the extension.
+
+        The configuration object supports the following keys:
+
+        ``count``
+            The number of fake connections to provide
+
+        ``id_format``
+            String template that defines how the names of the fake
+            connections should be generated; must be in the format accepted
+            by the ``str.format()`` method in Python when given the
+            connection index as its argument.
+        """
         count = configuration.get("count", 0)
         id_format = configuration.get("id_format", "fakeConnection{0}")
         for index in xrange(count):

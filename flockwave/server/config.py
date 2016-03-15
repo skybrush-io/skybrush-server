@@ -12,10 +12,6 @@ EXTENSIONS = {
     "debug": {
         "route": "/"
     },
-    "fake_connections": {
-        "count": 1,
-        "id_format": "fakeConnection{0}"
-    },
     "fake_uavs": {
         "count": 3,
         "delay": 0.04 if IN_HEROKU else 2,

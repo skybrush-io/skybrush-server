@@ -10,6 +10,9 @@ from flockwave.server.connections import create_connection, reconnecting
 from flockwave.server.ext.base import ExtensionBase
 from flockwave.server.model import ConnectionPurpose
 
+from .errors import ParseError
+from .parser import FlockCtrlParser
+
 __all__ = ("construct", )
 
 
@@ -19,6 +22,7 @@ class FlockCtrlDronesExtension(ExtensionBase):
     """
 
     def __init__(self):
+        self._flockctrl_parser = FlockCtrlParser()
         self._xbee_lowlevel = None
         self._xbee_thread = None
 
@@ -69,10 +73,20 @@ class FlockCtrlDronesExtension(ExtensionBase):
         """
         return reconnecting(create_connection(specifier))
 
-    def _handle_inbound_xbee_frame(self, frame, sender):
+    def _handle_inbound_xbee_frame(self, sender, frame):
         """Handles an inbound XBee data frame."""
-        # TODO
-        pass
+        # We are interested in real received packets only
+        data = frame.get("rf_data")
+        if frame.get("id") != "rx" or not data:
+            return
+
+        try:
+            packet = self._flockctrl_parser.parse(data)
+        except ParseError as ex:
+            self.log.warn("Failed to parse FlockCtrl packet of length "
+                          "{0}: {1!r}".format(len(data), data[:32]))
+            self.log.exception(ex)
+            return
 
 
 class XBeeThread(object):
@@ -99,7 +113,7 @@ class XBeeThread(object):
         """Callback function called for every single frame read from the
         XBee.
         """
-        self.on_frame.send(frame, sender=self)
+        self.on_frame.send(self, frame=frame)
 
     def _error_callback(self, exception):
         """Callback function called when an exception happens while waiting

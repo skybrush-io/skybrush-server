@@ -82,11 +82,13 @@ class SerialPortConnection(ConnectionBase):
         """
         if self._serial is not None:
             try:
-                return self._serial.inWaiting()
-            except IOError:
-                self._handle_error()
+                result = self._serial.inWaiting()
+            except IOError as ex:
+                self._handle_error(ex)
+                result = 0
         else:
-            return 0
+            result = 0
+        return result
 
     @property
     def fd(self):
@@ -113,11 +115,12 @@ class SerialPortConnection(ConnectionBase):
         if self._serial is not None:
             try:
                 result = self._serial.read(size)
-                return result
-            except IOError:
-                self._handle_error()
+            except IOError as ex:
+                self._handle_error(ex)
+                result = b""
         else:
-            return b""
+            result = b""
+        return result
 
     def write(self, data):
         """Writes the given data to the serial connection.
@@ -128,8 +131,9 @@ class SerialPortConnection(ConnectionBase):
         if self._serial is not None:
             try:
                 return self._serial.write(data)
-            except IOError:
-                self._handle_error()
+            except IOError as ex:
+                self._handle_error(ex)
+                return 0
         else:
             return 0
 

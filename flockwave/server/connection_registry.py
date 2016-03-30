@@ -68,6 +68,19 @@ class ConnectionRegistry(RegistryBase):
         self._entries[name] = entry
         return entry
 
+    def remove(self, name):
+        """Removes an entry from the set of connections.
+
+        This function is a no-op if there is no such connection.
+
+        Arguments:
+            name (str): the name of the connection to remove
+        """
+        try:
+            del self._entries[name]
+        except KeyError:
+            return
+    
     def _create_entry(self, connection, name):
         """Creates a new entry for the given connection with the given
         name.

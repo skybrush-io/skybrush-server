@@ -26,6 +26,6 @@ EXTENSIONS = {
     },
     "flockctrl": {
         "id_format": "{0:02}",
-        "connection": "serial:/dev/xbee?baud=115200"
+        "connection": "serial:/tmp/xbee?baud=115200"
     }
 }

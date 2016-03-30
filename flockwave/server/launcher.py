@@ -3,6 +3,7 @@
 from __future__ import absolute_import
 
 import click
+import eventlet
 import logging
 
 from . import logger
@@ -18,6 +19,10 @@ from .logger import log
               help="The port that the server will listen on")
 def start(debug, host, port):
     """Start the Flockwave server."""
+    # Ensure that everything is monkey-patched by Eventlet as soon as
+    # possible
+    eventlet.monkey_patch()
+
     # Set up the logging format
     logger.install(level=logging.DEBUG if debug else logging.INFO)
 

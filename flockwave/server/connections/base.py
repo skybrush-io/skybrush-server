@@ -1,5 +1,7 @@
 """Base connection classes."""
 
+import logging
+
 from abc import ABCMeta, abstractmethod, abstractproperty
 from blinker import Signal
 from enum import Enum
@@ -11,6 +13,8 @@ __all__ = ("Connection", "ConnectionState", "ConnectionBase")
 
 ConnectionState = Enum("ConnectionState",
                        "DISCONNECTED CONNECTING CONNECTED DISCONNECTING")
+
+log = logging.getLogger(__name__.rpartition(".")[0])
 
 
 class Connection(with_metaclass(ABCMeta, object)):
@@ -134,10 +138,18 @@ class ConnectionBase(Connection):
     def swallow_exceptions(self, value):
         self._swallow_exceptions = bool(value)
 
-    def _handle_error(self):
-        """Handles exceptions that have happened during reads and writes."""
+    def _handle_error(self, exception=None):
+        """Handles exceptions that have happened during reads and writes.
+
+        Parameters:
+            exception (Optional[Exception]): the exception that was raised
+                during a read or write
+        """
         if self._swallow_exceptions:
-            # Just close the connection
+            # Log the exception if we have one
+            if exception is not None:
+                log.exception(exception)
+            # Then close the connection
             self.close()
         else:
             # Let the user handle the exception

@@ -29,3 +29,7 @@ EXTENSIONS = {
         "connection": "serial+replay:/Users/ntamas/dev/collmot/git/flockwave-server/test3.flight?autoclose=1"
     }
 }
+
+if IN_HEROKU:
+    EXTENSIONS["fake_uavs"] = EXTENSIONS.pop("_fake_uavs")
+    del EXTENSIONS["flockctrl"]

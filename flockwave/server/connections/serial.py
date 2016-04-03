@@ -3,6 +3,7 @@
 from __future__ import absolute_import, print_function
 
 import csv
+import gzip
 
 from .base import ConnectionBase, ConnectionState
 from .factory import create_connection
@@ -242,26 +243,29 @@ class RecordableSerialPortConnection(SerialPortConnection):
         self._log_stream.write(b"\r\n")
 
 
+@create_connection.register("serial+replay")
 class ReplayedSerialPortConnection(ConnectionBase):
     """Fake serial port connection object that replays a previously recorded
     serial port session in real time. The recording that the connection uses
     must have been created by a RecordableSerialPortConnection_ object.
     """
 
-    def __init__(self, log_stream=None, autoclose=False):
+    def __init__(self, path=None, autoclose=False):
         super(ReplayedSerialPortConnection, self).__init__()
         self._log_reader = None
         self._log_stream = None
         self._next_entry = None
         self._buffer = []
+        self.path = path
         self._timedelta = None
-        self.log_stream = log_stream
-        self.autoclose = autoclose
+        self.autoclose = bool(autoclose)
 
     @property
     def log_stream(self):
         """The log stream that contains the recorded communication. It should
-        be a file opened in binary mode.
+        be a file opened in binary mode. When it is set to ``None``, the
+        filename specified by the ``path`` attribute of the class will be
+        opened when the connection is opened.
         """
         return self._log_stream
 
@@ -299,6 +303,9 @@ class ReplayedSerialPortConnection(ConnectionBase):
     def open(self):
         if self.state == ConnectionState.CONNECTED:
             return
+
+        if self.log_stream is None and self.path is not None:
+            self.log_stream = gzip.open(self.path, "rb")
 
         if self._log_reader is None:
             if self.swallow_exceptions:

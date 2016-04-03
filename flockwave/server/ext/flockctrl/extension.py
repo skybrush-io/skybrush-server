@@ -10,6 +10,7 @@ from flockwave.server.connections import create_connection, reconnecting
 from flockwave.server.ext.base import ExtensionBase
 from flockwave.server.model import ConnectionPurpose
 
+from .driver import FlockCtrlDriver
 from .errors import ParseError
 from .parser import FlockCtrlParser
 
@@ -22,6 +23,8 @@ class FlockCtrlDronesExtension(ExtensionBase):
     """
 
     def __init__(self):
+        super(FlockCtrlDronesExtension, self).__init__()
+        self._driver = None
         self._flockctrl_parser = FlockCtrlParser()
         self._xbee_lowlevel = None
         self._xbee_thread = None
@@ -29,6 +32,7 @@ class FlockCtrlDronesExtension(ExtensionBase):
     def configure(self, configuration):
         self.xbee_lowlevel = self._configure_lowlevel_xbee_connection(
             configuration.get("connection"))
+        self._driver = self._configure_driver(configuration)
 
     def unload(self):
         self.xbee_lowlevel = None
@@ -73,6 +77,22 @@ class FlockCtrlDronesExtension(ExtensionBase):
         """
         return reconnecting(create_connection(specifier))
 
+    def _configure_driver(self, configuration):
+        """Configures the driver that will manage the UAVs created by
+        this extension.
+
+        Parameters:
+            configuration (dict): the configuration dictionary of the
+                extension
+
+        Returns:
+            FlockCtrlDriver: the configured driver
+        """
+        driver = FlockCtrlDriver(self.app)
+        driver.id_format = configuration.get("id_format", "{0:02}")
+        driver.log = self.log.getChild("driver")
+        return driver
+
     def _handle_inbound_xbee_frame(self, sender, frame):
         """Handles an inbound XBee data frame."""
         # We are interested in real received packets only
@@ -88,10 +108,15 @@ class FlockCtrlDronesExtension(ExtensionBase):
             self.log.exception(ex)
             return
 
+        self._driver.handle_inbound_packet(packet)
+
 
 class XBeeThread(object):
     """Green thread that reads incoming packets from an XBee serial
     connection and dispatches signals for every one of them.
+
+    The thread is running within the application context of the Flockwave
+    server application.
     """
 
     on_frame = Signal()
@@ -130,11 +155,12 @@ class XBeeThread(object):
         spawning a new thread on its own when passing a callback to it in
         the constructor.
         """
-        while True:
-            try:
-                self._callback(self._xbee.wait_read_frame())
-            except Exception as ex:
-                self._error_callback(ex)
+        with self.ext.app.app_context():
+            while True:
+                try:
+                    self._callback(self._xbee.wait_read_frame())
+                except Exception as ex:
+                    self._error_callback(ex)
 
 
 construct = FlockCtrlDronesExtension

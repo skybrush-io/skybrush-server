@@ -70,7 +70,8 @@ class ExtensionManager(object):
         for extension_name in self.loaded_extensions:
             self.unload(extension_name)
         for extension_name, extension_cfg in configuration.items():
-            self.load(extension_name, extension_cfg)
+            if not extension_name.startswith("_"):
+                self.load(extension_name, extension_cfg)
 
     def _get_extension_by_name(self, extension_name):
         """Returns the extension object corresponding to the extension

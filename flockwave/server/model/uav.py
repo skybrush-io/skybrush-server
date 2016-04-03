@@ -3,7 +3,7 @@
 from __future__ import absolute_import
 
 from abc import ABCMeta, abstractproperty
-from flockwave.gps.vectors import GPSCoordinate
+from flockwave.gps.vectors import GPSCoordinate, VelocityNED
 from flockwave.spec.schema import get_complex_object_schema
 from six import with_metaclass
 from .metamagic import ModelMeta
@@ -31,8 +31,10 @@ class UAVStatusInfo(with_metaclass(ModelMeta, TimestampMixin)):
                 time.
         """
         TimestampMixin.__init__(self, timestamp)
+        self.heading = 0.0
         self.id = id
         self.position = GPSCoordinate()
+        self.velocity = VelocityNED()
 
 
 class UAV(with_metaclass(ABCMeta, object)):
@@ -108,16 +110,26 @@ class UAVBase(UAV):
         """
         return self._status
 
-    def update_status(self, position=None):
+    def update_status(self, position=None, velocity=None, heading=None):
         """Updates the status information of the UAV.
 
+        Parameters with values equal to ``None`` are ignored.
+
         Parameters:
-            position (GPSCoordinate): the position of the UAV. It will be
-                cloned to ensure that modifying this position object from
-                the caller will not affect the UAV itself.
+            position (Optional[GPSCoordinate]): the position of the UAV.
+                It will be cloned to ensure that modifying this position
+                object from the caller will not affect the UAV itself.
+            velocity (Optional[VelocityNED]): the velocity of the UAV.
+                It will be cloned to ensure that modifying this velocity
+                object from the caller will not affect the UAV itself.
+            heading (Optional[float]): the heading of the UAV, in degrees.
         """
         if position is not None:
             self._status.position.update_from(position)
+        if heading is not None:
+            self._status.heading = heading % 360
+        if velocity is not None:
+            self._status.velocity.update_from(velocity)
         self._status.update_timestamp()
 
 

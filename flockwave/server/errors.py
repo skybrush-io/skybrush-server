@@ -1,6 +1,26 @@
 """Common exception classes used in many places throughout the server."""
 
-__all__ = ("NotSupportedError", )
+__all__ = ("CommandInvocationError", "NotSupportedError", )
+
+
+class CommandInvocationError(RuntimeError):
+    """Exception class that signals that the user tried to call some command
+    of a remote UAV but failed to parameterize the command properly.
+    """
+
+    def __init__(self, message=None, cause=None):
+        """Constructor.
+
+        Parameters:
+            message (Optional[str]): the error message
+            cause (Optional[str]): the underlying exception that caused this
+                error message
+        """
+        message = message or \
+            "{0.__class__.__name__}: {0.message}".format(cause) or \
+            "Command invocation error"
+        super(CommandInvocationError, self).__init__(message)
+        self.cause = cause
 
 
 class NotSupportedError(RuntimeError):
@@ -12,5 +32,10 @@ class NotSupportedError(RuntimeError):
     """
 
     def __init__(self, message=None):
+        """Constructor.
+
+        Parameters:
+            message (Optional[str]): the error message
+        """
         message = message or "Operation not supported"
         super(NotSupportedError, self).__init__(message)

@@ -2,7 +2,8 @@
 
 from __future__ import absolute_import
 
-from .builders import FlockwaveMessageBuilder
+from .builders import CommandExecutionStatusBuilder, FlockwaveMessageBuilder
+from .commands import CommandExecutionStatus
 from .connection import ConnectionPurpose, ConnectionInfo, ConnectionStatus
 from .messages import FlockwaveMessage, FlockwaveNotification, \
     FlockwaveResponse
@@ -14,5 +15,6 @@ __all__ = (
     "FlockwaveMessage", "FlockwaveMessageBuilder", "FlockwaveNotification",
     "FlockwaveResponse", "UAVStatusInfo", "UAVDriver", "UAV", "UAVBase",
     "RegistryBase", "Registry",
-    "ConnectionInfo", "ConnectionPurpose", "ConnectionStatus"
+    "ConnectionInfo", "ConnectionPurpose", "ConnectionStatus",
+    "CommandExecutionStatus", "CommandExecutionStatusBuilder"
 )

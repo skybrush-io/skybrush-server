@@ -4,6 +4,7 @@ from __future__ import absolute_import
 
 from flockwave.spec.schema import get_complex_object_schema, \
     get_enum_from_schema
+from six import add_metaclass
 from .metamagic import ModelMeta
 from .mixins import TimestampMixin
 
@@ -16,12 +17,11 @@ ConnectionStatus = get_enum_from_schema("connectionStatus",
                                         "ConnectionStatus")
 
 
+@add_metaclass(ModelMeta)
 class ConnectionInfo(TimestampMixin):
     """Class representing the status information available about a single
     connection.
     """
-
-    __metaclass__ = ModelMeta
 
     class __meta__:
         schema = get_complex_object_schema("connectionInfo")

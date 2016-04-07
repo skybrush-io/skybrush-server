@@ -314,6 +314,21 @@ class ModelMetaHelpers(object):
 
         dct["validate"] = validate
 
+    @staticmethod
+    def bases_have_schema(bases):
+        """Returns whether any of the given base classes uses ModelMeta_ as
+        its metaclass.
+
+        Parameters:
+            bases (List[type]): list of the base classes
+
+        Returns:
+            bool: whether at least one of the base classes uses ModelMeta_
+                as its metaclass
+        """
+        return any(getattr(base, "__metaclass_is_ModelMeta__", False)
+                   for base in bases)
+
     @classmethod
     def find_schema_and_resolver(cls, dct, bases):
         """Finds the JSON schema that the class being constructed must
@@ -335,10 +350,7 @@ class ModelMetaHelpers(object):
                 object is the JSON schema resolver to use or ``None`` if
                 the default JSON schema resolver should be used
         """
-        bases_have_schema = any(
-            getattr(base, "__metaclass__", type) is ModelMeta
-            for base in bases
-        )
+        bases_have_schema = ModelMetaHelpers.bases_have_schema(bases)
 
         dct = dct.get("__meta__")
         schema = getattr(dct, "schema", None)
@@ -366,6 +378,16 @@ class ModelMetaHelpers(object):
                             "attribute or derive from another model class "
                             "with a schema")
 
+    @staticmethod
+    def mark_metaclass(dct):
+        """Marks the given class dictionary to remember that the class was
+        constructed by the ModelMeta_ metaclass.
+
+        Parameters:
+            dct (dict): the class dictionary
+        """
+        dct["__metaclass_is_ModelMeta__"] = True
+
 
 class ModelMeta(type):
     """Metaclass for our model objects. Adds JSON validation automatically
@@ -381,10 +403,7 @@ class ModelMeta(type):
                 constructed
             dct (dict): namespace of the class body
         """
-        bases_have_schema = any(
-            getattr(base, "__metaclass__", type) is ModelMeta
-            for base in bases
-        )
+        bases_have_schema = ModelMetaHelpers.bases_have_schema(bases)
         schema, resolver = \
             ModelMetaHelpers.find_schema_and_resolver(dct, bases)
         if schema is not None:
@@ -395,5 +414,6 @@ class ModelMeta(type):
                 ModelMetaHelpers.add_proxy_properties(dct, property_info)
                 ModelMetaHelpers.add_clone_method(dct)
                 ModelMetaHelpers.add_suppressed_validation_context_manager(dct)
+                ModelMetaHelpers.mark_metaclass(dct)
             ModelMetaHelpers.add_validator_method(dct, schema, resolver)
         return type.__new__(cls, clsname, bases, dct)

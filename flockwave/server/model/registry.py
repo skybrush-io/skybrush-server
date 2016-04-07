@@ -3,12 +3,13 @@ string identifiers.
 """
 
 from abc import ABCMeta, abstractmethod, abstractproperty
-from six import with_metaclass
+from six import add_metaclass
 
 __all__ = ("Registry", "RegistryBase")
 
 
-class Registry(with_metaclass(ABCMeta, object)):
+@add_metaclass(ABCMeta)
+class Registry(object):
     """Interface specification for registries that keep track of "things"
     by string identifiers.
     """

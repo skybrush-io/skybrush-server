@@ -6,14 +6,15 @@ having access to real hardware that provides UAV position and velocity data.
 
 from __future__ import absolute_import, division
 
-from .base import ExtensionBase
+from .base import UAVExtensionBase
 from enum import Enum
-from eventlet.greenthread import sleep, spawn
+from eventlet import sleep, spawn, spawn_after
 from flask import copy_current_request_context
 from flockwave.gps.vectors import Altitude, AltitudeReference, Vector3D, \
     FlatEarthCoordinate, GPSCoordinate, FlatEarthToGPSCoordinateTransformation
 from flockwave.server.model.uav import UAVBase, UAVDriver
 from math import atan2, cos, hypot, sin, pi
+from random import random, choice
 from time import time
 
 
@@ -47,6 +48,16 @@ class FakeUAVDriver(UAVDriver):
         uav.home = center
         uav.radius = radius
         return uav
+
+    def handle_command_yo(self, uavs):
+        cmd_manager = self.app.command_execution_manager
+        result = {}
+        for uav in uavs:
+            result[uav] = receipt = cmd_manager.start()
+            delay = 0.5 + random()
+            response = "yo" + choice("?!.")
+            spawn_after(delay, cmd_manager.finish, receipt, response)
+        return result
 
     def send_landing_signal(self, uavs):
         result = {}
@@ -284,7 +295,7 @@ class FakeUAV(UAVBase):
         self.state = FakeUAVState.TAKEOFF
 
 
-class FakeUAVProviderExtension(ExtensionBase):
+class FakeUAVProviderExtension(UAVExtensionBase):
     """Extension that creates one or more fake UAVs in the server."""
 
     def __init__(self):
@@ -292,8 +303,10 @@ class FakeUAVProviderExtension(ExtensionBase):
         super(FakeUAVProviderExtension, self).__init__()
         self.uavs = []
         self.uav_ids = []
-        self._driver = FakeUAVDriver()
         self._status_updater = StatusUpdater(self)
+
+    def _create_driver(self):
+        return FakeUAVDriver()
 
     def configure(self, configuration):
         count = configuration.get("count", 0)

@@ -3,16 +3,16 @@
 from __future__ import absolute_import
 
 from flockwave.spec.schema import get_message_schema
+from six import add_metaclass
 from .metamagic import ModelMeta
 
 
 __all__ = ("FlockwaveMessage", "FlockwaveNotification", "FlockwaveResponse")
 
 
+@add_metaclass(ModelMeta)
 class FlockwaveMessage(object):
     """Class representing a single Flockwave message."""
-
-    __metaclass__ = ModelMeta
 
     class __meta__:
         schema = get_message_schema()
@@ -67,6 +67,43 @@ class FlockwaveResponse(FlockwaveMessage):
             reasons = body.setdefault("reasons", {})
             if failed_id not in reasons:
                 reasons[failed_id] = reason
+
+    def add_receipt(self, id, receipt):
+        """Adds a receipt for an asynchronous operation to the response
+        body.
+
+        A common pattern in the Flockwave protocol is that a request
+        (such as CMD-REQ) is able to target multiple identifiers
+        (e.g., UAV identifiers or connection identifiers). The request is
+        then executed independently for the different IDs, and some of these
+        requests may actually trigger the execution of an asynchronous
+        command. When the server does not wait with the response until
+        the asynchronous command completes, it may choose to create a
+        CommandExecutionStatus_ object to track the execution of the command
+        and then return the ID of this obejct in the response for a specific
+        targeted ID. Clients will then be able to retrieve the status of
+        the execution of this command with a CMD-STATUS message, and they
+        will also be notified about the completion of these commands in
+        separate notifications from the server (the type of which will
+        depend on the type of the original message that triggered the
+        asynchronous command; for instance, CMD-REQ messages will be
+        accompanied with CMD-RESP notifications).
+
+        When this function is invoked, the given ID will be added to
+        the ``receipts`` key of the message and it will be associated to
+        the ID of the given receipt. The key will be created if it
+        does not exist, and the function also checks whether the ID is
+        already present in the ``receipts`` key or not to ensure that keys
+        are not duplicated.
+
+        Parameters:
+            id (str): the ID for which we want to add a receipt
+            receipt (CommandExecutionStatus): the execution status object
+                whose ID we will use as a receipt to return to the client
+        """
+        body = self.body
+        receipts = body.setdefault("receipts", {})
+        receipts[id] = receipt.id
 
     def add_success(self, successful_id):
         """Adds a success notification to the response body.

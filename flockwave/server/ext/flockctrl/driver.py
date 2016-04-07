@@ -11,7 +11,7 @@ __all__ = ("FlockCtrlDriver", )
 class FlockCtrlDriver(UAVDriver):
     """Driver class for FlockCtrl-based drones."""
 
-    def __init__(self, app, id_format="{0:02}"):
+    def __init__(self, app=None, id_format="{0:02}"):
         """Constructor.
 
         Parameters:

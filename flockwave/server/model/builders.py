@@ -2,18 +2,53 @@
 
 from __future__ import absolute_import
 
-from uuid import uuid4
+from baseconv import base64
+from random import getrandbits
 
+from .commands import CommandExecutionStatus
 from .messages import FlockwaveMessage, FlockwaveNotification, \
     FlockwaveResponse
 
-__all__ = ("FlockwaveMessageBuilder", )
+__all__ = ("CommandExecutionStatusBuilder", "FlockwaveMessageBuilder")
+
+
+def _default_id_generator():
+    """Default ID generator that generates 60-bit random integers and
+    encodes them using base64, yielding ten-character random identifiers.
+    """
+    return base64.encode(getrandbits(60))
+
+
+class CommandExecutionStatusBuilder(object):
+    """Builder object that can be used to create new command execution
+    status objects.
+    """
+
+    def __init__(self, id_generator=_default_id_generator):
+        """Constructs a new command execution status builder.
+
+        Parameters:
+            id_generator (callable): callable that will generate a new
+                receipt ID for a command execution status object when
+                called without arguments
+        """
+        self.id_generator = id_generator
+
+    def create_status_object(self):
+        """Creates a new command execution status object.
+
+        Returns:
+            CommandExecutionStatus: the newly created command execution
+                status object
+        """
+        id = unicode(self.id_generator())
+        return CommandExecutionStatus(id=id)
 
 
 class FlockwaveMessageBuilder(object):
     """Builder object that can be used to create new Flockwave messages."""
 
-    def __init__(self, version="1.0", id_generator=uuid4):
+    def __init__(self, version="1.0", id_generator=_default_id_generator):
         """Constructs a new message builder.
 
         Parameters:

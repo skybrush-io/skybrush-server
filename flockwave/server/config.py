@@ -12,7 +12,7 @@ EXTENSIONS = {
     "debug": {
         "route": "/"
     },
-    "_fake_uavs": {
+    "fake_uavs": {
         "count": 3,
         "delay": 0.04 if IN_HEROKU else 2,
         "id_format": "FAKE-{0:02}",
@@ -24,7 +24,7 @@ EXTENSIONS = {
         "radius": 50,
         "time_of_single_cycle": 10
     },
-    "flockctrl": {
+    "_flockctrl": {
         "id_format": "{0:02}",
         "connection": "serial+replay:/Users/ntamas/dev/collmot/git/flockwave-server/test3.flight?autoclose=1"
     }

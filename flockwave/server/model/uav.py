@@ -4,8 +4,10 @@ from __future__ import absolute_import
 
 from abc import ABCMeta, abstractproperty
 from flockwave.gps.vectors import GPSCoordinate, VelocityNED
+from flockwave.server.errors import CommandInvocationError, NotSupportedError
 from flockwave.spec.schema import get_complex_object_schema
-from six import with_metaclass
+from six import add_metaclass, reraise
+from sys import exc_info
 from .metamagic import ModelMeta
 from .mixins import TimestampMixin
 
@@ -13,7 +15,8 @@ from .mixins import TimestampMixin
 __all__ = ("UAVStatusInfo", "UAVDriver", "UAV", "UAVBase")
 
 
-class UAVStatusInfo(with_metaclass(ModelMeta, TimestampMixin)):
+@add_metaclass(ModelMeta)
+class UAVStatusInfo(TimestampMixin):
     """Class representing the status information available about a single
     UAV.
     """
@@ -37,7 +40,8 @@ class UAVStatusInfo(with_metaclass(ModelMeta, TimestampMixin)):
         self.velocity = VelocityNED()
 
 
-class UAV(with_metaclass(ABCMeta, object)):
+@add_metaclass(ABCMeta)
+class UAV(object):
     """Abstract object that defines the interface of objects representing
     UAVs.
     """
@@ -133,7 +137,8 @@ class UAVBase(UAV):
         self._status.update_timestamp()
 
 
-class UAVDriver(with_metaclass(ABCMeta, object)):
+@add_metaclass(ABCMeta)
+class UAVDriver(object):
     """Interface specification for UAV drivers that are responsible for
     handling communication with a given group of UAVs via a common
     communication channel (e.g., an XBee radio).
@@ -149,13 +154,78 @@ class UAVDriver(with_metaclass(ABCMeta, object)):
 
     These methods return a dictionary mapping UAVs to the results of
     executing the operation on the UAV. The result should be ``True`` if
-    the operation succeeded; anything else means failure. Failures should
-    be denoted by strings explaining the reason of the failure.
+    the operation succeeded, an object of type CommandExecutionStatus_ if
+    the operation has started executing but has not been finished yet;
+    anything else means failure. Failures should be denoted by strings
+    explaining the reason of the failure.
 
     It is the responsibility of the implementor of these methods to ensure
     that all the UAVs that appeared in the input UAV list are also mentioned
     in the dictionary that is returned from the method.
+
+    Attributes:
+        app (FlockwaveServer): the Flockwave server application that hosts
+            the driver
     """
+
+    def __init__(self):
+        """Constructor."""
+        self.app = None
+
+    def send_command(self, uavs, command, args=None, kwds=None):
+        """Asks the driver to send a direct command to the given UAVs, each
+        of which are assumed to be managed by this driver.
+
+        The default implementation of this method passes on each command
+        to the ``handle_command_{command}()`` method where ``{command}`` is
+        replaced by the command argument. The method will be called with
+        the list of UAVs, extended with the given positional and keyword
+        arguments. When such a method does not exist, the handling
+        of the command is forwarded to the ``handle_generic_command()``
+        method instead, whose signature should match the signature of
+        ``send_command()``. When neither of these two methods exist, the
+        default implementation simply throws a NotSupportedError_ exception.
+
+        Parameters:
+            uavs (List[UAV]): the UAVs to address with this request.
+            command (str): the command to send to the UAVs
+            args (list): the list of positional arguments for the command
+                (if the driver supports positional arguments)
+            kwds (dict): the keyword arguments for the command (if the
+                driver supports keyword arguments)
+
+        Returns:
+            Dict[UAV,object]: dict mapping UAVs to the corresponding results.
+
+        Raises:
+            NotImplementedError: if the operation is not supported by the
+                driver yet, but there are plans to implement it
+            NotSupportedError: if the operation is not supported by the
+                driver and will not be supported in the future either
+        """
+        func = getattr(self, "handle_command_{0}".format(command), None)
+        if func is None:
+            func = getattr(self, "handle_generic_command", None)
+            if func is None:
+                raise NotSupportedError
+            else:
+                try:
+                    return func(uavs, command, args, kwds)
+                except Exception as ex:
+                    reraise(CommandInvocationError,
+                            CommandInvocationError(cause=ex),
+                            exc_info()[2])
+        else:
+            if args is None:
+                args = []
+            if kwds is None:
+                kwds = {}
+            try:
+                return func(uavs, *args, **kwds)
+            except Exception as ex:
+                reraise(CommandInvocationError,
+                        CommandInvocationError(cause=ex),
+                        exc_info()[2])
 
     def send_landing_signal(self, uavs):
         """Asks the driver to send a landing signal to the given UAVs, each

@@ -6,7 +6,7 @@ from abc import ABCMeta, abstractmethod, abstractproperty
 from blinker import Signal
 from enum import Enum
 from eventlet.green.threading import RLock
-from six import with_metaclass
+from six import add_metaclass
 
 __all__ = ("Connection", "ConnectionState", "ConnectionBase")
 
@@ -17,7 +17,8 @@ ConnectionState = Enum("ConnectionState",
 log = logging.getLogger(__name__.rpartition(".")[0])
 
 
-class Connection(with_metaclass(ABCMeta, object)):
+@add_metaclass(ABCMeta)
+class Connection(object):
     """Interface specification for stateful connection objects."""
 
     connected = Signal(doc="Signal sent after the connection was established.")

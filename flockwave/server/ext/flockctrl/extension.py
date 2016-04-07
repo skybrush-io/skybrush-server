@@ -7,7 +7,7 @@ from eventlet import spawn_n
 from xbee import ZigBee
 
 from flockwave.server.connections import create_connection, reconnecting
-from flockwave.server.ext.base import ExtensionBase
+from flockwave.server.ext.base import UAVExtensionBase
 from flockwave.server.model import ConnectionPurpose
 
 from .driver import FlockCtrlDriver
@@ -17,7 +17,7 @@ from .parser import FlockCtrlParser
 __all__ = ("construct", )
 
 
-class FlockCtrlDronesExtension(ExtensionBase):
+class FlockCtrlDronesExtension(UAVExtensionBase):
     """Extension that adds support for drone flocks using the ``flockctrl``
     protocol.
     """
@@ -29,10 +29,13 @@ class FlockCtrlDronesExtension(ExtensionBase):
         self._xbee_lowlevel = None
         self._xbee_thread = None
 
+    def _create_driver(self):
+        return FlockCtrlDriver()
+
     def configure(self, configuration):
         self.xbee_lowlevel = self._configure_lowlevel_xbee_connection(
             configuration.get("connection"))
-        self._driver = self._configure_driver(configuration)
+        super(FlockCtrlDronesExtension, self).configure(configuration)
 
     def unload(self):
         self.xbee_lowlevel = None
@@ -77,21 +80,21 @@ class FlockCtrlDronesExtension(ExtensionBase):
         """
         return reconnecting(create_connection(specifier))
 
-    def _configure_driver(self, configuration):
+    def configure_driver(self, driver, configuration):
         """Configures the driver that will manage the UAVs created by
         this extension.
 
+        It is assumed that the driver is already set up in ``self.driver``
+        when this function is called, and it is already associated to the
+        server application.
+
         Parameters:
+            driver (UAVDriver): the driver to configure
             configuration (dict): the configuration dictionary of the
                 extension
-
-        Returns:
-            FlockCtrlDriver: the configured driver
         """
-        driver = FlockCtrlDriver(self.app)
         driver.id_format = configuration.get("id_format", "{0:02}")
         driver.log = self.log.getChild("driver")
-        return driver
 
     def _handle_inbound_xbee_frame(self, sender, frame):
         """Handles an inbound XBee data frame."""

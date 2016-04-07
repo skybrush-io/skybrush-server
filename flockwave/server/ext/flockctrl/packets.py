@@ -4,7 +4,7 @@ from __future__ import division
 
 from abc import ABCMeta
 from flockwave.gps.vectors import Altitude, GPSCoordinate, VelocityNED
-from six import with_metaclass
+from six import add_metaclass
 from struct import Struct
 from struct import error as StructError
 
@@ -14,7 +14,8 @@ from .errors import ParseError
 __all__ = ("FlockCtrlPacket", )
 
 
-class FlockCtrlPacket(with_metaclass(ABCMeta, object)):
+@add_metaclass(ABCMeta)
+class FlockCtrlPacket(object):
     """Common interface specification for all FlockCtrl-related packets."""
 
     def decode(self, data):

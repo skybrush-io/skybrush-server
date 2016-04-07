@@ -14,10 +14,11 @@ from flask.ext.socketio import SocketIO
 from six import iteritems
 
 from .authentication import jwt_authentication, jwt_optional
+from .client_registry import ClientRegistry
+from .commands import CommandExecutionManager, CommandExecutionStatus
+from .connection_registry import ConnectionRegistry
 from .errors import NotSupportedError
 from .ext.manager import ExtensionManager
-from .client_registry import ClientRegistry
-from .connection_registry import ConnectionRegistry
 from .logger import log
 from .message_hub import MessageHub
 from .model import FlockwaveMessage
@@ -37,6 +38,10 @@ class FlockwaveServer(Flask):
             that are currently connected to the server
         client_count_changed (Signal): signal that is emitted when the
             number of clients connected to the server changes
+        command_execution_manager (CommandExecutionManager): object that
+            manages the asynchronous execution of commands on remote UAVs
+            (i.e. commands that cannot be executed immediately in a
+            synchronous manner)
         extension_manager (ExtensionManager): object that manages the
             loading and unloading of server extensions
         message_hub (MessageHub): central messaging hub via which one can
@@ -52,6 +57,34 @@ class FlockwaveServer(Flask):
             PACKAGE_NAME, *args, **kwds
         )
         self.prepare()
+
+    def create_CMD_INF_message_for(self, receipt_ids,
+                                    in_response_to=None):
+        """Creates a CMD-INF message that contains information regarding
+        the asynchronous commands being executed with the given receipt IDs.
+
+        Parameters:
+            receipt_ids (iterable): list of receipt IDs
+            in_response_to (FlockwaveMessage or None): the message that the
+                constructed message will respond to. ``None`` means that the
+                constructed message will be a notification.
+
+        Returns:
+            FlockwaveMessage: the CMD-INF message with the status info of
+                the given asynchronous commands
+        """
+        receipts = {}
+
+        body = {"receipts": receipts, "type": "CMD-INF"}
+        response = self.message_hub.create_response_or_notification(
+            body=body, in_response_to=in_response_to)
+
+        for receipt_id in receipt_ids:
+            entry = self._find_command_receipt_by_id(receipt_id, response)
+            if entry:
+                receipts[receipt_id] = entry.json
+
+        return response
 
     def create_CONN_INF_message_for(self, connection_ids,
                                     in_response_to=None):
@@ -129,14 +162,16 @@ class FlockwaveServer(Flask):
             body={}, in_response_to=message)
 
         # Process the body
-        message_type = message.body["type"]
-        uav_ids = message.body["ids"]
+        parameters = dict(message.body)
+        message_type = parameters.pop("type")
+        uav_ids = parameters.pop("ids")
 
         # Sort the UAVs being targeted by drivers
         uavs_by_drivers = self._sort_uavs_by_drivers(uav_ids, response)
 
         # Find the method to invoke on the driver
         method_name = {
+            "CMD-REQ": "send_command",
             "UAV-LAND": "send_landing_signal",
             "UAV-TAKEOFF": "send_takeoff_signal"
         }.get(message_type, None)
@@ -154,7 +189,7 @@ class FlockwaveServer(Flask):
             # Execute the method and catch all runtime errors
             if method is not None:
                 try:
-                    results = method(uavs)
+                    results = method(uavs, **parameters)
                 except NotImplementedError:
                     common_error = "Operation not implemented"
                 except NotSupportedError:
@@ -171,6 +206,8 @@ class FlockwaveServer(Flask):
                 for uav, result in iteritems(results):
                     if result is True:
                         response.add_success(uav.id)
+                    elif isinstance(result, CommandExecutionStatus):
+                        response.add_receipt(uav.id, result)
                     else:
                         response.add_failure(uav.id, result)
 
@@ -197,6 +234,13 @@ class FlockwaveServer(Flask):
             sender=self.client_registry
         )
 
+        # Create an object that keeps track of commands being executed
+        # asynchronously on remote UAVs
+        self.command_execution_manager = CommandExecutionManager()
+        self.command_execution_manager.finished.connect(
+            self._on_command_execution_finished,
+            sender=self.command_execution_manager
+        )
         # Creates an object to hold information about all the connections
         # to external data sources that the server manages
         self.connection_registry = ConnectionRegistry()
@@ -213,12 +257,34 @@ class FlockwaveServer(Flask):
         # the server knows about
         self.uav_registry = UAVRegistry()
 
-        # Import and configure the extensions that we want to use.
+        # Import and configure the extensions that we want to use. This
+        # must be done last because we want to be sure that the basic
+        # components of the app (prepared above) are ready.
         self.extension_manager = ExtensionManager(self)
         self.extension_manager.configure(self.config.get("EXTENSIONS", {}))
 
+    def _find_command_receipt_by_id(self, receipt_id, response=None):
+        """Finds the asynchronous command execution receipt with the given
+        ID in the command execution manager or registers a failure in the
+        given response object if there is no command being executed with the
+        given ID.
+
+        Parameters:
+            receipt_id (str): the ID of the receipt to find
+            response (Optional[FlockwaveResponse]): the response in which
+                the failure can be registered
+
+        Returns:
+            Optional[CommandExecutionStatus]: the status object for the
+                execution of the asynchronous command with the given ID
+                or ``None`` if there is no such command
+        """
+        return self._find_in_registry(self.command_execution_manager,
+                                      receipt_id, response,
+                                      "No such receipt")
+
     def _find_connection_by_id(self, connection_id, response=None):
-        """Finds the conenction with the given ID in the connection registry
+        """Finds the connection with the given ID in the connection registry
         or registers a failure in the given response object if there is no
         connection with the given ID.
 
@@ -297,6 +363,25 @@ class FlockwaveServer(Flask):
             message = self.create_CONN_INF_message_for([entry.id])
             with self.app_context():
                 self.message_hub.send_message(message)
+
+    def _on_command_execution_finished(self, sender, status):
+        """Handler called when the execution of a remote asynchronous
+        command finished. Dispatches an appropriate ``CMD-RESP`` message.
+
+        Parameters:
+            sender (CommandExecutionManager): the command execution manager
+            status (CommandExecutionStatus): the status object corresponding
+                to the command whose execution has just finished.
+        """
+        body = {
+            "type": "CMD-RESP",
+            "id": status.id,
+            "response": status.response if status.response is not None else ""
+        }
+        message = self.message_hub.create_response_or_notification(body)
+        with self.app_context():
+            for client in status.clients_to_notify:
+                self.message_hub.send_message(message, to=client)
 
     def _sort_uavs_by_drivers(self, uav_ids, response=None):
         """Given a list of UAV IDs, returns a mapping that maps UAV drivers
@@ -444,6 +529,13 @@ def handle_exception(exc):
 # ######################################################################## #
 
 
+@app.message_hub.on("CMD-INF")
+def handle_CMD_INF(message, hub):
+    return app.create_CMD_INF_message_for(
+        message.body["ids"], in_response_to=message
+    )
+
+
 @app.message_hub.on("CONN-INF")
 def handle_CONN_INF(message, hub):
     return app.create_CONN_INF_message_for(
@@ -485,7 +577,7 @@ def handle_UAV_LIST(message, hub):
     }
 
 
-@app.message_hub.on("UAV-LAND", "UAV-TAKEOFF")
+@app.message_hub.on("CMD-REQ", "UAV-LAND", "UAV-TAKEOFF")
 def handle_UAV_operations(message, hub):
     return app.dispatch_to_uavs(message)
 

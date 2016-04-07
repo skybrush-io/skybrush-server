@@ -200,11 +200,25 @@ class MessageHub(object):
                 message_type = message_type.decode("utf-8")
             self._handlers_by_type[message_type].append(func)
 
-    def send_message(self, message, in_response_to=None):
+    def send_message(self, message, to=None, in_response_to=None):
         """Sends a message or notification from this message hub.
+
+        Notifications are sent to all connected clients, unless ``to`` is
+        specified, in which case they are sent only to the given room or
+        client.
+
+        Messages are sent only to the client whose request is currently
+        being served, unless ``to`` is specified, in which case they are
+        sent only to the given room or client.
 
         Parameters:
             message (FlockwaveMessage): the message to send.
+            to (Optional[str]): room name or session identifier for a client
+                where the message should be sent. ``None`` means to send
+                messages to the client whose request is currently being
+                served and send notifications to everyone.
+            in_response_to (Optional[FlockwaveMessage]): the message that
+                the message being sent responds to.
         """
         broadcast = False
         if in_response_to is not None:
@@ -233,7 +247,10 @@ class MessageHub(object):
                 }
             )
 
-        emit("fw", message.json, json=True, broadcast=broadcast,
+        if to is not None:
+            broadcast = False
+
+        emit("fw", message.json, json=True, broadcast=broadcast, room=to,
              namespace="/")
 
     def _send_response(self, message, in_response_to):
@@ -264,5 +281,5 @@ class MessageHub(object):
                 )
             except Exception:
                 log.exception("Failed to create response")
-        self.send_message(response, in_response_to)
+        self.send_message(response, in_response_to=in_response_to)
         return response

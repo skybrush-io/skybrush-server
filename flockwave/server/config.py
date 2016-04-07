@@ -32,5 +32,6 @@ EXTENSIONS = {
 }
 
 if IN_HEROKU:
-    EXTENSIONS["fake_uavs"] = EXTENSIONS.pop("_fake_uavs")
+    if "_fake_uavs" in EXTENSIONS:
+        EXTENSIONS["fake_uavs"] = EXTENSIONS.pop("_fake_uavs")
     del EXTENSIONS["flockctrl"]

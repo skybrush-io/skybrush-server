@@ -24,9 +24,10 @@ EXTENSIONS = {
         "radius": 50,
         "time_of_single_cycle": 10
     },
-    "_flockctrl": {
+    "flockctrl": {
         "id_format": "{0:02}",
-        "connection": "serial+replay:/Users/ntamas/dev/collmot/git/flockwave-server/test3.flight?autoclose=1"
+        # "connection": "serial+replay:/Users/ntamas/dev/collmot/git/flockwave-server/test3.flight?autoclose=1"
+        "connection": "serial:/tmp/xbee"
     }
 }
 

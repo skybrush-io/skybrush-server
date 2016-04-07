@@ -59,7 +59,7 @@ class FlockwaveServer(Flask):
         self.prepare()
 
     def create_CMD_INF_message_for(self, receipt_ids,
-                                    in_response_to=None):
+                                   in_response_to=None):
         """Creates a CMD-INF message that contains information regarding
         the asynchronous commands being executed with the given receipt IDs.
 

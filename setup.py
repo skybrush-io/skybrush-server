@@ -3,6 +3,7 @@
 from setuptools import setup, find_packages
 
 requires = [
+    "bidict>=0.11.0",
     "bitstring>=3.1.3",
     "blinker>=1.4",
     "click>=6.2",

@@ -4,7 +4,7 @@ from __future__ import division
 
 from abc import ABCMeta
 from flockwave.gps.vectors import Altitude, GPSCoordinate, VelocityNED
-from six import add_metaclass
+from six import add_metaclass, int2byte
 from struct import Struct
 from struct import error as StructError
 
@@ -83,14 +83,27 @@ class FlockCtrlPacketBase(FlockCtrlPacket):
             raise ParseError(ex.message)
 
 
+class FlockCtrlChunkedPacket(FlockCtrlPacket):
+    """Abstract base class for chunked FlockCtrl packets that break down
+    some piece of data in transit to several packets.
+    """
+
+    pass
+
+
+class FlockCtrlCommandResponsePacketBase(FlockCtrlChunkedPacket):
+    """Base class for packets that contain a response to a command that was
+    sent from the ground station to the drone.
+    """
+
+    pass
+
+
 class FlockCtrlStatusPacket(FlockCtrlPacketBase):
     """Status packet sent by FlockCtrl-based drones at regular intervals."""
 
     PACKET_TYPE = 0
     _struct = Struct("<xBBBLllhhlllhBLB8s")
-
-    def __init__(self):
-        super(FlockCtrlStatusPacket, self).__init__()
 
     def decode(self, data):
         self.id, self.algo_and_vehicle, self.choreography_index, \
@@ -129,20 +142,15 @@ class FlockCtrlStatusPacket(FlockCtrlPacketBase):
         return VelocityNED(north=self.velN, east=self.velE, down=self.velD)
 
 
-class FlockCtrlChunkedPacket(FlockCtrlPacket):
-    """Abstract base class for chunked FlockCtrl packets that break down
-    some piece of data in transit to several packets.
+class FlockCtrlCommandPacket(FlockCtrlPacketBase):
+    """Packet containing a request for the drone to execute a given console
+    command.
     """
 
-    pass
+    PACKET_TYPE = 1
 
-
-class FlockCtrlCommandResponsePacketBase(FlockCtrlChunkedPacket):
-    """Base class for packets that contain a response to a command that was
-    sent from the ground station to the drone.
-    """
-
-    pass
+    def encode(self):
+        return int2byte(self.PACKET_TYPE) + self.command
 
 
 class FlockCtrlCommandResponsePacket(FlockCtrlCommandResponsePacketBase):

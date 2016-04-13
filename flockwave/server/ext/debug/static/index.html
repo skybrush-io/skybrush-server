@@ -121,12 +121,7 @@
                 $('<pre>').text(
                     JSON.stringify(data, null, '    ')
                 ).hide().prependTo($panel).slideDown();
-                if ($panel.children().length > 50) {
-                    var $lastResponse = $panel.children().last();
-                    $lastResponse.fadeOut("normal", function() {
-                        $lastResponse.remove();
-                    });
-                }
+                $panel.children('pre:gt(50)').remove();
             }
 
             function guid() {

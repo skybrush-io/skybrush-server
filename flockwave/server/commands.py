@@ -48,7 +48,7 @@ class CommandExecutionManager(RegistryBase):
     expired = Signal()
     finished = Signal()
 
-    def __init__(self, timeout=300):
+    def __init__(self, timeout=30):
         """Constructor.
 
         Parameters:

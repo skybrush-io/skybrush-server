@@ -31,6 +31,9 @@ class CommandExecutionManager(RegistryBase):
         list of pending CommandExecutionStatus_ objects periodically.
 
     Attributes:
+        cancelled (Signal): signal that is emitted when an asynchronous
+            command has been cancelled by the user. The signal conveys the
+            status object that corresponds to the cancelled command.
         expired (Signal): signal that is emitted when one or more
             asynchronous commands have timed out and the corresponding
             status objects are now considered as expired. The signal
@@ -45,6 +48,7 @@ class CommandExecutionManager(RegistryBase):
             invocation of ``cleanup()``.
     """
 
+    cancelled = Signal()
     expired = Signal()
     finished = Signal()
 
@@ -66,18 +70,24 @@ class CommandExecutionManager(RegistryBase):
 
     def cleanup(self):
         """Runs a cleanup process on the dictionary containing the commands
-        currently in progress, removing items that have expired.
+        currently in progress, removing items that have expired and those
+        for which the command has finished its execution and the result has
+        been sent via a ``finished`` signal.
 
         An item is considered to be expired if it has been created more than
-        ``self.timeout`` seconds ago, or if it has finished execution.
+        ``self.timeout`` seconds ago and it has not finished execution yet.
         """
         commands = self._entries
         expiry = time() - self.timeout
         to_remove = [key for key, status in iteritems(commands)
                      if status.finished is not None or
+                     status.cancelled is not None or
                      status.created_at < expiry]
         if to_remove:
             expired = [commands.pop(key) for key in to_remove]
+            expired = [command for command in expired
+                       if command.finished is None and
+                       command.cancelled is None]
             self.expired.send(self, statuses=expired)
 
     def _cleanup_loop(self, seconds=1):
@@ -97,6 +107,28 @@ class CommandExecutionManager(RegistryBase):
             except Exception as ex:
                 log.exception(ex)
 
+    def cancel(self, receipt_id):
+        """Cancels the execution of the asynchronous command with the given
+        receipt ID.
+
+        Parameters:
+            receipt_id (str or CommandExecutionStatus): the receipt
+                identifier of the command that was finished, or the
+                execution status object of the command itself.
+
+        Throws:
+            ValueError: if the given receipt belongs to a different manager
+        """
+        command = self._get_command_from_id(receipt_id)
+        if command is None:
+            # Request has probably expired in the meanwhile
+            log.warn("Received cancellation request for expired receipt: "
+                     "{0}".format(receipt_id))
+            return
+
+        command.mark_as_cancelled()
+        self.cancelled.send(self, status=command)
+
     def finish(self, receipt_id, result=None):
         """Marks the asynchronous command with the given receipt identifier
         as finished, optionally adding the given object as a result.
@@ -108,25 +140,18 @@ class CommandExecutionManager(RegistryBase):
             result (Optional[object]): the result of the command
 
         Throws:
-            KeyError: if the given receipt ID does not exist in this manager
             ValueError: if the given receipt belongs to a different manager
         """
-        if isinstance(receipt_id, CommandExecutionStatus):
-            receipt = self._entries.get(receipt_id.id)
-            if receipt is not None and receipt != receipt_id:
-                raise ValueError("receipt does not belong to this manager")
-        else:
-            receipt = self._entries.get(receipt_id)
-
-        if receipt is None:
+        command = self._get_command_from_id(receipt_id)
+        if command is None:
             # Request has probably expired in the meanwhile
             log.warn("Received response for expired receipt: "
-                     "{0.id}".format(receipt))
+                     "{0}".format(receipt_id))
             return
 
-        receipt.mark_as_finished()
-        receipt.response = result
-        self.finished.send(self, status=receipt)
+        command.mark_as_finished()
+        command.response = result
+        self.finished.send(self, status=command)
 
     def start(self):
         """Registers the execution of a new asynchronous command in the
@@ -149,3 +174,27 @@ class CommandExecutionManager(RegistryBase):
         result.mark_as_sent()
         self._entries[result.id] = result
         return result
+
+    def _get_command_from_id(self, receipt_id):
+        """Returns the command execution status object corresponding to the
+        given receipt ID, or, if the function is given a
+        CommandExecutionStatus_ object, checks whether the object really
+        belongs to this manager.
+
+        Parameters:
+            receipt_id (str or CommandExecutionStatus): the receipt
+                identifier of the command execution status object being
+                looked up, or the execution status object of the command
+                itself.
+
+        Returns:
+            CommandExecutionStatus: the command execution status object
+                belonging to the given receipt ID.
+        """
+        if isinstance(receipt_id, CommandExecutionStatus):
+            receipt = self._entries.get(receipt_id.id)
+            if receipt is not None and receipt != receipt_id:
+                raise ValueError("receipt does not belong to this manager")
+        else:
+            receipt = self._entries.get(receipt_id)
+        return receipt

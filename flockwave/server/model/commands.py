@@ -31,6 +31,7 @@ class CommandExecutionStatus(object):
         self.response = None
         self.sent = None
         self.finished = None
+        self.cancelled = None
         self._clients_to_notify = set()
 
     @property
@@ -40,12 +41,20 @@ class CommandExecutionStatus(object):
         """
         return self._clients_to_notify
 
+    def mark_as_cancelled(self):
+        """Marks the command as being cancelled with the current timestamp if
+        it has not been marked as cancelled yet and it has not finished
+        either. Otherwise this function is a no-op.
+        """
+        if self.cancelled is None and self.finished is None:
+            self.cancelled = datetime.now()
+
     def mark_as_finished(self):
         """Marks the command as being finished with the current timestamp if
-        it has not been marked as finished yet. Otherwise this function is a
-        no-op.
+        it has not been marked as finished yet and it has not been cancelled
+        either. Otherwise this function is a no-op.
         """
-        if self.finished is None:
+        if self.finished is None and self.cancelled is None:
             self.finished = datetime.now()
 
     def mark_as_sent(self):

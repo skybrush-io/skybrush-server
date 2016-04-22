@@ -36,12 +36,16 @@
                 </fieldset>
 
                 <button type="button" class="btn btn-primary" onclick="send(); return false;">Send</button>
-                <button type="button" class="btn" onclick="disconnect(); return false;">Disconnect</button>
+                <button type="button" class="btn btn-default" onclick="disconnect(); return false;">Disconnect</button>
 
                 <div class="pull-right">
-                    <strong>Presets:</strong>
-                    <span id="preset-buttons">
-                    </span>
+                    <div class="btn-group">
+                        <button type="button" id="preset-dropdown-button" class="btn btn-default dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                            Presets <span class="caret"></span>
+                        </button>
+                        <ul class="dropdown-menu" id="preset-buttons">
+                        </ul>
+                    </div>
                 </div>
             </form>
 
@@ -66,6 +70,10 @@
 
         <script type="text/javascript">
             var presets = {
+                "CMD-DEL": {
+                    "type": "CMD-DEL",
+                    "ids": []
+                },
                 "CMD-INF": {
                     "type": "CMD-INF",
                     "ids": []
@@ -140,6 +148,7 @@
             }
 
             function preparePresetButtons() {
+                var $presetDropdownButton = $('#preset-dropdown-button');
                 var $presetButtons = $('#preset-buttons');
                 var presetNames = $.map(presets,
                     function(preset, presetName) {
@@ -148,15 +157,15 @@
                 presetNames.sort();
 
                 $.each(presetNames, function(index, presetName) {
-                    $('<button>')
-                        .addClass('btn')
+                    $('<a href="#">')
                         .on("click", function() {
                             loadPreset(presetName);
+                            $presetDropdownButton.dropdown('toggle');
                             return false;
                         })
                         .text(presetName)
+                        .wrap('<li>').parent()
                         .appendTo($presetButtons);
-                    $('<span>').text(' ').appendTo($presetButtons);
                 });
             }
 

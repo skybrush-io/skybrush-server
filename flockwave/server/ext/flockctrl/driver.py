@@ -16,6 +16,14 @@ class FlockCtrlDriver(UAVDriver):
     """Driver class for FlockCtrl-based drones.
 
     Attributes:
+        allow_multiple_commands_per_uav (bool): whether the driver should
+            allow the user to send a command to an UAV while another one is
+            still in progress (i.e. hasn't timed out). When the property is
+            ``True``, sending the second command is allowed and it will
+            automatically cancel the first command. When the property is
+            ``False``, sending the second command is not allowed until the
+            user cancels the execution of the first command explicitly.
+            The default is ``True``.
         app (FlockwaveServer): the app in which the driver lives
         id_format (str): Python format string that receives a numeric
             drone ID in the flock and returns its preferred formatted
@@ -46,6 +54,8 @@ class FlockCtrlDriver(UAVDriver):
             self._on_chunked_packet_assembled, sender=self._packet_assembler
         )
         self._uavs_by_source_address = {}
+
+        self.allow_multiple_commands_per_uav = True
         self.app = app
         self.id_format = id_format
         self.log = log.getChild("flockctrl").getChild("driver")
@@ -219,7 +229,7 @@ class FlockCtrlDriver(UAVDriver):
 
         decoded_body = body.decode("utf-8", errors="replace")
         cmd_manager = self.app.command_execution_manager
-        cmd_manager.finish(command.id, decoded_body)
+        cmd_manager.finish(command, decoded_body)
 
     def _on_command_expired(self, sender, statuses):
         """Handler called when a command being executed by the command
@@ -268,15 +278,18 @@ class FlockCtrlDriver(UAVDriver):
                 a string describing the reason of failure if it has not
                 been sent
         """
-        existing_command = self._commands_by_uav.get(uav.id)
-        if existing_command is not None:
-            return "Another command (receipt ID={0.id}) is already "\
-                   "in progress".format(existing_command)
-
         if uav.address is None:
             return "XBee address of UAV is not known yet"
 
         cmd_manager = self.app.command_execution_manager
+        existing_command = self._commands_by_uav.get(uav.id)
+        if existing_command is not None:
+            if self.allow_multiple_commands_per_uav:
+                cmd_manager.cancel(existing_command)
+            else:
+                return "Another command (receipt ID={0.id}) is already "\
+                       "in progress".format(existing_command)
+
         self._commands_by_uav[uav.id] = receipt = cmd_manager.start()
 
         packet = FlockCtrlCommandRequestPacket(command.encode("utf-8"))

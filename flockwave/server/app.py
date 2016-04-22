@@ -59,6 +59,31 @@ class FlockwaveServer(Flask):
         )
         self.prepare()
 
+    def create_CMD_DEL_message_for(self, receipt_ids, in_response_to):
+        """Creates a CMD-DEL message after having cancelled the execution of
+        the asynchronous commands with the given receipt IDs.
+
+        Parameters:
+            receipt_ids (iterable): list of receipt IDs
+            in_response_to (FlockwaveMessage or None): the message that the
+                constructed message will respond to.
+
+        Returns:
+            FlockwaveMessage: the CMD-DEL message that acknowledges the
+                cancellation of the given asynchronous commands
+        """
+        body = {"type": "CMD-INF"}
+        response = self.message_hub.create_response_or_notification(
+            body=body, in_response_to=in_response_to)
+
+        for receipt_id in receipt_ids:
+            entry = self._find_command_receipt_by_id(receipt_id, response)
+            if entry:
+                self.command_execution_manager.cancel(entry)
+                response.add_success(receipt_id)
+
+        return response
+
     def create_CMD_INF_message_for(self, receipt_ids,
                                    in_response_to=None):
         """Creates a CMD-INF message that contains information regarding
@@ -250,7 +275,14 @@ class FlockwaveServer(Flask):
 
         # Create an object that keeps track of commands being executed
         # asynchronously on remote UAVs
-        self.command_execution_manager = CommandExecutionManager()
+        cfg = self.config.get("COMMAND_EXECUTION_MANAGER", {})
+        self.command_execution_manager = CommandExecutionManager(
+            timeout=cfg.get("timeout", 30)
+        )
+        self.command_execution_manager.expired.connect(
+            self._on_command_execution_timeout,
+            sender=self.command_execution_manager
+        )
         self.command_execution_manager.finished.connect(
             self._on_command_execution_finished,
             sender=self.command_execution_manager
@@ -415,6 +447,36 @@ class FlockwaveServer(Flask):
             for client in status.clients_to_notify:
                 self.message_hub.send_message(message, to=client)
 
+    def _on_command_execution_timeout(self, sender, statuses):
+        """Handler called when the execution of a remote asynchronous
+        command was abandoned with a timeout. Dispatches an appropriate
+        ``CMD-TIMEOUT`` message.
+
+        Parameters:
+            sender (CommandExecutionManager): the command execution manager
+            statuses (List[CommandExecutionStatus]): the status objects
+                corresponding to the commands whose execution has timed out.
+        """
+        # Multiple commands may have timed out at the same time, and we
+        # need to sort them by the clients that originated these requests
+        # so we can dispatch individual CMD-TIMEOUT messages to each of
+        # them
+        receipt_ids_by_clients = defaultdict(list)
+        for status in statuses:
+            receipt_id = status.id
+            for client in status.clients_to_notify:
+                receipt_ids_by_clients[client].append(receipt_id)
+
+        hub = self.message_hub
+        with self.app_context():
+            for client, receipt_ids in iteritems(receipt_ids_by_clients):
+                body = {
+                    "type": "CMD-TIMEOUT",
+                    "ids": receipt_ids
+                }
+                message = hub.create_response_or_notification(body)
+                hub.send_message(message, to=client)
+
     def _sort_uavs_by_drivers(self, uav_ids, response=None):
         """Given a list of UAV IDs, returns a mapping that maps UAV drivers
         to the UAVs specified by the IDs.
@@ -570,6 +632,13 @@ def handle_exception(exc):
 
 
 # ######################################################################## #
+
+
+@app.message_hub.on("CMD-DEL")
+def handle_CMD_DEL(message, hub):
+    return app.create_CMD_DEL_message_for(
+        message.body["ids"], in_response_to=message
+    )
 
 
 @app.message_hub.on("CMD-INF")

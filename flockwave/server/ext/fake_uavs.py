@@ -49,6 +49,10 @@ class FakeUAVDriver(UAVDriver):
         uav.radius = radius
         return uav
 
+    def handle_command_timeout(self, uavs):
+        cmd_manager = self.app.command_execution_manager
+        return {uav: cmd_manager.start() for uav in uavs}
+
     def handle_command_yo(self, uavs):
         cmd_manager = self.app.command_execution_manager
         result = {}
@@ -296,7 +300,19 @@ class FakeUAV(UAVBase):
 
 
 class FakeUAVProviderExtension(UAVExtensionBase):
-    """Extension that creates one or more fake UAVs in the server."""
+    """Extension that creates one or more fake UAVs in the server.
+
+    Fake UAVs circle around a given point in a given radius, with constant
+    angular velocity. They are able to respond to landing and takeoff
+    requests, and also handle the following commands:
+
+    * Sending ``yo`` to a UAV makes it respond with either ``yo!``, ``yo?``
+      or ``yo.``, with a mean delay of 500 milliseconds.
+
+    * Sending ``timeout`` to a UAV makes it register the command but never
+      finish its execution. Useful for testing the timeout and cancellation
+      mechanism of the command execution manager of the server.
+    """
 
     def __init__(self):
         """Constructor."""

@@ -32,7 +32,7 @@ class SerialPortConnection(ConnectionBase):
         - ``write()``
     """
 
-    def __init__(self, path, baud, stopbits=1):
+    def __init__(self, path, baud=115200, stopbits=1):
         """Constructor.
 
         Parameters:

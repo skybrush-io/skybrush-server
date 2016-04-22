@@ -1,0 +1,27 @@
+{% extends "layout.html" %}
+{% block body %}
+<h1>List of active threads</h1>
+
+<p class="lead">The following table lists all the active threads in the
+server.</p>
+
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>Ident</th>
+            <th>Name</th>
+            <th>Daemon?</th>
+        </tr>
+    </thead>
+    <tbody>
+{% for thread in threads %}
+        <tr>
+            <td>{{ thread.ident }}</td>
+            <td>{{ thread.name }}</td>
+            <td>{% if thread.daemon %}<span class="glyphicon glyphicon-ok text-success"></span>{% else %}<span class="glyphicon glyphicon-remove text-danger"></span>{% endif %}</td>
+        </tr>
+{% endfor %}
+    </tbody>
+</table>
+
+{% endblock %}

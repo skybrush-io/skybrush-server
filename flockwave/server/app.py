@@ -8,9 +8,10 @@ from blinker import Signal
 from collections import defaultdict
 from datetime import datetime
 from enum import Enum
-from flask import Flask, request
+from flask import abort, Flask, redirect, request, url_for
 from flask.ext.jwt import current_identity as jwt_identity
 from flask.ext.socketio import SocketIO
+from heapq import heappush
 from six import iteritems
 
 from .authentication import jwt_authentication, jwt_optional
@@ -214,6 +215,19 @@ class FlockwaveServer(Flask):
         return response
 
     @property
+    def index_url(self):
+        """Returns the URL of the best proposed index page.
+
+        Returns:
+            Optional[str]: the URL of the best proposed index page or
+                ``None`` if no index page has been proposed
+        """
+        if self._proposed_index_pages:
+            return url_for(self._proposed_index_pages[0][1])
+        else:
+            return None
+
+    @property
     def num_clients(self):
         """The number of clients connected to the server."""
         return self.client_registry.num_entries
@@ -257,11 +271,29 @@ class FlockwaveServer(Flask):
         # the server knows about
         self.uav_registry = UAVRegistry()
 
+        # Create an empty heap for proposed index pages
+        self._proposed_index_pages = []
+
         # Import and configure the extensions that we want to use. This
         # must be done last because we want to be sure that the basic
         # components of the app (prepared above) are ready.
         self.extension_manager = ExtensionManager(self)
         self.extension_manager.configure(self.config.get("EXTENSIONS", {}))
+
+    def propose_as_index_page(self, route, priority=0):
+        """Proposes the given Flask route as a potential index page for the
+        Flockwave server. This method can be called from the ``load()``
+        functions of extensions when they want to propose one of their own
+        routes as an index page. The server will select the index page with
+        the highest priority when all the extensions have been loaded.
+
+        Parameters:
+            route (str): name of a Flask route to propose as the index
+                page, in the form of ``blueprint.route``
+                (e.g., ``debug.index``)
+            priority (Optional[int]): the priority of the proposed route.
+        """
+        heappush(self._proposed_index_pages, (priority, route))
 
     def _find_command_receipt_by_id(self, receipt_id, response=None):
         """Finds the asynchronous command execution receipt with the given
@@ -469,9 +501,20 @@ class _JSONEncoder(object):
         return self.decoder.decode(data)
 
 
+############################################################################
+
 app = FlockwaveServer()
 app.config["JWT_AUTH_URL_RULE"] = None      # Disable default JWT auth rule
 jwt_authentication.init_app(app)
+
+
+@app.route("/")
+def index():
+    index_url = app.index_url
+    if index_url:
+        return redirect(index_url)
+    else:
+        abort(404)
 
 ############################################################################
 

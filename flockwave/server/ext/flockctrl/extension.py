@@ -3,7 +3,7 @@
 """
 
 from blinker import Signal
-from eventlet import spawn_n
+from eventlet import Queue, spawn_n
 from xbee import ZigBee
 
 from flockwave.server.connections import create_connection, reconnecting
@@ -27,7 +27,9 @@ class FlockCtrlDronesExtension(UAVExtensionBase):
         self._driver = None
         self._flockctrl_parser = FlockCtrlParser()
         self._xbee_lowlevel = None
-        self._xbee_thread = None
+        self._xbee = None
+        self._xbee_inbound_thread = None
+        self._xbee_outbound_thread = None
 
     def _create_driver(self):
         return FlockCtrlDriver()
@@ -47,8 +49,15 @@ class FlockCtrlDronesExtension(UAVExtensionBase):
     @xbee_lowlevel.setter
     def xbee_lowlevel(self, value):
         if self._xbee_lowlevel is not None:
-            self._xbee_thread.kill()
+            self._xbee_inbound_thread.kill()
+            self._xbee_outbound_thread.kill()
             self._xbee_lowlevel.close()
+
+            self._xbee = None
+            self._xbee_inbound_thread = None
+            self._xbee_outbound_thread = None
+            self._packet_queue = None
+
             self.app.connection_registry.remove("XBee")
 
         self._xbee_lowlevel = value
@@ -59,11 +68,17 @@ class FlockCtrlDronesExtension(UAVExtensionBase):
                 description="Upstream XBee connection for FlockCtrl drones",
                 purpose=ConnectionPurpose.uavRadioLink
             )
-            self._xbee_lowlevel.open()
 
-            thread = XBeeThread(self, self._xbee_lowlevel)
+            self._xbee_lowlevel.open()
+            self._xbee = ZigBee(self._xbee_lowlevel)
+
+            thread = XBeeInboundThread(self, self._xbee)
             thread.on_frame.connect(self._handle_inbound_xbee_frame)
-            self._xbee_thread = spawn_n(thread.run)
+            self._xbee_inbound_thread = spawn_n(thread.run)
+
+            thread = XBeeOutboundThread(self, self._xbee)
+            self._packet_queue = thread.queue
+            self._xbee_outbound_thread = spawn_n(thread.run)
 
     def _configure_lowlevel_xbee_connection(self, specifier):
         """Configures the low-level XBee connection object from the given
@@ -95,6 +110,7 @@ class FlockCtrlDronesExtension(UAVExtensionBase):
         """
         driver.id_format = configuration.get("id_format", "{0:02}")
         driver.log = self.log.getChild("driver")
+        driver.send_packet = self.send_packet
 
     def _handle_inbound_xbee_frame(self, sender, frame):
         """Handles an inbound XBee data frame."""
@@ -111,10 +127,23 @@ class FlockCtrlDronesExtension(UAVExtensionBase):
             self.log.exception(ex)
             return
 
+        packet.source_address = frame.get("source_addr_long")
         self._driver.handle_inbound_packet(packet)
 
+    def send_packet(self, packet, destination=None):
+        """Requests the extension to send the given FlockCtrl packet to the
+        given destination.
 
-class XBeeThread(object):
+        Parameters:
+            packet (FlockCtrlPacket): the packet to send
+            destination (Optional[bytes]): the long destination address to
+                send the packet to. ``None`` means to send a broadcast
+                packet.
+        """
+        self._packet_queue.put((packet, destination))
+
+
+class XBeeInboundThread(object):
     """Green thread that reads incoming packets from an XBee serial
     connection and dispatches signals for every one of them.
 
@@ -124,18 +153,17 @@ class XBeeThread(object):
 
     on_frame = Signal()
 
-    def __init__(self, ext, connection):
+    def __init__(self, ext, xbee):
         """Constructor.
 
         Parameters:
             ext (FlockctrlDronesExtension): the extension that hosts this
                 thread
-            connection (Connection): the connection to the serial port where
-                the XBee can be found.
+            xbee (ZigBee): the ZigBee object that should be used t wait
+                for inbound packets
         """
         self.ext = ext
-        self._connection = connection
-        self._xbee = ZigBee(connection)
+        self._xbee = xbee
 
     def _callback(self, frame):
         """Callback function called for every single frame read from the
@@ -164,6 +192,67 @@ class XBeeThread(object):
                     self._callback(self._xbee.wait_read_frame())
                 except Exception as ex:
                     self._error_callback(ex)
+
+
+class XBeeOutboundThread(object):
+    """Green thread that sends outbound packets to an XBee serial
+    connection. The outbound packets must be placed into a queue that
+    is owned by this thread.
+
+    The thread is running within the application context of the Flockwave
+    server application.
+    """
+
+    def __init__(self, ext, xbee):
+        """Constructor.
+
+        Parameters:
+            ext (FlockctrlDronesExtension): the extension that hosts this
+                thread
+            xbee (ZigBee): the ZigBee object that should be used to send
+                outbound packets
+        """
+        self.ext = ext
+        self._xbee = xbee
+        self._queue = Queue()
+
+    def _error_callback(self, exception):
+        """Callback function called when an exception happens while sending
+        a data frame.
+        """
+        self.ext.log.exception(exception)
+
+    @property
+    def queue(self):
+        """The queue that should be used to send outbound packets to this
+        thread.
+        """
+        return self._queue
+
+    def run(self):
+        """Waits for outbound frames to send on the queue owned by this
+        thread, and sends each of them via the XBee connection.
+        """
+        with self.ext.app.app_context():
+            while True:
+                try:
+                    packet, destination = self._queue.get()
+                    self._send_packet(packet, destination)
+                except Exception as ex:
+                    self._error_callback(ex)
+
+    def _send_packet(self, packet, destination):
+        """Sends a single packet via the XBee connection.
+
+        Parameters:
+            packet (FlockCtrlPacket): the packet to send
+            destination (Optional[bytes]): the long destination address to
+                send the packet to. ``None`` means to send a broadcast
+                packet.
+        """
+        data = packet.encode()
+        self._xbee.send("tx", dest_addr_long=destination,
+                        dest_addr=b"\xFF\xFE", data=data)
 
 
 construct = FlockCtrlDronesExtension

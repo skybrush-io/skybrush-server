@@ -10,7 +10,7 @@ SECRET_KEY = b'\xa6\xd6\xd3a\xfd\xd9\x08R\xd2U\x05\x10'\
 EXTENSIONS = {
     "api.v1": {},
     "debug": {
-        "route": "/"
+        "route": "/debug"
     },
     "_fake_uavs": {
         "count": 3,
@@ -26,8 +26,8 @@ EXTENSIONS = {
     },
     "flockctrl": {
         "id_format": "{0:02}",
-        "connection": "serial+replay:/Users/ntamas/dev/collmot/git/flockwave-server/test3.flight?autoclose=1"
-        # "connection": "serial:/tmp/xbee"
+        # "connection": "serial+replay:/Users/ntamas/dev/collmot/git/flockwave-server/test3.flight?autoclose=1"
+        "connection": "serial:/tmp/xbee"
     }
 }
 

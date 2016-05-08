@@ -18,6 +18,7 @@ requires = [
     "flockwave-gps>=0.3.0",
     "flockwave-spec>=0.8.0",
     "jsonschema>=2.5.1",
+    "mido>=1.1.14",
     "pyserial>=2.7",
     "python-baseconv>=1.1.3",
     "python-socketio>=0.6.1",

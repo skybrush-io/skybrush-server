@@ -22,6 +22,8 @@ class MIDIPortConnection(ConnectionBase):
         """
         # Lazy import used here so we don't bail out if the user does not
         # have mido but does not want to use MIDI ports either
+        super(MIDIPortConnection, self).__init__()
+
         import mido
         self.mido = mido
         self.path = path

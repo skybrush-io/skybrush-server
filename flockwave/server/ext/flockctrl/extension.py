@@ -3,7 +3,7 @@
 """
 
 from blinker import Signal
-from eventlet import Queue, spawn_n
+from eventlet import Queue, spawn
 from xbee import ZigBee
 
 from flockwave.server.connections import create_connection, reconnecting
@@ -74,11 +74,11 @@ class FlockCtrlDronesExtension(UAVExtensionBase):
 
             thread = XBeeInboundThread(self, self._xbee)
             thread.on_frame.connect(self._handle_inbound_xbee_frame)
-            self._xbee_inbound_thread = spawn_n(thread.run)
+            self._xbee_inbound_thread = spawn(thread.run)
 
             thread = XBeeOutboundThread(self, self._xbee)
             self._packet_queue = thread.queue
-            self._xbee_outbound_thread = spawn_n(thread.run)
+            self._xbee_outbound_thread = spawn(thread.run)
 
     def _configure_lowlevel_xbee_connection(self, specifier):
         """Configures the low-level XBee connection object from the given

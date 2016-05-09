@@ -79,6 +79,8 @@ class MIDITimecodeAssembler(object):
         """
         if message.type == "quarter_frame":
             return self._feed_quarter_frame(message)
+        elif message.type == "sysex":
+            return self._feed_sysex_frame(message)
         else:
             return None
 
@@ -113,7 +115,8 @@ class MIDITimecodeAssembler(object):
             self._hour = value
         elif frame_type == 7:
             self._hour += (value & 1) << 4
-            frames_per_second, is_drop_frame = self._rate_bits_to_fps(value)
+            frames_per_second, is_drop_frame = self._rate_bits_to_fps(
+                (value & 6) >> 1)
             timecode = SMPTETimecode(hour=self._hour, minute=self._minute,
                                      second=self._second, frame=self._frame,
                                      frames_per_second=frames_per_second,
@@ -123,14 +126,33 @@ class MIDITimecodeAssembler(object):
         self._expected_frame_type = (self._expected_frame_type + 1) % 8
         return result
 
+    def _feed_sysex_frame(self, message):
+        if message.data[0:4] != (127, 127, 1, 1):
+            # Not a full MIDI timecode frame
+            return None
+
+        now = time()
+        hour, minute, second, frame = message.data[4:8]
+        rate_bits = (hour >> 5) & 3
+        hour = hour & 31
+        frames_per_second, is_drop_frame = self._rate_bits_to_fps(rate_bits)
+        timecode = SMPTETimecode(hour=hour, minute=minute, second=second,
+                                 frame=frame, drop=is_drop_frame,
+                                 frames_per_second=frames_per_second)
+        return now, timecode
+
     @staticmethod
     def _rate_bits_to_fps(value):
-        """Given a data byte from a MIDI timecode quarter frame of type 7,
-        returns the frame rate and whether it is a drop-frame MIDI timecode.
+        """Given a data byte from a MIDI timecode quarter frame of type 7 or
+        a full MIDI timecode frame, returns the frame rate and whether it is
+        a drop-frame MIDI timecode.
 
         Parameters:
-            value (int): the data byte of a MIDI timecode quarter frame of
-                type 7
+            value (int): the frame rate bits of a MIDI timecode quarter
+                frame of type 7, or of a full MIDI timecode frame. The bits
+                have to be shifted down to the least significant positions
+                before calling this function; in other words, the only
+                allowed values here are 0, 1, 2 or 3.
 
         Returns:
             (int, bool): the number of frames per second and whether this is

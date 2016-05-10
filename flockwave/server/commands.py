@@ -10,8 +10,8 @@ from six import iteritems
 from time import time
 
 from .logger import log as base_log
-from .model import CommandExecutionStatus, CommandExecutionStatusBuilder, \
-    RegistryBase
+from .model import CommandExecutionStatus, CommandExecutionStatusBuilder
+from .registries.base import RegistryBase
 
 __all__ = ("CommandExecutionManager", )
 

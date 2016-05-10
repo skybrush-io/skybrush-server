@@ -6,12 +6,13 @@ from __future__ import absolute_import
 
 from blinker import Signal
 
-from .logger import log as base_log
-from .model import ConnectionInfo, ConnectionPurpose, RegistryBase
+from ..logger import log as base_log
+from ..model import ConnectionInfo, ConnectionPurpose
+from .base import RegistryBase
 
 __all__ = ("ConnectionRegistry", )
 
-log = base_log.getChild("connection_registry")
+log = base_log.getChild("registries.connections")
 
 
 class ConnectionRegistry(RegistryBase):
@@ -80,7 +81,7 @@ class ConnectionRegistry(RegistryBase):
             del self._entries[name]
         except KeyError:
             return
-    
+
     def _create_entry(self, connection, name):
         """Creates a new entry for the given connection with the given
         name.

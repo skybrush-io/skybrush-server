@@ -6,12 +6,12 @@ from __future__ import absolute_import
 
 from blinker import Signal
 
-from .logger import log as base_log
-from .model import RegistryBase
+from ..logger import log as base_log
+from .base import RegistryBase
 
 __all__ = ("ClientRegistry", )
 
-log = base_log.getChild("client_registry")
+log = base_log.getChild("registries.client")
 
 
 class ClientRegistry(RegistryBase):

@@ -15,15 +15,13 @@ from heapq import heappush
 from six import iteritems
 
 from .authentication import jwt_authentication, jwt_optional
-from .client_registry import ClientRegistry
 from .commands import CommandExecutionManager, CommandExecutionStatus
-from .connection_registry import ConnectionRegistry
 from .errors import NotSupportedError
 from .ext.manager import ExtensionManager
 from .logger import log
 from .message_hub import MessageHub
 from .model import FlockwaveMessage
-from .uav_registry import UAVRegistry
+from .registries import ClientRegistry, ConnectionRegistry, UAVRegistry
 from .version import __version__ as server_version
 
 __all__ = ("app", "socketio")

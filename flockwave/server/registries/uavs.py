@@ -4,7 +4,7 @@ server knows.
 
 __all__ = ("UAVRegistry", )
 
-from .model import RegistryBase
+from .base import RegistryBase
 
 
 class UAVRegistry(RegistryBase):

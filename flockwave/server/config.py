@@ -38,7 +38,8 @@ EXTENSIONS = {
     },
     "smpte_timecode": {
         "connection": "midi:IAC Driver Bus 1"
-    }
+    },
+    "system_clock": {}
 }
 
 if IN_HEROKU:

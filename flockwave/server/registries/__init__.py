@@ -8,8 +8,10 @@ contain a separate registry for each type of object.
 
 from .base import Registry, RegistryBase
 from .clients import ClientRegistry
+from .clocks import ClockRegistry
 from .connections import ConnectionRegistry
 from .uavs import UAVRegistry
 
 __all__ = ("Registry", "RegistryBase",
-           "ClientRegistry", "ConnectionRegistry", "UAVRegistry")
+           "ClientRegistry", "ClockRegistry", "ConnectionRegistry",
+           "UAVRegistry")

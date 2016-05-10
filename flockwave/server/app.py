@@ -21,7 +21,8 @@ from .ext.manager import ExtensionManager
 from .logger import log
 from .message_hub import MessageHub
 from .model import FlockwaveMessage
-from .registries import ClientRegistry, ConnectionRegistry, UAVRegistry
+from .registries import ClientRegistry, ClockRegistry, ConnectionRegistry, \
+    UAVRegistry
 from .version import __version__ as server_version
 
 __all__ = ("app", "socketio")
@@ -107,6 +108,33 @@ class FlockwaveServer(Flask):
             entry = self._find_command_receipt_by_id(receipt_id, response)
             if entry:
                 receipts[receipt_id] = entry.json
+
+        return response
+
+    def create_CLK_INF_message_for(self, clock_ids, in_response_to=None):
+        """Creates a CLK-INF message that contains information regarding
+        the clocks with the given IDs.
+
+        Parameters:
+            clock_ids (iterable): list of clock IDs
+            in_response_to (FlockwaveMessage or None): the message that the
+                constructed message will respond to. ``None`` means that the
+                constructed message will be a notification.
+
+        Returns:
+            FlockwaveMessage: the CLK-INF message with the status info of
+                the given clocks
+        """
+        statuses = {}
+
+        body = {"status": statuses, "type": "CLK-INF"}
+        response = self.message_hub.create_response_or_notification(
+            body=body, in_response_to=in_response_to)
+
+        for clock_id in clock_ids:
+            entry = self._find_clock_by_id(clock_id, response)
+            if entry:
+                statuses[clock_id] = entry.json
 
         return response
 
@@ -271,6 +299,10 @@ class FlockwaveServer(Flask):
             sender=self.client_registry
         )
 
+        # Create an object to hold information about all the clocks that the
+        # server manages
+        self.clock_registry = ClockRegistry()
+
         # Create an object that keeps track of commands being executed
         # asynchronously on remote UAVs
         cfg = self.config.get("COMMAND_EXECUTION_MANAGER", {})
@@ -285,6 +317,7 @@ class FlockwaveServer(Flask):
             self._on_command_execution_finished,
             sender=self.command_execution_manager
         )
+
         # Creates an object to hold information about all the connections
         # to external data sources that the server manages
         self.connection_registry = ConnectionRegistry()
@@ -324,6 +357,23 @@ class FlockwaveServer(Flask):
             priority (Optional[int]): the priority of the proposed route.
         """
         heappush(self._proposed_index_pages, (priority, route))
+
+    def _find_clock_by_id(self, clock_id, response=None):
+        """Finds the clock with the given ID in the clock registry or registers
+        a failure in the given response object if there is no clock with the
+        given ID.
+
+        Parameters:
+            clock_id (str): the ID of the clock to find
+            response (Optional[FlockwaveResponse]): the response in which
+                the failure can be registered
+
+        Returns:
+            Optional[UAV]: the UAV with the given ID or ``None`` if there
+                is no such UAV
+        """
+        return self._find_in_registry(self.clock_registry, clock_id,
+                                      response, "No such clock")
 
     def _find_command_receipt_by_id(self, receipt_id, response=None):
         """Finds the asynchronous command execution receipt with the given
@@ -630,6 +680,20 @@ def handle_exception(exc):
 
 
 # ######################################################################## #
+
+
+@app.message_hub.on("CLK-INF")
+def handle_CLK_INF(message, hub):
+    return app.create_CLK_INF_message_for(
+        message.body["ids"], in_response_to=message
+    )
+
+
+@app.message_hub.on("CLK-LIST")
+def handle_CLK_LIST(message, hub):
+    return {
+        "ids": list(app.clock_registry.ids)
+    }
 
 
 @app.message_hub.on("CMD-DEL")

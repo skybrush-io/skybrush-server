@@ -302,7 +302,10 @@ class FlockwaveServer(Flask):
         # Create an object to hold information about all the clocks that the
         # server manages
         self.clock_registry = ClockRegistry()
-
+        self.clock_registry.clock_changed.connect(
+            self._on_clock_changed,
+            sender=self.clock_registry
+        )
         # Create an object that keeps track of commands being executed
         # asynchronously on remote UAVs
         cfg = self.config.get("COMMAND_EXECUTION_MANAGER", {})
@@ -457,7 +460,20 @@ class FlockwaveServer(Flask):
             return None
 
     def _on_client_count_changed(self, sender):
+        """Handler called when the number of clients attached to the server
+        has changed. Dispatches a ``num_clients_changed`` signal.
+        """
         self.num_clients_changed.send(self)
+
+    def _on_clock_changed(self, sender, clock):
+        """Handler called when one of the clocks managed by the clock
+        registry of the server has changed. Creates and sends a ``CLK-INF``
+        notification for the clock that has changed.
+        """
+        if "socketio" in self.extensions:
+            message = self.create_CLK_INF_message_for([clock.id])
+            with self.app_context():
+                self.message_hub.send_message(message)
 
     def _on_connection_state_changed(self, sender, entry, old_state,
                                      new_state):

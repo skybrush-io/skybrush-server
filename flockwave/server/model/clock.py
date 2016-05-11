@@ -3,6 +3,7 @@
 from __future__ import absolute_import
 
 from abc import ABCMeta, abstractproperty
+from blinker import Signal
 from datetime import datetime
 from six import add_metaclass
 from pytz import utc
@@ -13,7 +14,21 @@ __all__ = ("Clock", "ClockBase", "StoppableClockBase")
 
 @add_metaclass(ABCMeta)
 class Clock(object):
-    """Interface specification for clock objects."""
+    """Interface specification for clock objects.
+
+    Attributes:
+        started (Signal): signal that is sent when the clock is started
+        stopped (Signal): signal that is sent when the clock is stopped
+        changed (Signal): signal that is sent when the clock is adjusted
+            manually. It carries a single keyword argument named 'delta'
+            that contains the number of ticks with which the clock was
+            adjusted. It is positive if the clock was adjusted forward and
+            negative if the clock was adjusted backward.
+    """
+
+    started = Signal()
+    stopped = Signal()
+    changed = Signal()
 
     @abstractproperty
     def epoch(self):
@@ -149,7 +164,15 @@ class StoppableClockBase(ClockBase):
     @ClockBase.running.setter
     def running(self, value):
         """Sets whether the clock is running."""
+        if self._running == value:
+            return
+
         self._running = value
+
+        if self._running:
+            self.started.send(self)
+        else:
+            self.stopped.send(self)
 
     def start(self):
         """Starts the clock if it was not running yet."""

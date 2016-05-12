@@ -2,10 +2,11 @@
 
 from __future__ import absolute_import
 
-from abc import ABCMeta, abstractproperty
+from abc import ABCMeta, abstractmethod, abstractproperty
 from blinker import Signal
 from datetime import datetime
 from six import add_metaclass
+from time import time
 from pytz import utc
 
 
@@ -55,10 +56,25 @@ class Clock(object):
         """Whether the clock is running."""
         raise NotImplementedError
 
-    @abstractproperty
+    @property
     def ticks(self):
         """Returns the current timestamp of the clock, i.e. the number of
         ticks elapsed since the epoch.
+        """
+        return self.ticks_given_time(time())
+
+    @abstractmethod
+    def ticks_given_time(self, now):
+        """Returns the timestamp of the clock, assuming that the internal
+        clock of the server is set to the given time.
+
+        Parameters:
+            now (float): the current time according to the internal
+                clock of the server, expressed as the number of seconds
+                elapsed since the Unix epoch
+
+        Returns:
+            float: the timestamp of the clock
         """
         raise NotImplementedError
 
@@ -108,9 +124,11 @@ class ClockBase(Clock):
         """
         epoch = self.epoch
         ticks = self.ticks_per_second
+        now = time()
         result = {
             "id": self.id,
-            "timestamp": self.ticks,
+            "retrievedAt": datetime.fromtimestamp(now, tz=utc),
+            "timestamp": self.ticks_given_time(now),
             "running": self.running
         }
         if self._epoch is not None:

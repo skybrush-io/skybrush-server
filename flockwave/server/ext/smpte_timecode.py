@@ -245,10 +245,17 @@ class MIDIClock(StoppableClockBase):
         if abs(drift) > 2:
             self.changed.send(self, delta=drift)
 
-    @property
-    def ticks(self):
+    def ticks_given_time(self, now):
         """Returns the number of frames elapsed since the epoch of the
-        clock (i.e. the 00:00:00:00 state).
+        clock, assuming that the internal clock of the server has a given
+        value.
+
+        Parameters:
+            now (float): the state of the internal clock of the server,
+                expressed in number of seconds since the Unix epoch
+
+        Returns:
+            float: the number of frames elapsed
         """
         if self._last_timecode is None:
             return 0.0
@@ -259,7 +266,7 @@ class MIDIClock(StoppableClockBase):
         if not self.running:
             return self._last_timecode.total_frames
         else:
-            elapsed = time() - self._last_local_timestamp
+            elapsed = now - self._last_local_timestamp
             return self._last_timecode.total_frames + \
                 elapsed * self._last_timecode.frames_per_second
 

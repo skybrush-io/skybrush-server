@@ -6,7 +6,6 @@ the Unix epoch, in UTC.
 
 from flockwave.server.errors import NotSupportedError
 from flockwave.server.model import ClockBase
-from time import time
 
 
 class SystemClock(ClockBase):

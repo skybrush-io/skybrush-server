@@ -13,6 +13,7 @@ from eventlet.timeout import Timeout
 from time import time
 
 from .base import ExtensionBase
+from ..model import ConnectionPurpose
 from flockwave.server.model import StoppableClockBase
 from flockwave.server.connections import create_connection, reconnecting
 from flockwave.server.connections.midi import MIDIPortConnection
@@ -222,7 +223,7 @@ class MIDIClock(StoppableClockBase):
 
         if self.running:
             delta_local_time = local_timestamp - self._last_local_timestamp
-            delta_local_time *= self.frames_per_second
+            delta_local_time *= self.ticks_per_second
             return delta_timecode - delta_local_time
         else:
             return delta_timecode
@@ -240,7 +241,7 @@ class MIDIClock(StoppableClockBase):
 
         self._last_timecode = timecode
         self._last_local_timestamp = local_timestamp
-        self.frames_per_second = timecode.frames_per_second
+        self.ticks_per_second = timecode.frames_per_second
 
         if abs(drift) > 2:
             self.changed.send(self, delta=drift)
@@ -318,9 +319,17 @@ class SMPTETimecodeExtension(ExtensionBase):
             self._inbound_thread = None
             self._midi.close()
 
+            self.app.connection_registry.remove("MIDI")
+
         self._midi = value
 
         if self._midi is not None:
+            self.app.connection_registry.add(
+                self._midi, "MIDI",
+                description="MIDI timecode provider",
+                purpose=ConnectionPurpose.time
+            )
+
             self._set_clock(MIDIClock())
             self._midi.open()
 

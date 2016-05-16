@@ -176,6 +176,7 @@ class ConnectionRegistryEntry(object):
     def _on_connection_state_changed(self, sender, old_state, new_state):
         """Handler that is called when the state of a connection changes."""
         self.info.update_status_from(self._connection)
+        self.info.update_timestamp()
         self._registry._on_connection_state_changed(
             entry=self, old_state=old_state, new_state=new_state
         )

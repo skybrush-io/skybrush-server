@@ -27,11 +27,12 @@ class TimestampMixin(object):
             to use the current date and time.
         """
         if timestamp is None:
-            # datetime.utcnow() is not okay here because it returns a
+            # datetime.utcnow() alone is not okay here because it returns a
             # datetime object with tzinfo set to None. As a consequence,
-            # isoformat() will not add the timezone information correctly
-            # when the datetime object is formatted into JSON
-            timestamp = utc.localize(datetime.now())
+            # isoformat() would not add the timezone information correctly
+            # when the datetime object is formatted into JSON. That's why
+            # we need to wrap it in utc.localize()
+            timestamp = utc.localize(datetime.utcnow())
         assert timestamp.tzinfo is not None, \
             "UAV status information timestamp must be timezone-aware"
         self.timestamp = timestamp

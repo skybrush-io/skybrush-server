@@ -3,15 +3,19 @@
 """
 
 from blinker import Signal
+from datetime import datetime
 from eventlet import Queue, spawn
+from pytz import utc
 from xbee import ZigBee
 
 from flockwave.server.connections import create_connection, reconnecting
 from flockwave.server.ext.base import UAVExtensionBase
 from flockwave.server.model import ConnectionPurpose
+from flockwave.server.utils import datetime_to_unix_timestamp
 
 from .driver import FlockCtrlDriver
 from .errors import ParseError
+from .packets import FlockCtrlClockSynchronizationPacket
 from .parser import FlockCtrlParser
 
 __all__ = ("construct", )
@@ -38,6 +42,17 @@ class FlockCtrlDronesExtension(UAVExtensionBase):
         self.xbee_lowlevel = self._configure_lowlevel_xbee_connection(
             configuration.get("connection"))
         super(FlockCtrlDronesExtension, self).configure(configuration)
+
+    def on_app_changed(self, old_app, new_app):
+        super(FlockCtrlDronesExtension, self).on_app_changed(old_app, new_app)
+
+        if old_app is not None:
+            old_app.clock_registry.clock_changed.disconnect(
+                self._on_clock_changed, sender=old_app.clock_registry)
+
+        if new_app is not None:
+            new_app.clock_registry.clock_changed.connect(
+                self._on_clock_changed, sender=new_app.clock_registry)
 
     def unload(self):
         self.xbee_lowlevel = None
@@ -141,6 +156,29 @@ class FlockCtrlDronesExtension(UAVExtensionBase):
                 packet.
         """
         self._packet_queue.put((packet, destination))
+
+    def _on_clock_changed(self, sender, clock):
+        """Handler that is called when one of the clocks changed in the
+        server application.
+
+        FlockCtrl drones are interested in the MIDI clock only, therefore
+        we only send a clock synchronization message to the drones if the
+        clock that changed has ID = ``mtc``.
+        """
+        if clock.id != "mtc":
+            return
+
+        now = datetime.now(utc)
+        now_as_timestamp = datetime_to_unix_timestamp(now)
+        packet = FlockCtrlClockSynchronizationPacket(
+            sequence_id=0,      # TODO
+            clock_id=5,         # MIDI timecode clock in FlockCtrl
+            running=clock.running,
+            local_timestamp=now,
+            ticks=clock.ticks_given_time(now_as_timestamp),
+            ticks_per_second=clock.ticks_per_second
+        )
+        self.send_packet(packet)
 
 
 class XBeeInboundThread(object):
@@ -251,6 +289,8 @@ class XBeeOutboundThread(object):
                 packet.
         """
         data = packet.encode()
+        if destination is None:
+            destination = b"\x00\x00\x00\x00\x00\x00\xff\xff"
         self._xbee.send("tx", dest_addr_long=destination,
                         dest_addr=b"\xFF\xFE", data=data)
 

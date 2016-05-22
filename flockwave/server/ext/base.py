@@ -18,7 +18,9 @@ class ExtensionBase(object):
 
     @app.setter
     def app(self, value):
+        old_value = self._app
         self._app = value
+        self.on_app_changed(old_value, self._app)
 
     def configure(self, configuration):
         """Configures the extension with the given configuration object.
@@ -45,6 +47,16 @@ class ExtensionBase(object):
         self.app = app
         self.log = logger
         self.configure(configuration)
+
+    def on_app_changed(self, old_app, new_app):
+        """Handler that is called when the extension is associated to an
+        application.
+
+        Arguments:
+            old_app (FlockwaveServer): the old server application
+            new_app (FlockwaveServer): the new server application
+        """
+        pass
 
     def spindown(self):
         """Handler that is called by the extension manager when the
@@ -84,11 +96,6 @@ class UAVExtensionBase(ExtensionBase):
     def __init__(self):
         super(UAVExtensionBase, self).__init__()
         self._driver = None
-
-    @ExtensionBase.app.setter
-    def app(self, value):
-        ExtensionBase.app.fset(self, value)
-        self._update_driver_from_app()
 
     def configure(self, configuration):
         super(UAVExtensionBase, self).configure(configuration)
@@ -138,3 +145,6 @@ class UAVExtensionBase(ExtensionBase):
         the UAVs that the extension provides.
         """
         return self._driver
+
+    def on_app_changed(self, old_app, new_app):
+        self._update_driver_from_app()

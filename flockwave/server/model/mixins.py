@@ -2,6 +2,7 @@
 
 from datetime import datetime
 from pytz import utc
+from flockwave.server.utils import is_timezone_aware
 
 __all__ = ("TimestampMixin", )
 
@@ -31,8 +32,8 @@ class TimestampMixin(object):
             # datetime object with tzinfo set to None. As a consequence,
             # isoformat() would not add the timezone information correctly
             # when the datetime object is formatted into JSON. That's why
-            # we need to wrap it in utc.localize()
-            timestamp = utc.localize(datetime.utcnow())
-        assert timestamp.tzinfo is not None, \
+            # we need to use datetime.now(utc)
+            timestamp = datetime.now(utc)
+        assert is_timezone_aware(timestamp), \
             "UAV status information timestamp must be timezone-aware"
         self.timestamp = timestamp

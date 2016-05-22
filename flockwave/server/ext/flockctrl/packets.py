@@ -7,14 +7,15 @@ import zlib
 from abc import ABCMeta, abstractproperty
 from blinker import Signal
 from collections import defaultdict
+from datetime import datetime
 from flockwave.gps.vectors import Altitude, GPSCoordinate, VelocityNED
+from flockwave.server.utils import datetime_to_unix_timestamp
 from six import add_metaclass, byte2int, int2byte
 from struct import Struct
 from struct import error as StructError
 from time import time
 
 from .errors import ParseError
-
 
 __all__ = ("FlockCtrlPacket", "ChunkedPacketAssembler")
 
@@ -216,6 +217,54 @@ class FlockCtrlCompressedCommandResponsePacket(
     """
 
     PACKET_TYPE = 3
+
+
+class FlockCtrlClockSynchronizationPacket(FlockCtrlPacketBase):
+    """Packet containing a request for the drone to synchronize one of its
+    internal clocks with the ground station.
+    """
+
+    PACKET_TYPE = 9
+    _struct = Struct("<xBBQdH")
+
+    def __init__(self, sequence_id, clock_id, running, local_timestamp,
+                 ticks, ticks_per_second):
+        """Constructor.
+
+        Parameters:
+            sequence_id (int): the sequence ID of the packet. This can be
+                used by UAVs later on in acknowledgment messages.
+            clock_id (int): the index of the clock on the UAV that should
+                be synchronized
+            running (bool): whether the clock should be running or not
+            local_timestamp (float or datetime): the local time on the
+                server, expressed as the number of seconds since the Unix
+                epoch in UTC, or an appropriate datetime object (that will
+                then be converted). When you use a datetime object here,
+                make sure that it is timezone-aware (to avoid confusion)
+            ticks (float): the number of clock ticks at the local time.
+            ticks_per_second (int): the number of clock ticks per second.
+
+        Raises:
+            ValueError: if the given timestamp is not timezone-aware
+        """
+        self.sequence_id = int(sequence_id)
+        self.clock_id = int(clock_id)
+        self.running = bool(running)
+
+        if isinstance(local_timestamp, datetime):
+            local_timestamp = datetime_to_unix_timestamp(local_timestamp)
+
+        self.local_timestamp = float(local_timestamp)
+        self.ticks = float(ticks)
+        self.ticks_per_second = int(ticks_per_second)
+
+    def encode(self):
+        return int2byte(self.PACKET_TYPE) + self._struct.pack(
+            self.sequence_id,
+            self.clock_id & 0x7F + (128 if self.running else 0),
+            self.local_timestamp, self.ticks, self.ticks_per_second
+        )[1:]
 
 
 class ChunkedPacketAssembler(object):

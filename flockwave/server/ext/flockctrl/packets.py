@@ -262,7 +262,7 @@ class FlockCtrlClockSynchronizationPacket(FlockCtrlPacketBase):
     def encode(self):
         return int2byte(self.PACKET_TYPE) + self._struct.pack(
             self.sequence_id,
-            self.clock_id & 0x7F + (128 if self.running else 0),
+            (self.clock_id & 0x7F) + (128 if self.running else 0),
             self.local_timestamp, self.ticks, self.ticks_per_second
         )[1:]
 

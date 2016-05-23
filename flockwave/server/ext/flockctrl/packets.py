@@ -326,7 +326,6 @@ class ChunkedPacketAssembler(object):
             del messages[packet.sequence_id]
             if not messages:
                 del self._messages[packet.source_address]
-        print(repr(self._messages))
 
     def get_chunk_info(self, sequence_id):
         """Returns a string representing which chunks have arrived already

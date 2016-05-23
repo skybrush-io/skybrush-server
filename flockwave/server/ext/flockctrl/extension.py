@@ -6,6 +6,7 @@ from blinker import Signal
 from datetime import datetime
 from eventlet import Queue, spawn
 from pytz import utc
+from six import int2byte
 from xbee import ZigBee
 
 from flockwave.server.connections import create_connection, reconnecting
@@ -232,6 +233,9 @@ class XBeeInboundThread(object):
                     self._error_callback(ex)
 
 
+_XBEE_BROADCAST_ADDRESS = b"\x00\x00\x00\x00\x00\x00\xff\xff"
+
+
 class XBeeOutboundThread(object):
     """Green thread that sends outbound packets to an XBee serial
     connection. The outbound packets must be placed into a queue that
@@ -288,11 +292,19 @@ class XBeeOutboundThread(object):
                 send the packet to. ``None`` means to send a broadcast
                 packet.
         """
-        data = packet.encode()
         if destination is None:
-            destination = b"\x00\x00\x00\x00\x00\x00\xff\xff"
-        self._xbee.send("tx", dest_addr_long=destination,
-                        dest_addr=b"\xFF\xFE", data=data)
+            destination = _XBEE_BROADCAST_ADDRESS
+        kwds = {
+            "dest_addr": b"\xFF\xFE",
+            "dest_addr_long": destination,
+            "data": packet.encode()
+        }
+        if destination == _XBEE_BROADCAST_ADDRESS:
+            kwds.update(
+                broadcast_radius=int2byte(16),
+                options=int2byte(1)     # disable ACK
+            )
+        self._xbee.send("tx", **kwds)
 
 
 construct = FlockCtrlDronesExtension

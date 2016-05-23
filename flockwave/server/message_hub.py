@@ -230,13 +230,14 @@ class MessageHub(object):
                 }
             )
         elif isinstance(message, FlockwaveNotification):
-            log.info(
-                "Sending {0.body[type]} notification".format(message),
-                extra={
-                    "id": message.id,
-                    "semantics": "notification"
-                }
-            )
+            if message.body["type"] != "UAV-INF":
+                log.info(
+                    "Sending {0.body[type]} notification".format(message),
+                    extra={
+                        "id": message.id,
+                        "semantics": "notification"
+                    }
+                )
             broadcast = True
         else:
             log.info(

@@ -131,7 +131,9 @@ class SerialPortConnection(ConnectionBase):
         """
         if self._serial is not None:
             try:
-                return self._serial.write(data)
+                result = self._serial.write(data)
+                self._serial.flush()
+                return result
             except IOError as ex:
                 self._handle_error(ex)
                 return 0

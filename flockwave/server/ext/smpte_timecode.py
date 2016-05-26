@@ -436,9 +436,11 @@ class InboundMessageParserThread(object):
             result = None
             if running:
                 # Wait for the next MIDI timecode frame with a timeout. If
-                # no timecode frame arrives within 0.1 seconds, stop the
-                # clock.
-                with Timeout(0.1, False):
+                # no timecode frame arrives within 0.2 seconds, stop the
+                # clock. In theory, 0.1 seconds should be plenty, but
+                # there seems to be large delays when using Ardour as the
+                # MTC master on Linux and sometimes 0.1 seconds is not enough.
+                with Timeout(0.2, False):
                     result = self._read_next_timecode()
             else:
                 # Just read the next timecode without a timeout.

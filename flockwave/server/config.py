@@ -34,6 +34,7 @@ EXTENSIONS = {
     "flockctrl": {
         "id_format": "{0:02}",
         # "connection": "serial+replay:/Users/ntamas/dev/collmot/git/flockwave-server/test3.flight?autoclose=1"
+        # "connection": "serial:/dev/ttyUSB.xbee?baud=115200"
         "connection": "serial:/tmp/xbee"
     },
     "smpte_timecode": {

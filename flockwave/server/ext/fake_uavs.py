@@ -285,8 +285,10 @@ class FakeUAV(UAVBase):
 
         # Transform the flat Earth coordinates to GPS around our
         # current position as origin
-        self.update_status(position=self._trans.to_gps(
-            self._pos_flat_circle))
+        self.update_status(
+            position=self._trans.to_gps(self._pos_flat_circle),
+            heading=self.angle / pi * 180 + 90
+        )
 
     def takeoff(self):
         """Starts a simulated take-off with the fake UAV."""

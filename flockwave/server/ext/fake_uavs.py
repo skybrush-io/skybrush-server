@@ -300,6 +300,11 @@ class FakeUAV(UAVBase):
         self._target_xyz.z = self.cruise_altitude
         self.state = FakeUAVState.TAKEOFF
 
+    def _initialize_device_tree(self, tree):
+        root = tree.root
+        thermometer = root.add_device("thermometer")
+        thermometer.add_channel("temperature", type=float)
+
 
 class FakeUAVProviderExtension(UAVExtensionBase):
     """Extension that creates one or more fake UAVs in the server.

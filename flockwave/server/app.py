@@ -166,6 +166,33 @@ class FlockwaveServer(Flask):
 
         return response
 
+    def create_DEV_LIST_message_for(self, uav_ids, in_response_to=None):
+        """Creates an UAV-INF message that contains information regarding
+        the device trees of the UAVs with the given IDs.
+
+        Parameters:
+            uav_ids (iterable): list of UAV IDs
+            in_response_to (Optional[FlockwaveMessage]): the message that the
+                constructed message will respond to. ``None`` means that the
+                constructed message will be a notification.
+
+        Returns:
+            FlockwaveMessage: the DEV-LIST message with the device trees of
+                the given UAVs
+        """
+        devices = {}
+
+        body = {"devices": devices, "type": "DEV-LIST"}
+        response = self.message_hub.create_response_or_notification(
+            body=body, in_response_to=in_response_to)
+
+        for uav_id in uav_ids:
+            uav = self._find_uav_by_id(uav_id, response)
+            if uav:
+                devices[uav_id] = uav.device_tree.json
+
+        return response
+
     def create_UAV_INF_message_for(self, uav_ids, in_response_to=None):
         """Creates an UAV-INF message that contains information regarding
         the UAVs with the given IDs.
@@ -738,6 +765,13 @@ def handle_CONN_LIST(message, hub):
     return {
         "ids": list(app.connection_registry.ids)
     }
+
+
+@app.message_hub.on("DEV-LIST")
+def handle_DEV_LIST(message, hub):
+    return app.create_DEV_LIST_message_for(
+        message.body["ids"], in_response_to=message
+    )
 
 
 @app.message_hub.on("SYS-PING")

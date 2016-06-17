@@ -8,6 +8,8 @@ from flockwave.server.errors import CommandInvocationError, NotSupportedError
 from flockwave.spec.schema import get_complex_object_schema
 from six import add_metaclass, reraise
 from sys import exc_info
+
+from .devices import DeviceTree
 from .metamagic import ModelMeta
 from .mixins import TimestampMixin
 
@@ -45,6 +47,13 @@ class UAV(object):
     """Abstract object that defines the interface of objects representing
     UAVs.
     """
+
+    @abstractproperty
+    def device_tree(self):
+        """Returns the DeviceTree_ object that represents the root of the
+        device tree corresponding to the UAV.
+        """
+        raise NotImplementedError
 
     @abstractproperty
     def driver(self):
@@ -86,9 +95,18 @@ class UAVBase(UAV):
             driver (UAVDriver): the driver that is responsible for handling
                 communication with this UAV.
         """
+        self._device_tree = DeviceTree()
         self._driver = driver
         self._id = id
         self._status = UAVStatusInfo(id=id)
+        self._initialize_device_tree(self._device_tree)
+
+    @property
+    def device_tree(self):
+        """Returns the DeviceTree_ object that represents the root of the
+        device tree corresponding to the UAV.
+        """
+        return self._device_tree
 
     @property
     def driver(self):
@@ -113,6 +131,18 @@ class UAVBase(UAV):
         method.
         """
         return self._status
+
+    def _initialize_device_tree(self, tree):
+        """Initializes the device tree of the UAV when it is constructed.
+
+        This method will be called from the constructor. Subclasses may
+        override this method to provide a set of default devices for the
+        UAV.
+
+        Parameters:
+            tree (DeviceTree): the tree to initialize
+        """
+        pass
 
     def update_status(self, position=None, velocity=None, heading=None):
         """Updates the status information of the UAV.

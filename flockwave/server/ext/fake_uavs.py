@@ -300,9 +300,8 @@ class FakeUAV(UAVBase):
         self._target_xyz.z = self.cruise_altitude
         self.state = FakeUAVState.TAKEOFF
 
-    def _initialize_device_tree(self, tree):
-        root = tree.root
-        thermometer = root.add_device("thermometer")
+    def _initialize_device_tree_node(self, node):
+        thermometer = node.add_device("thermometer")
         thermometer.add_channel("temperature", type=float)
 
 

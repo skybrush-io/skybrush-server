@@ -20,7 +20,7 @@ from .errors import NotSupportedError
 from .ext.manager import ExtensionManager
 from .logger import log
 from .message_hub import MessageHub
-from .model import FlockwaveMessage
+from .model import DeviceTree, FlockwaveMessage
 from .registries import ClientRegistry, ClockRegistry, ConnectionRegistry, \
     UAVRegistry
 from .version import __version__ as server_version
@@ -42,6 +42,10 @@ class FlockwaveServer(Flask):
             manages the asynchronous execution of commands on remote UAVs
             (i.e. commands that cannot be executed immediately in a
             synchronous manner)
+        device_tree (DeviceTree): a tree-like data structure that contains
+            a first-level node for every UAV and then contains additional
+            nodes in each UAV subtree for the devices and channels of the
+            UAV
         extension_manager (ExtensionManager): object that manages the
             loading and unloading of server extensions
         message_hub (MessageHub): central messaging hub via which one can
@@ -166,6 +170,35 @@ class FlockwaveServer(Flask):
 
         return response
 
+    def create_DEV_INF_message_for(self, paths, in_response_to=None):
+        """Creates a DEV-INF message that contains information regarding
+        the current values of the channels in the subtrees of the device
+        tree matched by the given device tree paths.
+
+        Parameters:
+            paths (iterable): list of device tree paths
+            in_response_to (Optional[FlockwaveMessage]): the message that the
+                constructed message will respond to. ``None`` means that the
+                constructed message will be a notification.
+
+        Returns:
+            FlockwaveMessage: the DEV-INF message with the current values of
+                the channels in the subtrees matched by the given device
+                tree paths
+        """
+        values = {}
+
+        body = {"values": values, "type": "DEV-INF"}
+        response = self.message_hub.create_response_or_notification(
+            body=body, in_response_to=in_response_to)
+
+        for path in paths:
+            node = self._find_device_tree_node_by_path(path, response)
+            if node:
+                values[path] = node.collect_channel_values()
+
+        return response
+
     def create_DEV_LIST_message_for(self, uav_ids, in_response_to=None):
         """Creates an UAV-INF message that contains information regarding
         the device trees of the UAVs with the given IDs.
@@ -189,7 +222,7 @@ class FlockwaveServer(Flask):
         for uav_id in uav_ids:
             uav = self._find_uav_by_id(uav_id, response)
             if uav:
-                devices[uav_id] = uav.device_tree.json
+                devices[uav_id] = uav.device_tree_node.json
 
         return response
 
@@ -364,6 +397,16 @@ class FlockwaveServer(Flask):
         # the server knows about
         self.uav_registry = UAVRegistry()
 
+        # Create a global device tree and ensure that new UAVs are
+        # registered in it
+        self.device_tree = DeviceTree()
+        self.uav_registry.added.connect(
+            self._on_uav_added, sender=self.uav_registry
+        )
+        self.uav_registry.removed.connect(
+            self._on_uav_removed, sender=self.uav_registry
+        )
+
         # Create an empty heap for proposed index pages
         self._proposed_index_pages = []
 
@@ -443,6 +486,27 @@ class FlockwaveServer(Flask):
         return self._find_in_registry(self.connection_registry,
                                       connection_id, response,
                                       "No such connection")
+
+    def _find_device_tree_node_by_path(self, path, response=None):
+        """Finds a node in the global device tree based on a device tree
+        path or registers a failure in the given response object if there
+        is no such entry in the registry.
+
+        Parameters:
+            path (Union[str,DeviceTreePath]): the path to find
+            response (Optional[FlockwaveResponse]): the response in which
+                the failure can be registered
+
+        Returns:
+            Optional[DeviceTreeNodeBase]: the device tree node at the given
+                path or ``None`` if there is no such path
+        """
+        try:
+            return self.device_tree.resolve(path)
+        except KeyError:
+            if response is not None:
+                response.add_failure(path, "No such device tree path")
+            return None
 
     def _find_uav_by_id(self, uav_id, response=None):
         """Finds the UAV with the given ID in the UAV registry or registers
@@ -567,6 +631,24 @@ class FlockwaveServer(Flask):
                 }
                 message = hub.create_response_or_notification(body)
                 hub.send_message(message, to=client)
+
+    def _on_uav_added(self, sender, uav):
+        """Handler called when a new UAV is registered in the server.
+
+        Parameters:
+            sender (UAVRegisty): the UAV registry
+            uav (UAV): the UAV that was added
+        """
+        self.device_tree.root.add_child(uav.id, uav.device_tree_node)
+
+    def _on_uav_removed(self, sender, uav):
+        """Handler called when a UAV is deregistered from the server.
+
+        Parameters:
+            sender (UAVRegisty): the UAV registry
+            uav (UAV): the UAV that was removed
+        """
+        self.device_tree.root.remove_child_by_id(uav.id)
 
     def _sort_uavs_by_drivers(self, uav_ids, response=None):
         """Given a list of UAV IDs, returns a mapping that maps UAV drivers
@@ -765,6 +847,13 @@ def handle_CONN_LIST(message, hub):
     return {
         "ids": list(app.connection_registry.ids)
     }
+
+
+@app.message_hub.on("DEV-INF")
+def handle_DEV_INF(message, hub):
+    return app.create_DEV_INF_message_for(
+        message.body["paths"], in_response_to=message
+    )
 
 
 @app.message_hub.on("DEV-LIST")

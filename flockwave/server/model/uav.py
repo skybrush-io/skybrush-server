@@ -9,7 +9,7 @@ from flockwave.spec.schema import get_complex_object_schema
 from six import add_metaclass, reraise
 from sys import exc_info
 
-from .devices import DeviceTree
+from .devices import UAVNode
 from .metamagic import ModelMeta
 from .mixins import TimestampMixin
 
@@ -49,9 +49,9 @@ class UAV(object):
     """
 
     @abstractproperty
-    def device_tree(self):
-        """Returns the DeviceTree_ object that represents the root of the
-        device tree corresponding to the UAV.
+    def device_tree_node(self):
+        """Returns the UAVNode_ object that represents the root of the
+        part of the device tree that corresponds to the UAV.
         """
         raise NotImplementedError
 
@@ -95,18 +95,22 @@ class UAVBase(UAV):
             driver (UAVDriver): the driver that is responsible for handling
                 communication with this UAV.
         """
-        self._device_tree = DeviceTree()
+        self._device_tree_node = UAVNode()
         self._driver = driver
         self._id = id
         self._status = UAVStatusInfo(id=id)
-        self._initialize_device_tree(self._device_tree)
+        self._initialize_device_tree_node(self._device_tree_node)
 
     @property
-    def device_tree(self):
-        """Returns the DeviceTree_ object that represents the root of the
+    def device_tree_node(self):
+        """Returns the UAVNode object that represents the root of the
         device tree corresponding to the UAV.
+
+        Returns:
+            UAVNode: the node in the device tree where the subtree of the
+                devices and channels of the UAV is rooted
         """
-        return self._device_tree
+        return self._device_tree_node
 
     @property
     def driver(self):
@@ -132,15 +136,17 @@ class UAVBase(UAV):
         """
         return self._status
 
-    def _initialize_device_tree(self, tree):
-        """Initializes the device tree of the UAV when it is constructed.
+    def _initialize_device_tree_node(self, node):
+        """Initializes the device tree node of the UAV when it is
+        constructed.
 
         This method will be called from the constructor. Subclasses may
         override this method to provide a set of default devices for the
         UAV.
 
         Parameters:
-            tree (DeviceTree): the tree to initialize
+            node (UAVNode): the tree node whose subtree this call should
+                initialize
         """
         pass
 

@@ -4,6 +4,8 @@ server knows.
 
 __all__ = ("UAVRegistry", )
 
+from blinker import Signal
+
 from .base import RegistryBase
 
 
@@ -16,7 +18,21 @@ class UAVRegistry(RegistryBase):
     when was the last time we have received information about an UAV. The
     registry is also capable of purging information about UAVs that have
     not been seen for a while.
+
+    Attributes:
+        added (Signal): signal that is sent by the registry when a new UAV
+            has been added to the registry. The signal has a keyword
+            argment named ``uav`` that contains the UAV that has just been
+            added to the registry.
+
+        removed (Signal): signal that is sent by the registry when a UAV
+            has been removed from the registry. The signal has a keyword
+            argument named ``uav`` that contains the UAV that has just been
+            removed from the registry.
     """
+
+    added = Signal()
+    removed = Signal()
 
     def add(self, uav):
         """Registers a UAV with the given identifier in the registry.
@@ -33,6 +49,7 @@ class UAVRegistry(RegistryBase):
         if old_uav is not None and old_uav != uav:
             raise KeyError("UAV ID already taken: {0!r}".format(uav.id))
         self._entries[uav.id] = uav
+        self.added.send(self, uav=uav)
 
     def remove(self, uav):
         """Removes the given UAV from the registry.
@@ -60,4 +77,6 @@ class UAVRegistry(RegistryBase):
             UAV or None: the UAV that was deregistered, or ``None`` if the
                 UAV was not registered
         """
-        return self._entries.pop(uav_id)
+        uav = self._entries.pop(uav_id)
+        self.removed.send(self, uav=uav)
+        return uav

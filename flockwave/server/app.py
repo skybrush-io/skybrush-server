@@ -12,6 +12,7 @@ from flask import abort, Flask, redirect, request, url_for
 from flask.ext.jwt import current_identity as jwt_identity
 from flask.ext.socketio import SocketIO
 from heapq import heappush
+from jsonschema import ValidationError
 from six import iteritems
 
 from .authentication import jwt_authentication, jwt_optional
@@ -20,7 +21,9 @@ from .errors import NotSupportedError
 from .ext.manager import ExtensionManager
 from .logger import log
 from .message_hub import MessageHub
-from .model import DeviceTree, FlockwaveMessage
+from .model import FlockwaveMessage
+from .model.devices import DeviceTree, DeviceTreeSubscriptionManager
+from .model.errors import ClientNotSubscribedError, NoSuchPathError
 from .registries import ClientRegistry, ClockRegistry, ConnectionRegistry, \
     UAVRegistry
 from .version import __version__ as server_version
@@ -200,7 +203,7 @@ class FlockwaveServer(Flask):
         return response
 
     def create_DEV_LIST_message_for(self, uav_ids, in_response_to=None):
-        """Creates an UAV-INF message that contains information regarding
+        """Creates a DEV-LIST message that contains information regarding
         the device trees of the UAVs with the given IDs.
 
         Parameters:
@@ -223,6 +226,111 @@ class FlockwaveServer(Flask):
             uav = self._find_uav_by_id(uav_id, response)
             if uav:
                 devices[uav_id] = uav.device_tree_node.json
+
+        return response
+
+    def create_DEV_LISTSUB_message_for(self, path_filter, in_response_to=None):
+        """Creates a DEV-LISTSUB message that contains information about the
+        device tree paths that the current client is subscribed to.
+
+        Parameters:
+            path_filter (iterable): list of device tree paths whose subtrees
+                the client is interested in
+            in_response_to (Optional[FlockwaveMessage]): the message that the
+                constructed message will respond to. ``None`` means that the
+                constructed message will be a notification.
+
+        Returns:
+            FlockwaveMessage: the DEV-LISTSUB message with the subscriptions
+                of the client that match the path filters
+        """
+        manager = self.device_tree_subscriptions
+        client_id = request.sid
+        subscriptions = manager.list_subscriptions(client_id, path_filter)
+
+        body = {
+            "paths": list(subscriptions.elements()),
+            "type": "DEV-LISTSUB"
+        }
+
+        response = self.message_hub.create_response_or_notification(
+            body=body, in_response_to=in_response_to)
+
+        return response
+
+    def create_DEV_SUB_message_for(self, paths, in_response_to):
+        """Creates a DEV-SUB response for the given message and subscribes
+        the current client to the given paths.
+
+        Parameters:
+            paths (iterable): list of device tree paths to subscribe the
+                current client to
+            in_response_to (FlockwaveMessage): the message that the
+                constructed message will respond to.
+
+        Returns:
+            FlockwaveMessage: the DEV-SUB message with the paths that the
+                client was subscribed to, along with error messages for the
+                paths that the client was not subscribed to
+        """
+        manager = self.device_tree_subscriptions
+        client_id = request.sid
+        response = self.message_hub.create_response_or_notification(
+            {}, in_response_to=in_response_to)
+
+        for path in paths:
+            try:
+                manager.subscribe(client_id, path)
+            except NoSuchPathError:
+                response.add_failure(path, "No such device tree path")
+            else:
+                response.add_success(path)
+
+        return response
+
+    def create_DEV_UNSUB_message_for(self, paths, in_response_to,
+                                     remove_all, include_subtrees):
+        """Creates a DEV-UNSUB response for the given message and
+        unsubscribes the current client to the given paths.
+
+        Parameters:
+            paths (iterable): list of device tree paths to unsubscribe the
+                current client from
+            in_response_to (FlockwaveMessage): the message that the
+                constructed message will respond to.
+            remove_all (bool): when ``True``, the client will be unsubscribed
+                from the given paths no matter how many times it is
+                subscribed to them. When ``False``, an unsubscription will
+                decrease the number of subscriptions to the given path by
+                1 only.
+            include_subtrees (bool): when ``True``, subscriptions to nodes
+                that are in the subtrees of the given paths will also be
+                removed
+
+        Returns:
+            FlockwaveMessage: the DEV-SUB message with the paths that the
+                client was unsubscribed from, along with error messages for
+                the paths that the client was not unsubscribed from
+        """
+        manager = self.device_tree_subscriptions
+        client_id = request.sid
+        response = self.message_hub.create_response_or_notification(
+            {}, in_response_to=in_response_to)
+
+        if include_subtrees:
+            # Collect all the subscriptions from the subtrees and pretend
+            # that the user submitted that
+            paths = manager.list_subscriptions(client_id, paths)
+
+        for path in paths:
+            try:
+                manager.unsubscribe(client_id, path, force=remove_all)
+            except NoSuchPathError:
+                response.add_failure(path, "No such device tree path")
+            except ClientNotSubscribedError:
+                response.add_failure(path, "Not subscribed to this path")
+            else:
+                response.add_success(path)
 
         return response
 
@@ -400,6 +508,8 @@ class FlockwaveServer(Flask):
         # Create a global device tree and ensure that new UAVs are
         # registered in it
         self.device_tree = DeviceTree()
+        self.device_tree_subscriptions = DeviceTreeSubscriptionManager(
+            self.device_tree)
         self.uav_registry.added.connect(
             self._on_uav_added, sender=self.uav_registry
         )
@@ -503,7 +613,7 @@ class FlockwaveServer(Flask):
         """
         try:
             return self.device_tree.resolve(path)
-        except KeyError:
+        except NoSuchPathError:
             if response is not None:
                 response.add_failure(path, "No such device tree path")
             return None
@@ -777,23 +887,40 @@ def handle_disconnection():
 @socketio.on("fw")
 def handle_flockwave_message(message):
     """Handler called for all incoming Flockwave JSON messages."""
+    hub = app.message_hub
+
     try:
         message = FlockwaveMessage.from_json(message)
-    except Exception:
-        log.exception("Flockwave message does not match schema")
+    except ValidationError:
+        failure_reason = "Flockwave message does not match schema"
+    except Exception as ex:
+        failure_reason = "Unexpected exception: {0!r}".format(ex)
+    else:
+        failure_reason = None
+
+    if failure_reason:
+        log.exception(failure_reason)
+        if u"id" in message:
+            ack = hub.acknowledge(message, outcome=False,
+                                  reason=failure_reason)
+            hub.send_message(ack, to=request.sid)
         return
 
     if "error" in message:
         log.warning("Error message from Flockwave client silently dropped")
         return
 
-    if not app.message_hub.handle_incoming_message(message):
+    if not hub.handle_incoming_message(message):
         log.warning(
             "Unhandled message: {0.body[type]}".format(message),
             extra={
                 "id": message.id
             }
         )
+        ack = hub.acknowledge(message, outcome=False,
+                              reason="No handler managed to parse this "
+                                     "message in the server")
+        hub.send_message(ack, to=request.sid)
 
 
 @socketio.on_error_default
@@ -860,6 +987,30 @@ def handle_DEV_INF(message, hub):
 def handle_DEV_LIST(message, hub):
     return app.create_DEV_LIST_message_for(
         message.body["ids"], in_response_to=message
+    )
+
+
+@app.message_hub.on("DEV-LISTSUB")
+def handle_DEV_LISTSUB(message, hub):
+    return app.create_DEV_LISTSUB_message_for(
+        message.body.get("pathFilter", ("/", )),
+        in_response_to=message
+    )
+
+
+@app.message_hub.on("DEV-SUB")
+def handle_DEV_SUB(message, hub):
+    return app.create_DEV_SUB_message_for(
+        message.body["paths"], in_response_to=message
+    )
+
+
+@app.message_hub.on("DEV-UNSUB")
+def handle_DEV_UNSUB(message, hub):
+    return app.create_DEV_UNSUB_message_for(
+        message.body["paths"], in_response_to=message,
+        remove_all=message.body.get("removeAll", False),
+        include_subtrees=message.body.get("includeSubtrees", False)
     )
 
 

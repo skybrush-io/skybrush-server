@@ -7,7 +7,9 @@ from .clock import Clock, ClockBase, StoppableClockBase
 from .commands import CommandExecutionStatus
 from .connection import ConnectionPurpose, ConnectionInfo, ConnectionStatus
 from .devices import ChannelNode, ChannelOperation, ChannelType, \
-    DeviceClass, DeviceTree, DeviceNode, DeviceTreeNodeType, UAVNode
+    DeviceClass, DeviceTree, DeviceNode, DeviceTreeNodeType, UAVNode, \
+    DeviceTreeSubscriptionManager
+from .errors import ClientNotSubscribedError, NoSuchPathError
 from .messages import FlockwaveMessage, FlockwaveNotification, \
     FlockwaveResponse
 from .uav import UAVStatusInfo, UAVDriver, UAV, UAVBase
@@ -20,5 +22,7 @@ __all__ = (
     "CommandExecutionStatus", "CommandExecutionStatusBuilder",
     "Clock", "ClockBase", "StoppableClockBase",
     "ChannelNode", "ChannelOperation", "ChannelType", "DeviceClass",
-    "DeviceNode", "DeviceTree", "DeviceTreeNodeType", "UAVNode"
+    "DeviceNode", "DeviceTree", "DeviceTreeNodeType", "UAVNode",
+    "DeviceTreeSubscriptionManager",
+    "NoSuchPathError", "ClientNotSubscribedError"
 )

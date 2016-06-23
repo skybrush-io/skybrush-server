@@ -2,15 +2,18 @@
 
 from __future__ import absolute_import
 
+from collections import Counter
 from flockwave.spec.schema import get_enum_from_schema, \
     get_complex_object_schema
 from itertools import islice
 from six import add_metaclass, iteritems
+
+from. errors import ClientNotSubscribedError, NoSuchPathError
 from .metamagic import ModelMeta
 
 __all__ = ("ChannelNode", "ChannelOperation", "ChannelType", "DeviceClass",
-           "DeviceTree", "DeviceNode", "DeviceTreeNodeType",
-           "UAVNode")
+           "DeviceTree", "DeviceNode", "DeviceTreeNodeType", "UAVNode",
+           "DeviceTreeSubscriptionManager")
 
 ChannelOperation = get_enum_from_schema("channelOperation",
                                         "ChannelOperation")
@@ -61,6 +64,10 @@ class DeviceTreeNodeBase(object):
     class __meta__:
         schema = get_complex_object_schema("deviceTreeNode")
 
+    def __init__(self):
+        """Constructor."""
+        self._subscribers = None
+
     def collect_channel_values(self):
         """Creates a Python dictionary that maps the IDs of the children of
         this node as follows:
@@ -78,6 +85,31 @@ class DeviceTreeNodeBase(object):
             (key, child.collect_channel_values())
             for key, child in iteritems(self.children)
         )
+
+    def count_subscriptions_of(self, client):
+        """Count how many times the given client is subscribed to changes
+        in channel values of this node or any of its sub-nodes.
+
+        Parameters:
+            client (Client): the client to test
+
+        Returns:
+            int: the number of times time given client is subscribed to this
+                node
+        """
+        return self._subscribers[client] if self._subscribers else 0
+
+    def iterchildren(self):
+        """Iterates over the children of this node.
+
+        Yields:
+            (str, DeviceTreeNodeBase): the ID of the child node and the
+                child node itself, for all children
+        """
+        if hasattr(self, "children"):
+            return iteritems(self.children)
+        else:
+            return ()
 
     def _add_child(self, id, node):
         """Adds the given node as a child node to this node.
@@ -113,7 +145,7 @@ class DeviceTreeNodeBase(object):
         Throws:
             ValueError: if the node is not a child of this node
         """
-        for id, child_node in iteritems(self.children):
+        for id, child_node in self.iterchildren():
             if child_node == node:
                 return self._remove_child_by_id(id)
         raise ValueError("the given node is not a child of this node")
@@ -135,6 +167,50 @@ class DeviceTreeNodeBase(object):
         except KeyError:
             raise ValueError("no child exists with the given ID: {0!r}"
                              .format(id))
+
+    def _subscribe(self, client):
+        """Subscribes the given client object to this node and its subtree.
+        The client will get notified whenever one of the channels in the
+        subtree of this node (or in the node itself if the node is a channel
+        node) receives a new value.
+
+        A client may be subscribed to this node multiple times; the node
+        will track how many times the client has subscribed to the node and
+        the client must unsubscribe exactly the same number of times to stop
+        receiving notifications.
+
+        Parameters:
+            client (Client): the client to notify when a channel value
+                changes in the subtree of this node.
+        """
+        if self._subscribers is None:
+            # Create the subscriber counter lazily because most nodes
+            # will not have any subscribers
+            self._subscribers = Counter()
+        self._subscribers[client] += 1
+
+    def _unsubscribe(self, client, force=False):
+        """Unsubscribes the given client object from this node and its
+        subtree.
+
+        Parameters:
+            client (Client): the client to unsubscribe
+            force (bool): whether to force an unsubscription of the client
+                even if it is subscribed multiple times. Setting this
+                argument to ``True`` will suppress ClientNotSubscribedError_
+                exceptions if the client is not subscribed.
+
+        Throws:
+            KeyError: if the client is not subscribed to this node and
+                ``force`` is ``False``
+        """
+        if self.count_subscriptions_of(client) > 0:
+            if force:
+                del self._subscribers[client]
+            else:
+                self._subscribers[client] -= 1
+        elif not force:
+            raise KeyError(client)
 
 
 class ChannelNode(DeviceTreeNodeBase):
@@ -301,9 +377,13 @@ class DeviceTreePath(object):
         """Constructor.
 
         Parameters:
-            path (str): the string representation of the path.
+            path (Union[str, DeviceTreePath]): the string representation of
+                the path, or another path object to clone.
         """
-        self.path = path
+        if isinstance(path, DeviceTreePath):
+            self._parts = list(path._parts)
+        else:
+            self.path = path
 
     def iterparts(self):
         """Returns a generator that iterates over the parts of the path.
@@ -327,6 +407,8 @@ class DeviceTreePath(object):
         parts = value.split(u"/")
         if parts[0] != u"":
             raise ValueError("path must start with a slash")
+        if parts[-1] == u"":
+            parts.pop()
         try:
             parts.index(u"", 1)
         except ValueError:
@@ -374,12 +456,130 @@ class DeviceTree(object):
             DeviceTreeNode: the node at the given path in the tree
 
         Throws:
-            KeyError: if the given path cannot be resolved in the tree
+            NoSuchPathError: if the given path cannot be resolved in the tree
         """
         if not isinstance(path, DeviceTreePath):
             path = DeviceTreePath(path)
 
         node = self.root
         for part in path.iterparts():
-            node = node.children[part]
+            try:
+                node = node.children[part]
+            except KeyError:
+                raise NoSuchPathError(path)
+
         return node
+
+
+class DeviceTreeSubscriptionManager(object):
+    """Object that is responsible for managing the subscriptions of clients
+    to the nodes of a device tree.
+    """
+
+    def __init__(self, tree):
+        """Constructor.
+
+        Parameters:
+            tree (DeviceTree): the tree whose subscriptions this object will
+                manage
+        """
+        self._tree = tree
+
+    def _collect_subscriptions(self, client, path, node, result):
+        """Finds all the subscriptions of the given client in the subtree
+        of the given tree node (including the node itself) and adds tem to
+        the given result object.
+
+        Parameters:
+            client (Client): the client whose subscriptions we want to
+                collect
+            path (DeviceTreePath): the path that leads to the root node. It
+                will be mutated so make sure that you clone the original
+                path of the node before passing it here.
+            node (DeviceTreeNode): the root node that the search starts
+                from
+            result (Counter): the counter object that counts the
+                subscriptions
+        """
+        count = node.count_subscriptions_of(client)
+        if count > 0:
+            result[unicode(path)] += count
+        for child_id, child in node.iterchildren():
+            path._parts.append(child_id)
+            self._collect_subscriptions(client, path, child, result)
+            path._parts.pop()
+
+    def list_subscriptions(self, client, path_filter):
+        """Lists all the device tree paths that a client is subscribed
+        to.
+
+        Parameters:
+            client (Client): the client whose subscriptions we want to
+                retrieve
+            path_filter (Optional[iterable]): iterable that yields strings
+                or DeviceTreePath_ objects. The result will include only
+                those subscriptions that are contained in at least one of
+                the subtrees matched by the path filters.
+
+        Returns:
+            Counter: a counter object mapping device tree paths to the
+                number of times the client has subscribed to them,
+                multiplied by the number of times they were matched by
+                the path filter.
+        """
+        if path_filter is None:
+            path_filter = (u"/", )
+
+        result = Counter()
+        for path in path_filter:
+            node = self._tree.resolve(path)
+            path_clone = DeviceTreePath(path)
+            self._collect_subscriptions(client, path_clone, node, result)
+
+        return result
+
+    def subscribe(self, client, path):
+        """Subscribes the given client to the given device tree path.
+
+        The same client may be subscribed to the same node multiple times;
+        the same amount of unsubscription requests must follow to ensure
+        that the client stops receiving notifications.
+
+        Parameters:
+            path (Union[str, DeviceTreePath]): the path to resolve. Strings
+                will be converted to a DeviceTreePath_ automatically.
+            client (Client): the client to subscribe
+
+        Throws:
+            NoSuchPathError: if the given path cannot be resolved in the tree
+        """
+        self._tree.resolve(path)._subscribe(client)
+
+    def unsubscribe(self, client, path, force=False):
+        """Unsubscribes the given client from the given device tree path.
+
+        The same client may be subscribed to the same node multiple times;
+        the same amount of unsubscription requests must follow to ensure
+        that the client stops receiving notifications. Alternatively, you
+        may set the ``force`` argument to ``True`` to force the removal
+        of the client from the node no matter how many times it has
+        subscribed before.
+
+        Parameters:
+            path (Union[str, DeviceTreePath]): the path to resolve. Strings
+                will be converted to a DeviceTreePath_ automatically.
+            client (Client): the client to unsubscribe
+            force (bool): whether to force an unsubscription of the client
+                even if it is subscribed multiple times. Setting this
+                argument to ``True`` will suppress ClientNotSubscribedError_
+                exceptions if the client is not subscribed.
+
+        Throws:
+            NoSuchPathError: if the given path cannot be resolved in the tree
+            ClientNotSubscribedError: if the given client is not subscribed
+                to the node and ``force`` is ``False``
+        """
+        try:
+            self._tree.resolve(path)._unsubscribe(client, force)
+        except KeyError:
+            raise ClientNotSubscribedError(client, path)

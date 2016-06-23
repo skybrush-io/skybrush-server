@@ -285,10 +285,16 @@ class FakeUAV(UAVBase):
 
         # Transform the flat Earth coordinates to GPS around our
         # current position as origin
+        position = self._trans.to_gps(self._pos_flat_circle)
+
+        # Update the UAV status
         self.update_status(
-            position=self._trans.to_gps(self._pos_flat_circle),
+            position=position,
             heading=self.angle / pi * 180 + 90
         )
+
+        # Also update our fake temperature sensor
+        self.thermometer.value = cos(self.angle) + 24.0
 
     def takeoff(self):
         """Starts a simulated take-off with the fake UAV."""
@@ -302,7 +308,7 @@ class FakeUAV(UAVBase):
 
     def _initialize_device_tree_node(self, node):
         thermometer = node.add_device("thermometer")
-        thermometer.add_channel("temperature", type=float)
+        self.thermometer = thermometer.add_channel("temperature", type=float)
 
 
 class FakeUAVProviderExtension(UAVExtensionBase):

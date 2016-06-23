@@ -109,10 +109,15 @@ class FlockwaveMessageBuilder(object):
         if body is not None and "type" not in body:
             body["type"] = message.body["type"]
 
+        if hasattr(message, "id"):
+            message_id = message.id
+        else:
+            message_id = message["id"]
+
         result = {
             "$fw.version": self.version,
             "id": unicode(self.id_generator()),
-            "correlationId": message.id,
+            "correlationId": message_id,
             "body": body
         }
         return FlockwaveResponse.from_json(result, validate=False)

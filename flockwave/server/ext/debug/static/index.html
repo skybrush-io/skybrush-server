@@ -105,6 +105,18 @@
                     "type": "DEV-LIST",
                     "ids": ["FAKE-01", "FAKE-02"]
                 },
+                "DEV-LISTSUB": {
+                    "type": "DEV-LISTSUB",
+                    "pathFilter": ["/FAKE-01", "/FAKE-01/thermometer", "/FAKE-00"]
+                },
+                "DEV-SUB": {
+                    "type": "DEV-SUB",
+                    "paths": ["/FAKE-02/thermometer/temperature"]
+                },
+                "DEV-UNSUB": {
+                    "type": "DEV-UNSUB",
+                    "paths": ["/FAKE-02/thermometer/temperature"]
+                },
                 "SYS-PING": {
                     "type": "SYS-PING"
                 },

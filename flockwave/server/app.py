@@ -466,6 +466,10 @@ class FlockwaveServer(Flask):
             self._on_client_count_changed,
             sender=self.client_registry
         )
+        self.client_registry.removed.connect(
+            self._on_client_removed,
+            sender=self.client_registry
+        )
 
         # Create an object to hold information about all the clocks that the
         # server manages
@@ -665,6 +669,11 @@ class FlockwaveServer(Flask):
         has changed. Dispatches a ``num_clients_changed`` signal.
         """
         self.num_clients_changed.send(self)
+
+    def _on_client_removed(self, sender, client):
+        """Handler called when a client disconnected from the server."""
+        # TODO: remove all the subscriptions of the client
+        pass
 
     def _on_clock_changed(self, sender, clock):
         """Handler called when one of the clocks managed by the clock

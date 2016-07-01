@@ -19,13 +19,25 @@ class ClientRegistry(RegistryBase):
     server is currently connected to.
 
     Attributes:
+        added (Signal): signal that is sent by the registry when a new client
+            has been added to the registry. The signal has a keyword
+            argment named ``client`` that contains the client that has just
+            been added to the registry.
+
         count_changed (Signal): signal that is sent by the registry when the
             number of connected clients changed. This can be used by
             extensions to optimize their behaviour when no clients are
             connected.
+
+        removed (Signal): signal that is sent by the registry when a client
+            has been removed from the registry. The signal has a keyword
+            argument named ``client`` that contains the client that has just
+            been removed from the registry.
     """
 
+    added = Signal()
     count_changed = Signal()
+    removed = Signal()
 
     def add(self, client_id):
         """Adds a new client to the set of clients connected to the server.
@@ -40,9 +52,11 @@ class ClientRegistry(RegistryBase):
         if client_id in self:
             return
 
-        self._entries[client_id] = True
+        client = True    # TODO
+        self._entries[client_id] = client
         log.info("Client connected", extra={"id": client_id})
 
+        self.added.send(self, client=client)
         self.count_changed.send(self)
 
     @property
@@ -61,9 +75,10 @@ class ClientRegistry(RegistryBase):
             client_id (str): the ID of the client to remove
         """
         try:
-            del self._entries[client_id]
+            client = self._entries.pop(client_id)
         except KeyError:
             return
 
         log.info("Client disconnected", extra={"id": client_id})
         self.count_changed.send(self)
+        self.removed.send(self, client=client)

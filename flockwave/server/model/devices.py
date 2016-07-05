@@ -111,6 +111,27 @@ class DeviceTreeNodeBase(object):
         else:
             return ()
 
+    def traverse_dfs(self, own_id=None):
+        """Returns a generator that yields all the nodes in the subtree of
+        this node, including the node itself, in depth-first order.
+
+        Parameters:
+            own_id (Optional[str]): the ID of this node in its parent, if
+                known. This will be yielded in the traversal results for
+                the node itself.
+
+        Yields:
+            (str, DeviceTreeNode): each node in the subtree of this node,
+                including the node itself, and its associated ID in its
+                parent, in depth-first order. The ID will be the value of
+                the ``own_id`` parameter for this node.
+        """
+        queue = [(own_id, self)]
+        while queue:
+            id, node = queue.pop()
+            yield id, node
+            queue.extend(node.iterchildren())
+
     def _add_child(self, id, node):
         """Adds the given node as a child node to this node.
 
@@ -433,6 +454,7 @@ class DeviceTree(object):
     def __init__(self):
         """Constructor. Creates an empty device tree."""
         self._root = RootNode()
+        self._uav_registry = None
 
     @property
     def json(self):
@@ -470,6 +492,67 @@ class DeviceTree(object):
 
         return node
 
+    def traverse_dfs(self):
+        """Returns a generator that yields all the nodes in the tree in
+        depth-first order.
+
+        Yields:
+            (str, DeviceTreeNode): each node in the tree and its associated
+                ID in its parent, in depth-first order. The ID will be
+                ``None`` for the root node.
+        """
+        return self.root.traverse_dfs()
+
+    @property
+    def uav_registry(self):
+        """The UAV registry that the device tree watches. The device tree
+        will attach new UAV nodes when a new UAV is added to the registry,
+        and similarly detach old UAV nodes when UAVs are removed from the
+        registry.
+        """
+        return self._uav_registry
+
+    @uav_registry.setter
+    def uav_registry(self, value):
+        if self._uav_registry == value:
+            return
+
+        if self._uav_registry is not None:
+            self._uav_registry.added.disconnect(
+                self._on_uav_added, sender=self._uav_registry
+            )
+            self._uav_registry.removed.disconnect(
+                self._on_uav_removed, sender=self._uav_registry
+            )
+
+        self._uav_registry = value
+
+        if self._uav_registry is not None:
+            self._uav_registry.added.connect(
+                self._on_uav_added, sender=self._uav_registry
+            )
+            self._uav_registry.removed.connect(
+                self._on_uav_removed, sender=self._uav_registry
+            )
+
+    def _on_uav_added(self, sender, uav):
+        """Handler called when a new UAV is registered in the server.
+
+        Parameters:
+            sender (UAVRegisty): the UAV registry
+            uav (UAV): the UAV that was added
+        """
+        self.root.add_child(uav.id, uav.device_tree_node)
+
+    def _on_uav_removed(self, sender, uav):
+        """Handler called when a UAV is deregistered from the server.
+
+        Parameters:
+            sender (UAVRegisty): the UAV registry
+            uav (UAV): the UAV that was removed
+        """
+        self.root.remove_child_by_id(uav.id)
+
 
 class DeviceTreeSubscriptionManager(object):
     """Object that is responsible for managing the subscriptions of clients
@@ -484,6 +567,32 @@ class DeviceTreeSubscriptionManager(object):
                 manage
         """
         self._tree = tree
+        self._client_registry = None
+
+    @property
+    def client_registry(self):
+        """The client registry that the device tree watches. The device tree
+        will remove the subscriptions of clients from the tree when a
+        client is removed from this registry.
+        """
+        return self._client_registry
+
+    @client_registry.setter
+    def client_registry(self, value):
+        if self._client_registry == value:
+            return
+
+        if self._client_registry is not None:
+            self._client_registry.removed.disconnect(
+                self._on_client_removed, sender=self._client_registry
+            )
+
+        self._client_registry = value
+
+        if self._client_registry is not None:
+            self._client_registry.removed.connect(
+                self._on_client_removed, sender=self._client_registry
+            )
 
     def _collect_subscriptions(self, client, path, node, result):
         """Finds all the subscriptions of the given client in the subtree
@@ -508,6 +617,11 @@ class DeviceTreeSubscriptionManager(object):
             path._parts.append(child_id)
             self._collect_subscriptions(client, path, child, result)
             path._parts.pop()
+
+    def _on_client_removed(self, sender, client):
+        """Handler called when a client disconnected from the server."""
+        for _, node in self._tree.traverse_dfs():
+            node._unsubscribe(client, force=True)
 
     def list_subscriptions(self, client, path_filter):
         """Lists all the device tree paths that a client is subscribed

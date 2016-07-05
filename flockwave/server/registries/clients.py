@@ -7,6 +7,7 @@ from __future__ import absolute_import
 from blinker import Signal
 
 from ..logger import log as base_log
+from ..model import Client
 from .base import RegistryBase
 
 __all__ = ("ClientRegistry", )
@@ -52,7 +53,7 @@ class ClientRegistry(RegistryBase):
         if client_id in self:
             return
 
-        client = True    # TODO
+        client = Client(id=client_id)
         self._entries[client_id] = client
         log.info("Client connected", extra={"id": client_id})
 

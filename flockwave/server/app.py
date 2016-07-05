@@ -245,8 +245,8 @@ class FlockwaveServer(Flask):
                 of the client that match the path filters
         """
         manager = self.device_tree_subscriptions
-        client_id = request.sid
-        subscriptions = manager.list_subscriptions(client_id, path_filter)
+        client = self.client_registry.find_by_id(request.sid)
+        subscriptions = manager.list_subscriptions(client, path_filter)
 
         body = {
             "paths": list(subscriptions.elements()),
@@ -274,13 +274,13 @@ class FlockwaveServer(Flask):
                 paths that the client was not subscribed to
         """
         manager = self.device_tree_subscriptions
-        client_id = request.sid
+        client = self.client_registry.find_by_id(request.sid)
         response = self.message_hub.create_response_or_notification(
             {}, in_response_to=in_response_to)
 
         for path in paths:
             try:
-                manager.subscribe(client_id, path)
+                manager.subscribe(client, path)
             except NoSuchPathError:
                 response.add_failure(path, "No such device tree path")
             else:
@@ -313,18 +313,18 @@ class FlockwaveServer(Flask):
                 the paths that the client was not unsubscribed from
         """
         manager = self.device_tree_subscriptions
-        client_id = request.sid
+        client = self.client_registry.find_by_id(request.sid)
         response = self.message_hub.create_response_or_notification(
             {}, in_response_to=in_response_to)
 
         if include_subtrees:
             # Collect all the subscriptions from the subtrees and pretend
             # that the user submitted that
-            paths = manager.list_subscriptions(client_id, paths)
+            paths = manager.list_subscriptions(client, paths)
 
         for path in paths:
             try:
-                manager.unsubscribe(client_id, path, force=remove_all)
+                manager.unsubscribe(client, path, force=remove_all)
             except NoSuchPathError:
                 response.add_failure(path, "No such device tree path")
             except ClientNotSubscribedError:
@@ -466,10 +466,6 @@ class FlockwaveServer(Flask):
             self._on_client_count_changed,
             sender=self.client_registry
         )
-        self.client_registry.removed.connect(
-            self._on_client_removed,
-            sender=self.client_registry
-        )
 
         # Create an object to hold information about all the clocks that the
         # server manages
@@ -512,14 +508,13 @@ class FlockwaveServer(Flask):
         # Create a global device tree and ensure that new UAVs are
         # registered in it
         self.device_tree = DeviceTree()
+        self.device_tree.uav_registry = self.uav_registry
+
+        # Create an object to manage the associations between clients and
+        # the device tree paths that the clients are subscribed to
         self.device_tree_subscriptions = DeviceTreeSubscriptionManager(
             self.device_tree)
-        self.uav_registry.added.connect(
-            self._on_uav_added, sender=self.uav_registry
-        )
-        self.uav_registry.removed.connect(
-            self._on_uav_removed, sender=self.uav_registry
-        )
+        self.device_tree_subscriptions.client_registry = self.client_registry
 
         # Create an empty heap for proposed index pages
         self._proposed_index_pages = []
@@ -670,11 +665,6 @@ class FlockwaveServer(Flask):
         """
         self.num_clients_changed.send(self)
 
-    def _on_client_removed(self, sender, client):
-        """Handler called when a client disconnected from the server."""
-        # TODO: remove all the subscriptions of the client
-        pass
-
     def _on_clock_changed(self, sender, clock):
         """Handler called when one of the clocks managed by the clock
         registry of the server has changed. Creates and sends a ``CLK-INF``
@@ -750,24 +740,6 @@ class FlockwaveServer(Flask):
                 }
                 message = hub.create_response_or_notification(body)
                 hub.send_message(message, to=client)
-
-    def _on_uav_added(self, sender, uav):
-        """Handler called when a new UAV is registered in the server.
-
-        Parameters:
-            sender (UAVRegisty): the UAV registry
-            uav (UAV): the UAV that was added
-        """
-        self.device_tree.root.add_child(uav.id, uav.device_tree_node)
-
-    def _on_uav_removed(self, sender, uav):
-        """Handler called when a UAV is deregistered from the server.
-
-        Parameters:
-            sender (UAVRegisty): the UAV registry
-            uav (UAV): the UAV that was removed
-        """
-        self.device_tree.root.remove_child_by_id(uav.id)
 
     def _sort_uavs_by_drivers(self, uav_ids, response=None):
         """Given a list of UAV IDs, returns a mapping that maps UAV drivers

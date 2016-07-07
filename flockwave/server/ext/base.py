@@ -97,6 +97,17 @@ class UAVExtensionBase(ExtensionBase):
         super(UAVExtensionBase, self).__init__()
         self._driver = None
 
+    def create_device_tree_mutation_context(self):
+        """Returns a context that can be used in a ``with`` statement to
+        encapsulate a block of code that may modify the channels in the
+        device tree of some UAVs.
+
+        Modifications to the channel nodes in a device tree should always be
+        done in a mutation context to ensure that clients are notified about
+        the modifications.
+        """
+        return self.app.device_tree.create_mutator()
+
     def configure(self, configuration):
         super(UAVExtensionBase, self).configure(configuration)
         self.configure_driver(self.driver, configuration)

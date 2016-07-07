@@ -7,7 +7,7 @@ from flask.ext.socketio import emit
 from itertools import chain
 
 from .logger import log as base_log
-from .model import FlockwaveMessageBuilder, FlockwaveNotification, \
+from .model import Client, FlockwaveMessageBuilder, FlockwaveNotification, \
     FlockwaveResponse
 
 __all__ = ("MessageHub", )
@@ -218,10 +218,12 @@ class MessageHub(object):
 
         Parameters:
             message (FlockwaveMessage): the message to send.
-            to (Optional[str]): room name or session identifier for a client
-                where the message should be sent. ``None`` means to send
-                messages to the client whose request is currently being
-                served and send notifications to everyone.
+            to (Optional[Union[str, Client]]): room name or session
+                identifier for a client where the message should be sent,
+                or a Client_ object that will be the recipient of the
+                message. ``None`` means to send messages to the client whose
+                request is currently being served and send notifications to
+                everyone.
             in_response_to (Optional[FlockwaveMessage]): the message that
                 the message being sent responds to.
         """
@@ -252,6 +254,9 @@ class MessageHub(object):
                     "semantics": "response_success"
                 }
             )
+
+        if to is Client:
+            to = to.id
 
         if to is not None:
             broadcast = False

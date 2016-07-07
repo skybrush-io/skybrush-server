@@ -189,18 +189,9 @@ class FlockwaveServer(Flask):
                 the channels in the subtrees matched by the given device
                 tree paths
         """
-        values = {}
-
-        body = {"values": values, "type": "DEV-INF"}
-        response = self.message_hub.create_response_or_notification(
-            body=body, in_response_to=in_response_to)
-
-        for path in paths:
-            node = self._find_device_tree_node_by_path(path, response)
-            if node:
-                values[path] = node.collect_channel_values()
-
-        return response
+        return self.device_tree_subscriptions.create_DEV_INF_message_for(
+            paths, in_response_to
+        )
 
     def create_DEV_LIST_message_for(self, uav_ids, in_response_to=None):
         """Creates a DEV-LIST message that contains information regarding
@@ -515,6 +506,7 @@ class FlockwaveServer(Flask):
         self.device_tree_subscriptions = DeviceTreeSubscriptionManager(
             self.device_tree)
         self.device_tree_subscriptions.client_registry = self.client_registry
+        self.device_tree_subscriptions.message_hub = self.message_hub
 
         # Create an empty heap for proposed index pages
         self._proposed_index_pages = []
@@ -595,27 +587,6 @@ class FlockwaveServer(Flask):
         return self._find_in_registry(self.connection_registry,
                                       connection_id, response,
                                       "No such connection")
-
-    def _find_device_tree_node_by_path(self, path, response=None):
-        """Finds a node in the global device tree based on a device tree
-        path or registers a failure in the given response object if there
-        is no such entry in the registry.
-
-        Parameters:
-            path (Union[str,DeviceTreePath]): the path to find
-            response (Optional[FlockwaveResponse]): the response in which
-                the failure can be registered
-
-        Returns:
-            Optional[DeviceTreeNodeBase]: the device tree node at the given
-                path or ``None`` if there is no such path
-        """
-        try:
-            return self.device_tree.resolve(path)
-        except NoSuchPathError:
-            if response is not None:
-                response.add_failure(path, "No such device tree path")
-            return None
 
     def _find_uav_by_id(self, uav_id, response=None):
         """Finds the UAV with the given ID in the UAV registry or registers
@@ -856,7 +827,7 @@ def handle_connection():
         log.warning("Access denied because of lack of JWT identity")
         return False
     else:
-        app.client_registry.add(request.sid)
+        app.client_registry.add(request.sid, socketio)
 
 
 @socketio.on("disconnect")

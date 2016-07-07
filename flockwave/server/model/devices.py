@@ -2,11 +2,12 @@
 
 from __future__ import absolute_import
 
-from collections import Counter
+from blinker import Signal
+from collections import Counter, defaultdict
 from flockwave.spec.schema import get_enum_from_schema, \
     get_complex_object_schema
 from itertools import islice
-from six import add_metaclass, iteritems
+from six import add_metaclass, iteritems, iterkeys
 
 from. errors import ClientNotSubscribedError, NoSuchPathError
 from .metamagic import ModelMeta
@@ -67,6 +68,8 @@ class DeviceTreeNodeBase(object):
     def __init__(self):
         """Constructor."""
         self._subscribers = None
+        self._parent = None
+        self._path = None
 
     def collect_channel_values(self):
         """Creates a Python dictionary that maps the IDs of the children of
@@ -99,6 +102,11 @@ class DeviceTreeNodeBase(object):
         """
         return self._subscribers[client] if self._subscribers else 0
 
+    @property
+    def has_subscribers(self):
+        """Returns whether this node has at least one subscriber."""
+        return bool(self._subscribers)
+
     def iterchildren(self):
         """Iterates over the children of this node.
 
@@ -110,6 +118,73 @@ class DeviceTreeNodeBase(object):
             return iteritems(self.children)
         else:
             return ()
+
+    def iterparents(self, include_self=False):
+        """Iterates over the parents of this node, in increasing distance
+        from the node itself.
+
+        Parameters:
+            include_self: whether to yield the node itself in the result
+
+        Yields:
+            DeviceTreeNodeBase: the parents of this node, in increasing
+                distance from the node itself
+        """
+        node = self if include_self else self._parent
+        while node is not None:
+            yield node
+            node = node._parent
+
+    def itersubscribers(self):
+        """Iterates over the subscribers registered at this node,
+        reporting each subscriber only once even if it is registered
+        multiple times.
+        """
+        if self._subscribers is not None:
+            return iterkeys(self._subscribers)
+        else:
+            return iter(())
+
+    @property
+    def parent(self):
+        """Returns the parent node of this node."""
+        return self._parent
+
+    @property
+    def path(self):
+        """Returns the path that leads to this node from the root node.
+
+        This property is cached and invalidated automatically if the
+        parent of this node or any of its parents change.
+
+        Returns:
+            str: a string representation of the path leading to this node
+                from the root node. Resolving this path from the tree root
+                should result in exactly this node.
+        """
+        if self._path is None:
+            self._path = self._validate_path()
+        return self._path
+
+    def _validate_path(self):
+        """Calculates the path string of this node."""
+        print(repr("Calculating path for: {0!r}".format(self)))
+        node = self
+        result = []
+        while node is not None:
+            parent = node._parent
+            if parent is not None:
+                for child_id, child in parent.iterchildren():
+                    if child is node:
+                        result.append(child_id)
+                        break
+                else:
+                    raise ValueError("inconsistent tree: node not found "
+                                     "among the children of its parent")
+            node = parent
+        result.append(u"")
+        result.reverse()
+        return u"/".join(result)
 
     def traverse_dfs(self, own_id=None):
         """Returns a generator that yields all the nodes in the subtree of
@@ -132,6 +207,14 @@ class DeviceTreeNodeBase(object):
             yield id, node
             queue.extend(node.iterchildren())
 
+    @property
+    def tree(self):
+        """Returns the tree that this node is a part of."""
+        node = self
+        while node is not None and not isinstance(node, RootNode):
+            node = node._parent
+        return node if node is None else node.tree
+
     def _add_child(self, id, node):
         """Adds the given node as a child node to this node.
 
@@ -146,13 +229,32 @@ class DeviceTreeNodeBase(object):
             ValueError: if another node with the same ID already exists for
                 this node
         """
+        if node._parent is not None:
+            node._parent._remove_child(node)
+
         if not hasattr(self, "children"):
             self.children = {}
         if id in self.children:
             raise ValueError("another child node already exists with "
                              "ID={0!r}".format(id))
         self.children[id] = node
+
+        node._parent = self
+        node._path = None
+
         return node
+
+    def _dispose(self):
+        """Marks the node as not being used any more and detaches it from
+        its tree.
+        """
+        self._parent = None
+        self._path = None
+
+        if hasattr(self, "children"):
+            for _, child in iteritems(self.children):
+                child._dispose()
+            self.children = {}
 
     def _remove_child(self, node):
         """Removes the given child node from this node.
@@ -167,7 +269,7 @@ class DeviceTreeNodeBase(object):
             ValueError: if the node is not a child of this node
         """
         for id, child_node in self.iterchildren():
-            if child_node == node:
+            if child_node is node:
                 return self._remove_child_by_id(id)
         raise ValueError("the given node is not a child of this node")
 
@@ -184,10 +286,12 @@ class DeviceTreeNodeBase(object):
             ValueError: if there is no such child with the given ID
         """
         try:
-            return self.children.pop(id)
+            node = self.children.pop(id)
         except KeyError:
             raise ValueError("no child exists with the given ID: {0!r}"
                              .format(id))
+        node._parent = None
+        node._path = None
 
     def _subscribe(self, client):
         """Subscribes the given client object to this node and its subtree.
@@ -229,13 +333,26 @@ class DeviceTreeNodeBase(object):
             if force:
                 del self._subscribers[client]
             else:
-                self._subscribers[client] -= 1
+                new_count = self._subscribers[client] - 1
+                if new_count == 0:
+                    del self._subscribers[client]
+                else:
+                    self._subscribers[client] = new_count
         elif not force:
             raise KeyError(client)
 
 
 class ChannelNode(DeviceTreeNodeBase):
-    """Class representing a device node in a Flockwave device tree."""
+    """Class representing a device node in a Flockwave device tree.
+
+    Attributes:
+        value (object): the value of the channel. Modifying this property
+            will modify the value but _not_ notify any interested parties
+            that the channel value was modified. Use the context manager
+            returned by the ``create_mutator()`` method of the device tree
+            instead if you want to notify interested parties about your
+            modifications.
+    """
 
     def __init__(self, channel_type, operations=None):
         """Constructor.
@@ -318,9 +435,14 @@ class DeviceNode(DeviceTreeNodeBase):
 class RootNode(DeviceTreeNodeBase):
     """Class representing the root node in a Flockwave device tree."""
 
-    def __init__(self):
-        """Constructor."""
+    def __init__(self, tree):
+        """Constructor.
+
+        Parameters:
+            tree (DeviceTree): the tree that this node will be placed in
+        """
         super(RootNode, self).__init__()
+        self._tree = tree
         self.type = DeviceTreeNodeType.root
 
     def add_child(self, id, node):
@@ -361,6 +483,14 @@ class RootNode(DeviceTreeNodeBase):
             UAVNode: the node that was removed
         """
         return self._remove_child_by_id(id)
+
+    @DeviceTreeNodeBase.tree.getter
+    def tree(self):
+        return self._tree
+
+    def _dispose(self):
+        super(RootNode, self)._dispose()
+        self._tree = None
 
 
 class UAVNode(DeviceTreeNodeBase):
@@ -449,12 +579,40 @@ class DeviceTreePath(object):
 class DeviceTree(object):
     """A device tree of a UAV that lists the devices and channels that
     the UAV provides.
+
+    Attributes:
+        channel_nodes_updated (Signal): signal that is dispatched by the
+            tree when the values of some of the channel nodes in the tree
+            have been updated. Updates are detected only if they are made
+            in the context of a DeviceTreeMutator_.
     """
+
+    channel_nodes_updated = Signal()
 
     def __init__(self):
         """Constructor. Creates an empty device tree."""
-        self._root = RootNode()
+        self._root = RootNode(self)
         self._uav_registry = None
+
+    def create_mutator(self):
+        """Creates a mutator object that provides additional methods to
+        modify the values of the channels in the device tree and also notify
+        subscribers about all modifications.
+
+        The mutator object returned by this function should be used as a
+        context manager as follows::
+
+            with tree.create_mutator() as mutator:
+                mutator.update(some_channel, new_value)
+        """
+        return DeviceTreeMutator(self, self._on_channel_nodes_updated)
+
+    def dispose(self):
+        """Disposes of this tree when it is not needed any more. No further
+        operations should be performed on a tree after you have called
+        ``dispose()`` on it.
+        """
+        self.root._dispose()
 
     @property
     def json(self):
@@ -535,6 +693,18 @@ class DeviceTree(object):
                 self._on_uav_removed, sender=self._uav_registry
             )
 
+    def _on_channel_nodes_updated(self, nodes):
+        """Callback method that a DeviceTreeMutator_ will call when a
+        mutation session has ended and some channel nodes were updated.
+
+        Parameters:
+            nodes (Iterable[ChannelNode]): the set of channel nodes that
+                were updated. It might not be a Python set but it is
+                guaranteed to contain each affected node at most once.
+        """
+        # Just redispatch the set in a channel_nodes_updated signal
+        self.channel_nodes_updated.send(self, nodes=nodes)
+
     def _on_uav_added(self, sender, uav):
         """Handler called when a new UAV is registered in the server.
 
@@ -554,9 +724,62 @@ class DeviceTree(object):
         self.root.remove_child_by_id(uav.id)
 
 
+class DeviceTreeMutator(object):
+    """Context manager that provides methods for modifying the values of the
+    channel nodes in a device tree, records the modifications and then
+    notifies the tree about the set of channel nodes that were modified.
+
+    Attributes:
+        tree (DeviceTree): the device tree that the mutator will modify
+        callback (callable): an optional callable that the mutator
+            will call with the set of updated nodes when the mutator goes
+            out of context. The callback will not be called if there were
+            no updated nodes.
+    """
+
+    def __init__(self, tree, callback):
+        self.tree = tree
+        self.callback = callback
+        self._updated_nodes = set()
+
+    def __enter__(self):
+        self._updated_nodes = set()
+        return self
+
+    def __exit__(self, *args):
+        if self._updated_nodes:
+            self.callback(self._updated_nodes)
+
+    def update(self, node, new_value):
+        """Updates the value of a channel node at the given path with the
+        given new value.
+
+        The new value is compared with the old value using the standard
+        Python equality operator. If the two values are equal, the value of
+        the channel will _not_ be modified.
+
+        Parameters:
+            node (Union[str, DeviceTreePath, ChannelNode]): the path
+                of the channel node to modify (either as a string or as a
+                DeviceTreePath_), or the channel node itself.
+            new_value (object): the new value of the channel
+        """
+        if not isinstance(node, DeviceTreeNodeBase):
+            node = self.tree.resolve(node)
+
+        assert isinstance(node, ChannelNode)
+
+        if node.value == new_value:
+            return
+
+        node.value = new_value
+        self._updated_nodes.add(node)
+
+
 class DeviceTreeSubscriptionManager(object):
     """Object that is responsible for managing the subscriptions of clients
-    to the nodes of a device tree.
+    to the nodes of a device tree and notifying clients when the values of
+    the channel nodes change.
     """
 
     def __init__(self, tree):
@@ -567,7 +790,11 @@ class DeviceTreeSubscriptionManager(object):
                 manage
         """
         self._tree = tree
+        self._tree.channel_nodes_updated.connect(
+            self._on_channel_nodes_updated, sender=self._tree
+        )
         self._client_registry = None
+        self._message_hub = None
 
     @property
     def client_registry(self):
@@ -594,6 +821,17 @@ class DeviceTreeSubscriptionManager(object):
                 self._on_client_removed, sender=self._client_registry
             )
 
+    @property
+    def message_hub(self):
+        """The message hub that the subscription manager can use to inform
+        subscribers about changes in the values of channel nodes
+        """
+        return self._message_hub
+
+    @message_hub.setter
+    def message_hub(self, value):
+        self._message_hub = value
+
     def _collect_subscriptions(self, client, path, node, result):
         """Finds all the subscriptions of the given client in the subtree
         of the given tree node (including the node itself) and adds tem to
@@ -618,10 +856,103 @@ class DeviceTreeSubscriptionManager(object):
             self._collect_subscriptions(client, path, child, result)
             path._parts.pop()
 
+    def _find_device_tree_node_by_path(self, path, response=None):
+        """Finds a node in the global device tree based on a device tree
+        path or registers a failure in the given response object if there
+        is no such entry in the registry.
+
+        Parameters:
+            path (Union[str,DeviceTreePath]): the path to find
+            response (Optional[FlockwaveResponse]): the response in which
+                the failure can be registered
+
+        Returns:
+            Optional[DeviceTreeNodeBase]: the device tree node at the given
+                path or ``None`` if there is no such path
+        """
+        try:
+            return self.resolve(path)
+        except NoSuchPathError:
+            if response is not None:
+                response.add_failure(path, "No such device tree path")
+            return None
+
+    def _notify_subscriber(self, subscriber, channel_values):
+        """Notifies a single subscriber about the change in channel values
+        in the subtree of a node that the subscriber is subscribed to.
+
+        Parameters:
+            subscriber (Client): the client that has to be notified
+            node (DeviceTreeNode): the node that the client is subscribed to
+            channel_values (object): object containing the channel values
+                of all the channels in the subtree of the node, organized
+                in exactly the same way as the tree itself is organized
+                under the node
+        """
+        body = {"values": channel_values, "type": "DEV-INF"}
+        message = self._message_hub.create_notification(body)
+        self._message_hub.send_message(message, to=subscriber)
+
     def _on_client_removed(self, sender, client):
         """Handler called when a client disconnected from the server."""
         for _, node in self._tree.traverse_dfs():
             node._unsubscribe(client, force=True)
+
+    def _on_channel_nodes_updated(self, sender, nodes):
+        """Handler called when some channel nodes were updated in the
+        associated device tree.
+        """
+        # For each node that was updated during this session, we have to
+        # walk up the parent chain and collect all the parents.
+        visited_nodes = set()
+        for node in nodes:
+            visited_nodes.update(node.iterparents(include_self=True))
+
+        # Now, we need to construct the messages to be sent, for each
+        # subscriber that was affected. Different subscribers may get
+        # different messages so we need to build a message for each
+        # subscriber.
+        messages_by_subscribers = defaultdict(dict)
+        for node in visited_nodes:
+            if node.has_subscribers:
+                path = node.path
+                channel_values = node.collect_channel_values()
+                for subscriber in node.itersubscribers():
+                    messages_by_subscribers[subscriber][path] = \
+                        channel_values
+
+        # Now we can send the messages
+        for subscriber, message in iteritems(messages_by_subscribers):
+            self._notify_subscriber(subscriber, message)
+
+    def create_DEV_INF_message_for(self, paths, in_response_to=None):
+        """Creates a DEV-INF message that contains information regarding
+        the current values of the channels in the subtrees of the device
+        tree matched by the given device tree paths.
+
+        Parameters:
+            paths (iterable): list of device tree paths
+            in_response_to (Optional[FlockwaveMessage]): the message that the
+                constructed message will respond to. ``None`` means that the
+                constructed message will be a notification.
+
+        Returns:
+            FlockwaveMessage: the DEV-INF message with the current values of
+                the channels in the subtrees matched by the given device
+                tree paths
+        """
+        values = {}
+
+        body = {"values": values, "type": "DEV-INF"}
+        response = self._message_hub.create_response_or_notification(
+            body=body, in_response_to=in_response_to)
+
+        for path in paths:
+            node = self._find_device_tree_node_by_path(path, response)
+            if node:
+                values[path] = node.collect_channel_values()
+
+        return response
 
     def list_subscriptions(self, client, path_filter):
         """Lists all the device tree paths that a client is subscribed

@@ -211,12 +211,14 @@ class FakeUAV(UAVBase):
         self._target_xyz.z = 0
         self.state = FakeUAVState.LANDING
 
-    def step(self, dt):
+    def step(self, dt, mutator=None):
         """Simulates a single step of the trajectory of the fake UAV based
         on its state and the amount of time that has passed.
 
         Parameters:
             dt (float): the time that has passed, in seconds.
+            mutator (DeviceTreeMutator): the mutator object that should be
+                used by the UAV to update its channel nodes
         """
         state = self._state
 
@@ -294,7 +296,8 @@ class FakeUAV(UAVBase):
         )
 
         # Also update our fake temperature sensor
-        self.thermometer.value = cos(self.angle) + 24.0
+        if mutator is not None:
+            mutator.update(self.thermometer, cos(self.angle) + 24.0)
 
     def takeoff(self):
         """Starts a simulated take-off with the fake UAV."""
@@ -425,7 +428,8 @@ class StatusUpdater(object):
         """Updates and reports the status of all the UAVs."""
         hub = self.ext.app.message_hub
         while not self.stopping:
-            self._update_uavs()
+            with self.ext.create_device_tree_mutation_context() as mutator:
+                self._update_uavs(mutator)
 
             message = self._create_status_notification()
             hub.send_message(message)
@@ -436,10 +440,10 @@ class StatusUpdater(object):
             uav.state = FakeUAVState.LANDED
             uav.state = FakeUAVState.TAKEOFF
 
-    def _update_uavs(self):
+    def _update_uavs(self, mutator):
         """Updates the status of all the UAVs."""
         for uav in self.ext.uavs:
-            uav.step(dt=self._delay)
+            uav.step(mutator=mutator, dt=self._delay)
 
     def _on_thread_stopped(self, thread):
         """Handler called when the status reporter thread stops."""

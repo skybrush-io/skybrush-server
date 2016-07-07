@@ -40,7 +40,7 @@ class ClientRegistry(RegistryBase):
     count_changed = Signal()
     removed = Signal()
 
-    def add(self, client_id):
+    def add(self, client_id, message_hub):
         """Adds a new client to the set of clients connected to the server.
 
         This function is a no-op if the client is already added. It is
@@ -49,11 +49,13 @@ class ClientRegistry(RegistryBase):
 
         Arguments:
             client_id (str): the ID of the client
+            message_hub (MessageHub): the message hub that can be used if
+                we want to send a message to the client
         """
         if client_id in self:
             return
 
-        client = Client(id=client_id)
+        client = Client(id=client_id, message_hub=message_hub)
         self._entries[client_id] = client
         log.info("Client connected", extra={"id": client_id})
 

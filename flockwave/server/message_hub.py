@@ -53,6 +53,7 @@ class MessageHub(object):
         """Constructor."""
         self._handlers_by_type = defaultdict(list)
         self._message_builder = FlockwaveMessageBuilder()
+        self.socketio = None
 
     def acknowledge(self, message=None, outcome=True, reason=None):
         """Creates a new positive or negative acknowledgment of the given
@@ -255,14 +256,25 @@ class MessageHub(object):
                 }
             )
 
-        if to is Client:
+        if isinstance(to, Client):
             to = to.id
 
         if to is not None:
             broadcast = False
 
-        emit("fw", message.json, json=True, broadcast=broadcast, room=to,
-             namespace="/")
+        if not broadcast and to is None:
+            # We are trying to send a message to the sender of the current
+            # request. This works only with the Flask-SocketIO-wide
+            # emit() function so we use that
+            emit("fw", message.json)
+        else:
+            # We are either sending a broadcast or targeting a concrete
+            # client; this can work with our own _socketio object
+            assert self.socketio, "message hub is not associated to "\
+                "a SocketIO object yet"
+            self.socketio.emit(
+                "fw", message.json, room=to, namespace="/"
+            )
 
     def _send_response(self, message, in_response_to):
         """Sends a response to a message from this message hub.

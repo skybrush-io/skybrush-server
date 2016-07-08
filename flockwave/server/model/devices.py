@@ -168,7 +168,6 @@ class DeviceTreeNodeBase(object):
 
     def _validate_path(self):
         """Calculates the path string of this node."""
-        print(repr("Calculating path for: {0!r}".format(self)))
         node = self
         result = []
         while node is not None:

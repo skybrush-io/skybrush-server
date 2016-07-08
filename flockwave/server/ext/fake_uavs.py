@@ -15,7 +15,6 @@ from flockwave.gps.vectors import Altitude, AltitudeReference, Vector3D, \
 from flockwave.server.model.uav import UAVBase, UAVDriver
 from math import atan2, cos, hypot, sin, pi
 from random import random, choice
-from time import time
 
 
 __all__ = ()
@@ -370,6 +369,80 @@ class FakeUAVProviderExtension(UAVExtensionBase):
         self._status_updater.start()
 
 
+class _StatusUpdaterThread(object):
+    """Green thread managed by the StatusUpdater_."""
+
+    def __init__(self, ext, delay, callback=None):
+        """Constructor."""
+        self.callback = callback
+        self._delay = delay
+        self._ext = ext
+        self._running = False
+        self._spawned_green_thread = None
+        self._stopping = False
+
+    def _create_status_notification(self):
+        """Creates a single status notification message that is to be
+        broadcast via the message hub. The notification will contain the
+        status information of all the UAVs managed by this extension.
+        """
+        return self._ext.app.create_UAV_INF_message_for(self._ext.uav_ids)
+
+    def request_stop(self):
+        """Asks the thread to stop as soon as possible (i.e. in the next
+        iteration of the main loop).
+        """
+        self._stopping = True
+
+    @property
+    def running(self):
+        """Returns whether the main loop of the thread is currently
+        running.
+        """
+        return self._spawned_green_thread is not None
+
+    @property
+    def stopping(self):
+        """Returns whether the main loop of the thread has been requested to
+        stop but has not stopped yet.
+        """
+        return self.running and self._stopping
+
+    def start(self):
+        assert not self._spawned_green_thread
+        status_updater = copy_current_request_context(
+            self._update_and_report_status
+        )
+        self._spawned_green_thread = spawn(status_updater)
+        self._spawned_green_thread.link(self._on_thread_stopped)
+
+    def _update_and_report_status(self):
+        """Updates and reports the status of all the UAVs."""
+        hub = self._ext.app.message_hub
+        uavs = self._ext.uavs
+
+        while not self._stopping:
+            with self._ext.create_device_tree_mutation_context() as mutator:
+                for uav in uavs:
+                    uav.step(mutator=mutator, dt=self._delay)
+
+            message = self._create_status_notification()
+            hub.send_message(message)
+
+            sleep(self._delay)
+
+        for uav in uavs:
+            uav.state = FakeUAVState.LANDED
+            uav.state = FakeUAVState.TAKEOFF
+
+    def _on_thread_stopped(self, thread):
+        """Handler called when the green thread terminates."""
+        self._stopping = False
+        self._spawned_green_thread = None
+        if self.callback is not None:
+            self.callback(self)
+
+
 class StatusUpdater(object):
     """Status updater object that manages a green thread that will report
     the status of the fake UAVs periodically.
@@ -379,16 +452,8 @@ class StatusUpdater(object):
         """Constructor."""
         self._thread = None
         self._delay = None
-        self._started_at = time()
+        self._ext = ext
         self.delay = delay
-        self.ext = ext
-
-    def _create_status_notification(self):
-        """Creates a single status notification message that is to be
-        broadcast via the message hub. The notification will contain the
-        status information of all the UAVs managed by this extension.
-        """
-        return self.ext.app.create_UAV_INF_message_for(self.ext.uav_ids)
 
     @property
     def delay(self):
@@ -404,51 +469,37 @@ class StatusUpdater(object):
     @property
     def running(self):
         """Returns whether the status reporter thread is running."""
-        return self._thread is not None
+        return self._thread and self._thread.running
+
+    @property
+    def stopping(self):
+        """Returns whether the status reporter thread is stopping."""
+        return self._thread and self._thread.stopping
 
     def start(self):
         """Starts the status reporter thread if it is not running yet."""
-        if self.running:
+        if self.running and not self.stopping:
             return
 
-        status_updater = copy_current_request_context(
-            self.update_and_report_status)
-        self.stopping = False
-        self._thread = spawn(status_updater)
-        self._thread.link(self._on_thread_stopped)
+        self._thread = _StatusUpdaterThread(
+            self._ext, self.delay, self._on_thread_stopped
+        )
+        self._thread.start()
 
     def stop(self):
         """Stops the status reporter thread if it is running."""
-        if not self.running:
+        if not self.running or self.stopping:
             return
-
-        self.stopping = True
-
-    def update_and_report_status(self):
-        """Updates and reports the status of all the UAVs."""
-        hub = self.ext.app.message_hub
-        while not self.stopping:
-            with self.ext.create_device_tree_mutation_context() as mutator:
-                self._update_uavs(mutator)
-
-            message = self._create_status_notification()
-            hub.send_message(message)
-
-            sleep(self._delay)
-
-        for uav in self.ext.uavs:
-            uav.state = FakeUAVState.LANDED
-            uav.state = FakeUAVState.TAKEOFF
-
-    def _update_uavs(self, mutator):
-        """Updates the status of all the UAVs."""
-        for uav in self.ext.uavs:
-            uav.step(mutator=mutator, dt=self._delay)
+        self._thread.request_stop()
 
     def _on_thread_stopped(self, thread):
-        """Handler called when the status reporter thread stops."""
-        self.stopping = False
-        self._thread = None
+        """Handler called when the status updater green thread terminated."""
+        # The next check is needed because a call to stop() followed by
+        # a start() immediately might mean that the first thread that was
+        # stopped did not have a chance to clean up after itself before
+        # the second thread has started.
+        if self._thread is thread:
+            self._thread = None
 
 
 construct = FakeUAVProviderExtension

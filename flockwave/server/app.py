@@ -816,6 +816,7 @@ def index():
 ############################################################################
 
 socketio = SocketIO(app, json=_JSONEncoder())
+app.message_hub.socketio = socketio
 
 
 @socketio.on("connect")

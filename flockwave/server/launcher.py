@@ -17,7 +17,11 @@ from .logger import log
               help="The IP address that the server will bind to")
 @click.option("-p", "--port", default=5000,
               help="The port that the server will listen on")
-def start(debug, host, port):
+@click.option("--ssl-key", default=None, type=click.Path(exists=True),
+              help="Private key of the SSL certificate in PEM format")
+@click.option("--ssl-cert", default=None, type=click.Path(exists=True),
+              help="SSL certificate in PEM format")
+def start(debug, host, port, ssl_key, ssl_cert):
     """Start the Flockwave server."""
     # Ensure that everything is monkey-patched by Eventlet as soon as
     # possible
@@ -37,13 +41,24 @@ def start(debug, host, port):
             log_handler = logging.getLogger(logger_name)
             log_handler.setLevel(logging.ERROR)
 
-    # Start the SocketIO server. Note the lazy import; this is to ensure
-    # that the logging is set up by the time we start configuring the app.
+    # Note the lazy import; this is to ensure that the logging is set up by the
+    # time we start configuring the app.
     from flockwave.server.app import app, socketio
 
-    log.info("Starting Flockwave server on port {0}...".format(port))
+    # Construct SSL-related parameters to socketio.run() if needed
+    ssl_args = {}
+    if ssl_key or ssl_cert:
+        ssl_args.update({
+            "keyfile": ssl_key,
+            "certfile": ssl_cert
+        })
+        log.info("Starting secure Flockwave server on port {0}...".format(port))
+    else:
+        log.info("Starting Flockwave server on port {0}...".format(port))
+
+    # Now start the server
     socketio.run(app, host=host, port=port, debug=debug, use_reloader=False,
-                 log=eventlet_log)
+                 log=eventlet_log, **ssl_args)
 
 
 if __name__ == '__main__':

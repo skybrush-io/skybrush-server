@@ -11,7 +11,8 @@ __all__ = ("load", "index")
 
 
 blueprint = Blueprint("debug", __name__, static_folder="static",
-                      template_folder="templates")
+                      template_folder="templates",
+                      static_url_path="/static")
 
 
 def load(app, configuration, logger):
@@ -24,7 +25,7 @@ def load(app, configuration, logger):
 @blueprint.route("/")
 def index():
     """Returns the index page of the extension."""
-    return blueprint.send_static_file("index.html")
+    return render_template("index.html")
 
 
 @blueprint.route("/greenlets")

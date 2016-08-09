@@ -644,7 +644,7 @@ class DeviceTree(object):
         for part in path.iterparts():
             try:
                 node = node.children[part]
-            except KeyError:
+            except (KeyError, AttributeError):
                 raise NoSuchPathError(path)
 
         return node
@@ -870,7 +870,7 @@ class DeviceTreeSubscriptionManager(object):
                 path or ``None`` if there is no such path
         """
         try:
-            return self.resolve(path)
+            return self._tree.resolve(path)
         except NoSuchPathError:
             if response is not None:
                 response.add_failure(path, "No such device tree path")

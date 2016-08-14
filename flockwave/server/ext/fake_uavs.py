@@ -296,7 +296,11 @@ class FakeUAV(UAVBase):
 
         # Also update our fake temperature sensor
         if mutator is not None:
-            mutator.update(self.thermometer, cos(self.angle) + 24.0)
+            mutator.update(self.thermometer, {
+                "lat": position.lat,
+                "lon": position.lon,
+                "value": cos(self.angle) + 24.0
+            })
 
     def takeoff(self):
         """Starts a simulated take-off with the fake UAV."""
@@ -310,7 +314,7 @@ class FakeUAV(UAVBase):
 
     def _initialize_device_tree_node(self, node):
         thermometer = node.add_device("thermometer")
-        self.thermometer = thermometer.add_channel("temperature", type=float)
+        self.thermometer = thermometer.add_channel("temperature", type=object)
 
 
 class FakeUAVProviderExtension(UAVExtensionBase):

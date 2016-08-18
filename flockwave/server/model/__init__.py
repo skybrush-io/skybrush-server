@@ -14,6 +14,7 @@ from .errors import ClientNotSubscribedError, NoSuchPathError
 from .messages import FlockwaveMessage, FlockwaveNotification, \
     FlockwaveResponse
 from .uav import UAVStatusInfo, UAVDriver, UAV, UAVBase
+from .world import World
 
 
 __all__ = (
@@ -25,5 +26,5 @@ __all__ = (
     "ChannelNode", "ChannelOperation", "ChannelType", "DeviceClass",
     "DeviceNode", "DeviceTree", "DeviceTreeNodeType", "UAVNode",
     "DeviceTreeSubscriptionManager",
-    "NoSuchPathError", "ClientNotSubscribedError"
+    "NoSuchPathError", "ClientNotSubscribedError", "World"
 )

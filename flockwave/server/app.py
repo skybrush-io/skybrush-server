@@ -24,6 +24,7 @@ from .message_hub import MessageHub
 from .model import FlockwaveMessage
 from .model.devices import DeviceTree, DeviceTreeSubscriptionManager
 from .model.errors import ClientNotSubscribedError, NoSuchPathError
+from .model.world import World
 from .registries import ClientRegistry, ClockRegistry, ConnectionRegistry, \
     UAVRegistry
 from .version import __version__ as server_version
@@ -55,6 +56,9 @@ class FlockwaveServer(Flask):
             send Flockwave messages
         uav_registry (UAVRegistry): central registry for the UAVs known to
             the server
+        world (World): a representation of the "world" in which the flock
+            of UAVs live. By default, the world is empty but extensions may
+            extend it with objects.
     """
 
     num_clients_changed = Signal()
@@ -495,6 +499,9 @@ class FlockwaveServer(Flask):
         # Create an object to hold information about all the UAVs that
         # the server knows about
         self.uav_registry = UAVRegistry()
+
+        # Create the global world object
+        self.world = World()
 
         # Create a global device tree and ensure that new UAVs are
         # registered in it

@@ -4,6 +4,7 @@ from __future__ import absolute_import
 
 import importlib
 
+from blinker import Signal
 from .logger import log as base_log
 
 __all__ = ("ExtensionManager", )
@@ -15,7 +16,20 @@ log = base_log.getChild("manager")
 class ExtensionManager(object):
     """Central extension manager for a Flockwave server that manages
     the loading, configuration and unloading of extensions.
+
+
+    Attributes:
+        loaded (Signal): signal that is sent by the extension manager when
+            an extension has been configured and loaded. The signal has two
+            keyword arguments: ``name`` and ``extension``.
+
+        unloaded (Signal): signal that is sent by the extension manager when
+            an extension has been unloaded. The signal has two keyword
+            arguments: ``name`` and ``extension``.
     """
+
+    loaded = Signal()
+    unloaded = Signal()
 
     def __init__(self, app=None):
         """Constructor.
@@ -117,7 +131,7 @@ class ExtensionManager(object):
         ext = self._get_extension_by_name(extension_name)
         exports = getattr(ext, "exports", {})
         if members is None:
-            return exports
+            return dict(exports)
         elif isinstance(members, str):
             return exports[members]
         else:
@@ -174,6 +188,8 @@ class ExtensionManager(object):
                 return
 
         self._extensions[extension_name] = extension
+        self.loaded.send(self, name=extension_name, extension=extension)
+
         if self._num_clients > 0:
             self._spinup_extension(extension)
 
@@ -219,6 +235,7 @@ class ExtensionManager(object):
                               "forcing unload".format(extension_name))
 
         del self._extensions[extension_name]
+        self.unloaded.send(self, name=extension_name, extension=extension)
 
         message = "Unloaded extension {0!r}".format(extension_name)
         if clean_unload:

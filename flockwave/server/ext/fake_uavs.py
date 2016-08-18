@@ -294,7 +294,7 @@ class FakeUAV(UAVBase):
             heading=self.angle / pi * 180 + 90
         )
 
-        # Also update our fake temperature sensor
+        # Also update our fake temperature sensor and Geiger counter
         if mutator is not None:
             mutator.update(self.thermometer, {
                 "lat": position.lat,
@@ -313,8 +313,11 @@ class FakeUAV(UAVBase):
         self.state = FakeUAVState.TAKEOFF
 
     def _initialize_device_tree_node(self, node):
-        thermometer = node.add_device("thermometer")
-        self.thermometer = thermometer.add_channel("temperature", type=object)
+        device = node.add_device("thermometer")
+        self.thermometer = device.add_channel("temperature", type=object)
+
+        device = node.add_device("geiger_counter")
+        self.geiger_counter = device.add_channel("measurement", type=object)
 
 
 class FakeUAVProviderExtension(UAVExtensionBase):
@@ -343,19 +346,25 @@ class FakeUAVProviderExtension(UAVExtensionBase):
         return FakeUAVDriver()
 
     def configure(self, configuration):
+        # Get the number of UAVs to create and the format of the IDs
         count = configuration.get("count", 0)
         id_format = configuration.get("id_format", "FAKE-{0}")
+
+        # Set the status updater thread frequency
         self._status_updater.delay = configuration.get("delay", 1)
 
+        # Get the center of the circle
         center = configuration.get("center")
         center = GPSCoordinate(
             lat=center["lat"], lon=center["lon"],
             alt=Altitude.relative_to_home(center["alt"])
         )
 
+        # Get the radius and angular velocity from the configuration
         radius = float(configuration.get("radius", 10))
         omega = 2 * pi / configuration.get("time_of_single_cycle", 10)
 
+        # Generate IDs for the UAVs and then create them
         self.uav_ids = [id_format.format(index) for index in xrange(count)]
         self.uavs = [
             self._driver.create_uav(id, center=center, radius=radius,
@@ -363,6 +372,8 @@ class FakeUAVProviderExtension(UAVExtensionBase):
                                     angular_velocity=omega)
             for index, id in enumerate(self.uav_ids)
         ]
+
+        # Register all the UAVs that we have created
         for uav in self.uavs:
             self.app.uav_registry.add(uav)
 

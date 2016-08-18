@@ -6,9 +6,13 @@ counters.
 
 from __future__ import absolute_import
 
-from flockwave.gps.vectors import GPSCoordinate
+from flockwave.gps.vectors import Altitude, GPSCoordinate, \
+    ECEFToGPSCoordinateTransformation
 
 from .base import ExtensionBase
+
+
+gps_to_ecef = ECEFToGPSCoordinateTransformation().to_ecef
 
 
 class Source(object):
@@ -24,25 +28,39 @@ class Source(object):
             lon (float): the longitude of the radiation source
             intensity (float): the intensity of the radiation source,
                 expressed as the number of particles detected in one second
-                at the source.
+                by our Geiger-Muller counter at a distance of 1 meter from
+                the source
         """
-        self.location = GPSCoordinate(lat=lat, lon=lon)
+        self._location = None
+        self._location_ecef = None
+
+        self.location = GPSCoordinate(lat=lat, lon=lon, alt=Altitude.msl(0))
         self.intensity = max(float(intensity), 0.0)
 
-    def intensity_at(self, lat, lon):
+    def intensity_at(self, ecef):
         """Returns the intensity of the radiation source at the given
-        latitude and longitude.
+        location, in ECEF coordinates.
 
         Parameters:
-            lat (float): the latitude of the point to query
-            lon (float): the longitude of the point to query
+            ecef (ECEFCoordinate): the point of the query, in ECEF coordinates
 
         Returns:
             float: the intensity of the radiation source at the given point,
                 i.e. the expected number of particles that would be detected
                 in one second at the given point from the radiation source
         """
-        raise NotImplementedError
+        dist = self._location_ecef.distance(ecef)
+        return self.intensity / dist / dist
+
+    @property
+    def location(self):
+        """The location of the radiation source as a GPSCoordinate_"""
+        return self._location
+
+    @location.setter
+    def location(self, value):
+        self._location = value
+        self._location_ecef = gps_to_ecef(value)
 
 
 class RadiationExtension(ExtensionBase):
@@ -67,7 +85,8 @@ class RadiationExtension(ExtensionBase):
             lon (float): the longitude of the radiation source
             intensity (float): the intensity of the radiation source,
                 expressed as the number of particles detected in one second
-                at the source.
+                by our Geiger-Muller counter at a distance of 1 meter from
+                the source
         """
         self._sources.append(Source(lat=lat, lon=lon, intensity=intensity))
 
@@ -96,10 +115,10 @@ class RadiationExtension(ExtensionBase):
             ``lon`` (longitude) and ``intensity``. Radiation sources are
             assumed to emit particles according to a Poisson distribution
             with the given intensity, decaying proportionally to the square
-            of the distance. Distances are calculated using the Haversine
-            formula.
+            of the distance. Distances are calculated in the ECEF coordinate
+            system.
         """
-        self.background_intensity = configuration.get("background")
+        self.background_intensity = configuration.get("background", 0)
         for source in configuration.get("sources", []):
             self.add_source(**source)
 
@@ -124,7 +143,8 @@ class RadiationExtension(ExtensionBase):
         if seconds == 0:
             return 0.0
 
-        intensity = sum(source.intensity_at(lat, lon)
+        ecef = gps_to_ecef(GPSCoordinate(lat, lon))
+        intensity = sum(source.intensity_at(ecef)
                         for source in self._sources)
         return (intensity + self.background_intensity) * seconds
 

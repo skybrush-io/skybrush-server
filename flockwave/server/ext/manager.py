@@ -115,13 +115,13 @@ class ExtensionManager(object):
                 part of the API of the extension
         """
         ext = self._get_extension_by_name(extension_name)
-        api = getattr(ext, "api", {})
+        exports = getattr(ext, "exports", {})
         if members is None:
-            return api
+            return exports
         elif isinstance(members, str):
-            return api[members]
+            return exports[members]
         else:
-            return [api[member] for member in members]
+            return [exports[member] for member in members]
 
     def load(self, extension_name, configuration=None):
         """Loads an extension with the given name.

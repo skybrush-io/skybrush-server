@@ -37,6 +37,15 @@ EXTENSIONS = {
         # "connection": "serial:/dev/ttyUSB.xbee?baud=115200"
         "connection": "serial:/tmp/xbee"
     },
+    "radiation": {
+        "sources": [
+            {
+                "lat": 47.473360,
+                "lon": 19.062159,
+                "intensity": 20
+            }
+        ]
+    },
     "smpte_timecode": {
         "connection": "midi:IAC Driver Bus 1"
     },

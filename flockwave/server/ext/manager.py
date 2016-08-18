@@ -88,6 +88,41 @@ class ExtensionManager(object):
         """
         return self._extensions[extension_name]
 
+    def import_from(self, extension_name, members=None):
+        """Imports the API exposed by an extension.
+
+        Extensions *may* have a dictionary named ``exports`` that allows the
+        extension to export some of its variables, functions or methods.
+        Other extensions may access the exported members of an extension by
+        calling the `import_from`_ method of the extension manager.
+
+        Parameters:
+            extension_name (str): the name of the extension whose API is to
+                be imported
+            members (Optional[Union[str, List[str]]]): the name of the API
+                member or the names of the API members to import.
+
+        Returns:
+            object: when ``members`` is ``None``, returns a dictonary mapping
+                API members to their implementations. When ``members`` is a
+                single string, returns the API member with the given name.
+                When ``members`` is a list of strings, returns the API
+                members with the given names in the same order.
+
+        Raises:
+            KeyError: if the extension with the given name is not loaded or
+                if some of the API names specified in ``members`` are not
+                part of the API of the extension
+        """
+        ext = self._get_extension_by_name(extension_name)
+        api = getattr(ext, "api", {})
+        if members is None:
+            return api
+        elif isinstance(members, str):
+            return api[members]
+        else:
+            return [api[member] for member in members]
+
     def load(self, extension_name, configuration=None):
         """Loads an extension with the given name.
 
@@ -152,6 +187,10 @@ class ExtensionManager(object):
             list: the names of all the extensions that are currently loaded
         """
         return sorted(self._extensions.keys())
+
+    def is_loaded(self, extension_name):
+        """Returns whether the given extension is loaded."""
+        return extension_name in self._extensions
 
     def unload(self, extension_name):
         """Unloads the extension with the given name.

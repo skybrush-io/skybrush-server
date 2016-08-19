@@ -397,7 +397,7 @@ class ExtensionAPIProxy(object):
         if not hasattr(api, "__getitem__"):
             raise TypeError("exports of extension {0!r} must support item "
                             "access with the [] operator")
-        log.info("API of extension: {1!r}".format(api))
+        log.info("API of extension: {0!r}".format(api))
         return api
 
     def _on_extension_loaded(self, sender, name, extension):

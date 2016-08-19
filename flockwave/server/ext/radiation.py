@@ -175,28 +175,27 @@ class RadiationExtension(ExtensionBase):
             float: the observed number of particles detected at the given
                 location in the given number of seconds
         """
-        return poisson(self._total_intensity_at(point, seconds))
+        assert seconds >= 0
+        if seconds == 0:
+            return 0.0
+        else:
+            return poisson(self._total_intensity_at(point) * seconds)
 
-    def _total_intensity_at(self, point, seconds=1):
+    def _total_intensity_at(self, point):
         """Returns the total radiation intensity at the given point.
 
         The total radiation intensity is the expected number of particles
         that would be detected at the given position from the sources and
-        the background radiation in the given time interval.
+        the background radiation in one second.
 
         Parameters:
             point (GPSCoordinate): the point to measure the radiation
                 intensity at
-            seconds (float): the total number of seconds
 
         Returns
             float: the expected number of particles detected at the given
-                location in the given number of seconds
+                location in one second
         """
-        assert seconds >= 0
-        if seconds == 0:
-            return 0.0
-
         if point.alt and point.alt.reference is AltitudeReference.MSL:
             point_in_ecef = gps_to_ecef(point)
         else:
@@ -204,7 +203,7 @@ class RadiationExtension(ExtensionBase):
 
         intensity = sum(source.intensity_at(point, point_in_ecef)
                         for source in self._sources)
-        return (intensity + self.background_intensity) * seconds
+        return (intensity + self.background_intensity)
 
 
 construct = RadiationExtension

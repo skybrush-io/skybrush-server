@@ -238,7 +238,7 @@ class MessageHub(object):
                 }
             )
         elif isinstance(message, FlockwaveNotification):
-            if message.body["type"] != "UAV-INF":
+            if message.body["type"] not in ("UAV-INF", "DEV-INF"):
                 log.info(
                     "Sending {0.body[type]} notification".format(message),
                     extra={

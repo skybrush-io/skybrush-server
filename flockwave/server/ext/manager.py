@@ -365,14 +365,19 @@ class ExtensionAPIProxy(object):
             extension_name (str): the name of the extension that the proxy
                 handles
         """
-        self._api = {}
         self._extension_name = extension_name
         self._manager = manager
         self._manager.loaded.connect(self._on_extension_loaded,
                                      sender=self._manager)
         self._manager.unloaded.connect(self._on_extension_unloaded,
                                        sender=self._manager)
-        self._loaded = self._manager.is_loaded(extension_name)
+
+        loaded = self._manager.is_loaded(extension_name)
+        if loaded:
+            self._api = self._get_api_of_extension(extension_name)
+        else:
+            self._api = {}
+        self._loaded = loaded
 
     def __getattr__(self, name):
         try:
@@ -387,8 +392,9 @@ class ExtensionAPIProxy(object):
         """
         return self._loaded
 
-    def _get_api_of_extension(self, extension):
+    def _get_api_of_extension(self, extension_name):
         """Returns the API of the given extension."""
+        extension = self._manager._get_extension_by_name(extension_name)
         api = getattr(extension, "exports", None)
         if api is None:
             api = {}
@@ -405,8 +411,8 @@ class ExtensionAPIProxy(object):
         extension manager.
         """
         if name == self._extension_name:
+            self._api = self._get_api_of_extension(name)
             self._loaded = True
-            self._api = self._get_api_of_extension(extension)
 
     def _on_extension_unloaded(self, sender, name, extension):
         """Handler that is called when some extension is unloaded from the

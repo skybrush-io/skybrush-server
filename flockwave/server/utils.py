@@ -1,11 +1,12 @@
 """Utility functions that do not fit elsewhere."""
 
+from collections import defaultdict
 from datetime import datetime
 from pytz import utc
 
 
 __all__ = ("datetime_to_unix_timestamp", "is_timezone_aware",
-           "itersubclasses")
+           "itersubclasses", "keydefaultdict")
 
 
 _unix_epoch = datetime.utcfromtimestamp(0).replace(tzinfo=utc)
@@ -63,3 +64,16 @@ def itersubclasses(cls):
         cls = queue.pop()
         yield cls
         queue.extend(cls.__subclasses__())
+
+
+class keydefaultdict(defaultdict):
+    """defaultdict subclass that passes the key of the item being created
+    to the default factory.
+    """
+
+    def __missing__(self, key):
+        if self.default_factory is None:
+            raise KeyError(key)
+        else:
+            ret = self[key] = self.default_factory(key)
+            return ret

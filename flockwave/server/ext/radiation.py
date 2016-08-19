@@ -6,8 +6,10 @@ counters.
 
 from __future__ import absolute_import
 
-from flockwave.gps.vectors import Altitude, GPSCoordinate, \
-    ECEFToGPSCoordinateTransformation
+from flockwave.gps.vectors import Altitude, AltitudeReference, \
+    ECEFToGPSCoordinateTransformation, GPSCoordinate, \
+    FlatEarthToGPSCoordinateTransformation
+from numpy.random import poisson
 
 from .base import ExtensionBase
 
@@ -31,36 +33,71 @@ class Source(object):
                 by our Geiger-Muller counter at a distance of 1 meter from
                 the source
         """
-        self._location = None
+        self._flat_earth_trans = None
+        self._location_gps = None
         self._location_ecef = None
+        self._location_uses_relative_altitude = False
 
-        self.location = GPSCoordinate(lat=lat, lon=lon, alt=Altitude.msl(0))
+        self.location = GPSCoordinate(lat=lat, lon=lon,
+                                      alt=Altitude.relative_to_home(0))
         self.intensity = max(float(intensity), 0.0)
 
-    def intensity_at(self, ecef):
+    def intensity_at(self, point, point_in_ecef=None):
         """Returns the intensity of the radiation source at the given
-        location, in ECEF coordinates.
+        location.
+
+        The format of the given location depends on whether the location of
+        the source is specified with relative altitude or with altitude
+        above the mean sea level. In case of relative altitudes, the
+        intensity calculation needs a GPS coordinate with a relative
+        altitude as well, and the distance will be calculated using a
+        flat Earth approximation around the location of the source,
+        assuming that the source and the given point uses the same reference
+        point for the relative altitudes. If the source is specified with
+        altitude above the mean sea level, the location should be given
+        with ECEF coordinates as well as GPS coordinates, and the distance
+        from the source will be calculated in the ECEF coordinate system.
 
         Parameters:
-            ecef (ECEFCoordinate): the point of the query, in ECEF coordinates
+            point (GPSCoordinate): the point of the query, in GPS
+                coordinates.
+            point_in_ecef (Optional[ECEFCoordinate]): the point of the query,
+                in ECEF coordinates. It can be ``None``, in which case it
+                will be calculated if needed.
 
         Returns:
             float: the intensity of the radiation source at the given point,
                 i.e. the expected number of particles that would be detected
                 in one second at the given point from the radiation source
         """
-        dist = self._location_ecef.distance(ecef)
-        return self.intensity / dist / dist
+        need_ecef = not self._location_uses_relative_altitude
+        if need_ecef:
+            if point_in_ecef is None:
+                point_in_ecef = gps_to_ecef(point)
+            dist_sq = self._location_ecef.distance(point_in_ecef) ** 2
+        else:
+            point_in_flat = self._flat_earth_trans.to_flat_earth(point)
+            dist_sq = point_in_flat.x ** 2 + point_in_flat.y ** 2 + \
+                point_in_flat.alt.value ** 2
+        return self.intensity / dist_sq
 
     @property
     def location(self):
         """The location of the radiation source as a GPSCoordinate_"""
-        return self._location
+        return self._location_gps
 
     @location.setter
     def location(self, value):
-        self._location = value
-        self._location_ecef = gps_to_ecef(value)
+        self._location_gps = value
+        self._location_uses_relative_altitude = \
+            value.alt.reference is AltitudeReference.HOME
+        if self._location_uses_relative_altitude:
+            self._location_ecef = None
+            assert value.alt.value == 0
+        else:
+            self._location_ecef = gps_to_ecef(value)
+        self._flat_earth_trans = FlatEarthToGPSCoordinateTransformation(
+            origin=self._location_gps)
 
 
 class RadiationExtension(ExtensionBase):
@@ -73,9 +110,6 @@ class RadiationExtension(ExtensionBase):
         super(RadiationExtension, self).__init__()
         self._background_intensity = 0.0
         self._sources = []
-        self.exports = {
-            "total_intensity_at": self._total_intensity_at
-        }
 
     def add_source(self, lat, lon, intensity):
         """Adds a new radiation source.
@@ -122,17 +156,37 @@ class RadiationExtension(ExtensionBase):
         for source in configuration.get("sources", []):
             self.add_source(**source)
 
-    def _total_intensity_at(self, lat, lon, seconds=1):
-        """Returns the total radiation intensity at the given latitude
-        and longitude.
+    def exports(self):
+        """Returns the functions exported by the extension."""
+        return {
+            "measure_at": self._measure_at
+        }
 
-        The total radiation intensity is the number of particles that would
-        be detected at the given latitude and longitude from the sources and
+    def _measure_at(self, point, seconds=1):
+        """Conducts a fake measurement of radiation at the given point
+        for the given amount of time.
+
+        Parameters:
+            point (GPSCoordinate): the point to measure the radiation
+                intensity at
+            seconds (float): the total number of seconds
+
+        Returns
+            float: the observed number of particles detected at the given
+                location in the given number of seconds
+        """
+        return poisson(self._total_intensity_at(point, seconds))
+
+    def _total_intensity_at(self, point, seconds=1):
+        """Returns the total radiation intensity at the given point.
+
+        The total radiation intensity is the expected number of particles
+        that would be detected at the given position from the sources and
         the background radiation in the given time interval.
 
         Parameters:
-            lat (float): the latitude of the point
-            lon (float): the longitude of the point
+            point (GPSCoordinate): the point to measure the radiation
+                intensity at
             seconds (float): the total number of seconds
 
         Returns
@@ -143,8 +197,12 @@ class RadiationExtension(ExtensionBase):
         if seconds == 0:
             return 0.0
 
-        ecef = gps_to_ecef(GPSCoordinate(lat, lon))
-        intensity = sum(source.intensity_at(ecef)
+        if point.alt and point.alt.reference is AltitudeReference.MSL:
+            point_in_ecef = gps_to_ecef(point)
+        else:
+            point_in_ecef = None
+
+        intensity = sum(source.intensity_at(point, point_in_ecef)
                         for source in self._sources)
         return (intensity + self.background_intensity) * seconds
 

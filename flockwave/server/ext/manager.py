@@ -5,7 +5,10 @@ from __future__ import absolute_import
 import importlib
 
 from blinker import Signal
+from pkgutil import get_loader
+
 from .logger import log as base_log
+from ..utils import keydefaultdict
 
 __all__ = ("ExtensionManager", )
 
@@ -38,6 +41,7 @@ class ExtensionManager(object):
             app (FlockwaveServer): the "application context" of the
                 extension manager.
         """
+        self._api_proxies = keydefaultdict(self._create_api_proxy)
         self._app = None
         self._extensions = {}
         self._num_clients = 0
@@ -87,6 +91,21 @@ class ExtensionManager(object):
             if not extension_name.startswith("_"):
                 self.load(extension_name, extension_cfg)
 
+    def _create_api_proxy(self, extension_name):
+        """Creates a proxy object that allows the user to access the API
+        of the extension with the given name.
+
+        Parameters:
+            extension_name (str): the name of the extension
+
+        Raises:
+            KeyError: if the extension with the given name does not exist
+        """
+        if not self.exists(extension_name):
+            raise KeyError(extension_name)
+        else:
+            return ExtensionAPIProxy(self, extension_name)
+
     def _get_extension_by_name(self, extension_name):
         """Returns the extension object corresponding to the extension
         with the given name.
@@ -102,7 +121,30 @@ class ExtensionManager(object):
         """
         return self._extensions[extension_name]
 
-    def import_from(self, extension_name, members=None):
+    def _get_module_name_for_extension(self, extension_name):
+        """Returns the name of the module that should contain the given
+        extension.
+
+        Returns:
+            str: the full, dotted name of the module that should contain the
+                extension with the given name
+        """
+        return "{0}.{1}".format(EXT_PACKAGE_NAME, extension_name)
+
+    def exists(self, extension_name):
+        """Returns whether the extension with the given name exists,
+        irrespectively of whether it was loaded already or not.
+
+        Parameters:
+            extension_name (str): the name of the extension
+
+        Returns:
+            bool: whether the extension exists
+        """
+        module_name = self._get_module_name_for_extension(extension_name)
+        return get_loader(module_name) is not None
+
+    def import_api(self, extension_name, members=None):
         """Imports the API exposed by an extension.
 
         Extensions *may* have a dictionary named ``exports`` that allows the
@@ -110,32 +152,28 @@ class ExtensionManager(object):
         Other extensions may access the exported members of an extension by
         calling the `import_from`_ method of the extension manager.
 
+        This function supports "lazy imports", i.e. one may import the API
+        of an extension before loading the extension. When the extension
+        is not loaded, the returned API object will have a single property
+        named ``loaded`` that is set to ``False``. When the extension is
+        loaded, the returned API object will set ``loaded`` to ``True``.
+        Attribute retrievals on the returned API object are forwarded to the
+        API of the extension.
+
         Parameters:
             extension_name (str): the name of the extension whose API is to
                 be imported
-            members (Optional[Union[str, List[str]]]): the name of the API
-                member or the names of the API members to import.
 
         Returns:
-            object: when ``members`` is ``None``, returns a dictonary mapping
-                API members to their implementations. When ``members`` is a
-                single string, returns the API member with the given name.
-                When ``members`` is a list of strings, returns the API
-                members with the given names in the same order.
+            ExtensionAPIProxy: a proxy object to the API of the extension
+                that forwards attribute retrievals to the API, except for
+                the property named ``loaded``, which returns whether the
+                extension is loaded or not.
 
         Raises:
-            KeyError: if the extension with the given name is not loaded or
-                if some of the API names specified in ``members`` are not
-                part of the API of the extension
+            KeyError: if the extension with the given name does not exist
         """
-        ext = self._get_extension_by_name(extension_name)
-        exports = getattr(ext, "exports", {})
-        if members is None:
-            return dict(exports)
-        elif isinstance(members, str):
-            return exports[members]
-        else:
-            return [exports[member] for member in members]
+        return self._api_proxies[extension_name]
 
     def load(self, extension_name, configuration=None):
         """Loads an extension with the given name.
@@ -164,8 +202,7 @@ class ExtensionManager(object):
                              .format(extension_name))
 
         log.info("Loading extension {0!r}".format(extension_name))
-
-        module_name = "{0}.{1}".format(EXT_PACKAGE_NAME, extension_name)
+        module_name = self._get_module_name_for_extension(extension_name)
 
         try:
             module = importlib.import_module(module_name)
@@ -305,3 +342,72 @@ class ExtensionManager(object):
                 log.exception("Error while spinning up extension {0!r}"
                               .format(extension_name))
                 return
+
+
+class ExtensionAPIProxy(object):
+    """Proxy object that allows controlled access to the exported API of
+    an extension.
+
+    By default, the proxy object just forwards attribute retrievals as
+    dictionary lookups to the API object of the extension, with the
+    exception of the ``loaded`` property, which returns ``True`` if the
+    extension corresponding to the proxy is loaded and ``False`` otherwise.
+    When the extension is not loaded, any attribute retrieval will fail with
+    an ``AttributeError`` except the ``loaded`` property.
+    """
+
+    def __init__(self, manager, extension_name):
+        """Constructor.
+
+        Parameters:
+            manager (ExtensionManager): the extension manager that owns the
+                proxy.
+            extension_name (str): the name of the extension that the proxy
+                handles
+        """
+        self._api = {}
+        self._extension_name = extension_name
+        self._manager = manager
+        self._manager.loaded.connect(self._on_extension_loaded,
+                                     sender=self._manager)
+        self._manager.unloaded.connect(self._on_extension_unloaded,
+                                       sender=self._manager)
+        self._loaded = self._manager.is_loaded(extension_name)
+
+    def __getattr__(self, name):
+        return self._api[name]
+
+    @property
+    def loaded(self):
+        """Returns whether the extension represented by the proxy is
+        loaded.
+        """
+        return self._loaded
+
+    def _get_api_of_extension(self, extension):
+        """Returns the API of the given extension."""
+        api = getattr(extension, "exports", None)
+        if api is None:
+            api = {}
+        elif callable(api):
+            api = api()
+        if not hasattr(api, "__getitem__"):
+            raise TypeError("exports of extension {0!r} must support item "
+                            "access with the [] operator")
+        return api
+
+    def _on_extension_loaded(self, sender, name, extension):
+        """Handler that is called when some extension is loaded into the
+        extension manager.
+        """
+        if name == self._extension_name:
+            self._loaded = True
+            self._api = self._get_api_of_extension(extension)
+
+    def _on_extension_unloaded(self, sender, name, extension):
+        """Handler that is called when some extension is unloaded from the
+        extension manager.
+        """
+        if name == self._extension_name:
+            self._loaded = False
+            self._api = {}

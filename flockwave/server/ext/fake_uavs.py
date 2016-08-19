@@ -146,6 +146,7 @@ class FakeUAV(UAVBase):
         self.cruise_altitude = 20
         self.max_ascent_rate = 2
         self.max_velocity = 10
+        self.radiation_ext = None
         self.radius = 0.0
         self.state = FakeUAVState.TAKEOFF
         self.target = None
@@ -294,12 +295,26 @@ class FakeUAV(UAVBase):
             heading=self.angle / pi * 180 + 90
         )
 
+        # Measure radiation if possible
+        # TODO: calculate radiation halfway between the current position and
+        # the previous one instead
+        if self.radiation_ext is not None:
+            observed_count = self.radiation_ext.measure_at(position,
+                                                           seconds=dt)
+        else:
+            observed_count = 0
+
         # Also update our fake temperature sensor and Geiger counter
         if mutator is not None:
             mutator.update(self.thermometer, {
                 "lat": position.lat,
                 "lon": position.lon,
                 "value": cos(self.angle) + 24.0
+            })
+            mutator.update(self.geiger_counter, {
+                "lat": position.lat,
+                "lon": position.lon,
+                "value": observed_count
             })
 
     def takeoff(self):
@@ -338,6 +353,7 @@ class FakeUAVProviderExtension(UAVExtensionBase):
     def __init__(self):
         """Constructor."""
         super(FakeUAVProviderExtension, self).__init__()
+        self.radiation = None
         self.uavs = []
         self.uav_ids = []
         self._status_updater = StatusUpdater(self)
@@ -373,8 +389,12 @@ class FakeUAVProviderExtension(UAVExtensionBase):
             for index, id in enumerate(self.uav_ids)
         ]
 
+        # Get hold of the 'radiation' extension
+        radiation_ext = self.app.extension_manager.import_api("radiation")
+
         # Register all the UAVs that we have created
         for uav in self.uavs:
+            uav.radiation_ext = radiation_ext
             self.app.uav_registry.add(uav)
 
     def spindown(self):

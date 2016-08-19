@@ -40,11 +40,12 @@ EXTENSIONS = {
     "radiation": {
         "sources": [
             {
-                "lat": 47.473360,
-                "lon": 19.062159,
-                "intensity": 20
+                "lat": 47.473313,
+                "lon": 19.062818,
+                "intensity": 50000
             }
-        ]
+        ],
+        "background_intensity": 10
     },
     "smpte_timecode": {
         "connection": "midi:IAC Driver Bus 1"

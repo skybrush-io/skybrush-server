@@ -19,6 +19,7 @@ requires = [
     "flockwave-spec>=0.10.0",
     "jsonschema>=2.5.1",
     "mido>=1.1.14",
+    "numpy>=1.11.1",
     "pyserial>=2.7",
     "python-baseconv>=1.1.3",
     "pytz>=2015.7",

@@ -298,7 +298,7 @@ class FakeUAV(UAVBase):
         # Measure radiation if possible
         # TODO: calculate radiation halfway between the current position and
         # the previous one instead
-        if self.radiation_ext is not None:
+        if self.radiation_ext is not None and self.radiation_ext.loaded:
             observed_count = self.radiation_ext.measure_at(position,
                                                            seconds=dt)
         else:

@@ -375,7 +375,10 @@ class ExtensionAPIProxy(object):
         self._loaded = self._manager.is_loaded(extension_name)
 
     def __getattr__(self, name):
-        return self._api[name]
+        try:
+            return self._api[name]
+        except KeyError:
+            raise AttributeError(name)
 
     @property
     def loaded(self):

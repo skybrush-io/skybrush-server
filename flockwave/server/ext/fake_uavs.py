@@ -301,8 +301,13 @@ class FakeUAV(UAVBase):
         if self.radiation_ext is not None and self.radiation_ext.loaded:
             observed_count = self.radiation_ext.measure_at(position,
                                                            seconds=dt)
+            # Okay, now we extrapolate from the observed count to the
+            # per-second intensity. This should be made smarter; for
+            # instance, we should report a new value only if we have
+            # observed enough data
+            radiation_intensity_estimate = observed_count / dt
         else:
-            observed_count = 0
+            radiation_intensity_estimate = 0
 
         # Also update our fake temperature sensor and Geiger counter
         if mutator is not None:
@@ -314,7 +319,7 @@ class FakeUAV(UAVBase):
             mutator.update(self.geiger_counter, {
                 "lat": position.lat,
                 "lon": position.lon,
-                "value": observed_count
+                "value": radiation_intensity_estimate
             })
 
     def takeoff(self):

@@ -46,6 +46,7 @@ class FakeUAVDriver(UAVDriver):
         uav.cruise_altitude = center.alt.value
         uav.home = center
         uav.radius = radius
+        uav.target = center
         return uav
 
     def handle_command_timeout(self, uavs):
@@ -191,15 +192,15 @@ class FakeUAV(UAVBase):
         # Calculate the real altitude component of the target
         if value.alt is None:
             new_altitude = Altitude.relative_to_home(self._pos_flat.z)
-        elif value.alt.reference != AltitudeReference.relative_to_home:
+        elif value.alt.reference != AltitudeReference.HOME:
             raise ValueError("altitude must be specified relative to home")
         else:
             new_altitude = value.alt.copy()
 
         # Update the target and its XYZ representation
-        self._target.update(altitude=new_altitude)
+        self._target.update(alt=new_altitude)
         flat = self._trans.to_flat_earth(value)
-        self._target_xyz = Vector3D(x=flat.x, y=flat.y, z=new_altitude)
+        self._target_xyz = Vector3D(x=flat.x, y=flat.y, z=new_altitude.value)
 
     def land(self):
         """Starts a simulated landing with the fake UAV."""

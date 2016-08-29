@@ -335,10 +335,14 @@ class FakeUAV(UAVBase):
 
     def _initialize_device_tree_node(self, node):
         device = node.add_device("thermometer")
-        self.thermometer = device.add_channel("temperature", type=object)
+        self.thermometer = device.add_channel(
+            "temperature", type=object, unit=u"\u00b0C"
+        )
 
         device = node.add_device("geiger_counter")
-        self.geiger_counter = device.add_channel("measurement", type=object)
+        self.geiger_counter = device.add_channel(
+            "measurement", type=object, unit="counts/sec"
+        )
 
 
 class FakeUAVProviderExtension(UAVExtensionBase):

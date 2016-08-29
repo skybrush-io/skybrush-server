@@ -353,7 +353,7 @@ class ChannelNode(DeviceTreeNodeBase):
             modifications.
     """
 
-    def __init__(self, channel_type, operations=None):
+    def __init__(self, channel_type, operations=None, unit=None):
         """Constructor.
 
         Parameters:
@@ -361,6 +361,8 @@ class ChannelNode(DeviceTreeNodeBase):
             operations (List[ChannelOperation]): the allowed operations of
                 the channel. Defaults to ``[ChannelOperation.read]`` if
                 set to ``None``.
+            unit (Optional[str]): the unit in which the value of the channel
+                is expressed.
         """
         super(ChannelNode, self).__init__()
 
@@ -370,6 +372,7 @@ class ChannelNode(DeviceTreeNodeBase):
         self.type = DeviceTreeNodeType.channel
         self.subtype = channel_type
         self.operations = list(operations)
+        self.unit = unit
         self.value = None
 
     def collect_channel_values(self):
@@ -395,19 +398,22 @@ class DeviceNode(DeviceTreeNodeBase):
         self.type = DeviceTreeNodeType.device
         self.device_class = device_class
 
-    def add_channel(self, id, type):
+    def add_channel(self, id, type, unit=None):
         """Adds a new channel with the given identifier to this device
         node.
 
         Parameters:
             id (str): the identifier of the channel being added.
             type (ChannelType): the type of the channel
+            unit (Optional[str]): the unit in which the values of the
+                channel are expressed
 
         Returns:
             ChannelNode: the channel node that was added.
         """
         channel_type = ChannelType.from_object(type)
-        return self._add_child(id, ChannelNode(channel_type=channel_type))
+        node = ChannelNode(channel_type=channel_type, unit=unit)
+        return self._add_child(id, node)
 
     def add_device(self, id):
         """Adds a new device with the given identifier as a sub-device

@@ -3,6 +3,7 @@
 from bidict import bidict
 from flockwave.server.ext.logger import log
 from flockwave.server.model.uav import UAVBase, UAVDriver
+from six import iterbytes
 
 from .errors import AddressConflictError
 from .packets import FlockCtrlCommandRequestPacket, \
@@ -31,6 +32,9 @@ class FlockCtrlDriver(UAVDriver):
             server, or any other object that has a ``format()`` method
             accepting a single integer as an argument and returning the
             preferred UAV identifier.
+        create_device_tree_mutator (callable): a function that should be
+            called by the driver whenever it wants to mutate the state
+            of the device tree
         send_packet (callable): a function that should be called by the
             driver whenever it wants to send a packet. The function must
             be called with the packet to send and the destination address
@@ -194,13 +198,26 @@ class FlockCtrlDriver(UAVDriver):
             packet (FlockCtrlStatusPacket): the packet to handle
         """
         uav = self._get_or_create_uav(packet.id)
+        algorithm = packet.algorithm
         self._check_or_record_uav_address(uav, packet.source_address)
         uav.update_status(
             position=packet.location,
             velocity=packet.velocity,
             heading=packet.heading,
-            algorithm=packet.algorithm
+            algorithm=algorithm
         )
+
+        # HACK HACK HACK this is not the right place for this
+        if algorithm == "geiger":
+            data = list(iterbytes(packet.debug[-5:]))
+            try:
+                count = int("".join(map(chr, data)))
+            except:
+                count = None
+            if self.create_device_tree_mutator is not None:
+                with self.create_device_tree_mutator() as mutator:
+                    uav.update_geiger_counter(count, mutator)
+
         # TODO: rate limiting
         message = self.app.create_UAV_INF_message_for([uav.id])
         self.app.message_hub.send_message(message)
@@ -329,6 +346,26 @@ class FlockCtrlUAV(UAVBase):
             self.address = address
         elif self.address != address:
             raise AddressConflictError(self, address)
+
+    def update_geiger_counter(self, value, mutator):
+        """Updates the value of the Geiger counter of the UAV with the given
+        new value;
+
+        Parameters:
+            value (Optional[int]): the new count or ``None`` if the Geiger
+                counter was disabled
+            mutator (DeviceTreeMutator): the mutator object that can be used
+                to manipulate the device tree nodes
+        """
+        position = self._status.position
+        if position is None:
+            return
+
+        mutator.update(self.geiger_counter, {
+            "lat": position.lat,
+            "lon": position.lon,
+            "value": value
+        })
 
     def _initialize_device_tree_node(self, node):
         device = node.add_device("geiger_counter")

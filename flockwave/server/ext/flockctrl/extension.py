@@ -111,6 +111,8 @@ class FlockCtrlDronesExtension(UAVExtensionBase):
         """
         driver.id_format = configuration.get("id_format", "{0:02}")
         driver.log = self.log.getChild("driver")
+        driver.create_device_tree_mutator = \
+            self.create_device_tree_mutation_context
         driver.send_packet = self.send_packet
 
     def _handle_inbound_xbee_packet(self, sender, packet):

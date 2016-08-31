@@ -224,9 +224,13 @@ class XBeeCommunicationManager(object):
             self._inbound_thread.kill()
             self._outbound_thread.kill()
 
+            self._parser.packet_log = None
+
         self._xbee = value
 
         if self._xbee is not None:
+            self._parser.packet_log = self.log
+
             self._ack_collector = AcknowledgmentCollector()
             self._ack_collector.on_failure.connect(
                 self._handle_xbee_transmission_failure,

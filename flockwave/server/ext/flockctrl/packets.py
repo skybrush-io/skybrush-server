@@ -144,6 +144,19 @@ class FlockCtrlStatusPacket(FlockCtrlPacketBase):
 
     PACKET_TYPE = 0
     _struct = Struct("<xBBBLllhhlllhBLB8s")
+    _algorithm_index_to_name = {
+        0: "dummy",
+        1: "altitude",
+        5: "emergency",
+        6: "flocking",
+        7: "geiger",
+        8: "return_to_home",
+        12: "landing",
+        19: "snake",
+        22: "vicsek",
+        23: "waypoint",
+        31: "none"
+    }
 
     def decode(self, data):
         (self.id, self.algo_and_vehicle, self.choreography_index,
@@ -161,6 +174,24 @@ class FlockCtrlStatusPacket(FlockCtrlPacketBase):
         self.velD = velD / 1e2        # [cm/s]     --> [m/s]
         self.heading = heading / 1e2  # [1e-2 deg] --> [deg]
         self.voltage = voltage / 1e1  # [0.1V]     --> [V]
+
+    @property
+    def algorithm(self):
+        """The human-readable description of the algorithm that is
+        currently being executed by the drone.
+
+        The status packet contains a five-bit algorithm identifier only,
+        therefore this function uses an auxiliary table to perform the
+        mapping.
+
+        Returns:
+            str: the name of the algorithm
+        """
+        algorithm_index = self.algo_and_vehicle & 0x1f
+        try:
+            return self._algorithm_index_to_name[algorithm_index]
+        except KeyError:
+            return u"unknown ({0})".format(algorithm_index)
 
     @property
     def location(self):

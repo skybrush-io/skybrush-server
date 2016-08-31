@@ -1,6 +1,7 @@
 """Parser class for the protocol spoken by FlockCtrl-based drones."""
 
 from flockwave.server.utils import itersubclasses
+from hexdump import hexdump
 from six import indexbytes
 
 from .errors import ParseError
@@ -10,11 +11,17 @@ __all__ = ("FlockCtrlParser", )
 
 
 class FlockCtrlParser(object):
-    """Parser class for the protocol spoken by FlockCtrl-based drones."""
+    """Parser class for the protocol spoken by FlockCtrl-based drones.
+
+    Attributes:
+        packet_log (Optional[logging.Logger]): log to dump the received
+            packets into. Useful for debugging purposes.
+    """
 
     def __init__(self):
         """Constructor."""
         self._packet_type_to_packet = self._create_packet_type_mapping()
+        self.packet_log = None
 
     def _create_packet_type_mapping(self):
         """Creates a mapping from the packet type constants of the FlockCtrl
@@ -45,6 +52,9 @@ class FlockCtrlParser(object):
         """
         if not data:
             raise ParseError("FlockCtrl packet must not be empty")
+
+        if self.packet_log is not None:
+            self.packet_log.debug(hexdump(data))
 
         packet_type = indexbytes(data, 0)
         packet_cls = self._packet_type_to_packet.get(packet_type)

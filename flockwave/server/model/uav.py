@@ -150,7 +150,8 @@ class UAVBase(UAV):
         """
         pass
 
-    def update_status(self, position=None, velocity=None, heading=None):
+    def update_status(self, position=None, velocity=None, heading=None,
+                      algorithm=None):
         """Updates the status information of the UAV.
 
         Parameters with values equal to ``None`` are ignored.
@@ -163,6 +164,8 @@ class UAVBase(UAV):
                 It will be cloned to ensure that modifying this velocity
                 object from the caller will not affect the UAV itself.
             heading (Optional[float]): the heading of the UAV, in degrees.
+            algorithm (Optional[str]): the algorithm that the UAV is
+                currently executing
         """
         if position is not None:
             self._status.position.update_from(position)
@@ -170,6 +173,8 @@ class UAVBase(UAV):
             self._status.heading = heading % 360
         if velocity is not None:
             self._status.velocity.update_from(velocity)
+        if algorithm is not None:
+            self._status.algorithm = algorithm
         self._status.update_timestamp()
 
 

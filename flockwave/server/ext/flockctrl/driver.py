@@ -198,7 +198,8 @@ class FlockCtrlDriver(UAVDriver):
         uav.update_status(
             position=packet.location,
             velocity=packet.velocity,
-            heading=packet.heading
+            heading=packet.heading,
+            algorithm=packet.algorithm
         )
         # TODO: rate limiting
         message = self.app.create_UAV_INF_message_for([uav.id])
@@ -328,3 +329,9 @@ class FlockCtrlUAV(UAVBase):
             self.address = address
         elif self.address != address:
             raise AddressConflictError(self, address)
+
+    def _initialize_device_tree_node(self, node):
+        device = node.add_device("geiger_counter")
+        self.geiger_counter = device.add_channel(
+            "measurement", type=object, unit="counts/sec"
+        )

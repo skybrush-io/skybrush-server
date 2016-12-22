@@ -143,7 +143,7 @@ class FlockCtrlStatusPacket(FlockCtrlPacketBase):
     """Status packet sent by FlockCtrl-based drones at regular intervals."""
 
     PACKET_TYPE = 0
-    _struct = Struct("<xBBBLllhhlllhBLB8s")
+    _struct = Struct("<xBBBLllhhhhhhBLB8sL")
     _algorithm_index_to_name = {
         0: "dummy",
         1: "altitude",
@@ -162,7 +162,8 @@ class FlockCtrlStatusPacket(FlockCtrlPacketBase):
         (self.id, self.algo_and_vehicle, self.choreography_index,
             self.iTOW, lon, lat, amsl, agl,
             velN, velE, velD, heading, voltage,
-            self.flags, self.error, self.debug), _ = self._unpack(data)
+            self.flags, self.error, self.debug, self.clock_status), _ = \
+            self._unpack(data)
 
         # Standardize units coming from the packet
         self.lat = lat / 1e7          # [1e-7 deg] --> [deg]
@@ -248,6 +249,16 @@ class FlockCtrlCompressedCommandResponsePacket(
     """
 
     PACKET_TYPE = 3
+
+
+class FlockCtrlRTCMDataPacket(FlockCtrlPacketBase):
+    """Packet containing an RTCM payload for DGPS forwarding."""
+
+    PACKET_TYPE = 8
+
+    def decode(self, data):
+        # Not interested yet
+        pass
 
 
 class FlockCtrlClockSynchronizationPacket(FlockCtrlPacketBase):

@@ -76,6 +76,9 @@ def main():
     output MIDI ports.
     """
     input_ports, output_ports = MIDIPortConnection.list()
+    print("Output ports:")
+    print("\n".join(output_ports))
+    print("")
     print("Input ports:")
     print("\n".join(input_ports))
     print("")

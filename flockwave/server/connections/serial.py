@@ -5,7 +5,7 @@ from __future__ import absolute_import, print_function
 import csv
 import gzip
 
-from .base import ConnectionBase, ConnectionState
+from .base import ConnectionBase, FDConnectionBase, ConnectionState
 from .factory import create_connection
 from serial import Serial, STOPBITS_ONE, STOPBITS_ONE_POINT_FIVE, \
     STOPBITS_TWO
@@ -17,7 +17,7 @@ __all__ = ("SerialPortConnection", )
 
 
 @create_connection.register("serial")
-class SerialPortConnection(ConnectionBase):
+class SerialPortConnection(FDConnectionBase):
     """Connection for a serial port.
 
     This object is a wrapper around a PySerial serial port object. It provides
@@ -46,14 +46,13 @@ class SerialPortConnection(ConnectionBase):
         self._path = path
         self._baud = baud
         self._stopbits = stopbits
-        self._serial = None
 
     def close(self):
         """Closes the serial port connection."""
         if self.state == ConnectionState.DISCONNECTED:
             return
-        self._serial.close()
-        self._serial = None
+        self._file_object.close()
+        self._detach()
         self._set_state(ConnectionState.DISCONNECTED)
 
     def open(self):
@@ -71,8 +70,12 @@ class SerialPortConnection(ConnectionBase):
             raise ValueError("unsupported stop bit count: {0!r}"
                              .format(self._stopbits))
 
-        self._serial = Serial(self._path, self._baud, stopbits=stopbits)
-        self._set_state(ConnectionState.CONNECTED)
+        try:
+            serial = Serial(self._path, self._baud, stopbits=stopbits)
+            self._attach(serial)
+            self._set_state(ConnectionState.CONNECTED)
+        except OSError:
+            self._handle_error()
 
     def inWaiting(self):
         """Returns the number of bytes waiting to be read from the serial
@@ -81,28 +84,15 @@ class SerialPortConnection(ConnectionBase):
         The name of this function is camel-cased to make it API-compatible
         with ``pyserial``.
         """
-        if self._serial is not None:
+        if self._file_object is not None:
             try:
-                result = self._serial.inWaiting()
+                result = self._file_object.inWaiting()
             except IOError as ex:
                 self._handle_error(ex)
                 result = 0
         else:
             result = 0
         return result
-
-    @property
-    def fd(self):
-        """Returns the file-like object behind the connection."""
-        return self._serial
-
-    def fileno(self):
-        """Returns the file handle behind the connection."""
-        return self._serial.fileno()
-
-    def flush(self):
-        """Flushes the data recently written to the connection."""
-        self._serial.flush()
 
     def read(self, size=1):
         """Reads the given number of bytes from the connection.
@@ -113,15 +103,20 @@ class SerialPortConnection(ConnectionBase):
         Returns:
             bytes: the data that was read
         """
-        if self._serial is not None:
+        if self._file_object is not None:
             try:
-                result = self._serial.read(size)
+                return self._file_object.read(size)
             except IOError as ex:
                 self._handle_error(ex)
-                result = b""
-        else:
-            result = b""
-        return result
+        return b""
+
+    @property
+    def readable(self):
+        """Returns whether the connection is currently ready for reading.
+        The connection is ready for reading if there is at least one
+        byte waiting in the serial port queue.
+        """
+        return self.inWaiting > 0
 
     def write(self, data):
         """Writes the given data to the serial connection.
@@ -129,11 +124,9 @@ class SerialPortConnection(ConnectionBase):
         Parameters:
             data (bytes): the data to write
         """
-        if self._serial is not None:
+        if self._file_object is not None:
             try:
-                result = self._serial.write(data)
-                self._serial.flush()
-                return result
+                return self._file_object.write(data)
             except IOError as ex:
                 self._handle_error(ex)
                 return 0

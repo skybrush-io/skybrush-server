@@ -9,15 +9,17 @@ from eventlet.green.Queue import Queue
 from eventlet.green.Queue import Empty as EmptyQueue
 from weakref import ref as weakref
 
-from .base import ConnectionBase, ConnectionState
+from .base import ConnectionWrapperBase, ConnectionState
 
 __all__ = ("reconnecting", )
 
 
-class ReconnectionWrapper(ConnectionBase):
+class ReconnectionWrapper(ConnectionWrapperBase):
     """Wraps a connection object and attempts to silently reconnect the
     underlying connection if it breaks or cannot be opened.
     """
+
+    file_handle_changed = Signal()
 
     def __init__(self, wrapped):
         """Constructor.
@@ -25,7 +27,7 @@ class ReconnectionWrapper(ConnectionBase):
         Parameters:
             wrapped (Connection): the wrapped connection
         """
-        self._wrapped = wrapped
+        super(ReconnectionWrapper, self).__init__(wrapped)
         self._wrapped.swallow_exceptions = True
         self._lock = RLock()
         self._watchdog = None
@@ -94,10 +96,6 @@ class ReconnectionWrapper(ConnectionBase):
             self._set_state(ConnectionState.CONNECTED
                             if self._wrapped.state is ConnectionState.CONNECTED
                             else ConnectionState.DISCONNECTED)
-
-    def __getattr__(self, name):
-        """Forwards attribute lookups to the wrapped connection."""
-        return getattr(self._wrapped, name)
 
 
 class ReconnectionWatchdog(object):

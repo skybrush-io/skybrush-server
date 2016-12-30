@@ -1,6 +1,7 @@
 """Base connection classes."""
 
 import logging
+import os
 
 from abc import ABCMeta, abstractmethod, abstractproperty
 from blinker import Signal
@@ -8,7 +9,8 @@ from enum import Enum
 from eventlet.green.threading import RLock
 from six import add_metaclass
 
-__all__ = ("Connection", "ConnectionState", "ConnectionBase")
+__all__ = ("Connection", "ConnectionState", "ConnectionBase",
+           "FDConnectionBase", "ConnectionWrapperBase")
 
 
 ConnectionState = Enum("ConnectionState",
@@ -155,3 +157,175 @@ class ConnectionBase(Connection):
         else:
             # Let the user handle the exception
             raise
+
+
+class FDConnectionBase(ConnectionBase):
+    """Base class for connection objects that have an underlying numeric file
+    handle.
+    """
+
+    file_handle_changed = Signal(
+        doc="""\
+        Signal sent whenever the file handle associated to the connection
+        changes.
+
+        Parameters:
+            new_handle (int): the new file handle
+            old_handle (int): the old file handle
+        """
+    )
+
+    def __init__(self):
+        """Constructor."""
+        super(FDConnectionBase, self).__init__()
+        self._file_handle = None
+        self._file_object = None
+
+    def fileno(self):
+        """Returns the underlying file handle of the connection, for sake of
+        compatibility with other file-like objects in Python.
+        """
+        return self._file_handle
+
+    def flush(self):
+        """Flushes the data recently written to the connection."""
+        if self._file_object is not None:
+            self._file_object.flush()
+        if self._file_handle is not None:
+            os.fsync(self._file_handle)
+
+    @property
+    def fd(self):
+        """Returns the underlying file handle of the connection."""
+        return self._file_handle
+
+    @property
+    def fp(self):
+        """Returns the underlying file-like object of the connection."""
+        return self._file_object
+
+    def _attach(self, handle_or_object):
+        """Associates a file handle or file-like object to the connection.
+        This is the method that derived classes should use whenever the
+        connection is associated to a new file handle or file-like object.
+        """
+        if handle_or_object is None:
+            handle, obj = None, None
+        elif isinstance(handle_or_object, int):
+            handle, obj = handle_or_object, None
+        else:
+            handle, obj = handle_or_object.fileno(), handle_or_object
+
+        old_handle = self._file_handle
+        self._set_file_handle(handle)
+        self._set_file_object(obj)
+
+        if old_handle != self._file_handle:
+            self.file_handle_changed.send(self, old_handle=old_handle,
+                                          new_handle=self._file_handle)
+
+    def _detach(self):
+        """Detaches the connection from its current associated file handle
+        or file-like object.
+        """
+        self._attach(None)
+
+    def _set_file_handle(self, value):
+        """Setter for the ``_file_handle`` property. Derived classes should
+        not set ``_file_handle`` or ``_file_object`` directly; they should
+        use ``_attach()`` or ``_detach()`` instead.
+
+        Parameters:
+            value (int): the new file handle
+
+        Returns:
+            bool: whether the file handle has changed
+        """
+        if self._file_handle == value:
+            return False
+
+        self._file_handle = value
+        return True
+
+    def _set_file_object(self, value):
+        """Setter for the ``_file_object`` property. Derived classes should
+        not set ``_file_handle`` or ``_file_object`` directly; they should
+        use ``_attach()`` or ``_detach()`` instead.
+
+        Parameters:
+            value (Optional[file]): the new file object or ``None`` if the
+                connection is not associated to a file-like object (which
+                may happen even if there is a file handle if the file handle
+                does not have a file-like object representation)
+
+        Returns:
+            bool: whether the file object has changed
+        """
+        if self._file_object == value:
+            return False
+
+        self._file_object = value
+        return True
+
+
+class ConnectionWrapperBase(ConnectionBase):
+    """Base class for connection objects that wrap other connections."""
+
+    def __init__(self, wrapped=None):
+        """Constructor.
+
+        Parameters:
+            wrapped (Connection): the wrapped connection
+        """
+        super(ConnectionWrapperBase, self).__init__()
+        self._wrapped = None
+        self._set_wrapped(wrapped)
+
+    def _redispatch_signal(self, sender, *args, **kwds):
+        """Handler that redispatches signals from the wrapped connection."""
+        if hasattr(self, "file_handle_changed"):
+            self.file_handle_changed.send(self, *args, **kwds)
+
+    def _set_wrapped(self, value):
+        """Function that must be used by derived classes to change the
+        connection that the wrapper wraps.
+
+        Parameters:
+            value (ConnectionBase): the new connection that the wrapper will
+                wrap
+
+        Returns:
+            ConnectionBase: the old connection that the wrapped used to wrap
+        """
+        if self._wrapped == value:
+            return
+
+        old_value = self._wrapped
+        self._wrapped = value
+
+        self._wrapped_connection_changed(old_value, value)
+
+    def _wrapped_connection_changed(self, old_conn, new_conn):
+        """Hook function that is called when the connection wrapped by this
+        connection changes.
+
+        Parameters:
+            old_conn (ConnectionBase): the old connection that is not wrapped
+                by this wrapper any more
+            new_conn (ConnectionBase): the new connection that is now wrapped
+                by this wrapper
+        """
+        if hasattr(old_conn, "file_handle_changed"):
+            old_conn.file_handle_changed.disconnect(
+                self._redispatch_signal, sender=old_conn
+            )
+        if hasattr(new_conn, "file_handle_changed"):
+            new_conn.file_handle_changed.connect(
+                self._redispatch_signal, sender=new_conn
+            )
+
+    def __getattr__(self, name):
+        return getattr(self._wrapped, name)
+
+    def __hasattr__(self, name):
+        return hasattr(self._wrapped, name)

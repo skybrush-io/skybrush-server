@@ -2,14 +2,14 @@
 
 from __future__ import absolute_import, print_function
 
-from .base import ConnectionBase, ConnectionState
+from .base import FDConnectionBase, ConnectionState
 from .factory import create_connection
 
 __all__ = ("FileConnection", )
 
 
 @create_connection.register("file")
-class FileConnection(ConnectionBase):
+class FileConnection(FDConnectionBase):
     """Connection object that reads its incoming data from a file or
     file-like object.
     """
@@ -28,7 +28,6 @@ class FileConnection(ConnectionBase):
         self.autoflush = bool(autoflush)
         self._path = path
         self._mode = mode
-        self._fp = None
 
     def close(self):
         """Closes the file connection."""
@@ -36,8 +35,8 @@ class FileConnection(ConnectionBase):
             return
 
         self._set_state(ConnectionState.DISCONNECTING)
-        self._fp.close()
-        self._fp = None
+        self._file_object.close()
+        self._detach()
         self._set_state(ConnectionState.DISCONNECTED)
 
     def open(self):
@@ -47,21 +46,8 @@ class FileConnection(ConnectionBase):
             return
 
         self._set_state(ConnectionState.CONNECTING)
-        self._fp = open(self._path, self._mode)
+        self._attach(open(self._path, self._mode))
         self._set_state(ConnectionState.CONNECTED)
-
-    @property
-    def fd(self):
-        """Returns the file-like object behind the connection."""
-        return self._fp
-
-    def fileno(self):
-        """Returns the file handle behind the connection."""
-        return self._fp.fileno()
-
-    def flush(self):
-        """Flushes the data recently written to the connection."""
-        self._fp.flush()
 
     def read(self, size=-1):
         """Reads the given number of bytes from the connection.
@@ -72,7 +58,7 @@ class FileConnection(ConnectionBase):
         Returns:
             bytes: the data that was read
         """
-        return self._fp.read(size)
+        return self._file_object.read(size)
 
     def write(self, data):
         """Writes the given data to the connection.
@@ -80,7 +66,7 @@ class FileConnection(ConnectionBase):
         Parameters:
             data (bytes): the data to write
         """
-        result = self._fp.write(data)
+        result = self._file_object.write(data)
         if self.autoflush:
             self.flush()
         return result

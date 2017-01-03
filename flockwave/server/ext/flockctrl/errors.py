@@ -22,17 +22,21 @@ class AddressConflictError(FlockCtrlError):
     ID and a mismatching source address.
     """
 
-    def __init__(self, uav, address):
+    def __init__(self, uav, medium, address):
         """Constructor.
 
         Parameters:
             uav (FlockCtrlUAV): the UAV that the packet is addressed to,
                 based on the UAV ID found in the packet
-            address (bytes): the source address where the packet came from
+            medium (str): the communication medium on which the address is
+                valid
+            address (object): the source address where the packet came from
         """
         super(AddressConflictError, self).__init__(
-            "Packet for UAV #{0.id} received from source address that does "
-            "not belong to the UAV ({1!r})".format(uav, address)
+            "Packet for UAV #{0.id} received from source address on "
+            "communication medium {1!r} but the address does "
+            "not belong to the UAV ({2!r})".format(uav, medium, address)
         )
         self.uav = uav
+        self.medium = medium
         self.address = address

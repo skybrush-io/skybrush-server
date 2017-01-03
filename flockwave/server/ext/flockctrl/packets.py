@@ -25,9 +25,11 @@ class FlockCtrlPacket(object):
     """Common interface specification for all FlockCtrl-related packets."""
 
     @abstractproperty
-    def source_address(self):
-        """The source address of the packet, if known. ``None`` if the
-        packet was created locally.
+    def source(self):
+        """The source medium and address of the packet, if known. ``None``
+        if the packet was created locally. Otherwise it is a tuple containing
+        the source medium (e.g., ``xbee``) and the address whose format is
+        specific to the source medium.
         """
         raise NotImplementedError
 
@@ -68,15 +70,15 @@ class FlockCtrlPacketBase(FlockCtrlPacket):
     """Abstract base class for all FlockCtrl-related packets."""
 
     def __init__(self):
-        self._source_address = None
+        self._source = None
 
     @property
-    def source_address(self):
-        return self._source_address
+    def source(self):
+        return self._source
 
-    @source_address.setter
-    def source_address(self, value):
-        self._source_address = value
+    @source.setter
+    def source(self, value):
+        self._source = value
 
     def _unpack(self, data, spec=None):
         """Unpacks some data from the given raw bytes object according to
@@ -337,13 +339,13 @@ class ChunkedPacketAssembler(object):
             compressed (bool): whether the body of the packet is assumed
                 to be compressed
         """
-        if packet.source_address is None:
+        if packet.source is None:
             raise ValueError("inbound chunked packet must have a "
                              "source address")
 
         now = time()
 
-        messages = self._messages[packet.source_address]
+        messages = self._messages[packet.source]
         msg_data = messages.get(packet.sequence_id)
         if msg_data is None:
             # This is the first time we see this sequence id
@@ -364,10 +366,10 @@ class ChunkedPacketAssembler(object):
             if msg_data["compressed"]:
                 body = zlib.decompress(body)
             self.packet_assembled.send(self, body=body,
-                                       source_address=packet.source_address)
+                                       source=packet.source)
             del messages[packet.sequence_id]
             if not messages:
-                del self._messages[packet.source_address]
+                del self._messages[packet.source]
 
     def get_chunk_info(self, sequence_id):
         """Returns a string representing which chunks have arrived already
@@ -407,5 +409,5 @@ class ChunkedPacketAssembler(object):
             num_chunks=packet.num_chunks,
             last_chunk=None
         )
-        self._messages[packet.source_address][packet.sequence_id] = msg_data
+        self._messages[packet.source][packet.sequence_id] = msg_data
         return msg_data

@@ -10,8 +10,7 @@ from eventlet import Queue, spawn, spawn_after
 from six import byte2int, int2byte
 from random import random
 
-from .errors import ParseError
-from .parser import FlockCtrlParser
+from .comm import CommunicationManagerBase
 
 
 __all__ = ("XBeeCommunicationManager", )
@@ -61,22 +60,15 @@ def xbee_delivery_status_code_to_name(code):
     return _xbee_delivery_status_code_names.get(code, "Unknown status")
 
 
-class XBeeCommunicationManager(object):
-    """Object that manages the communication with an XBee radio device.
+class XBeeCommunicationManager(CommunicationManagerBase):
+    """Object that manages the communication with an UAV using an XBee
+    radio device.
 
     The manager creates two green threads; one for receiving inbound XBee
     packets and one for sending outbound XBee packets. It also takes care
     of watching delivery status information for the outbound packets and
     repeating the packets if the delivery failed.
-
-    Attributes:
-        on_packet (Signal): signal that is emitted when the communication
-            manager receives a new data packet from the XBee radio. The
-            signal is called with the parsed data packet as its only
-            argument.
     """
-
-    on_packet = Signal()
 
     def __init__(self, ext):
         """Constructor.
@@ -85,27 +77,16 @@ class XBeeCommunicationManager(object):
             ext (FlockCtrlDronesExtension): the extension that owns this
                 manager
         """
+        super(XBeeCommunicationManager, self).__init__(ext, "xbee")
         self._ack_collector = None
         self._inbound_thread = None
         self._outbound_thread = None
-        self._parser = FlockCtrlParser()
         self._xbee = None
 
-        self.ext = ext
-
-    def app_context(self):
-        """Returns the Flask application context of the associated FlockCtrl
-        server app. The inbound and outbound XBee green threads will run in
-        this application context.
-        """
-        return self.ext.app.app_context()
-
-    def _handle_inbound_xbee_frame(self, sender, frame):
+    def _handle_inbound_xbee_frame(self, frame):
         """Handles an inbound XBee frame.
 
         Parameters:
-            sender (XBeeOutboundThread): the thread that sent the signal
-                that triggered this signal handler
             frame (dict): the inbound XBee frame to handle
         """
         identifier = frame.get("id")
@@ -129,16 +110,13 @@ class XBeeCommunicationManager(object):
         if not data:
             return
 
-        try:
-            packet = self._parser.parse(data)
-        except ParseError as ex:
-            self.log.warn("Failed to parse FlockCtrl packet of length "
-                          "{0}: {1!r}".format(len(data), data[:32]))
-            self.log.exception(ex)
+        address = frame.get("source_addr_long")
+        if not address:
+            self.log.warn("XBee packet received with no source address; "
+                          "this is probably a bug")
             return
 
-        packet.source_address = frame.get("source_addr_long")
-        self.on_packet.send(self, packet=packet)
+        self._parse_and_emit_packet(data, address)
 
     def _handle_inbound_xbee_transmission_status_frame(self, frame):
         """Handles an inbound XBee transmission status frame.
@@ -174,18 +152,7 @@ class XBeeCommunicationManager(object):
             # 50 msec
             spawn_after(random() * 0.05, self._packet_queue.put, request)
 
-    @property
-    def log(self):
-        """Returns the logger of the extension that owns this manager.
-
-        Returns:
-            Optional[logging.Logger]: the logger of the extension that owns
-                this manager, or ``None`` if the manager is not associated
-                to an extension yet.
-        """
-        return self.ext.log if self.ext else None
-
-    def send_packet(self, packet, destination):
+    def send_packet(self, packet, destination=None):
         """Requests the communication manager to send the given FlockCtrl
         packet to the given destination.
 
@@ -234,12 +201,11 @@ class XBeeCommunicationManager(object):
             )
 
             thread = XBeeInboundThread(self, self._xbee)
-            thread.on_frame.connect(self._handle_inbound_xbee_frame)
-            self._xbee_inbound_thread = spawn(thread.run)
+            self._inbound_thread = spawn(thread.run)
 
             thread = XBeeOutboundThread(self, self._xbee, self._ack_collector)
             self._packet_queue = thread.queue
-            self._xbee_outbound_thread = spawn(thread.run)
+            self._outbound_thread = spawn(thread.run)
 
 
 class XBeeInboundThread(object):
@@ -249,8 +215,6 @@ class XBeeInboundThread(object):
     The thread is running within the application context of the Flockwave
     server application.
     """
-
-    on_frame = Signal()
 
     def __init__(self, manager, xbee):
         """Constructor.
@@ -268,7 +232,7 @@ class XBeeInboundThread(object):
         """Callback function called for every single frame read from the
         XBee.
         """
-        self.on_frame.send(self, frame=frame)
+        self.manager._handle_inbound_xbee_frame(frame=frame)
 
     def _error_callback(self, exception):
         """Callback function called when an exception happens while waiting

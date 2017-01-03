@@ -8,14 +8,16 @@ import socket
 from blinker import Signal
 from contextlib import closing
 from errno import EAGAIN
-from groundctrl.connection.base import FDConnectionBase, ConnectionState, \
-    ConnectionWrapperBase
-from groundctrl.util import FDConnectionEventLoopBinding
+from functools import partial
 from ipaddress import IPv4Address, IPv4Network
 from select import select
 from time import time
 
-__all__ = ("UDPSocketConnection", )
+from .base import FDConnectionBase, ConnectionState, ConnectionWrapperBase
+from .factory import create_connection
+
+__all__ = ("UDPSocketConnection", "SubnetBindingConnection",
+           "SubnetBindingUDPConnection")
 
 
 class SocketConnectionBase(FDConnectionBase):
@@ -114,6 +116,7 @@ class SocketConnectionBase(FDConnectionBase):
         pass
 
 
+@create_connection.register("udp")
 class UDPSocketConnection(SocketConnectionBase):
     """Connection object that uses an UDP socket."""
 
@@ -259,8 +262,6 @@ class SubnetBindingConnection(ConnectionWrapperBase):
         import netifaces             # lazy import
         self._netifaces = netifaces
 
-        self._event_loop_binding = FDConnectionEventLoopBinding()
-
         if isinstance(network, IPv4Network):
             self._network = network
         else:
@@ -283,24 +284,6 @@ class SubnetBindingConnection(ConnectionWrapperBase):
             self._set_wrapped(self.connection_factory(address, self.port))
 
         self._wrapped.open()
-
-    def register_in_event_loop(self, loop, callback):
-        """Registers this connection in the given urwid event loop such
-        that the given callback function is called whenever the socket
-        of the connection becomes readable.
-
-        Parameters:
-            loop (urwid.MainLoop): the urwid main loop in which the
-                connection has to be registered
-            callback (callable): the callable to call whenever the socket
-                becomes readable
-        """
-        self._event_loop_binding.loop = loop
-        self._event_loop_binding.callback = callback
-
-    def unregister_from_event_loop(self):
-        self._event_loop_binding.loop = None
-        self._event_loop_binding.callback = None
 
     def _find_ip_address_in_subnet(self):
         """Finds an IP address among the addresses of all the network
@@ -335,8 +318,6 @@ class SubnetBindingConnection(ConnectionWrapperBase):
         self._set_state(new_state)
 
     def _wrapped_connection_changed(self, old_conn, new_conn):
-        self._event_loop_binding.connection = new_conn
-
         if old_conn:
             old_conn.state_changed.disconnect(
                 self._wrapped_connection_state_changed,
@@ -358,7 +339,8 @@ class SubnetBindingConnection(ConnectionWrapperBase):
         self._update_own_state_from_wrapped_connection()
 
 
-def SubnetBindingUDPConnection(subnet, port=0, bind_to_broadcast=False):
+@create_connection.register("udp-subnet")
+def SubnetBindingUDPConnection(subnet=None, port=0, bind_to_broadcast=False, **kwds):
     """Convenience factory for a SubnetBindingConnection_ that works with
     UDP sockets.
 
@@ -369,8 +351,22 @@ def SubnetBindingUDPConnection(subnet, port=0, bind_to_broadcast=False):
         bind_to_broadcast (bool): whether to bind to the broadcast address
             of the network interface (True) or the own IP address of the
             network interface (False)
+
+    Keyword arguments:
+        path: alias to ``subnet`` so we can use the argument in a
+            ConnectionFactory_ in a more natural way (for example,
+            ``udp-subnet:192.168.1.0/24``)
     """
+    if subnet is None:
+        subnet = kwds.get("path")
+        if subnet is None:
+            raise ValueError("either 'subnet' or 'path' must be given")
     return SubnetBindingConnection(subnet, UDPSocketConnection, port, bind_to_broadcast)
+
+
+SubnetBindingUDPBroadcastConnection = partial(SubnetBindingUDPConnection,
+                                              bind_to_broadcast=True)
+create_connection.register("udp-broadcast", SubnetBindingUDPBroadcastConnection)
 
 
 def test_udp():

@@ -1,8 +1,10 @@
 """Default configuration for the Flockwave server."""
 
 import os
+import platform
 
 IN_HEROKU = "DYNO" in os.environ
+ON_MAC = platform.system() == "darwin"
 
 # Secret key to encode cookies and session data
 SECRET_KEY = b'\xa6\xd6\xd3a\xfd\xd9\x08R\xd2U\x05\x10'\
@@ -33,9 +35,11 @@ EXTENSIONS = {
     },
     "flockctrl": {
         "id_format": "{0:02}",
-        # "connection": "serial+replay:/Users/ntamas/dev/collmot/git/flockwave-server/test3.flight?autoclose=1"
-        # "connection": "serial:/dev/ttyUSB.xbee?baud=115200"
-        "connection": "serial:/tmp/xbee"
+        "connections": {
+            "xbee": "serial:/tmp/xbee",
+            # "xbee": "serial:/dev/ttyUSB.xbee?baud=115200"
+            "wireless": "udp-broadcast:10.0.0.0/8?port=4243"
+        }
     },
     "radiation": {
         "sources": [
@@ -57,3 +61,8 @@ if IN_HEROKU:
     if "_fake_uavs" in EXTENSIONS:
         EXTENSIONS["fake_uavs"] = EXTENSIONS.pop("_fake_uavs")
     del EXTENSIONS["flockctrl"]
+
+# smpte_timecode seems to have some problems on a Mac - it consumes 15% CPU
+# even when idle. Also, it is not needed on Heroku.
+if IN_HEROKU or ON_MAC:
+    del EXTENSIONS["smpte_timecode"]

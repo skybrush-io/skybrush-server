@@ -15,6 +15,7 @@ from flockwave.server.utils import datetime_to_unix_timestamp
 
 from .driver import FlockCtrlDriver
 from .packets import FlockCtrlClockSynchronizationPacket
+from .wireless import WirelessCommunicationManager
 from .xbee import XBeeCommunicationManager
 
 __all__ = ("construct", )
@@ -28,10 +29,18 @@ class FlockCtrlDronesExtension(UAVExtensionBase):
     def __init__(self):
         super(FlockCtrlDronesExtension, self).__init__()
         self._driver = None
-        self._xbee_lowlevel = None
+
+        self._wireless_lowlevel_link = None
+        self._wireless_communicator = WirelessCommunicationManager(self)
+        self._wireless_communicator.on_packet.connect(
+            self._handle_inbound_packet,
+            sender=self._wireless_communicator
+        )
+
+        self._xbee_lowlevel_link = None
         self._xbee_communicator = XBeeCommunicationManager(self)
         self._xbee_communicator.on_packet.connect(
-            self._handle_inbound_xbee_packet,
+            self._handle_inbound_packet,
             sender=self._xbee_communicator
         )
 
@@ -39,8 +48,11 @@ class FlockCtrlDronesExtension(UAVExtensionBase):
         return FlockCtrlDriver()
 
     def configure(self, configuration):
-        self.xbee_lowlevel = self._configure_lowlevel_xbee_connection(
-            configuration.get("connection"))
+        connection_config = configuration.get("connections", {})
+        self.xbee_lowlevel_link = self._configure_lowlevel_connection(
+            connection_config.get("xbee"))
+        self.wireless_lowlevel_link = self._configure_lowlevel_connection(
+            connection_config.get("wireless"))
         super(FlockCtrlDronesExtension, self).configure(configuration)
 
     def on_app_changed(self, old_app, new_app):
@@ -55,46 +67,76 @@ class FlockCtrlDronesExtension(UAVExtensionBase):
                 self._on_clock_changed, sender=new_app.clock_registry)
 
     def unload(self):
-        self.xbee_lowlevel = None
+        self.wireless_lowlevel_link = None
+        self.xbee_lowlevel_link = None
 
     @property
-    def xbee_lowlevel(self):
-        return self._xbee_lowlevel
+    def wireless_lowlevel_link(self):
+        return self._wireless_lowlevel_link
 
-    @xbee_lowlevel.setter
-    def xbee_lowlevel(self, value):
-        if self._xbee_lowlevel is not None:
-            self._xbee_communicator.xbee = None
-            self._xbee_lowlevel.close()
-            self.app.connection_registry.remove("XBee")
+    @wireless_lowlevel_link.setter
+    def wireless_lowlevel_link(self, value):
+        if self._wireless_lowlevel_link is not None:
+            self._wireless_communicator.connection = None
+            self._wireless_lowlevel_link.close()
+            self.app.connection_registry.remove("Wireless")
 
-        self._xbee_lowlevel = value
+        self._wireless_lowlevel_link = value
 
-        if self._xbee_lowlevel is not None:
+        if self._wireless_lowlevel_link is not None:
             self.app.connection_registry.add(
-                self._xbee_lowlevel, "XBee",
-                description="Upstream XBee connection for FlockCtrl drones",
+                self._wireless_lowlevel_link, "Wireless",
+                description="Upstream wireless connection",
                 purpose=ConnectionPurpose.uavRadioLink
             )
 
-            self._xbee_lowlevel.open()
-            self._xbee = ZigBee(self._xbee_lowlevel)
-            self._xbee_communicator.xbee = ZigBee(self._xbee_lowlevel)
+            self._wireless_lowlevel_link.open()
+            self._wireless_communicator.connection = \
+                self._wireless_lowlevel_link
 
-    def _configure_lowlevel_xbee_connection(self, specifier):
-        """Configures the low-level XBee connection object from the given
-        connection specifier parsed from the extension configuration.
+    @property
+    def xbee_lowlevel_link(self):
+        return self._xbee_lowlevel_link
+
+    @xbee_lowlevel_link.setter
+    def xbee_lowlevel_link(self, value):
+        if self._xbee_lowlevel_link is not None:
+            self._xbee_communicator.xbee = None
+            self._xbee_lowlevel_link.close()
+            self.app.connection_registry.remove("XBee")
+
+        self._xbee_lowlevel_link = value
+
+        if self._xbee_lowlevel_link is not None:
+            self.app.connection_registry.add(
+                self._xbee_lowlevel_link, "XBee",
+                description="Upstream XBee connection",
+                purpose=ConnectionPurpose.uavRadioLink
+            )
+
+            self._xbee_lowlevel_link.open()
+            self._xbee_communicator.xbee = ZigBee(self._xbee_lowlevel_link)
+
+    def _configure_lowlevel_connection(self, specifier):
+        """Configures the low-level XBee or wireless connection object from
+        the given connection specifier parsed from the extension
+        configuration.
 
         Parameters:
-            specifier (str): the connection specifier URL that tells the
-                extension how to find the serial port to which the XBee
-                is connected
+            specifier (Optional[str]): the connection specifier URL that
+                tells the extension how to find the serial port to which the
+                XBee is connected, or how to find the subnet on which the
+                wireless status packets are broadcast. ``None`` means that
+                no connection should be constructed.
 
         Returns:
-            Connection: an abstract connection that can be used to read and
-                write byte-level stuff from/to the XBee
+            Optional[Connection]: the constructed low-level connection object
+                or ``None`` if the specifier was ``None``
         """
-        return reconnecting(create_connection(specifier))
+        if specifier:
+            return reconnecting(create_connection(specifier))
+        else:
+            return None
 
     def configure_driver(self, driver, configuration):
         """Configures the driver that will manage the UAVs created by
@@ -115,8 +157,8 @@ class FlockCtrlDronesExtension(UAVExtensionBase):
             self.create_device_tree_mutation_context
         driver.send_packet = self.send_packet
 
-    def _handle_inbound_xbee_packet(self, sender, packet):
-        """Handles an inbound XBee data packet."""
+    def _handle_inbound_packet(self, sender, packet):
+        """Handles an inbound data packet from an XBee or wireless link."""
         self._driver.handle_inbound_packet(packet)
 
     def send_packet(self, packet, destination=None):
@@ -129,6 +171,8 @@ class FlockCtrlDronesExtension(UAVExtensionBase):
                 send the packet to. ``None`` means to send a broadcast
                 packet.
         """
+        # TODO: currently we always send packets via the XBee link. We
+        # should add support for the wifi link as well
         self._xbee_communicator.send_packet(packet, destination)
 
     def _on_clock_changed(self, sender, clock):

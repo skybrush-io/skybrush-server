@@ -89,21 +89,23 @@ class FlockCtrlDriver(UAVDriver):
             cmd_manager.finished.connect(self._on_command_finished,
                                          sender=cmd_manager)
 
-    def _check_or_record_uav_address(self, uav, source_address):
-        """Records that the given UAV has the given XBee address,
+    def _check_or_record_uav_address(self, uav, medium, address):
+        """Records that the given UAV has the given address,
         or, if the UAV already has an address, checks whether the
         address matches the one provided to this function.
 
         Parameters:
             uav (FlockCtrlUAV): the UAV to check
-            source_address (bytes): the XBee source address of the UAV
+            medium (str): the communication medium on which the address is
+                valid (e.g., ``xbee`` or ``wifi``)
+            address (object): the source address of the UAV
 
         Raises:
             AddressConflictError: if the UAV already has an address and it
                 is different from the one given to this function
         """
-        uav.check_or_record_address(source_address)
-        self._uavs_by_source_address[source_address] = uav
+        uav.check_or_record_address(medium, address)
+        self._uavs_by_source_address[medium, address] = uav
 
     def _configure_packet_handlers(self):
         """Constructs a mapping that maps FlockCtrl packet types to the
@@ -199,7 +201,8 @@ class FlockCtrlDriver(UAVDriver):
         """
         uav = self._get_or_create_uav(packet.id)
         algorithm = packet.algorithm
-        self._check_or_record_uav_address(uav, packet.source_address)
+        medium, address = packet.source
+        self._check_or_record_uav_address(uav, medium, address)
         uav.update_status(
             position=packet.location,
             velocity=packet.velocity,
@@ -222,21 +225,21 @@ class FlockCtrlDriver(UAVDriver):
         message = self.app.create_UAV_INF_message_for([uav.id])
         self.app.message_hub.send_message(message)
 
-    def _on_chunked_packet_assembled(self, sender, body, source_address):
+    def _on_chunked_packet_assembled(self, sender, body, source):
         """Handler called when the response chunk handler has assembled
         the body of a chunked packet.
 
         Parameters:
             body (bytes): the assembled body of the packet
-            source_address (bytes): source address of the XBee device that
-                sent the packet
+            source (Tuple[str, object]): source medium and address where the
+                packet was sent from
         """
         try:
-            uav = self._uavs_by_source_address[source_address]
+            uav = self._uavs_by_source_address[source]
         except KeyError:
             self.log.warn("Reassembled chunked packet received from address "
-                          "{0!r} with no corresponding UAV"
-                          .format(source_address))
+                          "{1!r} via {0!r} with no corresponding UAV"
+                          .format(*source))
             return
         try:
             command = self._commands_by_uav[uav.id]
@@ -321,14 +324,16 @@ class FlockCtrlUAV(UAVBase):
     drones.
 
     Attributes:
-        address (bytes): the XBee address of this UAV
+        addresses (Dict[str,object]): the addresses of this UAV, keyed by the
+            various communication media that we may use to access the UAVs
+            (e.g., ``xbee``, ``wifi`` and so on)
     """
 
-    def __init__(self, id, driver, address=None):
-        super(FlockCtrlUAV, self).__init__(id, driver)
-        self.address = address
+    def __init__(self, *args, **kwds):
+        super(FlockCtrlUAV, self).__init__(*args, **kwds)
+        self.addresses = {}
 
-    def check_or_record_address(self, address):
+    def check_or_record_address(self, medium, address):
         """When this UAV has no known XBee address yet (i.e.
         ``self.address`` is ``None``), stores the given address as the
         XBee address of this UAV. When this UAV has an XBee address, checks
@@ -336,16 +341,20 @@ class FlockCtrlUAV(UAVBase):
         AddressConflictError if the two addresses are not equal
 
         Parameters:
-            address (bytes): the XBee address of this UAV
+            medium (str): the communication medium that this address applies to
+                (e.g., ``xbee`` or ``wifi``)
+            address (bytes): the address of the UAV on the communication
+                medium
 
         Raises:
             AddressConflictError: if the UAV already has an address and it
                 is different from the one given to this function
         """
-        if self.address is None:
-            self.address = address
-        elif self.address != address:
-            raise AddressConflictError(self, address)
+        current_address = self.addresses.get(medium)
+        if current_address is None:
+            self.addresses[medium] = address
+        elif current_address != address:
+            raise AddressConflictError(self, medium, address)
 
     def update_geiger_counter(self, value, mutator):
         """Updates the value of the Geiger counter of the UAV with the given

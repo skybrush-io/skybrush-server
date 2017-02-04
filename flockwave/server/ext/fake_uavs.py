@@ -317,10 +317,15 @@ class FakeUAV(UAVBase):
                 "lon": position.lon,
                 "value": cos(self.angle) + 24.0
             })
-            mutator.update(self.geiger_counter, {
+            mutator.update(self.geiger_counter["averaged"], {
                 "lat": position.lat,
                 "lon": position.lon,
                 "value": radiation_intensity_estimate
+            })
+            mutator.update(self.geiger_counter["raw"], {
+                "lat": position.lat,
+                "lon": position.lon,
+                "value": observed_count
             })
 
     def takeoff(self):
@@ -340,9 +345,10 @@ class FakeUAV(UAVBase):
         )
 
         device = node.add_device("geiger_counter")
-        self.geiger_counter = device.add_channel(
-            "measurement", type=object, unit="counts/sec"
-        )
+        self.geiger_counter = {
+            "raw": device.add_channel("raw_measurement", type=object, unit="counts"),
+            "averaged": device.add_channel("measurement", type=object, unit="counts/sec")
+        }
 
 
 class FakeUAVProviderExtension(UAVExtensionBase):

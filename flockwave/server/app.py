@@ -9,8 +9,8 @@ from collections import defaultdict
 from datetime import datetime
 from enum import Enum
 from flask import abort, Flask, redirect, request, url_for
-from flask.ext.jwt import current_identity as jwt_identity
-from flask.ext.socketio import SocketIO
+from flask_jwt import current_identity as jwt_identity
+from flask_socketio import SocketIO
 from heapq import heappush
 from jsonschema import ValidationError
 from six import iteritems

@@ -3,8 +3,8 @@ application.
 """
 
 from flask import _request_ctx_stack
-from flask.ext.httpauth import HTTPBasicAuth
-from flask.ext.jwt import JWT, jwt_required
+from flask_httpauth import HTTPBasicAuth
+from flask_jwt import JWT, jwt_required
 from functools import wraps
 from jwt import InvalidTokenError
 from .logger import log as base_log

@@ -23,6 +23,11 @@ from .logger import log
               help="SSL certificate in PEM format")
 def start(debug, host, port, ssl_key, ssl_cert):
     """Start the Flockwave server."""
+
+    # Dirty workaround for breaking import cycle according to
+    # https://github.com/eventlet/eventlet/issues/394
+    eventlet.sleep()
+
     # Ensure that everything is monkey-patched by Eventlet as soon as
     # possible
     eventlet.monkey_patch()

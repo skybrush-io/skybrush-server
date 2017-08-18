@@ -39,8 +39,7 @@ class UAVStatusInfo(with_metaclass(ModelMeta, TimestampMixin)):
         self.velocity = VelocityNED()
 
 
-@add_metaclass(ABCMeta)
-class UAV(object):
+class UAV(with_metaclass(ABCMeta, object)):
     """Abstract object that defines the interface of objects representing
     UAVs.
     """
@@ -175,8 +174,7 @@ class UAVBase(UAV):
         self._status.update_timestamp()
 
 
-@add_metaclass(ABCMeta)
-class UAVDriver(object):
+class UAVDriver(with_metaclass(ABCMeta, object)):
     """Interface specification for UAV drivers that are responsible for
     handling communication with a given group of UAVs via a common
     communication channel (e.g., an XBee radio).

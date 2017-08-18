@@ -21,6 +21,7 @@ requires = [
     "hexdump>=3.3",
     "ipaddress>=1.0.17",
     "jsonschema>=2.5.1",
+    "memoized>=0.2.1",
     "mido>=1.1.14",
     "netifaces>=0.10.5",
     "numpy>=1.11.1",

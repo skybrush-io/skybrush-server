@@ -1,5 +1,5 @@
 http://pypi.collmot.com/flockwave-gps-0.5.0.tar.gz
 http://pypi.collmot.com/flockwave-spec-0.12.1.tar.gz
-http://pypi.collmot.com/memoized-0.2.tar.gz
+-e http://pypi.collmot.com/memoized-0.2.tar.gz
 -e git+git://github.com/collmot/python-engineio@fix-upgrading-starvation#egg=python-engineio
 -e .

@@ -397,7 +397,7 @@ class FakeUAVProviderExtension(UAVExtensionBase):
         omega = 2 * pi / configuration.get("time_of_single_cycle", 10)
 
         # Generate IDs for the UAVs and then create them
-        self.uav_ids = [id_format.format(index) for index in xrange(count)]
+        self.uav_ids = [id_format.format(index) for index in range(count)]
         self.uavs = [
             self._driver.create_uav(id, center=center, radius=radius,
                                     angle=2 * pi / count * index,

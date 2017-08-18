@@ -6,6 +6,7 @@ import zlib
 
 from abc import ABCMeta, abstractproperty
 from blinker import Signal
+from builtins import range
 from collections import defaultdict
 from datetime import datetime
 from flockwave.gps.vectors import Altitude, GPSCoordinate, VelocityNED
@@ -389,7 +390,7 @@ class ChunkedPacketAssembler(object):
         else:
             n = msg_data["num_chunks"]
             chunk_chars = [" "] * n
-            for i in xrange(n):
+            for i in range(n):
                 if i in msg_data["chunks"]:
                     chunk_chars[i] = "#"
             last_chunk_id = msg_data.get("last_chunk")

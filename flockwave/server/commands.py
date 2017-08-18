@@ -4,9 +4,9 @@ remote UAVs.
 
 from blinker import Signal
 from flask import request
+from future.utils import iteritems
 from greenlet import GreenletExit
 from eventlet import sleep, spawn_n
-from six import iteritems
 from time import time
 
 from .logger import log as base_log

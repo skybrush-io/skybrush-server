@@ -5,7 +5,7 @@ import logging
 from colorlog import default_log_colors
 from colorlog.colorlog import ColoredRecord
 from colorlog.escape_codes import escape_codes, parse_colors
-from six import iteritems
+from future.utils import iteritems
 
 __all__ = ("log", "install")
 

@@ -230,7 +230,7 @@ class RecordableSerialPortConnection(SerialPortConnection):
             self._log_header_written = True
 
         now = time()
-        row = [entry_type.encode("iso-8859-1"), str(now).encode("iso-8859-1")]
+        row = [entry_type.encode("iso-8859-1"), "{0}".format(now).encode("iso-8859-1")]
         if isinstance(data, bytes):
             row.append(data.encode("string-escape"))
 
@@ -390,8 +390,8 @@ class ReplayedSerialPortConnection(ConnectionBase):
 
 def test_recordable_serial_port():
     import sys
-    from cStringIO import StringIO
     from groundctrl.util import tee
+    from io import StringIO
     from os import read, ttyname, write
     from pty import openpty
     from time import sleep

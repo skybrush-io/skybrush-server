@@ -214,7 +214,7 @@ class FlockCtrlDriver(UAVDriver):
         if algorithm == "geiger":
             data = list(iterbytes(packet.debug[-5:]))
             try:
-                count = int("".join(map(chr, data)))
+                count = int("".join(chr(x) for x in data))
             except:
                 count = None
             if self.create_device_tree_mutator is not None:

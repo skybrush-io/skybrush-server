@@ -4,7 +4,7 @@ locations of the radiation sources to provide UAVs with fake Geiger-Muller
 counters.
 """
 
-from __future__ import absolute_import
+from __future__ import absolute_import, division
 
 from flockwave.gps.vectors import Altitude, AltitudeReference, \
     ECEFToGPSCoordinateTransformation, GPSCoordinate, \

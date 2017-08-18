@@ -1,5 +1,7 @@
 """Error classes specific to the Flockwave model."""
 
+from builtins import str
+
 __all__ = ("ClientNotSubscribedError", "NoSuchPathError")
 
 
@@ -22,7 +24,7 @@ class ClientNotSubscribedError(FlockwaveError):
             path (DeviceTreePath): the path that the client attempted to
                 unsubscribe from
         """
-        super(ClientNotSubscribedError, self).__init__(unicode(client))
+        super(ClientNotSubscribedError, self).__init__(str(client))
         self.client = client
         self.path = path
 
@@ -39,5 +41,5 @@ class NoSuchPathError(FlockwaveError):
             path (DeviceTreePath): the path that could not be resolved into
                 a node
         """
-        super(NoSuchPathError, self).__init__(unicode(path))
+        super(NoSuchPathError, self).__init__(str(path))
         self.path = path

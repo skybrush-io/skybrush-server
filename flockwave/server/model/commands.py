@@ -4,15 +4,15 @@ UAVs.
 
 from datetime import datetime
 from flockwave.spec.schema import get_complex_object_schema
-from six import add_metaclass
+from future.utils import with_metaclass
 from time import time
+
 from .metamagic import ModelMeta
 
 __all__ = ("CommandExecutionStatus", )
 
 
-@add_metaclass(ModelMeta)
-class CommandExecutionStatus(object):
+class CommandExecutionStatus(with_metaclass(ModelMeta, object)):
     """Object that stores and represents the status of the execution of
     an asynchronous command.
     """

@@ -3,7 +3,8 @@
 from __future__ import absolute_import
 
 from collections import defaultdict
-from flask.ext.socketio import emit
+from flask_socketio import emit
+from future.utils import string_types
 from itertools import chain
 
 from .logger import log as base_log
@@ -198,11 +199,11 @@ class MessageHub(object):
                 the message. Note that returning ``True`` will not prevent
                 other handlers from getting the message.
         """
-        if message_types is None or isinstance(message_types, basestring):
+        if message_types is None or isinstance(message_types, string_types):
             message_types = [message_types]
 
         for message_type in message_types:
-            if not isinstance(message_type, unicode):
+            if not isinstance(message_type, str):
                 message_type = message_type.decode("utf-8")
             self._handlers_by_type[message_type].append(func)
 

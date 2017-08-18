@@ -295,10 +295,15 @@ class SMPTETimecodeExtension(ExtensionBase):
     def configure(self, configuration):
         """Configures the extension."""
         self.midi = create_connection(configuration.get("connection"))
-        if not isinstance(self.midi, MIDIPortConnection):
+        if self.midi is None:
+            # This can happen if there is no MIDI support on the current
+            # platform
+            pass
+        elif not isinstance(self.midi, MIDIPortConnection):
             raise TypeError("{0} supports MIDIPortConnection connections "
                             "only".format(self.__class__.__name__))
-        self.midi = reconnecting(self.midi)
+        else:
+            self.midi = reconnecting(self.midi)
 
     @property
     def midi(self):
@@ -324,6 +329,13 @@ class SMPTETimecodeExtension(ExtensionBase):
         self._midi = value
 
         if self._midi is not None:
+            try:
+                self._midi.open()
+            except ImportError as ex:
+                self.log.warn("No MIDI support; {0.name!r} module is missing".format(ex))
+                self._midi = None
+                return
+
             self.app.connection_registry.add(
                 self._midi, "MIDI",
                 description="MIDI timecode provider",
@@ -331,7 +343,6 @@ class SMPTETimecodeExtension(ExtensionBase):
             )
 
             self._set_clock(MIDIClock())
-            self._midi.open()
 
             self._inbound_parser = InboundMessageParserThread(self._midi)
             self._inbound_parser.timecode_received.connect(

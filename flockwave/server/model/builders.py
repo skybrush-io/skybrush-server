@@ -3,6 +3,7 @@
 from __future__ import absolute_import
 
 from baseconv import base64
+from builtins import str
 from random import getrandbits
 
 from .commands import CommandExecutionStatus
@@ -41,7 +42,7 @@ class CommandExecutionStatusBuilder(object):
             CommandExecutionStatus: the newly created command execution
                 status object
         """
-        id = unicode(self.id_generator())
+        id = str(self.id_generator())
         return CommandExecutionStatus(id=id)
 
 
@@ -60,6 +61,24 @@ class FlockwaveMessageBuilder(object):
         self.id_generator = id_generator
         self.version = version
 
+    def _create_message_object(self, body=None):
+        """Creates a new Flockwave message object with the given body.
+
+        Parameters:
+            body (Optional[object]): the body of the message.
+
+        Returns:
+            FlockwaveMessage: the newly created message
+        """
+        result = {
+            "$fw.version": self.version,
+            "id": str(self.id_generator()),
+        }
+        if body is not None:
+            result["body"] = body
+        return result
+
+
     def create_message(self, body=None):
         """Creates a new Flockwave message with the given body.
 
@@ -69,11 +88,7 @@ class FlockwaveMessageBuilder(object):
         Returns:
             FlockwaveMessage: the newly created message
         """
-        result = {
-            "$fw.version": self.version,
-            "id": unicode(self.id_generator()),
-            "body": body
-        }
+        result = self._create_message_object(body)
         return FlockwaveMessage.from_json(result, validate=False)
 
     def create_notification(self, body=None):
@@ -85,11 +100,7 @@ class FlockwaveMessageBuilder(object):
         Returns:
             FlockwaveNotification: the newly created notification
         """
-        result = {
-            "$fw.version": self.version,
-            "id": unicode(self.id_generator()),
-            "body": body
-        }
+        result = self._create_message_object(body)
         return FlockwaveNotification.from_json(result, validate=False)
 
     def create_response_to(self, message, body=None):
@@ -114,10 +125,6 @@ class FlockwaveMessageBuilder(object):
         else:
             message_id = message["id"]
 
-        result = {
-            "$fw.version": self.version,
-            "id": unicode(self.id_generator()),
-            "correlationId": message_id,
-            "body": body
-        }
+        result = self._create_message_object(body)
+        result["correlationId"] = message_id
         return FlockwaveResponse.from_json(result, validate=False)

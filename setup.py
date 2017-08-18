@@ -17,6 +17,7 @@ requires = [
     "flask-socketio>=2.5",
     "flockwave-gps>=0.5.0",
     "flockwave-spec>=0.12.0",
+    "future>=0.16.0",
     "hexdump>=3.3",
     "ipaddress>=1.0.17",
     "jsonschema>=2.5.1",

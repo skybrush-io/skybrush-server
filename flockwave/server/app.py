@@ -11,9 +11,9 @@ from enum import Enum
 from flask import abort, Flask, redirect, request, url_for
 from flask_jwt import current_identity as jwt_identity
 from flask_socketio import SocketIO
+from future.utils import iteritems
 from heapq import heappush
 from jsonschema import ValidationError
-from six import iteritems
 
 from .authentication import jwt_authentication, jwt_optional
 from .commands import CommandExecutionManager, CommandExecutionStatus

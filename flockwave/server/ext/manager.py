@@ -5,6 +5,7 @@ from __future__ import absolute_import
 import importlib
 
 from blinker import Signal
+from future.utils import iteritems
 from pkgutil import get_loader
 
 from .logger import log as base_log
@@ -87,7 +88,7 @@ class ExtensionManager(object):
         """
         for extension_name in self.loaded_extensions:
             self.unload(extension_name)
-        for extension_name, extension_cfg in configuration.items():
+        for extension_name, extension_cfg in iteritems(configuration):
             if not extension_name.startswith("_"):
                 self.load(extension_name, extension_cfg)
 

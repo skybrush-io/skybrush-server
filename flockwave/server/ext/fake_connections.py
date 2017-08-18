@@ -11,14 +11,15 @@ Useful primarily for debugging purposes.
 
 from __future__ import absolute_import
 
-from .base import ExtensionBase
 from eventlet import spawn_after
 from eventlet.greenthread import sleep
 from flockwave.server.connections import ConnectionBase, ConnectionState, \
     reconnecting
 from flockwave.server.model import ConnectionPurpose
-from six import itervalues
+from future.utils import itervalues
 from time import time
+
+from .base import ExtensionBase
 
 __all__ = ()
 
@@ -47,7 +48,7 @@ class FakeConnectionProviderExtension(ExtensionBase):
         """
         count = configuration.get("count", 0)
         id_format = configuration.get("id_format", "fakeConnection{0}")
-        for index in xrange(count):
+        for index in range(count):
             connection = reconnecting(FakeConnection())
             name = id_format.format(index)
             self.connections[name] = connection

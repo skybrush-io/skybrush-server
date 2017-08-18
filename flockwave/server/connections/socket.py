@@ -6,6 +6,7 @@ import csv
 import socket
 
 from blinker import Signal
+from builtins import str
 from contextlib import closing
 from errno import EAGAIN
 from functools import partial
@@ -265,7 +266,7 @@ class SubnetBindingConnection(ConnectionWrapperBase):
         if isinstance(network, IPv4Network):
             self._network = network
         else:
-            self._network = IPv4Network(unicode(network))
+            self._network = IPv4Network(str(network))
 
     def close(self):
         """Closes the WLAN socket connection."""
@@ -299,7 +300,7 @@ class SubnetBindingConnection(ConnectionWrapperBase):
 
             # Find only those addresses that are in our target subnet
             candidates.extend(spec[addr_key] for spec in specs
-                if IPv4Address(unicode(spec.get("addr"))) in self._network \
+                if IPv4Address(str(spec.get("addr"))) in self._network \
                 and addr_key in spec)
 
             # If we have more than one candidate, we can safely exit here

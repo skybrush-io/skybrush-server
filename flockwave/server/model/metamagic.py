@@ -10,7 +10,7 @@ import jsonschema
 from collections import namedtuple
 from contextlib import contextmanager
 from flockwave.spec.schema import ref_resolver as flockwave_schema_ref_resolver
-from six import iteritems
+from future.utils import iteritems, PY2
 
 __all__ = ("ModelMeta", )
 
@@ -192,7 +192,8 @@ class ModelMetaHelpers(object):
             property_info (PropertyInfo): an object that describes the
                 underlying JSON property based on the schema
         """
-        name = name.encode("ascii")
+        if PY2:
+            name = name.encode("ascii")
 
         def getter(self):
             try:
@@ -224,7 +225,7 @@ class ModelMetaHelpers(object):
                 PropertyInfo_ objects that describe the underlying JSON
                 property based on the schema
         """
-        for name, info in property_info.iteritems():
+        for name, info in iteritems(property_info):
             cls.add_proxy_property(dct, name, info)
 
     @staticmethod

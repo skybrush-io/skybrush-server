@@ -6,19 +6,16 @@ from abc import ABCMeta, abstractproperty
 from flockwave.gps.vectors import GPSCoordinate, VelocityNED
 from flockwave.server.errors import CommandInvocationError, NotSupportedError
 from flockwave.spec.schema import get_complex_object_schema
-from six import add_metaclass, reraise
-from sys import exc_info
+from future.utils import with_metaclass, raise_with_traceback
 
 from .devices import UAVNode
 from .metamagic import ModelMeta
 from .mixins import TimestampMixin
 
-
 __all__ = ("UAVStatusInfo", "UAVDriver", "UAV", "UAVBase")
 
 
-@add_metaclass(ModelMeta)
-class UAVStatusInfo(TimestampMixin):
+class UAVStatusInfo(with_metaclass(ModelMeta, TimestampMixin)):
     """Class representing the status information available about a single
     UAV.
     """
@@ -253,9 +250,7 @@ class UAVDriver(object):
                 try:
                     return func(uavs, command, args, kwds)
                 except Exception as ex:
-                    reraise(CommandInvocationError,
-                            CommandInvocationError(cause=ex),
-                            exc_info()[2])
+                    raise_with_traceback(CommandInvocationError(cause=ex))
         else:
             if args is None:
                 args = []
@@ -264,9 +259,7 @@ class UAVDriver(object):
             try:
                 return func(uavs, *args, **kwds)
             except Exception as ex:
-                reraise(CommandInvocationError,
-                        CommandInvocationError(cause=ex),
-                        exc_info()[2])
+                raise_with_traceback(CommandInvocationError(cause=ex))
 
     def send_landing_signal(self, uavs):
         """Asks the driver to send a landing signal to the given UAVs, each

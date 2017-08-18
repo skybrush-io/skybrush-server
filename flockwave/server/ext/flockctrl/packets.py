@@ -11,7 +11,8 @@ from collections import defaultdict
 from datetime import datetime
 from flockwave.gps.vectors import Altitude, GPSCoordinate, VelocityNED
 from flockwave.server.utils import datetime_to_unix_timestamp
-from six import add_metaclass, byte2int, int2byte
+from future.utils import with_metaclass
+from six import byte2int, int2byte
 from struct import Struct
 from struct import error as StructError
 from time import time
@@ -21,8 +22,7 @@ from .errors import ParseError
 __all__ = ("FlockCtrlPacket", "ChunkedPacketAssembler")
 
 
-@add_metaclass(ABCMeta)
-class FlockCtrlPacket(object):
+class FlockCtrlPacket(with_metaclass(ABCMeta, object)):
     """Common interface specification for all FlockCtrl-related packets."""
 
     @abstractproperty

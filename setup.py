@@ -26,6 +26,7 @@ requires = [
     "numpy>=1.11.1",
     "pyserial>=3.0",
     "python-baseconv>=1.1.3",
+    "python-engineio>=0.9.2,<1.0",
     "pytz>=2015.7",
     "six>=1.10.0",
     "XBee>=2.2.3"

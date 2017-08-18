@@ -14,7 +14,7 @@ requires = [
     "Flask>=0.10.1",
     "Flask-HTTPAuth>=2.7.2",
     "Flask-JWT>=0.3.2",
-    "flask-socketio==2.6.2",
+    "flask-socketio>=2.6,<2.7",
     "flockwave-gps>=0.5.0",
     "flockwave-spec>=0.12.1",
     "future>=0.16.0",

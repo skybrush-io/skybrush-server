@@ -6,11 +6,18 @@ from flockwave.server.model.uav import UAVBase, UAVDriver
 from six import iterbytes
 
 from .errors import AddressConflictError
-from .packets import FlockCtrlCommandRequestPacket, \
-    FlockCtrlCommandResponsePacket, FlockCtrlStatusPacket, \
-    ChunkedPacketAssembler
+from .packets import ChunkedPacketAssembler, FlockCtrlCommandRequestPacket, \
+    FlockCtrlCommandResponsePacket, FlockCtrlPrearmStatusPacket, \
+    FlockCtrlStatusPacket
 
 __all__ = ("FlockCtrlDriver", )
+
+
+def nop(*args, **kwds):
+    """Dummy function that can be called with any number of arguments and
+    does not return anything.
+    """
+    pass
 
 
 class FlockCtrlDriver(UAVDriver):
@@ -114,6 +121,8 @@ class FlockCtrlDriver(UAVDriver):
         return {
             FlockCtrlStatusPacket:
                 self._handle_inbound_status_packet,
+            FlockCtrlPrearmStatusPacket:
+                nop,
             FlockCtrlCommandResponsePacket:
                 self._handle_inbound_command_response_packet
         }
@@ -215,13 +224,13 @@ class FlockCtrlDriver(UAVDriver):
             data = list(iterbytes(packet.debug[-5:]))
             try:
                 count = int("".join(chr(x) for x in data))
-            except:
+            except Exception:
                 count = None
             if self.create_device_tree_mutator is not None:
                 with self.create_device_tree_mutator() as mutator:
                     uav.update_geiger_counter(count, mutator)
 
-        # TODO: rate limiting
+        # TODO(ntamas): rate limiting
         message = self.app.create_UAV_INF_message_for([uav.id])
         self.app.message_hub.send_message(message)
 

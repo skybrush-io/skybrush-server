@@ -312,6 +312,50 @@ class FlockCtrlClockSynchronizationPacket(FlockCtrlPacketBase):
         )[1:]
 
 
+class FlockCtrlFileUploadKeepalivePacket(FlockCtrlPacketBase):
+    """Packet containing an XBee file upload 'keepalive' packet."""
+
+    PACKET_TYPE = 10
+
+    def decode(self, data):
+        # Not interested yet
+        pass
+
+
+class FlockCtrlVersionPacket(FlockCtrlPacketBase):
+    """Packet containing a version number request/response."""
+
+    PACKET_TYPE = 11
+
+    def decode(self, data):
+        # Not interested yet
+        pass
+
+
+class FlockCtrlIdMappingPacket(FlockCtrlPacketBase):
+    """Packet containing a mapping from numeric 'mission IDs' to the
+    absolute numeric UAV IDs.
+    """
+
+    PACKET_TYPE = 12
+
+    def decode(self, data):
+        # Not interested yet
+        pass
+
+
+class FlockCtrlPrearmStatusPacket(FlockCtrlPacketBase):
+    """Packet containing detailed information about the status of the prearm
+    checking when the UAV is in the prearm state.
+    """
+
+    PACKET_TYPE = 13
+
+    def decode(self, data):
+        # Not interested yet
+        pass
+
+
 class ChunkedPacketAssembler(object):
     """Object that assembles a command response from its chunks that
     arrive in consecutive FlockCtrlChunkedPacket_ packets.

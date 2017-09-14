@@ -23,7 +23,6 @@ from .logger import log
               help="SSL certificate in PEM format")
 def start(debug, host, port, ssl_key, ssl_cert):
     """Start the Flockwave server."""
-
     # Dirty workaround for breaking import cycle according to
     # https://github.com/eventlet/eventlet/issues/394
     eventlet.sleep()
@@ -57,9 +56,11 @@ def start(debug, host, port, ssl_key, ssl_cert):
             "keyfile": ssl_key,
             "certfile": ssl_cert
         })
-        log.info("Starting secure Flockwave server on port {0}...".format(port))
-    else:
-        log.info("Starting Flockwave server on port {0}...".format(port))
+
+    # Log what we are doing
+    log.info("Starting {1}Flockwave server on port {0}...".format(
+        port, "secure " if ssl_args else ""
+    ))
 
     # Now start the server
     socketio.run(app, host=host, port=port, debug=debug, use_reloader=False,

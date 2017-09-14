@@ -2,6 +2,9 @@
 from a simple string or dict representation.
 """
 
+from future.standard_library import install_aliases
+install_aliases()
+
 from functools import partial
 from future.utils import iteritems, string_types
 from urllib.parse import parse_qs, urlparse

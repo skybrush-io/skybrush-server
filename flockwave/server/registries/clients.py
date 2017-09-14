@@ -49,13 +49,11 @@ class ClientRegistry(RegistryBase):
 
         Arguments:
             client_id (str): the ID of the client
-            message_hub (MessageHub): the message hub that can be used if
-                we want to send a message to the client
         """
         if client_id in self:
             return
 
-        client = Client(id=client_id, message_hub=message_hub)
+        client = Client(id=client_id)
         self._entries[client_id] = client
         log.info("Client connected", extra={"id": client_id})
 

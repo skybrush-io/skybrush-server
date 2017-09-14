@@ -25,8 +25,8 @@ from .model import FlockwaveMessage
 from .model.devices import DeviceTree, DeviceTreeSubscriptionManager
 from .model.errors import ClientNotSubscribedError, NoSuchPathError
 from .model.world import World
-from .registries import ClientRegistry, ClockRegistry, ConnectionRegistry, \
-    UAVRegistry
+from .registries import ChannelTypeRegistry, ClientRegistry, ClockRegistry, \
+    ConnectionRegistry, UAVRegistry
 from .version import __version__ as server_version
 
 __all__ = ("app", "socketio")
@@ -38,6 +38,10 @@ class FlockwaveServer(Flask):
     """Flask application object for the Flockwave server.
 
     Attributes:
+        channel_type_registry (ChannelTypeRegistry): central registry for
+            types of communication channels that the server can handle and
+            manage. Types of communication channels include Socket.IO
+            streams, TCP or UDP sockets and so on.
         client_registry (ClientRegistry): central registry for the clients
             that are currently connected to the server
         client_count_changed (Signal): signal that is emitted when the
@@ -453,6 +457,10 @@ class FlockwaveServer(Flask):
         # Load the configuration
         self.config.from_object(".".join([PACKAGE_NAME, "config"]))
         self.config.from_envvar("FLOCKWAVE_SETTINGS", silent=True)
+
+        # Create an object to hold information about all the registered
+        # communication channel types that the server can handle
+        self.channel_type_registry = ChannelTypeRegistry()
 
         # Create an object to hold information about all the connected
         # clients that the server can talk to

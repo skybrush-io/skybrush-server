@@ -12,7 +12,7 @@ from .base import RegistryBase
 
 __all__ = ("ClientRegistry", )
 
-log = base_log.getChild("registries.client")
+log = base_log.getChild("registries.clients")
 
 
 class ClientRegistry(RegistryBase):

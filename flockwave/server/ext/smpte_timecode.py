@@ -13,7 +13,9 @@ from eventlet.timeout import Timeout
 from time import time
 
 from .base import ExtensionBase
+
 from ..model import ConnectionPurpose
+
 from flockwave.server.model import StoppableClockBase
 from flockwave.server.connections import create_connection, reconnecting
 from flockwave.server.connections.midi import MIDIPortConnection

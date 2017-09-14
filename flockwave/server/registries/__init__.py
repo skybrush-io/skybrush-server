@@ -7,6 +7,7 @@ contain a separate registry for each type of object.
 """
 
 from .base import Registry, RegistryBase
+from .channels import ChannelTypeRegistry
 from .clients import ClientRegistry
 from .clocks import ClockRegistry
 from .connections import ConnectionRegistry
@@ -14,4 +15,4 @@ from .uavs import UAVRegistry
 
 __all__ = ("Registry", "RegistryBase",
            "ClientRegistry", "ClockRegistry", "ConnectionRegistry",
-           "UAVRegistry")
+           "ChannelTypeRegistry", "UAVRegistry")

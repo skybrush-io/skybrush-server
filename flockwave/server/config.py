@@ -57,6 +57,8 @@ EXTENSIONS = {
         ],
         "background_intensity": 10
     },
+    "socketio": {
+    },
     "smpte_timecode": {
         "connection": "midi:IAC Driver Bus 1"
     },

@@ -5,6 +5,7 @@ server is currently connected to.
 from __future__ import absolute_import
 
 from blinker import Signal
+from collections import defaultdict
 
 from ..logger import log as base_log
 from ..model import Client
@@ -25,6 +26,10 @@ class ClientRegistry(RegistryBase):
             argment named ``client`` that contains the client that has just
             been added to the registry.
 
+        channel_type_registry (ChannelTypeRegistry): the channel type
+            registry that the client registry turns to when it has to
+            construct a new communication channel instance to a client
+
         count_changed (Signal): signal that is sent by the registry when the
             number of connected clients changed. This can be used by
             extensions to optimize their behaviour when no clients are
@@ -40,7 +45,14 @@ class ClientRegistry(RegistryBase):
     count_changed = Signal()
     removed = Signal()
 
-    def add(self, client_id, message_hub):
+    def __init__(self, channel_type_registry=None):
+        """Constructor."""
+        super(ClientRegistry, self).__init__()
+        self.channel_type_registry = None
+        self._client_id_to_channel_type = {}
+        self._entries_by_channel_type = defaultdict(set)
+
+    def add(self, client_id, channel_type):
         """Adds a new client to the set of clients connected to the server.
 
         This function is a no-op if the client is already added. It is
@@ -49,16 +61,52 @@ class ClientRegistry(RegistryBase):
 
         Arguments:
             client_id (str): the ID of the client
+            channel_type (str): the type of the communication channel that
+                connects the client to the server. It must be registered in
+                the channel type registry.
         """
         if client_id in self:
             return
 
-        client = Client(id=client_id)
+        channel = self.channel_type_registry.create_channel_for(
+            channel_type)
+        client = Client(id=client_id, channel=channel)
+        channel.bind_to(client)
+
         self._entries[client_id] = client
+        self._client_id_to_channel_type[client_id] = channel_type
+        self._entries_by_channel_type[channel_type].add(client_id)
+
         log.info("Client connected", extra={"id": client_id})
 
         self.added.send(self, client=client)
         self.count_changed.send(self)
+
+    def client_ids_for_channel_type(self, channel_type):
+        """Returns an iterator that contains the IDs of all the clients who
+        are registered in the registry with the given channel type.
+
+        Arguments:
+            channel_type (str): the communication channel type to query
+
+        Returns:
+            Iterator[str]: an iterable that yields the IDs of all the clients
+                who are registered in the registry with the given channel type
+        """
+        return iter(self._entries_by_channel_type.get(channel_type, []))
+
+    def has_clients_for_channel_type(self, channel_type):
+        """Returns whether there is at least one connected client for the
+        given channel type.
+
+        Arguments:
+            channel_type (str): the communication channel type to query
+
+        Returns:
+            bool: ``True`` if there is at least one connected client with
+                the given channel type, ``False`` otherwise
+        """
+        return bool(self._entries_by_channel_type.get(channel_type))
 
     @property
     def num_entries(self):
@@ -80,6 +128,21 @@ class ClientRegistry(RegistryBase):
         except KeyError:
             return
 
+        try:
+            channel_type = self._client_id_to_channel_type.pop(client_id)
+        except KeyError:
+            # This should not happen
+            log.warn("Cannot find channel type for client ID {0!r}"
+                     .format(client_id))
+
+        try:
+            self._entries_by_channel_type[channel_type].remove(client_id)
+        except KeyError:
+            # This should not happen
+            log.warn("Cannot remove channel type index entry for "
+                     "client ID {0!r}".format(client_id))
+
         log.info("Client disconnected", extra={"id": client_id})
+
         self.count_changed.send(self)
         self.removed.send(self, client=client)

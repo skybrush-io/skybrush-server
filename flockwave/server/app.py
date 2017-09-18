@@ -2,26 +2,18 @@
 
 from __future__ import absolute_import
 
-import json
-
 from blinker import Signal
 from collections import defaultdict
-from datetime import datetime
-from enum import Enum
 from flask import abort, Flask, redirect, request, url_for
-from flask_jwt import current_identity as jwt_identity
-from flask_socketio import SocketIO
 from future.utils import iteritems
 from heapq import heappush
-from jsonschema import ValidationError
 
-from .authentication import jwt_authentication, jwt_optional
+from .authentication import jwt_authentication
 from .commands import CommandExecutionManager, CommandExecutionStatus
 from .errors import NotSupportedError
 from .ext.manager import ExtensionManager
 from .logger import log
 from .message_hub import MessageHub
-from .model import FlockwaveMessage
 from .model.devices import DeviceTree, DeviceTreeSubscriptionManager
 from .model.errors import ClientNotSubscribedError, NoSuchPathError
 from .model.world import World
@@ -29,7 +21,7 @@ from .registries import ChannelTypeRegistry, ClientRegistry, ClockRegistry, \
     ConnectionRegistry, UAVRegistry
 from .version import __version__ as server_version
 
-__all__ = ("app", "socketio")
+__all__ = ("app", )
 
 PACKAGE_NAME = __name__.rpartition(".")[0]
 
@@ -58,6 +50,10 @@ class FlockwaveServer(Flask):
             loading and unloading of server extensions
         message_hub (MessageHub): central messaging hub via which one can
             send Flockwave messages
+        runner (callable): function to call when we want to start the
+            server. It typically forwards everything to ``socketio.run``
+            for the time being, but its signature should be formalized in
+            the future.
         uav_registry (UAVRegistry): central registry for the UAVs known to
             the server
         world (World): a representation of the "world" in which the flock
@@ -454,6 +450,12 @@ class FlockwaveServer(Flask):
         """Hook function that contains preparation steps that should be
         performed by the server before it starts serving requests.
         """
+        # No app runner yet; it is the duty of an extension to set it up.
+        # Currently it is done by the Socket.IO extension.
+        # TODO(ntamas): this should be fixed so we have a default runner even
+        # if we don't use Socket.IO
+        self.runner = None
+
         # Load the configuration
         self.config.from_object(".".join([PACKAGE_NAME, "config"]))
         self.config.from_envvar("FLOCKWAVE_SETTINGS", silent=True)
@@ -465,6 +467,8 @@ class FlockwaveServer(Flask):
         # Create an object to hold information about all the connected
         # clients that the server can talk to
         self.client_registry = ClientRegistry()
+        self.client_registry.channel_type_registry = \
+            self.channel_type_registry
         self.client_registry.count_changed.connect(
             self._on_client_count_changed,
             sender=self.client_registry
@@ -503,6 +507,8 @@ class FlockwaveServer(Flask):
         # Create a message hub that will handle incoming and outgoing
         # messages
         self.message_hub = MessageHub()
+        self.message_hub.channel_type_registry = self.channel_type_registry
+        self.message_hub.client_registry = self.client_registry
 
         # Create an object to hold information about all the UAVs that
         # the server knows about
@@ -748,71 +754,6 @@ class FlockwaveServer(Flask):
         return result
 
 
-class _JSONEncoder(object):
-    """Custom JSON encoder and decoder function to be used by Socket.IO."""
-
-    def __init__(self):
-        self.encoder = json.JSONEncoder(
-            separators=(",", ":"), sort_keys=False, indent=None,
-            default=self._encode
-        )
-        self.decoder = json.JSONDecoder()
-
-    def _encode(self, obj):
-        """Encodes an object that could otherwise not be encoded into JSON.
-
-        This function performs the following conversions:
-
-        - ``datetime.datetime`` objects are converted into a standard
-          ISO-8601 string representation
-
-        - Enum instances are converted to their names
-
-        - Objects having a ``json`` property will be replaced by the value
-          of this property
-
-        Parameters:
-            obj (object): the object to encode
-
-        Returns:
-            object: the JSON representation of the object
-        """
-        if isinstance(obj, datetime):
-            return obj.isoformat()
-        elif isinstance(obj, Enum):
-            return obj.name
-        elif hasattr(obj, "json"):
-            return obj.json
-        else:
-            raise TypeError("cannot encode {0!r} into JSON".format(obj))
-
-    def dumps(self, obj, *args, **kwds):
-        """Converts the given object into a JSON string representation.
-        Additional positional or keyword arguments that may be passed by
-        Socket.IO are silently ignored.
-
-        Parameters:
-            obj (object): the object to encode into a JSON string
-
-        Returns:
-            str: a string representation of the given object in JSON
-        """
-        return self.encoder.encode(obj)
-
-    def loads(self, data, *args, **kwds):
-        """Loads a JSON-encoded object from the given string representation.
-        Additional positional or keyword arguments that may be passed by
-        Socket.IO are silently ignored.
-
-        Parameters:
-            data (str): the string to decode
-
-        Returns:
-            object: the constructed object
-        """
-        return self.decoder.decode(data)
-
-
 ############################################################################
 
 app = FlockwaveServer()
@@ -827,77 +768,6 @@ def index():
         return redirect(index_url)
     else:
         abort(404)
-
-############################################################################
-
-socketio = SocketIO(app, json=_JSONEncoder())
-app.message_hub.socketio = socketio
-
-
-@socketio.on("connect")
-@jwt_optional()
-def handle_connection():
-    """Handler called when a client connects to the Flockwave server socket."""
-    # Update the condition below to enable mandatory JWT authentication
-    if False and not jwt_identity:
-        log.warning("Access denied because of lack of JWT identity")
-        return False
-    else:
-        app.client_registry.add(request.sid, socketio)
-
-
-@socketio.on("disconnect")
-def handle_disconnection():
-    """Handler called when a client disconnects from the server socket."""
-    app.client_registry.remove(request.sid)
-
-
-@socketio.on("fw")
-def handle_flockwave_message(message):
-    """Handler called for all incoming Flockwave JSON messages."""
-    hub = app.message_hub
-
-    try:
-        message = FlockwaveMessage.from_json(message)
-    except ValidationError:
-        failure_reason = "Flockwave message does not match schema"
-    except Exception as ex:
-        failure_reason = "Unexpected exception: {0!r}".format(ex)
-    else:
-        failure_reason = None
-
-    if failure_reason:
-        log.exception(failure_reason)
-        if u"id" in message:
-            ack = hub.acknowledge(message, outcome=False,
-                                  reason=failure_reason)
-            hub.send_message(ack, to=request.sid)
-        return
-
-    if "error" in message:
-        log.warning("Error message from Flockwave client silently dropped")
-        return
-
-    if not hub.handle_incoming_message(message):
-        log.warning(
-            "Unhandled message: {0.body[type]}".format(message),
-            extra={
-                "id": message.id
-            }
-        )
-        ack = hub.acknowledge(message, outcome=False,
-                              reason="No handler managed to parse this "
-                                     "message in the server")
-        hub.send_message(ack, to=request.sid)
-
-
-@socketio.on_error_default
-def handle_exception(exc):
-    """Handler that is called when an exception happens during Socket.IO
-    message handling.
-    """
-    log.exception("Exception while handling message")
-
 
 # ######################################################################## #
 

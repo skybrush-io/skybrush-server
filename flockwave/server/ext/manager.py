@@ -9,6 +9,7 @@ from future.utils import iteritems
 from pkgutil import get_loader
 
 from .logger import log as base_log
+
 from ..utils import keydefaultdict
 
 __all__ = ("ExtensionManager", )

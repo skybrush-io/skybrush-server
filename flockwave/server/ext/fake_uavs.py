@@ -297,8 +297,8 @@ class FakeUAV(UAVBase):
         )
 
         # Measure radiation if possible
-        # TODO: calculate radiation halfway between the current position and
-        # the previous one instead
+        # TODO(ntamas): calculate radiation halfway between the current
+        # position and the previous one instead
         if self.radiation_ext is not None and self.radiation_ext.loaded:
             observed_count = self.radiation_ext.measure_at(position,
                                                            seconds=dt)
@@ -346,8 +346,12 @@ class FakeUAV(UAVBase):
 
         device = node.add_device("geiger_counter")
         self.geiger_counter = {
-            "raw": device.add_channel("raw_measurement", type=object, unit="counts"),
-            "averaged": device.add_channel("measurement", type=object, unit="counts/sec")
+            "raw": device.add_channel(
+                "raw_measurement", type=object, unit="counts"
+            ),
+            "averaged": device.add_channel(
+                "measurement", type=object, unit="counts/sec"
+            )
         }
 
 

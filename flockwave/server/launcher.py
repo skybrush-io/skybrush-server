@@ -47,7 +47,7 @@ def start(debug, host, port, ssl_key, ssl_cert):
 
     # Note the lazy import; this is to ensure that the logging is set up by the
     # time we start configuring the app.
-    from flockwave.server.app import app, socketio
+    from flockwave.server.app import app
 
     # Construct SSL-related parameters to socketio.run() if needed
     ssl_args = {}
@@ -63,8 +63,12 @@ def start(debug, host, port, ssl_key, ssl_cert):
     ))
 
     # Now start the server
-    socketio.run(app, host=host, port=port, debug=debug, use_reloader=False,
-                 log=eventlet_log, **ssl_args)
+    if app.runner is None:
+        log.fatal("No application runner was registered by any of the "
+                  "loaded extensions")
+    else:
+        app.runner(host=host, port=port, debug=debug,
+                   log=eventlet_log, **ssl_args)
 
 
 if __name__ == '__main__':

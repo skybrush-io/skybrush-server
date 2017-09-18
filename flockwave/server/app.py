@@ -224,11 +224,13 @@ class FlockwaveServer(Flask):
 
         return response
 
-    def create_DEV_LISTSUB_message_for(self, path_filter, in_response_to=None):
+    def create_DEV_LISTSUB_message_for(self, client, path_filter,
+                                       in_response_to=None):
         """Creates a DEV-LISTSUB message that contains information about the
-        device tree paths that the current client is subscribed to.
+        device tree paths that the given client is subscribed to.
 
         Parameters:
+            client (Client): the client whose subscriptions we are interested in
             path_filter (iterable): list of device tree paths whose subtrees
                 the client is interested in
             in_response_to (Optional[FlockwaveMessage]): the message that the
@@ -240,7 +242,6 @@ class FlockwaveServer(Flask):
                 of the client that match the path filters
         """
         manager = self.device_tree_subscriptions
-        client = self.client_registry.find_by_id(request.sid)
         subscriptions = manager.list_subscriptions(client, path_filter)
 
         body = {
@@ -253,13 +254,14 @@ class FlockwaveServer(Flask):
 
         return response
 
-    def create_DEV_SUB_message_for(self, paths, in_response_to):
+    def create_DEV_SUB_message_for(self, client, paths, in_response_to):
         """Creates a DEV-SUB response for the given message and subscribes
-        the current client to the given paths.
+        the given client to the given paths.
 
         Parameters:
+            client (Client): the client to subscribe to the given paths
             paths (iterable): list of device tree paths to subscribe the
-                current client to
+                client to
             in_response_to (FlockwaveMessage): the message that the
                 constructed message will respond to.
 
@@ -269,7 +271,6 @@ class FlockwaveServer(Flask):
                 paths that the client was not subscribed to
         """
         manager = self.device_tree_subscriptions
-        client = self.client_registry.find_by_id(request.sid)
         response = self.message_hub.create_response_or_notification(
             {}, in_response_to=in_response_to)
 
@@ -283,14 +284,15 @@ class FlockwaveServer(Flask):
 
         return response
 
-    def create_DEV_UNSUB_message_for(self, paths, in_response_to,
+    def create_DEV_UNSUB_message_for(self, client, paths, in_response_to,
                                      remove_all, include_subtrees):
         """Creates a DEV-UNSUB response for the given message and
-        unsubscribes the current client to the given paths.
+        unsubscribes the given client from the given paths.
 
         Parameters:
+            client (Client): the client to unsubscribe from the given paths
             paths (iterable): list of device tree paths to unsubscribe the
-                current client from
+                given client from
             in_response_to (FlockwaveMessage): the message that the
                 constructed message will respond to.
             remove_all (bool): when ``True``, the client will be unsubscribed
@@ -303,12 +305,11 @@ class FlockwaveServer(Flask):
                 removed
 
         Returns:
-            FlockwaveMessage: the DEV-SUB message with the paths that the
+            FlockwaveMessage: the DEV-UNSUB message with the paths that the
                 client was unsubscribed from, along with error messages for
                 the paths that the client was not unsubscribed from
         """
         manager = self.device_tree_subscriptions
-        client = self.client_registry.find_by_id(request.sid)
         response = self.message_hub.create_response_or_notification(
             {}, in_response_to=in_response_to)
 
@@ -356,7 +357,7 @@ class FlockwaveServer(Flask):
 
         return response
 
-    def dispatch_to_uavs(self, message):
+    def dispatch_to_uavs(self, message, sender):
         """Dispatches a message intended for multiple UAVs to the appropriate
         UAV drivers.
 
@@ -365,6 +366,7 @@ class FlockwaveServer(Flask):
                 that is to be forwarded to multiple UAVs. The message is
                 expected to have an ``ids`` property that lists the UAVs
                 to dispatch the message to.
+            sender (Client): the client that sent the message
 
         Returns:
             FlockwaveMessage: a response to the original message that lists
@@ -423,6 +425,7 @@ class FlockwaveServer(Flask):
                         response.add_success(uav.id)
                     elif isinstance(result, CommandExecutionStatus):
                         response.add_receipt(uav.id, result)
+                        result.notify_client(sender.id)
                     else:
                         response.add_failure(uav.id, result)
 
@@ -700,8 +703,8 @@ class FlockwaveServer(Flask):
         }
         message = self.message_hub.create_response_or_notification(body)
         with self.app_context():
-            for client in status.clients_to_notify:
-                self.message_hub.send_message(message, to=client)
+            for client_id in status.clients_to_notify:
+                self.message_hub.send_message(message, to=client_id)
 
     def _on_command_execution_timeout(self, sender, statuses):
         """Handler called when the execution of a remote asynchronous
@@ -773,92 +776,97 @@ def index():
 
 
 @app.message_hub.on("CLK-INF")
-def handle_CLK_INF(message, hub):
+def handle_CLK_INF(message, sender, hub):
     return app.create_CLK_INF_message_for(
         message.body["ids"], in_response_to=message
     )
 
 
 @app.message_hub.on("CLK-LIST")
-def handle_CLK_LIST(message, hub):
+def handle_CLK_LIST(message, sender, hub):
     return {
         "ids": list(app.clock_registry.ids)
     }
 
 
 @app.message_hub.on("CMD-DEL")
-def handle_CMD_DEL(message, hub):
+def handle_CMD_DEL(message, sender, hub):
     return app.create_CMD_DEL_message_for(
         message.body["ids"], in_response_to=message
     )
 
 
 @app.message_hub.on("CMD-INF")
-def handle_CMD_INF(message, hub):
+def handle_CMD_INF(message, sender, hub):
     return app.create_CMD_INF_message_for(
         message.body["ids"], in_response_to=message
     )
 
 
 @app.message_hub.on("CONN-INF")
-def handle_CONN_INF(message, hub):
+def handle_CONN_INF(message, sender, hub):
     return app.create_CONN_INF_message_for(
         message.body["ids"], in_response_to=message
     )
 
 
 @app.message_hub.on("CONN-LIST")
-def handle_CONN_LIST(message, hub):
+def handle_CONN_LIST(message, sender, hub):
     return {
         "ids": list(app.connection_registry.ids)
     }
 
 
 @app.message_hub.on("DEV-INF")
-def handle_DEV_INF(message, hub):
+def handle_DEV_INF(message, sender, hub):
     return app.create_DEV_INF_message_for(
         message.body["paths"], in_response_to=message
     )
 
 
 @app.message_hub.on("DEV-LIST")
-def handle_DEV_LIST(message, hub):
+def handle_DEV_LIST(message, sender, hub):
     return app.create_DEV_LIST_message_for(
         message.body["ids"], in_response_to=message
     )
 
 
 @app.message_hub.on("DEV-LISTSUB")
-def handle_DEV_LISTSUB(message, hub):
+def handle_DEV_LISTSUB(message, sender, hub):
     return app.create_DEV_LISTSUB_message_for(
-        message.body.get("pathFilter", ("/", )),
+        client=sender,
+        path_filter=message.body.get("pathFilter", ("/", )),
         in_response_to=message
     )
 
 
 @app.message_hub.on("DEV-SUB")
-def handle_DEV_SUB(message, hub):
+def handle_DEV_SUB(message, sender, hub):
     return app.create_DEV_SUB_message_for(
-        message.body["paths"], in_response_to=message
+        client=sender,
+        paths=message.body["paths"],
+        in_response_to=message
     )
 
 
 @app.message_hub.on("DEV-UNSUB")
-def handle_DEV_UNSUB(message, hub):
+def handle_DEV_UNSUB(message, sender, hub):
     return app.create_DEV_UNSUB_message_for(
-        message.body["paths"], in_response_to=message,
+        client=sender,
+        paths=message.body["paths"],
+        in_response_to=message,
         remove_all=message.body.get("removeAll", False),
         include_subtrees=message.body.get("includeSubtrees", False)
     )
 
 
 @app.message_hub.on("SYS-PING")
-def handle_SYS_PING(message, hub):
+def handle_SYS_PING(message, sender, hub):
     return hub.acknowledge(message)
 
 
 @app.message_hub.on("SYS-VER")
-def handle_SYS_VER(message, hub):
+def handle_SYS_VER(message,sender, hub):
     return {
         "software": "flockwave-server",
         "version": server_version
@@ -866,22 +874,22 @@ def handle_SYS_VER(message, hub):
 
 
 @app.message_hub.on("UAV-INF")
-def handle_UAV_INF(message, hub):
+def handle_UAV_INF(message, sender, hub):
     return app.create_UAV_INF_message_for(
         message.body["ids"], in_response_to=message
     )
 
 
 @app.message_hub.on("UAV-LIST")
-def handle_UAV_LIST(message, hub):
+def handle_UAV_LIST(message, sender, hub):
     return {
         "ids": list(app.uav_registry.ids)
     }
 
 
 @app.message_hub.on("CMD-REQ", "UAV-LAND", "UAV-TAKEOFF")
-def handle_UAV_operations(message, hub):
-    return app.dispatch_to_uavs(message)
+def handle_UAV_operations(message, sender, hub):
+    return app.dispatch_to_uavs(message, sender)
 
 
 # ######################################################################## #

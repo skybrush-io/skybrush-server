@@ -10,6 +10,7 @@ from blinker import Signal
 from collections import namedtuple
 from eventlet import spawn
 from eventlet.timeout import Timeout
+from future.utils import python_2_unicode_compatible
 from time import time
 
 from .base import ExtensionBase
@@ -25,6 +26,7 @@ _SMPTETimecodeBase = namedtuple(
     "SMPTETimecode", "hour minute second frame frames_per_second drop")
 
 
+@python_2_unicode_compatible
 class SMPTETimecode(_SMPTETimecodeBase):
     """Class representing a single SMPTE timecode.
 

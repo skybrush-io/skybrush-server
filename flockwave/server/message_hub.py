@@ -8,7 +8,7 @@ from itertools import chain
 from jsonschema import ValidationError
 
 from .logger import log as base_log
-from .model import FlockwaveMessage, FlockwaveMessageBuilder, \
+from .model import Client, FlockwaveMessage, FlockwaveMessageBuilder, \
     FlockwaveNotification, FlockwaveResponse
 from .registries import ClientRegistry
 
@@ -327,7 +327,7 @@ class MessageHub(object):
         handled = False
         for handler in all_handlers:
             try:
-                response = handler(message, self)
+                response = handler(message, sender, self)
             except Exception:
                 log.exception("Error while calling handler {0!r} "
                               "for incoming message; proceeding with "
@@ -358,7 +358,7 @@ class MessageHub(object):
         handler on a MessageHub_ with the following syntax::
 
             @message_hub.on("SYS-VER")
-            def handle_SYS_VER(message, hub):
+            def handle_SYS_VER(message, sender, hub):
                 [...]
         """
         def decorator(func):
@@ -404,9 +404,10 @@ class MessageHub(object):
 
         Parameters:
             message (FlockwaveMessage): the message to send.
-            to (Optional[Client]): the Client_ object that represents
-                the recipient of the message. ``None`` means to send the
-                message to all connected clients.
+            to (Optional[Union[str, Client]]): the Client_ object that
+                represents the recipient of the message, or the ID of the
+                client. ``None`` means to send the message to all connected
+                clients.
             in_response_to (Optional[FlockwaveMessage]): the message that
                 the message being sent responds to.
         """
@@ -441,7 +442,7 @@ class MessageHub(object):
                 }
             )
 
-        to.channel.send(message)
+        self._send_message(message, to)
 
     def _decode_incoming_message(self, message):
         """Decodes an incoming, raw JSON message that has already been
@@ -470,8 +471,16 @@ class MessageHub(object):
                 "Unexpected exception: {0!r}".format(ex)
             )
 
-    def _send_message_by_client_id(self, message, client_id):
-        client = self._client_registry[client_id]
+    def _send_message(self, message, client_or_id):
+        if not isinstance(client_or_id, Client):
+            try:
+                client = self._client_registry[client_or_id]
+            except KeyError:
+                log.warn("Client {0!r} is gone; not sending message".format(
+                    client_or_id
+                ))
+        else:
+            client = client_or_id
         client.channel.send(message)
 
     def _send_response(self, message, to, in_response_to):

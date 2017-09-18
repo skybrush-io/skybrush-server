@@ -8,7 +8,8 @@ from collections import Counter, defaultdict
 from flockwave.spec.schema import get_enum_from_schema, \
     get_complex_object_schema
 from itertools import islice
-from future.utils import iteritems, iterkeys, with_metaclass
+from future.utils import iteritems, iterkeys, python_2_unicode_compatible, \
+    with_metaclass
 
 from .errors import ClientNotSubscribedError, NoSuchPathError
 from .metamagic import ModelMeta
@@ -518,6 +519,7 @@ class UAVNode(DeviceTreeNodeBase):
         return self._add_child(id, DeviceNode())
 
 
+@python_2_unicode_compatible
 class DeviceTreePath(object):
     """A path in a device tree from its root to one of its nodes. Leaf and
     branch nodes are both allowed.
@@ -575,9 +577,6 @@ class DeviceTreePath(object):
         self._parts = parts
 
     def __str__(self):
-        return str(self).encode("utf-8")
-
-    def __unicode__(self):
         return self.path
 
 

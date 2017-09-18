@@ -3,7 +3,6 @@ remote UAVs.
 """
 
 from blinker import Signal
-from flask import request
 from future.utils import iteritems
 from greenlet import GreenletExit
 from eventlet import sleep, spawn_n
@@ -160,17 +159,12 @@ class CommandExecutionManager(RegistryBase):
         This method should be used by UAV drivers when they start executing
         an asynchronous command to obtain a CommandExecutionStatus_ object.
 
-        The currently connected client (if any) will be registered as the
-        requestor of the command so it will be notified when the execution
-        of the command finishes.
-
         Returns:
             CommandExecutionStatus: a newly created CommandExecutionStatus_
                 object for the asynchronous command that the driver has
                 started to execute.
         """
         result = self._builder.create_status_object()
-        result.notify_client(request.sid)
         result.mark_as_sent()
         self._entries[result.id] = result
         return result

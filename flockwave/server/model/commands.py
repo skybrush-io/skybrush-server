@@ -65,8 +65,8 @@ class CommandExecutionStatus(with_metaclass(ModelMeta, object)):
         if self.sent is None:
             self.sent = datetime.now()
 
-    def notify_client(self, session_id):
-        """Appends the session ID of a client to notify to the list of
-        clients interested in the completion of this command.
+    def notify_client(self, client_id):
+        """Appends the ID of a client to notify to the list of clients
+        interested in the completion of this command.
         """
-        self._clients_to_notify.add(session_id)
+        self._clients_to_notify.add(client_id)

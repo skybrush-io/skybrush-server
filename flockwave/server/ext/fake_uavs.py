@@ -9,7 +9,6 @@ from __future__ import absolute_import, division
 from .base import UAVExtensionBase
 from enum import Enum
 from eventlet import sleep, spawn, spawn_after
-from flask import copy_current_request_context
 from flockwave.gps.vectors import Altitude, AltitudeReference, Vector3D, \
     FlatEarthCoordinate, GPSCoordinate, FlatEarthToGPSCoordinateTransformation
 from flockwave.server.model.uav import UAVBase, UAVDriver
@@ -465,9 +464,7 @@ class _StatusUpdaterThread(object):
 
     def start(self):
         assert not self._spawned_green_thread
-        status_updater = copy_current_request_context(
-            self._update_and_report_status
-        )
+        status_updater = self._update_and_report_status
         self._spawned_green_thread = spawn(status_updater)
         self._spawned_green_thread.link(self._on_thread_stopped)
 

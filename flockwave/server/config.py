@@ -70,7 +70,8 @@ EXTENSIONS = {
 if IN_HEROKU:
     if "_fake_uavs" in EXTENSIONS:
         EXTENSIONS["fake_uavs"] = EXTENSIONS.pop("_fake_uavs")
-    del EXTENSIONS["flockctrl"]
+    for ext in "flockctrl tcp udp".split():
+        del EXTENSIONS[ext]
 
 # smpte_timecode seems to have some problems on a Mac - it consumes 15% CPU
 # even when idle. Also, it is not needed on Heroku.

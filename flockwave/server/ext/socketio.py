@@ -151,3 +151,4 @@ def unload(app, configuration):
     # socketio.on() calls from load()
     app.channel_type_registry.remove("sio")
     app.runner = None
+    globals().update(app=None, log=None, socketio=None)

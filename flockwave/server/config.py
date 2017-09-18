@@ -62,7 +62,11 @@ EXTENSIONS = {
     "smpte_timecode": {
         "connection": "midi:IAC Driver Bus 1"
     },
-    "system_clock": {}
+    "system_clock": {},
+    "udp": {
+        "host": "0.0.0.0",
+        "port": 5001
+    }
 }
 
 if IN_HEROKU:

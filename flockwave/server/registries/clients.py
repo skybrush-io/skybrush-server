@@ -6,6 +6,7 @@ from __future__ import absolute_import
 
 from blinker import Signal
 from collections import defaultdict
+from contextlib import contextmanager
 
 from ..logger import log as base_log
 from ..model import Client
@@ -64,9 +65,12 @@ class ClientRegistry(RegistryBase):
             channel_type (str): the type of the communication channel that
                 connects the client to the server. It must be registered in
                 the channel type registry.
+
+        Returns:
+            Client: the client object that was added
         """
         if client_id in self:
-            return
+            return self[client_id]
 
         channel = self.channel_type_registry.create_channel_for(
             channel_type)
@@ -81,6 +85,8 @@ class ClientRegistry(RegistryBase):
 
         self.added.send(self, client=client)
         self.count_changed.send(self)
+
+        return client
 
     def client_ids_for_channel_type(self, channel_type):
         """Returns an iterator that contains the IDs of all the clients who
@@ -146,3 +152,27 @@ class ClientRegistry(RegistryBase):
 
         self.count_changed.send(self)
         self.removed.send(self, client=client)
+
+    @contextmanager
+    def temporary_client(self, client_id, channel_type):
+        """Temporarily adds a new client with the given client ID and
+        channel type, hands control back to the caller in a context, and
+        then removes the client when the caller exits the context.
+
+        Arguments:
+            client_id (str): the ID of the client
+            channel_type (str): the type of the communication channel that
+                connects the client to the server. It must be registered in
+                the channel type registry.
+
+        Yields:
+            Client: the client object that was added
+        """
+        if client_id in self:
+            yield self[client_id]
+        else:
+            client = self.add(client_id, channel_type)
+            try:
+                yield client
+            finally:
+                self.remove(client_id)

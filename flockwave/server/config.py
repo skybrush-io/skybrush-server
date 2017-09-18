@@ -63,10 +63,7 @@ EXTENSIONS = {
         "connection": "midi:IAC Driver Bus 1"
     },
     "system_clock": {},
-    "udp": {
-        "host": "0.0.0.0",
-        "port": 5001
-    }
+    "udp": {}
 }
 
 if IN_HEROKU:

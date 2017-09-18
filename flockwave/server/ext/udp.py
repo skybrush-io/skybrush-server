@@ -120,7 +120,10 @@ def load(app, configuration, logger):
     except AttributeError:
         pass
 
-    sock.bind((configuration["host"], configuration["port"]))
+    sock.bind((
+        configuration.get("host", ""),
+        configuration.get("port", 5001)
+    ))
 
     receiver_thread = spawn(receive_loop, sock, handler=handle_message)
 

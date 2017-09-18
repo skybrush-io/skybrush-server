@@ -63,6 +63,7 @@ EXTENSIONS = {
         "connection": "midi:IAC Driver Bus 1"
     },
     "system_clock": {},
+    "tcp": {},
     "udp": {}
 }
 

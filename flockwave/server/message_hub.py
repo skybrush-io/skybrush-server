@@ -300,10 +300,7 @@ class MessageHub(object):
             else:
                 clients = clients_for(descriptor.id)
                 for client_id in clients:
-                    result.append((
-                        self._send_message_by_client_id,
-                        [client_id]
-                    ))
+                    result.append((self._send_message, [client_id]))
 
         return result
 

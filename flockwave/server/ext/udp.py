@@ -75,11 +75,26 @@ def handle_message(message, sender):
 
     client_id = "udp:{0}:{1}".format(*sender)
     with app.client_registry.temporary_client(client_id, "udp") as client:
-        client.address = sender
         app.message_hub.handle_incoming_message(message, client)
 
 
-def receive_loop(sock, handler, pool_size=50):
+def handle_message_safely(message, sender):
+    """Handles a single message received from the given sender, ensuring
+    that exceptions do not propagate through.
+
+    Parameters:
+        message (bytes): the incoming message, waiting to be parsed
+        sender (Tuple[str,int]): the IP address and port of the sender
+    """
+    try:
+        return handle_message(message, sender)
+    except GreenletExit:
+        return
+    except Exception as ex:
+        log.exception(ex)
+
+
+def receive_loop(sock, handler, pool_size=1000):
     """Loop that listens for incoming messages on the given socket and
     calls a handler function for each incoming message.
 
@@ -94,15 +109,10 @@ def receive_loop(sock, handler, pool_size=50):
     pool = GreenPool(pool_size)
     while True:
         try:
-            handle_message(*sock.recvfrom(65536))
+            pool.spawn_n(handle_message_safely, *sock.recvfrom(65536))
         except GreenletExit:
             break
-        except Exception as ex:
-            log.exception(ex)
-    try:
-        pool.waitall()
-    except GreenletExit:
-        pass
+    pool.waitall()
 
 
 ############################################################################
@@ -125,7 +135,8 @@ def load(app, configuration, logger):
         configuration.get("port", 5001)
     ))
 
-    receiver_thread = spawn(receive_loop, sock, handler=handle_message)
+    receiver_thread = spawn(receive_loop, sock, handler=handle_message,
+                            pool_size=configuration.get("pool_size", 1000))
 
     globals().update(
         app=app, log=logger,

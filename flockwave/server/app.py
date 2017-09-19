@@ -453,10 +453,7 @@ class FlockwaveServer(Flask):
         """Hook function that contains preparation steps that should be
         performed by the server before it starts serving requests.
         """
-        # No app runner yet; it is the duty of an extension to set it up.
-        # Currently it is done by the Socket.IO extension.
-        # TODO(ntamas): this should be fixed so we have a default runner even
-        # if we don't use Socket.IO
+        # No app runner yet; it is the duty of the launcher module to set it up
         self.runner = None
 
         # Load the configuration

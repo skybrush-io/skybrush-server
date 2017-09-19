@@ -6,8 +6,20 @@ import click
 import eventlet
 import logging
 
+from eventlet import wsgi
+from functools import partial
+
 from . import logger
 from .logger import log
+
+
+def _default_runner(app, host="", port=5000, debug=False, log=log,
+                    keyfile=None, certfile=None):
+    sock = eventlet.listen((host, port))
+    if keyfile and certfile:
+        sock = eventlet.wrap_ssl(sock, certfile=certfile, keyfile=keyfile,
+                                 server_side=True)
+    wsgi.server(sock, app)
 
 
 @click.command()
@@ -48,6 +60,9 @@ def start(debug, host, port, ssl_key, ssl_cert):
     # Note the lazy import; this is to ensure that the logging is set up by the
     # time we start configuring the app.
     from flockwave.server.app import app
+
+    # Set up a default runner function for the app
+    app.runner = partial(_default_runner, app=app)
 
     # Construct SSL-related parameters to socketio.run() if needed
     ssl_args = {}

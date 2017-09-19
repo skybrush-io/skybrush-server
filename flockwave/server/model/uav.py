@@ -147,7 +147,7 @@ class UAVBase(UAV):
         pass
 
     def update_status(self, position=None, velocity=None, heading=None,
-                      algorithm=None):
+                      algorithm=None, error=None):
         """Updates the status information of the UAV.
 
         Parameters with values equal to ``None`` are ignored.
@@ -162,6 +162,9 @@ class UAVBase(UAV):
             heading (Optional[float]): the heading of the UAV, in degrees.
             algorithm (Optional[str]): the algorithm that the UAV is
                 currently executing
+            error (Optional[Union[int,Iterable[int]]]): the error code or
+                error codes of the UAV; use an empty list or tuple if the
+                UAV has no errors
         """
         if position is not None:
             self._status.position.update_from(position)
@@ -171,6 +174,15 @@ class UAVBase(UAV):
             self._status.velocity.update_from(velocity)
         if algorithm is not None:
             self._status.algorithm = algorithm
+        if error is not None:
+            if isinstance(error, int):
+                self._status.error = [error]
+            else:
+                error = sorted(error)
+                if error:
+                    self._status.error = error
+                elif hasattr(self._status, "error"):
+                    del self._status.error
         self._status.update_timestamp()
 
 

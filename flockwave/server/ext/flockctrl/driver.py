@@ -5,7 +5,7 @@ from flockwave.server.ext.logger import log
 from flockwave.server.model.uav import UAVBase, UAVDriver
 from six import iterbytes
 
-from .errors import AddressConflictError
+from .errors import AddressConflictError, map_flockctrl_error_code
 from .packets import ChunkedPacketAssembler, FlockCtrlCommandRequestPacket, \
     FlockCtrlCommandResponsePacket, FlockCtrlPrearmStatusPacket, \
     FlockCtrlStatusPacket
@@ -216,7 +216,8 @@ class FlockCtrlDriver(UAVDriver):
             position=packet.location,
             velocity=packet.velocity,
             heading=packet.heading,
-            algorithm=algorithm
+            algorithm=algorithm,
+            error=map_flockctrl_error_code(packet.error).value
         )
 
         # HACK HACK HACK this is not the right place for this

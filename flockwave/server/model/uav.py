@@ -176,13 +176,13 @@ class UAVBase(UAV):
             self._status.algorithm = algorithm
         if error is not None:
             if isinstance(error, int):
-                self._status.error = [error]
+                error = [error] if error > 0 else []
             else:
-                error = sorted(error)
-                if error:
-                    self._status.error = error
-                elif hasattr(self._status, "error"):
-                    del self._status.error
+                error = sorted(code for code in error if code > 0)
+            if error:
+                self._status.error = error
+            elif hasattr(self._status, "error"):
+                del self._status.error
         self._status.update_timestamp()
 
 

@@ -13,8 +13,8 @@ from flockwave.gps.vectors import Altitude, GPSCoordinate, VelocityNED
 from flockwave.server.utils import datetime_to_unix_timestamp
 from future.utils import with_metaclass
 from six import byte2int, int2byte
-from struct import Struct
 from struct import error as StructError
+from struct import Struct
 from time import time
 
 from .errors import ParseError

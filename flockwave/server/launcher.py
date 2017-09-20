@@ -19,7 +19,7 @@ def _default_runner(app, host="", port=5000, debug=False, log=log,
     if keyfile and certfile:
         sock = eventlet.wrap_ssl(sock, certfile=certfile, keyfile=keyfile,
                                  server_side=True)
-    wsgi.server(sock, app)
+    wsgi.server(sock, app, debug=debug, log=log)
 
 
 @click.command()
@@ -49,7 +49,7 @@ def start(debug, host, port, ssl_key, ssl_cert):
     # Create a child logger for Eventlet so we can silence things
     # from Eventlet by default.
     eventlet_log = log.getChild("eventlet")
-    eventlet_log.setLevel(logging.INFO)
+    eventlet_log.setLevel(logging.ERROR)
 
     # Also silence Engine.IO and Socket.IO when not in debug mode
     if not debug:
@@ -60,9 +60,6 @@ def start(debug, host, port, ssl_key, ssl_cert):
     # Note the lazy import; this is to ensure that the logging is set up by the
     # time we start configuring the app.
     from flockwave.server.app import app
-
-    # Set up a default runner function for the app
-    app.runner = partial(_default_runner, app=app)
 
     # Construct SSL-related parameters to socketio.run() if needed
     ssl_args = {}
@@ -79,11 +76,10 @@ def start(debug, host, port, ssl_key, ssl_cert):
 
     # Now start the server
     if app.runner is None:
-        log.fatal("No application runner was registered by any of the "
-                  "loaded extensions")
-    else:
-        app.runner(host=host, port=port, debug=debug,
-                   log=eventlet_log, **ssl_args)
+        app.runner = partial(_default_runner, app=app)
+
+    app.runner(host=host, port=port, debug=debug,
+               log=eventlet_log, **ssl_args)
 
 
 if __name__ == '__main__':

@@ -374,6 +374,8 @@ class FlockwaveServer(Flask):
                 successfully and also the IDs of the UAVs for which the
                 dispatch failed (in the ``success`` and ``failure`` keys).
         """
+        cmd_manager = self.command_execution_manager
+
         # Create the response
         response = self.message_hub.create_response_or_notification(
             body={}, in_response_to=message)
@@ -425,7 +427,8 @@ class FlockwaveServer(Flask):
                         response.add_success(uav.id)
                     elif isinstance(result, CommandExecutionStatus):
                         response.add_receipt(uav.id, result)
-                        result.notify_client(sender.id)
+                        result.add_client_to_notify(sender.id)
+                        cmd_manager.mark_as_clients_notified(result.id)
                     else:
                         response.add_failure(uav.id, result)
 

@@ -205,7 +205,7 @@ class ModelMetaHelpers(object):
             self._json[name] = value
 
         def deleter(self):
-            del self.__dict__[name]
+            del self._json[name]
 
         getter.__name__ = name
         setter.__name__ = name

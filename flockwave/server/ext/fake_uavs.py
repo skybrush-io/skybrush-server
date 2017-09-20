@@ -48,12 +48,23 @@ class FakeUAVDriver(UAVDriver):
         uav.target = center
         return uav
 
-    def handle_command_timeout(self, uavs):
-        cmd_manager = self.app.command_execution_manager
+    def handle_command_error(self, cmd_manager, uavs, value=0):
+        value = int(value)
+        result = {}
+        for uav in uavs:
+            result[uav] = receipt = cmd_manager.start()
+            uav.error = value
+            cmd_manager.finish(
+                receipt,
+                "Error code set to {0}".format(uav.error) if uav.has_error
+                else "Error code cleared"
+            )
+        return result
+
+    def handle_command_timeout(self, cmd_manager, uavs):
         return {uav: cmd_manager.start() for uav in uavs}
 
-    def handle_command_yo(self, uavs):
-        cmd_manager = self.app.command_execution_manager
+    def handle_command_yo(self, cmd_manager, uavs):
         result = {}
         for uav in uavs:
             result[uav] = receipt = cmd_manager.start()
@@ -107,6 +118,9 @@ class FakeUAV(UAVBase):
             circle around the target
         cruise_altitude (float): the altitude (relative to home) where the
             UAV will consider a take-off attempt as finished
+        error (int): the simulated error code of the UAV; zero if there is
+            no error.
+        has_error (bool): whether the UAV currently has a non-zero error code
         home (GPSCoordinate): the home coordinate of the UAV and the origin
             of the flat Earth transformation that the UAV uses. Altitude
             component is used to define the cruise altitude where a take-off
@@ -144,6 +158,7 @@ class FakeUAV(UAVBase):
         self.angle = 0.0
         self.angular_velocity = 0.0
         self.cruise_altitude = 20
+        self.error = 0
         self.max_ascent_rate = 2
         self.max_velocity = 10
         self.radiation_ext = None
@@ -152,6 +167,10 @@ class FakeUAV(UAVBase):
         self.target = None
 
         self.step(0)
+
+    @property
+    def has_error(self):
+        return self.error > 0
 
     @property
     def home(self):
@@ -292,7 +311,8 @@ class FakeUAV(UAVBase):
         # Update the UAV status
         self.update_status(
             position=position,
-            heading=self.angle / pi * 180 + 90
+            heading=self.angle / pi * 180 + 90,
+            error=self.error if self.has_error else ()
         )
 
         # Measure radiation if possible

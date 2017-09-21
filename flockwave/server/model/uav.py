@@ -167,11 +167,14 @@ class UAVBase(UAV):
                 UAV has no errors
         """
         if position is not None:
-            self._status.position.update_from(position)
+            self._status.position.update_from(position, precision=7)
         if heading is not None:
-            self._status.heading = heading % 360
+            # Heading is rounded to 2 digits; it is unlikely that more
+            # precision is needed and it saves space in the JSON
+            # representation
+            self._status.heading = round(heading % 360, 2)
         if velocity is not None:
-            self._status.velocity.update_from(velocity)
+            self._status.velocity.update_from(velocity, precision=2)
         if algorithm is not None:
             self._status.algorithm = algorithm
         if error is not None:

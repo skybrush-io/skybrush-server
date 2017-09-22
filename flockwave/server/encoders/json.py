@@ -52,10 +52,14 @@ class JSONEncoder(Encoder):
             return obj.isoformat()
         elif isinstance(obj, Enum):
             return obj.name
-        elif hasattr(obj, "json"):
-            return obj.json
         else:
-            raise TypeError("cannot encode {0!r} into JSON".format(obj))
+            # Do not use hasattr(obj, "json") here because that will simply
+            # try to retrieve the attribute and then throw away the result,
+            # so we are doing extra work by using it
+            try:
+                return obj.json
+            except AttributeError:
+                raise TypeError("cannot encode {0!r} into JSON".format(obj))
 
     def dumps(self, obj, *args, **kwds):
         """Converts the given object into a JSON string representation.

@@ -76,7 +76,7 @@ class Source(object):
         else:
             point_in_flat = self._flat_earth_trans.to_flat_earth(point)
             dist_sq = point_in_flat.x ** 2 + point_in_flat.y ** 2 + \
-                point_in_flat.amsl.value ** 2
+                point_in_flat.agl ** 2
         return self.intensity / dist_sq
 
     @property

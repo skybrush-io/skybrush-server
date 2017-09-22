@@ -9,7 +9,7 @@ from blinker import Signal
 from builtins import range
 from collections import defaultdict
 from datetime import datetime
-from flockwave.gps.vectors import Altitude, GPSCoordinate, VelocityNED
+from flockwave.gps.vectors import GPSCoordinate, VelocityNED
 from flockwave.server.utils import datetime_to_unix_timestamp
 from future.utils import with_metaclass
 from six import byte2int, int2byte
@@ -205,7 +205,7 @@ class FlockCtrlStatusPacket(FlockCtrlPacketBase):
            GPSCoordinate: the location of the drone
         """
         return GPSCoordinate(lat=self.lat, lon=self.lon,
-                             alt=Altitude.msl(self.amsl))
+                             amsl=self.amsl, agl=self.agl)
 
     @property
     def velocity(self):

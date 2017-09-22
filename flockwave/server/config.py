@@ -29,12 +29,12 @@ EXTENSIONS = {
             # 360world.eu teto
             "lat": 47.483717,
             "lon": 19.015107,
-            "alt": 20
+            "agl": 20
         } if IN_HEROKU else {
             # ELTE kert
             "lat": 47.473360,
             "lon": 19.062159,
-            "alt": 20
+            "agl": 20
         },
         "radius": 50,
         "time_of_single_cycle": 10

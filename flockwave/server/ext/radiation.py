@@ -6,9 +6,8 @@ counters.
 
 from __future__ import absolute_import, division
 
-from flockwave.gps.vectors import Altitude, AltitudeReference, \
-    ECEFToGPSCoordinateTransformation, GPSCoordinate, \
-    FlatEarthToGPSCoordinateTransformation
+from flockwave.gps.vectors import ECEFToGPSCoordinateTransformation, \
+    FlatEarthToGPSCoordinateTransformation, GPSCoordinate
 from numpy.random import poisson
 
 from .base import ExtensionBase
@@ -38,8 +37,7 @@ class Source(object):
         self._location_ecef = None
         self._location_uses_relative_altitude = False
 
-        self.location = GPSCoordinate(lat=lat, lon=lon,
-                                      alt=Altitude.relative_to_home(0))
+        self.location = GPSCoordinate(lat=lat, lon=lon, agl=0)
         self.intensity = max(float(intensity), 0.0)
 
     def intensity_at(self, point, point_in_ecef=None):
@@ -78,7 +76,7 @@ class Source(object):
         else:
             point_in_flat = self._flat_earth_trans.to_flat_earth(point)
             dist_sq = point_in_flat.x ** 2 + point_in_flat.y ** 2 + \
-                point_in_flat.alt.value ** 2
+                point_in_flat.amsl.value ** 2
         return self.intensity / dist_sq
 
     @property
@@ -89,11 +87,10 @@ class Source(object):
     @location.setter
     def location(self, value):
         self._location_gps = value
-        self._location_uses_relative_altitude = \
-            value.alt.reference is AltitudeReference.HOME
+        self._location_uses_relative_altitude = value.amsl is None
         if self._location_uses_relative_altitude:
             self._location_ecef = None
-            assert value.alt.value == 0
+            assert value.agl == 0
         else:
             self._location_ecef = gps_to_ecef(value)
         self._flat_earth_trans = FlatEarthToGPSCoordinateTransformation(
@@ -196,7 +193,7 @@ class RadiationExtension(ExtensionBase):
             float: the expected number of particles detected at the given
                 location in one second
         """
-        if point.alt and point.alt.reference is AltitudeReference.MSL:
+        if point.amsl is not None:
             point_in_ecef = gps_to_ecef(point)
         else:
             point_in_ecef = None

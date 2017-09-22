@@ -9,8 +9,8 @@ from __future__ import absolute_import, division
 from .base import UAVExtensionBase
 from enum import Enum
 from eventlet import sleep, spawn, spawn_after
-from flockwave.gps.vectors import Altitude, AltitudeReference, Vector3D, \
-    FlatEarthCoordinate, GPSCoordinate, FlatEarthToGPSCoordinateTransformation
+from flockwave.gps.vectors import FlatEarthCoordinate, GPSCoordinate, \
+    FlatEarthToGPSCoordinateTransformation, Vector3D
 from flockwave.server.model.uav import UAVBase, UAVDriver
 from math import atan2, cos, hypot, sin, pi
 from random import random, choice
@@ -42,7 +42,7 @@ class FakeUAVDriver(UAVDriver):
         uav = FakeUAV(id, driver=self)
         uav.angle = angle
         uav.angular_velocity = angular_velocity
-        uav.cruise_altitude = center.alt.value
+        uav.cruise_altitude = center.agl
         uav.home = center
         uav.radius = radius
         uav.target = center
@@ -208,17 +208,12 @@ class FakeUAV(UAVBase):
             return
 
         # Calculate the real altitude component of the target
-        if value.alt is None:
-            new_altitude = Altitude.relative_to_home(self._pos_flat.z)
-        elif value.alt.reference != AltitudeReference.HOME:
-            raise ValueError("altitude must be specified relative to home")
-        else:
-            new_altitude = value.alt.copy()
+        new_altitude = self._pos_flat.z if value.agl is None else value.agl
 
         # Update the target and its XYZ representation
-        self._target.update(alt=new_altitude)
+        self._target.update(agl=new_altitude)
         flat = self._trans.to_flat_earth(value)
-        self._target_xyz = Vector3D(x=flat.x, y=flat.y, z=new_altitude.value)
+        self._target_xyz = Vector3D(x=flat.x, y=flat.y, z=new_altitude)
 
     def land(self):
         """Starts a simulated landing with the fake UAV."""
@@ -301,8 +296,8 @@ class FakeUAV(UAVBase):
         # Calculate our coordinates around the circle in flat Earth
         self._pos_flat_circle.x = self._pos_flat.x + cos(self.angle) * radius
         self._pos_flat_circle.y = self._pos_flat.y + sin(self.angle) * radius
-        self._pos_flat_circle.alt = \
-            Altitude.relative_to_home(self._pos_flat.z)
+        self._pos_flat_circle.agl = self._pos_flat.z
+        self._pos_flat_circle.amsl = None
 
         # Transform the flat Earth coordinates to GPS around our
         # current position as origin
@@ -412,7 +407,7 @@ class FakeUAVProviderExtension(UAVExtensionBase):
         center = configuration.get("center")
         center = GPSCoordinate(
             lat=center["lat"], lon=center["lon"],
-            alt=Altitude.relative_to_home(center["alt"])
+            agl=center["agl"], amsl=None
         )
 
         # Get the radius and angular velocity from the configuration

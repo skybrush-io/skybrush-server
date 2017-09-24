@@ -1,19 +1,25 @@
 # FlockWave Backend Server Installation Guide
 
 ## Windows
-_Tested under Python 2.7.11 with pip 8.1.2_
+_Tested under Python 2.7.11 with pip 9.0.1_
 
 - (Optional) - Set up a virtual environment to avoid cluttering of packages:
   - Install virtualenv: `pip install virtualenv`
   - Create an environment: `virtualenv server_env`
   - Activate it: `server_env\Scripts\activate`
-- Clone the repository: `git clone git@biolfiz1.elte.hu:flockwave-server.git`
+- Clone the repository: `git clone https://git.collmot.com/collmot/flockwave-server.git`
 - Install the requirements:
   - Change to the directory: `cd flockwave-server`
   - Let pip install the packages: `pip install -r requirements.txt`
 - Get `MarkupSafe`:
   - Download the appropriate precompiled binary version from [here](http://www.lfd.uci.edu/~gohlke/pythonlibs/#markupsafe)
   - Install the wheel from the command line: `pip install <path_to_file>.whl`
+- Update python-engineio:
+  - TODO!! (Nem tudom pontosan, hogy melyik mikor miért működik, az alábbi két módszer közül érdemes kipróbálni valamelyiket.)
+  - `pip uninstall python-engineio`
+  - `pip install python-engineio`
+  - or
+  - `pip install python-engineio --upgrade`
 - You can now run the server in one of the following modes:
   - No HTTPS: `flockwave-server` -> Access it at `http://localhost:5000/`
   - With HTTPS: `flockwave-server --ssl-cert etc/ssl/cert.pem` -> Access it at `https://localhost:5000/`

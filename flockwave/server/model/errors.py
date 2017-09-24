@@ -1,5 +1,9 @@
 """Error classes specific to the Flockwave model."""
 
+from builtins import str
+from enum import Enum
+
+
 __all__ = ("ClientNotSubscribedError", "NoSuchPathError")
 
 
@@ -22,7 +26,7 @@ class ClientNotSubscribedError(FlockwaveError):
             path (DeviceTreePath): the path that the client attempted to
                 unsubscribe from
         """
-        super(ClientNotSubscribedError, self).__init__(unicode(client))
+        super(ClientNotSubscribedError, self).__init__(str(client))
         self.client = client
         self.path = path
 
@@ -39,5 +43,52 @@ class NoSuchPathError(FlockwaveError):
             path (DeviceTreePath): the path that could not be resolved into
                 a node
         """
-        super(NoSuchPathError, self).__init__(unicode(path))
+        super(NoSuchPathError, self).__init__(str(path))
         self.path = path
+
+
+class FlockwaveErrorCode(Enum):
+    """Error codes defined in the Flockwave protocol."""
+
+    NO_ERROR = 0
+
+    # Informational messages
+    LOGGING_DEACTIVATED = 1
+
+    # Warnings
+    LOW_DISK_SPACE = 64
+    RC_SIGNAL_LOST_WARNING = 65
+    BATTERY_LOW_WARNING = 66
+
+    # Errors
+    AUTOPILOT_COMM_TIMEOUT = 128
+    AUTOPILOT_ACK_TIMEOUT = 129
+    AUTOPILOT_PROTOCOL_ERROR = 130
+    PREARM_CHECK_FAILURE = 131
+    RC_SIGNAL_LOST_ERROR = 132
+    GPS_SIGNAL_LOST = 133
+    BATTERY_LOW_ERROR = 134
+    TARGET_NOT_FOUND = 135
+    TARGET_TOO_FAR = 136
+    SIMULATED_ERROR = 188
+    CONTROL_ALGORITHM_ERROR = 189
+    SENSOR_FAILURE = 190
+    UNSPECIFIED_ERROR = 191
+
+    # Critical errors
+    HW_SW_INCOMPATIBLE = 192
+    MAGNETIC_ERROR = 193
+    GYROSCOPE_ERROR = 194
+    ACCELEROMETER_ERROR = 195
+    PRESSURE_SENSOR_ERROR = 196
+    GPS_SIGNAL_LOST_CRITICAL = 197
+    MOTOR_MALFUNCTION = 198
+    BATTERY_CRITICAL = 199
+    NO_GPS_HOME_POSITION = 200
+    GEOFENCE_VIOLATION = 201
+    INTERNAL_CLOCK_ERROR = 202
+    EXTERNAL_CLOCK_ERROR = 203
+    REQUIRED_HW_COMPONENT_MISSING = 204
+    SIMULATED_CRITICAL_ERROR = 253
+    CRITICAL_SENSOR_FAILURE = 254
+    UNSPECIFIED_CRITICAL_ERROR = 255

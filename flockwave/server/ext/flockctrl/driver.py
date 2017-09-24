@@ -5,12 +5,19 @@ from flockwave.server.ext.logger import log
 from flockwave.server.model.uav import UAVBase, UAVDriver
 from six import iterbytes
 
-from .errors import AddressConflictError
-from .packets import FlockCtrlCommandRequestPacket, \
-    FlockCtrlCommandResponsePacket, FlockCtrlStatusPacket, \
-    ChunkedPacketAssembler
+from .errors import AddressConflictError, map_flockctrl_error_code
+from .packets import ChunkedPacketAssembler, FlockCtrlCommandRequestPacket, \
+    FlockCtrlCommandResponsePacket, FlockCtrlPrearmStatusPacket, \
+    FlockCtrlStatusPacket
 
 __all__ = ("FlockCtrlDriver", )
+
+
+def nop(*args, **kwds):
+    """Dummy function that can be called with any number of arguments and
+    does not return anything.
+    """
+    pass
 
 
 class FlockCtrlDriver(UAVDriver):
@@ -114,6 +121,8 @@ class FlockCtrlDriver(UAVDriver):
         return {
             FlockCtrlStatusPacket:
                 self._handle_inbound_status_packet,
+            FlockCtrlPrearmStatusPacket:
+                nop,
             FlockCtrlCommandResponsePacket:
                 self._handle_inbound_command_response_packet
         }
@@ -207,21 +216,22 @@ class FlockCtrlDriver(UAVDriver):
             position=packet.location,
             velocity=packet.velocity,
             heading=packet.heading,
-            algorithm=algorithm
+            algorithm=algorithm,
+            error=map_flockctrl_error_code(packet.error).value
         )
 
         # HACK HACK HACK this is not the right place for this
         if algorithm == "geiger":
             data = list(iterbytes(packet.debug[-5:]))
             try:
-                count = int("".join(map(chr, data)))
-            except:
+                count = int("".join(chr(x) for x in data))
+            except Exception:
                 count = None
             if self.create_device_tree_mutator is not None:
                 with self.create_device_tree_mutator() as mutator:
                     uav.update_geiger_counter(count, mutator)
 
-        # TODO: rate limiting
+        # TODO(ntamas): rate limiting
         message = self.app.create_UAV_INF_message_for([uav.id])
         self.app.message_hub.send_message(message)
 

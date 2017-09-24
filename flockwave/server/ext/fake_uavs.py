@@ -9,9 +9,8 @@ from __future__ import absolute_import, division
 from .base import UAVExtensionBase
 from enum import Enum
 from eventlet import sleep, spawn, spawn_after
-from flask import copy_current_request_context
-from flockwave.gps.vectors import Altitude, AltitudeReference, Vector3D, \
-    FlatEarthCoordinate, GPSCoordinate, FlatEarthToGPSCoordinateTransformation
+from flockwave.gps.vectors import FlatEarthCoordinate, GPSCoordinate, \
+    FlatEarthToGPSCoordinateTransformation, Vector3D
 from flockwave.server.model.uav import UAVBase, UAVDriver
 from math import atan2, cos, hypot, sin, pi
 from random import random, choice
@@ -43,18 +42,29 @@ class FakeUAVDriver(UAVDriver):
         uav = FakeUAV(id, driver=self)
         uav.angle = angle
         uav.angular_velocity = angular_velocity
-        uav.cruise_altitude = center.alt.value
+        uav.cruise_altitude = center.agl
         uav.home = center
         uav.radius = radius
         uav.target = center
         return uav
 
-    def handle_command_timeout(self, uavs):
-        cmd_manager = self.app.command_execution_manager
+    def handle_command_error(self, cmd_manager, uavs, value=0):
+        value = int(value)
+        result = {}
+        for uav in uavs:
+            result[uav] = receipt = cmd_manager.start()
+            uav.error = value
+            cmd_manager.finish(
+                receipt,
+                "Error code set to {0}".format(uav.error) if uav.has_error
+                else "Error code cleared"
+            )
+        return result
+
+    def handle_command_timeout(self, cmd_manager, uavs):
         return {uav: cmd_manager.start() for uav in uavs}
 
-    def handle_command_yo(self, uavs):
-        cmd_manager = self.app.command_execution_manager
+    def handle_command_yo(self, cmd_manager, uavs):
         result = {}
         for uav in uavs:
             result[uav] = receipt = cmd_manager.start()
@@ -108,6 +118,9 @@ class FakeUAV(UAVBase):
             circle around the target
         cruise_altitude (float): the altitude (relative to home) where the
             UAV will consider a take-off attempt as finished
+        error (int): the simulated error code of the UAV; zero if there is
+            no error.
+        has_error (bool): whether the UAV currently has a non-zero error code
         home (GPSCoordinate): the home coordinate of the UAV and the origin
             of the flat Earth transformation that the UAV uses. Altitude
             component is used to define the cruise altitude where a take-off
@@ -145,6 +158,7 @@ class FakeUAV(UAVBase):
         self.angle = 0.0
         self.angular_velocity = 0.0
         self.cruise_altitude = 20
+        self.error = 0
         self.max_ascent_rate = 2
         self.max_velocity = 10
         self.radiation_ext = None
@@ -153,6 +167,10 @@ class FakeUAV(UAVBase):
         self.target = None
 
         self.step(0)
+
+    @property
+    def has_error(self):
+        return self.error > 0
 
     @property
     def home(self):
@@ -190,17 +208,12 @@ class FakeUAV(UAVBase):
             return
 
         # Calculate the real altitude component of the target
-        if value.alt is None:
-            new_altitude = Altitude.relative_to_home(self._pos_flat.z)
-        elif value.alt.reference != AltitudeReference.HOME:
-            raise ValueError("altitude must be specified relative to home")
-        else:
-            new_altitude = value.alt.copy()
+        new_altitude = self._pos_flat.z if value.agl is None else value.agl
 
         # Update the target and its XYZ representation
-        self._target.update(alt=new_altitude)
+        self._target.update(agl=new_altitude)
         flat = self._trans.to_flat_earth(value)
-        self._target_xyz = Vector3D(x=flat.x, y=flat.y, z=new_altitude.value)
+        self._target_xyz = Vector3D(x=flat.x, y=flat.y, z=new_altitude)
 
     def land(self):
         """Starts a simulated landing with the fake UAV."""
@@ -283,8 +296,8 @@ class FakeUAV(UAVBase):
         # Calculate our coordinates around the circle in flat Earth
         self._pos_flat_circle.x = self._pos_flat.x + cos(self.angle) * radius
         self._pos_flat_circle.y = self._pos_flat.y + sin(self.angle) * radius
-        self._pos_flat_circle.alt = \
-            Altitude.relative_to_home(self._pos_flat.z)
+        self._pos_flat_circle.agl = self._pos_flat.z
+        self._pos_flat_circle.amsl = None
 
         # Transform the flat Earth coordinates to GPS around our
         # current position as origin
@@ -293,12 +306,13 @@ class FakeUAV(UAVBase):
         # Update the UAV status
         self.update_status(
             position=position,
-            heading=self.angle / pi * 180 + 90
+            heading=self.angle / pi * 180 + 90,
+            error=self.error if self.has_error else ()
         )
 
         # Measure radiation if possible
-        # TODO: calculate radiation halfway between the current position and
-        # the previous one instead
+        # TODO(ntamas): calculate radiation halfway between the current
+        # position and the previous one instead
         if self.radiation_ext is not None and self.radiation_ext.loaded:
             observed_count = self.radiation_ext.measure_at(position,
                                                            seconds=dt)
@@ -346,8 +360,12 @@ class FakeUAV(UAVBase):
 
         device = node.add_device("geiger_counter")
         self.geiger_counter = {
-            "raw": device.add_channel("raw_measurement", type=object, unit="counts"),
-            "averaged": device.add_channel("measurement", type=object, unit="counts/sec")
+            "raw": device.add_channel(
+                "raw_measurement", type=object, unit="counts"
+            ),
+            "averaged": device.add_channel(
+                "measurement", type=object, unit="counts/sec"
+            )
         }
 
 
@@ -389,7 +407,7 @@ class FakeUAVProviderExtension(UAVExtensionBase):
         center = configuration.get("center")
         center = GPSCoordinate(
             lat=center["lat"], lon=center["lon"],
-            alt=Altitude.relative_to_home(center["alt"])
+            agl=center["agl"], amsl=None
         )
 
         # Get the radius and angular velocity from the configuration
@@ -397,7 +415,7 @@ class FakeUAVProviderExtension(UAVExtensionBase):
         omega = 2 * pi / configuration.get("time_of_single_cycle", 10)
 
         # Generate IDs for the UAVs and then create them
-        self.uav_ids = [id_format.format(index) for index in xrange(count)]
+        self.uav_ids = [id_format.format(index) for index in range(count)]
         self.uavs = [
             self._driver.create_uav(id, center=center, radius=radius,
                                     angle=2 * pi / count * index,
@@ -461,9 +479,7 @@ class _StatusUpdaterThread(object):
 
     def start(self):
         assert not self._spawned_green_thread
-        status_updater = copy_current_request_context(
-            self._update_and_report_status
-        )
+        status_updater = self._update_and_report_status
         self._spawned_green_thread = spawn(status_updater)
         self._spawned_green_thread.link(self._on_thread_stopped)
 

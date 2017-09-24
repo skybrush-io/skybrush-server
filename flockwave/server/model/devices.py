@@ -3,13 +3,15 @@
 from __future__ import absolute_import
 
 from blinker import Signal
+from builtins import str
 from collections import Counter, defaultdict
 from flockwave.spec.schema import get_enum_from_schema, \
     get_complex_object_schema
 from itertools import islice
-from six import add_metaclass, iteritems, iterkeys
+from future.utils import iteritems, iterkeys, python_2_unicode_compatible, \
+    with_metaclass
 
-from. errors import ClientNotSubscribedError, NoSuchPathError
+from .errors import ClientNotSubscribedError, NoSuchPathError
 from .metamagic import ModelMeta
 
 __all__ = ("ChannelNode", "ChannelOperation", "ChannelType", "DeviceClass",
@@ -58,8 +60,7 @@ def _channel_type_from_object(cls, obj):
 ChannelType.from_object = classmethod(_channel_type_from_object)
 
 
-@add_metaclass(ModelMeta)
-class DeviceTreeNodeBase(object):
+class DeviceTreeNodeBase(with_metaclass(ModelMeta, object)):
     """Class representing a single node in a Flockwave device tree."""
 
     class __meta__:
@@ -518,6 +519,7 @@ class UAVNode(DeviceTreeNodeBase):
         return self._add_child(id, DeviceNode())
 
 
+@python_2_unicode_compatible
 class DeviceTreePath(object):
     """A path in a device tree from its root to one of its nodes. Leaf and
     branch nodes are both allowed.
@@ -575,9 +577,6 @@ class DeviceTreePath(object):
         self._parts = parts
 
     def __str__(self):
-        return unicode(self).encode("utf-8")
-
-    def __unicode__(self):
         return self.path
 
 
@@ -855,7 +854,7 @@ class DeviceTreeSubscriptionManager(object):
         """
         count = node.count_subscriptions_of(client)
         if count > 0:
-            result[unicode(path)] += count
+            result[str(path)] += count
         for child_id, child in node.iterchildren():
             path._parts.append(child_id)
             self._collect_subscriptions(client, path, child, result)

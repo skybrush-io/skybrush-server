@@ -3,6 +3,7 @@
 from __future__ import absolute_import
 
 from .builders import CommandExecutionStatusBuilder, FlockwaveMessageBuilder
+from .channel import CommunicationChannel
 from .client import Client
 from .clock import Clock, ClockBase, StoppableClockBase
 from .commands import CommandExecutionStatus
@@ -26,5 +27,6 @@ __all__ = (
     "ChannelNode", "ChannelOperation", "ChannelType", "DeviceClass",
     "DeviceNode", "DeviceTree", "DeviceTreeNodeType", "UAVNode",
     "DeviceTreeSubscriptionManager",
-    "NoSuchPathError", "ClientNotSubscribedError", "World"
+    "NoSuchPathError", "ClientNotSubscribedError", "World",
+    "CommunicationChannel"
 )

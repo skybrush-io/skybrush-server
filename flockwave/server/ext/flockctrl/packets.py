@@ -6,13 +6,15 @@ import zlib
 
 from abc import ABCMeta, abstractproperty
 from blinker import Signal
+from builtins import range
 from collections import defaultdict
 from datetime import datetime
-from flockwave.gps.vectors import Altitude, GPSCoordinate, VelocityNED
+from flockwave.gps.vectors import GPSCoordinate, VelocityNED
 from flockwave.server.utils import datetime_to_unix_timestamp
-from six import add_metaclass, byte2int, int2byte
-from struct import Struct
+from future.utils import with_metaclass
+from six import byte2int, int2byte
 from struct import error as StructError
+from struct import Struct
 from time import time
 
 from .errors import ParseError
@@ -20,8 +22,7 @@ from .errors import ParseError
 __all__ = ("FlockCtrlPacket", "ChunkedPacketAssembler")
 
 
-@add_metaclass(ABCMeta)
-class FlockCtrlPacket(object):
+class FlockCtrlPacket(with_metaclass(ABCMeta, object)):
     """Common interface specification for all FlockCtrl-related packets."""
 
     @abstractproperty
@@ -204,7 +205,7 @@ class FlockCtrlStatusPacket(FlockCtrlPacketBase):
            GPSCoordinate: the location of the drone
         """
         return GPSCoordinate(lat=self.lat, lon=self.lon,
-                             alt=Altitude.msl(self.amsl))
+                             amsl=self.amsl, agl=self.agl)
 
     @property
     def velocity(self):
@@ -311,6 +312,50 @@ class FlockCtrlClockSynchronizationPacket(FlockCtrlPacketBase):
         )[1:]
 
 
+class FlockCtrlFileUploadKeepalivePacket(FlockCtrlPacketBase):
+    """Packet containing an XBee file upload 'keepalive' packet."""
+
+    PACKET_TYPE = 10
+
+    def decode(self, data):
+        # Not interested yet
+        pass
+
+
+class FlockCtrlVersionPacket(FlockCtrlPacketBase):
+    """Packet containing a version number request/response."""
+
+    PACKET_TYPE = 11
+
+    def decode(self, data):
+        # Not interested yet
+        pass
+
+
+class FlockCtrlIdMappingPacket(FlockCtrlPacketBase):
+    """Packet containing a mapping from numeric 'mission IDs' to the
+    absolute numeric UAV IDs.
+    """
+
+    PACKET_TYPE = 12
+
+    def decode(self, data):
+        # Not interested yet
+        pass
+
+
+class FlockCtrlPrearmStatusPacket(FlockCtrlPacketBase):
+    """Packet containing detailed information about the status of the prearm
+    checking when the UAV is in the prearm state.
+    """
+
+    PACKET_TYPE = 13
+
+    def decode(self, data):
+        # Not interested yet
+        pass
+
+
 class ChunkedPacketAssembler(object):
     """Object that assembles a command response from its chunks that
     arrive in consecutive FlockCtrlChunkedPacket_ packets.
@@ -389,7 +434,7 @@ class ChunkedPacketAssembler(object):
         else:
             n = msg_data["num_chunks"]
             chunk_chars = [" "] * n
-            for i in xrange(n):
+            for i in range(n):
                 if i in msg_data["chunks"]:
                     chunk_chars[i] = "#"
             last_chunk_id = msg_data.get("last_chunk")

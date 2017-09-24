@@ -29,12 +29,12 @@ EXTENSIONS = {
             # 360world.eu teto
             "lat": 47.483717,
             "lon": 19.015107,
-            "alt": 20
+            "agl": 20
         } if IN_HEROKU else {
             # ELTE kert
             "lat": 47.473360,
             "lon": 19.062159,
-            "alt": 20
+            "agl": 20
         },
         "radius": 50,
         "time_of_single_cycle": 10
@@ -57,16 +57,21 @@ EXTENSIONS = {
         ],
         "background_intensity": 10
     },
+    "socketio": {
+    },
     "smpte_timecode": {
         "connection": "midi:IAC Driver Bus 1"
     },
-    "system_clock": {}
+    "system_clock": {},
+    "tcp": {},
+    "udp": {}
 }
 
 if IN_HEROKU:
     if "_fake_uavs" in EXTENSIONS:
         EXTENSIONS["fake_uavs"] = EXTENSIONS.pop("_fake_uavs")
-    del EXTENSIONS["flockctrl"]
+    for ext in "flockctrl tcp udp".split():
+        del EXTENSIONS[ext]
 
 # smpte_timecode seems to have some problems on a Mac - it consumes 15% CPU
 # even when idle. Also, it is not needed on Heroku.

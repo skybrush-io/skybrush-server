@@ -6,19 +6,16 @@ from abc import ABCMeta, abstractproperty
 from flockwave.gps.vectors import GPSCoordinate, VelocityNED
 from flockwave.server.errors import CommandInvocationError, NotSupportedError
 from flockwave.spec.schema import get_complex_object_schema
-from six import add_metaclass, reraise
-from sys import exc_info
+from future.utils import with_metaclass, raise_with_traceback
 
 from .devices import UAVNode
 from .metamagic import ModelMeta
 from .mixins import TimestampMixin
 
-
 __all__ = ("UAVStatusInfo", "UAVDriver", "UAV", "UAVBase")
 
 
-@add_metaclass(ModelMeta)
-class UAVStatusInfo(TimestampMixin):
+class UAVStatusInfo(with_metaclass(ModelMeta, TimestampMixin)):
     """Class representing the status information available about a single
     UAV.
     """
@@ -42,8 +39,7 @@ class UAVStatusInfo(TimestampMixin):
         self.velocity = VelocityNED()
 
 
-@add_metaclass(ABCMeta)
-class UAV(object):
+class UAV(with_metaclass(ABCMeta, object)):
     """Abstract object that defines the interface of objects representing
     UAVs.
     """
@@ -151,7 +147,7 @@ class UAVBase(UAV):
         pass
 
     def update_status(self, position=None, velocity=None, heading=None,
-                      algorithm=None):
+                      algorithm=None, error=None):
         """Updates the status information of the UAV.
 
         Parameters with values equal to ``None`` are ignored.
@@ -166,20 +162,34 @@ class UAVBase(UAV):
             heading (Optional[float]): the heading of the UAV, in degrees.
             algorithm (Optional[str]): the algorithm that the UAV is
                 currently executing
+            error (Optional[Union[int,Iterable[int]]]): the error code or
+                error codes of the UAV; use an empty list or tuple if the
+                UAV has no errors
         """
         if position is not None:
-            self._status.position.update_from(position)
+            self._status.position.update_from(position, precision=7)
         if heading is not None:
-            self._status.heading = heading % 360
+            # Heading is rounded to 2 digits; it is unlikely that more
+            # precision is needed and it saves space in the JSON
+            # representation
+            self._status.heading = round(heading % 360, 2)
         if velocity is not None:
-            self._status.velocity.update_from(velocity)
+            self._status.velocity.update_from(velocity, precision=2)
         if algorithm is not None:
             self._status.algorithm = algorithm
+        if error is not None:
+            if isinstance(error, int):
+                error = [error] if error > 0 else []
+            else:
+                error = sorted(code for code in error if code > 0)
+            if error:
+                self._status.error = error
+            elif hasattr(self._status, "error"):
+                del self._status.error
         self._status.update_timestamp()
 
 
-@add_metaclass(ABCMeta)
-class UAVDriver(object):
+class UAVDriver(with_metaclass(ABCMeta, object)):
     """Interface specification for UAV drivers that are responsible for
     handling communication with a given group of UAVs via a common
     communication channel (e.g., an XBee radio).
@@ -220,12 +230,13 @@ class UAVDriver(object):
         The default implementation of this method passes on each command
         to the ``handle_command_{command}()`` method where ``{command}`` is
         replaced by the command argument. The method will be called with
-        the list of UAVs, extended with the given positional and keyword
-        arguments. When such a method does not exist, the handling
-        of the command is forwarded to the ``handle_generic_command()``
-        method instead, whose signature should match the signature of
-        ``send_command()``. When neither of these two methods exist, the
-        default implementation simply throws a NotSupportedError_ exception.
+        the command manager and the list of UAVs, further extended with the
+        given positional and keyword arguments. When such a method does not
+        exist, the handling of the command is forwarded to the
+        ``handle_generic_command()`` method instead, whose signature should
+        match the signature of ``send_command()``. When neither of these two
+        methods exist, the default implementation simply throws a
+        NotSupportedError_ exception.
 
         Parameters:
             uavs (List[UAV]): the UAVs to address with this request.
@@ -253,20 +264,17 @@ class UAVDriver(object):
                 try:
                     return func(uavs, command, args, kwds)
                 except Exception as ex:
-                    reraise(CommandInvocationError,
-                            CommandInvocationError(cause=ex),
-                            exc_info()[2])
+                    raise_with_traceback(CommandInvocationError(cause=ex))
         else:
             if args is None:
                 args = []
             if kwds is None:
                 kwds = {}
+            cmd_manager = self.app.command_execution_manager
             try:
-                return func(uavs, *args, **kwds)
+                return func(cmd_manager, uavs, *args, **kwds)
             except Exception as ex:
-                reraise(CommandInvocationError,
-                        CommandInvocationError(cause=ex),
-                        exc_info()[2])
+                raise_with_traceback(CommandInvocationError(cause=ex))
 
     def send_landing_signal(self, uavs):
         """Asks the driver to send a landing signal to the given UAVs, each

@@ -6,8 +6,20 @@ import click
 import eventlet
 import logging
 
+from eventlet import wsgi
+from functools import partial
+
 from . import logger
 from .logger import log
+
+
+def _default_runner(app, host="", port=5000, debug=False, log=log,
+                    keyfile=None, certfile=None):
+    sock = eventlet.listen((host, port))
+    if keyfile and certfile:
+        sock = eventlet.wrap_ssl(sock, certfile=certfile, keyfile=keyfile,
+                                 server_side=True)
+    wsgi.server(sock, app, debug=debug, log=log)
 
 
 @click.command()
@@ -23,7 +35,6 @@ from .logger import log
               help="SSL certificate in PEM format")
 def start(debug, host, port, ssl_key, ssl_cert):
     """Start the Flockwave server."""
-
     # Dirty workaround for breaking import cycle according to
     # https://github.com/eventlet/eventlet/issues/394
     eventlet.sleep()
@@ -38,7 +49,7 @@ def start(debug, host, port, ssl_key, ssl_cert):
     # Create a child logger for Eventlet so we can silence things
     # from Eventlet by default.
     eventlet_log = log.getChild("eventlet")
-    eventlet_log.setLevel(logging.INFO)
+    eventlet_log.setLevel(logging.ERROR)
 
     # Also silence Engine.IO and Socket.IO when not in debug mode
     if not debug:
@@ -48,7 +59,7 @@ def start(debug, host, port, ssl_key, ssl_cert):
 
     # Note the lazy import; this is to ensure that the logging is set up by the
     # time we start configuring the app.
-    from flockwave.server.app import app, socketio
+    from flockwave.server.app import app
 
     # Construct SSL-related parameters to socketio.run() if needed
     ssl_args = {}
@@ -57,13 +68,18 @@ def start(debug, host, port, ssl_key, ssl_cert):
             "keyfile": ssl_key,
             "certfile": ssl_cert
         })
-        log.info("Starting secure Flockwave server on port {0}...".format(port))
-    else:
-        log.info("Starting Flockwave server on port {0}...".format(port))
+
+    # Log what we are doing
+    log.info("Starting {1}Flockwave server on port {0}...".format(
+        port, "secure " if ssl_args else ""
+    ))
 
     # Now start the server
-    socketio.run(app, host=host, port=port, debug=debug, use_reloader=False,
-                 log=eventlet_log, **ssl_args)
+    if app.runner is None:
+        app.runner = partial(_default_runner, app=app)
+
+    app.runner(host=host, port=port, debug=debug,
+               log=eventlet_log, **ssl_args)
 
 
 if __name__ == '__main__':

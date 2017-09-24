@@ -1,6 +1,6 @@
 """Connection for a MIDI port."""
 
-from __future__ import absolute_import
+from __future__ import absolute_import, print_function
 
 from .base import ConnectionBase, ConnectionState
 from .factory import create_connection

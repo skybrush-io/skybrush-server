@@ -2,9 +2,12 @@
 from a simple string or dict representation.
 """
 
+from future.standard_library import install_aliases
+install_aliases()
+
 from functools import partial
-from six import iteritems, string_types
-from six.moves.urllib.parse import parse_qs, urlparse
+from future.utils import iteritems, string_types
+from urllib.parse import parse_qs, urlparse
 
 __all__ = ("ConnectionFactory", "create_connection")
 

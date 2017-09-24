@@ -3,15 +3,15 @@
 from __future__ import absolute_import
 
 from flockwave.spec.schema import get_message_schema
-from six import add_metaclass
+from future.utils import with_metaclass
+
 from .metamagic import ModelMeta
 
 
 __all__ = ("FlockwaveMessage", "FlockwaveNotification", "FlockwaveResponse")
 
 
-@add_metaclass(ModelMeta)
-class FlockwaveMessage(object):
+class FlockwaveMessage(with_metaclass(ModelMeta, object)):
     """Class representing a single Flockwave message."""
 
     class __meta__:

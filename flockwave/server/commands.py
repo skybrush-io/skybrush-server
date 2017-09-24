@@ -3,10 +3,9 @@ remote UAVs.
 """
 
 from blinker import Signal
-from flask import request
+from future.utils import iteritems
 from greenlet import GreenletExit
 from eventlet import sleep, spawn_n
-from six import iteritems
 from time import time
 
 from .logger import log as base_log
@@ -137,7 +136,8 @@ class CommandExecutionManager(RegistryBase):
             receipt_id (str or CommandExecutionStatus): the receipt
                 identifier of the command that was finished, or the
                 execution status object of the command itself.
-            result (Optional[object]): the result of the command
+            result (Optional[object]): the result of the command; ``None``
+                if the command needs no response
 
         Throws:
             ValueError: if the given receipt belongs to a different manager
@@ -149,9 +149,43 @@ class CommandExecutionManager(RegistryBase):
                      "{0}".format(receipt_id))
             return
 
-        command.mark_as_finished()
         command.response = result
-        self.finished.send(self, status=command)
+        command.mark_as_finished()
+
+        self._send_finished_signal_if_needed(command)
+
+    def mark_as_clients_notified(self, receipt_id, result=None):
+        """Marks that the asynchronous command with the given receipt identifier
+        was passed back to the client that originally initiated the request.
+
+        Parameters:
+            receipt_id (str or CommandExecutionStatus): the receipt
+                identifier of the command, or the execution status object
+                of the command itself.
+
+        Throws:
+            ValueError: if the given receipt belongs to a different manager
+        """
+        command = self._get_command_from_id(receipt_id)
+        if command is None:
+            # Request has probably expired in the meanwhile
+            log.warn("Expired receipt marked as dispatched: "
+                     "{0}".format(receipt_id))
+            return
+
+        command.mark_as_clients_notified()
+
+        self._send_finished_signal_if_needed(command)
+
+    def _send_finished_signal_if_needed(self, command):
+        """Sends the 'finished' signal for the given command if it has been
+        marked both as **sent** (meaning that the clients were notified
+        about the corresponding receipt IDs) and as **finished** (meaning that
+        the execution of the command has finished and the result object was
+        attached to it).
+        """
+        if command.sent and command.finished:
+            self.finished.send(self, status=command)
 
     def start(self):
         """Registers the execution of a new asynchronous command in the
@@ -160,17 +194,12 @@ class CommandExecutionManager(RegistryBase):
         This method should be used by UAV drivers when they start executing
         an asynchronous command to obtain a CommandExecutionStatus_ object.
 
-        The currently connected client (if any) will be registered as the
-        requestor of the command so it will be notified when the execution
-        of the command finishes.
-
         Returns:
             CommandExecutionStatus: a newly created CommandExecutionStatus_
                 object for the asynchronous command that the driver has
                 started to execute.
         """
         result = self._builder.create_status_object()
-        result.notify_client(request.sid)
         result.mark_as_sent()
         self._entries[result.id] = result
         return result

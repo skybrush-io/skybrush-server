@@ -2,34 +2,26 @@
 
 from __future__ import absolute_import
 
-import json
-
 from blinker import Signal
 from collections import defaultdict
-from datetime import datetime
-from enum import Enum
 from flask import abort, Flask, redirect, request, url_for
-from flask_jwt import current_identity as jwt_identity
-from flask_socketio import SocketIO
+from future.utils import iteritems
 from heapq import heappush
-from jsonschema import ValidationError
-from six import iteritems
 
-from .authentication import jwt_authentication, jwt_optional
+from .authentication import jwt_authentication
 from .commands import CommandExecutionManager, CommandExecutionStatus
 from .errors import NotSupportedError
 from .ext.manager import ExtensionManager
 from .logger import log
 from .message_hub import MessageHub
-from .model import FlockwaveMessage
 from .model.devices import DeviceTree, DeviceTreeSubscriptionManager
 from .model.errors import ClientNotSubscribedError, NoSuchPathError
 from .model.world import World
-from .registries import ClientRegistry, ClockRegistry, ConnectionRegistry, \
-    UAVRegistry
+from .registries import ChannelTypeRegistry, ClientRegistry, ClockRegistry, \
+    ConnectionRegistry, UAVRegistry
 from .version import __version__ as server_version
 
-__all__ = ("app", "socketio")
+__all__ = ("app", )
 
 PACKAGE_NAME = __name__.rpartition(".")[0]
 
@@ -38,6 +30,10 @@ class FlockwaveServer(Flask):
     """Flask application object for the Flockwave server.
 
     Attributes:
+        channel_type_registry (ChannelTypeRegistry): central registry for
+            types of communication channels that the server can handle and
+            manage. Types of communication channels include Socket.IO
+            streams, TCP or UDP sockets and so on.
         client_registry (ClientRegistry): central registry for the clients
             that are currently connected to the server
         client_count_changed (Signal): signal that is emitted when the
@@ -54,6 +50,10 @@ class FlockwaveServer(Flask):
             loading and unloading of server extensions
         message_hub (MessageHub): central messaging hub via which one can
             send Flockwave messages
+        runner (callable): function to call when we want to start the
+            server. It typically forwards everything to ``socketio.run``
+            for the time being, but its signature should be formalized in
+            the future.
         uav_registry (UAVRegistry): central registry for the UAVs known to
             the server
         world (World): a representation of the "world" in which the flock
@@ -224,11 +224,13 @@ class FlockwaveServer(Flask):
 
         return response
 
-    def create_DEV_LISTSUB_message_for(self, path_filter, in_response_to=None):
+    def create_DEV_LISTSUB_message_for(self, client, path_filter,
+                                       in_response_to=None):
         """Creates a DEV-LISTSUB message that contains information about the
-        device tree paths that the current client is subscribed to.
+        device tree paths that the given client is subscribed to.
 
         Parameters:
+            client (Client): the client whose subscriptions we are interested in
             path_filter (iterable): list of device tree paths whose subtrees
                 the client is interested in
             in_response_to (Optional[FlockwaveMessage]): the message that the
@@ -240,7 +242,6 @@ class FlockwaveServer(Flask):
                 of the client that match the path filters
         """
         manager = self.device_tree_subscriptions
-        client = self.client_registry.find_by_id(request.sid)
         subscriptions = manager.list_subscriptions(client, path_filter)
 
         body = {
@@ -253,13 +254,14 @@ class FlockwaveServer(Flask):
 
         return response
 
-    def create_DEV_SUB_message_for(self, paths, in_response_to):
+    def create_DEV_SUB_message_for(self, client, paths, in_response_to):
         """Creates a DEV-SUB response for the given message and subscribes
-        the current client to the given paths.
+        the given client to the given paths.
 
         Parameters:
+            client (Client): the client to subscribe to the given paths
             paths (iterable): list of device tree paths to subscribe the
-                current client to
+                client to
             in_response_to (FlockwaveMessage): the message that the
                 constructed message will respond to.
 
@@ -269,7 +271,6 @@ class FlockwaveServer(Flask):
                 paths that the client was not subscribed to
         """
         manager = self.device_tree_subscriptions
-        client = self.client_registry.find_by_id(request.sid)
         response = self.message_hub.create_response_or_notification(
             {}, in_response_to=in_response_to)
 
@@ -283,14 +284,15 @@ class FlockwaveServer(Flask):
 
         return response
 
-    def create_DEV_UNSUB_message_for(self, paths, in_response_to,
+    def create_DEV_UNSUB_message_for(self, client, paths, in_response_to,
                                      remove_all, include_subtrees):
         """Creates a DEV-UNSUB response for the given message and
-        unsubscribes the current client to the given paths.
+        unsubscribes the given client from the given paths.
 
         Parameters:
+            client (Client): the client to unsubscribe from the given paths
             paths (iterable): list of device tree paths to unsubscribe the
-                current client from
+                given client from
             in_response_to (FlockwaveMessage): the message that the
                 constructed message will respond to.
             remove_all (bool): when ``True``, the client will be unsubscribed
@@ -303,12 +305,11 @@ class FlockwaveServer(Flask):
                 removed
 
         Returns:
-            FlockwaveMessage: the DEV-SUB message with the paths that the
+            FlockwaveMessage: the DEV-UNSUB message with the paths that the
                 client was unsubscribed from, along with error messages for
                 the paths that the client was not unsubscribed from
         """
         manager = self.device_tree_subscriptions
-        client = self.client_registry.find_by_id(request.sid)
         response = self.message_hub.create_response_or_notification(
             {}, in_response_to=in_response_to)
 
@@ -356,7 +357,7 @@ class FlockwaveServer(Flask):
 
         return response
 
-    def dispatch_to_uavs(self, message):
+    def dispatch_to_uavs(self, message, sender):
         """Dispatches a message intended for multiple UAVs to the appropriate
         UAV drivers.
 
@@ -365,6 +366,7 @@ class FlockwaveServer(Flask):
                 that is to be forwarded to multiple UAVs. The message is
                 expected to have an ``ids`` property that lists the UAVs
                 to dispatch the message to.
+            sender (Client): the client that sent the message
 
         Returns:
             FlockwaveMessage: a response to the original message that lists
@@ -372,6 +374,8 @@ class FlockwaveServer(Flask):
                 successfully and also the IDs of the UAVs for which the
                 dispatch failed (in the ``success`` and ``failure`` keys).
         """
+        cmd_manager = self.command_execution_manager
+
         # Create the response
         response = self.message_hub.create_response_or_notification(
             body={}, in_response_to=message)
@@ -423,6 +427,8 @@ class FlockwaveServer(Flask):
                         response.add_success(uav.id)
                     elif isinstance(result, CommandExecutionStatus):
                         response.add_receipt(uav.id, result)
+                        result.add_client_to_notify(sender.id)
+                        cmd_manager.mark_as_clients_notified(result.id)
                     else:
                         response.add_failure(uav.id, result)
 
@@ -450,13 +456,22 @@ class FlockwaveServer(Flask):
         """Hook function that contains preparation steps that should be
         performed by the server before it starts serving requests.
         """
+        # No app runner yet; it is the duty of the launcher module to set it up
+        self.runner = None
+
         # Load the configuration
         self.config.from_object(".".join([PACKAGE_NAME, "config"]))
         self.config.from_envvar("FLOCKWAVE_SETTINGS", silent=True)
 
+        # Create an object to hold information about all the registered
+        # communication channel types that the server can handle
+        self.channel_type_registry = ChannelTypeRegistry()
+
         # Create an object to hold information about all the connected
         # clients that the server can talk to
         self.client_registry = ClientRegistry()
+        self.client_registry.channel_type_registry = \
+            self.channel_type_registry
         self.client_registry.count_changed.connect(
             self._on_client_count_changed,
             sender=self.client_registry
@@ -495,6 +510,8 @@ class FlockwaveServer(Flask):
         # Create a message hub that will handle incoming and outgoing
         # messages
         self.message_hub = MessageHub()
+        self.message_hub.channel_type_registry = self.channel_type_registry
+        self.message_hub.client_registry = self.client_registry
 
         # Create an object to hold information about all the UAVs that
         # the server knows about
@@ -686,8 +703,8 @@ class FlockwaveServer(Flask):
         }
         message = self.message_hub.create_response_or_notification(body)
         with self.app_context():
-            for client in status.clients_to_notify:
-                self.message_hub.send_message(message, to=client)
+            for client_id in status.clients_to_notify:
+                self.message_hub.send_message(message, to=client_id)
 
     def _on_command_execution_timeout(self, sender, statuses):
         """Handler called when the execution of a remote asynchronous
@@ -740,71 +757,6 @@ class FlockwaveServer(Flask):
         return result
 
 
-class _JSONEncoder(object):
-    """Custom JSON encoder and decoder function to be used by Socket.IO."""
-
-    def __init__(self):
-        self.encoder = json.JSONEncoder(
-            separators=(",", ":"), sort_keys=False, indent=None,
-            default=self._encode
-        )
-        self.decoder = json.JSONDecoder()
-
-    def _encode(self, obj):
-        """Encodes an object that could otherwise not be encoded into JSON.
-
-        This function performs the following conversions:
-
-        - ``datetime.datetime`` objects are converted into a standard
-          ISO-8601 string representation
-
-        - Enum instances are converted to their names
-
-        - Objects having a ``json`` property will be replaced by the value
-          of this property
-
-        Parameters:
-            obj (object): the object to encode
-
-        Returns:
-            object: the JSON representation of the object
-        """
-        if isinstance(obj, datetime):
-            return obj.isoformat()
-        elif isinstance(obj, Enum):
-            return obj.name
-        elif hasattr(obj, "json"):
-            return obj.json
-        else:
-            raise TypeError("cannot encode {0!r} into JSON".format(obj))
-
-    def dumps(self, obj, *args, **kwds):
-        """Converts the given object into a JSON string representation.
-        Additional positional or keyword arguments that may be passed by
-        Socket.IO are silently ignored.
-
-        Parameters:
-            obj (object): the object to encode into a JSON string
-
-        Returns:
-            str: a string representation of the given object in JSON
-        """
-        return self.encoder.encode(obj)
-
-    def loads(self, data, *args, **kwds):
-        """Loads a JSON-encoded object from the given string representation.
-        Additional positional or keyword arguments that may be passed by
-        Socket.IO are silently ignored.
-
-        Parameters:
-            data (str): the string to decode
-
-        Returns:
-            object: the constructed object
-        """
-        return self.decoder.decode(data)
-
-
 ############################################################################
 
 app = FlockwaveServer()
@@ -820,167 +772,101 @@ def index():
     else:
         abort(404)
 
-############################################################################
-
-socketio = SocketIO(app, json=_JSONEncoder())
-app.message_hub.socketio = socketio
-
-
-@socketio.on("connect")
-@jwt_optional()
-def handle_connection():
-    """Handler called when a client connects to the Flockwave server socket."""
-    # Update the condition below to enable mandatory JWT authentication
-    if False and not jwt_identity:
-        log.warning("Access denied because of lack of JWT identity")
-        return False
-    else:
-        app.client_registry.add(request.sid, socketio)
-
-
-@socketio.on("disconnect")
-def handle_disconnection():
-    """Handler called when a client disconnects from the server socket."""
-    app.client_registry.remove(request.sid)
-
-
-@socketio.on("fw")
-def handle_flockwave_message(message):
-    """Handler called for all incoming Flockwave JSON messages."""
-    hub = app.message_hub
-
-    try:
-        message = FlockwaveMessage.from_json(message)
-    except ValidationError:
-        failure_reason = "Flockwave message does not match schema"
-    except Exception as ex:
-        failure_reason = "Unexpected exception: {0!r}".format(ex)
-    else:
-        failure_reason = None
-
-    if failure_reason:
-        log.exception(failure_reason)
-        if u"id" in message:
-            ack = hub.acknowledge(message, outcome=False,
-                                  reason=failure_reason)
-            hub.send_message(ack, to=request.sid)
-        return
-
-    if "error" in message:
-        log.warning("Error message from Flockwave client silently dropped")
-        return
-
-    if not hub.handle_incoming_message(message):
-        log.warning(
-            "Unhandled message: {0.body[type]}".format(message),
-            extra={
-                "id": message.id
-            }
-        )
-        ack = hub.acknowledge(message, outcome=False,
-                              reason="No handler managed to parse this "
-                                     "message in the server")
-        hub.send_message(ack, to=request.sid)
-
-
-@socketio.on_error_default
-def handle_exception(exc):
-    """Handler that is called when an exception happens during Socket.IO
-    message handling.
-    """
-    log.exception("Exception while handling message")
-
-
 # ######################################################################## #
 
 
 @app.message_hub.on("CLK-INF")
-def handle_CLK_INF(message, hub):
+def handle_CLK_INF(message, sender, hub):
     return app.create_CLK_INF_message_for(
         message.body["ids"], in_response_to=message
     )
 
 
 @app.message_hub.on("CLK-LIST")
-def handle_CLK_LIST(message, hub):
+def handle_CLK_LIST(message, sender, hub):
     return {
         "ids": list(app.clock_registry.ids)
     }
 
 
 @app.message_hub.on("CMD-DEL")
-def handle_CMD_DEL(message, hub):
+def handle_CMD_DEL(message, sender, hub):
     return app.create_CMD_DEL_message_for(
         message.body["ids"], in_response_to=message
     )
 
 
 @app.message_hub.on("CMD-INF")
-def handle_CMD_INF(message, hub):
+def handle_CMD_INF(message, sender, hub):
     return app.create_CMD_INF_message_for(
         message.body["ids"], in_response_to=message
     )
 
 
 @app.message_hub.on("CONN-INF")
-def handle_CONN_INF(message, hub):
+def handle_CONN_INF(message, sender, hub):
     return app.create_CONN_INF_message_for(
         message.body["ids"], in_response_to=message
     )
 
 
 @app.message_hub.on("CONN-LIST")
-def handle_CONN_LIST(message, hub):
+def handle_CONN_LIST(message, sender, hub):
     return {
         "ids": list(app.connection_registry.ids)
     }
 
 
 @app.message_hub.on("DEV-INF")
-def handle_DEV_INF(message, hub):
+def handle_DEV_INF(message, sender, hub):
     return app.create_DEV_INF_message_for(
         message.body["paths"], in_response_to=message
     )
 
 
 @app.message_hub.on("DEV-LIST")
-def handle_DEV_LIST(message, hub):
+def handle_DEV_LIST(message, sender, hub):
     return app.create_DEV_LIST_message_for(
         message.body["ids"], in_response_to=message
     )
 
 
 @app.message_hub.on("DEV-LISTSUB")
-def handle_DEV_LISTSUB(message, hub):
+def handle_DEV_LISTSUB(message, sender, hub):
     return app.create_DEV_LISTSUB_message_for(
-        message.body.get("pathFilter", ("/", )),
+        client=sender,
+        path_filter=message.body.get("pathFilter", ("/", )),
         in_response_to=message
     )
 
 
 @app.message_hub.on("DEV-SUB")
-def handle_DEV_SUB(message, hub):
+def handle_DEV_SUB(message, sender, hub):
     return app.create_DEV_SUB_message_for(
-        message.body["paths"], in_response_to=message
+        client=sender,
+        paths=message.body["paths"],
+        in_response_to=message
     )
 
 
 @app.message_hub.on("DEV-UNSUB")
-def handle_DEV_UNSUB(message, hub):
+def handle_DEV_UNSUB(message, sender, hub):
     return app.create_DEV_UNSUB_message_for(
-        message.body["paths"], in_response_to=message,
+        client=sender,
+        paths=message.body["paths"],
+        in_response_to=message,
         remove_all=message.body.get("removeAll", False),
         include_subtrees=message.body.get("includeSubtrees", False)
     )
 
 
 @app.message_hub.on("SYS-PING")
-def handle_SYS_PING(message, hub):
+def handle_SYS_PING(message, sender, hub):
     return hub.acknowledge(message)
 
 
 @app.message_hub.on("SYS-VER")
-def handle_SYS_VER(message, hub):
+def handle_SYS_VER(message,sender, hub):
     return {
         "software": "flockwave-server",
         "version": server_version
@@ -988,22 +874,22 @@ def handle_SYS_VER(message, hub):
 
 
 @app.message_hub.on("UAV-INF")
-def handle_UAV_INF(message, hub):
+def handle_UAV_INF(message, sender, hub):
     return app.create_UAV_INF_message_for(
         message.body["ids"], in_response_to=message
     )
 
 
 @app.message_hub.on("UAV-LIST")
-def handle_UAV_LIST(message, hub):
+def handle_UAV_LIST(message, sender, hub):
     return {
         "ids": list(app.uav_registry.ids)
     }
 
 
 @app.message_hub.on("CMD-REQ", "UAV-LAND", "UAV-TAKEOFF")
-def handle_UAV_operations(message, hub):
-    return app.dispatch_to_uavs(message)
+def handle_UAV_operations(message, sender, hub):
+    return app.dispatch_to_uavs(message, sender)
 
 
 # ######################################################################## #

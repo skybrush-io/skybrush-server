@@ -450,13 +450,6 @@ class _StatusUpdaterThread(object):
         self._spawned_green_thread = None
         self._stopping = False
 
-    def _create_status_notification(self):
-        """Creates a single status notification message that is to be
-        broadcast via the message hub. The notification will contain the
-        status information of all the UAVs managed by this extension.
-        """
-        return self._ext.app.create_UAV_INF_message_for(self._ext.uav_ids)
-
     def request_stop(self):
         """Asks the thread to stop as soon as possible (i.e. in the next
         iteration of the main loop).
@@ -485,16 +478,16 @@ class _StatusUpdaterThread(object):
 
     def _update_and_report_status(self):
         """Updates and reports the status of all the UAVs."""
-        hub = self._ext.app.message_hub
+        app = self._ext.app
         uavs = self._ext.uavs
+        uav_ids = self._ext.uav_ids
 
         while not self._stopping:
             with self._ext.create_device_tree_mutation_context() as mutator:
                 for uav in uavs:
                     uav.step(mutator=mutator, dt=self._delay)
 
-            message = self._create_status_notification()
-            hub.send_message(message)
+            app.request_to_send_UAV_INF_message_for(uav_ids)
 
             sleep(self._delay)
 

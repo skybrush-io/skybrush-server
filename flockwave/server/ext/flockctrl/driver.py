@@ -231,9 +231,7 @@ class FlockCtrlDriver(UAVDriver):
                 with self.create_device_tree_mutator() as mutator:
                     uav.update_geiger_counter(count, mutator)
 
-        # TODO(ntamas): rate limiting
-        message = self.app.create_UAV_INF_message_for([uav.id])
-        self.app.message_hub.send_message(message)
+        self.app.request_to_send_UAV_INF_message_for([uav.id])
 
     def _on_chunked_packet_assembled(self, sender, body, source):
         """Handler called when the response chunk handler has assembled

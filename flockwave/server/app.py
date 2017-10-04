@@ -4,7 +4,7 @@ from __future__ import absolute_import
 
 from blinker import Signal
 from collections import defaultdict
-from flask import abort, Flask, redirect, request, url_for
+from flask import abort, Flask, redirect, url_for
 from future.utils import iteritems
 from heapq import heappush
 
@@ -230,7 +230,8 @@ class FlockwaveServer(Flask):
         device tree paths that the given client is subscribed to.
 
         Parameters:
-            client (Client): the client whose subscriptions we are interested in
+            client (Client): the client whose subscriptions we are
+                interested in
             path_filter (iterable): list of device tree paths whose subtrees
                 the client is interested in
             in_response_to (Optional[FlockwaveMessage]): the message that the
@@ -333,6 +334,17 @@ class FlockwaveServer(Flask):
     def create_UAV_INF_message_for(self, uav_ids, in_response_to=None):
         """Creates an UAV-INF message that contains information regarding
         the UAVs with the given IDs.
+
+        Typically, you should not use this method from extensions because
+        it allows one to bypass the built-in rate limiting for UAV-INF
+        messages. The only exception is when ``in_response_to`` is set to
+        a certain message identifier, in which case it makes sense to send
+        the UAV-INF response immediately (after all, it was requested
+        explicitly). If you only want to broadcast UAV-INF messages to all
+        interested parties, use ``request_to_send_UAV_INF_message_for()``
+        instead, which will send the notification immediately if the rate
+        limiting constraints allow, but it may also wait a bit if the
+        UAV-INF messages are sent too frequently.
 
         Parameters:
             uav_ids (iterable): list of UAV IDs
@@ -555,6 +567,18 @@ class FlockwaveServer(Flask):
             priority (Optional[int]): the priority of the proposed route.
         """
         heappush(self._proposed_index_pages, (priority, route))
+
+    def request_to_send_UAV_INF_message_for(self, uav_ids):
+        """Requests the application to send an UAV-INF message that contains
+        information regarding the UAVs with the given IDs. The application
+        may send the message immediately or opt to delay it a bit in order
+        to ensure that UAV-INF notifications are not emitted too frequently.
+
+        Parameters:
+            uav_ids (iterable): list of UAV IDs
+        """
+        message = self.create_UAV_INF_message_for(uav_ids)
+        self.message_hub.send_message(message)
 
     def _find_clock_by_id(self, clock_id, response=None):
         """Finds the clock with the given ID in the clock registry or registers
@@ -866,7 +890,7 @@ def handle_SYS_PING(message, sender, hub):
 
 
 @app.message_hub.on("SYS-VER")
-def handle_SYS_VER(message,sender, hub):
+def handle_SYS_VER(message, sender, hub):
     return {
         "software": "flockwave-server",
         "version": server_version

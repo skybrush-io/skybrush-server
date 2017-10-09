@@ -16,6 +16,8 @@ from .logger import log
 from .message_hub import MessageHub
 from .model.devices import DeviceTree, DeviceTreeSubscriptionManager
 from .model.errors import ClientNotSubscribedError, NoSuchPathError
+from .model.rate_limiters import rate_limited_by, \
+    UAVSpecializedMessageRateLimiter
 from .model.world import World
 from .registries import ChannelTypeRegistry, ClientRegistry, ClockRegistry, \
     ConnectionRegistry, UAVRegistry
@@ -568,6 +570,7 @@ class FlockwaveServer(Flask):
         """
         heappush(self._proposed_index_pages, (priority, route))
 
+    @rate_limited_by(UAVSpecializedMessageRateLimiter, timeout=0.1)
     def request_to_send_UAV_INF_message_for(self, uav_ids):
         """Requests the application to send an UAV-INF message that contains
         information regarding the UAVs with the given IDs. The application

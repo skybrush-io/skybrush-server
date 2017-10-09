@@ -177,7 +177,7 @@ class UAVSpecializedMessageRateLimiter(DelayingRateLimiter):
 
     def _before_wrapped_function_called(self):
         self._next_call_args = \
-            self._self, sorted(self._collected_uav_ids)), {}
+            (self._self, sorted(self._collected_uav_ids)), {}
 
     def _update_next_call_args(self, args, kwds):
         """Inherited."""

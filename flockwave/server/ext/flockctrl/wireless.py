@@ -2,13 +2,15 @@
 link in the extension.
 """
 
-from eventlet import spawn
 from eventlet.event import Event
+from eventlet import spawn
 
 from .comm import CommunicationManagerBase
 
 __all__ = ("WirelessCommunicationManager", )
 
+
+# TODO(ntamas): implement send_packet()
 
 class WirelessCommunicationManager(CommunicationManagerBase):
     """Object that manages the communication with an UAV using a wireless

@@ -234,9 +234,10 @@ class UAVDriver(with_metaclass(ABCMeta, object)):
         given positional and keyword arguments. When such a method does not
         exist, the handling of the command is forwarded to the
         ``handle_generic_command()`` method instead, whose signature should
-        match the signature of ``send_command()``. When neither of these two
-        methods exist, the default implementation simply throws a
-        NotSupportedError_ exception.
+        match the signature of ``send_command()``, extended with the command
+        manager that is passed to ``handle_generic_command()`` as the first
+        argument. When neither of these two methods exist, the default
+        implementation simply throws a NotSupportedError_ exception.
 
         Parameters:
             uavs (List[UAV]): the UAVs to address with this request.
@@ -256,13 +257,14 @@ class UAVDriver(with_metaclass(ABCMeta, object)):
                 driver and will not be supported in the future either
         """
         func = getattr(self, "handle_command_{0}".format(command), None)
+        cmd_manager = self.app.command_execution_manager
         if func is None:
             func = getattr(self, "handle_generic_command", None)
             if func is None:
                 raise NotSupportedError
             else:
                 try:
-                    return func(uavs, command, args, kwds)
+                    return func(cmd_manager, uavs, command, args, kwds)
                 except Exception as ex:
                     raise_with_traceback(CommandInvocationError(cause=ex))
         else:
@@ -270,7 +272,6 @@ class UAVDriver(with_metaclass(ABCMeta, object)):
                 args = []
             if kwds is None:
                 kwds = {}
-            cmd_manager = self.app.command_execution_manager
             try:
                 return func(cmd_manager, uavs, *args, **kwds)
             except Exception as ex:

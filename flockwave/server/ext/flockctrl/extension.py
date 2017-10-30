@@ -171,9 +171,16 @@ class FlockCtrlDronesExtension(UAVExtensionBase):
                 send the packet to. ``None`` means to send a broadcast
                 packet.
         """
-        # TODO: currently we always send packets via the XBee link. We
+        # TODO(ntamas): currently we always send packets via the XBee link. We
         # should add support for the wifi link as well
-        self._xbee_communicator.send_packet(packet, destination)
+        medium, address = destination
+        if medium == "wireless":
+            comm = self._wireless_communicator
+        elif medium == "xbee":
+            comm = self._xbee_communicator
+        else:
+            raise ValueError("unknown medium: {0!r}".format(medium))
+        comm.send_packet(packet, address)
 
     def _on_clock_changed(self, sender, clock):
         """Handler that is called when one of the clocks changed in the
@@ -189,7 +196,7 @@ class FlockCtrlDronesExtension(UAVExtensionBase):
         now = datetime.now(utc)
         now_as_timestamp = datetime_to_unix_timestamp(now)
         packet = FlockCtrlClockSynchronizationPacket(
-            sequence_id=0,      # TODO
+            sequence_id=0,      # TODO(ntamas)
             clock_id=5,         # MIDI timecode clock in FlockCtrl
             running=clock.running,
             local_timestamp=now,

@@ -44,8 +44,9 @@ class FlockCtrlDriver(UAVDriver):
             of the device tree
         send_packet (callable): a function that should be called by the
             driver whenever it wants to send a packet. The function must
-            be called with the packet to send and the destination address
-            (``None`` if the packet should be broadcast)
+            be called with the packet to send, and a pair formed by the
+            medium via which the packet should be forwarded and the
+            destination address in that medium.
     """
 
     def __init__(self, app=None, id_format="{0:02}"):
@@ -104,7 +105,7 @@ class FlockCtrlDriver(UAVDriver):
         Parameters:
             uav (FlockCtrlUAV): the UAV to check
             medium (str): the communication medium on which the address is
-                valid (e.g., ``xbee`` or ``wifi``)
+                valid (e.g., ``xbee`` or ``wireless``)
             address (object): the source address of the UAV
 
         Raises:
@@ -157,7 +158,7 @@ class FlockCtrlDriver(UAVDriver):
             uav_registry.add(uav)
         return uav_registry.find_by_id(formatted_id)
 
-    def handle_generic_command(self, uavs, command, args, kwds):
+    def handle_generic_command(self, cmd_manager, uavs, command, args, kwds):
         """Sends a generic command execution request to the given UAVs."""
         result = {}
         error = None
@@ -178,7 +179,8 @@ class FlockCtrlDriver(UAVDriver):
             if error:
                 result[uav] = error
             else:
-                result[uav] = self._send_command_to_uav(command, uav)
+                result[uav] = self._send_command_to_uav(
+                    cmd_manager, command, uav)
 
         return result
 
@@ -293,10 +295,12 @@ class FlockCtrlDriver(UAVDriver):
         uavs_by_command = self._commands_by_uav.inv
         uavs_by_command.pop(status, None)
 
-    def _send_command_to_uav(self, command, uav):
+    def _send_command_to_uav(self, cmd_manager, command, uav):
         """Sends a command string to the given UAV.
 
         Parameters:
+            cmd_manager (CommandExecutionManager): the execution manager
+                that manages the execution of UAV commands in the app
             command (str): the command to send. It will be encoded in UTF-8
                 before sending it.
             uav (FlockCtrlUAV): the UAV to send the command to
@@ -307,10 +311,11 @@ class FlockCtrlDriver(UAVDriver):
                 a string describing the reason of failure if it has not
                 been sent
         """
-        if uav.address is None:
-            return "XBee address of UAV is not known yet"
+        try:
+            address = uav.preferred_address
+        except ValueError:
+            return "Address of UAV is not known yet"
 
-        cmd_manager = self.app.command_execution_manager
         existing_command = self._commands_by_uav.get(uav.id)
         if existing_command is not None:
             if self.allow_multiple_commands_per_uav:
@@ -322,7 +327,7 @@ class FlockCtrlDriver(UAVDriver):
         self._commands_by_uav[uav.id] = receipt = cmd_manager.start()
 
         packet = FlockCtrlCommandRequestPacket(command.encode("utf-8"))
-        self.send_packet(packet, uav.address)
+        self.send_packet(packet, address)
 
         return receipt
 
@@ -334,7 +339,7 @@ class FlockCtrlUAV(UAVBase):
     Attributes:
         addresses (Dict[str,object]): the addresses of this UAV, keyed by the
             various communication media that we may use to access the UAVs
-            (e.g., ``xbee``, ``wifi`` and so on)
+            (e.g., ``xbee``, ``wireless`` and so on)
     """
 
     def __init__(self, *args, **kwds):
@@ -350,7 +355,7 @@ class FlockCtrlUAV(UAVBase):
 
         Parameters:
             medium (str): the communication medium that this address applies to
-                (e.g., ``xbee`` or ``wifi``)
+                (e.g., ``xbee`` or ``wireless``)
             address (bytes): the address of the UAV on the communication
                 medium
 
@@ -363,6 +368,25 @@ class FlockCtrlUAV(UAVBase):
             self.addresses[medium] = address
         elif current_address != address:
             raise AddressConflictError(self, medium, address)
+
+    @property
+    def preferred_address(self):
+        """Returns the preferred medium and address via which the packets
+        should be sent to this UAV. UAVs prefer wifi addresses to XBee
+        addresses.
+
+        Returns:
+            (str, object): the preferred medium and address of the UAV
+
+        Throws:
+            ValueError: if the UAV has no known address yet
+        """
+        for medium in ("wireless", "xbee"):
+            address = self.addresses.get(medium)
+            if address is not None:
+                return medium, address
+
+        raise ValueError("UAV has no wireless or XBee address yet")
 
     def update_geiger_counter(self, value, mutator):
         """Updates the value of the Geiger counter of the UAV with the given

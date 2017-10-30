@@ -322,6 +322,7 @@ class FakeUAV(UAVBase):
             # observed enough data
             radiation_intensity_estimate = observed_count / dt
         else:
+            observed_count = 0
             radiation_intensity_estimate = 0
 
         # Also update our fake temperature sensor and Geiger counter

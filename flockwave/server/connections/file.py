@@ -65,8 +65,11 @@ class FileConnection(FDConnectionBase):
 
         Parameters:
             data (bytes): the data to write
+
+        Returns:
+            int: the number of bytes written
         """
-        result = self._file_object.write(data)
+        self._file_object.write(data)
         if self.autoflush:
             self.flush()
-        return result
+        return len(data)

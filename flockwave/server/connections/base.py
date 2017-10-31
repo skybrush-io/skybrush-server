@@ -97,6 +97,7 @@ class ConnectionBase(Connection):
         self._state = ConnectionState.DISCONNECTED
         self._state_lock = RLock()
         self._is_connected = False
+        self._swallow_exceptions = False
 
     @property
     def state(self):
@@ -202,6 +203,32 @@ class FDConnectionBase(ConnectionBase):
     def fp(self):
         """Returns the underlying file-like object of the connection."""
         return self._file_object
+
+    @abstractmethod
+    def read(self, size=-1):
+        """Reads the given number of bytes from the connection.
+
+        Parameters:
+            size (int): the number of bytes to read; -1 to read all
+                available data.
+
+        Returns:
+            bytes: the data that was read
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def write(self, data):
+        """Writes the given data to the connection.
+
+        Parameters:
+            data (bytes): the data to write
+
+        Returns:
+            int: the number of bytes written; -1 if the connection is not
+                open yet
+        """
+        raise NotImplementedError
 
     def _attach(self, handle_or_object):
         """Associates a file handle or file-like object to the connection.

@@ -213,7 +213,9 @@ class FlockCtrlDriver(UAVDriver):
         uav = self._get_or_create_uav(packet.id)
         algorithm = packet.algorithm
         medium, address = packet.source
+
         self._check_or_record_uav_address(uav, medium, address)
+
         uav.update_status(
             position=packet.location,
             velocity=packet.velocity,

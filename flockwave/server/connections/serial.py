@@ -123,6 +123,10 @@ class SerialPortConnection(FDConnectionBase):
 
         Parameters:
             data (bytes): the data to write
+
+        Returns:
+            int: the number of bytes that were written; -1 if the port is
+                not open
         """
         if self._file_object is not None:
             try:
@@ -131,7 +135,7 @@ class SerialPortConnection(FDConnectionBase):
                 self._handle_error(ex)
                 return 0
         else:
-            return 0
+            return -1
 
 
 class RecordableSerialPortConnection(SerialPortConnection):

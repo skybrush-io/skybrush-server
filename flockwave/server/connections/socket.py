@@ -2,7 +2,6 @@
 
 from __future__ import absolute_import, print_function
 
-import csv
 import socket
 
 from blinker import Signal
@@ -12,7 +11,6 @@ from errno import EAGAIN
 from functools import partial
 from ipaddress import IPv4Address, IPv4Network
 from select import select
-from time import time
 
 from .base import FDConnectionBase, ConnectionState, ConnectionWrapperBase
 from .factory import create_connection
@@ -30,15 +28,11 @@ class SocketConnectionBase(FDConnectionBase):
         self._fd_event_loop_handle = None
         self._socket = None
 
-    def _create_socket(self):
-        """Creates a new socket for the connection. Must be overridden in
-        subclasses.
-        """
-        raise NotImplementedError
-
     @property
     def address(self):
-        """Returns the address (IP and port) of the socket."""
+        """Returns the IP address and port of the socket, in the form of a
+        tuple.
+        """
         if self._socket is None:
             raise ValueError("socket is not open yet")
         return self._socket.getsockname()
@@ -97,7 +91,7 @@ class SocketConnectionBase(FDConnectionBase):
         self._set_event_loop(loop)
 
     def unregister_from_event_loop(self):
-        """Unregisters the DGPS connection from the current urwid
+        """Unregisters the socket connection from the current urwid
         event loop.
         """
         self._set_event_loop(None)
@@ -113,7 +107,7 @@ class SocketConnectionBase(FDConnectionBase):
         """Handler called by the urwid event loop if the socket became
         readable.
         """
-        # TODO
+        # TODO(ntamas)
         pass
 
 
@@ -136,6 +130,7 @@ class UDPSocketConnection(SocketConnectionBase):
         super(UDPSocketConnection, self).__init__()
         self._port = port or 0
         self._ip_address = ip_address or ""
+        self._sending_socket = None
 
     def _create_socket(self):
         """Creates a new non-blocking reusable UDP socket that is not bound
@@ -153,6 +148,8 @@ class UDPSocketConnection(SocketConnectionBase):
 
         self._socket.close()
         self._set_socket(None)
+        self._set_sending_socket(None)
+
         self._set_state(ConnectionState.DISCONNECTED)
 
     def open(self):
@@ -192,7 +189,7 @@ class UDPSocketConnection(SocketConnectionBase):
                     return (b"", None)
                 else:
                     self._handle_error()
-            except:
+            except Exception:
                 self._handle_error()
         return (b"", None)
 
@@ -213,19 +210,76 @@ class UDPSocketConnection(SocketConnectionBase):
             int: the number of bytes successfully written through the
                 socket. Note that it may happen that some of the data was
                 not written; you are responsible for checking the return
-                value.
+                value. Returns -1 if there was an error while sending the
+                data.
         """
         if self._socket is not None:
+            address = self._extract_address(address)
+            socket = self._get_sending_socket_for_address(address)
             try:
                 if address is None:
-                    return self._socket.send(data, flags)
-                if isinstance(address, SocketConnectionBase):
-                    address = address.address
-                return self._socket.sendto(data, flags, address)
-            except:
+                    return socket.send(data, flags)
+                else:
+                    return socket.sendto(data, flags, address)
+            except Exception:
                 self._handle_error()
+                return -1
         else:
-            return 0
+            return -1
+
+    def _extract_address(self, address):
+        """Extracts the *real* IP address and port from the given object.
+        The object may be a SocketConnectionBase_, a tuple consisting of the
+        IP address and port, or ``None``. Returns a tuple consisting of the
+        IP address and port or ``None``.
+        """
+        if isinstance(address, SocketConnectionBase):
+            address = address.address
+        return address
+
+    def _get_or_create_dedicated_sending_socket(self):
+        if self._sending_socket is None:
+            self._sending_socket = self._create_socket()
+        return self._sending_socket
+
+    def _get_sending_socket_for_address(self, address):
+        """Returns a socket instance that is suitable for sending an UDP
+        datagram to the given address.
+
+        Parameters:
+            address ((str, int)): the IP address and port to send the
+                datagram to
+
+        Returns:
+            socket.socket: the socket to send the datagram to. It may be
+                different from the listening socket if the destination has a
+                different IP address (which may happen if the connection is
+                listening on a broadcast address).
+        """
+        if address is None:
+            # Sending to whatever address the socket is currently bound to
+            return self._socket
+        elif address[0] == self._ip_address:
+            # Sending to the same IP address so the listener socket should
+            # be okay for sending as well
+            return self._socket
+        else:
+            # We need to create a sending socket; this will be created if
+            # needed
+            return self._get_or_create_dedicated_sending_socket()
+
+    def _set_sending_socket(self, socket):
+        """Assigns the given socket to the connection so it will be used for
+        sending datagrams when the target is different from the listening
+        address of the connection.
+        """
+        if socket == self._sending_socket:
+            return
+
+        if self._sending_socket is not None:
+            self._sending_socket.close()
+
+        self._sending_socket = socket
 
 
 class SubnetBindingConnection(ConnectionWrapperBase):
@@ -275,6 +329,7 @@ class SubnetBindingConnection(ConnectionWrapperBase):
             self._set_wrapped(None)
 
     def open(self):
+        """Opens the WLAN socket connection."""
         # If we have no wrapped connection yet, create one and then try to
         # open it. Our state will follow the state of the wrapped connection.
         if self._wrapped is None:
@@ -294,14 +349,17 @@ class SubnetBindingConnection(ConnectionWrapperBase):
         addr_key = "broadcast" if self.bind_to_broadcast else "addr"
         for interface in self._netifaces.interfaces():
             # We are currently interested only in IPv4 addresses
-            specs = self._netifaces.ifaddresses(interface).get(self._netifaces.AF_INET)
+            specs = self._netifaces.ifaddresses(interface).get(
+                self._netifaces.AF_INET)
             if not specs:
                 continue
 
             # Find only those addresses that are in our target subnet
-            candidates.extend(spec[addr_key] for spec in specs
-                if IPv4Address(str(spec.get("addr"))) in self._network \
-                and addr_key in spec)
+            candidates.extend(
+                spec[addr_key] for spec in specs
+                if IPv4Address(str(spec.get("addr"))) in self._network
+                and addr_key in spec
+            )
 
             # If we have more than one candidate, we can safely exit here
             if len(candidates) > 1:
@@ -315,7 +373,8 @@ class SubnetBindingConnection(ConnectionWrapperBase):
         """Updates the state of the current connection based on the state
         of the wrapper.
         """
-        new_state = self._wrapped.state if self._wrapped else ConnectionState.DISCONNECTED
+        new_state = self._wrapped.state if self._wrapped \
+            else ConnectionState.DISCONNECTED
         self._set_state(new_state)
 
     def _wrapped_connection_changed(self, old_conn, new_conn):
@@ -341,7 +400,8 @@ class SubnetBindingConnection(ConnectionWrapperBase):
 
 
 @create_connection.register("udp-subnet")
-def SubnetBindingUDPConnection(subnet=None, port=0, bind_to_broadcast=False, **kwds):
+def SubnetBindingUDPConnection(subnet=None, port=0, bind_to_broadcast=False,
+                               **kwds):
     """Convenience factory for a SubnetBindingConnection_ that works with
     UDP sockets.
 
@@ -362,12 +422,15 @@ def SubnetBindingUDPConnection(subnet=None, port=0, bind_to_broadcast=False, **k
         subnet = kwds.get("path")
         if subnet is None:
             raise ValueError("either 'subnet' or 'path' must be given")
-    return SubnetBindingConnection(subnet, UDPSocketConnection, port, bind_to_broadcast)
+    return SubnetBindingConnection(
+        subnet, UDPSocketConnection, port, bind_to_broadcast
+    )
 
 
 SubnetBindingUDPBroadcastConnection = partial(SubnetBindingUDPConnection,
                                               bind_to_broadcast=True)
-create_connection.register("udp-broadcast", SubnetBindingUDPBroadcastConnection)
+create_connection.register("udp-broadcast",
+                           SubnetBindingUDPBroadcastConnection)
 
 
 def test_udp():

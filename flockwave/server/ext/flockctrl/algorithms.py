@@ -4,6 +4,7 @@ in FlockCtrl packets.
 
 from struct import Struct
 
+from flockwave.gps.vectors import GPSCoordinate
 from flockwave.server.model.registry import RegistryBase
 
 from .utils import unpack_struct
@@ -34,7 +35,7 @@ class Algorithm(object):
     FlockCtrl drone.
     """
 
-    def handle_data_packet(self, packet, uav):
+    def handle_data_packet(self, packet, uav, mutate):
         """Handles a data packet originating from the given algorithm sent
         by the given UAV.
 
@@ -42,6 +43,8 @@ class Algorithm(object):
             packet (FlockCtrlAlgorithmDataPacket): the data packet that was
                 sent by the algorithm running on the given UAV
             uav (FlockCtrlUAV): the UAV that sent the data packet
+            mutate (callable): callable that returns a device tree mutator
+                when invoked as a context manager
         """
         pass
 
@@ -115,7 +118,7 @@ class GeigerCounterAlgorithm(Algorithm):
 
     _struct = Struct("<LllhhLLf")
 
-    def handle_data_packet(self, packet, uav):
+    def handle_data_packet(self, packet, uav, mutate):
         """Inherited."""
         raw_counts = [0, 0]
         (iTOW, lat, lon, amsl, agl, raw_counts[0], raw_counts[1], dosage), _ = \
@@ -127,8 +130,12 @@ class GeigerCounterAlgorithm(Algorithm):
         amsl = amsl / 1e1        # [dm]       --> [m]
         agl = agl / 1e1          # [dm]       --> [m]
 
-        # TODO(ntamas): Update the UAV
-        pass
+        # Construct the position object
+        position = GPSCoordinate(lat=lat, lon=lon, amsl=amsl, agl=agl)
+
+        # Update the UAV devices
+        with mutate() as mutator:
+            uav.update_geiger_counter(position, dosage, raw_counts, mutator)
 
 
 @registry.register

@@ -3,7 +3,6 @@
 from bidict import bidict
 from flockwave.server.ext.logger import log
 from flockwave.server.model.uav import UAVBase, UAVDriver
-from six import iterbytes
 
 from .errors import AddressConflictError, map_flockctrl_error_code
 from .packets import ChunkedPacketAssembler, FlockCtrlAlgorithmDataPacket, \
@@ -40,8 +39,8 @@ class FlockCtrlDriver(UAVDriver):
             accepting a single integer as an argument and returning the
             preferred UAV identifier.
         create_device_tree_mutator (callable): a function that should be
-            called by the driver whenever it wants to mutate the state
-            of the device tree
+            called by the driver as a context manager whenever it wants to
+            mutate the state of the device tree
         send_packet (callable): a function that should be called by the
             driver whenever it wants to send a packet. The function must
             be called with the packet to send, and a pair formed by the
@@ -210,8 +209,10 @@ class FlockCtrlDriver(UAVDriver):
             algorithm = packet.algorithm
         except KeyError:
             algorithm = None
+
         if algorithm is not None:
-            algorithm.handle_data_packet(packet, uav)
+            mutator = self.create_device_tree_mutator
+            algorithm.handle_data_packet(packet, uav, mutator)
 
     def _handle_inbound_command_response_packet(self, packet):
         """Handles an inbound FlockCtrl command response packet.
@@ -240,17 +241,6 @@ class FlockCtrlDriver(UAVDriver):
             algorithm=algorithm,
             error=map_flockctrl_error_code(packet.error).value
         )
-
-        # HACK HACK HACK this is not the right place for this
-        if algorithm == "geiger":
-            data = list(iterbytes(packet.debug[-5:]))
-            try:
-                count = int("".join(chr(x) for x in data))
-            except Exception:
-                count = None
-            if self.create_device_tree_mutator is not None:
-                with self.create_device_tree_mutator() as mutator:
-                    uav.update_geiger_counter(count, mutator)
 
         self.app.request_to_send_UAV_INF_message_for([uav.id])
 
@@ -407,13 +397,17 @@ class FlockCtrlUAV(UAVBase):
 
         raise ValueError("UAV has no wireless or XBee address yet")
 
-    def update_geiger_counter(self, value, mutator):
+    def update_geiger_counter(self, position, dosage, raw_counts, mutator):
         """Updates the value of the Geiger counter of the UAV with the given
-        new value;
+        new value.
 
         Parameters:
-            value (Optional[int]): the new count or ``None`` if the Geiger
-                counter was disabled
+            position (GPSCoordinate): the position where the measurement was
+                taken
+            dosage (Optional[float]): the new measured dosage or ``None`` if
+                the Geiger counter was disabled
+            raw_counts (List[int]): the raw counts from the Geiger counter
+                tubes or ``None`` if the Geiger counter was disabled
             mutator (DeviceTreeMutator): the mutator object that can be used
                 to manipulate the device tree nodes
         """
@@ -421,14 +415,29 @@ class FlockCtrlUAV(UAVBase):
         if position is None:
             return
 
-        mutator.update(self.geiger_counter, {
+        pos_data = {
             "lat": position.lat,
-            "lon": position.lon,
-            "value": value
-        })
+            "lon": position.lon
+        }
+        if position.amsl is not None:
+            pos_data["amsl"] = position.amsl
+        if position.agl is not None:
+            pos_data["agl"] = position.agl
+
+        mutator.update(
+            self.geiger_counter_dosage,
+            dict(pos_data, value=dosage)
+        )
+        mutator.update(
+            self.geiger_counter_raw_counts,
+            dict(pos_data, value=list(raw_counts))
+        )
 
     def _initialize_device_tree_node(self, node):
         device = node.add_device("geiger_counter")
-        self.geiger_counter = device.add_channel(
-            "measurement", type=object, unit="counts/sec"
+        self.geiger_counter_dosage = device.add_channel(
+            "dosage", type=object, unit="counts/sec"
+        )
+        self.geiger_counter_raw_counts = device.add_channel(
+            "raw_counts", type=object
         )

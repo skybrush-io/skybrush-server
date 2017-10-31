@@ -2,15 +2,21 @@
 link in the extension.
 """
 
+from collections import namedtuple
 from eventlet.event import Event
-from eventlet import spawn
+from eventlet import Queue, spawn
 
 from .comm import CommunicationManagerBase
 
 __all__ = ("WirelessCommunicationManager", )
 
 
-# TODO(ntamas): implement send_packet()
+#: Lightweight named tuple to store a packet sending request
+PacketSendingRequest = namedtuple(
+    "PacketSendingRequest",
+    "packet destination"
+)
+
 
 class WirelessCommunicationManager(CommunicationManagerBase):
     """Object that manages the communication with an UAV using a wireless
@@ -31,6 +37,8 @@ class WirelessCommunicationManager(CommunicationManagerBase):
         """
         super(WirelessCommunicationManager, self).__init__(ext, "wireless")
         self._inbound_thread = None
+        self._outbound_thread = None
+        self._packet_queue = None
         self._connection = None
 
     @property
@@ -47,12 +55,33 @@ class WirelessCommunicationManager(CommunicationManagerBase):
 
         if self._connection is not None:
             self._inbound_thread.kill()
+            self._outbound_thread.kill()
+            self._packet_queue = None
 
         self._connection = value
 
         if self._connection is not None:
             thread = WirelessInboundThread(self, self._connection)
             self._inbound_thread = spawn(thread.run)
+
+            thread = WirelessOutboundThread(self, self._connection)
+            self._packet_queue = thread.queue
+            self._outbound_thread = spawn(thread.run)
+
+    def send_packet(self, packet, destination=None):
+        """Requests the communication manager to send the given FlockCtrl
+        packet to the given destination.
+
+        Parameters:
+            packet (FlockCtrlPacket): the packet to send
+            destination ((str, int)): the IP address and port to send the
+                packet to
+        """
+        if destination is None:
+            raise ValueError("broadcasting is not supported")
+
+        req = PacketSendingRequest(packet=packet, destination=destination)
+        self._packet_queue.put(req)
 
     def _handle_inbound_packet(self, address, packet):
         """Handler function called for every inbound UDP packet read by
@@ -146,3 +175,68 @@ class WirelessInboundThread(object):
         with signal.connected_to(self._on_connection_connected,
                                  sender=self._connection):
             self._connection_is_open_event.wait()
+
+
+class WirelessOutboundThread(object):
+    """Green thread that sends outbound packets to a wireless link
+    connection. The outbound packets must be placed into a queue that
+    is owned by this thread.
+
+    The thread is running within the application context of the Flockwave
+    server application.
+    """
+
+    def __init__(self, manager, connection):
+        """Constructor.
+
+        Parameters:
+            manager (XBeeCommunicationManager): the communication manager
+                that owns this thread
+            connection (ConnectionBase): the wireless connection object
+        """
+        self.connection = connection
+        self.manager = manager
+        self._queue = Queue()
+
+    def _error_callback(self, exception):
+        """Callback function called when an exception happens while sending
+        a data frame.
+        """
+        self.manager.log.exception(exception)
+
+    @property
+    def queue(self):
+        """The queue that should be used to send outbound packets to this
+        thread.
+        """
+        return self._queue
+
+    def run(self):
+        """Waits for outbound frames to send on the queue owned by this
+        thread, and sends each of them via the wireless connection.
+        """
+        with self.manager.app_context():
+            while True:
+                try:
+                    self._serve_request(self._queue.get())
+                except Exception as ex:
+                    self._error_callback(ex)
+
+    def _serve_request(self, request):
+        """Serves a wireless packet sending request by sending a packet to a
+        given destination.
+
+        Parameters:
+            request (PacketSendingRequest): the request object
+                containing the packet to send and its destination address
+                in an (IP address, port) tuple
+        """
+        data = request.packet.encode()
+        while data:
+            num_sent = self.connection.write(data, request.destination)
+            if num_sent < 0:
+                # There was an error while sending the packet so let's
+                # skip it entirely
+                data = b""
+            else:
+                data = data[num_sent:]

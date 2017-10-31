@@ -31,6 +31,7 @@ class FlockCtrlDronesExtension(UAVExtensionBase):
         self._driver = None
 
         self._wireless_lowlevel_link = None
+        self._wireless_port = None
         self._wireless_communicator = WirelessCommunicationManager(self)
         self._wireless_communicator.on_packet.connect(
             self._handle_inbound_packet,
@@ -77,6 +78,7 @@ class FlockCtrlDronesExtension(UAVExtensionBase):
     @wireless_lowlevel_link.setter
     def wireless_lowlevel_link(self, value):
         if self._wireless_lowlevel_link is not None:
+            self._wireless_port = None
             self._wireless_communicator.connection = None
             self._wireless_lowlevel_link.close()
             self.app.connection_registry.remove("Wireless")
@@ -90,6 +92,7 @@ class FlockCtrlDronesExtension(UAVExtensionBase):
                 purpose=ConnectionPurpose.uavRadioLink
             )
 
+            self._wireless_port = self._wireless_lowlevel_link.port
             self._wireless_lowlevel_link.open()
             self._wireless_communicator.connection = \
                 self._wireless_lowlevel_link
@@ -171,11 +174,14 @@ class FlockCtrlDronesExtension(UAVExtensionBase):
                 send the packet to. ``None`` means to send a broadcast
                 packet.
         """
-        # TODO(ntamas): currently we always send packets via the XBee link. We
-        # should add support for the wifi link as well
         medium, address = destination
         if medium == "wireless":
             comm = self._wireless_communicator
+
+            # For the wireless medium, the port where we should send our
+            # packets to is different from the port where we expect the
+            # packets so let's remap the port
+            address = (address[0], self._wireless_port)
         elif medium == "xbee":
             comm = self._xbee_communicator
         else:

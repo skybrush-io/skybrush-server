@@ -13,11 +13,12 @@ from flockwave.gps.vectors import GPSCoordinate, VelocityNED
 from flockwave.server.utils import datetime_to_unix_timestamp
 from future.utils import with_metaclass
 from six import byte2int, int2byte
-from struct import error as StructError
 from struct import Struct
 from time import time
 
-from .errors import ParseError
+from .algorithms import find_algorithm_name_by_id, \
+    registry as algorithm_registry
+from .utils import unpack_struct
 
 __all__ = ("FlockCtrlPacket", "ChunkedPacketAssembler")
 
@@ -101,12 +102,7 @@ class FlockCtrlPacketBase(FlockCtrlPacket):
         Raises:
             ParseError: if the given byte array cannot be unpacked
         """
-        spec = spec or self._struct
-        size = spec.size
-        try:
-            return spec.unpack(data[:size]), data[size:]
-        except StructError as ex:
-            raise ParseError(ex.message)
+        return unpack_struct(spec or self._struct, data)
 
 
 class FlockCtrlChunkedPacket(FlockCtrlPacketBase):
@@ -147,19 +143,6 @@ class FlockCtrlStatusPacket(FlockCtrlPacketBase):
 
     PACKET_TYPE = 0
     _struct = Struct("<xBBBLllhhhhhhBLB8sL")
-    _algorithm_index_to_name = {
-        0: "dummy",
-        1: "altitude",
-        5: "emergency",
-        6: "flocking",
-        7: "geiger",
-        8: "return_to_home",
-        12: "landing",
-        19: "snake",
-        22: "vicsek",
-        23: "waypoint",
-        31: "none"
-    }
 
     def decode(self, data):
         (self.id, self.algo_and_vehicle, self.choreography_index,
@@ -181,21 +164,37 @@ class FlockCtrlStatusPacket(FlockCtrlPacketBase):
 
     @property
     def algorithm(self):
+        """The algorithm that is currently being executed by the drone.
+
+        Returns:
+            Algorithm: the algorithm that is currently being executed by
+                the drone.
+
+        Raises:
+            KeyError: if the algorithm that the packet refers to is not
+                known to the server
+        """
+        return algorithm_registry[self.algorithm_id]
+
+    @property
+    def algorithm_id(self):
+        """The numeric ID of the algorithm that is currently being executed
+        by the drone.
+
+        Returns:
+            int: the numeric index of the algorithm
+        """
+        return self.algo_and_vehicle & 0x1f
+
+    @property
+    def algorithm_name(self):
         """The human-readable description of the algorithm that is
         currently being executed by the drone.
-
-        The status packet contains a five-bit algorithm identifier only,
-        therefore this function uses an auxiliary table to perform the
-        mapping.
 
         Returns:
             str: the name of the algorithm
         """
-        algorithm_index = self.algo_and_vehicle & 0x1f
-        try:
-            return self._algorithm_index_to_name[algorithm_index]
-        except KeyError:
-            return u"unknown ({0})".format(algorithm_index)
+        return find_algorithm_name_by_id(self.algorithm_id)
 
     @property
     def location(self):
@@ -354,6 +353,48 @@ class FlockCtrlPrearmStatusPacket(FlockCtrlPacketBase):
     def decode(self, data):
         # Not interested yet
         pass
+
+
+class FlockCtrlAlgorithmDataPacket(FlockCtrlPacketBase):
+    """Packet containing algorithm-specific data that can be parsed by the
+    corresponding algorithm.
+    """
+
+    PACKET_TYPE = 14
+    _struct = Struct("<xBB")
+
+    def __init__(self):
+        super(FlockCtrlAlgorithmDataPacket, self).__init__()
+        self.algorithm_id = None
+        self.uav_id = None
+        self.body = None
+
+    @property
+    def algorithm(self):
+        """The algorithm that sent the data packet.
+
+        Returns:
+            Algorithm: the algorithm that sent the data packet
+
+        Raises:
+            KeyError: if the algorithm that the packet refers to is not
+                known to the server
+        """
+        return algorithm_registry[self.algorithm_id]
+
+    @property
+    def algorithm_name(self):
+        """The human-readable description of the algorithm that sent the
+        data packet.
+
+        Returns:
+            str: the name of the algorithm
+        """
+        return find_algorithm_name_by_id(self.algorithm_id)
+
+    def decode(self, data):
+        (self.algorithm_id, self.uav_id), self.body = self._unpack(data)
+        self.algorithm_id = self.algorithm_id & 0x1f
 
 
 class ChunkedPacketAssembler(object):

@@ -21,7 +21,7 @@ EXTENSIONS = {
     "debug": {
         "route": "/debug"
     },
-    "fake_uavs": {
+    "_fake_uavs": {
         "count": 3,
         "delay": 0.04 if IN_HEROKU else 1.9,
         "id_format": "FAKE-{0:02}",
@@ -44,7 +44,7 @@ EXTENSIONS = {
         "connections": {
             "xbee": "serial:/tmp/xbee",
             # "xbee": "serial:/dev/ttyUSB.xbee?baud=115200"
-            "wireless": "udp-broadcast:10.0.0.0/8?port=4243"
+            "wireless": "udp-broadcast:192.168.1.0/24?port=4243"
         }
     },
     "radiation": {

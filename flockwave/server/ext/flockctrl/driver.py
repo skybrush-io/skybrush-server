@@ -6,9 +6,9 @@ from flockwave.server.model.uav import UAVBase, UAVDriver
 from six import iterbytes
 
 from .errors import AddressConflictError, map_flockctrl_error_code
-from .packets import ChunkedPacketAssembler, FlockCtrlCommandRequestPacket, \
-    FlockCtrlCommandResponsePacket, FlockCtrlPrearmStatusPacket, \
-    FlockCtrlStatusPacket
+from .packets import ChunkedPacketAssembler, FlockCtrlAlgorithmDataPacket, \
+    FlockCtrlCommandRequestPacket, FlockCtrlCommandResponsePacket, \
+    FlockCtrlPrearmStatusPacket, FlockCtrlStatusPacket
 
 __all__ = ("FlockCtrlDriver", )
 
@@ -125,7 +125,9 @@ class FlockCtrlDriver(UAVDriver):
             FlockCtrlPrearmStatusPacket:
                 nop,
             FlockCtrlCommandResponsePacket:
-                self._handle_inbound_command_response_packet
+                self._handle_inbound_command_response_packet,
+            FlockCtrlAlgorithmDataPacket:
+                self._handle_inbound_algorithm_data_packet
         }
 
     def _create_uav(self, formatted_id):
@@ -196,6 +198,21 @@ class FlockCtrlDriver(UAVDriver):
         else:
             handler(packet)
 
+    def _handle_inbound_algorithm_data_packet(self, packet):
+        """Handles an inbound FlockCtrl packet containing algorithm-specific
+        data.
+
+        Parameters:
+            packet (FlockCtrlAlgorithmDataPacket): the packet to handle
+        """
+        uav = self._get_or_create_uav(packet.uav_id)
+        try:
+            algorithm = packet.algorithm
+        except KeyError:
+            algorithm = None
+        if algorithm is not None:
+            algorithm.handle_data_packet(packet, uav)
+
     def _handle_inbound_command_response_packet(self, packet):
         """Handles an inbound FlockCtrl command response packet.
 
@@ -211,7 +228,7 @@ class FlockCtrlDriver(UAVDriver):
             packet (FlockCtrlStatusPacket): the packet to handle
         """
         uav = self._get_or_create_uav(packet.id)
-        algorithm = packet.algorithm
+        algorithm = packet.algorithm_name
         medium, address = packet.source
 
         self._check_or_record_uav_address(uav, medium, address)

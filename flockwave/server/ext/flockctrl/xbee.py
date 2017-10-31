@@ -42,8 +42,8 @@ _xbee_delivery_status_code_names = {
 }
 
 #: Lightweight named tuple to store a packet sending request
-XBeePacketSendingRequest = namedtuple(
-    "XBeePacketSendingRequest",
+PacketSendingRequest = namedtuple(
+    "PacketSendingRequest",
     "packet destination needs_acknowledgment"
 )
 
@@ -81,6 +81,7 @@ class XBeeCommunicationManager(CommunicationManagerBase):
         self._ack_collector = None
         self._inbound_thread = None
         self._outbound_thread = None
+        self._packet_queue = None
         self._xbee = None
 
     def _handle_inbound_xbee_frame(self, frame):
@@ -135,7 +136,7 @@ class XBeeCommunicationManager(CommunicationManagerBase):
         Parameters:
             sender (AcknowledgmentCollector): the acknowledgment collector
                 that sent this signal
-            request (XBeePacketSendingRequest): the request that failed
+            request (PacketSendingRequest): the request that failed
             status (int): the delivery status code
             should_retry (bool): whether the status code indicates that the
                 transmission should be retried
@@ -165,7 +166,7 @@ class XBeeCommunicationManager(CommunicationManagerBase):
         if destination is None:
             destination = _XBEE_BROADCAST_ADDRESS
 
-        req = XBeePacketSendingRequest(
+        req = PacketSendingRequest(
             packet=packet,
             destination=destination,
             needs_acknowledgment=(destination != _XBEE_BROADCAST_ADDRESS)
@@ -190,6 +191,7 @@ class XBeeCommunicationManager(CommunicationManagerBase):
 
             self._inbound_thread.kill()
             self._outbound_thread.kill()
+            self._packet_queue = None
 
         self._xbee = value
 
@@ -312,7 +314,7 @@ class XBeeOutboundThread(object):
         given destination.
 
         Parameters:
-            request (XBeePacketSendingRequest): the request object containing
+            request (PacketSendingRequest): the request object containing
                 the packet to send, its destination address, and whether the
                 packet needs an acknowledgment
         """
@@ -429,7 +431,7 @@ class AcknowledgmentCollector(object):
         sent.
 
         Parameters:
-            request (XBeePacketSendingRequest): the request that initiated
+            request (PacketSendingRequest): the request that initiated
                 the sending of the packet
 
         Returns:

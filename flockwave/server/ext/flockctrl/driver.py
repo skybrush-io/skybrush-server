@@ -11,6 +11,8 @@ from .packets import ChunkedPacketAssembler, FlockCtrlAlgorithmDataPacket, \
 
 __all__ = ("FlockCtrlDriver", )
 
+MAX_GEIGER_TUBE_COUNT = 2
+
 
 def nop(*args, **kwds):
     """Dummy function that can be called with any number of arguments and
@@ -428,16 +430,27 @@ class FlockCtrlUAV(UAVBase):
             self.geiger_counter_dosage,
             dict(pos_data, value=dosage)
         )
-        mutator.update(
-            self.geiger_counter_raw_counts,
-            dict(pos_data, value=list(raw_counts))
-        )
+
+        devices = self.geiger_counter_raw_counts
+        values = raw_counts
+        for device, value in zip(devices, values):
+            mutator.update(device, dict(pos_data, value=value))
+
+        devices = self.geiger_counter_rates
+        values = raw_counts
+        for device, value in zip(devices, values):
+            mutator.update(device, dict(pos_data, value=value))
 
     def _initialize_device_tree_node(self, node):
         device = node.add_device("geiger_counter")
         self.geiger_counter_dosage = device.add_channel(
             "dosage", type=object, unit="mGy/h"
         )
-        self.geiger_counter_raw_counts = device.add_channel(
-            "raw_counts", type=object
-        )
+        self.geiger_counter_raw_counts = [
+            device.add_channel("raw_count_{0}".format(i), type=object)
+            for i in range(MAX_GEIGER_TUBE_COUNT)
+        ]
+        self.geiger_counter_rates = [
+            device.add_channel("rate_{0}".format(i), type=object)
+            for i in range(MAX_GEIGER_TUBE_COUNT)
+        ]

@@ -436,7 +436,7 @@ class FlockCtrlUAV(UAVBase):
     def _initialize_device_tree_node(self, node):
         device = node.add_device("geiger_counter")
         self.geiger_counter_dosage = device.add_channel(
-            "dosage", type=object, unit="counts/sec"
+            "dosage", type=object, unit="mGy/h"
         )
         self.geiger_counter_raw_counts = device.add_channel(
             "raw_counts", type=object

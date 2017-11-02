@@ -1,5 +1,7 @@
 """Driver class for FlockCtrl-based drones."""
 
+from __future__ import division
+
 from bidict import bidict
 from flockwave.server.ext.logger import log
 from flockwave.server.model.uav import UAVBase, UAVDriver
@@ -399,13 +401,14 @@ class FlockCtrlUAV(UAVBase):
 
         raise ValueError("UAV has no wireless or XBee address yet")
 
-    def update_geiger_counter(self, position, dosage, raw_counts, mutator):
+    def update_geiger_counter(self, position, itow, dosage, raw_counts, mutator):
         """Updates the value of the Geiger counter of the UAV with the given
         new value.
 
         Parameters:
             position (GPSCoordinate): the position where the measurement was
                 taken
+            itow (int): timestamp corresponding to the measurement
             dosage (Optional[float]): the new measured dosage or ``None`` if
                 the Geiger counter was disabled
             raw_counts (List[int]): the raw counts from the Geiger counter
@@ -436,10 +439,20 @@ class FlockCtrlUAV(UAVBase):
         for device, value in zip(devices, values):
             mutator.update(device, dict(pos_data, value=value))
 
-        devices = self.geiger_counter_rates
-        values = raw_counts
-        for device, value in zip(devices, values):
-            mutator.update(device, dict(pos_data, value=value))
+        if self._last_geiger_counter_packet is not None:
+            last_itow, last_raw_counts = self._last_geiger_counter_packet
+	    dt = (itow - last_itow) / 1000
+            if dt > 0:
+                devices = self.geiger_counter_rates
+                values = [
+                    (value - last_value) / dt if value > last_value else None
+                    for value, last_value in zip(raw_counts, last_raw_counts)
+                ]
+                for device, value in zip(devices, values):
+                    if value is not None:
+                        mutator.update(device, dict(pos_data, value=value))
+
+	self._last_geiger_counter_packet = (itow, raw_counts)
 
     def _initialize_device_tree_node(self, node):
         device = node.add_device("geiger_counter")
@@ -451,6 +464,9 @@ class FlockCtrlUAV(UAVBase):
             for i in range(MAX_GEIGER_TUBE_COUNT)
         ]
         self.geiger_counter_rates = [
-            device.add_channel("rate_{0}".format(i), type=object)
+            device.add_channel(
+                "rate_{0}".format(i), type=object, unit="count/sec"
+            )
             for i in range(MAX_GEIGER_TUBE_COUNT)
         ]
+        self._last_geiger_counter_packet = None

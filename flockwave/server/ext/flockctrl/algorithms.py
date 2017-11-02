@@ -135,7 +135,8 @@ class GeigerCounterAlgorithm(Algorithm):
 
         # Update the UAV devices
         with mutate() as mutator:
-            uav.update_geiger_counter(position, dosage, raw_counts, mutator)
+            uav.update_geiger_counter(position, iTOW, dosage, raw_counts,
+                                      mutator)
 
 
 @registry.register

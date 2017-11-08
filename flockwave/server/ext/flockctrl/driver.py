@@ -338,11 +338,24 @@ class FlockCtrlDriver(UAVDriver):
                        "in progress".format(existing_command)
 
         self._commands_by_uav[uav.id] = receipt = cmd_manager.start()
+        self._send_command_to_address(command, address)
+        return receipt
 
+    def _send_command_to_address(self, command, address):
+        """Sends a command packet with the given command string to the
+        given UAV address.
+
+        Parameters:
+            command (str): the command to send. It will be encoded in UTF-8
+                before sending it.
+            address (object): the address to send the command to
+
+        Returns:
+            FlockCtrlCommandRequestPacket: the packet that was sent
+        """
         packet = FlockCtrlCommandRequestPacket(command.encode("utf-8"))
         self.send_packet(packet, address)
-
-        return receipt
+        return packet
 
 
 class FlockCtrlUAV(UAVBase):
@@ -401,7 +414,8 @@ class FlockCtrlUAV(UAVBase):
 
         raise ValueError("UAV has no wireless or XBee address yet")
 
-    def update_geiger_counter(self, position, itow, dose_rate, raw_counts, mutator):
+    def update_geiger_counter(self, position, itow, dose_rate, raw_counts,
+                              mutator):
         """Updates the value of the Geiger counter of the UAV with the given
         new value.
 

@@ -401,7 +401,7 @@ class FlockCtrlUAV(UAVBase):
 
         raise ValueError("UAV has no wireless or XBee address yet")
 
-    def update_geiger_counter(self, position, itow, dosage, raw_counts, mutator):
+    def update_geiger_counter(self, position, itow, dose_rate, raw_counts, mutator):
         """Updates the value of the Geiger counter of the UAV with the given
         new value.
 
@@ -409,8 +409,8 @@ class FlockCtrlUAV(UAVBase):
             position (GPSCoordinate): the position where the measurement was
                 taken
             itow (int): timestamp corresponding to the measurement
-            dosage (Optional[float]): the new measured dosage or ``None`` if
-                the Geiger counter was disabled
+            dose_rate (Optional[float]): the new measured dose rate or ``None``
+                if the Geiger counter was disabled
             raw_counts (List[int]): the raw counts from the Geiger counter
                 tubes or ``None`` if the Geiger counter was disabled
             mutator (DeviceTreeMutator): the mutator object that can be used
@@ -430,8 +430,8 @@ class FlockCtrlUAV(UAVBase):
             pos_data["agl"] = position.agl
 
         mutator.update(
-            self.geiger_counter_dosage,
-            dict(pos_data, value=dosage)
+            self.geiger_counter_dose_rate,
+            dict(pos_data, value=dose_rate)
         )
 
         devices = self.geiger_counter_raw_counts
@@ -441,7 +441,7 @@ class FlockCtrlUAV(UAVBase):
 
         if self._last_geiger_counter_packet is not None:
             last_itow, last_raw_counts = self._last_geiger_counter_packet
-	    dt = (itow - last_itow) / 1000
+            dt = (itow - last_itow) / 1000
             if dt > 0:
                 devices = self.geiger_counter_rates
                 values = [
@@ -452,12 +452,12 @@ class FlockCtrlUAV(UAVBase):
                     if value is not None:
                         mutator.update(device, dict(pos_data, value=value))
 
-	self._last_geiger_counter_packet = (itow, raw_counts)
+        self._last_geiger_counter_packet = (itow, raw_counts)
 
     def _initialize_device_tree_node(self, node):
         device = node.add_device("geiger_counter")
-        self.geiger_counter_dosage = device.add_channel(
-            "dosage", type=object, unit="mGy/h"
+        self.geiger_counter_dose_rate = device.add_channel(
+            "dose_rate", type=object, unit="mGy/h"
         )
         self.geiger_counter_raw_counts = [
             device.add_channel("raw_count_{0}".format(i), type=object)

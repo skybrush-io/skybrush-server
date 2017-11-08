@@ -121,7 +121,7 @@ class GeigerCounterAlgorithm(Algorithm):
     def handle_data_packet(self, packet, uav, mutate):
         """Inherited."""
         raw_counts = [0, 0]
-        (iTOW, lat, lon, amsl, agl, raw_counts[0], raw_counts[1], dosage), _ = \
+        (iTOW, lat, lon, amsl, agl, raw_counts[0], raw_counts[1], dose_rate), _ = \
             self._unpack(packet.body)
 
         # Standardize units coming from the packet
@@ -135,7 +135,7 @@ class GeigerCounterAlgorithm(Algorithm):
 
         # Update the UAV devices
         with mutate() as mutator:
-            uav.update_geiger_counter(position, iTOW, dosage, raw_counts,
+            uav.update_geiger_counter(position, iTOW, dose_rate, raw_counts,
                                       mutator)
 
 

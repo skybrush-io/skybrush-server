@@ -299,22 +299,44 @@ class UAVDriver(with_metaclass(ABCMeta, object)):
             NotSupportedError: if the operation is not supported by the
                 driver and will not be supported in the future either
         """
-        result = {}
-        for uav in uavs:
-            try:
-                signal_sent = self._send_landing_signal_single(uav)
-            except NotImplementedError:
-                return "Landing signal not implemented yet"
-            except NotSupportedError:
-                return "Landing signal not supported"
-            except Exception as ex:
-                log.exception(ex)
-                return (
-                    "Unexpected error while sending landing signal: "
-                    "{0.message!r}".format(ex)
-                )
-            result[uav] = signal_sent
-        return result
+        return self._send_signal(
+            uavs, "landing signal", self._send_landing_signal_single
+        )
+
+    def send_return_to_home_signal(self, uavs):
+        """Asks the driver to send a return-to-home signal to the given
+        UAVs, each of which are assumed to be managed by this driver.
+
+        Typically, you don't need to override this method when implementing
+        a driver; override ``_send_return_to_home_signal_single()`` instead.
+
+        Parameters:
+            uavs (List[UAV]): the UAVs to address with this request.
+
+        Returns:
+            Dict[UAV,object]: dict mapping UAVs to the corresponding results.
+        """
+        return self._send_signal(
+            uavs, "return to home signal",
+            self._send_return_to_home_signal_single
+        )
+
+    def send_shutdown_signal(self, uavs):
+        """Asks the driver to send a shutdown signal to the given UAVs, each
+        of which are assumed to be managed by this driver.
+
+        Typically, you don't need to override this method when implementing
+        a driver; override ``_send_shutdown_signal_single()`` instead.
+
+        Parameters:
+            uavs (List[UAV]): the UAVs to address with this request.
+
+        Returns:
+            Dict[UAV,object]: dict mapping UAVs to the corresponding results.
+        """
+        return self._send_signal(
+            uavs, "shutdown signal", self._send_shutdown_signal_single
+        )
 
     def send_takeoff_signal(self, uavs):
         """Asks the driver to send a takeoff signal to the given UAVs, each
@@ -329,25 +351,69 @@ class UAVDriver(with_metaclass(ABCMeta, object)):
         Returns:
             Dict[UAV,object]: dict mapping UAVs to the corresponding results.
         """
+        return self._send_signal(
+            uavs, "takeoff signal", self._send_takeoff_signal_single
+        )
+
+    def _send_signal(self, uavs, signal_name, handler):
+        """Common implementation for the body of several ``send_*_signal()``
+        methods in this class.
+        """
         result = {}
         for uav in uavs:
             try:
-                signal_sent = self._send_takeoff_signal_single(uav)
+                outcome = handler(uav)
             except NotImplementedError:
-                return "Takeoff signal not implemented yet"
+                outcome = "{0} not implemented yet".format(signal_name)
             except NotSupportedError:
-                return "Takeoff signal not supported"
+                outcome = "{0} not supported".format(signal_name)
             except Exception as ex:
                 log.exception(ex)
-                return (
-                    "Unexpected error while sending takeoff signal: "
-                    "{0.message!r}".format(ex)
+                outcome = (
+                    "Unexpected error while sending {1}: {0.message!r}"
+                    .format(ex, signal_name)
                 )
-            result[uav] = signal_sent
+            result[uav] = outcome
         return result
 
     def _send_landing_signal_single(self, uav):
         """Asks the driver to send a landing signal to a single UAV managed
+        by this driver.
+
+        Parameters:
+            uav (UAV): the UAV to address with this request.
+
+        Returns:
+            bool: whether the signal was *sent* successfully
+
+        Raises:
+            NotImplementedError: if the operation is not supported by the
+                driver yet, but there are plans to implement it
+            NotSupportedError: if the operation is not supported by the
+                driver and will not be supported in the future either
+        """
+        raise NotImplementedError
+
+    def _send_return_to_home_signal_single(self, uav):
+        """Asks the driver to send a return-to-home signal to a single UAV
+        managed by this driver.
+
+        Parameters:
+            uav (UAV): the UAV to address with this request.
+
+        Returns:
+            bool: whether the signal was *sent* successfully
+
+        Raises:
+            NotImplementedError: if the operation is not supported by the
+                driver yet, but there are plans to implement it
+            NotSupportedError: if the operation is not supported by the
+                driver and will not be supported in the future either
+        """
+        raise NotImplementedError
+
+    def _send_shutdown_signal_single(self, uav):
+        """Asks the driver to send a shutdown signal to a single UAV managed
         by this driver.
 
         Parameters:

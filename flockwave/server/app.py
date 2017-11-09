@@ -405,7 +405,9 @@ class FlockwaveServer(Flask):
         # Find the method to invoke on the driver
         method_name = {
             "CMD-REQ": "send_command",
+            "UAV-HALT": "send_shutdown_signal",
             "UAV-LAND": "send_landing_signal",
+            "UAV-RTH": "send_return_to_home_signal",
             "UAV-TAKEOFF": "send_takeoff_signal"
         }.get(message_type, None)
 
@@ -914,7 +916,8 @@ def handle_UAV_LIST(message, sender, hub):
     }
 
 
-@app.message_hub.on("CMD-REQ", "UAV-LAND", "UAV-TAKEOFF")
+@app.message_hub.on("CMD-REQ", "UAV-HALT", "UAV-LAND", "UAV-RTH",
+                    "UAV-TAKEOFF")
 def handle_UAV_operations(message, sender, hub):
     return app.dispatch_to_uavs(message, sender)
 

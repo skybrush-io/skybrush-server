@@ -73,19 +73,13 @@ class FakeUAVDriver(UAVDriver):
             spawn_after(delay, cmd_manager.finish, receipt, response)
         return result
 
-    def send_landing_signal(self, uavs):
-        result = {}
-        for uav in uavs:
-            uav.land()
-            result[uav] = True
-        return result
+    def _send_landing_signal_single(self, uav):
+        uav.land()
+        return True
 
-    def send_takeoff_signal(self, uavs):
-        result = {}
-        for uav in uavs:
-            uav.takeoff()
-            result[uav] = True
-        return result
+    def _send_takeoff_signal_single(self, uav):
+        uav.takeoff()
+        return True
 
 
 class FakeUAVState(Enum):

@@ -5,6 +5,7 @@ from __future__ import absolute_import
 from abc import ABCMeta, abstractproperty
 from flockwave.gps.vectors import GPSCoordinate, VelocityNED
 from flockwave.server.errors import CommandInvocationError, NotSupportedError
+from flockwave.server.logger import log as base_log
 from flockwave.spec.schema import get_complex_object_schema
 from future.utils import with_metaclass, raise_with_traceback
 
@@ -13,6 +14,8 @@ from .metamagic import ModelMeta
 from .mixins import TimestampMixin
 
 __all__ = ("UAVStatusInfo", "UAVDriver", "UAV", "UAVBase")
+
+log = base_log.getChild("uav")
 
 
 class UAVStatusInfo(with_metaclass(ModelMeta, TimestampMixin)):
@@ -281,6 +284,9 @@ class UAVDriver(with_metaclass(ABCMeta, object)):
         """Asks the driver to send a landing signal to the given UAVs, each
         of which are assumed to be managed by this driver.
 
+        Typically, you don't need to override this method when implementing
+        a driver; override ``_send_landing_signal_single()`` instead.
+
         Parameters:
             uavs (List[UAV]): the UAVs to address with this request.
 
@@ -293,21 +299,84 @@ class UAVDriver(with_metaclass(ABCMeta, object)):
             NotSupportedError: if the operation is not supported by the
                 driver and will not be supported in the future either
         """
-        raise NotImplementedError
+        result = {}
+        for uav in uavs:
+            try:
+                signal_sent = self._send_landing_signal_single(uav)
+            except NotImplementedError:
+                return "Landing signal not implemented yet"
+            except NotSupportedError:
+                return "Landing signal not supported"
+            except Exception as ex:
+                log.exception(ex)
+                return (
+                    "Unexpected error while sending landing signal: "
+                    "{0.message!r}".format(ex)
+                )
+            result[uav] = signal_sent
+        return result
 
     def send_takeoff_signal(self, uavs):
         """Asks the driver to send a takeoff signal to the given UAVs, each
         of which are assumed to be managed by this driver.
+
+        Typically, you don't need to override this method when implementing
+        a driver; override ``_send_takeoff_signal_single()`` instead.
 
         Parameters:
             uavs (List[UAV]): the UAVs to address with this request.
 
         Returns:
             Dict[UAV,object]: dict mapping UAVs to the corresponding results.
+        """
+        result = {}
+        for uav in uavs:
+            try:
+                signal_sent = self._send_takeoff_signal_single(uav)
+            except NotImplementedError:
+                return "Takeoff signal not implemented yet"
+            except NotSupportedError:
+                return "Takeoff signal not supported"
+            except Exception as ex:
+                log.exception(ex)
+                return (
+                    "Unexpected error while sending takeoff signal: "
+                    "{0.message!r}".format(ex)
+                )
+            result[uav] = signal_sent
+        return result
+
+    def _send_landing_signal_single(self, uav):
+        """Asks the driver to send a landing signal to a single UAV managed
+        by this driver.
+
+        Parameters:
+            uav (UAV): the UAV to address with this request.
+
+        Returns:
+            bool: whether the signal was *sent* successfully
 
         Raises:
             NotImplementedError: if the operation is not supported by the
-                driver at all
+                driver yet, but there are plans to implement it
+            NotSupportedError: if the operation is not supported by the
+                driver and will not be supported in the future either
+        """
+        raise NotImplementedError
+
+    def _send_takeoff_signal_single(self, uav):
+        """Asks the driver to send a takeoff signal to a single UAV managed
+        by this driver.
+
+        Parameters:
+            uav (UAV): the UAV to address with this request.
+
+        Returns:
+            bool: whether the signal was *sent* successfully
+
+        Raises:
+            NotImplementedError: if the operation is not supported by the
+                driver yet, but there are plans to implement it
             NotSupportedError: if the operation is not supported by the
                 driver and will not be supported in the future either
         """

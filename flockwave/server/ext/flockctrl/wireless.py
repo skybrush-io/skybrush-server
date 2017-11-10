@@ -102,14 +102,17 @@ class WirelessCommunicationManager(CommunicationManagerBase):
     provide us with acknowledgments anyway.
     """
 
-    def __init__(self, ext):
+    def __init__(self, ext, port=4243):
         """Constructor.
 
         Parameters:
             ext (FlockCtrlDronesExtension): the extension that owns this
                 manager
+            port (int): the port to use when sending a packet to a UAV
         """
         super(WirelessCommunicationManager, self).__init__(ext, "wireless")
+
+        self.port = port
 
         self._broadcast_threads = ConnectionThreadManager(
             inbound_thread_factory=partial(
@@ -158,15 +161,15 @@ class WirelessCommunicationManager(CommunicationManagerBase):
 
         Parameters:
             packet (FlockCtrlPacket): the packet to send
-            destination ((str, int)): the IP address and port to send the
-                packet to
+            destination (str): the IP address to send the packet to
         """
         if destination is None:
             put = self._broadcast_threads.put
         else:
             put = self._unicast_threads.put
 
-        req = PacketSendingRequest(packet=packet, destination=destination)
+        req = PacketSendingRequest(packet=packet,
+                                   destination=(destination, self.port))
         put(req)
 
     def _handle_inbound_packet(self, address, packet):
@@ -178,6 +181,7 @@ class WirelessCommunicationManager(CommunicationManagerBase):
                 was received from
             packet (bytes): the raw bytes that were received
         """
+        address, _ = address       # separate the port, we don't need it
         self._parse_and_emit_packet(packet, address)
 
 

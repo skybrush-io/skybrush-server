@@ -32,7 +32,6 @@ class FlockCtrlDronesExtension(UAVExtensionBase):
 
         self._wireless_broadcast_link = None
         self._wireless_unicast_link = None
-        self._wireless_port = None
         self._wireless_communicator = WirelessCommunicationManager(self)
         self._wireless_communicator.on_packet.connect(
             self._handle_inbound_packet,
@@ -94,7 +93,8 @@ class FlockCtrlDronesExtension(UAVExtensionBase):
                 purpose=ConnectionPurpose.uavRadioLink
             )
 
-            self._wireless_port = self._wireless_broadcast_link.port
+            self._wireless_communicator.port = \
+                self._wireless_broadcast_link.port
             self._wireless_broadcast_link.open()
             self._wireless_communicator.broadcast_connection = \
                 self._wireless_broadcast_link

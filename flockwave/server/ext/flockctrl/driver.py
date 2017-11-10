@@ -9,7 +9,8 @@ from flockwave.server.model.uav import UAVBase, UAVDriver
 from .errors import AddressConflictError, map_flockctrl_error_code
 from .packets import ChunkedPacketAssembler, FlockCtrlAlgorithmDataPacket, \
     FlockCtrlCommandRequestPacket, FlockCtrlCommandResponsePacket, \
-    FlockCtrlPrearmStatusPacket, FlockCtrlStatusPacket
+    FlockCtrlCompressedCommandResponsePacket, FlockCtrlPrearmStatusPacket, \
+    FlockCtrlStatusPacket
 
 __all__ = ("FlockCtrlDriver", )
 
@@ -127,6 +128,8 @@ class FlockCtrlDriver(UAVDriver):
                 self._handle_inbound_status_packet,
             FlockCtrlPrearmStatusPacket:
                 nop,
+            FlockCtrlCompressedCommandResponsePacket:
+                self._handle_inbound_command_response_packet,
             FlockCtrlCommandResponsePacket:
                 self._handle_inbound_command_response_packet,
             FlockCtrlAlgorithmDataPacket:
@@ -222,9 +225,14 @@ class FlockCtrlDriver(UAVDriver):
         """Handles an inbound FlockCtrl command response packet.
 
         Parameters:
-            packet (FlockCtrlCommandResponsePacket): the packet to handle
+            packet (FlockCtrlCommandResponsePacketBase): the packet to handle
         """
-        self._packet_assembler.add_packet(packet)
+        if isinstance(packet, FlockCtrlCompressedCommandResponsePacket):
+            compressed = True
+        else:
+            compressed = False
+
+        self._packet_assembler.add_packet(packet, compressed=compressed)
 
     def _handle_inbound_status_packet(self, packet):
         """Handles an inbound FlockCtrl status packet.
@@ -235,12 +243,6 @@ class FlockCtrlDriver(UAVDriver):
         uav = self._get_or_create_uav(packet.id)
         algorithm = packet.algorithm_name
         medium, address = packet.source
-
-        if medium == "wireless":
-            # We always consider port 4243 as the 'real' address of the UAV
-            # in the wireless medium. The source port that the packet comes
-            # from is usually an ephemeral port on the UAV.
-            address = address[0], 4243
 
         self._check_or_record_uav_address(uav, medium, address)
 

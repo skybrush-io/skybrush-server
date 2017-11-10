@@ -359,10 +359,11 @@ class UAVDriver(with_metaclass(ABCMeta, object)):
         """Common implementation for the body of several ``send_*_signal()``
         methods in this class.
         """
+        cmd_manager = self.app.command_execution_manager
         result = {}
         for uav in uavs:
             try:
-                outcome = handler(uav)
+                outcome = handler(cmd_manager, uav)
             except NotImplementedError:
                 outcome = "{0} not implemented yet".format(signal_name)
             except NotSupportedError:
@@ -376,12 +377,14 @@ class UAVDriver(with_metaclass(ABCMeta, object)):
             result[uav] = outcome
         return result
 
-    def _send_landing_signal_single(self, uav):
+    def _send_landing_signal_single(self, cmd_manager, uav):
         """Asks the driver to send a landing signal to a single UAV managed
         by this driver.
 
         Parameters:
             uav (UAV): the UAV to address with this request.
+            cmd_manager (CommandExecutionManager): command execution manager
+                that can be used to create a new message to send to the UAV
 
         Returns:
             bool: whether the signal was *sent* successfully
@@ -394,12 +397,14 @@ class UAVDriver(with_metaclass(ABCMeta, object)):
         """
         raise NotImplementedError
 
-    def _send_return_to_home_signal_single(self, uav):
+    def _send_return_to_home_signal_single(self, cmd_manager, uav):
         """Asks the driver to send a return-to-home signal to a single UAV
         managed by this driver.
 
         Parameters:
             uav (UAV): the UAV to address with this request.
+            cmd_manager (CommandExecutionManager): command execution manager
+                that can be used to create a new message to send to the UAV
 
         Returns:
             bool: whether the signal was *sent* successfully
@@ -412,12 +417,14 @@ class UAVDriver(with_metaclass(ABCMeta, object)):
         """
         raise NotImplementedError
 
-    def _send_shutdown_signal_single(self, uav):
+    def _send_shutdown_signal_single(self, cmd_manager, uav):
         """Asks the driver to send a shutdown signal to a single UAV managed
         by this driver.
 
         Parameters:
             uav (UAV): the UAV to address with this request.
+            cmd_manager (CommandExecutionManager): command execution manager
+                that can be used to create a new message to send to the UAV
 
         Returns:
             bool: whether the signal was *sent* successfully
@@ -430,12 +437,14 @@ class UAVDriver(with_metaclass(ABCMeta, object)):
         """
         raise NotImplementedError
 
-    def _send_takeoff_signal_single(self, uav):
+    def _send_takeoff_signal_single(self, cmd_manager, uav):
         """Asks the driver to send a takeoff signal to a single UAV managed
         by this driver.
 
         Parameters:
             uav (UAV): the UAV to address with this request.
+            cmd_manager (CommandExecutionManager): command execution manager
+                that can be used to create a new message to send to the UAV
 
         Returns:
             bool: whether the signal was *sent* successfully

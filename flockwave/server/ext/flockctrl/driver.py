@@ -365,6 +365,22 @@ class FlockCtrlDriver(UAVDriver):
         self.send_packet(packet, address)
         return packet
 
+    def _send_landing_signal_single(self, cmd_manager, uav):
+        self._send_command_to_uav(cmd_manager, "land", uav)
+        return True
+
+    def _send_return_to_home_signal_single(self, cmd_manager, uav):
+        self._send_command_to_uav(cmd_manager, "rth", uav)
+        return True
+
+    def _send_shutdown_signal_single(self, cmd_manager, uav):
+        self._send_command_to_uav(cmd_manager, "halt", uav)
+        return True
+
+    def _send_takeoff_signal_single(self, cmd_manager, uav):
+        self._send_command_to_uav(cmd_manager, "motoron", uav)
+        return True
+
 
 class FlockCtrlUAV(UAVBase):
     """Subclass for UAVs created by the driver for FlockCtrl-based

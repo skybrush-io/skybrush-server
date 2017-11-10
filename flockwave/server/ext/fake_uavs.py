@@ -73,11 +73,11 @@ class FakeUAVDriver(UAVDriver):
             spawn_after(delay, cmd_manager.finish, receipt, response)
         return result
 
-    def _send_landing_signal_single(self, uav):
+    def _send_landing_signal_single(self, cmd_manager, uav):
         uav.land()
         return True
 
-    def _send_takeoff_signal_single(self, uav):
+    def _send_takeoff_signal_single(self, cmd_manager, uav):
         uav.takeoff()
         return True
 

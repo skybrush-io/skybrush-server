@@ -130,7 +130,6 @@ class UDPSocketConnection(SocketConnectionBase):
         super(UDPSocketConnection, self).__init__()
         self._port = port or 0
         self._ip_address = ip_address or ""
-        self._sending_socket = None
 
     def _create_socket(self):
         """Creates a new non-blocking reusable UDP socket that is not bound
@@ -139,9 +138,9 @@ class UDPSocketConnection(SocketConnectionBase):
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         if hasattr(socket, "SO_REUSEPORT"):
-            # Needed on Mac OS X to work around an issue with an earlier instance
-            # of the flockctrl process somehow leaving a socket bound to the UDP
-            # broadcast address even when the process terminates
+            # Needed on Mac OS X to work around an issue with an earlier
+            # instance of the flockctrl process somehow leaving a socket
+            # bound to the UDP broadcast address even when the process terminates
             sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
         sock.setblocking(0)
         return sock
@@ -153,7 +152,6 @@ class UDPSocketConnection(SocketConnectionBase):
 
         self._socket.close()
         self._set_socket(None)
-        self._set_sending_socket(None)
 
         self._set_state(ConnectionState.DISCONNECTED)
 
@@ -220,7 +218,7 @@ class UDPSocketConnection(SocketConnectionBase):
         """
         if self._socket is not None:
             address = self._extract_address(address)
-            socket = self._get_sending_socket_for_address(address)
+            socket = self._socket
             try:
                 if address is None:
                     return socket.send(data, flags)
@@ -241,50 +239,6 @@ class UDPSocketConnection(SocketConnectionBase):
         if isinstance(address, SocketConnectionBase):
             address = address.address
         return address
-
-    def _get_or_create_dedicated_sending_socket(self):
-        if self._sending_socket is None:
-            self._sending_socket = self._create_socket()
-        return self._sending_socket
-
-    def _get_sending_socket_for_address(self, address):
-        """Returns a socket instance that is suitable for sending an UDP
-        datagram to the given address.
-
-        Parameters:
-            address ((str, int)): the IP address and port to send the
-                datagram to
-
-        Returns:
-            socket.socket: the socket to send the datagram to. It may be
-                different from the listening socket if the destination has a
-                different IP address (which may happen if the connection is
-                listening on a broadcast address).
-        """
-        if address is None:
-            # Sending to whatever address the socket is currently bound to
-            return self._socket
-        elif address[0] == self._ip_address:
-            # Sending to the same IP address so the listener socket should
-            # be okay for sending as well
-            return self._socket
-        else:
-            # We need to create a sending socket; this will be created if
-            # needed
-            return self._get_or_create_dedicated_sending_socket()
-
-    def _set_sending_socket(self, socket):
-        """Assigns the given socket to the connection so it will be used for
-        sending datagrams when the target is different from the listening
-        address of the connection.
-        """
-        if socket == self._sending_socket:
-            return
-
-        if self._sending_socket is not None:
-            self._sending_socket.close()
-
-        self._sending_socket = socket
 
 
 class SubnetBindingConnection(ConnectionWrapperBase):

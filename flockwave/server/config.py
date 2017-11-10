@@ -44,7 +44,10 @@ EXTENSIONS = {
         "connections": {
             "xbee": "serial:/tmp/xbee",
             # "xbee": "serial:/dev/ttyUSB.xbee?baud=115200"
-            "wireless": "udp-broadcast:10.0.0.0/8?port=4243"
+            "wireless": {
+                "broadcast": "udp-broadcast:192.168.1.0/24?port=4243",
+                "unicast": "udp-subnet:192.168.1.0/24"
+            }
         }
     },
     "radiation": {

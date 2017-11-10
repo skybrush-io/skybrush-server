@@ -30,7 +30,8 @@ class FlockCtrlDronesExtension(UAVExtensionBase):
         super(FlockCtrlDronesExtension, self).__init__()
         self._driver = None
 
-        self._wireless_lowlevel_link = None
+        self._wireless_broadcast_link = None
+        self._wireless_unicast_link = None
         self._wireless_port = None
         self._wireless_communicator = WirelessCommunicationManager(self)
         self._wireless_communicator.on_packet.connect(
@@ -52,8 +53,10 @@ class FlockCtrlDronesExtension(UAVExtensionBase):
         connection_config = configuration.get("connections", {})
         self.xbee_lowlevel_link = self._configure_lowlevel_connection(
             connection_config.get("xbee"))
-        self.wireless_lowlevel_link = self._configure_lowlevel_connection(
-            connection_config.get("wireless"))
+        self.wireless_broadcast_link = self._configure_lowlevel_connection(
+            connection_config.get("wireless", {}).get("broadcast"))
+        self.wireless_unicast_link = self._configure_lowlevel_connection(
+            connection_config.get("wireless", {}).get("unicast"))
         super(FlockCtrlDronesExtension, self).configure(configuration)
 
     def on_app_changed(self, old_app, new_app):
@@ -72,30 +75,46 @@ class FlockCtrlDronesExtension(UAVExtensionBase):
         self.xbee_lowlevel_link = None
 
     @property
-    def wireless_lowlevel_link(self):
-        return self._wireless_lowlevel_link
+    def wireless_broadcast_link(self):
+        return self._wireless_broadcast_link
 
-    @wireless_lowlevel_link.setter
-    def wireless_lowlevel_link(self, value):
-        if self._wireless_lowlevel_link is not None:
-            self._wireless_port = None
-            self._wireless_communicator.connection = None
-            self._wireless_lowlevel_link.close()
+    @wireless_broadcast_link.setter
+    def wireless_broadcast_link(self, value):
+        if self._wireless_broadcast_link is not None:
+            self._wireless_communicator.broadcast_connection = None
+            self._wireless_broadcast_link.close()
             self.app.connection_registry.remove("Wireless")
 
-        self._wireless_lowlevel_link = value
+        self._wireless_broadcast_link = value
 
-        if self._wireless_lowlevel_link is not None:
+        if self._wireless_broadcast_link is not None:
             self.app.connection_registry.add(
-                self._wireless_lowlevel_link, "Wireless",
+                self._wireless_broadcast_link, "Wireless",
                 description="Upstream wireless connection",
                 purpose=ConnectionPurpose.uavRadioLink
             )
 
-            self._wireless_port = self._wireless_lowlevel_link.port
-            self._wireless_lowlevel_link.open()
-            self._wireless_communicator.connection = \
-                self._wireless_lowlevel_link
+            self._wireless_port = self._wireless_broadcast_link.port
+            self._wireless_broadcast_link.open()
+            self._wireless_communicator.broadcast_connection = \
+                self._wireless_broadcast_link
+
+    @property
+    def wireless_unicast_link(self):
+        return self._wireless_unicast_link
+
+    @wireless_unicast_link.setter
+    def wireless_unicast_link(self, value):
+        if self._wireless_unicast_link is not None:
+            self._wireless_communicator.unicast_connection = None
+            self._wireless_unicast_link.close()
+
+        self._wireless_unicast_link = value
+
+        if self._wireless_unicast_link is not None:
+            self._wireless_unicast_link.open()
+            self._wireless_communicator.unicast_connection = \
+                self._wireless_unicast_link
 
     @property
     def xbee_lowlevel_link(self):
@@ -177,11 +196,6 @@ class FlockCtrlDronesExtension(UAVExtensionBase):
         medium, address = destination
         if medium == "wireless":
             comm = self._wireless_communicator
-
-            # For the wireless medium, the port where we should send our
-            # packets to is different from the port where we expect the
-            # packets so let's remap the port
-            address = (address[0], self._wireless_port)
         elif medium == "xbee":
             comm = self._xbee_communicator
         else:

@@ -210,6 +210,10 @@ class XBeeCommunicationManager(CommunicationManagerBase):
             self._outbound_thread = spawn(thread.run)
 
 
+# TODO: we could probably re-use the ConnectionThreadManager object from
+# wireless.py here but I don't want to change it without testing it, and
+# I don't have an XBee right now
+
 class XBeeInboundThread(object):
     """Green thread that reads incoming packets from an XBee serial
     connection and dispatches signals for every one of them.

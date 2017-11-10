@@ -140,7 +140,8 @@ class UDPSocketConnection(SocketConnectionBase):
         if hasattr(socket, "SO_REUSEPORT"):
             # Needed on Mac OS X to work around an issue with an earlier
             # instance of the flockctrl process somehow leaving a socket
-            # bound to the UDP broadcast address even when the process terminates
+            # bound to the UDP broadcast address even when the process
+            # terminates
             sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
         sock.setblocking(0)
         return sock

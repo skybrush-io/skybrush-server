@@ -236,6 +236,12 @@ class FlockCtrlDriver(UAVDriver):
         algorithm = packet.algorithm_name
         medium, address = packet.source
 
+        if medium == "wireless":
+            # We always consider port 4243 as the 'real' address of the UAV
+            # in the wireless medium. The source port that the packet comes
+            # from is usually an ephemeral port on the UAV.
+            address = address[0], 4243
+
         self._check_or_record_uav_address(uav, medium, address)
 
         uav.update_status(

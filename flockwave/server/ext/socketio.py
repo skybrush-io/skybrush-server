@@ -12,6 +12,7 @@ from functools import partial
 from ..authentication import jwt_optional
 from ..encoders import JSONEncoder
 from ..model import CommunicationChannel
+from ..networking import format_socket_address
 
 
 app = None
@@ -85,6 +86,18 @@ def get_client_id():
 ############################################################################
 
 
+def get_ssdp_location(address):
+    """Returns the SSDP location descriptor of the Socket.IO channel."""
+    if app is None:
+        return None
+    else:
+        app_address = getattr(app, "address", None)
+        return format_socket_address(
+            app_address, format="sio://{host}:{port}",
+            remote_address=address
+        )
+
+
 @jwt_optional()
 def handle_connection():
     """Handler called when a client connects to the Flockwave server socket."""
@@ -126,7 +139,8 @@ def load(app, configuration, logger):
     """Loads the extension."""
     app.channel_type_registry.add(
         "sio",
-        factory=create_new_channel, broadcaster=broadcast_message
+        factory=create_new_channel, broadcaster=broadcast_message,
+        ssdp_location=get_ssdp_location
     )
     socketio = SocketIO(app, json=JSONEncoder())
 

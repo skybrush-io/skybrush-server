@@ -26,7 +26,7 @@ class CommunicationChannel(with_metaclass(ABCMeta, object)):
         """Constructor."""
         pass
 
-    def bind_to(self):
+    def bind_to(self, client):
         """Notifies the channel that it is communicating with the given
         client. Useful when the actual communication medium represented
         by this object is shared between multiple clients and the sending

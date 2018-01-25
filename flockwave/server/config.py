@@ -60,11 +60,11 @@ EXTENSIONS = {
         ],
         "background_intensity": 10
     },
-    "socketio": {
-    },
+    "socketio": {},
     "smpte_timecode": {
         "connection": "midi:IAC Driver Bus 1"
     },
+    "ssdp": {},
     "system_clock": {},
     "tcp": {},
     "udp": {}
@@ -73,7 +73,7 @@ EXTENSIONS = {
 if IN_HEROKU:
     if "_fake_uavs" in EXTENSIONS:
         EXTENSIONS["fake_uavs"] = EXTENSIONS.pop("_fake_uavs")
-    for ext in "flockctrl tcp udp".split():
+    for ext in "flockctrl ssdp tcp udp".split():
         del EXTENSIONS[ext]
 
 # smpte_timecode seems to have some problems on a Mac - it consumes 15% CPU

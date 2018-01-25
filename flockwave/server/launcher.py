@@ -74,6 +74,9 @@ def start(debug, host, port, ssl_key, ssl_cert):
         port, "secure " if ssl_args else ""
     ))
 
+    # Forward the hostname and port where we are listening to the app
+    app.address = (host, port)
+    
     # Now start the server
     if app.runner is None:
         app.runner = partial(_default_runner, app=app)

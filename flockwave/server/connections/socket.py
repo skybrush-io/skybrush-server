@@ -15,6 +15,9 @@ from select import select
 from .base import FDConnectionBase, ConnectionState, ConnectionWrapperBase
 from .factory import create_connection
 
+from ..networking import create_socket
+
+
 __all__ = ("UDPSocketConnection", "SubnetBindingConnection",
            "SubnetBindingUDPConnection")
 
@@ -135,16 +138,7 @@ class UDPSocketConnection(SocketConnectionBase):
         """Creates a new non-blocking reusable UDP socket that is not bound
         anywhere yet.
         """
-        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        if hasattr(socket, "SO_REUSEPORT"):
-            # Needed on Mac OS X to work around an issue with an earlier
-            # instance of the flockctrl process somehow leaving a socket
-            # bound to the UDP broadcast address even when the process
-            # terminates
-            sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
-        sock.setblocking(0)
-        return sock
+        return create_socket(socket.SOCK_DGRAM, nonblocking=True)
 
     def close(self):
         """Closes the WLAN socket connection."""
@@ -317,8 +311,8 @@ class SubnetBindingConnection(ConnectionWrapperBase):
             # Find only those addresses that are in our target subnet
             candidates.extend(
                 spec[addr_key] for spec in specs
-                if IPv4Address(str(spec.get("addr"))) in self._network
-                and addr_key in spec
+                if IPv4Address(str(spec.get("addr"))) in self._network and
+                addr_key in spec
             )
 
             # If we have more than one candidate, we can safely exit here

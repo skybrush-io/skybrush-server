@@ -32,6 +32,10 @@ class FlockwaveServer(Flask):
     """Flask application object for the Flockwave server.
 
     Attributes:
+        address (Optional[Tuple[str,int]]): hostname and port where the
+            application is listening for incoming HTTP connections. Not
+            known before application startup; in such cases, the attribute
+            contains ``None``.
         channel_type_registry (ChannelTypeRegistry): central registry for
             types of communication channels that the server can handle and
             manage. Types of communication channels include Socket.IO
@@ -66,6 +70,7 @@ class FlockwaveServer(Flask):
     num_clients_changed = Signal()
 
     def __init__(self, *args, **kwds):
+        self.address = None
         super(FlockwaveServer, self).__init__(
             PACKAGE_NAME, *args, **kwds
         )

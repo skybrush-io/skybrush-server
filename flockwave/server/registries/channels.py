@@ -22,10 +22,18 @@ __all__ = ("ChannelTypeRegistry", )
 log = base_log.getChild("registries.channels")
 
 
-ChannelTypeDescriptor = namedtuple(
+_ChannelTypeDescriptor = namedtuple(
     "ChannelTypeDescriptor",
-    "id factory broadcaster"
+    "id factory broadcaster ssdp_location"
 )
+
+
+class ChannelTypeDescriptor(_ChannelTypeDescriptor):
+    def get_ssdp_location(self, *args, **kwds):
+        locator = self.ssdp_location
+        if callable(locator):
+            locator = locator(*args, **kwds)
+        return locator
 
 
 class ChannelTypeRegistry(RegistryBase):
@@ -53,7 +61,8 @@ class ChannelTypeRegistry(RegistryBase):
     count_changed = Signal()
     removed = Signal()
 
-    def add(self, channel_id, factory, broadcaster=None):
+    def add(self, channel_id, factory, broadcaster=None,
+            ssdp_location=None):
         """Adds a new communication channel class to the registry.
 
         This function throws an error if the ID is already taken.
@@ -75,12 +84,24 @@ class ChannelTypeRegistry(RegistryBase):
                 a message to all the clients who are connected with this
                 channel type, and the application will fall back to sending
                 individual messages.
+            ssdp_location (Optional[callab]e]): a callable that can be called
+                with a single host-port pair or ``None`` and that returns a
+                URI describing the location where the communication channel
+                can be accessed from the outside. For instance, a TCP channel
+                may return ``tcp://192.168.1.17:1234`` there if the server is
+                listening on 192.168.1.17, port 1234. The callable may be
+                ``None`` or may return ``None`` if such a location cannot
+                sensibly be derived. The argument of the callable describes the
+                remote address that is interested in the location of the
+                channel; the implementation should strive to return an IP
+                address that is on the same subnet as the remote address.
         """
         if channel_id in self:
             return
 
         descriptor = ChannelTypeDescriptor(
-            id=channel_id, factory=factory, broadcaster=broadcaster
+            id=channel_id, factory=factory, broadcaster=broadcaster,
+            ssdp_location=ssdp_location
         )
         self._entries[channel_id] = descriptor
 

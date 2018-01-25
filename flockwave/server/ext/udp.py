@@ -14,6 +14,7 @@ from greenlet import GreenletExit
 
 from ..encoders import JSONEncoder
 from ..model import CommunicationChannel
+from ..networking import create_socket, format_socket_address
 
 
 app = None
@@ -55,6 +56,17 @@ class UDPChannel(CommunicationChannel):
         sock.sendto(encoder.dumps(message), self.address)
 
 ############################################################################
+
+
+def get_ssdp_location(address):
+    """Returns the SSDP location descriptor of the UDP channel."""
+    global sock
+    if sock:
+        return format_socket_address(
+            sock, format="udp://{host}:{port}", remote_address=address
+        )
+    else:
+        return None
 
 
 def handle_message(message, sender):
@@ -120,20 +132,14 @@ def receive_loop(sock, handler, pool_size=1000):
 
 def load(app, configuration, logger):
     """Loads the extension."""
-    app.channel_type_registry.add("udp", factory=UDPChannel)
+    address = configuration.get("host", ""), configuration.get("port", 5001)
+    sock = create_socket(socket.SOCK_DGRAM)
+    sock.bind(address)
 
-    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-
-    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    try:
-        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
-    except AttributeError:
-        pass
-
-    sock.bind((
-        configuration.get("host", ""),
-        configuration.get("port", 5001)
-    ))
+    app.channel_type_registry.add(
+        "udp", factory=UDPChannel,
+        ssdp_location=get_ssdp_location
+    )
 
     receiver_thread = spawn(receive_loop, sock, handler=handle_message,
                             pool_size=configuration.get("pool_size", 1000))

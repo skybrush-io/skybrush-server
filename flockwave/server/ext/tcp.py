@@ -12,12 +12,13 @@ from greenlet import GreenletExit
 
 from ..encoders import JSONEncoder
 from ..model import CommunicationChannel
-
+from ..networking import format_socket_address
 
 app = None
 encoder = JSONEncoder()
 log = None
 receiver_thread = None
+sock = None
 
 
 class TCPChannel(CommunicationChannel):
@@ -55,6 +56,17 @@ class TCPChannel(CommunicationChannel):
         self.socket = None
 
 ############################################################################
+
+
+def get_ssdp_location(address):
+    """Returns the SSDP location descriptor of the UDP channel."""
+    global sock
+    if sock:
+        return format_socket_address(
+            sock, format="tcp://{host}:{port}", remote_address=address
+        )
+    else:
+        return None
 
 
 def handle_connection(sock, address):
@@ -124,18 +136,19 @@ def handle_message_safely(message, client):
 
 def load(app, configuration, logger):
     """Loads the extension."""
-    app.channel_type_registry.add("tcp", factory=TCPChannel)
+    address = configuration.get("host", ""), configuration.get("port", 5001)
+    sock = listen(address)
 
-    sock = listen((
-        configuration.get("host", ""),
-        configuration.get("port", 5001)
-    ))
+    app.channel_type_registry.add(
+        "tcp", factory=TCPChannel,
+        ssdp_location=get_ssdp_location
+    )
 
     receiver_thread = spawn(serve, sock, handle=handle_connection,
                             concurrency=configuration.get("pool_size", 1000))
 
     globals().update(
-        app=app, log=logger,
+        app=app, log=logger, sock=sock,
         receiver_thread=receiver_thread
     )
 

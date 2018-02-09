@@ -52,7 +52,7 @@ class TCPChannel(CommunicationChannel):
         self.socket.send(encoder.dumps(message))
         self.socket.send(b"\n")
 
-    def _erase_socket(self):
+    def _erase_socket(self, ref):
         self.socket = None
 
 ############################################################################

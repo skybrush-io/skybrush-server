@@ -22,14 +22,18 @@ EXTENSIONS = {
         "route": "/debug"
     },
     "_fake_uavs": {
-        "count": 3,
+        "count": 10,
         "delay": 0.04 if IN_HEROKU else 1.9,
-        "id_format": "FAKE-{0:02}",
+        "id_format": "COLLMOT-{0:02}",
         "center": {
-            # 360world.eu teto
-            "lat": 47.483717,
-            "lon": 19.015107,
+            # A38
+            "lat": 47.476497,
+            "lon": 19.062940,
             "agl": 20
+            # 360world.eu teto
+            # "lat": 47.483717,
+            # "lon": 19.015107,
+            # "agl": 20
         } if IN_HEROKU else {
             # ELTE kert
             "lat": 47.473360,

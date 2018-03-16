@@ -11,6 +11,7 @@ url = "http://pypi.collmot.com"
 verify_ssl = false
 name = "collmot"
 
+
 [packages]
 
 bidict = ">=0.11.0"
@@ -21,12 +22,12 @@ colorama = ">=0.3.5"
 colorlog = ">=2.6.0"
 "enum34" = ">=1.1.2"
 eventlet = ">=0.18.4"
-flask = ">=0.10.1"
-"flask-httpauth" = ">=2.7.2"
-"flask-jwt" = ">=0.3.2"
-"flask-socketio" = ">=2.6,<2.7"
-"flockwave-gps" = {version=">=0.7.2", index="collmot"}
-"flockwave-spec" = {version=">=0.14.0", index="collmot"}
+Flask = ">=0.10.1"
+Flask-HTTPAuth = ">=2.7.2"
+Flask-JWT = ">=0.3.2"
+Flask-SocketIO = ">=2.6,<2.7"
+flockwave-gps = {version=">=0.7.2", index="collmot"}
+flockwave-spec = {version=">=0.14.0", index="collmot"}
 future = ">=0.16.0"
 hexdump = ">=3.3"
 ipaddress = ">=1.0.17"
@@ -36,11 +37,12 @@ mido = ">=1.1.14"
 netifaces = ">=0.10.5"
 numpy = ">=1.11.1"
 pyserial = ">=3.0"
-"python-baseconv" = ">=1.1.3"
+python-baseconv = ">=1.1.3"
 python-engineio = {git = "git://github.com/collmot/python-engineio", editable = true, ref = "fix-upgrading-starvation"}
 pytz = ">=2015.7"
 six = ">=1.10.0"
-xbee = ">=2.2.3"
+XBee = ">=2.2.3"
+
 
 [dev-packages]
 

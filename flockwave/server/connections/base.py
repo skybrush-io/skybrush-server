@@ -6,8 +6,10 @@ import os
 from abc import ABCMeta, abstractmethod, abstractproperty
 from blinker import Signal
 from enum import Enum
+from eventlet.event import Event
 from eventlet.green.threading import RLock
 from future.utils import with_metaclass
+from select import select
 
 __all__ = ("Connection", "ConnectionState", "ConnectionBase",
            "FDConnectionBase", "ConnectionWrapperBase")
@@ -63,6 +65,13 @@ class Connection(with_metaclass(ABCMeta, object)):
         """
         raise NotImplementedError
 
+    def wait_until_connected(self):
+        """Blocks the current green thread until the connection becomes
+        connected. Returns immediately if the connection is already
+        connected.
+        """
+        raise NotImplementedError
+
 
 class ConnectionBase(Connection):
     """Base class for stateful connection objects.
@@ -97,6 +106,7 @@ class ConnectionBase(Connection):
         self._state = ConnectionState.DISCONNECTED
         self._state_lock = RLock()
         self._is_connected = False
+        self._is_connected_event = None
         self._swallow_exceptions = False
 
     @property
@@ -120,10 +130,15 @@ class ConnectionBase(Connection):
 
             self.state_changed.send(self, old_state=old_state,
                                     new_state=new_state)
+
             if new_state == ConnectionState.CONNECTED and \
                     not self._is_connected:
                 self._is_connected = True
+                if self._is_connected_event:
+                    self._is_connected_event.send(True)
+                    self._is_connected_event = None
                 self.connected.send(self)
+
             if new_state == ConnectionState.DISCONNECTED and \
                     self._is_connected:
                 self._is_connected = False
@@ -140,6 +155,19 @@ class ConnectionBase(Connection):
     @swallow_exceptions.setter
     def swallow_exceptions(self, value):
         self._swallow_exceptions = bool(value)
+
+    def wait_until_connected(self):
+        """Blocks the current green thread until the connection becomes
+        connected. Returns immediately if the connection is already
+        connected.
+        """
+        if self.is_connected:
+            return
+
+        if self._is_connected_event is None:
+            self._is_connected_event = Event()
+
+        self._is_connected_event.wait()
 
     def _handle_error(self, exception=None):
         """Handles exceptions that have happened during reads and writes.
@@ -292,6 +320,42 @@ class FDConnectionBase(ConnectionBase):
 
         self._file_object = value
         return True
+
+    def wait_until_readable(self, timeout=None):
+        """Blocks the current thread until the file descriptor becomes
+        readable.
+
+        Parameters:
+            timeout (Optional[float]): maximum number of seconds to wait for
+                the file descriptor
+        """
+        while True:
+            # TODO(ntamas): this is not correct; timeout should be adjusted
+            # if the select() call returns with an empty list
+            if timeout is not None:
+                rlist, _, _ = select([self], [], [], timeout)
+            else:
+                rlist, _, _ = select([self], [], [])
+            if rlist:
+                break
+
+    def wait_until_writable(self, timeout=None):
+        """Blocks the current thread until the file descriptor becomes
+        writable.
+
+        Parameters:
+            timeout (Optional[float]): maximum number of seconds to wait for
+                the file descriptor
+        """
+        while True:
+            # TODO(ntamas): this is not correct; timeout should be adjusted
+            # if the select() call returns with an empty list
+            if timeout is not None:
+                _, wlist, _ = select([], [self], [], timeout)
+            else:
+                _, wlist, _ = select([], [self], [])
+            if wlist:
+                break
 
 
 class ConnectionWrapperBase(ConnectionBase):

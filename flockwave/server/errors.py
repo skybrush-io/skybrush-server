@@ -3,7 +3,12 @@
 __all__ = ("CommandInvocationError", "NotSupportedError", )
 
 
-class CommandInvocationError(RuntimeError):
+class FlockwaveError(RuntimeError):
+    """Base class for all Flockwave-related errors."""
+    pass
+
+
+class CommandInvocationError(FlockwaveError):
     """Exception class that signals that the user tried to call some command
     of a remote UAV but failed to parameterize the command properly.
     """
@@ -23,7 +28,7 @@ class CommandInvocationError(RuntimeError):
         self.cause = cause
 
 
-class NotSupportedError(RuntimeError):
+class NotSupportedError(FlockwaveError):
     """Exception thrown by operations that are not supported and there are
     no plans to support them.
 
@@ -39,3 +44,19 @@ class NotSupportedError(RuntimeError):
         """
         message = message or "Operation not supported"
         super(NotSupportedError, self).__init__(message)
+
+
+class UnknownConnectionTypeError(FlockwaveError):
+    """Exception thrown when trying to construct a connection with an
+    unknown type.
+    """
+
+    def __init__(self, connection_type):
+        """Constructor.
+
+        Parameters:
+            connection_type (str): the connection type that the user tried
+                to construct.
+        """
+        message = "Unknown connection type: {0!r}".format(connection_type)
+        super(UnknownConnectionTypeError, self).__init__(message)

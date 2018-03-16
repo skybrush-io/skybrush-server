@@ -5,9 +5,12 @@ from a simple string or dict representation.
 from future.standard_library import install_aliases
 install_aliases()
 
-from functools import partial
-from future.utils import iteritems, string_types
-from urllib.parse import parse_qs, urlparse
+from functools import partial                             # noqa: E402
+from future.utils import iteritems, string_types          # noqa: E402
+from urllib.parse import parse_qs, urlparse               # noqa: E402
+
+from flockwave.server.errors import UnknownConnectionTypeError   # noqa: E402
+
 
 __all__ = ("ConnectionFactory", "create_connection")
 
@@ -83,11 +86,19 @@ class ConnectionFactory(object):
 
         Returns:
             Connection: the connection that was created by the factory
+
+        Raises:
+            UnknownConnectionTypeError: if the type of the connection is not
+                known to the server
         """
         if isinstance(specification, string_types):
             specification = self._url_specification_to_dict(specification)
 
-        func = self._registry[specification["type"]]
+        connection_type = specification["type"]
+        func = self._registry.get(connection_type)
+        if func is None:
+            raise UnknownConnectionTypeError(connection_type)
+
         parameters = {}
         for name in ("host", "port", "path"):
             if name in specification:

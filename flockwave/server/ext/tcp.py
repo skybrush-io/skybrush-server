@@ -59,7 +59,7 @@ class TCPChannel(CommunicationChannel):
 
 
 def get_ssdp_location(address):
-    """Returns the SSDP location descriptor of the UDP channel."""
+    """Returns the SSDP location descriptor of the TCP channel."""
     global sock
     if sock:
         return format_socket_address(

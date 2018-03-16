@@ -38,6 +38,14 @@ class SystemClock(ClockBase):
         raise NotSupportedError("this property is read-only")
 
 
+clock = SystemClock()
+
+
 def load(app, configuration, logger):
     """Loads the extension."""
-    app.clock_registry.add(SystemClock())
+    app.clock_registry.add(clock)
+
+
+def unload(app, configuration):
+    """Unloads the extension."""
+    app.clock_registry.remove(clock)

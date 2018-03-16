@@ -7,10 +7,10 @@ import socket
 from blinker import Signal
 from builtins import str
 from contextlib import closing
-from errno import EAGAIN
+from errno import EAGAIN, EALREADY, EINPROGRESS
 from functools import partial
 from ipaddress import IPv4Address, IPv4Network
-from select import select
+from os import strerror
 
 from .base import FDConnectionBase, ConnectionState, ConnectionWrapperBase
 from .factory import create_connection
@@ -99,13 +99,6 @@ class SocketConnectionBase(FDConnectionBase):
         """
         self._set_event_loop(None)
 
-    def wait_until_readable(self):
-        """Blocks the current thread until the socket becomes readable."""
-        while True:
-            rlist, _, _ = select([self], [], [])
-            if rlist:
-                break
-
     def _on_socket_readable(self):
         """Handler called by the urwid event loop if the socket became
         readable.
@@ -114,36 +107,31 @@ class SocketConnectionBase(FDConnectionBase):
         pass
 
 
-@create_connection.register("udp")
-class UDPSocketConnection(SocketConnectionBase):
-    """Connection object that uses an UDP socket."""
+class InternetSocketConnection(SocketConnectionBase):
+    """Base class for the standard Internet socket connections
+    (TCP and UDP).
+    """
 
-    def __init__(self, ip_address="", port=0):
+    def __init__(self, host="", port=0):
         """Constructor.
 
         Parameters:
-            ip_address (Optional[str]): the IP address that the socket will
-                bind to. The default value means that the socket will bind
-                to all IP addresses of the local machine. May also be a
-                broadcast address.
-            port (int): the port number that the socket will bind to. Zero
-                means that the socket will choose a random ephemeral port
-                number on its own.
+            host (Optional[str]): the IP address or hostname that the socket
+                will bind (or connect) to. The default value means that the
+                socket will bind to all IP addresses of the local machine.
+            port (int): the port number that the socket will bind (or
+                connect) to. Zero means that the socket will choose a random
+                ephemeral port number on its own.
         """
-        super(UDPSocketConnection, self).__init__()
-        self._port = port or 0
-        self._ip_address = ip_address or ""
-
-    def _create_socket(self):
-        """Creates a new non-blocking reusable UDP socket that is not bound
-        anywhere yet.
-        """
-        return create_socket(socket.SOCK_DGRAM, nonblocking=True)
+        super(InternetSocketConnection, self).__init__()
+        self._address = (host or "", port or 0)
 
     def close(self):
-        """Closes the WLAN socket connection."""
+        """Closes the socket connection."""
         if self.state == ConnectionState.DISCONNECTED:
             return
+
+        self._set_state(ConnectionState.DISCONNECTING)
 
         self._socket.close()
         self._set_socket(None)
@@ -151,12 +139,21 @@ class UDPSocketConnection(SocketConnectionBase):
         self._set_state(ConnectionState.DISCONNECTED)
 
     def open(self):
-        """Opens the WLAN socket connection."""
+        """Opens the socket connection."""
         if self.state == ConnectionState.CONNECTED:
             return
 
         self._set_socket(self._create_socket())
-        self._socket.bind((self._ip_address, self._port))
+        self._set_state(ConnectionState.CONNECTING)
+
+        try:
+            self._open_internal(self._on_connected)
+        except Exception as ex:
+            self._set_state(ConnectionState.DISCONNECTED)
+            self._set_socket(None)
+            raise ex
+
+    def _on_connected(self):
         self._set_state(ConnectionState.CONNECTED)
 
     def read(self, size=4096, flags=0, blocking=False):
@@ -227,13 +224,68 @@ class UDPSocketConnection(SocketConnectionBase):
 
     def _extract_address(self, address):
         """Extracts the *real* IP address and port from the given object.
-        The object may be a SocketConnectionBase_, a tuple consisting of the
-        IP address and port, or ``None``. Returns a tuple consisting of the
-        IP address and port or ``None``.
+        The object may be an InternetSocketConnection_, a tuple consisting
+        of the IP address and port, or ``None``. Returns a tuple consisting
+        of the IP address and port or ``None``.
         """
-        if isinstance(address, SocketConnectionBase):
+        if isinstance(address, InternetSocketConnection):
             address = address.address
         return address
+
+    def _open_internal(self, notify_connected):
+        """Implementation of ``self.open()`` without the common administrative
+        stuff; to be overridden in subclasses.
+
+        Parameters:
+            notify_connected (callable): function that this function must
+                call when the connection was opened
+        """
+        raise NotImplementedError
+
+
+@create_connection.register("tcp")
+class TCPSocketConnection(InternetSocketConnection):
+    """Connection object that uses a TCP socket."""
+
+    def _create_socket(self):
+        """Creates a new non-blocking reusable TCP socket that is not bound
+        anywhere yet.
+        """
+        return create_socket(socket.SOCK_STREAM, nonblocking=True)
+
+    def _open_internal(self, notify_connected):
+        """Implementation of ``self.open()`` without the common administrative
+        stuff; to be overridden in subclasses.
+        """
+        errno = self._socket.connect_ex(self._address)
+        if errno == 0:
+            # Connection succeeded immediately
+            notify_connected()
+        elif errno == EALREADY or errno == EINPROGRESS:
+            # Connection is in progress, let's wait until the socket is
+            # connected
+            self.wait_until_writable(timeout=30)
+            notify_connected()
+        else:
+            raise IOError(strerror(errno))
+
+
+@create_connection.register("udp")
+class UDPSocketConnection(InternetSocketConnection):
+    """Connection object that uses a UDP socket."""
+
+    def _create_socket(self):
+        """Creates a new non-blocking reusable UDP socket that is not bound
+        anywhere yet.
+        """
+        return create_socket(socket.SOCK_DGRAM, nonblocking=True)
+
+    def _open_internal(self, notify_connected):
+        """Implementation of ``self.open()`` without the common administrative
+        stuff; to be overridden in subclasses.
+        """
+        self._socket.bind(self._address)
+        notify_connected()
 
 
 class SubnetBindingConnection(ConnectionWrapperBase):

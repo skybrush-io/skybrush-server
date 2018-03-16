@@ -336,7 +336,8 @@ class SMPTETimecodeExtension(ExtensionBase):
             try:
                 self._midi.open()
             except ImportError as ex:
-                self.log.warn("No MIDI support; {0.name!r} module is missing".format(ex))
+                self.log.warn("No MIDI support; {0.name!r} module is "
+                              "missing".format(ex))
                 self._midi = None
                 return
 

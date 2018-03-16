@@ -3,7 +3,6 @@ link in the extension.
 """
 
 from collections import namedtuple
-from eventlet.event import Event
 from eventlet import Queue, spawn
 from functools import partial
 
@@ -209,7 +208,6 @@ class WirelessInboundThread(object):
         self.manager = manager
         self._callback = callback
         self._connection = connection
-        self._connection_is_open_event = None
 
     def _error_callback(self, exception):
         """Callback function called when an exception happens while waiting
@@ -223,16 +221,8 @@ class WirelessInboundThread(object):
         """
         with self.manager.app_context():
             while True:
-                self._wait_until_connection_is_open()
+                self._connection.wait_until_connected()
                 self._read_next_packet()
-
-    def _on_connection_connected(self, sender):
-        """Signal handler that is called when the connection object
-        associated to this green thread becomes open.
-        """
-        if self._connection_is_open_event:
-            self._connection_is_open_event.send(True)
-            self._connection_is_open_event = None
 
     def _read_next_packet(self):
         """Reads the next packet from the associated UDP socket connection
@@ -244,20 +234,6 @@ class WirelessInboundThread(object):
             self._callback(address=address, packet=data)
         except Exception as ex:
             self._error_callback(ex)
-
-    def _wait_until_connection_is_open(self):
-        """Checks whether the connection associated to the thread is open.
-        If it is, it returns immediately. Otherwise, it creates an event
-        object and blocks on it until the connection becomes open.
-        """
-        if self._connection.is_connected:
-            return
-
-        signal = self._connection.connected
-        self._connection_is_open_event = Event()
-        with signal.connected_to(self._on_connection_connected,
-                                 sender=self._connection):
-            self._connection_is_open_event.wait()
 
 
 class WirelessOutboundThread(object):

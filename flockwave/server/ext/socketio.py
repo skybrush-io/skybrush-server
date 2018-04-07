@@ -142,7 +142,7 @@ def load(app, configuration, logger):
         factory=create_new_channel, broadcaster=broadcast_message,
         ssdp_location=get_ssdp_location
     )
-    socketio = SocketIO(app, json=JSONEncoder())
+    socketio = SocketIO(app, json=JSONEncoder(encoding=None))
 
     socketio.on("connect")(handle_connection)
     socketio.on("disconnect")(handle_disconnection)

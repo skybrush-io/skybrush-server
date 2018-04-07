@@ -21,8 +21,9 @@ class JSONEncoder(Encoder):
     message delimiters.
     """
 
-    def __init__(self):
+    def __init__(self, encoding="utf-8"):
         """Constructor."""
+        self.encoding = encoding
         self.encoder = json.JSONEncoder(
             separators=(",", ":"), sort_keys=False, indent=None,
             default=self._encode
@@ -70,9 +71,13 @@ class JSONEncoder(Encoder):
             obj (object): the object to encode into a JSON string
 
         Returns:
-            str: a string representation of the given object in JSON
+            Union[bytes,str]: a byte representation of the given object in
+                JSON, encoded in the encoding given at construction time, or
+                a Unicode string if no encoding was given at construction
+                time
         """
-        return self.encoder.encode(obj)
+        data = self.encoder.encode(obj)
+        return data if self.encoding is None else data.encode(self.encoding)
 
     def loads(self, data, *args, **kwds):
         """Loads a JSON-encoded object from the given string representation.
@@ -80,9 +85,12 @@ class JSONEncoder(Encoder):
         Socket.IO are silently ignored.
 
         Parameters:
-            data (str): the string to decode
+            data (Union[bytes,str]): the raw bytes to decode in the encoding
+                given at construction time, or a Unicode string if no encoding
+                was given at construction time
 
         Returns:
             object: the constructed object
         """
+        data = data if self.encoding is None else data.decode(self.encoding)
         return self.decoder.decode(data)

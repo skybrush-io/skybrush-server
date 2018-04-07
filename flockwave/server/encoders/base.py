@@ -10,7 +10,8 @@ __all__ = ("Encoder", )
 
 class Encoder(with_metaclass(ABCMeta, object)):
     """Interface specification for message encoders that can encode and
-    decode Flockwave messages in a specific message format.
+    decode Flockwave messages or other objects in a specific message
+    format.
     """
 
     @abstractmethod
@@ -21,16 +22,16 @@ class Encoder(with_metaclass(ABCMeta, object)):
             obj (object): the object to encode
 
         Returns:
-            str: a string representation of the given object
+            bytes: a byte-based representation of the given object
         """
         raise NotImplementedError
 
     @abstractmethod
     def loads(self, obj):
-        """Loads an encoded object from the given string representation.
+        """Loads an encoded object from the given raw representation.
 
         Parameters:
-            data (str): the string to decode
+            data (bytes): the raw bytes to decode
 
         Returns:
             object: the constructed object

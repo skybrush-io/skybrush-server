@@ -105,7 +105,7 @@ def handle_message(message, client):
         client (Client): the client that sent the message
     """
     try:
-        message = encoder.loads(message.decode("utf-8"))
+        message = encoder.loads(message)
     except ValueError as ex:
         log.warn("Malformed JSON message received from {1!r}: {0!r}".format(
             message[:20], client.id

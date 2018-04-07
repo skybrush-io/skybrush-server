@@ -590,6 +590,10 @@ class FlockwaveServer(Flask):
         message = self.create_UAV_INF_message_for(uav_ids)
         self.message_hub.send_message(message)
 
+    def teardown(self):
+        """Tears down the application and prepares it for exiting normally."""
+        self.extension_manager.teardown()
+
     def _find_clock_by_id(self, clock_id, response=None):
         """Finds the clock with the given ID in the clock registry or registers
         a failure in the given response object if there is no clock with the

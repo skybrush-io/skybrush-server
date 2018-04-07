@@ -13,7 +13,7 @@ from .devices import UAVNode
 from .metamagic import ModelMeta
 from .mixins import TimestampMixin
 
-__all__ = ("UAVStatusInfo", "UAVDriver", "UAV", "UAVBase")
+__all__ = ("UAVStatusInfo", "UAVDriver", "UAV", "UAVBase", "PassiveUAVDriver")
 
 log = base_log.getChild("uav")
 
@@ -456,3 +456,18 @@ class UAVDriver(with_metaclass(ABCMeta, object)):
                 driver and will not be supported in the future either
         """
         raise NotImplementedError
+
+
+class PassiveUAVDriver(UAVDriver):
+    """Implementation of an UAVDriver_ for passive UAV objects that do not
+    support responding to commands.
+    """
+
+    def _send_signal(self, uavs, signal_name, handler):
+        message = "{0} not supported".format(signal_name)
+
+        result = {}
+        for uav in uavs:
+            result[uav] = message
+
+        return result

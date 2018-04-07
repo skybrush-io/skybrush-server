@@ -37,6 +37,9 @@ class ExtensionBase(object):
         """Handler that is called by the extension manager when the
         extension is loaded into the server.
 
+        Typically, you don't need to override this method; override
+        `configure()` instead.
+
         Arguments:
             app (FlockwaveServer): the server application
             configuration (dict): the extension-specific configuration
@@ -76,10 +79,30 @@ class ExtensionBase(object):
         """
         pass
 
-    def unload(self):
+    def teardown(self):
+        """Tears down the extension and prepares it for unloading.
+
+        This method is called only once from `unload()`_ during the
+        unloading of the extension.
+
+        The default implementation of this method is empty. There is no
+        need to call the superclass when you override it.
+        """
+        pass
+
+    def unload(self, app):
         """Handler that is called by the extension manager when the
         extension is unloaded.
+
+        Typically, you don't need to override this method; override
+        `teardown()` instead.
+
+        Arguments:
+            app (FlockwaveServer): the server application; provided for sake
+                of API compatibility with simple classless extensions where
+                the module provides a single `unload()` function
         """
+        self.teardown()
         self.log = None
         self.app = None
 

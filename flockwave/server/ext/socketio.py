@@ -158,7 +158,7 @@ def load(app, configuration, logger):
     )
 
 
-def unload(app, configuration):
+def unload(app):
     """Unloads the extension."""
     # Socket.IO currently does not allow event handlers to be deregistered
     # so this is not a complete solution yet; we cannot undo all the

@@ -69,7 +69,7 @@ class FlockCtrlDronesExtension(UAVExtensionBase):
             new_app.clock_registry.clock_changed.connect(
                 self._on_clock_changed, sender=new_app.clock_registry)
 
-    def unload(self):
+    def teardown(self):
         self.wireless_lowlevel_link = None
         self.xbee_lowlevel_link = None
 

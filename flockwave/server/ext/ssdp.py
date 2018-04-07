@@ -314,7 +314,7 @@ def load(app, configuration, logger):
     )
 
 
-def unload(app, configuration):
+def unload(app):
     """Unloads the extension."""
     global receiver_thread, sockets
 

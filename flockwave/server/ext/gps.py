@@ -6,11 +6,14 @@ from contextlib import closing
 from eventlet import spawn
 
 from flockwave.server.connections import create_connection, reconnecting
+from flockwave.server.encoders import JSONEncoder
 from flockwave.server.errors import NotSupportedError
+from flockwave.server.model.uav import PassiveUAVDriver
+from flockwave.server.parsers import LineParser
 
+from .base import UAVExtensionBase
 
-log = None
-thread = None
+decode_json = JSONEncoder().loads
 
 
 def create_gps_connection(connection, format=None):
@@ -40,9 +43,10 @@ def create_gps_connection(connection, format=None):
     be set to ``gpsd`` for TCP connections and ``nmea`` otherwise.
 
     Returns:
-        (Connection, str): an appropriately configured connection object,
-            and a string describing the format of the data that will arrive
-            from the connection
+        (Connection, Parser): an appropriately configured connection object,
+            and an appropriately configured parser object that can be fed with
+            raw data from the connection and that will call a callback for each
+            detected message
     """
     if format is None:
         format = "auto"
@@ -55,43 +59,94 @@ def create_gps_connection(connection, format=None):
     if ":" not in connection:
         connection = "serial:{0}".format(connection)
 
-    if format != "gpsd":
-        raise NotSupportedError("only gpsd is suported at the moment")
+    if format == "gpsd":
+        parser = LineParser(decoder=parse_incoming_gpsd_message, min_length=1)
+    else:
+        raise NotSupportedError(
+            "{0!r} format is suported at the moment".format(format)
+        )
 
-    return create_connection(connection), format
+    return create_connection(connection), parser
 
 
-def handle_gps_messages(connection):
+def parse_incoming_gpsd_message(message):
+    """Parses an incoming message from a `gpsd` device and translates its
+    content to a standard form that will be used by the extension.
+
+    Parameters:
+        message (bytes): a full message from `gpsd`, in JSON format
+
+    Returns:
+        dict: a dictionary mapping keys like `device`, `position`, `heading`
+            to the parsed `gpsd` device name, position data and heading
+            (course) information
+    """
+    data = decode_json(message)
+    cls = data.get("class", None)
+    result = {}
+
+    if cls == "TPV":
+        lat, lon = data.get("lat"), data.get("lon")
+        if lat is not None and lon is not None:
+            result.update(
+                device=data.get("device", "gpsd"),
+                position=[lat, lon, data.get("alt", 0)],
+                heading=data.get("track", 0)
+            )
+
+    return result
+
+
+def handle_gps_messages(connection, parser):
+    """Worker green thread that reads incoming messages from the given
+    connection, parses them using the given parser and then processes them
+    to update the status of the beacons managed by this extension.
+    """
     connection.open()
     with closing(connection):
         while True:
             connection.wait_until_connected()
-            data = connection.read(blocking=True)
-            # TODO(ntamas): process the data here
+            while True:
+                data, addr = connection.read(blocking=True)
+                if not data:
+                    break
+
+                for message in parser.feed(data):
+                    pass       # TODO(ntamas)
 
 
-def load(app, configuration, logger):
-    """Loads the extension."""
-    global log, thread
+class GPSExtension(UAVExtensionBase):
+    """Extension that tracks position information received from external GPS
+    devices and creates UAVs in the UAV registry corresponding to the GPS
+    devices.
+    """
 
-    connection, format = create_gps_connection(
-        connection=configuration.get("connection", "gpsd"),
-        format=configuration.get("format", "auto")
-    )
-    connection = reconnecting(connection)
-    log = logger
+    def __init__(self):
+        """Constructor."""
+        super(GPSExtension, self).__init__()
+        self._thread = None
 
-    app.connection_registry.add(connection, "gps", "GPS link")
+    def _create_driver(self):
+        return PassiveUAVDriver()
 
-    thread = spawn(handle_gps_messages, connection)
+    def configure(self, configuration):
+        """Loads the extension."""
+        connection, parser = create_gps_connection(
+            connection=configuration.get("connection", "gpsd"),
+            format=configuration.get("format", "auto")
+        )
+        connection = reconnecting(connection)
+
+        self.app.connection_registry.add(connection, "gps", "GPS link")
+
+        self._thread = spawn(handle_gps_messages, connection, parser)
+
+    def teardown(self):
+        if self._thread:
+            self._thread.cancel()
+            self._thread = None
+
+        self.app.connection_registry.remove("gps")
 
 
-def unload(app, configuration):
-    global log, thread
-
-    if thread:
-        thread.cancel()
-        thread = None
-
-    app.connection_registry.remove("gps")
-    log = None
+construct = GPSExtension

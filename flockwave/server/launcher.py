@@ -76,13 +76,16 @@ def start(debug, host, port, ssl_key, ssl_cert):
 
     # Forward the hostname and port where we are listening to the app
     app.address = (host, port)
-    
+
     # Now start the server
     if app.runner is None:
         app.runner = partial(_default_runner, app=app)
 
-    app.runner(host=host, port=port, debug=debug,
-               log=eventlet_log, **ssl_args)
+    try:
+        app.runner(host=host, port=port, debug=debug,
+                   log=eventlet_log, **ssl_args)
+    finally:
+        app.teardown()
 
 
 if __name__ == '__main__':

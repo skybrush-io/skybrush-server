@@ -46,6 +46,6 @@ def load(app, configuration, logger):
     app.clock_registry.add(clock)
 
 
-def unload(app, configuration):
+def unload(app):
     """Unloads the extension."""
     app.clock_registry.remove(clock)

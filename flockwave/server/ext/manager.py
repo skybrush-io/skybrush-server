@@ -247,6 +247,11 @@ class ExtensionManager(object):
         """Returns whether the given extension is loaded."""
         return extension_name in self._extensions
 
+    def teardown(self):
+        """Tears down the extension manager and prepares it for destruction."""
+        for ext_name in reversed(self.loaded_extensions):
+            self.unload(ext_name)
+
     def unload(self, extension_name):
         """Unloads the extension with the given name.
 
@@ -267,7 +272,7 @@ class ExtensionManager(object):
         func = getattr(extension, "unload", None)
         if callable(func):
             try:
-                func()
+                func(self.app)
             except Exception:
                 clean_unload = False
                 log.exception("Error while unloading extension {0!r}; "

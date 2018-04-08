@@ -107,6 +107,7 @@ class ConnectionBase(Connection):
         self._state_lock = RLock()
         self._is_connected = False
         self._is_connected_event = None
+        self._is_not_connected_event = None
         self._swallow_exceptions = False
 
     @property
@@ -141,8 +142,14 @@ class ConnectionBase(Connection):
 
             if new_state == ConnectionState.DISCONNECTED and \
                     self._is_connected:
-                self._is_connected = False
                 self.disconnected.send(self)
+
+            if new_state != ConnectionState.CONNECTED and \
+                    self._is_connected:
+                self._is_connected = False
+                if self._is_not_connected_event:
+                    self._is_not_connected_event.send(True)
+                    self._is_not_connected_event = None
 
     @property
     def swallow_exceptions(self):
@@ -168,6 +175,19 @@ class ConnectionBase(Connection):
             self._is_connected_event = Event()
 
         self._is_connected_event.wait()
+
+    def wait_until_not_connected(self):
+        """Blocks the current green thread until the connection becomes
+        *not* connected (where this means being in any state other than
+        CONNECTED). Returns immediately if the connection is not connected.
+        """
+        if not self.is_connected:
+            return
+
+        if self._is_not_connected_event is None:
+            self._is_not_connected_event = Event()
+
+        self._is_not_connected_event.wait()
 
     def _handle_error(self, exception=None):
         """Handles exceptions that have happened during reads and writes.

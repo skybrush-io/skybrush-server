@@ -167,7 +167,7 @@ class InternetSocketConnection(SocketConnectionBase):
         self._set_state(ConnectionState.CONNECTED)
 
     def read(self, size=4096, flags=0, blocking=False):
-        """Reads some data UDP datagram from the connection.
+        """Reads some data from the connection.
 
         Parameters:
             size (int): the maximum number of bytes to return
@@ -188,7 +188,10 @@ class InternetSocketConnection(SocketConnectionBase):
             self.wait_until_readable()
         if self._socket is not None:
             try:
-                return self._socket.recvfrom(size, flags)
+                data, addr = self._socket.recvfrom(size, flags)
+                if not data:
+                    # Remote side closed connection
+                    self.close()
             except socket.error as ex:
                 if ex.errno == EAGAIN:
                     return (b"", None)
@@ -196,6 +199,7 @@ class InternetSocketConnection(SocketConnectionBase):
                     self._handle_error()
             except Exception:
                 self._handle_error()
+
         return (b"", None)
 
     def write(self, data, address=None, flags=0):

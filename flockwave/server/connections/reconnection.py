@@ -7,11 +7,14 @@ from eventlet import spawn
 from eventlet.green.threading import RLock
 from eventlet.green.Queue import Queue
 from eventlet.green.Queue import Empty as EmptyQueue
+from time import time
 from weakref import ref as weakref
 
 from .base import ConnectionWrapperBase, ConnectionState
 
 __all__ = ("reconnecting", )
+
+inf = float('inf')
 
 
 class ReconnectionWrapper(ConnectionWrapperBase):
@@ -127,6 +130,7 @@ class ReconnectionWatchdog(object):
         connection.state_changed.connect(self._on_state_changed, connection)
         self._queue = Queue()
 
+        self._last_reconnection_attempt_at = None
         self._recovering = False
 
         self.daemon = True
@@ -144,6 +148,9 @@ class ReconnectionWatchdog(object):
             return
 
         self._recovering = value
+        if not self._recovering:
+            self._last_reconnection_attempt_at = None
+
         self.recovery_state_changed.send(self, new_state=self._recovering,
                                          old_state=not self._recovering)
 
@@ -175,16 +182,20 @@ class ReconnectionWatchdog(object):
         # If we are connecting or disconnecting, let's just wait and
         # see how it ends.
         state = self._connection_ref().state
+
+        self._last_reconnection_attempt_at = None
         self._recovering = state is ConnectionState.DISCONNECTED
 
         while True:
-            if self._recovering:
+            time_left = self.time_until_next_recovery
+            if time_left <= 0:
                 self._try_to_reopen_connection()
+                time_left = self.time_until_next_recovery
 
             try:
                 message, args = self._queue.get(
                     block=True,
-                    timeout=self.retry_interval if self._recovering else None
+                    timeout=None if time_left == inf else time_left
                 )
             except EmptyQueue:
                 continue
@@ -203,6 +214,23 @@ class ReconnectionWatchdog(object):
     def shutdown(self):
         """Shuts down the watchdog thread."""
         self._queue.put(("quit", ()))
+
+    @property
+    def time_until_next_recovery(self):
+        """Returns the number of seconds left until the next connection attempt
+        during a recovery, or infinity if no recovery is in progress.
+        """
+        if self._recovering:
+            if self._last_reconnection_attempt_at is not None:
+                return max(
+                    0,
+                    self._last_reconnection_attempt_at +
+                    self.retry_interval - time()
+                )
+            else:
+                return 0
+        else:
+            return inf
 
     def _connection_deleted(self, ref):
         """Called when the connection watched by this watchdog is about to
@@ -240,6 +268,8 @@ class ReconnectionWatchdog(object):
         connection = self._connection_ref()
         if connection is None:
             return
+
+        self._last_reconnection_attempt_at = time()
         with self._lock:
             try:
                 connection.open()

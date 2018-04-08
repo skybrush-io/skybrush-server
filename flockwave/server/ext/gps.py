@@ -131,7 +131,7 @@ class GPSExtension(UAVExtensionBase):
         )
         connection = reconnecting(connection)
 
-        self.app.connection_registry.add(connection, "gps", "GPS link")
+        self.app.connection_registry.add(connection, "GPS", "GPS link")
 
         self._thread = spawn(self.handle_gps_messages, connection, parser)
 
@@ -144,6 +144,10 @@ class GPSExtension(UAVExtensionBase):
         with closing(connection):
             while True:
                 connection.wait_until_connected()
+                self.log.info(
+                    "GPS connection established",
+                    extra={"id": "GPS"}
+                )
                 while True:
                     data, addr = connection.read(blocking=True)
                     if not data:
@@ -157,6 +161,14 @@ class GPSExtension(UAVExtensionBase):
                             )
                         elif "device" in message:
                             self._handle_single_gps_update(message)
+
+                # Wait until the watchdog goes back into the "not connected"
+                # (i.e. "connecting") state before we try again.
+                connection.wait_until_not_connected()
+                self.log.warn(
+                    "GPS disconnected",
+                    extra={"id": "GPS"}
+                )
 
     def _handle_single_gps_update(self, message):
         uav_id = self._get_uav_id(message["device"])

@@ -89,6 +89,16 @@ class SocketConnectionBase(FDConnectionBase):
         self._socket = value
         self._attach(value.makefile() if value else None)
 
+    def _test_socket_error(self):
+        """Returns whether the last operation performed on this socket
+        ended with an error core or not.
+
+        Returns:
+            int: the error code of the last socket operation or zero if the
+                last operation was successful
+        """
+        return self._socket.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
+
     def register_in_event_loop(self, loop):
         """Registers the socket connection in the given urwid event loop."""
         self._set_event_loop(loop)
@@ -262,10 +272,14 @@ class TCPSocketConnection(InternetSocketConnection):
             # Connection succeeded immediately
             notify_connected()
         elif errno == EALREADY or errno == EINPROGRESS:
-            # Connection is in progress, let's wait until the socket is
-            # connected
+            # Connection is in progress, let's wait until the socket becomes
+            # writable and then test whether we are connected
             self.wait_until_writable(timeout=30)
-            notify_connected()
+            errno = self._test_socket_error()
+            if errno:
+                raise IOError(strerror(errno))
+            else:
+                notify_connected()
         else:
             raise IOError(strerror(errno))
 

@@ -4,6 +4,7 @@ location data from the GPS as a beacon.
 
 from contextlib import closing
 from eventlet import spawn
+from pynmea2 import parse as parse_nmea
 
 from flockwave.gps.vectors import GPSCoordinate
 from flockwave.server.connections import create_connection, reconnecting
@@ -61,8 +62,16 @@ def create_gps_connection(connection, format=None):
     if ":" not in connection:
         connection = "serial:{0}".format(connection)
 
+    if format == "auto":
+        if connection.startswith("tcp:"):
+            format = "gpsd"
+        else:
+            format = "nmea"
+
     if format == "gpsd":
         parser = LineParser(decoder=parse_incoming_gpsd_message, min_length=1)
+    elif format == "nmea":
+        parser = LineParser(decoder=parse_incoming_nmea_message, min_length=1)
     else:
         raise NotSupportedError(
             "{0!r} format is suported at the moment".format(format)
@@ -103,6 +112,22 @@ def parse_incoming_gpsd_message(message):
             )
 
     return result
+
+
+def parse_incoming_nmea_message(message):
+    """Parses a raw incoming NMEA message and translates its content to a
+    standard form that will be used by the extension.
+
+    Parameters:
+        message (bytes): a full NMEA message
+
+    Returns:
+        dict: a dictionary mapping keys like `position`, `heading` to position
+            data and heading (course) information
+    """
+    data = parse_nmea(message.decode("ascii"))
+    print(repr(data))
+    return {}
 
 
 class GPSExtension(UAVExtensionBase):
@@ -149,7 +174,9 @@ class GPSExtension(UAVExtensionBase):
                     extra={"id": "GPS"}
                 )
                 while True:
-                    data, addr = connection.read(blocking=True)
+                    data = connection.read(blocking=True)
+                    if isinstance(data, tuple):
+                        data, addr = data
                     if not data:
                         break
 

@@ -94,15 +94,23 @@ class SerialPortConnection(FDConnectionBase):
             result = 0
         return result
 
-    def read(self, size=1):
+    def read(self, size=1, blocking=True):
         """Reads the given number of bytes from the connection.
 
         Parameters:
             size (int): the number of bytes to read
+            blocking (bool): whether the data should be read in a blocking
+                manner
 
         Returns:
             bytes: the data that was read
         """
+        # TODO(ntamas): 'blocking' is not handled here
+        if not blocking:
+            raise NotImplementedError("non-blocking reads not implemented; " +
+                "the parameter is there for sake of API-compatibility with " +
+                "socket connections only")
+
         if self._file_object is not None:
             try:
                 return self._file_object.read(size)

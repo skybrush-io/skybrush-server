@@ -30,4 +30,4 @@ def unpack_struct(spec, data):
     try:
         return spec.unpack(data[:size]), data[size:]
     except StructError as ex:
-        raise ParseError(ex.message)
+        raise ParseError(str(ex))

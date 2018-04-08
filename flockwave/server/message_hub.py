@@ -248,7 +248,7 @@ class MessageHub(object):
         try:
             message = self._decode_incoming_message(message)
         except MessageValidationError as ex:
-            reason = ex.message
+            reason = str(ex)
             log.exception(reason)
             if u"id" in message:
                 ack = self.acknowledge(message, outcome=False,
@@ -460,13 +460,20 @@ class MessageHub(object):
         try:
             return FlockwaveMessage.from_json(message)
         except ValidationError:
-            raise MessageValidationError(
+            # We should not re-raise directly from here because on Python 3.x
+            # we would get a very long stack trace that includes the original
+            # exception as well.
+            error = MessageValidationError(
                 "Flockwave message does not match schema"
             )
         except Exception as ex:
-            raise MessageValidationError(
+            # We should not re-raise directly from here because on Python 3.x
+            # we would get a very long stack trace that includes the original
+            # exception as well.
+            error = MessageValidationError(
                 "Unexpected exception: {0!r}".format(ex)
             )
+        raise error
 
     def _send_message(self, message, client_or_id):
         if not isinstance(client_or_id, Client):

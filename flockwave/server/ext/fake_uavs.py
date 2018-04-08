@@ -12,6 +12,7 @@ from eventlet import sleep, spawn, spawn_after
 from flockwave.gps.vectors import FlatEarthCoordinate, GPSCoordinate, \
     FlatEarthToGPSCoordinateTransformation, Vector3D
 from flockwave.server.model.uav import UAVBase, UAVDriver
+from flockwave.spec.ids import make_valid_uav_id
 from math import atan2, cos, hypot, sin, pi
 from random import random, choice
 
@@ -410,7 +411,10 @@ class FakeUAVProviderExtension(UAVExtensionBase):
         omega = 2 * pi / configuration.get("time_of_single_cycle", 10)
 
         # Generate IDs for the UAVs and then create them
-        self.uav_ids = [id_format.format(index) for index in range(count)]
+        self.uav_ids = [
+            make_valid_uav_id(id_format.format(index))
+            for index in range(count)
+        ]
         self.uavs = [
             self._driver.create_uav(id, center=center, radius=radius,
                                     angle=2 * pi / count * index,

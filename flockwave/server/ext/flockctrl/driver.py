@@ -5,6 +5,7 @@ from __future__ import division
 from bidict import bidict
 from flockwave.server.ext.logger import log
 from flockwave.server.model.uav import UAVBase, UAVDriver
+from flockwave.spec.ids import make_valid_uav_id
 
 from .errors import AddressConflictError, map_flockctrl_error_code
 from .packets import ChunkedPacketAssembler, FlockCtrlAlgorithmDataPacket, \
@@ -69,6 +70,7 @@ class FlockCtrlDriver(UAVDriver):
         self._packet_assembler.packet_assembled.connect(
             self._on_chunked_packet_assembled, sender=self._packet_assembler
         )
+        self._index_to_uav_id = {}
         self._uavs_by_source_address = {}
 
         self.allow_multiple_commands_per_uav = True
@@ -159,7 +161,11 @@ class FlockCtrlDriver(UAVDriver):
         Returns:
             FlockCtrlUAV: an appropriate UAV object
         """
-        formatted_id = self.id_format.format(id)
+        formatted_id = self._index_to_uav_id.get(id)
+        if formatted_id is None:
+            formatted_id = make_valid_uav_id(self.id_format.format(id))
+            self._index_to_uav_id[id] = formatted_id
+
         uav_registry = self.app.uav_registry
         if not uav_registry.contains(formatted_id):
             uav = self._create_uav(formatted_id)

@@ -84,11 +84,6 @@ class UAVBase(UAV):
     def __init__(self, id, driver):
         """Constructor.
 
-        Typically, you do not construct UAV objects on your own but use the
-        ``create_uav()`` method of an appropriate UAVDriver_ object. This
-        method will also ensure that the UAV object is linked properly to
-        its driver.
-
         Parameters:
             id (str): the unique identifier of the UAV
             driver (UAVDriver): the driver that is responsible for handling
@@ -458,10 +453,51 @@ class UAVDriver(with_metaclass(ABCMeta, object)):
         raise NotImplementedError
 
 
+class PassiveUAV(UAVBase):
+    pass
+
+
 class PassiveUAVDriver(UAVDriver):
     """Implementation of an UAVDriver_ for passive UAV objects that do not
     support responding to commands.
     """
+
+    def __init__(self, uav_factory=PassiveUAV):
+        """Constructor.
+
+        Parameters:
+            uav_factory (callable): callable that creates a new UAV managed by
+                this driver.
+        """
+        super(PassiveUAVDriver, self).__init__()
+        self._uav_factory = uav_factory
+
+    def _create_uav(self, id):
+        """Creates a new UAV that is to be managed by this driver.
+
+        Parameters:
+            id (str): the string identifier of the UAV to create
+
+        Returns:
+            UAVBase: an appropriate UAV object
+        """
+        return self._uav_factory(id, driver=self)
+
+    def get_or_create_uav(self, id):
+        """Retrieves the UAV with the given ID, or creates one if
+        the driver has not seen a UAV with the given ID.
+
+        Parameters:
+            id (str): the identifier of the UAV to retrieve
+
+        Returns:
+            UAVBase: an appropriate UAV object
+        """
+        uav_registry = self.app.uav_registry
+        if not uav_registry.contains(id):
+            uav = self._create_uav(id)
+            uav_registry.add(uav)
+        return uav_registry.find_by_id(id)
 
     def _send_signal(self, uavs, signal_name, handler):
         message = "{0} not supported".format(signal_name)

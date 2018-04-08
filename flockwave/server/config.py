@@ -57,7 +57,7 @@ EXTENSIONS = {
     "gps": {
         "connection": "tcp://localhost:2947",
         "format": "gpsd",
-        "id_format": "BEACON:{0:02}"
+        "id_format": "BEACON:{0}"
     },
     "radiation": {
         "sources": [

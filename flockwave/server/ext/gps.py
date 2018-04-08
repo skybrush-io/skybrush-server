@@ -5,11 +5,13 @@ location data from the GPS as a beacon.
 from contextlib import closing
 from eventlet import spawn
 
+from flockwave.gps.vectors import GPSCoordinate
 from flockwave.server.connections import create_connection, reconnecting
 from flockwave.server.encoders import JSONEncoder
 from flockwave.server.errors import NotSupportedError
 from flockwave.server.model.uav import PassiveUAVDriver
 from flockwave.server.parsers import LineParser
+from flockwave.spec.ids import make_valid_uav_id
 
 from .base import UAVExtensionBase
 
@@ -85,34 +87,22 @@ def parse_incoming_gpsd_message(message):
     cls = data.get("class", None)
     result = {}
 
-    if cls == "TPV":
+    if cls == "VERSION":
+        result.update(
+            version=data.get("release")
+        )
+    elif cls == "TPV":
         lat, lon = data.get("lat"), data.get("lon")
         if lat is not None and lon is not None:
             result.update(
                 device=data.get("device", "gpsd"),
-                position=[lat, lon, data.get("alt", 0)],
+                position=GPSCoordinate(
+                    lat=lat, lon=lon, agl=data.get("alt", 0)
+                ),
                 heading=data.get("track", 0)
             )
 
     return result
-
-
-def handle_gps_messages(connection, parser):
-    """Worker green thread that reads incoming messages from the given
-    connection, parses them using the given parser and then processes them
-    to update the status of the beacons managed by this extension.
-    """
-    connection.open()
-    with closing(connection):
-        while True:
-            connection.wait_until_connected()
-            while True:
-                data, addr = connection.read(blocking=True)
-                if not data:
-                    break
-
-                for message in parser.feed(data):
-                    pass       # TODO(ntamas)
 
 
 class GPSExtension(UAVExtensionBase):
@@ -125,12 +115,16 @@ class GPSExtension(UAVExtensionBase):
         """Constructor."""
         super(GPSExtension, self).__init__()
         self._thread = None
+        self._id_format = None
+        self._device_to_uav_id = {}
 
     def _create_driver(self):
         return PassiveUAVDriver()
 
     def configure(self, configuration):
         """Loads the extension."""
+        self._id_format = configuration.get("id_format", "GPS:{0}")
+
         connection, parser = create_gps_connection(
             connection=configuration.get("connection", "gpsd"),
             format=configuration.get("format", "auto")
@@ -139,7 +133,46 @@ class GPSExtension(UAVExtensionBase):
 
         self.app.connection_registry.add(connection, "gps", "GPS link")
 
-        self._thread = spawn(handle_gps_messages, connection, parser)
+        self._thread = spawn(self.handle_gps_messages, connection, parser)
+
+    def handle_gps_messages(self, connection, parser):
+        """Worker green thread that reads incoming messages from the given
+        connection, parses them using the given parser and then processes them
+        to update the status of the beacons managed by this extension.
+        """
+        connection.open()
+        with closing(connection):
+            while True:
+                connection.wait_until_connected()
+                while True:
+                    data, addr = connection.read(blocking=True)
+                    if not data:
+                        break
+
+                    for message in parser.feed(data):
+                        if "version" in message:
+                            # Ask gpsd to start streaming status data
+                            connection.write(
+                                b'?WATCH={"enable":true,"json":true}\n'
+                            )
+                        elif "device" in message:
+                            self._handle_single_gps_update(message)
+
+    def _handle_single_gps_update(self, message):
+        uav_id = self._get_uav_id(message["device"])
+        uav = self.driver.get_or_create_uav(uav_id)
+        uav.update_status(
+            position=message["position"],
+            heading=message["heading"]
+        )
+        self.app.request_to_send_UAV_INF_message_for([uav_id])
+
+    def _get_uav_id(self, device_id):
+        result = self._device_to_uav_id.get(device_id)
+        if result is None:
+            result = make_valid_uav_id(self._id_format.format(device_id))
+            self._device_to_uav_id[device_id] = result
+        return result
 
     def teardown(self):
         if self._thread:

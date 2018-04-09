@@ -126,8 +126,19 @@ def parse_incoming_nmea_message(message):
             data and heading (course) information
     """
     data = parse_nmea(message.decode("ascii"))
-    print(repr(data))
-    return {}
+    result = {}
+
+    if data.sentence_type == "RMC":
+        result.update(
+            device="0",
+            position=GPSCoordinate(
+                lat=data.latitude,
+                lon=data.longitude
+            ),
+            heading=data.true_course
+        )
+
+    return result
 
 
 class GPSExtension(UAVExtensionBase):

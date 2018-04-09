@@ -192,6 +192,7 @@ class InternetSocketConnection(SocketConnectionBase):
                 if not data:
                     # Remote side closed connection
                     self.close()
+                return data, addr
             except socket.error as ex:
                 if ex.errno == EAGAIN:
                     return (b"", None)

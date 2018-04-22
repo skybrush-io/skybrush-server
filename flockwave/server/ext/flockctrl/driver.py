@@ -16,6 +16,7 @@ from .packets import ChunkedPacketAssembler, FlockCtrlAlgorithmDataPacket, \
 __all__ = ("FlockCtrlDriver", )
 
 MAX_GEIGER_TUBE_COUNT = 2
+MAX_CAMERA_FEATURE_COUNT = 32
 
 
 def nop(*args, **kwds):
@@ -444,6 +445,37 @@ class FlockCtrlUAV(UAVBase):
 
         raise ValueError("UAV has no wireless or XBee address yet")
 
+    def update_detected_features(self, itow, features, mutator):
+        """Updates the visual features detected by the camera attached to the
+        UAV with the given new value.
+
+        Parameters:
+            itow (int): timestamp corresponding to the measurement
+            features (List[GPSCoordinate]): the positions of the features
+                detected
+            mutator (DeviceTreeMutator): the mutator object that can be used
+                to manipulate the device tree nodes
+        """
+        position = self._status.position
+        if position is None:
+            return
+
+        for i, position in enumerate(features):
+            pos_data = {
+                "lat": position.lat,
+                "lon": position.lon
+            }
+            if position.amsl is not None:
+                pos_data["amsl"] = position.amsl
+            if position.agl is not None:
+                pos_data["agl"] = position.agl
+
+            # TODO: what value do we assign to the measurement?
+            mutator.update(
+                self.camera_features[i],
+                dict(pos_data, value=itow)
+            )
+
     def update_geiger_counter(self, position, itow, dose_rate, raw_counts,
                               mutator):
         """Updates the value of the Geiger counter of the UAV with the given
@@ -499,6 +531,7 @@ class FlockCtrlUAV(UAVBase):
         self._last_geiger_counter_packet = (itow, raw_counts)
 
     def _initialize_device_tree_node(self, node):
+        # add geiger muller counter node and measurement channels
         device = node.add_device("geiger_counter")
         self.geiger_counter_dose_rate = device.add_channel(
             "dose_rate", type=object, unit="mGy/h"
@@ -514,3 +547,12 @@ class FlockCtrlUAV(UAVBase):
             for i in range(MAX_GEIGER_TUBE_COUNT)
         ]
         self._last_geiger_counter_packet = None
+        # add camera node and feature channels
+        # TODO: should we have a single channel and store all new features there
+        # or should we have multiple features or maybe some feature IDs sent
+        # from flockctrl to be able to assign features here to there?
+        device = node.add_device("camera")
+        self.camera_features = [
+            device.add_channel("feature_{0}".format(i), type=object)
+            for i in range(MAX_CAMERA_FEATURE_COUNT)
+        ]

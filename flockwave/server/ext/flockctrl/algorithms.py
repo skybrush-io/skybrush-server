@@ -7,7 +7,7 @@ from struct import Struct
 from flockwave.gps.vectors import GPSCoordinate
 from flockwave.server.model.registry import RegistryBase
 
-from .utils import unpack_struct
+from .utils import unpack_struct, convert_mkgps_position_to_GPScoordinate
 
 
 __all__ = ("find_algorithm_name_by_id", "registry")
@@ -124,14 +124,8 @@ class GeigerCounterAlgorithm(Algorithm):
         (iTOW, lat, lon, amsl, agl, raw_counts[0], raw_counts[1], dose_rate), _ = \
             self._unpack(packet.body)
 
-        # Standardize units coming from the packet
-        lat = lat / 1e7          # [1e-7 deg] --> [deg]
-        lon = lon / 1e7          # [1e-7 deg] --> [deg]
-        amsl = amsl / 1e1        # [dm]       --> [m]
-        agl = agl / 1e1          # [dm]       --> [m]
-
         # Construct the position object
-        position = GPSCoordinate(lat=lat, lon=lon, amsl=amsl, agl=agl)
+        position = convert_mkgps_position_to_GPScoordinate(lat, lon, amsl, agl)
 
         # Update the UAV devices
         with mutate() as mutator:
@@ -191,6 +185,41 @@ class VicsekAlgorithm(Algorithm):
 class WaypointAlgorithm(Algorithm):
     ID = 23
     NAME = "waypoint"
+
+
+@registry.register
+class OcularAlgorithm(Algorithm):
+    # TODO: what should be the ID of this algo? How can it correspond to flockctrl?
+    ID = 24
+    NAME = "ocular"
+
+    # packet structure:
+    # iTOW target_pos feature_count feature_pos1 feature_pos2 .. feature_posN
+    _struct = Struct("<LllhhLLf")
+    _struct_feature = Struct("<llhh")
+
+    def handle_data_packet(self, packet, uav, mutate):
+        """Inherited."""
+        # unpack fixed length header
+        feature_count = 0
+        (iTOW, lat, lon, amsl, agl, feature_count), remainder = \
+            self._unpack(packet.body)
+        # convert position to target position
+        target_position = convert_mkgps_position_to_GPScoordinate(
+            lat, lon, amsl, agl)
+        # unpack variable length data
+        features = []
+        for i in range(feature_count):
+            (lat, lon, amsl, agl), remainder = \
+            self._unpack(remainder, _struct_feature)
+            # convert position to feature position
+            features.append(convert_mkgps_position_to_GPScoordinate(
+                lat, lon, amsl, agl))
+
+        # Update the UAV devices
+        # TODO: so far we neglect target_position, what to do with it?
+        with mutate() as mutator:
+            uav.update_detected_features(iTOW, features, mutator)
 
 
 def find_algorithm_name_by_id(algorithm_index, handle_unknown=False):

@@ -2,6 +2,8 @@
 
 from struct import error as StructError
 
+from flockwave.gps.vectors import GPSCoordinate
+
 from .errors import ParseError
 
 __all__ = ("unpack_struct", )
@@ -31,3 +33,25 @@ def unpack_struct(spec, data):
         return spec.unpack(data[:size]), data[size:]
     except StructError as ex:
         raise ParseError(str(ex))
+
+def convert_mkgps_position_to_GPScoordinate(lat, lon, amsl, agl):
+    """Standardize units coming from the mkgps_position_t packet and store
+    results as a GPSCoordinate object.
+
+    Parameters:
+        lat: latitude in [1e-7 deg]
+        lon: longitude in [1e-7 deg]
+        amsl: above mean sea level in [dm]
+        agl: above ground level in [dm]
+
+    Returns:
+        GPSCoordinate object with member values in SI units
+
+    """
+
+    return GPSCoordinate(
+        lat=lat / 1e7,          # [1e-7 deg] --> [deg]
+        lon=lon / 1e7,          # [1e-7 deg] --> [deg]
+        amsl=amsl / 1e1,        # [dm]       --> [m]
+        agl=agl / 1e1,          # [dm]       --> [m]
+    )

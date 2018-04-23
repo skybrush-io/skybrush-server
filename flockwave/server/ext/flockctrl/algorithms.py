@@ -89,31 +89,31 @@ class DummyAlgorithm(Algorithm):
 
 @registry.register
 class AltitudeHoldAlgorithm(Algorithm):
-    ID = 1
+    ID = 1 # 'a'
     NAME = "altitude"
 
 
 @registry.register
 class ChasingAlgorithm(Algorithm):
-    ID = 3
+    ID = 3 # 'c'
     NAME = "chasing"
 
 
 @registry.register
 class EmergencyAlgorithm(Algorithm):
-    ID = 5
+    ID = 5 # 'e'
     NAME = "emergency"
 
 
 @registry.register
 class FlockingAlgorithm(Algorithm):
-    ID = 6
+    ID = 6 # 'f'
     NAME = "flocking"
 
 
 @registry.register
 class GeigerCounterAlgorithm(Algorithm):
-    ID = 7
+    ID = 7 # 'g'
     NAME = "geiger"
 
     _struct = Struct("<LllhhLLf")
@@ -135,62 +135,31 @@ class GeigerCounterAlgorithm(Algorithm):
 
 @registry.register
 class ReturnToHomeAlgorithm(Algorithm):
-    ID = 8
+    ID = 8 # 'h'
     NAME = "return_to_home"
 
 
 @registry.register
 class ILandingAlgorithm(Algorithm):
-    ID = 9
+    ID = 9 # 'i'
     NAME = "ilanding"
 
 
 @registry.register
 class LandingAlgorithm(Algorithm):
-    ID = 12
+    ID = 12 # 'l'
     NAME = "landing"
 
 
 @registry.register
 class NinaAlgorithm(Algorithm):
-    ID = 14
+    ID = 14 # 'n'
     NAME = "nina"
 
 
 @registry.register
-class WaypointCloudAlgorithm(Algorithm):
-    ID = 17
-    NAME = "waypointcloud"
-
-
-@registry.register
-class SnakeAlgorithm(Algorithm):
-    ID = 19
-    NAME = "snake"
-
-
-@registry.register
-class TrafficAlgorithm(Algorithm):
-    ID = 20
-    NAME = "traffic"
-
-
-@registry.register
-class VicsekAlgorithm(Algorithm):
-    ID = 22
-    NAME = "vicsek"
-
-
-@registry.register
-class WaypointAlgorithm(Algorithm):
-    ID = 23
-    NAME = "waypoint"
-
-
-@registry.register
 class OcularAlgorithm(Algorithm):
-    # TODO: what should be the ID of this algo? How can it correspond to flockctrl?
-    ID = 24
+    ID = 15 # 'o'
     NAME = "ocular"
 
     # packet structure:
@@ -220,6 +189,36 @@ class OcularAlgorithm(Algorithm):
         # TODO: so far we neglect target_position, what to do with it?
         with mutate() as mutator:
             uav.update_detected_features(iTOW, features, mutator)
+
+
+@registry.register
+class WaypointCloudAlgorithm(Algorithm):
+    ID = 17 # 'q'
+    NAME = "waypointcloud"
+
+
+@registry.register
+class SnakeAlgorithm(Algorithm):
+    ID = 19 # 's'
+    NAME = "snake"
+
+
+@registry.register
+class TrafficAlgorithm(Algorithm):
+    ID = 20 # 't'
+    NAME = "traffic"
+
+
+@registry.register
+class VicsekAlgorithm(Algorithm):
+    ID = 22 # 'v'
+    NAME = "vicsek"
+
+
+@registry.register
+class WaypointAlgorithm(Algorithm):
+    ID = 23 # 'w'
+    NAME = "waypoint"
 
 
 def find_algorithm_name_by_id(algorithm_index, handle_unknown=False):

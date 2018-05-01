@@ -4,3 +4,5 @@
 *.pyc
 *.pyo
 *.swp
+build/
+dist/

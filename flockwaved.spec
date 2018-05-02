@@ -46,15 +46,16 @@ extra_modules += [
     if not ext_name.startswith("_")
 ]
 
+# Now comes the PyInstaller dance
 a = Analysis(
     [os.path.join(root_dir, "bin", "flockwaved")],
     pathex=[root_dir],
     binaries=[],
-    datas=[
-        ("flockwave/spec/*.json", "flockwave/spec")
-    ],
+    datas=[],
     hiddenimports=extra_modules,
-    hookspath=[],
+    hookspath=[
+        os.path.join(root_dir, "etc", "deployment")
+    ],
     runtime_hooks=[
         os.path.join(root_dir, "etc", "deployment", "runtime_hook.py")
     ],

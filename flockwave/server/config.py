@@ -4,7 +4,7 @@ import os
 import platform
 
 IN_HEROKU = "DYNO" in os.environ
-ON_MAC = platform.system() == "darwin"
+ON_MAC = platform.system().lower() == "darwin"
 
 # Secret key to encode cookies and session data
 SECRET_KEY = b'\xa6\xd6\xd3a\xfd\xd9\x08R\xd2U\x05\x10'\

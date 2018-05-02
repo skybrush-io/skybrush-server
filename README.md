@@ -1,6 +1,31 @@
-# FlockWave Backend Server Installation Guide
+# Flockwave Backend Server Installation Guide
+
+## Linux
+
+1. Install `pipenv`.
+
+2. I said install `pipenv`. :) Really. It manages a separate virtual environment
+   for a given Python project so it has nearly zero dependencies on the system
+   Python. You won't pollute the system Python with the dependencies of the
+   Flockwave backend server and everyone will be happier.
+
+3. Check out the source code of the backend server.
+
+4. Run `pipenv install`.
+
+5. Run `pipenv run bin/flockwaved`.
+
+If you want a single-file executable that includes a bundled Python interpreter
+and all the dependencies, you can create one with PyInstaller:
+
+1. Run `pipenv install --dev`.
+
+2. Run `pipenv run pyinstaller flockwaved.spec`.
+
+PyInstaller will create a single-file distribution in `dist/flockwaved`.
 
 ## Windows
+
 _Tested under Python 2.7.11 with pip 9.0.1_
 
 - (Optional) - Set up a virtual environment to avoid cluttering of packages:

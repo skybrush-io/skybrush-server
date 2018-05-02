@@ -6,3 +6,4 @@
 *.swp
 build/
 dist/
+requirements*.txt

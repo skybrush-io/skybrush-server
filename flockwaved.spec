@@ -25,7 +25,10 @@ extra_modules = [
 # Modules to exclude
 exclude_modules = [
     # No Tcl/Tk
-    "FixTk", "tcl", "tk", "_tkinter", "tkinter", "Tkinter"
+    "FixTk", "tcl", "tk", "_tkinter", "tkinter", "Tkinter",
+    # Prevent a Jinja2 module from being imported in Python <3.6 where it
+    # would be unsupported
+    "jinja2.asyncsupport"
 ]
 
 # Parse default configuration

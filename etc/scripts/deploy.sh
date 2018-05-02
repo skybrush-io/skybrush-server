@@ -19,11 +19,26 @@ rm -f requirements*.txt
 pipenv lock -r | grep -v enum34 >requirements-main.txt
 pipenv lock -r -d >requirements-dev.txt
 
+if [ x$1 = xlinux ]; then
+    GENERATE_LINUX=1
+elif [ x$1 = xwin -o x$1 = xwindows ]; then
+    GENERATE_WINDOWS=1
+else
+    GENERATE_LINUX=1
+    GENERATE_WINDOWS=1
+fi
+
 # Generate the bundle for Linux
-docker run --rm -v "$(pwd):/src/" cdrx/pyinstaller-linux \
+if [ x$GENERATE_LINUX = x1 ]; then
+    rm -rf dist/linux
+    docker run --rm -v "$(pwd):/src/" cdrx/pyinstaller-linux \
         "rm -rf /tmp/.wine-0 && apt-get remove -y python3-pip python-pip && apt-get install -y curl git && curl https://bootstrap.pypa.io/get-pip.py -o /tmp/get-pip.py && python3 /tmp/get-pip.py && pip install --upgrade pip && pip install -r requirements-main.txt && pyinstaller --clean -y --dist ./dist/linux --workpath /tmp flockwaved.spec && chown -R --reference=. ./dist/linux"
+fi
 
 # Generate the bundle for Windows
-docker run --rm -v "$(pwd):/src/" cdrx/pyinstaller-windows \
+if [ x$GENERATE_WINDOWS = x1 ]; then
+    rm -rf dist/windows
+    docker run --rm -v "$(pwd):/src/" cdrx/pyinstaller-windows \
         "rm -rf /tmp/.wine-0 && pip install -r requirements-main.txt && pyinstaller --clean -y --dist ./dist/windows --workpath /tmp flockwaved.spec && chown -R --reference=. ./dist/windows"
+fi
 

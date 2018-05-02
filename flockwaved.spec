@@ -55,7 +55,9 @@ a = Analysis(
     ],
     hiddenimports=extra_modules,
     hookspath=[],
-    runtime_hooks=[],
+    runtime_hooks=[
+        os.path.join(root_dir, "etc", "deployment", "runtime_hook.py")
+    ],
     excludes=exclude_modules,
     win_no_prefer_redirects=False,
     win_private_assemblies=False,

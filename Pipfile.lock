@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "31200c1f7a2a740772f25b29ca9d2f70958a74a1779d3dffb6a9c770cfe80f20"
+            "sha256": "e2eec8dea356259793cf63e1a7594a5fcc6610db4232b7176963454d3ea646f2"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -120,10 +120,10 @@
         },
         "flockwave-spec": {
             "hashes": [
-                "sha256:6a906791d7fdbcc488e2bffd77a36cfd44975175ca1dfb389b4cb9cfdb2bd41e"
+                "sha256:905d3f76f1159d4bf1ef9928301aaf4dbaa585cbe1581dccc5d67852c93152b3"
             ],
             "index": "collmot",
-            "version": "==0.15.1"
+            "version": "==0.15.2"
         },
         "future": {
             "hashes": [

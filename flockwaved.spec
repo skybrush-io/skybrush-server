@@ -49,6 +49,11 @@ extra_modules += [
     if not ext_name.startswith("_")
 ]
 
+# Add some extension-dependent dependencies
+if sys.platform.lower().startswith("linux") and \
+        "smpte_timecode" in config["EXTENSIONS"]:
+    extra_modules.append("mido.backends.rtmidi")
+
 # Now comes the PyInstaller dance
 a = Analysis(
     [os.path.join(root_dir, "bin", "flockwaved")],

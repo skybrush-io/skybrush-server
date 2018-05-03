@@ -22,7 +22,7 @@ EXTENSIONS = {
         "route": "/debug"
     },
     "_fake_uavs": {
-        "count": 10,
+        "count": 3,
         "delay": 0.04 if IN_HEROKU else 1.9,
         "id_format": "COLLMOT-{0:02}",
         "center": {

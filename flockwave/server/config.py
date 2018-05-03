@@ -1,9 +1,14 @@
-"""Default configuration for the Flockwave server."""
+"""Default configuration for the Flockwave server.
 
-import os
+This script will be evaluated first when the server attempts to load its
+configuration. The variables declared in this script will then be placed in
+a Python namespace, and any additional configuration files will be evaluated
+in the context of this namespace so other configuration files get a chance
+to override all the things declared here.
+"""
+
 import platform
 
-IN_HEROKU = "DYNO" in os.environ
 ON_MAC = platform.system().lower() == "darwin"
 
 # Secret key to encode cookies and session data
@@ -23,18 +28,9 @@ EXTENSIONS = {
     },
     "_fake_uavs": {
         "count": 3,
-        "delay": 0.04 if IN_HEROKU else 1.9,
+        "delay": 1.9,
         "id_format": "COLLMOT-{0:02}",
         "center": {
-            # A38
-            "lat": 47.476497,
-            "lon": 19.062940,
-            "agl": 20
-            # 360world.eu teto
-            # "lat": 47.483717,
-            # "lon": 19.015107,
-            # "agl": 20
-        } if IN_HEROKU else {
             # ELTE kert
             "lat": 47.473360,
             "lon": 19.062159,
@@ -79,13 +75,7 @@ EXTENSIONS = {
     "udp": {}
 }
 
-if IN_HEROKU:
-    if "_fake_uavs" in EXTENSIONS:
-        EXTENSIONS["fake_uavs"] = EXTENSIONS.pop("_fake_uavs")
-    for ext in "flockctrl gps ssdp tcp udp".split():
-        del EXTENSIONS[ext]
-
 # smpte_timecode seems to have some problems on a Mac - it consumes 15% CPU
 # even when idle. Also, it is not needed on Heroku.
-if IN_HEROKU or ON_MAC:
+if ON_MAC:
     del EXTENSIONS["smpte_timecode"]

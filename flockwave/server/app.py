@@ -2,6 +2,8 @@
 
 from __future__ import absolute_import
 
+import os
+
 from blinker import Signal
 from collections import defaultdict
 from flask import abort, Flask, redirect, url_for
@@ -481,8 +483,7 @@ class FlockwaveServer(Flask):
         self.runner = None
 
         # Load the configuration
-        self.config.from_object(".".join([PACKAGE_NAME, "config"]))
-        self.config.from_envvar("FLOCKWAVE_SETTINGS", silent=True)
+        self._load_configuration()
 
         # Create an object to hold information about all the registered
         # communication channel types that the server can handle
@@ -691,6 +692,26 @@ class FlockwaveServer(Flask):
             if response is not None:
                 response.add_failure(entry_id, failure_reason)
             return None
+
+    def _load_configuration(self):
+        """Loads the configuration of the application from the following
+        sources, in the following order:
+
+        - The default configuration in the `flockwave.server.config`
+          module.
+
+        - The configuration file referred to by the `FLOCKWAVE_SETTINGS`
+          environment variable, if it is specified.
+        """
+        self.config.from_object(".".join([PACKAGE_NAME, "config"]))
+
+        config_file = os.environ.get("FLOCKWAVE_SETTINGS")
+        if config_file:
+            config_file = os.path.abspath(config_file)
+            if not self.config.from_pyfile(config_file, silent=True):
+                log.warn("Cannot load configuration from {0!r}".format(
+                    os.environ.get("FLOCKWAVE_SETTINGS")
+                ))
 
     def _on_client_count_changed(self, sender):
         """Handler called when the number of clients attached to the server

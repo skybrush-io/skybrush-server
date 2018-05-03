@@ -92,6 +92,60 @@ class FakeUAVState(Enum):
     LANDING = 3
 
 
+class FakeBattery(object):
+    """A fake battery with voltage limits, linear discharge and a magical
+    automatic recharge when it is about to be depleted.
+    """
+
+    def __init__(self, min_voltage=9, max_voltage=12.3, discharge_time=120):
+        """Constructor.
+
+        Parameters:
+            min_voltage (float): the minimum voltage of the battery when it
+                will magically recharge
+            max_voltage (float): the maximum voltage of the battery
+            discharge_time (float): number of seconds after which the battery
+                becomes discharged
+        """
+        self._min = float(min_voltage)
+        self._max = float(max_voltage)
+        if self._max < self._min:
+            self._min, self._max = self._max, self._min
+
+        self._range = self._max - self._min
+        self._voltage = random() * self._range + self._min
+        self._discharge_rate = self._range / discharge_time
+
+        self._voltage_channel = None
+
+    @property
+    def voltage(self):
+        """The current voltage of the battery."""
+        return self._voltage
+
+    def recharge(self):
+        """Recharges the battery to the maximum voltage."""
+        self._voltage = self._max
+
+    def discharge(self, dt, mutator):
+        """Simulates the discharge of the battery over the given time
+        period.
+
+        Parameters:
+            dt (float): the time that has passed
+        """
+        self._voltage -= dt * self._discharge_rate
+        if mutator is not None:
+            mutator.update(self._voltage_channel, self._voltage)
+
+    def register_in_device_tree(self, node):
+        """Registers the battery in the given device tree node of a UAV."""
+        device = node.add_device("battery")
+        self._voltage_channel = device.add_channel(
+            "voltage", type=float, unit="V"
+        )
+
+
 class FakeUAV(UAVBase):
     """Model object representing a fake UAV provided by this extension.
 
@@ -320,7 +374,10 @@ class FakeUAV(UAVBase):
             observed_count = 0
             radiation_intensity_estimate = 0
 
-        # Also update our fake temperature sensor and Geiger counter
+        # Discharge the battery
+        self.battery.discharge(dt, mutator)
+
+        # Also update our sensors
         if mutator is not None:
             mutator.update(self.thermometer, {
                 "lat": position.lat,
@@ -349,6 +406,9 @@ class FakeUAV(UAVBase):
         self.state = FakeUAVState.TAKEOFF
 
     def _initialize_device_tree_node(self, node):
+        self.battery = FakeBattery()
+        self.battery.register_in_device_tree(node)
+
         device = node.add_device("thermometer")
         self.thermometer = device.add_channel(
             "temperature", type=object, unit=u"\u00b0C"

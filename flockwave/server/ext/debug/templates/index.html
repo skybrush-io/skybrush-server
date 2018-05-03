@@ -87,7 +87,7 @@
                 },
                 "CMD-REQ": {
                     "type": "CMD-REQ",
-                    "ids": ["FAKE-01", "FAKE-02"],
+                    "ids": ["COLLMOT-01", "COLLMOT-02"],
                     "command": "yo"
                 },
                 "CONN-INF": {
@@ -99,23 +99,23 @@
                 },
                 "DEV-INF": {
                     "type": "DEV-INF",
-                    "paths": ["/FAKE-00", "/FAKE-01/thermometer", "/FAKE-02/thermometer/temperature"]
+                    "paths": ["/COLLMOT-00", "/COLLMOT-01/thermometer", "/COLLMOT-02/thermometer/temperature"]
                 },
                 "DEV-LIST": {
                     "type": "DEV-LIST",
-                    "ids": ["FAKE-01", "FAKE-02"]
+                    "ids": ["COLLMOT-01", "COLLMOT-02"]
                 },
                 "DEV-LISTSUB": {
                     "type": "DEV-LISTSUB",
-                    "pathFilter": ["/FAKE-01", "/FAKE-01/thermometer", "/FAKE-00"]
+                    "pathFilter": ["/COLLMOT-01", "/COLLMOT-01/thermometer", "/COLLMOT-00"]
                 },
                 "DEV-SUB": {
                     "type": "DEV-SUB",
-                    "paths": ["/FAKE-02/thermometer/temperature"]
+                    "paths": ["/COLLMOT-02/thermometer/temperature"]
                 },
                 "DEV-UNSUB": {
                     "type": "DEV-UNSUB",
-                    "paths": ["/FAKE-02/thermometer/temperature"]
+                    "paths": ["/COLLMOT-02/thermometer/temperature"]
                 },
                 "SYS-PING": {
                     "type": "SYS-PING"
@@ -125,18 +125,18 @@
                 },
                 "UAV-INF": {
                     "type": "UAV-INF",
-                    "ids": ["FAKE-01", "FAKE-02"]
+                    "ids": ["COLLMOT-01", "COLLMOT-02"]
                 },
                 "UAV-LAND": {
                     "type": "UAV-LAND",
-                    "ids": ["FAKE-00"]
+                    "ids": ["COLLMOT-00"]
                 },
                 "UAV-LIST": {
                     "type": "UAV-LIST"
                 },
                 "UAV-TAKEOFF": {
                     "type": "UAV-TAKEOFF",
-                    "ids": ["FAKE-00"]
+                    "ids": ["COLLMOT-00"]
                 },
             };
             var socket = io();

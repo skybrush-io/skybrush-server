@@ -135,6 +135,8 @@ class FakeBattery(object):
             dt (float): the time that has passed
         """
         self._voltage -= dt * self._discharge_rate
+        while self._voltage < self._min:
+            self._voltage += self._range
         if mutator is not None:
             mutator.update(self._voltage_channel, self._voltage)
 

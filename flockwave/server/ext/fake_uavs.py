@@ -6,15 +6,17 @@ having access to real hardware that provides UAV position and velocity data.
 
 from __future__ import absolute_import, division
 
-from .base import UAVExtensionBase
 from enum import Enum
 from eventlet import sleep, spawn, spawn_after
-from flockwave.gps.vectors import FlatEarthCoordinate, GPSCoordinate, \
-    FlatEarthToGPSCoordinateTransformation, Vector3D
-from flockwave.server.model.uav import UAVBase, UAVDriver
-from flockwave.spec.ids import make_valid_uav_id
 from math import atan2, cos, hypot, sin, pi
 from random import random, choice
+
+from flockwave.gps.vectors import FlatEarthCoordinate, GPSCoordinate, \
+    FlatEarthToGPSCoordinateTransformation, Vector3D
+from flockwave.server.model.uav import BatteryInfo, UAVBase, UAVDriver
+from flockwave.spec.ids import make_valid_uav_id
+
+from .base import UAVExtensionBase
 
 
 __all__ = ()
@@ -107,25 +109,39 @@ class FakeBattery(object):
             discharge_time (float): number of seconds after which the battery
                 becomes discharged
         """
+        self._status = BatteryInfo()
+        self._voltage_channel = None
+
         self._min = float(min_voltage)
         self._max = float(max_voltage)
         if self._max < self._min:
             self._min, self._max = self._max, self._min
 
         self._range = self._max - self._min
-        self._voltage = random() * self._range + self._min
+
         self._discharge_rate = self._range / discharge_time
 
-        self._voltage_channel = None
+        self.voltage = random() * self._range + self._min
+
+    @property
+    def status(self):
+        """The general status of the battery as a BatteryInfo_ object."""
+        return self._status
 
     @property
     def voltage(self):
         """The current voltage of the battery."""
-        return self._voltage
+        return self._status.voltage
+
+    @voltage.setter
+    def voltage(self, value):
+        percentage = 100 * (value - self._min) / self._range
+        self._status.voltage = round(value, 2)
+        self._status.percentage = round(max(min(percentage, 100), 0), 2)
 
     def recharge(self):
         """Recharges the battery to the maximum voltage."""
-        self._voltage = self._max
+        self.voltage = self._max
 
     def discharge(self, dt, mutator):
         """Simulates the discharge of the battery over the given time
@@ -134,11 +150,13 @@ class FakeBattery(object):
         Parameters:
             dt (float): the time that has passed
         """
-        self._voltage -= dt * self._discharge_rate
-        while self._voltage < self._min:
-            self._voltage += self._range
+        new_voltage = self._status.voltage - dt * self._discharge_rate
+        while new_voltage < self._min:
+            new_voltage += self._range
+        self.voltage = new_voltage
+
         if mutator is not None:
-            mutator.update(self._voltage_channel, self._voltage)
+            mutator.update(self._voltage_channel, self._status.voltage)
 
     def register_in_device_tree(self, node):
         """Registers the battery in the given device tree node of a UAV."""
@@ -354,11 +372,15 @@ class FakeUAV(UAVBase):
         # current position as origin
         position = self._trans.to_gps(self._pos_flat_circle)
 
+        # Discharge the battery
+        self.battery.discharge(dt, mutator)
+
         # Update the UAV status
         self.update_status(
             position=position,
             heading=self.angle / pi * 180 + 90,
-            error=self.error if self.has_error else ()
+            error=self.error if self.has_error else (),
+            battery=self.battery.status
         )
 
         # Measure radiation if possible
@@ -375,9 +397,6 @@ class FakeUAV(UAVBase):
         else:
             observed_count = 0
             radiation_intensity_estimate = 0
-
-        # Discharge the battery
-        self.battery.discharge(dt, mutator)
 
         # Also update our sensors
         if mutator is not None:

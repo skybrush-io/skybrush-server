@@ -13,9 +13,19 @@ from .devices import UAVNode
 from .metamagic import ModelMeta
 from .mixins import TimestampMixin
 
-__all__ = ("UAVStatusInfo", "UAVDriver", "UAV", "UAVBase", "PassiveUAVDriver")
+__all__ = (
+    "BatteryInfo", "PassiveUAVDriver", "UAV", "UAVBase", "UAVDriver",
+    "UAVStatusInfo"
+)
 
 log = base_log.getChild("uav")
+
+
+class BatteryInfo(with_metaclass(ModelMeta)):
+    """Class representing the battery information of a single UAV."""
+
+    class __meta__:
+        schema = get_complex_object_schema("batteryInfo")
 
 
 class UAVStatusInfo(with_metaclass(ModelMeta, TimestampMixin)):
@@ -40,6 +50,7 @@ class UAVStatusInfo(with_metaclass(ModelMeta, TimestampMixin)):
         self.id = id
         self.position = GPSCoordinate()
         self.velocity = VelocityNED()
+        self.battery = BatteryInfo()
 
 
 class UAV(with_metaclass(ABCMeta, object)):
@@ -145,7 +156,7 @@ class UAVBase(UAV):
         pass
 
     def update_status(self, position=None, velocity=None, heading=None,
-                      algorithm=None, error=None):
+                      algorithm=None, battery=None, error=None):
         """Updates the status information of the UAV.
 
         Parameters with values equal to ``None`` are ignored.
@@ -160,6 +171,10 @@ class UAVBase(UAV):
             heading (Optional[float]): the heading of the UAV, in degrees.
             algorithm (Optional[str]): the algorithm that the UAV is
                 currently executing
+            battery (Optional[BatteryInfo]): information about the status
+                of the battery on the UAV. It will be cloned to ensure that
+                modifying this object from the caller will not affect the
+                UAV itself.
             error (Optional[Union[int,Iterable[int]]]): the error code or
                 error codes of the UAV; use an empty list or tuple if the
                 UAV has no errors
@@ -175,6 +190,8 @@ class UAVBase(UAV):
             self._status.velocity.update_from(velocity, precision=2)
         if algorithm is not None:
             self._status.algorithm = algorithm
+        if battery is not None:
+            self._status.battery.update_from(battery)
         if error is not None:
             if isinstance(error, int):
                 error = [error] if error > 0 else []

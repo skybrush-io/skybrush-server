@@ -273,6 +273,27 @@ class ModelMetaHelpers(object):
         dct["suppressed_validation"] = suppressed_validation
 
     @staticmethod
+    def add_update_from_method(dct):
+        """Extends the class being constructed with an ``update_from()`` method
+        that updates all properties of this object from the properties of
+        another, similarly typed object.
+
+        If the dictionary already has an ``update_from()`` method, no new
+        method will be added and the original method will be left intact.
+
+        Parameters:
+            dct (dict): the class dictionary
+        """
+        if "update_from" in dct:
+            return
+
+        def update_from(self, other):
+            """Updates the properties of the object from another object."""
+            self.json = other.json
+
+        dct["update_from"] = update_from
+
+    @staticmethod
     def add_validator_method(dct, schema, resolver):
         """Adds a ``validate()`` method to the given class dictionary that
         validates the class instance against a JSON schema.
@@ -414,6 +435,7 @@ class ModelMeta(type):
                 property_info = collect_properties(schema, resolver)
                 ModelMetaHelpers.add_proxy_properties(dct, property_info)
                 ModelMetaHelpers.add_clone_method(dct)
+                ModelMetaHelpers.add_update_from_method(dct)
                 ModelMetaHelpers.add_suppressed_validation_context_manager(dct)
                 ModelMetaHelpers.mark_metaclass(dct)
             ModelMetaHelpers.add_validator_method(dct, schema, resolver)

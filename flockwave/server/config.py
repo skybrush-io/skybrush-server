@@ -1,10 +1,13 @@
 """Default configuration for the Flockwave server.
 
 This script will be evaluated first when the server attempts to load its
-configuration. The variables declared in this script will then be placed in
-a Python namespace, and any additional configuration files will be evaluated
-in the context of this namespace so other configuration files get a chance
-to override all the things declared here.
+configuration. Configuration files may import variables from this module
+with `from flockwave.server.config import SOMETHING`, and may also modify
+them if the variables are mutable. For instance, to disable an extension
+locally, create a configuration file containing this:
+
+    from flockwave.server.config import EXTENSIONS
+    del EXTENSIONS["extension_to_disable"]
 """
 
 import platform

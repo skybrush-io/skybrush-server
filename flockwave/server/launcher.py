@@ -13,9 +13,11 @@ from . import logger
 from .logger import log
 
 
-def _default_runner(app, host="", port=5000, debug=False, log=log,
-                    keyfile=None, certfile=None):
-    sock = eventlet.listen((host, port))
+def _default_runner(app, debug=False, log=log, keyfile=None, certfile=None):
+    if app.address is None:
+        raise ValueError("app.address is not specified")
+
+    sock = eventlet.listen(app.address)
     if keyfile and certfile:
         sock = eventlet.wrap_ssl(sock, certfile=certfile, keyfile=keyfile,
                                  server_side=True)
@@ -23,6 +25,9 @@ def _default_runner(app, host="", port=5000, debug=False, log=log,
 
 
 @click.command()
+@click.option("-c", "--config", type=click.Path(resolve_path=True),
+              help="Name of the configuration file to load; defaults to "
+                   "flockwave.cfg in the current directory")
 @click.option("--debug/--no-debug", default=False,
               help="Start the server in debug mode")
 @click.option("-h", "--host", default="127.0.0.1",
@@ -33,7 +38,7 @@ def _default_runner(app, host="", port=5000, debug=False, log=log,
               help="Private key of the SSL certificate in PEM format")
 @click.option("--ssl-cert", default=None, type=click.Path(exists=True),
               help="SSL certificate in PEM format")
-def start(debug, host, port, ssl_key, ssl_cert):
+def start(config, debug, host, port, ssl_key, ssl_cert):
     """Start the Flockwave server."""
     # Dirty workaround for breaking import cycle according to
     # https://github.com/eventlet/eventlet/issues/394
@@ -82,8 +87,7 @@ def start(debug, host, port, ssl_key, ssl_cert):
         app.runner = partial(_default_runner, app=app)
 
     try:
-        app.runner(host=host, port=port, debug=debug,
-                   log=eventlet_log, **ssl_args)
+        app.runner(debug=debug, log=eventlet_log, **ssl_args)
     finally:
         app.teardown()
 

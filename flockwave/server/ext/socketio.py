@@ -135,6 +135,33 @@ def handle_exception(exc):
 ############################################################################
 
 
+def runner(app, debug=False, log=log, keyfile=None, certfile=None):
+    """Customized application runner for the case when the extension is
+    loaded; we need to use SocketIO's entry point instead of the default
+    WSGI runner.
+    """
+    if app.address is None:
+        raise ValueError("app.address is not specified")
+
+    host, port = app.address
+    kwds = {
+        "debug": debug,
+        "log": log,
+        "use_reloader": False
+    }
+
+    # Don't forward keyfile and certfile to socketio.run() if they are
+    # None because that would make socketio.run() attempt SSL anyway
+    if keyfile:
+        kwds["keyfile"] = keyfile
+    if certfile:
+        kwds["certfile"] = certfile
+
+    return socketio.run(app, host, port, **kwds)
+
+############################################################################
+
+
 def load(app, configuration, logger):
     """Loads the extension."""
     app.channel_type_registry.add(
@@ -149,7 +176,7 @@ def load(app, configuration, logger):
     socketio.on("fw")(handle_flockwave_message)
     socketio.on_error_default(handle_exception)
 
-    app.runner = partial(socketio.run, app, use_reloader=False)
+    app.runner = partial(runner, app=app)
 
     globals().update(
         app=app,

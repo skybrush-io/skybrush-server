@@ -150,13 +150,13 @@ class FakeBattery(object):
         Parameters:
             dt (float): the time that has passed
         """
-        new_voltage = self._status.voltage - dt * self._discharge_rate
+        new_voltage = self.voltage - dt * self._discharge_rate
         while new_voltage < self._min:
             new_voltage += self._range
         self.voltage = new_voltage
 
         if mutator is not None:
-            mutator.update(self._voltage_channel, self._status.voltage)
+            mutator.update(self._voltage_channel, self.voltage)
 
     def register_in_device_tree(self, node):
         """Registers the battery in the given device tree node of a UAV."""

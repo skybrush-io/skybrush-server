@@ -5,6 +5,7 @@ from __future__ import absolute_import
 import click
 import eventlet
 import logging
+import sys
 
 from eventlet import wsgi
 from functools import partial
@@ -79,8 +80,12 @@ def start(config, debug, host, port, ssl_key, ssl_cert):
         port, "secure " if ssl_args else ""
     ))
 
-    # Forward the hostname and port where we are listening to the app
+    # Forward the hostname and port where we are listening to the app.
+    # Also forward the name of the config file to load
     app.address = (host, port)
+    retval = app.prepare(config)
+    if retval is not None:
+        return retval
 
     # Now start the server
     if app.runner is None:
@@ -93,4 +98,4 @@ def start(config, debug, host, port, ssl_key, ssl_cert):
 
 
 if __name__ == '__main__':
-    start()
+    sys.exit(start())

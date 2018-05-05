@@ -73,10 +73,94 @@ class FlockwaveServer(Flask):
 
     def __init__(self, *args, **kwds):
         self.address = None
+        self.runner = None
+
         super(FlockwaveServer, self).__init__(
             PACKAGE_NAME, *args, **kwds
         )
-        self.prepare()
+
+        self._create_components()
+
+    def _create_components(self):
+        """Creates all the components and registries of the server.
+
+        This function is called by the constructor once at construction time.
+        You should not need to call it later.
+
+        The configuration of the server is not loaded yet when this function is
+        executed. Avoid querying the configuration of the server here because
+        the settings will not be up-to-date yet. Use `prepare()` for any
+        preparations that depend on the configuration.
+        """
+
+        # Create an object to hold information about all the registered
+        # communication channel types that the server can handle
+        self.channel_type_registry = ChannelTypeRegistry()
+
+        # Create an object to hold information about all the connected
+        # clients that the server can talk to
+        self.client_registry = ClientRegistry()
+        self.client_registry.channel_type_registry = \
+            self.channel_type_registry
+        self.client_registry.count_changed.connect(
+            self._on_client_count_changed,
+            sender=self.client_registry
+        )
+
+        # Create an object to hold information about all the clocks that the
+        # server manages
+        self.clock_registry = ClockRegistry()
+        self.clock_registry.clock_changed.connect(
+            self._on_clock_changed,
+            sender=self.clock_registry
+        )
+        # Create an object that keeps track of commands being executed
+        # asynchronously on remote UAVs
+        self.command_execution_manager = CommandExecutionManager()
+        self.command_execution_manager.expired.connect(
+            self._on_command_execution_timeout,
+            sender=self.command_execution_manager
+        )
+        self.command_execution_manager.finished.connect(
+            self._on_command_execution_finished,
+            sender=self.command_execution_manager
+        )
+
+        # Creates an object to hold information about all the connections
+        # to external data sources that the server manages
+        self.connection_registry = ConnectionRegistry()
+        self.connection_registry.connection_state_changed.connect(
+            self._on_connection_state_changed,
+            sender=self.connection_registry
+        )
+
+        # Create a message hub that will handle incoming and outgoing
+        # messages
+        self.message_hub = MessageHub()
+        self.message_hub.channel_type_registry = self.channel_type_registry
+        self.message_hub.client_registry = self.client_registry
+
+        # Create an object to hold information about all the UAVs that
+        # the server knows about
+        self.uav_registry = UAVRegistry()
+
+        # Create the global world object
+        self.world = World()
+
+        # Create a global device tree and ensure that new UAVs are
+        # registered in it
+        self.device_tree = DeviceTree()
+        self.device_tree.uav_registry = self.uav_registry
+
+        # Create an object to manage the associations between clients and
+        # the device tree paths that the clients are subscribed to
+        self.device_tree_subscriptions = DeviceTreeSubscriptionManager(
+            self.device_tree)
+        self.device_tree_subscriptions.client_registry = self.client_registry
+        self.device_tree_subscriptions.message_hub = self.message_hub
+
+        # Create an empty heap for proposed index pages
+        self._proposed_index_pages = []
 
     def create_CMD_DEL_message_for(self, receipt_ids, in_response_to):
         """Creates a CMD-DEL message after having cancelled the execution of
@@ -475,87 +559,25 @@ class FlockwaveServer(Flask):
         """The number of clients connected to the server."""
         return self.client_registry.num_entries
 
-    def prepare(self):
+    def prepare(self, config):
         """Hook function that contains preparation steps that should be
         performed by the server before it starts serving requests.
+
+        Parameters:
+            config (Optional[str]): name of the configuration file to load
+
+        Returns:
+            Optional[int]: error code to terminate the app with if the
+                preparation was not successful; ``None`` if the preparation
+                was successful
         """
-        # No app runner yet; it is the duty of the launcher module to set it up
-        self.runner = None
-
         # Load the configuration
-        self._load_configuration()
+        if not self._load_configuration(config):
+            return 1
 
-        # Create an object to hold information about all the registered
-        # communication channel types that the server can handle
-        self.channel_type_registry = ChannelTypeRegistry()
-
-        # Create an object to hold information about all the connected
-        # clients that the server can talk to
-        self.client_registry = ClientRegistry()
-        self.client_registry.channel_type_registry = \
-            self.channel_type_registry
-        self.client_registry.count_changed.connect(
-            self._on_client_count_changed,
-            sender=self.client_registry
-        )
-
-        # Create an object to hold information about all the clocks that the
-        # server manages
-        self.clock_registry = ClockRegistry()
-        self.clock_registry.clock_changed.connect(
-            self._on_clock_changed,
-            sender=self.clock_registry
-        )
-        # Create an object that keeps track of commands being executed
-        # asynchronously on remote UAVs
+        # Process the configuration options
         cfg = self.config.get("COMMAND_EXECUTION_MANAGER", {})
-        self.command_execution_manager = CommandExecutionManager(
-            timeout=cfg.get("timeout", 30)
-        )
-        self.command_execution_manager.expired.connect(
-            self._on_command_execution_timeout,
-            sender=self.command_execution_manager
-        )
-        self.command_execution_manager.finished.connect(
-            self._on_command_execution_finished,
-            sender=self.command_execution_manager
-        )
-
-        # Creates an object to hold information about all the connections
-        # to external data sources that the server manages
-        self.connection_registry = ConnectionRegistry()
-        self.connection_registry.connection_state_changed.connect(
-            self._on_connection_state_changed,
-            sender=self.connection_registry
-        )
-
-        # Create a message hub that will handle incoming and outgoing
-        # messages
-        self.message_hub = MessageHub()
-        self.message_hub.channel_type_registry = self.channel_type_registry
-        self.message_hub.client_registry = self.client_registry
-
-        # Create an object to hold information about all the UAVs that
-        # the server knows about
-        self.uav_registry = UAVRegistry()
-
-        # Create the global world object
-        self.world = World()
-
-        # Create a global device tree and ensure that new UAVs are
-        # registered in it
-        self.device_tree = DeviceTree()
-        self.device_tree.uav_registry = self.uav_registry
-
-        # Create an object to manage the associations between clients and
-        # the device tree paths that the clients are subscribed to
-        self.device_tree_subscriptions = DeviceTreeSubscriptionManager(
-            self.device_tree)
-        self.device_tree_subscriptions.client_registry = self.client_registry
-        self.device_tree_subscriptions.message_hub = self.message_hub
-
-        # Create an empty heap for proposed index pages
-        self._proposed_index_pages = []
+        self.command_execution_manager.timeout = cfg.get("timeout", 30)
 
         # Import and configure the extensions that we want to use. This
         # must be done last because we want to be sure that the basic
@@ -693,25 +715,61 @@ class FlockwaveServer(Flask):
                 response.add_failure(entry_id, failure_reason)
             return None
 
-    def _load_configuration(self):
+    def _load_configuration(self, config=None):
         """Loads the configuration of the application from the following
         sources, in the following order:
 
         - The default configuration in the `flockwave.server.config`
           module.
 
+        - The configuration file referred to by the `config` argument,
+          if present.
+
         - The configuration file referred to by the `FLOCKWAVE_SETTINGS`
           environment variable, if it is specified.
+
+        Parameters:
+            config (Optional[str]): name of the configuration file to load
+
+        Returns:
+            bool: whether all configuration files were processed successfully
         """
         self.config.from_object(".".join([PACKAGE_NAME, "config"]))
 
-        config_file = os.environ.get("FLOCKWAVE_SETTINGS")
-        if config_file:
-            config_file = os.path.abspath(config_file)
-            if not self.config.from_pyfile(config_file, silent=True):
-                log.warn("Cannot load configuration from {0!r}".format(
-                    os.environ.get("FLOCKWAVE_SETTINGS")
-                ))
+        config_files = [
+            (config, True),
+            (os.environ.get("FLOCKWAVE_SETTINGS"), True)
+        ]
+
+        if not config:
+            config_files.insert(0, ("flockwave.cfg", False))
+
+        return all(
+            self._load_configuration_from_file(config_file, mandatory)
+            for config_file, mandatory in config_files if config_file
+        )
+
+    def _load_configuration_from_file(self, filename, mandatory=True):
+        """Loads configuration settings from the given file.
+
+        Parameters:
+            filename (str): name of the configuration file to load. Relative
+                paths are resolved from the current directory.
+            mandatory (bool): whether the configuration file must exist.
+                If this is ``False`` and the file does not exist, this
+                function will not print a warning about the missing file
+                and pretend that loading the file was successful.
+
+        Returns:
+            bool: whether the configuration was loaded successfully
+        """
+        original, filename = filename, os.path.abspath(filename)
+        if not self.config.from_pyfile(filename, silent=True) and mandatory:
+            log.warn("Cannot load configuration from {0!r}".format(original))
+            return False
+        else:
+            log.info("Loaded configuration from {0!r}".format(original))
+        return True
 
     def _on_client_count_changed(self, sender):
         """Handler called when the number of clients attached to the server

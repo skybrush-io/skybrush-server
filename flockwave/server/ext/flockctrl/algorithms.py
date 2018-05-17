@@ -120,7 +120,7 @@ class GeigerCounterAlgorithm(Algorithm):
     def handle_data_packet(self, packet, uav, mutate):
         """Inherited."""
         raw_counts = [0, 0]
-        (iTOW, lat, lon, amsl, agl, raw_counts[0], raw_counts[1], dose_rate), _ = \
+        (iTOW, lon, lat, amsl, agl, raw_counts[0], raw_counts[1], dose_rate), _ = \
             self._unpack(packet.body)
 
         # Construct the position object
@@ -171,7 +171,7 @@ class OcularAlgorithm(Algorithm):
         """Inherited."""
         # unpack fixed length header
         feature_count = 0
-        (iTOW, lat, lon, amsl, agl, feature_count), remainder = \
+        (iTOW, lon, lat, amsl, agl, feature_count), remainder = \
             self._unpack(packet.body)
 
         # convert position to target position; currently unused
@@ -180,7 +180,7 @@ class OcularAlgorithm(Algorithm):
         # unpack variable length data
         features = []
         for i in range(feature_count):
-            (lat, lon, amsl, agl), remainder = \
+            (lon, lat, amsl, agl), remainder = \
                 self._unpack(remainder, self._struct_feature)
 
             # convert position to feature position

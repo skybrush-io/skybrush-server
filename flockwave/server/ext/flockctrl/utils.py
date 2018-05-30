@@ -34,6 +34,7 @@ def unpack_struct(spec, data):
     except StructError as ex:
         raise ParseError(str(ex))
 
+
 def convert_mkgps_position_to_gps_coordinate(lat, lon, amsl, agl):
     """Standardize units coming from the mkgps_position_t packet and store
     results as a GPSCoordinate object.

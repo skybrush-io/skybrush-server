@@ -385,7 +385,7 @@ class MessageHub(object):
             message_types = [message_types]
 
         for message_type in message_types:
-            if not isinstance(message_type, str):
+            if message_type is not None and not isinstance(message_type, str):
                 message_type = message_type.decode("utf-8")
             self._handlers_by_type[message_type].append(func)
 
@@ -440,6 +440,33 @@ class MessageHub(object):
             )
 
         self._send_message(message, to)
+
+    def unregister_message_handler(self, func, message_types=None):
+        """Unregisters a handler function from the given message types.
+
+        Parameters:
+            func (callable): the handler to unregister.
+
+            message_types (None or iterable): an iterable that yields the
+                message types from which this handler will be unregistered.
+                ``None`` means to unregister the handler from all message
+                types; however, if it was also registered for specific message
+                types individually (in addition to all messages in general),
+                it will also have to be unregistered from the individual
+                message types.
+        """
+        if message_types is None or isinstance(message_types, string_types):
+            message_types = [message_types]
+
+        for message_type in message_types:
+            if message_type is not None and not isinstance(message_type, str):
+                message_type = message_type.decode("utf-8")
+            handlers = self._handlers_by_type.get(message_type)
+            try:
+                handlers.remove(func)
+            except ValueError:
+                # Handler not in list; no problem
+                pass
 
     def _decode_incoming_message(self, message):
         """Decodes an incoming, raw JSON message that has already been

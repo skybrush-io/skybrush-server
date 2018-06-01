@@ -62,12 +62,14 @@ class FlockCtrlDronesExtension(UAVExtensionBase):
         super(FlockCtrlDronesExtension, self).on_app_changed(old_app, new_app)
 
         if old_app is not None:
-            old_app.clock_registry.clock_changed.disconnect(
-                self._on_clock_changed, sender=old_app.clock_registry)
+            registry = old_app.import_api("clocks").registry
+            registry.clock_changed.disconnect(
+                self._on_clock_changed, sender=registry)
 
         if new_app is not None:
-            new_app.clock_registry.clock_changed.connect(
-                self._on_clock_changed, sender=new_app.clock_registry)
+            registry = new_app.import_api("clocks").registry
+            registry.clock_changed.connect(
+                self._on_clock_changed, sender=registry)
 
     def teardown(self):
         self.wireless_lowlevel_link = None
@@ -227,3 +229,4 @@ class FlockCtrlDronesExtension(UAVExtensionBase):
 
 
 construct = FlockCtrlDronesExtension
+dependencies = ("clocks", )

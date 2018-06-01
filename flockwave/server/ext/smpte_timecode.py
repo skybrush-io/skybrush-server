@@ -401,12 +401,12 @@ class SMPTETimecodeExtension(ExtensionBase):
             self._clock.changed.disconnect(self._on_clock_changed)
             self._clock.started.disconnect(self._on_clock_started)
             self._clock.stopped.disconnect(self._on_clock_stopped)
-            self.app.clock_registry.remove(self._clock)
+            self.app.import_api("clocks").unregister_clock(self._clock)
 
         self._clock = value
 
         if self._clock is not None:
-            self.app.clock_registry.add(self._clock)
+            self.app.import_api("clocks").register_clock(self._clock)
             self._clock.changed.connect(self._on_clock_changed,
                                         sender=self._clock)
             self._clock.started.connect(self._on_clock_started,
@@ -476,3 +476,4 @@ class InboundMessageParserThread(object):
 
 
 construct = SMPTETimecodeExtension
+dependencies = ("clocks", )

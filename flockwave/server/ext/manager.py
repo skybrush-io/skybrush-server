@@ -18,6 +18,29 @@ EXT_PACKAGE_NAME = __name__.rpartition(".")[0]
 log = base_log.getChild("manager")
 
 
+class ExtensionData(object):
+    """Data that the extension manager stores related to each extension.
+
+    Attributes:
+        name (str): the name of the extension
+        api_proxy (object): the API object that the extension exports
+        configuration (object): the configuration object of the extension
+        instance (object): the loaded instance of the extension
+        dependents (Set[str]): names of other loaded extensions that depend
+            on this extension
+        loaded (bool): whether the extension is loaded
+    """
+
+    def __init__(self, name, configuration=None):
+        """Constructor."""
+        self.api_proxy = None
+        self.name = name
+        self.configuration = configuration if configuration is not None else {}
+        self.dependents = set()
+        self.instance = None
+        self.loaded = False
+
+
 class ExtensionManager(object):
     """Central extension manager for a Flockwave server that manages
     the loading, configuration and unloading of extensions.
@@ -43,9 +66,8 @@ class ExtensionManager(object):
             app (FlockwaveServer): the "application context" of the
                 extension manager.
         """
-        self._api_proxies = keydefaultdict(self._create_api_proxy)
         self._app = None
-        self._extensions = {}
+        self._extensions = keydefaultdict(self._create_extension_data)
         self._num_clients = 0
         self.app = app
 
@@ -87,15 +109,24 @@ class ExtensionManager(object):
             configuration (dict): a dictionary mapping names of the
                 extensions to their configuration.
         """
-        for extension_name in self.loaded_extensions:
-            self.unload(extension_name)
-        for extension_name, extension_cfg in iteritems(configuration):
-            if not extension_name.startswith("_"):
-                self.load(extension_name, extension_cfg)
+        loaded_extensions = set(self.loaded_extensions)
 
-    def _create_api_proxy(self, extension_name):
-        """Creates a proxy object that allows the user to access the API
-        of the extension with the given name.
+        self.teardown()
+
+        for extension_name, extension_cfg in iteritems(configuration):
+            ext = self._extensions[extension_name]
+            ext.configuration = dict(extension_cfg)
+            loaded_extensions.add(extension_name)
+
+        for extension_name in sorted(loaded_extensions):
+            ext = self._extensions[extension_name]
+            enabled = ext.configuration.get("enabled", True)
+            if enabled:
+                self.load(extension_name)
+
+    def _create_extension_data(self, extension_name):
+        """Creates a helper object holding all data related to the extension
+        with the given name.
 
         Parameters:
             extension_name (str): the name of the extension
@@ -106,11 +137,13 @@ class ExtensionManager(object):
         if not self.exists(extension_name):
             raise KeyError(extension_name)
         else:
-            return ExtensionAPIProxy(self, extension_name)
+            data = ExtensionData(extension_name)
+            data.api_proxy = ExtensionAPIProxy(self, extension_name)
+            return data
 
-    def _get_extension_by_name(self, extension_name):
+    def _get_loaded_extension_by_name(self, extension_name):
         """Returns the extension object corresponding to the extension
-        with the given name.
+        with the given name if it is loaded.
 
         Parameters:
             extension_name (str): the name of the extension
@@ -119,9 +152,29 @@ class ExtensionManager(object):
             object: the extension with the given name
 
         Raises:
-            KeyError: if the extension with the given name is not loaded
+            KeyError: if the extension with the given name is not declared in
+                the configuration file or if it is not loaded
         """
-        return self._extensions[extension_name]
+        if extension_name not in self._extensions:
+            raise KeyError(extension_name)
+
+        ext = self._extensions[extension_name]
+        if not ext.loaded or ext.instance is None:
+            raise KeyError(extension_name)
+        else:
+            return ext.instance
+
+    def _get_module_for_extension(self, extension_name):
+        """Returns the module that contains the given extension.
+
+        Parameters:
+            extension_name (str): the name of the extension
+
+        Returns:
+            module: the module containing the extension with the given name
+        """
+        module_name = self._get_module_name_for_extension(extension_name)
+        return importlib.import_module(module_name)
 
     def _get_module_name_for_extension(self, extension_name):
         """Returns the name of the module that should contain the given
@@ -146,13 +199,13 @@ class ExtensionManager(object):
         module_name = self._get_module_name_for_extension(extension_name)
         return get_loader(module_name) is not None
 
-    def import_api(self, extension_name, members=None):
+    def import_api(self, extension_name):
         """Imports the API exposed by an extension.
 
         Extensions *may* have a dictionary named ``exports`` that allows the
         extension to export some of its variables, functions or methods.
         Other extensions may access the exported members of an extension by
-        calling the `import_from`_ method of the extension manager.
+        calling the `import_api`_ method of the extension manager.
 
         This function supports "lazy imports", i.e. one may import the API
         of an extension before loading the extension. When the extension
@@ -175,9 +228,9 @@ class ExtensionManager(object):
         Raises:
             KeyError: if the extension with the given name does not exist
         """
-        return self._api_proxies[extension_name]
+        return self._extensions[extension_name].api_proxy
 
-    def load(self, extension_name, configuration=None):
+    def load(self, extension_name):
         """Loads an extension with the given name.
 
         The extension will be imported from the ``flockwave.server.ext``
@@ -194,43 +247,16 @@ class ExtensionManager(object):
         for logging. The ``unload()`` method is always called without an
         argument.
 
+        Extensions may declare dependencies if they provide a function named
+        ``get_dependencies()``. The function must return a list of extension
+        names that must be loaded _before_ the extension itself is loaded.
+        This function will take care of loading all dependencies before
+        loading the extension itself.
+
         Parameters:
             extension_name (str): the name of the extension to load
-            configuration (dict or None): the configuration dictionary for
-                the extension. ``None`` is equivalent to an empty dict.
         """
-        if extension_name in ("logger", "manager", "base", "__init__"):
-            raise ValueError("invalid extension name: {0!r}"
-                             .format(extension_name))
-
-        log.info("Loading extension {0!r}".format(extension_name))
-        module_name = self._get_module_name_for_extension(extension_name)
-
-        try:
-            module = importlib.import_module(module_name)
-        except ImportError:
-            log.exception("Error while importing extension {0!r}"
-                          .format(extension_name))
-            return
-
-        instance_factory = getattr(module, "construct", None)
-        extension = instance_factory() if instance_factory else module
-
-        func = getattr(extension, "load", None)
-        if callable(func):
-            try:
-                extension_log = base_log.getChild(extension_name)
-                func(self.app, configuration, extension_log)
-            except Exception:
-                log.exception("Error while loading extension {0!r}"
-                              .format(extension_name))
-                return
-
-        self._extensions[extension_name] = extension
-        self.loaded.send(self, name=extension_name, extension=extension)
-
-        if self._num_clients > 0:
-            self._spinup_extension(extension)
+        return self._load(extension_name, forbidden=[])
 
     @property
     def loaded_extensions(self):
@@ -241,11 +267,16 @@ class ExtensionManager(object):
         Returns:
             list: the names of all the extensions that are currently loaded
         """
-        return sorted(self._extensions.keys())
+        return sorted(key for key, ext in iteritems(self._extensions)
+                      if ext.loaded)
 
     def is_loaded(self, extension_name):
         """Returns whether the given extension is loaded."""
-        return extension_name in self._extensions
+        try:
+            self._get_loaded_extension_by_name(extension_name)
+            return True
+        except KeyError:
+            return False
 
     def teardown(self):
         """Tears down the extension manager and prepares it for destruction."""
@@ -259,7 +290,7 @@ class ExtensionManager(object):
             extension_name (str): the name of the extension to unload
         """
         try:
-            extension = self._get_extension_by_name(extension_name)
+            extension = self._get_loaded_extension_by_name(extension_name)
         except KeyError:
             log.warning("Tried to unload extension {0!r} but it is "
                         "not loaded".format(extension_name))
@@ -278,7 +309,12 @@ class ExtensionManager(object):
                 log.exception("Error while unloading extension {0!r}; "
                               "forcing unload".format(extension_name))
 
-        del self._extensions[extension_name]
+        self._extensions[extension_name].loaded = False
+        self._extensions[extension_name].instance = None
+
+        for dependency in self._get_dependencies_of_extension(extension_name):
+            self._extensions[dependency].dependents.remove(extension_name)
+
         self.unloaded.send(self, name=extension_name, extension=extension)
 
         message = "Unloaded extension {0!r}".format(extension_name)
@@ -298,18 +334,112 @@ class ExtensionManager(object):
         elif self._num_clients != 0 and old_value == 0:
             self._spinup_all_extensions()
 
+    def _get_dependencies_of_extension(self, extension_name):
+        """Determines the list of extensions that a given extension depends
+        on directly.
+
+        Parameters:
+            extension_name (str): the name of the extension
+
+        Returns:
+            Set[str]: the names of the extensions that the given extension
+                depends on
+        """
+        try:
+            module = self._get_module_for_extension(extension_name)
+        except ImportError:
+            log.exception("Error while importing extension {0!r}"
+                          .format(extension_name))
+            raise
+
+        func = getattr(module, "get_dependencies", None)
+        if callable(func):
+            try:
+                dependencies = func()
+            except Exception:
+                log.exception("Error while determining dependencies of "
+                              "extension {0!r}".format(extension_name))
+                dependencies = None
+        else:
+            dependencies = getattr(module, "dependencies", None)
+
+        return set(dependencies or [])
+
+    def _load(self, extension_name, forbidden):
+        if extension_name in forbidden:
+            cycle = forbidden + [extension_name]
+            log.error("Dependency cycle detected: {0}".format(
+                " -> ".join(map(str, cycle))
+            ))
+            return
+
+        self._ensure_dependencies_loaded(extension_name, forbidden)
+        if not self.is_loaded(extension_name):
+            return self._load_single_extension(extension_name)
+
+    def _load_single_extension(self, extension_name):
+        """Loads an extension with the given name, assuming that all its
+        dependencies are already loaded.
+
+        This function is internal; use `load()` instead if you want to load
+        an extension programmatically, and it will take care of loading all
+        the dependencies as well.
+
+        Parameters:
+            extension_name (str): the name of the extension to load
+        """
+        if extension_name in ("logger", "manager", "base", "__init__"):
+            raise ValueError("invalid extension name: {0!r}"
+                             .format(extension_name))
+
+        configuration = self._extensions[extension_name].configuration
+
+        log.info("Loading extension {0!r}".format(extension_name))
+        try:
+            module = self._get_module_for_extension(extension_name)
+        except ImportError:
+            log.exception("Error while importing extension {0!r}"
+                          .format(extension_name))
+            return
+
+        instance_factory = getattr(module, "construct", None)
+        extension = instance_factory() if instance_factory else module
+
+        func = getattr(extension, "load", None)
+        if callable(func):
+            try:
+                extension_log = base_log.getChild(extension_name)
+                result = func(self.app, configuration, extension_log)
+            except Exception:
+                log.exception("Error while loading extension {0!r}"
+                              .format(extension_name))
+                return None
+
+        self._extensions[extension_name].instance = extension
+        self._extensions[extension_name].loaded = True
+
+        for dependency in self._get_dependencies_of_extension(extension_name):
+            self._extensions[dependency].dependents.add(extension_name)
+
+        self.loaded.send(self, name=extension_name, extension=extension)
+
+        if self._num_clients > 0:
+            self._spinup_extension(extension)
+
+        return result
+
     def _spindown_all_extensions(self):
         """Iterates over all loaded extensions and spins down each one of
         them.
         """
-        for extension_name in self._extensions:
+        for extension_name in self.loaded_extensions:
             self._spindown_extension(extension_name)
 
     def _spinup_all_extensions(self):
         """Iterates over all loaded extensions and spins up each one of
         them.
         """
-        for extension_name in self._extensions:
+        for extension_name in self.loaded_extensions:
             self._spinup_extension(extension_name)
 
     def _spindown_extension(self, extension_name):
@@ -321,7 +451,7 @@ class ExtensionManager(object):
         Arguments:
             extension_name (str): the name of the extension to spin down.
         """
-        extension = self._get_extension_by_name(extension_name)
+        extension = self._get_loaded_extension_by_name(extension_name)
         func = getattr(extension, "spindown", None)
         if callable(func):
             try:
@@ -340,7 +470,7 @@ class ExtensionManager(object):
         Arguments:
             extension_name (str): the name of the extension to spin up.
         """
-        extension = self._get_extension_by_name(extension_name)
+        extension = self._get_loaded_extension_by_name(extension_name)
         func = getattr(extension, "spinup", None)
         if callable(func):
             try:
@@ -349,6 +479,24 @@ class ExtensionManager(object):
                 log.exception("Error while spinning up extension {0!r}"
                               .format(extension_name))
                 return
+
+    def _ensure_dependencies_loaded(self, extension_name, forbidden):
+        """Ensures that all the dependencies of the given extension are
+        loaded.
+
+        Parameters:
+            extension_name (str): the name of the extension
+            forbidden (List[str]): set of extensions that are already
+                being loaded
+
+        Raises:
+            ImportError: if the extension cannot be imported
+        """
+        dependencies = self._get_dependencies_of_extension(extension_name)
+        forbidden.append(extension_name)
+        for dependency in dependencies:
+            self._load(dependency, forbidden)
+        forbidden.pop()
 
 
 class ExtensionAPIProxy(object):
@@ -401,7 +549,7 @@ class ExtensionAPIProxy(object):
 
     def _get_api_of_extension(self, extension_name):
         """Returns the API of the given extension."""
-        extension = self._manager._get_extension_by_name(extension_name)
+        extension = self._manager._get_loaded_extension_by_name(extension_name)
         api = getattr(extension, "exports", None)
         if api is None:
             api = {}

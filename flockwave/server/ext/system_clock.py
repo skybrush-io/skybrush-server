@@ -43,9 +43,14 @@ clock = SystemClock()
 
 def load(app, configuration, logger):
     """Loads the extension."""
-    app.clock_registry.add(clock)
+    app.import_api("clocks").register_clock(clock)
+
+
+def get_dependencies():
+    """Returns the dependencies of this extension."""
+    return ("clocks", )
 
 
 def unload(app):
     """Unloads the extension."""
-    app.clock_registry.remove(clock)
+    app.import_api("clocks").unregister_clock(clock)

@@ -29,9 +29,10 @@ EXTENSIONS = {
     "debug": {
         "route": "/debug"
     },
-    "_fake_uavs": {
+    "fake_uavs": {
         "count": 3,
         "delay": 1.9,
+        "enabled": False,
         "id_format": "COLLMOT-{0:02}",
         "center": {
             # ELTE kert

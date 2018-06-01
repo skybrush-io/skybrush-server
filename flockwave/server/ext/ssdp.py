@@ -277,6 +277,9 @@ def receive_loop(sock, handler, pool_size=1000):
             handler(*sock.recvfrom(65536))
         except GreenletExit:
             break
+        except OSError:
+            # Socket error. TODO: restart the socket when possible.
+            break
         except Exception as ex:
             log.exception(ex)
 

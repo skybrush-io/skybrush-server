@@ -112,3 +112,28 @@ class RegistryBase(Registry):
     def num_entries(self):
         """Returns the number of entries in the registry."""
         return len(self._entries)
+
+
+def find_in_registry(registry, entry_id, response=None,
+                     failure_reason=None):
+    """Finds an entry in the given registry with the given ID or
+    registers a failure in the given response object if there is no
+    such entry in the registry.
+
+    Parameters:
+        entry_id (str): the ID of the entry to find
+        registry (Registry): the registry in which to find the entry
+        response (Optional[FlockwaveResponse]): the response in which
+            the failure can be registered
+        failure_reason (Optional[str]): the failure reason to register
+
+    Returns:
+        Optional[object]: the entry from the registry with the given ID or
+            ``None`` if there is no such entry
+    """
+    try:
+        return registry.find_by_id(entry_id)
+    except KeyError:
+        if response is not None:
+            response.add_failure(entry_id, failure_reason)
+        return None

@@ -21,8 +21,8 @@ from .model.errors import ClientNotSubscribedError, NoSuchPathError
 from .model.rate_limiters import rate_limited_by, \
     UAVSpecializedMessageRateLimiter
 from .model.world import World
-from .registries import ChannelTypeRegistry, ClientRegistry, ClockRegistry, \
-    ConnectionRegistry, UAVRegistry
+from .registries import ChannelTypeRegistry, ClientRegistry, \
+    ConnectionRegistry, UAVRegistry, find_in_registry
 from .version import __version__ as server_version
 
 __all__ = ("app", )
@@ -107,13 +107,6 @@ class FlockwaveServer(Flask):
             sender=self.client_registry
         )
 
-        # Create an object to hold information about all the clocks that the
-        # server manages
-        self.clock_registry = ClockRegistry()
-        self.clock_registry.clock_changed.connect(
-            self._on_clock_changed,
-            sender=self.clock_registry
-        )
         # Create an object that keeps track of commands being executed
         # asynchronously on remote UAVs
         self.command_execution_manager = CommandExecutionManager()
@@ -212,33 +205,6 @@ class FlockwaveServer(Flask):
             entry = self._find_command_receipt_by_id(receipt_id, response)
             if entry:
                 receipts[receipt_id] = entry.json
-
-        return response
-
-    def create_CLK_INF_message_for(self, clock_ids, in_response_to=None):
-        """Creates a CLK-INF message that contains information regarding
-        the clocks with the given IDs.
-
-        Parameters:
-            clock_ids (iterable): list of clock IDs
-            in_response_to (FlockwaveMessage or None): the message that the
-                constructed message will respond to. ``None`` means that the
-                constructed message will be a notification.
-
-        Returns:
-            FlockwaveMessage: the CLK-INF message with the status info of
-                the given clocks
-        """
-        statuses = {}
-
-        body = {"status": statuses, "type": "CLK-INF"}
-        response = self.message_hub.create_response_or_notification(
-            body=body, in_response_to=in_response_to)
-
-        for clock_id in clock_ids:
-            entry = self._find_clock_by_id(clock_id, response)
-            if entry:
-                statuses[clock_id] = entry.json
 
         return response
 
@@ -541,6 +507,37 @@ class FlockwaveServer(Flask):
 
         return response
 
+    def import_api(self, extension_name):
+        """Imports the API exposed by an extension.
+
+        Extensions *may* have a dictionary named ``exports`` that allows the
+        extension to export some of its variables, functions or methods.
+        Other extensions may access the exported members of an extension by
+        calling the `import_api`_ method of the application.
+
+        This function supports "lazy imports", i.e. one may import the API
+        of an extension before loading the extension. When the extension
+        is not loaded, the returned API object will have a single property
+        named ``loaded`` that is set to ``False``. When the extension is
+        loaded, the returned API object will set ``loaded`` to ``True``.
+        Attribute retrievals on the returned API object are forwarded to the
+        API of the extension.
+
+        Parameters:
+            extension_name (str): the name of the extension whose API is to
+                be imported
+
+        Returns:
+            ExtensionAPIProxy: a proxy object to the API of the extension
+                that forwards attribute retrievals to the API, except for
+                the property named ``loaded``, which returns whether the
+                extension is loaded or not.
+
+        Raises:
+            KeyError: if the extension with the given name does not exist
+        """
+        return self.extension_manager.import_api(extension_name)
+
     @property
     def index_url(self):
         """Returns the URL of the best proposed index page.
@@ -617,23 +614,6 @@ class FlockwaveServer(Flask):
         """Tears down the application and prepares it for exiting normally."""
         self.extension_manager.teardown()
 
-    def _find_clock_by_id(self, clock_id, response=None):
-        """Finds the clock with the given ID in the clock registry or registers
-        a failure in the given response object if there is no clock with the
-        given ID.
-
-        Parameters:
-            clock_id (str): the ID of the clock to find
-            response (Optional[FlockwaveResponse]): the response in which
-                the failure can be registered
-
-        Returns:
-            Optional[UAV]: the UAV with the given ID or ``None`` if there
-                is no such UAV
-        """
-        return self._find_in_registry(self.clock_registry, clock_id,
-                                      response, "No such clock")
-
     def _find_command_receipt_by_id(self, receipt_id, response=None):
         """Finds the asynchronous command execution receipt with the given
         ID in the command execution manager or registers a failure in the
@@ -650,9 +630,8 @@ class FlockwaveServer(Flask):
                 execution of the asynchronous command with the given ID
                 or ``None`` if there is no such command
         """
-        return self._find_in_registry(self.command_execution_manager,
-                                      receipt_id, response,
-                                      "No such receipt")
+        return find_in_registry(self.command_execution_manager,
+                                receipt_id, response, "No such receipt")
 
     def _find_connection_by_id(self, connection_id, response=None):
         """Finds the connection with the given ID in the connection registry
@@ -669,9 +648,8 @@ class FlockwaveServer(Flask):
                 registry with the given ID or ``None`` if there is no such
                 connection
         """
-        return self._find_in_registry(self.connection_registry,
-                                      connection_id, response,
-                                      "No such connection")
+        return find_in_registry(self.connection_registry,
+                                connection_id, response, "No such connection")
 
     def _find_uav_by_id(self, uav_id, response=None):
         """Finds the UAV with the given ID in the UAV registry or registers
@@ -687,33 +665,8 @@ class FlockwaveServer(Flask):
             Optional[UAV]: the UAV with the given ID or ``None`` if there
                 is no such UAV
         """
-        return self._find_in_registry(self.uav_registry, uav_id, response,
-                                      "No such UAV")
-
-    @staticmethod
-    def _find_in_registry(registry, entry_id, response=None,
-                          failure_reason=None):
-        """Finds an entry in the given registry with the given ID or
-        registers a failure in the given response object if there is no
-        such entry in the registry.
-
-        Parameters:
-            entry_id (str): the ID of the entry to find
-            registry (Registry): the registry in which to find the entry
-            response (Optional[FlockwaveResponse]): the response in which
-                the failure can be registered
-            failure_reason (Optional[str]): the failure reason to register
-
-        Returns:
-            Optional[object]: the entry from the UAV with the given ID or
-                ``None`` if there is no such entry
-        """
-        try:
-            return registry.find_by_id(entry_id)
-        except KeyError:
-            if response is not None:
-                response.add_failure(entry_id, failure_reason)
-            return None
+        return find_in_registry(self.uav_registry, uav_id, response,
+                                "No such UAV")
 
     def _load_configuration(self, config=None):
         """Loads the configuration of the application from the following
@@ -776,16 +729,6 @@ class FlockwaveServer(Flask):
         has changed. Dispatches a ``num_clients_changed`` signal.
         """
         self.num_clients_changed.send(self)
-
-    def _on_clock_changed(self, sender, clock):
-        """Handler called when one of the clocks managed by the clock
-        registry of the server has changed. Creates and sends a ``CLK-INF``
-        notification for the clock that has changed.
-        """
-        if "socketio" in self.extensions:
-            message = self.create_CLK_INF_message_for([clock.id])
-            with self.app_context():
-                self.message_hub.send_message(message)
 
     def _on_connection_state_changed(self, sender, entry, old_state,
                                      new_state):
@@ -890,20 +833,6 @@ def index():
         abort(404)
 
 # ######################################################################## #
-
-
-@app.message_hub.on("CLK-INF")
-def handle_CLK_INF(message, sender, hub):
-    return app.create_CLK_INF_message_for(
-        message.body["ids"], in_response_to=message
-    )
-
-
-@app.message_hub.on("CLK-LIST")
-def handle_CLK_LIST(message, sender, hub):
-    return {
-        "ids": list(app.clock_registry.ids)
-    }
 
 
 @app.message_hub.on("CMD-DEL")

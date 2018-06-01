@@ -2,6 +2,6 @@
 the ``flockctrl`` protocol.
 """
 
-from .extension import construct
+from .extension import construct, dependencies
 
-__all__ = ("construct", )
+__all__ = ("construct", "dependencies")

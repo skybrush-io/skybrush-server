@@ -10,6 +10,7 @@ from flockwave.gps.vectors import GPSCoordinate
 from flockwave.server.connections import create_connection, reconnecting
 from flockwave.server.encoders import JSONEncoder
 from flockwave.server.errors import NotSupportedError
+from flockwave.server.model import ConnectionPurpose
 from flockwave.server.model.uav import PassiveUAVDriver
 from flockwave.server.parsers import LineParser
 from flockwave.spec.ids import make_valid_uav_id
@@ -167,7 +168,8 @@ class GPSExtension(UAVExtensionBase):
         )
         connection = reconnecting(connection)
 
-        self.app.connection_registry.add(connection, "GPS", "GPS link")
+        self.app.connection_registry.add(connection, "GPS", "GPS link",
+                                         purpose=ConnectionPurpose.gps)
 
         self._thread = spawn(self.handle_gps_messages, connection, parser)
 

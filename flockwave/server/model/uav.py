@@ -292,6 +292,26 @@ class UAVDriver(with_metaclass(ABCMeta, object)):
             except Exception as ex:
                 raise_with_traceback(CommandInvocationError(cause=ex))
 
+    def send_fly_to_target_signal(self, uavs, target):
+        """Asks the driver to send a signal to the given UAVs that makes them
+        fly to a given target coordinate. Every UAV passed as an argument is
+        assumed to be managed by this driver.
+
+        Typically, you don't need to override this method when implementing
+        a driver; override ``_send_fly_to_target_signal_single()`` instead.
+
+        Parameters:
+            uavs (List[UAV]): the UAVs to address with this request.
+
+        Returns:
+            Dict[UAV,object]: dict mapping UAVs to the corresponding results.
+        """
+        return self._send_signal(
+            uavs, "fly to target signal",
+            self._send_fly_to_target_signal_single,
+            target=target
+        )
+
     def send_landing_signal(self, uavs):
         """Asks the driver to send a landing signal to the given UAVs, each
         of which are assumed to be managed by this driver.
@@ -367,7 +387,7 @@ class UAVDriver(with_metaclass(ABCMeta, object)):
             uavs, "takeoff signal", self._send_takeoff_signal_single
         )
 
-    def _send_signal(self, uavs, signal_name, handler):
+    def _send_signal(self, uavs, signal_name, handler, *args, **kwds):
         """Common implementation for the body of several ``send_*_signal()``
         methods in this class.
         """
@@ -375,7 +395,7 @@ class UAVDriver(with_metaclass(ABCMeta, object)):
         result = {}
         for uav in uavs:
             try:
-                outcome = handler(cmd_manager, uav)
+                outcome = handler(cmd_manager, uav, *args, **kwds)
             except NotImplementedError:
                 outcome = "{0} not implemented yet".format(signal_name)
             except NotSupportedError:
@@ -383,11 +403,32 @@ class UAVDriver(with_metaclass(ABCMeta, object)):
             except Exception as ex:
                 log.exception(ex)
                 outcome = (
-                    "Unexpected error while sending {1}: {0.message!r}"
+                    "Unexpected error while sending {1}: {0!r}"
                     .format(ex, signal_name)
                 )
             result[uav] = outcome
         return result
+
+    def _send_fly_to_target_signal_single(self, cmd_manager, uav, target):
+        """Asks the driver to send a "fly to target" signal to a single UAV
+        managed by this driver.
+
+        Parameters:
+            uav (UAV): the UAV to address with this request.
+            cmd_manager (CommandExecutionManager): command execution manager
+                that can be used to create a new message to send to the UAV
+            target (object): the target to fly to
+
+        Returns:
+            bool: whether the signal was *sent* successfully
+
+        Raises:
+            NotImplementedError: if the operation is not supported by the
+                driver yet, but there are plans to implement it
+            NotSupportedError: if the operation is not supported by the
+                driver and will not be supported in the future either
+        """
+        raise NotImplementedError
 
     def _send_landing_signal_single(self, cmd_manager, uav):
         """Asks the driver to send a landing signal to a single UAV managed

@@ -10,6 +10,8 @@ from flask import abort, Flask, redirect, url_for
 from future.utils import iteritems
 from heapq import heappush
 
+from flockwave.gps.vectors import GPSCoordinate
+
 from .authentication import jwt_authentication
 from .commands import CommandExecutionManager, CommandExecutionStatus
 from .errors import NotSupportedError
@@ -75,9 +77,7 @@ class FlockwaveServer(Flask):
         self.address = None
         self.runner = None
 
-        super(FlockwaveServer, self).__init__(
-            PACKAGE_NAME, *args, **kwds
-        )
+        super(FlockwaveServer, self).__init__(PACKAGE_NAME, *args, **kwds)
 
         self._create_components()
 
@@ -460,13 +460,27 @@ class FlockwaveServer(Flask):
         uavs_by_drivers = self._sort_uavs_by_drivers(uav_ids, response)
 
         # Find the method to invoke on the driver
-        method_name = {
-            "CMD-REQ": "send_command",
-            "UAV-HALT": "send_shutdown_signal",
-            "UAV-LAND": "send_landing_signal",
-            "UAV-RTH": "send_return_to_home_signal",
-            "UAV-TAKEOFF": "send_takeoff_signal"
-        }.get(message_type, None)
+        method_name, transformer = {
+            "CMD-REQ": ("send_command", None),
+            "UAV-FLY": ("send_fly_to_target_signal", {
+                "target": GPSCoordinate.from_json
+            }),
+            "UAV-HALT": ("send_shutdown_signal", None),
+            "UAV-LAND": ("send_landing_signal", None),
+            "UAV-RTH": ("send_return_to_home_signal", None),
+            "UAV-TAKEOFF": ("send_takeoff_signal", None)
+        }.get(message_type, (None, None))
+
+        # Transform the incoming arguments if needed before sending them
+        # to the driver method
+        if transformer is not None:
+            if callable(transformer):
+                parameters = transformer(parameters)
+            else:
+                for parameter_name, transformer in transformer.items():
+                    if parameter_name in parameters:
+                        value = parameters[parameter_name]
+                        parameters[parameter_name] = transformer(value)
 
         # Ask each affected driver to send the message to the UAV
         for driver, uavs in iteritems(uavs_by_drivers):
@@ -474,7 +488,7 @@ class FlockwaveServer(Flask):
             common_error, results = None, None
             try:
                 method = getattr(driver, method_name)
-            except (RuntimeError, TypeError):
+            except (AttributeError, RuntimeError, TypeError):
                 common_error = "Operation not supported"
                 method = None
 
@@ -933,7 +947,7 @@ def handle_UAV_LIST(message, sender, hub):
     }
 
 
-@app.message_hub.on("CMD-REQ", "UAV-HALT", "UAV-LAND", "UAV-RTH",
+@app.message_hub.on("CMD-REQ", "UAV-FLY", "UAV-HALT", "UAV-LAND", "UAV-RTH",
                     "UAV-TAKEOFF")
 def handle_UAV_operations(message, sender, hub):
     return app.dispatch_to_uavs(message, sender)

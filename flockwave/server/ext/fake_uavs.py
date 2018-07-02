@@ -34,7 +34,9 @@ class FakeUAVDriver(UAVDriver):
             id (str): the identifier of the UAV to create
             center (GPSCoordinate): the point around which the UAV will be
                 circling
-            radius (float): the radius of the circle
+            radius (float): the radius of the circle; zero means that the
+                UAV will not circle around the center point but will float
+                over it
             angle (float): the initial angle of the UAV along the circle
             angular_velocity (float): the angular velocity of the UAV when
                 circling, in radians per second
@@ -46,7 +48,9 @@ class FakeUAVDriver(UAVDriver):
         uav.angle = angle
         uav.angular_velocity = angular_velocity
         uav.cruise_altitude = center.agl
-        uav.home = center
+        uav.home = center.copy()
+        uav.home.amsl = None
+        uav.home.agl = 0
         uav.radius = radius
         uav.target = center
         return uav
@@ -75,6 +79,9 @@ class FakeUAVDriver(UAVDriver):
             response = "yo" + choice("?!.")
             spawn_after(delay, cmd_manager.finish, receipt, response)
         return result
+
+    def _send_fly_to_target_signal_single(self, cmd_manager, uav, target):
+        uav.target = target
 
     def _send_landing_signal_single(self, cmd_manager, uav):
         uav.land()
@@ -203,7 +210,9 @@ class FakeUAV(UAVBase):
         position (GPSCoordinate): the current position of the center of the
             circle that the UAV traverses; altitude is given as relative to
             home.
-        radius (float): the radius of the circle
+        radius (float): the radius of the circle. Set it to zero to get rid
+            of the circling behaviour; in this case, the UAV will float
+            statically above the target position.
         state (FakeUAVState): the state of the UAV
         target (GPSCoordinate): the target coordinates of the UAV; altitude
             must be given as relative to home. Note that this is not the
@@ -232,7 +241,7 @@ class FakeUAV(UAVBase):
         self.max_velocity = 10
         self.radiation_ext = None
         self.radius = 0.0
-        self.state = FakeUAVState.TAKEOFF
+        self.state = FakeUAVState.LANDED
         self.target = None
 
         self.step(0)
@@ -306,10 +315,10 @@ class FakeUAV(UAVBase):
         state = self._state
 
         # Update the angle
-        if state != FakeUAVState.LANDED:
-            # When not landed, the UAV is circling in the air with a
-            # prescribed angular velocity. Otherwise, the angle does
-            # not change.
+        if state != FakeUAVState.AIRBORNE and self.radius > 0:
+            # When airborne and the circle radius is positive, the UAV is
+            # circling in the air with a prescribed angular velocity.
+            # Otherwise, the angle does not change.
             self.angle += self.angular_velocity * dt
 
         # Do we have a target?
@@ -327,8 +336,8 @@ class FakeUAV(UAVBase):
             dist = hypot(dx, dy)
             if dist < 1e-6:
                 dist = 0
-            displacement_xy = min(dist, dt * self.max_velocity)
 
+            displacement_xy = min(dist, dt * self.max_velocity)
             displacement_z = min(abs(dz), dt * self.max_ascent_rate)
             if dz < 0:
                 displacement_z *= -1
@@ -376,12 +385,14 @@ class FakeUAV(UAVBase):
         self.battery.discharge(dt, mutator)
 
         # Update the UAV status
-        self.update_status(
-            position=position,
-            heading=self.angle / pi * 180 + 90,
-            error=self.error if self.has_error else (),
-            battery=self.battery.status
-        )
+        updates = {
+            "position": position,
+            "error": self.error if self.has_error else (),
+            "battery": self.battery.status
+        }
+        if self.radius > 0:
+            updates["heading"] = self.angle / pi * 180 + 90
+        self.update_status(**updates)
 
         # Measure radiation if possible
         # TODO(ntamas): calculate radiation halfway between the current

@@ -57,6 +57,12 @@
 
             <h2>Notifications</h2>
 
+            <div id="notification-type-selector" class="form-group">
+              <label class="checkbox-inline">
+                <input type="checkbox" data-type="UAV-INF" onclick="return toggleMessageType(event, 'UAV-INF')"> Show UAV-INF notifications
+              </label>
+            </div>
+
             <div id="notifications">
                 <p class="lead hint">Notifications from the server will appear here.</p>
             </div>
@@ -139,11 +145,21 @@
                     "ids": ["COLLMOT-00"]
                 },
             };
+
+            var filteredTypes = {
+              "UAV-INF": true
+            };
+
             var socket = io();
             var $responsePanel = $('#responses');
             var $notificationPanel = $('#notifications');
 
             socket.on('fw', function(data) {
+                if (data.hasOwnProperty("body") && data.body.hasOwnProperty("type") &&
+                    filteredTypes[data.body.type]) {
+                  return
+                }
+
                 if (data.hasOwnProperty("correlationId")) {
                     addEntryToPanel(data, $responsePanel);
                 } else {
@@ -196,6 +212,13 @@
                 });
             }
 
+            function updateFilterCheckboxes() {
+              var $filterCheckboxes = $('#notification-type-selector input[type=checkbox]');
+              $filterCheckboxes.each(function(index, checkbox) {
+                checkbox.checked = !filteredTypes[checkbox.dataset.type];
+              });
+            }
+
             function send() {
                 var body = $('#messageToSend').val();
                 var parsedBody;
@@ -222,8 +245,18 @@
                 socket.emit("fw", message);
             }
 
+            function toggleMessageType(event, type) {
+              if (event.target.checked) {
+                filteredTypes[type] = false;
+              } else {
+                filteredTypes[type] = true;
+              }
+              updateFilterCheckboxes();
+            }
+
             $(function() {
                 preparePresetButtons();
+                updateFilterCheckboxes();
                 loadPreset('SYS-VER');
             });
         </script>

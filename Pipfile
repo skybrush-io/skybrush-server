@@ -20,7 +20,7 @@ Flask = ">=0.10.1"
 Flask-HTTPAuth = ">=2.7.2"
 Flask-JWT = ">=0.3.2"
 Flask-SocketIO = ">=2.6,<2.7"
-flockwave-gps = {version=">=0.7.3", index="collmot"}
+flockwave-gps = {version=">=0.8.0", index="collmot"}
 flockwave-spec = {version=">=0.17.0", index="collmot"}
 future = ">=0.16.0"
 hexdump = ">=3.3"

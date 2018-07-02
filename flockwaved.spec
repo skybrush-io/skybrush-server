@@ -17,10 +17,10 @@ if root_dir.startswith("/Volumes/Macintosh HD/ntamas"):
     root_dir = root_dir.replace("/Volumes/Macintosh HD", "/Users")
 
 # Extra modules to import
-extra_modules = [
+extra_modules = set([
     "engineio.async_eventlet",
     "flockwave.server.config"
-]
+])
 
 # Modules to exclude
 exclude_modules = [
@@ -43,16 +43,26 @@ exec(
 )
 
 # Make sure to include all extensions mentioned in the config
-extra_modules += [
-    "flockwave.server.ext.{0}".format(ext_name)
+def extension_module(name):
+    return "flockwave.server.ext.{0}".format(name)
+
+extra_modules.update(
+    extension_module(ext_name)
     for ext_name in config["EXTENSIONS"]
     if not ext_name.startswith("_")
-]
+)
+
+# Prepare the dependency table
+dependencies = {
+    "system_clock": [extension_module("clocks")]
+}
+if sys.platform.lower().startswith("linux"):
+    dependencies["smpte_timecode"] = ["mido.backends.rtmidi"]
 
 # Add some extension-dependent dependencies
-if sys.platform.lower().startswith("linux") and \
-        "smpte_timecode" in config["EXTENSIONS"]:
-    extra_modules.append("mido.backends.rtmidi")
+for ext_name in config["EXTENSIONS"]:
+    if ext_name in dependencies:
+        extra_modules.update(dependencies[ext_name])
 
 # Now comes the PyInstaller dance
 a = Analysis(
@@ -60,7 +70,7 @@ a = Analysis(
     pathex=[root_dir],
     binaries=[],
     datas=[],
-    hiddenimports=extra_modules,
+    hiddenimports=sorted(extra_modules),
     hookspath=[
         os.path.join(root_dir, "etc", "deployment")
     ],

@@ -32,7 +32,7 @@ fi
 if [ x$GENERATE_LINUX = x1 ]; then
     rm -rf dist/linux
     docker run --rm -v "$(pwd):/src/" cdrx/pyinstaller-linux \
-        "rm -rf /tmp/.wine-0 && apt-get remove -y python3-pip python-pip && apt-get install -y curl git && curl https://bootstrap.pypa.io/get-pip.py -o /tmp/get-pip.py && python3 /tmp/get-pip.py && pip install --upgrade pip && pip install -r requirements-main.txt && pyinstaller --clean -y --dist ./dist/linux --workpath /tmp flockwaved.spec && chown -R --reference=. ./dist/linux"
+        "rm -rf /tmp/.wine-0 && apt-get update && apt-get remove -y python3-pip python-pip && apt-get install -y curl git netbase && curl https://bootstrap.pypa.io/get-pip.py -o /tmp/get-pip.py && python3 /tmp/get-pip.py && pip install --upgrade pip && pip install -r requirements-main.txt && pyinstaller --clean -y --dist ./dist/linux --workpath /tmp flockwaved.spec && chown -R --reference=. ./dist/linux"
 fi
 
 # Generate the bundle for Windows

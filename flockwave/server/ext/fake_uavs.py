@@ -332,7 +332,10 @@ class FakeUAV(UAVBase):
             else:
                 dx, dy = 0, 0
 
-            dz = self._target_xyz.z - self._pos_flat.z
+            if state != FakeUAVState.LANDED:
+                dz = self._target_xyz.z - self._pos_flat.z
+            else:
+                dz = 0
 
             angle = atan2(dy, dx)
             dist = hypot(dx, dy)

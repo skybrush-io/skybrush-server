@@ -81,6 +81,8 @@ class FakeUAVDriver(UAVDriver):
         return result
 
     def _send_fly_to_target_signal_single(self, cmd_manager, uav, target):
+        if uav.state == FakeUAVState.LANDED:
+            uav.takeoff()
         uav.target = target
 
     def _send_landing_signal_single(self, cmd_manager, uav):

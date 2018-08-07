@@ -589,10 +589,6 @@ class _StatusUpdaterThread(object):
 
             sleep(self._delay)
 
-        for uav in uavs:
-            uav.state = FakeUAVState.LANDED
-            uav.state = FakeUAVState.TAKEOFF
-
     def _on_thread_stopped(self, thread):
         """Handler called when the green thread terminates."""
         self._stopping = False

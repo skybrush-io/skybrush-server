@@ -10,6 +10,7 @@ from eventlet.event import Event
 from eventlet.green.threading import RLock
 from future.utils import with_metaclass
 from select import select
+from time import time
 
 __all__ = ("Connection", "ConnectionState", "ConnectionBase",
            "FDConnectionBase", "ConnectionWrapperBase")
@@ -342,40 +343,46 @@ class FDConnectionBase(ConnectionBase):
         return True
 
     def wait_until_readable(self, timeout=None):
-        """Blocks the current thread until the file descriptor becomes
-        readable.
+        """Blocks the current thread until the file descriptor associated to
+        the connection becomes readable.
 
         Parameters:
-            timeout (Optional[float]): maximum number of seconds to wait for
-                the file descriptor
+            timeout (float): the maximum number of seconds to wait
+
+        Returns:
+            bool: whether the file descriptor became readable
         """
-        while True:
-            # TODO(ntamas): this is not correct; timeout should be adjusted
-            # if the select() call returns with an empty list
-            if timeout is not None:
-                rlist, _, _ = select([self], [], [], timeout)
-            else:
-                rlist, _, _ = select([self], [], [])
-            if rlist:
-                break
+        if timeout is None:
+            while True:
+                rlist, _, _ = select([self.fd], [], [])
+                if rlist:
+                    return True
+        else:
+            deadline = time() + timeout
+            while True:
+                time_left = max(0, deadline - time())
+                rlist, _, _ = select([self.fd], [], [], time_left)
+                if rlist:
+                    return True
+                elif time_left <= 0:
+                    return False
 
     def wait_until_writable(self, timeout=None):
-        """Blocks the current thread until the file descriptor becomes
-        writable.
-
-        Parameters:
-            timeout (Optional[float]): maximum number of seconds to wait for
-                the file descriptor
-        """
-        while True:
-            # TODO(ntamas): this is not correct; timeout should be adjusted
-            # if the select() call returns with an empty list
-            if timeout is not None:
-                _, wlist, _ = select([], [self], [], timeout)
-            else:
+        """Blocks the current thread until the socket becomes writable."""
+        if timeout is None:
+            while True:
+                _, wlist, _ = select([], [self.fd], [])
+                if wlist:
+                    return True
+        else:
+            deadline = time() + timeout
+            while True:
+                time_left = max(0, deadline - time())
                 _, wlist, _ = select([], [self], [])
-            if wlist:
-                break
+                if wlist:
+                    return True
+                elif time_left <= 0:
+                    return False
 
 
 class ConnectionWrapperBase(ConnectionBase):

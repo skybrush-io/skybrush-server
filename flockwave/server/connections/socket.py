@@ -27,8 +27,6 @@ class SocketConnectionBase(FDConnectionBase):
 
     def __init__(self):
         super(SocketConnectionBase, self).__init__()
-        self._event_loop = None
-        self._fd_event_loop_handle = None
         self._socket = None
 
     @property
@@ -55,30 +53,6 @@ class SocketConnectionBase(FDConnectionBase):
         """Returns the socket object itself."""
         return self._socket
 
-    def _set_event_loop(self, value):
-        """Registers the socket in an urwid event loop or unregisters it
-        from an event loop.
-
-        Parameters:
-            value (Optional[urwid.MainLoop]): the urwid event loop to
-                register the socket in, or ``None`` if the socket is to be
-                unregistered from the current event loop
-        """
-        if self._event_loop == value:
-            return
-
-        fd_registered = self._fd_event_loop_handle is not None
-        if self._event_loop and fd_registered:
-            self._event_loop.remove_watch_file(self._fd_event_loop_handle)
-
-        self._event_loop = value
-
-        if self._event_loop and fd_registered:
-            fd = self.fileno()
-            if fd:
-                self._fd_event_loop_handle = self._event_loop.watch_file(
-                    fd, self._on_socket_readable)
-
     def _set_socket(self, value):
         """Protected setter for the socket object. Derived classes should
         not modify ``_socket`` directly but use ``_set_socket()`` instead.
@@ -98,23 +72,6 @@ class SocketConnectionBase(FDConnectionBase):
                 last operation was successful
         """
         return self._socket.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
-
-    def register_in_event_loop(self, loop):
-        """Registers the socket connection in the given urwid event loop."""
-        self._set_event_loop(loop)
-
-    def unregister_from_event_loop(self):
-        """Unregisters the socket connection from the current urwid
-        event loop.
-        """
-        self._set_event_loop(None)
-
-    def _on_socket_readable(self):
-        """Handler called by the urwid event loop if the socket became
-        readable.
-        """
-        # TODO(ntamas)
-        pass
 
 
 class InternetSocketConnection(SocketConnectionBase):

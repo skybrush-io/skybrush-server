@@ -1,0 +1,25 @@
+# This script configures ssh on Heroku to use the deploy key.
+# This is needed to install private dependencies.
+# 
+# Original source:
+# https://stackoverflow.com/questions/21297755/heroku-python-dependencies-in-private-repos-without-storing-my-password
+
+# Ensure we have an ssh folder
+if [ ! -d ~/.ssh ]; then
+  mkdir -p ~/.ssh
+  chmod 700 ~/.ssh
+fi
+
+# Create the key files
+cat $ENV_DIR/DEPLOY_KEY | base64 --decode > ~/.ssh/deploy-key
+chmod 400 ~/.ssh/deploy-key
+cat $ENV_DIR/DEPLOY_KEY | base64 --decode > ~/.ssh/deploy-key.pub
+
+# Configure ssh to use the correct deploy key when connecting to git.collmot.com
+# Disables host verification.
+echo -e "Host git.collmot.com\n"\
+        "  IdentityFile ~/.ssh/deploy-key\n"\
+        "  IdentitiesOnly yes\n"\
+        "  UserKnownHostsFile=/dev/null\n"\
+        "  StrictHostKeyChecking no"\
+        >> ~/.ssh/config

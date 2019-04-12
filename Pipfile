@@ -3,11 +3,6 @@ url = "https://pypi.python.org/simple"
 verify_ssl = true
 name = "pypi"
 
-[[source]]
-url = "http://pypi.collmot.com/simple"
-verify_ssl = false
-name = "collmot"
-
 [packages]
 bidict = ">=0.11.0"
 bitstring = ">=3.1.3"
@@ -20,13 +15,12 @@ Flask = ">=0.10.1"
 Flask-HTTPAuth = ">=2.7.2"
 Flask-JWT = ">=0.3.2"
 Flask-SocketIO = ">=3.0.1"
-flockwave-gps = {version=">=0.8.0", index="collmot"}
-flockwave-spec = {version=">=0.17.1", index="collmot"}
+flockwave-gps = {git = "ssh://git@git.collmot.com/collmot/flockwave-gps.git",ref = "0.8.0",editable = true}
+flockwave-spec = {git = "ssh://git@git.collmot.com/collmot/flockwave-spec.git",ref = "0.18.0",editable = true}
 future = ">=0.16.0"
 hexdump = ">=3.3"
 ipaddress = ">=1.0.17"
-jsonschema = ">=2.5.1"
-memoized = {version=">=0.2.1", index="collmot"}
+jsonschema = ">=3.0.1"
 mido = ">=1.1.14"
 netifaces = ">=0.10.5"
 numpy = ">=1.11.1"

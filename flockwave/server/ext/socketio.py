@@ -7,7 +7,6 @@ Socket.IO connections.
 from flask import request
 from flask_jwt import current_identity as jwt_identity
 from flask_socketio import SocketIO
-from functools import partial
 
 from ..authentication import jwt_optional
 from ..encoders import JSONEncoder
@@ -135,33 +134,6 @@ def handle_exception(exc):
 ############################################################################
 
 
-def runner(app, debug=False, log=log, keyfile=None, certfile=None):
-    """Customized application runner for the case when the extension is
-    loaded; we need to use SocketIO's entry point instead of the default
-    WSGI runner.
-    """
-    if app.address is None:
-        raise ValueError("app.address is not specified")
-
-    host, port = app.address
-    kwds = {
-        "debug": debug,
-        "log": log,
-        "use_reloader": False
-    }
-
-    # Don't forward keyfile and certfile to socketio.run() if they are
-    # None because that would make socketio.run() attempt SSL anyway
-    if keyfile:
-        kwds["keyfile"] = keyfile
-    if certfile:
-        kwds["certfile"] = certfile
-
-    return socketio.run(app, host, port, **kwds)
-
-############################################################################
-
-
 def load(app, configuration, logger):
     """Loads the extension."""
     app.channel_type_registry.add(
@@ -175,8 +147,6 @@ def load(app, configuration, logger):
     socketio.on("disconnect")(handle_disconnection)
     socketio.on("fw")(handle_flockwave_message)
     socketio.on_error_default(handle_exception)
-
-    app.runner = partial(runner, app=app)
 
     globals().update(
         app=app,

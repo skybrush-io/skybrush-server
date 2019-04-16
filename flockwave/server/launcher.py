@@ -8,7 +8,6 @@ import logging
 import sys
 
 from eventlet import wsgi
-from functools import partial
 
 from . import logger
 from .logger import log
@@ -88,11 +87,10 @@ def start(config, debug, host, port, ssl_key, ssl_cert):
         return retval
 
     # Now start the server
-    if app.runner is None:
-        app.runner = partial(_default_runner, app=app)
+    runner = app.runner or _default_runner
 
     try:
-        app.runner(debug=debug, log=eventlet_log, **ssl_args)
+        runner(app, debug=debug, log=eventlet_log, **ssl_args)
     finally:
         app.teardown()
 

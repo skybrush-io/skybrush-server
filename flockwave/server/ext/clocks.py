@@ -4,7 +4,6 @@ for the ``CLK-...`` commands defined in the Flockwave protocol.
 
 from ..registries import ClockRegistry, find_in_registry
 
-app_context = None
 message_hub = None
 registry = None
 
@@ -68,11 +67,10 @@ def on_clock_changed(sender, clock):
     registry has changed. Creates and sends a ``CLK-INF`` notification for the
     clock that has changed.
     """
-    global app_context, message_hub
+    global message_hub
 
     message = create_CLK_INF_message_for([clock.id])
-    with app_context():
-        message_hub.send_message(message)
+    message_hub.send_message(message)
 
 
 #############################################################################
@@ -94,9 +92,8 @@ def handle_CLK_LIST(message, sender, hub):
 #############################################################################
 
 def load(app, configuration, logger):
-    global app_context, message_hub, registry
+    global message_hub, registry
 
-    app_context = app.app_context
     message_hub = app.message_hub
     registry = ClockRegistry()
 
@@ -113,7 +110,7 @@ def load(app, configuration, logger):
 
 
 def unload(app):
-    global app_context, message_hub, registry
+    global message_hub, registry
 
     exports.update(
         registry=None,
@@ -128,4 +125,3 @@ def unload(app):
 
     registry = None
     message_hub = None
-    app_context = None

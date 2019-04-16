@@ -39,12 +39,6 @@ class CommunicationManagerBase(object):
         self.identifier = identifier
         self._parser = FlockCtrlParser()
 
-    def app_context(self):
-        """Returns the Flask application context of the associated FlockCtrl
-        server app.
-        """
-        return self.ext.app.app_context() if self.ext else None
-
     @property
     def log(self):
         """Returns the logger of the extension that owns this manager.

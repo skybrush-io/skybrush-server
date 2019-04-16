@@ -756,10 +756,8 @@ class FlockwaveServer(Flask):
             old_state (ConnectionState): the old state of the connection
             new_state (ConnectionState): the old state of the connection
         """
-        if "socketio" in self.extensions:
-            message = self.create_CONN_INF_message_for([entry.id])
-            with self.app_context():
-                self.message_hub.send_message(message)
+        message = self.create_CONN_INF_message_for([entry.id])
+        self.message_hub.send_message(message)
 
     def _on_command_execution_finished(self, sender, status):
         """Handler called when the execution of a remote asynchronous
@@ -776,9 +774,8 @@ class FlockwaveServer(Flask):
             "response": status.response if status.response is not None else ""
         }
         message = self.message_hub.create_response_or_notification(body)
-        with self.app_context():
-            for client_id in status.clients_to_notify:
-                self.message_hub.send_message(message, to=client_id)
+        for client_id in status.clients_to_notify:
+            self.message_hub.send_message(message, to=client_id)
 
     def _on_command_execution_timeout(self, sender, statuses):
         """Handler called when the execution of a remote asynchronous
@@ -801,14 +798,13 @@ class FlockwaveServer(Flask):
                 receipt_ids_by_clients[client].append(receipt_id)
 
         hub = self.message_hub
-        with self.app_context():
-            for client, receipt_ids in iteritems(receipt_ids_by_clients):
-                body = {
-                    "type": "CMD-TIMEOUT",
-                    "ids": receipt_ids
-                }
-                message = hub.create_response_or_notification(body)
-                hub.send_message(message, to=client)
+        for client, receipt_ids in iteritems(receipt_ids_by_clients):
+            body = {
+                "type": "CMD-TIMEOUT",
+                "ids": receipt_ids
+            }
+            message = hub.create_response_or_notification(body)
+            hub.send_message(message, to=client)
 
     def _sort_uavs_by_drivers(self, uav_ids, response=None):
         """Given a list of UAV IDs, returns a mapping that maps UAV drivers

@@ -32,7 +32,7 @@ EXTENSIONS = {
     "fake_uavs": {
         "count": 3,
         "delay": 1.9,
-        "enabled": False,
+        "enabled": True,
         "id_format": "COLLMOT-{0:02}",
         "center": {
             # ELTE kert

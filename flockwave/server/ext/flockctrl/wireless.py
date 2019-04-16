@@ -219,10 +219,9 @@ class WirelessInboundThread(object):
         """Waits for incoming frames on the associated low-level wireless
         connection and dispatches a signal for every one of them.
         """
-        with self.manager.app_context():
-            while True:
-                self._connection.wait_until_connected()
-                self._read_next_packet()
+        while True:
+            self._connection.wait_until_connected()
+            self._read_next_packet()
 
     def _read_next_packet(self):
         """Reads the next packet from the associated UDP socket connection
@@ -284,12 +283,11 @@ class WirelessOutboundThread(object):
         """Waits for outbound frames to send on the queue owned by this
         thread, and sends each of them via the wireless connection.
         """
-        with self.manager.app_context():
-            while True:
-                try:
-                    self._serve_request(self._queue.get())
-                except Exception as ex:
-                    self._error_callback(ex)
+        while True:
+            try:
+                self._serve_request(self._queue.get())
+            except Exception as ex:
+                self._error_callback(ex)
 
     def _serve_request(self, request):
         """Serves a wireless packet sending request by sending a packet to a

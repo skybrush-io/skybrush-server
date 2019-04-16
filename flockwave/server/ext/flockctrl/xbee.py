@@ -255,12 +255,11 @@ class XBeeInboundThread(object):
         spawning a new thread on its own when passing a callback to it in
         the constructor.
         """
-        with self.manager.app_context():
-            while True:
-                try:
-                    self._callback(self._xbee.wait_read_frame())
-                except Exception as ex:
-                    self._error_callback(ex)
+        while True:
+            try:
+                self._callback(self._xbee.wait_read_frame())
+            except Exception as ex:
+                self._error_callback(ex)
 
 
 class XBeeOutboundThread(object):
@@ -306,12 +305,11 @@ class XBeeOutboundThread(object):
         """Waits for outbound frames to send on the queue owned by this
         thread, and sends each of them via the XBee connection.
         """
-        with self.manager.app_context():
-            while True:
-                try:
-                    self._serve_request(self._queue.get())
-                except Exception as ex:
-                    self._error_callback(ex)
+        while True:
+            try:
+                self._serve_request(self._queue.get())
+            except Exception as ex:
+                self._error_callback(ex)
 
     def _serve_request(self, request):
         """Serves an XBee packet sending request by sending a packet to a

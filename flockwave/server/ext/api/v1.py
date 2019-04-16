@@ -13,8 +13,11 @@ blueprint = Blueprint("api_v1", __name__, static_folder="static")
 
 def load(app, configuration, logger):
     """Loads the extension."""
-    app.register_blueprint(blueprint,
-                           url_prefix=configuration.get("route", "/api/v1"))
+    server = app.import_api("http_server").wsgi_app
+    server.register_blueprint(
+        blueprint,
+        url_prefix=configuration.get("route", "/api/v1")
+    )
 
 
 @blueprint.route("/tokens", methods=["GET", "POST"])
@@ -27,3 +30,6 @@ def get_authentication_token():
     identity.id = http_authentication.username()
     token = jwt_authentication.jwt_encode_callback(identity)
     return jsonify(access_token=token)
+
+
+dependencies = ("http_server", )

@@ -11,6 +11,7 @@ __all__ = ("start", )
 
 def start():
     """Start the Flockwave server in a Heroku dyno."""
+    # TODO(ntamas): fix this; we don't have -h and -p any more
     port = os.environ.get("PORT", 5000)
     args = ["-h", "0.0.0.0", "-p", port]
     if "DEBUG" in os.environ:

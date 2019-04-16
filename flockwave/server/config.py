@@ -63,6 +63,7 @@ EXTENSIONS = {
         "connection": "gpsd",
         "id_format": "BEACON:{0}"
     },
+    "http_server": {},
     "radiation": {
         "sources": [
             {

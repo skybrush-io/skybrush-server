@@ -18,7 +18,7 @@ from .packets import FlockCtrlClockSynchronizationPacket
 from .wireless import WirelessCommunicationManager
 from .xbee import XBeeCommunicationManager
 
-__all__ = ("construct", )
+__all__ = ("construct", "dependencies")
 
 
 class FlockCtrlDronesExtension(UAVExtensionBase):

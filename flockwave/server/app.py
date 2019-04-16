@@ -2,17 +2,16 @@
 
 from __future__ import absolute_import
 
+import errno
 import os
 
 from blinker import Signal
 from collections import defaultdict
-from flask import abort, Flask, redirect, url_for
 from future.utils import iteritems
-from heapq import heappush
+from importlib import import_module
 
 from flockwave.gps.vectors import GPSCoordinate
 
-from .authentication import jwt_authentication
 from .commands import CommandExecutionManager, CommandExecutionStatus
 from .errors import NotSupportedError
 from .ext.manager import ExtensionManager
@@ -32,14 +31,10 @@ __all__ = ("app", )
 PACKAGE_NAME = __name__.rpartition(".")[0]
 
 
-class FlockwaveServer(Flask):
-    """Flask application object for the Flockwave server.
+class FlockwaveServer(object):
+    """Main application object for the Flockwave server.
 
     Attributes:
-        address (Optional[Tuple[str,int]]): hostname and port where the
-            application is listening for incoming HTTP connections. Not
-            known before application startup; in such cases, the attribute
-            contains ``None``.
         channel_type_registry (ChannelTypeRegistry): central registry for
             types of communication channels that the server can handle and
             manage. Types of communication channels include Socket.IO
@@ -52,6 +47,8 @@ class FlockwaveServer(Flask):
             manages the asynchronous execution of commands on remote UAVs
             (i.e. commands that cannot be executed immediately in a
             synchronous manner)
+        config (dict): dictionary holding the configuration options of the
+            application
         device_tree (DeviceTree): a tree-like data structure that contains
             a first-level node for every UAV and then contains additional
             nodes in each UAV subtree for the devices and channels of the
@@ -60,10 +57,6 @@ class FlockwaveServer(Flask):
             loading and unloading of server extensions
         message_hub (MessageHub): central messaging hub via which one can
             send Flockwave messages
-        runner (callable): function to call when we want to start the
-            server. It typically forwards everything to ``socketio.run``
-            for the time being, but its signature should be formalized in
-            the future.
         uav_registry (UAVRegistry): central registry for the UAVs known to
             the server
         world (World): a representation of the "world" in which the flock
@@ -73,12 +66,7 @@ class FlockwaveServer(Flask):
 
     num_clients_changed = Signal()
 
-    def __init__(self, *args, **kwds):
-        self.address = None
-        self.runner = None
-
-        super(FlockwaveServer, self).__init__(PACKAGE_NAME, *args, **kwds)
-
+    def __init__(self):
         self._create_components()
 
     def _create_components(self):
@@ -92,6 +80,8 @@ class FlockwaveServer(Flask):
         the settings will not be up-to-date yet. Use `prepare()` for any
         preparations that depend on the configuration.
         """
+        # Create the configuration dictionary
+        self.config = {}
 
         # Create an object to hold information about all the registered
         # communication channel types that the server can handle
@@ -151,9 +141,6 @@ class FlockwaveServer(Flask):
             self.device_tree)
         self.device_tree_subscriptions.client_registry = self.client_registry
         self.device_tree_subscriptions.message_hub = self.message_hub
-
-        # Create an empty heap for proposed index pages
-        self._proposed_index_pages = []
 
     def create_CMD_DEL_message_for(self, receipt_ids, in_response_to):
         """Creates a CMD-DEL message after having cancelled the execution of
@@ -553,19 +540,6 @@ class FlockwaveServer(Flask):
         return self.extension_manager.import_api(extension_name)
 
     @property
-    def index_url(self):
-        """Returns the URL of the best proposed index page.
-
-        Returns:
-            Optional[str]: the URL of the best proposed index page or
-                ``None`` if no index page has been proposed
-        """
-        if self._proposed_index_pages:
-            return url_for(self._proposed_index_pages[0][1])
-        else:
-            return None
-
-    @property
     def num_clients(self):
         """The number of clients connected to the server."""
         return self.client_registry.num_entries
@@ -595,21 +569,6 @@ class FlockwaveServer(Flask):
         # components of the app (prepared above) are ready.
         self.extension_manager = ExtensionManager(self)
         self.extension_manager.configure(self.config.get("EXTENSIONS", {}))
-
-    def propose_as_index_page(self, route, priority=0):
-        """Proposes the given Flask route as a potential index page for the
-        Flockwave server. This method can be called from the ``load()``
-        functions of extensions when they want to propose one of their own
-        routes as an index page. The server will select the index page with
-        the highest priority when all the extensions have been loaded.
-
-        Parameters:
-            route (str): name of a Flask route to propose as the index
-                page, in the form of ``blueprint.route``
-                (e.g., ``debug.index``)
-            priority (Optional[int]): the priority of the proposed route.
-        """
-        heappush(self._proposed_index_pages, (priority, route))
 
     @rate_limited_by(UAVSpecializedMessageRateLimiter, timeout=0.1)
     def request_to_send_UAV_INF_message_for(self, uav_ids):
@@ -682,6 +641,13 @@ class FlockwaveServer(Flask):
         return find_in_registry(self.uav_registry, uav_id, response,
                                 "No such UAV")
 
+    def _load_base_configuration(self):
+        """Loads the default configuration of the application from the
+        `flockwave.server.config` module.
+        """
+        config = import_module(".config", PACKAGE_NAME)
+        self._load_configuration_from_object(config)
+
     def _load_configuration(self, config=None):
         """Loads the configuration of the application from the following
         sources, in the following order:
@@ -701,7 +667,7 @@ class FlockwaveServer(Flask):
         Returns:
             bool: whether all configuration files were processed successfully
         """
-        self.config.from_object(".".join([PACKAGE_NAME, "config"]))
+        self._load_base_configuration()
 
         config_files = [
             (config, True),
@@ -731,12 +697,39 @@ class FlockwaveServer(Flask):
             bool: whether the configuration was loaded successfully
         """
         original, filename = filename, os.path.abspath(filename)
-        if not self.config.from_pyfile(filename, silent=True) and mandatory:
+
+        exists = True
+        try:
+            config = {}
+            with open(filename, mode='rb') as config_file:
+                exec(compile(config_file.read(), filename, 'exec'), config)
+        except IOError as e:
+            if e.errno in (errno.ENOENT, errno.EISDIR, errno.ENOTDIR):
+                exists = False
+            else:
+                raise
+
+        self._load_configuration_from_object(config)
+
+        if not exists and mandatory:
             log.warn("Cannot load configuration from {0!r}".format(original))
             return False
-        else:
+        elif exists:
             log.info("Loaded configuration from {0!r}".format(original))
+
         return True
+
+    def _load_configuration_from_object(self, config):
+        """Loads configuration settings from the given Python object.
+
+        Only uppercase keys will be processed.
+
+        Parameters:
+            config (object): the configuration object to load.
+        """
+        for key in dir(config):
+            if key.isupper():
+                self.config[key] = getattr(config, key)
 
     def _on_client_count_changed(self, sender):
         """Handler called when the number of clients attached to the server
@@ -830,17 +823,6 @@ class FlockwaveServer(Flask):
 ############################################################################
 
 app = FlockwaveServer()
-app.config["JWT_AUTH_URL_RULE"] = None      # Disable default JWT auth rule
-jwt_authentication.init_app(app)
-
-
-@app.route("/")
-def index():
-    index_url = app.index_url
-    if index_url:
-        return redirect(index_url)
-    else:
-        abort(404)
 
 # ######################################################################## #
 

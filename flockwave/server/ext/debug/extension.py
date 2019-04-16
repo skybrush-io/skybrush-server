@@ -17,9 +17,11 @@ blueprint = Blueprint("debug", __name__, static_folder="static",
 
 def load(app, configuration, logger):
     """Loads the extension."""
-    app.register_blueprint(blueprint,
-                           url_prefix=configuration.get("route", "/"))
-    app.propose_as_index_page("debug.index", priority=-100)
+    http_server = app.import_api("http_server")
+    http_server.wsgi_app.register_blueprint(
+        blueprint, url_prefix=configuration.get("route", "/")
+    )
+    http_server.propose_index_page("debug.index", priority=-100)
 
 
 @blueprint.route("/")
@@ -47,3 +49,6 @@ def list_threads():
         "threads": threading.enumerate()
     }
     return render_template("threads.html", **data)
+
+
+dependencies = ("http_server", )

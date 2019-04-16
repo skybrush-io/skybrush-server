@@ -164,5 +164,5 @@ def unload(app):
     app.channel_type_registry.remove("tcp")
 
     globals().update(
-        app=None, log=None
+        app=None, log=None, sock=None
     )

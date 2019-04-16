@@ -14,14 +14,17 @@ from .logger import log
 
 
 def _default_runner(app, debug=False, log=log, keyfile=None, certfile=None):
-    if app.address is None:
-        raise ValueError("app.address is not specified")
+    server = app.import_api("http_server")
 
-    sock = eventlet.listen(app.address)
+    if server.address is None:
+        raise ValueError("HTTP server address is not specified")
+
+    sock = eventlet.listen(server.address)
     if keyfile and certfile:
         sock = eventlet.wrap_ssl(sock, certfile=certfile, keyfile=keyfile,
                                  server_side=True)
-    wsgi.server(sock, app, debug=debug, log=log)
+
+    wsgi.server(sock, server.wsgi_app, debug=debug, log=log)
 
 
 @click.command()
@@ -30,15 +33,11 @@ def _default_runner(app, debug=False, log=log, keyfile=None, certfile=None):
                    "flockwave.cfg in the current directory")
 @click.option("--debug/--no-debug", default=False,
               help="Start the server in debug mode")
-@click.option("-h", "--host", default="127.0.0.1",
-              help="The IP address that the server will bind to")
-@click.option("-p", "--port", default=5000,
-              help="The port that the server will listen on")
 @click.option("--ssl-key", default=None, type=click.Path(exists=True),
               help="Private key of the SSL certificate in PEM format")
 @click.option("--ssl-cert", default=None, type=click.Path(exists=True),
               help="SSL certificate in PEM format")
-def start(config, debug, host, port, ssl_key, ssl_cert):
+def start(config, debug, ssl_key, ssl_cert):
     """Start the Flockwave server."""
     # Dirty workaround for breaking import cycle according to
     # https://github.com/eventlet/eventlet/issues/394
@@ -75,22 +74,18 @@ def start(config, debug, host, port, ssl_key, ssl_cert):
         })
 
     # Log what we are doing
-    log.info("Starting {1}Flockwave server on port {0}...".format(
-        port, "secure " if ssl_args else ""
+    log.info("Starting {0}Flockwave server...".format(
+        "secure " if ssl_args else "",
     ))
 
-    # Forward the hostname and port where we are listening to the app.
-    # Also forward the name of the config file to load
-    app.address = (host, port)
+    # Configure the application
     retval = app.prepare(config)
     if retval is not None:
         return retval
 
     # Now start the server
-    runner = app.runner or _default_runner
-
     try:
-        runner(app, debug=debug, log=eventlet_log, **ssl_args)
+        _default_runner(app, debug=debug, log=eventlet_log, **ssl_args)
     finally:
         app.teardown()
 

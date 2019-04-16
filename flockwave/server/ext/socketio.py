@@ -87,10 +87,10 @@ def get_client_id():
 
 def get_ssdp_location(address):
     """Returns the SSDP location descriptor of the Socket.IO channel."""
-    if app is None:
+    app_address = app.import_api("http_server").address if app else None
+    if app_address is None:
         return None
     else:
-        app_address = getattr(app, "address", None)
         return format_socket_address(
             app_address, format="sio://{host}:{port}",
             remote_address=address
@@ -141,7 +141,9 @@ def load(app, configuration, logger):
         factory=create_new_channel, broadcaster=broadcast_message,
         ssdp_location=get_ssdp_location
     )
-    socketio = SocketIO(app, json=JSONEncoder(encoding=None))
+
+    server = app.import_api("http_server").wsgi_app
+    socketio = SocketIO(server, json=JSONEncoder(encoding=None))
 
     socketio.on("connect")(handle_connection)
     socketio.on("disconnect")(handle_disconnection)
@@ -161,5 +163,7 @@ def unload(app):
     # so this is not a complete solution yet; we cannot undo all the
     # socketio.on() calls from load()
     app.channel_type_registry.remove("sio")
-    app.runner = None
     globals().update(app=None, log=None, socketio=None)
+
+
+dependencies = ("http_server", )

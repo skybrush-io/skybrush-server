@@ -280,6 +280,8 @@ class ExtensionManager(object):
 
     def teardown(self):
         """Tears down the extension manager and prepares it for destruction."""
+        # TODO(ntamas): the unloading order should not be alphabetical but in
+        # the order in which the extensions were loaded
         for ext_name in reversed(self.loaded_extensions):
             self.unload(ext_name)
 
@@ -289,6 +291,8 @@ class ExtensionManager(object):
         Parameters:
             extension_name (str): the name of the extension to unload
         """
+        # TODO(ntamas): prevent the unloading of the extension if there is
+        # at least one other loaded extension that depends on this one
         try:
             extension = self._get_loaded_extension_by_name(extension_name)
         except KeyError:
@@ -297,7 +301,7 @@ class ExtensionManager(object):
             return
 
         if self._num_clients > 0:
-            self._spindown_extension(extension)
+            self._spindown_extension(extension_name)
 
         clean_unload = True
         func = getattr(extension, "unload", None)
@@ -484,13 +488,16 @@ class ExtensionManager(object):
         """Ensures that all the dependencies of the given extension are
         loaded.
 
+        When a dependency of the given extension is not loaded yet, it will
+        be loaded automatically first.
+
         Parameters:
             extension_name (str): the name of the extension
             forbidden (List[str]): set of extensions that are already
                 being loaded
 
         Raises:
-            ImportError: if the extension cannot be imported
+            ImportError: if an extension cannot be imported
         """
         dependencies = self._get_dependencies_of_extension(extension_name)
         forbidden.append(extension_name)

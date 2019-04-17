@@ -7,6 +7,7 @@ import os
 
 from blinker import Signal
 from collections import defaultdict
+from eventlet import sleep
 from future.utils import iteritems
 from importlib import import_module
 
@@ -41,14 +42,14 @@ class FlockwaveServer(object):
             streams, TCP or UDP sockets and so on.
         client_registry (ClientRegistry): central registry for the clients
             that are currently connected to the server
-        client_count_changed (Signal): signal that is emitted when the
-            number of clients connected to the server changes
         command_execution_manager (CommandExecutionManager): object that
             manages the asynchronous execution of commands on remote UAVs
             (i.e. commands that cannot be executed immediately in a
             synchronous manner)
         config (dict): dictionary holding the configuration options of the
             application
+        debug (bool): boolean flag to denote whether the application is in
+            debugging mode
         device_tree (DeviceTree): a tree-like data structure that contains
             a first-level node for every UAV and then contains additional
             nodes in each UAV subtree for the devices and channels of the
@@ -57,16 +58,28 @@ class FlockwaveServer(object):
             loading and unloading of server extensions
         message_hub (MessageHub): central messaging hub via which one can
             send Flockwave messages
+        num_clients_changed (Signal): signal that is emitted when the
+            number of clients connected to the server changes
         uav_registry (UAVRegistry): central registry for the UAVs known to
             the server
         world (World): a representation of the "world" in which the flock
             of UAVs live. By default, the world is empty but extensions may
             extend it with objects.
+
+    Private attributes:
+        _starting (Signal): signal that is emitted when the server has finished
+            parsing the configuration and loading the extensions, and is about
+            to enter the main loop. This signal can be used by extensions to
+            hook into the startup process.
     """
 
     num_clients_changed = Signal()
+    _starting = Signal()
 
     def __init__(self):
+        self.config = {}
+        self.debug = False
+
         self._create_components()
 
     def _create_components(self):
@@ -80,9 +93,6 @@ class FlockwaveServer(object):
         the settings will not be up-to-date yet. Use `prepare()` for any
         preparations that depend on the configuration.
         """
-        # Create the configuration dictionary
-        self.config = {}
-
         # Create an object to hold information about all the registered
         # communication channel types that the server can handle
         self.channel_type_registry = ChannelTypeRegistry()
@@ -539,6 +549,14 @@ class FlockwaveServer(object):
         """
         return self.extension_manager.import_api(extension_name)
 
+    def start(self):
+        try:
+            self._starting.send(self)
+            while True:
+                sleep(1000)
+        finally:
+            self.teardown()
+
     @property
     def num_clients(self):
         """The number of clients connected to the server."""
@@ -570,6 +588,16 @@ class FlockwaveServer(object):
         self.extension_manager = ExtensionManager(self)
         self.extension_manager.configure(self.config.get("EXTENSIONS", {}))
 
+    def register_startup_hook(self, func):
+        """Registers a function that will be called when the application is
+        starting up.
+
+        Parameters:
+            func (callable): the function to call. It will be called with the
+                application instance as its only argument.
+        """
+        self._starting.connect(func, sender=self)
+
     @rate_limited_by(UAVSpecializedMessageRateLimiter, timeout=0.1)
     def request_to_send_UAV_INF_message_for(self, uav_ids):
         """Requests the application to send an UAV-INF message that contains
@@ -586,6 +614,15 @@ class FlockwaveServer(object):
     def teardown(self):
         """Tears down the application and prepares it for exiting normally."""
         self.extension_manager.teardown()
+
+    def unregister_startup_hook(self, func):
+        """Unregisters a function that is called when the application is
+        starting up.
+
+        Parameters:
+            func (callable): the function to unregister.
+        """
+        self._starting.disconnect(func, sender=self)
 
     def _find_command_receipt_by_id(self, receipt_id, response=None):
         """Finds the asynchronous command execution receipt with the given

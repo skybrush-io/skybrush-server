@@ -54,7 +54,7 @@ EXTENSIONS = {
             # }
             "wireless": {
                 "broadcast": "udp-broadcast:10.0.0.0/8?port=4243",
-                "unicast": "udp-subnet:10.0.0.0/24"
+                "unicast": "udp-subnet:10.0.0.0/8"
             }
         }
     },

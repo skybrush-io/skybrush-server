@@ -554,6 +554,8 @@ class FlockwaveServer(object):
             self._starting.send(self)
             while True:
                 sleep(1000)
+        except KeyboardInterrupt:
+            pass
         finally:
             self.teardown()
 

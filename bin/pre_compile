@@ -3,6 +3,20 @@
 # 
 # Original source:
 # https://stackoverflow.com/questions/21297755/heroku-python-dependencies-in-private-repos-without-storing-my-password
+#
+# In case you lost the deployment key, you can generate a new one with:
+#
+# ssh-keygen -t rsa -b 4096 -C "Heroku deployment key"
+#
+# Once you have it, store the private key in base64 in the Heroku environment
+# (assuming it's stored in a file named deploy-key):
+#
+# heroku config:set DEPLOY_KEY=`cat deploy-key | base64`
+#
+# The public part of the key should then be associated to a user on
+# git.collmot.com
+
+###############################################################################
 
 # Ensure we have an ssh folder
 if [ ! -d ~/.ssh ]; then

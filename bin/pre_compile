@@ -1,39 +1,14 @@
-# This script configures ssh on Heroku to use the deploy key.
-# This is needed to install private dependencies.
-# 
-# Original source:
-# https://stackoverflow.com/questions/21297755/heroku-python-dependencies-in-private-repos-without-storing-my-password
-#
-# In case you lost the deployment key, you can generate a new one with:
-#
-# ssh-keygen -t rsa -b 4096 -C "Heroku deployment key"
-#
-# Once you have it, store the private key in base64 in the Heroku environment
-# (assuming it's stored in a file named deploy-key):
-#
-# heroku config:set DEPLOY_KEY=`cat deploy-key | base64`
-#
-# The public part of the key should then be associated to a user on
-# git.collmot.com
+# This script configures Heroku to fill .netrc with an authentication token
+# (application key) that is used to check out our private repositories.
 
 ###############################################################################
 
-# Ensure we have an ssh folder
-if [ ! -d ~/.ssh ]; then
-  mkdir -p ~/.ssh
-  chmod 700 ~/.ssh
-fi
+GITEA_USERNAME=`cat ${ENV_DIR}/GITEA_USERNAME`
+GITEA_TOKEN=`cat ${ENV_DIR}/GITEA_TOKEN`
 
-# Create the key files
-cat $ENV_DIR/DEPLOY_KEY | base64 --decode > ~/.ssh/deploy-key
-chmod 400 ~/.ssh/deploy-key
-cat $ENV_DIR/DEPLOY_KEY | base64 --decode > ~/.ssh/deploy-key.pub
+cat <<EOF >>~/.netrc
+machine git.collmot.com
+login ${GITEA_USERNAME}
+password ${GITEA_TOKEN}
+EOF
 
-# Configure ssh to use the correct deploy key when connecting to git.collmot.com
-# Disables host verification.
-echo -e "Host git.collmot.com\n"\
-        "  IdentityFile ~/.ssh/deploy-key\n"\
-        "  IdentitiesOnly yes\n"\
-        "  UserKnownHostsFile=/dev/null\n"\
-        "  StrictHostKeyChecking no"\
-        >> ~/.ssh/config

@@ -15,8 +15,8 @@ Flask = ">=0.10.1"
 Flask-HTTPAuth = ">=2.7.2"
 Flask-JWT = ">=0.3.2"
 Flask-SocketIO = ">=3.0.1"
-flockwave-gps = {git = "ssh://git@git.collmot.com/collmot/flockwave-gps.git",ref = "0.8.0",editable = true}
-flockwave-spec = {git = "ssh://git@git.collmot.com/collmot/flockwave-spec.git",ref = "0.18.0",editable = true}
+flockwave-gps = {git = "https://git.collmot.com/collmot/flockwave-gps.git",ref = "0.8.0",editable = true}
+flockwave-spec = {git = "https://git.collmot.com/collmot/flockwave-spec.git",ref = "0.18.0",editable = true}
 future = ">=0.16.0"
 hexdump = ">=3.3"
 ipaddress = ">=1.0.17"

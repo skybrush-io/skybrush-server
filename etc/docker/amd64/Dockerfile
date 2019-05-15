@@ -18,8 +18,6 @@ WORKDIR /app
 COPY Pipfile Pipfile.lock .
 COPY flockwave ./flockwave/
 COPY bin ./bin/
-COPY etc/docker ./etc/docker/
-COPY etc/scripts ./etc/scripts/
 
 # Run the build script
 ENV PIP_NO_CACHE_DIR=1

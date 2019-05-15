@@ -12,3 +12,7 @@ login ${GITEA_USERNAME}
 password ${GITEA_TOKEN}
 EOF
 
+# Replace git@git.collmot.com references in Pipfile with https://git.collmot.com
+cat Pipfile | sed -e 's/git@git.collmot.com/https:\/\/git.collmot.com/g' >Pipfile.new
+mv Pipfile.new Pipfile
+

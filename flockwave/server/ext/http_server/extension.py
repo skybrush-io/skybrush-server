@@ -123,7 +123,8 @@ def load(app, configuration, logger):
     global log
 
     address = (
-        configuration.get("host", "localhost"), configuration.get("port", 5000)
+        configuration.get("host", "localhost"),
+        int(configuration.get("port", 5000))
     )
     log = logger
     wsgi_app = create_app()

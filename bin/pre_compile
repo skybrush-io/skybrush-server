@@ -13,7 +13,5 @@ password ${GITEA_TOKEN}
 EOF
 
 # Replace git@git.collmot.com references in Pipfile with https://git.collmot.com
-cat Pipfile | sed -e 's/ssh:..git@git.collmot.com/https:\/\/git.collmot.com/g' >Pipfile.new
-mv Pipfile.new Pipfile
-rm Pipfile.lock     # let pipenv regenerate it
+source etc/scripts/switch_to_https_in_pipfile.sh
 

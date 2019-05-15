@@ -1,0 +1,13 @@
+.python-ersion
+.tags
+.git
+*.egg-info
+*.pyc
+*.pyo
+*.swp
+build/
+dist/
+tmp/
+*/__pycache__/*
+requirements*.txt
+

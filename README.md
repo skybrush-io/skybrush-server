@@ -24,6 +24,29 @@ and all the dependencies, you can create one with PyInstaller:
 
 PyInstaller will create a single-file distribution in `dist/flockwaved`.
 
+## Docker
+
+You can build a Docker container on Linux with the following command line:
+
+```sh
+$ DOCKER_BUILDKIT=1 docker build --ssh default=$HOME/.ssh/id_rsa \
+    -t flockwave-server:latest -f etc/docker/amd64/Dockerfile .
+```
+
+This assumes that you are using at least Docker 18.04 (because of the `--ssh` switch)
+and that the private key you are using to connect to `git.collmot.com` is located at
+`$HOME/.ssh/id_rsa`. Adjust the command line if needed if your public key is elsewhere.
+
+To test the container, run this:
+
+```sh
+$ docker run -p 5000:5000 -p 4242:4242/udp --rm flockwave-server:latest
+```
+
+You may also need to map additional ports depending on your use-case; port 5000 is the
+Flockwave server itself, while UDP port 4242 is the one where our drones communicate
+with each other.
+
 ## Windows
 
 _Tested under Python 2.7.11 with pip 9.0.1_

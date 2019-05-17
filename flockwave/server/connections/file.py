@@ -5,7 +5,7 @@ from __future__ import absolute_import, print_function
 from .base import FDConnectionBase, ConnectionState
 from .factory import create_connection
 
-__all__ = ("FileConnection", )
+__all__ = ("FileConnection",)
 
 
 @create_connection.register("file")
@@ -41,8 +41,7 @@ class FileConnection(FDConnectionBase):
 
     def open(self):
         """Opens the file connection."""
-        if self.state in (ConnectionState.CONNECTED,
-                          ConnectionState.CONNECTING):
+        if self.state in (ConnectionState.CONNECTED, ConnectionState.CONNECTING):
             return
 
         self._set_state(ConnectionState.CONNECTING)

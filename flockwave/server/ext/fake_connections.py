@@ -13,8 +13,7 @@ from __future__ import absolute_import
 
 from eventlet import spawn_after
 from eventlet.greenthread import sleep
-from flockwave.server.connections import ConnectionBase, ConnectionState, \
-    reconnecting
+from flockwave.server.connections import ConnectionBase, ConnectionState, reconnecting
 from flockwave.server.model import ConnectionPurpose
 from future.utils import itervalues
 from time import time
@@ -53,8 +52,7 @@ class FakeConnectionProviderExtension(ExtensionBase):
             name = id_format.format(index)
             self.connections[name] = connection
             self.app.connection_registry.add(
-                connection, name=name,
-                purpose=ConnectionPurpose.debug
+                connection, name=name, purpose=ConnectionPurpose.debug
             )
 
     def spindown(self):
@@ -87,8 +85,7 @@ class FakeConnection(ConnectionBase):
         connection will start a timer that closes the connection in
         two seconds.
         """
-        if self.state in (ConnectionState.CONNECTED,
-                          ConnectionState.CONNECTING):
+        if self.state in (ConnectionState.CONNECTED, ConnectionState.CONNECTING):
             return
 
         self._set_state(ConnectionState.CONNECTING)
@@ -104,8 +101,7 @@ class FakeConnection(ConnectionBase):
         """Closes the connection and blocks reopening attempts in the next
         three seconds.
         """
-        if self.state in (ConnectionState.DISCONNECTED,
-                          ConnectionState.DISCONNECTING):
+        if self.state in (ConnectionState.DISCONNECTED, ConnectionState.DISCONNECTING):
             return
 
         self._set_state(ConnectionState.DISCONNECTING)

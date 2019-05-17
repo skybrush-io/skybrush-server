@@ -2,8 +2,7 @@
 
 from __future__ import absolute_import
 
-from flockwave.spec.schema import get_complex_object_schema, \
-    get_enum_from_schema
+from flockwave.spec.schema import get_complex_object_schema, get_enum_from_schema
 from future.utils import with_metaclass
 
 from .metamagic import ModelMeta
@@ -12,10 +11,8 @@ from .mixins import TimestampMixin
 __all__ = ("ConnectionInfo", "ConnectionPurpose", "ConnectionStatus")
 
 
-ConnectionPurpose = get_enum_from_schema("connectionPurpose",
-                                         "ConnectionPurpose")
-ConnectionStatus = get_enum_from_schema("connectionStatus",
-                                        "ConnectionStatus")
+ConnectionPurpose = get_enum_from_schema("connectionPurpose", "ConnectionPurpose")
+ConnectionStatus = get_enum_from_schema("connectionStatus", "ConnectionStatus")
 
 
 class ConnectionInfo(with_metaclass(ModelMeta, TimestampMixin)):
@@ -30,7 +27,7 @@ class ConnectionInfo(with_metaclass(ModelMeta, TimestampMixin)):
         "CONNECTED": ConnectionStatus.connected,
         "CONNECTING": ConnectionStatus.connecting,
         "DISCONNECTED": ConnectionStatus.disconnected,
-        "DISCONNECTING": ConnectionStatus.disconnecting
+        "DISCONNECTING": ConnectionStatus.disconnecting,
     }
 
     def __init__(self, id=None, timestamp=None):

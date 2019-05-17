@@ -13,6 +13,13 @@ from .clocks import ClockRegistry
 from .connections import ConnectionRegistry
 from .uavs import UAVRegistry
 
-__all__ = ("Registry", "RegistryBase", "find_in_registry",
-           "ClientRegistry", "ClockRegistry", "ConnectionRegistry",
-           "ChannelTypeRegistry", "UAVRegistry")
+__all__ = (
+    "Registry",
+    "RegistryBase",
+    "find_in_registry",
+    "ClientRegistry",
+    "ClockRegistry",
+    "ConnectionRegistry",
+    "ChannelTypeRegistry",
+    "UAVRegistry",
+)

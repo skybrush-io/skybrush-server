@@ -12,11 +12,10 @@ from contextlib import contextmanager
 from flockwave.spec.schema import ref_resolver as flockwave_schema_ref_resolver
 from future.utils import iteritems, PY2
 
-__all__ = ("ModelMeta", )
+__all__ = ("ModelMeta",)
 
 
-class PropertyInfo(namedtuple("PropertyInfo",
-                              "name title description default")):
+class PropertyInfo(namedtuple("PropertyInfo", "name title description default")):
     """Simple tuple subclass to hold information about a single property
     in a JSON schema.
     """
@@ -38,7 +37,7 @@ class PropertyInfo(namedtuple("PropertyInfo",
             name=name,
             title=definition.get("title"),
             description=definition.get("description"),
-            default=definition.get("default")
+            default=definition.get("default"),
         )
 
 
@@ -175,11 +174,7 @@ class ModelMetaHelpers(object):
                     result.json = data
                 return result
 
-        dct.update(
-            __init__=__init__,
-            from_json=from_json,
-            json=json
-        )
+        dct.update(__init__=__init__, from_json=from_json, json=json)
 
     @staticmethod
     def add_proxy_property(dct, name, property_info):
@@ -234,6 +229,7 @@ class ModelMetaHelpers(object):
         attributes of the wrapped JSON object to be accessed with member
         and dictionary notation.
         """
+
         def __contains__(self, key):
             return key in self._json
 
@@ -314,11 +310,8 @@ class ModelMetaHelpers(object):
         if orig_validator is not None and not callable(orig_validator):
             raise TypeError("validate() method must be callable")
 
-        json_schema_validator_class = jsonschema.validators.validator_for(
-            schema
-        )
-        json_schema_validator = json_schema_validator_class(
-            schema, resolver=resolver)
+        json_schema_validator_class = jsonschema.validators.validator_for(schema)
+        json_schema_validator = json_schema_validator_class(schema, resolver=resolver)
 
         def validate(self, *args, **kwds):
             """Validates this class instance against its JSON schema.
@@ -348,8 +341,7 @@ class ModelMetaHelpers(object):
             bool: whether at least one of the base classes uses ModelMeta_
                 as its metaclass
         """
-        return any(getattr(base, "__metaclass_is_ModelMeta__", False)
-                   for base in bases)
+        return any(getattr(base, "__metaclass_is_ModelMeta__", False) for base in bases)
 
     @classmethod
     def find_schema_and_resolver(cls, dct, bases):
@@ -396,9 +388,11 @@ class ModelMetaHelpers(object):
         if schema is not None or bases_have_schema:
             return schema, resolver
         else:
-            raise TypeError("Model classes must either have a 'schema' "
-                            "attribute or derive from another model class "
-                            "with a schema")
+            raise TypeError(
+                "Model classes must either have a 'schema' "
+                "attribute or derive from another model class "
+                "with a schema"
+            )
 
     @staticmethod
     def mark_metaclass(dct):
@@ -426,8 +420,7 @@ class ModelMeta(type):
             dct (dict): namespace of the class body
         """
         bases_have_schema = ModelMetaHelpers.bases_have_schema(bases)
-        schema, resolver = \
-            ModelMetaHelpers.find_schema_and_resolver(dct, bases)
+        schema, resolver = ModelMetaHelpers.find_schema_and_resolver(dct, bases)
         if schema is not None:
             if not bases_have_schema:
                 ModelMetaHelpers.add_json_property(dct)

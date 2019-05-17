@@ -1,6 +1,6 @@
 """Representation of the outside world in which the flock of UAVs live."""
 
-__all__ = ("World", )
+__all__ = ("World",)
 
 
 class World(object):

@@ -7,7 +7,7 @@ from six import indexbytes
 from .errors import ParseError
 from .packets import FlockCtrlPacket
 
-__all__ = ("FlockCtrlParser", )
+__all__ = ("FlockCtrlParser",)
 
 
 class FlockCtrlParser(object):
@@ -65,6 +65,8 @@ class FlockCtrlParser(object):
         try:
             packet.decode(data)
         except NotImplementedError:
-            raise ParseError("decoding of FlockCtrl packet type {0} "
-                             "is not implemented yet".format(packet_type))
+            raise ParseError(
+                "decoding of FlockCtrl packet type {0} "
+                "is not implemented yet".format(packet_type)
+            )
         return packet

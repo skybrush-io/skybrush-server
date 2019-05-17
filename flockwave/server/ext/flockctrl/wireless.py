@@ -8,14 +8,11 @@ from functools import partial
 
 from .comm import CommunicationManagerBase
 
-__all__ = ("WirelessCommunicationManager", )
+__all__ = ("WirelessCommunicationManager",)
 
 
 #: Lightweight named tuple to store a packet sending request
-PacketSendingRequest = namedtuple(
-    "PacketSendingRequest",
-    "packet destination"
-)
+PacketSendingRequest = namedtuple("PacketSendingRequest", "packet destination")
 
 
 class ConnectionThreadManager(object):
@@ -24,8 +21,7 @@ class ConnectionThreadManager(object):
     managing the traffic on the connection.
     """
 
-    def __init__(self, inbound_thread_factory=None,
-                 outbound_thread_factory=None):
+    def __init__(self, inbound_thread_factory=None, outbound_thread_factory=None):
         """Constructor.
 
         Parameters:
@@ -115,21 +111,19 @@ class WirelessCommunicationManager(CommunicationManagerBase):
 
         self._broadcast_threads = ConnectionThreadManager(
             inbound_thread_factory=partial(
-                WirelessInboundThread, manager=self,
-                callback=self._handle_inbound_packet
+                WirelessInboundThread,
+                manager=self,
+                callback=self._handle_inbound_packet,
             ),
-            outbound_thread_factory=partial(
-                WirelessOutboundThread, manager=self
-            )
+            outbound_thread_factory=partial(WirelessOutboundThread, manager=self),
         )
         self._unicast_threads = ConnectionThreadManager(
             inbound_thread_factory=partial(
-                WirelessInboundThread, manager=self,
-                callback=self._handle_inbound_packet
+                WirelessInboundThread,
+                manager=self,
+                callback=self._handle_inbound_packet,
             ),
-            outbound_thread_factory=partial(
-                WirelessOutboundThread, manager=self
-            )
+            outbound_thread_factory=partial(WirelessOutboundThread, manager=self),
         )
 
     @property
@@ -167,8 +161,7 @@ class WirelessCommunicationManager(CommunicationManagerBase):
         else:
             put = self._unicast_threads.put
 
-        req = PacketSendingRequest(packet=packet,
-                                   destination=(destination, self.port))
+        req = PacketSendingRequest(packet=packet, destination=(destination, self.port))
         put(req)
 
     def _handle_inbound_packet(self, address, packet):
@@ -180,7 +173,7 @@ class WirelessCommunicationManager(CommunicationManagerBase):
                 was received from
             packet (bytes): the raw bytes that were received
         """
-        address, _ = address       # separate the port, we don't need it
+        address, _ = address  # separate the port, we don't need it
         self._parse_and_emit_packet(packet, address)
 
 

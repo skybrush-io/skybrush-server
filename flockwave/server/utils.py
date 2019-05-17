@@ -5,8 +5,12 @@ from datetime import datetime
 from pytz import utc
 
 
-__all__ = ("datetime_to_unix_timestamp", "is_timezone_aware",
-           "itersubclasses", "keydefaultdict")
+__all__ = (
+    "datetime_to_unix_timestamp",
+    "is_timezone_aware",
+    "itersubclasses",
+    "keydefaultdict",
+)
 
 
 _unix_epoch = datetime.utcfromtimestamp(0).replace(tzinfo=utc)

@@ -5,7 +5,7 @@ Flockwave server.
 from abc import ABCMeta, abstractmethod
 from future.utils import with_metaclass
 
-__all__ = ("Encoder", )
+__all__ = ("Encoder",)
 
 
 class Encoder(with_metaclass(ABCMeta, object)):

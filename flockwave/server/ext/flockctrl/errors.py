@@ -3,8 +3,7 @@
 from flockwave.server.model.errors import FlockwaveErrorCode
 
 
-__all__ = ("ParseError", "AddressConflictError",
-           "map_flockctrl_error_code")
+__all__ = ("ParseError", "AddressConflictError", "map_flockctrl_error_code")
 
 
 class FlockCtrlError(RuntimeError):
@@ -72,7 +71,7 @@ _error_code_mapping = {
     50: FlockwaveErrorCode.UNSPECIFIED_ERROR,
     51: FlockwaveErrorCode.CONTROL_ALGORITHM_ERROR,
     52: FlockwaveErrorCode.CONTROL_ALGORITHM_ERROR,
-    53: FlockwaveErrorCode.EXTERNAL_CLOCK_ERROR
+    53: FlockwaveErrorCode.EXTERNAL_CLOCK_ERROR,
 }
 
 
@@ -84,6 +83,4 @@ def map_flockctrl_error_code(error_code):
         FlockwaveErrorCode: the Flockwave error code corresponding to the
             given FlockCtrl error code
     """
-    return _error_code_mapping.get(
-        error_code, FlockwaveErrorCode.UNSPECIFIED_ERROR
-    )
+    return _error_code_mapping.get(error_code, FlockwaveErrorCode.UNSPECIFIED_ERROR)

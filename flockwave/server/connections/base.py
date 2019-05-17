@@ -12,12 +12,18 @@ from future.utils import with_metaclass
 from select import select
 from time import time
 
-__all__ = ("Connection", "ConnectionState", "ConnectionBase",
-           "FDConnectionBase", "ConnectionWrapperBase")
+__all__ = (
+    "Connection",
+    "ConnectionState",
+    "ConnectionBase",
+    "FDConnectionBase",
+    "ConnectionWrapperBase",
+)
 
 
-ConnectionState = Enum("ConnectionState",
-                       "DISCONNECTED CONNECTING CONNECTED DISCONNECTING")
+ConnectionState = Enum(
+    "ConnectionState", "DISCONNECTED CONNECTING CONNECTED DISCONNECTING"
+)
 
 log = logging.getLogger(__name__.rpartition(".")[0])
 
@@ -26,8 +32,7 @@ class Connection(with_metaclass(ABCMeta, object)):
     """Interface specification for stateful connection objects."""
 
     connected = Signal(doc="Signal sent after the connection was established.")
-    disconnected = Signal(
-        doc="Signal sent after the connection was torn down.")
+    disconnected = Signal(doc="Signal sent after the connection was torn down.")
     state_changed = Signal(
         doc="""\
         Signal sent whenever the state of the connection changes.
@@ -56,8 +61,7 @@ class Connection(with_metaclass(ABCMeta, object)):
     @property
     def is_transitioning(self):
         """Returns whether connection is currently transitioning."""
-        return self.state in (ConnectionState.CONNECTING,
-                              ConnectionState.DISCONNECTING)
+        return self.state in (ConnectionState.CONNECTING, ConnectionState.DISCONNECTING)
 
     @abstractproperty
     def state(self):
@@ -130,23 +134,19 @@ class ConnectionBase(Connection):
 
             self._state = new_state
 
-            self.state_changed.send(self, old_state=old_state,
-                                    new_state=new_state)
+            self.state_changed.send(self, old_state=old_state, new_state=new_state)
 
-            if new_state == ConnectionState.CONNECTED and \
-                    not self._is_connected:
+            if new_state == ConnectionState.CONNECTED and not self._is_connected:
                 self._is_connected = True
                 if self._is_connected_event:
                     self._is_connected_event.send(True)
                     self._is_connected_event = None
                 self.connected.send(self)
 
-            if new_state == ConnectionState.DISCONNECTED and \
-                    self._is_connected:
+            if new_state == ConnectionState.DISCONNECTED and self._is_connected:
                 self.disconnected.send(self)
 
-            if new_state != ConnectionState.CONNECTED and \
-                    self._is_connected:
+            if new_state != ConnectionState.CONNECTED and self._is_connected:
                 self._is_connected = False
                 if self._is_not_connected_event:
                     self._is_not_connected_event.send(True)
@@ -296,8 +296,9 @@ class FDConnectionBase(ConnectionBase):
         self._set_file_object(obj)
 
         if old_handle != self._file_handle:
-            self.file_handle_changed.send(self, old_handle=old_handle,
-                                          new_handle=self._file_handle)
+            self.file_handle_changed.send(
+                self, old_handle=old_handle, new_handle=self._file_handle
+            )
 
     def _detach(self):
         """Detaches the connection from its current associated file handle

@@ -10,7 +10,7 @@ from ..logger import log as base_log
 from ..model import ConnectionInfo, ConnectionPurpose
 from .base import RegistryBase
 
-__all__ = ("ConnectionRegistry", )
+__all__ = ("ConnectionRegistry",)
 
 log = base_log.getChild("registries.connections")
 
@@ -36,8 +36,7 @@ class ConnectionRegistry(RegistryBase):
         """
     )
 
-    def add(self, connection, name, description=None,
-            purpose=ConnectionPurpose.other):
+    def add(self, connection, name, description=None, purpose=ConnectionPurpose.other):
         """Adds a connection with the given name to the registry.
 
         Parameters:
@@ -56,8 +55,10 @@ class ConnectionRegistry(RegistryBase):
             KeyError: if the given name is already taken
         """
         if name in self:
-            raise KeyError("another connection is already registered "
-                           "with this name: {0!r}".format(name))
+            raise KeyError(
+                "another connection is already registered "
+                "with this name: {0!r}".format(name)
+            )
 
         purpose = purpose if purpose is not None else ConnectionPurpose.other
 
@@ -102,11 +103,11 @@ class ConnectionRegistry(RegistryBase):
 
     def _on_connection_state_changed(self, entry, old_state, new_state):
         """Handler that is called when the state of a connection changes."""
-        log.debug("Connection {0.id!r}: {1!r} --> {2!r}"
-                  .format(entry, old_state, new_state))
+        log.debug(
+            "Connection {0.id!r}: {1!r} --> {2!r}".format(entry, old_state, new_state)
+        )
         self.connection_state_changed.send(
-            self, entry=entry, old_state=old_state,
-            new_state=new_state
+            self, entry=entry, old_state=old_state, new_state=new_state
         )
 
 
@@ -132,8 +133,7 @@ class ConnectionRegistryEntry(object):
 
         if self._connection is not None:
             self._connection.state_changed.disconnect(
-                self._on_connection_state_changed,
-                sender=self._connection
+                self._on_connection_state_changed, sender=self._connection
             )
 
         self._connection = value
@@ -141,8 +141,7 @@ class ConnectionRegistryEntry(object):
         if self._connection is not None:
             self.info.update_status_from(self._connection)
             self._connection.state_changed.connect(
-                self._on_connection_state_changed,
-                sender=self._connection
+                self._on_connection_state_changed, sender=self._connection
             )
 
     @property

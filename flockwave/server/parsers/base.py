@@ -7,7 +7,7 @@ from __future__ import absolute_import
 from abc import ABCMeta, abstractmethod
 from future.utils import with_metaclass
 
-__all__ = ("Parser", )
+__all__ = ("Parser",)
 
 
 class Parser(with_metaclass(ABCMeta, object)):

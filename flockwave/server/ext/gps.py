@@ -74,9 +74,7 @@ def create_gps_connection(connection, format=None):
     elif format == "nmea":
         parser = LineParser(decoder=parse_incoming_nmea_message, min_length=1)
     else:
-        raise NotSupportedError(
-            "{0!r} format is suported at the moment".format(format)
-        )
+        raise NotSupportedError("{0!r} format is suported at the moment".format(format))
 
     return create_connection(connection), parser
 
@@ -98,18 +96,14 @@ def parse_incoming_gpsd_message(message):
     result = {}
 
     if cls == "VERSION":
-        result.update(
-            version=data.get("release")
-        )
+        result.update(version=data.get("release"))
     elif cls == "TPV":
         lat, lon = data.get("lat"), data.get("lon")
         if lat is not None and lon is not None:
             result.update(
                 device=data.get("device", "gpsd"),
-                position=GPSCoordinate(
-                    lat=lat, lon=lon, agl=data.get("alt", 0)
-                ),
-                heading=data.get("track", 0)
+                position=GPSCoordinate(lat=lat, lon=lon, agl=data.get("alt", 0)),
+                heading=data.get("track", 0),
             )
 
     return result
@@ -132,11 +126,8 @@ def parse_incoming_nmea_message(message):
     if data.sentence_type == "RMC":
         result.update(
             device="0",
-            position=GPSCoordinate(
-                lat=data.latitude,
-                lon=data.longitude
-            ),
-            heading=data.true_course
+            position=GPSCoordinate(lat=data.latitude, lon=data.longitude),
+            heading=data.true_course,
         )
 
     return result
@@ -164,12 +155,13 @@ class GPSExtension(UAVExtensionBase):
 
         connection, parser = create_gps_connection(
             connection=configuration.get("connection", "gpsd"),
-            format=configuration.get("format", "auto")
+            format=configuration.get("format", "auto"),
         )
         connection = reconnecting(connection)
 
-        self.app.connection_registry.add(connection, "GPS", "GPS link",
-                                         purpose=ConnectionPurpose.gps)
+        self.app.connection_registry.add(
+            connection, "GPS", "GPS link", purpose=ConnectionPurpose.gps
+        )
 
         self._thread = spawn(self.handle_gps_messages, connection, parser)
 
@@ -182,10 +174,7 @@ class GPSExtension(UAVExtensionBase):
         with closing(connection):
             while True:
                 connection.wait_until_connected()
-                self.log.info(
-                    "GPS connection established",
-                    extra={"id": "GPS"}
-                )
+                self.log.info("GPS connection established", extra={"id": "GPS"})
                 while True:
                     data = connection.read(blocking=True)
                     if isinstance(data, tuple):
@@ -196,27 +185,19 @@ class GPSExtension(UAVExtensionBase):
                     for message in parser.feed(data):
                         if "version" in message:
                             # Ask gpsd to start streaming status data
-                            connection.write(
-                                b'?WATCH={"enable":true,"json":true}\n'
-                            )
+                            connection.write(b'?WATCH={"enable":true,"json":true}\n')
                         elif "device" in message:
                             self._handle_single_gps_update(message)
 
                 # Wait until the watchdog goes back into the "not connected"
                 # (i.e. "connecting") state before we try again.
                 connection.wait_until_not_connected()
-                self.log.warn(
-                    "GPS disconnected",
-                    extra={"id": "GPS"}
-                )
+                self.log.warn("GPS disconnected", extra={"id": "GPS"})
 
     def _handle_single_gps_update(self, message):
         uav_id = self._get_uav_id(message["device"])
         uav = self.driver.get_or_create_uav(uav_id)
-        uav.update_status(
-            position=message["position"],
-            heading=message["heading"]
-        )
+        uav.update_status(position=message["position"], heading=message["heading"])
         self.app.request_to_send_UAV_INF_message_for([uav_id])
 
     def _get_uav_id(self, device_id):

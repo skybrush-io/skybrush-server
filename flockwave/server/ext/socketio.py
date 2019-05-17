@@ -44,12 +44,11 @@ class SocketIOChannel(CommunicationChannel):
 
     def send(self, message):
         """Inherited."""
-        self.socketio.emit(
-            "fw", message, room=self.sid, namespace="/"
-        )
+        self.socketio.emit("fw", message, room=self.sid, namespace="/")
 
 
 ############################################################################
+
 
 def broadcast_message(message):
     """Broadcasts a message to all connected Socket.IO clients."""
@@ -82,6 +81,7 @@ def get_client_id():
     """
     return "sio:{0}".format(request.sid)
 
+
 ############################################################################
 
 
@@ -92,8 +92,7 @@ def get_ssdp_location(address):
         return None
     else:
         return format_socket_address(
-            app_address, format="sio://{host}:{port}",
-            remote_address=address
+            app_address, format="sio://{host}:{port}", remote_address=address
         )
 
 
@@ -131,6 +130,7 @@ def handle_exception(exc):
     """
     log.exception("Exception while reading Socket.IO message")
 
+
 ############################################################################
 
 
@@ -138,8 +138,9 @@ def load(app, configuration, logger):
     """Loads the extension."""
     app.channel_type_registry.add(
         "sio",
-        factory=create_new_channel, broadcaster=broadcast_message,
-        ssdp_location=get_ssdp_location
+        factory=create_new_channel,
+        broadcaster=broadcast_message,
+        ssdp_location=get_ssdp_location,
     )
 
     server = app.import_api("http_server").wsgi_app
@@ -150,11 +151,7 @@ def load(app, configuration, logger):
     socketio.on("fw")(handle_flockwave_message)
     socketio.on_error_default(handle_exception)
 
-    globals().update(
-        app=app,
-        log=logger,
-        socketio=socketio
-    )
+    globals().update(app=app, log=logger, socketio=socketio)
 
 
 def unload(app):
@@ -166,4 +163,4 @@ def unload(app):
     globals().update(app=None, log=None, socketio=None)
 
 
-dependencies = ("http_server", )
+dependencies = ("http_server",)

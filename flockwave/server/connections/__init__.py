@@ -10,12 +10,25 @@ from .base import Connection, ConnectionBase, ConnectionState
 from .factory import ConnectionFactory, create_connection
 from .file import FileConnection
 from .serial import SerialPortConnection
-from .socket import UDPSocketConnection, SubnetBindingConnection, \
-    SubnetBindingUDPConnection, SubnetBindingUDPBroadcastConnection
+from .socket import (
+    UDPSocketConnection,
+    SubnetBindingConnection,
+    SubnetBindingUDPConnection,
+    SubnetBindingUDPBroadcastConnection,
+)
 from .reconnection import reconnecting
 
-__all__ = ("Connection", "ConnectionBase", "ConnectionFactory",
-           "ConnectionState", "FileConnection", "SerialPortConnection",
-           "UDPSocketConnection", "SubnetBindingConnection",
-           "SubnetBindingUDPConnection", "SubnetBindingUDPBroadcastConnection",
-           "create_connection", "reconnecting")
+__all__ = (
+    "Connection",
+    "ConnectionBase",
+    "ConnectionFactory",
+    "ConnectionState",
+    "FileConnection",
+    "SerialPortConnection",
+    "UDPSocketConnection",
+    "SubnetBindingConnection",
+    "SubnetBindingUDPConnection",
+    "SubnetBindingUDPBroadcastConnection",
+    "create_connection",
+    "reconnecting",
+)

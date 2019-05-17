@@ -5,32 +5,41 @@ from __future__ import absolute_import
 from blinker import Signal
 from builtins import str
 from collections import Counter, defaultdict
-from flockwave.spec.schema import get_enum_from_schema, \
-    get_complex_object_schema
+from flockwave.spec.schema import get_enum_from_schema, get_complex_object_schema
 from itertools import islice
-from future.utils import iteritems, iterkeys, python_2_unicode_compatible, \
-    with_metaclass
+from future.utils import (
+    iteritems,
+    iterkeys,
+    python_2_unicode_compatible,
+    with_metaclass,
+)
 
 from .errors import ClientNotSubscribedError, NoSuchPathError
 from .metamagic import ModelMeta
 
-__all__ = ("ChannelNode", "ChannelOperation", "ChannelType", "DeviceClass",
-           "DeviceTree", "DeviceNode", "DeviceTreeNodeType", "UAVNode",
-           "DeviceTreeSubscriptionManager")
+__all__ = (
+    "ChannelNode",
+    "ChannelOperation",
+    "ChannelType",
+    "DeviceClass",
+    "DeviceTree",
+    "DeviceNode",
+    "DeviceTreeNodeType",
+    "UAVNode",
+    "DeviceTreeSubscriptionManager",
+)
 
-ChannelOperation = get_enum_from_schema("channelOperation",
-                                        "ChannelOperation")
+ChannelOperation = get_enum_from_schema("channelOperation", "ChannelOperation")
 ChannelType = get_enum_from_schema("channelType", "ChannelType")
 DeviceClass = get_enum_from_schema("deviceClass", "DeviceClass")
-DeviceTreeNodeType = get_enum_from_schema("deviceTreeNodeType",
-                                          "DeviceTreeNodeType")
+DeviceTreeNodeType = get_enum_from_schema("deviceTreeNodeType", "DeviceTreeNodeType")
 
 _channel_type_mapping = {
     int: "number",
     float: "number",
     str: "string",
     bool: "boolean",
-    object: "object"
+    object: "object",
 }
 
 
@@ -53,9 +62,9 @@ def _channel_type_from_object(cls, obj):
         try:
             name = _channel_type_mapping[obj]
         except KeyError:
-            raise TypeError("{0!r} cannot be converted to a "
-                            "ChannelType".format(obj))
+            raise TypeError("{0!r} cannot be converted to a " "ChannelType".format(obj))
         return cls[name]
+
 
 ChannelType.from_object = classmethod(_channel_type_from_object)
 
@@ -179,8 +188,10 @@ class DeviceTreeNodeBase(with_metaclass(ModelMeta, object)):
                         result.append(child_id)
                         break
                 else:
-                    raise ValueError("inconsistent tree: node not found "
-                                     "among the children of its parent")
+                    raise ValueError(
+                        "inconsistent tree: node not found "
+                        "among the children of its parent"
+                    )
             node = parent
         result.append(u"")
         result.reverse()
@@ -235,8 +246,9 @@ class DeviceTreeNodeBase(with_metaclass(ModelMeta, object)):
         if not hasattr(self, "children"):
             self.children = {}
         if id in self.children:
-            raise ValueError("another child node already exists with "
-                             "ID={0!r}".format(id))
+            raise ValueError(
+                "another child node already exists with " "ID={0!r}".format(id)
+            )
         self.children[id] = node
 
         node._parent = self
@@ -288,8 +300,7 @@ class DeviceTreeNodeBase(with_metaclass(ModelMeta, object)):
         try:
             node = self.children.pop(id)
         except KeyError:
-            raise ValueError("no child exists with the given ID: {0!r}"
-                             .format(id))
+            raise ValueError("no child exists with the given ID: {0!r}".format(id))
         node._parent = None
         node._path = None
 
@@ -922,8 +933,7 @@ class DeviceTreeSubscriptionManager(object):
                 path = node.path
                 channel_values = node.collect_channel_values()
                 for subscriber in node.itersubscribers():
-                    messages_by_subscribers[subscriber][path] = \
-                        channel_values
+                    messages_by_subscribers[subscriber][path] = channel_values
 
         # Now we can send the messages
         for subscriber, message in iteritems(messages_by_subscribers):
@@ -949,7 +959,8 @@ class DeviceTreeSubscriptionManager(object):
 
         body = {"values": values, "type": "DEV-INF"}
         response = self._message_hub.create_response_or_notification(
-            body=body, in_response_to=in_response_to)
+            body=body, in_response_to=in_response_to
+        )
 
         for path in paths:
             node = self._find_device_tree_node_by_path(path, response)
@@ -977,7 +988,7 @@ class DeviceTreeSubscriptionManager(object):
                 the path filter.
         """
         if path_filter is None:
-            path_filter = (u"/", )
+            path_filter = (u"/",)
 
         result = Counter()
         for path in path_filter:

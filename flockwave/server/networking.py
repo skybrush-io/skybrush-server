@@ -71,7 +71,7 @@ def format_socket_address(sock, format="{host}:{port}", remote_address=None):
         except Exception:
             remote_host = None
 
-        import netifaces             # lazy import
+        import netifaces  # lazy import
 
         if remote_host:
             for interface in netifaces.interfaces():

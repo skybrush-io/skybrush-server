@@ -114,8 +114,7 @@ class RegistryBase(Registry):
         return len(self._entries)
 
 
-def find_in_registry(registry, entry_id, response=None,
-                     failure_reason=None):
+def find_in_registry(registry, entry_id, response=None, failure_reason=None):
     """Finds an entry in the given registry with the given ID or
     registers a failure in the given response object if there is no
     such entry in the registry.

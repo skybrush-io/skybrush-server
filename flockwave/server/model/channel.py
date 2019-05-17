@@ -12,7 +12,7 @@ from __future__ import absolute_import
 from abc import ABCMeta, abstractmethod
 from future.utils import with_metaclass
 
-__all__ = ("CommunicationChannel", )
+__all__ = ("CommunicationChannel",)
 
 
 class CommunicationChannel(with_metaclass(ABCMeta, object)):

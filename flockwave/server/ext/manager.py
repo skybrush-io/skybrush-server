@@ -12,7 +12,7 @@ from .logger import log as base_log
 
 from ..utils import keydefaultdict
 
-__all__ = ("ExtensionManager", )
+__all__ = ("ExtensionManager",)
 
 EXT_PACKAGE_NAME = __name__.rpartition(".")[0]
 log = base_log.getChild("manager")
@@ -267,8 +267,7 @@ class ExtensionManager(object):
         Returns:
             list: the names of all the extensions that are currently loaded
         """
-        return sorted(key for key, ext in iteritems(self._extensions)
-                      if ext.loaded)
+        return sorted(key for key, ext in iteritems(self._extensions) if ext.loaded)
 
     def is_loaded(self, extension_name):
         """Returns whether the given extension is loaded."""
@@ -296,8 +295,10 @@ class ExtensionManager(object):
         try:
             extension = self._get_loaded_extension_by_name(extension_name)
         except KeyError:
-            log.warning("Tried to unload extension {0!r} but it is "
-                        "not loaded".format(extension_name))
+            log.warning(
+                "Tried to unload extension {0!r} but it is "
+                "not loaded".format(extension_name)
+            )
             return
 
         if self._num_clients > 0:
@@ -310,8 +311,10 @@ class ExtensionManager(object):
                 func(self.app)
             except Exception:
                 clean_unload = False
-                log.exception("Error while unloading extension {0!r}; "
-                              "forcing unload".format(extension_name))
+                log.exception(
+                    "Error while unloading extension {0!r}; "
+                    "forcing unload".format(extension_name)
+                )
 
         self._extensions[extension_name].loaded = False
         self._extensions[extension_name].instance = None
@@ -352,8 +355,9 @@ class ExtensionManager(object):
         try:
             module = self._get_module_for_extension(extension_name)
         except ImportError:
-            log.exception("Error while importing extension {0!r}"
-                          .format(extension_name))
+            log.exception(
+                "Error while importing extension {0!r}".format(extension_name)
+            )
             raise
 
         func = getattr(module, "get_dependencies", None)
@@ -361,8 +365,10 @@ class ExtensionManager(object):
             try:
                 dependencies = func()
             except Exception:
-                log.exception("Error while determining dependencies of "
-                              "extension {0!r}".format(extension_name))
+                log.exception(
+                    "Error while determining dependencies of "
+                    "extension {0!r}".format(extension_name)
+                )
                 dependencies = None
         else:
             dependencies = getattr(module, "dependencies", None)
@@ -372,9 +378,9 @@ class ExtensionManager(object):
     def _load(self, extension_name, forbidden):
         if extension_name in forbidden:
             cycle = forbidden + [extension_name]
-            log.error("Dependency cycle detected: {0}".format(
-                " -> ".join(map(str, cycle))
-            ))
+            log.error(
+                "Dependency cycle detected: {0}".format(" -> ".join(map(str, cycle)))
+            )
             return
 
         self._ensure_dependencies_loaded(extension_name, forbidden)
@@ -393,8 +399,7 @@ class ExtensionManager(object):
             extension_name (str): the name of the extension to load
         """
         if extension_name in ("logger", "manager", "base", "__init__"):
-            raise ValueError("invalid extension name: {0!r}"
-                             .format(extension_name))
+            raise ValueError("invalid extension name: {0!r}".format(extension_name))
 
         configuration = self._extensions[extension_name].configuration
 
@@ -402,8 +407,9 @@ class ExtensionManager(object):
         try:
             module = self._get_module_for_extension(extension_name)
         except ImportError:
-            log.exception("Error while importing extension {0!r}"
-                          .format(extension_name))
+            log.exception(
+                "Error while importing extension {0!r}".format(extension_name)
+            )
             return None
 
         instance_factory = getattr(module, "construct", None)
@@ -411,8 +417,9 @@ class ExtensionManager(object):
         try:
             extension = instance_factory() if instance_factory else module
         except Exception:
-            log.exception("Error while instantiating extension {0!r}"
-                          .format(extension_name))
+            log.exception(
+                "Error while instantiating extension {0!r}".format(extension_name)
+            )
             return None
 
         func = getattr(extension, "load", None)
@@ -421,8 +428,9 @@ class ExtensionManager(object):
                 extension_log = base_log.getChild(extension_name)
                 result = func(self.app, configuration, extension_log)
             except Exception:
-                log.exception("Error while loading extension {0!r}"
-                              .format(extension_name))
+                log.exception(
+                    "Error while loading extension {0!r}".format(extension_name)
+                )
                 return None
 
         self._extensions[extension_name].instance = extension
@@ -467,8 +475,9 @@ class ExtensionManager(object):
             try:
                 func()
             except Exception:
-                log.exception("Error while spinning down extension {0!r}"
-                              .format(extension_name))
+                log.exception(
+                    "Error while spinning down extension {0!r}".format(extension_name)
+                )
                 return
 
     def _spinup_extension(self, extension_name):
@@ -486,8 +495,9 @@ class ExtensionManager(object):
             try:
                 func()
             except Exception:
-                log.exception("Error while spinning up extension {0!r}"
-                              .format(extension_name))
+                log.exception(
+                    "Error while spinning up extension {0!r}".format(extension_name)
+                )
                 return
 
     def _ensure_dependencies_loaded(self, extension_name, forbidden):
@@ -535,10 +545,10 @@ class ExtensionAPIProxy(object):
         """
         self._extension_name = extension_name
         self._manager = manager
-        self._manager.loaded.connect(self._on_extension_loaded,
-                                     sender=self._manager)
-        self._manager.unloaded.connect(self._on_extension_unloaded,
-                                       sender=self._manager)
+        self._manager.loaded.connect(self._on_extension_loaded, sender=self._manager)
+        self._manager.unloaded.connect(
+            self._on_extension_unloaded, sender=self._manager
+        )
 
         loaded = self._manager.is_loaded(extension_name)
         if loaded:
@@ -569,8 +579,10 @@ class ExtensionAPIProxy(object):
         elif callable(api):
             api = api()
         if not hasattr(api, "__getitem__"):
-            raise TypeError("exports of extension {0!r} must support item "
-                            "access with the [] operator")
+            raise TypeError(
+                "exports of extension {0!r} must support item "
+                "access with the [] operator"
+            )
         return api
 
     def _on_extension_loaded(self, sender, name, extension):

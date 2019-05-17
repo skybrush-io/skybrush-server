@@ -8,8 +8,13 @@ from functools import wraps
 from future.utils import with_metaclass
 from time import time
 
-__all__ = ("RateLimiter", "RateLimiterBase", "DummyRateLimiter",
-           "DelayingRateLimiter", "rate_limited_by")
+__all__ = (
+    "RateLimiter",
+    "RateLimiterBase",
+    "DummyRateLimiter",
+    "DelayingRateLimiter",
+    "rate_limited_by",
+)
 
 
 class RateLimiter(with_metaclass(ABCMeta, object)):
@@ -176,16 +181,16 @@ class UAVSpecializedMessageRateLimiter(DelayingRateLimiter):
         self._self = None
 
     def _before_wrapped_function_called(self):
-        self._next_call_args = \
-            (self._self, sorted(self._collected_uav_ids)), {}
+        self._next_call_args = (self._self, sorted(self._collected_uav_ids)), {}
 
     def _update_next_call_args(self, args, kwds):
         """Inherited."""
         assert len(args) == 2, "wrapped method must have a single argument"
         assert not kwds, "wrapped method must not have keyword arguments"
-        assert self._self is None or self._self == args[0], \
-            "UAVSpecializedMessageRateLimiter must be called with the same "\
+        assert self._self is None or self._self == args[0], (
+            "UAVSpecializedMessageRateLimiter must be called with the same "
             "class instance"
+        )
         self._self = args[0]
         self._collected_uav_ids.update(args[1])
         return args, kwds
@@ -207,6 +212,7 @@ def rate_limited_by(rate_limiter, *args, **kwds):
         callable: a decorator that decorates functions with the given
             rate limiter
     """
+
     def decorator(func):
         limiter = rate_limiter(func, *args, **kwds)
 
@@ -221,4 +227,5 @@ def rate_limited_by(rate_limiter, *args, **kwds):
             return limiter(*wrapper_args, **wrapper_kwds)
 
         return wrapper
+
     return decorator

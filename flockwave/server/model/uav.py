@@ -14,8 +14,12 @@ from .metamagic import ModelMeta
 from .mixins import TimestampMixin
 
 __all__ = (
-    "BatteryInfo", "PassiveUAVDriver", "UAV", "UAVBase", "UAVDriver",
-    "UAVStatusInfo"
+    "BatteryInfo",
+    "PassiveUAVDriver",
+    "UAV",
+    "UAVBase",
+    "UAVDriver",
+    "UAVStatusInfo",
 )
 
 log = base_log.getChild("uav")
@@ -155,8 +159,15 @@ class UAVBase(UAV):
         """
         pass
 
-    def update_status(self, position=None, velocity=None, heading=None,
-                      algorithm=None, battery=None, error=None):
+    def update_status(
+        self,
+        position=None,
+        velocity=None,
+        heading=None,
+        algorithm=None,
+        battery=None,
+        error=None,
+    ):
         """Updates the status information of the UAV.
 
         Parameters with values equal to ``None`` are ignored.
@@ -307,9 +318,10 @@ class UAVDriver(with_metaclass(ABCMeta, object)):
             Dict[UAV,object]: dict mapping UAVs to the corresponding results.
         """
         return self._send_signal(
-            uavs, "fly to target signal",
+            uavs,
+            "fly to target signal",
             self._send_fly_to_target_signal_single,
-            target=target
+            target=target,
         )
 
     def send_landing_signal(self, uavs):
@@ -349,8 +361,7 @@ class UAVDriver(with_metaclass(ABCMeta, object)):
             Dict[UAV,object]: dict mapping UAVs to the corresponding results.
         """
         return self._send_signal(
-            uavs, "return to home signal",
-            self._send_return_to_home_signal_single
+            uavs, "return to home signal", self._send_return_to_home_signal_single
         )
 
     def send_shutdown_signal(self, uavs):
@@ -402,9 +413,8 @@ class UAVDriver(with_metaclass(ABCMeta, object)):
                 outcome = "{0} not supported".format(signal_name)
             except Exception as ex:
                 log.exception(ex)
-                outcome = (
-                    "Unexpected error while sending {1}: {0!r}"
-                    .format(ex, signal_name)
+                outcome = "Unexpected error while sending {1}: {0!r}".format(
+                    ex, signal_name
                 )
             result[uav] = outcome
         return result

@@ -79,10 +79,13 @@ def jwt_optional():
     JWT identity or ``None`` if the user has not authenticated via JWT,
     but does _not_ fail the request if there is no valid token.
     """
+
     def wrapper(func):
         @wraps(func)
         def wrapped(*args, **kwds):
             _get_jwt_identity()
             return func(*args, **kwds)
+
         return wrapped
+
     return wrapper

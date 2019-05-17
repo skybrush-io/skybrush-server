@@ -8,12 +8,17 @@ from flockwave.server.model.uav import UAVBase, UAVDriver
 from flockwave.spec.ids import make_valid_uav_id
 
 from .errors import AddressConflictError, map_flockctrl_error_code
-from .packets import ChunkedPacketAssembler, FlockCtrlAlgorithmDataPacket, \
-    FlockCtrlCommandRequestPacket, FlockCtrlCommandResponsePacket, \
-    FlockCtrlCompressedCommandResponsePacket, FlockCtrlPrearmStatusPacket, \
-    FlockCtrlStatusPacket
+from .packets import (
+    ChunkedPacketAssembler,
+    FlockCtrlAlgorithmDataPacket,
+    FlockCtrlCommandRequestPacket,
+    FlockCtrlCommandResponsePacket,
+    FlockCtrlCompressedCommandResponsePacket,
+    FlockCtrlPrearmStatusPacket,
+    FlockCtrlStatusPacket,
+)
 
-__all__ = ("FlockCtrlDriver", )
+__all__ = ("FlockCtrlDriver",)
 
 MAX_GEIGER_TUBE_COUNT = 2
 MAX_CAMERA_FEATURE_COUNT = 32
@@ -99,10 +104,8 @@ class FlockCtrlDriver(UAVDriver):
 
         if self._app:
             cmd_manager = self.app.command_execution_manager
-            cmd_manager.expired.connect(self._on_command_expired,
-                                        sender=cmd_manager)
-            cmd_manager.finished.connect(self._on_command_finished,
-                                         sender=cmd_manager)
+            cmd_manager.expired.connect(self._on_command_expired, sender=cmd_manager)
+            cmd_manager.finished.connect(self._on_command_finished, sender=cmd_manager)
 
     def _check_or_record_uav_address(self, uav, medium, address):
         """Records that the given UAV has the given address,
@@ -127,16 +130,11 @@ class FlockCtrlDriver(UAVDriver):
         handler functions that should be responsible for handling them.
         """
         return {
-            FlockCtrlStatusPacket:
-                self._handle_inbound_status_packet,
-            FlockCtrlPrearmStatusPacket:
-                nop,
-            FlockCtrlCompressedCommandResponsePacket:
-                self._handle_inbound_command_response_packet,
-            FlockCtrlCommandResponsePacket:
-                self._handle_inbound_command_response_packet,
-            FlockCtrlAlgorithmDataPacket:
-                self._handle_inbound_algorithm_data_packet
+            FlockCtrlStatusPacket: self._handle_inbound_status_packet,
+            FlockCtrlPrearmStatusPacket: nop,
+            FlockCtrlCompressedCommandResponsePacket: self._handle_inbound_command_response_packet,
+            FlockCtrlCommandResponsePacket: self._handle_inbound_command_response_packet,
+            FlockCtrlAlgorithmDataPacket: self._handle_inbound_algorithm_data_packet,
         }
 
     def _create_uav(self, formatted_id):
@@ -194,8 +192,7 @@ class FlockCtrlDriver(UAVDriver):
             if error:
                 result[uav] = error
             else:
-                result[uav] = self._send_command_to_uav(
-                    cmd_manager, command, uav)
+                result[uav] = self._send_command_to_uav(cmd_manager, command, uav)
 
         return result
 
@@ -206,8 +203,10 @@ class FlockCtrlDriver(UAVDriver):
         packet_class = packet.__class__
         handler = self._packet_handlers.get(packet_class)
         if handler is None:
-            self.log.warn("No packet handler defined for packet "
-                          "class: {0}".format(packet_class.__name__))
+            self.log.warn(
+                "No packet handler defined for packet "
+                "class: {0}".format(packet_class.__name__)
+            )
         else:
             handler(packet)
 
@@ -258,7 +257,7 @@ class FlockCtrlDriver(UAVDriver):
             velocity=packet.velocity,
             heading=packet.heading,
             algorithm=algorithm,
-            error=map_flockctrl_error_code(packet.error).value
+            error=map_flockctrl_error_code(packet.error).value,
         )
 
         self.app.request_to_send_UAV_INF_message_for([uav.id])
@@ -275,15 +274,17 @@ class FlockCtrlDriver(UAVDriver):
         try:
             uav = self._uavs_by_source_address[source]
         except KeyError:
-            self.log.warn("Reassembled chunked packet received from address "
-                          "{1!r} via {0!r} with no corresponding UAV"
-                          .format(*source))
+            self.log.warn(
+                "Reassembled chunked packet received from address "
+                "{1!r} via {0!r} with no corresponding UAV".format(*source)
+            )
             return
         try:
             command = self._commands_by_uav[uav.id]
         except KeyError:
-            self.log.warn("Dropped stale command response from UAV "
-                          "{0.id}".format(uav))
+            self.log.warn(
+                "Dropped stale command response from UAV " "{0.id}".format(uav)
+            )
             return
 
         decoded_body = body.decode("utf-8", errors="replace")
@@ -349,8 +350,10 @@ class FlockCtrlDriver(UAVDriver):
             if self.allow_multiple_commands_per_uav:
                 cmd_manager.cancel(existing_command)
             else:
-                return "Another command (receipt ID={0.id}) is already "\
-                       "in progress".format(existing_command)
+                return (
+                    "Another command (receipt ID={0.id}) is already "
+                    "in progress".format(existing_command)
+                )
 
         self._commands_by_uav[uav.id] = receipt = cmd_manager.start()
         self._send_command_to_address(command, address)
@@ -461,23 +464,16 @@ class FlockCtrlUAV(UAVBase):
             return
 
         for i, position in enumerate(features):
-            pos_data = {
-                "lat": position.lat,
-                "lon": position.lon
-            }
+            pos_data = {"lat": position.lat, "lon": position.lon}
             if position.amsl is not None:
                 pos_data["amsl"] = position.amsl
             if position.agl is not None:
                 pos_data["agl"] = position.agl
 
             # TODO: what value do we assign to the measurement?
-            mutator.update(
-                self.camera_features[i],
-                dict(pos_data, value=itow)
-            )
+            mutator.update(self.camera_features[i], dict(pos_data, value=itow))
 
-    def update_geiger_counter(self, position, itow, dose_rate, raw_counts,
-                              mutator):
+    def update_geiger_counter(self, position, itow, dose_rate, raw_counts, mutator):
         """Updates the value of the Geiger counter of the UAV with the given
         new value.
 
@@ -496,19 +492,13 @@ class FlockCtrlUAV(UAVBase):
         if position is None:
             return
 
-        pos_data = {
-            "lat": position.lat,
-            "lon": position.lon
-        }
+        pos_data = {"lat": position.lat, "lon": position.lon}
         if position.amsl is not None:
             pos_data["amsl"] = position.amsl
         if position.agl is not None:
             pos_data["agl"] = position.agl
 
-        mutator.update(
-            self.geiger_counter_dose_rate,
-            dict(pos_data, value=dose_rate)
-        )
+        mutator.update(self.geiger_counter_dose_rate, dict(pos_data, value=dose_rate))
 
         devices = self.geiger_counter_raw_counts
         values = raw_counts
@@ -541,9 +531,7 @@ class FlockCtrlUAV(UAVBase):
             for i in range(MAX_GEIGER_TUBE_COUNT)
         ]
         self.geiger_counter_rates = [
-            device.add_channel(
-                "rate_{0}".format(i), type=object, unit="count/sec"
-            )
+            device.add_channel("rate_{0}".format(i), type=object, unit="count/sec")
             for i in range(MAX_GEIGER_TUBE_COUNT)
         ]
         self._last_geiger_counter_packet = None

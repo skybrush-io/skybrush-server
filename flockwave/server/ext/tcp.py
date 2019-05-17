@@ -55,6 +55,7 @@ class TCPChannel(CommunicationChannel):
     def _erase_socket(self, ref):
         self.socket = None
 
+
 ############################################################################
 
 
@@ -107,9 +108,11 @@ def handle_message(message, client):
     try:
         message = encoder.loads(message)
     except ValueError as ex:
-        log.warn("Malformed JSON message received from {1!r}: {0!r}".format(
-            message[:20], client.id
-        ))
+        log.warn(
+            "Malformed JSON message received from {1!r}: {0!r}".format(
+                message[:20], client.id
+            )
+        )
         log.exception(ex)
         return
     app.message_hub.handle_incoming_message(message, client)
@@ -140,17 +143,17 @@ def load(app, configuration, logger):
     sock = listen(address)
 
     app.channel_type_registry.add(
-        "tcp", factory=TCPChannel,
-        ssdp_location=get_ssdp_location
+        "tcp", factory=TCPChannel, ssdp_location=get_ssdp_location
     )
 
-    receiver_thread = spawn(serve, sock, handle=handle_connection,
-                            concurrency=configuration.get("pool_size", 1000))
-
-    globals().update(
-        app=app, log=logger, sock=sock,
-        receiver_thread=receiver_thread
+    receiver_thread = spawn(
+        serve,
+        sock,
+        handle=handle_connection,
+        concurrency=configuration.get("pool_size", 1000),
     )
+
+    globals().update(app=app, log=logger, sock=sock, receiver_thread=receiver_thread)
 
 
 def unload(app):
@@ -163,6 +166,4 @@ def unload(app):
 
     app.channel_type_registry.remove("tcp")
 
-    globals().update(
-        app=None, log=None, sock=None
-    )
+    globals().update(app=None, log=None, sock=None)

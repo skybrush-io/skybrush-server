@@ -2,10 +2,9 @@
 
 from argparse import Namespace
 from flask import Blueprint, jsonify
-from flockwave.server.authentication import http_authentication, \
-    jwt_authentication
+from flockwave.server.authentication import http_authentication, jwt_authentication
 
-__all__ = ("load", )
+__all__ = ("load",)
 
 
 blueprint = Blueprint("api_v1", __name__, static_folder="static")
@@ -15,8 +14,7 @@ def load(app, configuration, logger):
     """Loads the extension."""
     server = app.import_api("http_server").wsgi_app
     server.register_blueprint(
-        blueprint,
-        url_prefix=configuration.get("route", "/api/v1")
+        blueprint, url_prefix=configuration.get("route", "/api/v1")
     )
 
 
@@ -32,4 +30,4 @@ def get_authentication_token():
     return jsonify(access_token=token)
 
 
-dependencies = ("http_server", )
+dependencies = ("http_server",)

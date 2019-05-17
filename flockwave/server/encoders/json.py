@@ -9,7 +9,7 @@ import json
 
 from .base import Encoder
 
-__all__ = ("JSONEncoder", )
+__all__ = ("JSONEncoder",)
 
 
 class JSONEncoder(Encoder):
@@ -25,8 +25,7 @@ class JSONEncoder(Encoder):
         """Constructor."""
         self.encoding = encoding
         self.encoder = json.JSONEncoder(
-            separators=(",", ":"), sort_keys=False, indent=None,
-            default=self._encode
+            separators=(",", ":"), sort_keys=False, indent=None, default=self._encode
         )
         self.decoder = json.JSONDecoder()
 

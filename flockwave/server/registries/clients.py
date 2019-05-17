@@ -12,7 +12,7 @@ from ..logger import log as base_log
 from ..model import Client
 from .base import RegistryBase
 
-__all__ = ("ClientRegistry", )
+__all__ = ("ClientRegistry",)
 
 log = base_log.getChild("registries.clients")
 
@@ -72,8 +72,7 @@ class ClientRegistry(RegistryBase):
         if client_id in self:
             return self[client_id]
 
-        channel = self.channel_type_registry.create_channel_for(
-            channel_type)
+        channel = self.channel_type_registry.create_channel_for(channel_type)
         client = Client(id=client_id, channel=channel)
         channel.bind_to(client)
 
@@ -138,15 +137,16 @@ class ClientRegistry(RegistryBase):
             channel_type = self._client_id_to_channel_type.pop(client_id)
         except KeyError:
             # This should not happen
-            log.warn("Cannot find channel type for client ID {0!r}"
-                     .format(client_id))
+            log.warn("Cannot find channel type for client ID {0!r}".format(client_id))
 
         try:
             self._entries_by_channel_type[channel_type].remove(client_id)
         except KeyError:
             # This should not happen
-            log.warn("Cannot remove channel type index entry for "
-                     "client ID {0!r}".format(client_id))
+            log.warn(
+                "Cannot remove channel type index entry for "
+                "client ID {0!r}".format(client_id)
+            )
 
         log.info("Client disconnected", extra={"id": client_id})
 

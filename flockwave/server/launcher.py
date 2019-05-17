@@ -12,11 +12,16 @@ from .logger import log
 
 
 @click.command()
-@click.option("-c", "--config", type=click.Path(resolve_path=True),
-              help="Name of the configuration file to load; defaults to "
-                   "flockwave.cfg in the current directory")
-@click.option("--debug/--no-debug", default=False,
-              help="Start the server in debug mode")
+@click.option(
+    "-c",
+    "--config",
+    type=click.Path(resolve_path=True),
+    help="Name of the configuration file to load; defaults to "
+    "flockwave.cfg in the current directory",
+)
+@click.option(
+    "--debug/--no-debug", default=False, help="Start the server in debug mode"
+)
 def start(config, debug):
     """Start the Flockwave server."""
     # Dirty workaround for breaking import cycle according to
@@ -52,5 +57,5 @@ def start(config, debug):
     app.start()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     sys.exit(start())

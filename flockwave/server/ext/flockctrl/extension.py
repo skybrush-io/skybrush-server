@@ -34,15 +34,13 @@ class FlockCtrlDronesExtension(UAVExtensionBase):
         self._wireless_unicast_link = None
         self._wireless_communicator = WirelessCommunicationManager(self)
         self._wireless_communicator.on_packet.connect(
-            self._handle_inbound_packet,
-            sender=self._wireless_communicator
+            self._handle_inbound_packet, sender=self._wireless_communicator
         )
 
         self._xbee_lowlevel_link = None
         self._xbee_communicator = XBeeCommunicationManager(self)
         self._xbee_communicator.on_packet.connect(
-            self._handle_inbound_packet,
-            sender=self._xbee_communicator
+            self._handle_inbound_packet, sender=self._xbee_communicator
         )
 
     def _create_driver(self):
@@ -51,11 +49,14 @@ class FlockCtrlDronesExtension(UAVExtensionBase):
     def configure(self, configuration):
         connection_config = configuration.get("connections", {})
         self.xbee_lowlevel_link = self._configure_lowlevel_connection(
-            connection_config.get("xbee"))
+            connection_config.get("xbee")
+        )
         self.wireless_broadcast_link = self._configure_lowlevel_connection(
-            connection_config.get("wireless", {}).get("broadcast"))
+            connection_config.get("wireless", {}).get("broadcast")
+        )
         self.wireless_unicast_link = self._configure_lowlevel_connection(
-            connection_config.get("wireless", {}).get("unicast"))
+            connection_config.get("wireless", {}).get("unicast")
+        )
         super(FlockCtrlDronesExtension, self).configure(configuration)
 
     def on_app_changed(self, old_app, new_app):
@@ -63,13 +64,11 @@ class FlockCtrlDronesExtension(UAVExtensionBase):
 
         if old_app is not None:
             registry = old_app.import_api("clocks").registry
-            registry.clock_changed.disconnect(
-                self._on_clock_changed, sender=registry)
+            registry.clock_changed.disconnect(self._on_clock_changed, sender=registry)
 
         if new_app is not None:
             registry = new_app.import_api("clocks").registry
-            registry.clock_changed.connect(
-                self._on_clock_changed, sender=registry)
+            registry.clock_changed.connect(self._on_clock_changed, sender=registry)
 
     def teardown(self):
         self.wireless_lowlevel_link = None
@@ -90,16 +89,17 @@ class FlockCtrlDronesExtension(UAVExtensionBase):
 
         if self._wireless_broadcast_link is not None:
             self.app.connection_registry.add(
-                self._wireless_broadcast_link, "Wireless",
+                self._wireless_broadcast_link,
+                "Wireless",
                 description="Upstream wireless connection",
-                purpose=ConnectionPurpose.uavRadioLink
+                purpose=ConnectionPurpose.uavRadioLink,
             )
 
-            self._wireless_communicator.port = \
-                self._wireless_broadcast_link.port
+            self._wireless_communicator.port = self._wireless_broadcast_link.port
             self._wireless_broadcast_link.open()
-            self._wireless_communicator.broadcast_connection = \
+            self._wireless_communicator.broadcast_connection = (
                 self._wireless_broadcast_link
+            )
 
     @property
     def wireless_unicast_link(self):
@@ -115,8 +115,7 @@ class FlockCtrlDronesExtension(UAVExtensionBase):
 
         if self._wireless_unicast_link is not None:
             self._wireless_unicast_link.open()
-            self._wireless_communicator.unicast_connection = \
-                self._wireless_unicast_link
+            self._wireless_communicator.unicast_connection = self._wireless_unicast_link
 
     @property
     def xbee_lowlevel_link(self):
@@ -133,9 +132,10 @@ class FlockCtrlDronesExtension(UAVExtensionBase):
 
         if self._xbee_lowlevel_link is not None:
             self.app.connection_registry.add(
-                self._xbee_lowlevel_link, "XBee",
+                self._xbee_lowlevel_link,
+                "XBee",
                 description="Upstream XBee connection",
-                purpose=ConnectionPurpose.uavRadioLink
+                purpose=ConnectionPurpose.uavRadioLink,
             )
 
             self._xbee_lowlevel_link.open()
@@ -177,8 +177,7 @@ class FlockCtrlDronesExtension(UAVExtensionBase):
         """
         driver.id_format = configuration.get("id_format", "{0:02}")
         driver.log = self.log.getChild("driver")
-        driver.create_device_tree_mutator = \
-            self.create_device_tree_mutation_context
+        driver.create_device_tree_mutator = self.create_device_tree_mutation_context
         driver.send_packet = self.send_packet
 
     def _handle_inbound_packet(self, sender, packet):
@@ -218,15 +217,15 @@ class FlockCtrlDronesExtension(UAVExtensionBase):
         now = datetime.now(utc)
         now_as_timestamp = datetime_to_unix_timestamp(now)
         packet = FlockCtrlClockSynchronizationPacket(
-            sequence_id=0,      # TODO(ntamas)
-            clock_id=5,         # MIDI timecode clock in FlockCtrl
+            sequence_id=0,  # TODO(ntamas)
+            clock_id=5,  # MIDI timecode clock in FlockCtrl
             running=clock.running,
             local_timestamp=now,
             ticks=clock.ticks_given_time(now_as_timestamp),
-            ticks_per_second=clock.ticks_per_second
+            ticks_per_second=clock.ticks_per_second,
         )
         self.send_packet(packet)
 
 
 construct = FlockCtrlDronesExtension
-dependencies = ("clocks", )
+dependencies = ("clocks",)

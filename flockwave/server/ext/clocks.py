@@ -7,11 +7,7 @@ from ..registries import ClockRegistry, find_in_registry
 message_hub = None
 registry = None
 
-exports = {
-    "register_clock": None,
-    "registry": None,
-    "unregister_clock": None
-}
+exports = {"register_clock": None, "registry": None, "unregister_clock": None}
 
 
 def create_CLK_INF_message_for(clock_ids, in_response_to=None):
@@ -34,7 +30,8 @@ def create_CLK_INF_message_for(clock_ids, in_response_to=None):
 
     body = {"status": statuses, "type": "CLK-INF"}
     response = message_hub.create_response_or_notification(
-        body=body, in_response_to=in_response_to)
+        body=body, in_response_to=in_response_to
+    )
 
     for clock_id in clock_ids:
         entry = find_clock_by_id(clock_id, response)
@@ -77,19 +74,16 @@ def on_clock_changed(sender, clock):
 
 
 def handle_CLK_INF(message, sender, hub):
-    return create_CLK_INF_message_for(
-        message.body["ids"], in_response_to=message
-    )
+    return create_CLK_INF_message_for(message.body["ids"], in_response_to=message)
 
 
 def handle_CLK_LIST(message, sender, hub):
     global registry
-    return {
-        "ids": list(registry.ids)
-    }
+    return {"ids": list(registry.ids)}
 
 
 #############################################################################
+
 
 def load(app, configuration, logger):
     global message_hub, registry
@@ -103,20 +97,14 @@ def load(app, configuration, logger):
     registry.clock_changed.connect(on_clock_changed, sender=registry)
 
     exports.update(
-        registry=registry,
-        register_clock=registry.add,
-        unregister_clock=registry.remove
+        registry=registry, register_clock=registry.add, unregister_clock=registry.remove
     )
 
 
 def unload(app):
     global message_hub, registry
 
-    exports.update(
-        registry=None,
-        register_clock=None,
-        unregister_clock=None
-    )
+    exports.update(registry=None, register_clock=None, unregister_clock=None)
 
     registry.clock_changed.disconnect(on_clock_changed, sender=registry)
 

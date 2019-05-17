@@ -9,7 +9,7 @@ from time import time
 
 from .metamagic import ModelMeta
 
-__all__ = ("CommandExecutionStatus", )
+__all__ = ("CommandExecutionStatus",)
 
 
 class CommandExecutionStatus(with_metaclass(ModelMeta, object)):

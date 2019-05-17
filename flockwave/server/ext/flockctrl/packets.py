@@ -16,8 +16,7 @@ from six import byte2int, int2byte
 from struct import Struct
 from time import time
 
-from .algorithms import find_algorithm_name_by_id, \
-    registry as algorithm_registry
+from .algorithms import find_algorithm_name_by_id, registry as algorithm_registry
 from .utils import unpack_struct
 
 __all__ = ("FlockCtrlPacket", "ChunkedPacketAssembler")
@@ -125,8 +124,9 @@ class FlockCtrlChunkedPacket(FlockCtrlPacketBase):
         self.body = None
 
     def decode(self, data):
-        self.sequence_id, self.num_chunks, self.chunk_id = \
-            [byte2int(x) for x in data[1:4]]
+        self.sequence_id, self.num_chunks, self.chunk_id = [
+            byte2int(x) for x in data[1:4]
+        ]
         self.body = data[4:]
 
 
@@ -145,20 +145,34 @@ class FlockCtrlStatusPacket(FlockCtrlPacketBase):
     _struct = Struct("<xBBBLllhhhhhhBLB8sL")
 
     def decode(self, data):
-        (self.id, self.algo_and_vehicle, self.choreography_index,
-            self.iTOW, lon, lat, amsl, agl,
-            velN, velE, velD, heading, voltage,
-            self.flags, self.error, self.debug, self.clock_status), _ = \
-            self._unpack(data)
+        (
+            self.id,
+            self.algo_and_vehicle,
+            self.choreography_index,
+            self.iTOW,
+            lon,
+            lat,
+            amsl,
+            agl,
+            velN,
+            velE,
+            velD,
+            heading,
+            voltage,
+            self.flags,
+            self.error,
+            self.debug,
+            self.clock_status,
+        ), _ = self._unpack(data)
 
         # Standardize units coming from the packet
-        self.lat = lat / 1e7          # [1e-7 deg] --> [deg]
-        self.lon = lon / 1e7          # [1e-7 deg] --> [deg]
-        self.amsl = amsl / 1e1        # [dm]       --> [m]
-        self.agl = agl / 1e1          # [dm]       --> [m]
-        self.velN = velN / 1e2        # [cm/s]     --> [m/s]
-        self.velE = velE / 1e2        # [cm/s]     --> [m/s]
-        self.velD = velD / 1e2        # [cm/s]     --> [m/s]
+        self.lat = lat / 1e7  # [1e-7 deg] --> [deg]
+        self.lon = lon / 1e7  # [1e-7 deg] --> [deg]
+        self.amsl = amsl / 1e1  # [dm]       --> [m]
+        self.agl = agl / 1e1  # [dm]       --> [m]
+        self.velN = velN / 1e2  # [cm/s]     --> [m/s]
+        self.velE = velE / 1e2  # [cm/s]     --> [m/s]
+        self.velD = velD / 1e2  # [cm/s]     --> [m/s]
         self.heading = heading / 1e2  # [1e-2 deg] --> [deg]
         self.voltage = voltage / 1e1  # [0.1V]     --> [V]
 
@@ -184,7 +198,7 @@ class FlockCtrlStatusPacket(FlockCtrlPacketBase):
         Returns:
             int: the numeric index of the algorithm
         """
-        return self.algo_and_vehicle & 0x1f
+        return self.algo_and_vehicle & 0x1F
 
     @property
     def algorithm_name(self):
@@ -203,8 +217,7 @@ class FlockCtrlStatusPacket(FlockCtrlPacketBase):
         Returns:
            GPSCoordinate: the location of the drone
         """
-        return GPSCoordinate(lat=self.lat, lon=self.lon,
-                             amsl=self.amsl, agl=self.agl)
+        return GPSCoordinate(lat=self.lat, lon=self.lon, amsl=self.amsl, agl=self.agl)
 
     @property
     def velocity(self):
@@ -244,8 +257,7 @@ class FlockCtrlCommandResponsePacket(FlockCtrlCommandResponsePacketBase):
     PACKET_TYPE = 2
 
 
-class FlockCtrlCompressedCommandResponsePacket(
-        FlockCtrlCommandResponsePacketBase):
+class FlockCtrlCompressedCommandResponsePacket(FlockCtrlCommandResponsePacketBase):
     """Packet containing a compressed response to a command that was
     sent from the ground station to the drone, or a part of it.
     """
@@ -271,8 +283,9 @@ class FlockCtrlClockSynchronizationPacket(FlockCtrlPacketBase):
     PACKET_TYPE = 9
     _struct = Struct("<xBBQdH")
 
-    def __init__(self, sequence_id, clock_id, running, local_timestamp,
-                 ticks, ticks_per_second):
+    def __init__(
+        self, sequence_id, clock_id, running, local_timestamp, ticks, ticks_per_second
+    ):
         """Constructor.
 
         Parameters:
@@ -304,11 +317,16 @@ class FlockCtrlClockSynchronizationPacket(FlockCtrlPacketBase):
         self.ticks_per_second = int(ticks_per_second)
 
     def encode(self):
-        return int2byte(self.PACKET_TYPE) + self._struct.pack(
-            self.sequence_id,
-            (self.clock_id & 0x7F) + (128 if self.running else 0),
-            self.local_timestamp, self.ticks, self.ticks_per_second
-        )[1:]
+        return (
+            int2byte(self.PACKET_TYPE)
+            + self._struct.pack(
+                self.sequence_id,
+                (self.clock_id & 0x7F) + (128 if self.running else 0),
+                self.local_timestamp,
+                self.ticks,
+                self.ticks_per_second,
+            )[1:]
+        )
 
 
 class FlockCtrlFileUploadKeepalivePacket(FlockCtrlPacketBase):
@@ -394,7 +412,7 @@ class FlockCtrlAlgorithmDataPacket(FlockCtrlPacketBase):
 
     def decode(self, data):
         (self.algorithm_id, self.uav_id), self.body = self._unpack(data)
-        self.algorithm_id = self.algorithm_id & 0x1f
+        self.algorithm_id = self.algorithm_id & 0x1F
 
 
 class ChunkedPacketAssembler(object):
@@ -426,8 +444,7 @@ class ChunkedPacketAssembler(object):
                 to be compressed
         """
         if packet.source is None:
-            raise ValueError("inbound chunked packet must have a "
-                             "source address")
+            raise ValueError("inbound chunked packet must have a " "source address")
 
         now = time()
 
@@ -446,13 +463,10 @@ class ChunkedPacketAssembler(object):
         msg_data["last_chunk"] = packet.chunk_id
 
         if len(msg_data["chunks"]) == msg_data["num_chunks"]:
-            body = b"".join(
-                body for index, body in sorted(msg_data["chunks"].items())
-            )
+            body = b"".join(body for index, body in sorted(msg_data["chunks"].items()))
             if msg_data["compressed"]:
                 body = zlib.decompress(body)
-            self.packet_assembled.send(self, body=body,
-                                       source=packet.source)
+            self.packet_assembled.send(self, body=body, source=packet.source)
             del messages[packet.sequence_id]
             if not messages:
                 del self._messages[packet.source]
@@ -482,18 +496,16 @@ class ChunkedPacketAssembler(object):
             chunk_chars[last_chunk_id] = "*"
 
         chunk_chars = "".join(chunk_chars)
-        return "#%d%s [%s]" % (sequence_id,
-                               "C" if msg_data["compressed"] else " ",
-                               "".join(chunk_chars))
+        return "#%d%s [%s]" % (
+            sequence_id,
+            "C" if msg_data["compressed"] else " ",
+            "".join(chunk_chars),
+        )
 
     def _notify_new_packet(self, packet):
         """Notifies the response chunk assembler that it should anticipate
         a new frame with the given sequence ID.
         """
-        msg_data = dict(
-            chunks=dict(),
-            num_chunks=packet.num_chunks,
-            last_chunk=None
-        )
+        msg_data = dict(chunks=dict(), num_chunks=packet.num_chunks, last_chunk=None)
         self._messages[packet.source][packet.sequence_id] = msg_data
         return msg_data

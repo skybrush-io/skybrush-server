@@ -55,6 +55,7 @@ class UDPChannel(CommunicationChannel):
         global sock
         sock.sendto(encoder.dumps(message), self.address)
 
+
 ############################################################################
 
 
@@ -79,9 +80,11 @@ def handle_message(message, sender):
     try:
         message = encoder.loads(message)
     except ValueError as ex:
-        log.warn("Malformed JSON message received from {1!r}: {0!r}".format(
-            message[:20], sender
-        ))
+        log.warn(
+            "Malformed JSON message received from {1!r}: {0!r}".format(
+                message[:20], sender
+            )
+        )
         log.exception(ex)
         return
 
@@ -137,18 +140,17 @@ def load(app, configuration, logger):
     sock.bind(address)
 
     app.channel_type_registry.add(
-        "udp", factory=UDPChannel,
-        ssdp_location=get_ssdp_location
+        "udp", factory=UDPChannel, ssdp_location=get_ssdp_location
     )
 
-    receiver_thread = spawn(receive_loop, sock, handler=handle_message,
-                            pool_size=configuration.get("pool_size", 1000))
-
-    globals().update(
-        app=app, log=logger,
-        receiver_thread=receiver_thread,
-        sock=sock
+    receiver_thread = spawn(
+        receive_loop,
+        sock,
+        handler=handle_message,
+        pool_size=configuration.get("pool_size", 1000),
     )
+
+    globals().update(app=app, log=logger, receiver_thread=receiver_thread, sock=sock)
 
 
 def unload(app):
@@ -162,6 +164,4 @@ def unload(app):
     sock.close()
     app.channel_type_registry.remove("udp")
 
-    globals().update(
-        app=None, log=None, sock=None
-    )
+    globals().update(app=None, log=None, sock=None)

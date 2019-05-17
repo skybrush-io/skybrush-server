@@ -7,11 +7,10 @@ import gzip
 
 from .base import ConnectionBase, FDConnectionBase, ConnectionState
 from .factory import create_connection
-from serial import Serial, STOPBITS_ONE, STOPBITS_ONE_POINT_FIVE, \
-    STOPBITS_TWO
+from serial import Serial, STOPBITS_ONE, STOPBITS_ONE_POINT_FIVE, STOPBITS_TWO
 from time import time
 
-__all__ = ("SerialPortConnection", )
+__all__ = ("SerialPortConnection",)
 
 # TODO: recording and replaying should be made more generic
 
@@ -67,8 +66,7 @@ class SerialPortConnection(FDConnectionBase):
         elif self._stopbits == 2:
             stopbits = STOPBITS_TWO
         else:
-            raise ValueError("unsupported stop bit count: {0!r}"
-                             .format(self._stopbits))
+            raise ValueError("unsupported stop bit count: {0!r}".format(self._stopbits))
 
         try:
             serial = Serial(self._path, self._baud, stopbits=stopbits)
@@ -107,9 +105,11 @@ class SerialPortConnection(FDConnectionBase):
         """
         # TODO(ntamas): 'blocking' is not handled here
         if not blocking:
-            raise NotImplementedError("non-blocking reads not implemented; " +
-                "the parameter is there for sake of API-compatibility with " +
-                "socket connections only")
+            raise NotImplementedError(
+                "non-blocking reads not implemented; "
+                + "the parameter is there for sake of API-compatibility with "
+                + "socket connections only"
+            )
 
         if self._file_object is not None:
             try:
@@ -286,10 +286,12 @@ class ReplayedSerialPortConnection(ConnectionBase):
             self.close()
 
         self._log_stream = value
-        log_lines = (line for line in self._log_stream
-                     if line and not line.startswith(b"#"))
-        self._log_reader = csv.reader(log_lines, dialect="excel-tab",
-                                      quoting=csv.QUOTE_NONE)
+        log_lines = (
+            line for line in self._log_stream if line and not line.startswith(b"#")
+        )
+        self._log_reader = csv.reader(
+            log_lines, dialect="excel-tab", quoting=csv.QUOTE_NONE
+        )
         self._buffer = []
 
         if old_state == ConnectionState.CONNECTED:
@@ -318,8 +320,9 @@ class ReplayedSerialPortConnection(ConnectionBase):
             if self.swallow_exceptions:
                 return
             else:
-                raise ValueError("log stream must be set before the "
-                                 "connection is opened")
+                raise ValueError(
+                    "log stream must be set before the " "connection is opened"
+                )
 
         self._next_entry = self._read_next_log_entry("read")
         if self._next_entry is not None:
@@ -393,8 +396,7 @@ class ReplayedSerialPortConnection(ConnectionBase):
                 if entry is not None:
                     if entry_type is not None and entry[0] != entry_type:
                         continue
-                    entry = entry[0], float(entry[1]), \
-                        entry[2].decode("string-escape")
+                    entry = entry[0], float(entry[1]), entry[2].decode("string-escape")
                 elif self.autoclose:
                     self.close()
                 return entry
@@ -424,8 +426,9 @@ def test_recordable_serial_port():
     for i in range(5):
         slave_port.write(b"test message {0}".format(i))
         sleep(0.2)
-    slave_port.write(b"final message\nbroken into\nmultiple lines\n"
-                     b"with \\ backslashes!")
+    slave_port.write(
+        b"final message\nbroken into\nmultiple lines\n" b"with \\ backslashes!"
+    )
 
     # Read it back from the master and then send something
     read(master, 1000)
@@ -439,8 +442,7 @@ def test_recordable_serial_port():
 
         sleep(0.2)
 
-    message = b"final message\nbroken into\nmultiple lines\n"\
-              b"with \\ backslashes!"
+    message = b"final message\nbroken into\nmultiple lines\n" b"with \\ backslashes!"
     write(master, message)
     num_read = 0
     while num_read < len(message):

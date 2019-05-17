@@ -18,8 +18,11 @@ from .factory import create_connection
 from ..networking import create_socket
 
 
-__all__ = ("UDPSocketConnection", "SubnetBindingConnection",
-           "SubnetBindingUDPConnection")
+__all__ = (
+    "UDPSocketConnection",
+    "SubnetBindingConnection",
+    "SubnetBindingUDPConnection",
+)
 
 
 class SocketConnectionBase(FDConnectionBase):
@@ -288,15 +291,15 @@ class SubnetBindingConnection(ConnectionWrapperBase):
 
     file_handle_changed = Signal()
 
-    def __init__(self, network, connection_factory, port=0,
-                 bind_to_broadcast=False):
+    def __init__(self, network, connection_factory, port=0, bind_to_broadcast=False):
         """Constructor."""
         super(SubnetBindingConnection, self).__init__()
         self.connection_factory = connection_factory
         self.port = port
         self.bind_to_broadcast = bind_to_broadcast
 
-        import netifaces             # lazy import
+        import netifaces  # lazy import
+
         self._netifaces = netifaces
 
         if isinstance(network, IPv4Network):
@@ -331,16 +334,16 @@ class SubnetBindingConnection(ConnectionWrapperBase):
         addr_key = "broadcast" if self.bind_to_broadcast else "addr"
         for interface in self._netifaces.interfaces():
             # We are currently interested only in IPv4 addresses
-            specs = self._netifaces.ifaddresses(interface).get(
-                self._netifaces.AF_INET)
+            specs = self._netifaces.ifaddresses(interface).get(self._netifaces.AF_INET)
             if not specs:
                 continue
 
             # Find only those addresses that are in our target subnet
             candidates.extend(
-                spec[addr_key] for spec in specs
-                if IPv4Address(str(spec.get("addr"))) in self._network and
-                addr_key in spec
+                spec[addr_key]
+                for spec in specs
+                if IPv4Address(str(spec.get("addr"))) in self._network
+                and addr_key in spec
             )
 
             # If we have more than one candidate, we can safely exit here
@@ -355,21 +358,20 @@ class SubnetBindingConnection(ConnectionWrapperBase):
         """Updates the state of the current connection based on the state
         of the wrapper.
         """
-        new_state = self._wrapped.state if self._wrapped \
-            else ConnectionState.DISCONNECTED
+        new_state = (
+            self._wrapped.state if self._wrapped else ConnectionState.DISCONNECTED
+        )
         self._set_state(new_state)
 
     def _wrapped_connection_changed(self, old_conn, new_conn):
         if old_conn:
             old_conn.state_changed.disconnect(
-                self._wrapped_connection_state_changed,
-                sender=old_conn
+                self._wrapped_connection_state_changed, sender=old_conn
             )
 
         if new_conn:
             new_conn.state_changed.connect(
-                self._wrapped_connection_state_changed,
-                sender=new_conn
+                self._wrapped_connection_state_changed, sender=new_conn
             )
 
         self._update_own_state_from_wrapped_connection()
@@ -382,8 +384,7 @@ class SubnetBindingConnection(ConnectionWrapperBase):
 
 
 @create_connection.register("udp-subnet")
-def SubnetBindingUDPConnection(subnet=None, port=0, bind_to_broadcast=False,
-                               **kwds):
+def SubnetBindingUDPConnection(subnet=None, port=0, bind_to_broadcast=False, **kwds):
     """Convenience factory for a SubnetBindingConnection_ that works with
     UDP sockets.
 
@@ -404,15 +405,13 @@ def SubnetBindingUDPConnection(subnet=None, port=0, bind_to_broadcast=False,
         subnet = kwds.get("path")
         if subnet is None:
             raise ValueError("either 'subnet' or 'path' must be given")
-    return SubnetBindingConnection(
-        subnet, UDPSocketConnection, port, bind_to_broadcast
-    )
+    return SubnetBindingConnection(subnet, UDPSocketConnection, port, bind_to_broadcast)
 
 
-SubnetBindingUDPBroadcastConnection = partial(SubnetBindingUDPConnection,
-                                              bind_to_broadcast=True)
-create_connection.register("udp-broadcast",
-                           SubnetBindingUDPBroadcastConnection)
+SubnetBindingUDPBroadcastConnection = partial(
+    SubnetBindingUDPConnection, bind_to_broadcast=True
+)
+create_connection.register("udp-broadcast", SubnetBindingUDPBroadcastConnection)
 
 
 def test_udp():
@@ -429,4 +428,5 @@ def test_udp():
 
 if __name__ == "__main__":
     import sys
+
     sys.exit(test_udp())

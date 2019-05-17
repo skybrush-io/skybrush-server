@@ -88,31 +88,31 @@ class DummyAlgorithm(Algorithm):
 
 @registry.register
 class AltitudeHoldAlgorithm(Algorithm):
-    ID = 1      # 'a'
+    ID = 1  # 'a'
     NAME = "altitude"
 
 
 @registry.register
 class ChasingAlgorithm(Algorithm):
-    ID = 3      # 'c'
+    ID = 3  # 'c'
     NAME = "chasing"
 
 
 @registry.register
 class EmergencyAlgorithm(Algorithm):
-    ID = 5      # 'e'
+    ID = 5  # 'e'
     NAME = "emergency"
 
 
 @registry.register
 class FlockingAlgorithm(Algorithm):
-    ID = 6      # 'f'
+    ID = 6  # 'f'
     NAME = "flocking"
 
 
 @registry.register
 class GeigerCounterAlgorithm(Algorithm):
-    ID = 7      # 'g'
+    ID = 7  # 'g'
     NAME = "geiger"
 
     _struct = Struct("<LllhhLLf")
@@ -120,46 +120,52 @@ class GeigerCounterAlgorithm(Algorithm):
     def handle_data_packet(self, packet, uav, mutate):
         """Inherited."""
         raw_counts = [0, 0]
-        (iTOW, lon, lat, amsl, agl, raw_counts[0], raw_counts[1], dose_rate), _ = \
-            self._unpack(packet.body)
+        (
+            iTOW,
+            lon,
+            lat,
+            amsl,
+            agl,
+            raw_counts[0],
+            raw_counts[1],
+            dose_rate,
+        ), _ = self._unpack(packet.body)
 
         # Construct the position object
-        position = convert_mkgps_position_to_gps_coordinate(
-            lat, lon, amsl, agl)
+        position = convert_mkgps_position_to_gps_coordinate(lat, lon, amsl, agl)
 
         # Update the UAV devices
         with mutate() as mutator:
-            uav.update_geiger_counter(position, iTOW, dose_rate, raw_counts,
-                                      mutator)
+            uav.update_geiger_counter(position, iTOW, dose_rate, raw_counts, mutator)
 
 
 @registry.register
 class ReturnToHomeAlgorithm(Algorithm):
-    ID = 8      # 'h'
+    ID = 8  # 'h'
     NAME = "return_to_home"
 
 
 @registry.register
 class ILandingAlgorithm(Algorithm):
-    ID = 9      # 'i'
+    ID = 9  # 'i'
     NAME = "ilanding"
 
 
 @registry.register
 class LandingAlgorithm(Algorithm):
-    ID = 12      # 'l'
+    ID = 12  # 'l'
     NAME = "landing"
 
 
 @registry.register
 class NinaAlgorithm(Algorithm):
-    ID = 14      # 'n'
+    ID = 14  # 'n'
     NAME = "nina"
 
 
 @registry.register
 class OcularAlgorithm(Algorithm):
-    ID = 15      # 'o'
+    ID = 15  # 'o'
     NAME = "ocular"
 
     # packet structure:
@@ -171,8 +177,9 @@ class OcularAlgorithm(Algorithm):
         """Inherited."""
         # unpack fixed length header
         feature_count = 0
-        (iTOW, lon, lat, amsl, agl, feature_count), remainder = \
-            self._unpack(packet.body)
+        (iTOW, lon, lat, amsl, agl, feature_count), remainder = self._unpack(
+            packet.body
+        )
 
         # convert position to target position; currently unused
         convert_mkgps_position_to_gps_coordinate(lat, lon, amsl, agl)
@@ -180,12 +187,14 @@ class OcularAlgorithm(Algorithm):
         # unpack variable length data
         features = []
         for i in range(feature_count):
-            (lon, lat, amsl, agl), remainder = \
-                self._unpack(remainder, self._struct_feature)
+            (lon, lat, amsl, agl), remainder = self._unpack(
+                remainder, self._struct_feature
+            )
 
             # convert position to feature position
-            features.append(convert_mkgps_position_to_gps_coordinate(
-                lat, lon, amsl, agl))
+            features.append(
+                convert_mkgps_position_to_gps_coordinate(lat, lon, amsl, agl)
+            )
 
         # Update the UAV devices
         # TODO: so far we neglect target_position, what to do with it?
@@ -195,31 +204,31 @@ class OcularAlgorithm(Algorithm):
 
 @registry.register
 class WaypointCloudAlgorithm(Algorithm):
-    ID = 17      # 'q'
+    ID = 17  # 'q'
     NAME = "waypointcloud"
 
 
 @registry.register
 class SnakeAlgorithm(Algorithm):
-    ID = 19      # 's'
+    ID = 19  # 's'
     NAME = "snake"
 
 
 @registry.register
 class TrafficAlgorithm(Algorithm):
-    ID = 20      # 't'
+    ID = 20  # 't'
     NAME = "traffic"
 
 
 @registry.register
 class VicsekAlgorithm(Algorithm):
-    ID = 22      # 'v'
+    ID = 22  # 'v'
     NAME = "vicsek"
 
 
 @registry.register
 class WaypointAlgorithm(Algorithm):
-    ID = 23      # 'w'
+    ID = 23  # 'w'
     NAME = "waypoint"
 
 

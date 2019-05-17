@@ -4,7 +4,7 @@ from datetime import datetime
 from pytz import utc
 from flockwave.server.utils import is_timezone_aware
 
-__all__ = ("TimestampMixin", )
+__all__ = ("TimestampMixin",)
 
 
 class TimestampMixin(object):
@@ -34,6 +34,7 @@ class TimestampMixin(object):
             # when the datetime object is formatted into JSON. That's why
             # we need to use datetime.now(utc)
             timestamp = datetime.now(utc)
-        assert is_timezone_aware(timestamp), \
-            "UAV status information timestamp must be timezone-aware"
+        assert is_timezone_aware(
+            timestamp
+        ), "UAV status information timestamp must be timezone-aware"
         self.timestamp = timestamp

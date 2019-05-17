@@ -4,8 +4,13 @@ from __future__ import division
 
 from math import pi
 
-__all__ = ("WGS84", "GPS_PI", "PI_OVER_180",
-           "SPEED_OF_LIGHT_M_S", "SPEED_OF_LIGHT_KM_S")
+__all__ = (
+    "WGS84",
+    "GPS_PI",
+    "PI_OVER_180",
+    "SPEED_OF_LIGHT_M_S",
+    "SPEED_OF_LIGHT_KM_S",
+)
 
 
 class WGS84(object):
@@ -30,7 +35,7 @@ class WGS84(object):
     POLAR_RADIUS_IN_METERS = EQUATORIAL_RADIUS_IN_METERS * (1 - FLATTENING)
 
     #: Gravitational constant times Earth's mass
-    GRAVITATIONAL_CONSTANT_TIMES_MASS = 3.986005e+14
+    GRAVITATIONAL_CONSTANT_TIMES_MASS = 3.986005e14
 
     #: Earth's rotation rate [rad/sec]
     ROTATION_RATE_IN_RADIANS_PER_SEC = 7.2921151467e-5

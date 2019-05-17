@@ -5,7 +5,7 @@ from __future__ import absolute_import, print_function
 from .base import ConnectionBase, ConnectionState
 from .factory import create_connection
 
-__all__ = ("MIDIPortConnection", )
+__all__ = ("MIDIPortConnection",)
 
 
 @create_connection.register("midi")
@@ -25,6 +25,7 @@ class MIDIPortConnection(ConnectionBase):
         super(MIDIPortConnection, self).__init__()
 
         import mido
+
         self.mido = mido
         self.path = path
         self._port = None
@@ -41,8 +42,7 @@ class MIDIPortConnection(ConnectionBase):
 
     def open(self):
         """Opens the MIDI port connection."""
-        if self.state in (ConnectionState.CONNECTED,
-                          ConnectionState.CONNECTING):
+        if self.state in (ConnectionState.CONNECTED, ConnectionState.CONNECTING):
             return
 
         self._set_state(ConnectionState.CONNECTING)
@@ -68,6 +68,7 @@ class MIDIPortConnection(ConnectionBase):
                 ports
         """
         import mido
+
         return mido.get_input_names(), mido.get_output_names()
 
 

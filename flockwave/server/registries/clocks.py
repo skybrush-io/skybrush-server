@@ -2,7 +2,7 @@
 the server knows.
 """
 
-__all__ = ("ClockRegistry", )
+__all__ = ("ClockRegistry",)
 
 from blinker import Signal
 
@@ -92,12 +92,9 @@ class ClockRegistry(RegistryBase):
         Parameters:
             clock (Clock): the clock to unsubscribe from
         """
-        clock.changed.disconnect(self._send_clock_changed_signal,
-                                 sender=clock)
-        clock.started.disconnect(self._send_clock_changed_signal,
-                                 sender=clock)
-        clock.stopped.disconnect(self._send_clock_changed_signal,
-                                 sender=clock)
+        clock.changed.disconnect(self._send_clock_changed_signal, sender=clock)
+        clock.started.disconnect(self._send_clock_changed_signal, sender=clock)
+        clock.stopped.disconnect(self._send_clock_changed_signal, sender=clock)
 
     def _send_clock_changed_signal(self, sender, **kwds):
         """Sends a ``clock_changed`` signal in response to an actual

@@ -47,8 +47,8 @@ _RESPONSE_HEADERS = {
             "Darwin": "{0}/{2}".format(*platform.uname()),
             "Windows": "{0}/{3}".format(*platform.uname()),
         }.get(platform.system(), platform.system() or "Unknown"),
-        flockwave_version
-    )
+        flockwave_version,
+    ),
 }
 
 _UPNP_SERVICE_ID_REGEX = re.compile(
@@ -159,7 +159,7 @@ def handle_m_search(request):
     """
     global _RESPONSE_HEADERS, _UPNP_SERVICE_ID_REGEX, UPNP_DEVICE_ID
 
-    if request.headers.get("MAN") != "\"ssdp:discover\"":
+    if request.headers.get("MAN") != '"ssdp:discover"':
         return
 
     # Get the wait time from the request
@@ -180,9 +180,7 @@ def handle_m_search(request):
     if search_target and _UPNP_SERVICE_ID_REGEX.match(search_target):
         # Need to send a response with the service ID
         channel_type_id = _UPNP_SERVICE_ID_REGEX.match(search_target).group(1)
-        to_send.append((
-            search_target, get_service_uri(channel_type_id, address)
-        ))
+        to_send.append((search_target, get_service_uri(channel_type_id, address)))
 
     # TODO(ntamas): for ssdp:all, we need to enumerate all services explicitly
 
@@ -196,11 +194,8 @@ def handle_m_search(request):
 
         response = prepare_response(
             ["CACHE-CONTROL", "DATE", "EXT", "SERVER", "USN"],
-            extra={
-                "LOCATION": location,
-                "ST": search_target
-            },
-            prefix=request.request_version + " 200 OK"
+            extra={"LOCATION": location, "ST": search_target},
+            prefix=request.request_version + " 200 OK",
         )
         sockets.sender.sendto(response, request.client_address)
 
@@ -248,14 +243,10 @@ def prepare_response(headers=None, extra=None, prefix=None):
                 header_value = header_value()
             if header_value is None:
                 continue
-            response.append(
-                "{0}: {1}".format(header_name, header_value)
-            )
+            response.append("{0}: {1}".format(header_name, header_value))
 
     if extra:
-        response.extend(
-            "{0}: {1}".format(*pair) for pair in extra.items()
-        )
+        response.extend("{0}: {1}".format(*pair) for pair in extra.items())
 
     response.append("")
     response.append("")
@@ -310,10 +301,7 @@ def load(app, configuration, logger):
     receiver_thread = spawn(receive_loop, sockets.receiver, handle_message)
     # Update the globals
     globals().update(
-        app=app,
-        log=logger,
-        sockets=sockets,
-        receiver_thread=receiver_thread
+        app=app, log=logger, sockets=sockets, receiver_thread=receiver_thread
     )
 
 

@@ -13,7 +13,7 @@ from random import random
 from .comm import CommunicationManagerBase
 
 
-__all__ = ("XBeeCommunicationManager", )
+__all__ = ("XBeeCommunicationManager",)
 
 
 #: Broadcast destination address for the XBee radio
@@ -38,13 +38,12 @@ _xbee_delivery_status_code_names = {
     0x2E: "Attempted unicast with APS transmission, but EE=0",
     0x32: "Resource error (lack of free timers, buffers etc)",
     0x74: "Data payload too large",
-    0x75: "Indirect message unrequested"
+    0x75: "Indirect message unrequested",
 }
 
 #: Lightweight named tuple to store a packet sending request
 PacketSendingRequest = namedtuple(
-    "PacketSendingRequest",
-    "packet destination needs_acknowledgment"
+    "PacketSendingRequest", "packet destination needs_acknowledgment"
 )
 
 
@@ -96,8 +95,10 @@ class XBeeCommunicationManager(CommunicationManagerBase):
         elif identifier == "tx_status":
             self._handle_inbound_xbee_transmission_status_frame(frame)
         else:
-            self.log.warn("Unhandled XBee packet received; type = {0!r}, "
-                          "content = {1!r}".format(identifier, frame))
+            self.log.warn(
+                "Unhandled XBee packet received; type = {0!r}, "
+                "content = {1!r}".format(identifier, frame)
+            )
 
     def _handle_inbound_xbee_data_frame(self, frame):
         """Handles an inbound XBee data frame.
@@ -113,8 +114,9 @@ class XBeeCommunicationManager(CommunicationManagerBase):
 
         address = frame.get("source_addr_long")
         if not address:
-            self.log.warn("XBee packet received with no source address; "
-                          "this is probably a bug")
+            self.log.warn(
+                "XBee packet received with no source address; " "this is probably a bug"
+            )
             return
 
         self._parse_and_emit_packet(data, address)
@@ -129,8 +131,7 @@ class XBeeCommunicationManager(CommunicationManagerBase):
         if self._ack_collector is not None:
             self._ack_collector.notify_status(frame)
 
-    def _handle_xbee_transmission_failure(self, sender, request, status,
-                                          should_retry):
+    def _handle_xbee_transmission_failure(self, sender, request, status, should_retry):
         """Handles the failure of an XBee transmission.
 
         Parameters:
@@ -143,8 +144,10 @@ class XBeeCommunicationManager(CommunicationManagerBase):
         """
         if not should_retry:
             message = xbee_delivery_status_code_to_name(status)
-            self.log.warn("Failed XBee packet transmission: {0.packet!r}, "
-                          "reason = {1}".format(request, message))
+            self.log.warn(
+                "Failed XBee packet transmission: {0.packet!r}, "
+                "reason = {1}".format(request, message)
+            )
         else:
             # Put the request back into the queue after a minor (random)
             # delay. Using a random delay here prevents repeated collisions
@@ -169,7 +172,7 @@ class XBeeCommunicationManager(CommunicationManagerBase):
         req = PacketSendingRequest(
             packet=packet,
             destination=destination,
-            needs_acknowledgment=(destination != _XBEE_BROADCAST_ADDRESS)
+            needs_acknowledgment=(destination != _XBEE_BROADCAST_ADDRESS),
         )
         self._packet_queue.put(req)
 
@@ -185,8 +188,7 @@ class XBeeCommunicationManager(CommunicationManagerBase):
 
         if self._xbee is not None:
             self._ack_collector.on_failure.disconnect(
-                self._handle_xbee_transmission_failure,
-                sender=self._ack_collector
+                self._handle_xbee_transmission_failure, sender=self._ack_collector
             )
 
             self._inbound_thread.kill()
@@ -198,8 +200,7 @@ class XBeeCommunicationManager(CommunicationManagerBase):
         if self._xbee is not None:
             self._ack_collector = AcknowledgmentCollector()
             self._ack_collector.on_failure.connect(
-                self._handle_xbee_transmission_failure,
-                sender=self._ack_collector
+                self._handle_xbee_transmission_failure, sender=self._ack_collector
             )
 
             thread = XBeeInboundThread(self, self._xbee)
@@ -213,6 +214,7 @@ class XBeeCommunicationManager(CommunicationManagerBase):
 # TODO: we could probably re-use the ConnectionThreadManager object from
 # wireless.py here but I don't want to change it without testing it, and
 # I don't have an XBee right now
+
 
 class XBeeInboundThread(object):
     """Green thread that reads incoming packets from an XBee serial
@@ -325,13 +327,10 @@ class XBeeOutboundThread(object):
             "dest_addr": b"\xFF\xFE",
             "dest_addr_long": destination,
             "data": request.packet.encode(),
-            "options": int2byte(0)
+            "options": int2byte(0),
         }
         if destination == _XBEE_BROADCAST_ADDRESS:
-            kwds.update(
-                broadcast_radius=int2byte(16),
-                frame_id=int2byte(0)
-            )
+            kwds.update(broadcast_radius=int2byte(16), frame_id=int2byte(0))
         elif request.needs_acknowledgment:
             frame_id = self._ack_collector.wait_for(request)
             kwds["frame_id"] = int2byte(frame_id)
@@ -383,10 +382,12 @@ class AcknowledgmentCollector(object):
                 result = 1
             elif result == start:
                 # No free frame ID
-                self.manager.log("No free frame ID for outbound XBee "
-                                 "packet; this is either a bug or an "
-                                 "indication that the XBee bandwidth "
-                                 "is saturated.")
+                self.manager.log(
+                    "No free frame ID for outbound XBee "
+                    "packet; this is either a bug or an "
+                    "indication that the XBee bandwidth "
+                    "is saturated."
+                )
                 return 0
 
         return result
@@ -412,19 +413,20 @@ class AcknowledgmentCollector(object):
 
         status = byte2int(packet.get("deliver_status", None))
         should_retry = status in (
-            0x01,         # MAC ACK failure
-            0x02,         # CCA failure
-            0x21,         # Network ACK failure
-            0x25,         # Route not found
-            0x26,         # Broadcast source failed to hear a neighbor relay
-            0x2B,         # Invalid binding table index
-            0x2C,         # Resource error (lack of free buffers, timers etc)
-            0x32          # Resource error (lack of free buffers, timers etc)
+            0x01,  # MAC ACK failure
+            0x02,  # CCA failure
+            0x21,  # Network ACK failure
+            0x25,  # Route not found
+            0x26,  # Broadcast source failed to hear a neighbor relay
+            0x2B,  # Invalid binding table index
+            0x2C,  # Resource error (lack of free buffers, timers etc)
+            0x32,  # Resource error (lack of free buffers, timers etc)
         )
         if status != 0:
             self._status_code_counters[status] += 1
-            self.on_failure.send(self, request=request, status=status,
-                                 should_retry=should_retry)
+            self.on_failure.send(
+                self, request=request, status=status, should_retry=should_retry
+            )
 
     def wait_for(self, request):
         """Asks the acknowledgment collector to wait for the acknowledgment

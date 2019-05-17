@@ -3,13 +3,14 @@ from a simple string or dict representation.
 """
 
 from future.standard_library import install_aliases
+
 install_aliases()
 
-from functools import partial                             # noqa: E402
-from future.utils import iteritems, string_types          # noqa: E402
-from urllib.parse import parse_qs, urlparse               # noqa: E402
+from functools import partial  # noqa: E402
+from future.utils import iteritems, string_types  # noqa: E402
+from urllib.parse import parse_qs, urlparse  # noqa: E402
 
-from flockwave.server.errors import UnknownConnectionTypeError   # noqa: E402
+from flockwave.server.errors import UnknownConnectionTypeError  # noqa: E402
 
 
 __all__ = ("ConnectionFactory", "create_connection")
@@ -145,7 +146,7 @@ class ConnectionFactory(object):
         parts = urlparse(specification, allow_fragments=False)
 
         # Split the netloc into hostname and port if needed
-        host, _, port = parts.netloc.partition(':')
+        host, _, port = parts.netloc.partition(":")
         port = int(port) if port else None
 
         # Parse the parameters into a dict, turning values into integers
@@ -162,10 +163,7 @@ class ConnectionFactory(object):
             parameters[k] = v
 
         # Return the result in dict-styled format
-        result = {
-            "type": parts.scheme,
-            "parameters": parameters
-        }
+        result = {"type": parts.scheme, "parameters": parameters}
         if host:
             result["host"] = host
         if port is not None:
@@ -179,4 +177,4 @@ class ConnectionFactory(object):
         return self.create(*args, **kwds)
 
 
-create_connection = ConnectionFactory()   #: Singleton connection factory
+create_connection = ConnectionFactory()  #: Singleton connection factory

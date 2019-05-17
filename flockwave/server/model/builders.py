@@ -7,8 +7,7 @@ from builtins import str
 from random import getrandbits
 
 from .commands import CommandExecutionStatus
-from .messages import FlockwaveMessage, FlockwaveNotification, \
-    FlockwaveResponse
+from .messages import FlockwaveMessage, FlockwaveNotification, FlockwaveResponse
 
 __all__ = ("CommandExecutionStatusBuilder", "FlockwaveMessageBuilder")
 
@@ -70,14 +69,10 @@ class FlockwaveMessageBuilder(object):
         Returns:
             FlockwaveMessage: the newly created message
         """
-        result = {
-            "$fw.version": self.version,
-            "id": str(self.id_generator()),
-        }
+        result = {"$fw.version": self.version, "id": str(self.id_generator())}
         if body is not None:
             result["body"] = body
         return result
-
 
     def create_message(self, body=None):
         """Creates a new Flockwave message with the given body.

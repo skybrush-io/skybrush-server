@@ -10,9 +10,13 @@ from flask import Blueprint, render_template
 __all__ = ("load", "index")
 
 
-blueprint = Blueprint("debug", __name__, static_folder="static",
-                      template_folder="templates",
-                      static_url_path="/static")
+blueprint = Blueprint(
+    "debug",
+    __name__,
+    static_folder="static",
+    template_folder="templates",
+    static_url_path="/static",
+)
 
 
 def load(app, configuration, logger):
@@ -35,20 +39,15 @@ def list_greenlets():
     """Returns a page that lists all active greenlets in the current
     thread.
     """
-    data = {
-        "listeners": format_hub_listeners(),
-        "timers": format_hub_timers()
-    }
+    data = {"listeners": format_hub_listeners(), "timers": format_hub_timers()}
     return render_template("greenlets.html", **data)
 
 
 @blueprint.route("/threads")
 def list_threads():
     """Returns a page that lists all active threads in the server."""
-    data = {
-        "threads": threading.enumerate()
-    }
+    data = {"threads": threading.enumerate()}
     return render_template("threads.html", **data)
 
 
-dependencies = ("http_server", )
+dependencies = ("http_server",)

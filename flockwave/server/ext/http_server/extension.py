@@ -27,6 +27,7 @@ ssl_params = {}
 
 ############################################################################
 
+
 def create_app():
     """Creates the Flask application provided by this extension."""
 
@@ -106,16 +107,17 @@ def start_server(app):
     if not app.debug:
         server_log.setLevel(logging.WARNING)
 
-    log.info("Starting {1} server on {0}...".format(
-        format_socket_address(address),
-        "HTTPS" if secure else "HTTP"
-    ))
+    log.info(
+        "Starting {1} server on {0}...".format(
+            format_socket_address(address), "HTTPS" if secure else "HTTP"
+        )
+    )
 
-    spawn(wsgi.server, sock, exports["wsgi_app"], debug=app.debug,
-          log=server_log)
+    spawn(wsgi.server, sock, exports["wsgi_app"], debug=app.debug, log=server_log)
 
 
 ############################################################################
+
 
 def load(app, configuration, logger):
     """Loads the extension."""
@@ -124,7 +126,7 @@ def load(app, configuration, logger):
 
     address = (
         configuration.get("host", "localhost"),
-        int(configuration.get("port", 5000))
+        int(configuration.get("port", 5000)),
     )
     log = logger
     wsgi_app = create_app()
@@ -135,10 +137,7 @@ def load(app, configuration, logger):
 
     app.register_startup_hook(start_server)
 
-    exports.update(
-        address=address,
-        wsgi_app=wsgi_app
-    )
+    exports.update(address=address, wsgi_app=wsgi_app)
 
 
 def unload(app):
@@ -148,16 +147,9 @@ def unload(app):
 
     app.unregister_startup_hook(start_server)
 
-    exports.update(
-        address=None,
-        wsgi_app=None
-    )
+    exports.update(address=None, wsgi_app=None)
 
     log = None
 
 
-exports = {
-    "address": None,
-    "propose_index_page": propose_index_page,
-    "wsgi_app": None
-}
+exports = {"address": None, "propose_index_page": propose_index_page, "wsgi_app": None}

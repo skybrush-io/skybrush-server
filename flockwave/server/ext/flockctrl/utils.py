@@ -6,7 +6,7 @@ from flockwave.gps.vectors import GPSCoordinate
 
 from .errors import ParseError
 
-__all__ = ("unpack_struct", )
+__all__ = ("unpack_struct",)
 
 
 def unpack_struct(spec, data):
@@ -51,8 +51,8 @@ def convert_mkgps_position_to_gps_coordinate(lat, lon, amsl, agl):
     """
 
     return GPSCoordinate(
-        lat=lat / 1e7,          # [1e-7 deg] --> [deg]
-        lon=lon / 1e7,          # [1e-7 deg] --> [deg]
-        amsl=amsl / 1e1,        # [dm]       --> [m]
-        agl=agl / 1e1,          # [dm]       --> [m]
+        lat=lat / 1e7,  # [1e-7 deg] --> [deg]
+        lon=lon / 1e7,  # [1e-7 deg] --> [deg]
+        amsl=amsl / 1e1,  # [dm]       --> [m]
+        agl=agl / 1e1,  # [dm]       --> [m]
     )

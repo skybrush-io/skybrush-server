@@ -6,8 +6,11 @@ counters.
 
 from __future__ import absolute_import, division
 
-from flockwave.gps.vectors import ECEFToGPSCoordinateTransformation, \
-    FlatEarthToGPSCoordinateTransformation, GPSCoordinate
+from flockwave.gps.vectors import (
+    ECEFToGPSCoordinateTransformation,
+    FlatEarthToGPSCoordinateTransformation,
+    GPSCoordinate,
+)
 
 from .base import ExtensionBase
 
@@ -74,8 +77,9 @@ class Source(object):
             dist_sq = self._location_ecef.distance(point_in_ecef) ** 2
         else:
             point_in_flat = self._flat_earth_trans.to_flat_earth(point)
-            dist_sq = point_in_flat.x ** 2 + point_in_flat.y ** 2 + \
-                point_in_flat.agl ** 2
+            dist_sq = (
+                point_in_flat.x ** 2 + point_in_flat.y ** 2 + point_in_flat.agl ** 2
+            )
         return self.intensity / dist_sq
 
     @property
@@ -93,7 +97,8 @@ class Source(object):
         else:
             self._location_ecef = gps_to_ecef(value)
         self._flat_earth_trans = FlatEarthToGPSCoordinateTransformation(
-            origin=self._location_gps)
+            origin=self._location_gps
+        )
 
 
 class RadiationExtension(ExtensionBase):
@@ -108,6 +113,7 @@ class RadiationExtension(ExtensionBase):
         self._sources = []
 
         from numpy.random import poisson
+
         self._poisson = poisson
 
     def add_source(self, lat, lon, intensity):
@@ -157,9 +163,7 @@ class RadiationExtension(ExtensionBase):
 
     def exports(self):
         """Returns the functions exported by the extension."""
-        return {
-            "measure_at": self._measure_at
-        }
+        return {"measure_at": self._measure_at}
 
     def _measure_at(self, point, seconds=1):
         """Conducts a fake measurement of radiation at the given point
@@ -200,9 +204,10 @@ class RadiationExtension(ExtensionBase):
         else:
             point_in_ecef = None
 
-        intensity = sum(source.intensity_at(point, point_in_ecef)
-                        for source in self._sources)
-        return (intensity + self.background_intensity)
+        intensity = sum(
+            source.intensity_at(point, point_in_ecef) for source in self._sources
+        )
+        return intensity + self.background_intensity
 
 
 construct = RadiationExtension

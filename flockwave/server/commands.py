@@ -12,7 +12,7 @@ from .logger import log as base_log
 from .model import CommandExecutionStatus, CommandExecutionStatusBuilder
 from .registries.base import RegistryBase
 
-__all__ = ("CommandExecutionManager", )
+__all__ = ("CommandExecutionManager",)
 
 log = base_log.getChild("commands")
 
@@ -78,15 +78,20 @@ class CommandExecutionManager(RegistryBase):
         """
         commands = self._entries
         expiry = time() - self.timeout
-        to_remove = [key for key, status in iteritems(commands)
-                     if status.finished is not None or
-                     status.cancelled is not None or
-                     status.created_at < expiry]
+        to_remove = [
+            key
+            for key, status in iteritems(commands)
+            if status.finished is not None
+            or status.cancelled is not None
+            or status.created_at < expiry
+        ]
         if to_remove:
             expired = [commands.pop(key) for key in to_remove]
-            expired = [command for command in expired
-                       if command.finished is None and
-                       command.cancelled is None]
+            expired = [
+                command
+                for command in expired
+                if command.finished is None and command.cancelled is None
+            ]
             self.expired.send(self, statuses=expired)
 
     def _cleanup_loop(self, seconds=1):
@@ -121,8 +126,10 @@ class CommandExecutionManager(RegistryBase):
         command = self._get_command_from_id(receipt_id)
         if command is None:
             # Request has probably expired in the meanwhile
-            log.warn("Received cancellation request for expired receipt: "
-                     "{0}".format(receipt_id))
+            log.warn(
+                "Received cancellation request for expired receipt: "
+                "{0}".format(receipt_id)
+            )
             return
 
         command.mark_as_cancelled()
@@ -145,8 +152,7 @@ class CommandExecutionManager(RegistryBase):
         command = self._get_command_from_id(receipt_id)
         if command is None:
             # Request has probably expired in the meanwhile
-            log.warn("Received response for expired receipt: "
-                     "{0}".format(receipt_id))
+            log.warn("Received response for expired receipt: " "{0}".format(receipt_id))
             return
 
         command.response = result
@@ -169,8 +175,7 @@ class CommandExecutionManager(RegistryBase):
         command = self._get_command_from_id(receipt_id)
         if command is None:
             # Request has probably expired in the meanwhile
-            log.warn("Expired receipt marked as dispatched: "
-                     "{0}".format(receipt_id))
+            log.warn("Expired receipt marked as dispatched: " "{0}".format(receipt_id))
             return
 
         command.mark_as_clients_notified()

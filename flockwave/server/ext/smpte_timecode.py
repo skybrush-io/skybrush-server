@@ -23,7 +23,8 @@ from flockwave.server.connections.midi import MIDIPortConnection
 
 
 _SMPTETimecodeBase = namedtuple(
-    "SMPTETimecode", "hour minute second frame frames_per_second drop")
+    "SMPTETimecode", "hour minute second frame frames_per_second drop"
+)
 
 
 @python_2_unicode_compatible
@@ -42,18 +43,24 @@ class SMPTETimecode(_SMPTETimecodeBase):
     @property
     def total_frames(self):
         """The total number of frames since the 00:00:00:00 timecode."""
-        return ((self.hour * 60 + self.minute) * 60 + self.second) * \
-            self.frames_per_second + self.frame
+        return (
+            (self.hour * 60 + self.minute) * 60 + self.second
+        ) * self.frames_per_second + self.frame
 
     @property
     def total_seconds(self):
         """The total number of seconds since the 00:00:00:00 timecode."""
-        return self.hour * 3600 + self.minute * 60 + self.second + \
-            self.frame / self.frames_per_second
+        return (
+            self.hour * 3600
+            + self.minute * 60
+            + self.second
+            + self.frame / self.frames_per_second
+        )
 
     def __str__(self):
-        return "{0.hour:02}:{0.minute:02}:{0.second:02}{1}{0.frame:02}"\
-            .format(self, ";" if self.drop else ":")
+        return "{0.hour:02}:{0.minute:02}:{0.second:02}{1}{0.frame:02}".format(
+            self, ";" if self.drop else ":"
+        )
 
 
 class MIDITimecodeAssembler(object):
@@ -139,12 +146,15 @@ class MIDITimecodeAssembler(object):
             self._hour = value
         elif frame_type == 7:
             self._hour += (value & 1) << 4
-            frames_per_second, is_drop_frame = self._rate_bits_to_fps(
-                (value & 6) >> 1)
-            timecode = SMPTETimecode(hour=self._hour, minute=self._minute,
-                                     second=self._second, frame=self._frame,
-                                     frames_per_second=frames_per_second,
-                                     drop=is_drop_frame)
+            frames_per_second, is_drop_frame = self._rate_bits_to_fps((value & 6) >> 1)
+            timecode = SMPTETimecode(
+                hour=self._hour,
+                minute=self._minute,
+                second=self._second,
+                frame=self._frame,
+                frames_per_second=frames_per_second,
+                drop=is_drop_frame,
+            )
             result = self._time, timecode, True
 
         self._expected_frame_type = (self._expected_frame_type + 1) % 8
@@ -160,9 +170,14 @@ class MIDITimecodeAssembler(object):
         rate_bits = (hour >> 5) & 3
         hour = hour & 31
         frames_per_second, is_drop_frame = self._rate_bits_to_fps(rate_bits)
-        timecode = SMPTETimecode(hour=hour, minute=minute, second=second,
-                                 frame=frame, drop=is_drop_frame,
-                                 frames_per_second=frames_per_second)
+        timecode = SMPTETimecode(
+            hour=hour,
+            minute=minute,
+            second=second,
+            frame=frame,
+            drop=is_drop_frame,
+            frames_per_second=frames_per_second,
+        )
         return now, timecode, False
 
     @staticmethod
@@ -222,8 +237,7 @@ class MIDIClock(StoppableClockBase):
         if self._last_timecode is None:
             return 0.0
 
-        delta_timecode = timecode.total_frames - \
-            self._last_timecode.total_frames
+        delta_timecode = timecode.total_frames - self._last_timecode.total_frames
 
         if self.running:
             delta_local_time = local_timestamp - self._last_local_timestamp
@@ -272,8 +286,10 @@ class MIDIClock(StoppableClockBase):
             return self._last_timecode.total_frames
         else:
             elapsed = now - self._last_local_timestamp
-            return self._last_timecode.total_frames + \
-                elapsed * self._last_timecode.frames_per_second
+            return (
+                self._last_timecode.total_frames
+                + elapsed * self._last_timecode.frames_per_second
+            )
 
 
 class SMPTETimecodeExtension(ExtensionBase):
@@ -304,8 +320,10 @@ class SMPTETimecodeExtension(ExtensionBase):
             # platform
             pass
         elif not isinstance(self.midi, MIDIPortConnection):
-            raise TypeError("{0} supports MIDIPortConnection connections "
-                            "only".format(self.__class__.__name__))
+            raise TypeError(
+                "{0} supports MIDIPortConnection connections "
+                "only".format(self.__class__.__name__)
+            )
         else:
             self.midi = reconnecting(self.midi)
 
@@ -336,15 +354,17 @@ class SMPTETimecodeExtension(ExtensionBase):
             try:
                 self._midi.open()
             except ImportError as ex:
-                self.log.warn("No MIDI support; {0.name!r} module is "
-                              "missing".format(ex))
+                self.log.warn(
+                    "No MIDI support; {0.name!r} module is " "missing".format(ex)
+                )
                 self._midi = None
                 return
 
             self.app.connection_registry.add(
-                self._midi, "MIDI",
+                self._midi,
+                "MIDI",
                 description="MIDI timecode provider",
-                purpose=ConnectionPurpose.time
+                purpose=ConnectionPurpose.time,
             )
 
             self._set_clock(MIDIClock())
@@ -370,8 +390,7 @@ class SMPTETimecodeExtension(ExtensionBase):
         """Handler called when the MIDI clock was stopped."""
         self.log.info("MIDI clock stopped", extra={"id": self._clock.id})
 
-    def _on_timecode_received(self, sender, timecode, local_timestamp,
-                              running):
+    def _on_timecode_received(self, sender, timecode, local_timestamp, running):
         """Handler called when a new timecode was received by the
         inbound thread.
 
@@ -407,12 +426,9 @@ class SMPTETimecodeExtension(ExtensionBase):
 
         if self._clock is not None:
             self.app.import_api("clocks").register_clock(self._clock)
-            self._clock.changed.connect(self._on_clock_changed,
-                                        sender=self._clock)
-            self._clock.started.connect(self._on_clock_started,
-                                        sender=self._clock)
-            self._clock.stopped.connect(self._on_clock_stopped,
-                                        sender=self._clock)
+            self._clock.changed.connect(self._on_clock_changed, sender=self._clock)
+            self._clock.started.connect(self._on_clock_started, sender=self._clock)
+            self._clock.stopped.connect(self._on_clock_stopped, sender=self._clock)
 
 
 class InboundMessageParserThread(object):
@@ -470,10 +486,10 @@ class InboundMessageParserThread(object):
                 # Update the timecode.
                 timestamp, timecode, running = result
 
-            self.timecode_received.send(self, timecode=timecode,
-                                        local_timestamp=timestamp,
-                                        running=running)
+            self.timecode_received.send(
+                self, timecode=timecode, local_timestamp=timestamp, running=running
+            )
 
 
 construct = SMPTETimecodeExtension
-dependencies = ("clocks", )
+dependencies = ("clocks",)

@@ -1,6 +1,6 @@
 """Base class for extensions."""
 
-__all__ = ("ExtensionBase", )
+__all__ = ("ExtensionBase",)
 
 
 class ExtensionBase(object):

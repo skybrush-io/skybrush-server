@@ -11,8 +11,12 @@ from eventlet import sleep, spawn, spawn_after
 from math import atan2, cos, hypot, sin, pi
 from random import random, choice
 
-from flockwave.gps.vectors import FlatEarthCoordinate, GPSCoordinate, \
-    FlatEarthToGPSCoordinateTransformation, Vector3D
+from flockwave.gps.vectors import (
+    FlatEarthCoordinate,
+    GPSCoordinate,
+    FlatEarthToGPSCoordinateTransformation,
+    Vector3D,
+)
 from flockwave.server.model.uav import BatteryInfo, UAVBase, UAVDriver
 from flockwave.spec.ids import make_valid_uav_id
 
@@ -63,8 +67,9 @@ class FakeUAVDriver(UAVDriver):
             uav.error = value
             cmd_manager.finish(
                 receipt,
-                "Error code set to {0}".format(uav.error) if uav.has_error
-                else "Error code cleared"
+                "Error code set to {0}".format(uav.error)
+                if uav.has_error
+                else "Error code cleared",
             )
         return result
 
@@ -172,9 +177,7 @@ class FakeBattery(object):
     def register_in_device_tree(self, node):
         """Registers the battery in the given device tree node of a UAV."""
         device = node.add_device("battery")
-        self._voltage_channel = device.add_channel(
-            "voltage", type=float, unit="V"
-        )
+        self._voltage_channel = device.add_channel("voltage", type=float, unit="V")
 
 
 class FakeUAV(UAVBase):
@@ -395,7 +398,7 @@ class FakeUAV(UAVBase):
         updates = {
             "position": position,
             "error": self.error if self.has_error else (),
-            "battery": self.battery.status
+            "battery": self.battery.status,
         }
         if self.radius > 0:
             updates["heading"] = self.angle / pi * 180 + 90
@@ -405,8 +408,7 @@ class FakeUAV(UAVBase):
         # TODO(ntamas): calculate radiation halfway between the current
         # position and the previous one instead
         if self.radiation_ext is not None and self.radiation_ext.loaded:
-            observed_count = self.radiation_ext.measure_at(position,
-                                                           seconds=dt)
+            observed_count = self.radiation_ext.measure_at(position, seconds=dt)
             # Okay, now we extrapolate from the observed count to the
             # per-second intensity. This should be made smarter; for
             # instance, we should report a new value only if we have
@@ -418,21 +420,26 @@ class FakeUAV(UAVBase):
 
         # Also update our sensors
         if mutator is not None:
-            mutator.update(self.thermometer, {
-                "lat": position.lat,
-                "lon": position.lon,
-                "value": cos(self.angle) + 24.0
-            })
-            mutator.update(self.geiger_counter["averaged"], {
-                "lat": position.lat,
-                "lon": position.lon,
-                "value": radiation_intensity_estimate
-            })
-            mutator.update(self.geiger_counter["raw"], {
-                "lat": position.lat,
-                "lon": position.lon,
-                "value": observed_count
-            })
+            mutator.update(
+                self.thermometer,
+                {
+                    "lat": position.lat,
+                    "lon": position.lon,
+                    "value": cos(self.angle) + 24.0,
+                },
+            )
+            mutator.update(
+                self.geiger_counter["averaged"],
+                {
+                    "lat": position.lat,
+                    "lon": position.lon,
+                    "value": radiation_intensity_estimate,
+                },
+            )
+            mutator.update(
+                self.geiger_counter["raw"],
+                {"lat": position.lat, "lon": position.lon, "value": observed_count},
+            )
 
     def takeoff(self):
         """Starts a simulated take-off with the fake UAV."""
@@ -455,12 +462,10 @@ class FakeUAV(UAVBase):
 
         device = node.add_device("geiger_counter")
         self.geiger_counter = {
-            "raw": device.add_channel(
-                "raw_measurement", type=object, unit="counts"
-            ),
+            "raw": device.add_channel("raw_measurement", type=object, unit="counts"),
             "averaged": device.add_channel(
                 "measurement", type=object, unit="counts/sec"
-            )
+            ),
         }
 
 
@@ -501,8 +506,7 @@ class FakeUAVProviderExtension(UAVExtensionBase):
         # Get the center of the circle
         center = configuration.get("center")
         center = GPSCoordinate(
-            lat=center["lat"], lon=center["lon"],
-            agl=center["agl"], amsl=None
+            lat=center["lat"], lon=center["lon"], agl=center["agl"], amsl=None
         )
 
         # Get the radius and angular velocity from the configuration
@@ -511,13 +515,16 @@ class FakeUAVProviderExtension(UAVExtensionBase):
 
         # Generate IDs for the UAVs and then create them
         self.uav_ids = [
-            make_valid_uav_id(id_format.format(index))
-            for index in range(count)
+            make_valid_uav_id(id_format.format(index)) for index in range(count)
         ]
         self.uavs = [
-            self._driver.create_uav(id, center=center, radius=radius,
-                                    angle=2 * pi / count * index,
-                                    angular_velocity=omega)
+            self._driver.create_uav(
+                id,
+                center=center,
+                radius=radius,
+                angle=2 * pi / count * index,
+                angular_velocity=omega,
+            )
             for index, id in enumerate(self.uav_ids)
         ]
 

@@ -68,8 +68,10 @@ class CommunicationManagerBase(object):
         try:
             packet = self._parser.parse(data)
         except ParseError as ex:
-            self.log.warn("Failed to parse FlockCtrl packet of length "
-                          "{0}: {1!r}".format(len(data), data[:32]))
+            self.log.warn(
+                "Failed to parse FlockCtrl packet of length "
+                "{0}: {1!r}".format(len(data), data[:32])
+            )
             self.log.exception(ex)
             return False
 

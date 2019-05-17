@@ -2,7 +2,7 @@
 server knows.
 """
 
-__all__ = ("UAVRegistry", )
+__all__ = ("UAVRegistry",)
 
 from blinker import Signal
 

@@ -12,9 +12,9 @@ from weakref import ref as weakref
 
 from .base import ConnectionWrapperBase, ConnectionState
 
-__all__ = ("reconnecting", )
+__all__ = ("reconnecting",)
 
-inf = float('inf')
+inf = float("inf")
 
 
 class ReconnectionWrapper(ConnectionWrapperBase):
@@ -44,27 +44,26 @@ class ReconnectionWrapper(ConnectionWrapperBase):
 
     def open(self):
         """Opens the connection. No-op if the connection is open already."""
-        if self.state in (ConnectionState.CONNECTED,
-                          ConnectionState.CONNECTING):
+        if self.state in (ConnectionState.CONNECTED, ConnectionState.CONNECTING):
             return
 
         if self._watchdog is None:
             self._watchdog = ReconnectionWatchdog(self._wrapped, self._lock)
             self._watchdog.recovery_state_changed.connect(
-                self._watchdog_recovery_state_changed,
-                sender=self._watchdog
+                self._watchdog_recovery_state_changed, sender=self._watchdog
             )
 
-        self._set_state(ConnectionState.CONNECTING
-                        if self._wrapped.state is ConnectionState.DISCONNECTED
-                        else ConnectionState.CONNECTED)
+        self._set_state(
+            ConnectionState.CONNECTING
+            if self._wrapped.state is ConnectionState.DISCONNECTED
+            else ConnectionState.CONNECTED
+        )
 
         self._watchdog_thread = spawn(self._watchdog.run)
 
     def close(self):
         """Closes the connection. No-op if the connection is closed already."""
-        if self.state in (ConnectionState.DISCONNECTED,
-                          ConnectionState.DISCONNECTING):
+        if self.state in (ConnectionState.DISCONNECTED, ConnectionState.DISCONNECTING):
             return
 
         self._set_state(ConnectionState.DISCONNECTING)
@@ -96,9 +95,11 @@ class ReconnectionWrapper(ConnectionWrapperBase):
             # The watchdog stopped recovering the connection. If the connection
             # is up, we move to the CONNECTED state, otherwise we move to the
             # DISCONNECTED state
-            self._set_state(ConnectionState.CONNECTED
-                            if self._wrapped.state is ConnectionState.CONNECTED
-                            else ConnectionState.DISCONNECTED)
+            self._set_state(
+                ConnectionState.CONNECTED
+                if self._wrapped.state is ConnectionState.CONNECTED
+                else ConnectionState.DISCONNECTED
+            )
 
 
 class ReconnectionWatchdog(object):
@@ -151,8 +152,9 @@ class ReconnectionWatchdog(object):
         if not self._recovering:
             self._last_reconnection_attempt_at = None
 
-        self.recovery_state_changed.send(self, new_state=self._recovering,
-                                         old_state=not self._recovering)
+        self.recovery_state_changed.send(
+            self, new_state=self._recovering, old_state=not self._recovering
+        )
 
     def run(self):
         """Runs the watchdog. The function executes an infinite loop that
@@ -194,8 +196,7 @@ class ReconnectionWatchdog(object):
 
             try:
                 message, args = self._queue.get(
-                    block=True,
-                    timeout=None if time_left == inf else time_left
+                    block=True, timeout=None if time_left == inf else time_left
                 )
             except EmptyQueue:
                 continue
@@ -223,9 +224,7 @@ class ReconnectionWatchdog(object):
         if self._recovering:
             if self._last_reconnection_attempt_at is not None:
                 return max(
-                    0,
-                    self._last_reconnection_attempt_at +
-                    self.retry_interval - time()
+                    0, self._last_reconnection_attempt_at + self.retry_interval - time()
                 )
             else:
                 return 0

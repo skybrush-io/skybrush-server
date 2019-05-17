@@ -17,14 +17,13 @@ from ..logger import log as base_log
 from ..model import CommunicationChannel
 from .base import RegistryBase
 
-__all__ = ("ChannelTypeRegistry", )
+__all__ = ("ChannelTypeRegistry",)
 
 log = base_log.getChild("registries.channels")
 
 
 _ChannelTypeDescriptor = namedtuple(
-    "ChannelTypeDescriptor",
-    "id factory broadcaster ssdp_location"
+    "ChannelTypeDescriptor", "id factory broadcaster ssdp_location"
 )
 
 
@@ -61,8 +60,7 @@ class ChannelTypeRegistry(RegistryBase):
     count_changed = Signal()
     removed = Signal()
 
-    def add(self, channel_id, factory, broadcaster=None,
-            ssdp_location=None):
+    def add(self, channel_id, factory, broadcaster=None, ssdp_location=None):
         """Adds a new communication channel class to the registry.
 
         This function throws an error if the ID is already taken.
@@ -100,8 +98,10 @@ class ChannelTypeRegistry(RegistryBase):
             return
 
         descriptor = ChannelTypeDescriptor(
-            id=channel_id, factory=factory, broadcaster=broadcaster,
-            ssdp_location=ssdp_location
+            id=channel_id,
+            factory=factory,
+            broadcaster=broadcaster,
+            ssdp_location=ssdp_location,
         )
         self._entries[channel_id] = descriptor
 
@@ -122,9 +122,9 @@ class ChannelTypeRegistry(RegistryBase):
                 type.
         """
         result = self._entries[channel_id].factory()
-        assert isinstance(result, CommunicationChannel), \
-            "communication channel factory did not return a "\
-            "CommunicationChannel"
+        assert isinstance(result, CommunicationChannel), (
+            "communication channel factory did not return a " "CommunicationChannel"
+        )
         return result
 
     @property

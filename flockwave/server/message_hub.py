@@ -8,11 +8,16 @@ from itertools import chain
 from jsonschema import ValidationError
 
 from .logger import log as base_log
-from .model import Client, FlockwaveMessage, FlockwaveMessageBuilder, \
-    FlockwaveNotification, FlockwaveResponse
+from .model import (
+    Client,
+    FlockwaveMessage,
+    FlockwaveMessageBuilder,
+    FlockwaveNotification,
+    FlockwaveResponse,
+)
 from .registries import ClientRegistry
 
-__all__ = ("MessageHub", )
+__all__ = ("MessageHub",)
 
 log = base_log.getChild("message_hub")
 
@@ -83,9 +88,7 @@ class MessageHub(object):
             FlockwaveResponse: a response object that acknowledges the
                 given message
         """
-        body = {
-            "type": "ACK-ACK" if outcome else "ACK-NAK",
-        }
+        body = {"type": "ACK-ACK" if outcome else "ACK-NAK"}
         if not outcome and reason:
             body["reason"] = reason
         return self._message_builder.create_response_to(message, body)
@@ -96,10 +99,12 @@ class MessageHub(object):
         Parameters:
             message (FlockwaveNotification): the notification to broadcast.
         """
-        assert isinstance(message, FlockwaveNotification), \
-            "only notifications may be broadcast"
-        assert isinstance(self.client_registry, ClientRegistry), \
-            "message hub does not have a client registry yet"
+        assert isinstance(
+            message, FlockwaveNotification
+        ), "only notifications may be broadcast"
+        assert isinstance(
+            self.client_registry, ClientRegistry
+        ), "message hub does not have a client registry yet"
 
         if self._broadcast_methods is None:
             self._broadcast_methods = self._commit_broadcast_methods()
@@ -110,10 +115,7 @@ class MessageHub(object):
         if message.body["type"] not in ("UAV-INF", "DEV-INF"):
             log.info(
                 "Broadcasting {0.body[type]} notification".format(message),
-                extra={
-                    "id": message.id,
-                    "semantics": "notification"
-                }
+                extra={"id": message.id, "semantics": "notification"},
             )
 
         for func, args in self._broadcast_methods:
@@ -134,24 +136,20 @@ class MessageHub(object):
 
         if self._channel_type_registry is not None:
             self._channel_type_registry.added.disconnect(
-                self._invalidate_broadcast_methods,
-                sender=self._channel_type_registry
+                self._invalidate_broadcast_methods, sender=self._channel_type_registry
             )
             self._channel_type_registry.removed.disconnect(
-                self._invalidate_broadcast_methods,
-                sender=self._channel_type_registry
+                self._invalidate_broadcast_methods, sender=self._channel_type_registry
             )
 
         self._channel_type_registry = value
 
         if self._channel_type_registry is not None:
             self._channel_type_registry.added.connect(
-                self._invalidate_broadcast_methods,
-                sender=self._channel_type_registry
+                self._invalidate_broadcast_methods, sender=self._channel_type_registry
             )
             self._channel_type_registry.removed.connect(
-                self._invalidate_broadcast_methods,
-                sender=self._channel_type_registry
+                self._invalidate_broadcast_methods, sender=self._channel_type_registry
             )
 
     @property
@@ -168,24 +166,20 @@ class MessageHub(object):
 
         if self._client_registry is not None:
             self._client_registry.added.disconnect(
-                self._invalidate_broadcast_methods,
-                sender=self._client_registry
+                self._invalidate_broadcast_methods, sender=self._client_registry
             )
             self._client_registry.removed.disconnect(
-                self._invalidate_broadcast_methods,
-                sender=self._client_registry
+                self._invalidate_broadcast_methods, sender=self._client_registry
             )
 
         self._client_registry = value
 
         if self._client_registry is not None:
             self._client_registry.added.connect(
-                self._invalidate_broadcast_methods,
-                sender=self._client_registry
+                self._invalidate_broadcast_methods, sender=self._client_registry
             )
             self._client_registry.removed.connect(
-                self._invalidate_broadcast_methods,
-                sender=self._client_registry
+                self._invalidate_broadcast_methods, sender=self._client_registry
             )
 
     def create_notification(self, body=None):
@@ -251,8 +245,7 @@ class MessageHub(object):
             reason = str(ex)
             log.exception(reason)
             if u"id" in message:
-                ack = self.acknowledge(message, outcome=False,
-                                       reason=reason)
+                ack = self.acknowledge(message, outcome=False, reason=reason)
                 self.send_message(ack, to=sender)
                 return True
 
@@ -262,22 +255,19 @@ class MessageHub(object):
 
         log.info(
             "Received {0.body[type]} message".format(message),
-            extra={
-                "id": message.id,
-                "semantics": "request"
-            }
+            extra={"id": message.id, "semantics": "request"},
         )
 
         if not self._feed_message_to_handlers(message, sender):
             log.warning(
                 "Unhandled message: {0.body[type]}".format(message),
-                extra={
-                    "id": message.id
-                }
+                extra={"id": message.id},
             )
-            ack = self.acknowledge(message, outcome=False,
-                                   reason="No handler managed to parse this "
-                                          "message in the server")
+            ack = self.acknowledge(
+                message,
+                outcome=False,
+                reason="No handler managed to parse this " "message in the server",
+            )
             self.send_message(ack, to=sender)
             return False
 
@@ -317,8 +307,7 @@ class MessageHub(object):
         """
         message_type = message.body["type"]
         all_handlers = chain(
-            self._handlers_by_type.get(message_type, ()),
-            self._handlers_by_type[None]
+            self._handlers_by_type.get(message_type, ()), self._handlers_by_type[None]
         )
 
         handled = False
@@ -326,9 +315,11 @@ class MessageHub(object):
             try:
                 response = handler(message, sender, self)
             except Exception:
-                log.exception("Error while calling handler {0!r} "
-                              "for incoming message; proceeding with "
-                              "next handler (if any)".format(handler))
+                log.exception(
+                    "Error while calling handler {0!r} "
+                    "for incoming message; proceeding with "
+                    "next handler (if any)".format(handler)
+                )
                 response = None
             if response is True:
                 # Message was handled by the handler
@@ -338,8 +329,7 @@ class MessageHub(object):
                 pass
             elif isinstance(response, (dict, FlockwaveResponse)):
                 # Handler returned a dict or a response; we must send it
-                self._send_response(response, to=sender,
-                                    in_response_to=message)
+                self._send_response(response, to=sender, in_response_to=message)
                 handled = True
 
         return handled
@@ -358,9 +348,11 @@ class MessageHub(object):
             def handle_SYS_VER(message, sender, hub):
                 [...]
         """
+
         def decorator(func):
             self.register_message_handler(func, args)
             return func
+
         return decorator
 
     def register_message_handler(self, func, message_types=None):
@@ -409,34 +401,27 @@ class MessageHub(object):
                 the message being sent responds to.
         """
         if to is None:
-            assert in_response_to is None, "broadcast messages cannot be "\
+            assert in_response_to is None, (
+                "broadcast messages cannot be "
                 "sent in response to a particular message"
+            )
             return self.broadcast_message(message)
 
         if in_response_to is not None:
             log.info(
                 "Sending {0.body[type]} response".format(message),
-                extra={
-                    "id": in_response_to.id,
-                    "semantics": "response_success"
-                }
+                extra={"id": in_response_to.id, "semantics": "response_success"},
             )
         elif isinstance(message, FlockwaveNotification):
             if message.body["type"] not in ("UAV-INF", "DEV-INF"):
                 log.info(
                     "Sending {0.body[type]} notification".format(message),
-                    extra={
-                        "id": message.id,
-                        "semantics": "notification"
-                    }
+                    extra={"id": message.id, "semantics": "notification"},
                 )
         else:
             log.info(
                 "Sending {0.body[type]} message".format(message),
-                extra={
-                    "id": message.id,
-                    "semantics": "response_success"
-                }
+                extra={"id": message.id, "semantics": "response_success"},
             )
 
         self._send_message(message, to)
@@ -490,16 +475,12 @@ class MessageHub(object):
             # We should not re-raise directly from here because on Python 3.x
             # we would get a very long stack trace that includes the original
             # exception as well.
-            error = MessageValidationError(
-                "Flockwave message does not match schema"
-            )
+            error = MessageValidationError("Flockwave message does not match schema")
         except Exception as ex:
             # We should not re-raise directly from here because on Python 3.x
             # we would get a very long stack trace that includes the original
             # exception as well.
-            error = MessageValidationError(
-                "Unexpected exception: {0!r}".format(ex)
-            )
+            error = MessageValidationError("Unexpected exception: {0!r}".format(ex))
         raise error
 
     def _send_message(self, message, client_or_id):
@@ -507,9 +488,9 @@ class MessageHub(object):
             try:
                 client = self._client_registry[client_or_id]
             except KeyError:
-                log.warn("Client {0!r} is gone; not sending message".format(
-                    client_or_id
-                ))
+                log.warn(
+                    "Client {0!r} is gone; not sending message".format(client_or_id)
+                )
         else:
             client = client_or_id
         client.channel.send(message)

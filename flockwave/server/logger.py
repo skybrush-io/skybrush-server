@@ -16,9 +16,9 @@ log = logging.getLogger(__name__.rpartition(".")[0])
 default_log_symbols = {
     "DEBUG": u" ",
     "INFO": u" ",
-    "WARNING": u"\u25b2",           # BLACK UP-POINTING TRIANGLE
-    "ERROR": u"\u25cf",             # BLACK CIRCLE
-    "CRITICAL": u"\u25cf",          # BLACK CIRCLE
+    "WARNING": u"\u25b2",  # BLACK UP-POINTING TRIANGLE
+    "ERROR": u"\u25cf",  # BLACK CIRCLE
+    "CRITICAL": u"\u25cf",  # BLACK CIRCLE
 }
 
 
@@ -29,8 +29,7 @@ class ColoredFormatter(logging.Formatter):
     stored in the log record.
     """
 
-    def __init__(self, fmt=None, datefmt=None, log_colors=None,
-                 log_symbols=None):
+    def __init__(self, fmt=None, datefmt=None, log_colors=None, log_symbols=None):
         """
         Constructor.
 
@@ -50,10 +49,7 @@ class ColoredFormatter(logging.Formatter):
         if log_colors is None:
             log_colors = default_log_colors
 
-        self.log_colors = {
-            k: parse_colors(v)
-            for k, v in iteritems(log_colors)
-        }
+        self.log_colors = {k: parse_colors(v) for k, v in iteritems(log_colors)}
         self.log_symbols = (
             log_symbols if log_symbols is not None else default_log_symbols
         )
@@ -70,8 +66,8 @@ class ColoredFormatter(logging.Formatter):
         record.log_symbol = self.get_preferred_symbol(record)
         message = super(ColoredFormatter, self).format(record)
 
-        if not message.endswith(escape_codes['reset']):
-            message += escape_codes['reset']
+        if not message.endswith(escape_codes["reset"]):
+            message += escape_codes["reset"]
 
         return message
 
@@ -109,22 +105,21 @@ def install(level=logging.INFO):
         response_success="bold_green",
         response_error="bold_red",
         notification="bold_yellow",
-        success="bold_green"
+        success="bold_green",
     )
     log_symbols = dict(default_log_symbols)
     log_symbols.update(
-        request=u"\u2190",           # LEFTWARDS ARROW
+        request=u"\u2190",  # LEFTWARDS ARROW
         response_success=u"\u2192",  # RIGHTWARDS ARROW
-        response_error=u"\u2192",    # RIGHTWARDS ARROW
-        notification=u"\u2192",      # RIGHTWARDS ARROW
-        success=u"\u2714",           # CHECK MARK
-        failure=u"\u2718"            # BALLOT X
+        response_error=u"\u2192",  # RIGHTWARDS ARROW
+        notification=u"\u2192",  # RIGHTWARDS ARROW
+        success=u"\u2714",  # CHECK MARK
+        failure=u"\u2718",  # BALLOT X
     )
     formatter = ColoredFormatter(
-        "%(fg_bold_black)s%(id)-7.7s "
-        "%(log_color)s%(log_symbol)s "
-        "%(message)s",
-        log_colors=log_colors, log_symbols=log_symbols
+        "%(fg_bold_black)s%(id)-7.7s " "%(log_color)s%(log_symbol)s " "%(message)s",
+        log_colors=log_colors,
+        log_symbols=log_symbols,
     )
 
     handler = logging.StreamHandler()

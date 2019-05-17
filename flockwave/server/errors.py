@@ -1,10 +1,11 @@
 """Common exception classes used in many places throughout the server."""
 
-__all__ = ("CommandInvocationError", "NotSupportedError", )
+__all__ = ("CommandInvocationError", "NotSupportedError")
 
 
 class FlockwaveError(RuntimeError):
     """Base class for all Flockwave-related errors."""
+
     pass
 
 
@@ -21,9 +22,11 @@ class CommandInvocationError(FlockwaveError):
             cause (Optional[str]): the underlying exception that caused this
                 error message
         """
-        message = message or \
-            "{0.__class__.__name__}: {0.message}".format(cause) or \
-            "Command invocation error"
+        message = (
+            message
+            or "{0.__class__.__name__}: {0.message}".format(cause)
+            or "Command invocation error"
+        )
         super(CommandInvocationError, self).__init__(message)
         self.cause = cause
 

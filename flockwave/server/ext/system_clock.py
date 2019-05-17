@@ -48,7 +48,7 @@ def load(app, configuration, logger):
 
 def get_dependencies():
     """Returns the dependencies of this extension."""
-    return ("clocks", )
+    return ("clocks",)
 
 
 def unload(app):

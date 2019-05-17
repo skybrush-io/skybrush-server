@@ -37,6 +37,11 @@ This assumes that you are using at least Docker 18.04 (because of the `--ssh` sw
 and that the private key you are using to connect to `git.collmot.com` is located at
 `$HOME/.ssh/id_rsa`. Adjust the command line if needed if your public key is elsewhere.
 
+If you happen to use a private key encrypted with a passphrase and you are
+running `ssh-agent` in the background to avoid having to type the passphrase
+all the time, you can simply use `--ssh default` (without the path to the key
+file) to make use of the SSH agent.
+
 To test the container, run this:
 
 ```sh

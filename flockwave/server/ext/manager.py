@@ -404,10 +404,16 @@ class ExtensionManager(object):
         except ImportError:
             log.exception("Error while importing extension {0!r}"
                           .format(extension_name))
-            return
+            return None
 
         instance_factory = getattr(module, "construct", None)
-        extension = instance_factory() if instance_factory else module
+
+        try:
+            extension = instance_factory() if instance_factory else module
+        except Exception:
+            log.exception("Error while instantiating extension {0!r}"
+                          .format(extension_name))
+            return None
 
         func = getattr(extension, "load", None)
         if callable(func):

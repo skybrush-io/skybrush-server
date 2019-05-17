@@ -8,7 +8,6 @@ from __future__ import absolute_import, division
 
 from flockwave.gps.vectors import ECEFToGPSCoordinateTransformation, \
     FlatEarthToGPSCoordinateTransformation, GPSCoordinate
-from numpy.random import poisson
 
 from .base import ExtensionBase
 
@@ -108,6 +107,9 @@ class RadiationExtension(ExtensionBase):
         self._background_intensity = 0.0
         self._sources = []
 
+        from numpy.random import poisson
+        self._poisson = poisson
+
     def add_source(self, lat, lon, intensity):
         """Adds a new radiation source.
 
@@ -176,7 +178,7 @@ class RadiationExtension(ExtensionBase):
         if seconds == 0:
             return 0.0
         else:
-            return poisson(self._total_intensity_at(point) * seconds)
+            return self._poisson(self._total_intensity_at(point) * seconds)
 
     def _total_intensity_at(self, point):
         """Returns the total radiation intensity at the given point.

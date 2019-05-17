@@ -11,6 +11,7 @@ from flockwave.gps.vectors import (
     FlatEarthToGPSCoordinateTransformation,
     GPSCoordinate,
 )
+from flockwave.server.utils import constant
 
 from .base import ExtensionBase
 
@@ -110,11 +111,8 @@ class RadiationExtension(ExtensionBase):
         """Constructor."""
         super(RadiationExtension, self).__init__()
         self._background_intensity = 0.0
+        self._poisson = None
         self._sources = []
-
-        from numpy.random import poisson
-
-        self._poisson = poisson
 
     def add_source(self, lat, lon, intensity):
         """Adds a new radiation source.
@@ -160,6 +158,14 @@ class RadiationExtension(ExtensionBase):
         self.background_intensity = configuration.get("background", 0)
         for source in configuration.get("sources", []):
             self.add_source(**source)
+
+        try:
+            from numpy.random import poisson
+
+            self._poisson = poisson
+        except ImportError:
+            self.log.warn("numpy not installed; extension disabled")
+            self._poisson = constant(0)
 
     def exports(self):
         """Returns the functions exported by the extension."""

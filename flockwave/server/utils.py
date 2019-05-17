@@ -16,6 +16,24 @@ __all__ = (
 _unix_epoch = datetime.utcfromtimestamp(0).replace(tzinfo=utc)
 
 
+def constant(x):
+    """Function factory that returns a function that accepts an arbitrary
+    number of arguments and always returns the same constant.
+
+    Parameters:
+        x (object): the constant to return
+
+    Returns:
+        callable: a function that always returns the given constant,
+            irrespectively of its input
+    """
+
+    def func(*args, **kwds):
+        return x
+
+    return func
+
+
 def datetime_to_unix_timestamp(dt):
     """Converts a Python datetime object to a Unix timestamp, expressed in
     the number of seconds since the Unix epoch.

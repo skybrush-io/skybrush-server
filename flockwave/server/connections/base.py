@@ -54,6 +54,12 @@ class Connection(with_metaclass(ABCMeta, object)):
         raise NotImplementedError
 
     @property
+    def is_disconnected(self):
+        """Returns whether the connection is disconnected (and not connecting and
+        not disconnecting)."""
+        return self.state is ConnectionState.DISCONNECTED
+
+    @property
     def is_connected(self):
         """Returns whether the connection is connected."""
         return self.state is ConnectionState.CONNECTED

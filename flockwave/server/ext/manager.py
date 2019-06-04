@@ -5,7 +5,6 @@ from __future__ import absolute_import
 import importlib
 
 from blinker import Signal
-from collections import defaultdict
 from future.utils import iteritems
 from pkgutil import get_loader
 
@@ -354,12 +353,10 @@ class ExtensionManager(object):
 
         dependents = self._extensions[extension_name].dependents
         if dependents:
-            log.warning(
-                "Failed to unload extension {0!r} because it is still in use".format(
-                    extension_name
-                )
+            message = "Failed to unload extension {0!r} because it is still in use".format(
+                extension_name
             )
-            return
+            raise RuntimeError(message)
 
         if self._num_clients > 0:
             self._spindown_extension(extension_name)

@@ -18,6 +18,60 @@ EXT_PACKAGE_NAME = __name__.rpartition(".")[0]
 log = base_log.getChild("manager")
 
 
+class LoadOrder(object):
+    """Helper object that maintains the order in which extensions were loaded
+    so we can unload them in reverse order.
+    """
+
+    class Node(object):
+        __slots__ = ("data", "next", "prev")
+
+        def __init__(self, data=None):
+            self.data = data
+            self.next = self.prev = None
+
+        def __repr__(self):
+            return f"{self.__class__.__name__}(data={self.data})"
+
+    def __init__(self):
+        self._guard = self._tail = LoadOrder.Node()
+        self._tail.prev = self._tail.next = self._tail
+        self._dict = {}
+
+    def notify_loaded(self, name):
+        """Notifies the object that the given extension was loaded."""
+        item = self._dict.get(name)
+        if not item:
+            item = LoadOrder.Node(name)
+        else:
+            self._unlink_item(item)
+        item.prev = self._tail
+        self._tail.next = item
+        self._tail = item
+
+    def notify_unloaded(self, name):
+        """Notifies the object that the given extension was unloaded."""
+        if name not in self._dict:
+            return
+
+        item = self._dict.pop(name, None)
+        if item:
+            return self._unlink_item(item)
+
+    def reversed(self):
+        """Returns a generator that generates items in reversed order compared
+        to how they were added.
+        """
+        item = self._tail
+        while item is not self._guard:
+            yield item.data
+            item = item.prev
+
+    def _unlink_item(self, item):
+        item.prev.next = item.next
+        item.next.prev = item.prev
+
+
 class ExtensionData(object):
     """Data that the extension manager stores related to each extension.
 
@@ -45,7 +99,6 @@ class ExtensionManager(object):
     """Central extension manager for a Flockwave server that manages
     the loading, configuration and unloading of extensions.
 
-
     Attributes:
         loaded (Signal): signal that is sent by the extension manager when
             an extension has been configured and loaded. The signal has two
@@ -68,6 +121,7 @@ class ExtensionManager(object):
         """
         self._app = None
         self._extensions = keydefaultdict(self._create_extension_data)
+        self._load_order = LoadOrder()
         self._num_clients = 0
         self.app = app
 
@@ -279,9 +333,7 @@ class ExtensionManager(object):
 
     def teardown(self):
         """Tears down the extension manager and prepares it for destruction."""
-        # TODO(ntamas): the unloading order should not be alphabetical but in
-        # the order in which the extensions were loaded
-        for ext_name in reversed(self.loaded_extensions):
+        for ext_name in self._load_order.reversed():
             self.unload(ext_name)
 
     def unload(self, extension_name):
@@ -318,6 +370,7 @@ class ExtensionManager(object):
 
         self._extensions[extension_name].loaded = False
         self._extensions[extension_name].instance = None
+        self._load_order.notify_unloaded(extension_name)
 
         for dependency in self._get_dependencies_of_extension(extension_name):
             self._extensions[dependency].dependents.remove(extension_name)
@@ -435,6 +488,7 @@ class ExtensionManager(object):
 
         self._extensions[extension_name].instance = extension
         self._extensions[extension_name].loaded = True
+        self._load_order.notify_loaded(extension_name)
 
         for dependency in self._get_dependencies_of_extension(extension_name):
             self._extensions[dependency].dependents.add(extension_name)

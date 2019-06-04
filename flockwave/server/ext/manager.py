@@ -5,6 +5,7 @@ from __future__ import absolute_import
 import importlib
 
 from blinker import Signal
+from collections import defaultdict
 from future.utils import iteritems
 from pkgutil import get_loader
 
@@ -342,14 +343,21 @@ class ExtensionManager(object):
         Parameters:
             extension_name (str): the name of the extension to unload
         """
-        # TODO(ntamas): prevent the unloading of the extension if there is
-        # at least one other loaded extension that depends on this one
         try:
             extension = self._get_loaded_extension_by_name(extension_name)
         except KeyError:
             log.warning(
                 "Tried to unload extension {0!r} but it is "
                 "not loaded".format(extension_name)
+            )
+            return
+
+        dependents = self._extensions[extension_name].dependents
+        if dependents:
+            log.warning(
+                "Failed to unload extension {0!r} because it is still in use".format(
+                    extension_name
+                )
             )
             return
 

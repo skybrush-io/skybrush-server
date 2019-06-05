@@ -3,7 +3,6 @@ from flockwave.server.networking import get_all_ipv4_addresses
 import socket
 
 
-fqdn = None
 log = None
 server_name = None
 zc = None
@@ -17,11 +16,10 @@ def load(app, configuration, logger):
     """Loads the extension."""
     from zeroconf import Zeroconf
 
-    global fqdn, log, server_name, zc
+    global log, server_name, zc
 
-    fqdn = socket.getfqdn()
     log = logger
-    server_name = configuration.get("name", fqdn).replace(".", "-")
+    server_name = configuration.get("name", socket.gethostname()).replace(".", "-")
     zc = Zeroconf()
 
     channels = app.channel_type_registry
@@ -75,7 +73,7 @@ def _register_channel(descriptor):
         name=f"{server_name}._{service}._{name}.local.",
         port=port,
         addresses=addresses,
-        server=f"{fqdn}.",
+        server=f"{socket.gethostname()}.local.",
     )
 
     zc.register_service(service_info)

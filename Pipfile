@@ -30,6 +30,7 @@ six = ">=1.10.0"
 XBee = ">=2.2.3"
 "pynmea2" = ">=1.12.0"
 enum-compat = ">=0.0.2"
+zeroconf = ">=0.23.0"
 
 [dev-packages]
 PyInstaller = "*"

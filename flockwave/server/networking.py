@@ -1,6 +1,7 @@
 """Generic networking-related utility functions."""
 
 from ipaddress import IPv4Address, IPv4Network
+from netifaces import AF_INET, ifaddresses, interfaces
 
 import socket
 
@@ -34,7 +35,7 @@ def create_socket(socket_type, nonblocking=False):
     return sock
 
 
-def format_socket_address(sock, format="{host}:{port}", remote_address=None):
+def format_socket_address(sock, format="{host}:{port}", in_subnet_of=None):
     """Formats the address that the given socket is bound to in the
     standard hostname-port format.
 
@@ -43,7 +44,7 @@ def format_socket_address(sock, format="{host}:{port}", remote_address=None):
         format (str): format string in brace-style that is used by
             ``str.format()``. The tokens ``{host}`` and ``{port}`` will be
             replaced by the hostname and port.
-        remote_address (Optional[str,int]): the IP address and port that should
+        in_subnet_of (Optional[str,int]): the IP address and port that should
             preferably be in the same subnet as the response. This is used only
             if the socket is bound to all interfaces, in which case we will
             try to pick an interface that is in the same subnet as the remote
@@ -52,6 +53,34 @@ def format_socket_address(sock, format="{host}:{port}", remote_address=None):
     Returns:
         str: a formatted representation of the address and port of the
             socket
+    """
+    host, port = get_socket_address(sock, in_subnet_of)
+    return format.format(host=host, port=port)
+
+
+def get_all_ipv4_addresses():
+    """Returns all IPv4 addresses of the current machine."""
+    result = []
+    for iface in interfaces():
+        addresses = ifaddresses(iface)
+        if AF_INET in addresses:
+            result.append(addresses[AF_INET][0]["addr"])
+    return result
+
+
+def get_socket_address(sock, format="{host}:{port}", in_subnet_of=None):
+    """Gets the hostname and port that the given socket is bound to.
+
+    Parameters:
+        sock (socket.socket): the socket for which we need its address
+        in_subnet_of (Optional[str,int]): the IP address and port that should
+            preferably be in the same subnet as the response. This is used only
+            if the socket is bound to all interfaces, in which case we will
+            try to pick an interface that is in the same subnet as the remote
+            address.
+
+    Returns:
+        Tuple[str, int]: the host and port where the socket is bound to
     """
     if hasattr(sock, "getsockname"):
         host, port = sock.getsockname()
@@ -64,8 +93,8 @@ def format_socket_address(sock, format="{host}:{port}", remote_address=None):
 
     # If host is empty and an address is given, try to find one from
     # our IP addresses that is in the same subnet as the given address
-    if not host and remote_address:
-        remote_host, _ = remote_address
+    if not host and in_subnet_of:
+        remote_host, _ = in_subnet_of
         try:
             remote_host = IPv4Address(remote_host)
         except Exception:
@@ -102,4 +131,4 @@ def format_socket_address(sock, format="{host}:{port}", remote_address=None):
                         host = spec["addr"]
                         break
 
-    return format.format(host=host, port=port)
+    return host, port

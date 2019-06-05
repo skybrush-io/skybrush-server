@@ -23,11 +23,17 @@ log = base_log.getChild("registries.channels")
 
 
 _ChannelTypeDescriptor = namedtuple(
-    "ChannelTypeDescriptor", "id factory broadcaster ssdp_location"
+    "ChannelTypeDescriptor", "id factory address broadcaster ssdp_location"
 )
 
 
 class ChannelTypeDescriptor(_ChannelTypeDescriptor):
+    def get_address(self, *args, **kwds):
+        address = self.address
+        if callable(address):
+            address = address(*args, **kwds)
+        return address
+
     def get_ssdp_location(self, *args, **kwds):
         locator = self.ssdp_location
         if callable(locator):
@@ -60,7 +66,9 @@ class ChannelTypeRegistry(RegistryBase):
     count_changed = Signal()
     removed = Signal()
 
-    def add(self, channel_id, factory, broadcaster=None, ssdp_location=None):
+    def add(
+        self, channel_id, factory, address=None, broadcaster=None, ssdp_location=None
+    ):
         """Adds a new communication channel class to the registry.
 
         This function throws an error if the ID is already taken.
@@ -73,6 +81,16 @@ class ChannelTypeRegistry(RegistryBase):
                 CommunicationChannel_ and has an appropriate constructor,
                 but can be an arbitrary callable as long as it returns an
                 instance of CommunicationChannel_.
+            address (Optional[callab]e): a callable that can be called with
+                a single host-port pair or ``None`` and that returns a tuple
+                consisting of a hostname and the corresponding port where the
+                communication channel can be accessed from the outside. The
+                callable may be ``None`` or may return ``None`` if such a
+                location cannot sensibly be derived. The argument of the
+                callable describes the remote address that is interested in
+                the location of the channel; the implementation should strive
+                to return an IP address that is on the same subnet as the remote
+                address.
             broadcaster (Optional[callable]): a callable that implements
                 broadcasting a message to all clients who are currently
                 connected to the server with this communication channel
@@ -100,6 +118,7 @@ class ChannelTypeRegistry(RegistryBase):
         descriptor = ChannelTypeDescriptor(
             id=channel_id,
             factory=factory,
+            address=address,
             broadcaster=broadcaster,
             ssdp_location=ssdp_location,
         )

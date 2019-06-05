@@ -12,7 +12,7 @@ from greenlet import GreenletExit
 
 from ..encoders import JSONEncoder
 from ..model import CommunicationChannel
-from ..networking import format_socket_address
+from ..networking import format_socket_address, get_socket_address
 
 app = None
 encoder = JSONEncoder()
@@ -59,15 +59,35 @@ class TCPChannel(CommunicationChannel):
 ############################################################################
 
 
-def get_ssdp_location(address):
-    """Returns the SSDP location descriptor of the TCP channel."""
+def get_address(in_subnet_of=None):
+    """Returns the address where we are listening for incoming TCP connections.
+
+    Parameters:
+        in_subnet_of (Optional[str]): when not `None` and we are listening on
+            multiple (or all) interfaces, this address is used to pick a
+            reported address that is in the same subnet as the given address
+
+    Returns:
+        str: the address where we are listening
+    """
     global sock
-    if sock:
-        return format_socket_address(
-            sock, format="tcp://{host}:{port}", remote_address=address
-        )
-    else:
-        return None
+    return get_socket_address(sock)
+
+
+def get_ssdp_location(address):
+    """Returns the SSDP location descriptor of the TCP channel.
+
+    Parameters:
+        address: when not `None` and we are listening on multiple (or all)
+            interfaces, this address is used to pick a reported address that
+            is in the same subnet as the given address
+    """
+    global sock
+    return (
+        format_socket_address(sock, format="tcp://{host}:{port}", in_subnet_of=address)
+        if sock
+        else None
+    )
 
 
 def handle_connection(sock, address):
@@ -143,7 +163,7 @@ def load(app, configuration, logger):
     sock = listen(address)
 
     app.channel_type_registry.add(
-        "tcp", factory=TCPChannel, ssdp_location=get_ssdp_location
+        "tcp", factory=TCPChannel, address=get_address, ssdp_location=get_ssdp_location
     )
 
     receiver_thread = spawn(

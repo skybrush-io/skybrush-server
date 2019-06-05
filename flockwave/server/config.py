@@ -43,16 +43,10 @@ EXTENSIONS = {
     "flockctrl": {
         "id_format": "{0:02}",
         "connections": {
-            "xbee": "serial:/tmp/xbee",
-            # "xbee": "serial:/dev/ttyUSB.xbee?baud=115200"
-            # "wireless": {
-            #     "broadcast": "udp-broadcast:192.168.1.0/24?port=4243",
-            #     "unicast": "udp-subnet:192.168.1.0/24"
-            # }
             "wireless": {
                 "broadcast": "udp-broadcast:10.0.0.0/8?port=4243",
                 "unicast": "udp-subnet:10.0.0.0/8",
-            },
+            }
         },
     },
     "gps": {
@@ -71,6 +65,7 @@ EXTENSIONS = {
     "system_clock": {},
     "tcp": {},
     "udp": {},
+    "zeroconf": {},
 }
 
 # smpte_timecode seems to have some problems on a Mac - it consumes 15% CPU

@@ -86,14 +86,21 @@ def get_client_id():
 
 
 def get_ssdp_location(address):
-    """Returns the SSDP location descriptor of the Socket.IO channel."""
+    """Returns the SSDP location descriptor of the Socket.IO channel.
+
+    Parameters:
+        address: when not `None` and we are listening on multiple (or all)
+            interfaces, this address is used to pick a reported address that
+            is in the same subnet as the given address
+    """
     app_address = app.import_api("http_server").address if app else None
-    if app_address is None:
-        return None
-    else:
-        return format_socket_address(
-            app_address, format="sio://{host}:{port}", remote_address=address
+    return (
+        format_socket_address(
+            app_address, format="sio://{host}:{port}", in_subnet_of=address
         )
+        if app_address
+        else None
+    )
 
 
 @jwt_optional()

@@ -5,6 +5,7 @@ from __future__ import division
 from bidict import bidict
 from flockwave.server.ext.logger import log
 from flockwave.server.model.uav import UAVBase, UAVDriver
+from flockwave.server.utils import nop
 from flockwave.spec.ids import make_valid_uav_id
 
 from .errors import AddressConflictError, map_flockctrl_error_code
@@ -22,13 +23,6 @@ __all__ = ("FlockCtrlDriver",)
 
 MAX_GEIGER_TUBE_COUNT = 2
 MAX_CAMERA_FEATURE_COUNT = 32
-
-
-def nop(*args, **kwds):
-    """Dummy function that can be called with any number of arguments and
-    does not return anything.
-    """
-    pass
 
 
 class FlockCtrlDriver(UAVDriver):
@@ -81,6 +75,7 @@ class FlockCtrlDriver(UAVDriver):
 
         self.allow_multiple_commands_per_uav = True
         self.app = app
+        self.create_device_tree_mutator = None
         self.id_format = id_format
         self.log = log.getChild("flockctrl").getChild("driver")
         self.send_packet = None

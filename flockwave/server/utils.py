@@ -10,6 +10,7 @@ __all__ = (
     "is_timezone_aware",
     "itersubclasses",
     "keydefaultdict",
+    "nop",
 )
 
 
@@ -99,3 +100,10 @@ class keydefaultdict(defaultdict):
         else:
             ret = self[key] = self.default_factory(key)
             return ret
+
+
+def nop(*args, **kwds):
+    """Dummy function that can be called with any number of arguments and
+    does not return anything.
+    """
+    pass

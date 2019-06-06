@@ -55,6 +55,7 @@ EXTENSIONS = {
         "id_format": "BEACON:{0}",
     },
     "http_server": {},
+    "mavlink": {"id_format": "MAV-{0:02}"},
     "radiation": {
         "sources": [{"lat": 47.473313, "lon": 19.062818, "intensity": 50000}],
         "background_intensity": 10,

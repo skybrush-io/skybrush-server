@@ -509,3 +509,38 @@ class ChunkedPacketAssembler(object):
         msg_data = dict(chunks=dict(), num_chunks=packet.num_chunks, last_chunk=None)
         self._messages[packet.source][packet.sequence_id] = msg_data
         return msg_data
+
+
+class FlockCtrlMissionInfoPacket(FlockCtrlPacketBase):
+    """Packet containing information about the name of the current mission.
+    """
+
+    PACKET_TYPE = 15
+
+    def decode(self, data):
+        # Not interested yet
+        pass
+
+
+class FlockCtrlRawGPSInjectionPacket(FlockCtrlPacketBase):
+    """Packet containing raw GPS data that should be injected into the
+    onboard GPS receivers of the drones.
+    """
+
+    PACKET_TYPE = 16
+
+    def decode(self, data):
+        # Not interested yet
+        pass
+
+
+class FlockCtrlHatcheryPacket(FlockCtrlPacketBase):
+    """Packet containing status information for uninitialized drones. Not used
+    yet.
+    """
+
+    PACKET_TYPE = 17
+
+    def decode(self, data):
+        # Not interested yet
+        pass

@@ -15,6 +15,7 @@ from .packets import (
     FlockCtrlCommandRequestPacket,
     FlockCtrlCommandResponsePacket,
     FlockCtrlCompressedCommandResponsePacket,
+    FlockCtrlMissionInfoPacket,
     FlockCtrlPrearmStatusPacket,
     FlockCtrlStatusPacket,
 )
@@ -130,6 +131,7 @@ class FlockCtrlDriver(UAVDriver):
             FlockCtrlCompressedCommandResponsePacket: self._handle_inbound_command_response_packet,
             FlockCtrlCommandResponsePacket: self._handle_inbound_command_response_packet,
             FlockCtrlAlgorithmDataPacket: self._handle_inbound_algorithm_data_packet,
+            FlockCtrlMissionInfoPacket: nop
         }
 
     def _create_uav(self, formatted_id):
@@ -369,6 +371,15 @@ class FlockCtrlDriver(UAVDriver):
         packet = FlockCtrlCommandRequestPacket(command.encode("utf-8"))
         self.send_packet(packet, address)
         return packet
+
+    def _send_fly_to_target_signal_single(self, cmd_manager, uav, target):
+        altitude = target.agl
+        if altitude is not None:
+            cmd = "go N{0.latitude} E{0.longitude} U{1}".format(target, altitude)
+        else:
+            cmd = "go N{0.latitude} E{0.longitude}".format(target, altitude)
+        self._send_command_to_uav(cmd_manager, cmd, uav)
+        return True
 
     def _send_landing_signal_single(self, cmd_manager, uav):
         self._send_command_to_uav(cmd_manager, "land", uav)

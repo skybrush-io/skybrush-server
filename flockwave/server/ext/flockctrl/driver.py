@@ -375,9 +375,10 @@ class FlockCtrlDriver(UAVDriver):
     def _send_fly_to_target_signal_single(self, cmd_manager, uav, target):
         altitude = target.agl
         if altitude is not None:
-            cmd = "go N{0.latitude} E{0.longitude} U{1}".format(target, altitude)
+            cmd = "go N{0.lat:.7f} E{0.lon:.7f} U{1}".format(target, altitude)
         else:
-            cmd = "go N{0.latitude} E{0.longitude}".format(target, altitude)
+            cmd = "go N{0.lat:.7f} E{0.lon:.7f}".format(target, altitude)
+        print(repr(cmd))
         self._send_command_to_uav(cmd_manager, cmd, uav)
         return True
 

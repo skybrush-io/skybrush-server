@@ -6,13 +6,13 @@ import zlib
 
 from abc import ABCMeta, abstractproperty
 from blinker import Signal
-from builtins import range
+from builtins import bytes, range
 from collections import defaultdict
 from datetime import datetime
 from flockwave.gps.vectors import GPSCoordinate, VelocityNED
 from flockwave.server.utils import datetime_to_unix_timestamp
 from future.utils import with_metaclass
-from six import byte2int, int2byte
+from six import int2byte
 from struct import Struct
 from time import time
 
@@ -124,9 +124,7 @@ class FlockCtrlChunkedPacket(FlockCtrlPacketBase):
         self.body = None
 
     def decode(self, data):
-        self.sequence_id, self.num_chunks, self.chunk_id = [
-            byte2int(x) for x in data[1:4]
-        ]
+        self.sequence_id, self.num_chunks, self.chunk_id = list(bytes(data[1:4]))
         self.body = data[4:]
 
 

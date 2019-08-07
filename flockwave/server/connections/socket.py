@@ -3,13 +3,14 @@
 from __future__ import absolute_import, print_function
 
 import socket
+import struct
 
 from blinker import Signal
 from builtins import str
 from contextlib import closing
 from errno import EAGAIN, EALREADY, EINPROGRESS
 from functools import partial
-from ipaddress import IPv4Address, IPv4Network
+from ipaddress import ip_address, IPv4Network
 from os import strerror
 
 from .base import FDConnectionBase, ConnectionState, ConnectionWrapperBase
@@ -264,6 +265,12 @@ class UDPSocketConnection(InternetSocketConnection):
         stuff; to be overridden in subclasses.
         """
         self._socket.bind(self._address)
+
+        host, _ = self._address
+        if host and ip_address(host).is_multicast:
+            req = struct.pack("4sl", socket.inet_aton(host), socket.INADDR_ANY)
+            self._socket.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, req)
+
         notify_connected()
 
 
@@ -342,7 +349,7 @@ class SubnetBindingConnection(ConnectionWrapperBase):
             candidates.extend(
                 spec[addr_key]
                 for spec in specs
-                if IPv4Address(str(spec.get("addr"))) in self._network
+                if ip_address(str(spec.get("addr"))) in self._network
                 and addr_key in spec
             )
 
@@ -351,8 +358,16 @@ class SubnetBindingConnection(ConnectionWrapperBase):
                 return None
 
         # If we have exactly one IP address candidate in the target subnet,
-        # return this IP address
-        return candidates[0] if candidates else None
+        # return this IP address -- unless it's localhost, in which case
+        # we throw an exception because broadcasts are not supported on
+        # localhost; one should use multicast instead
+        if candidates:
+            if ip_address(candidates[0]).is_loopback:
+                raise ValueError("broadcast not supported on localhost")
+            else:
+                return candidates[0]
+        else:
+            return None  # return this IP address
 
     def _update_own_state_from_wrapped_connection(self):
         """Updates the state of the current connection based on the state

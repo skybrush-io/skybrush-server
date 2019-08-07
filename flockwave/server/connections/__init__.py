@@ -11,7 +11,9 @@ from .factory import ConnectionFactory, create_connection
 from .file import FileConnection
 from .serial import SerialPortConnection
 from .socket import (
+    TCPSocketConnection,
     UDPSocketConnection,
+    MulticastUDPSocketConnection,
     SubnetBindingConnection,
     SubnetBindingUDPConnection,
     SubnetBindingUDPBroadcastConnection,
@@ -25,7 +27,9 @@ __all__ = (
     "ConnectionState",
     "FileConnection",
     "SerialPortConnection",
+    "TCPSocketConnection",
     "UDPSocketConnection",
+    "MulticastUDPSocketConnection",
     "SubnetBindingConnection",
     "SubnetBindingUDPConnection",
     "SubnetBindingUDPBroadcastConnection",

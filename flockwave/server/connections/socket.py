@@ -21,6 +21,8 @@ from ..networking import create_socket
 
 __all__ = (
     "UDPSocketConnection",
+    "TCPSocketConnection",
+    "MulticastUDPSocketConnection",
     "SubnetBindingConnection",
     "SubnetBindingUDPConnection",
 )
@@ -265,11 +267,71 @@ class UDPSocketConnection(InternetSocketConnection):
         stuff; to be overridden in subclasses.
         """
         self._socket.bind(self._address)
+        notify_connected()
+
+
+class MulticastUDPSocketConnection(InternetSocketConnection):
+    """Connection object that uses a multicast UDP socket."""
+
+    def __init__(self, group, port=0, interface=None):
+        """Constructor.
+
+        Parameters:
+            group (Optional[str]): the IP address of the multicast group that
+                the socket will bind to.
+            port (int): the port number that the socket will bind (or
+                connect) to. Zero means that the socket will choose a random
+                ephemeral port number on its own.
+            interface (Optional[str]): name of the network interface to bind
+                the socket to. `None` means to bind to the default network
+                interface where multicast is supported.
+        """
+        if not ip_address(group).is_multicast:
+            raise ValueError("expected multicast group address")
+
+        super().__init__(host=group, port=port)
+
+        self._interface = interface
+
+    def _create_socket(self):
+        """Creates a new non-blocking reusable UDP socket that is not bound
+        anywhere yet.
+        """
+        return create_socket(socket.SOCK_DGRAM, nonblocking=True)
+
+    def _get_interface_address(self):
+        """Returns the IP address of the interface that the socket wishes to
+        bind to.
+        """
+        if not self._interface:
+            return "0.0.0.0"
+
+        try:
+            return str(ip_address(self._interface))
+        except ValueError:
+            # address is not an IP address
+            pass
+
+        import netifaces  # lazy import
+
+        addresses = netifaces.ifaddresses(self._interface).get(netifaces.AF_INET)
+        if addresses:
+            return addresses[0]["addr"]
+        else:
+            raise ValueError(
+                "interface {0} has no IPv4 address".format(self._interface)
+            )
+
+    def _open_internal(self, notify_connected):
+        self._socket.bind(self._address)
 
         host, _ = self._address
-        if host and ip_address(host).is_multicast:
-            req = struct.pack("4sl", socket.inet_aton(host), socket.INADDR_ANY)
-            self._socket.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, req)
+        req = struct.pack(
+            "4s4s",
+            socket.inet_aton(host),
+            socket.inet_aton(self._get_interface_address()),
+        )
+        self._socket.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, req)
 
         notify_connected()
 

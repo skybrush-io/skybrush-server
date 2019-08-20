@@ -39,9 +39,12 @@ exec(open("flockwave/server/version.py").read())
 setup(
     name="flockwave-server",
     version=__version__,
+
     packages=find_packages(),
     include_package_data=True,
+
     install_requires=requires,
+
     entry_points="""
     [console_scripts]
     flockwave-server=flockwave.server.launcher:start

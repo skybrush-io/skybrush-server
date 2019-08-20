@@ -33,6 +33,7 @@ class SocketConnectionBase(FDConnectionBase):
 
     def __init__(self):
         super(SocketConnectionBase, self).__init__()
+        self._address = None
         self._socket = None
 
     @property
@@ -41,8 +42,15 @@ class SocketConnectionBase(FDConnectionBase):
         tuple.
         """
         if self._socket is None:
-            raise ValueError("socket is not open yet")
-        return self._socket.getsockname()
+            # No socket yet; try to obtain the address from the "_address"
+            # property instead
+            if self._address is None:
+                raise ValueError("socket is not open yet")
+            else:
+                return self._address
+        else:
+            # Ask the socket for its address
+            return self._socket.getsockname()
 
     @property
     def ip(self):
@@ -85,7 +93,7 @@ class InternetSocketConnection(SocketConnectionBase):
     (TCP and UDP).
     """
 
-    def __init__(self, host="", port=0):
+    def __init__(self, host="", port=0, **kwds):
         """Constructor.
 
         Parameters:
@@ -270,22 +278,32 @@ class UDPSocketConnection(InternetSocketConnection):
         notify_connected()
 
 
+@create_connection.register("udp-multicast")
 class MulticastUDPSocketConnection(InternetSocketConnection):
     """Connection object that uses a multicast UDP socket."""
 
-    def __init__(self, group, port=0, interface=None):
+    def __init__(self, group=None, port=0, interface=None, **kwds):
         """Constructor.
 
         Parameters:
-            group (Optional[str]): the IP address of the multicast group that
-                the socket will bind to.
+            group (str): the IP address of the multicast group that the socket
+                will bind to.
             port (int): the port number that the socket will bind (or
                 connect) to. Zero means that the socket will choose a random
                 ephemeral port number on its own.
             interface (Optional[str]): name of the network interface to bind
                 the socket to. `None` means to bind to the default network
                 interface where multicast is supported.
+
+        Keyword arguments:
+            host (str): convenience alias for `group` so we can use this class
+                with `create_connection.register()`
         """
+        if group is None:
+            group = kwds.get("host")
+            if group is None:
+                raise ValueError("either 'group' or 'host' must be given")
+
         if not ip_address(group).is_multicast:
             raise ValueError("expected multicast group address")
 

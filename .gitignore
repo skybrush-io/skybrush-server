@@ -9,4 +9,3 @@ dist/
 tmp/
 .venv/
 __pycache__/
-requirements*.txt

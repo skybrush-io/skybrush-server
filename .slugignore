@@ -1,0 +1,5 @@
+# Don't deploy Pipfile and Pipfile.lock to Heroku because something is wrong
+# with Heroku's Pipenv version (it might be outdated?) and it installs only
+# the git dependencies
+Pipfile
+Pipfile.lock

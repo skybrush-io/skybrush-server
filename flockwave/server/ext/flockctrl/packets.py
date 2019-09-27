@@ -11,8 +11,6 @@ from collections import defaultdict
 from datetime import datetime
 from flockwave.gps.vectors import GPSCoordinate, VelocityNED
 from flockwave.server.utils import datetime_to_unix_timestamp
-from future.utils import with_metaclass
-from six import int2byte
 from struct import Struct
 from time import time
 
@@ -22,14 +20,14 @@ from .utils import unpack_struct
 __all__ = ("FlockCtrlPacket", "ChunkedPacketAssembler")
 
 
-class FlockCtrlPacket(with_metaclass(ABCMeta, object)):
+class FlockCtrlPacket(metaclass=ABCMeta):
     """Common interface specification for all FlockCtrl-related packets."""
 
     @abstractproperty
     def source(self):
         """The source medium and address of the packet, if known. ``None``
         if the packet was created locally. Otherwise it is a tuple containing
-        the source medium (e.g., ``xbee``) and the address whose format is
+        the source medium (e.g., ``wireless``) and the address whose format is
         specific to the source medium.
         """
         raise NotImplementedError
@@ -244,7 +242,7 @@ class FlockCtrlCommandRequestPacket(FlockCtrlPacketBase):
         self.command = command
 
     def encode(self):
-        return int2byte(self.PACKET_TYPE) + self.command
+        return bytes((self.PACKET_TYPE,)) + self.command
 
 
 class FlockCtrlCommandResponsePacket(FlockCtrlCommandResponsePacketBase):
@@ -316,7 +314,7 @@ class FlockCtrlClockSynchronizationPacket(FlockCtrlPacketBase):
 
     def encode(self):
         return (
-            int2byte(self.PACKET_TYPE)
+            bytes((self.PACKET_TYPE,))
             + self._struct.pack(
                 self.sequence_id,
                 (self.clock_id & 0x7F) + (128 if self.running else 0),
@@ -328,7 +326,10 @@ class FlockCtrlClockSynchronizationPacket(FlockCtrlPacketBase):
 
 
 class FlockCtrlFileUploadKeepalivePacket(FlockCtrlPacketBase):
-    """Packet containing an XBee file upload 'keepalive' packet."""
+    """Packet containing an XBee file upload 'keepalive' packet.
+
+    This packet is deprecated but we keep it here for sake of completeness.
+    """
 
     PACKET_TYPE = 10
 

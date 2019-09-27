@@ -5,6 +5,7 @@ server knows.
 from __future__ import absolute_import
 
 from blinker import Signal
+from contextlib import contextmanager
 
 from ..logger import log as base_log
 from ..model import ConnectionInfo, ConnectionPurpose
@@ -82,6 +83,29 @@ class ConnectionRegistry(RegistryBase):
             del self._entries[name]
         except KeyError:
             return
+
+    @contextmanager
+    def use(self, connection, name, *args, **kwds):
+        """Temporarily adds a new connection with the given name and
+        additional paramters, hands control back to the caller in a
+        context, and then removes the connection when the caller exits
+        the context.
+
+        Additional positional and keyword arguments are passed on intact
+        to `add()`.
+
+        Yields:
+            Connection: the connection registry entry that was added
+        """
+        if name in self:
+            yield self[name]
+        else:
+            entry = self.add(connection, name, *args, **kwds)
+
+            try:
+                yield entry
+            finally:
+                self.remove(name)
 
     def _create_entry(self, connection, name):
         """Creates a new entry for the given connection with the given

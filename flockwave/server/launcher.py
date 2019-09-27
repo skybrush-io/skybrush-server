@@ -3,9 +3,9 @@
 from __future__ import absolute_import
 
 import click
-import eventlet
 import logging
 import sys
+import trio
 
 from . import logger
 from .logger import log
@@ -24,14 +24,6 @@ from .logger import log
 )
 def start(config, debug):
     """Start the Flockwave server."""
-    # Dirty workaround for breaking import cycle according to
-    # https://github.com/eventlet/eventlet/issues/394
-    eventlet.sleep()
-
-    # Ensure that everything is monkey-patched by Eventlet as soon as
-    # possible
-    eventlet.monkey_patch()
-
     # Set up the logging format
     logger.install(level=logging.DEBUG if debug else logging.INFO)
 
@@ -54,7 +46,10 @@ def start(config, debug):
         return retval
 
     # Now start the server
-    app.start()
+    trio.run(app.start)
+
+    # Log that we have stopped cleanly.
+    log.info("Shutdown finished.")
 
 
 if __name__ == "__main__":

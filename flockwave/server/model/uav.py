@@ -7,7 +7,6 @@ from flockwave.gps.vectors import GPSCoordinate, VelocityNED
 from flockwave.server.errors import CommandInvocationError, NotSupportedError
 from flockwave.server.logger import log as base_log
 from flockwave.spec.schema import get_complex_object_schema
-from future.utils import with_metaclass, raise_with_traceback
 
 from .devices import UAVNode
 from .metamagic import ModelMeta
@@ -25,14 +24,14 @@ __all__ = (
 log = base_log.getChild("uav")
 
 
-class BatteryInfo(with_metaclass(ModelMeta)):
+class BatteryInfo(metaclass=ModelMeta):
     """Class representing the battery information of a single UAV."""
 
     class __meta__:
         schema = get_complex_object_schema("batteryInfo")
 
 
-class UAVStatusInfo(with_metaclass(ModelMeta, TimestampMixin)):
+class UAVStatusInfo(TimestampMixin, metaclass=ModelMeta):
     """Class representing the status information available about a single
     UAV.
     """
@@ -57,7 +56,7 @@ class UAVStatusInfo(with_metaclass(ModelMeta, TimestampMixin)):
         self.battery = BatteryInfo()
 
 
-class UAV(with_metaclass(ABCMeta, object)):
+class UAV(metaclass=ABCMeta):
     """Abstract object that defines the interface of objects representing
     UAVs.
     """
@@ -215,10 +214,10 @@ class UAVBase(UAV):
         self._status.update_timestamp()
 
 
-class UAVDriver(with_metaclass(ABCMeta, object)):
+class UAVDriver(metaclass=ABCMeta):
     """Interface specification for UAV drivers that are responsible for
     handling communication with a given group of UAVs via a common
-    communication channel (e.g., an XBee radio).
+    communication channel (e.g., a radio or a wireless network).
 
     Many of the methods in this class take a list of UAVs as an argument.
     These lists contain the UAVs to address with a specific request from
@@ -245,6 +244,18 @@ class UAVDriver(with_metaclass(ABCMeta, object)):
             the driver
     """
 
+    @staticmethod
+    def _execute(func, *args, **kwds):
+        """Executes the given function with the given positional and keyword
+        arguments. When the function throws an exception, catches the exception
+        and returns it as an object instead of raising it. When the function is
+        asynchronous, returns the awaitable returned by the function.
+        """
+        try:
+            return func(*args, **kwds)
+        except Exception as ex:
+            return ex
+
     def __init__(self):
         """Constructor."""
         self.app = None
@@ -265,6 +276,10 @@ class UAVDriver(with_metaclass(ABCMeta, object)):
         argument. When neither of these two methods exist, the default
         implementation simply throws a NotSupportedError_ exception.
 
+        The function will return immediately, but the return value may contain
+        awaitables for some UAVs if the execution of the command takes a
+        longer time.
+
         Parameters:
             uavs (List[UAV]): the UAVs to address with this request.
             command (str): the command to send to the UAVs
@@ -282,26 +297,45 @@ class UAVDriver(with_metaclass(ABCMeta, object)):
             NotSupportedError: if the operation is not supported by the
                 driver and will not be supported in the future either
         """
-        func = getattr(self, "handle_command_{0}".format(command), None)
-        cmd_manager = self.app.command_execution_manager
-        if func is None:
-            func = getattr(self, "handle_generic_command", None)
-            if func is None:
-                raise NotSupportedError
-            else:
-                try:
-                    return func(cmd_manager, uavs, command, args, kwds)
-                except Exception as ex:
-                    raise_with_traceback(CommandInvocationError(cause=ex))
+        args = [] if args is None else args
+        kwds = {} if kwds is None else kwds
+
+        # Figure out whether we will execute the commands for all the UAVs
+        # at the same time, or one by one, depending on what is implemented
+        # by the driver or not
+
+        handlers = [
+            (f"handle_multi_command_{command}", False, True),
+            (f"handle_command_{command}", False, False),
+            ("handle_generic_multi_command", True, True),
+            ("handle_generic_command", True, False),
+        ]
+
+        for func_name, generic, multi in handlers:
+            func = getattr(self, func_name, None)
+            if func is not None:
+                break
         else:
-            if args is None:
-                args = []
-            if kwds is None:
-                kwds = {}
-            try:
-                return func(cmd_manager, uavs, *args, **kwds)
-            except Exception as ex:
-                raise_with_traceback(CommandInvocationError(cause=ex))
+            raise NotSupportedError
+
+        if multi:
+            # Driver knows how to execute the command for multiple UAVs
+            # at the same time
+            if generic:
+                return self._execute(func, uavs, command, args, kwds)
+            else:
+                return self._execute(func, uavs, *args, **kwds)
+        else:
+            # Driver can execute the command for a single UAV only so we need
+            # to loop
+            result = {}
+            if generic:
+                result = {
+                    uav: self._execute(func, uav, command, args, kwds) for uav in uavs
+                }
+            else:
+                result = {uav: self._execute(func, uav, *args, **kwds) for uav in uavs}
+        return result
 
     def send_fly_to_target_signal(self, uavs, target):
         """Asks the driver to send a signal to the given UAVs that makes them

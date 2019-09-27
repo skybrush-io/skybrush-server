@@ -3,15 +3,16 @@
 from __future__ import absolute_import
 
 from flockwave.spec.schema import get_message_schema
-from future.utils import with_metaclass
+from typing import Optional, Union
 
+from .commands import CommandExecutionStatus
 from .metamagic import ModelMeta
 
 
 __all__ = ("FlockwaveMessage", "FlockwaveNotification", "FlockwaveResponse")
 
 
-class FlockwaveMessage(with_metaclass(ModelMeta, object)):
+class FlockwaveMessage(metaclass=ModelMeta):
     """Class representing a single Flockwave message."""
 
     class __meta__:
@@ -29,7 +30,9 @@ class FlockwaveResponse(FlockwaveMessage):
     other message.
     """
 
-    def add_failure(self, failed_id, reason=None):
+    def add_failure(
+        self, failed_id: str, reason: Optional[Union[str, Exception]] = None
+    ):
         """Adds a failure notification to the response body.
 
         A common pattern in the Flockwave protocol is that a request
@@ -66,9 +69,9 @@ class FlockwaveResponse(FlockwaveMessage):
         if reason is not None:
             reasons = body.setdefault("reasons", {})
             if failed_id not in reasons:
-                reasons[failed_id] = reason
+                reasons[failed_id] = str(reason)
 
-    def add_receipt(self, id, receipt):
+    def add_receipt(self, id: str, receipt: CommandExecutionStatus):
         """Adds a receipt for an asynchronous operation to the response
         body.
 
@@ -97,15 +100,15 @@ class FlockwaveResponse(FlockwaveMessage):
         are not duplicated.
 
         Parameters:
-            id (str): the ID for which we want to add a receipt
-            receipt (CommandExecutionStatus): the execution status object
-                whose ID we will use as a receipt to return to the client
+            id: the ID for which we want to add a receipt
+            receipt: the execution status object whose ID we will use as a
+                receipt to return to the client
         """
         body = self.body
         receipts = body.setdefault("receipts", {})
         receipts[id] = receipt.id
 
-    def add_success(self, successful_id):
+    def add_success(self, successful_id: str) -> None:
         """Adds a success notification to the response body.
 
         A common pattern in the Flockwave protocol is that a request
@@ -123,7 +126,7 @@ class FlockwaveResponse(FlockwaveMessage):
         are not duplicated.
 
         Parameters:
-            successful_id (str): the ID for which we want to add a success
+            successful_id: the ID for which we want to add a success
                 notification
         """
         body = self.body

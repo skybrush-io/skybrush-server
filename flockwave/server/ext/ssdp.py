@@ -10,22 +10,23 @@ M-SEARCH requests for root devices, and for searches for
 ``urn:collmot-com:service:flockwave`` targets.
 """
 
+from contextlib import closing
 from datetime import datetime
-from eventlet import sleep, spawn, spawn_n
-from greenlet import GreenletExit
 from io import BytesIO
 from random import random
 from six.moves import BaseHTTPServer
 from time import mktime
+from trio import sleep
 from wsgiref.handlers import format_date_time
 
 import platform
 import re
-import socket
 import struct
+import trio.socket
 
-from ..networking import create_socket
-from ..version import __version__ as flockwave_version
+from flockwave.server.networking import create_async_socket
+from flockwave.server.utils import overridden
+from flockwave.server.version import __version__ as flockwave_version
 
 USN = "flockwave"
 UPNP_DEVICE_ID = "urn:collmot-com:device:{0}:1".format(USN)
@@ -33,8 +34,6 @@ UPNP_SERVICE_ID_TEMPLATE = "urn:collmot-com:service:{0}-{{0}}:1".format(USN)
 
 app = None
 log = None
-receiver_thread = None
-sockets = None
 
 ############################################################################
 
@@ -95,8 +94,8 @@ class Sockets(object):
     """
 
     def __init__(self):
-        self.sender = create_socket(socket.SOCK_DGRAM)
-        self.receiver = create_socket(socket.SOCK_DGRAM)
+        self.sender = create_async_socket(trio.socket.SOCK_DGRAM)
+        self.receiver = create_async_socket(trio.socket.SOCK_DGRAM)
 
     def close(self):
         """Closees the sockets managed by this object."""
@@ -120,6 +119,8 @@ def get_service_uri(channel_id, address=None):
     Returns:
         Optional[str]: the URI of the channel, if known, ``None`` otherwise
     """
+    global app
+
     if app is None:
         return None
 
@@ -131,7 +132,7 @@ def get_service_uri(channel_id, address=None):
     return service.get_ssdp_location(address) if service else None
 
 
-def handle_message(message, sender):
+async def handle_message(message, sender, *, socket):
     """Handles a single message received from the given sender.
 
     Parameters:
@@ -143,7 +144,7 @@ def handle_message(message, sender):
         log.warn("Malformed SSDP request received")
         return
     elif request.command == "M-SEARCH" and request.path == "*":
-        spawn_n(handle_m_search, request)
+        await handle_m_search(request, socket=socket)
     elif request.command == "NOTIFY":
         # We don't care.
         pass
@@ -151,7 +152,7 @@ def handle_message(message, sender):
         log.warn("Unknown SSDP command: {0.command}".format(request))
 
 
-def handle_m_search(request):
+async def handle_m_search(request, *, socket):
     """Handles an incoming M-SEARCH request.
 
     Parameters:
@@ -185,7 +186,7 @@ def handle_m_search(request):
     # TODO(ntamas): for ssdp:all, we need to enumerate all services explicitly
 
     # Sleep a bit according to specs
-    sleep(random() * wait_time)
+    await sleep(random() * wait_time)
 
     # Prepare response
     for search_target, location in to_send:
@@ -197,7 +198,7 @@ def handle_m_search(request):
             extra={"LOCATION": location, "ST": search_target},
             prefix=request.request_version + " 200 OK",
         )
-        sockets.sender.sendto(response, request.client_address)
+        await socket.sendto(response, request.client_address)
 
 
 def is_valid_service(service):
@@ -253,65 +254,32 @@ def prepare_response(headers=None, extra=None, prefix=None):
     return "\r\n".join(response).encode("ascii")
 
 
-def receive_loop(sock, handler, pool_size=1000):
-    """Loop that listens for incoming messages on the given UDP socket and
-    calls a handler function for each incoming message.
-
-    Parameters:
-        sock (socket.socket): the UDP socket to listen for incoming
-            messages
-        handler (callable): the function to call with the payload of each
-            incoming message. This function will be spawned in a greenlet.
-    """
-    while True:
-        try:
-            handler(*sock.recvfrom(65536))
-        except GreenletExit:
-            break
-        except OSError:
-            # Socket error. TODO: restart the socket when possible.
-            break
-        except Exception as ex:
-            log.exception(ex)
-
-
 ############################################################################
 
 
-def load(app, configuration, logger):
-    """Loads the extension."""
+async def task(app, configuration, logger):
+    """Loop that listens for incoming messages and calls a handler
+    function for each incoming message.
+    """
     multicast_group = configuration.get("multicast_group", ("239.255.255.250"))
     port = configuration.get("port", 1900)
 
     # Set up the socket pair that we will use to send and receive SSDP messages
-    sockets = Sockets()
-    sockets.sender.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, 2)
-    sockets.sender.bind(("", 0))
+    sender = create_async_socket(trio.socket.SOCK_DGRAM)
+    sender.setsockopt(trio.socket.IPPROTO_IP, trio.socket.IP_MULTICAST_TTL, 2)
+    await sender.bind(("", 0))
 
-    sockets.receiver.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, 2)
+    receiver = create_async_socket(trio.socket.SOCK_DGRAM)
+    receiver.setsockopt(trio.socket.IPPROTO_IP, trio.socket.IP_MULTICAST_TTL, 2)
     membership_request = struct.pack(
-        "4sl", socket.inet_aton(multicast_group), socket.INADDR_ANY
+        "4sl", trio.socket.inet_aton(multicast_group), trio.socket.INADDR_ANY
     )
-    sockets.receiver.setsockopt(
-        socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, membership_request
+    receiver.setsockopt(
+        trio.socket.IPPROTO_IP, trio.socket.IP_ADD_MEMBERSHIP, membership_request
     )
-    sockets.receiver.bind((multicast_group, port))
+    await receiver.bind((multicast_group, port))
 
-    # Launch the receiver thread for incoming SSDP messages
-    receiver_thread = spawn(receive_loop, sockets.receiver, handle_message)
-    # Update the globals
-    globals().update(
-        app=app, log=logger, sockets=sockets, receiver_thread=receiver_thread
-    )
-
-
-def unload(app):
-    """Unloads the extension."""
-    global receiver_thread, sockets
-
-    if receiver_thread:
-        receiver_thread.cancel()
-        receiver_thread = None
-
-    sockets.close()
-    sockets = None
+    with overridden(globals(), app=app, log=logger), closing(sender), closing(receiver):
+        while True:
+            data = await receiver.recvfrom(65536)
+            await handle_message(*data, socket=sender)

@@ -16,7 +16,7 @@ ON_MAC = platform.system().lower() == "darwin"
 
 # Secret key to encode cookies and session data
 SECRET_KEY = (
-    b"\xa6\xd6\xd3a\xfd\xd9\x08R\xd2U\x05\x10" b"\xbf\x8c2\t\t\x94\xb5R\x06z\xe5\xef"
+    b"\xa6\xd6\xd3a\xfd\xd9\x08R\xd2U\x05\x10\xbf\x8c2\t\t\x94\xb5R\x06z\xe5\xef"
 )
 
 # Configure the command execution manager
@@ -24,12 +24,11 @@ COMMAND_EXECUTION_MANAGER = {"timeout": 30}
 
 # Declare the list of extensions to load
 EXTENSIONS = {
-    "api.v1": {},
     "debug": {"route": "/debug"},
     "fake_uavs": {
         "count": 3,
         "delay": 1.9,
-        "enabled": True,
+        "enabled": False,
         "id_format": "COLLMOT-{0:02}",
         "center": {
             # ELTE kert
@@ -43,9 +42,13 @@ EXTENSIONS = {
     "flockctrl": {
         "id_format": "{0:02}",
         "connections": {
+            # "wireless": {
+            #     "broadcast": "udp-broadcast:10.0.0.0/8?port=4243",
+            #     "unicast": "udp-subnet:10.0.0.0/8",
+            # }
             "wireless": {
-                "broadcast": "udp-broadcast:10.0.0.0/8?port=4243",
-                "unicast": "udp-subnet:10.0.0.0/8",
+                "broadcast": "udp-multicast://239.255.67.77?port=4243&interface=127.0.0.1",
+                "unicast": "udp://127.0.0.1",
             }
         },
     },
@@ -66,10 +69,9 @@ EXTENSIONS = {
     "system_clock": {},
     "tcp": {},
     "udp": {},
-    "zeroconf": {},
 }
 
 # smpte_timecode seems to have some problems on a Mac - it consumes 15% CPU
-# even when idle. Also, it is not needed on Heroku.
-if ON_MAC:
-    del EXTENSIONS["smpte_timecode"]
+# even when idle
+if ON_MAC and False:
+    EXTENSIONS.pop("smpte_timecode", None)

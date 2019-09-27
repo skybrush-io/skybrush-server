@@ -6,13 +6,18 @@ functionality such as a web-based debug page (`flockwave.ext.debug`) or a
 Socket.IO-based channel.
 """
 
-from eventlet import listen, spawn, wrap_ssl, wsgi
-from flask import abort, Flask, redirect, url_for
-from flockwave.server.authentication import jwt_authentication
+from contextlib import contextmanager
 from flockwave.server.networking import format_socket_address
 from heapq import heappush
+from hypercorn.config import Config as HyperConfig
+from hypercorn.trio import serve
+from quart import Blueprint, abort, redirect, url_for
+from quart_trio import QuartTrio
+from typing import Callable, Iterable, Optional
 
 import logging
+
+from .routing import RoutingMiddleware
 
 __all__ = ("exports", "load", "unload")
 
@@ -20,33 +25,34 @@ PACKAGE_NAME = __name__.rpartition(".")[0]
 
 ############################################################################
 
-log = None
 proposed_index_pages = []
-ssl_params = {}
-
+quart_app = None
 
 ############################################################################
 
 
 def create_app():
-    """Creates the Flask application provided by this extension."""
+    """Creates the ASGI web application provided by this extension."""
 
-    flask_app = Flask(PACKAGE_NAME)
+    global quart_app
 
-    # Disable default JWT auth rule
-    flask_app.config["JWT_AUTH_URL_RULE"] = None
-    jwt_authentication.init_app(flask_app)
+    if quart_app is not None:
+        raise RuntimeError("App is already created")
+
+    quart_app = app = QuartTrio(PACKAGE_NAME)
 
     # Set up the default index route
-    @flask_app.route("/")
-    def index():
+    @app.route("/")
+    async def index():
         index_url = get_index_url()
         if index_url:
             return redirect(index_url)
         else:
             abort(404)
 
-    return flask_app
+    router = RoutingMiddleware()
+    router.add(app, scopes=("http", "websocket"))
+    return router
 
 
 def get_index_url():
@@ -64,15 +70,68 @@ def get_index_url():
         return None
 
 
+def mount(
+    app, *, path: str, scopes: Optional[Iterable[str]] = None, priority: int = 0
+) -> Optional[Callable[[], None]]:
+    """Mounts the given ASGI web application or Quart blueprint at the
+    given path.
+
+    Parameters:
+        app: the ASGI web application or Quart blueprint to mount
+        path: the path to mount the web application or blueprint at
+        scopes: when the app is an ASGI web application, specifies the ASGI
+            scopes that the web application should respond to. `None` means
+            to respond to all scopes. Ignored for blueprints.
+        priority: the priority of the route if the app is an ASGI web
+            application. Web applications with higher priorities take precedence
+            over lower ones. Ignored for blueprints.
+
+    Returns:
+        a function that can be called to unmount the application. Unmounting
+        of blueprints is not supported yet.
+    """
+    global exports, quart_app
+
+    if isinstance(app, Blueprint):
+        quart_app.register_blueprint(app, url_prefix=path)
+    else:
+        return exports["asgi_app"].add(app, scopes=scopes, path=path, priority=priority)
+
+
+@contextmanager
+def mounted(
+    app, *, path: str, scopes: Optional[Iterable[str]] = None, priority: int = 0
+):
+    """Context manager that mounts the given ASGI web application or Quart
+    blueprint at the given path, and unmounts it when the context is exited.
+
+    Parameters:
+        app: the ASGI web application or Quart blueprint to mount
+        path: the path to mount the web application or blueprint at
+        scopes: when the app is an ASGI web application, specifies the ASGI
+            scopes that the web application should respond to. `None` means
+            to respond to all scopes. Ignored for blueprints.
+        priority: the priority of the route if the app is an ASGI web
+            application. Web applications with higher priorities take precedence
+            over lower ones. Ignored for blueprints.
+    """
+    remover = mount(app, path=path, scopes=scopes, priority=priority)
+    try:
+        yield
+    finally:
+        if remover:
+            remover()
+
+
 def propose_index_page(route, priority=0):
-    """Proposes the given Flask route as a potential index page for the
+    """Proposes the given route as a potential index page for the
     Flockwave server. This method can be called from the ``load()``
     functions of extensions when they want to propose one of their own
     routes as an index page. The server will select the index page with
     the highest priority when all the extensions have been loaded.
 
     Parameters:
-        route (str): name of a Flask route to propose as the index
+        route (str): name of a route to propose as the index
             page, in the form of ``blueprint.route``
             (e.g., ``debug.index``)
         priority (Optional[int]): the priority of the proposed route.
@@ -81,75 +140,69 @@ def propose_index_page(route, priority=0):
     heappush(proposed_index_pages, (priority, route))
 
 
-def start_server(app):
-    """Startup hook function that will be registered in the application so
-    that it will be called at the end of the startup process. Starts the HTTP
-    server in a separate green thread.
-    """
-    global exports
-    global log
-
-    address = exports.get("address")
-    if address is None:
-        log.warn("HTTP server address is not specified in configuration")
-        return
-
-    sock = listen(address)
-    if ssl_params:
-        sock = wrap_ssl(sock, server_side=True, **ssl_params)
-        secure = True
-    else:
-        secure = False
-
-    # Don't show info messages by default (unless the app is in debug mode),
-    # show warnings and errors only
-    server_log = log.getChild("wsgi_server")
-    if not app.debug:
-        server_log.setLevel(logging.WARNING)
-
-    log.info(
-        "Starting {1} server on {0}...".format(
-            format_socket_address(address), "HTTPS" if secure else "HTTP"
-        )
-    )
-
-    spawn(wsgi.server, sock, exports["wsgi_app"], debug=app.debug, log=server_log)
-
-
 ############################################################################
 
 
-def load(app, configuration, logger):
+def load(app, configuration):
     """Loads the extension."""
     global exports
-    global log
 
     address = (
         configuration.get("host", "localhost"),
         int(configuration.get("port", 5000)),
     )
-    log = logger
-    wsgi_app = create_app()
 
-    if "keyfile" in configuration and "certfile" in configuration:
-        ssl_params["keyfile"] = configuration["keyfile"]
-        ssl_params["certfile"] = configuration["certfile"]
-
-    app.register_startup_hook(start_server)
-
-    exports.update(address=address, wsgi_app=wsgi_app)
+    exports.update(address=address, asgi_app=create_app())
 
 
 def unload(app):
     """Unloads the extension."""
+    global exports, quart_app
+
+    quart_app = None
+    exports.update(address=None, asgi_app=None)
+
+
+async def task(app, configuration, logger):
     global exports
-    global log
 
-    app.unregister_startup_hook(start_server)
+    address = exports.get("address")
+    if address is None:
+        logger.warn("HTTP server address is not specified in configuration")
+        return
 
-    exports.update(address=None, wsgi_app=None)
+    host, port = address
 
-    log = None
+    # Don't show info messages by default (unless the app is in debug mode),
+    # show warnings and errors only
+    server_log = logger.getChild("hypercorn")
+    if not app.debug:
+        server_log.setLevel(logging.WARNING)
+
+    # Create configuration for Hypercorn
+    config = HyperConfig()
+    config.accesslog = server_log
+    config.bind = [f"{host}:{port}"]
+    config.certfile = configuration.get("certfile")
+    config.errorlog = server_log
+    config.keyfile = configuration.get("keyfile")
+    config.use_reloader = False
+
+    secure = bool(config.ssl_enabled)
+
+    logger.info(
+        "Starting {1} server on {0}...".format(
+            format_socket_address(address), "HTTPS" if secure else "HTTP"
+        )
+    )
+
+    await serve(exports["asgi_app"], config)
 
 
-exports = {"address": None, "propose_index_page": propose_index_page, "wsgi_app": None}
+exports = {
+    "address": None,
+    "asgi_app": None,
+    "mount": mount,
+    "mounted": mounted,
+    "propose_index_page": propose_index_page,
+}

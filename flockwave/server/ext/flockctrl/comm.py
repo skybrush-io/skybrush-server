@@ -1,6 +1,6 @@
 """Base classes for implementing communication managers that facilitate
 communication between UAVs and a ground station via some communication
-link (e.g., XBee or wireless).
+link (e.g., standard 802.11 wifi).
 """
 
 from blinker import Signal
@@ -29,11 +29,11 @@ class CommunicationManagerBase(object):
             ext (FlockCtrlDronesExtension): the extension that owns this
                 manager
             identifier (str): unique identifier of this communication
-                mananger; e.g., ``xbee`` for XBee packets or ``wireless``
-                for a wireless network. The purpose of this identifier is
-                that the ``(identifier, address)`` pair of a UAV must be
-                unique (in other words, each UAV must have a unique address
-                *within* each communication network that we handle)
+                manager; e.g., ``wireless`` for a standard 802.11 wifi
+                network. The purpose of this identifier is that the
+                ``(identifier, address)`` pair of a UAV must be unique (in
+                other words, each UAV must have a unique address *within*
+                each communication network that we handle)
         """
         self.ext = ext
         self.identifier = identifier
@@ -88,7 +88,7 @@ class CommunicationManagerBase(object):
             destination (Optional[object]): the destination address to
                 send the packet to. Its format depends on the concrete
                 communication channel; for instance, it will be a ``bytes``
-                object for the XBee channel. ``None`` means to send a
+                object for the wifi channel. ``None`` means to send a
                 broadcast packet that is targeted to all UAVs accessible
                 via the communication channel.
 

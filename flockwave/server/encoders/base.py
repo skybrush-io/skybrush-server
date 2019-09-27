@@ -3,12 +3,11 @@ Flockwave server.
 """
 
 from abc import ABCMeta, abstractmethod
-from future.utils import with_metaclass
 
 __all__ = ("Encoder",)
 
 
-class Encoder(with_metaclass(ABCMeta, object)):
+class Encoder(metaclass=ABCMeta):
     """Interface specification for message encoders that can encode and
     decode Flockwave messages or other objects in a specific message
     format.

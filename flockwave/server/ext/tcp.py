@@ -7,18 +7,19 @@ requests on a certain TCP port.
 
 import weakref
 
-from eventlet import listen, serve, spawn
-from greenlet import GreenletExit
+from contextlib import ExitStack
+from functools import partial
+from trio import CapacityLimiter, open_nursery, serve_tcp
+from typing import Optional
 
-from ..encoders import JSONEncoder
-from ..model import CommunicationChannel
-from ..networking import format_socket_address, get_socket_address
+from flockwave.server.encoders import JSONEncoder
+from flockwave.server.model import CommunicationChannel
+from flockwave.server.networking import format_socket_address, get_socket_address
+from flockwave.server.utils import overridden
 
 app = None
 encoder = JSONEncoder()
 log = None
-receiver_thread = None
-sock = None
 
 
 class TCPChannel(CommunicationChannel):
@@ -29,7 +30,7 @@ class TCPChannel(CommunicationChannel):
     def __init__(self):
         """Constructor."""
         self.address = None
-        self.socket = None
+        self.stream = None
 
     def bind_to(self, client):
         """Binds the communication channel to the given client.
@@ -37,44 +38,44 @@ class TCPChannel(CommunicationChannel):
         Parameters:
             client (Client): the client to bind the channel to
         """
-        if client.id and client.id.startswith("tcp:"):
-            host, _, port = client.id[4:].partition(":")
+        if client.id and client.id.startswith("tcp://"):
+            host, _, port = client.id[6:].partition(":")
             self.address = host, int(port)
-            self.client_ref = weakref.ref(client, self._erase_socket)
+            self.client_ref = weakref.ref(client, self._erase_stream)
         else:
             raise ValueError("client has no ID or address yet")
 
-    def send(self, message):
+    async def send(self, message):
         """Inherited."""
-        if self.socket is None:
-            self.socket = self.client_ref().socket
+        if self.stream is None:
+            self.stream = self.client_ref().stream
             self.client_ref = None
-        self.socket.send(encoder.dumps(message))
-        self.socket.send(b"\n")
 
-    def _erase_socket(self, ref):
-        self.socket = None
+        await self.stream.send_all(encoder.dumps(message) + b"\n")
+
+    def _erase_stream(self, ref):
+        self.stream = None
 
 
 ############################################################################
 
 
-def get_address(in_subnet_of=None):
+def get_address(in_subnet_of: Optional[str] = None) -> str:
     """Returns the address where we are listening for incoming TCP connections.
 
     Parameters:
-        in_subnet_of (Optional[str]): when not `None` and we are listening on
-            multiple (or all) interfaces, this address is used to pick a
-            reported address that is in the same subnet as the given address
+        in_subnet_of: when not `None` and we are listening on multiple (or
+            all) interfaces, this address is used to pick a reported address
+            that is in the same subnet as the given address
 
     Returns:
-        str: the address where we are listening
+        the address where we are listening
     """
     global sock
     return get_socket_address(sock)
 
 
-def get_ssdp_location(address):
+def get_ssdp_location(address) -> Optional[str]:
     """Returns the SSDP location descriptor of the TCP channel.
 
     Parameters:
@@ -90,100 +91,99 @@ def get_ssdp_location(address):
     )
 
 
-def handle_connection(sock, address):
-    """Handles a connection attempt from a given client.
+async def handle_connection(stream, *, limit):
+    """Handles a connection attempt from a single client.
 
     Parameters:
-        sock (socket.socket): the socket that can be used to communicate
-            with the client
-        address (Tuple[str,int]): the IP address and port of the client
+        stream (SocketStream): a Trio socket stream that we can use to
+            communicate with the client
+        limit: Trio capacity limiter that ensures that we are not processing
+            too many requests concurrently
     """
-    client_id = "tcp:{0}:{1}".format(*address)
-    with app.client_registry.temporary_client(client_id, "tcp") as client:
-        client.socket = sock
+    socket = stream.socket
+    address = socket.getsockname()
+
+    client_id = "tcp://{0}:{1}".format(*address)
+    handler = partial(handle_message, limit=limit)
+
+    with app.client_registry.use(client_id, "tcp") as client:
+        client.stream = stream
         chunks = []
-        while True:
-            data = sock.recv(1024)
-            if data:
-                pos = data.find(b"\n")
-                if pos >= 0:
-                    pos += 1
-                    chunks.append(data[:pos])
-                    message = b"".join(chunks)
-                    handle_message_safely(message, client)
-                    chunks[:] = [data[pos:]] if pos < len(data) else []
+        async with open_nursery() as nursery:
+            while True:
+                data = await stream.receive_some(1024)
+                if data:
+                    pos = data.find(b"\n")
+                    if pos >= 0:
+                        pos += 1
+                        chunks.append(data[:pos])
+                        message = b"".join(chunks)
+                        nursery.start_soon(handler, message, client)
+                        chunks[:] = [data[pos:]] if pos < len(data) else []
+                    else:
+                        chunks.append(data)
                 else:
-                    chunks.append(data)
-            else:
-                return
+                    return
 
 
-def handle_message(message, client):
+async def handle_connection_safely(stream, *, limit):
+    """Handles a connection attempt from a single client, ensuring
+    that exceptions do not propagate through.
+
+    Parameters:
+        stream (SocketStream): a Trio socket stream that we can use to
+            communicate with the client
+        limit: Trio capacity limiter that ensures that we are not processing
+            too many requests concurrently
+    """
+    try:
+        return await handle_connection(stream, limit=limit)
+    except Exception as ex:
+        # Exceptions raised during a connection are caught and logged here;
+        # we do not let the main task itself crash because of them
+        log.exception(ex)
+
+
+async def handle_message(message: bytes, client, *, limit: CapacityLimiter) -> None:
     """Handles a single message received from the given sender.
 
     Parameters:
-        message (bytes): the incoming message, waiting to be parsed
-        client (Client): the client that sent the message
+        message: the incoming message, waiting to be parsed
+        client: the client that sent the message
     """
     try:
         message = encoder.loads(message)
     except ValueError as ex:
-        log.warn(
-            "Malformed JSON message received from {1!r}: {0!r}".format(
-                message[:20], client.id
-            )
-        )
+        log.warn(f"Malformed JSON message received from {client.id}: {message[:20]}")
         log.exception(ex)
         return
-    app.message_hub.handle_incoming_message(message, client)
 
-
-def handle_message_safely(message, client):
-    """Handles a single message received from the given sender, ensuring
-    that exceptions do not propagate through.
-
-    Parameters:
-        message (bytes): the incoming message, waiting to be parsed
-        client (Client): the client that sent the message
-    """
-    try:
-        return handle_message(message, client)
-    except GreenletExit:
-        return
-    except Exception as ex:
-        log.exception(ex)
+    async with limit:
+        await app.message_hub.handle_incoming_message(message, client)
 
 
 ############################################################################
 
 
-def load(app, configuration, logger):
-    """Loads the extension."""
-    address = configuration.get("host", ""), configuration.get("port", 5001)
-    sock = listen(address)
+async def task(app, configuration, logger):
+    """Background task that is active while the extension is loaded."""
+    host = configuration.get("host", "")
+    port = configuration.get("port", 5001)
+    pool_size = configuration.get("pool_size", 1000)
 
-    app.channel_type_registry.add(
-        "tcp", factory=TCPChannel, address=get_address, ssdp_location=get_ssdp_location
-    )
+    with ExitStack() as stack:
+        stack.enter_context(overridden(globals(), app=app, log=logger))
+        stack.enter_context(
+            app.channel_type_registry.use(
+                "tcp",
+                factory=TCPChannel,
+                address=get_address,
+                ssdp_location=get_ssdp_location,
+            )
+        )
 
-    receiver_thread = spawn(
-        serve,
-        sock,
-        handle=handle_connection,
-        concurrency=configuration.get("pool_size", 1000),
-    )
+        limit = CapacityLimiter(pool_size)
+        handler = partial(handle_connection, limit=limit)
 
-    globals().update(app=app, log=logger, sock=sock, receiver_thread=receiver_thread)
-
-
-def unload(app):
-    """Unloads the extension."""
-    global receiver_thread
-
-    if receiver_thread:
-        receiver_thread.cancel()
-        receiver_thread = None
-
-    app.channel_type_registry.remove("tcp")
-
-    globals().update(app=None, log=None, sock=None)
+        async with open_nursery() as nursery:
+            await nursery.start(partial(serve_tcp, handler, port, host=host))

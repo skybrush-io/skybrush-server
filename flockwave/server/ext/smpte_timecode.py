@@ -6,29 +6,23 @@ Support for other connection types (e.g., TCP/IP) may be added later.
 
 from __future__ import division
 
-from blinker import Signal
-from collections import namedtuple
-from eventlet import spawn
-from eventlet.timeout import Timeout
-from future.utils import python_2_unicode_compatible
+import attr
+
+from contextlib import contextmanager, ExitStack
 from time import time
+from trio import move_on_after
 
 from .base import ExtensionBase
 
 from ..model import ConnectionPurpose
 
 from flockwave.server.model import StoppableClockBase
-from flockwave.server.connections import create_connection, reconnecting
+from flockwave.server.connections import create_connection
 from flockwave.server.connections.midi import MIDIPortConnection
 
 
-_SMPTETimecodeBase = namedtuple(
-    "SMPTETimecode", "hour minute second frame frames_per_second drop"
-)
-
-
-@python_2_unicode_compatible
-class SMPTETimecode(_SMPTETimecodeBase):
+@attr.s
+class SMPTETimecode:
     """Class representing a single SMPTE timecode.
 
     Attributes:
@@ -39,6 +33,13 @@ class SMPTETimecode(_SMPTETimecodeBase):
         frames_per_second (int): the number of frames per second
         drop (bool): whether this is a drop-frame timecode
     """
+
+    hour: int = attr.ib(default=0)
+    minute: int = attr.ib(default=0)
+    second: int = attr.ib(default=0)
+    frame: int = attr.ib(default=0)
+    frames_per_second: int = attr.ib(default=25)
+    drop: bool = attr.ib(default=False)
 
     @property
     def total_frames(self):
@@ -213,7 +214,7 @@ class MIDIClock(StoppableClockBase):
     def __init__(self):
         """Constructor."""
         super(MIDIClock, self).__init__(id="mtc")
-        self._last_timecode = None
+        self._last_timecode = SMPTETimecode()
         self._last_local_timestamp = None
 
     def _calculate_drift(self, timecode, local_timestamp):
@@ -234,9 +235,6 @@ class MIDIClock(StoppableClockBase):
                 be less than the duration of a single frame in most cases
                 when the clock is running.
         """
-        if self._last_timecode is None:
-            return 0.0
-
         delta_timecode = timecode.total_frames - self._last_timecode.total_frames
 
         if self.running:
@@ -246,14 +244,14 @@ class MIDIClock(StoppableClockBase):
         else:
             return delta_timecode
 
-    def notify_timecode(self, timecode, local_timestamp):
+    def notify_timecode(self, timecode: SMPTETimecode, local_timestamp: float):
         """Notify the clock that an SMPTE timecode was observed on the MIDI
         connection.
 
         Parameters:
-            timecode (SMPTETimecode): the timecode that was observed
-            local_timestamp (float): the local timestamp (in UTC) when the
-                timecode was observed
+            timecode: the timecode that was observed
+            local_timestamp: the local timestamp (in UTC) when the timecode was
+                observed
         """
         drift = self._calculate_drift(timecode, local_timestamp)
 
@@ -264,32 +262,92 @@ class MIDIClock(StoppableClockBase):
         if abs(drift) > 2:
             self.changed.send(self, delta=drift)
 
-    def ticks_given_time(self, now):
+    def ticks_given_time(self, now: float) -> float:
         """Returns the number of frames elapsed since the epoch of the
         clock, assuming that the internal clock of the server has a given
         value.
 
         Parameters:
-            now (float): the state of the internal clock of the server,
-                expressed in number of seconds since the Unix epoch
+            now: the state of the internal clock of the server, expressed in
+                number of seconds since the Unix epoch
 
         Returns:
-            float: the number of frames elapsed
+            the number of frames elapsed
         """
-        if self._last_timecode is None:
-            return 0.0
-
         # If the clock is running, we have to extrapolate from the last
         # timecode and local timestamp to get the correct number of ticks.
         # If the clock is not running, we just return the last timecode.
-        if not self.running:
-            return self._last_timecode.total_frames
-        else:
-            elapsed = now - self._last_local_timestamp
-            return (
-                self._last_timecode.total_frames
-                + elapsed * self._last_timecode.frames_per_second
-            )
+        elapsed = now - self._last_local_timestamp if self.running else 0.0
+        return (
+            self._last_timecode.total_frames
+            + elapsed * self._last_timecode.frames_per_second
+        )
+
+
+class InboundMessageParser:
+    """Trio task that parses and processes inbound MIDI messages.
+
+    Attributes:
+        port (MIDIConnection): the MIDI connection that the task reads
+            messages from.
+    """
+
+    @attr.s
+    class Message:
+        timecode = attr.ib(default=None)
+        local_timestamp = attr.ib(default=None)
+        running = attr.ib(default=False)
+
+    def __init__(self, port):
+        """Constructor.
+
+        Parameters:
+            port (MIDIConnection): the MIDI connection to read messages from
+        """
+        self.port = port
+        self.assembler = MIDITimecodeAssembler()
+
+    async def _read_next_timecode(self):
+        """Reads the next timecode frame from the MIDI connection. Blocks
+        until the next timecode is received.
+        """
+        while True:
+            message = await self.port.read()
+            result = self.assembler.feed(message)
+            if result is not None:
+                return result
+
+    async def run(self):
+        """Main entry point of the Trio task that reads messages in an infinite
+        loop from the MIDI connection.
+        """
+        running = False
+        await self.port.wait_until_connected()
+        while True:
+            result = None
+            if running:
+                # Wait for the next MIDI timecode frame with a timeout. If
+                # no timecode frame arrives within 0.2 seconds, stop the
+                # clock. In theory, 0.1 seconds should be plenty, but
+                # there seems to be large delays when using Ardour as the
+                # MTC master on Linux and sometimes 0.1 seconds is not enough.
+                with move_on_after(0.2):
+                    result = await self._read_next_timecode()
+            else:
+                # Just read the next timecode without a timeout.
+                result = await self._read_next_timecode()
+
+            if result is None:
+                # The clock was playing and we have timed out. Stop the
+                # clock without updating the timecode.
+                running = False
+                yield self.Message()
+            else:
+                # Update the timecode.
+                timestamp, timecode, running = result
+                yield self.Message(
+                    local_timestamp=timestamp, timecode=timecode, running=running
+                )
 
 
 class SMPTETimecodeExtension(ExtensionBase):
@@ -301,9 +359,6 @@ class SMPTETimecodeExtension(ExtensionBase):
         """Constructor."""
         super(SMPTETimecodeExtension, self).__init__(*args, **kwds)
         self._clock = None
-        self._inbound_parser = None
-        self._inbound_thread = None
-        self._midi = None
 
     @property
     def clock(self):
@@ -312,71 +367,36 @@ class SMPTETimecodeExtension(ExtensionBase):
         """
         return self._clock
 
-    def configure(self, configuration):
-        """Configures the extension."""
-        self.midi = create_connection(configuration.get("connection"))
-        if self.midi is None:
+    async def task(self, app, configuration, logger):
+        conn = configuration.get("connection")
+        conn = create_connection(conn) if conn else None
+
+        if conn is None:
             # This can happen if there is no MIDI support on the current
             # platform
-            pass
-        elif not isinstance(self.midi, MIDIPortConnection):
-            raise TypeError(
-                "{0} supports MIDIPortConnection connections "
-                "only".format(self.__class__.__name__)
-            )
-        else:
-            self.midi = reconnecting(self.midi)
-
-    @property
-    def midi(self):
-        """The MIDI connection that the thread reads messages from."""
-        return self._midi
-
-    @midi.setter
-    def midi(self, value):
-        if self._midi == value:
             return
-
-        if self._midi is not None:
-            self._inbound_parser.timecode_received.disconnect(
-                self._on_timecode_received
+        elif not isinstance(conn, MIDIPortConnection):
+            raise TypeError(
+                f"{self.__class__.__name__} supports MIDIPortConnection "
+                "connections only"
             )
-            self._inbound_thread.kill()
-            self._inbound_parser = None
-            self._inbound_thread = None
-            self._midi.close()
 
-            self.app.connection_registry.remove("MIDI")
-
-        self._midi = value
-
-        if self._midi is not None:
-            try:
-                self._midi.open()
-            except ImportError as ex:
-                self.log.warn(
-                    "No MIDI support; {0.name!r} module is " "missing".format(ex)
+        with ExitStack() as stack:
+            stack.enter_context(
+                self.app.connection_registry.use(
+                    conn,
+                    "MIDI",
+                    description="MIDI timecode provider",
+                    purpose=ConnectionPurpose.time,
                 )
-                self._midi = None
-                return
-
-            self.app.connection_registry.add(
-                self._midi,
-                "MIDI",
-                description="MIDI timecode provider",
-                purpose=ConnectionPurpose.time,
             )
+            stack.enter_context(self._use_clock(MIDIClock()))
+            await app.supervise(conn, task=self._handle_midi_messages)
 
-            self._set_clock(MIDIClock())
-
-            self._inbound_parser = InboundMessageParserThread(self._midi)
-            self._inbound_parser.timecode_received.connect(
-                self._on_timecode_received, sender=self._inbound_parser
-            )
-
-            self._inbound_thread = spawn(self._inbound_parser.run)
-        else:
-            self._set_clock(None)
+    async def _handle_midi_messages(self, conn):
+        task = InboundMessageParser(conn)
+        async for message in task.run():
+            self._on_timecode_received(message)
 
     def _on_clock_changed(self, sender, delta):
         """Handler called when the MIDI clock was adjusted."""
@@ -390,23 +410,17 @@ class SMPTETimecodeExtension(ExtensionBase):
         """Handler called when the MIDI clock was stopped."""
         self.log.info("MIDI clock stopped", extra={"id": self._clock.id})
 
-    def _on_timecode_received(self, sender, timecode, local_timestamp, running):
+    def _on_timecode_received(self, message: InboundMessageParser.Message) -> None:
         """Handler called when a new timecode was received by the
         inbound thread.
 
         Parameters:
-            sender (InboundMessageParserThread): the parser that received
-                the timecode
-            timecode (Optional[SMPTETimecode]): the timecode that was
-                received or ``None`` if no timecode was received and we
-                only need to update whether the clock is running or not
-            local_timestamp (float): the local timestamp corresponding to
-                the timecode, in UTC
-            running (bool): whether the clock is running
+            message: the timecode that was received, and the corresponding local
+                timestamp
         """
-        if timecode is not None:
-            self._clock.notify_timecode(timecode, local_timestamp)
-        self._clock.running = running
+        if message.timecode is not None:
+            self._clock.notify_timecode(message.timecode, message.local_timestamp)
+        self._clock.running = message.running
 
     def _set_clock(self, value):
         """Private setter for the ``clock`` property that should not be
@@ -430,65 +444,15 @@ class SMPTETimecodeExtension(ExtensionBase):
             self._clock.started.connect(self._on_clock_started, sender=self._clock)
             self._clock.stopped.connect(self._on_clock_stopped, sender=self._clock)
 
-
-class InboundMessageParserThread(object):
-    """Green thread that parses and processes inbound MIDI messages.
-
-    Attributes:
-        port (MIDIConnection): the MIDI connection that the thread reads
-            messages from.
-    """
-
-    timecode_received = Signal()
-
-    def __init__(self, port):
-        """Constructor.
-
-        Parameters:
-            port (MIDIConnection): the MIDI connection to read messages from
-        """
-        self.port = port
-        self.assembler = MIDITimecodeAssembler()
-
-    def _read_next_timecode(self):
-        """Reads the next timecode frame from the MIDI connection. Blocks
-        until the next timecode is received.
-        """
-        while True:
-            result = self.assembler.feed(self.port.read())
-            if result is not None:
-                return result
-
-    def run(self):
-        """Body of the green thread that reads messages in an infinite loop
-        from the MIDI connection.
-        """
-        running = False
-        while True:
-            result = None
-            if running:
-                # Wait for the next MIDI timecode frame with a timeout. If
-                # no timecode frame arrives within 0.2 seconds, stop the
-                # clock. In theory, 0.1 seconds should be plenty, but
-                # there seems to be large delays when using Ardour as the
-                # MTC master on Linux and sometimes 0.1 seconds is not enough.
-                with Timeout(0.2, False):
-                    result = self._read_next_timecode()
-            else:
-                # Just read the next timecode without a timeout.
-                result = self._read_next_timecode()
-
-            if result is None:
-                # The clock was playing and we have timed out. Stop the
-                # clock without updating the timecode.
-                timestamp, timecode, running = None, None, False
-            else:
-                # Update the timecode.
-                timestamp, timecode, running = result
-
-            self.timecode_received.send(
-                self, timecode=timecode, local_timestamp=timestamp, running=running
-            )
+    @contextmanager
+    def _use_clock(self, value):
+        """Context manager variant of ``self._set_clock()``."""
+        old_clock = self.clock
+        self._set_clock(value)
+        try:
+            yield
+        finally:
+            self._set_clock(old_clock)
 
 
 construct = SMPTETimecodeExtension

@@ -10,7 +10,6 @@ import jsonschema
 from collections import namedtuple
 from contextlib import contextmanager
 from flockwave.spec.schema import ref_resolver as flockwave_schema_ref_resolver
-from future.utils import iteritems, PY2
 
 __all__ = ("ModelMeta",)
 
@@ -89,7 +88,7 @@ def collect_properties(schema, resolver, result=None):
 
     # Handle 'properties' keyword
     if "properties" in schema:
-        for name, definition in iteritems(schema["properties"]):
+        for name, definition in schema["properties"].items():
             result[name] = PropertyInfo.from_json_schema(name, definition)
 
     return result
@@ -187,8 +186,6 @@ class ModelMetaHelpers(object):
             property_info (PropertyInfo): an object that describes the
                 underlying JSON property based on the schema
         """
-        if PY2:
-            name = name.encode("ascii")
 
         def getter(self):
             try:
@@ -220,7 +217,7 @@ class ModelMetaHelpers(object):
                 PropertyInfo_ objects that describe the underlying JSON
                 property based on the schema
         """
-        for name, info in iteritems(property_info):
+        for name, info in property_info.items():
             cls.add_proxy_property(dct, name, info)
 
     @staticmethod

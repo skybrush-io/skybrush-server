@@ -2,6 +2,6 @@
 on a specific port.
 """
 
-from .extension import exports, load, unload
+from .extension import exports, load, task, unload
 
-__all__ = ("exports", "load", "unload")
+__all__ = ("exports", "load", "task", "unload")

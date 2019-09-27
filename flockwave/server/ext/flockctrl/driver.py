@@ -111,7 +111,7 @@ class FlockCtrlDriver(UAVDriver):
         Parameters:
             uav (FlockCtrlUAV): the UAV to check
             medium (str): the communication medium on which the address is
-                valid (e.g., ``xbee`` or ``wireless``)
+                valid (e.g., ``wireless``)
             address (object): the source address of the UAV
 
         Raises:
@@ -131,7 +131,7 @@ class FlockCtrlDriver(UAVDriver):
             FlockCtrlCompressedCommandResponsePacket: self._handle_inbound_command_response_packet,
             FlockCtrlCommandResponsePacket: self._handle_inbound_command_response_packet,
             FlockCtrlAlgorithmDataPacket: self._handle_inbound_algorithm_data_packet,
-            FlockCtrlMissionInfoPacket: nop
+            FlockCtrlMissionInfoPacket: nop,
         }
 
     def _create_uav(self, formatted_id):
@@ -194,9 +194,7 @@ class FlockCtrlDriver(UAVDriver):
         return result
 
     def handle_inbound_packet(self, packet):
-        """Handles an inbound FlockCtrl packet received over an XBee
-        connection.
-        """
+        """Handles an inbound FlockCtrl packet received over a connection."""
         packet_class = packet.__class__
         handler = self._packet_handlers.get(packet_class)
         if handler is None:
@@ -352,7 +350,7 @@ class FlockCtrlDriver(UAVDriver):
                     "in progress".format(existing_command)
                 )
 
-        self._commands_by_uav[uav.id] = receipt = cmd_manager.start()
+        self._commands_by_uav[uav.id] = receipt = cmd_manager.new()
         self._send_command_to_address(command, address)
         return receipt
 
@@ -405,7 +403,7 @@ class FlockCtrlUAV(UAVBase):
     Attributes:
         addresses (Dict[str,object]): the addresses of this UAV, keyed by the
             various communication media that we may use to access the UAVs
-            (e.g., ``xbee``, ``wireless`` and so on)
+            (e.g., ``wireless``)
     """
 
     def __init__(self, *args, **kwds):
@@ -413,15 +411,13 @@ class FlockCtrlUAV(UAVBase):
         self.addresses = {}
 
     def check_or_record_address(self, medium, address):
-        """When this UAV has no known XBee address yet (i.e.
-        ``self.address`` is ``None``), stores the given address as the
-        XBee address of this UAV. When this UAV has an XBee address, checks
-        whether the address is equal to the given one and raises an
-        AddressConflictError if the two addresses are not equal
+        """When this UAV has no known address yet for the given communication
+        medium, stores the given address. When this UAV has an address for the
+        given medium, checks whether the address is equal to the given one and
+        raises an AddressConflictError if the two addresses are not equal
 
         Parameters:
             medium (str): the communication medium that this address applies to
-                (e.g., ``xbee`` or ``wireless``)
             address (bytes): the address of the UAV on the communication
                 medium
 
@@ -438,8 +434,7 @@ class FlockCtrlUAV(UAVBase):
     @property
     def preferred_address(self):
         """Returns the preferred medium and address via which the packets
-        should be sent to this UAV. UAVs prefer wifi addresses to XBee
-        addresses.
+        should be sent to this UAV.
 
         Returns:
             (str, object): the preferred medium and address of the UAV
@@ -447,12 +442,14 @@ class FlockCtrlUAV(UAVBase):
         Throws:
             ValueError: if the UAV has no known address yet
         """
-        for medium in ("wireless", "xbee"):
+        for medium in ("wireless",):
             address = self.addresses.get(medium)
             if address is not None:
                 return medium, address
 
-        raise ValueError("UAV has no wireless or XBee address yet")
+        raise ValueError(
+            "UAV has no address yet in any of the supported communication media"
+        )
 
     def update_detected_features(self, itow, features, mutator):
         """Updates the visual features detected by the camera attached to the

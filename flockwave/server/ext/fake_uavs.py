@@ -7,9 +7,10 @@ having access to real hardware that provides UAV position and velocity data.
 from __future__ import absolute_import, division
 
 from enum import Enum
-from eventlet import sleep, spawn, spawn_after
 from math import atan2, cos, hypot, sin, pi
 from random import random, choice
+from trio import sleep
+from trio_util import periodic
 
 from flockwave.gps.vectors import (
     FlatEarthCoordinate,
@@ -59,44 +60,32 @@ class FakeUAVDriver(UAVDriver):
         uav.target = center
         return uav
 
-    def handle_command_error(self, cmd_manager, uavs, value=0):
+    def handle_command_error(self, uav, value=0):
         value = int(value)
-        result = {}
-        for uav in uavs:
-            result[uav] = receipt = cmd_manager.start()
-            uav.error = value
-            cmd_manager.finish(
-                receipt,
-                "Error code set to {0}".format(uav.error)
-                if uav.has_error
-                else "Error code cleared",
-            )
-        return result
+        uav.error = value
+        return (
+            f"Error code set to {uav.error}" if uav.has_error else "Error code cleared"
+        )
 
-    def handle_command_timeout(self, cmd_manager, uavs):
-        return {uav: cmd_manager.start() for uav in uavs}
+    async def handle_command_timeout(self, uav):
+        await sleep(1000000)
 
-    def handle_command_yo(self, cmd_manager, uavs):
-        result = {}
-        for uav in uavs:
-            result[uav] = receipt = cmd_manager.start()
-            delay = 0.5 + random()
-            response = "yo" + choice("?!.")
-            spawn_after(delay, cmd_manager.finish, receipt, response)
-        return result
+    async def handle_command_yo(self, uav):
+        await sleep(0.5 + random())
+        return "yo" + choice("?!.")
 
-    def _send_fly_to_target_signal_single(self, cmd_manager, uav, target):
+    def _send_fly_to_target_signal_single(self, uav, target):
         if uav.state == FakeUAVState.LANDED:
             uav.takeoff()
             if target.agl is None and target.amsl is None:
                 target.agl = uav.cruise_altitude
         uav.target = target
 
-    def _send_landing_signal_single(self, cmd_manager, uav):
+    def _send_landing_signal_single(self, uav):
         uav.land()
         return True
 
-    def _send_takeoff_signal_single(self, cmd_manager, uav):
+    def _send_takeoff_signal_single(self, uav):
         uav.takeoff()
         return True
 
@@ -457,7 +446,7 @@ class FakeUAV(UAVBase):
 
         device = node.add_device("thermometer")
         self.thermometer = device.add_channel(
-            "temperature", type=object, unit=u"\u00b0C"
+            "temperature", type=object, unit="\u00b0C"
         )
 
         device = node.add_device("geiger_counter")
@@ -487,10 +476,11 @@ class FakeUAVProviderExtension(UAVExtensionBase):
     def __init__(self):
         """Constructor."""
         super(FakeUAVProviderExtension, self).__init__()
+        self._delay = 1
+
         self.radiation = None
         self.uavs = []
         self.uav_ids = []
-        self._status_updater = StatusUpdater(self)
 
     def _create_driver(self):
         return FakeUAVDriver()
@@ -501,7 +491,7 @@ class FakeUAVProviderExtension(UAVExtensionBase):
         id_format = configuration.get("id_format", "FAKE-{0}")
 
         # Set the status updater thread frequency
-        self._status_updater.delay = configuration.get("delay", 1)
+        self.delay = configuration.get("delay", 1)
 
         # Get the center of the circle
         center = configuration.get("center")
@@ -528,93 +518,11 @@ class FakeUAVProviderExtension(UAVExtensionBase):
             for index, id in enumerate(self.uav_ids)
         ]
 
-        # Get hold of the 'radiation' extension
+        # Get hold of the 'radiation' extension and associate it to all our
+        # UAVs
         radiation_ext = self.app.extension_manager.import_api("radiation")
-
-        # Register all the UAVs that we have created
         for uav in self.uavs:
             uav.radiation_ext = radiation_ext
-            self.app.uav_registry.add(uav)
-
-    def spindown(self):
-        self._status_updater.stop()
-
-    def spinup(self):
-        self._status_updater.start()
-
-
-class _StatusUpdaterThread(object):
-    """Green thread managed by the StatusUpdater_."""
-
-    def __init__(self, ext, delay, callback=None):
-        """Constructor."""
-        self.callback = callback
-        self._delay = delay
-        self._ext = ext
-        self._running = False
-        self._spawned_green_thread = None
-        self._stopping = False
-
-    def request_stop(self):
-        """Asks the thread to stop as soon as possible (i.e. in the next
-        iteration of the main loop).
-        """
-        self._stopping = True
-
-    @property
-    def running(self):
-        """Returns whether the main loop of the thread is currently
-        running.
-        """
-        return self._spawned_green_thread is not None
-
-    @property
-    def stopping(self):
-        """Returns whether the main loop of the thread has been requested to
-        stop but has not stopped yet.
-        """
-        return self.running and self._stopping
-
-    def start(self):
-        assert not self._spawned_green_thread
-        status_updater = self._update_and_report_status
-        self._spawned_green_thread = spawn(status_updater)
-        self._spawned_green_thread.link(self._on_thread_stopped)
-
-    def _update_and_report_status(self):
-        """Updates and reports the status of all the UAVs."""
-        app = self._ext.app
-        uavs = self._ext.uavs
-        uav_ids = self._ext.uav_ids
-
-        while not self._stopping:
-            with self._ext.create_device_tree_mutation_context() as mutator:
-                for uav in uavs:
-                    uav.step(mutator=mutator, dt=self._delay)
-
-            app.request_to_send_UAV_INF_message_for(uav_ids)
-
-            sleep(self._delay)
-
-    def _on_thread_stopped(self, thread):
-        """Handler called when the green thread terminates."""
-        self._stopping = False
-        self._spawned_green_thread = None
-        if self.callback is not None:
-            self.callback(self)
-
-
-class StatusUpdater(object):
-    """Status updater object that manages a green thread that will report
-    the status of the fake UAVs periodically.
-    """
-
-    def __init__(self, ext, delay=1):
-        """Constructor."""
-        self._thread = None
-        self._delay = None
-        self._ext = ext
-        self.delay = delay
 
     @property
     def delay(self):
@@ -627,40 +535,17 @@ class StatusUpdater(object):
     def delay(self, value):
         self._delay = max(float(value), 0)
 
-    @property
-    def running(self):
-        """Returns whether the status reporter thread is running."""
-        return self._thread and self._thread.running
+    async def worker(self, app, configuration, logger):
+        """Main background task of the extension that updates the state of
+        the UAVs periodically.
+        """
+        with app.uav_registry.use(*self.uavs):
+            async for _ in periodic(self._delay):
+                with self.create_device_tree_mutation_context() as mutator:
+                    for uav in self.uavs:
+                        uav.step(mutator=mutator, dt=self._delay)
 
-    @property
-    def stopping(self):
-        """Returns whether the status reporter thread is stopping."""
-        return self._thread and self._thread.stopping
-
-    def start(self):
-        """Starts the status reporter thread if it is not running yet."""
-        if self.running and not self.stopping:
-            return
-
-        self._thread = _StatusUpdaterThread(
-            self._ext, self.delay, self._on_thread_stopped
-        )
-        self._thread.start()
-
-    def stop(self):
-        """Stops the status reporter thread if it is running."""
-        if not self.running or self.stopping:
-            return
-        self._thread.request_stop()
-
-    def _on_thread_stopped(self, thread):
-        """Handler called when the status updater green thread terminated."""
-        # The next check is needed because a call to stop() followed by
-        # a start() immediately might mean that the first thread that was
-        # stopped did not have a chance to clean up after itself before
-        # the second thread has started.
-        if self._thread is thread:
-            self._thread = None
+                app.request_to_send_UAV_INF_message_for(self.uav_ids)
 
 
 construct = FakeUAVProviderExtension

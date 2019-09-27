@@ -2,7 +2,9 @@
 
 from __future__ import absolute_import, print_function
 
-from .base import ConnectionBase, ConnectionState
+from trio import to_thread
+
+from .base import ConnectionBase
 from .factory import create_connection
 
 __all__ = ("MIDIPortConnection",)
@@ -30,33 +32,26 @@ class MIDIPortConnection(ConnectionBase):
         self.path = path
         self._port = None
 
-    def close(self):
+    async def _close(self):
         """Closes the MIDI port connection."""
-        if self.state == ConnectionState.DISCONNECTED:
-            return
-
-        self._set_state(ConnectionState.DISCONNECTING)
-        self._port.close()
+        await to_thread.run_sync(self._port.close)
         self._port = None
-        self._set_state(ConnectionState.DISCONNECTED)
 
-    def open(self):
+    async def _open(self):
         """Opens the MIDI port connection."""
-        if self.state in (ConnectionState.CONNECTED, ConnectionState.CONNECTING):
-            return
+        self._port = await to_thread.run_sync(self.mido.open_input, self.path)
 
-        self._set_state(ConnectionState.CONNECTING)
-        self._port = self.mido.open_input(self.path)
-        self._set_state(ConnectionState.CONNECTED)
-
-    def read(self):
+    async def read(self):
         """Reads the next message from the MIDI port, blocking until one
         actually arrives.
 
         Returns:
             mido.Message: the next message from the MIDI port
         """
-        return self._port.receive()
+        # It would be much better to do this with a worker thread and queues,
+        # but in order to spawn a worker thread, we would need to pass in a
+        # nursery
+        return await to_thread.run_sync(self._port.receive, cancellable=True)
 
     @staticmethod
     def list():
@@ -72,9 +67,10 @@ class MIDIPortConnection(ConnectionBase):
         return mido.get_input_names(), mido.get_output_names()
 
 
-def main():
+async def main():
     """Tester function that prints the names of all available input and
-    output MIDI ports.
+    output MIDI ports, then prints all incoming messages on the first
+    input port.
     """
     input_ports, output_ports = MIDIPortConnection.list()
     print("Output ports:")
@@ -83,9 +79,14 @@ def main():
     print("Input ports:")
     print("\n".join(input_ports))
     print("")
-    print("Output ports:")
-    print("\n".join(output_ports))
+
+    if input_ports:
+        async with MIDIPortConnection(input_ports[0]) as conn:
+            while True:
+                print(await conn.read())
 
 
 if __name__ == "__main__":
-    main()
+    import trio
+
+    trio.run(main)

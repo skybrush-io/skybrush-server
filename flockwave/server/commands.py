@@ -3,10 +3,10 @@ remote UAVs.
 """
 
 from blinker import Signal
-from future.utils import iteritems
-from greenlet import GreenletExit
-from eventlet import sleep, spawn_n
+from inspect import isawaitable
 from time import time
+from trio import CancelScope, current_time, open_memory_channel, open_nursery
+from trio_util import periodic
 
 from .logger import log as base_log
 from .model import CommandExecutionStatus, CommandExecutionStatusBuilder
@@ -61,11 +61,8 @@ class CommandExecutionManager(RegistryBase):
         """
         super(CommandExecutionManager, self).__init__()
         self._builder = CommandExecutionStatusBuilder()
-        self._cleanup_greenlet = spawn_n(self._cleanup_loop)
+        self._tx_queue, self._rx_queue = open_memory_channel(0)
         self.timeout = timeout
-
-    def __del__(self):
-        self._cleanup_greenlet.kill()
 
     def cleanup(self):
         """Runs a cleanup process on the dictionary containing the commands
@@ -80,36 +77,15 @@ class CommandExecutionManager(RegistryBase):
         expiry = time() - self.timeout
         to_remove = [
             key
-            for key, status in iteritems(commands)
+            for key, status in commands.items()
             if status.finished is not None
             or status.cancelled is not None
             or status.created_at < expiry
         ]
         if to_remove:
             expired = [commands.pop(key) for key in to_remove]
-            expired = [
-                command
-                for command in expired
-                if command.finished is None and command.cancelled is None
-            ]
+            expired = [command for command in expired if command.is_in_progress]
             self.expired.send(self, statuses=expired)
-
-    def _cleanup_loop(self, seconds=1):
-        """Runs the cleanup process periodically in an infinite loop. This
-        method should be launched in a background greenlet.
-
-        Parameters:
-            second (int or float): number of seconds to wait between
-                consecutive cleanups.
-        """
-        while True:
-            sleep(seconds)
-            try:
-                self.cleanup()
-            except GreenletExit:
-                break
-            except Exception as ex:
-                log.exception(ex)
 
     def cancel(self, receipt_id):
         """Cancels the execution of the asynchronous command with the given
@@ -160,7 +136,7 @@ class CommandExecutionManager(RegistryBase):
 
         self._send_finished_signal_if_needed(command)
 
-    def mark_as_clients_notified(self, receipt_id, result=None):
+    def mark_as_clients_notified(self, receipt_id):
         """Marks that the asynchronous command with the given receipt identifier
         was passed back to the client that originally initiated the request.
 
@@ -175,39 +151,36 @@ class CommandExecutionManager(RegistryBase):
         command = self._get_command_from_id(receipt_id)
         if command is None:
             # Request has probably expired in the meanwhile
-            log.warn("Expired receipt marked as dispatched: " "{0}".format(receipt_id))
+            log.warn(f"Expired receipt marked as dispatched: {receipt_id}")
             return
 
         command.mark_as_clients_notified()
 
         self._send_finished_signal_if_needed(command)
 
-    def _send_finished_signal_if_needed(self, command):
-        """Sends the 'finished' signal for the given command if it has been
-        marked both as **sent** (meaning that the clients were notified
-        about the corresponding receipt IDs) and as **finished** (meaning that
-        the execution of the command has finished and the result object was
-        attached to it).
-        """
-        if command.sent and command.finished:
-            self.finished.send(self, status=command)
-
-    def start(self):
+    async def new(self, result=None, client_to_notify=None):
         """Registers the execution of a new asynchronous command in the
         command manager.
 
-        This method should be used by UAV drivers when they start executing
-        an asynchronous command to obtain a CommandExecutionStatus_ object.
+        Parameters:
+            result: the result to return to the client in the response packet.
+                May also be an awaitable object that will eventually provide
+                the result of the command.
 
         Returns:
             CommandExecutionStatus: a newly created CommandExecutionStatus_
-                object for the asynchronous command that the driver has
-                started to execute.
+                object for the asynchronous command
         """
-        result = self._builder.create_status_object()
-        result.mark_as_sent()
-        self._entries[result.id] = result
-        return result
+        receipt = self._builder.create_status_object()
+        receipt.mark_as_sent()
+
+        if client_to_notify:
+            receipt.add_client_to_notify(client_to_notify)
+
+        self._entries[receipt.id] = receipt
+        await self._tx_queue.send((result, receipt.id))
+
+        return receipt
 
     def _get_command_from_id(self, receipt_id):
         """Returns the command execution status object corresponding to the
@@ -232,3 +205,73 @@ class CommandExecutionManager(RegistryBase):
         else:
             receipt = self._entries.get(receipt_id)
         return receipt
+
+    def _send_finished_signal_if_needed(self, command):
+        """Sends the 'finished' signal for the given command if it has been
+        marked as **client notified** (meaning that the clients were notified
+        about the corresponding receipt IDs), as **finished** (meaning that
+        the execution of the command has finished and the result object was
+        attached to it).
+        """
+        if command.client_notified and command.finished:
+            self.finished.send(self, status=command)
+
+    async def run(self, cleanup_period=1):
+        """Runs the background tasks related to the command execution
+        manager. This method should be launched in a Trio nursery.
+
+        Parameters:
+            cleanup_period (int or float): number of seconds to wait
+                between consecutive cleanups.
+        """
+        # TODO(ntamas): no need for regular cleanups if we utilize
+        # trio.move_on_after() instead
+        async with open_nursery() as nursery:
+            nursery.start_soon(self._run_cleanup, cleanup_period)
+            nursery.start_soon(self._run_execution, nursery)
+
+    async def _run_cleanup(self, seconds=1):
+        """Runs the cleanup process periodically in an infinite loop.
+
+        Parameters:
+            second (int or float): number of seconds to wait between
+                consecutive cleanups.
+        """
+        async for _ in periodic(seconds):
+            try:
+                self.cleanup()
+            except Exception as ex:
+                log.exception(ex)
+
+    async def _run_execution(self, nursery):
+        """Runs a task that awaits for the completion of all commands
+        that are currently being executed, and updates the corresponding
+        command receipts.
+        """
+        while True:
+            result, receipt_id = await self._rx_queue.receive()
+            if isawaitable(result):
+                scope = CancelScope(deadline=current_time() + self.timeout)
+                nursery.start_soon(self._wait_for, result, receipt_id, scope)
+            else:
+                self.finish(receipt_id, result)
+
+    def _timeout(self, receipt_id):
+        command = self._entries.pop(receipt_id, None)
+        if command:
+            self.expired.send(self, statuses=[command])
+
+    async def _wait_for(self, awaitable, receipt_id, scope):
+        """Waits for the result of the given awaitable and updates the
+        command execution receipt with the given ID when the result is
+        retrieved from the awaitable.
+        """
+        try:
+            with scope:
+                result = await awaitable
+        except Exception as ex:
+            result = ex
+        if scope.cancelled_caught:
+            self._timeout(receipt_id)
+        else:
+            self.finish(receipt_id, result)

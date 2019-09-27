@@ -1,13 +1,17 @@
 """Extension that can connect to an external GPS receiver and show the
 location data from the GPS as a beacon.
+
+Simulated GPS data can be generated in a throwaway Docker container with:
+
+docker run --rm -it --name=gpsd -p 2947:2947 -p 8888:8888 knowhowlab/gpsd-nmea-simulator
 """
 
-from contextlib import closing
-from eventlet import spawn
+from contextlib import ExitStack
+from functools import partial
 from pynmea2 import parse as parse_nmea
 
 from flockwave.gps.vectors import GPSCoordinate
-from flockwave.server.connections import create_connection, reconnecting
+from flockwave.server.connections import create_connection, Connection
 from flockwave.server.encoders import JSONEncoder
 from flockwave.server.errors import NotSupportedError
 from flockwave.server.model import ConnectionPurpose
@@ -61,7 +65,7 @@ def create_gps_connection(connection, format=None):
         connection = "tcp://localhost:2947"
 
     if ":" not in connection:
-        connection = "serial:{0}".format(connection)
+        connection = f"serial:{connection}"
 
     if format == "auto":
         if connection.startswith("tcp:"):
@@ -142,7 +146,6 @@ class GPSExtension(UAVExtensionBase):
     def __init__(self):
         """Constructor."""
         super(GPSExtension, self).__init__()
-        self._thread = None
         self._id_format = None
         self._device_to_uav_id = {}
 
@@ -153,46 +156,28 @@ class GPSExtension(UAVExtensionBase):
         """Loads the extension."""
         self._id_format = configuration.get("id_format", "GPS:{0}")
 
-        connection, parser = create_gps_connection(
-            connection=configuration.get("connection", "gpsd"),
-            format=configuration.get("format", "auto"),
-        )
-        connection = reconnecting(connection)
+    async def handle_gps_messages(self, connection: Connection, parser):
+        """Worker task that reads incoming messages from the given connection,
+        parses them using the given parser and then processes them to update the
+        status of the beacons managed by this extension.
 
-        self.app.connection_registry.add(
-            connection, "GPS", "GPS link", purpose=ConnectionPurpose.gps
-        )
-
-        self._thread = spawn(self.handle_gps_messages, connection, parser)
-
-    def handle_gps_messages(self, connection, parser):
-        """Worker green thread that reads incoming messages from the given
-        connection, parses them using the given parser and then processes them
-        to update the status of the beacons managed by this extension.
+        The connection is assumed to be open by the time this function is
+        invoked.
         """
-        connection.open()
-        with closing(connection):
-            while True:
-                connection.wait_until_connected()
-                self.log.info("GPS connection established", extra={"id": "GPS"})
-                while True:
-                    data = connection.read(blocking=True)
-                    if isinstance(data, tuple):
-                        data, addr = data
-                    if not data:
-                        break
+        await connection.wait_until_connected()
 
-                    for message in parser.feed(data):
-                        if "version" in message:
-                            # Ask gpsd to start streaming status data
-                            connection.write(b'?WATCH={"enable":true,"json":true}\n')
-                        elif "device" in message:
-                            self._handle_single_gps_update(message)
+        while True:
+            data = await connection.read()
+            if not data:
+                await connection.close()
+                break
 
-                # Wait until the watchdog goes back into the "not connected"
-                # (i.e. "connecting") state before we try again.
-                connection.wait_until_not_connected()
-                self.log.warn("GPS disconnected", extra={"id": "GPS"})
+            for message in parser.feed(data):
+                if "version" in message:
+                    # Ask gpsd to start streaming status data
+                    await connection.write(b'?WATCH={"enable":true,"json":true}\n')
+                elif "device" in message:
+                    self._handle_single_gps_update(message)
 
     def _handle_single_gps_update(self, message):
         uav_id = self._get_uav_id(message["device"])
@@ -207,12 +192,22 @@ class GPSExtension(UAVExtensionBase):
             self._device_to_uav_id[device_id] = result
         return result
 
-    def teardown(self):
-        if self._thread:
-            self._thread.cancel()
-            self._thread = None
+    async def task(self, app, configuration, logger):
+        connection, parser = create_gps_connection(
+            connection=configuration.get("connection", "gpsd"),
+            format=configuration.get("format", "auto"),
+        )
 
-        self.app.connection_registry.remove("gps")
+        with ExitStack() as stack:
+            stack.enter_context(
+                app.connection_registry.use(
+                    connection, "GPS", "GPS link", purpose=ConnectionPurpose.gps
+                )
+            )
+
+            await app.supervise(
+                connection, task=partial(self.handle_gps_messages, parser=parser)
+            )
 
 
 construct = GPSExtension

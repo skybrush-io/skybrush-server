@@ -213,6 +213,7 @@ class WirelessInboundThread(object):
         connection and dispatches a signal for every one of them.
         """
         while True:
+            # TODO(ntamas): this is now async!
             self._connection.wait_until_connected()
             self._read_next_packet()
 

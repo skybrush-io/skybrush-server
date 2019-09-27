@@ -1,7 +1,10 @@
 """Utility functions that do not fit elsewhere."""
 
 from collections import defaultdict
+from contextlib import contextmanager
 from datetime import datetime
+from functools import partial as partial_
+from inspect import Parameter, signature
 from pytz import utc
 
 
@@ -11,10 +14,44 @@ __all__ = (
     "itersubclasses",
     "keydefaultdict",
     "nop",
+    "overridden",
 )
 
 
 _unix_epoch = datetime.utcfromtimestamp(0).replace(tzinfo=utc)
+
+
+def bind(func, args=None, kwds=None, *, partial=False):
+    """Variant of `functools.partial()` that allows the argument list to
+    be longer than the number of arguments accepted by the function if
+    `partial` is set to `True`. If this is the case, the argument list
+    will be truncated to the number of positional arguments accepted by
+    the function.
+
+    Parameters:
+        args: the positional arguments to bind to the function
+        kwds: the keyword arguments to bind to the function
+    """
+    if not args and not kwds:
+        return func
+
+    if partial:
+        num_args = 0
+        for parameter in signature(func).parameters.values():
+            if parameter.kind == Parameter.VAR_POSITIONAL:
+                num_args = len(args)
+                break
+            elif parameter.kind in (Parameter.KEYWORD_ONLY, Parameter.VAR_KEYWORD):
+                pass
+            else:
+                num_args += 1
+
+        args = args[:num_args]
+
+    if kwds is None:
+        return partial_(func, *args)
+    else:
+        return partial_(func, *args, **kwds)
 
 
 def constant(x):
@@ -107,3 +144,26 @@ def nop(*args, **kwds):
     does not return anything.
     """
     pass
+
+
+@contextmanager
+def overridden(dictionary, **kwds):
+    """Context manager that updates a dictionary with some key-value
+    pairs, restoring the original values in the dictionary when the
+    context is exited.
+    """
+    names = list(kwds.keys()) if kwds else []
+    originals = {}
+
+    try:
+        for name in names:
+            if name in dictionary:
+                originals[name] = dictionary[name]
+            dictionary[name] = kwds[name]
+        yield
+    finally:
+        for name in names:
+            if name in originals:
+                dictionary[name] = originals[name]
+            else:
+                del dictionary[name]

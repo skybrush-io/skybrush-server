@@ -7,12 +7,6 @@ from builtins import str
 from collections import Counter, defaultdict
 from flockwave.spec.schema import get_enum_from_schema, get_complex_object_schema
 from itertools import islice
-from future.utils import (
-    iteritems,
-    iterkeys,
-    python_2_unicode_compatible,
-    with_metaclass,
-)
 
 from .errors import ClientNotSubscribedError, NoSuchPathError
 from .metamagic import ModelMeta
@@ -69,7 +63,7 @@ def _channel_type_from_object(cls, obj):
 ChannelType.from_object = classmethod(_channel_type_from_object)
 
 
-class DeviceTreeNodeBase(with_metaclass(ModelMeta, object)):
+class DeviceTreeNodeBase(metaclass=ModelMeta):
     """Class representing a single node in a Flockwave device tree."""
 
     class __meta__:
@@ -96,7 +90,7 @@ class DeviceTreeNodeBase(with_metaclass(ModelMeta, object)):
         """
         return dict(
             (key, child.collect_channel_values())
-            for key, child in iteritems(self.children)
+            for key, child in self.children.items()
         )
 
     def count_subscriptions_of(self, client):
@@ -125,9 +119,9 @@ class DeviceTreeNodeBase(with_metaclass(ModelMeta, object)):
                 child node itself, for all children
         """
         if hasattr(self, "children"):
-            return iteritems(self.children)
+            return self.children.items()
         else:
-            return ()
+            return iter(())
 
     def iterparents(self, include_self=False):
         """Iterates over the parents of this node, in increasing distance
@@ -151,7 +145,7 @@ class DeviceTreeNodeBase(with_metaclass(ModelMeta, object)):
         multiple times.
         """
         if self._subscribers is not None:
-            return iterkeys(self._subscribers)
+            return self._subscribers.keys()
         else:
             return iter(())
 
@@ -264,7 +258,7 @@ class DeviceTreeNodeBase(with_metaclass(ModelMeta, object)):
         self._path = None
 
         if hasattr(self, "children"):
-            for _, child in iteritems(self.children):
+            for child in self.children.values():
                 child._dispose()
             self.children = {}
 
@@ -530,7 +524,6 @@ class UAVNode(DeviceTreeNodeBase):
         return self._add_child(id, DeviceNode())
 
 
-@python_2_unicode_compatible
 class DeviceTreePath(object):
     """A path in a device tree from its root to one of its nodes. Leaf and
     branch nodes are both allowed.
@@ -906,7 +899,8 @@ class DeviceTreeSubscriptionManager(object):
         """
         body = {"values": channel_values, "type": "DEV-INF"}
         message = self._message_hub.create_notification(body)
-        self._message_hub.send_message(message, to=subscriber)
+
+        self._message_hub.enqueue_message(message, to=subscriber)
 
     def _on_client_removed(self, sender, client):
         """Handler called when a client disconnected from the server."""
@@ -936,7 +930,7 @@ class DeviceTreeSubscriptionManager(object):
                     messages_by_subscribers[subscriber][path] = channel_values
 
         # Now we can send the messages
-        for subscriber, message in iteritems(messages_by_subscribers):
+        for subscriber, message in messages_by_subscribers.items():
             self._notify_subscriber(subscriber, message)
 
     def create_DEV_INF_message_for(self, paths, in_response_to=None):

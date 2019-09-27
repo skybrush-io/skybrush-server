@@ -2,55 +2,45 @@
 
 from __future__ import absolute_import, print_function
 
-import socket
 import struct
 
 from blinker import Signal
 from builtins import str
 from contextlib import closing
-from errno import EAGAIN, EALREADY, EINPROGRESS
+from errno import EAGAIN
 from functools import partial
 from ipaddress import ip_address, IPv4Network
-from os import strerror
+from trio import open_tcp_stream, socket
 
 from .base import FDConnectionBase, ConnectionState, ConnectionWrapperBase
 from .factory import create_connection
+from .stream import StreamConnectionBase
 
 from ..networking import create_socket
 
 
 __all__ = (
     "UDPSocketConnection",
-    "TCPSocketConnection",
     "MulticastUDPSocketConnection",
     "SubnetBindingConnection",
     "SubnetBindingUDPConnection",
+    "TCPStreamConnection",
 )
 
 
-class SocketConnectionBase(FDConnectionBase):
-    """Base class for connection objects using TCP or UDP sockets."""
+class InternetAddressMixin:
+    """Mixin class that adds an "address" property to a connection, consisting
+    of an IP address and a port."""
 
     def __init__(self):
-        super(SocketConnectionBase, self).__init__()
         self._address = None
-        self._socket = None
 
     @property
     def address(self):
         """Returns the IP address and port of the socket, in the form of a
         tuple.
         """
-        if self._socket is None:
-            # No socket yet; try to obtain the address from the "_address"
-            # property instead
-            if self._address is None:
-                raise ValueError("socket is not open yet")
-            else:
-                return self._address
-        else:
-            # Ask the socket for its address
-            return self._socket.getsockname()
+        return self._address
 
     @property
     def ip(self):
@@ -61,6 +51,31 @@ class SocketConnectionBase(FDConnectionBase):
     def port(self):
         """Returns the port that the socket is bound to."""
         return self.address[1]
+
+
+class SocketConnectionBase(FDConnectionBase, InternetAddressMixin):
+    """Base class for connection objects using TCP or UDP sockets."""
+
+    def __init__(self):
+        FDConnectionBase.__init__(self)
+        InternetAddressMixin.__init__(self)
+        self._socket = None
+
+    @InternetAddressMixin.address.getter
+    def address(self):
+        """Returns the IP address and port of the socket, in the form of a
+        tuple.
+        """
+        if self._socket is None:
+            # No socket yet; try to obtain the address from the "_address"
+            # property instead
+            if self._address is None:
+                raise ValueError("socket is not open yet")
+            else:
+                return super().address
+        else:
+            # Ask the socket for its address
+            return self._socket.getsockname()
 
     @property
     def socket(self):
@@ -107,37 +122,19 @@ class InternetSocketConnection(SocketConnectionBase):
         super(InternetSocketConnection, self).__init__()
         self._address = (host or "", port or 0)
 
-    def close(self):
+    async def _close(self):
         """Closes the socket connection."""
-        if self.state == ConnectionState.DISCONNECTED:
-            return
-
-        self._set_state(ConnectionState.DISCONNECTING)
-
         self._socket.close()
         self._set_socket(None)
 
-        self._set_state(ConnectionState.DISCONNECTED)
-
-    def open(self):
+    async def _open(self):
         """Opens the socket connection."""
-        if self.state == ConnectionState.CONNECTED:
-            return
-
-        self._set_socket(self._create_socket())
-        self._set_state(ConnectionState.CONNECTING)
-
-        try:
-            self._open_internal(self._on_connected)
-        except Exception as ex:
-            self._set_state(ConnectionState.DISCONNECTED)
-            self._set_socket(None)
-            raise ex
+        self._set_socket(await self._create_and_open_socket())
 
     def _on_connected(self):
         self._set_state(ConnectionState.CONNECTED)
 
-    def read(self, size=4096, flags=0, blocking=False):
+    def read(self, size=4096, flags=0):
         """Reads some data from the connection.
 
         Parameters:
@@ -155,8 +152,6 @@ class InternetSocketConnection(SocketConnectionBase):
                 received from, or ``(b"", None)`` if there was nothing to
                 read.
         """
-        if blocking:
-            self.wait_until_readable()
         if self._socket is not None:
             try:
                 data, addr = self._socket.recvfrom(size, flags)
@@ -230,34 +225,30 @@ class InternetSocketConnection(SocketConnectionBase):
 
 
 @create_connection.register("tcp")
-class TCPSocketConnection(InternetSocketConnection):
-    """Connection object that uses a TCP socket."""
+class TCPStreamConnection(StreamConnectionBase, InternetAddressMixin):
+    """Connection object that wraps a Trio TCP stream."""
 
-    def _create_socket(self):
-        """Creates a new non-blocking reusable TCP socket that is not bound
-        anywhere yet.
-        """
-        return create_socket(socket.SOCK_STREAM, nonblocking=True)
+    def __init__(self, host="", port=0, **kwds):
+        """Constructor.
 
-    def _open_internal(self, notify_connected):
-        """Implementation of ``self.open()`` without the common administrative
-        stuff; to be overridden in subclasses.
+        Parameters:
+            host (Optional[str]): the IP address or hostname that the socket
+                will bind (or connect) to. The default value means that the
+                socket will bind to all IP addresses of the local machine.
+            port (int): the port number that the socket will bind (or
+                connect) to. Zero means that the socket will choose a random
+                ephemeral port number on its own.
         """
-        errno = self._socket.connect_ex(self._address)
-        if errno == 0:
-            # Connection succeeded immediately
-            notify_connected()
-        elif errno == EALREADY or errno == EINPROGRESS:
-            # Connection is in progress, let's wait until the socket becomes
-            # writable and then test whether we are connected
-            self.wait_until_writable(timeout=30)
-            errno = self._test_socket_error()
-            if errno:
-                raise IOError(strerror(errno))
-            else:
-                notify_connected()
-        else:
-            raise IOError(strerror(errno))
+        StreamConnectionBase.__init__(self)
+        InternetAddressMixin.__init__(self)
+        self._address = (host or "", port or 0)
+
+    async def _create_stream(self):
+        """Creates a new non-blocking reusable TCP socket and connects it to
+        the target of the connection.
+        """
+        host, port = self._address
+        return await open_tcp_stream(host, port)
 
 
 @create_connection.register("udp")

@@ -2,15 +2,10 @@
 from a simple string or dict representation.
 """
 
-from future.standard_library import install_aliases
+from functools import partial
+from urllib.parse import parse_qs, urlparse
 
-install_aliases()
-
-from functools import partial  # noqa: E402
-from future.utils import iteritems, string_types  # noqa: E402
-from urllib.parse import parse_qs, urlparse  # noqa: E402
-
-from flockwave.server.errors import UnknownConnectionTypeError  # noqa: E402
+from flockwave.server.errors import UnknownConnectionTypeError
 
 
 __all__ = ("ConnectionFactory", "create_connection")
@@ -92,7 +87,7 @@ class ConnectionFactory(object):
             UnknownConnectionTypeError: if the type of the connection is not
                 known to the server
         """
-        if isinstance(specification, string_types):
+        if isinstance(specification, str):
             specification = self._url_specification_to_dict(specification)
 
         connection_type = specification["type"]
@@ -152,7 +147,7 @@ class ConnectionFactory(object):
         # Parse the parameters into a dict, turning values into integers
         # where applicable
         parameters = parse_qs(parts.query) if parts.query else {}
-        for k, v in iteritems(parameters):
+        for k, v in parameters.items():
             if len(v) > 1:
                 raise ValueError("repeated parameters are not supported")
             v = v[0]

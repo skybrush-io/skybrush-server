@@ -154,7 +154,7 @@ class ClientRegistry(RegistryBase):
         self.removed.send(self, client=client)
 
     @contextmanager
-    def temporary_client(self, client_id, channel_type):
+    def use(self, client_id, channel_type):
         """Temporarily adds a new client with the given client ID and
         channel type, hands control back to the caller in a context, and
         then removes the client when the caller exits the context.

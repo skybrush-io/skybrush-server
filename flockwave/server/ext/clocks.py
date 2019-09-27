@@ -67,7 +67,7 @@ def on_clock_changed(sender, clock):
     global message_hub
 
     message = create_CLK_INF_message_for([clock.id])
-    message_hub.send_message(message)
+    message_hub.enqueue_message(message)
 
 
 #############################################################################
@@ -85,7 +85,7 @@ def handle_CLK_LIST(message, sender, hub):
 #############################################################################
 
 
-def load(app, configuration, logger):
+def load(app):
     global message_hub, registry
 
     message_hub = app.message_hub

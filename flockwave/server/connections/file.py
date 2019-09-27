@@ -5,6 +5,8 @@ from __future__ import absolute_import, print_function
 from .base import FDConnectionBase, ConnectionState
 from .factory import create_connection
 
+from trio import open_file
+
 __all__ = ("FileConnection",)
 
 
@@ -29,26 +31,26 @@ class FileConnection(FDConnectionBase):
         self._path = path
         self._mode = mode
 
-    def close(self):
+    async def close(self):
         """Closes the file connection."""
         if self.state == ConnectionState.DISCONNECTED:
             return
 
         self._set_state(ConnectionState.DISCONNECTING)
-        self._file_object.close()
+        await self._file_object.close()
         self._detach()
         self._set_state(ConnectionState.DISCONNECTED)
 
-    def open(self):
+    async def open(self):
         """Opens the file connection."""
         if self.state in (ConnectionState.CONNECTED, ConnectionState.CONNECTING):
             return
 
         self._set_state(ConnectionState.CONNECTING)
-        self._attach(open(self._path, self._mode))
+        self._attach(await open_file(self._path, self._mode))
         self._set_state(ConnectionState.CONNECTED)
 
-    def read(self, size=-1):
+    async def read(self, size=-1):
         """Reads the given number of bytes from the connection.
 
         Parameters:
@@ -57,9 +59,9 @@ class FileConnection(FDConnectionBase):
         Returns:
             bytes: the data that was read
         """
-        return self._file_object.read(size)
+        return await self._file_object.read(size)
 
-    def write(self, data):
+    async def write(self, data):
         """Writes the given data to the connection.
 
         Parameters:
@@ -68,7 +70,7 @@ class FileConnection(FDConnectionBase):
         Returns:
             int: the number of bytes written
         """
-        self._file_object.write(data)
+        result = await self._file_object.write(data)
         if self.autoflush:
-            self.flush()
-        return len(data)
+            await self.flush()
+        return result

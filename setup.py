@@ -2,6 +2,7 @@
 
 from setuptools import setup, find_packages
 
+# TODO(ntamas): update this!
 requires = [
     "bidict>=0.11.0",
     "bitstring>=3.1.3",
@@ -11,10 +12,6 @@ requires = [
     "colorlog>=2.6.0",
     "enum-compat>=0.0.2",
     "eventlet>=0.18.4",
-    "Flask>=0.10.1",
-    "Flask-HTTPAuth>=2.7.2",
-    "Flask-JWT>=0.3.2",
-    "flask-socketio>=3.0.1",
     "flockwave-gps>=0.8.0",
     "flockwave-spec>=0.18.0",
     "future>=0.16.0",
@@ -30,7 +27,6 @@ requires = [
     "python-baseconv>=1.1.3",
     "pytz>=2015.7",
     "six>=1.10.0",
-    "XBee>=2.2.3"
 ]
 
 __version__ = None
@@ -39,14 +35,11 @@ exec(open("flockwave/server/version.py").read())
 setup(
     name="flockwave-server",
     version=__version__,
-
     packages=find_packages(),
     include_package_data=True,
-
     install_requires=requires,
-
     entry_points="""
     [console_scripts]
     flockwave-server=flockwave.server.launcher:start
-    """
+    """,
 )

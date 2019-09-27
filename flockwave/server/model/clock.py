@@ -5,7 +5,6 @@ from __future__ import absolute_import
 from abc import ABCMeta, abstractmethod, abstractproperty
 from blinker import Signal
 from datetime import datetime
-from future.utils import with_metaclass
 from pytz import utc
 from time import time
 
@@ -13,7 +12,7 @@ from time import time
 __all__ = ("Clock", "ClockBase", "StoppableClockBase")
 
 
-class Clock(with_metaclass(ABCMeta, object)):
+class Clock(metaclass=ABCMeta):
     """Interface specification for clock objects.
 
     Attributes:

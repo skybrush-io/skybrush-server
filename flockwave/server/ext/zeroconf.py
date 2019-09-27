@@ -1,6 +1,5 @@
 from flockwave.server.networking import get_all_ipv4_addresses
-
-import socket
+from socket import gethostname, inet_aton
 
 
 log = None
@@ -19,7 +18,7 @@ def load(app, configuration, logger):
     global log, server_name, zc
 
     log = logger
-    server_name = configuration.get("name", socket.gethostname()).replace(".", "-")
+    server_name = configuration.get("name", gethostname()).replace(".", "-")
     zc = Zeroconf()
 
     channels = app.channel_type_registry
@@ -65,7 +64,7 @@ def _register_channel(descriptor):
         addresses = [host]
     else:
         addresses = get_all_ipv4_addresses()
-    addresses = [socket.inet_aton(address) for address in addresses]
+    addresses = [inet_aton(address) for address in addresses]
 
     service = "flockwave"
     service_infos[name] = service_info = ServiceInfo(
@@ -73,7 +72,7 @@ def _register_channel(descriptor):
         name=f"{server_name}._{service}._{name}.local.",
         port=port,
         addresses=addresses,
-        server=f"{socket.gethostname()}.local.",
+        server=f"{gethostname()}.local.",
     )
 
     zc.register_service(service_info)

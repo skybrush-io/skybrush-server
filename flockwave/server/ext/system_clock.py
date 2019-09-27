@@ -41,7 +41,7 @@ class SystemClock(ClockBase):
 clock = SystemClock()
 
 
-def load(app, configuration, logger):
+def load(app):
     """Loads the extension."""
     app.import_api("clocks").register_clock(clock)
 

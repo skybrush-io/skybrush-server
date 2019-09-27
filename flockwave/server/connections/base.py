@@ -6,11 +6,9 @@ import os
 from abc import ABCMeta, abstractmethod, abstractproperty
 from blinker import Signal
 from enum import Enum
-from eventlet.event import Event
-from eventlet.green.threading import RLock
-from future.utils import with_metaclass
-from select import select
-from time import time
+from trio import wrap_file
+from trio_util import AsyncBool
+
 
 __all__ = (
     "Connection",
@@ -28,7 +26,7 @@ ConnectionState = Enum(
 log = logging.getLogger(__name__.rpartition(".")[0])
 
 
-class Connection(with_metaclass(ABCMeta, object)):
+class Connection(metaclass=ABCMeta):
     """Interface specification for stateful connection objects."""
 
     connected = Signal(doc="Signal sent after the connection was established.")
@@ -44,12 +42,12 @@ class Connection(with_metaclass(ABCMeta, object)):
     )
 
     @abstractmethod
-    def open(self):
+    async def open(self):
         """Opens the connection. No-op if the connection is open already."""
         raise NotImplementedError
 
     @abstractmethod
-    def close(self):
+    async def close(self):
         """Closes the connection. No-op if the connection is closed already."""
         raise NotImplementedError
 
@@ -76,12 +74,27 @@ class Connection(with_metaclass(ABCMeta, object)):
         """
         raise NotImplementedError
 
-    def wait_until_connected(self):
+    @abstractmethod
+    async def wait_until_connected(self):
         """Blocks the current green thread until the connection becomes
         connected. Returns immediately if the connection is already
         connected.
         """
         raise NotImplementedError
+
+    @abstractmethod
+    async def wait_until_disconnected(self):
+        """Blocks the execution until the connection becomes disconnected.
+        Returns immediately if the connection is already disconnected.
+        """
+        raise NotImplementedError
+
+    async def __aenter__(self):
+        await self.open()
+        return self
+
+    async def __aexit__(self, exc_type, exc_value, traceback):
+        await self.close()
 
 
 class ConnectionBase(Connection):
@@ -115,11 +128,9 @@ class ConnectionBase(Connection):
     def __init__(self):
         """Constructor."""
         self._state = ConnectionState.DISCONNECTED
-        self._state_lock = RLock()
-        self._is_connected = False
-        self._is_connected_event = None
-        self._is_not_connected_event = None
-        self._swallow_exceptions = False
+
+        self._is_connected = AsyncBool(False)
+        self._is_disconnected = AsyncBool(True)
 
     @property
     def state(self):
@@ -130,93 +141,116 @@ class ConnectionBase(Connection):
         """Sets the state of the connection to a new value and sends the
         appropriate signals.
         """
-        # Locking is actually not needed here because we are using green
-        # threads using Eventlet, but this way we can make use of this
-        # class in threaded environments as well.
-        with self._state_lock:
-            old_state = self._state
-            if new_state == old_state:
-                return
-
-            self._state = new_state
-
-            self.state_changed.send(self, old_state=old_state, new_state=new_state)
-
-            if new_state == ConnectionState.CONNECTED and not self._is_connected:
-                self._is_connected = True
-                if self._is_connected_event:
-                    self._is_connected_event.send(True)
-                    self._is_connected_event = None
-                self.connected.send(self)
-
-            if new_state == ConnectionState.DISCONNECTED and self._is_connected:
-                self.disconnected.send(self)
-
-            if new_state != ConnectionState.CONNECTED and self._is_connected:
-                self._is_connected = False
-                if self._is_not_connected_event:
-                    self._is_not_connected_event.send(True)
-                    self._is_not_connected_event = None
-
-    @property
-    def swallow_exceptions(self):
-        """Whether the connection should swallow read/write and connection
-        errors and respond to them simply by closing the connection instead.
-        Useful when the connection is wrapped in a ReconnectionWrapper_.
-        """
-        return self._swallow_exceptions
-
-    @swallow_exceptions.setter
-    def swallow_exceptions(self, value):
-        self._swallow_exceptions = bool(value)
-
-    def wait_until_connected(self):
-        """Blocks the current green thread until the connection becomes
-        connected. Returns immediately if the connection is already
-        connected.
-        """
-        if self.is_connected:
+        old_state = self._state
+        if new_state == old_state:
             return
 
-        if self._is_connected_event is None:
-            self._is_connected_event = Event()
+        self._state = new_state
 
-        self._is_connected_event.wait()
+        self.state_changed.send(self, old_state=old_state, new_state=new_state)
 
-    def wait_until_not_connected(self):
-        """Blocks the current green thread until the connection becomes
-        *not* connected (where this means being in any state other than
-        CONNECTED). Returns immediately if the connection is not connected.
+        if not self._is_connected.value and new_state is ConnectionState.CONNECTED:
+            self._is_connected.value = True
+            self.connected.send(self)
+
+        if (
+            not self._is_disconnected.value
+            and new_state is ConnectionState.DISCONNECTED
+        ):
+            self._is_disconnected.value = True
+            self.disconnected.send(self)
+
+        if self._is_connected.value and new_state is not ConnectionState.CONNECTED:
+            self._is_connected.value = False
+
+        if (
+            self._is_disconnected.value
+            and new_state is not ConnectionState.DISCONNECTED
+        ):
+            self._is_disconnected.value = False
+
+    async def close(self):
+        """Base implementation of Connection.close() that manages the state of
+        the connection correctly.
+
+        Typically, you don't need to override this method in subclasses;
+        override `_close()` instead.
         """
-        if not self.is_connected:
+        if self.state is ConnectionState.DISCONNECTED:
             return
+        elif self.state is ConnectionState.DISCONNECTING:
+            return await self.wait_until_disconnected()
+        elif self.state is ConnectionState.CONNECTING:
+            await self.wait_until_connected()
 
-        if self._is_not_connected_event is None:
-            self._is_not_connected_event = Event()
+        self._set_state(ConnectionState.DISCONNECTING)
+        success = False
+        try:
+            # TODO(ntamas): use a timeout here!
+            await self._close()
+            success = True
+        finally:
+            self._set_state(
+                ConnectionState.DISCONNECTED if success else ConnectionState.CONNECTED
+            )
 
-        self._is_not_connected_event.wait()
+    async def open(self):
+        """Base implementation of Connection.open() that manages the state
+        of the connection correctly.
 
-    def _handle_error(self, exception=None):
-        """Handles exceptions that have happened during reads and writes.
-
-        Parameters:
-            exception (Optional[Exception]): the exception that was raised
-                during a read or write
+        Typically, you don't need to override this method in subclasses;
+        override `_open()` instead.
         """
-        if self._swallow_exceptions:
-            # Log the exception if we have one
-            if exception is not None:
-                log.exception(exception)
-            # Then close the connection
-            self.close()
-        else:
-            # Let the user handle the exception
-            raise
+        if self.state is ConnectionState.CONNECTED:
+            return
+        elif self.state is ConnectionState.CONNECTING:
+            return await self.wait_until_connected()
+        elif self.state is ConnectionState.DISCONNECTING:
+            await self.wait_until_disconnected()
+
+        self._set_state(ConnectionState.CONNECTING)
+        success = False
+        try:
+            # TODO(ntamas): use a timeout here!
+            await self._open()
+            success = True
+        finally:
+            self._set_state(
+                ConnectionState.CONNECTED if success else ConnectionState.DISCONNECTED
+            )
+
+    async def wait_until_connected(self):
+        """Blocks the execution until the connection becomes connected."""
+        await self._is_connected.wait_value(True)
+
+    async def wait_until_disconnected(self):
+        """Blocks the execution until the connection becomes disconnected."""
+        await self._is_disconnected.wait_value(True)
+
+    @abstractmethod
+    async def _open(self):
+        """Internal implementation of `ConnectionBase.open()`.
+
+        Override this method in subclasses to implement how your connection
+        is opened. No need to update the state variable from inside this
+        method; the caller will do it automatically.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    async def _close(self):
+        """Internal implementation of `ConnectionBase.close()`.
+
+        Override this method in subclasses to implement how your connection
+        is closed. No need to update the state variable from inside this
+        method; the caller will do it automatically.
+        """
+        raise NotImplementedError
 
 
 class FDConnectionBase(ConnectionBase):
-    """Base class for connection objects that have an underlying numeric file
-    handle.
+    """Base class for connection objects that have an underlying numeric
+    file handle or file-like object.
     """
 
     file_handle_changed = Signal(
@@ -242,12 +276,10 @@ class FDConnectionBase(ConnectionBase):
         """
         return self._file_handle
 
-    def flush(self):
+    async def flush(self):
         """Flushes the data recently written to the connection."""
         if self._file_object is not None:
-            self._file_object.flush()
-        if self._file_handle is not None:
-            os.fsync(self._file_handle)
+            await self._file_object.flush()
 
     @property
     def fd(self):
@@ -260,7 +292,7 @@ class FDConnectionBase(ConnectionBase):
         return self._file_object
 
     @abstractmethod
-    def read(self, size=-1):
+    async def read(self, size=-1):
         """Reads the given number of bytes from the connection.
 
         Parameters:
@@ -273,7 +305,7 @@ class FDConnectionBase(ConnectionBase):
         raise NotImplementedError
 
     @abstractmethod
-    def write(self, data):
+    async def write(self, data):
         """Writes the given data to the connection.
 
         Parameters:
@@ -293,9 +325,12 @@ class FDConnectionBase(ConnectionBase):
         if handle_or_object is None:
             handle, obj = None, None
         elif isinstance(handle_or_object, int):
-            handle, obj = handle_or_object, None
+            handle, obj = handle_or_object, os.fdopen(handle_or_object)
         else:
             handle, obj = handle_or_object.fileno(), handle_or_object
+
+        # Wrap the raw sync file handle in Trio's async file handle
+        obj = wrap_file(obj)
 
         old_handle = self._file_handle
         self._set_file_handle(handle)
@@ -349,49 +384,9 @@ class FDConnectionBase(ConnectionBase):
         self._file_object = value
         return True
 
-    def wait_until_readable(self, timeout=None):
-        """Blocks the current thread until the file descriptor associated to
-        the connection becomes readable.
 
-        Parameters:
-            timeout (float): the maximum number of seconds to wait
-
-        Returns:
-            bool: whether the file descriptor became readable
-        """
-        if timeout is None:
-            while True:
-                rlist, _, _ = select([self.fd], [], [])
-                if rlist:
-                    return True
-        else:
-            deadline = time() + timeout
-            while True:
-                time_left = max(0, deadline - time())
-                rlist, _, _ = select([self.fd], [], [], time_left)
-                if rlist:
-                    return True
-                elif time_left <= 0:
-                    return False
-
-    def wait_until_writable(self, timeout=None):
-        """Blocks the current thread until the socket becomes writable."""
-        if timeout is None:
-            while True:
-                _, wlist, _ = select([], [self.fd], [])
-                if wlist:
-                    return True
-        else:
-            deadline = time() + timeout
-            while True:
-                time_left = max(0, deadline - time())
-                _, wlist, _ = select([], [self], [])
-                if wlist:
-                    return True
-                elif time_left <= 0:
-                    return False
-
-
+# TOD(ntamas): this turned out to be a bad idea, let's get rid of it if
+# possible
 class ConnectionWrapperBase(ConnectionBase):
     """Base class for connection objects that wrap other connections."""
 

@@ -6,7 +6,6 @@ from __future__ import absolute_import
 
 from datetime import datetime
 from pytz import utc
-from xbee import ZigBee
 
 from flockwave.server.connections import create_connection, reconnecting
 from flockwave.server.ext.base import UAVExtensionBase
@@ -16,7 +15,6 @@ from flockwave.server.utils import datetime_to_unix_timestamp
 from .driver import FlockCtrlDriver
 from .packets import FlockCtrlClockSynchronizationPacket
 from .wireless import WirelessCommunicationManager
-from .xbee import XBeeCommunicationManager
 
 __all__ = ("construct", "dependencies")
 
@@ -37,20 +35,11 @@ class FlockCtrlDronesExtension(UAVExtensionBase):
             self._handle_inbound_packet, sender=self._wireless_communicator
         )
 
-        self._xbee_lowlevel_link = None
-        self._xbee_communicator = XBeeCommunicationManager(self)
-        self._xbee_communicator.on_packet.connect(
-            self._handle_inbound_packet, sender=self._xbee_communicator
-        )
-
     def _create_driver(self):
         return FlockCtrlDriver()
 
     def configure(self, configuration):
         connection_config = configuration.get("connections", {})
-        self.xbee_lowlevel_link = self._configure_lowlevel_connection(
-            connection_config.get("xbee")
-        )
         self.wireless_broadcast_link = self._configure_lowlevel_connection(
             connection_config.get("wireless", {}).get("broadcast")
         )
@@ -72,7 +61,6 @@ class FlockCtrlDronesExtension(UAVExtensionBase):
 
     def teardown(self):
         self.wireless_lowlevel_link = None
-        self.xbee_lowlevel_link = None
 
     @property
     def wireless_broadcast_link(self):
@@ -117,41 +105,14 @@ class FlockCtrlDronesExtension(UAVExtensionBase):
             self._wireless_unicast_link.open()
             self._wireless_communicator.unicast_connection = self._wireless_unicast_link
 
-    @property
-    def xbee_lowlevel_link(self):
-        return self._xbee_lowlevel_link
-
-    @xbee_lowlevel_link.setter
-    def xbee_lowlevel_link(self, value):
-        if self._xbee_lowlevel_link is not None:
-            self._xbee_communicator.xbee = None
-            self._xbee_lowlevel_link.close()
-            self.app.connection_registry.remove("XBee")
-
-        self._xbee_lowlevel_link = value
-
-        if self._xbee_lowlevel_link is not None:
-            self.app.connection_registry.add(
-                self._xbee_lowlevel_link,
-                "XBee",
-                description="Upstream XBee connection",
-                purpose=ConnectionPurpose.uavRadioLink,
-            )
-
-            self._xbee_lowlevel_link.open()
-            self._xbee_communicator.xbee = ZigBee(self._xbee_lowlevel_link)
-
     def _configure_lowlevel_connection(self, specifier):
-        """Configures the low-level XBee or wireless connection object from
-        the given connection specifier parsed from the extension
-        configuration.
+        """Configures a low-level wireless connection object from the given
+        connection specifier parsed from the extension configuration.
 
         Parameters:
             specifier (Optional[str]): the connection specifier URL that
-                tells the extension how to find the serial port to which the
-                XBee is connected, or how to find the subnet on which the
-                wireless status packets are broadcast. ``None`` means that
-                no connection should be constructed.
+                tells the extension how to construct the connection object.
+                ``None`` means that no connection should be constructed.
 
         Returns:
             Optional[Connection]: the constructed low-level connection object
@@ -181,7 +142,7 @@ class FlockCtrlDronesExtension(UAVExtensionBase):
         driver.send_packet = self.send_packet
 
     def _handle_inbound_packet(self, sender, packet):
-        """Handles an inbound data packet from an XBee or wireless link."""
+        """Handles an inbound data packet from a communication link."""
         self._driver.handle_inbound_packet(packet)
 
     def send_packet(self, packet, destination=None):
@@ -197,8 +158,6 @@ class FlockCtrlDronesExtension(UAVExtensionBase):
         medium, address = destination
         if medium == "wireless":
             comm = self._wireless_communicator
-        elif medium == "xbee":
-            comm = self._xbee_communicator
         else:
             raise ValueError("unknown medium: {0!r}".format(medium))
         comm.send_packet(packet, address)

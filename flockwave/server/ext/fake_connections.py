@@ -11,59 +11,11 @@ Useful primarily for debugging purposes.
 
 from __future__ import absolute_import
 
-from eventlet import spawn_after
-from eventlet.greenthread import sleep
-from flockwave.server.connections import ConnectionBase, ConnectionState, reconnecting
+from flockwave.server.connections import Connection, ConnectionBase
 from flockwave.server.model import ConnectionPurpose
-from future.utils import itervalues
-from time import time
-
-from .base import ExtensionBase
+from trio import current_time, open_nursery, sleep, sleep_until
 
 __all__ = ()
-
-
-class FakeConnectionProviderExtension(ExtensionBase):
-    """Extension that creates one or more fake connections in the server."""
-
-    def __init__(self):
-        """Constructor."""
-        super(FakeConnectionProviderExtension, self).__init__()
-        self.connections = {}
-
-    def configure(self, configuration):
-        """Configures the extension.
-
-        The configuration object supports the following keys:
-
-        ``count``
-            The number of fake connections to provide
-
-        ``id_format``
-            String template that defines how the names of the fake
-            connections should be generated; must be in the format accepted
-            by the ``str.format()`` method in Python when given the
-            connection index as its argument.
-        """
-        count = configuration.get("count", 0)
-        id_format = configuration.get("id_format", "fakeConnection{0}")
-        for index in range(count):
-            connection = reconnecting(FakeConnection())
-            name = id_format.format(index)
-            self.connections[name] = connection
-            self.app.connection_registry.add(
-                connection, name=name, purpose=ConnectionPurpose.debug
-            )
-
-    def spindown(self):
-        """Stops the connections when the extension spins down."""
-        for connection in itervalues(self.connections):
-            connection.close()
-
-    def spinup(self):
-        """Starts the connections when the extension spins up."""
-        for connection in itervalues(self.connections):
-            connection.open()
 
 
 class FakeConnection(ConnectionBase):
@@ -80,33 +32,52 @@ class FakeConnection(ConnectionBase):
         super(FakeConnection, self).__init__()
         self._open_disallowed_until = None
 
-    def open(self):
+    async def _open(self):
         """Opens the connection if it is currently allowed. Opening the
         connection will start a timer that closes the connection in
         two seconds.
         """
-        if self.state in (ConnectionState.CONNECTED, ConnectionState.CONNECTING):
-            return
-
-        self._set_state(ConnectionState.CONNECTING)
         if self._open_disallowed_until is not None:
-            now = time()
-            if now < self._open_disallowed_until:
-                sleep(self._open_disallowed_until - now)
+            await sleep_until(self._open_disallowed_until)
 
-        self._set_state(ConnectionState.CONNECTED)
-        spawn_after(seconds=2, func=self.close)
-
-    def close(self):
+    async def _close(self):
         """Closes the connection and blocks reopening attempts in the next
         three seconds.
         """
-        if self.state in (ConnectionState.DISCONNECTED, ConnectionState.DISCONNECTING):
-            return
+        self._open_disallowed_until = current_time() + 3
 
-        self._set_state(ConnectionState.DISCONNECTING)
-        self._set_state(ConnectionState.DISCONNECTED)
-        self._open_disallowed_until = time() + 3
+    async def close_soon(self):
+        """Waits two seconds and then closes the connection."""
+        await sleep(2)
+        await self.close()
 
 
-construct = FakeConnectionProviderExtension
+async def worker(app, configuration, logger):
+    """Runs the main worker task of the extension when at least one client
+    is connected.
+
+    The configuration object supports the following keys:
+
+    ``count``
+        The number of fake connections to provide
+
+    ``id_format``
+        String template that defines how the names of the fake
+        connections should be generated; must be in the format accepted
+        by the ``str.format()`` method in Python when given the
+        connection index as its argument.
+    """
+    count = configuration.get("count", 0)
+    id_format = configuration.get("id_format", "fakeConnection{0}")
+
+    async with open_nursery() as nursery:
+        for index in range(count):
+            name = id_format.format(index)
+            nursery.start_soon(_handle_single_connection, app, FakeConnection(), name)
+
+
+async def _handle_single_connection(app, connection: Connection, name: str) -> None:
+    with app.connection_registry.use(
+        connection, name=name, purpose=ConnectionPurpose.debug
+    ):
+        await app.supervise(connection, task=FakeConnection.close_soon)

@@ -155,16 +155,13 @@
             var $notificationPanel = $('#notifications');
 
             socket.on('fw', function(data) {
+                var isResponse = data.hasOwnProperty("correlationId");
                 if (data.hasOwnProperty("body") && data.body.hasOwnProperty("type") &&
-                    filteredTypes[data.body.type]) {
-                  return
+                    !isResponse && filteredTypes[data.body.type]) {
+                    return
                 }
 
-                if (data.hasOwnProperty("correlationId")) {
-                    addEntryToPanel(data, $responsePanel);
-                } else {
-                    addEntryToPanel(data, $notificationPanel);
-                }
+                addEntryToPanel(data, isResponse ? $responsePanel : $notificationPanel);
             });
 
             function addEntryToPanel(data, $panel) {

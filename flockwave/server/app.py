@@ -1,4 +1,4 @@
-"""Application and authentication objects for the Flockwave server."""
+"""Application object for the Flockwave server."""
 
 from __future__ import absolute_import
 
@@ -7,20 +7,24 @@ import os
 
 from blinker import Signal
 from collections import defaultdict
-from eventlet import sleep
-from future.utils import iteritems
+from functools import partial
 from importlib import import_module
+from inspect import isawaitable
+from trio import CancelScope, MultiError, open_memory_channel, open_nursery
+from typing import Optional
 
 from flockwave.gps.vectors import GPSCoordinate
 
-from .commands import CommandExecutionManager, CommandExecutionStatus
+from .connections import ConnectionSupervisor, ConnectionTask, SupervisionPolicy
+from .commands import CommandExecutionManager
 from .errors import NotSupportedError
 from .ext.manager import ExtensionManager
 from .logger import log
 from .message_hub import MessageHub
+from .model.client import Client
 from .model.devices import DeviceTree, DeviceTreeSubscriptionManager
+from .model.messages import FlockwaveMessage
 from .model.errors import ClientNotSubscribedError, NoSuchPathError
-from .model.rate_limiters import rate_limited_by, UAVSpecializedMessageRateLimiter
 from .model.world import World
 from .registries import (
     ChannelTypeRegistry,
@@ -97,6 +101,11 @@ class FlockwaveServer(object):
         the settings will not be up-to-date yet. Use `prepare()` for any
         preparations that depend on the configuration.
         """
+        # Create a Trio task queue that will be used by other components of the
+        # application to schedule background tasks to be executed in the main
+        # Trio nursery
+        self._task_queue = open_memory_channel(32)
+
         # Create an object to hold information about all the registered
         # communication channel types that the server can handle
         self.channel_type_registry = ChannelTypeRegistry()
@@ -118,6 +127,10 @@ class FlockwaveServer(object):
         self.command_execution_manager.finished.connect(
             self._on_command_execution_finished, sender=self.command_execution_manager
         )
+
+        # Creates an object whose responsibility is to restart connections
+        # that closed unexpectedly
+        self.connection_supervisor = ConnectionSupervisor()
 
         # Creates an object to hold information about all the connections
         # to external data sources that the server manages
@@ -163,7 +176,7 @@ class FlockwaveServer(object):
             FlockwaveMessage: the CMD-DEL message that acknowledges the
                 cancellation of the given asynchronous commands
         """
-        body = {"type": "CMD-INF"}
+        body = {"type": "CMD-DEL"}
         response = self.message_hub.create_response_or_notification(
             body=body, in_response_to=in_response_to
         )
@@ -426,22 +439,23 @@ class FlockwaveServer(object):
 
         return response
 
-    def dispatch_to_uavs(self, message, sender):
+    async def dispatch_to_uavs(
+        self, message: FlockwaveMessage, sender: Client
+    ) -> FlockwaveMessage:
         """Dispatches a message intended for multiple UAVs to the appropriate
         UAV drivers.
 
         Parameters:
-            message (FlockwaveMessage): the message that contains a request
-                that is to be forwarded to multiple UAVs. The message is
-                expected to have an ``ids`` property that lists the UAVs
-                to dispatch the message to.
-            sender (Client): the client that sent the message
+            message: the message that contains a request that is to be forwarded
+                to multiple UAVs. The message is expected to have an ``ids``
+                property that lists the UAVs to dispatch the message to.
+            sender: the client that sent the message
 
         Returns:
-            FlockwaveMessage: a response to the original message that lists
-                the IDs of the UAVs for which the message has been sent
-                successfully and also the IDs of the UAVs for which the
-                dispatch failed (in the ``success`` and ``failure`` keys).
+            a response to the original message that lists the IDs of the UAVs
+            for which the message has been sent successfully and also the IDs of
+            the UAVs for which the dispatch failed (in the ``success`` and
+            ``failure`` keys).
         """
         cmd_manager = self.command_execution_manager
 
@@ -483,7 +497,7 @@ class FlockwaveServer(object):
                         parameters[parameter_name] = transformer(value)
 
         # Ask each affected driver to send the message to the UAV
-        for driver, uavs in iteritems(uavs_by_drivers):
+        for driver, uavs in uavs_by_drivers.items():
             # Look up the method in the driver
             common_error, results = None, None
             try:
@@ -509,15 +523,29 @@ class FlockwaveServer(object):
                 for uav in uavs:
                     response.add_failure(uav.id, common_error)
             else:
-                for uav, result in iteritems(results):
-                    if result is True:
-                        response.add_success(uav.id)
-                    elif isinstance(result, CommandExecutionStatus):
-                        response.add_receipt(uav.id, result)
-                        result.add_client_to_notify(sender.id)
-                        cmd_manager.mark_as_clients_notified(result.id)
-                    else:
-                        response.add_failure(uav.id, result)
+                if isawaitable(results):
+                    # Results are produced by an async function; we have to wait
+                    # for it
+                    # TODO(ntamas): no, we don't have to wait for it; we have
+                    # to create a receipt for each UAV and then send a response
+                    # now
+                    await results
+
+                if isinstance(results, Exception):
+                    # Received an exception; send it back to all UAVs
+                    for uav in uavs:
+                        response.add_failure(uav.id, results)
+                else:
+                    # Results have arrived, process them
+                    for uav, result in results.items():
+                        if isinstance(result, Exception):
+                            response.add_failure(uav.id, result)
+                        else:
+                            receipt = await cmd_manager.new(
+                                result, client_to_notify=sender.id
+                            )
+                            response.add_receipt(uav.id, receipt)
+                            receipt.mark_as_clients_notified()
 
         return response
 
@@ -552,13 +580,28 @@ class FlockwaveServer(object):
         """
         return self.extension_manager.import_api(extension_name)
 
-    def start(self):
+    async def start(self):
+        # Helper function to ignore KeyboardInterrupt exceptions even if
+        # they are wrapped in a Trio MultiError
+        def ignore_keyboard_interrupt(exc):
+            if isinstance(exc, KeyboardInterrupt):
+                return None
+            else:
+                return exc
+
         try:
-            self._starting.send(self)
-            while True:
-                sleep(1000)
-        except KeyboardInterrupt:
-            pass
+            with MultiError.catch(ignore_keyboard_interrupt):
+                self._starting.send(self)
+                async with open_nursery() as nursery:
+                    nursery.start_soon(self.connection_supervisor.run)
+                    nursery.start_soon(self.command_execution_manager.run)
+                    nursery.start_soon(self.message_hub.run)
+
+                    async for func, args, scope in self._task_queue[1]:
+                        if scope is not None:
+                            func = partial(func, cancel_scope=scope)
+                        nursery.start_soon(func, *args)
+
         finally:
             self.teardown()
 
@@ -603,7 +646,6 @@ class FlockwaveServer(object):
         """
         self._starting.connect(func, sender=self)
 
-    @rate_limited_by(UAVSpecializedMessageRateLimiter, timeout=0.1)
     def request_to_send_UAV_INF_message_for(self, uav_ids):
         """Requests the application to send an UAV-INF message that contains
         information regarding the UAVs with the given IDs. The application
@@ -613,8 +655,27 @@ class FlockwaveServer(object):
         Parameters:
             uav_ids (iterable): list of UAV IDs
         """
+        # TODO(ntamas): reinstantiate rate limits!
         message = self.create_UAV_INF_message_for(uav_ids)
-        self.message_hub.send_message(message)
+        self.message_hub.enqueue_message(message)
+
+    def run_in_background(self, func, *args, cancellable=False):
+        """Runs the given function as a background task in the application."""
+        scope = CancelScope() if cancellable or hasattr(func, "_cancellable") else None
+        self._task_queue[0].send_nowait((func, args, scope))
+        return scope
+
+    async def supervise(
+        self,
+        connection,
+        *,
+        task: Optional[ConnectionTask] = None,
+        policy: Optional[SupervisionPolicy] = None
+    ):
+        """Shorthand to `self.connection_supervisor.supervise()`. See the
+        details there.
+        """
+        await self.connection_supervisor.supervise(connection, task=task, policy=policy)
 
     def teardown(self):
         """Tears down the application and prepares it for exiting normally."""
@@ -790,7 +851,7 @@ class FlockwaveServer(object):
             new_state (ConnectionState): the old state of the connection
         """
         message = self.create_CONN_INF_message_for([entry.id])
-        self.message_hub.send_message(message)
+        self.message_hub.enqueue_message(message)
 
     def _on_command_execution_finished(self, sender, status):
         """Handler called when the execution of a remote asynchronous
@@ -808,7 +869,7 @@ class FlockwaveServer(object):
         }
         message = self.message_hub.create_response_or_notification(body)
         for client_id in status.clients_to_notify:
-            self.message_hub.send_message(message, to=client_id)
+            self.message_hub.enqueue_message(message, to=client_id)
 
     def _on_command_execution_timeout(self, sender, statuses):
         """Handler called when the execution of a remote asynchronous
@@ -831,10 +892,10 @@ class FlockwaveServer(object):
                 receipt_ids_by_clients[client].append(receipt_id)
 
         hub = self.message_hub
-        for client, receipt_ids in iteritems(receipt_ids_by_clients):
+        for client, receipt_ids in receipt_ids_by_clients.items():
             body = {"type": "CMD-TIMEOUT", "ids": receipt_ids}
             message = hub.create_response_or_notification(body)
-            hub.send_message(message, to=client)
+            hub.enqueue_message(message, to=client)
 
     def _sort_uavs_by_drivers(self, uav_ids, response=None):
         """Given a list of UAV IDs, returns a mapping that maps UAV drivers
@@ -944,8 +1005,8 @@ def handle_UAV_LIST(message, sender, hub):
 @app.message_hub.on(
     "CMD-REQ", "UAV-FLY", "UAV-HALT", "UAV-LAND", "UAV-RTH", "UAV-TAKEOFF"
 )
-def handle_UAV_operations(message, sender, hub):
-    return app.dispatch_to_uavs(message, sender)
+async def handle_UAV_operations(message, sender, hub):
+    return await app.dispatch_to_uavs(message, sender)
 
 
 # ######################################################################## #

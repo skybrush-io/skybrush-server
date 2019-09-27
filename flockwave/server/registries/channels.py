@@ -12,6 +12,7 @@ from __future__ import absolute_import
 
 from blinker import Signal
 from collections import namedtuple
+from contextlib import contextmanager
 
 from ..logger import log as base_log
 from ..model import CommunicationChannel
@@ -173,3 +174,20 @@ class ChannelTypeRegistry(RegistryBase):
         log.info("Channel deregistered", extra={"id": channel_id})
         self.count_changed.send(self)
         self.removed.send(self, id=channel_id, descriptor=descriptor)
+
+    @contextmanager
+    def use(self, name: str, **kwds):
+        """Context manager that temporarily adds a channel to the channel
+        registry and unregisters it upon exiting the context.
+
+        Keyword arguments are forwarded intact to `add()`. See the list of
+        supported arguments there.
+
+        Parameters:
+            name: name of the channel to register
+        """
+        try:
+            self.add(name, **kwds)
+            yield
+        finally:
+            self.remove(name)

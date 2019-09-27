@@ -2,15 +2,20 @@
 
 from __future__ import absolute_import
 
+import attr
 import importlib
+import logging
 
 from blinker import Signal
-from future.utils import iteritems
+from inspect import iscoroutinefunction
 from pkgutil import get_loader
+from trio import CancelScope
+from typing import Any, Dict, Optional, Set
 
 from .logger import log as base_log
 
-from ..utils import keydefaultdict
+from ..concurrency import cancellable
+from ..utils import bind, keydefaultdict
 
 __all__ = ("ExtensionManager",)
 
@@ -72,6 +77,7 @@ class LoadOrder(object):
         item.next.prev = item.prev
 
 
+@attr.s
 class ExtensionData(object):
     """Data that the extension manager stores related to each extension.
 
@@ -79,20 +85,33 @@ class ExtensionData(object):
         name (str): the name of the extension
         api_proxy (object): the API object that the extension exports
         configuration (object): the configuration object of the extension
-        instance (object): the loaded instance of the extension
         dependents (Set[str]): names of other loaded extensions that depend
             on this extension
+        instance (object): the loaded instance of the extension
         loaded (bool): whether the extension is loaded
+        task (Optional[trio.CancelScope]): a cancellation scope for the
+            background task that was spawned for the extension when it
+            was loaded, or `None` if no such task was spawned
+        worker (Optional[trio.CancelScope]): a cancellation scope for the
+            worker task that was spawned for the extension when the first
+            client connected to the server, or `None` if no such worker
+            was spawned or there are no clients connected
     """
 
-    def __init__(self, name, configuration=None):
-        """Constructor."""
-        self.api_proxy = None
-        self.name = name
-        self.configuration = configuration if configuration is not None else {}
-        self.dependents = set()
-        self.instance = None
-        self.loaded = False
+    name: str = attr.ib()
+
+    api_proxy: Optional[object] = attr.ib(default=None)
+    configuration: Dict[str, Any] = attr.ib(factory=dict)
+    dependents: Set[str] = attr.ib(factory=set)
+    instance: Optional[object] = attr.ib(default=None)
+    loaded: bool = attr.ib(default=False)
+    log: logging.Logger = attr.ib(default=None)
+    task: Optional[CancelScope] = attr.ib(default=None)
+    worker: Optional[CancelScope] = attr.ib(default=None)
+
+    @classmethod
+    def for_extension(cls, name):
+        return cls(name=name, log=base_log.getChild(name))
 
 
 class ExtensionManager(object):
@@ -154,7 +173,7 @@ class ExtensionManager(object):
             )
 
     def configure(self, configuration):
-        """Conigures the extension manager.
+        """Configures the extension manager.
 
         Extensions that were loaded earlier will be unloaded before loading
         the new ones with the given configuration.
@@ -167,7 +186,7 @@ class ExtensionManager(object):
 
         self.teardown()
 
-        for extension_name, extension_cfg in iteritems(configuration):
+        for extension_name, extension_cfg in configuration.items():
             ext = self._extensions[extension_name]
             ext.configuration = dict(extension_cfg)
             loaded_extensions.add(extension_name)
@@ -191,7 +210,7 @@ class ExtensionManager(object):
         if not self.exists(extension_name):
             raise KeyError(extension_name)
         else:
-            data = ExtensionData(extension_name)
+            data = ExtensionData.for_extension(extension_name)
             data.api_proxy = ExtensionAPIProxy(self, extension_name)
             return data
 
@@ -321,7 +340,7 @@ class ExtensionManager(object):
         Returns:
             list: the names of all the extensions that are currently loaded
         """
-        return sorted(key for key, ext in iteritems(self._extensions) if ext.loaded)
+        return sorted(key for key, ext in self._extensions.items() if ext.loaded)
 
     def is_loaded(self, extension_name):
         """Returns whether the given extension is loaded."""
@@ -342,6 +361,7 @@ class ExtensionManager(object):
         Parameters:
             extension_name (str): the name of the extension to unload
         """
+        # Get the extension instance
         try:
             extension = self._get_loaded_extension_by_name(extension_name)
         except KeyError:
@@ -351,17 +371,26 @@ class ExtensionManager(object):
             )
             return
 
-        dependents = self._extensions[extension_name].dependents
-        if dependents:
+        # Get the associated internal bookkeeping object of the extension
+        extension_data = self._extensions[extension_name]
+        if extension_data.dependents:
             message = "Failed to unload extension {0!r} because it is still in use".format(
                 extension_name
             )
             raise RuntimeError(message)
 
+        # Spin down the extension if needed
         if self._num_clients > 0:
             self._spindown_extension(extension_name)
 
+        # Stop the task associated to the extension if it has one
+        if extension_data.task:
+            extension_data.task.cancel()
+            extension_data.task = None
+
+        # Unload the extension
         clean_unload = True
+
         func = getattr(extension, "unload", None)
         if callable(func):
             try:
@@ -373,15 +402,20 @@ class ExtensionManager(object):
                     "forcing unload".format(extension_name)
                 )
 
-        self._extensions[extension_name].loaded = False
-        self._extensions[extension_name].instance = None
+        # Update the internal bookkeeping object
+        extension_data.loaded = False
+        extension_data.instance = None
+
+        # Remove the extension from its dependents
         self._load_order.notify_unloaded(extension_name)
 
         for dependency in self._get_dependencies_of_extension(extension_name):
             self._extensions[dependency].dependents.remove(extension_name)
 
+        # Send a signal that the extension was unloaded
         self.unloaded.send(self, name=extension_name, extension=extension)
 
+        # Add a log message
         message = "Unloaded extension {0!r}".format(extension_name)
         if clean_unload:
             log.info(message)
@@ -459,7 +493,8 @@ class ExtensionManager(object):
         if extension_name in ("logger", "manager", "base", "__init__"):
             raise ValueError("invalid extension name: {0!r}".format(extension_name))
 
-        configuration = self._extensions[extension_name].configuration
+        extension_data = self._extensions[extension_name]
+        configuration = extension_data.configuration
 
         log.info("Loading extension {0!r}".format(extension_name))
         try:
@@ -480,19 +515,28 @@ class ExtensionManager(object):
             )
             return None
 
+        args = (self.app, configuration, extension_data.log)
+
         func = getattr(extension, "load", None)
         if callable(func):
             try:
-                extension_log = base_log.getChild(extension_name)
-                result = func(self.app, configuration, extension_log)
+                result = bind(func, args, partial=True)()
             except Exception:
                 log.exception(
                     "Error while loading extension {0!r}".format(extension_name)
                 )
                 return None
+        else:
+            result = None
 
-        self._extensions[extension_name].instance = extension
-        self._extensions[extension_name].loaded = True
+        task = getattr(extension, "task", None)
+        if iscoroutinefunction(task):
+            extension_data.task = self.app.run_in_background(
+                cancellable(bind(task, args, partial=True))
+            )
+
+        extension_data.instance = extension
+        extension_data.loaded = True
         self._load_order.notify_loaded(extension_name)
 
         for dependency in self._get_dependencies_of_extension(extension_name):
@@ -529,6 +573,14 @@ class ExtensionManager(object):
             extension_name (str): the name of the extension to spin down.
         """
         extension = self._get_loaded_extension_by_name(extension_name)
+        extension_data = self._extensions[extension_name]
+
+        # Stop the worker associated to the extension if it has one
+        if extension_data.worker:
+            extension_data.worker.cancel()
+            extension_data.worker = None
+
+        # Call the spindown hook of the extension if it has one
         func = getattr(extension, "spindown", None)
         if callable(func):
             try:
@@ -549,6 +601,9 @@ class ExtensionManager(object):
             extension_name (str): the name of the extension to spin up.
         """
         extension = self._get_loaded_extension_by_name(extension_name)
+        extension_data = self._extensions[extension_name]
+
+        # Call the spinup hook of the extension if it has one
         func = getattr(extension, "spinup", None)
         if callable(func):
             try:
@@ -558,6 +613,14 @@ class ExtensionManager(object):
                     "Error while spinning up extension {0!r}".format(extension_name)
                 )
                 return
+
+        # Start the worker associated to the extension if it has one
+        task = getattr(extension, "worker", None)
+        if iscoroutinefunction(task):
+            args = (self.app, extension_data.configuration, extension_data.log)
+            self._extensions[extension_name].worker = self.app.run_in_background(
+                cancellable(bind(task, args, partial=True))
+            )
 
     def _ensure_dependencies_loaded(self, extension_name, forbidden):
         """Ensures that all the dependencies of the given extension are

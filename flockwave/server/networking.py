@@ -4,20 +4,22 @@ from ipaddress import IPv4Address, IPv4Network
 from netifaces import AF_INET, ifaddresses, interfaces
 
 import socket
+import trio.socket
 
 __all__ = ("create_socket", "format_socket_address")
 
 
-def create_socket(socket_type, nonblocking=False):
+def create_socket(
+    socket_type: socket.SocketKind, nonblocking: bool = False
+) -> socket.socket:
     """Creates a socket with the given type and performs some administrative
     setup of the socket that makes it easier for us to handle non-graceful
     terminations during development.
 
     Parameters:
-        socket_type (socket.SocketKind): the type of the socket (
-            ``socket.SOCK_STREAM`` for TCP sockets,
-            ``socket.SOCK_DGRAM`` for UDP sockets)
-        nonblocking (bool): whether to make the socket non-blocking
+        socket_type: the type of the socket (``socket.SOCK_STREAM`` for
+            TCP sockets, ``socket.SOCK_DGRAM`` for UDP sockets)
+        nonblocking: whether to make the socket non-blocking
 
     Returns:
         socket.socket: the newly created socket
@@ -32,6 +34,30 @@ def create_socket(socket_type, nonblocking=False):
         sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
     if nonblocking:
         sock.setblocking(0)
+    return sock
+
+
+def create_async_socket(socket_type) -> trio.socket.socket:
+    """Creates an asynchronous socket with the given type.
+
+    Asynchronous sockets have asynchronous sender and receiver methods so
+    you need to use the `await` keyword with them.
+
+    Parameters:
+        socket_type: the type of the socket (``socket.SOCK_STREAM`` for
+            TCP sockets, ``socket.SOCK_DGRAM`` for UDP sockets)
+
+    Returns:
+        trio.socket.socket: the newly created socket
+    """
+    sock = trio.socket.socket(trio.socket.AF_INET, socket_type)
+    sock.setsockopt(trio.socket.SOL_SOCKET, trio.socket.SO_REUSEADDR, 1)
+    if hasattr(socket, "SO_REUSEPORT"):
+        # Needed on Mac OS X to work around an issue with an earlier
+        # instance of the flockctrl process somehow leaving a socket
+        # bound to the UDP broadcast address even when the process
+        # terminates
+        sock.setsockopt(trio.socket.SOL_SOCKET, trio.socket.SO_REUSEPORT, 1)
     return sock
 
 

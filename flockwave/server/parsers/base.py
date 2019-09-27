@@ -5,12 +5,11 @@ Flockwave server.
 from __future__ import absolute_import
 
 from abc import ABCMeta, abstractmethod
-from future.utils import with_metaclass
 
 __all__ = ("Parser",)
 
 
-class Parser(with_metaclass(ABCMeta, object)):
+class Parser(metaclass=ABCMeta):
     """Interface specification for message parsers that can be fed with incoming
     data and that call a specific callback function whenever they are able to
     parse a new message out of the incoming data.

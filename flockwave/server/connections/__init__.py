@@ -11,28 +11,39 @@ from .factory import ConnectionFactory, create_connection
 from .file import FileConnection
 from .serial import SerialPortConnection
 from .socket import (
-    TCPSocketConnection,
+    TCPStreamConnection,
     UDPSocketConnection,
     MulticastUDPSocketConnection,
     SubnetBindingConnection,
     SubnetBindingUDPConnection,
     SubnetBindingUDPBroadcastConnection,
 )
-from .reconnection import reconnecting
+from .stream import StreamConnection, StreamConnectionBase
+from .supervision import (
+    ConnectionSupervisor,
+    ConnectionTask,
+    SupervisionPolicy,
+    supervise,
+)
 
 __all__ = (
     "Connection",
     "ConnectionBase",
     "ConnectionFactory",
+    "ConnectionSupervisor",
     "ConnectionState",
+    "ConnectionTask",
     "FileConnection",
     "SerialPortConnection",
-    "TCPSocketConnection",
+    "StreamConnection",
+    "StreamConnectionBase",
+    "TCPStreamConnection",
     "UDPSocketConnection",
     "MulticastUDPSocketConnection",
     "SubnetBindingConnection",
     "SubnetBindingUDPConnection",
     "SubnetBindingUDPBroadcastConnection",
+    "SupervisionPolicy",
     "create_connection",
-    "reconnecting",
+    "supervise",
 )

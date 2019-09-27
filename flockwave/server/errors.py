@@ -14,21 +14,14 @@ class CommandInvocationError(FlockwaveError):
     of a remote UAV but failed to parameterize the command properly.
     """
 
-    def __init__(self, message=None, cause=None):
+    def __init__(self, message=None):
         """Constructor.
 
         Parameters:
             message (Optional[str]): the error message
-            cause (Optional[str]): the underlying exception that caused this
-                error message
         """
-        message = (
-            message
-            or "{0.__class__.__name__}: {0.message}".format(cause)
-            or "Command invocation error"
-        )
+        message = message or "Command invocation error"
         super(CommandInvocationError, self).__init__(message)
-        self.cause = cause
 
 
 class NotSupportedError(FlockwaveError):

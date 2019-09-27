@@ -4,8 +4,7 @@ the Flockwave server.
 
 import threading
 
-from eventlet.debug import format_hub_listeners, format_hub_timers
-from flask import Blueprint, render_template
+from quart import Blueprint, render_template
 
 __all__ = ("load", "index")
 
@@ -19,35 +18,24 @@ blueprint = Blueprint(
 )
 
 
-def load(app, configuration, logger):
+def load(app, configuration):
     """Loads the extension."""
     http_server = app.import_api("http_server")
-    http_server.wsgi_app.register_blueprint(
-        blueprint, url_prefix=configuration.get("route", "/")
-    )
+    http_server.mount(blueprint, path=configuration.get("route", "/debug"))
     http_server.propose_index_page("debug.index", priority=-100)
 
 
 @blueprint.route("/")
-def index():
+async def index():
     """Returns the index page of the extension."""
-    return render_template("index.html")
-
-
-@blueprint.route("/greenlets")
-def list_greenlets():
-    """Returns a page that lists all active greenlets in the current
-    thread.
-    """
-    data = {"listeners": format_hub_listeners(), "timers": format_hub_timers()}
-    return render_template("greenlets.html", **data)
+    return await render_template("index.html")
 
 
 @blueprint.route("/threads")
-def list_threads():
+async def list_threads():
     """Returns a page that lists all active threads in the server."""
     data = {"threads": threading.enumerate()}
-    return render_template("threads.html", **data)
+    return await render_template("threads.html", **data)
 
 
 dependencies = ("http_server",)

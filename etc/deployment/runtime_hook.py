@@ -2,6 +2,4 @@
 Flockwave server bundle.
 """
 
-import os
-
-os.environ["EVENTLET_NO_GREENDNS"] = "yes"
+# Nothing to do yet.

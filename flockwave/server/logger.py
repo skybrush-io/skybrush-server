@@ -5,7 +5,6 @@ import logging
 from colorlog import default_log_colors
 from colorlog.colorlog import ColoredRecord
 from colorlog.escape_codes import escape_codes, parse_colors
-from future.utils import iteritems
 
 __all__ = ("log", "install")
 
@@ -49,7 +48,7 @@ class ColoredFormatter(logging.Formatter):
         if log_colors is None:
             log_colors = default_log_colors
 
-        self.log_colors = {k: parse_colors(v) for k, v in iteritems(log_colors)}
+        self.log_colors = {k: parse_colors(v) for k, v in log_colors.items()}
         self.log_symbols = (
             log_symbols if log_symbols is not None else default_log_symbols
         )

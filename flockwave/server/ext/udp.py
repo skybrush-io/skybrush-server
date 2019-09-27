@@ -6,21 +6,26 @@ requests on a certain UDP port. Responses will be sent to the same host and
 port where the request was sent from.
 """
 
-import socket
+import trio.socket
 
-from eventlet.greenpool import GreenPool
-from eventlet import spawn
-from greenlet import GreenletExit
+from contextlib import closing, ExitStack
+from functools import partial
+from trio import CapacityLimiter, open_nursery
+from typing import Optional, Tuple
 
-from ..encoders import JSONEncoder
-from ..model import CommunicationChannel
-from ..networking import create_socket, format_socket_address, get_socket_address
+from flockwave.server.encoders import JSONEncoder
+from flockwave.server.model import CommunicationChannel
+from flockwave.server.networking import (
+    create_async_socket,
+    format_socket_address,
+    get_socket_address,
+)
+from flockwave.server.utils import overridden
 
 
 app = None
 encoder = JSONEncoder()
 log = None
-receiver_thread = None
 sock = None
 
 
@@ -34,9 +39,10 @@ class UDPChannel(CommunicationChannel):
     properly.
     """
 
-    def __init__(self):
+    def __init__(self, sock: trio.socket.socket):
         """Constructor."""
         self.address = None
+        self.sock = sock
 
     def bind_to(self, client):
         """Binds the communication channel to the given client.
@@ -44,37 +50,36 @@ class UDPChannel(CommunicationChannel):
         Parameters:
             client (Client): the client to bind the channel to
         """
-        if client.id and client.id.startswith("udp:"):
-            host, _, port = client.id[4:].partition(":")
+        if client.id and client.id.startswith("udp://"):
+            host, _, port = client.id[6:].partition(":")
             self.address = host, int(port)
         else:
             raise ValueError("client has no ID or address yet")
 
-    def send(self, message):
+    async def send(self, message):
         """Inherited."""
-        global sock
-        sock.sendto(encoder.dumps(message), self.address)
+        await self.sock.sendto(encoder.dumps(message), self.address)
 
 
 ############################################################################
 
 
-def get_address(in_subnet_of=None):
+def get_address(in_subnet_of: Optional[str] = None) -> str:
     """Returns the address where we are listening for incoming UDP packets.
 
     Parameters:
-        in_subnet_of (Optional[str]): when not `None` and we are listening on
-            multiple (or all) interfaces, this address is used to pick a
-            reported address that is in the same subnet as the given address
+        in_subnet_of: when not `None` and we are listening on multiple (or
+            all) interfaces, this address is used to pick a reported address
+            that is in the same subnet as the given address
 
     Returns:
-        str: the address where we are listening
+        the address where we are listening
     """
     global sock
     return get_socket_address(sock)
 
 
-def get_ssdp_location(address):
+def get_ssdp_location(address) -> Optional[str]:
     """Returns the SSDP location descriptor of the UDP channel.
 
     Parameters:
@@ -90,98 +95,73 @@ def get_ssdp_location(address):
     )
 
 
-def handle_message(message, sender):
+async def handle_message(message: bytes, sender: Tuple[str, int]) -> None:
     """Handles a single message received from the given sender.
 
     Parameters:
-        message (bytes): the incoming message, waiting to be parsed
-        sender (Tuple[str,int]): the IP address and port of the sender
+        message: the incoming message, waiting to be parsed
+        sender: the IP address and port of the sender
     """
+    client_id = "udp://{0}:{1}".format(*sender)
+
     try:
         message = encoder.loads(message)
     except ValueError as ex:
-        log.warn(
-            "Malformed JSON message received from {1!r}: {0!r}".format(
-                message[:20], sender
-            )
-        )
+        log.warn(f"Malformed JSON message received from {client_id} - {message[:20]}")
         log.exception(ex)
         return
 
-    client_id = "udp:{0}:{1}".format(*sender)
-    with app.client_registry.temporary_client(client_id, "udp") as client:
-        app.message_hub.handle_incoming_message(message, client)
+    with app.client_registry.use(client_id, "udp") as client:
+        await app.message_hub.handle_incoming_message(message, client)
 
 
-def handle_message_safely(message, sender):
+async def handle_message_safely(
+    message: bytes, sender: Tuple[str, int], *, limit: CapacityLimiter
+) -> None:
     """Handles a single message received from the given sender, ensuring
-    that exceptions do not propagate through.
+    that exceptions do not propagate through and the number of concurrent
+    requests being processed is limited.
 
     Parameters:
-        message (bytes): the incoming message, waiting to be parsed
-        sender (Tuple[str,int]): the IP address and port of the sender
+        message: the incoming message, waiting to be parsed
+        sender: the IP address and port of the sender
+        limit: Trio capacity limiter that ensures that we are not processing
+            too many requests concurrently
     """
-    try:
-        return handle_message(message, sender)
-    except GreenletExit:
-        return
-    except Exception as ex:
-        log.exception(ex)
-
-
-def receive_loop(sock, handler, pool_size=1000):
-    """Loop that listens for incoming messages on the given socket and
-    calls a handler function for each incoming message.
-
-    Parameters:
-        sock (socket.socket): the UDP socket to listen for incoming
-            messages
-        handler (callable): the function to call with the payload of each
-            incoming message. This function will be spawned in a greenlet.
-        pool_size (int): number of concurrent UDP requests that the
-            extension is willing to handle
-    """
-    pool = GreenPool(pool_size)
-    while True:
+    async with limit:
         try:
-            pool.spawn_n(handle_message_safely, *sock.recvfrom(65536))
-        except GreenletExit:
-            break
-    pool.waitall()
+            return await handle_message(message, sender)
+        except Exception as ex:
+            log.exception(ex)
 
 
 ############################################################################
 
 
-def load(app, configuration, logger):
-    """Loads the extension."""
+async def task(app, configuration, logger):
+    """Background task that is active while the extension is loaded."""
     address = configuration.get("host", ""), configuration.get("port", 5001)
-    sock = create_socket(socket.SOCK_DGRAM)
-    sock.bind(address)
+    pool_size = configuration.get("pool_size", 1000)
 
-    app.channel_type_registry.add(
-        "udp", factory=UDPChannel, address=get_address, ssdp_location=get_ssdp_location
-    )
+    sock = create_async_socket(trio.socket.SOCK_DGRAM)
+    await sock.bind(address)
 
-    receiver_thread = spawn(
-        receive_loop,
-        sock,
-        handler=handle_message,
-        pool_size=configuration.get("pool_size", 1000),
-    )
+    with ExitStack() as stack:
+        stack.enter_context(overridden(globals(), app=app, log=logger, sock=sock))
+        stack.enter_context(closing(sock))
+        stack.enter_context(
+            app.channel_type_registry.use(
+                "udp",
+                factory=partial(UDPChannel, sock),
+                address=get_address,
+                ssdp_location=get_ssdp_location,
+            )
+        )
 
-    globals().update(app=app, log=logger, receiver_thread=receiver_thread, sock=sock)
+        limit = CapacityLimiter(pool_size)
+        handler = partial(handle_message_safely, limit=limit)
 
-
-def unload(app):
-    """Unloads the extension."""
-    global receiver_thread
-
-    if receiver_thread:
-        receiver_thread.cancel()
-        receiver_thread = None
-
-    sock.close()
-    app.channel_type_registry.remove("udp")
-
-    globals().update(app=None, log=None, sock=None)
+        async with open_nursery() as nursery:
+            while True:
+                data = await sock.recvfrom(65536)
+                nursery.start_soon(handler, *data)

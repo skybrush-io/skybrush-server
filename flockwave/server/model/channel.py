@@ -10,12 +10,11 @@ must extend.
 from __future__ import absolute_import
 
 from abc import ABCMeta, abstractmethod
-from future.utils import with_metaclass
 
 __all__ = ("CommunicationChannel",)
 
 
-class CommunicationChannel(with_metaclass(ABCMeta, object)):
+class CommunicationChannel(metaclass=ABCMeta):
     """Base model object representing a communication channel between the
     server and a client. Concrete implementations of this class are to be
     found in the appropriate Flockwave server extensions (e.g., the
@@ -38,6 +37,6 @@ class CommunicationChannel(with_metaclass(ABCMeta, object)):
         pass
 
     @abstractmethod
-    def send(self, message):
+    async def send(self, message):
         """Sends the given message over the communication channel."""
         raise NotImplementedError

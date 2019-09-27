@@ -18,7 +18,6 @@ if root_dir.startswith("/Volumes/Macintosh HD/ntamas"):
 
 # Extra modules to import
 extra_modules = set([
-    "engineio.async_eventlet",
     "flockwave.server.config"
 ])
 

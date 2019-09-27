@@ -2,6 +2,6 @@
 the Flockwave server.
 """
 
-from .extension import load, index
+from .extension import dependencies, load, index
 
-__all__ = ("load", "index")
+__all__ = ("dependencies", "load", "index")

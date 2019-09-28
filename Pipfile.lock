@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "7179a8c79abf60168fd847960ead1e2626c516418c9a45e15a0bd3182a810397"
+            "sha256": "1dfb95dc4e1f8e7fa58cce7c46fe6f6d08029d1d638ba2dbd7eed45da0416b40"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -86,21 +86,11 @@
             "index": "pypi",
             "version": "==4.0.2"
         },
-        "enum-compat": {
-            "hashes": [
-                "sha256:939ceff18186a5762ae4db9fa7bfe017edbd03b66526b798dd8245394c8a4192"
-            ],
-            "version": "==0.0.2"
-        },
         "flockwave-gps": {
-            "editable": true,
-            "git": "ssh://git@git.collmot.com/collmot/flockwave-gps.git",
-            "ref": "23f17672309e1878d58a3dbc70623281dd61ae42"
+            "file": "https://git.collmot.com/collmot/flockwave-gps/archive/0.9.0.tar.gz"
         },
         "flockwave-spec": {
-            "editable": true,
-            "git": "ssh://git@git.collmot.com/collmot/flockwave-spec.git",
-            "ref": "4659ab9990c74d67c07282d65d58f4b3d090444d"
+            "file": "https://git.collmot.com/collmot/flockwave-spec/archive/0.18.0.tar.gz"
         },
         "future": {
             "hashes": [
@@ -188,13 +178,6 @@
             ],
             "version": "==2.10.1"
         },
-        "jsonpointer": {
-            "hashes": [
-                "sha256:c192ba86648e05fdae4f08a17ec25180a9aef5008d973407b581798a83975362",
-                "sha256:ff379fa021d1b81ab539f5ec467c7745beb1a5671463f9dcc2b2d458bd361c1e"
-            ],
-            "version": "==2.0"
-        },
         "jsonschema": {
             "hashes": [
                 "sha256:5f9c0a719ca2ce14c5de2fd350a64fd2d13e8539db29836a86adc990bb1a068f",
@@ -262,12 +245,6 @@
                 "sha256:e249096428b3ae81b08327a63a485ad0878de3fb939049038579ac0ef61e17e7"
             ],
             "version": "==1.1.1"
-        },
-        "memoized": {
-            "hashes": [
-                "sha256:cdce8bacc6941a64f9a825067602c13810cfd9b84efaaf024c400ef6e7d378d8"
-            ],
-            "version": "==0.3"
         },
         "mido": {
             "hashes": [

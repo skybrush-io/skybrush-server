@@ -10,8 +10,7 @@ blinker = ">=1.4"
 click = ">=6.2"
 colorama = ">=0.3.5"
 colorlog = ">=2.6.0"
-flockwave-gps = {git = "ssh://git@git.collmot.com/collmot/flockwave-gps.git",ref = "0.8.0",editable = true}
-flockwave-spec = {git = "ssh://git@git.collmot.com/collmot/flockwave-spec.git",ref = "0.18.0",editable = true}
+flockwave-spec = {file = "https://git.collmot.com/collmot/flockwave-spec/archive/0.18.0.tar.gz"}
 hexdump = ">=3.3"
 ipaddress = ">=1.0.17"
 jsonschema = ">=3.0.1"
@@ -30,6 +29,7 @@ quart-trio = "*"
 python-rtmidi = "*"
 trio-util = "*"
 attrs = "*"
+flockwave-gps = {file = "https://git.collmot.com/collmot/flockwave-gps/archive/0.9.0.tar.gz"}
 
 [dev-packages]
 PyInstaller = "*"

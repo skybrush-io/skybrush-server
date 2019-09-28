@@ -158,6 +158,9 @@
             var $responsePanel = $('#responses');
             var $notificationPanel = $('#notifications');
 
+            var numResponses = 0;
+            var numNotifications = 0;
+
             socket.on('fw', function(data) {
                 var isResponse = data.hasOwnProperty("correlationId");
                 if (data.hasOwnProperty("body") && data.body.hasOwnProperty("type") &&
@@ -165,17 +168,35 @@
                     return
                 }
 
-                addEntryToPanel(data, isResponse ? $responsePanel : $notificationPanel);
+                if (isResponse) {
+                  numResponses++;
+                } else {
+                  numNotifications++;
+                }
+
+                addEntryToPanel(
+                    data,
+                    isResponse ? ('Response #' + numResponses) : ('Notification #' + numNotifications),
+                    isResponse ? $responsePanel : $notificationPanel
+                );
             });
 
-            function addEntryToPanel(data, $panel) {
-                $panel.find('.hint').hide();
-                $('<pre>').text(
+            function addEntryToPanel(data, header, $panel) {
+                var $item = $('<pre>').text(
                     JSON.stringify(data, null, '    ')
-                )
-                .wrap('<div>').addClass('card-body')
-                .wrap('<div>').addClass('card bg-light')
-                .prependTo($panel);
+                ).css('margin-bottom', 0);
+
+                $item = $('<div>').addClass('card-body').append($item);
+                $item = $('<div>').addClass('card bg-light').append($item).css('margin-bottom', '1em');
+
+                if (header) {
+                    $item.prepend(
+                      $('<div>').text(header).addClass('card-header')
+                    );
+                }
+
+                $panel.find('.hint').hide();
+                $item.prependTo($panel);
                 $panel.children('pre:gt(50)').remove();
             }
 

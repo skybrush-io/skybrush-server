@@ -1,6 +1,4 @@
 -i https://pypi.python.org/simple
--e git+ssh://git@git.collmot.com/collmot/flockwave-gps.git@23f17672309e1878d58a3dbc70623281dd61ae42#egg=flockwave-gps
--e git+ssh://git@git.collmot.com/collmot/flockwave-spec.git@4659ab9990c74d67c07282d65d58f4b3d090444d#egg=flockwave-spec
 aiofiles==0.4.0
 async-generator==1.10
 attrs==19.1.0
@@ -10,12 +8,13 @@ blinker==1.4
 click==7.0
 colorama==0.4.1
 colorlog==4.0.2
-enum-compat==0.0.2
 future==0.17.1
 h11==0.9.0
 h2==3.1.1
 hexdump==3.3
 hpack==3.0.0
+https://git.collmot.com/collmot/flockwave-gps/archive/0.9.0.tar.gz#egg=flockwave-gps
+https://git.collmot.com/collmot/flockwave-spec/archive/0.18.0.tar.gz#egg=flockwave-spec
 hypercorn[trio]==0.8.4
 hyperframe==5.2.0
 idna==2.8
@@ -23,11 +22,9 @@ ifaddr==0.1.6
 ipaddress==1.0.22
 itsdangerous==1.1.0
 jinja2==2.10.1
-jsonpointer==2.0
 jsonschema==3.0.2
 lxml==4.4.1
 markupsafe==1.1.1
-memoized==0.3
 mido==1.2.9
 multidict==4.5.2
 netifaces==0.10.9

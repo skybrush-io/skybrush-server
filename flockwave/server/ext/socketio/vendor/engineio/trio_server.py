@@ -270,9 +270,14 @@ class TrioServer(server.Server):
                     self.logger.info(origin + " is not an accepted origin.")
                     r = self._bad_request()
                     make_response = self._async["make_response"]
-                    response = make_response(
-                        r["status"], r["headers"], r["response"], environ
-                    )
+                    if inspect.iscoroutinefunction(make_response):
+                        response = await make_response(
+                            r["status"], r["headers"], r["response"], environ
+                        )
+                    else:
+                        response = make_response(
+                            r["status"], r["headers"], r["response"], environ
+                        )
                     return response
 
         method = environ["REQUEST_METHOD"]

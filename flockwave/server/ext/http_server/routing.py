@@ -68,7 +68,7 @@ class RoutingMiddleware(object):
             if route.matches(scope):
                 return await route.handle(scope, receive, send)
         else:
-            await default_handler(scope, receive, send)
+            return await default_handler(scope, receive, send)
 
     def add(
         self,

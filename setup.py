@@ -1,6 +1,9 @@
 """Setup script for the Flockwave server."""
 
+from glob import glob
+from os.path import basename, splitext
 from setuptools import setup, find_packages
+
 
 requires = [
     "attrs>=19.1.0",
@@ -32,16 +35,22 @@ requires = [
 ]
 
 __version__ = None
-exec(open("flockwave/server/version.py").read())
+exec(open("src/flockwave/server/version.py").read())
 
 setup(
     name="flockwave-server",
     version=__version__,
-    packages=find_packages(),
+    packages=find_packages("src"),
+    package_dir={"": "src"},
+    py_modules=[splitext(basename(path))[0] for path in glob('src/*.py')],
     include_package_data=True,
+    python_requires=">=3.7",
     install_requires=requires,
-    entry_points="""
-    [console_scripts]
-    flockwave-server=flockwave.server.launcher:start
-    """,
+    extras_require={},
+    setup_requires=["pytest-runner"],
+    entry_points={
+        "console_scripts": [
+            "flockwaved = flockwave.server.launcher:start"
+        ]
+    }
 )

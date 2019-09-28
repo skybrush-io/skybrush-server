@@ -4,6 +4,7 @@
 *.pyc
 *.pyo
 *.swp
+.eggs/
 build/
 dist/
 tmp/

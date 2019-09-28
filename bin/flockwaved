@@ -5,8 +5,8 @@ import sys
 
 script_dir = os.path.abspath(os.path.dirname(sys.modules[__name__].__file__))
 
-if os.path.isfile(os.path.join(script_dir, '..', 'flockwave', '__init__.py')):
-	sys.path.insert(0, os.path.abspath(os.path.join(script_dir, '..')))
+if os.path.isfile(os.path.join(script_dir, '..', 'src', 'flockwave', '__init__.py')):
+	sys.path.insert(0, os.path.abspath(os.path.join(script_dir, '..', 'src')))
 
 from flockwave.server.launcher import start
 start()

@@ -12,15 +12,15 @@
         <style>
         #messageToSend {
             font-family: Menlo, Monaco, Consolas, "Courier New", monospace;
-            font-size: 1em;
+            font-size: 0.875em;
         }
         </style>
     </head>
     <body>
 
-        <div class="container">
+        <main class="container" role="main">
 
-            <h1>Flockwave test client</h1>
+            <h1 class="display-4">Flockwave test client</h1>
 
             <p class="lead">Use the form below to send test messages to this
                 Flockwave server. Predefined message templates may be loaded
@@ -28,26 +28,28 @@
             </p>
 
             <form>
-                <fieldset class="form-group">
+                <div class="form-group">
                     <label for="messageToSend">Message</label>
                     <textarea id="messageToSend" class="form-control" rows="8"
                         placeholder="Send a message to the server...">
                     </textarea>
-                </fieldset>
+                </div>
 
                 <button type="button" class="btn btn-primary" onclick="send(); return false;">Send</button>
-                <button type="button" class="btn btn-default" onclick="disconnect(); return false;">Disconnect</button>
+                <button type="button" class="btn btn-danger" onclick="disconnect(); return false;">Disconnect</button>
 
-                <div class="pull-right">
-                    <div class="btn-group">
-                        <button type="button" id="preset-dropdown-button" class="btn btn-default dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                <div class="float-right">
+                    <div class="btn-group" role="group">
+                        <button type="button" id="preset-dropdown-button" class="btn btn-secondary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                             Presets <span class="caret"></span>
                         </button>
-                        <ul class="dropdown-menu" id="preset-buttons">
-                        </ul>
+                        <div class="dropdown-menu" id="preset-buttons">
+                        </div>
                     </div>
                 </div>
             </form>
+
+            <div>&nbsp;</div>
 
             <h2>Server responses</h2>
 
@@ -57,22 +59,24 @@
 
             <h2>Notifications</h2>
 
-            <div id="notification-type-selector" class="form-group">
-              <label class="checkbox-inline">
-                <input type="checkbox" data-type="UAV-INF" onclick="return toggleMessageType(event, 'UAV-INF')"> Show UAV-INF notifications
-              </label>
+            <div id="notification-type-selector" class="form-check">
+              <input type="checkbox" class="form-check-input" data-type="UAV-INF" onclick="return toggleMessageType(event, 'UAV-INF')">
+              <label class="form-check-label">Show UAV-INF notifications</label>
             </div>
+
+            <div>&nbsp;</div>
 
             <div id="notifications">
                 <p class="lead hint">Notifications from the server will appear here.</p>
             </div>
-        </div>
+        </main>
 
         <!-- ########################################################## -->
 
-        <script type="text/javascript" src="static/js/socket.io-1.4.8.min.js"></script>
-        <script type="text/javascript" src="static/js/jquery-2.1.3.min.js"></script>
-        <script type="text/javascript" src="static/js/bootstrap-3.3.6.min.js"></script>
+        <script type="text/javascript" src="static/js/socket.io-2.3.0.slim.js"></script>
+        <script type="text/javascript" src="static/js/jquery-3.3.1.slim.min.js"></script>
+        <script type="text/javascript" src="static/js/popper-1.14.7.min.js"></script>
+        <script type="text/javascript" src="static/js/bootstrap-4.3.1.min.js"></script>
 
         <script type="text/javascript">
             var presets = {
@@ -168,7 +172,10 @@
                 $panel.find('.hint').hide();
                 $('<pre>').text(
                     JSON.stringify(data, null, '    ')
-                ).hide().prependTo($panel).slideDown();
+                )
+                .wrap('<div>').addClass('card-body')
+                .wrap('<div>').addClass('card bg-light')
+                .prependTo($panel);
                 $panel.children('pre:gt(50)').remove();
             }
 
@@ -204,7 +211,9 @@
                             return false;
                         })
                         .text(presetName)
-                        .wrap('<li>').parent()
+                        .wrap('<a>')
+                        .addClass('dropdown-item')
+                        .parent()
                         .appendTo($presetButtons);
                 });
             }

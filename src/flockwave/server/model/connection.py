@@ -2,7 +2,9 @@
 
 from __future__ import absolute_import
 
+from datetime import datetime
 from flockwave.spec.schema import get_complex_object_schema, get_enum_from_schema
+from typing import Optional
 
 from .metamagic import ModelMeta
 from .mixins import TimestampMixin
@@ -14,7 +16,7 @@ ConnectionPurpose = get_enum_from_schema("connectionPurpose", "ConnectionPurpose
 ConnectionStatus = get_enum_from_schema("connectionStatus", "ConnectionStatus")
 
 
-class ConnectionInfo(metaclass=ModelMeta):
+class ConnectionInfo(TimestampMixin, metaclass=ModelMeta):
     """Class representing the status information available about a single
     connection.
     """
@@ -29,7 +31,7 @@ class ConnectionInfo(metaclass=ModelMeta):
         "DISCONNECTING": ConnectionStatus.disconnecting,
     }
 
-    def __init__(self, id=None, timestamp=None):
+    def __init__(self, id: Optional[str] = None, timestamp: Optional[datetime] = None):
         """Constructor.
 
         Parameters:

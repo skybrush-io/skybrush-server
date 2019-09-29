@@ -80,6 +80,7 @@ class FakeUAVDriver(UAVDriver):
             if target.agl is None and target.amsl is None:
                 target.agl = uav.cruise_altitude
         uav.target = target
+        uav.clear_radius()
 
     def _send_landing_signal_single(self, uav):
         uav.land()
@@ -242,6 +243,13 @@ class FakeUAV(UAVBase):
 
         self.step(0)
 
+    def clear_radius(self):
+        if self.radius > 0:
+            self._pos_flat.x = self._pos_flat_circle.x
+            self._pos_flat.y = self._pos_flat_circle.y
+            self._pos_flat.z = self._pos_flat_circle.agl
+            self.radius = 0
+
     @property
     def has_error(self):
         return self.error > 0
@@ -311,7 +319,7 @@ class FakeUAV(UAVBase):
         state = self._state
 
         # Update the angle
-        if state != FakeUAVState.AIRBORNE and self.radius > 0:
+        if state == FakeUAVState.AIRBORNE and self.radius > 0:
             # When airborne and the circle radius is positive, the UAV is
             # circling in the air with a prescribed angular velocity.
             # Otherwise, the angle does not change.

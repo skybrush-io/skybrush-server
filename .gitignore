@@ -1,4 +1,4 @@
-.python-version
+.pytest_cache
 .tags
 *.egg-info
 *.pyc

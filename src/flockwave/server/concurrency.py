@@ -2,9 +2,9 @@
 
 from functools import wraps
 from trio_util import MailboxRepeatedEvent
-from typing import Any, Iterable, Set
+from typing import Any, Iterable
 
-__all__ = ("AsyncSet", "cancellable")
+__all__ = ("AsyncBundler", "cancellable")
 
 
 def cancellable(func):
@@ -22,18 +22,19 @@ def cancellable(func):
     return decorated
 
 
-class AsyncCollectorSet:
-    """Asynchronous set object that supports the following operations:
+class AsyncBundler:
+    """Asynchronous object that holds a bundle and supports the following
+    operations:
 
-    - Adding one or more items to the set
+    - Adding one or more items to the bundle
 
-    - Waiting for the set to become non-empty and then removing all items
-      from the set in one operation.
+    - Waiting for the bundle to become non-empty and then removing all items
+      from the bundle in one operation.
 
     This object is typically used in a producer-consumer setting. Producers
-    add items to the set either one by one (with `add()`) or in batches
-    (with `update()`). At the same time, a single consumer iterates over the
-    set asynchronously and takes all items from it in each iteration.
+    add items to the bundle either one by one (with `add()`) or in batches
+    (with `add_many()`). At the same time, a single consumer iterates over
+    the bundle asynchronously and takes all items from it in each iteration.
     """
 
     def __init__(self):
@@ -42,7 +43,7 @@ class AsyncCollectorSet:
         self._event = MailboxRepeatedEvent()
 
     def add(self, item: Any) -> None:
-        """Adds a single item to the set.
+        """Adds a single item to the bundle.
 
         Parameters:
             item: the item to add
@@ -50,8 +51,8 @@ class AsyncCollectorSet:
         self._data.add(item)
         self._event.set()
 
-    def update(self, items: Iterable[Any]):
-        """Updates the set with multiple items from an iterable.
+    def add_many(self, items: Iterable[Any]) -> None:
+        """Adds multiple items to the bundle from an iterable.
 
         Parameters:
             items: the items to add

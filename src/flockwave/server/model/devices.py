@@ -881,7 +881,7 @@ class DeviceTreeSubscriptionManager(object):
         try:
             return self._tree.resolve(path)
         except NoSuchPathError:
-            if response is not None:
+            if hasattr(response, "add_failure"):
                 response.add_failure(path, "No such device tree path")
             return None
 

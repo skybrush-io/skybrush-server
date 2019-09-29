@@ -61,6 +61,10 @@ class AsyncBundler:
         if self._data:
             self._event.set()
 
+    def clear(self) -> None:
+        """Clears all the items currently waiting in the bundle."""
+        self._data.clear()
+
     async def __aiter__(self):
         """Asynchronously iterates over non-empty batches of items that
         were added to the set.

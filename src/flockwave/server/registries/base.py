@@ -132,6 +132,6 @@ def find_in_registry(registry, entry_id, response=None, failure_reason=None):
     try:
         return registry.find_by_id(entry_id)
     except KeyError:
-        if response is not None:
+        if hasattr(response, "add_failure"):
             response.add_failure(entry_id, failure_reason)
         return None

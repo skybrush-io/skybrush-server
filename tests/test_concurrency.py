@@ -39,6 +39,19 @@ class TestAsyncBundler:
         async for bundle in bundler:
             assert bundle == set([11, 13])
 
+    async def test_clears_items_before_yielding(self, bundler, autojump_clock):
+        bundler.add_many([2, 3, 5, 7])
+        bundler.clear()
+        async for bundle in bundler:
+            assert bundle == set()
+            break
+
+        bundler.add_many([2, 3, 5, 7])
+        bundler.clear()
+        bundler.add_many([11, 13])
+        async for bundle in bundler:
+            assert bundle == set([11, 13])
+
     async def test_filters_duplicates(self, bundler, autojump_clock):
         bundler.add_many([2, 3, 3, 5, 5, 5, 7])
         async for bundle in bundler:

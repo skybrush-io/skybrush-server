@@ -20,7 +20,7 @@ from .commands import CommandExecutionManager
 from .errors import NotSupportedError
 from .ext.manager import ExtensionManager
 from .logger import log
-from .message_hub import MessageHub
+from .message_hub import MessageHub, RateLimiters
 from .model.client import Client
 from .model.devices import DeviceTree, DeviceTreeSubscriptionManager
 from .model.messages import FlockwaveMessage
@@ -40,7 +40,7 @@ __all__ = ("app",)
 PACKAGE_NAME = __name__.rpartition(".")[0]
 
 
-class FlockwaveServer(object):
+class FlockwaveServer:
     """Main application object for the Flockwave server.
 
     Attributes:
@@ -144,6 +144,11 @@ class FlockwaveServer(object):
         self.message_hub = MessageHub()
         self.message_hub.channel_type_registry = self.channel_type_registry
         self.message_hub.client_registry = self.client_registry
+
+        # Create an object that manages rate-limiting for specific types of
+        # messages
+        self.rate_limiters = RateLimiters(dispatcher=self.message_hub.send_message)
+        self.rate_limiters.register("UAV-INF", self.create_UAV_INF_message_for)
 
         # Create an object to hold information about all the UAVs that
         # the server knows about
@@ -596,6 +601,7 @@ class FlockwaveServer(object):
                     nursery.start_soon(self.connection_supervisor.run)
                     nursery.start_soon(self.command_execution_manager.run)
                     nursery.start_soon(self.message_hub.run)
+                    nursery.start_soon(self.rate_limiters.run)
 
                     async for func, args, scope in self._task_queue[1]:
                         if scope is not None:
@@ -655,9 +661,7 @@ class FlockwaveServer(object):
         Parameters:
             uav_ids (iterable): list of UAV IDs
         """
-        # TODO(ntamas): reinstantiate rate limits!
-        message = self.create_UAV_INF_message_for(uav_ids)
-        self.message_hub.enqueue_message(message)
+        self.rate_limiters.request_to_send("UAV-INF", uav_ids)
 
     def run_in_background(self, func, *args, cancellable=False):
         """Runs the given function as a background task in the application."""

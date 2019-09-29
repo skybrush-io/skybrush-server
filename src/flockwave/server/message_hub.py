@@ -9,9 +9,11 @@ from functools import partial
 from inspect import isawaitable
 from itertools import chain
 from jsonschema import ValidationError
-from trio import open_memory_channel, open_nursery
-from typing import Optional, Union
+from trio import open_memory_channel, open_nursery, sleep
+from trio_util import wait_all
+from typing import Awaitable, Callable, Iterable, Optional, Union
 
+from .concurrency import AsyncBundler
 from .logger import log as base_log
 from .model import (
     Client,
@@ -22,7 +24,7 @@ from .model import (
 )
 from .registries import ClientRegistry
 
-__all__ = ("MessageHub",)
+__all__ = ("MessageHub", "RateLimiters")
 
 log = base_log.getChild("message_hub")
 
@@ -303,7 +305,7 @@ class MessageHub:
         except MessageValidationError as ex:
             reason = str(ex)
             log.exception(reason)
-            if u"id" in message:
+            if "id" in message:
                 ack = self.acknowledge(message, outcome=False, reason=reason)
                 await self.send_message(ack, to=sender)
                 return True
@@ -481,7 +483,7 @@ class MessageHub:
                 else:
                     nursery.start_soon(self._broadcast_message, request.message)
 
-    async def send_message(self, message, to=None, in_response_to=None):
+    async def send_message(self, message, to=None, in_response_to=None) -> None:
         """Sends a message or notification from this message hub.
 
         Notifications are sent to all connected clients, unless ``to`` is
@@ -646,3 +648,98 @@ class MessageHub:
                 log.exception("Failed to create response")
         await self.send_message(response, to=to, in_response_to=in_response_to)
         return response
+
+
+class RateLimiters:
+    """Helper object for managing the dispatch of rate-limited messages.
+
+    The rate limiter object holds a reference to a dispatcher function that
+    can be used to send messages to the message hub of the application. It
+    also holds a mapping from message types to factory functions; each
+    factory function receives a set of UAV IDs and produces a message to be
+    sent via the message hub. Each factory function also has an associated
+    throttling delay (say, 0.1 seconds). The rate limiter object ensures that
+    messages from a single factory function are not sent more frequently than
+    the given throttling delay.
+    """
+
+    @attr.s
+    class Entry:
+        name: str = attr.ib()
+        factory: Callable[[Iterable[str]], None] = attr.ib()
+        delay: float = attr.ib()
+        bundler: AsyncBundler = AsyncBundler()
+
+        def add_request(self, uav_ids: Iterable[str]) -> None:
+            """Requests that the task handling the messages for this factory
+            send the messages corresponding to the given UAV IDs as soon as
+            the rate limiting rules allow it.
+            """
+            self.bundler.add_many(uav_ids)
+
+        async def run(self, dispatcher):
+            """Runs the task handling the messages for this factory."""
+            self.bundler.clear()
+            async for bundle in self.bundler:
+                try:
+                    await dispatcher(self.factory(bundle))
+                except Exception:
+                    log.exception(
+                        f"Error while dispatching messages from {self.name} factory"
+                    )
+                await sleep(self.delay)
+
+    def __init__(self, dispatcher: Callable[[FlockwaveMessage], Awaitable[None]]):
+        """Constructor.
+
+        Parameters:
+            dispatcher: the dispatcher function that the rate limiter will use
+        """
+        self._dispatcher = dispatcher
+        self._factories = {}
+        self._running = False
+
+    def register(
+        self,
+        name: str,
+        factory: Callable[[Iterable[str]], FlockwaveMessage],
+        delay: float = 0.1,
+    ) -> None:
+        """Registers a new factory function with the given name.
+
+        Parameters:
+            name: name of the factory function; will be used in `request_to_send()`
+                to refer to messages created with this factory function
+            factory: the factory function itself; will be called with an iterable
+                of UAV IDs as the first argument and must return a message
+            delay: number of seconds to wait between consecutive dispatches of
+                the messages from this factory
+        """
+        if self._running:
+            raise RuntimeError(
+                "you may not add new factories to the rate limiter when it is running"
+            )
+
+        self._factories[name] = self.Entry(name=name, factory=factory, delay=delay)
+
+    def request_to_send(self, name: str, uav_ids: Iterable[str]) -> None:
+        """Requests the factory function registered with the given name to
+        send messages corresponding to the given UAVs as soon as the rate limiting
+        rules allow it.
+
+        Parameters:
+            name: name of the factory function
+            uav_ids: the UAV IDs for which the message should be sent
+        """
+        self._factories[name].add_request(uav_ids)
+
+    async def run(self):
+        self._running = True
+        try:
+            tasks = [
+                partial(entry.run, self._dispatcher)
+                for entry in self._factories.values()
+            ]
+            await wait_all(*tasks)
+        finally:
+            self._running = False

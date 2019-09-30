@@ -20,7 +20,12 @@ from .commands import CommandExecutionManager
 from .errors import NotSupportedError
 from .ext.manager import ExtensionManager
 from .logger import log
-from .message_hub import MessageHub, RateLimiters
+from .message_hub import (
+    ConnectionStatusMessageRateLimiter,
+    GenericRateLimiter,
+    MessageHub,
+    RateLimiters,
+)
 from .model.client import Client
 from .model.devices import DeviceTree, DeviceTreeSubscriptionManager
 from .model.messages import FlockwaveMessage
@@ -148,7 +153,13 @@ class FlockwaveServer:
         # Create an object that manages rate-limiting for specific types of
         # messages
         self.rate_limiters = RateLimiters(dispatcher=self.message_hub.send_message)
-        self.rate_limiters.register("UAV-INF", self.create_UAV_INF_message_for)
+        self.rate_limiters.register(
+            "CONN-INF",
+            ConnectionStatusMessageRateLimiter(self.create_CONN_INF_message_for),
+        )
+        self.rate_limiters.register(
+            "UAV-INF", GenericRateLimiter(self.create_UAV_INF_message_for)
+        )
 
         # Create an object to hold information about all the UAVs that
         # the server knows about
@@ -854,8 +865,7 @@ class FlockwaveServer:
             old_state (ConnectionState): the old state of the connection
             new_state (ConnectionState): the old state of the connection
         """
-        message = self.create_CONN_INF_message_for([entry.id])
-        self.message_hub.enqueue_message(message)
+        self.rate_limiters.request_to_send("CONN-INF", entry.id, old_state, new_state)
 
     def _on_command_execution_finished(self, sender, status):
         """Handler called when the execution of a remote asynchronous

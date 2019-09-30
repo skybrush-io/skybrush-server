@@ -19,9 +19,16 @@ __all__ = (
 )
 
 
-ConnectionState = Enum(
-    "ConnectionState", "DISCONNECTED CONNECTING CONNECTED DISCONNECTING"
-)
+class ConnectionState(Enum):
+    DISCONNECTED = "DISCONNECTED"
+    CONNECTING = "CONNECTING"
+    CONNECTED = "CONNECTED"
+    DISCONNECTING = "DISCONNECTING"
+
+    @property
+    def is_transitioning(self):
+        return self in (ConnectionState.CONNECTING, ConnectionState.DISCONNECTING)
+
 
 log = logging.getLogger(__name__.rpartition(".")[0])
 
@@ -65,7 +72,7 @@ class Connection(metaclass=ABCMeta):
     @property
     def is_transitioning(self):
         """Returns whether connection is currently transitioning."""
-        return self.state in (ConnectionState.CONNECTING, ConnectionState.DISCONNECTING)
+        return self.state.is_transitioning
 
     @abstractproperty
     def state(self):
@@ -117,8 +124,6 @@ class ConnectionBase(Connection):
     ``connected`` is fired when the connection enters the ``CONNECTED`` state
     from any other state. ``disconnected`` is fired when the connection enters
     the ``DISCONNECTED`` state from any other state.
-
-    The ``state`` property of the connection is thread-safe.
 
     Classes derived from this base class *MUST NOT* set the ``_state`` variable
     directly; they *MUST* use the ``_set_state`` method instead to ensure that

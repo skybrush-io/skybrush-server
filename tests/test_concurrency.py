@@ -1,6 +1,6 @@
 from pytest import raises
 from pytest_trio import trio_fixture
-from trio import MultiError, move_on_after, sleep
+from trio import move_on_after, sleep
 
 from flockwave.server.concurrency import AsyncBundler
 

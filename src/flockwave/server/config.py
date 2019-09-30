@@ -28,7 +28,7 @@ EXTENSIONS = {
     "fake_uavs": {
         "count": 3,
         "delay": 1.9,
-        "enabled": False,
+        "enabled": True,
         "id_format": "COLLMOT-{0:02}",
         "center": {
             # ELTE kert
@@ -41,6 +41,7 @@ EXTENSIONS = {
     },
     "flockctrl": {
         "id_format": "{0:02}",
+        "enabled": False,
         "connections": {
             # "wireless": {
             #     "broadcast": "udp-broadcast:10.0.0.0/8?port=4243",
@@ -58,7 +59,7 @@ EXTENSIONS = {
         "id_format": "BEACON:{0}",
     },
     "http_server": {},
-    "mavlink": {"id_format": "MAV-{0:02}"},
+    "mavlink": {"enabled": False, "id_format": "MAV-{0:02}"},
     "radiation": {
         "sources": [{"lat": 47.473313, "lon": 19.062818, "intensity": 50000}],
         "background_intensity": 10,
@@ -72,6 +73,9 @@ EXTENSIONS = {
 }
 
 # smpte_timecode seems to have some problems on a Mac - it consumes 15% CPU
-# even when idle
-if ON_MAC and False:
+# even when idle, and it starts throwing messages like this on the console
+# after a while if there is no MIDI device:
+#
+# MidiInCore::initialize: error creating OS-X MIDI client object (-50)
+if ON_MAC:
     EXTENSIONS.pop("smpte_timecode", None)

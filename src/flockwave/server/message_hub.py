@@ -4,16 +4,17 @@ from __future__ import absolute_import
 
 import attr
 
+from abc import ABCMeta, abstractmethod
 from collections import defaultdict
 from functools import partial
 from inspect import isawaitable
 from itertools import chain
 from jsonschema import ValidationError
-from trio import open_memory_channel, open_nursery, sleep
-from trio_util import wait_all
+from trio import Event, move_on_after, open_memory_channel, open_nursery, sleep
 from typing import Awaitable, Callable, Iterable, Optional, Union
 
 from .concurrency import AsyncBundler
+from .connections import ConnectionState
 from .logger import log as base_log
 from .model import (
     Client,
@@ -24,7 +25,12 @@ from .model import (
 )
 from .registries import ClientRegistry
 
-__all__ = ("MessageHub", "RateLimiters")
+__all__ = (
+    "ConnectionStatusMessageRateLimiter",
+    "GenericRateLimiter",
+    "MessageHub",
+    "RateLimiters",
+)
 
 log = base_log.getChild("message_hub")
 
@@ -470,9 +476,8 @@ class MessageHub:
         """Runs the message hub periodically in an infinite loop. This
         method should be launched in a Trio nursery.
         """
-        async with open_nursery() as nursery:
-            while True:
-                request = await self._queue_rx.receive()
+        async with open_nursery() as nursery, self._queue_rx:
+            async for request in self._queue_rx:
                 if request.to:
                     nursery.start_soon(
                         self._send_message,
@@ -650,44 +655,196 @@ class MessageHub:
         return response
 
 
-class RateLimiters:
-    """Helper object for managing the dispatch of rate-limited messages.
+class RateLimiter(metaclass=ABCMeta):
+    """Abstract base class for rate limiter objects."""
 
-    The rate limiter object holds a reference to a dispatcher function that
-    can be used to send messages to the message hub of the application. It
-    also holds a mapping from message types to factory functions; each
-    factory function receives a set of UAV IDs and produces a message to be
-    sent via the message hub. Each factory function also has an associated
-    throttling delay (say, 0.1 seconds). The rate limiter object ensures that
-    messages from a single factory function are not sent more frequently than
-    the given throttling delay.
+    @abstractmethod
+    def add_request(self, *args, **kwds) -> None:
+        """Adds a new request to the rate limiter.
+
+        The interpretation of positional and keyword arguments must be
+        specialized and described in implementations of the RateLimiter_
+        interface.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    async def run(self, dispatcher) -> None:
+        """Runs the task handling the messages emitted from this rate
+        limiter.
+        """
+        raise NotImplementedError
+
+
+@attr.s
+class GenericRateLimiter(RateLimiter):
+    """Generic rate limiter that is useful for most types of UAV-related
+    messages that we want to rate-limit.
+
+    The rate limiter receives requests containing lists of UAV IDs; these are
+    the UAVs for which we want to send a specific type of message (say,
+    UAV-INF). The first request is always executed immediately. For all
+    subsequent requests, the rate limiter checks the amount of time elapsed
+    since the last message dispatch. If it is greater than a prescribed delay,
+    the message is sent immediately; otherwise the rate limiter waits and
+    collects all UAV IDs for which a request arrives until the delay is reached,
+    and _then_ sends a single message containing information about all UAVs
+    that were referred recently.
+
+    The rate limiter requires a factory function that takes a list of UAV IDs
+    and produces a single FlockwaveMessage_ to send.
+    """
+
+    factory: Callable[[Iterable[str]], FlockwaveMessage] = attr.ib()
+    name: Optional[str] = attr.ib(default=None)
+    delay: float = attr.ib(default=0.1)
+
+    bundler: AsyncBundler = AsyncBundler()
+
+    def add_request(self, uav_ids: Iterable[str]) -> None:
+        """Requests that the task handling the messages for this factory
+        send the messages corresponding to the given UAV IDs as soon as
+        the rate limiting rules allow it.
+        """
+        self.bundler.add_many(uav_ids)
+
+    async def run(self, dispatcher, nursery):
+        self.bundler.clear()
+        async for bundle in self.bundler:
+            try:
+                await dispatcher(self.factory(bundle))
+            except Exception:
+                log.exception(
+                    f"Error while dispatching messages from {self.name} factory"
+                )
+            await sleep(self.delay)
+
+
+class ConnectionStatusMessageRateLimiter(RateLimiter):
+    """Specialized rate limiter for CONN-INF (connection status) messages.
+
+    For this rate limiter, the rules are as follows. Each request must convey
+    a single connection ID and the corresponding new status of the connection
+    that we wish to inform listeners about. When the new status is a stable
+    status (i.e. "connected" or "disconnected"), a CONN-INF message is
+    created and dispatched immediately. When the new status is a transitioning
+    status (i.e. "connecting" or "disconnecting"), the rate limiter waits for
+    at most a given number of seconds (0.1 by default) to see whether the status
+    of the connection settles to a stable state ("connected" or "disconnected").
+    If the status did not settle, a CONN-INF message is sent with the
+    transitioning state. If the status settled to a stable state and it is the
+    same as the previous stable state, _no_ message will be sent; otherwise a
+    message with the new stable state will be sent.
     """
 
     @attr.s
     class Entry:
-        name: str = attr.ib()
-        factory: Callable[[Iterable[str]], None] = attr.ib()
-        delay: float = attr.ib()
-        bundler: AsyncBundler = AsyncBundler()
+        last_stable_state: ConnectionState = attr.ib()
+        settled: Event = attr.ib(factory=Event)
 
-        def add_request(self, uav_ids: Iterable[str]) -> None:
-            """Requests that the task handling the messages for this factory
-            send the messages corresponding to the given UAV IDs as soon as
-            the rate limiting rules allow it.
-            """
-            self.bundler.add_many(uav_ids)
+        def notify_settled(self):
+            self.settled.set()
 
-        async def run(self, dispatcher):
-            """Runs the task handling the messages for this factory."""
-            self.bundler.clear()
-            async for bundle in self.bundler:
-                try:
-                    await dispatcher(self.factory(bundle))
-                except Exception:
-                    log.exception(
-                        f"Error while dispatching messages from {self.name} factory"
-                    )
-                await sleep(self.delay)
+        async def wait_to_see_if_settles(self, dispatcher):
+            with move_on_after(0.1):
+                await self.settled.wait()
+
+            if not self.settled.is_set():
+                # State of connection did not settle, dispatch a message on
+                # our own
+                await dispatcher()
+
+    def __init__(self, factory: Callable[[Iterable[str]], FlockwaveMessage]):
+        self._factory = factory
+        self._request_tx_queue, self._request_rx_queue = open_memory_channel(256)
+
+    def add_request(
+        self, uav_id: str, old_state: ConnectionState, new_state: ConnectionState
+    ) -> None:
+        self._request_tx_queue.send_nowait((uav_id, old_state, new_state))
+
+    async def run(self, dispatcher, nursery):
+        data = {}
+
+        dispatch_tx_queue, dispatch_rx_queue = open_memory_channel(0)
+
+        async def dispatcher_task():
+            async with dispatch_rx_queue:
+                async for connection_id in dispatch_rx_queue:
+                    data.pop(connection_id, None)
+                    try:
+                        await dispatcher(self._factory((connection_id,)))
+                    except Exception:
+                        log.exception(
+                            f"Error while dispatching messages from {self.__class__.__name__}"
+                        )
+
+        nursery.start_soon(dispatcher_task)
+
+        async with dispatch_tx_queue, self._request_rx_queue:
+            async for connection_id, old_state, new_state in self._request_rx_queue:
+                if new_state.is_transitioning:
+                    # New state shows that the connection is currently transitioning
+                    if old_state.is_transitioning:
+                        # This is weird; we'd better report the new state straight
+                        # away
+                        send = True
+                    else:
+                        # Old state is stable; wait to see whether the new state
+                        # stabilizes soon
+                        send = False
+                        if connection_id not in data:
+                            data[connection_id] = entry = self.Entry(old_state)
+                            nursery.start_soon(
+                                entry.wait_to_see_if_settles,
+                                partial(dispatch_tx_queue.send, connection_id),
+                            )
+                else:
+                    # New state is stable; this should be reported
+                    send = True
+                    entry = data.get(connection_id)
+                    if entry:
+                        # Let the background task know that we have reached a
+                        # stable state so no need to wait further
+                        entry.notify_settled()
+                        if entry.last_stable_state == new_state:
+                            # Stable state is the same as the one we have started
+                            # from so no need to send a message
+                            send = False
+
+                if send:
+                    await dispatch_tx_queue.send(connection_id)
+
+
+class RateLimiters:
+    """Helper object for managing the dispatch of rate-limited messages.
+
+    This object holds a reference to a dispatcher function that can be used to
+    send messages from the message hub of the application. It also holds a
+    mapping from _message group names_ to _rate limiters_.
+
+    There are two operations that you can do with this helper object: you
+    can either register a new message group name with a corresponding rate
+    limiter, or send a request to one of the registered rate limiters, given
+    the corresponding message group name. The request contains additional
+    positional and keyword arguments that are interpreted by the rate limiter
+    and that the rate limiter uses to decide whether to send a message, and if
+    so, _when_ to send it.
+
+    For instance, a default rate limiter registered to UAV-INF messages may
+    check whether an UAV-INF message has been sent recently, and if so, it
+    may wait up to a given number of milliseconds before it sends another
+    UAV-INF message, collecting UAV IDs in a temporary variable while it is
+    waiting for the next opportunity to send a message. Another rate limiter
+    registered to CONN-INF messages may check the new state of a connection,
+    and if the new state is a "transitioning" state, it may wait a short
+    period of time before sending a message to see whether the transition
+    settles or not.
+
+    Rate limiters must satisfy the RateLimiter_ interface. A GenericRateLimiter_
+    is provided for the most common use-case where UAV IDs are collected and
+    sent in a single batch with a minimum prescribed delay between batches.
+    """
 
     def __init__(self, dispatcher: Callable[[FlockwaveMessage], Awaitable[None]]):
         """Constructor.
@@ -696,50 +853,47 @@ class RateLimiters:
             dispatcher: the dispatcher function that the rate limiter will use
         """
         self._dispatcher = dispatcher
-        self._factories = {}
+        self._rate_limiters = {}
         self._running = False
 
-    def register(
-        self,
-        name: str,
-        factory: Callable[[Iterable[str]], FlockwaveMessage],
-        delay: float = 0.1,
-    ) -> None:
-        """Registers a new factory function with the given name.
+    def register(self, name: str, rate_limiter: RateLimiter) -> None:
+        """Registers a new rate limiter corresponding to the message group with
+        the given name.
 
         Parameters:
-            name: name of the factory function; will be used in `request_to_send()`
-                to refer to messages created with this factory function
-            factory: the factory function itself; will be called with an iterable
-                of UAV IDs as the first argument and must return a message
-            delay: number of seconds to wait between consecutive dispatches of
-                the messages from this factory
+            name: name of the message group; will be used in `request_to_send()`
+                to refer to the rate limiter object associated with this
+                group
+            rate_limiter: the rate limiter object itself
         """
         if self._running:
             raise RuntimeError(
-                "you may not add new factories to the rate limiter when it is running"
+                "you may not add new rate limiters when the rate limiting tasks "
+                "are running"
             )
 
-        self._factories[name] = self.Entry(name=name, factory=factory, delay=delay)
+        self._rate_limiters[name] = rate_limiter
 
-    def request_to_send(self, name: str, uav_ids: Iterable[str]) -> None:
-        """Requests the factory function registered with the given name to
-        send messages corresponding to the given UAVs as soon as the rate limiting
-        rules allow it.
+        if hasattr(rate_limiter, "name"):
+            rate_limiter.name = name
+
+    def request_to_send(self, name: str, *args, **kwds) -> None:
+        """Requests the rate limiter registered with the given name to send
+        some messages as soon as the rate limiting rules allow it.
+
+        Additional positional and keyword arguments are forwarded to the
+        `add_request()` method of the rate limiter object.
 
         Parameters:
-            name: name of the factory function
-            uav_ids: the UAV IDs for which the message should be sent
+            name: name of the message group whose rate limiter we are targeting
         """
-        self._factories[name].add_request(uav_ids)
+        self._rate_limiters[name].add_request(*args, **kwds)
 
     async def run(self):
         self._running = True
         try:
-            tasks = [
-                partial(entry.run, self._dispatcher)
-                for entry in self._factories.values()
-            ]
-            await wait_all(*tasks)
+            async with open_nursery() as nursery:
+                for entry in self._rate_limiters.values():
+                    nursery.start_soon(entry.run, self._dispatcher, nursery)
         finally:
             self._running = False

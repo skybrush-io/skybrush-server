@@ -127,9 +127,7 @@ class ConnectionRegistry(RegistryBase):
 
     def _on_connection_state_changed(self, entry, old_state, new_state):
         """Handler that is called when the state of a connection changes."""
-        log.debug(
-            "Connection {0.id!r}: {1!r} --> {2!r}".format(entry, old_state, new_state)
-        )
+        log.debug(f"Connection {entry.id}: {old_state} --> {new_state}")
         self.connection_state_changed.send(
             self, entry=entry, old_state=old_state, new_state=new_state
         )

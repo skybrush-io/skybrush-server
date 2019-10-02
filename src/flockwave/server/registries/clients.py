@@ -42,9 +42,9 @@ class ClientRegistry(RegistryBase):
             been removed from the registry.
     """
 
-    added = Signal()
-    count_changed = Signal()
-    removed = Signal()
+    added: Signal = Signal()
+    count_changed: Signal = Signal()
+    removed: Signal = Signal()
 
     def __init__(self, channel_type_registry=None):
         """Constructor."""

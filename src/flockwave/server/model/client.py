@@ -2,32 +2,39 @@
 
 from __future__ import absolute_import
 
+import attr
+
+from .channel import CommunicationChannel
+from .user import User
+
 __all__ = ("Client",)
 
 
+@attr.s
 class Client(object):
-    """A single client connected to the Flockwave server."""
+    """A single client connected to the Flockwave server.
 
-    def __init__(self, id, channel):
-        """Constructor.
+    Attributes:
+        id: a unique identifier for the client
+        channel: the communication channel that the client uses to connect to
+            the server
+        user: lightweight object providing information about the user that is
+            authenticated on the communication channel that this client uses.
+    """
 
-        Parameters:
-            id (str): a unique identifier for the client
-            channel (CommunicationChannel): the communication channel that
-                the client uses to connect to the server
-        """
-        self._id = id
-        self._channel = channel
+    _id: str = attr.ib()
+    _channel: CommunicationChannel = attr.ib()
+    user: User = attr.ib(default=None)
 
     @property
-    def channel(self):
+    def channel(self) -> CommunicationChannel:
         """The communication channel that the client uses to connect to
         the server.
         """
         return self._channel
 
     @property
-    def id(self):
+    def id(self) -> str:
         """A unique identifier for the client, assigned at construction
         time.
         """

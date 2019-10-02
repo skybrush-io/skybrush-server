@@ -41,9 +41,9 @@ class ColoredFormatter(logging.Formatter):
             log_symbols (dict): Mapping from log level names to symbols
         """
         if fmt is None:
-            fmt = u"%(log_color)s%(levelname)s:%(name)s:%(message)s"
+            fmt = "{log_color}{levelname}:{name}:{message}{reset}"
 
-        super(ColoredFormatter, self).__init__(fmt, datefmt)
+        super().__init__(fmt, datefmt, style="{")
 
         if log_colors is None:
             log_colors = default_log_colors
@@ -63,7 +63,7 @@ class ColoredFormatter(logging.Formatter):
         record = ColoredRecord(record)
         record.log_color = self.get_preferred_color(record)
         record.log_symbol = self.get_preferred_symbol(record)
-        message = super(ColoredFormatter, self).format(record)
+        message = super().format(record)
 
         if not message.endswith(escape_codes["reset"]):
             message += escape_codes["reset"]
@@ -116,7 +116,9 @@ def install(level=logging.INFO):
         failure=u"\u2718",  # BALLOT X
     )
     formatter = ColoredFormatter(
-        "%(fg_bold_black)s%(id)-7.7s " "%(log_color)s%(log_symbol)s " "%(message)s",
+        "{log_color}{log_symbol}{reset} "
+        "{fg_bold_black}{id:<10.10}{reset} "
+        "{log_color}{message}{reset}",
         log_colors=log_colors,
         log_symbols=log_symbols,
     )

@@ -366,8 +366,8 @@ class ExtensionManager(object):
             extension = self._get_loaded_extension_by_name(extension_name)
         except KeyError:
             log.warning(
-                "Tried to unload extension {0!r} but it is "
-                "not loaded".format(extension_name)
+                "Tried to unload extension but it is not loaded",
+                extra={"id": extension_name},
             )
             return
 
@@ -398,8 +398,8 @@ class ExtensionManager(object):
             except Exception:
                 clean_unload = False
                 log.exception(
-                    "Error while unloading extension {0!r}; "
-                    "forcing unload".format(extension_name)
+                    "Error while unloading extension; " "forcing unload",
+                    extra={"id": extension_name},
                 )
 
         # Update the internal bookkeeping object
@@ -416,11 +416,10 @@ class ExtensionManager(object):
         self.unloaded.send(self, name=extension_name, extension=extension)
 
         # Add a log message
-        message = "Unloaded extension {0!r}".format(extension_name)
         if clean_unload:
-            log.info(message)
+            log.info("Unloaded extension", extra={"id": extension_name})
         else:
-            log.warning(message)
+            log.warning("Unloaded extension", extra={"id": extension_name})
 
     def _app_client_count_changed(self, sender):
         """Signal handler that is called whenever the number of clients
@@ -496,12 +495,12 @@ class ExtensionManager(object):
         extension_data = self._extensions[extension_name]
         configuration = extension_data.configuration
 
-        log.info("Loading extension {0!r}".format(extension_name))
+        log.info("Loading extension", extra={"id": extension_name})
         try:
             module = self._get_module_for_extension(extension_name)
         except ImportError:
             log.exception(
-                "Error while importing extension {0!r}".format(extension_name)
+                "Error while importing extension", extra={"id": extension_name}
             )
             return None
 
@@ -511,7 +510,7 @@ class ExtensionManager(object):
             extension = instance_factory() if instance_factory else module
         except Exception:
             log.exception(
-                "Error while instantiating extension {0!r}".format(extension_name)
+                "Error while instantiating extension", extra={"id": extension_name}
             )
             return None
 
@@ -523,7 +522,7 @@ class ExtensionManager(object):
                 result = bind(func, args, partial=True)()
             except Exception:
                 log.exception(
-                    "Error while loading extension {0!r}".format(extension_name)
+                    "Error while loading extension", extra={"id": extension_name}
                 )
                 return None
         else:
@@ -587,7 +586,7 @@ class ExtensionManager(object):
                 func()
             except Exception:
                 log.exception(
-                    "Error while spinning down extension {0!r}".format(extension_name)
+                    "Error while spinning down extension", extra={"id": extension_name}
                 )
                 return
 
@@ -610,7 +609,7 @@ class ExtensionManager(object):
                 func()
             except Exception:
                 log.exception(
-                    "Error while spinning up extension {0!r}".format(extension_name)
+                    "Error while spinning up extension", extra={"id": extension_name}
                 )
                 return
 

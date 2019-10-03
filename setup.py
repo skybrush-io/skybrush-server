@@ -14,7 +14,7 @@ requires = [
     "colorama>=0.3.5",
     "colorlog>=2.6.0",
     "flockwave-gps>=0.8.0",
-    "flockwave-spec>=0.18.0",
+    "flockwave-spec>=0.19.1",
     "hexdump>=3.3",
     "ipaddress>=1.0.17",
     "jsonschema>=3.0.1",
@@ -42,15 +42,11 @@ setup(
     version=__version__,
     packages=find_packages("src"),
     package_dir={"": "src"},
-    py_modules=[splitext(basename(path))[0] for path in glob('src/*.py')],
+    py_modules=[splitext(basename(path))[0] for path in glob("src/*.py")],
     include_package_data=True,
     python_requires=">=3.7",
     install_requires=requires,
     extras_require={},
     setup_requires=["pytest-runner"],
-    entry_points={
-        "console_scripts": [
-            "flockwaved = flockwave.server.launcher:start"
-        ]
-    }
+    entry_points={"console_scripts": ["flockwaved = flockwave.server.launcher:start"]},
 )

@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "06fe69b77e4caf709eea05f17e79e26628230d3a1885045244383b325412680b"
+            "sha256": "ade21b1c429887c026f97724bb183f0dee1b724c58c3c80ead6fabf30e0a4062"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -32,11 +32,11 @@
         },
         "attrs": {
             "hashes": [
-                "sha256:69c0dbf2ed392de1cb5ec704444b08a5ef81680a61cb899dc08127123af36a79",
-                "sha256:f0b870f674851ecbfbbbd364d6b5cbdff9dcedbc7f3f5e18a6891057f21fe399"
+                "sha256:ec20e7a4825331c1b5ebf261d111e16fa9612c1f7a5e1f884f12bd53a664dfd2",
+                "sha256:f913492e1663d3c36f502e5e9ba6cd13cf19d7fab50aa13239e420fef95e1396"
             ],
             "index": "pypi",
-            "version": "==19.1.0"
+            "version": "==19.2.0"
         },
         "bidict": {
             "hashes": [
@@ -90,7 +90,7 @@
             "file": "https://git.collmot.com/collmot/flockwave-gps/archive/0.9.0.tar.gz"
         },
         "flockwave-spec": {
-            "file": "https://git.collmot.com/collmot/flockwave-spec/archive/0.18.0.tar.gz"
+            "file": "https://git.collmot.com/collmot/flockwave-spec/archive/0.19.1.tar.gz"
         },
         "future": {
             "hashes": [
@@ -508,11 +508,11 @@
         },
         "attrs": {
             "hashes": [
-                "sha256:69c0dbf2ed392de1cb5ec704444b08a5ef81680a61cb899dc08127123af36a79",
-                "sha256:f0b870f674851ecbfbbbd364d6b5cbdff9dcedbc7f3f5e18a6891057f21fe399"
+                "sha256:ec20e7a4825331c1b5ebf261d111e16fa9612c1f7a5e1f884f12bd53a664dfd2",
+                "sha256:f913492e1663d3c36f502e5e9ba6cd13cf19d7fab50aa13239e420fef95e1396"
             ],
             "index": "pypi",
-            "version": "==19.1.0"
+            "version": "==19.2.0"
         },
         "cached-property": {
             "hashes": [
@@ -674,11 +674,11 @@
         },
         "pytest": {
             "hashes": [
-                "sha256:813b99704b22c7d377bbd756ebe56c35252bb710937b46f207100e843440b3c2",
-                "sha256:cc6620b96bc667a0c8d4fa592a8c9c94178a1bd6cc799dbb057dfd9286d31a31"
+                "sha256:13c1c9b22127a77fc684eee24791efafcef343335d855e3573791c68588fe1a5",
+                "sha256:d8ba7be9466f55ef96ba203fc0f90d0cf212f2f927e69186e1353e30bc7f62e5"
             ],
             "index": "pypi",
-            "version": "==5.1.3"
+            "version": "==5.2.0"
         },
         "pytest-trio": {
             "hashes": [

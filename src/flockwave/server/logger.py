@@ -5,8 +5,10 @@ import logging
 from colorlog import default_log_colors
 from colorlog.colorlog import ColoredRecord
 from colorlog.escape_codes import escape_codes, parse_colors
+from functools import partial
+from typing import Any, Dict
 
-__all__ = ("log", "install")
+__all__ = ("add_id_to_log", "log", "install", "LoggerWithExtraData")
 
 
 log = logging.getLogger(__name__.rpartition(".")[0])
@@ -88,6 +90,58 @@ class ColoredFormatter(logging.Formatter):
             return symbol
         else:
             return self.log_symbols.get(record.levelname, "")
+
+
+class LoggerWithExtraData:
+    """Object that provides the same interface as Python's standard logging
+    functions, but automatically adds default values to the `extra` dict
+    of each logging record.
+    """
+
+    def __init__(self, log: logging.Logger, extra: Dict[str, Any]):
+        """Constructor.
+
+        Parameters:
+            log: the logging module to wrap
+            extra: extra data to add as default to each logging record
+        """
+        self._extra = dict(extra)
+        self._log = log
+        self._methods = {}
+
+    def __getattr__(self, name):
+        if name in self._methods:
+            return self._methods
+        else:
+            wrapped_method = getattr(self._log, name)
+            method = self._methods[name] = partial(self._call, wrapped_method)
+            return method
+
+    def _call(self, func, *args, **kwds):
+        extra = kwds.get("extra") or self._extra
+
+        if extra is not self._extra:
+            for k, v in self._extra.items():
+                if k not in extra:
+                    extra[k] = v
+        else:
+            kwds["extra"] = self._extra
+
+        return func(*args, **kwds)
+
+
+def add_id_to_log(log: logging.Logger, id: str):
+    """Adds the given ID as a permanent extra attribute to the given logger.
+
+    Parameters:
+        log: the logger to wrap
+        id: the ID attribute to add to the logger
+
+    Returns:
+        a new logger that extends the extra dict of each logging record with
+        the given ID
+    """
+    return LoggerWithExtraData(log, {"id": id})
 
 
 def install(level=logging.INFO):

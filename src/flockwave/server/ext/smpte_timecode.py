@@ -367,7 +367,7 @@ class SMPTETimecodeExtension(ExtensionBase):
         """
         return self._clock
 
-    async def task(self, app, configuration, logger):
+    async def run(self, app, configuration, logger):
         conn = configuration.get("connection")
         conn = create_connection(conn) if conn else None
 

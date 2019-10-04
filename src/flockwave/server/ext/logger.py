@@ -1,7 +1,7 @@
 """Logger object for the extension framework."""
 
-from ..logger import log as base_log
+from ..logger import add_id_to_log, log as base_log
 
-__all__ = ("log",)
+__all__ = ("add_id_to_log", "log")
 
 log = base_log.getChild("ext")

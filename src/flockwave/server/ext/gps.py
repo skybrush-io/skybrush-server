@@ -192,7 +192,7 @@ class GPSExtension(UAVExtensionBase):
             self._device_to_uav_id[device_id] = result
         return result
 
-    async def task(self, app, configuration, logger):
+    async def run(self, app, configuration, logger):
         connection, parser = create_gps_connection(
             connection=configuration.get("connection", "gpsd"),
             format=configuration.get("format", "auto"),

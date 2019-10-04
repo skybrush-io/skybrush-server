@@ -12,7 +12,7 @@ from pkgutil import get_loader
 from trio import CancelScope
 from typing import Any, Dict, Optional, Set
 
-from .logger import log as base_log
+from .logger import add_id_to_log, log as base_log
 
 from ..concurrency import cancellable
 from ..utils import bind, keydefaultdict
@@ -20,7 +20,7 @@ from ..utils import bind, keydefaultdict
 __all__ = ("ExtensionManager",)
 
 EXT_PACKAGE_NAME = __name__.rpartition(".")[0]
-log = base_log.getChild("manager")
+base_log = base_log.getChild("manager")
 
 
 class LoadOrder(object):
@@ -361,14 +361,13 @@ class ExtensionManager(object):
         Parameters:
             extension_name (str): the name of the extension to unload
         """
+        log = add_id_to_log(base_log, id=extension_name)
+
         # Get the extension instance
         try:
             extension = self._get_loaded_extension_by_name(extension_name)
         except KeyError:
-            log.warning(
-                "Tried to unload extension but it is not loaded",
-                extra={"id": extension_name},
-            )
+            log.warning("Tried to unload extension but it is not loaded")
             return
 
         # Get the associated internal bookkeeping object of the extension
@@ -397,10 +396,7 @@ class ExtensionManager(object):
                 func(self.app)
             except Exception:
                 clean_unload = False
-                log.exception(
-                    "Error while unloading extension; " "forcing unload",
-                    extra={"id": extension_name},
-                )
+                log.exception("Error while unloading extension; " "forcing unload")
 
         # Update the internal bookkeeping object
         extension_data.loaded = False
@@ -417,9 +413,9 @@ class ExtensionManager(object):
 
         # Add a log message
         if clean_unload:
-            log.info("Unloaded extension", extra={"id": extension_name})
+            log.info("Unloaded extension")
         else:
-            log.warning("Unloaded extension", extra={"id": extension_name})
+            log.warning("Unloaded extension")
 
     def _app_client_count_changed(self, sender):
         """Signal handler that is called whenever the number of clients
@@ -492,16 +488,16 @@ class ExtensionManager(object):
         if extension_name in ("logger", "manager", "base", "__init__"):
             raise ValueError("invalid extension name: {0!r}".format(extension_name))
 
+        log = add_id_to_log(base_log, id=extension_name)
+
         extension_data = self._extensions[extension_name]
         configuration = extension_data.configuration
 
-        log.info("Loading extension", extra={"id": extension_name})
+        log.info("Loading extension")
         try:
             module = self._get_module_for_extension(extension_name)
         except ImportError:
-            log.exception(
-                "Error while importing extension", extra={"id": extension_name}
-            )
+            log.exception("Error while importing extension")
             return None
 
         instance_factory = getattr(module, "construct", None)
@@ -509,9 +505,7 @@ class ExtensionManager(object):
         try:
             extension = instance_factory() if instance_factory else module
         except Exception:
-            log.exception(
-                "Error while instantiating extension", extra={"id": extension_name}
-            )
+            log.exception("Error while instantiating extension")
             return None
 
         args = (self.app, configuration, extension_data.log)
@@ -521,18 +515,18 @@ class ExtensionManager(object):
             try:
                 result = bind(func, args, partial=True)()
             except Exception:
-                log.exception(
-                    "Error while loading extension", extra={"id": extension_name}
-                )
+                log.exception("Error while loading extension")
                 return None
         else:
             result = None
 
-        task = getattr(extension, "task", None)
+        task = getattr(extension, "run", None)
         if iscoroutinefunction(task):
             extension_data.task = self.app.run_in_background(
                 cancellable(bind(task, args, partial=True))
             )
+        elif task is not None:
+            log.warn("run() must be an async function")
 
         extension_data.instance = extension
         extension_data.loaded = True
@@ -574,6 +568,8 @@ class ExtensionManager(object):
         extension = self._get_loaded_extension_by_name(extension_name)
         extension_data = self._extensions[extension_name]
 
+        log = add_id_to_log(base_log, id=extension_name)
+
         # Stop the worker associated to the extension if it has one
         if extension_data.worker:
             extension_data.worker.cancel()
@@ -585,9 +581,7 @@ class ExtensionManager(object):
             try:
                 func()
             except Exception:
-                log.exception(
-                    "Error while spinning down extension", extra={"id": extension_name}
-                )
+                log.exception("Error while spinning down extension")
                 return
 
     def _spinup_extension(self, extension_name):
@@ -602,15 +596,15 @@ class ExtensionManager(object):
         extension = self._get_loaded_extension_by_name(extension_name)
         extension_data = self._extensions[extension_name]
 
+        log = add_id_to_log(base_log, id=extension_name)
+
         # Call the spinup hook of the extension if it has one
         func = getattr(extension, "spinup", None)
         if callable(func):
             try:
                 func()
             except Exception:
-                log.exception(
-                    "Error while spinning up extension", extra={"id": extension_name}
-                )
+                log.exception("Error while spinning up extension")
                 return
 
         # Start the worker associated to the extension if it has one

@@ -257,7 +257,7 @@ def prepare_response(headers=None, extra=None, prefix=None):
 ############################################################################
 
 
-async def task(app, configuration, logger):
+async def run(app, configuration, logger):
     """Loop that listens for incoming messages and calls a handler
     function for each incoming message.
     """

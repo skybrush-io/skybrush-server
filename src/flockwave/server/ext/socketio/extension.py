@@ -112,7 +112,7 @@ async def handle_flockwave_message(client_id, message):
 ############################################################################
 
 
-async def task(app, configuration, logger):
+async def run(app, configuration, logger):
     socketio = TrioServer(
         json=JSONEncoder(encoding=None), async_mode="asgi", cors_allowed_origins="*"
     )

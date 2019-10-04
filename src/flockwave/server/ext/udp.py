@@ -138,7 +138,7 @@ async def handle_message_safely(
 ############################################################################
 
 
-async def task(app, configuration, logger):
+async def run(app, configuration, logger):
     """Background task that is active while the extension is loaded."""
     address = configuration.get("host", ""), configuration.get("port", 5001)
     pool_size = configuration.get("pool_size", 1000)

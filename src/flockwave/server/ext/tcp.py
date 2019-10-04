@@ -165,7 +165,7 @@ async def handle_message(message: bytes, client, *, limit: CapacityLimiter) -> N
 ############################################################################
 
 
-async def task(app, configuration, logger):
+async def run(app, configuration, logger):
     """Background task that is active while the extension is loaded."""
     host = configuration.get("host", "")
     port = configuration.get("port", 5001)

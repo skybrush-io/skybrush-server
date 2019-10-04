@@ -163,7 +163,7 @@ def unload(app):
     exports.update(address=None, asgi_app=None)
 
 
-async def task(app, configuration, logger):
+async def run(app, configuration, logger):
     global exports
 
     address = exports.get("address")

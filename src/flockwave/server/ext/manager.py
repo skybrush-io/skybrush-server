@@ -442,7 +442,7 @@ class ExtensionManager(object):
         try:
             module = self._get_module_for_extension(extension_name)
         except ImportError:
-            log.exception(
+            base_log.exception(
                 "Error while importing extension {0!r}".format(extension_name)
             )
             raise
@@ -452,7 +452,7 @@ class ExtensionManager(object):
             try:
                 dependencies = func()
             except Exception:
-                log.exception(
+                base_log.exception(
                     "Error while determining dependencies of "
                     "extension {0!r}".format(extension_name)
                 )
@@ -465,7 +465,7 @@ class ExtensionManager(object):
     def _load(self, extension_name, forbidden):
         if extension_name in forbidden:
             cycle = forbidden + [extension_name]
-            log.error(
+            base_log.error(
                 "Dependency cycle detected: {0}".format(" -> ".join(map(str, cycle)))
             )
             return

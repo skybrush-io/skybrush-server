@@ -6,12 +6,23 @@ import attr
 
 from abc import ABCMeta, abstractmethod
 from collections import defaultdict
+from contextlib import contextmanager
 from functools import partial
 from inspect import isawaitable
 from itertools import chain
 from jsonschema import ValidationError
 from trio import Event, move_on_after, open_memory_channel, open_nursery, sleep
-from typing import Awaitable, Callable, Iterable, Optional, Union
+from typing import (
+    Any,
+    Awaitable,
+    Callable,
+    Dict,
+    Generator,
+    Iterable,
+    Optional,
+    Tuple,
+    Union,
+)
 
 from .concurrency import AsyncBundler
 from .connections import ConnectionState
@@ -33,6 +44,9 @@ __all__ = (
 )
 
 log = base_log.getChild("message_hub")
+
+
+MessageHandler = Callable[[FlockwaveMessage, Client, "MessageHub"], FlockwaveMessage]
 
 
 class MessageValidationError(RuntimeError):
@@ -257,7 +271,12 @@ class MessageHub:
         ), "only notifications may be broadcast"
         self._queue_tx.send_nowait(Request(message))
 
-    def enqueue_message(self, message, to=None, in_response_to=None):
+    def enqueue_message(
+        self,
+        message: Union[FlockwaveMessage, Dict[str, Any]],
+        to: Optional[Union[str, Client]] = None,
+        in_response_to: Optional[FlockwaveMessage] = None,
+    ) -> None:
         """Enqueues a message or notification in this message hub to be
         sent later.
 
@@ -273,14 +292,17 @@ class MessageHub:
         is actually in the queue.
 
         Parameters:
-            message (FlockwaveMessage): the message to enqueue.
-            to (Optional[Union[str, Client]]): the Client_ object that
-                represents the recipient of the message, or the ID of the
-                client. ``None`` means to send the message to all connected
-                clients.
-            in_response_to (Optional[FlockwaveMessage]): the message that
-                the message being sent responds to.
+            message: the message to enqueue, or its body (in which case
+                an appropriate envelope will be added automatically)
+            to: the Client_ object that represents the recipient of the message,
+                or the ID of the client. ``None`` means to send the message to
+                all connected clients.
+            in_response_to: the message that the message being sent responds to.
         """
+        if not isinstance(message, FlockwaveMessage):
+            message = self.create_response_or_notification(
+                message, in_response_to=in_response_to
+            )
         if to is None:
             assert in_response_to is None, (
                 "broadcast messages cannot be sent in response to a "
@@ -343,6 +365,45 @@ class MessageHub:
             return False
 
         return True
+
+    async def iterate(
+        self, *args
+    ) -> Generator[Tuple[Dict[str, Any], Client, Callable[[Dict], None]], None, None]:
+        """Returns an async generator that yields triplets consisting of
+        the body of an incoming message, its sender and an appropriate function
+        that can be used to respond to that message.
+
+        The generator yields triplets containing only those messages whose type
+        matches the message types provided as arguments.
+
+        Messages can be responded to by calling the responder function with
+        the response itself. The responder function returns immediately after
+        queueing the message for dispatch; it does not wait for the message
+        to actually be dispatched.
+
+        It is assumed that all messages are handled by the consumer of the
+        generator; it is not possible to leave messages unhandled. Not sending
+        a response to a message is okay as long as it is allowed by the
+        communication protocol.
+
+        Yields:
+            the body of an incoming message, its sender and the responder
+            function
+        """
+        to_handlers, from_clients = open_memory_channel(0)
+
+        async def handle(message, sender, hub):
+            await to_handlers.send((message, sender))
+            return True
+
+        with self.use_message_handler(handle, args):
+            while True:
+                message, sender = await from_clients.receive()
+                if message.body:
+                    responder = partial(
+                        self.enqueue_message, to=sender, in_response_to=message
+                    )
+                    yield message.body, sender, responder
 
     def _commit_broadcast_methods(self):
         """Calculates the list of methods to call when the message hub
@@ -446,23 +507,24 @@ class MessageHub:
 
         return decorator
 
-    def register_message_handler(self, func, message_types=None):
+    def register_message_handler(
+        self, func: MessageHandler, message_types: Optional[Iterable[str]] = None
+    ) -> None:
         """Registers a handler function that will handle incoming messages.
 
         It is possible to register the same handler function multiple times,
         even for the same message type.
 
         Parameters:
-            func (callable): the handler to register. It will be called with
-                the incoming message and the message hub object.
+            func: the handler to register. It will be called with the incoming
+                message and the message hub object.
 
-            message_types (None or iterable): an iterable that yields the
-                message types for which this handler will be registered.
-                ``None`` means to register the handler for all message
-                types. The handler function must return ``True`` if it has
-                handled the message successfully, ``False`` if it skipped
-                the message. Note that returning ``True`` will not prevent
-                other handlers from getting the message.
+            message_types: an iterable that yields the message types for which
+                this handler will be registered. ``None`` means to register the
+                handler for all message types. The handler function must return
+                ``True`` if it has handled the message successfully, ``False``
+                if it skipped the message. Note that returning ``True`` will not
+                prevent other handlers from getting the message.
         """
         if message_types is None or isinstance(message_types, str):
             message_types = [message_types]
@@ -488,7 +550,12 @@ class MessageHub:
                 else:
                     nursery.start_soon(self._broadcast_message, request.message)
 
-    async def send_message(self, message, to=None, in_response_to=None) -> None:
+    async def send_message(
+        self,
+        message: Union[FlockwaveMessage, Dict[str, Any]],
+        to: Optional[Union[str, Client]] = None,
+        in_response_to: Optional[FlockwaveMessage] = None,
+    ) -> None:
         """Sends a message or notification from this message hub.
 
         Notifications are sent to all connected clients, unless ``to`` is
@@ -507,6 +574,10 @@ class MessageHub:
             in_response_to (Optional[FlockwaveMessage]): the message that
                 the message being sent responds to.
         """
+        if not isinstance(message, FlockwaveMessage):
+            message = self.create_response_or_notification(
+                message, in_response_to=in_response_to
+            )
         if to is None:
             assert in_response_to is None, (
                 "broadcast messages cannot be sent in response to a "
@@ -517,19 +588,19 @@ class MessageHub:
             Request(message, to=to, in_response_to=in_response_to)
         )
 
-    def unregister_message_handler(self, func, message_types=None):
+    def unregister_message_handler(
+        self, func: MessageHandler, message_types: Optional[Iterable[str]] = None
+    ) -> None:
         """Unregisters a handler function from the given message types.
 
         Parameters:
-            func (callable): the handler to unregister.
-
-            message_types (None or iterable): an iterable that yields the
-                message types from which this handler will be unregistered.
-                ``None`` means to unregister the handler from all message
-                types; however, if it was also registered for specific message
-                types individually (in addition to all messages in general),
-                it will also have to be unregistered from the individual
-                message types.
+            func: the handler to unregister.
+            message_types: an iterable that yields the message types from which
+                this handler will be unregistered. ``None`` means to unregister
+                the handler from all message types; however, if it was also
+                registered for specific message types individually (in addition
+                to all messages in general), it will also have to be unregistered
+                from the individual message types.
         """
         if message_types is None or isinstance(message_types, str):
             message_types = [message_types]
@@ -543,6 +614,31 @@ class MessageHub:
             except ValueError:
                 # Handler not in list; no problem
                 pass
+
+    @contextmanager
+    def use_message_handler(
+        self, func: MessageHandler, message_types: Optional[Iterable[str]] = None
+    ) -> None:
+        """Context manager that registers a handler function that will handle
+        incoming messages, and unregisters the function upon exiting the
+        context.
+
+        Parameters:
+            func: the handler to register. It will be called with the incoming
+                message, the sender and the message hub object.
+
+            message_types: an iterable that yields the message types for which
+                this handler will be registered. ``None`` means to register the
+                handler for all message types. The handler function must return
+                ``True`` if it has handled the message successfully, ``False``
+                if it skipped the message. Note that returning ``True`` will not
+                prevent other handlers from getting the message.
+        """
+        try:
+            self.register_message_handler(func, message_types)
+            yield
+        finally:
+            self.unregister_message_handler(func, message_types)
 
     def _decode_incoming_message(self, message):
         """Decodes an incoming, raw JSON message that has already been

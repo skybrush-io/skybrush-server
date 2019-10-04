@@ -5,6 +5,9 @@ the server knows.
 __all__ = ("ClockRegistry",)
 
 from blinker import Signal
+from typing import Optional
+
+from ..model.clock import Clock
 
 from .base import RegistryBase
 
@@ -28,70 +31,64 @@ class ClockRegistry(RegistryBase):
 
     clock_changed = Signal()
 
-    def add(self, clock):
-        """Registers a clock with the given identifier in the registry.
+    def add(self, clock: Clock) -> None:
+        """Registers a clock in the registry.
 
         This function is a no-op if the clock is already registered.
 
         Parameters:
-            clock (Clock): the clock to register
+            clock: the clock to register
 
         Throws:
-            KeyError: if the ID is already registered for a different clock
+            KeyError: if the ID of the clock is already taken by a different clock
         """
         old_clock = self._entries.get(clock.id, None)
         if old_clock is not None and old_clock != clock:
-            raise KeyError("Clock ID already taken: {0!r}".format(clock.id))
+            raise KeyError("Clock ID already taken: {clock.id}")
         self._entries[clock.id] = clock
         self._subscribe_to_clock(clock)
 
-    def remove(self, clock):
+    def remove(self, clock: Clock) -> Optional[Clock]:
         """Removes the given clock from the registry.
 
         This function is a no-op if the clock is not registered.
 
         Parameters:
-            clock (Clock): the clock to deregister
+            clock: the clock to deregister
 
         Returns:
-            Clock or None: the clock that was deregistered, or ``None`` if
-                the clock was not registered
+            the clock that was deregistered, or ``None`` if the clock was not
+                registered
         """
         return self.remove_by_id(clock.id)
 
-    def remove_by_id(self, clock_id):
+    def remove_by_id(self, clock_id: str) -> Optional[Clock]:
         """Removes the clock with the given ID from the registry.
 
-        This function is a no-op if the clock is not registered.
+        This function is a no-op if no clock is registered with the given ID.
 
         Parameters:
-            clock_id (str): the ID of the clock to deregister
+            clock_id: the ID of the clock to deregister
 
         Returns:
-            Clock or None: the clock that was deregistered, or ``None`` if
-                the clock was not registered
+            the clock that was deregistered, or ``None`` if the clock was not
+            registered
         """
-        clock = self._entries.pop(clock_id)
-        self._unsubscribe_from_clock(clock)
+        clock = self._entries.pop(clock_id, None)
+        if clock:
+            self._unsubscribe_from_clock(clock)
+        return clock
 
-    def _subscribe_to_clock(self, clock):
+    def _subscribe_to_clock(self, clock: Clock) -> None:
         """Subscribes to the signals of the given clock in order to
         redispatch them.
-
-        Parameters:
-            clock (Clock): the clock to subscribe to
         """
         clock.changed.connect(self._send_clock_changed_signal, sender=clock)
         clock.started.connect(self._send_clock_changed_signal, sender=clock)
         clock.stopped.connect(self._send_clock_changed_signal, sender=clock)
 
-    def _unsubscribe_from_clock(self, clock):
-        """Subscribes to the signals of the given clock in order to
-        redispatch them.
-
-        Parameters:
-            clock (Clock): the clock to unsubscribe from
-        """
+    def _unsubscribe_from_clock(self, clock: Clock) -> None:
+        """Unsubscribes from the signals of the given clock."""
         clock.changed.disconnect(self._send_clock_changed_signal, sender=clock)
         clock.started.disconnect(self._send_clock_changed_signal, sender=clock)
         clock.stopped.disconnect(self._send_clock_changed_signal, sender=clock)

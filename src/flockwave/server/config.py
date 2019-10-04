@@ -24,6 +24,8 @@ COMMAND_EXECUTION_MANAGER = {"timeout": 30}
 
 # Declare the list of extensions to load
 EXTENSIONS = {
+    "auth": {},
+    "auth_basic": {},
     "debug": {"route": "/debug"},
     "fake_uavs": {
         "count": 3,

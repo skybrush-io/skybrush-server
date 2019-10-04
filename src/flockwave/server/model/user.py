@@ -2,6 +2,8 @@
 via a client connection.
 """
 
+from flockwave.spec.ids import parse_user
+
 import attr
 
 __all__ = ("User",)
@@ -23,3 +25,15 @@ class User:
 
     name: str = attr.ib()
     domain: str = attr.ib(default="")
+
+    @classmethod
+    def from_string(cls, value):
+        name, domain = parse_user(value)
+        return cls(name=name, domain=domain)
+
+    @property
+    def json(self) -> str:
+        return str(self)
+
+    def __str__(self):
+        return f"{self.name}@{self.domain}" if self.domain else self.name

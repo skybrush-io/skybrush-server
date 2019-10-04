@@ -274,6 +274,8 @@ async def run(app, configuration, logger):
     membership_request = struct.pack(
         "4sl", trio.socket.inet_aton(multicast_group), trio.socket.INADDR_ANY
     )
+    # TODO(ntamas): make sure that this works even if there is no network
+    # connection
     receiver.setsockopt(
         trio.socket.IPPROTO_IP, trio.socket.IP_ADD_MEMBERSHIP, membership_request
     )

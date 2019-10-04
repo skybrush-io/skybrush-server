@@ -164,7 +164,7 @@ class RadiationExtension(ExtensionBase):
 
             self._poisson = poisson
         except ImportError:
-            self.log.warn("numpy not installed; extension disabled")
+            self.log.warn("numpy not installed; radiation extension disabled")
             self._poisson = constant(0)
 
     def exports(self):

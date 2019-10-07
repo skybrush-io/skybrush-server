@@ -38,13 +38,15 @@ class AuthenticationResult:
         if self.type is AuthenticationResultType.SUCCESS:
             if self.user is None:
                 raise ValueError("successful authentication responses need a username")
-            return {"result": True, "user": str(self.user)}
+            result = {"result": True, "user": str(self.user)}
         elif self.type is AuthenticationResultType.FAILURE:
-            return {"result": False, "reason": self.reason or "Authentication failed"}
+            result = {"result": False, "reason": self.reason or "Authentication failed"}
         else:
             if self.data is None:
                 raise ValueError("authentication challenges need a data member")
-            return {"data": str(self.data)}
+            result = {"data": str(self.data)}
+        result["type"] = "AUTH-RESP"
+        return result
 
     @property
     def successful(self):

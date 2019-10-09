@@ -413,7 +413,7 @@ class ExtensionManager(object):
 
         # Add a log message
         if clean_unload:
-            log.info("Unloaded extension")
+            log.debug("Unloaded extension")
         else:
             log.warning("Unloaded extension")
 
@@ -493,7 +493,7 @@ class ExtensionManager(object):
         extension_data = self._extensions[extension_name]
         configuration = extension_data.configuration
 
-        log.info("Loading extension")
+        log.debug("Loading extension")
         try:
             module = self._get_module_for_extension(extension_name)
         except ImportError:

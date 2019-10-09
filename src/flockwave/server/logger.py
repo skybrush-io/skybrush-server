@@ -5,7 +5,7 @@ import logging
 from colorlog import default_log_colors
 from colorlog.colorlog import ColoredRecord
 from colorlog.escape_codes import escape_codes, parse_colors
-from functools import partial
+from functools import lru_cache, partial
 from typing import Any, Dict
 
 __all__ = ("add_id_to_log", "log", "install", "LoggerWithExtraData")
@@ -21,6 +21,11 @@ default_log_symbols = {
     "ERROR": u"\u25cf",  # BLACK CIRCLE
     "CRITICAL": u"\u25cf",  # BLACK CIRCLE
 }
+
+
+@lru_cache(maxsize=256)
+def _get_short_name_for_logger(name):
+    return name.rpartition(".")[2]
 
 
 class ColoredFormatter(logging.Formatter):
@@ -65,6 +70,7 @@ class ColoredFormatter(logging.Formatter):
         record = ColoredRecord(record)
         record.log_color = self.get_preferred_color(record)
         record.log_symbol = self.get_preferred_symbol(record)
+        record.short_name = _get_short_name_for_logger(record.name)
         message = super().format(record)
 
         if not message.endswith(escape_codes["reset"]):
@@ -171,6 +177,7 @@ def install(level=logging.INFO):
     )
     formatter = ColoredFormatter(
         "{log_color}{log_symbol}{reset} "
+        "{fg_cyan}{short_name:<11.11}{reset} "
         "{fg_bold_black}{id:<10.10}{reset} "
         "{log_color}{message}{reset}",
         log_colors=log_colors,

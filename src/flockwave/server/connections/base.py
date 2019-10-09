@@ -10,13 +10,7 @@ from trio import wrap_file
 from trio_util import AsyncBool
 
 
-__all__ = (
-    "Connection",
-    "ConnectionState",
-    "ConnectionBase",
-    "FDConnectionBase",
-    "ConnectionWrapperBase",
-)
+__all__ = ("Connection", "ConnectionState", "ConnectionBase", "FDConnectionBase")
 
 
 class ConnectionState(Enum):
@@ -388,68 +382,3 @@ class FDConnectionBase(ConnectionBase):
 
         self._file_object = value
         return True
-
-
-# TOD(ntamas): this turned out to be a bad idea, let's get rid of it if
-# possible
-class ConnectionWrapperBase(ConnectionBase):
-    """Base class for connection objects that wrap other connections."""
-
-    def __init__(self, wrapped=None):
-        """Constructor.
-
-        Parameters:
-            wrapped (Connection): the wrapped connection
-        """
-        super(ConnectionWrapperBase, self).__init__()
-        self._wrapped = None
-        self._set_wrapped(wrapped)
-
-    def _redispatch_signal(self, sender, *args, **kwds):
-        """Handler that redispatches signals from the wrapped connection."""
-        if hasattr(self, "file_handle_changed"):
-            self.file_handle_changed.send(self, *args, **kwds)
-
-    def _set_wrapped(self, value):
-        """Function that must be used by derived classes to change the
-        connection that the wrapper wraps.
-
-        Parameters:
-            value (ConnectionBase): the new connection that the wrapper will
-                wrap
-
-        Returns:
-            ConnectionBase: the old connection that the wrapped used to wrap
-        """
-        if self._wrapped == value:
-            return
-
-        old_value = self._wrapped
-        self._wrapped = value
-
-        self._wrapped_connection_changed(old_value, value)
-
-    def _wrapped_connection_changed(self, old_conn, new_conn):
-        """Hook function that is called when the connection wrapped by this
-        connection changes.
-
-        Parameters:
-            old_conn (ConnectionBase): the old connection that is not wrapped
-                by this wrapper any more
-            new_conn (ConnectionBase): the new connection that is now wrapped
-                by this wrapper
-        """
-        if hasattr(old_conn, "file_handle_changed"):
-            old_conn.file_handle_changed.disconnect(
-                self._redispatch_signal, sender=old_conn
-            )
-        if hasattr(new_conn, "file_handle_changed"):
-            new_conn.file_handle_changed.connect(
-                self._redispatch_signal, sender=new_conn
-            )
-
-    def __getattr__(self, name):
-        return getattr(self._wrapped, name)
-
-    def __hasattr__(self, name):
-        return hasattr(self._wrapped, name)

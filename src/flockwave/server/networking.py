@@ -1,12 +1,20 @@
 """Generic networking-related utility functions."""
 
-from ipaddress import IPv4Address, IPv4Network
-from netifaces import AF_INET, ifaddresses, interfaces
+from ipaddress import ip_address, ip_network, IPv6Network
+from netifaces import AF_INET, AF_INET6, gateways, ifaddresses, interfaces
+from typing import Sequence, Tuple
 
 import socket
 import trio.socket
 
-__all__ = ("create_socket", "format_socket_address")
+__all__ = (
+    "create_socket",
+    "find_interfaces_in_network",
+    "format_socket_address",
+    "get_address_of_network_interface",
+    "get_all_ipv4_addresses",
+    "get_socket_address",
+)
 
 
 def create_socket(
@@ -61,6 +69,48 @@ def create_async_socket(socket_type) -> trio.socket.socket:
     return sock
 
 
+def find_interfaces_in_network(network: str) -> Sequence[Tuple[str, str, str]]:
+    """Finds the network interfaces of the current machine that have at
+    least one address that belongs to the given network.
+
+    Parameters:
+        network: the network that we are looking for
+
+    Returns:
+        for all the network interfaces that have at least one address that
+        belongs to the given network, the name of the network interface
+        itself, the matched address and the network of the interface, in
+        a tuple
+    """
+    network = ip_network(network)
+    if isinstance(network, IPv6Network):
+        family = AF_INET6
+    else:
+        family = AF_INET
+
+    candidates = []
+    for interface in interfaces():
+        # We are currently interested only in IPv4 addresses
+        specs = ifaddresses(interface).get(family) or []
+        ip_addresses_in_network = (
+            (spec.get("addr"), spec.get("netmask"))
+            for spec in specs
+            if ip_address(str(spec.get("addr"))) in network
+        )
+        for address, netmask in ip_addresses_in_network:
+            candidates.append(
+                (
+                    interface,
+                    address,
+                    str(ip_network(f"{address}/{netmask}", strict=False))
+                    if netmask
+                    else None,
+                )
+            )
+
+    return candidates
+
+
 def format_socket_address(sock, format="{host}:{port}", in_subnet_of=None):
     """Formats the address that the given socket is bound to in the
     standard hostname-port format.
@@ -84,6 +134,32 @@ def format_socket_address(sock, format="{host}:{port}", in_subnet_of=None):
     return format.format(host=host, port=port)
 
 
+def get_address_of_network_interface(value: str, family: int = AF_INET) -> str:
+    """Returns the address of the given network interface in the given
+    address family.
+
+    If the interface has multiple addresses, this function returns the first
+    one only.
+
+    Parameters:
+        value: the name of the network interface
+        family: the address family of the interface; one of the `AF_` constants
+            from the `netifaces` module
+
+    Returns:
+        the address of the given network interface
+
+    Raises:
+        ValueError: if the given network interface has no address in the given
+            address family
+    """
+    addresses = ifaddresses(value).get(family)
+    if addresses:
+        return addresses[0]["addr"]
+    else:
+        raise ValueError(f"interface {value} has no address")
+
+
 def get_all_ipv4_addresses():
     """Returns all IPv4 addresses of the current machine."""
     result = []
@@ -92,6 +168,31 @@ def get_all_ipv4_addresses():
         if AF_INET in addresses:
             result.append(addresses[AF_INET][0]["addr"])
     return result
+
+
+def get_broadcast_address_of_network_interface(
+    value: str, family: int = AF_INET
+) -> str:
+    """Returns the broadcast address of the given network interface in the given
+    address family.
+
+    Parameters:
+        value: the name of the network interface
+        family: the address family of the interface; one of the `AF_` constants
+            from the `netifaces` module
+
+    Returns:
+        the broadcast address of the given network interface
+
+    Raises:
+        ValueError: if the given network interface has no broadcast address in
+            the given address family
+    """
+    addresses = ifaddresses(value).get(family)
+    if addresses:
+        return addresses[0]["broadcast"]
+    else:
+        raise ValueError(f"interface {value} has no broadcast address")
 
 
 def get_socket_address(sock, format="{host}:{port}", in_subnet_of=None):
@@ -122,21 +223,19 @@ def get_socket_address(sock, format="{host}:{port}", in_subnet_of=None):
     if not host and in_subnet_of:
         remote_host, _ = in_subnet_of
         try:
-            remote_host = IPv4Address(remote_host)
+            remote_host = ip_address(remote_host)
         except Exception:
             remote_host = None
 
-        import netifaces  # lazy import
-
         if remote_host:
-            for interface in netifaces.interfaces():
+            for interface in interfaces():
                 # We are currently interested only in IPv4 addresses
-                specs = netifaces.ifaddresses(interface).get(netifaces.AF_INET)
+                specs = ifaddresses(interface).get(AF_INET)
                 if not specs:
                     continue
                 for spec in specs:
                     if "addr" in spec and "netmask" in spec:
-                        net = IPv4Network(
+                        net = ip_network(
                             spec["addr"] + "/" + spec["netmask"], strict=False
                         )
                         if remote_host in net:
@@ -148,10 +247,10 @@ def get_socket_address(sock, format="{host}:{port}", in_subnet_of=None):
             # the network interface corresponding to the gateway. This may
             # or may not work; most likely it won't, but that's the best we
             # can do.
-            gateway = netifaces.gateways()["default"][netifaces.AF_INET]
+            gateway = gateways()["default"][AF_INET]
             if gateway:
                 _, interface = gateway
-                specs = netifaces.ifaddresses(interface).get(netifaces.AF_INET)
+                specs = ifaddresses(interface).get(AF_INET)
                 for spec in specs:
                     if "addr" in spec:
                         host = spec["addr"]

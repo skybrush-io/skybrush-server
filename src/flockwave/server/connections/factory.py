@@ -8,7 +8,7 @@ from urllib.parse import parse_qs, urlparse
 from flockwave.server.errors import UnknownConnectionTypeError
 
 
-__all__ = ("ConnectionFactory", "create_connection")
+__all__ = ("ConnectionFactory", "create_connection", "create_connection_factory")
 
 
 class ConnectionFactory(object):
@@ -127,7 +127,8 @@ class ConnectionFactory(object):
             self._registry[name] = klass
             return klass
 
-    def _url_specification_to_dict(self, specification):
+    @staticmethod
+    def _url_specification_to_dict(specification):
         """Converts a URL-styled specification to a dict-styled
         specification.
 
@@ -173,3 +174,12 @@ class ConnectionFactory(object):
 
 
 create_connection = ConnectionFactory()  #: Singleton connection factory
+
+
+def create_connection_factory(*args, **kwds):
+    """Creates a connection factory function that creates a connection
+    configured in a specific way when invoked with no arguments.
+
+    This is essentially a deferred call to `create_connection()`
+    """
+    return partial(create_connection, *args, **kwds)

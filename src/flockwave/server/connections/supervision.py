@@ -27,6 +27,9 @@ class ConnectionSupervisor:
     """Connection supervisor object that supervises a set of connections and
     attempts to ensure that each connection remains open.
 
+    This object is a more complex version of the `supervise()` function that is
+    able to handle multiple connections at the same time.
+
     See `supervise()` for more details about the supervision policy and how
     the supervision works in general.
     """

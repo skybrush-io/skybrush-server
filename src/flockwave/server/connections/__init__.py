@@ -7,16 +7,14 @@ disconnecting. Connection instances send signals when their state changes.
 """
 
 from .base import Connection, ConnectionBase, ConnectionState
-from .factory import ConnectionFactory, create_connection
+from .factory import ConnectionFactory, create_connection, create_connection_factory
 from .file import FileConnection
 from .serial import SerialPortConnection
 from .socket import (
     TCPStreamConnection,
     UDPSocketConnection,
     MulticastUDPSocketConnection,
-    SubnetBindingConnection,
-    SubnetBindingUDPConnection,
-    SubnetBindingUDPBroadcastConnection,
+    BroadcastUDPSocketConnection,
 )
 from .stream import StreamConnection, StreamConnectionBase
 from .supervision import (
@@ -40,10 +38,9 @@ __all__ = (
     "TCPStreamConnection",
     "UDPSocketConnection",
     "MulticastUDPSocketConnection",
-    "SubnetBindingConnection",
-    "SubnetBindingUDPConnection",
-    "SubnetBindingUDPBroadcastConnection",
+    "BroadcastUDPSocketConnection",
     "SupervisionPolicy",
     "create_connection",
+    "create_connection_factory",
     "supervise",
 )

@@ -180,8 +180,8 @@ class FlockCtrlDronesExtension(UAVExtensionBase):
                 connection should be constructed.
 
         Returns:
-            Connection: the constructed low-level connection object or ``None``
-            if the specifier was ``None``
+            the constructed low-level connection object or ``None`` if the
+            specifier was ``None``
         """
         return create_connection(specifier) if specifier else None
 
@@ -227,7 +227,7 @@ class FlockCtrlDronesExtension(UAVExtensionBase):
     async def _run_unicast_link(self, link: Connection) -> None:
         """Background task that handles the unicast link of the extension."""
         address = format_socket_address(link.address)
-        self.log.info(f"Sending packets on {address}")
+        self.log.info(f"Sending flockctrl packets on {address}")
         try:
             while True:
                 print(await link.read())

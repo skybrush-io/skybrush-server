@@ -45,7 +45,7 @@ EXTENSIONS = {
         "id_format": "{0:02}",
         "connections": {
             # "wireless": "default"
-            "wireless": "192.168.9.0/24"  # "local"
+            "wireless": "local"
         },
     },
     "gps": {

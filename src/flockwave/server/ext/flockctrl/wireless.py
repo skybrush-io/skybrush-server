@@ -139,7 +139,7 @@ class WirelessCommunicationManager(CommunicationManagerBase):
     @property
     def unicast_connection(self):
         """The UDP connection object that is used to send and receive
-        broadcast packets.
+        unicast packets.
         """
         return self._unicast_threads.connection
 

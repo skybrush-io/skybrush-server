@@ -2,7 +2,6 @@
 
 from flockwave.server.utils import itersubclasses
 from hexdump import hexdump
-from six import indexbytes
 
 from .errors import ParseError
 from .packets import FlockCtrlPacket
@@ -56,7 +55,7 @@ class FlockCtrlParser(object):
         if self.packet_log is not None:
             self.packet_log.debug(hexdump(data))
 
-        packet_type = indexbytes(data, 0)
+        packet_type = data[0]
         packet_cls = self._packet_type_to_packet.get(packet_type)
         if not packet_cls:
             raise ParseError("unknown packet type: {0}".format(packet_type))

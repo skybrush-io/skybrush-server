@@ -86,8 +86,8 @@ def _convert_client_id(client_id: str) -> str:
 
 def handle_connection(client_id, environ):
     """Handler called when a client connects to the Flockwave server socket."""
-    # TODO(ntamas): handle authentication
-    app.client_registry.add(_convert_client_id(client_id), "sio")
+    client = app.client_registry.add(_convert_client_id(client_id), "sio")
+    client.user = environ.get("REMOTE_USER")
 
 
 def handle_disconnection(client_id):

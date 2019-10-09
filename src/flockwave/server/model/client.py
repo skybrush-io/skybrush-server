@@ -4,12 +4,16 @@ from __future__ import absolute_import
 
 import attr
 
-from typing import Union
+from typing import Optional, Union
+
+from flockwave.server.logger import log as base_log
 
 from .channel import CommunicationChannel
 from .user import User
 
 __all__ = ("Client",)
+
+log = base_log.getChild("model.clients")  # plural to match registry.clients
 
 
 @attr.s
@@ -42,9 +46,12 @@ class Client(object):
         return self._user
 
     @user.setter
-    def user(self, value: Union[str, User]) -> None:
-        if not isinstance(value, User):
+    def user(self, value: Optional[Union[str, User]]) -> None:
+        if value is not None and not isinstance(value, User):
             value = User.from_string(value)
+
+        if value is self._user:
+            return
 
         if self._user is not None:
             raise RuntimeError(
@@ -52,3 +59,8 @@ class Client(object):
             )
 
         self._user = value
+
+        if value:
+            log.info(f"Authenticated as {value}", extra={"id": self._id})
+        else:
+            log.info("Deauthenticated current user")

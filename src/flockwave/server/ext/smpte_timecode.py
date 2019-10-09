@@ -17,8 +17,8 @@ from .base import ExtensionBase
 from ..model import ConnectionPurpose
 
 from flockwave.server.model import StoppableClockBase
-from flockwave.server.connections import create_connection
-from flockwave.server.connections.midi import MIDIPortConnection
+from flockwave.connections import create_connection
+from flockwave.connections.midi import MIDIPortConnection
 
 
 @attr.s

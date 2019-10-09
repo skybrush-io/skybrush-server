@@ -5,7 +5,7 @@ from a simple string or dict representation.
 from functools import partial
 from urllib.parse import parse_qs, urlparse
 
-from flockwave.server.errors import UnknownConnectionTypeError
+from .errors import UnknownConnectionTypeError
 
 
 __all__ = ("ConnectionFactory", "create_connection", "create_connection_factory")

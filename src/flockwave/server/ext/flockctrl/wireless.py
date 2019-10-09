@@ -3,7 +3,6 @@ link in the extension.
 """
 
 from collections import namedtuple
-from eventlet import Queue, spawn
 from functools import partial
 
 from .comm import CommunicationManagerBase

@@ -43,16 +43,9 @@ EXTENSIONS = {
     },
     "flockctrl": {
         "id_format": "{0:02}",
-        "enabled": False,
         "connections": {
-            # "wireless": {
-            #     "broadcast": "udp-broadcast:10.0.0.0/8?port=4243",
-            #     "unicast": "udp-subnet:10.0.0.0/8",
-            # }
-            "wireless": {
-                "broadcast": "udp-multicast://239.255.67.77?port=4243&interface=127.0.0.1",
-                "unicast": "udp://127.0.0.1",
-            }
+            # "wireless": "default"
+            "wireless": "192.168.9.0/24"  # "local"
         },
     },
     "gps": {

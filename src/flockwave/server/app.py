@@ -13,9 +13,13 @@ from inspect import isawaitable
 from trio import CancelScope, MultiError, open_memory_channel, open_nursery
 from typing import Optional
 
+from flockwave.connections import (
+    ConnectionSupervisor,
+    ConnectionTask,
+    SupervisionPolicy,
+)
 from flockwave.gps.vectors import GPSCoordinate
 
-from .connections import ConnectionSupervisor, ConnectionTask, SupervisionPolicy
 from .commands import CommandExecutionManager
 from .errors import NotSupportedError
 from .ext.manager import ExtensionManager

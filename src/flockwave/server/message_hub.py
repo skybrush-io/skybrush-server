@@ -24,8 +24,9 @@ from typing import (
     Union,
 )
 
+from flockwave.connections import ConnectionState
+
 from .concurrency import AsyncBundler
-from .connections import ConnectionState
 from .logger import log as base_log
 from .model import (
     Client,

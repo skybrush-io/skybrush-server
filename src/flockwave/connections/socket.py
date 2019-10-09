@@ -5,7 +5,6 @@ from __future__ import absolute_import, print_function
 import struct
 
 from abc import abstractmethod
-from builtins import str
 from ipaddress import ip_address, ip_network, IPv4Network, IPv6Network
 from trio import open_tcp_stream, socket, to_thread
 from typing import Optional, Union
@@ -15,7 +14,7 @@ from .errors import ConnectionError
 from .factory import create_connection
 from .stream import StreamConnectionBase
 
-from ..networking import (
+from flockwave.server.networking import (
     create_async_socket,
     find_interfaces_in_network,
     get_address_of_network_interface,

@@ -1,6 +1,6 @@
 """Common exception classes used in many places throughout the server."""
 
-__all__ = ("CommandInvocationError", "NotSupportedError")
+__all__ = ("CommandInvocationError", "FlockwaveError", "NotSupportedError")
 
 
 class FlockwaveError(RuntimeError):
@@ -40,19 +40,3 @@ class NotSupportedError(FlockwaveError):
         """
         message = message or "Operation not supported"
         super(NotSupportedError, self).__init__(message)
-
-
-class UnknownConnectionTypeError(FlockwaveError):
-    """Exception thrown when trying to construct a connection with an
-    unknown type.
-    """
-
-    def __init__(self, connection_type):
-        """Constructor.
-
-        Parameters:
-            connection_type (str): the connection type that the user tried
-                to construct.
-        """
-        message = "Unknown connection type: {0!r}".format(connection_type)
-        super(UnknownConnectionTypeError, self).__init__(message)

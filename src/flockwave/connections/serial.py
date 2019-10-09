@@ -2,9 +2,10 @@
 
 from __future__ import absolute_import, print_function
 
+from serial import Serial, STOPBITS_ONE, STOPBITS_ONE_POINT_FIVE, STOPBITS_TWO
+
 from .base import FDConnectionBase, ConnectionState
 from .factory import create_connection
-from serial import Serial, STOPBITS_ONE, STOPBITS_ONE_POINT_FIVE, STOPBITS_TWO
 
 __all__ = ("SerialPortConnection",)
 

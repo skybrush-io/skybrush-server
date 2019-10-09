@@ -5,8 +5,6 @@ from trio import CancelScope, open_memory_channel, open_nursery, sleep
 from trio_util import wait_any
 from typing import Awaitable, Callable, Optional
 
-from flockwave.server.utils import constant
-
 from .base import Connection
 
 
@@ -203,12 +201,30 @@ async def supervise(
             raise ValueError(f"invalid supervision policy action: {action}")
 
 
+def _constant(x):
+    """Function factory that returns a function that accepts an arbitrary
+    number of arguments and always returns the same constant.
+
+    Parameters:
+        x (object): the constant to return
+
+    Returns:
+        callable: a function that always returns the given constant,
+            irrespectively of its input
+    """
+
+    def func(*args, **kwds):
+        return x
+
+    return func
+
+
 def constant_delay_policy(seconds):
     """Supervision policy factory that creates a supervision policy that
     waits a given number of seconds before reconnecting.
     """
-    return constant(float(seconds))
+    return _constant(float(seconds))
 
 
 default_policy = constant_delay_policy(1)
-no_reconnection_policy = constant(False)
+no_reconnection_policy = _constant(False)

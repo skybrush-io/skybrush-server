@@ -11,12 +11,13 @@ from functools import partial
 from pynmea2 import parse as parse_nmea
 
 from flockwave.gps.vectors import GPSCoordinate
+from flockwave.channels import ParserChannel
 from flockwave.connections import create_connection, Connection
+from flockwave.parsers import LineParser
 from flockwave.server.encoders import JSONEncoder
 from flockwave.server.errors import NotSupportedError
 from flockwave.server.model import ConnectionPurpose
 from flockwave.server.model.uav import PassiveUAVDriver
-from flockwave.server.parsers import LineParser
 from flockwave.spec.ids import make_valid_uav_id
 
 from .base import UAVExtensionBase
@@ -74,9 +75,13 @@ def create_gps_connection(connection, format=None):
             format = "nmea"
 
     if format == "gpsd":
-        parser = LineParser(decoder=parse_incoming_gpsd_message, min_length=1)
+        parser = LineParser(
+            decoder=parse_incoming_gpsd_message, min_length=1, filter=bool
+        )
     elif format == "nmea":
-        parser = LineParser(decoder=parse_incoming_nmea_message, min_length=1)
+        parser = LineParser(
+            decoder=parse_incoming_nmea_message, min_length=1, filter=bool
+        )
     else:
         raise NotSupportedError("{0!r} format is suported at the moment".format(format))
 
@@ -166,13 +171,8 @@ class GPSExtension(UAVExtensionBase):
         """
         await connection.wait_until_connected()
 
-        while True:
-            data = await connection.read()
-            if not data:
-                await connection.close()
-                break
-
-            for message in parser.feed(data):
+        async with ParserChannel(connection, parser) as channel:
+            async for message in channel:
                 if "version" in message:
                     # Ask gpsd to start streaming status data
                     await connection.write(b'?WATCH={"enable":true,"json":true}\n')

@@ -7,9 +7,9 @@ import struct
 from abc import abstractmethod
 from ipaddress import ip_address, ip_network, IPv4Network, IPv6Network
 from trio import open_tcp_stream, socket, to_thread
-from typing import Optional, Union
+from typing import Optional, Tuple, Union
 
-from .base import ConnectionBase
+from .base import ConnectionBase, ReadableConnection, WritableConnection
 from .errors import ConnectionError
 from .factory import create_connection
 from .stream import StreamConnectionBase
@@ -84,7 +84,11 @@ class SocketConnectionBase(ConnectionBase, InternetAddressMixin):
         return self._socket
 
 
-class InternetSocketConnection(SocketConnectionBase):
+class InternetSocketConnection(
+    SocketConnectionBase,
+    ReadableConnection[Tuple[bytes, object]],
+    WritableConnection[bytes],
+):
     """Base class for the standard Internet socket connections
     (TCP and UDP).
     """
@@ -130,34 +134,28 @@ class InternetSocketConnection(SocketConnectionBase):
         else:
             return (b"", None)
 
-    async def write(self, data, address=None, flags=0):
+    async def write(
+        self, data: bytes, address: Optional[object] = None, flags: int = 0
+    ) -> None:
         """Writes the given data to the socket connection.
 
         Parameters:
-            data (bytes): the bytes to write
-            address (Optional[tuple]): the address to write the data to;
-                ``None`` means to write the data to wherever the socket is
-                currently connected. The latter option works only if the
-                socket was explicitly connected to an address beforehand
-                with the ``connect()`` method.
-            flags (int): additional flags to pass to the underlying ``send()``
+            data: the bytes to write
+            address: the address to write the data to; ``None`` means to write
+                the data to wherever the socket is currently connected. The
+                atter option works only if the socket was explicitly connected
+                to an address beforehand with the ``connect()`` method.
+            flags: additional flags to pass to the underlying ``send()``
                 or ``sendto()`` call; see the UNIX manual for details.
-
-        Returns:
-            int: the number of bytes successfully written through the
-                socket. Note that it may happen that some of the data was
-                not written; you are responsible for checking the return
-                value. Returns -1 if there was an error while sending the
-                data.
         """
         if self._socket is not None:
             address = self._extract_address(address)
             if address is None:
-                return await self._socket.send(data, flags)
+                await self._socket.send(data, flags)
             else:
-                return await self._socket.sendto(data, flags, address)
+                await self._socket.sendto(data, flags, address)
         else:
-            return -1
+            raise RuntimeError("connection does not have a socket")
 
     def _extract_address(self, address):
         """Extracts the *real* IP address and port from the given object.

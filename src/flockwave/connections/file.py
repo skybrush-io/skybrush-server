@@ -50,27 +50,25 @@ class FileConnection(FDConnectionBase):
         self._attach(await open_file(self._path, self._mode))
         self._set_state(ConnectionState.CONNECTED)
 
-    async def read(self, size=-1):
+    async def read(self, size: int = -1) -> bytes:
         """Reads the given number of bytes from the connection.
 
         Parameters:
-            size: the number of bytes to read
+            size: the number of bytes to read; -1 means to read all available
+                data
 
         Returns:
-            bytes: the data that was read
+            the data that was read, or an empty bytes object if the end of file
+            was reached
         """
         return await self._file_object.read(size)
 
-    async def write(self, data):
+    async def write(self, data: bytes) -> None:
         """Writes the given data to the connection.
 
         Parameters:
-            data (bytes): the data to write
-
-        Returns:
-            int: the number of bytes written
+            data: the data to write
         """
-        result = await self._file_object.write(data)
+        await self._file_object.write(data)
         if self.autoflush:
             await self.flush()
-        return result

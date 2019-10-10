@@ -5,18 +5,14 @@ messages.
 
 from __future__ import absolute_import
 
-try:
-    from string import maketrans, translate
-except ImportError:
-    # Python 3.x
-    maketrans, translate = bytes.maketrans, bytes.translate
+from typing import List, Tuple
 
 from .base import ParserBase
 
 __all__ = ("DelimiterBasedParser", "LineParser")
 
 
-class DelimiterBasedParser(ParserBase):
+class DelimiterBasedParser(ParserBase[bytes]):
     """Parser class that assumes that the individual messages in the incoming
     stream are separated by a delimiter character that appears in none of the
     messages.
@@ -33,7 +29,7 @@ class DelimiterBasedParser(ParserBase):
 
         self._chunks = []
 
-    def feed(self, data):
+    def feed(self, data: bytes) -> List[bytes]:
         result = []
         while data:
             prefix, sep, data = self._split(data)
@@ -48,7 +44,7 @@ class DelimiterBasedParser(ParserBase):
                 del self._chunks[:]
         return result
 
-    def _split(self, data):
+    def _split(self, data: bytes) -> Tuple[bytes, bytes, bytes]:
         """Splits an incoming chunk of data into a prefix, a separator and a
         suffix such that the concatenation of the three parts is always the
         entire data.
@@ -58,10 +54,10 @@ class DelimiterBasedParser(ParserBase):
         empty byte strings.
 
         Parameters:
-            data (bytes): the incoming chunk of data
+            data: the incoming chunk of data
 
         Returns:
-            (bytes, bytes, bytes): the prefix, the separator and the suffix
+            the prefix, the separator and the suffix
         """
         return data.partition(self.delimiter)
 
@@ -73,7 +69,7 @@ class LineParser(DelimiterBasedParser):
 
     def __init__(self, **kwds):
         super(LineParser, self).__init__(delimiter="\n", **kwds)
-        self._trans = maketrans(b"\r", b"\n")
+        self._trans = bytes.maketrans(b"\r", b"\n")
 
-    def _split(self, data):
-        return translate(data, self._trans).partition(b"\n")
+    def _split(self, data: bytes) -> bytes:
+        return bytes.translate(data, self._trans).partition(b"\n")

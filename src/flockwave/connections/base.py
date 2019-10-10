@@ -8,9 +8,17 @@ from blinker import Signal
 from enum import Enum
 from trio import wrap_file
 from trio_util import AsyncBool
+from typing import Generic, TypeVar
 
 
-__all__ = ("Connection", "ConnectionState", "ConnectionBase", "FDConnectionBase")
+__all__ = (
+    "Connection",
+    "ConnectionState",
+    "ConnectionBase",
+    "FDConnectionBase",
+    "ReadableConnection",
+    "WritableConnection",
+)
 
 
 class ConnectionState(Enum):
@@ -96,6 +104,37 @@ class Connection(metaclass=ABCMeta):
 
     async def __aexit__(self, exc_type, exc_value, traceback):
         await self.close()
+
+
+T = TypeVar("T")
+
+
+class ReadableConnection(Connection, Generic[T]):
+    """Interface specification for connection objects that we can read data from."""
+
+    @abstractmethod
+    async def read(self) -> T:
+        """Reads the given number of bytes from the connection.
+
+        Returns:
+            bytes: the data that was read; must be empty if and only if there
+                is no more data to read and there _will_ be no more data to read
+                in the future either
+        """
+        raise NotImplementedError
+
+
+class WritableConnection(Connection, Generic[T]):
+    """Interface specification for connection objects that we can write data to."""
+
+    @abstractmethod
+    async def write(self, data: T) -> None:
+        """Writes the given data to the connection.
+
+        Parameters:
+            data: the data to write
+        """
+        raise NotImplementedError
 
 
 class ConnectionBase(Connection):
@@ -247,7 +286,9 @@ class ConnectionBase(Connection):
         raise NotImplementedError
 
 
-class FDConnectionBase(ConnectionBase):
+class FDConnectionBase(
+    ConnectionBase, ReadableConnection[bytes], WritableConnection[bytes]
+):
     """Base class for connection objects that have an underlying numeric
     file handle or file-like object.
     """
@@ -289,32 +330,6 @@ class FDConnectionBase(ConnectionBase):
     def fp(self):
         """Returns the underlying file-like object of the connection."""
         return self._file_object
-
-    @abstractmethod
-    async def read(self, size=-1):
-        """Reads the given number of bytes from the connection.
-
-        Parameters:
-            size (int): the number of bytes to read; -1 to read all
-                available data.
-
-        Returns:
-            bytes: the data that was read
-        """
-        raise NotImplementedError
-
-    @abstractmethod
-    async def write(self, data):
-        """Writes the given data to the connection.
-
-        Parameters:
-            data (bytes): the data to write
-
-        Returns:
-            int: the number of bytes written; -1 if the connection is not
-                open yet
-        """
-        raise NotImplementedError
 
     def _attach(self, handle_or_object):
         """Associates a file handle or file-like object to the connection.

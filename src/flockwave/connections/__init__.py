@@ -6,7 +6,13 @@ Each connection class provided by this package has a common notion of a
 disconnecting. Connection instances send signals when their state changes.
 """
 
-from .base import Connection, ConnectionBase, ConnectionState
+from .base import (
+    Connection,
+    ConnectionBase,
+    ConnectionState,
+    ReadableConnection,
+    WritableConnection,
+)
 from .factory import ConnectionFactory, create_connection, create_connection_factory
 from .file import FileConnection
 from .serial import SerialPortConnection
@@ -25,6 +31,7 @@ from .supervision import (
 )
 
 __all__ = (
+    "BroadcastUDPSocketConnection",
     "Connection",
     "ConnectionBase",
     "ConnectionFactory",
@@ -32,14 +39,15 @@ __all__ = (
     "ConnectionState",
     "ConnectionTask",
     "FileConnection",
+    "MulticastUDPSocketConnection",
+    "ReadableConnection",
     "SerialPortConnection",
     "StreamConnection",
     "StreamConnectionBase",
-    "TCPStreamConnection",
-    "UDPSocketConnection",
-    "MulticastUDPSocketConnection",
-    "BroadcastUDPSocketConnection",
     "SupervisionPolicy",
+    "UDPSocketConnection",
+    "TCPStreamConnection",
+    "WritableConnection",
     "create_connection",
     "create_connection_factory",
     "supervise",

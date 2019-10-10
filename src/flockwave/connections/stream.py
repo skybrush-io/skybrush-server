@@ -4,10 +4,12 @@ from abc import abstractmethod
 from trio.abc import Stream
 from typing import Callable, Optional
 
-from .base import ConnectionBase
+from .base import ConnectionBase, ReadableConnection, WritableConnection
 
 
-class StreamConnectionBase(ConnectionBase):
+class StreamConnectionBase(
+    ConnectionBase, ReadableConnection[bytes], WritableConnection[bytes]
+):
     """Connection class that wraps a Trio bidirectional byte stream."""
 
     def __init__(self):
@@ -39,15 +41,15 @@ class StreamConnectionBase(ConnectionBase):
         await self._stream.aclose()
         self._stream = None
 
-    async def read(self, num_bytes: Optional[int] = None) -> bytes:
+    async def read(self, size: Optional[int] = None) -> bytes:
         """Reads some data from the stream.
 
         Parameters:
-            num_bytes: maximum number of bytes to receive. Must be greater than
+            size: maximum number of bytes to receive. Must be greater than
                 zero. Optional; if omitted, then the stream object is free to
                 pick a reasonable default.
         """
-        return await self._stream.receive_some(num_bytes)
+        return await self._stream.receive_some(size)
 
     async def write(self, data: bytes) -> None:
         """Writes some data to the stream.

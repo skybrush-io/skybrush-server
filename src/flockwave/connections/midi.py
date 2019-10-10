@@ -1,17 +1,15 @@
 """Connection for a MIDI port."""
 
-from __future__ import absolute_import, print_function
-
 from trio import to_thread
 
-from .base import ConnectionBase
+from .base import ConnectionBase, ReadableConnection
 from .factory import create_connection
 
 __all__ = ("MIDIPortConnection",)
 
 
 @create_connection.register("midi")
-class MIDIPortConnection(ConnectionBase):
+class MIDIPortConnection(ConnectionBase, ReadableConnection["mido.Message"]):
     """Connection for a MIDI port."""
 
     def __init__(self, path):
@@ -46,7 +44,7 @@ class MIDIPortConnection(ConnectionBase):
         actually arrives.
 
         Returns:
-            mido.Message: the next message from the MIDI port
+            the next message from the MIDI port
         """
         # It would be much better to do this with a worker thread and queues,
         # but in order to spawn a worker thread, we would need to pass in a

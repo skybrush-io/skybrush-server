@@ -12,21 +12,22 @@ from .connections import Connection, ReadableConnection, WritableConnection
 
 __all__ = ("ParserChannel",)
 
-T = TypeVar("T")
+RawType = TypeVar("RawType")
+MessageType = TypeVar("MessageType")
 
-Reader = Union[Callable[[], Awaitable[bytes]], ReadableConnection[bytes]]
-Writer = Union[Callable[[bytes], None], WritableConnection[bytes]]
+Reader = Union[Callable[[], Awaitable[RawType]], ReadableConnection[RawType]]
+Writer = Union[Callable[[RawType], None], WritableConnection[RawType]]
 
-Parser = Callable[[bytes], List[T]]
-Encoder = Callable[[T], bytes]
+Parser = Callable[[RawType], List[MessageType]]
+Encoder = Callable[[MessageType], RawType]
 
 
-class ParserChannel(ReceiveChannel[T]):
+class ParserChannel(ReceiveChannel[MessageType]):
     """Trio-style ReceiveChannel_ that takes data from a ReadableConnection_
     and yields parsed message objects.
     """
 
-    def __init__(self, reader: Reader, parser: Parser[T]):
+    def __init__(self, reader: Reader[RawType], parser: Parser[RawType, MessageType]):
         if iscoroutinefunction(getattr(reader, "read", None)):
             # Reader is a Connection
             self._reader = reader.read
@@ -52,7 +53,7 @@ class ParserChannel(ReceiveChannel[T]):
         if self._closer:
             await self._closer()
 
-    async def receive(self) -> T:
+    async def receive(self) -> MessageType:
         while not self._pending:
             await self._read()
         return self._pending.popleft()
@@ -70,14 +71,14 @@ class ParserChannel(ReceiveChannel[T]):
         self._pending.extend(self._parser(data))
 
 
-class EncoderChannel(SendChannel[T]):
+class EncoderChannel(SendChannel[MessageType]):
     """Trio-style SendChannel_ that encodes objects and writes them to a
     WritableConnection_.
     """
 
-    def __init__(self, writer: Writer, encoder: Encoder[T]):
+    def __init__(self, writer: Writer[RawType], encoder: Encoder[MessageType, RawType]):
         if iscoroutinefunction(getattr(writer, "write", None)):
-            # Reader is a Connection
+            # Writer is a Connection
             self._writer = writer.writer
             self._closer = getattr(writer, "aclose", None)
         elif iscoroutinefunction(writer):
@@ -94,17 +95,22 @@ class EncoderChannel(SendChannel[T]):
         if self._closer:
             await self._closer()
 
-    async def send(self, value: T) -> None:
+    async def send(self, value: MessageType) -> None:
         await self._writer(self._encoder(value))
 
 
-class MessageChannel(Channel[T]):
+class MessageChannel(Channel[MessageType]):
     """Trio-style Channel_ that wraps a readable-writable connection and
     uses a parser to decode the messages read from the connection and an
     encoder to encode the messages to the wire format of the connection.
     """
 
-    def __init__(self, connection: Connection, parser: Parser[T], encoder: Encoder[T]):
+    def __init__(
+        self,
+        connection: Connection,
+        parser: Parser[RawType, MessageType],
+        encoder: Encoder[MessageType, RawType],
+    ):
         self._connection = connection
         self._encoder = encoder
         self._pending = deque()
@@ -119,12 +125,12 @@ class MessageChannel(Channel[T]):
     async def aclose(self) -> None:
         await self._connection.close()
 
-    async def receive(self) -> T:
+    async def receive(self) -> MessageType:
         while not self._pending:
             await self._read()
         return self._pending.popleft()
 
-    async def send(self, value: T) -> None:
+    async def send(self, value: MessageType) -> None:
         await self._connection.write(self._encoder(value))
 
     async def _read(self) -> None:

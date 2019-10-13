@@ -146,12 +146,6 @@ class ReturnToHomeAlgorithm(Algorithm):
 
 
 @registry.register
-class ILandingAlgorithm(Algorithm):
-    ID = 9  # 'i'
-    NAME = "ilanding"
-
-
-@registry.register
 class LandingAlgorithm(Algorithm):
     ID = 12  # 'l'
     NAME = "landing"
@@ -200,6 +194,12 @@ class OcularAlgorithm(Algorithm):
         # TODO: so far we neglect target_position, what to do with it?
         with mutate() as mutator:
             uav.update_detected_features(iTOW, features, mutator)
+
+
+@registry.register
+class PrecisionLandingAlgorithm(Algorithm):
+    ID = 16  # 'p'
+    NAME = "planding"
 
 
 @registry.register

@@ -267,19 +267,6 @@ class FlockCtrlDriver(UAVDriver):
         except ValueError:
             raise ValueError("Address of UAV is not known yet")
 
-        """
-        future = self._pending_commands_by_uav.get(uav.id)
-        if future is not None:
-            if not self.allow_multiple_commands_per_uav:
-                return "Another command is already in progress"
-            else:
-                future.cancel()
-
-        # TODO(ntamas): test if replacement works okay; in particular, test
-        # that future.cancel() above does not accidentally remove the _new_
-        # future that is added below
-        """
-
         await self._send_command_to_address(command, address)
 
         async with self._pending_commands_by_uav.new(

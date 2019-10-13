@@ -60,6 +60,8 @@ _error_code_mapping = {
     18: FlockwaveErrorCode.MOTOR_MALFUNCTION,
     19: FlockwaveErrorCode.AUTOPILOT_PROTOCOL_ERROR,
     20: FlockwaveErrorCode.UNSPECIFIED_CRITICAL_ERROR,
+    21: FlockwaveErrorCode.AUTOPILOT_INIT_FAILED,
+    22: FlockwaveErrorCode.AUTOPILOT_COMM_FAILED,
     42: FlockwaveErrorCode.SIMULATED_CRITICAL_ERROR,
     43: FlockwaveErrorCode.TARGET_NOT_FOUND,
     44: FlockwaveErrorCode.TARGET_TOO_FAR,
@@ -72,6 +74,11 @@ _error_code_mapping = {
     51: FlockwaveErrorCode.CONTROL_ALGORITHM_ERROR,
     52: FlockwaveErrorCode.CONTROL_ALGORITHM_ERROR,
     53: FlockwaveErrorCode.EXTERNAL_CLOCK_ERROR,
+    54: FlockwaveErrorCode.CONFIGURATION_ERROR,
+    200: FlockwaveErrorCode.LOGGING_DEACTIVATED,
+    201: FlockwaveErrorCode.LOW_DISK_SPACE,
+    202: FlockwaveErrorCode.TIMESYNC_ERROR,
+    203: FlockwaveErrorCode.TIMESYNC_ERROR,
 }
 
 

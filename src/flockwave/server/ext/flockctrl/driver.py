@@ -2,11 +2,12 @@
 
 from __future__ import division
 
-from bidict import bidict
+from flockwave.server.concurrency import FutureCancelled, FutureMap
 from flockwave.server.ext.logger import log
 from flockwave.server.model.uav import UAVBase, UAVDriver
 from flockwave.server.utils import nop
 from flockwave.spec.ids import make_valid_uav_id
+from typing import Optional
 
 from .errors import AddressConflictError, map_flockctrl_error_code
 from .packets import (
@@ -63,9 +64,10 @@ class FlockCtrlDriver(UAVDriver):
             id_format (str): the format of the UAV IDs used by this driver.
                 See the class documentation for more details.
         """
-        self._app = None
         super(FlockCtrlDriver, self).__init__()
-        self._commands_by_uav = bidict()
+
+        self._pending_commands_by_uav = FutureMap()
+
         self._packet_handlers = self._configure_packet_handlers()
         self._packet_assembler = ChunkedPacketAssembler()
         self._packet_assembler.packet_assembled.connect(
@@ -80,28 +82,6 @@ class FlockCtrlDriver(UAVDriver):
         self.id_format = id_format
         self.log = log.getChild("flockctrl").getChild("driver")
         self.send_packet = None
-
-    @property
-    def app(self):
-        """The app in which the driver lives."""
-        return self._app
-
-    @app.setter
-    def app(self, value):
-        if self._app == value:
-            return
-
-        if self._app:
-            cmd_manager = self.app.command_execution_manager
-            cmd_manager.expired.disconnect(self._on_command_expired)
-            cmd_manager.finished.disconnect(self._on_command_finished)
-
-        self._app = value
-
-        if self._app:
-            cmd_manager = self.app.command_execution_manager
-            cmd_manager.expired.connect(self._on_command_expired, sender=cmd_manager)
-            cmd_manager.finished.connect(self._on_command_finished, sender=cmd_manager)
 
     def _check_or_record_uav_address(self, uav, medium, address):
         """Records that the given UAV has the given address,
@@ -168,32 +148,12 @@ class FlockCtrlDriver(UAVDriver):
             uav_registry.add(uav)
         return uav_registry.find_by_id(formatted_id)
 
-    def handle_generic_command(self, cmd_manager, uavs, command, args, kwds):
-        """Sends a generic command execution request to the given UAVs."""
-        result = {}
-        error = None
+    def handle_generic_command(self, uav, command, args, kwds):
+        """Sends a generic command execution request to the given UAV."""
+        command = " ".join([command, *args])
+        return self._send_command_to_uav(command, uav)
 
-        # Prevent the usage of keyword arguments; they are not supported.
-        # Also prevent non-string positional arguments.
-        if kwds:
-            error = "Keyword arguments not supported"
-        elif args:
-            if any(not isinstance(arg, str) for arg in args):
-                error = "Non-string positional arguments not supported"
-            else:
-                command = [command]
-                command.extend(args)
-                command = " ".join(command)
-
-        for uav in uavs:
-            if error:
-                result[uav] = error
-            else:
-                result[uav] = self._send_command_to_uav(cmd_manager, command, uav)
-
-        return result
-
-    def handle_inbound_packet(self, packet):
+    def handle_inbound_packet(self, packet, source):
         """Handles an inbound FlockCtrl packet received over a connection."""
         packet_class = packet.__class__
         handler = self._packet_handlers.get(packet_class)
@@ -203,14 +163,23 @@ class FlockCtrlDriver(UAVDriver):
                 "class: {0}".format(packet_class.__name__)
             )
         else:
-            handler(packet)
+            handler(packet, source)
 
-    def _handle_inbound_algorithm_data_packet(self, packet):
+    def validate_command(self, command: str, args, kwds) -> Optional[str]:
+        # Prevent the usage of keyword arguments; they are not supported.
+        # Also prevent non-string positional arguments.
+        if kwds:
+            return "Keyword arguments not supported"
+        if args and any(not isinstance(arg, str) for arg in args):
+            return "Non-string positional arguments not supported"
+
+    def _handle_inbound_algorithm_data_packet(self, packet, source):
         """Handles an inbound FlockCtrl packet containing algorithm-specific
         data.
 
         Parameters:
             packet (FlockCtrlAlgorithmDataPacket): the packet to handle
+            source: the source the packet was received from
         """
         uav = self._get_or_create_uav(packet.uav_id)
         try:
@@ -222,28 +191,29 @@ class FlockCtrlDriver(UAVDriver):
             mutator = self.create_device_tree_mutator
             algorithm.handle_data_packet(packet, uav, mutator)
 
-    def _handle_inbound_command_response_packet(self, packet):
+    def _handle_inbound_command_response_packet(self, packet, source):
         """Handles an inbound FlockCtrl command response packet.
 
         Parameters:
             packet (FlockCtrlCommandResponsePacketBase): the packet to handle
+            source: the source the packet was received from
         """
         if isinstance(packet, FlockCtrlCompressedCommandResponsePacket):
             compressed = True
         else:
             compressed = False
 
-        self._packet_assembler.add_packet(packet, compressed=compressed)
+        self._packet_assembler.add_packet(packet, source, compressed=compressed)
 
-    def _handle_inbound_status_packet(self, packet):
+    def _handle_inbound_status_packet(self, packet, source):
         """Handles an inbound FlockCtrl status packet.
 
         Parameters:
             packet (FlockCtrlStatusPacket): the packet to handle
+            source: the source the packet was received from
         """
         uav = self._get_or_create_uav(packet.id)
-        algorithm = packet.algorithm_name
-        medium, address = packet.source
+        medium, address = source
 
         self._check_or_record_uav_address(uav, medium, address)
 
@@ -251,7 +221,7 @@ class FlockCtrlDriver(UAVDriver):
             position=packet.location,
             velocity=packet.velocity,
             heading=packet.heading,
-            algorithm=algorithm,
+            algorithm=packet.algorithm_name,
             error=map_flockctrl_error_code(packet.error).value,
         )
 
@@ -274,126 +244,89 @@ class FlockCtrlDriver(UAVDriver):
                 "{1!r} via {0!r} with no corresponding UAV".format(*source)
             )
             return
-        try:
-            command = self._commands_by_uav[uav.id]
-        except KeyError:
-            self.log.warn(
-                "Dropped stale command response from UAV " "{0.id}".format(uav)
-            )
-            return
 
         decoded_body = body.decode("utf-8", errors="replace")
-        cmd_manager = self.app.command_execution_manager
-        cmd_manager.finish(command, decoded_body)
+        try:
+            self._pending_commands_by_uav[uav.id].set_result(decoded_body)
+        except KeyError:
+            self.log.warn(f"Dropped stale command response from UAV {uav.id}")
 
-    def _on_command_expired(self, sender, statuses):
-        """Handler called when a command being executed by the command
-        manager has expired (i.e. timed out). Finds the command in the
-        drone-to-command mapping and deletes it so we can send another
-        command for the drone.
-
-        Parameters:
-            sender (CommandExecutionManager): the command execution manager
-                of the app that was responsible for handling the command
-            statuses (List[CommandExecutionStatus]): the commands that have
-                been expired by the manager
-        """
-        uavs_by_command = self._commands_by_uav.inv
-        for status in statuses:
-            uavs_by_command.pop(status, None)
-
-    def _on_command_finished(self, sender, status):
-        """Handler called when a command being executed by the command
-        manager has fnished. Finds the command in the drone-to-command
-        mapping and deletes it so we can send another command for the drone.
-        Nothing else has to be done there -- the response packet to the
-        Flockwave clients is dispatched by the command execution manager so
-        we don't have to deal with that.
-
-        Parameters:
-            sender (CommandExecutionManager): the command execution manager
-                of the app that was responsible for handling the command
-            status (CommandExecutionStatus): the command that has finished
-                execution.
-        """
-        uavs_by_command = self._commands_by_uav.inv
-        uavs_by_command.pop(status, None)
-
-    def _send_command_to_uav(self, cmd_manager, command, uav):
+    async def _send_command_to_uav(self, command, uav):
         """Sends a command string to the given UAV.
 
         Parameters:
-            cmd_manager (CommandExecutionManager): the execution manager
-                that manages the execution of UAV commands in the app
             command (str): the command to send. It will be encoded in UTF-8
                 before sending it.
             uav (FlockCtrlUAV): the UAV to send the command to
 
         Returns:
-            CommandExecutionStatus: the execution status object for
-                the command if it has been sent to the UAV, ``False`` or
-                a string describing the reason of failure if it has not
-                been sent
+            the result of the command
         """
         try:
             address = uav.preferred_address
         except ValueError:
-            return "Address of UAV is not known yet"
+            raise ValueError("Address of UAV is not known yet")
 
-        existing_command = self._commands_by_uav.get(uav.id)
-        if existing_command is not None:
-            if self.allow_multiple_commands_per_uav:
-                cmd_manager.cancel(existing_command)
+        """
+        future = self._pending_commands_by_uav.get(uav.id)
+        if future is not None:
+            if not self.allow_multiple_commands_per_uav:
+                return "Another command is already in progress"
             else:
-                return (
-                    "Another command (receipt ID={0.id}) is already "
-                    "in progress".format(existing_command)
-                )
+                future.cancel()
 
-        self._commands_by_uav[uav.id] = receipt = cmd_manager.new()
-        self._send_command_to_address(command, address)
-        return receipt
+        # TODO(ntamas): test if replacement works okay; in particular, test
+        # that future.cancel() above does not accidentally remove the _new_
+        # future that is added below
+        """
 
-    def _send_command_to_address(self, command, address):
+        await self._send_command_to_address(command, address)
+
+        async with self._pending_commands_by_uav.new(
+            uav.id, strict=not self.allow_multiple_commands_per_uav
+        ) as future:
+            try:
+                return await future.wait()
+            except FutureCancelled:
+                return "Execution cancelled"
+
+    async def _send_command_to_address(
+        self, command: str, address
+    ) -> FlockCtrlCommandRequestPacket:
         """Sends a command packet with the given command string to the
         given UAV address.
 
         Parameters:
-            command (str): the command to send. It will be encoded in UTF-8
+            command: the command to send. It will be encoded in UTF-8
                 before sending it.
             address (object): the address to send the command to
 
         Returns:
-            FlockCtrlCommandRequestPacket: the packet that was sent
+            the packet that was sent
         """
         packet = FlockCtrlCommandRequestPacket(command.encode("utf-8"))
-        self.send_packet(packet, address)
+        await self.send_packet(packet, address)
         return packet
 
-    def _send_fly_to_target_signal_single(self, cmd_manager, uav, target):
+    async def _send_fly_to_target_signal_single(self, uav, target):
         altitude = target.agl
         if altitude is not None:
             cmd = "go N{0.lat:.7f} E{0.lon:.7f} {1}".format(target, altitude)
         else:
             cmd = "go N{0.lat:.7f} E{0.lon:.7f}".format(target, altitude)
-        self._send_command_to_uav(cmd_manager, cmd, uav)
-        return True
+        return await self._send_command_to_uav(cmd, uav)
 
-    def _send_landing_signal_single(self, cmd_manager, uav):
-        self._send_command_to_uav(cmd_manager, "land", uav)
-        return True
+    async def _send_landing_signal_single(self, uav):
+        return await self._send_command_to_uav("land", uav)
 
-    def _send_return_to_home_signal_single(self, cmd_manager, uav):
-        self._send_command_to_uav(cmd_manager, "rth", uav)
-        return True
+    async def _send_return_to_home_signal_single(self, uav):
+        return await self._send_command_to_uav("rth", uav)
 
-    def _send_shutdown_signal_single(self, cmd_manager, uav):
-        self._send_command_to_uav(cmd_manager, "halt", uav)
-        return True
+    async def _send_shutdown_signal_single(self, uav):
+        return await self._send_command_to_uav("halt", uav)
 
-    def _send_takeoff_signal_single(self, cmd_manager, uav):
-        self._send_command_to_uav(cmd_manager, "motoron", uav)
-        return True
+    async def _send_takeoff_signal_single(self, uav):
+        return await self._send_command_to_uav("motoron", uav)
 
 
 class FlockCtrlUAV(UAVBase):

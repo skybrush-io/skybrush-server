@@ -36,14 +36,14 @@ class FlockCtrlParser(object):
                 result[cls.PACKET_TYPE] = cls
         return result
 
-    def parse(self, data):
+    def parse(self, data: bytes) -> FlockCtrlPacket:
         """Parses the given raw stream of bytes as a FlockCtrl packet.
 
         Parameters:
-            data (bytes): the packet to parse
+            data: the packet to parse
 
         Returns:
-            FlockCtrlPacket: the parsed packet
+            the parsed packet
 
         Raises:
             ParseError: if the given raw stream of bytes cannot be parsed

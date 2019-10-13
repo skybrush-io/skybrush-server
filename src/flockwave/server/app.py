@@ -534,7 +534,7 @@ class FlockwaveServer:
                     common_error = "Operation not implemented"
                 except NotSupportedError:
                     common_error = "Operation not supported"
-                except RuntimeError as ex:
+                except Exception as ex:
                     common_error = "Unexpected error: {0}".format(ex)
                     log.exception(ex)
 
@@ -549,17 +549,20 @@ class FlockwaveServer:
                     # TODO(ntamas): no, we don't have to wait for it; we have
                     # to create a receipt for each UAV and then send a response
                     # now
-                    await results
+                    try:
+                        await results
+                    except Exception as ex:
+                        results = ex
 
                 if isinstance(results, Exception):
                     # Received an exception; send it back to all UAVs
                     for uav in uavs:
-                        response.add_failure(uav.id, results)
+                        response.add_failure(uav.id, str(results))
                 else:
                     # Results have arrived, process them
                     for uav, result in results.items():
                         if isinstance(result, Exception):
-                            response.add_failure(uav.id, result)
+                            response.add_failure(uav.id, str(result))
                         else:
                             receipt = await cmd_manager.new(
                                 result, client_to_notify=sender.id

@@ -4,6 +4,7 @@ link in the extension.
 
 from collections import namedtuple
 from functools import partial
+from trio import open_memory_channel, open_nursery
 
 from .comm import CommunicationManagerBase
 
@@ -14,76 +15,53 @@ __all__ = ("WirelessCommunicationManager",)
 PacketSendingRequest = namedtuple("PacketSendingRequest", "packet destination")
 
 
-class ConnectionThreadManager(object):
-    """Lightweight object that receives a connection in one of its
-    properties and then creates an inbound and an outbound thread for
-    managing the traffic on the connection.
+class ConnectionTaskManager(object):
+    """Lightweight object that receives a connection and then creates an inbound
+    and an outbound task for managing the traffic on the connection. The two
+    tasks are executed in parallel.
     """
 
-    def __init__(self, inbound_thread_factory=None, outbound_thread_factory=None):
+    def __init__(self, inbound_task=None, outbound_task=None):
         """Constructor.
 
         Parameters:
-            inbound_thread_factory (Optional[callable]): a callable that can
-                be invoked with a ConnectionBase_ object as its only argument
-                and that creates an appropriate thread for handling the
-                inbound traffic on that connection. When omitted, there will
-                be no inbound thread for the connection.
-            outbound_thread_factory (Optional[callable]): a callable that can
-                be invoked with a ConnectionBase_ object as its only argument
-                and that creates an appropriate thread for handling the
-                outbound traffic on that connection. The thread is expected
-                to provide a ``put`` method with which one can feed packet
-                sending requests into the thread. When this argument is
-                omitted, there will be no outbound thread for the connection.
+            inbound_task: a callable that can be invoked with a Connection_
+                object and that will handle inbound traffic on the connection.
+                When omitted, there will be no inbound task for the
+                connection.
+            outbound_task: a callable that can be invoked with a Connection_
+                object and a ReceiveChannel_ and that will handle outbound
+                traffic on the connection. Messages to send will arrive on the
+                ReceiveChannel_ and must be passed on to the Connection_. When
+                omitted, there will be no outbound task for the connection.
         """
-        self._inbound_thread_factory = inbound_thread_factory
-        self._outbound_thread_factory = outbound_thread_factory
-
-        self._connection = None
-
-        self._inbound_thread = None
-        self._outbound_thread = None
+        self._inbound_task = inbound_task
+        self._outbound_task = outbound_task
 
         self._put = None
 
-    @property
-    def connection(self):
-        """The connection associated to the thread manager."""
-        return self._connection
-
-    @connection.setter
-    def connection(self, value):
-        if self._connection == value:
-            return
-
-        if self._connection is not None:
-            if self._inbound_thread is not None:
-                self._inbound_thread.kill()
-                self._inbound_thread = None
-
-            if self._outbound_thread is not None:
-                self._outbound_thread.kill()
-                self._outbound_thread = None
-                self._put = None
-
-        self._connection = value
-
-        if self._connection is not None:
-            if self._inbound_thread_factory is not None:
-                thread = self._inbound_thread_factory(self._connection)
-                self._inbound_thread = spawn(thread.run)
-
-            if self._outbound_thread_factory is not None:
-                thread = self._outbound_thread_factory(self._connection)
-                self._put = thread.put
-                self._outbound_thread = spawn(thread.run)
-
-    def put(self, request):
+    async def put(self, request):
         """Puts a packet sending request into the queue of the outbound
         thread.
+
+        Messages that try to be sent while the communication manager is not
+        running will be dropped silently.
         """
-        return self._put(request)
+        if self._put:
+            await self._put(request)
+
+    async def run(self, connection):
+        """Creates the inbound and outbound tasks in a nursery and runs them
+        in parallel.
+        """
+        tx_queue, rx_queue = open_memory_channel()
+        with open_nursery() as nursery, tx_queue:
+            try:
+                self._put = tx_queue.send
+                nursery.start_soon(self._inbound_task, connection)
+                nursery.start_soon(self._outbound_task, connection, rx_queue)
+            finally:
+                self._put = None
 
 
 class WirelessCommunicationManager(CommunicationManagerBase):
@@ -96,33 +74,33 @@ class WirelessCommunicationManager(CommunicationManagerBase):
     provide us with acknowledgments anyway.
     """
 
-    def __init__(self, ext, port=4243):
+    def __init__(self, log, port=4243):
         """Constructor.
 
         Parameters:
-            ext (FlockCtrlDronesExtension): the extension that owns this
-                manager
+            log: the logger where the communication manager should log its
+                messages
             port (int): the port to use when sending a packet to a UAV
         """
-        super(WirelessCommunicationManager, self).__init__(ext, "wireless")
+        super().__init__("wireless", log=log)
 
         self.port = port
 
-        self._broadcast_threads = ConnectionThreadManager(
-            inbound_thread_factory=partial(
+        self._broadcast_tasks = ConnectionTaskManager(
+            inbound_task=partial(
                 WirelessInboundThread,
                 manager=self,
                 callback=self._handle_inbound_packet,
             ),
-            outbound_thread_factory=partial(WirelessOutboundThread, manager=self),
+            outbound_task=partial(WirelessOutboundThread, manager=self),
         )
-        self._unicast_threads = ConnectionThreadManager(
-            inbound_thread_factory=partial(
+        self._unicast_tasks = ConnectionTaskManager(
+            inbound_task=partial(
                 WirelessInboundThread,
                 manager=self,
                 callback=self._handle_inbound_packet,
             ),
-            outbound_thread_factory=partial(WirelessOutboundThread, manager=self),
+            outbound_task=partial(WirelessOutboundThread, manager=self),
         )
 
     @property
@@ -147,7 +125,7 @@ class WirelessCommunicationManager(CommunicationManagerBase):
     def unicast_connection(self, value):
         self._unicast_threads.connection = value
 
-    def send_packet(self, packet, destination=None):
+    async def send_packet(self, packet, destination=None):
         """Requests the communication manager to send the given FlockCtrl
         packet to the given destination.
 
@@ -156,16 +134,16 @@ class WirelessCommunicationManager(CommunicationManagerBase):
             destination (str): the IP address to send the packet to
         """
         if destination is None:
-            put = self._broadcast_threads.put
+            put = self._broadcast_tasks.put
         else:
-            put = self._unicast_threads.put
+            put = self._unicast_tasks.put
 
         req = PacketSendingRequest(packet=packet, destination=(destination, self.port))
-        put(req)
+        await put(req)
 
     def _handle_inbound_packet(self, address, packet):
         """Handler function called for every inbound UDP packet read by
-        the inbound green thread.
+        the inbound connection handler tasks.
 
         Parameters:
             address (tuple): the source IP address and port that the packet
@@ -180,9 +158,6 @@ class WirelessInboundThread(object):
     """Green thread that reads incoming packets from a wireless link
     connection and calls a handler function on the communication manager
     for every one of them.
-
-    The thread is running within the application context of the Flockwave
-    server application.
     """
 
     def __init__(self, connection, manager, callback):

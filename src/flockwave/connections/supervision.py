@@ -10,6 +10,7 @@ from .base import Connection
 
 __all__ = (
     "ConnectionSupervisor",
+    "ConnectionTask",
     "supervise",
     "constant_delay_policy",
     "default_policy",

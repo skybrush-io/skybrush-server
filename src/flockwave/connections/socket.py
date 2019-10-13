@@ -6,13 +6,15 @@ import struct
 
 from abc import abstractmethod
 from ipaddress import ip_address, ip_network, IPv4Network, IPv6Network
-from trio import open_tcp_stream, socket, to_thread
+from trio import open_tcp_stream, to_thread
+from trio.socket import inet_aton, IPPROTO_IP, IP_ADD_MEMBERSHIP, SOCK_DGRAM, SocketType
 from typing import Optional, Tuple, Union
 
 from .base import ConnectionBase, ReadableConnection, WritableConnection
 from .errors import ConnectionError
 from .factory import create_connection
 from .stream import StreamConnectionBase
+from .types import IPAddressAndPort
 
 from flockwave.server.networking import (
     create_async_socket,
@@ -22,9 +24,9 @@ from flockwave.server.networking import (
 )
 
 __all__ = (
-    "UDPSocketConnection",
-    "MulticastUDPSocketConnection",
     "BroadcastUDPSocketConnection",
+    "MulticastUDPSocketConnection",
+    "UDPSocketConnection",
     "TCPStreamConnection",
 )
 
@@ -83,23 +85,13 @@ class SocketConnectionBase(ConnectionBase, InternetAddressMixin):
         """Returns the socket object itself."""
         return self._socket
 
-
-class InternetSocketConnection(
-    SocketConnectionBase,
-    ReadableConnection[Tuple[bytes, object]],
-    WritableConnection[bytes],
-):
-    """Base class for the standard Internet socket connections
-    (TCP and UDP).
-    """
-
     async def _close(self):
         """Closes the socket connection."""
         self._socket.close()
         self._socket = None
 
     @abstractmethod
-    async def _create_and_open_socket(self) -> socket.SocketType:
+    async def _create_and_open_socket(self) -> SocketType:
         """Creates and opens the socket that the connection will use."""
         raise NotImplementedError
 
@@ -107,63 +99,13 @@ class InternetSocketConnection(
         """Opens the socket connection."""
         self._socket = await self._create_and_open_socket()
 
-    async def read(self, size=4096, flags=0):
-        """Reads some data from the connection.
-
-        Parameters:
-            size (int): the maximum number of bytes to return
-            flags (int): flags to pass to the underlying ``recvfrom()`` call;
-                see the UNIX manual for details
-            blocking (bool): whether to use a blocking read (even if the
-                underlying socket is non-blocking). This is not thread-safe
-                yet, i.e. multiple blocking reads from different threads
-                might result in conditions where more than one thread is
-                woken up but only one of them gets to read the socket.
-
-        Returns:
-            (bytes, tuple): the received data and the address it was
-                received from, or ``(b"", None)`` if there was nothing to
-                read.
-        """
-        if self._socket is not None:
-            data, addr = await self._socket.recvfrom(size, flags)
-            if not data:
-                # Remote side closed connection
-                await self.close()
-            return data, addr
-        else:
-            return (b"", None)
-
-    async def write(
-        self, data: bytes, address: Optional[object] = None, flags: int = 0
-    ) -> None:
-        """Writes the given data to the socket connection.
-
-        Parameters:
-            data: the bytes to write
-            address: the address to write the data to; ``None`` means to write
-                the data to wherever the socket is currently connected. The
-                atter option works only if the socket was explicitly connected
-                to an address beforehand with the ``connect()`` method.
-            flags: additional flags to pass to the underlying ``send()``
-                or ``sendto()`` call; see the UNIX manual for details.
-        """
-        if self._socket is not None:
-            address = self._extract_address(address)
-            if address is None:
-                await self._socket.send(data, flags)
-            else:
-                await self._socket.sendto(data, flags, address)
-        else:
-            raise RuntimeError("connection does not have a socket")
-
     def _extract_address(self, address):
         """Extracts the *real* IP address and port from the given object.
-        The object may be an InternetSocketConnection_, a tuple consisting
+        The object may be a SocketConnectionBase_, a tuple consisting
         of the IP address and port, or ``None``. Returns a tuple consisting
         of the IP address and port or ``None``.
         """
-        if isinstance(address, InternetSocketConnection):
+        if isinstance(address, SocketConnectionBase):
             address = address.address
         return address
 
@@ -196,7 +138,11 @@ class TCPStreamConnection(StreamConnectionBase, InternetAddressMixin):
 
 
 @create_connection.register("udp")
-class UDPSocketConnection(InternetSocketConnection):
+class UDPSocketConnection(
+    SocketConnectionBase,
+    ReadableConnection[Tuple[bytes, IPAddressAndPort]],
+    WritableConnection[Tuple[bytes, IPAddressAndPort]],
+):
     """Connection object that uses a UDP socket."""
 
     def __init__(self, host: Optional[str] = "", port: int = 0, **kwds):
@@ -217,7 +163,7 @@ class UDPSocketConnection(InternetSocketConnection):
         """Creates a new non-blocking reusable UDP socket that is not bound
         anywhere yet.
         """
-        sock = create_async_socket(socket.SOCK_DGRAM)
+        sock = create_async_socket(SOCK_DGRAM)
         await self._bind_socket(sock)
         return sock
 
@@ -226,6 +172,42 @@ class UDPSocketConnection(InternetSocketConnection):
         incoming UDP packets.
         """
         await sock.bind(self._address)
+
+    async def read(self, size: int = 4096, flags: int = 0):
+        """Reads some data from the connection.
+
+        Parameters:
+            size: the maximum number of bytes to return
+            flags: flags to pass to the underlying ``recvfrom()`` call;
+                see the UNIX manual for details
+
+        Returns:
+            (bytes, tuple): the received data and the address it was
+                received from, or ``(b"", None)`` if there was nothing to
+                read.
+        """
+        if self._socket is not None:
+            data, addr = await self._socket.recvfrom(size, flags)
+            if not data:
+                # Remote side closed connection
+                await self.close()
+            return data, addr
+        else:
+            return (b"", None)
+
+    async def write(self, data: Tuple[bytes, IPAddressAndPort], flags: int = 0) -> None:
+        """Writes the given data to the socket connection.
+
+        Parameters:
+            data: the bytes to write, and the address to write the data to
+            flags: additional flags to pass to the underlying ``send()``
+                or ``sendto()`` call; see the UNIX manual for details.
+        """
+        if self._socket is not None:
+            data, address = data
+            await self._socket.sendto(data, flags, address)
+        else:
+            raise RuntimeError("connection does not have a socket")
 
 
 @create_connection.register("udp-broadcast")
@@ -307,8 +289,8 @@ class MulticastUDPSocketConnection(UDPSocketConnection):
         address = await to_thread.run_sync(self._resolve_interface, self._interface)
 
         host, _ = self._address
-        req = struct.pack("4s4s", socket.inet_aton(host), socket.inet_aton(address))
-        sock.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, req)
+        req = struct.pack("4s4s", inet_aton(host), inet_aton(address))
+        sock.setsockopt(IPPROTO_IP, IP_ADD_MEMBERSHIP, req)
 
         return sock
 

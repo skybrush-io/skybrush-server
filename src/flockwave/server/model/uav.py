@@ -3,6 +3,8 @@
 from __future__ import absolute_import
 
 from abc import ABCMeta, abstractproperty
+from typing import Optional
+
 from flockwave.gps.vectors import GPSCoordinate, VelocityNED
 from flockwave.server.errors import NotSupportedError
 from flockwave.server.logger import log as base_log
@@ -265,20 +267,25 @@ class UAVDriver(metaclass=ABCMeta):
         of which are assumed to be managed by this driver.
 
         The default implementation of this method passes on each command
-        to the ``handle_command_{command}()`` method where ``{command}`` is
-        replaced by the command argument. The method will be called with
+        to the ``handle_multi_command_{command}()`` method where ``{command}``
+        is replaced by the command argument. The method will be called with
         the command manager and the list of UAVs, further extended with the
         given positional and keyword arguments. When such a method does not
         exist, the handling of the command is forwarded to the
-        ``handle_generic_command()`` method instead, whose signature should
-        match the signature of ``send_command()``, extended with the command
-        manager that is passed to ``handle_generic_command()`` as the first
-        argument. When neither of these two methods exist, the default
-        implementation simply throws a NotSupportedError_ exception.
+        ``handle_command_{command}()`` method instead, one by one for each UAV
+        that is targeted. If this method does not exist either, the implementation
+        will call the ``handle_multi_generic_command()`` method or the
+        ``handle_generic_command()`` method instead, whose signatures should
+        match the signature of ``send_command()`` (but of course the latter
+        variant will receive a single UAV only). When none of these four
+        methods exist, the default implementation simply throws a
+        NotSupportedError_ exception.
 
-        The function will return immediately, but the return value may contain
-        awaitables for some UAVs if the execution of the command takes a
-        longer time.
+        This function will return immediately, but the return value of the
+        handler methods described above may be awaitables for some UAVs if the
+        execution of the command takes a longer time. Awaitables should be
+        handled by the caller appropriately. In particular, each awaitable
+        must be awaited for by the caller.
 
         Parameters:
             uavs (List[UAV]): the UAVs to address with this request.
@@ -300,10 +307,16 @@ class UAVDriver(metaclass=ABCMeta):
         args = [] if args is None else args
         kwds = {} if kwds is None else kwds
 
+        # Validate the command and the arguments. If the driver knows that
+        # it won't be able to execute the command, it may return an error
+        # message here
+        error = self.validate_command(command, args, kwds)
+        if error:
+            return {uav: error for uav in uavs}
+
         # Figure out whether we will execute the commands for all the UAVs
         # at the same time, or one by one, depending on what is implemented
         # by the driver or not
-
         handlers = [
             (f"handle_multi_command_{command}", False, True),
             (f"handle_command_{command}", False, False),
@@ -432,6 +445,33 @@ class UAVDriver(metaclass=ABCMeta):
             uavs, "takeoff signal", self._send_takeoff_signal_single
         )
 
+    def validate_command(self, command: str, args, kwds) -> Optional[str]:
+        """Checks whether the driver could execute the command on the UAVs
+        _in principle_, without knowing which UAVs the command will be sent to.
+
+        This function can be used to bail out early from sending commands if
+        we know already that the driver will not support the command.
+
+        For instance, if the UAV commands do not support keyword arguments,
+        you can check that here and bail out early if keyword arguments were
+        supplied.
+
+        The default implementation does nothing; no need to call it from
+        subclasses.
+
+        Parameters:
+            command: the command to send to the UAVs
+            args: the list of positional arguments for the command
+                (if the driver supports positional arguments)
+            kwds: the keyword arguments for the command (if the
+                driver supports keyword arguments)
+
+        Returns:
+            an error message if the command cannot be executed, or `None` if
+            the command can be executed
+        """
+        pass
+
     def _send_signal(self, uavs, signal_name, handler, *args, **kwds):
         """Common implementation for the body of several ``send_*_signal()``
         methods in this class.
@@ -441,9 +481,9 @@ class UAVDriver(metaclass=ABCMeta):
             try:
                 outcome = handler(uav, *args, **kwds)
             except NotImplementedError:
-                outcome = "{0} not implemented yet".format(signal_name)
+                outcome = f"{signal_name} not implemented yet"
             except NotSupportedError:
-                outcome = "{0} not supported".format(signal_name)
+                outcome = f"{signal_name} not supported"
             except Exception as ex:
                 log.exception(ex)
                 outcome = "Unexpected error while sending {1}: {0!r}".format(
@@ -455,6 +495,8 @@ class UAVDriver(metaclass=ABCMeta):
     def _send_fly_to_target_signal_single(self, uav, target):
         """Asks the driver to send a "fly to target" signal to a single UAV
         managed by this driver.
+
+        May return an awaitable if sending the signal takes a longer time.
 
         Parameters:
             uav (UAV): the UAV to address with this request.
@@ -475,6 +517,8 @@ class UAVDriver(metaclass=ABCMeta):
         """Asks the driver to send a landing signal to a single UAV managed
         by this driver.
 
+        May return an awaitable if sending the signal takes a longer time.
+
         Parameters:
             uav (UAV): the UAV to address with this request.
 
@@ -493,10 +537,10 @@ class UAVDriver(metaclass=ABCMeta):
         """Asks the driver to send a return-to-home signal to a single UAV
         managed by this driver.
 
+        May return an awaitable if sending the signal takes a longer time.
+
         Parameters:
             uav (UAV): the UAV to address with this request.
-            cmd_manager (CommandExecutionManager): command execution manager
-                that can be used to create a new message to send to the UAV
 
         Returns:
             bool: whether the signal was *sent* successfully
@@ -512,6 +556,8 @@ class UAVDriver(metaclass=ABCMeta):
     def _send_shutdown_signal_single(self, uav):
         """Asks the driver to send a shutdown signal to a single UAV managed
         by this driver.
+
+        May return an awaitable if sending the signal takes a longer time.
 
         Parameters:
             uav (UAV): the UAV to address with this request.
@@ -530,6 +576,8 @@ class UAVDriver(metaclass=ABCMeta):
     def _send_takeoff_signal_single(self, uav):
         """Asks the driver to send a takeoff signal to a single UAV managed
         by this driver.
+
+        May return an awaitable if sending the signal takes a longer time.
 
         Parameters:
             uav (UAV): the UAV to address with this request.

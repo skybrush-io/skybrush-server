@@ -6,20 +6,20 @@ from __future__ import absolute_import
 
 from contextlib import ExitStack
 from datetime import datetime
-from functools import partial
 from pytz import utc
-from trio_util import wait_all
+from trio.abc import ReceiveChannel
 from typing import Any, Dict, Optional, Tuple
 
-from flockwave.connections import Connection, create_connection
+from flockwave.connections import Connection, create_connection, IPAddressAndPort
 from flockwave.server.ext.base import UAVExtensionBase
 from flockwave.server.model import ConnectionPurpose
-from flockwave.server.networking import format_socket_address
 from flockwave.server.utils import datetime_to_unix_timestamp
 
+from .comm import CommunicationManager
 from .driver import FlockCtrlDriver
-from .packets import FlockCtrlClockSynchronizationPacket
-from .wireless import WirelessCommunicationManager
+from .packets import FlockCtrlPacket, FlockCtrlClockSynchronizationPacket
+
+# from .wireless import WirelessCommunicationManager
 
 __all__ = ("construct", "dependencies")
 
@@ -58,11 +58,7 @@ class FlockCtrlDronesExtension(UAVExtensionBase):
     def __init__(self):
         super(FlockCtrlDronesExtension, self).__init__()
         self._driver = None
-
-        self._wireless_communicator = WirelessCommunicationManager(self)
-        self._wireless_communicator.on_packet.connect(
-            self._handle_inbound_packet, sender=self._wireless_communicator
-        )
+        self._manager = None
 
     def _create_connections(
         self, configuration
@@ -125,13 +121,25 @@ class FlockCtrlDronesExtension(UAVExtensionBase):
                 )
             )
 
-            await unicast_link.open()
+            # Create the communication manager
+            manager = CommunicationManager()
 
-            # Start the links
-            await wait_all(
-                partial(app.supervise, broadcast_link, task=self._run_broadcast_link),
-                partial(app.supervise, unicast_link, task=self._run_unicast_link),
-            )
+            # Register the links with the communication manager. The order is
+            # important here; the first one will be used for sending, so that
+            # must be the unicast link.
+            manager.add(unicast_link, name="wireless")
+            manager.add(broadcast_link, name="wireless")
+
+            # Start the communication manager
+            try:
+                self._manager = manager
+                await manager.run(
+                    consumer=self._handle_inbound_packets,
+                    supervisor=app.supervise,
+                    log=self.log,
+                )
+            finally:
+                self._manager = None
 
     def configure_driver(self, driver, configuration):
         """Configures the driver that will manage the UAVs created by
@@ -151,22 +159,25 @@ class FlockCtrlDronesExtension(UAVExtensionBase):
         driver.create_device_tree_mutator = self.create_device_tree_mutation_context
         driver.send_packet = self.send_packet
 
-    def send_packet(self, packet, destination=None):
+    async def send_packet(
+        self,
+        packet: FlockCtrlPacket,
+        destination: Tuple[str, Optional[IPAddressAndPort]],
+    ):
         """Requests the extension to send the given FlockCtrl packet to the
         given destination.
 
         Parameters:
-            packet (FlockCtrlPacket): the packet to send
-            destination (Optional[bytes]): the long destination address to
-                send the packet to. ``None`` means to send a broadcast
-                packet.
+            packet: the packet to send
+            destination: the name of the communication channel and the address
+                on that communication channel to send the packet to. `None` as
+                an address means to send a broadcast packet on the given
+                channel.
         """
-        medium, address = destination
-        if medium == "wireless":
-            comm = self._wireless_communicator
+        if self._manager:
+            await self._manager.send_packet(packet, destination)
         else:
-            raise ValueError("unknown medium: {0!r}".format(medium))
-        comm.send_packet(packet, address)
+            raise ValueError("communication manager not running")
 
     def _create_lowlevel_connection(
         self, specifier: Optional[str]
@@ -185,9 +196,15 @@ class FlockCtrlDronesExtension(UAVExtensionBase):
         """
         return create_connection(specifier) if specifier else None
 
-    def _handle_inbound_packet(self, sender, packet):
-        """Handles an inbound data packet from a communication link."""
-        self._driver.handle_inbound_packet(packet)
+    async def _handle_inbound_packets(self, channel: ReceiveChannel):
+        """Handles inbound data packets from all the communication links
+        that the extension manages.
+
+        Parameters:
+            channel: a Trio receive channel that yields inbound data packets.
+        """
+        async for name, (packet, address) in channel:
+            self._driver.handle_inbound_packet(packet, (name, address))
 
     def _on_clock_changed(self, sender, clock):
         """Handler that is called when one of the clocks changed in the
@@ -211,28 +228,6 @@ class FlockCtrlDronesExtension(UAVExtensionBase):
             ticks_per_second=clock.ticks_per_second,
         )
         self.send_packet(packet)
-
-    async def _run_broadcast_link(self, link: Connection) -> None:
-        """Background task that handles the broadcast link of the extension."""
-        address = format_socket_address(link.address)
-        self.log.info(f"Listening for incoming flockctrl packets on {address}")
-        try:
-            while True:
-                print("BC", await link.read())
-        finally:
-            self.log.info(
-                f"Stopped listening for incoming flockctrl packets on {address}"
-            )
-
-    async def _run_unicast_link(self, link: Connection) -> None:
-        """Background task that handles the unicast link of the extension."""
-        address = format_socket_address(link.address)
-        self.log.info(f"Sending flockctrl packets on {address}")
-        try:
-            while True:
-                print(await link.read())
-        finally:
-            self.log.info(f"Stopped sending flockctrl packets on {address}")
 
 
 construct = FlockCtrlDronesExtension

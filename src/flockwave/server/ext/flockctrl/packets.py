@@ -4,7 +4,6 @@ from __future__ import division
 
 import zlib
 
-from abc import ABCMeta, abstractproperty
 from blinker import Signal
 from builtins import bytes, range
 from collections import defaultdict
@@ -20,19 +19,10 @@ from .utils import unpack_struct
 __all__ = ("FlockCtrlPacket", "ChunkedPacketAssembler")
 
 
-class FlockCtrlPacket(metaclass=ABCMeta):
+class FlockCtrlPacket:
     """Common interface specification for all FlockCtrl-related packets."""
 
-    @abstractproperty
-    def source(self):
-        """The source medium and address of the packet, if known. ``None``
-        if the packet was created locally. Otherwise it is a tuple containing
-        the source medium (e.g., ``wireless``) and the address whose format is
-        specific to the source medium.
-        """
-        raise NotImplementedError
-
-    def decode(self, data):
+    def decode(self, data: bytes) -> None:
         """Initializes the data fields of the packet from the given raw
         bytes.
 
@@ -41,7 +31,7 @@ class FlockCtrlPacket(metaclass=ABCMeta):
         this method is called.
 
         Parameters:
-            data (bytes): the raw, byte-level representation of the packet
+            data: the raw, byte-level representation of the packet
                 when it is transmitted over the wire.
 
         Raises:
@@ -51,12 +41,12 @@ class FlockCtrlPacket(metaclass=ABCMeta):
         """
         raise NotImplementedError
 
-    def encode(self):
+    def encode(self) -> bytes:
         """Encodes the packet into a raw bytes object that can represent
         the packet over the wire.
 
         Returns:
-            bytes: the encoded representation of the packet
+            the encoded representation of the packet
 
         Raises:
             NotImplementedError: if the serialization of this packet is not
@@ -67,17 +57,6 @@ class FlockCtrlPacket(metaclass=ABCMeta):
 
 class FlockCtrlPacketBase(FlockCtrlPacket):
     """Abstract base class for all FlockCtrl-related packets."""
-
-    def __init__(self):
-        self._source = None
-
-    @property
-    def source(self):
-        return self._source
-
-    @source.setter
-    def source(self, value):
-        self._source = value
 
     def _unpack(self, data, spec=None):
         """Unpacks some data from the given raw bytes object according to
@@ -430,7 +409,7 @@ class ChunkedPacketAssembler(object):
         """Constructor."""
         self._messages = defaultdict(dict)
 
-    def add_packet(self, packet, compressed=False):
+    def add_packet(self, packet, source, compressed=False):
         """Adds the given chunked packet to the chunk assembler for further
         processing.
 
@@ -442,19 +421,16 @@ class ChunkedPacketAssembler(object):
             compressed (bool): whether the body of the packet is assumed
                 to be compressed
         """
-        if packet.source is None:
-            raise ValueError("inbound chunked packet must have a " "source address")
-
         now = time()
 
-        messages = self._messages[packet.source]
+        messages = self._messages[source]
         msg_data = messages.get(packet.sequence_id)
         if msg_data is None:
             # This is the first time we see this sequence id
-            msg_data = self._notify_new_packet(packet)
+            msg_data = self._notify_new_packet(packet, source)
         elif msg_data["num_chunks"] != packet.num_chunks:
             # Probably we have a leftover message from a previous attempt
-            msg_data = self._notify_new_packet(packet)
+            msg_data = self._notify_new_packet(packet, source)
 
         msg_data["chunks"][packet.chunk_id] = packet.body
         msg_data["compressed"] = compressed
@@ -465,10 +441,10 @@ class ChunkedPacketAssembler(object):
             body = b"".join(body for index, body in sorted(msg_data["chunks"].items()))
             if msg_data["compressed"]:
                 body = zlib.decompress(body)
-            self.packet_assembled.send(self, body=body, source=packet.source)
+            self.packet_assembled.send(self, body=body, source=source)
             del messages[packet.sequence_id]
             if not messages:
-                del self._messages[packet.source]
+                del self._messages[source]
 
     def get_chunk_info(self, sequence_id):
         """Returns a string representing which chunks have arrived already
@@ -501,12 +477,12 @@ class ChunkedPacketAssembler(object):
             "".join(chunk_chars),
         )
 
-    def _notify_new_packet(self, packet):
+    def _notify_new_packet(self, packet, source):
         """Notifies the response chunk assembler that it should anticipate
         a new frame with the given sequence ID.
         """
         msg_data = dict(chunks=dict(), num_chunks=packet.num_chunks, last_chunk=None)
-        self._messages[packet.source][packet.sequence_id] = msg_data
+        self._messages[source][packet.sequence_id] = msg_data
         return msg_data
 
 

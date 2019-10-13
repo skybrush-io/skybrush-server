@@ -1,8 +1,8 @@
 from pytest import raises
 from pytest_trio import trio_fixture
-from trio import move_on_after, sleep
+from trio import WouldBlock, move_on_after, sleep
 
-from flockwave.server.concurrency import AsyncBundler
+from flockwave.server.concurrency import AsyncBundler, Future, FutureCancelled
 
 
 @trio_fixture
@@ -95,3 +95,104 @@ class TestAsyncBundler:
             await consumer()
 
         assert "can only have one listener" in str(ex.value)
+
+
+class TestFuture:
+    def test_future_base_state(self):
+        future = Future()
+
+        assert not future.cancelled()
+        assert not future.done()
+        with raises(WouldBlock):
+            future.result()
+        with raises(WouldBlock):
+            future.exception()
+
+    async def test_resolution_with_value(self, nursery):
+        future = Future()
+
+        async def resolver():
+            future.set_result(42)
+
+        nursery.start_soon(resolver)
+        assert await future.wait() == 42
+
+        assert not future.cancelled()
+        assert future.done()
+        assert future.result() == 42
+        assert future.exception() is None
+
+    async def test_resolution_with_value_twice(self, nursery):
+        future = Future()
+
+        async def resolver(task_status):
+            future.set_result(42)
+            task_status.started()
+
+        await nursery.start(resolver)
+
+        with raises(RuntimeError):
+            await nursery.start(resolver)
+
+    async def test_resolution_with_exception(self, nursery):
+        future = Future()
+
+        async def resolver():
+            future.set_exception(ValueError("test"))
+
+        nursery.start_soon(resolver)
+        with raises(ValueError):
+            await future.wait()
+
+        assert not future.cancelled()
+        assert future.done()
+        assert isinstance(future.exception(), ValueError)
+        assert "test" in str(future.exception())
+
+        with raises(ValueError):
+            future.result()
+
+    async def test_cancellation(self, nursery):
+        future = Future()
+
+        async def resolver(task_status):
+            future.cancel()
+            task_status.started()
+
+        await nursery.start(resolver)
+
+        assert future.cancelled()
+        assert future.done()
+
+        with raises(FutureCancelled):
+            await future.wait()
+
+        with raises(FutureCancelled):
+            await future.result()
+
+        with raises(FutureCancelled):
+            await future.exception()
+
+    async def test_trio_cancellation(self, autojump_clock, nursery):
+        future = Future()
+
+        async def resolver():
+            await sleep(10)
+            future.cancel()
+
+        nursery.start_soon(resolver)
+        with move_on_after(5) as scope:
+            await future.wait()
+
+        # At this point, the await was cancelled but the future is still
+        # running
+        assert scope.cancelled_caught
+
+        assert not future.cancelled()
+        assert not future.done()
+
+        with raises(FutureCancelled):
+            await future.wait()
+
+        assert future.done()
+        assert future.cancelled()

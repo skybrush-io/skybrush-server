@@ -120,7 +120,8 @@ class CommandExecutionManager(RegistryBase):
                 identifier of the command that was finished, or the
                 execution status object of the command itself.
             result (Optional[object]): the result of the command; ``None``
-                if the command needs no response
+                if the command needs no response. May also be an instance of
+                an exception; this will be handled appropriately.
 
         Throws:
             ValueError: if the given receipt belongs to a different manager
@@ -130,6 +131,11 @@ class CommandExecutionManager(RegistryBase):
             # Request has probably expired in the meanwhile
             log.warn("Received response for expired receipt: " "{0}".format(receipt_id))
             return
+
+        if isinstance(result, Exception):
+            # TODO(ntamas): this should be handled better; the protocol needs
+            # to support error responses
+            result = f"Unexpected error: {result}"
 
         command.response = result
         command.mark_as_finished()

@@ -29,6 +29,7 @@ from .supervision import (
     SupervisionPolicy,
     supervise,
 )
+from .types import IPAddressAndPort
 
 __all__ = (
     "BroadcastUDPSocketConnection",
@@ -39,6 +40,7 @@ __all__ = (
     "ConnectionState",
     "ConnectionTask",
     "FileConnection",
+    "IPAddressAndPort",
     "MulticastUDPSocketConnection",
     "ReadableConnection",
     "SerialPortConnection",

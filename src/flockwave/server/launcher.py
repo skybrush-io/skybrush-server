@@ -3,6 +3,7 @@
 from __future__ import absolute_import
 
 import click
+import dotenv
 import logging
 import sys
 import trio
@@ -32,6 +33,9 @@ def start(config, debug):
         for logger_name in ("engineio", "socketio"):
             log_handler = logging.getLogger(logger_name)
             log_handler.setLevel(logging.ERROR)
+
+    # Load environment variables from .env
+    dotenv.load_dotenv(verbose=True)
 
     # Note the lazy import; this is to ensure that the logging is set up by the
     # time we start configuring the app.

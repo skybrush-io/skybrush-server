@@ -30,6 +30,8 @@ trio-util = "*"
 attrs = "*"
 flockwave-gps = {file = "https://git.collmot.com/collmot/flockwave-gps/archive/0.9.0.tar.gz"}
 flockwave-spec = {file = "https://git.collmot.com/collmot/flockwave-spec/archive/0.19.1.tar.gz"}
+sentry-sdk = "*"
+python-dotenv = "*"
 
 [dev-packages]
 PyInstaller = "*"

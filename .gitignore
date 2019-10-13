@@ -1,3 +1,4 @@
+.env
 .pytest_cache
 .tags
 *.egg-info

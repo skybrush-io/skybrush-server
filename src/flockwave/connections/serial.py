@@ -2,29 +2,90 @@
 
 from __future__ import absolute_import, print_function
 
+from os import dup
 from serial import Serial, STOPBITS_ONE, STOPBITS_ONE_POINT_FIVE, STOPBITS_TWO
+from trio.abc import Stream
+from trio.hazmat import FdStream, wait_readable
+from typing import Optional
 
-from .base import FDConnectionBase, ConnectionState
 from .factory import create_connection
+from .stream import StreamConnectionBase
 
 __all__ = ("SerialPortConnection",)
 
 
-@create_connection.register("serial")
-class SerialPortConnection(FDConnectionBase):
-    """Connection for a serial port.
-
-    This object is a wrapper around a PySerial serial port object. It provides
-    an interface that should mostly be compatible with the wrapped serial
-    port object, although not all methods are forwarded. Currently we forward
-    the following methods to the underlying serial port:
-
-        - ``inWaiting()``
-
-        - ``read()``
-
-        - ``write()``
+class SerialPortStream(Stream):
+    """A Trio stream implementation that talks to a serial port using
+    PySerial in a separate thread.
     """
+
+    @classmethod
+    async def create(cls, *args, **kwds) -> Stream:
+        """Constructs a new `pySerial` serial port object, associates it to a
+        SerialStream_ and returns the serial stream itself.
+
+        All positional and keyword arguments are forwarded to the constructor
+        of the Serial_ object from `pySerial`.
+
+        Returns:
+            the constructed serial stream
+        """
+        return cls(Serial(timeout=0, *args, **kwds))
+
+    def __init__(self, device: Serial):
+        """Constructor.
+
+        Do not use this method unless you know what you are doing; use
+        `SerialPortStream.create()` instead.
+
+        Parameters:
+            device: the `pySerial` serial port object to manage in this stream.
+                It must already be open.
+        """
+        self._device = device
+        self._device.nonblocking()
+        self._fd_stream = FdStream(dup(self._device.fileno()))
+
+    async def aclose(self):
+        """Closes the serial port."""
+        await self._fd_stream.aclose()
+
+    async def receive_some(self, max_bytes: Optional[int] = None) -> bytes:
+        result = await self._fd_stream.receive_some(max_bytes)
+        if result:
+            return result
+
+        # Spurious EOF; this happens because POSIX serial port devices
+        # may not return -1 with errno = WOULDBLOCK in case of an EOF
+        # condition. So we wait for the port to become readable again. If it
+        # becomes readable and _still_ returns no bytes, then this is a real
+        # EOF.
+        await wait_readable(self._fd_stream.fileno())
+        return await self._fd_stream.receive_some(max_bytes)
+
+    async def send_all(self, data: bytes) -> None:
+        """Sends some data over the serial port.
+
+        Parameters:
+            data: the data to send
+
+        Raises:
+            BusyResourceError: if another task is working with this stream
+            BrokenResourceError: if something has gone wrong and the stream
+                is broken
+            ClosedResourceError: if you previously closed this stream object, or
+                if another task closes this stream object while `send_all()`
+                is running.
+        """
+        await self._fd_stream.send_all(data)
+
+    async def wait_send_all_might_not_block(self) -> None:
+        await self._fd_stream.wait_send_all_might_not_block()
+
+
+@create_connection.register("serial")
+class SerialPortConnection(StreamConnectionBase):
+    """Connection for a serial port."""
 
     def __init__(self, path, baud=115200, stopbits=1):
         """Constructor.
@@ -41,19 +102,7 @@ class SerialPortConnection(FDConnectionBase):
         self._baud = baud
         self._stopbits = stopbits
 
-    def close(self):
-        """Closes the serial port connection."""
-        if self.state == ConnectionState.DISCONNECTED:
-            return
-        self._file_object.close()
-        self._detach()
-        self._set_state(ConnectionState.DISCONNECTED)
-
-    def open(self):
-        """Opens the serial port connection."""
-        if self.state == ConnectionState.CONNECTED:
-            return
-
+    async def _create_stream(self) -> Stream:
         if self._stopbits == 1:
             stopbits = STOPBITS_ONE
         elif self._stopbits == 1.5:
@@ -63,71 +112,6 @@ class SerialPortConnection(FDConnectionBase):
         else:
             raise ValueError("unsupported stop bit count: {0!r}".format(self._stopbits))
 
-        try:
-            serial = Serial(self._path, self._baud, stopbits=stopbits)
-            self._attach(serial)
-            self._set_state(ConnectionState.CONNECTED)
-        except OSError:
-            self._handle_error()
-
-    def inWaiting(self):
-        """Returns the number of bytes waiting to be read from the serial
-        port.
-
-        The name of this function is camel-cased to make it API-compatible
-        with ``pyserial``.
-        """
-        if self._file_object is not None:
-            try:
-                result = self._file_object.inWaiting()
-            except IOError as ex:
-                self._handle_error(ex)
-                result = 0
-        else:
-            result = 0
-        return result
-
-    def read(self, size=1):
-        """Reads the given number of bytes from the connection.
-
-        Parameters:
-            size (int): the number of bytes to read
-            blocking (bool): whether the data should be read in a blocking
-                manner
-
-        Returns:
-            bytes: the data that was read
-        """
-        if self._file_object is not None:
-            try:
-                return self._file_object.read(size)
-            except IOError as ex:
-                self._handle_error(ex)
-        return b""
-
-    @property
-    def readable(self):
-        """Returns whether the connection is currently ready for reading.
-        The connection is ready for reading if there is at least one
-        byte waiting in the serial port queue.
-        """
-        return self.inWaiting > 0
-
-    def write(self, data):
-        """Writes the given data to the serial connection.
-
-        Parameters:
-            data (bytes): the data to write
-
-        Returns:
-            int: the number of bytes that were written; -1 if the port is
-                not open
-        """
-        if self._file_object is not None:
-            try:
-                return self._file_object.write(data)
-            except IOError as ex:
-                self._handle_error(ex)
-                return 0
-        else:
-            return -1
+        return await SerialPortStream.create(
+            self._path, baudrate=self._baud, stopbits=stopbits
+        )

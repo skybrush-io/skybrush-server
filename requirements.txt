@@ -15,7 +15,7 @@ hexdump==3.3
 hpack==3.0.0
 https://git.collmot.com/collmot/flockwave-gps/archive/0.9.0.tar.gz#egg=flockwave-gps
 https://git.collmot.com/collmot/flockwave-spec/archive/0.19.1.tar.gz#egg=flockwave-spec
-hypercorn[trio]==0.8.4
+hypercorn[trio]==0.9.0
 hyperframe==5.2.0
 idna==2.8
 ifaddr==0.1.6

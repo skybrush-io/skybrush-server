@@ -10,7 +10,7 @@ from trio import open_nursery, sleep_forever
 
 from flockwave.server.encoders import JSONEncoder
 from flockwave.server.model import CommunicationChannel
-from flockwave.server.networking import format_socket_address
+from flockwave.networking import format_socket_address
 from flockwave.server.utils import overridden
 
 from .vendor.socketio import TrioServer

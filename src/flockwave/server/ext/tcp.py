@@ -14,7 +14,7 @@ from typing import Optional
 
 from flockwave.server.encoders import JSONEncoder
 from flockwave.server.model import CommunicationChannel
-from flockwave.server.networking import format_socket_address, get_socket_address
+from flockwave.networking import format_socket_address, get_socket_address
 from flockwave.server.utils import overridden
 
 app = None

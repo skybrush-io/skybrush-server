@@ -7,7 +7,7 @@ Socket.IO-based channel.
 """
 
 from contextlib import contextmanager
-from flockwave.server.networking import format_socket_address
+from flockwave.networking import format_socket_address
 from heapq import heappush
 from hypercorn.config import Config as HyperConfig
 from hypercorn.trio import serve

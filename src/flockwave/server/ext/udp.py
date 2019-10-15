@@ -15,8 +15,8 @@ from typing import Optional, Tuple
 
 from flockwave.server.encoders import JSONEncoder
 from flockwave.server.model import CommunicationChannel
-from flockwave.server.networking import (
-    create_async_socket,
+from flockwave.networking import (
+    create_socket,
     format_socket_address,
     get_socket_address,
 )
@@ -143,7 +143,7 @@ async def run(app, configuration, logger):
     address = configuration.get("host", ""), configuration.get("port", 5001)
     pool_size = configuration.get("pool_size", 1000)
 
-    sock = create_async_socket(trio.socket.SOCK_DGRAM)
+    sock = create_socket(trio.socket.SOCK_DGRAM)
     await sock.bind(address)
 
     with ExitStack() as stack:

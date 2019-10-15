@@ -1,4 +1,4 @@
-from flockwave.server.networking import get_all_ipv4_addresses
+from flockwave.networking import get_all_ipv4_addresses
 from socket import gethostname, inet_aton
 
 

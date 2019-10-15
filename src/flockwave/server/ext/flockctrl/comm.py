@@ -14,7 +14,7 @@ from typing import Generator, List, Optional, Tuple
 
 from flockwave.channels import MessageChannel
 from flockwave.connections import Connection, IPAddressAndPort, UDPSocketConnection
-from flockwave.server.networking import format_socket_address
+from flockwave.networking import format_socket_address
 
 from .errors import ParseError
 from .packets import FlockCtrlPacket

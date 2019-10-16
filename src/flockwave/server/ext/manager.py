@@ -4,7 +4,6 @@ from __future__ import absolute_import
 
 import attr
 import importlib
-import logging
 
 from blinker import Signal
 from inspect import iscoroutinefunction
@@ -15,6 +14,7 @@ from typing import Any, Dict, Optional, Set
 from .logger import add_id_to_log, log as base_log
 
 from ..concurrency import cancellable
+from ..logger import Logger
 from ..utils import bind, keydefaultdict
 
 __all__ = ("ExtensionManager",)
@@ -105,7 +105,7 @@ class ExtensionData(object):
     dependents: Set[str] = attr.ib(factory=set)
     instance: Optional[object] = attr.ib(default=None)
     loaded: bool = attr.ib(default=False)
-    log: logging.Logger = attr.ib(default=None)
+    log: Logger = attr.ib(default=None)
     task: Optional[CancelScope] = attr.ib(default=None)
     worker: Optional[CancelScope] = attr.ib(default=None)
 

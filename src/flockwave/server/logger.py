@@ -6,10 +6,12 @@ from colorlog import default_log_colors
 from colorlog.colorlog import ColoredRecord
 from colorlog.escape_codes import escape_codes, parse_colors
 from functools import lru_cache, partial
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
-__all__ = ("add_id_to_log", "log", "install", "LoggerWithExtraData")
+__all__ = ("add_id_to_log", "log", "install", "Logger", "LoggerWithExtraData")
 
+
+Logger = logging.Logger
 
 log = logging.getLogger(__name__.rpartition(".")[0])
 
@@ -24,7 +26,7 @@ default_log_symbols = {
 
 
 @lru_cache(maxsize=256)
-def _get_short_name_for_logger(name):
+def _get_short_name_for_logger(name: str) -> str:
     return name.rpartition(".")[2]
 
 
@@ -35,17 +37,26 @@ class ColoredFormatter(logging.Formatter):
     stored in the log record.
     """
 
-    def __init__(self, fmt=None, datefmt=None, log_colors=None, log_symbols=None):
+    def __init__(
+        self,
+        fmt: Optional[str] = None,
+        datefmt: Optional[str] = None,
+        *,
+        log_colors: Optional[Dict[str, str]] = None,
+        log_symbol_colors: Optional[Dict[str, str]] = None,
+        log_symbols: Optional[Dict[str, str]] = None
+    ):
         """
         Constructor.
 
         Parameters:
-            fmt (unicode or None): The format string to use. Note that this
-                must be a Unicode string.
-            datefmt (unicode or None): The format string to use for dates.
-                Note that this must be a Unicode string.
-            log_colors (dict): Mapping from log level names to color names
-            log_symbols (dict): Mapping from log level names to symbols
+            fmt: The format string to use.
+            datefmt: The format string to use for dates.
+            log_colors: Mapping from log level names to colors to use for the
+                body text of the log message
+            log_symbol_colors: Mapping from log level names to colors to use for
+                the symbol of the log message
+            log_symbols: Mapping from log level names to symbols
         """
         if fmt is None:
             fmt = "{log_color}{levelname}:{name}:{message}{reset}"
@@ -59,6 +70,9 @@ class ColoredFormatter(logging.Formatter):
         self.log_symbols = (
             log_symbols if log_symbols is not None else default_log_symbols
         )
+        self.log_symbol_colors = {
+            k: parse_colors(v) for k, v in log_symbol_colors.items()
+        }
 
     def format(self, record):
         """Format a message from a log record object."""
@@ -68,8 +82,11 @@ class ColoredFormatter(logging.Formatter):
             record.id = ""
 
         record = ColoredRecord(record)
-        record.log_color = self.get_preferred_color(record)
+        record.log_color = self.get_preferred_color(record, self.log_colors)
         record.log_symbol = self.get_preferred_symbol(record)
+        record.log_symbol_color = (
+            self.get_preferred_color(record, self.log_symbol_colors) or record.log_color
+        )
         record.short_name = _get_short_name_for_logger(record.name)
         message = super().format(record)
 
@@ -78,13 +95,15 @@ class ColoredFormatter(logging.Formatter):
 
         return message
 
-    def get_preferred_color(self, record):
-        """Return the preferred color for the given log record."""
-        color = self.log_colors.get(record.levelname, "")
+    def get_preferred_color(self, record, source):
+        """Return the preferred color for the given log record from the given
+        color source.
+        """
+        color = source.get(record.levelname, "")
         if record.levelname == "INFO":
             # For the INFO level, we may override the color with the
             # semantics of the message.
-            semantic_color = self.log_colors.get(record.semantics)
+            semantic_color = source.get(record.semantics)
             if semantic_color is not None:
                 color = semantic_color
         return color
@@ -104,7 +123,7 @@ class LoggerWithExtraData:
     of each logging record.
     """
 
-    def __init__(self, log: logging.Logger, extra: Dict[str, Any]):
+    def __init__(self, log: Logger, extra: Dict[str, Any]):
         """Constructor.
 
         Parameters:
@@ -136,7 +155,7 @@ class LoggerWithExtraData:
         return func(*args, **kwds)
 
 
-def add_id_to_log(log: logging.Logger, id: str):
+def add_id_to_log(log: Logger, id: str):
     """Adds the given ID as a permanent extra attribute to the given logger.
 
     Parameters:
@@ -164,7 +183,6 @@ def install(level=logging.INFO):
         response_success="bold_green",
         response_error="bold_red",
         notification="bold_yellow",
-        success="bold_green",
     )
     log_symbols = dict(default_log_symbols)
     log_symbols.update(
@@ -175,12 +193,15 @@ def install(level=logging.INFO):
         success=u"\u2714",  # CHECK MARK
         failure=u"\u2718",  # BALLOT X
     )
+    log_symbol_colors = dict(log_colors)
+    log_symbol_colors.update(success="bold_green")
     formatter = ColoredFormatter(
-        "{log_color}{log_symbol}{reset} "
+        "{log_symbol_color}{log_symbol}{reset} "
         "{fg_cyan}{short_name:<11.11}{reset} "
         "{fg_bold_black}{id:<10.10}{reset} "
         "{log_color}{message}{reset}",
         log_colors=log_colors,
+        log_symbol_colors=log_symbol_colors,
         log_symbols=log_symbols,
     )
 

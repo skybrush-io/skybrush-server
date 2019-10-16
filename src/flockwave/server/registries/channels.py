@@ -125,7 +125,7 @@ class ChannelTypeRegistry(RegistryBase):
         )
         self._entries[channel_id] = descriptor
 
-        log.info("Channel registered", extra={"id": channel_id})
+        log.info("Channel registered", extra={"id": channel_id, "semantics": "success"})
 
         self.added.send(self, id=channel_id, descriptor=descriptor)
         self.count_changed.send(self)

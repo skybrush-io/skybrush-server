@@ -7,7 +7,6 @@ import attr
 
 from collections import defaultdict
 from functools import partial
-from logging import Logger
 from trio import open_memory_channel
 from trio_util import wait_all
 from typing import Generator, List, Optional, Tuple
@@ -15,6 +14,7 @@ from typing import Generator, List, Optional, Tuple
 from flockwave.channels import MessageChannel
 from flockwave.connections import Connection, IPAddressAndPort, UDPSocketConnection
 from flockwave.networking import format_socket_address
+from flockwave.server.logger import Logger
 
 from .errors import ParseError
 from .packets import FlockCtrlPacket

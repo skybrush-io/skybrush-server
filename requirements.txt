@@ -7,8 +7,6 @@ bitstring==3.1.6
 blinker==1.4
 certifi==2019.9.11
 click==7.0
-colorama==0.4.1
-colorlog==4.0.2
 future==0.18.0
 h11==0.9.0
 h2==3.1.1
@@ -16,6 +14,7 @@ hexdump==3.3
 hpack==3.0.0
 https://git.collmot.com/collmot/flockwave-conn/archive/1.0.0.tar.gz#egg=flockwave-conn[midi,serial]
 https://git.collmot.com/collmot/flockwave-gps/archive/0.9.0.tar.gz#egg=flockwave-gps
+https://git.collmot.com/collmot/flockwave-logger/archive/1.0.0.tar.gz#egg=flockwave-logger
 https://git.collmot.com/collmot/flockwave-spec/archive/0.19.1.tar.gz#egg=flockwave-spec
 hypercorn[trio]==0.9.0
 hyperframe==5.2.0

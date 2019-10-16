@@ -11,10 +11,11 @@ from pkgutil import get_loader
 from trio import CancelScope
 from typing import Any, Dict, Optional, Set
 
-from .logger import add_id_to_log, log as base_log
+from flockwave.logger import add_id_to_log, Logger
+
+from .logger import log as base_log
 
 from ..concurrency import cancellable
-from ..logger import Logger
 from ..utils import bind, keydefaultdict
 
 __all__ = ("ExtensionManager",)

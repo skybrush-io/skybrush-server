@@ -8,8 +8,8 @@ import logging
 import sys
 import trio
 
-from . import logger
-from .logger import log
+from flockwave import logger
+from flockwave.logger import log
 
 
 @click.command()

@@ -14,7 +14,9 @@ from tempfile import gettempdir
 from trio import CapacityLimiter, Lock, open_nursery
 from typing import Optional
 
+from flockwave.channels import ParserChannel
 from flockwave.connections import serve_unix
+from flockwave.parsers import DelimiterBasedParser
 from flockwave.server.encoders import JSONEncoder
 from flockwave.server.model import CommunicationChannel
 from flockwave.server.utils import overridden
@@ -104,29 +106,18 @@ async def handle_connection(stream, *, limit):
     """
     socket = stream.socket
     address = socket.getsockname()
-    print(repr(address))
 
     client_id = f"unix:{address}"
     handler = partial(handle_message, limit=limit)
 
     with app.client_registry.use(client_id, "unix") as client:
         client.stream = stream
-        chunks = []
         async with open_nursery() as nursery:
-            while True:
-                data = await stream.receive_some(1024)
-                if data:
-                    pos = data.find(b"\n")
-                    if pos >= 0:
-                        pos += 1
-                        chunks.append(data[:pos])
-                        message = b"".join(chunks)
-                        nursery.start_soon(handler, message, client)
-                        chunks[:] = [data[pos:]] if pos < len(data) else []
-                    else:
-                        chunks.append(data)
-                else:
-                    return
+            channel = ParserChannel(
+                reader=stream.receive_some, parser=DelimiterBasedParser()
+            )
+            async for line in channel:
+                nursery.start_soon(handler, line, client)
 
 
 async def handle_connection_safely(stream, *, limit):
@@ -187,5 +178,4 @@ async def run(app, configuration, logger):
         limit = CapacityLimiter(pool_size)
         handler = partial(handle_connection_safely, limit=limit)
 
-        async with open_nursery() as nursery:
-            await nursery.start(partial(serve_unix, handler, path))
+        await serve_unix(handler, path)

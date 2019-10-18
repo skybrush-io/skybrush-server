@@ -19,7 +19,7 @@ class DelimiterBasedParser(ParserBase[bytes]):
     """
 
     def __init__(self, **kwds):
-        delimiter = kwds.pop("delimiter", "\n")
+        delimiter = kwds.pop("delimiter", b"\n")
         min_length = kwds.pop("min_length", 0)
 
         super(DelimiterBasedParser, self).__init__(**kwds)

@@ -11,7 +11,14 @@ from functools import partial
 from inspect import isawaitable
 from itertools import chain
 from jsonschema import ValidationError
-from trio import Event, move_on_after, open_memory_channel, open_nursery, sleep
+from trio import (
+    ClosedResourceError,
+    Event,
+    move_on_after,
+    open_memory_channel,
+    open_nursery,
+    sleep,
+)
 from typing import (
     Any,
     Awaitable,
@@ -427,7 +434,7 @@ class MessageHub:
             else:
                 clients = clients_for(descriptor.id)
                 for client_id in clients:
-                    result.append(partial(self._send_message, client_id))
+                    result.append(partial(self._send_message, to=client_id))
 
         return result
 
@@ -672,28 +679,32 @@ class MessageHub:
         raise error
 
     def _log_message_sending(self, message, to=None, in_response_to=None):
+        type = message.body.get("type") if hasattr(message, "body") else "NO-TYPE"
+
         if to is None:
-            if message.body["type"] not in ("UAV-INF", "DEV-INF"):
+            if type not in ("UAV-INF", "DEV-INF"):
                 log.info(
-                    "Broadcasting {0.body[type]} notification".format(message),
+                    f"Broadcasting {type} notification",
                     extra={"id": message.id, "semantics": "notification"},
                 )
         elif in_response_to is not None:
             log.info(
-                "Sending {0.body[type]} response".format(message),
+                f"Sending {type} response",
                 extra={"id": in_response_to.id, "semantics": "response_success"},
             )
         elif isinstance(message, FlockwaveNotification):
-            if message.body["type"] not in ("UAV-INF", "DEV-INF"):
+            if type not in ("UAV-INF", "DEV-INF"):
                 log.info(
-                    "Sending {0.body[type]} notification".format(message),
+                    f"Sending {type} notification",
                     extra={"id": message.id, "semantics": "notification"},
                 )
         else:
-            log.info(
-                "Sending {0.body[type]} message".format(message),
-                extra={"id": message.id, "semantics": "response_success"},
-            )
+            print(repr(message))
+            extra = {"semantics": "response_success"}
+            if hasattr(message, "id"):
+                extra["id"] = message.id
+
+            log.info(f"Sending {type} message", extra=extra)
 
     async def _broadcast_message(self, message):
         if self._broadcast_methods is None:
@@ -701,22 +712,38 @@ class MessageHub:
 
         if self._broadcast_methods:
             self._log_message_sending(message)
+            failures = 0
             for func in self._broadcast_methods:
-                await func(message)
+                try:
+                    await func(message)
+                except ClosedResourceError:
+                    # client is probably gone; no problem
+                    pass
+                except Exception:
+                    failures += 1
 
-    async def _send_message(self, message, client_or_id, in_response_to):
-        self._log_message_sending(message, client_or_id, in_response_to)
-        if not isinstance(client_or_id, Client):
+            if failures > 0:
+                log.error(f"Error while broadcasting message to {failures} client(s)")
+
+    async def _send_message(self, message, to, in_response_to=None):
+        self._log_message_sending(message, to, in_response_to)
+        if not isinstance(to, Client):
             try:
-                client = self._client_registry[client_or_id]
+                client = self._client_registry[to]
             except KeyError:
-                log.warn(
-                    "Client {0!r} is gone; not sending message".format(client_or_id)
-                )
+                log.warn("Client is gone; not sending message", extra={"id": str(to)})
                 return
         else:
-            client = client_or_id
-        await client.channel.send(message)
+            client = to
+
+        try:
+            await client.channel.send(message)
+        except ClosedResourceError:
+            log.warn("Client is gone; not sending message", extra={"id": client.id})
+        except Exception:
+            log.exception(
+                "Error while sending message to client", extra={"id": client.id}
+            )
 
     async def _send_response(self, message, to, in_response_to):
         """Sends a response to a message from this message hub.

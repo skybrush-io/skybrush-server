@@ -51,7 +51,7 @@ class UDPChannel(CommunicationChannel):
             client (Client): the client to bind the channel to
         """
         if client.id and client.id.startswith("udp://"):
-            host, _, port = client.id[6:].partition(":")
+            host, _, port = client.id[6:].rpartition(":")
             self.address = host, int(port)
         else:
             raise ValueError("client has no ID or address yet")

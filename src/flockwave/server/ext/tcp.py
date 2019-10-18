@@ -9,7 +9,7 @@ import weakref
 
 from contextlib import ExitStack
 from functools import partial
-from trio import CapacityLimiter, open_nursery, serve_tcp
+from trio import CapacityLimiter, Lock, open_nursery, serve_tcp
 from typing import Optional
 
 from flockwave.server.encoders import JSONEncoder
@@ -30,6 +30,8 @@ class TCPChannel(CommunicationChannel):
     def __init__(self):
         """Constructor."""
         self.address = None
+        self.client_ref = None
+        self.lock = Lock()
         self.stream = None
 
     def bind_to(self, client):
@@ -39,7 +41,7 @@ class TCPChannel(CommunicationChannel):
             client (Client): the client to bind the channel to
         """
         if client.id and client.id.startswith("tcp://"):
-            host, _, port = client.id[6:].partition(":")
+            host, _, port = client.id[6:].rpartition(":")
             self.address = host, int(port)
             self.client_ref = weakref.ref(client, self._erase_stream)
         else:
@@ -51,7 +53,12 @@ class TCPChannel(CommunicationChannel):
             self.stream = self.client_ref().stream
             self.client_ref = None
 
-        await self.stream.send_all(encoder.dumps(message) + b"\n")
+        async with self.lock:
+            # Locking is needed, otherwise we could be running into problems
+            # if a message was sent only partially but the message hub is
+            # already trying to send another one (since the message hub
+            # dispatches each message in a separate task)
+            await self.stream.send_all(encoder.dumps(message) + b"\n")
 
     def _erase_stream(self, ref):
         self.stream = None
@@ -183,7 +190,7 @@ async def run(app, configuration, logger):
         )
 
         limit = CapacityLimiter(pool_size)
-        handler = partial(handle_connection, limit=limit)
+        handler = partial(handle_connection_safely, limit=limit)
 
         async with open_nursery() as nursery:
             await nursery.start(partial(serve_tcp, handler, port, host=host))

@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "ffb55a4ecae8e053434b9b455b4373fa34c642370ffa73ec8f004a101d91dab7"
+            "sha256": "fab8a08cf4b4dc82b4b30d31f2b0587f2634de0635bf7fb277d9cf6182356673"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -82,7 +82,7 @@
                 "midi",
                 "serial"
             ],
-            "file": "https://git.collmot.com/collmot/flockwave-conn/archive/1.0.0.tar.gz"
+            "file": "https://git.collmot.com/collmot/flockwave-conn/archive/1.1.0.tar.gz"
         },
         "flockwave-gps": {
             "file": "https://git.collmot.com/collmot/flockwave-gps/archive/0.9.0.tar.gz"
@@ -95,9 +95,9 @@
         },
         "future": {
             "hashes": [
-                "sha256:6142ef79e2416e432931d527452a1cab3aa4a754a0a53d25b2589f79e1106f34"
+                "sha256:858e38522e8fd0d3ce8f0c1feaf0603358e366d5403209674c7b617fa0c24093"
             ],
-            "version": "==0.18.0"
+            "version": "==0.18.1"
         },
         "h11": {
             "hashes": [
@@ -290,10 +290,10 @@
         },
         "outcome": {
             "hashes": [
-                "sha256:7357af9ba2a08fdff8c742818909c5d146fc1fe75aee4bddadaa4f8ad726d262",
-                "sha256:9d58c05db36a900ce60c6da0167d76e28869f64b338d60fa3a61841cfa54ac71"
+                "sha256:ee46c5ce42780cde85d55a61819d0e6b8cb490f1dbd749ba75ff2629771dcd2d",
+                "sha256:fc7822068ba7dd0fc2532743611e8a73246708d3564e29a39f93d6ab3701b66f"
             ],
-            "version": "==1.0.0"
+            "version": "==1.0.1"
         },
         "priority": {
             "hashes": [
@@ -364,11 +364,11 @@
         },
         "sentry-sdk": {
             "hashes": [
-                "sha256:15e51e74b924180c98bcd636cb4634945b0a99a124d50b433c3a9dc6a582e8db",
-                "sha256:1d6a2ee908ec6d8f96c27d78bc39e203df4d586d287c233140af7d8d1aca108a"
+                "sha256:7d8668f082cb1eb9bf1e0d3f8f9bd5796d05d927c1197af226d044ed32b9815f",
+                "sha256:ff14935cc3053de0650128f124c36f34a4be120b8cc522c149f5cba342c1fd05"
             ],
             "index": "pypi",
-            "version": "==0.12.3"
+            "version": "==0.13.0"
         },
         "six": {
             "hashes": [
@@ -574,10 +574,10 @@
         },
         "outcome": {
             "hashes": [
-                "sha256:7357af9ba2a08fdff8c742818909c5d146fc1fe75aee4bddadaa4f8ad726d262",
-                "sha256:9d58c05db36a900ce60c6da0167d76e28869f64b338d60fa3a61841cfa54ac71"
+                "sha256:ee46c5ce42780cde85d55a61819d0e6b8cb490f1dbd749ba75ff2629771dcd2d",
+                "sha256:fc7822068ba7dd0fc2532743611e8a73246708d3564e29a39f93d6ab3701b66f"
             ],
-            "version": "==1.0.0"
+            "version": "==1.0.1"
         },
         "packaging": {
             "hashes": [
@@ -602,11 +602,11 @@
         },
         "pipfile-requirements": {
             "hashes": [
-                "sha256:3f27604e4ceb182ebc31151c7912143123d0538fa8da3d8215d270bcba6099ec",
-                "sha256:75d02eba71b038bc932327fd86cfb1261e4777aaa99e4450d3803d41923aa37a"
+                "sha256:83d0aa7765a1506d38e4c24c1b8d295d55b6e9cb86b1d11287648e9f45b2683e",
+                "sha256:dfb0430cda5844109415eb75ea3dbb38257b0de8d0825854cea9ae6686e0b159"
             ],
             "index": "pypi",
-            "version": "==0.1.0.post0"
+            "version": "==0.1.1"
         },
         "plette": {
             "extras": [

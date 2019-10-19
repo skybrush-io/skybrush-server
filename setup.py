@@ -13,7 +13,7 @@ requires = [
     "click>=6.2",
     "colorama>=0.3.5",
     "colorlog>=2.6.0",
-    "flockwave-conn @ https://git.collmot.com/collmot/flockwave-conn/archive/1.1.0.tar.gz",
+    "flockwave-conn[midi,serial] @ https://git.collmot.com/collmot/flockwave-conn/archive/1.2.0.tar.gz",
     "flockwave-gps @ https://git.collmot.com/collmot/flockwave-gps/archive/0.9.0.tar.gz",
     "flockwave-logger @ https://git.collmot.com/collmot/flockwave-logger/archive/1.0.0.tar.gz",
     "flockwave-spec @ https://git.collmot.com/collmot/flockwave-spec/archive/0.19.1.tar.gz",
@@ -42,7 +42,11 @@ setup(
     version=__version__,
     packages=find_packages("src"),
     package_dir={"": "src"},
-    py_modules=[splitext(basename(path))[0] for path in glob("src/*.py") if not path.endswith("conftest.py")],
+    py_modules=[
+        splitext(basename(path))[0]
+        for path in glob("src/*.py")
+        if not path.endswith("conftest.py")
+    ],
     include_package_data=True,
     python_requires=">=3.7",
     install_requires=requires,

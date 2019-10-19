@@ -27,6 +27,7 @@ EXTENSIONS = {
     "auth": {},
     "auth_basic": {},
     "debug": {"route": "/debug"},
+    "dock": {"listener": "unix:/tmp/flockwaved-dock.sock"},
     "fake_uavs": {
         "count": 3,
         "delay": 1.9,

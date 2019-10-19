@@ -1,7 +1,8 @@
 from contextlib import ExitStack
-from trio import sleep
+from trio import open_nursery, sleep, sleep_forever
 
-from flockwave.connections import create_connection, serve_unix
+from flockwave.connections import create_connection
+from flockwave.listeners import create_listener
 from flockwave.server.model import ConnectionPurpose
 from flockwave.server.model.uav import PassiveUAVDriver
 
@@ -59,14 +60,8 @@ class DockExtension(UAVExtensionBase):
             logger.warn("No listener specified; dock extension disabled")
             return
 
-        if not listener.startswith("unix:"):
-            logger.warn(
-                "Only Unix domain socket listeners are supported; "
-                "dock extension disabled"
-            )
-            return
-        else:
-            path = listener[5:]
+        listener = create_listener(listener)
+        listener.handler = self.handle_connection_safely
 
         with ExitStack() as stack:
             stack.enter_context(
@@ -79,7 +74,10 @@ class DockExtension(UAVExtensionBase):
                 )
             )
 
-            await serve_unix(self.handle_connection_safely, path)
+            async with open_nursery() as nursery:
+                listener.nursery = nursery
+                async with listener:
+                    await sleep_forever()
 
 
 async def run(app, configuration, logger):

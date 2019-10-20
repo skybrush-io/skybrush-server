@@ -198,7 +198,12 @@ async def handle_m_search(request, *, socket):
             extra={"LOCATION": location, "ST": search_target},
             prefix=request.request_version + " 200 OK",
         )
-        await socket.sendto(response, request.client_address)
+        try:
+            await socket.sendto(response, request.client_address)
+        except OSError:
+            # Okay, maybe the network went down in the meanwhile, let's just
+            # ignore this error and move on
+            pass
 
 
 def is_valid_service(service):

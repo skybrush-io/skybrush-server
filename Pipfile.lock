@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "db21fb642903293f4dc3d8559cfdb97c8886087ff989a442f389151e66890fa5"
+            "sha256": "377bb23977c40842ec4e68569543bc08c0170ea2460a13bf7a23a2fa8291b14c"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -82,7 +82,7 @@
                 "midi",
                 "serial"
             ],
-            "file": "https://git.collmot.com/collmot/flockwave-conn/archive/1.3.0.tar.gz"
+            "file": "https://git.collmot.com/collmot/flockwave-conn/archive/1.4.0.tar.gz"
         },
         "flockwave-gps": {
             "file": "https://git.collmot.com/collmot/flockwave-gps/archive/0.9.0.tar.gz"
@@ -391,6 +391,13 @@
                 "sha256:d9e96492dd51fae31e60837736b38fe42a187b5404c16606ff7ee7cd582d4c60"
             ],
             "version": "==2.1.0"
+        },
+        "tinyrpc": {
+            "hashes": [
+                "sha256:aa9f707a26cea5fd69af55fea28e8761f96b244e00efe3c8ccbeb233d5a9852e"
+            ],
+            "index": "pypi",
+            "version": "==1.0.3"
         },
         "toml": {
             "hashes": [

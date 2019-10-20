@@ -82,8 +82,8 @@ class ParserBase(Parser[T]):
         callback function.
 
         Returns:
-            (bool, object): whether an object was parsed successfully, and if
-                so, the object itself
+            whether an object was parsed successfully, and if so, the object
+            itself
         """
         if self.pre_filter and not self.pre_filter(data):
             return False, None

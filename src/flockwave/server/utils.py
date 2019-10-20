@@ -146,6 +146,22 @@ def nop(*args, **kwds):
     pass
 
 
+def once(func):
+    """Decorator that decorates a function and allows it to be called only
+    once. Subsequent attempts to call the function will throw an exception.
+    """
+
+    def wrapped(*args, **kwds):
+        if wrapped.called:
+            raise RuntimeError("{!r} can be called only once".format(func))
+
+        wrapped.called = True
+        return func(*args, **kwds)
+
+    wrapped.called = False
+    return wrapped
+
+
 @contextmanager
 def overridden(dictionary, **kwds):
     """Context manager that updates a dictionary with some key-value

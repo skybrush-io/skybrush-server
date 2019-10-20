@@ -8,7 +8,7 @@ from contextlib import ExitStack
 from functools import partial
 from trio import open_nursery, sleep_forever
 
-from flockwave.server.encoders import JSONEncoder
+from flockwave.encoders import JSONEncoder
 from flockwave.server.model import CommunicationChannel
 from flockwave.networking import format_socket_address
 from flockwave.server.utils import overridden

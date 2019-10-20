@@ -7,12 +7,12 @@ from __future__ import absolute_import
 
 from typing import List, Tuple
 
-from .base import ParserBase
+from .base import ParserBase, T
 
 __all__ = ("DelimiterBasedParser", "LineParser")
 
 
-class DelimiterBasedParser(ParserBase[bytes]):
+class DelimiterBasedParser(ParserBase[T]):
     """Parser class that assumes that the individual messages in the incoming
     stream are separated by a delimiter character that appears in none of the
     messages.
@@ -29,7 +29,7 @@ class DelimiterBasedParser(ParserBase[bytes]):
 
         self._chunks = []
 
-    def feed(self, data: bytes) -> List[bytes]:
+    def feed(self, data: bytes) -> List[T]:
         result = []
         while data:
             prefix, sep, data = self._split(data)
@@ -62,7 +62,7 @@ class DelimiterBasedParser(ParserBase[bytes]):
         return data.partition(self.delimiter)
 
 
-class LineParser(DelimiterBasedParser):
+class LineParser(DelimiterBasedParser[T]):
     """Parser class that assumes that the individual messages are delimited
     with newline characters (``\r`` and ``\n``).
     """

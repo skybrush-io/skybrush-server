@@ -13,7 +13,7 @@ from functools import partial
 from trio import CapacityLimiter, open_nursery
 from typing import Optional, Tuple
 
-from flockwave.server.encoders import JSONEncoder
+from flockwave.encoders import JSONEncoder
 from flockwave.server.model import CommunicationChannel
 from flockwave.networking import (
     create_socket,

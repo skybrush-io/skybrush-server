@@ -14,7 +14,7 @@ from flockwave.gps.vectors import GPSCoordinate
 from flockwave.channels import ParserChannel
 from flockwave.connections import create_connection, Connection
 from flockwave.parsers import LineParser
-from flockwave.server.encoders import JSONEncoder
+from flockwave.encoders import JSONEncoder
 from flockwave.server.errors import NotSupportedError
 from flockwave.server.model import ConnectionPurpose
 from flockwave.server.model.uav import PassiveUAVDriver

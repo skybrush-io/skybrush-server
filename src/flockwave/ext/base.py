@@ -41,17 +41,17 @@ class ExtensionBase:
 
     def load(self, app, configuration: Configuration, logger: Logger) -> None:
         """Handler that is called by the extension manager when the
-        extension is loaded into the server.
+        extension is loaded into the application.
 
         Typically, you don't need to override this method; override
         :meth:`configure()` instead.
 
         Arguments:
-            app (FlockwaveServer): the server application
-            configuration (dict): the extension-specific configuration
-                dictionary of the server
-            logger (logging.Logger): a logger object that the extension
-                may use to write to the server log
+            app: the application
+            configuration: the extension-specific configuration dictionary of
+                the application
+            logger: a logger object that the extension may use to write to the
+                application log
         """
         self.app = app
         self.log = logger
@@ -62,8 +62,8 @@ class ExtensionBase:
         application.
 
         Arguments:
-            old_app: the old server application
-            new_app: the new server application
+            old_app: the old application
+            new_app: the new application
         """
         pass
 
@@ -104,9 +104,9 @@ class ExtensionBase:
         `teardown()` instead.
 
         Arguments:
-            app (FlockwaveServer): the server application; provided for sake
-                of API compatibility with simple classless extensions where
-                the module provides a single `unload()` function
+            app: the application; provided for sake of API compatibility with
+                simple classless extensions where the module provides a single
+                `unload()` function
         """
         self.teardown()
         self.log = None

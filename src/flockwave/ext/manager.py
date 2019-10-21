@@ -2,19 +2,19 @@
 
 from __future__ import absolute_import, annotations
 
-import attr
 import importlib
 
 from blinker import Signal
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from functools import partial
 from inspect import iscoroutinefunction
 from pkgutil import get_loader
-from trio import CancelScope
+from trio import CancelScope, open_memory_channel, open_nursery, TASK_STATUS_IGNORED
 from typing import Any, Dict, Generator, Generic, List, Optional, Set, Type, TypeVar
 
-from flockwave.ext.base import Configuration, ExtensionBase
 from flockwave.logger import add_id_to_log, log as base_log, Logger
 
+from .base import Configuration, ExtensionBase
 from .utils import bind, cancellable, keydefaultdict
 
 __all__ = ("ExtensionManager",)
@@ -41,6 +41,13 @@ class LoadOrder(Generic[T]):
         self._tail.prev = self._tail.next = self._tail
         self._dict = {}
 
+    def items(self) -> Generator[T, None, None]:
+        item = self._guard
+        item = item.next
+        while item is not self._guard:
+            yield item.data
+            item = item.next
+
     def notify_loaded(self, name: T) -> None:
         """Notifies the object that the given extension was loaded."""
         item = self._dict.get(name)
@@ -49,6 +56,7 @@ class LoadOrder(Generic[T]):
         else:
             self._unlink_item(item)
         item.prev = self._tail
+        item.next = self._guard
         self._tail.next = item
         self._tail = item
 
@@ -75,7 +83,7 @@ class LoadOrder(Generic[T]):
         item.next.prev = item.prev
 
 
-@attr.s
+@dataclass
 class ExtensionData(object):
     """Data that the extension manager stores related to each extension.
 
@@ -96,16 +104,16 @@ class ExtensionData(object):
             was spawned or there are no clients connected
     """
 
-    name: str = attr.ib()
+    name: str
 
-    api_proxy: Optional[object] = attr.ib(default=None)
-    configuration: Dict[str, Any] = attr.ib(factory=dict)
-    dependents: Set[str] = attr.ib(factory=set)
-    instance: Optional[object] = attr.ib(default=None)
-    loaded: bool = attr.ib(default=False)
-    log: Logger = attr.ib(default=None)
-    task: Optional[CancelScope] = attr.ib(default=None)
-    worker: Optional[CancelScope] = attr.ib(default=None)
+    api_proxy: Optional[object] = None
+    configuration: Dict[str, Any] = field(default_factory=dict)
+    dependents: Set[str] = field(default_factory=set)
+    instance: Optional[object] = None
+    loaded: bool = False
+    log: Logger = None
+    task: Optional[CancelScope] = None
+    worker: Optional[CancelScope] = None
 
     @classmethod
     def for_extension(cls, name):
@@ -131,11 +139,10 @@ class ExtensionManager:
     """
     )
 
-    def __init__(self, app=None, package_root=None):
+    def __init__(self, package_root=None):
         """Constructor.
 
         Parameters:
-            app: the "application context" of the extension manager.
             package_root: the root package in which all other extension
                 packages should live
         """
@@ -143,8 +150,7 @@ class ExtensionManager:
         self._extensions = keydefaultdict(self._create_extension_data)
         self._extension_package_root = package_root or EXT_PACKAGE_NAME
         self._load_order = LoadOrder()
-        self._num_clients = 0
-        self.app = app
+        self._spinning = False
 
     @property
     def app(self):
@@ -153,40 +159,41 @@ class ExtensionManager:
         """
         return self._app
 
-    @app.setter
-    def app(self, value):
+    async def set_app(self, value):
+        """Asynchronous setter for the application context of the
+        extension manager.
+        """
         if self._app is value:
             return
 
-        if self._app is not None:
-            self._app.num_clients_changed.disconnect(
-                self._app_client_count_changed, sender=self._app
-            )
+        if self._spinning:
+            await self._spindown_all_extensions()
 
-        self._spindown_all_extensions()
         self._app = value
-        self._num_clients = self._app.num_clients if self._app else 0
-        if self._num_clients > 0:
-            self._spinup_all_extensions()
 
-        if self._app is not None:
-            self._app.num_clients_changed.connect(
-                self._app_client_count_changed, sender=self._app
-            )
+        if self._spinning:
+            await self._spinup_all_extensions()
 
-    def configure(self, configuration: Configuration) -> None:
+    async def _configure(self, configuration: Configuration, **kwds) -> None:
         """Configures the extension manager.
 
         Extensions that were loaded earlier will be unloaded before loading
         the new ones with the given configuration.
 
         Parameters:
-            configuration (dict): a dictionary mapping names of the
+            configuration: a dictionary mapping names of the
                 extensions to their configuration.
+
+        Keyword arguments:
+            app: when specified, sets the application context of the
+                extension manager as well
         """
+        if "app" in kwds:
+            await self.set_app(kwds["app"])
+
         loaded_extensions = set(self.loaded_extensions)
 
-        self.teardown()
+        await self.teardown()
 
         for extension_name, extension_cfg in configuration.items():
             ext = self._extensions[extension_name]
@@ -197,7 +204,7 @@ class ExtensionManager:
             ext = self._extensions[extension_name]
             enabled = ext.configuration.get("enabled", True)
             if enabled:
-                self.load(extension_name)
+                await self.load(extension_name)
 
     def _create_extension_data(self, extension_name: str) -> None:
         """Creates a helper object holding all data related to the extension
@@ -304,11 +311,12 @@ class ExtensionManager:
         """
         return self._extensions[extension_name].api_proxy
 
-    def load(self, extension_name: str) -> None:
+    async def load(self, extension_name: str) -> None:
         """Loads an extension with the given name.
 
-        The extension will be imported from the ``flockwave.server.ext``
-        package. When the module contains a callable named ``construct()``,
+        The extension will be imported from the root extension package
+        specified at construction time, or ``flockwave.ext`` if it was not
+        specified. When the module contains a callable named ``construct()``,
         it will be called to construct a new instance of the extension.
         Otherwise, the entire module is assumed to be the extension
         instance.
@@ -333,7 +341,7 @@ class ExtensionManager:
         Returns:
             whatever the `load()` function of the extension returns
         """
-        return self._load(extension_name, forbidden=[])
+        return await self._load(extension_name, forbidden=[])
 
     @property
     def loaded_extensions(self) -> List[str]:
@@ -354,12 +362,77 @@ class ExtensionManager:
         except KeyError:
             return False
 
-    def teardown(self) -> None:
+    async def run(
+        self, *, configuration: Configuration, app: Any, task_status=TASK_STATUS_IGNORED
+    ) -> None:
+        """Asynchronous task that runs the exception manager itself.
+
+        This task simply waits for messages that request certain tasks managed
+        by the extensions to be started. It also takes care of catching
+        exceptions from the managed tasks and logging them without crashing the
+        entire application.
+        """
+        try:
+            self._task_queue, task_queue_rx = open_memory_channel(1024)
+
+            await self._configure(configuration, app=app)
+
+            async with open_nursery() as nursery:
+                task_status.started()
+                async for func, args, scope in task_queue_rx:
+                    if scope is not None:
+                        func = partial(func, cancel_scope=scope)
+                    nursery.start_soon(func, *args)
+
+        finally:
+            self._task_queue = None
+
+    async def _run_in_background(self, func, *args, cancellable=False):
+        """Runs the given function as a background task in the extension
+        manager.
+
+        Blocks until the task is started.
+        """
+        scope = CancelScope() if cancellable or hasattr(func, "_cancellable") else None
+        await self._task_queue.send((func, args, scope))
+        return scope
+
+    @property
+    def spinning(self) -> bool:
+        """Whether the extensions in the extension manager are "spinning".
+
+        This property is relevant for extensions that can exist in an idle
+        state and in a "spinning" state. Setting the property to `True` will
+        put all such extensions in the "spinning" state by invoking the
+        `spinup()` method of the extensions. Setting the property to `False`
+        will put all such extensions in the "idle" state by invoking the
+        `spindown()` method of the extensions. Additionally, the `worker()`
+        task of the extension will be running only if it is in the "spinning"
+        state.
+        """
+        return self._spinning
+
+    async def set_spinning(self, value: bool) -> None:
+        """Asynchronous setter for the `spinning` property."""
+        value = bool(value)
+
+        if self._spinning == value:
+            return
+
+        if self._spinning:
+            await self._spindown_all_extensions()
+
+        self._spinning = value
+
+        if self._spinning:
+            await self._spinup_all_extensions()
+
+    async def teardown(self) -> None:
         """Tears down the extension manager and prepares it for destruction."""
         for ext_name in self._load_order.reversed():
-            self.unload(ext_name)
+            await self.unload(ext_name)
 
-    def unload(self, extension_name: str) -> None:
+    async def unload(self, extension_name: str) -> None:
         """Unloads the extension with the given name.
 
         Parameters:
@@ -383,11 +456,12 @@ class ExtensionManager:
             raise RuntimeError(message)
 
         # Spin down the extension if needed
-        if self._num_clients > 0:
-            self._spindown_extension(extension_name)
+        if self._spinning:
+            await self._spindown_extension(extension_name)
 
         # Stop the task associated to the extension if it has one
         if extension_data.task:
+            # TODO(ntamas): wait until the task is cancelled
             extension_data.task.cancel()
             extension_data.task = None
 
@@ -420,17 +494,6 @@ class ExtensionManager:
             log.debug("Unloaded extension")
         else:
             log.warning("Unloaded extension")
-
-    def _app_client_count_changed(self, sender):
-        """Signal handler that is called whenever the number of clients
-        connected to the app has changed.
-        """
-        old_value = self._num_clients
-        self._num_clients = self.app.num_clients
-        if self._num_clients == 0 and old_value != 0:
-            self._spindown_all_extensions()
-        elif self._num_clients != 0 and old_value == 0:
-            self._spinup_all_extensions()
 
     def _get_dependencies_of_extension(self, extension_name: str) -> Set[str]:
         """Determines the list of extensions that a given extension depends
@@ -465,7 +528,7 @@ class ExtensionManager:
 
         return set(dependencies or [])
 
-    def _load(self, extension_name: str, forbidden: List[str]):
+    async def _load(self, extension_name: str, forbidden: List[str]):
         if extension_name in forbidden:
             cycle = forbidden + [extension_name]
             base_log.error(
@@ -473,11 +536,11 @@ class ExtensionManager:
             )
             return
 
-        self._ensure_dependencies_loaded(extension_name, forbidden)
+        await self._ensure_dependencies_loaded(extension_name, forbidden)
         if not self.is_loaded(extension_name):
-            return self._load_single_extension(extension_name)
+            return await self._load_single_extension(extension_name)
 
-    def _load_single_extension(self, extension_name: str):
+    async def _load_single_extension(self, extension_name: str):
         """Loads an extension with the given name, assuming that all its
         dependencies are already loaded.
 
@@ -525,7 +588,7 @@ class ExtensionManager:
 
         task = getattr(extension, "run", None)
         if iscoroutinefunction(task):
-            extension_data.task = self.app.run_in_background(
+            extension_data.task = await self._run_in_background(
                 cancellable(bind(task, args, partial=True))
             )
         elif task is not None:
@@ -540,26 +603,26 @@ class ExtensionManager:
 
         self.loaded.send(self, name=extension_name, extension=extension)
 
-        if self._num_clients > 0:
-            self._spinup_extension(extension)
+        if self._spinning:
+            await self._spinup_extension(extension)
 
         return result
 
-    def _spindown_all_extensions(self) -> None:
+    async def _spindown_all_extensions(self) -> None:
         """Iterates over all loaded extensions and spins down each one of
         them.
         """
-        for extension_name in self.loaded_extensions:
-            self._spindown_extension(extension_name)
+        for extension_name in self._load_order.reversed():
+            await self._spindown_extension(extension_name)
 
-    def _spinup_all_extensions(self) -> None:
+    async def _spinup_all_extensions(self) -> None:
         """Iterates over all loaded extensions and spins up each one of
         them.
         """
-        for extension_name in self.loaded_extensions:
-            self._spinup_extension(extension_name)
+        for extension_name in self._load_order.items():
+            await self._spinup_extension(extension_name)
 
-    def _spindown_extension(self, extension_name: str) -> None:
+    async def _spindown_extension(self, extension_name: str) -> None:
         """Spins down the given extension.
 
         This is done by calling the ``spindown()`` method or function of
@@ -575,6 +638,7 @@ class ExtensionManager:
 
         # Stop the worker associated to the extension if it has one
         if extension_data.worker:
+            # TODO(ntamas): wait until the worker is cancelled
             extension_data.worker.cancel()
             extension_data.worker = None
 
@@ -587,7 +651,7 @@ class ExtensionManager:
                 log.exception("Error while spinning down extension")
                 return
 
-    def _spinup_extension(self, extension_name: str) -> None:
+    async def _spinup_extension(self, extension_name: str) -> None:
         """Spins up the given extension.
 
         This is done by calling the ``spinup()`` method or function of
@@ -614,11 +678,13 @@ class ExtensionManager:
         task = getattr(extension, "worker", None)
         if iscoroutinefunction(task):
             args = (self.app, extension_data.configuration, extension_data.log)
-            self._extensions[extension_name].worker = self.app.run_in_background(
+            self._extensions[extension_name].worker = await self._run_in_background(
                 cancellable(bind(task, args, partial=True))
             )
 
-    def _ensure_dependencies_loaded(self, extension_name: str, forbidden: List[str]):
+    async def _ensure_dependencies_loaded(
+        self, extension_name: str, forbidden: List[str]
+    ):
         """Ensures that all the dependencies of the given extension are
         loaded.
 
@@ -635,7 +701,7 @@ class ExtensionManager:
         dependencies = self._get_dependencies_of_extension(extension_name)
         forbidden.append(extension_name)
         for dependency in dependencies:
-            self._load(dependency, forbidden)
+            await self._load(dependency, forbidden)
         forbidden.pop()
 
 

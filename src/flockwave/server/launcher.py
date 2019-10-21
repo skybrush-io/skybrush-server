@@ -44,13 +44,16 @@ def start(config, debug):
     # Log what we are doing
     log.info("Starting Flockwave server...")
 
-    # Configure the application
-    retval = app.prepare(config)
-    if retval is not None:
-        return retval
+    async def _task():
+        # Configure the application
+        retval = await app.prepare(config)
+        if retval is not None:
+            return retval
 
-    # Now start the server
-    trio.run(app.start)
+        # Now start the server
+        return await app.run()
+
+    trio.run(_task)
 
     # Log that we have stopped cleanly.
     log.info("Shutdown finished.")

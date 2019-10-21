@@ -75,8 +75,6 @@ class FlockwaveServer:
             loading and unloading of server extensions
         message_hub (MessageHub): central messaging hub via which one can
             send Flockwave messages
-        num_clients_changed (Signal): signal that is emitted when the
-            number of clients connected to the server changes
         uav_registry (UAVRegistry): central registry for the UAVs known to
             the server
         world (World): a representation of the "world" in which the flock
@@ -90,7 +88,6 @@ class FlockwaveServer:
             hook into the startup process.
     """
 
-    num_clients_changed = Signal()
     _starting = Signal()
     _stopping = Signal()
 
@@ -113,7 +110,9 @@ class FlockwaveServer:
         """
         # Create a Trio task queue that will be used by other components of the
         # application to schedule background tasks to be executed in the main
-        # Trio nursery
+        # Trio nursery.
+        # TODO(ntamas): not sure if this is going to be needed in the end; we
+        # might just as well remove it
         self._task_queue = open_memory_channel(32)
 
         # Create an object to hold information about all the registered
@@ -604,7 +603,12 @@ class FlockwaveServer:
         """
         return self.extension_manager.import_api(extension_name)
 
-    async def start(self):
+    @property
+    def num_clients(self):
+        """The number of clients connected to the server."""
+        return self.client_registry.num_entries
+
+    async def run(self):
         # Helper function to ignore KeyboardInterrupt exceptions even if
         # they are wrapped in a Trio MultiError
         def ignore_keyboard_interrupt(exc):
@@ -617,6 +621,14 @@ class FlockwaveServer:
             with MultiError.catch(ignore_keyboard_interrupt):
                 self._starting.send(self)
                 async with open_nursery() as nursery:
+                    await nursery.start(
+                        partial(
+                            self.extension_manager.run,
+                            configuration=self.config.get("EXTENSIONS", {}),
+                            app=self,
+                        )
+                    )
+
                     nursery.start_soon(self.connection_supervisor.run)
                     nursery.start_soon(self.command_execution_manager.run)
                     nursery.start_soon(self.message_hub.run)
@@ -628,14 +640,9 @@ class FlockwaveServer:
                         nursery.start_soon(func, *args)
 
         finally:
-            self.teardown()
+            await self.teardown()
 
-    @property
-    def num_clients(self):
-        """The number of clients connected to the server."""
-        return self.client_registry.num_entries
-
-    def prepare(self, config):
+    async def prepare(self, config):
         """Hook function that contains preparation steps that should be
         performed by the server before it starts serving requests.
 
@@ -658,8 +665,7 @@ class FlockwaveServer:
         # Import and configure the extensions that we want to use. This
         # must be done last because we want to be sure that the basic
         # components of the app (prepared above) are ready.
-        self.extension_manager = ExtensionManager(self, PACKAGE_NAME + ".ext")
-        self.extension_manager.configure(self.config.get("EXTENSIONS", {}))
+        self.extension_manager = ExtensionManager(PACKAGE_NAME + ".ext")
 
     def register_startup_hook(self, func: Callable[[object], None]):
         """Registers a function that will be called when the application is
@@ -710,12 +716,12 @@ class FlockwaveServer:
         """
         await self.connection_supervisor.supervise(connection, task=task, policy=policy)
 
-    def teardown(self):
+    async def teardown(self):
         """Called when the application is about to shut down. Calls all
         registered shutdown hooks and performs additional cleanup if needed.
         """
         self._stopping.send(self)
-        self.extension_manager.teardown()
+        await self.extension_manager.teardown()
 
     def unregister_startup_hook(self, func: Callable[[object], None]):
         """Unregisters a function that would have been called when the
@@ -880,9 +886,11 @@ class FlockwaveServer:
 
     def _on_client_count_changed(self, sender):
         """Handler called when the number of clients attached to the server
-        has changed. Dispatches a ``num_clients_changed`` signal.
+        has changed.
         """
-        self.num_clients_changed.send(self)
+        self.run_in_background(
+            self.extension_manager.set_spinning, self.num_clients > 0
+        )
 
     def _on_connection_state_changed(self, sender, entry, old_state, new_state):
         """Handler called when the state of a connection changes somewhere

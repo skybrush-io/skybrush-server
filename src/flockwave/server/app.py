@@ -18,11 +18,11 @@ from flockwave.connections import (
     ConnectionTask,
     SupervisionPolicy,
 )
+from flockwave.ext.manager import ExtensionManager
 from flockwave.gps.vectors import GPSCoordinate
 
 from .commands import CommandExecutionManager
 from .errors import NotSupportedError
-from .ext.manager import ExtensionManager
 from .logger import log
 from .message_hub import (
     ConnectionStatusMessageRateLimiter,
@@ -628,7 +628,7 @@ class FlockwaveServer:
                         nursery.start_soon(func, *args)
 
         finally:
-            self._stopping.send(self)
+            self.teardown()
 
     @property
     def num_clients(self):
@@ -658,7 +658,7 @@ class FlockwaveServer:
         # Import and configure the extensions that we want to use. This
         # must be done last because we want to be sure that the basic
         # components of the app (prepared above) are ready.
-        self.extension_manager = ExtensionManager(self)
+        self.extension_manager = ExtensionManager(self, PACKAGE_NAME + ".ext")
         self.extension_manager.configure(self.config.get("EXTENSIONS", {}))
 
     def register_startup_hook(self, func: Callable[[object], None]):
@@ -709,6 +709,13 @@ class FlockwaveServer:
         details there.
         """
         await self.connection_supervisor.supervise(connection, task=task, policy=policy)
+
+    def teardown(self):
+        """Called when the application is about to shut down. Calls all
+        registered shutdown hooks and performs additional cleanup if needed.
+        """
+        self._stopping.send(self)
+        self.extension_manager.teardown()
 
     def unregister_startup_hook(self, func: Callable[[object], None]):
         """Unregisters a function that would have been called when the

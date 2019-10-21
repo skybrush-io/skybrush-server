@@ -1,0 +1,23 @@
+{% extends "layout.html" %}
+{% block body %}
+<h1 class="display-4">List of active tasks</h1>
+
+<p class="lead">The following table lists all the active asynchronous tasks in
+the server.</p>
+
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>Name</th>
+        </tr>
+    </thead>
+    <tbody>
+{% for prefix, task in tasks %}
+        <tr>
+            <td><pre>{{ prefix }}{{ task.name }}</pre></td>
+        </tr>
+{% endfor %}
+    </tbody>
+</table>
+
+{% endblock %}

@@ -4,7 +4,9 @@ the Flockwave server.
 
 import threading
 
+from operator import attrgetter
 from quart import Blueprint, render_template
+from trio.hazmat import current_root_task
 
 __all__ = ("load", "index")
 
@@ -36,6 +38,26 @@ async def list_threads():
     """Returns a page that lists all active threads in the server."""
     data = {"threads": threading.enumerate()}
     return await render_template("threads.html", **data)
+
+
+@blueprint.route("/tasks")
+async def list_tasks():
+    """Returns a page that lists all active Trio tasks in the server."""
+
+    tasks = []
+    queue = [(0, current_root_task())]
+    while queue:
+        level, task = queue.pop()
+        tasks.append(("    " * level, task))
+        for nursery in task.child_nurseries:
+            queue.extend(
+                (level + 1, task)
+                for task in sorted(
+                    nursery.child_tasks, key=attrgetter("name"), reverse=True
+                )
+            )
+
+    return await render_template("tasks.html", tasks=tasks)
 
 
 dependencies = ("http_server",)

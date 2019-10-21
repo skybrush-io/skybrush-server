@@ -379,22 +379,25 @@ class ExtensionManager:
 
             async with open_nursery() as nursery:
                 task_status.started()
-                async for func, args, scope in task_queue_rx:
+                async for func, args, scope, name in task_queue_rx:
                     if scope is not None:
                         func = partial(func, cancel_scope=scope)
-                    nursery.start_soon(func, *args)
+                    if name:
+                        nursery.start_soon(func, *args, name=name)
+                    else:
+                        nursery.start_soon(func, *args)
 
         finally:
             self._task_queue = None
 
-    async def _run_in_background(self, func, *args, cancellable=False):
+    async def _run_in_background(self, func, *args, name=None, cancellable=False):
         """Runs the given function as a background task in the extension
         manager.
 
         Blocks until the task is started.
         """
         scope = CancelScope() if cancellable or hasattr(func, "_cancellable") else None
-        await self._task_queue.send((func, args, scope))
+        await self._task_queue.send((func, args, scope, name))
         return scope
 
     @property
@@ -589,7 +592,8 @@ class ExtensionManager:
         task = getattr(extension, "run", None)
         if iscoroutinefunction(task):
             extension_data.task = await self._run_in_background(
-                cancellable(bind(task, args, partial=True))
+                cancellable(bind(task, args, partial=True)),
+                name=f"extension:{extension_name}/run",
             )
         elif task is not None:
             log.warn("run() must be an async function")
@@ -679,7 +683,8 @@ class ExtensionManager:
         if iscoroutinefunction(task):
             args = (self.app, extension_data.configuration, extension_data.log)
             self._extensions[extension_name].worker = await self._run_in_background(
-                cancellable(bind(task, args, partial=True))
+                cancellable(bind(task, args, partial=True)),
+                name=f"extension:{extension_name}/worker",
             )
 
     async def _ensure_dependencies_loaded(

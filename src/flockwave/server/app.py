@@ -11,7 +11,7 @@ from functools import partial
 from importlib import import_module
 from inspect import isawaitable
 from trio import CancelScope, MultiError, open_memory_channel, open_nursery
-from typing import Optional
+from typing import Callable, Optional
 
 from flockwave.connections import (
     ConnectionSupervisor,
@@ -92,6 +92,7 @@ class FlockwaveServer:
 
     num_clients_changed = Signal()
     _starting = Signal()
+    _stopping = Signal()
 
     def __init__(self):
         self.config = {}
@@ -627,7 +628,7 @@ class FlockwaveServer:
                         nursery.start_soon(func, *args)
 
         finally:
-            self.teardown()
+            self._stopping.send(self)
 
     @property
     def num_clients(self):
@@ -660,15 +661,25 @@ class FlockwaveServer:
         self.extension_manager = ExtensionManager(self)
         self.extension_manager.configure(self.config.get("EXTENSIONS", {}))
 
-    def register_startup_hook(self, func):
+    def register_startup_hook(self, func: Callable[[object], None]):
         """Registers a function that will be called when the application is
         starting up.
 
         Parameters:
-            func (callable): the function to call. It will be called with the
-                application instance as its only argument.
+            func: the function to call. It will be called with the application
+                instance as its only argument.
         """
         self._starting.connect(func, sender=self)
+
+    def register_shutdown_hook(self, func: Callable[[object], None]):
+        """Registers a function that will be called when the application is
+        shutting down.
+
+        Parameters:
+            func: the function to call. It will be called with the application
+                instance as its only argument.
+        """
+        self._stopping.connect(func, sender=self)
 
     def request_to_send_UAV_INF_message_for(self, uav_ids):
         """Requests the application to send an UAV-INF message that contains
@@ -699,18 +710,23 @@ class FlockwaveServer:
         """
         await self.connection_supervisor.supervise(connection, task=task, policy=policy)
 
-    def teardown(self):
-        """Tears down the application and prepares it for exiting normally."""
-        self.extension_manager.teardown()
-
-    def unregister_startup_hook(self, func):
-        """Unregisters a function that is called when the application is
-        starting up.
+    def unregister_startup_hook(self, func: Callable[[object], None]):
+        """Unregisters a function that would have been called when the
+        application is starting up.
 
         Parameters:
-            func (callable): the function to unregister.
+            func: the function to unregister.
         """
         self._starting.disconnect(func, sender=self)
+
+    def unregister_shutdown_hook(self, func: Callable[[object], None]):
+        """Unregisters a function that would have been called when the
+        application is shutting down.
+
+        Parameters:
+            func: the function to unregister.
+        """
+        self._stopping.disconnect(func, sender=self)
 
     def _find_command_receipt_by_id(self, receipt_id, response=None):
         """Finds the asynchronous command execution receipt with the given

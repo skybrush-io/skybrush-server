@@ -158,6 +158,7 @@ class ExtensionManager(object):
             return
 
         if self._app is not None:
+            self._app.unregister_shutdown_hook(self.teardown)
             self._app.num_clients_changed.disconnect(
                 self._app_client_count_changed, sender=self._app
             )
@@ -172,6 +173,7 @@ class ExtensionManager(object):
             self._app.num_clients_changed.connect(
                 self._app_client_count_changed, sender=self._app
             )
+            self._app.register_shutdown_hook(self.teardown)
 
     def configure(self, configuration):
         """Configures the extension manager.
@@ -351,7 +353,7 @@ class ExtensionManager(object):
         except KeyError:
             return False
 
-    def teardown(self):
+    def teardown(self, app=None):
         """Tears down the extension manager and prepares it for destruction."""
         for ext_name in self._load_order.reversed():
             self.unload(ext_name)

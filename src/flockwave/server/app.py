@@ -642,7 +642,7 @@ class FlockwaveServer:
         finally:
             await self.teardown()
 
-    async def prepare(self, config):
+    def prepare(self, config):
         """Hook function that contains preparation steps that should be
         performed by the server before it starts serving requests.
 

@@ -1,8 +1,7 @@
 """Application object for the Flockwave server."""
 
-from __future__ import absolute_import
-
 import errno
+import logging
 import os
 
 from blinker import Signal
@@ -11,14 +10,14 @@ from functools import partial
 from importlib import import_module
 from inspect import isawaitable
 from trio import CancelScope, MultiError, open_memory_channel, open_nursery
-from typing import Callable, Optional
+from typing import Any, Callable, Dict, Optional
 
 from flockwave.connections import (
     ConnectionSupervisor,
     ConnectionTask,
     SupervisionPolicy,
 )
-from flockwave.ext.manager import ExtensionManager
+from flockwave.ext.manager import ExtensionAPIProxy, ExtensionManager
 from flockwave.gps.vectors import GPSCoordinate
 
 from .commands import CommandExecutionManager
@@ -47,6 +46,157 @@ from .version import __version__ as server_version
 __all__ = ("app",)
 
 PACKAGE_NAME = __name__.rpartition(".")[0]
+
+Configuration = Dict[str, Any]
+
+
+class AppConfigurator:
+    """Helper object that manages loading the configuration of the app from
+    various sources.
+    """
+
+    def __init__(
+        self,
+        config: Optional[Configuration] = None,
+        *,
+        default_filename: Optional[str] = None,
+        environment_variable: Optional[str] = None,
+        log: Optional[logging.Logger] = None
+    ):
+        """Constructor.
+
+        Parameters:
+            config: the configuration object that the configurator will
+                populate. May contain default values.
+            default_filename: name of the default configuration file that the
+                configurator will look for in the current working directory
+            environment_variable: name of the environment variable in which
+                the configurator will look for the name of an additional
+                configuration file to load
+        """
+        self._config = config if config is not None else {}
+        self._default_filename = default_filename
+        self._environment_variable = environment_variable
+        self._log = log
+
+    def configure(self, filename: Optional[str] = None) -> Configuration:
+        """Configures the application.
+
+        Parameters:
+            filename: name of the configuration file to load, passed from the
+                command line
+
+        Returns:
+            bool: whether the configuration sources were processed successfully
+        """
+        return self._load_configuration(filename)
+
+    @property
+    def result(self) -> Configuration:
+        """Returns the result of the configuration process."""
+        return self._config
+
+    def _load_base_configuration(self) -> None:
+        """Loads the default configuration of the application from the
+        `dockctrl.config` module.
+        """
+        try:
+            config = import_module(".config", PACKAGE_NAME)
+        except ModuleNotFoundError:
+            config = None
+        if config:
+            self._load_configuration_from_object(config)
+
+    def _load_configuration(self, config: Optional[str] = None) -> bool:
+        """Loads the configuration of the application from the following
+        sources, in the following order:
+
+        - The default configuration in the `.config` module of the current
+          package, if there is one.
+
+        - The configuration file referred to by the `config` argument,
+          if present. If it is `None` and a default configuration filename
+          was specified at construction time, it will be used instead.
+
+        - The configuration file referred to by the environment variable
+          provided at construction time, if it is specified.
+
+        Parameters:
+            config: name of the configuration file to load
+
+        Returns:
+            bool: whether all configuration files were processed successfully
+        """
+        self._load_base_configuration()
+
+        config_files = []
+
+        if config:
+            config_files.append((config, True))
+        elif self._default_filename:
+            config_files.append((self._default_filename, False))
+
+        if self._environment_variable:
+            config_files.append((os.environ.get(self._environment_variable), True))
+
+        return all(
+            self._load_configuration_from_file(config_file, mandatory)
+            for config_file, mandatory in config_files
+            if config_file
+        )
+
+    def _load_configuration_from_file(
+        self, filename: str, mandatory: bool = True
+    ) -> bool:
+        """Loads configuration settings from the given file.
+
+        Parameters:
+            filename: name of the configuration file to load. Relative
+                paths are resolved from the current directory.
+            mandatory: whether the configuration file must exist.
+                If this is ``False`` and the file does not exist, this
+                function will not print a warning about the missing file
+                and pretend that loading the file was successful.
+
+        Returns:
+            whether the configuration was loaded successfully
+        """
+        original, filename = filename, os.path.abspath(filename)
+
+        exists = True
+        try:
+            config = {}
+            with open(filename, mode="rb") as config_file:
+                exec(compile(config_file.read(), filename, "exec"), config)
+        except IOError as e:
+            if e.errno in (errno.ENOENT, errno.EISDIR, errno.ENOTDIR):
+                exists = False
+            else:
+                raise
+
+        self._load_configuration_from_object(config)
+
+        if not exists and mandatory:
+            if self._log:
+                self._log.warn("Cannot load configuration from {0!r}".format(original))
+            return False
+        elif exists:
+            if self._log:
+                self._log.info("Loaded configuration from {0!r}".format(original))
+
+        return True
+
+    def _load_configuration_from_object(self, config: Any) -> None:
+        """Loads configuration settings from the given Python object.
+
+        Only uppercase keys will be processed.
+
+        Parameters:
+            config: the configuration object to load.
+        """
+        for key in dir(config):
+            if key.isupper():
+                self._config[key] = getattr(config, key)
 
 
 class FlockwaveServer:
@@ -86,6 +236,9 @@ class FlockwaveServer:
             parsing the configuration and loading the extensions, and is about
             to enter the main loop. This signal can be used by extensions to
             hook into the startup process.
+        _stopping (Signal): signal that is emitted when the server is about to
+            shut down its main loop. This signal can be used by extensions to
+            hook into the shutdown process.
     """
 
     _starting = Signal()
@@ -147,6 +300,9 @@ class FlockwaveServer:
         self.connection_registry.connection_state_changed.connect(
             self._on_connection_state_changed, sender=self.connection_registry
         )
+
+        # Create the extension manager of the application
+        self.extension_manager = ExtensionManager(PACKAGE_NAME + ".ext")
 
         # Create a message hub that will handle incoming and outgoing
         # messages
@@ -572,7 +728,7 @@ class FlockwaveServer:
 
         return response
 
-    def import_api(self, extension_name):
+    def import_api(self, extension_name: str) -> ExtensionAPIProxy:
         """Imports the API exposed by an extension.
 
         Extensions *may* have a dictionary named ``exports`` that allows the
@@ -589,7 +745,7 @@ class FlockwaveServer:
         API of the extension.
 
         Parameters:
-            extension_name (str): the name of the extension whose API is to
+            extension_name: the name of the extension whose API is to
                 be imported
 
         Returns:
@@ -608,64 +764,29 @@ class FlockwaveServer:
         """The number of clients connected to the server."""
         return self.client_registry.num_entries
 
-    async def run(self):
-        # Helper function to ignore KeyboardInterrupt exceptions even if
-        # they are wrapped in a Trio MultiError
-        def ignore_keyboard_interrupt(exc):
-            if isinstance(exc, KeyboardInterrupt):
-                return None
-            else:
-                return exc
-
-        try:
-            with MultiError.catch(ignore_keyboard_interrupt):
-                self._starting.send(self)
-                async with open_nursery() as nursery:
-                    await nursery.start(
-                        partial(
-                            self.extension_manager.run,
-                            configuration=self.config.get("EXTENSIONS", {}),
-                            app=self,
-                        )
-                    )
-
-                    nursery.start_soon(self.connection_supervisor.run)
-                    nursery.start_soon(self.command_execution_manager.run)
-                    nursery.start_soon(self.message_hub.run)
-                    nursery.start_soon(self.rate_limiters.run)
-
-                    async for func, args, scope in self._task_queue[1]:
-                        if scope is not None:
-                            func = partial(func, cancel_scope=scope)
-                        nursery.start_soon(func, *args)
-
-        finally:
-            await self.teardown()
-
-    def prepare(self, config):
+    def prepare(self, config: Optional[str]) -> Optional[int]:
         """Hook function that contains preparation steps that should be
         performed by the server before it starts serving requests.
 
         Parameters:
-            config (Optional[str]): name of the configuration file to load
+            config: name of the configuration file to load
 
         Returns:
-            Optional[int]: error code to terminate the app with if the
-                preparation was not successful; ``None`` if the preparation
-                was successful
+            error code to terminate the app with if the preparation was not
+            successful; ``None`` if the preparation was successful
         """
-        # Load the configuration
-        if not self._load_configuration(config):
+        configurator = AppConfigurator(
+            self.config,
+            environment_variable="FLOCKWAVE_SETTINGS",
+            default_filename="flockwave.cfg",
+            log=log,
+        )
+        if not configurator.configure(config):
             return 1
 
         # Process the configuration options
         cfg = self.config.get("COMMAND_EXECUTION_MANAGER", {})
         self.command_execution_manager.timeout = cfg.get("timeout", 30)
-
-        # Import and configure the extensions that we want to use. This
-        # must be done last because we want to be sure that the basic
-        # components of the app (prepared above) are ready.
-        self.extension_manager = ExtensionManager(PACKAGE_NAME + ".ext")
 
     def register_startup_hook(self, func: Callable[[object], None]):
         """Registers a function that will be called when the application is
@@ -697,6 +818,37 @@ class FlockwaveServer:
             uav_ids (iterable): list of UAV IDs
         """
         self.rate_limiters.request_to_send("UAV-INF", uav_ids)
+
+    async def run(self) -> None:
+        # Helper function to ignore KeyboardInterrupt exceptions even if
+        # they are wrapped in a Trio MultiError
+        def ignore_keyboard_interrupt(exc):
+            return None if isinstance(exc, KeyboardInterrupt) else exc
+
+        try:
+            with MultiError.catch(ignore_keyboard_interrupt):
+                self._starting.send(self)
+                async with open_nursery() as nursery:
+                    await nursery.start(
+                        partial(
+                            self.extension_manager.run,
+                            configuration=self.config.get("EXTENSIONS", {}),
+                            app=self,
+                        )
+                    )
+
+                    nursery.start_soon(self.connection_supervisor.run)
+                    nursery.start_soon(self.command_execution_manager.run)
+                    nursery.start_soon(self.message_hub.run)
+                    nursery.start_soon(self.rate_limiters.run)
+
+                    async for func, args, scope in self._task_queue[1]:
+                        if scope is not None:
+                            func = partial(func, cancel_scope=scope)
+                        nursery.start_soon(func, *args)
+
+        finally:
+            await self.teardown()
 
     def run_in_background(self, func, *args, cancellable=False):
         """Runs the given function as a background task in the application."""
@@ -795,94 +947,6 @@ class FlockwaveServer:
                 is no such UAV
         """
         return find_in_registry(self.uav_registry, uav_id, response, "No such UAV")
-
-    def _load_base_configuration(self):
-        """Loads the default configuration of the application from the
-        `flockwave.server.config` module.
-        """
-        config = import_module(".config", PACKAGE_NAME)
-        self._load_configuration_from_object(config)
-
-    def _load_configuration(self, config=None):
-        """Loads the configuration of the application from the following
-        sources, in the following order:
-
-        - The default configuration in the `flockwave.server.config`
-          module.
-
-        - The configuration file referred to by the `config` argument,
-          if present.
-
-        - The configuration file referred to by the `FLOCKWAVE_SETTINGS`
-          environment variable, if it is specified.
-
-        Parameters:
-            config (Optional[str]): name of the configuration file to load
-
-        Returns:
-            bool: whether all configuration files were processed successfully
-        """
-        self._load_base_configuration()
-
-        config_files = [(config, True), (os.environ.get("FLOCKWAVE_SETTINGS"), True)]
-
-        if not config:
-            config_files.insert(0, ("flockwave.cfg", False))
-
-        return all(
-            self._load_configuration_from_file(config_file, mandatory)
-            for config_file, mandatory in config_files
-            if config_file
-        )
-
-    def _load_configuration_from_file(self, filename, mandatory=True):
-        """Loads configuration settings from the given file.
-
-        Parameters:
-            filename (str): name of the configuration file to load. Relative
-                paths are resolved from the current directory.
-            mandatory (bool): whether the configuration file must exist.
-                If this is ``False`` and the file does not exist, this
-                function will not print a warning about the missing file
-                and pretend that loading the file was successful.
-
-        Returns:
-            bool: whether the configuration was loaded successfully
-        """
-        original, filename = filename, os.path.abspath(filename)
-
-        exists = True
-        try:
-            config = {}
-            with open(filename, mode="rb") as config_file:
-                exec(compile(config_file.read(), filename, "exec"), config)
-        except IOError as e:
-            if e.errno in (errno.ENOENT, errno.EISDIR, errno.ENOTDIR):
-                exists = False
-            else:
-                raise
-
-        self._load_configuration_from_object(config)
-
-        if not exists and mandatory:
-            log.warn("Cannot load configuration from {0!r}".format(original))
-            return False
-        elif exists:
-            log.info("Loaded configuration from {0!r}".format(original))
-
-        return True
-
-    def _load_configuration_from_object(self, config):
-        """Loads configuration settings from the given Python object.
-
-        Only uppercase keys will be processed.
-
-        Parameters:
-            config (object): the configuration object to load.
-        """
-        for key in dir(config):
-            if key.isupper():
-                self.config[key] = getattr(config, key)
 
     def _on_client_count_changed(self, sender):
         """Handler called when the number of clients attached to the server

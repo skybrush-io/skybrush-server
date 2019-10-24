@@ -1,7 +1,5 @@
 """Command line launcher for the Flockwave server."""
 
-from __future__ import absolute_import
-
 import click
 import dotenv
 import logging

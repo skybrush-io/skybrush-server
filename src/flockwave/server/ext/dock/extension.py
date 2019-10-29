@@ -77,9 +77,7 @@ class DockExtension(UAVExtensionBase):
             channel = create_rpc_message_channel(stream)
             async with channel.serve_rpc_requests(
                 handler=self._dispatcher.dispatch, log=self.log
-            ) as sender:
-                version = await sender("getVersion")
-                self.log.info(f"Got version: {version}")
+            ):
                 await sleep_forever()
         except Exception as ex:
             # Exceptions raised during a connection are caught and logged here;

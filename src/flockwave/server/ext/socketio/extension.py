@@ -8,7 +8,8 @@ from contextlib import ExitStack
 from functools import partial
 from trio import open_nursery, sleep_forever
 
-from flockwave.encoders import JSONEncoder
+from flockwave.encoders.json import create_json_encoder
+from flockwave.parsers.json import create_json_parser
 from flockwave.server.model import CommunicationChannel
 from flockwave.networking import format_socket_address
 from flockwave.server.utils import overridden
@@ -112,9 +113,21 @@ async def handle_flockwave_message(client_id, message):
 ############################################################################
 
 
+class JSONEncoder:
+    def __init__(self):
+        self.encoder = create_json_encoder()
+        self.parser = create_json_parser()
+
+    def dumps(self, obj, *args, **kwds):
+        return self.encoder(obj)
+
+    def loads(self, data, *args, **kwds):
+        return self.parser(data)
+
+
 async def run(app, configuration, logger):
     socketio = TrioServer(
-        json=JSONEncoder(encoding=None), async_mode="asgi", cors_allowed_origins="*"
+        json=JSONEncoder(), async_mode="asgi", cors_allowed_origins="*"
     )
 
     socketio.on("connect")(handle_connection)

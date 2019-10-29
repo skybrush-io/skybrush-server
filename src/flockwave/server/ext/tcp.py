@@ -10,17 +10,17 @@ import weakref
 from contextlib import ExitStack
 from functools import partial
 from trio import CapacityLimiter, Lock, open_nursery, serve_tcp
-from typing import Optional
+from typing import Any, Optional
 
 from flockwave.channels import ParserChannel
-from flockwave.parsers import DelimiterBasedParser
-from flockwave.encoders import JSONEncoder
+from flockwave.encoders.json import create_json_encoder
+from flockwave.parsers.json import create_json_parser
 from flockwave.server.model import CommunicationChannel
 from flockwave.networking import format_socket_address, get_socket_address
 from flockwave.server.utils import overridden
 
 app = None
-encoder = JSONEncoder()
+encoder = create_json_encoder()
 log = None
 
 
@@ -60,7 +60,7 @@ class TCPChannel(CommunicationChannel):
             # if a message was sent only partially but the message hub is
             # already trying to send another one (since the message hub
             # dispatches each message in a separate task)
-            await self.stream.send_all(encoder.dumps(message) + b"\n")
+            await self.stream.send_all(encoder(message))
 
     def _erase_stream(self, ref):
         self.stream = None
@@ -114,13 +114,12 @@ async def handle_connection(stream, *, limit):
 
     client_id = "tcp://{0}:{1}".format(*address)
     handler = partial(handle_message, limit=limit)
+    parser = create_json_parser()
 
     with app.client_registry.use(client_id, "tcp") as client:
         client.stream = stream
         async with open_nursery() as nursery:
-            channel = ParserChannel(
-                reader=stream.receive_some, parser=DelimiterBasedParser()
-            )
+            channel = ParserChannel(reader=stream.receive_some, parser=parser)
             async for line in channel:
                 nursery.start_soon(handler, line, client)
 
@@ -143,20 +142,13 @@ async def handle_connection_safely(stream, *, limit):
         log.exception(ex)
 
 
-async def handle_message(message: bytes, client, *, limit: CapacityLimiter) -> None:
+async def handle_message(message: Any, client, *, limit: CapacityLimiter) -> None:
     """Handles a single message received from the given sender.
 
     Parameters:
-        message: the incoming message, waiting to be parsed
+        message: the incoming message
         client: the client that sent the message
     """
-    try:
-        message = encoder.loads(message)
-    except ValueError as ex:
-        log.warn(f"Malformed JSON message received from {client.id}: {message[:20]}")
-        log.exception(ex)
-        return
-
     async with limit:
         await app.message_hub.handle_incoming_message(message, client)
 

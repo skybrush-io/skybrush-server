@@ -11,9 +11,10 @@ import trio.socket
 from contextlib import closing, ExitStack
 from functools import partial
 from trio import CapacityLimiter, open_nursery
-from typing import Optional, Tuple
+from typing import Any, Optional, Tuple
 
-from flockwave.encoders import JSONEncoder
+from flockwave.encoders.json import create_json_encoder
+from flockwave.parsers.json import create_json_parser
 from flockwave.server.model import CommunicationChannel
 from flockwave.networking import (
     create_socket,
@@ -24,7 +25,7 @@ from flockwave.server.utils import overridden
 
 
 app = None
-encoder = JSONEncoder()
+encoder = create_json_encoder()
 log = None
 sock = None
 
@@ -58,7 +59,7 @@ class UDPChannel(CommunicationChannel):
 
     async def send(self, message):
         """Inherited."""
-        await self.sock.sendto(encoder.dumps(message), self.address)
+        await self.sock.sendto(encoder(message), self.address)
 
 
 ############################################################################
@@ -95,35 +96,28 @@ def get_ssdp_location(address) -> Optional[str]:
     )
 
 
-async def handle_message(message: bytes, sender: Tuple[str, int]) -> None:
+async def handle_message(message: Any, sender: Tuple[str, int]) -> None:
     """Handles a single message received from the given sender.
 
     Parameters:
-        message: the incoming message, waiting to be parsed
+        message: the incoming message
         sender: the IP address and port of the sender
     """
     client_id = "udp://{0}:{1}".format(*sender)
-
-    try:
-        message = encoder.loads(message)
-    except ValueError as ex:
-        log.warn(f"Malformed JSON message received from {client_id} - {message[:20]}")
-        log.exception(ex)
-        return
 
     with app.client_registry.use(client_id, "udp") as client:
         await app.message_hub.handle_incoming_message(message, client)
 
 
 async def handle_message_safely(
-    message: bytes, sender: Tuple[str, int], *, limit: CapacityLimiter
+    message: Any, sender: Tuple[str, int], *, limit: CapacityLimiter
 ) -> None:
     """Handles a single message received from the given sender, ensuring
     that exceptions do not propagate through and the number of concurrent
     requests being processed is limited.
 
     Parameters:
-        message: the incoming message, waiting to be parsed
+        message: the incoming message
         sender: the IP address and port of the sender
         limit: Trio capacity limiter that ensures that we are not processing
             too many requests concurrently
@@ -160,8 +154,10 @@ async def run(app, configuration, logger):
 
         limit = CapacityLimiter(pool_size)
         handler = partial(handle_message_safely, limit=limit)
+        parser = create_json_parser(splitter=None)
 
         async with open_nursery() as nursery:
             while True:
-                data = await sock.recvfrom(65536)
-                nursery.start_soon(handler, *data)
+                data, address = await sock.recvfrom(65536)
+                message = parser(data)
+                nursery.start_soon(handler, message, address)

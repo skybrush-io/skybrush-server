@@ -16,6 +16,7 @@ https://git.collmot.com/collmot/flockwave-conn/archive/1.4.1.tar.gz#egg=flockwav
 https://git.collmot.com/collmot/flockwave-ext/archive/1.0.1.tar.gz#egg=flockwave-ext
 https://git.collmot.com/collmot/flockwave-gps/archive/0.9.0.tar.gz#egg=flockwave-gps
 https://git.collmot.com/collmot/flockwave-logger/archive/1.0.0.tar.gz#egg=flockwave-logger
+https://git.collmot.com/collmot/flockwave-parsers/archive/1.1.1.tar.gz#egg=flockwave-parsers
 https://git.collmot.com/collmot/flockwave-spec/archive/0.19.1.tar.gz#egg=flockwave-spec
 hypercorn[trio]==0.9.0
 hyperframe==5.2.0

@@ -13,8 +13,8 @@ from pynmea2 import parse as parse_nmea
 from flockwave.gps.vectors import GPSCoordinate
 from flockwave.channels import ParserChannel
 from flockwave.connections import create_connection, Connection
-from flockwave.parsers import LineParser
-from flockwave.encoders import JSONEncoder
+from flockwave.parsers import create_line_parser
+from flockwave.parsers.json import create_json_parser
 from flockwave.server.errors import NotSupportedError
 from flockwave.server.model import ConnectionPurpose
 from flockwave.server.model.uav import PassiveUAVDriver
@@ -22,7 +22,7 @@ from flockwave.spec.ids import make_valid_uav_id
 
 from .base import UAVExtensionBase
 
-decode_json = JSONEncoder().loads
+decode_json = create_json_parser()
 
 
 def create_gps_connection(connection, format=None):
@@ -75,11 +75,11 @@ def create_gps_connection(connection, format=None):
             format = "nmea"
 
     if format == "gpsd":
-        parser = LineParser(
+        parser = create_line_parser(
             decoder=parse_incoming_gpsd_message, min_length=1, filter=bool
         )
     elif format == "nmea":
-        parser = LineParser(
+        parser = create_line_parser(
             decoder=parse_incoming_nmea_message, min_length=1, filter=bool
         )
     else:

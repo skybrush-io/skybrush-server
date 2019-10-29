@@ -12,6 +12,7 @@ from inspect import isawaitable
 from itertools import chain
 from jsonschema import ValidationError
 from trio import (
+    BrokenResourceError,
     ClosedResourceError,
     Event,
     move_on_after,
@@ -885,7 +886,11 @@ class ConnectionStatusMessageRateLimiter(RateLimiter):
     def add_request(
         self, uav_id: str, old_state: ConnectionState, new_state: ConnectionState
     ) -> None:
-        self._request_tx_queue.send_nowait((uav_id, old_state, new_state))
+        try:
+            self._request_tx_queue.send_nowait((uav_id, old_state, new_state))
+        except BrokenResourceError:
+            # Message hub is shutting down, this is okay.
+            pass
 
     async def run(self, dispatcher, nursery):
         data = {}

@@ -16,14 +16,14 @@ from typing import Optional
 
 from flockwave.channels import ParserChannel
 from flockwave.connections import serve_unix
-from flockwave.parsers import DelimiterBasedParser
-from flockwave.encoders import JSONEncoder
+from flockwave.encoders.json import create_json_encoder
+from flockwave.parsers.json import create_json_parser
 from flockwave.server.model import CommunicationChannel
 from flockwave.server.utils import overridden
 
 
 app = None
-encoder = JSONEncoder()
+encoder = create_json_encoder()
 log = None
 path = None
 
@@ -114,10 +114,10 @@ async def handle_connection(stream, *, limit):
         client.stream = stream
         async with open_nursery() as nursery:
             channel = ParserChannel(
-                reader=stream.receive_some, parser=DelimiterBasedParser()
+                reader=stream.receive_some, parser=create_json_parser()
             )
-            async for line in channel:
-                nursery.start_soon(handler, line, client)
+            async for message in channel:
+                nursery.start_soon(handler, message, client)
 
 
 async def handle_connection_safely(stream, *, limit):
@@ -138,20 +138,13 @@ async def handle_connection_safely(stream, *, limit):
         log.exception(ex)
 
 
-async def handle_message(message: bytes, client, *, limit: CapacityLimiter) -> None:
+async def handle_message(message: Any, client, *, limit: CapacityLimiter) -> None:
     """Handles a single message received from the given sender.
 
     Parameters:
         message: the incoming message, waiting to be parsed
         client: the client that sent the message
     """
-    try:
-        message = encoder.loads(message)
-    except ValueError as ex:
-        log.warn(f"Malformed JSON message received from {client.id}: {message[:20]}")
-        log.exception(ex)
-        return
-
     async with limit:
         await app.message_hub.handle_incoming_message(message, client)
 

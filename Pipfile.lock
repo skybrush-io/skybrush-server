@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "ea4a335297be65ed672a3972550f8abd60f73d8073f728d1c91047624b6f87be"
+            "sha256": "33827af1eb4c2f74bc7b59efef5802f50f2c0b462ae045cc96168f713a9280fa"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -82,7 +82,7 @@
                 "midi",
                 "serial"
             ],
-            "file": "https://git.collmot.com/collmot/flockwave-conn/archive/1.4.1.tar.gz"
+            "file": "https://git.collmot.com/collmot/flockwave-conn/archive/1.5.0.tar.gz"
         },
         "flockwave-ext": {
             "file": "https://git.collmot.com/collmot/flockwave-ext/archive/1.0.1.tar.gz"
@@ -543,9 +543,9 @@
         },
         "distlib": {
             "hashes": [
-                "sha256:ecb3d0e4f71d0fa7f38db6bcc276c7c9a1c6638a516d726495934a553eb3fbe0"
+                "sha256:2e166e231a26b36d6dfe35a48c4464346620f8645ed0ace01ee31822b288de21"
             ],
-            "version": "==0.2.9.post0"
+            "version": "==0.3.0"
         },
         "first": {
             "hashes": [

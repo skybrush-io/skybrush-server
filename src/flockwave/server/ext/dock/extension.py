@@ -1,18 +1,14 @@
 from contextlib import ExitStack
 from functools import partial
-from tinyrpc import InvalidRequestError
 from tinyrpc.dispatch import RPCDispatcher
-from tinyrpc.protocols import RPCRequest
 from tinyrpc.protocols.jsonrpc import JSONRPCProtocol
-from trio import ClosedResourceError, open_memory_channel, open_nursery, sleep_forever
-from trio.abc import ReceiveChannel, SendChannel, Stream
+from trio import open_nursery, sleep_forever
+from trio.abc import Stream
 
-from flockwave.connections import create_connection
-from flockwave.channels import ParserChannel
-from flockwave.encoders.rpc import create_rpc_encoder
+from flockwave.connections import create_connection, StreamWrapperConnection
+from flockwave.channels import MessageChannel
 from flockwave.listeners import create_listener
-from flockwave.logger import Logger
-from flockwave.parsers.rpc import create_rpc_parser, RPCMessage
+from flockwave.parsers.rpc import RPCMessage
 from flockwave.server.model import ConnectionPurpose
 from flockwave.server.model.uav import PassiveUAVDriver
 
@@ -23,9 +19,7 @@ from .rpc import DockRPCServer
 ############################################################################
 
 
-def create_rpc_message_parser_channel(
-    stream: Stream, log: Logger
-) -> ParserChannel[RPCMessage]:
+def create_rpc_message_channel(stream: Stream) -> MessageChannel[RPCMessage]:
     """Creates a unidirectional Trio-style channel that reads data from the
     given Trio stream, and parses incoming JSON-RPC messages automatically.
 
@@ -33,8 +27,8 @@ def create_rpc_message_parser_channel(
         stream: the stream to read data from
         log: the logger on which any error messages and warnings should be logged
     """
-    rpc_parser = create_rpc_parser(protocol=JSONRPCProtocol())
-    return ParserChannel(stream.receive_some, parser=rpc_parser)
+    connection = StreamWrapperConnection(stream)
+    return MessageChannel.for_rpc_protocol(JSONRPCProtocol(), connection)
 
 
 ############################################################################
@@ -77,57 +71,22 @@ class DockExtension(UAVExtensionBase):
             )
             return
 
-        try:
-            self._current_stream = stream
-            queue_tx, queue_rx = open_memory_channel(0)
+        self._current_stream = stream
 
-            async with open_nursery() as nursery:
-                nursery.start_soon(self.handle_outbound_messages, stream, queue_rx)
-                nursery.start_soon(self.handle_inbound_messages, stream, queue_tx)
+        try:
+            channel = create_rpc_message_channel(stream)
+            async with channel.serve_rpc_requests(
+                handler=self._dispatcher.dispatch, log=self.log
+            ) as sender:
+                version = await sender("getVersion")
+                self.log.info(f"Got version: {version}")
+                await sleep_forever()
         except Exception as ex:
             # Exceptions raised during a connection are caught and logged here;
             # we do not let the main task itself crash because of them
             self.log.exception(ex)
         finally:
             self._current_stream = None
-
-    async def handle_inbound_messages(self, stream: Stream, queue: SendChannel):
-        """Task that handles the inbound messages from the given stream."""
-        channel = create_rpc_message_parser_channel(stream, queue)
-        try:
-            async with queue:
-                async for message in channel:
-                    if isinstance(message, RPCRequest):
-                        # TODO(ntamas): do it in a separate task
-                        response = self._dispatcher.dispatch(message)
-                        if response and not message.one_way:
-                            await queue.send(response)
-                    elif isinstance(message, list):
-                        self.log.warn(
-                            "Batched requests not supported; dropping message"
-                        )
-                    else:
-                        # TODO(ntamas): handle responses
-                        self.log.warn(
-                            "Only RPC requests are supported; dropping message"
-                        )
-
-        except InvalidRequestError:
-            self.log.error("Invalid RPC request, closing connection.")
-            await stream.aclose()
-
-    async def handle_outbound_messages(self, stream: Stream, queue: ReceiveChannel):
-        """Task that handles the sending of outbound messages to the given
-        stream.
-        """
-        encoder = create_rpc_encoder(protocol=JSONRPCProtocol())
-        try:
-            async with queue:
-                async for message in queue:
-                    await stream.send_all(encoder(message))
-        except ClosedResourceError:
-            # Stream closed, this is OK
-            pass
 
     async def run(self, app, configuration, logger):
         listener = configuration.get("listener")

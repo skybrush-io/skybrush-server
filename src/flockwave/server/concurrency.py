@@ -295,7 +295,7 @@ class FutureMap(Mapping, Generic[T]):
 
         if old_future:
             if strict:
-                raise RuntimeError("Another command is already in progress")
+                raise RuntimeError("Another operation is already in progress")
             else:
                 self._dispose_future(id, old_future)
 

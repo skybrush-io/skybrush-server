@@ -2,7 +2,7 @@
 
 from __future__ import division
 
-from flockwave.server.concurrency import FutureCancelled, FutureMap
+from flockwave.concurrency import FutureCancelled, FutureMap
 from flockwave.server.ext.logger import log
 from flockwave.server.model.uav import UAVBase, UAVDriver
 from flockwave.server.utils import nop

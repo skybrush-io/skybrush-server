@@ -1,5 +1,4 @@
 name: flockwave-server
-base: core18
 version: git
 summary: Single-line elevator pitch for your amazing snap # 79 char long summary
 description: |
@@ -35,10 +34,10 @@ parts:
       - libbz2-1.0
       - libexpat1
       - libffi6
-      - libgdbm5
+      - libgdbm3
       - liblzma5
       - libncurses5
-      - libreadline7
+      - libreadline6
       - libsqlite3-0
       - libssl1.0.0
       - libzip4
@@ -47,26 +46,57 @@ parts:
       - -usr/lib/python3.7/test
       - -var
 
+  snapcraft-preload:
+    source: https://github.com/diddlesnaps/snapcraft-preload.git
+    source-branch: semaphore-support
+    plugin: cmake
+    build-packages:
+      - on amd64:
+        - gcc-multilib
+        - g++-multilib
+
   flockwave-server:
     plugin: python
     source: .
-    requirements:
-      - ./requirements.txt
+    requirements: ./requirements.txt
     after:
       - python37
+    build-packages:
+      - g++
+      - libxml2-dev
+      - libxslt-dev
+    stage-packages:
+      - libxml2
+      - libxslt1.1
+    stage:
+      - -usr/bin/2to3
+      - -usr/bin/pydoc3
+      - -usr/bin/python3
     override-pull: |
-      cat <<EOF >/root/.netrc
+      cat <<EOF >~/.netrc
       machine git.collmot.com
         login tamas
         password b68ade0bb1ec8480aa19adc7d302c3789d7133ac
       EOF
-      cat /root/.netrc
       snapcraftctl pull
     override-prime: |
       snapcraftctl prime
-      rm /root/.netrc
+      rm ~/.netrc
+
+  flockwave-server-config:
+    plugin: dump
+    source: .
+    stage:
+      - etc/envs/snap.cfg
 
 apps:
   flockwaved:
-    command: bin/flockwaved
+    command: bin/snapcraft-preload $SNAP/bin/flockwaved -c $SNAP/etc/envs/snap.cfg
+    daemon: simple
 
+slots:
+  dock:
+    interface: content
+    content: socket-directory
+    write:
+      - $SNAP_COMMON

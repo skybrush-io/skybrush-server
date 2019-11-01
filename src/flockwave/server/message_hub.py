@@ -33,8 +33,8 @@ from typing import (
 )
 
 from flockwave.connections import ConnectionState
+from flockwave.concurrency import AsyncBundler
 
-from .concurrency import AsyncBundler
 from .logger import log as base_log
 from .model import (
     Client,

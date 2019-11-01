@@ -1,3 +1,6 @@
 graft src
 global-exclude conftest.py
-
+include README.md
+include requirements.txt
+include tox.ini
+include etc/envs/snap.cfg

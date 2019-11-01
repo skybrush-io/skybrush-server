@@ -6,10 +6,10 @@ Socket.IO connections.
 
 from contextlib import ExitStack
 from functools import partial
+from json import JSONDecoder
 from trio import open_nursery, sleep_forever
 
 from flockwave.encoders.json import create_json_encoder
-from flockwave.parsers.json import create_json_parser
 from flockwave.server.model import CommunicationChannel
 from flockwave.networking import format_socket_address
 from flockwave.server.utils import overridden
@@ -116,13 +116,16 @@ async def handle_flockwave_message(client_id, message):
 class JSONEncoder:
     def __init__(self):
         self.encoder = create_json_encoder()
-        self.parser = create_json_parser()
+        self.parser = JSONDecoder()
 
     def dumps(self, obj, *args, **kwds):
-        return self.encoder(obj)
+        # There is an unnecessary back-and-forth UTF-8 encoding here because
+        # create_json_encoder() and create_json_parser() return raw bytes,
+        # but TrioServer needs strings
+        return self.encoder(obj).decode("utf-8")
 
     def loads(self, data, *args, **kwds):
-        return self.parser(data)
+        return self.parser.decode(data)
 
 
 async def run(app, configuration, logger):

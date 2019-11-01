@@ -5,7 +5,7 @@ from tinyrpc.protocols.jsonrpc import JSONRPCProtocol
 from trio import open_nursery, sleep_forever
 from trio.abc import Stream
 
-from flockwave.connections import create_connection, StreamWrapperConnection
+from flockwave.connections import StreamWrapperConnection
 from flockwave.channels import MessageChannel
 from flockwave.listeners import create_listener
 from flockwave.parsers.rpc import RPCMessage
@@ -40,15 +40,9 @@ class DockExtension(UAVExtensionBase):
     def __init__(self):
         """Constructor."""
         super(DockExtension, self).__init__()
-        self._connection = create_connection("dummy")
+
         self._id_format = None
-        self._device_to_uav_id = {}
-
-        self._dispatcher = RPCDispatcher()
-        self._dispatcher.register_instance(DockRPCServer())
-
         self._current_stream = None
-        self._send_message = None
 
     def _create_driver(self):
         return PassiveUAVDriver()
@@ -73,10 +67,13 @@ class DockExtension(UAVExtensionBase):
 
         self._current_stream = stream
 
+        dispatcher = RPCDispatcher()
+        dispatcher.register_instance(DockRPCServer())
+
         try:
             channel = create_rpc_message_channel(stream)
             async with channel.serve_rpc_requests(
-                handler=self._dispatcher.dispatch, log=self.log
+                handler=dispatcher.dispatch, log=self.log
             ):
                 await sleep_forever()
         except Exception as ex:

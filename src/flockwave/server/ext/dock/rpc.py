@@ -23,7 +23,7 @@ class DockRPCServer:
         Parameters:
             value: the new external temperature
         """
-        print(f"Dock says new external temperature is: {value}")
+        pass
 
     @public
     def notifyInternalTemperature(self, value: float) -> None:
@@ -33,4 +33,4 @@ class DockRPCServer:
         Parameters:
             value: the new internal temperature
         """
-        print(f"Dock says new internal temperature is: {value}")
+        pass

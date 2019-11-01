@@ -12,7 +12,7 @@ from .channels import ChannelTypeRegistry
 from .clients import ClientRegistry
 from .clocks import ClockRegistry
 from .connections import ConnectionRegistry
-from .uavs import UAVRegistry
+from .objects import ObjectRegistry
 
 __all__ = (
     "Registry",
@@ -23,5 +23,5 @@ __all__ = (
     "ClockRegistry",
     "ConnectionRegistry",
     "ChannelTypeRegistry",
-    "UAVRegistry",
+    "ObjectRegistry",
 )

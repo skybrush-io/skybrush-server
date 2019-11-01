@@ -700,7 +700,6 @@ class MessageHub:
                     extra={"id": message.id, "semantics": "notification"},
                 )
         else:
-            print(repr(message))
             extra = {"semantics": "response_success"}
             if hasattr(message, "id"):
                 extra["id"] = message.id

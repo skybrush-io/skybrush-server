@@ -33,12 +33,13 @@ from .model.client import Client
 from .model.devices import DeviceTree, DeviceTreeSubscriptionManager
 from .model.messages import FlockwaveMessage
 from .model.errors import ClientNotSubscribedError, NoSuchPathError
+from .model.uav import is_uav, UAV
 from .model.world import World
 from .registries import (
     ChannelTypeRegistry,
     ClientRegistry,
     ConnectionRegistry,
-    UAVRegistry,
+    ObjectRegistry,
     find_in_registry,
 )
 from .version import __version__ as server_version
@@ -225,8 +226,8 @@ class FlockwaveServer:
             loading and unloading of server extensions
         message_hub (MessageHub): central messaging hub via which one can
             send Flockwave messages
-        uav_registry (UAVRegistry): central registry for the UAVs known to
-            the server
+        object_registry (ObjectRegistry): central registry for the objects
+            known to the server
         world (World): a representation of the "world" in which the flock
             of UAVs live. By default, the world is empty but extensions may
             extend it with objects.
@@ -321,9 +322,9 @@ class FlockwaveServer:
             "UAV-INF", GenericRateLimiter(self.create_UAV_INF_message_for)
         )
 
-        # Create an object to hold information about all the UAVs that
+        # Create an object to hold information about all the objects that
         # the server knows about
-        self.uav_registry = UAVRegistry()
+        self.object_registry = ObjectRegistry()
 
         # Create the global world object
         self.world = World()
@@ -331,7 +332,7 @@ class FlockwaveServer:
         # Create a global device tree and ensure that new UAVs are
         # registered in it
         self.device_tree = DeviceTree()
-        self.device_tree.uav_registry = self.uav_registry
+        self.device_tree.object_registry = self.object_registry
 
         # Create an object to manage the associations between clients and
         # the device tree paths that the clients are subscribed to
@@ -910,7 +911,10 @@ class FlockwaveServer:
                 or ``None`` if there is no such command
         """
         return find_in_registry(
-            self.command_execution_manager, receipt_id, response, "No such receipt"
+            self.command_execution_manager,
+            receipt_id,
+            response=response,
+            failure_reason="No such receipt",
         )
 
     def _find_connection_by_id(self, connection_id, response=None):
@@ -929,7 +933,10 @@ class FlockwaveServer:
                 connection
         """
         return find_in_registry(
-            self.connection_registry, connection_id, response, "No such connection"
+            self.connection_registry,
+            connection_id,
+            response=response,
+            failure_reason="No such connection",
         )
 
     def _find_uav_by_id(self, uav_id, response=None):
@@ -946,7 +953,13 @@ class FlockwaveServer:
             Optional[UAV]: the UAV with the given ID or ``None`` if there
                 is no such UAV
         """
-        return find_in_registry(self.uav_registry, uav_id, response, "No such UAV")
+        return find_in_registry(
+            self.object_registry,
+            uav_id,
+            predicate=is_uav,
+            response=response,
+            failure_reason="No such UAV",
+        )
 
     def _on_client_count_changed(self, sender):
         """Handler called when the number of clients attached to the server
@@ -1098,6 +1111,16 @@ def handle_DEV_UNSUB(message, sender, hub):
     )
 
 
+@app.message_hub.on("OBJ-LIST")
+def handle_OBJ_LIST(message, sender, hub):
+    filter = message.body.get("filter")
+    if filter is None:
+        it = app.object_registry.ids
+    else:
+        it = app.object_registry.ids_by_types(filter)
+    return {"ids": list(it)}
+
+
 @app.message_hub.on("SYS-PING")
 def handle_SYS_PING(message, sender, hub):
     return hub.acknowledge(message)
@@ -1115,7 +1138,7 @@ def handle_UAV_INF(message, sender, hub):
 
 @app.message_hub.on("UAV-LIST")
 def handle_UAV_LIST(message, sender, hub):
-    return {"ids": list(app.uav_registry.ids)}
+    return {"ids": list(app.object_registry.ids_by_type(UAV))}
 
 
 @app.message_hub.on(

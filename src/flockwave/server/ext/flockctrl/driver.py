@@ -6,7 +6,7 @@ from flockwave.concurrency import FutureCancelled, FutureMap
 from flockwave.server.ext.logger import log
 from flockwave.server.model.uav import UAVBase, UAVDriver
 from flockwave.server.utils import nop
-from flockwave.spec.ids import make_valid_uav_id
+from flockwave.spec.ids import make_valid_object_id
 from typing import Optional
 
 from .errors import AddressConflictError, map_flockctrl_error_code
@@ -124,8 +124,7 @@ class FlockCtrlDriver(UAVDriver):
         Returns:
             FlockCtrlUAV: an appropriate UAV object
         """
-        uav = FlockCtrlUAV(formatted_id, driver=self)
-        return uav
+        return FlockCtrlUAV(formatted_id, driver=self)
 
     def _get_or_create_uav(self, id):
         """Retrieves the UAV with the given numeric ID, or creates one if
@@ -139,14 +138,14 @@ class FlockCtrlDriver(UAVDriver):
         """
         formatted_id = self._index_to_uav_id.get(id)
         if formatted_id is None:
-            formatted_id = make_valid_uav_id(self.id_format.format(id))
+            formatted_id = make_valid_object_id(self.id_format.format(id))
             self._index_to_uav_id[id] = formatted_id
 
-        uav_registry = self.app.uav_registry
-        if not uav_registry.contains(formatted_id):
+        object_registry = self.app.object_registry
+        if not object_registry.contains(formatted_id):
             uav = self._create_uav(formatted_id)
-            uav_registry.add(uav)
-        return uav_registry.find_by_id(formatted_id)
+            object_registry.add(uav)
+        return object_registry.find_by_id(formatted_id)
 
     def handle_generic_command(self, uav, command, args, kwds):
         """Sends a generic command execution request to the given UAV."""

@@ -3,19 +3,21 @@
 from __future__ import absolute_import
 
 from abc import ABCMeta, abstractproperty
-from typing import Optional
+from typing import Any, Optional
 
 from flockwave.gps.vectors import GPSCoordinate, VelocityNED
 from flockwave.server.errors import NotSupportedError
 from flockwave.server.logger import log as base_log
 from flockwave.spec.schema import get_complex_object_schema
 
-from .devices import UAVNode
+from .devices import ObjectNode
 from .metamagic import ModelMeta
 from .mixins import TimestampMixin
+from .object import ModelObject
 
 __all__ = (
     "BatteryInfo",
+    "is_uav",
     "PassiveUAVDriver",
     "UAV",
     "UAVBase",
@@ -58,14 +60,14 @@ class UAVStatusInfo(TimestampMixin, metaclass=ModelMeta):
         self.battery = BatteryInfo()
 
 
-class UAV(metaclass=ABCMeta):
+class UAV(ModelObject, metaclass=ABCMeta):
     """Abstract object that defines the interface of objects representing
     UAVs.
     """
 
     @abstractproperty
     def device_tree_node(self):
-        """Returns the UAVNode_ object that represents the root of the
+        """Returns the ObjectNode_ object that represents the root of the
         part of the device tree that corresponds to the UAV.
         """
         raise NotImplementedError
@@ -92,6 +94,9 @@ class UAV(metaclass=ABCMeta):
         raise NotImplementedError
 
 
+UAV.register("uav")
+
+
 class UAVBase(UAV):
     """Base object for UAV implementations. Provides a default implementation
     of the methods required by the UAV_ interface.
@@ -105,7 +110,7 @@ class UAVBase(UAV):
             driver (UAVDriver): the driver that is responsible for handling
                 communication with this UAV.
         """
-        self._device_tree_node = UAVNode()
+        self._device_tree_node = ObjectNode()
         self._driver = driver
         self._id = id
         self._status = UAVStatusInfo(id=id)
@@ -113,11 +118,11 @@ class UAVBase(UAV):
 
     @property
     def device_tree_node(self):
-        """Returns the UAVNode object that represents the root of the
+        """Returns the ObjectNode object that represents the root of the
         device tree corresponding to the UAV.
 
         Returns:
-            UAVNode: the node in the device tree where the subtree of the
+            ObjectNode: the node in the device tree where the subtree of the
                 devices and channels of the UAV is rooted
         """
         return self._device_tree_node
@@ -155,7 +160,7 @@ class UAVBase(UAV):
         UAV.
 
         Parameters:
-            node (UAVNode): the tree node whose subtree this call should
+            node (ObjectNode): the tree node whose subtree this call should
                 initialize
         """
         pass
@@ -634,11 +639,11 @@ class PassiveUAVDriver(UAVDriver):
         Returns:
             UAVBase: an appropriate UAV object
         """
-        uav_registry = self.app.uav_registry
-        if not uav_registry.contains(id):
+        object_registry = self.app.object_registry
+        if not object_registry.contains(id):
             uav = self._create_uav(id)
-            uav_registry.add(uav)
-        return uav_registry.find_by_id(id)
+            object_registry.add(uav)
+        return object_registry.find_by_id(id)
 
     def _send_signal(self, uavs, signal_name, handler):
         message = "{0} not supported".format(signal_name)
@@ -648,3 +653,8 @@ class PassiveUAVDriver(UAVDriver):
             result[uav] = message
 
         return result
+
+
+def is_uav(x: Any) -> bool:
+    """Returns whether the given object is a UAV."""
+    return isinstance(x, UAV)

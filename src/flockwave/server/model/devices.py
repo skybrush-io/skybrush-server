@@ -1,6 +1,6 @@
 """Device and channel-related model classes."""
 
-from __future__ import absolute_import
+from __future__ import annotations
 
 from blinker import Signal
 from builtins import str
@@ -10,6 +10,7 @@ from itertools import islice
 
 from .errors import ClientNotSubscribedError, NoSuchPathError
 from .metamagic import ModelMeta
+from .object import ModelObject
 
 __all__ = (
     "ChannelNode",
@@ -19,7 +20,7 @@ __all__ = (
     "DeviceTree",
     "DeviceNode",
     "DeviceTreeNodeType",
-    "UAVNode",
+    "ObjectNode",
     "DeviceTreeSubscriptionManager",
 )
 
@@ -456,16 +457,16 @@ class RootNode(DeviceTreeNodeBase):
         self._tree = tree
         self.type = DeviceTreeNodeType.root
 
-    def add_child(self, id, node):
+    def add_child(self, id: str, node: ObjectNode) -> ObjectNode:
         """Adds a new child node with the given ID to this root node.
 
         Parameters:
-            id (str): the ID of the node to add
-            node (UAVNode): the node to add; root nodes may only have UAV
-                nodes as children.
+            id: the ID of the node to add
+            node: the node to add; root nodes may only have object nodes as
+                children.
 
         Returns:
-            UAVNode: the node that was added
+            ObjectNode: the node that was added
 
         Throws:
             ValueError: if another node with the same ID already exists for
@@ -473,25 +474,25 @@ class RootNode(DeviceTreeNodeBase):
         """
         return self._add_child(id, node)
 
-    def remove_child(self, node):
+    def remove_child(self, node: ObjectNode) -> ObjectNode:
         """Removes the given child node from the root node.
 
         Parameters:
-            node (UAVNode): the node to remove
+            node: the node to remove
 
         Returns:
-            UAVNode: the node that was removed
+            the node that was removed
         """
         return self._remove_child(node)
 
-    def remove_child_by_id(self, id):
+    def remove_child_by_id(self, id: str) -> ObjectNode:
         """Removes the child node with the given ID from the root node.
 
         Parameters:
-            id (str): the ID of the child node to remove
+            id: the ID of the child node to remove
 
         Returns:
-            UAVNode: the node that was removed
+            the node that was removed
         """
         return self._remove_child_by_id(id)
 
@@ -504,16 +505,17 @@ class RootNode(DeviceTreeNodeBase):
         self._tree = None
 
 
-class UAVNode(DeviceTreeNodeBase):
-    """Class representing a UAV node in a Flockwave device tree."""
+class ObjectNode(DeviceTreeNodeBase):
+    """Class representing an object node in a Flockwave device tree."""
 
     def __init__(self):
         """Constructor."""
-        super(UAVNode, self).__init__()
+        super(ObjectNode, self).__init__()
+        # TODO(ntamas): fix this in the spec!
         self.type = DeviceTreeNodeType.uav
 
     def add_device(self, id):
-        """Adds a new device with the given identifier to this UAV node.
+        """Adds a new device with the given identifier to this node.
 
         Parameters:
             id (str): the identifier of the device being added.
@@ -585,8 +587,8 @@ class DeviceTreePath(object):
 
 
 class DeviceTree(object):
-    """A device tree of a UAV that lists the devices and channels that
-    the UAV provides.
+    """A device tree of an object that lists the devices and channels that
+    the object provides.
 
     Attributes:
         channel_nodes_updated (Signal): signal that is dispatched by the
@@ -600,7 +602,7 @@ class DeviceTree(object):
     def __init__(self):
         """Constructor. Creates an empty device tree."""
         self._root = RootNode(self)
-        self._uav_registry = None
+        self._object_registry = None
 
     def create_mutator(self):
         """Creates a mutator object that provides additional methods to
@@ -670,35 +672,35 @@ class DeviceTree(object):
         return self.root.traverse_dfs()
 
     @property
-    def uav_registry(self):
-        """The UAV registry that the device tree watches. The device tree
-        will attach new UAV nodes when a new UAV is added to the registry,
-        and similarly detach old UAV nodes when UAVs are removed from the
+    def object_registry(self):
+        """The object registry that the device tree watches. The device tree
+        will attach new object nodes when a new object is added to the registry,
+        and similarly detach old object nodes when objects are removed from the
         registry.
         """
-        return self._uav_registry
+        return self._object_registry
 
-    @uav_registry.setter
-    def uav_registry(self, value):
-        if self._uav_registry == value:
+    @object_registry.setter
+    def object_registry(self, value):
+        if self._object_registry == value:
             return
 
-        if self._uav_registry is not None:
-            self._uav_registry.added.disconnect(
-                self._on_uav_added, sender=self._uav_registry
+        if self._object_registry is not None:
+            self._object_registry.added.disconnect(
+                self._on_object_added, sender=self._object_registry
             )
-            self._uav_registry.removed.disconnect(
-                self._on_uav_removed, sender=self._uav_registry
+            self._object_registry.removed.disconnect(
+                self._on_object_removed, sender=self._object_registry
             )
 
-        self._uav_registry = value
+        self._object_registry = value
 
-        if self._uav_registry is not None:
-            self._uav_registry.added.connect(
-                self._on_uav_added, sender=self._uav_registry
+        if self._object_registry is not None:
+            self._object_registry.added.connect(
+                self._on_object_added, sender=self._object_registry
             )
-            self._uav_registry.removed.connect(
-                self._on_uav_removed, sender=self._uav_registry
+            self._object_registry.removed.connect(
+                self._on_object_removed, sender=self._object_registry
             )
 
     def _on_channel_nodes_updated(self, nodes):
@@ -713,26 +715,28 @@ class DeviceTree(object):
         # Just redispatch the set in a channel_nodes_updated signal
         self.channel_nodes_updated.send(self, nodes=nodes)
 
-    def _on_uav_added(self, sender, uav):
-        """Handler called when a new UAV is registered in the server.
+    def _on_object_added(self, sender, object: ModelObject):
+        """Handler called when a new object is registered in the server.
 
         Parameters:
-            sender (UAVRegisty): the UAV registry
-            uav (UAV): the UAV that was added
+            sender: the object registry
+            object: the object that was added
         """
-        self.root.add_child(uav.id, uav.device_tree_node)
+        if hasattr(object, "device_tree_node"):
+            self.root.add_child(object.id, object.device_tree_node)
 
-    def _on_uav_removed(self, sender, uav):
-        """Handler called when a UAV is deregistered from the server.
+    def _on_object_removed(self, sender, object: ModelObject):
+        """Handler called when an object is deregistered from the server.
 
         Parameters:
-            sender (UAVRegisty): the UAV registry
-            uav (UAV): the UAV that was removed
+            sender: the object registry
+            object: the object that was removed
         """
-        self.root.remove_child_by_id(uav.id)
+        if object.id in self.root.children:
+            self.root.remove_child_by_id(object.id)
 
 
-class DeviceTreeMutator(object):
+class DeviceTreeMutator:
     """Context manager that provides methods for modifying the values of the
     channel nodes in a device tree, records the modifications and then
     notifies the tree about the set of channel nodes that were modified.

@@ -16,11 +16,12 @@ from .devices import (
     DeviceTree,
     DeviceNode,
     DeviceTreeNodeType,
-    UAVNode,
     DeviceTreeSubscriptionManager,
+    ObjectNode,
 )
 from .errors import ClientNotSubscribedError, NoSuchPathError
 from .messages import FlockwaveMessage, FlockwaveNotification, FlockwaveResponse
+from .object import ModelObject
 from .uav import PassiveUAVDriver, UAVStatusInfo, UAVDriver, UAV, UAVBase
 from .world import World
 
@@ -34,6 +35,7 @@ __all__ = (
     "UAVDriver",
     "UAV",
     "UAVBase",
+    "ModelObject",
     "Client",
     "ConnectionInfo",
     "ConnectionPurpose",
@@ -50,7 +52,7 @@ __all__ = (
     "DeviceNode",
     "DeviceTree",
     "DeviceTreeNodeType",
-    "UAVNode",
+    "ObjectNode",
     "DeviceTreeSubscriptionManager",
     "NoSuchPathError",
     "ClientNotSubscribedError",

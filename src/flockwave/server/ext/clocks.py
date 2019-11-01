@@ -56,7 +56,9 @@ def find_clock_by_id(clock_id, response=None):
             is no such clock
     """
     global registry
-    return find_in_registry(registry, clock_id, response, "No such clock")
+    return find_in_registry(
+        registry, clock_id, response=response, failure_reason="No such clock"
+    )
 
 
 def on_clock_changed(sender, clock):

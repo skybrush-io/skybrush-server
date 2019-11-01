@@ -19,7 +19,7 @@ from flockwave.gps.vectors import (
     Vector3D,
 )
 from flockwave.server.model.uav import BatteryInfo, UAVBase, UAVDriver
-from flockwave.spec.ids import make_valid_uav_id
+from flockwave.spec.ids import make_valid_object_id
 
 from .base import UAVExtensionBase
 
@@ -513,7 +513,7 @@ class FakeUAVProviderExtension(UAVExtensionBase):
 
         # Generate IDs for the UAVs and then create them
         self.uav_ids = [
-            make_valid_uav_id(id_format.format(index)) for index in range(count)
+            make_valid_object_id(id_format.format(index)) for index in range(count)
         ]
         self.uavs = [
             self._driver.create_uav(
@@ -547,7 +547,7 @@ class FakeUAVProviderExtension(UAVExtensionBase):
         """Main background task of the extension that updates the state of
         the UAVs periodically.
         """
-        with app.uav_registry.use(*self.uavs):
+        with app.object_registry.use(*self.uavs):
             async for _ in periodic(self._delay):
                 with self.create_device_tree_mutation_context() as mutator:
                     for uav in self.uavs:

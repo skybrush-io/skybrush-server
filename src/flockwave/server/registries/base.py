@@ -3,37 +3,41 @@ string identifiers.
 """
 
 from abc import ABCMeta, abstractmethod, abstractproperty
+from typing import Callable, Generic, Iterable, Optional, TypeVar
 
 __all__ = ("Registry", "RegistryBase")
 
 
-class Registry(metaclass=ABCMeta):
+T = TypeVar("T")
+
+
+class Registry(Generic[T], metaclass=ABCMeta):
     """Interface specification for registries that keep track of "things"
     by string identifiers.
     """
 
     @abstractmethod
-    def contains(self, entry_id):
+    def contains(self, entry_id: str) -> bool:
         """Returns whether the given entry ID is already used in this
         registry.
 
         Parameters:
-            entry_id (str): the entry ID to check
+            entry_id: the entry ID to check
 
         Returns:
-            bool: whether the given entry ID is already used
+            whether the given entry ID is already used
         """
         raise NotImplementedError
 
     @abstractmethod
-    def find_by_id(self, entry_id):
+    def find_by_id(self, entry_id: str) -> T:
         """Returns an entry from this registry given its ID.
 
         Parameters:
-            entry_id (str): the ID of the entry to retrieve
+            entry_id: the ID of the entry to retrieve
 
         Returns:
-            object: the entry with the given ID
+            the entry with the given ID
 
         Raises:
             KeyError: if the given ID does not refer to an entry in the
@@ -42,28 +46,37 @@ class Registry(metaclass=ABCMeta):
         raise NotImplementedError
 
     @abstractproperty
-    def ids(self):
+    def ids(self) -> Iterable[str]:
         """Returns an iterable that iterates over all the identifiers
         that are known to the registry.
         """
         raise NotImplementedError
 
+    def ids_matching(self, predicate: Callable[[T], bool]) -> Iterable[str]:
+        """Returns an iterable that iterates over all the identifiers in the
+        registry where the associated object matches the given predicate.
+
+        Parameters:
+            predicate: the predicate to call for each object in the registry
+        """
+        raise NotImplementedError
+
     @abstractproperty
-    def num_entries(self):
+    def num_entries(self) -> int:
         """Returns the number of entries in the registry."""
         raise NotImplementedError
 
-    def __contains__(self, entry_id):
+    def __contains__(self, entry_id: str) -> bool:
         return self.contains(entry_id)
 
-    def __getitem__(self, entry_id):
+    def __getitem__(self, entry_id: str) -> T:
         return self.find_by_id(entry_id)
 
-    def __len__(self):
+    def __len__(self) -> int:
         return self.num_entries
 
 
-class RegistryBase(Registry):
+class RegistryBase(Generic[T], Registry[T]):
     """Abstract base class for registries that keep track of "things" by
     string identifiers.
     """
@@ -73,19 +86,19 @@ class RegistryBase(Registry):
         super(RegistryBase, self).__init__()
         self._entries = {}
 
-    def contains(self, entry_id):
+    def contains(self, entry_id: str) -> bool:
         """Returns whether the given entry ID is already used in this
         registry.
 
         Parameters:
-            entry_id (str): the entry ID to check
+            entry_id: the entry ID to check
 
         Returns:
-            bool: whether the given entry ID is already used
+            whether the given entry ID is already used
         """
         return entry_id in self._entries
 
-    def find_by_id(self, entry_id):
+    def find_by_id(self, entry_id: str) -> T:
         """Returns an entry from this registry given its ID.
 
         Parameters:
@@ -101,11 +114,20 @@ class RegistryBase(Registry):
         return self._entries[entry_id]
 
     @property
-    def ids(self):
+    def ids(self) -> Iterable[str]:
         """Returns an iterable that iterates over all the identifiers
         that are known to the registry.
         """
         return sorted(self._entries.keys())
+
+    def ids_matching(self, predicate: Callable[[T], bool]) -> Iterable[str]:
+        """Returns an iterable that iterates over all the identifiers in the
+        registry where the associated object matches the given predicate.
+
+        Parameters:
+            predicate: the predicate to call for each object in the registry
+        """
+        return (key for key, value in self._entries.items() if predicate(value))
 
     @property
     def num_entries(self):
@@ -113,25 +135,43 @@ class RegistryBase(Registry):
         return len(self._entries)
 
 
-def find_in_registry(registry, entry_id, response=None, failure_reason=None):
+def find_in_registry(
+    registry: Registry[T],
+    entry_id: str,
+    *,
+    predicate: Optional[Callable[[T], bool]] = None,
+    response=None,
+    failure_reason: Optional[str] = None,
+) -> Optional[T]:
     """Finds an entry in the given registry with the given ID or
     registers a failure in the given response object if there is no
     such entry in the registry.
 
     Parameters:
-        entry_id (str): the ID of the entry to find
-        registry (Registry): the registry in which to find the entry
+        entry_id: the ID of the entry to find
+        registry: the registry in which to find the entry
+        predicate: optional predicate to call for the entry if it was found;
+            if the predicate returns `False`, we pretend that the entry does not
+            exist.
         response (Optional[FlockwaveResponse]): the response in which
             the failure can be registered
-        failure_reason (Optional[str]): the failure reason to register
+        failure_reason: the failure reason to register
 
     Returns:
-        Optional[object]: the entry from the registry with the given ID or
-            ``None`` if there is no such entry
+        the entry from the registry with the given ID or ``None`` if there is
+        no such entry
     """
     try:
-        return registry.find_by_id(entry_id)
+        entry = registry.find_by_id(entry_id)
+        exists = True
     except KeyError:
+        exists = False
+
+    exists = exists and (not predicate or predicate(entry))
+
+    if not exists:
         if hasattr(response, "add_failure"):
             response.add_failure(entry_id, failure_reason)
         return None
+    else:
+        return entry

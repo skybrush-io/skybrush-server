@@ -18,7 +18,7 @@ from flockwave.parsers.json import create_json_parser
 from flockwave.server.errors import NotSupportedError
 from flockwave.server.model import ConnectionPurpose
 from flockwave.server.model.uav import PassiveUAVDriver
-from flockwave.spec.ids import make_valid_uav_id
+from flockwave.spec.ids import make_valid_object_id
 
 from .base import UAVExtensionBase
 
@@ -188,7 +188,7 @@ class GPSExtension(UAVExtensionBase):
     def _get_uav_id(self, device_id):
         result = self._device_to_uav_id.get(device_id)
         if result is None:
-            result = make_valid_uav_id(self._id_format.format(device_id))
+            result = make_valid_object_id(self._id_format.format(device_id))
             self._device_to_uav_id[device_id] = result
         return result
 

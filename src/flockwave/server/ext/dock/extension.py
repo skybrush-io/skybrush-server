@@ -103,8 +103,7 @@ class DockExtension(UAVExtensionBase):
                         self._connection,
                         "Dock",
                         "Docking station",
-                        # TODO(ntamas): use ConnectionPurpose.dock
-                        purpose=ConnectionPurpose.other,
+                        purpose=ConnectionPurpose.dock,
                     )
                 )
 

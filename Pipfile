@@ -30,7 +30,7 @@ flockwave-spec = {file = "https://git.collmot.com/collmot/flockwave-spec/archive
 sentry-sdk = "*"
 python-dotenv = "*"
 hypercorn = {extras = ["trio"],version = "*"}
-tinyrpc = "*"
+tinyrpc = {extras = ["msgpack"],version = ">=1.0.4"}
 
 [dev-packages]
 PyInstaller = "*"

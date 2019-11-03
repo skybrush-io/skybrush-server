@@ -1,11 +1,11 @@
 from contextlib import ExitStack
 from functools import partial
 from tinyrpc.dispatch import RPCDispatcher
-from tinyrpc.protocols.jsonrpc import JSONRPCProtocol
+from tinyrpc.protocols.msgpackrpc import MSGPACKRPCProtocol
 from trio import open_nursery, sleep_forever
 from trio.abc import Stream
 
-from flockwave.connections import StreamWrapperConnection
+from flockwave.connections import create_connection, StreamWrapperConnection
 from flockwave.channels import MessageChannel
 from flockwave.listeners import create_listener
 from flockwave.parsers.rpc import RPCMessage
@@ -28,7 +28,7 @@ def create_rpc_message_channel(stream: Stream) -> MessageChannel[RPCMessage]:
         log: the logger on which any error messages and warnings should be logged
     """
     connection = StreamWrapperConnection(stream)
-    return MessageChannel.for_rpc_protocol(JSONRPCProtocol(), connection)
+    return MessageChannel.for_rpc_protocol(MSGPACKRPCProtocol(), connection)
 
 
 ############################################################################
@@ -40,6 +40,8 @@ class DockExtension(UAVExtensionBase):
     def __init__(self):
         """Constructor."""
         super(DockExtension, self).__init__()
+
+        self._connection = create_connection("dummy")
 
         self._id_format = None
         self._current_stream = None
@@ -72,10 +74,11 @@ class DockExtension(UAVExtensionBase):
 
         try:
             channel = create_rpc_message_channel(stream)
-            async with channel.serve_rpc_requests(
-                handler=dispatcher.dispatch, log=self.log
-            ):
-                await sleep_forever()
+            async with self._connection:
+                async with channel.serve_rpc_requests(
+                    handler=dispatcher.dispatch, log=self.log
+                ):
+                    await sleep_forever()
         except Exception as ex:
             # Exceptions raised during a connection are caught and logged here;
             # we do not let the main task itself crash because of them

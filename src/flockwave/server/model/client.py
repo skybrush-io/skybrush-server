@@ -16,7 +16,7 @@ __all__ = ("Client",)
 log = base_log.getChild("model.clients")  # plural to match registry.clients
 
 
-@attr.s
+@attr.s(eq=False)
 class Client(object):
     """A single client connected to the Flockwave server."""
 

@@ -3,14 +3,7 @@
 from __future__ import division
 
 from flockwave.concurrency import FutureCancelled, FutureMap
-from flockwave.server.ext.logger import log
-from flockwave.server.model.uav import UAVBase, UAVDriver
-from flockwave.server.utils import nop
-from flockwave.spec.ids import make_valid_object_id
-from typing import Optional
-
-from .errors import AddressConflictError, map_flockctrl_error_code
-from .packets import (
+from flockwave.protocols.flockctrl.packets import (
     ChunkedPacketAssembler,
     FlockCtrlAlgorithmDataPacket,
     FlockCtrlCommandRequestPacket,
@@ -20,6 +13,14 @@ from .packets import (
     FlockCtrlPrearmStatusPacket,
     FlockCtrlStatusPacket,
 )
+from flockwave.server.ext.logger import log
+from flockwave.server.model.uav import UAVBase, UAVDriver
+from flockwave.server.utils import nop
+from flockwave.spec.ids import make_valid_object_id
+from typing import Optional
+
+from .algorithms import handle_algorithm_data_packet
+from .errors import AddressConflictError, map_flockctrl_error_code
 
 __all__ = ("FlockCtrlDriver",)
 
@@ -69,9 +70,8 @@ class FlockCtrlDriver(UAVDriver):
         self._pending_commands_by_uav = FutureMap()
 
         self._packet_handlers = self._configure_packet_handlers()
-        self._packet_assembler = ChunkedPacketAssembler()
-        self._packet_assembler.packet_assembled.connect(
-            self._on_chunked_packet_assembled, sender=self._packet_assembler
+        self._packet_assembler = ChunkedPacketAssembler(
+            callback=self._on_chunked_packet_assembled
         )
         self._index_to_uav_id = {}
         self._uavs_by_source_address = {}
@@ -187,8 +187,12 @@ class FlockCtrlDriver(UAVDriver):
             algorithm = None
 
         if algorithm is not None:
-            mutator = self.create_device_tree_mutator
-            algorithm.handle_data_packet(packet, uav, mutator)
+            handle_algorithm_data_packet(
+                algorithm,
+                uav=uav,
+                data=algorithm.decode_data_packet(packet),
+                mutate=self.create_device_tree_mutator,
+            )
 
     def _handle_inbound_command_response_packet(self, packet, source):
         """Handles an inbound FlockCtrl command response packet.
@@ -226,7 +230,7 @@ class FlockCtrlDriver(UAVDriver):
 
         self.app.request_to_send_UAV_INF_message_for([uav.id])
 
-    def _on_chunked_packet_assembled(self, sender, body, source):
+    def _on_chunked_packet_assembled(self, body, source):
         """Handler called when the response chunk handler has assembled
         the body of a chunked packet.
 

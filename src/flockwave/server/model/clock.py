@@ -4,8 +4,7 @@ from __future__ import absolute_import
 
 from abc import ABCMeta, abstractmethod, abstractproperty
 from blinker import Signal
-from datetime import datetime
-from pytz import utc
+from datetime import datetime, timezone
 from time import time
 
 
@@ -125,7 +124,7 @@ class ClockBase(Clock):
         now = time()
         result = {
             "id": self.id,
-            "retrievedAt": datetime.fromtimestamp(now, tz=utc),
+            "retrievedAt": datetime.fromtimestamp(now, tz=timezone.utc),
             "timestamp": self.ticks_given_time(now),
             "running": self.running,
         }

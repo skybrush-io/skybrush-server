@@ -1,7 +1,6 @@
 """Mixin classes for other model objects."""
 
-from datetime import datetime
-from pytz import utc
+from datetime import datetime, timezone
 from flockwave.server.utils import is_timezone_aware
 
 __all__ = ("TimestampMixin",)
@@ -32,8 +31,8 @@ class TimestampMixin(object):
             # datetime object with tzinfo set to None. As a consequence,
             # isoformat() would not add the timezone information correctly
             # when the datetime object is formatted into JSON. That's why
-            # we need to use datetime.now(utc)
-            timestamp = datetime.now(utc)
+            # we need to use datetime.now(timezone.utc)
+            timestamp = datetime.now(timezone.utc)
         assert is_timezone_aware(
             timestamp
         ), "UAV status information timestamp must be timezone-aware"

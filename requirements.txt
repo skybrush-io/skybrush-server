@@ -10,10 +10,10 @@ click==7.0
 future==0.18.0
 h11==0.9.0
 h2==3.1.1
-hexdump==3.3
 hpack==3.0.0
 https://git.collmot.com/collmot/flockwave-conn/archive/1.7.1.tar.gz#egg=flockwave-conn[midi,serial]
 https://git.collmot.com/collmot/flockwave-ext/archive/1.0.1.tar.gz#egg=flockwave-ext
+https://git.collmot.com/collmot/flockwave-flockctrl/archive/0.2.1.tar.gz#egg=flockwave-flockctrl
 https://git.collmot.com/collmot/flockwave-gps/archive/0.10.0.tar.gz#egg=flockwave-gps
 https://git.collmot.com/collmot/flockwave-logger/archive/1.0.0.tar.gz#egg=flockwave-logger
 https://git.collmot.com/collmot/flockwave-parsers/archive/1.1.1.tar.gz#egg=flockwave-parsers
@@ -37,7 +37,6 @@ pynmea2==1.15.0
 pyrsistent==0.15.4
 python-baseconv==1.2.2
 python-dotenv==0.10.3
-pytz==2019.3
 quart-trio==0.4.0
 quart==0.10.0
 sentry-sdk==0.12.3

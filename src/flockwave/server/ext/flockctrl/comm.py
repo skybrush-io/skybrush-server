@@ -15,10 +15,8 @@ from flockwave.channels import MessageChannel
 from flockwave.connections import Connection, IPAddressAndPort, UDPSocketConnection
 from flockwave.logger import Logger
 from flockwave.networking import format_socket_address
-
-from .errors import ParseError
-from .packets import FlockCtrlPacket
-from .parser import FlockCtrlParser
+from flockwave.parsers.errors import ParseError
+from flockwave.protocols.flockctrl import FlockCtrlPacket, FlockCtrlParser
 
 
 def create_flockctrl_message_channel(

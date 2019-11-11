@@ -5,7 +5,6 @@ from contextlib import contextmanager
 from datetime import datetime
 from functools import partial as partial_
 from inspect import Parameter, signature
-from pytz import utc
 
 
 __all__ = (
@@ -16,9 +15,6 @@ __all__ = (
     "nop",
     "overridden",
 )
-
-
-_unix_epoch = datetime.utcfromtimestamp(0).replace(tzinfo=utc)
 
 
 def bind(func, args=None, kwds=None, *, partial=False):
@@ -72,7 +68,7 @@ def constant(x):
     return func
 
 
-def datetime_to_unix_timestamp(dt):
+def datetime_to_unix_timestamp(dt: datetime) -> float:
     """Converts a Python datetime object to a Unix timestamp, expressed in
     the number of seconds since the Unix epoch.
 
@@ -80,29 +76,28 @@ def datetime_to_unix_timestamp(dt):
     time zones.
 
     Parameters:
-        dt (datetime): the Python datetime object
+        dt: the Python datetime object
 
     Returns:
-        float: the time elapsed since the Unix epoch, in seconds
+        the time elapsed since the Unix epoch, in seconds
 
     Raises:
         ValueError: if the given datetime is not timezone-aware
     """
     if not is_timezone_aware(dt):
         raise ValueError("datetime object must be timezone-aware")
-    return (dt - _unix_epoch).total_seconds()
+    return dt.timestamp()
 
 
-def is_timezone_aware(dt):
+def is_timezone_aware(dt: datetime) -> bool:
     """Checks whether the given Python datetime object is timezone-aware
     or not.
 
     Parameters:
-        dt (datetime): the Python datetime object
+        dt: the Python datetime object
 
     Returns:
-        bool: ``True`` if the given object is timezone-aware, ``False``
-            otherwise
+        ``True`` if the given object is timezone-aware, ``False`` otherwise
     """
     return dt.tzinfo is not None and dt.tzinfo.utcoffset(dt) is not None
 

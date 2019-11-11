@@ -5,19 +5,21 @@
 from __future__ import absolute_import
 
 from contextlib import ExitStack
-from datetime import datetime
-from pytz import utc
+from datetime import datetime, timezone
 from trio.abc import ReceiveChannel
 from typing import Any, Dict, Optional, Tuple
 
 from flockwave.connections import Connection, create_connection, IPAddressAndPort
+from flockwave.protocols.flockctrl.packets import (
+    FlockCtrlPacket,
+    FlockCtrlClockSynchronizationPacket,
+)
 from flockwave.server.ext.base import UAVExtensionBase
 from flockwave.server.model import ConnectionPurpose
 from flockwave.server.utils import datetime_to_unix_timestamp
 
 from .comm import CommunicationManager
 from .driver import FlockCtrlDriver
-from .packets import FlockCtrlPacket, FlockCtrlClockSynchronizationPacket
 
 # from .wireless import WirelessCommunicationManager
 
@@ -217,7 +219,7 @@ class FlockCtrlDronesExtension(UAVExtensionBase):
         if clock.id != "mtc":
             return
 
-        now = datetime.now(utc)
+        now = datetime.now(timezone.utc)
         now_as_timestamp = datetime_to_unix_timestamp(now)
         packet = FlockCtrlClockSynchronizationPacket(
             sequence_id=0,  # TODO(ntamas)

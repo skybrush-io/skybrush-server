@@ -3,19 +3,13 @@
 from flockwave.server.model.errors import FlockwaveErrorCode
 
 
-__all__ = ("ParseError", "AddressConflictError", "map_flockctrl_error_code")
+__all__ = ("AddressConflictError", "map_flockctrl_error_code")
 
 
 class FlockCtrlError(RuntimeError):
     """Base class for all error classes related to the FlockCtrl
     extension.
     """
-
-    pass
-
-
-class ParseError(FlockCtrlError):
-    """Error thrown when the parser failed to parse a FlockCtrl packet."""
 
     pass
 
@@ -75,6 +69,7 @@ _error_code_mapping = {
     52: FlockwaveErrorCode.CONTROL_ALGORITHM_ERROR,
     53: FlockwaveErrorCode.EXTERNAL_CLOCK_ERROR,
     54: FlockwaveErrorCode.CONFIGURATION_ERROR,
+    55: FlockwaveErrorCode.CONFIGURATION_ERROR,
     200: FlockwaveErrorCode.LOGGING_DEACTIVATED,
     201: FlockwaveErrorCode.LOW_DISK_SPACE,
     202: FlockwaveErrorCode.TIMESYNC_ERROR,

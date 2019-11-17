@@ -9,17 +9,20 @@ from collections import defaultdict
 from functools import partial
 from trio import open_memory_channel
 from trio_util import wait_all
-from typing import Generator, List, Optional, Tuple
+from typing import Generator, Optional, Tuple
 
 from flockwave.channels import MessageChannel
 from flockwave.connections import Connection, IPAddressAndPort, UDPSocketConnection
 from flockwave.logger import Logger
 from flockwave.networking import format_socket_address
-from flockwave.parsers.errors import ParseError
-from flockwave.protocols.flockctrl import FlockCtrlPacket, FlockCtrlParser
+from flockwave.protocols.flockctrl import (
+    FlockCtrlEncoder,
+    FlockCtrlPacket,
+    FlockCtrlParser,
+)
 
 
-def create_flockctrl_message_channel(
+def create_flockctrl_udp_message_channel(
     connection: UDPSocketConnection, log: Logger
 ) -> MessageChannel[Tuple[FlockCtrlPacket, IPAddressAndPort]]:
     """Creates a bidirectional Trio-style channel that reads data from and
@@ -31,30 +34,11 @@ def create_flockctrl_message_channel(
         connection: the connection to read data from and write data to
         log: the logger on which any error messages and warnings should be logged
     """
-    parser = FlockCtrlParser()
-
-    def feeder(
-        data: Tuple[bytes, IPAddressAndPort]
-    ) -> List[Tuple[FlockCtrlPacket, IPAddressAndPort]]:
-        data, address = data
-        try:
-            message = parser.parse(data)
-            return [(message, address)]
-        except ParseError as ex:
-            log.warn(
-                "Failed to parse FlockCtrl packet of length "
-                + f"{len(data)}: {repr(data[:32])}"
-            )
-            log.exception(ex)
-            return []
-
-    def encoder(
-        data: Tuple[FlockCtrlPacket, IPAddressAndPort]
-    ) -> Tuple[bytes, IPAddressAndPort]:
-        message, address = data
-        return message.encode(), address
-
-    return MessageChannel(connection, parser=feeder, encoder=encoder)
+    return MessageChannel(
+        connection,
+        parser=FlockCtrlParser.create_udp_parser_function(log),
+        encoder=FlockCtrlEncoder.create_udp_encoder_function(log),
+    )
 
 
 class CommunicationManager:
@@ -179,7 +163,7 @@ class CommunicationManager:
             if address:
                 self.log.info(f"Connection at {address} up and running.")
 
-            entry.channel = create_flockctrl_message_channel(connection, self.log)
+            entry.channel = create_flockctrl_udp_message_channel(connection, self.log)
             async for message in entry.channel:
                 await queue.send((entry.name, message))
 

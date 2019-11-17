@@ -12,7 +12,7 @@ from typing import Any, Dict, Optional, Tuple
 from flockwave.connections import Connection, create_connection, IPAddressAndPort
 from flockwave.protocols.flockctrl.packets import (
     FlockCtrlPacket,
-    FlockCtrlClockSynchronizationPacket,
+    ClockSynchronizationPacket,
 )
 from flockwave.server.ext.base import UAVExtensionBase
 from flockwave.server.model import ConnectionPurpose
@@ -221,7 +221,7 @@ class FlockCtrlDronesExtension(UAVExtensionBase):
 
         now = datetime.now(timezone.utc)
         now_as_timestamp = datetime_to_unix_timestamp(now)
-        packet = FlockCtrlClockSynchronizationPacket(
+        packet = ClockSynchronizationPacket(
             sequence_id=0,  # TODO(ntamas)
             clock_id=5,  # MIDI timecode clock in FlockCtrl
             running=clock.running,

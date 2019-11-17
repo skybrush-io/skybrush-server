@@ -5,13 +5,13 @@ from __future__ import division
 from flockwave.concurrency import FutureCancelled, FutureMap
 from flockwave.protocols.flockctrl.packets import (
     ChunkedPacketAssembler,
-    FlockCtrlAlgorithmDataPacket,
-    FlockCtrlCommandRequestPacket,
-    FlockCtrlCommandResponsePacket,
-    FlockCtrlCompressedCommandResponsePacket,
-    FlockCtrlMissionInfoPacket,
-    FlockCtrlPrearmStatusPacket,
-    FlockCtrlStatusPacket,
+    AlgorithmDataPacket,
+    CommandRequestPacket,
+    CommandResponsePacket,
+    CompressedCommandResponsePacket,
+    MissionInfoPacket,
+    PrearmStatusPacket,
+    StatusPacket,
 )
 from flockwave.server.ext.logger import log
 from flockwave.server.model.uav import UAVBase, UAVDriver
@@ -106,12 +106,12 @@ class FlockCtrlDriver(UAVDriver):
         handler functions that should be responsible for handling them.
         """
         return {
-            FlockCtrlStatusPacket: self._handle_inbound_status_packet,
-            FlockCtrlPrearmStatusPacket: nop,
-            FlockCtrlCompressedCommandResponsePacket: self._handle_inbound_command_response_packet,
-            FlockCtrlCommandResponsePacket: self._handle_inbound_command_response_packet,
-            FlockCtrlAlgorithmDataPacket: self._handle_inbound_algorithm_data_packet,
-            FlockCtrlMissionInfoPacket: nop,
+            StatusPacket: self._handle_inbound_status_packet,
+            PrearmStatusPacket: nop,
+            CompressedCommandResponsePacket: self._handle_inbound_command_response_packet,
+            CommandResponsePacket: self._handle_inbound_command_response_packet,
+            AlgorithmDataPacket: self._handle_inbound_algorithm_data_packet,
+            MissionInfoPacket: nop,
         }
 
     def _create_uav(self, formatted_id):
@@ -177,7 +177,7 @@ class FlockCtrlDriver(UAVDriver):
         data.
 
         Parameters:
-            packet (FlockCtrlAlgorithmDataPacket): the packet to handle
+            packet (AlgorithmDataPacket): the packet to handle
             source: the source the packet was received from
         """
         uav = self._get_or_create_uav(packet.uav_id)
@@ -198,10 +198,10 @@ class FlockCtrlDriver(UAVDriver):
         """Handles an inbound FlockCtrl command response packet.
 
         Parameters:
-            packet (FlockCtrlCommandResponsePacketBase): the packet to handle
+            packet (CommandResponsePacketBase): the packet to handle
             source: the source the packet was received from
         """
-        if isinstance(packet, FlockCtrlCompressedCommandResponsePacket):
+        if isinstance(packet, CompressedCommandResponsePacket):
             compressed = True
         else:
             compressed = False
@@ -212,7 +212,7 @@ class FlockCtrlDriver(UAVDriver):
         """Handles an inbound FlockCtrl status packet.
 
         Parameters:
-            packet (FlockCtrlStatusPacket): the packet to handle
+            packet (StatusPacket): the packet to handle
             source: the source the packet was received from
         """
         uav = self._get_or_create_uav(packet.id)
@@ -282,7 +282,7 @@ class FlockCtrlDriver(UAVDriver):
 
     async def _send_command_to_address(
         self, command: str, address
-    ) -> FlockCtrlCommandRequestPacket:
+    ) -> CommandRequestPacket:
         """Sends a command packet with the given command string to the
         given UAV address.
 
@@ -294,7 +294,7 @@ class FlockCtrlDriver(UAVDriver):
         Returns:
             the packet that was sent
         """
-        packet = FlockCtrlCommandRequestPacket(command.encode("utf-8"))
+        packet = CommandRequestPacket(command.encode("utf-8"))
         await self.send_packet(packet, address)
         return packet
 

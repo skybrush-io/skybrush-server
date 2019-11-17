@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "d48a57e1d326ba6128525c5ff9826fd10c2110c37cf7bd68dac32ef9364f5ce6"
+            "sha256": "d7879e6fd4a6af15831720de9c6cf8776649b01a05b007654c1bd090e602e6e6"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -85,10 +85,10 @@
             "file": "https://git.collmot.com/collmot/flockwave-conn/archive/1.7.1.tar.gz"
         },
         "flockwave-ext": {
-            "file": "https://git.collmot.com/collmot/flockwave-ext/archive/1.0.1.tar.gz"
+            "file": "https://git.collmot.com/collmot/flockwave-ext/archive/1.1.0.tar.gz"
         },
         "flockwave-flockctrl": {
-            "file": "https://git.collmot.com/collmot/flockwave-flockctrl/archive/0.2.1.tar.gz"
+            "file": "https://git.collmot.com/collmot/flockwave-flockctrl/archive/0.3.0.tar.gz"
         },
         "flockwave-gps": {
             "file": "https://git.collmot.com/collmot/flockwave-gps/archive/0.10.0.tar.gz"
@@ -629,10 +629,10 @@
         },
         "pip-shims": {
             "hashes": [
-                "sha256:0162d846bd60c7b1feb4e1336541a3e661eb6a1eff4b9ea0d759780f8e0a2936",
-                "sha256:d73372b9fa3a10e73f057fced70d39bb82df16a1ee3ded027fed0bb8d7c0ff97"
+                "sha256:81772e056f2d13e33ca98fecba0484a27174c9571a2e397707e83e33cffc919e",
+                "sha256:e37f7049034c6595418874a068b672e3eb39378a9640dc9203e0a8549c88a755"
             ],
-            "version": "==0.3.3"
+            "version": "==0.3.4"
         },
         "pipfile-requirements": {
             "hashes": [
@@ -682,11 +682,11 @@
         },
         "pytest": {
             "hashes": [
-                "sha256:27abc3fef618a01bebb1f0d6d303d2816a99aa87a5968ebc32fe971be91eb1e6",
-                "sha256:58cee9e09242937e136dbb3dab466116ba20d6b7828c7620f23947f37eb4dae4"
+                "sha256:8e256fe71eb74e14a4d20a5987bb5e1488f0511ee800680aaedc62b9358714e8",
+                "sha256:ff0090819f669aaa0284d0f4aad1a6d9d67a6efdc6dd4eb4ac56b704f890a0d6"
             ],
             "index": "pypi",
-            "version": "==5.2.2"
+            "version": "==5.2.4"
         },
         "pytest-trio": {
             "hashes": [

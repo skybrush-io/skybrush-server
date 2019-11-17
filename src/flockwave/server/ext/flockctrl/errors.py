@@ -77,7 +77,7 @@ _error_code_mapping = {
 }
 
 
-def map_flockctrl_error_code(error_code):
+def map_flockctrl_error_code(error_code: int) -> FlockwaveErrorCode:
     """Maps an error code from a FlockCtrl status packet to the corresponding
     Flockwave error code.
 

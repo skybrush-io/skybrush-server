@@ -162,6 +162,9 @@ async def run(app, configuration, logger):
     port = configuration.get("port", 5001)
     pool_size = configuration.get("pool_size", 1000)
 
+    if not host:
+        host = None     # empty string is not okay on Linux
+
     with ExitStack() as stack:
         stack.enter_context(overridden(globals(), app=app, log=logger))
         stack.enter_context(

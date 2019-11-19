@@ -33,7 +33,7 @@ def start(config, debug):
             log_handler.setLevel(logging.ERROR)
 
     # Load environment variables from .env
-    dotenv.load_dotenv(verbose=True)
+    dotenv.load_dotenv(verbose=False)
 
     # Note the lazy import; this is to ensure that the logging is set up by the
     # time we start configuring the app.

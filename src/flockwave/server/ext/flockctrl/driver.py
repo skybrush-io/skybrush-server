@@ -17,6 +17,7 @@ from flockwave.server.ext.logger import log
 from flockwave.server.model.uav import UAVBase, UAVDriver
 from flockwave.server.utils import nop
 from flockwave.spec.ids import make_valid_object_id
+from time import time
 from typing import Optional
 
 from .algorithms import handle_algorithm_data_packet
@@ -69,6 +70,7 @@ class FlockCtrlDriver(UAVDriver):
 
         self._pending_commands_by_uav = FutureMap()
 
+        self._disable_warnings_until = {}
         self._packet_handlers = self._configure_packet_handlers()
         self._packet_assembler = ChunkedPacketAssembler(
             callback=self._on_chunked_packet_assembled
@@ -83,6 +85,27 @@ class FlockCtrlDriver(UAVDriver):
         self.log = log.getChild("flockctrl").getChild("driver")
         self.send_packet = None
 
+    def _are_addresses_in_conflict(self, old, new) -> bool:
+        """Checks whether two UAV addresses on the same communication medium
+        are in conflict or not.
+
+        It is guaranteed that the two addresses are not equal when this function
+        is invoked.
+
+        The current implementation works as follows. If the old address and
+        the new address are both associated to localhost, the two addresses
+        are assumed to be compatible. (In testing scenarios, it happens a lot
+        that the ports from which the virtual UAVs broadcast their messages
+        change over time if one of the UAVs is restarted). Otherwise, the
+        two addresses are deemed incompatible.
+        """
+        old_ip, _ = old
+        new_ip, _ = new
+        if old_ip == new_ip and old_ip in ("127.0.0.1", "::1"):
+            return False
+        else:
+            return True
+
     def _check_or_record_uav_address(self, uav, medium, address):
         """Records that the given UAV has the given address,
         or, if the UAV already has an address, checks whether the
@@ -96,9 +119,18 @@ class FlockCtrlDriver(UAVDriver):
 
         Raises:
             AddressConflictError: if the UAV already has an address and it
-                is different from the one given to this function
+                is not compatible with the one given to this function
+                according to the current address conflict policy of the
+                driver
         """
-        uav.check_or_record_address(medium, address)
+        existing_address = uav.addresses.get(medium)
+        if existing_address == address:
+            return
+        elif existing_address is not None:
+            if self._are_addresses_in_conflict(existing_address, address):
+                raise AddressConflictError(uav, medium, address)
+
+        uav.addresses[medium] = address
         self._uavs_by_source_address[medium, address] = uav
 
     def _configure_packet_handlers(self):
@@ -161,8 +193,20 @@ class FlockCtrlDriver(UAVDriver):
                 "No packet handler defined for packet "
                 "class: {0}".format(packet_class.__name__)
             )
-        else:
+            return
+
+        try:
             handler(packet, source)
+        except AddressConflictError as ex:
+            uav_id = ex.uav.id if ex.uav else None
+            deadline = self._disable_warnings_until.get(uav_id, 0)
+            now = time()
+            if now >= deadline:
+                self.log.warn(
+                    "Dropped packet from invalid source: "
+                    "{0}/{1}, sent to UAV {2}".format(ex.medium, ex.address, uav_id)
+                )
+                self._disable_warnings_until[uav_id] = now + 1
 
     def validate_command(self, command: str, args, kwds) -> Optional[str]:
         # Prevent the usage of keyword arguments; they are not supported.
@@ -332,27 +376,6 @@ class FlockCtrlUAV(UAVBase):
     def __init__(self, *args, **kwds):
         super(FlockCtrlUAV, self).__init__(*args, **kwds)
         self.addresses = {}
-
-    def check_or_record_address(self, medium, address):
-        """When this UAV has no known address yet for the given communication
-        medium, stores the given address. When this UAV has an address for the
-        given medium, checks whether the address is equal to the given one and
-        raises an AddressConflictError if the two addresses are not equal
-
-        Parameters:
-            medium (str): the communication medium that this address applies to
-            address (bytes): the address of the UAV on the communication
-                medium
-
-        Raises:
-            AddressConflictError: if the UAV already has an address and it
-                is different from the one given to this function
-        """
-        current_address = self.addresses.get(medium)
-        if current_address is None:
-            self.addresses[medium] = address
-        elif current_address != address:
-            raise AddressConflictError(self, medium, address)
 
     @property
     def preferred_address(self):

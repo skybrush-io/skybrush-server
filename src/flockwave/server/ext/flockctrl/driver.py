@@ -19,6 +19,7 @@ from flockwave.server.utils import nop
 from flockwave.spec.ids import make_valid_object_id
 from time import time
 from typing import Optional
+from zlib import decompress
 
 from .algorithms import handle_algorithm_data_packet
 from .errors import AddressConflictError, map_flockctrl_error_code
@@ -72,9 +73,7 @@ class FlockCtrlDriver(UAVDriver):
 
         self._disable_warnings_until = {}
         self._packet_handlers = self._configure_packet_handlers()
-        self._packet_assembler = ChunkedPacketAssembler(
-            callback=self._on_chunked_packet_assembled
-        )
+        self._packet_assembler = ChunkedPacketAssembler()
         self._index_to_uav_id = {}
         self._uavs_by_source_address = {}
 
@@ -245,12 +244,11 @@ class FlockCtrlDriver(UAVDriver):
             packet (CommandResponsePacketBase): the packet to handle
             source: the source the packet was received from
         """
-        if isinstance(packet, CompressedCommandResponsePacket):
-            compressed = True
-        else:
-            compressed = False
-
-        self._packet_assembler.add_packet(packet, source, compressed=compressed)
+        body = self._packet_assembler.add_packet(packet, source)
+        if body:
+            if isinstance(packet, CompressedCommandResponsePacket):
+                body = decompress(body)
+            self._on_chunked_packet_assembled(body, source)
 
     def _handle_inbound_status_packet(self, packet, source):
         """Handles an inbound FlockCtrl status packet.

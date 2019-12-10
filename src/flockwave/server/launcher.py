@@ -21,10 +21,11 @@ from flockwave.logger import log
 @click.option(
     "--debug/--no-debug", default=False, help="Start the server in debug mode"
 )
-def start(config, debug):
+@click.option("--log-style", type=click.Choice(["fancy", "plain"]), default="fancy")
+def start(config, debug, log_style):
     """Start the Flockwave server."""
     # Set up the logging format
-    logger.install(level=logging.DEBUG if debug else logging.INFO)
+    logger.install(level=logging.DEBUG if debug else logging.INFO, style=log_style)
 
     # Also silence Engine.IO and Socket.IO when not in debug mode
     if not debug:

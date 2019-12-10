@@ -175,7 +175,7 @@ class AppConfigurator:
             else:
                 raise
 
-        self._load_configuration_from_object(config)
+        self._load_configuration_from_dict(config)
 
         if not exists and mandatory:
             if self._log:
@@ -186,6 +186,18 @@ class AppConfigurator:
                 self._log.info("Loaded configuration from {0!r}".format(original))
 
         return True
+
+    def _load_configuration_from_dict(self, config: Dict[str, Any]) -> None:
+        """Loads configuration settings from the given Python dictionary.
+
+        Only uppercase keys will be processed.
+
+        Parameters:
+            config: the configuration dict to load.
+        """
+        for key, value in config.items():
+            if key.isupper():
+                self._config[key] = value
 
     def _load_configuration_from_object(self, config: Any) -> None:
         """Loads configuration settings from the given Python object.

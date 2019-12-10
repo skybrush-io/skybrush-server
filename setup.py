@@ -17,7 +17,7 @@ requires = [
     "flockwave-ext @ https://git.collmot.com/collmot/flockwave-ext/archive/1.1.0.tar.gz",
     "flockwave-flockctrl @ https://git.collmot.com/collmot/flockwave-flockctrl/archive/0.4.0.tar.gz",
     "flockwave-gps @ https://git.collmot.com/collmot/flockwave-gps/archive/0.10.0.tar.gz",
-    "flockwave-logger @ https://git.collmot.com/collmot/flockwave-logger/archive/1.0.0.tar.gz",
+    "flockwave-logger @ https://git.collmot.com/collmot/flockwave-logger/archive/1.1.0.tar.gz",
     "flockwave-parsers @ https://git.collmot.com/collmot/flockwave-logger/archive/1.1.1.tar.gz",
     "flockwave-spec @ https://git.collmot.com/collmot/flockwave-spec/archive/0.20.0.tar.gz",
     "jsonschema>=3.0.1",

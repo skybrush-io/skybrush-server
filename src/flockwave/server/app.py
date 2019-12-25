@@ -337,6 +337,9 @@ class FlockwaveServer:
         # Create an object to hold information about all the objects that
         # the server knows about
         self.object_registry = ObjectRegistry()
+        self.object_registry.removed.connect(
+            self._on_object_removed, sender=self.object_registry
+        )
 
         # Create the global world object
         self.world = World()
@@ -1037,6 +1040,18 @@ class FlockwaveServer:
             body = {"type": "CMD-TIMEOUT", "ids": receipt_ids}
             message = hub.create_response_or_notification(body)
             hub.enqueue_message(message, to=client)
+
+    def _on_object_removed(self, sender, object):
+        """Handler called when an object is removed from the object registry.
+
+        Parameters:
+            sender (ObjectRegistry): the object registry
+            object (ModelObject): the object that was removed
+        """
+        notification = self.message_hub.create_response_or_notification(
+            {"type": "OBJ-DEL", "ids": [object.id]}
+        )
+        self.message_hub.enqueue_message(notification)
 
     def _sort_uavs_by_drivers(self, uav_ids, response=None):
         """Given a list of UAV IDs, returns a mapping that maps UAV drivers

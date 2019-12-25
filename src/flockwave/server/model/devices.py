@@ -511,8 +511,7 @@ class ObjectNode(DeviceTreeNodeBase):
     def __init__(self):
         """Constructor."""
         super(ObjectNode, self).__init__()
-        # TODO(ntamas): fix this in the spec!
-        self.type = DeviceTreeNodeType.uav
+        self.type = DeviceTreeNodeType.object
 
     def add_device(self, id):
         """Adds a new device with the given identifier to this node.
@@ -732,7 +731,7 @@ class DeviceTree(object):
             sender: the object registry
             object: the object that was removed
         """
-        if object.id in self.root.children:
+        if object.id in getattr(self.root, "children", ()):
             self.root.remove_child_by_id(object.id)
 
 

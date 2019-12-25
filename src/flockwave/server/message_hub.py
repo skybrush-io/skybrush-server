@@ -266,14 +266,16 @@ class MessageHub:
         return self._message_builder.create_response_to(message, body)
 
     def enqueue_broadcast_message(self, message):
-        """Sends a broadcast message from this message hub.
+        """Enqueues a broadcast message in this message hub to be sent later.
 
-        Blocks until the message was actually broadcast to all connected
-        clients. If you are not interested in when the message is
-        sent, use `enqueue_broadcast_message()` instead.
+        Broadcast messages are sent to all connected clients.
+
+        Note that this function may drop messages if they are enqueued too
+        fast. Use `broadcast_message()` if you want to block until the message
+        is actually in the queue.
 
         Parameters:
-            message (FlockwaveNotification): the notification to broadcast.
+            message (FlockwaveNotification): the notification to enqueue
         """
         assert isinstance(
             message, FlockwaveNotification

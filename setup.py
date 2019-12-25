@@ -51,7 +51,7 @@ setup(
     include_package_data=True,
     python_requires=">=3.7",
     install_requires=requires,
-    extras_require={"radiation": ["numpy>=1.11.1"]},
-    setup_requires=["pytest-runner"],
+    extras_require={"dev": ["click-man>=0.3.0"], "radiation": ["numpy>=1.11.1"]},
+    setup_requires=[],
     entry_points={"console_scripts": ["flockwaved = flockwave.server.launcher:start"]},
 )

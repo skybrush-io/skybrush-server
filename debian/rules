@@ -1,0 +1,28 @@
+#!/usr/bin/make -f
+
+export DH_VIRTUALENV_INSTALL_ROOT=/usr/lib
+export PYBUILD_NAME=dockctrl
+
+%:
+	dh $@ --with python-virtualenv,systemd --buildsystem=pybuild
+
+override_dh_virtualenv:
+	dh_virtualenv \
+		--python /usr/bin/python3.7 \
+		--builtin-venv \
+		--use-system-packages \
+		--setuptools \
+		--extras dev \
+		--extra-pip-arg "--no-compile"
+	debian/flockwave-server/usr/lib/flockwave-server/bin/python3 setup.py --command-packages=click_man.commands man_pages --target debian/tmp/manpages
+	pyclean debian
+	py3clean debian
+	find debian -type f -name '*.exe' | xargs rm
+	find debian/flockwave-server/usr/lib/flockwave-server/bin ! -name flockwaved -type f | xargs rm
+	rm debian/flockwave-server/usr/lib/flockwave-server/lib/python3.7/site-packages/bitstring.py
+	chmod a-x debian/flockwave-server/usr/lib/flockwave-server/lib/python3.7/site-packages/bitstring-*.dist-info/*
+	find debian/flockwave-server/usr/lib/flockwave-server/lib/python3.7/site-packages/pymavlink -type f | xargs chmod a-x
+	dh_installman -O--buildsystem=pybuild
+
+override_dh_installinit:
+	true    # prevent a lintian warning about missing /etc/init.d scripts

@@ -37,6 +37,7 @@ PyInstaller = "*"
 pipfile-requirements = "*"
 pytest = "*"
 pytest-trio = "*"
+click-man = "*"
 
 [requires]
 python_version = "3.7"

@@ -1,0 +1,18 @@
+Source: flockwave-server
+Maintainer: Tamas Nepusz <tamas@collmot.com>
+Build-Depends: debhelper (>= 9.20160709), python3, dh-exec, dh-virtualenv,
+    python3-setuptools, python3-pip, python3-dev, python3-venv, libffi-dev,
+    librtmidi-dev, python3-lxml
+Standards-Version: 4.3.0
+Section: contrib/python
+Priority: optional
+
+Package: flockwave-server
+Architecture: any
+Pre-Depends: dpkg (>= 1.16.1), python3.7, ${misc:Pre-Depends}
+Depends: python3-lxml, ${shlibs:Depends}, ${misc:Depends}
+Description: Flockwave server component.
+ This package provides the server component of a Flockwave-based drone swarm.
+ It can be installed on ground control stations and docking stations to provide
+ status information of the swarm and the docking stations to connected Flockwave
+ clients.

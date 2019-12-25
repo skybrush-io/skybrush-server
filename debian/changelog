@@ -1,0 +1,5 @@
+flockwave-server (0.1.0) unstable; urgency=low
+
+  * Automatic package build.
+
+ -- Tamas Nepusz <tamas@collmot.com>  Mon, 09 Dec 2019 22:07:56 -0700

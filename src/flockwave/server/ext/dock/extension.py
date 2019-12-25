@@ -77,7 +77,9 @@ class DockExtension(UAVExtensionBase):
             async with self._connection:
                 async with channel.serve_rpc_requests(
                     handler=dispatcher.dispatch, log=self.log
-                ):
+                ) as peer:
+                    # TODO(ntamas): get initial state here
+                    # print("Got location:", await peer.request.getLocation())
                     await sleep_forever()
         except Exception as ex:
             # Exceptions raised during a connection are caught and logged here;

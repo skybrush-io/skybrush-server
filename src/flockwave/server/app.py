@@ -31,8 +31,9 @@ from .message_hub import (
 )
 from .model.client import Client
 from .model.devices import DeviceTree, DeviceTreeSubscriptionManager
-from .model.messages import FlockwaveMessage
 from .model.errors import ClientNotSubscribedError, NoSuchPathError
+from .model.messages import FlockwaveMessage, FlockwaveResponse
+from .model.object import ModelObject
 from .model.uav import is_uav, UAV
 from .model.world import World
 from .registries import (
@@ -457,19 +458,19 @@ class FlockwaveServer:
             paths, in_response_to
         )
 
-    def create_DEV_LIST_message_for(self, uav_ids, in_response_to=None):
+    def create_DEV_LIST_message_for(self, object_ids, in_response_to=None):
         """Creates a DEV-LIST message that contains information regarding
-        the device trees of the UAVs with the given IDs.
+        the device trees of the objects with the given IDs.
 
         Parameters:
-            uav_ids (iterable): list of UAV IDs
+            object_ids (iterable): list of object IDs
             in_response_to (Optional[FlockwaveMessage]): the message that the
                 constructed message will respond to. ``None`` means that the
                 constructed message will be a notification.
 
         Returns:
             FlockwaveMessage: the DEV-LIST message with the device trees of
-                the given UAVs
+                the given objects
         """
         devices = {}
 
@@ -478,10 +479,13 @@ class FlockwaveServer:
             body=body, in_response_to=in_response_to
         )
 
-        for uav_id in uav_ids:
-            uav = self._find_uav_by_id(uav_id, response)
-            if uav:
-                devices[uav_id] = uav.device_tree_node.json
+        for object_id in object_ids:
+            object = self._find_object_by_id(object_id, response)
+            if object:
+                if object.device_tree_node:
+                    devices[object_id] = object.device_tree_node.json
+                else:
+                    devices[object_id] = {}
 
         return response
 
@@ -954,8 +958,29 @@ class FlockwaveServer:
             failure_reason="No such connection",
         )
 
+    def _find_object_by_id(
+        self, object_id: str, response: Optional[FlockwaveResponse] = None
+    ) -> Optional[ModelObject]:
+        """Finds the object with the given ID in the object registry or registers
+        a failure in the given response object if there is no object with the
+        given ID.
+
+        Parameters:
+            object_id: the ID of the UAV to find
+            response: the response in which the failure can be registered
+
+        Returns:
+            the object with the given ID or ``None`` if there is no such object
+        """
+        return find_in_registry(
+            self.object_registry,
+            object_id,
+            response=response,
+            failure_reason="No such object",
+        )
+
     def _find_uav_by_id(self, uav_id, response=None):
-        """Finds the UAV with the given ID in the UAV registry or registers
+        """Finds the UAV with the given ID in the object registry or registers
         a failure in the given response object if there is no UAV with the
         given ID.
 

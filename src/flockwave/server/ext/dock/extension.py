@@ -70,8 +70,9 @@ class DockExtension(UAVExtensionBase):
 
         self._current_stream = stream
 
+        server = DockRPCServer()
         dispatcher = RPCDispatcher()
-        dispatcher.register_instance(DockRPCServer())
+        dispatcher.register_instance(server)
         dock = None
 
         try:
@@ -85,6 +86,9 @@ class DockExtension(UAVExtensionBase):
 
                     # Register the dock as an object
                     dock = Dock(self._id_format.format(uid))
+                    server.dock = dock
+                    server.create_mutator = self.app.device_tree.create_mutator
+
                     self.log.info("Connected to docking station {0}".format(dock.id))
                     with self.app.object_registry.use(dock):
                         # TODO(ntamas): get initial state here

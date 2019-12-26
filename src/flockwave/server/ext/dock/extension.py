@@ -1,5 +1,4 @@
 from contextlib import ExitStack
-from functools import partial
 from tinyrpc.dispatch import RPCDispatcher
 from tinyrpc.protocols.msgpackrpc import MSGPACKRPCProtocol
 from trio import open_nursery, sleep_forever
@@ -10,10 +9,12 @@ from flockwave.channels import MessageChannel
 from flockwave.listeners import create_listener
 from flockwave.parsers.rpc import RPCMessage
 from flockwave.server.model import ConnectionPurpose
+from flockwave.server.model.object import registered
 from flockwave.server.model.uav import PassiveUAVDriver
 
 from ..base import UAVExtensionBase
 
+from .model import Dock
 from .rpc import DockRPCServer
 
 ############################################################################
@@ -71,6 +72,7 @@ class DockExtension(UAVExtensionBase):
 
         dispatcher = RPCDispatcher()
         dispatcher.register_instance(DockRPCServer())
+        dock = None
 
         try:
             channel = create_rpc_message_channel(stream)
@@ -78,14 +80,23 @@ class DockExtension(UAVExtensionBase):
                 async with channel.serve_rpc_requests(
                     handler=dispatcher.dispatch, log=self.log
                 ) as peer:
-                    # TODO(ntamas): get initial state here
-                    # print("Got location:", await peer.request.getLocation())
-                    await sleep_forever()
+                    # Get the unique ID of the dock so we can register it
+                    uid = await peer.request.getUid()
+
+                    # Register the dock as an object
+                    dock = Dock(self._id_format.format(uid))
+                    self.log.info("Connected to docking station {0}".format(dock.id))
+                    with self.app.object_registry.use(dock):
+                        # TODO(ntamas): get initial state here
+                        await sleep_forever()
         except Exception as ex:
             # Exceptions raised during a connection are caught and logged here;
             # we do not let the main task itself crash because of them
             self.log.exception(ex)
         finally:
+            if dock is not None:
+                self.log.info("Disconnected from docking station {0}".format(dock.id))
+
             self._current_stream = None
 
     async def run(self, app, configuration, logger):
@@ -96,10 +107,11 @@ class DockExtension(UAVExtensionBase):
 
         async with open_nursery() as nursery:
             listener = create_listener(listener)
-            listener.handler = partial(self.handle_connection_safely)
+            listener.handler = self.handle_connection_safely
             listener.nursery = nursery
 
             with ExitStack() as stack:
+                stack.enter_context(registered("dock", Dock))
                 stack.enter_context(
                     app.connection_registry.use(
                         self._connection,

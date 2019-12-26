@@ -13,7 +13,7 @@ from flockwave.spec.schema import get_complex_object_schema
 from .devices import ObjectNode
 from .metamagic import ModelMeta
 from .mixins import TimestampMixin
-from .object import ModelObject
+from .object import ModelObject, register
 
 __all__ = (
     "BatteryInfo",
@@ -60,17 +60,11 @@ class UAVStatusInfo(TimestampMixin, metaclass=ModelMeta):
         self.battery = BatteryInfo()
 
 
+@register("uav")
 class UAV(ModelObject, metaclass=ABCMeta):
     """Abstract object that defines the interface of objects representing
     UAVs.
     """
-
-    @abstractproperty
-    def device_tree_node(self):
-        """Returns the ObjectNode_ object that represents the root of the
-        part of the device tree that corresponds to the UAV.
-        """
-        raise NotImplementedError
 
     @abstractproperty
     def driver(self):
@@ -92,9 +86,6 @@ class UAV(ModelObject, metaclass=ABCMeta):
         UAV.
         """
         raise NotImplementedError
-
-
-UAV.register("uav")
 
 
 class UAVBase(UAV):

@@ -8,6 +8,7 @@ from collections import Counter, defaultdict
 from flockwave.spec.schema import get_enum_from_schema, get_complex_object_schema
 from itertools import islice
 
+from .client import Client
 from .errors import ClientNotSubscribedError, NoSuchPathError
 from .metamagic import ModelMeta
 from .object import ModelObject
@@ -94,21 +95,20 @@ class DeviceTreeNodeBase(metaclass=ModelMeta):
             for key, child in self.children.items()
         )
 
-    def count_subscriptions_of(self, client):
+    def count_subscriptions_of(self, client: Client) -> int:
         """Count how many times the given client is subscribed to changes
         in channel values of this node or any of its sub-nodes.
 
         Parameters:
-            client (Client): the client to test
+            client: the client to test
 
         Returns:
-            int: the number of times time given client is subscribed to this
-                node
+            the number of times time given client is subscribed to this node
         """
         return self._subscribers[client] if self._subscribers else 0
 
     @property
-    def has_subscribers(self):
+    def has_subscribers(self) -> bool:
         """Returns whether this node has at least one subscriber."""
         return bool(self._subscribers)
 
@@ -124,7 +124,7 @@ class DeviceTreeNodeBase(metaclass=ModelMeta):
         else:
             return iter(())
 
-    def iterparents(self, include_self=False):
+    def iterparents(self, include_self: bool = False):
         """Iterates over the parents of this node, in increasing distance
         from the node itself.
 
@@ -156,7 +156,7 @@ class DeviceTreeNodeBase(metaclass=ModelMeta):
         return self._parent
 
     @property
-    def path(self):
+    def path(self) -> str:
         """Returns the path that leads to this node from the root node.
 
         This property is cached and invalidated automatically if the
@@ -171,7 +171,7 @@ class DeviceTreeNodeBase(metaclass=ModelMeta):
             self._path = self._validate_path()
         return self._path
 
-    def _validate_path(self):
+    def _validate_path(self) -> str:
         """Calculates the path string of this node."""
         node = self
         result = []
@@ -188,9 +188,9 @@ class DeviceTreeNodeBase(metaclass=ModelMeta):
                         "among the children of its parent"
                     )
             node = parent
-        result.append(u"")
+        result.append("")
         result.reverse()
-        return u"/".join(result)
+        return "/".join(result)
 
     def traverse_dfs(self, own_id=None):
         """Returns a generator that yields all the nodes in the subtree of
@@ -251,7 +251,7 @@ class DeviceTreeNodeBase(metaclass=ModelMeta):
 
         return node
 
-    def _dispose(self):
+    def _dispose(self) -> None:
         """Marks the node as not being used any more and detaches it from
         its tree.
         """
@@ -721,8 +721,9 @@ class DeviceTree(object):
             sender: the object registry
             object: the object that was added
         """
-        if hasattr(object, "device_tree_node"):
-            self.root.add_child(object.id, object.device_tree_node)
+        node = object.device_tree_node
+        if node:
+            self.root.add_child(object.id, node)
 
     def _on_object_removed(self, sender, object: ModelObject):
         """Handler called when an object is deregistered from the server.

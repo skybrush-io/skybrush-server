@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "425396177d03c48f924dfe3bb4c1765be6f2aa207e30882cfc63d07948c065cd"
+            "sha256": "c930ad89b4a0a29712dbfa9bd527d6be02ca22a195947993d7e04c6abf428005"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -91,7 +91,7 @@
             "file": "https://git.collmot.com/collmot/flockwave-flockctrl/archive/0.4.0.tar.gz"
         },
         "flockwave-gps": {
-            "file": "https://git.collmot.com/collmot/flockwave-gps/archive/0.10.0.tar.gz"
+            "file": "https://git.collmot.com/collmot/flockwave-gps/archive/0.11.0.tar.gz"
         },
         "flockwave-logger": {
             "file": "https://git.collmot.com/collmot/flockwave-logger/archive/1.1.0.tar.gz"
@@ -100,7 +100,7 @@
             "file": "https://git.collmot.com/collmot/flockwave-parsers/archive/1.1.1.tar.gz"
         },
         "flockwave-spec": {
-            "file": "https://git.collmot.com/collmot/flockwave-spec/archive/0.21.0.tar.gz"
+            "file": "https://git.collmot.com/collmot/flockwave-spec/archive/0.22.0.tar.gz"
         },
         "future": {
             "hashes": [
@@ -587,10 +587,10 @@
         },
         "macholib": {
             "hashes": [
-                "sha256:ac02d29898cf66f27510d8f39e9112ae00590adb4a48ec57b25028d6962b1ae1",
-                "sha256:c4180ffc6f909bf8db6cd81cff4b6f601d575568f4d5dee148c830e9851eb9db"
+                "sha256:b71afea242d5ad4caacbdb79d80e75815d033fbc30f45954b2f3397f39683fd6",
+                "sha256:c72bda118afe7799570fcb4114315d5c9c5416e48eacf1198da39b4d77201559"
             ],
-            "version": "==1.11"
+            "version": "==1.13"
         },
         "more-itertools": {
             "hashes": [
@@ -661,10 +661,10 @@
         },
         "py": {
             "hashes": [
-                "sha256:64f65755aee5b381cea27766a3a147c3f15b9b6b9ac88676de66ba2ae36793fa",
-                "sha256:dc639b046a6e2cff5bbe40194ad65936d6ba360b52b3c3fe1d08a82dd50b5e53"
+                "sha256:5e27081401262157467ad6e7f851b7aa402c5852dbcb3dae06768434de5752aa",
+                "sha256:c20fdd83a5dbc0af9efd622bee9a5564e278f6380fffcacc43ba6f43db2813b0"
             ],
-            "version": "==1.8.0"
+            "version": "==1.8.1"
         },
         "pyinstaller": {
             "hashes": [

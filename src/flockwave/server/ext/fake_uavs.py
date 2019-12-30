@@ -143,7 +143,7 @@ class FakeBattery(object):
     def voltage(self, value):
         percentage = 100 * (value - self._min) / self._range
         self._status.voltage = value
-        self._status.percentage = max(min(percentage, 100), 0)
+        self._status.percentage = int(max(min(percentage, 100), 0))
 
     def recharge(self):
         """Recharges the battery to the maximum voltage."""

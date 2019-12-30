@@ -7,27 +7,44 @@ a JSON schema description.
 
 import jsonschema
 
-from collections import namedtuple
 from contextlib import contextmanager
+from dataclasses import dataclass
 from flockwave.spec.schema import ref_resolver as flockwave_schema_ref_resolver
+from typing import Any, Callable, Dict, Optional, Tuple
 
 __all__ = ("ModelMeta",)
 
 
-class PropertyInfo(namedtuple("PropertyInfo", "name title description default")):
+#: Type specification for a mapper function that converts a property to its
+#: JSON representation or vice versa
+Mapper = Callable[[Any], Any]
+
+#: Pair of mapper functions, one to convert from JSON and the other one to
+#: convert to JSON
+MapperPair = Tuple[Mapper, Mapper]
+
+
+@dataclass
+class PropertyInfo:
     """Simple tuple subclass to hold information about a single property
     in a JSON schema.
     """
 
+    name: str
+    title: Optional[str] = None
+    description: Optional[str] = None
+    default: Any = None
+    mappers: Optional[MapperPair] = None
+
     @classmethod
-    def from_json_schema(cls, name, definition):
+    def from_json_schema(cls, name: str, definition: Dict):
         """Constructs a property information object from its JSON schema
         representation.
 
         Parameters:
-            name (str): the name of the property that appears as a key in a
+            name: the name of the property that appears as a key in a
                 ``properties`` stanza of a JSON schema object
-            definition (object): the JSON schema definition of the property
+            definition: the JSON schema definition of the property
 
         Returns:
             PropertyInfo: the property information object
@@ -40,7 +57,7 @@ class PropertyInfo(namedtuple("PropertyInfo", "name title description default"))
         )
 
 
-def collect_properties(schema, resolver, result=None):
+def collect_properties(schema, resolver, mappers, result=None):
     """Collects information about all the properties defined on a JSON
     schema.
 
@@ -48,6 +65,9 @@ def collect_properties(schema, resolver, result=None):
         schema (object): the JSON schema
         resolver (jsonschema.RefResolver): reference resolver for the
             JSON schema
+        mappers (dict): dictionary that maps property names to pairs of
+            converter functions to be used when deserializing and serializing
+            the property
         result (dict or None): dictionary to extend with the property
             information. ``None`` means to construct and return a new
             dictionary.
@@ -62,24 +82,24 @@ def collect_properties(schema, resolver, result=None):
     # Handle '$ref' keyword
     if "$ref" in schema:
         with resolver.resolving(schema["$ref"]) as subschema:
-            return collect_properties(subschema, resolver, result)
+            return collect_properties(subschema, resolver, mappers, result)
 
     # Handle 'allOf' keyword
     if "allOf" in schema:
         for subschema in schema["allOf"]:
-            collect_properties(subschema, resolver, result)
+            collect_properties(subschema, resolver, mappers, result)
         return result
 
     # Handle 'anyOf' keyword
     if "anyOf" in schema:
         for subschema in schema["anyOf"]:
-            collect_properties(subschema, resolver, result)
+            collect_properties(subschema, resolver, mappers, result)
         return result
 
     # Handle 'oneOf' keyword
     if "oneOf" in schema:
         for subschema in schema["oneOf"]:
-            collect_properties(subschema, resolver, result)
+            collect_properties(subschema, resolver, mappers, result)
         return result
 
     # Warn that we don't support NOT
@@ -89,7 +109,9 @@ def collect_properties(schema, resolver, result=None):
     # Handle 'properties' keyword
     if "properties" in schema:
         for name, definition in schema["properties"].items():
-            result[name] = PropertyInfo.from_json_schema(name, definition)
+            info = PropertyInfo.from_json_schema(name, definition)
+            info.mappers = mappers.get(name)
+            result[name] = info
 
     return result
 
@@ -176,25 +198,40 @@ class ModelMetaHelpers(object):
         dct.update(__init__=__init__, from_json=from_json, json=json)
 
     @staticmethod
-    def add_proxy_property(dct, name, property_info):
+    def add_proxy_property(dct: Dict, name: str, property_info: PropertyInfo):
         """Extends the class being constructed with a single proxy property
         that accesses an entry in the underlying JSON object directly.
 
         Parameters:
-            dct (dict): the class dictionary
-            name (str): the name of the property
-            property_info (PropertyInfo): an object that describes the
-                underlying JSON property based on the schema
+            dct: the class dictionary
+            name: the name of the property
+            property_info: an object that describes the underlying JSON property
+                based on the schema
         """
 
-        def getter(self):
-            try:
-                return self._json[name]
-            except KeyError:
-                raise AttributeError(name)
+        if property_info.mappers is None:
 
-        def setter(self, value):
-            self._json[name] = value
+            def getter(self):
+                try:
+                    return self._json[name]
+                except KeyError:
+                    raise AttributeError(name)
+
+            def setter(self, value):
+                self._json[name] = value
+
+        else:
+            from_json, to_json = property_info.mappers
+
+            def getter(self):
+                try:
+                    raw_value = self._json[name]
+                except KeyError:
+                    raise AttributeError(name)
+                return from_json(raw_value)
+
+            def setter(self, value):
+                self._json[name] = to_json(value)
 
         def deleter(self):
             del self._json[name]
@@ -341,6 +378,26 @@ class ModelMetaHelpers(object):
         return any(getattr(base, "__metaclass_is_ModelMeta__", False) for base in bases)
 
     @classmethod
+    def find_property_mappers(cls, dct, bases):
+        """Finds the specification of the property mappers that the class being
+        constructed must make use of. This is done by looking up the ``mappers``
+        attribute in the ``__meta__`` class embedded in the class definition.
+
+        Returns:
+            dict: a dictionary mapping names of properties to be generated in
+                the class to a pair where the first item is a function that
+                maps the property _from_ its JSON representation to its real
+                value (used during deserialization) and the second item is a
+                function that maps the property _to_ its JSON representation
+                from its real value (used during serialization).
+        """
+        dct = dct.get("__meta__")
+        if hasattr(dct, "mappers"):
+            return dct.mappers
+        else:
+            return {}
+
+    @classmethod
     def find_schema_and_resolver(cls, dct, bases):
         """Finds the JSON schema that the class being constructed must
         adhere to. This is done by looking up the ``schema`` attribute
@@ -418,11 +475,12 @@ class ModelMeta(type):
         """
         bases_have_schema = ModelMetaHelpers.bases_have_schema(bases)
         schema, resolver = ModelMetaHelpers.find_schema_and_resolver(dct, bases)
+        mappers = ModelMetaHelpers.find_property_mappers(dct, bases)
         if schema is not None:
             if not bases_have_schema:
                 ModelMetaHelpers.add_json_property(dct)
                 ModelMetaHelpers.add_special_methods(dct)
-                property_info = collect_properties(schema, resolver)
+                property_info = collect_properties(schema, resolver, mappers)
                 ModelMetaHelpers.add_proxy_properties(dct, property_info)
                 ModelMetaHelpers.add_clone_method(dct)
                 ModelMetaHelpers.add_update_from_method(dct)

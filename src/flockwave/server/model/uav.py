@@ -14,6 +14,7 @@ from .devices import ObjectNode
 from .metamagic import ModelMeta
 from .mixins import TimestampMixin
 from .object import ModelObject, register
+from .utils import coerce, scaled_by
 
 __all__ = (
     "BatteryInfo",
@@ -33,6 +34,7 @@ class BatteryInfo(metaclass=ModelMeta):
 
     class __meta__:
         schema = get_complex_object_schema("batteryInfo")
+        mappers = {"percentage": coerce(int), "voltage": scaled_by(10)}
 
 
 class UAVStatusInfo(TimestampMixin, metaclass=ModelMeta):
@@ -42,6 +44,7 @@ class UAVStatusInfo(TimestampMixin, metaclass=ModelMeta):
 
     class __meta__:
         schema = get_complex_object_schema("uavStatusInfo")
+        mappers = {"heading": scaled_by(10)}
 
     def __init__(self, id=None, timestamp=None):
         """Constructor.

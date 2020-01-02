@@ -14,6 +14,9 @@ import platform
 
 ON_MAC = platform.system().lower() == "darwin"
 
+# Label that is used to identify the server in SSDP discovery requests
+SERVER_NAME = "Flockwave server"
+
 # Secret key to encode cookies and session data
 SECRET_KEY = (
     b"\xa6\xd6\xd3a\xfd\xd9\x08R\xd2U\x05\x10\xbf\x8c2\t\t\x94\xb5R\x06z\xe5\xef"
@@ -62,7 +65,7 @@ EXTENSIONS = {
     },
     "socketio": {},
     "smpte_timecode": {"connection": "midi:IAC Driver Bus 1"},
-    "ssdp": {"label": "Flockwave server"},
+    "ssdp": {},
     "system_clock": {},
     "tcp": {},
     "udp": {},

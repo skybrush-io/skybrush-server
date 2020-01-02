@@ -271,7 +271,10 @@ async def run(app, configuration, logger):
     """
     multicast_group = configuration.get("multicast_group", ("239.255.255.250"))
     port = configuration.get("port", 1900)
-    label = getenv("FLOCKWAVE_SSDP_LABEL", configuration.get("label"))
+    label = getenv(
+        "FLOCKWAVE_SSDP_LABEL",
+        configuration.get("label", app.config.get("SERVER_NAME")),
+    )
 
     # Set up the socket pair that we will use to send and receive SSDP messages
     sender = create_socket(trio.socket.SOCK_DGRAM)

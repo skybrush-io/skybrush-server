@@ -62,7 +62,7 @@ EXTENSIONS = {
     },
     "socketio": {},
     "smpte_timecode": {"connection": "midi:IAC Driver Bus 1"},
-    "ssdp": {},
+    "ssdp": {"label": "Flockwave server"},
     "system_clock": {},
     "tcp": {},
     "udp": {},

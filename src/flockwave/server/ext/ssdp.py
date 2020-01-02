@@ -33,6 +33,7 @@ UPNP_DEVICE_ID = "urn:collmot-com:device:{0}:1".format(USN)
 UPNP_SERVICE_ID_TEMPLATE = "urn:collmot-com:service:{0}-{{0}}:1".format(USN)
 
 app = None
+label = None
 log = None
 
 ############################################################################
@@ -48,6 +49,7 @@ _RESPONSE_HEADERS = {
         }.get(platform.system(), platform.system() or "Unknown"),
         flockwave_version,
     ),
+    "LABEL.COLLMOT.COM": lambda: label,
 }
 
 _UPNP_SERVICE_ID_REGEX = re.compile(
@@ -194,7 +196,7 @@ async def handle_m_search(request, *, socket):
             continue
 
         response = prepare_response(
-            ["CACHE-CONTROL", "DATE", "EXT", "SERVER", "USN"],
+            ["CACHE-CONTROL", "DATE", "EXT", "LABEL.COLLMOT.COM", "SERVER", "USN"],
             extra={"LOCATION": location, "ST": search_target},
             prefix=request.request_version + " 200 OK",
         )
@@ -268,6 +270,7 @@ async def run(app, configuration, logger):
     """
     multicast_group = configuration.get("multicast_group", ("239.255.255.250"))
     port = configuration.get("port", 1900)
+    label = configuration.get("label")
 
     # Set up the socket pair that we will use to send and receive SSDP messages
     sender = create_socket(trio.socket.SOCK_DGRAM)
@@ -286,7 +289,9 @@ async def run(app, configuration, logger):
     )
     await receiver.bind((multicast_group, port))
 
-    with overridden(globals(), app=app, log=logger), closing(sender), closing(receiver):
+    context = dict(app=app, label=label, log=logger)
+
+    with overridden(globals(), **context), closing(sender), closing(receiver):
         while True:
             data = await receiver.recvfrom(65536)
             await handle_message(*data, socket=sender)

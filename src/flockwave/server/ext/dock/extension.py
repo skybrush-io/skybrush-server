@@ -22,7 +22,7 @@ from .rpc import DockRPCServer
 
 def create_rpc_message_channel(stream: Stream) -> MessageChannel[RPCMessage]:
     """Creates a unidirectional Trio-style channel that reads data from the
-    given Trio stream, and parses incoming JSON-RPC messages automatically.
+    given Trio stream, and parses incoming RPC messages automatically.
 
     Parameters:
         stream: the stream to read data from
@@ -68,12 +68,12 @@ class DockExtension(UAVExtensionBase):
             )
             return
 
-        self._current_stream = stream
-
         server = DockRPCServer()
         dispatcher = RPCDispatcher()
         dispatcher.register_instance(server)
         dock = None
+
+        self._current_stream = stream
 
         try:
             channel = create_rpc_message_channel(stream)

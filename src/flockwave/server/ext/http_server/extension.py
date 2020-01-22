@@ -13,6 +13,7 @@ from hypercorn.config import Config as HyperConfig
 from hypercorn.trio import serve
 from quart import Blueprint, abort, redirect, url_for
 from quart_trio import QuartTrio
+from trio import current_time, sleep
 from typing import Callable, Iterable, Optional
 
 import logging
@@ -190,13 +191,34 @@ async def run(app, configuration, logger):
 
     secure = bool(config.ssl_enabled)
 
-    logger.info(
-        "Starting {1} server on {0}...".format(
-            format_socket_address(address), "HTTPS" if secure else "HTTP"
-        )
-    )
+    retries = 0
+    max_retries = 3
 
-    await serve(exports["asgi_app"], config)
+    while True:
+        logger.info(
+            "Starting {1} server on {0}...".format(
+                format_socket_address(address), "HTTPS" if secure else "HTTP"
+            )
+        )
+
+        started_at = current_time()
+
+        try:
+            await serve(exports["asgi_app"], config)
+        except Exception:
+            # Server crashed -- maybe a change in IP address? Let's try again
+            # if we have not reached the maximum retry count.
+            if current_time() - started_at >= 5:
+                retries = 0
+
+            if retries < max_retries:
+                logger.error("Server stopped unexpectedly, retrying...")
+                await sleep(1)
+                retries += 1
+            else:
+                # Re-raise the exception; the extension manager will take care
+                # of logging it nicely
+                raise
 
 
 exports = {

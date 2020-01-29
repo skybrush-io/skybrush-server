@@ -1,7 +1,7 @@
-"""Extension that creates one or more fake connection objects in
+"""Extension that creates one or more virtual connection objects in
 the server.
 
-The fake connections stay alive for a given number of seconds when they
+The virtual connections stay alive for a given number of seconds when they
 are opened, then they close themselves and refuse to respond to further
 opening attempts for a given number of seconds. The length of both time
 intervals can be configured.
@@ -18,8 +18,8 @@ from trio import current_time, open_nursery, sleep, sleep_until
 __all__ = ()
 
 
-class FakeConnection(ConnectionBase):
-    """Fake connection class used by this extension.
+class VirtualConnection(ConnectionBase):
+    """Virtual connection class used by this extension.
 
     This connection class breaks the connection two seconds after it was
     opened. Subsequent attempts to open the connection will be blocked
@@ -29,7 +29,7 @@ class FakeConnection(ConnectionBase):
 
     def __init__(self):
         """Constructor."""
-        super(FakeConnection, self).__init__()
+        super().__init__()
         self._open_disallowed_until = None
 
     async def _open(self):
@@ -59,25 +59,27 @@ async def worker(app, configuration, logger):
     The configuration object supports the following keys:
 
     ``count``
-        The number of fake connections to provide
+        The number of virtual connections to provide
 
     ``id_format``
-        String template that defines how the names of the fake
+        String template that defines how the names of the virtual
         connections should be generated; must be in the format accepted
         by the ``str.format()`` method in Python when given the
         connection index as its argument.
     """
     count = configuration.get("count", 0)
-    id_format = configuration.get("id_format", "fakeConnection{0}")
+    id_format = configuration.get("id_format", "virtualConnection{0}")
 
     async with open_nursery() as nursery:
         for index in range(count):
             name = id_format.format(index)
-            nursery.start_soon(_handle_single_connection, app, FakeConnection(), name)
+            nursery.start_soon(
+                _handle_single_connection, app, VirtualConnection(), name
+            )
 
 
 async def _handle_single_connection(app, connection: Connection, name: str) -> None:
     with app.connection_registry.use(
         connection, name=name, purpose=ConnectionPurpose.debug
     ):
-        await app.supervise(connection, task=FakeConnection.close_soon)
+        await app.supervise(connection, task=VirtualConnection.close_soon)

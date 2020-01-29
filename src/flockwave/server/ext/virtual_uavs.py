@@ -1,4 +1,4 @@
-"""Extension that creates one or more fake UAVs in the server.
+"""Extension that creates one or more virtual UAVs in the server.
 
 Useful primarily for debugging purposes and for testing the server without
 having access to real hardware that provides UAV position and velocity data.
@@ -27,8 +27,8 @@ from .base import UAVExtensionBase
 __all__ = ()
 
 
-class FakeUAVDriver(UAVDriver):
-    """Fake UAV driver that manages a group of fake UAVs provided by this
+class VirtualUAVDriver(UAVDriver):
+    """Virtual UAV driver that manages a group of virtual UAVs provided by this
     extension.
     """
 
@@ -47,9 +47,9 @@ class FakeUAVDriver(UAVDriver):
                 circling, in radians per second
 
         Returns:
-            FakeUAV: an appropriate fake UAV object
+            VirtualUAV: an appropriate virtual UAV object
         """
-        uav = FakeUAV(id, driver=self)
+        uav = VirtualUAV(id, driver=self)
         uav.angle = angle
         uav.angular_velocity = angular_velocity
         uav.cruise_altitude = center.agl
@@ -75,7 +75,7 @@ class FakeUAVDriver(UAVDriver):
         return "yo" + choice("?!.")
 
     def _send_fly_to_target_signal_single(self, uav, target):
-        if uav.state == FakeUAVState.LANDED:
+        if uav.state == VirtualUAVState.LANDED:
             uav.takeoff()
             if target.agl is None and target.amsl is None:
                 target.agl = uav.cruise_altitude
@@ -91,8 +91,8 @@ class FakeUAVDriver(UAVDriver):
         return True
 
 
-class FakeUAVState(Enum):
-    """Enum class that represents the possible states of a fake UAV."""
+class VirtualUAVState(Enum):
+    """Enum class that represents the possible states of a virtual UAV."""
 
     LANDED = 0
     TAKEOFF = 1
@@ -100,8 +100,8 @@ class FakeUAVState(Enum):
     LANDING = 3
 
 
-class FakeBattery:
-    """A fake battery with voltage limits, linear discharge and a magical
+class VirtualBattery:
+    """A virtual battery with voltage limits, linear discharge and a magical
     automatic recharge when it is about to be depleted.
     """
 
@@ -175,10 +175,10 @@ class FakeBattery:
         self._voltage_channel = device.add_channel("voltage", type=float, unit="V")
 
 
-class FakeUAV(UAVBase):
-    """Model object representing a fake UAV provided by this extension.
+class VirtualUAV(UAVBase):
+    """Model object representing a virtual UAV provided by this extension.
 
-    The fake UAV will circle around a given target position by default, with
+    The virtual UAV will circle around a given target position by default, with
     a given angular velocity and a given radius. The radius is scaled down
     to half of the original radius during landing (this is to make it easier
     to see the landing process on the web UI even if the altitude display
@@ -215,7 +215,7 @@ class FakeUAV(UAVBase):
         radius (float): the radius of the circle. Set it to zero to get rid
             of the circling behaviour; in this case, the UAV will float
             statically above the target position.
-        state (FakeUAVState): the state of the UAV
+        state (VirtualUAVState): the state of the UAV
         target (GPSCoordinate): the target coordinates of the UAV; altitude
             must be given as relative to home. Note that this is not the
             coordinate that the UAV will reach; this is the coordinate of
@@ -224,7 +224,7 @@ class FakeUAV(UAVBase):
     """
 
     def __init__(self, *args, **kwds):
-        super(FakeUAV, self).__init__(*args, **kwds)
+        super().__init__(*args, **kwds)
 
         self._pos_flat = Vector3D()
         self._pos_flat_circle = FlatEarthCoordinate()
@@ -243,7 +243,7 @@ class FakeUAV(UAVBase):
         self.max_velocity = 10
         self.radiation_ext = None
         self.radius = 0.0
-        self.state = FakeUAVState.LANDED
+        self.state = VirtualUAVState.LANDED
         self.target = None
 
         self.step(0)
@@ -269,7 +269,7 @@ class FakeUAV(UAVBase):
 
     @property
     def state(self):
-        """The state of the UAV; one of the constants from the FakeUAVState_
+        """The state of the UAV; one of the constants from the VirtualUAVState_
         enum class.
         """
         return self._state
@@ -303,17 +303,17 @@ class FakeUAV(UAVBase):
         self._target_xyz = Vector3D(x=flat.x, y=flat.y, z=new_altitude)
 
     def land(self):
-        """Starts a simulated landing with the fake UAV."""
-        if self.state != FakeUAVState.AIRBORNE:
+        """Starts a simulated landing with the virtual UAV."""
+        if self.state != VirtualUAVState.AIRBORNE:
             return
 
         if self._target_xyz is None:
             self._target_xyz = self._pos_flat.copy()
         self._target_xyz.z = 0
-        self.state = FakeUAVState.LANDING
+        self.state = VirtualUAVState.LANDING
 
     def step(self, dt, mutator=None):
-        """Simulates a single step of the trajectory of the fake UAV based
+        """Simulates a single step of the trajectory of the virtual UAV based
         on its state and the amount of time that has passed.
 
         Parameters:
@@ -324,7 +324,7 @@ class FakeUAV(UAVBase):
         state = self._state
 
         # Update the angle
-        if state == FakeUAVState.AIRBORNE and self.radius > 0:
+        if state == VirtualUAVState.AIRBORNE and self.radius > 0:
             # When airborne and the circle radius is positive, the UAV is
             # circling in the air with a prescribed angular velocity.
             # Otherwise, the angle does not change.
@@ -333,13 +333,13 @@ class FakeUAV(UAVBase):
         # Do we have a target?
         if self._target_xyz is not None:
             # We aim for the target in the XYZ plane only if we are airborne
-            if state == FakeUAVState.AIRBORNE:
+            if state == VirtualUAVState.AIRBORNE:
                 dx = self._target_xyz.x - self._pos_flat.x
                 dy = self._target_xyz.y - self._pos_flat.y
             else:
                 dx, dy = 0, 0
 
-            if state != FakeUAVState.LANDED:
+            if state != VirtualUAVState.LANDED:
                 dz = self._target_xyz.z - self._pos_flat.z
             else:
                 dz = 0
@@ -360,7 +360,7 @@ class FakeUAV(UAVBase):
 
         # Scale the radius according to the progress of the transition if
         # we are currently in a transition
-        if state in (FakeUAVState.LANDING, FakeUAVState.TAKEOFF):
+        if state in (VirtualUAVState.LANDING, VirtualUAVState.TAKEOFF):
             delta_progress = dt / 3
             remaining_progress = 1 - self._transition_progress
             if delta_progress < remaining_progress:
@@ -368,20 +368,20 @@ class FakeUAV(UAVBase):
             else:
                 self._transition_progress = 1
             eased_progress = self._transition_progress
-            if state == FakeUAVState.LANDING:
+            if state == VirtualUAVState.LANDING:
                 eased_progress = 1 - eased_progress
             radius = self.radius * (eased_progress + 1) / 2
-        elif state == FakeUAVState.LANDED:
+        elif state == VirtualUAVState.LANDED:
             radius = self.radius * 0.5
         else:
             radius = self.radius
 
         # Finish the transition and enter the new state if needed
         if self._transition_progress >= 1:
-            if state == FakeUAVState.LANDING:
-                self.state = FakeUAVState.LANDED
+            if state == VirtualUAVState.LANDING:
+                self.state = VirtualUAVState.LANDED
             else:
-                self.state = FakeUAVState.AIRBORNE
+                self.state = VirtualUAVState.AIRBORNE
 
         # Calculate our coordinates around the circle in flat Earth
         self._pos_flat_circle.x = self._pos_flat.x + cos(self.angle) * radius
@@ -444,17 +444,17 @@ class FakeUAV(UAVBase):
             )
 
     def takeoff(self):
-        """Starts a simulated take-off with the fake UAV."""
-        if self.state != FakeUAVState.LANDED:
+        """Starts a simulated take-off with the virtual UAV."""
+        if self.state != VirtualUAVState.LANDED:
             return
 
         if self._target_xyz is None:
             self._target_xyz = self._pos_flat.copy()
         self._target_xyz.z = self.cruise_altitude
-        self.state = FakeUAVState.TAKEOFF
+        self.state = VirtualUAVState.TAKEOFF
 
     def _initialize_device_tree_node(self, node):
-        self.battery = FakeBattery()
+        self.battery = VirtualBattery()
         self.battery.register_in_device_tree(node)
 
         device = node.add_device("thermometer")
@@ -471,10 +471,10 @@ class FakeUAV(UAVBase):
         }
 
 
-class FakeUAVProviderExtension(UAVExtensionBase):
-    """Extension that creates one or more fake UAVs in the server.
+class VirtualUAVProviderExtension(UAVExtensionBase):
+    """Extension that creates one or more virtual UAVs in the server.
 
-    Fake UAVs circle around a given point in a given radius, with constant
+    Virtual UAVs circle around a given point in a given radius, with constant
     angular velocity. They are able to respond to landing and takeoff
     requests, and also handle the following commands:
 
@@ -488,7 +488,7 @@ class FakeUAVProviderExtension(UAVExtensionBase):
 
     def __init__(self):
         """Constructor."""
-        super(FakeUAVProviderExtension, self).__init__()
+        super(VirtualUAVProviderExtension, self).__init__()
         self._delay = 1
 
         self.radiation = None
@@ -496,12 +496,12 @@ class FakeUAVProviderExtension(UAVExtensionBase):
         self.uav_ids = []
 
     def _create_driver(self):
-        return FakeUAVDriver()
+        return VirtualUAVDriver()
 
     def configure(self, configuration):
         # Get the number of UAVs to create and the format of the IDs
         count = configuration.get("count", 0)
-        id_format = configuration.get("id_format", "FAKE-{0}")
+        id_format = configuration.get("id_format", "VIRT-{0}")
 
         # Set the status updater thread frequency
         self.delay = configuration.get("delay", 1)
@@ -561,4 +561,4 @@ class FakeUAVProviderExtension(UAVExtensionBase):
                 app.request_to_send_UAV_INF_message_for(self.uav_ids)
 
 
-construct = FakeUAVProviderExtension
+construct = VirtualUAVProviderExtension

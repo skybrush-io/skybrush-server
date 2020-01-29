@@ -1,6 +1,6 @@
 """Extension that allows one to place virtual "radiation sources" into
-the world. Other extensions (such as ``fake_uav``) could then query the
-locations of the radiation sources to provide UAVs with fake Geiger-Muller
+the world. Other extensions (such as ``virtual_uavs``) could then query the
+locations of the radiation sources to provide UAVs with virtual Geiger-Muller
 counters.
 """
 
@@ -172,7 +172,7 @@ class RadiationExtension(ExtensionBase):
         return {"measure_at": self._measure_at}
 
     def _measure_at(self, point, seconds=1):
-        """Conducts a fake measurement of radiation at the given point
+        """Conducts a virtual measurement of radiation at the given point
         for the given amount of time.
 
         Parameters:

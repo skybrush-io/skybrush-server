@@ -31,11 +31,11 @@ EXTENSIONS = {
     "auth_basic": {},
     "debug": {"route": "/debug"},
     "dock": {"listener": "unix:/tmp/flockwaved-dock.sock"},
-    "fake_uavs": {
+    "virtual_uavs": {
         "count": 3,
-        "delay": 1.9,
+        "delay": 0.2,
         "enabled": True,
-        "id_format": "COLLMOT-{0:02}",
+        "id_format": "{0:02}",
         "center": {
             # ELTE kert
             "lat": 47.473360,

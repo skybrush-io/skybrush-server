@@ -9,7 +9,13 @@ from collections import defaultdict
 from functools import partial
 from importlib import import_module
 from inspect import isawaitable
-from trio import CancelScope, MultiError, open_memory_channel, open_nursery
+from trio import (
+    BrokenResourceError,
+    CancelScope,
+    MultiError,
+    open_memory_channel,
+    open_nursery,
+)
 from typing import Any, Callable, Dict, Optional
 
 from flockwave.connections import (
@@ -1076,7 +1082,11 @@ class FlockwaveServer:
         notification = self.message_hub.create_response_or_notification(
             {"type": "OBJ-DEL", "ids": [object.id]}
         )
-        self.message_hub.enqueue_message(notification)
+        try:
+            self.message_hub.enqueue_message(notification)
+        except BrokenResourceError:
+            # App is probably shutting down, this is OK.
+            pass
 
     def _sort_uavs_by_drivers(self, uav_ids, response=None):
         """Given a list of UAV IDs, returns a mapping that maps UAV drivers

@@ -7,10 +7,12 @@ having access to real hardware that provides UAV position and velocity data.
 from __future__ import absolute_import, division
 
 from enum import Enum
+from functools import partial
 from math import atan2, cos, hypot, sin, pi
 from random import random, choice
-from trio import sleep
+from trio import open_nursery, sleep
 from trio_util import periodic
+from typing import Callable
 
 from flockwave.gps.vectors import (
     FlatEarthCoordinate,
@@ -18,6 +20,8 @@ from flockwave.gps.vectors import (
     FlatEarthToGPSCoordinateTransformation,
     Vector3D,
 )
+from flockwave.server.concurrency import delayed
+from flockwave.server.model.errors import FlockwaveErrorCode
 from flockwave.server.model.uav import BatteryInfo, UAVBase, UAVDriver
 from flockwave.spec.ids import make_valid_object_id
 
@@ -226,6 +230,7 @@ class VirtualUAV(UAVBase):
     def __init__(self, *args, **kwds):
         super().__init__(*args, **kwds)
 
+        self._autopilot_initializing = False
         self._pos_flat = Vector3D()
         self._pos_flat_circle = FlatEarthCoordinate()
         self._state = None
@@ -248,6 +253,24 @@ class VirtualUAV(UAVBase):
 
         self.step(0)
 
+    @property
+    def autopilot_initializing(self) -> bool:
+        """Returns whether the simulated autopilot is currently initializing."""
+        return self._autopilot_initializing
+
+    @autopilot_initializing.setter
+    def autopilot_initializing(self, value: bool) -> None:
+        value = bool(value)
+        if self._autopilot_initializing == value:
+            return
+
+        self._autopilot_initializing = value
+
+        self.ensure_error(
+            FlockwaveErrorCode.AUTOPILOT_INITIALIZING,
+            present=self._autopilot_initializing,
+        )
+
     def clear_radius(self):
         if self.radius > 0:
             self._pos_flat.x = self._pos_flat_circle.x
@@ -266,6 +289,18 @@ class VirtualUAV(UAVBase):
     @home.setter
     def home(self, value):
         self._trans.origin = value
+
+    def notify_booted(self) -> None:
+        """Notifies the virtual UAV that the boot process has ended."""
+        self.autopilot_initializing = True
+
+    def notify_autopilot_initialized(self) -> None:
+        """Notifies the virtual UAV that the autopilot has initialized."""
+        self.autopilot_initializing = False
+
+    def notify_shutdown(self) -> None:
+        """Notifies the virtual UAV that it is about to shut down."""
+        self.autopilot_initializing = False
 
     @property
     def state(self):
@@ -301,6 +336,23 @@ class VirtualUAV(UAVBase):
         self._target.update(agl=new_altitude)
         flat = self._trans.to_flat_earth(value)
         self._target_xyz = Vector3D(x=flat.x, y=flat.y, z=new_altitude)
+
+    def ensure_error(self, code: int, present: bool = True) -> None:
+        """Ensures that the given error code is present (or not present) in the
+        error code list.
+
+        Parameters:
+            code: the code to add or remove
+            present: whether to add the code (True) or remove it (False)
+        """
+        code = int(code)
+
+        if code in self.errors:
+            if not present:
+                self.errors.remove(code)
+        else:
+            if present:
+                self.errors.append(code)
 
     def land(self):
         """Starts a simulated landing with the virtual UAV."""
@@ -399,7 +451,7 @@ class VirtualUAV(UAVBase):
         # Update the UAV status
         updates = {
             "position": position,
-            "errors": self.errors if self.has_error else (),
+            "errors": self.errors,
             "battery": self.battery.status,
         }
         if self.radius > 0:
@@ -548,17 +600,65 @@ class VirtualUAVProviderExtension(UAVExtensionBase):
     def delay(self, value):
         self._delay = max(float(value), 0)
 
+    async def simulate_uav(self, uav: VirtualUAV, spawn: Callable):
+        """Simulates the behaviour of a single UAV in the application.
+
+        Parameters:
+            uav: the virtual UAV to simulate
+            spawn: function to call when the UAV wishes to spawn a background
+                task
+        """
+        updater = partial(self.app.request_to_send_UAV_INF_message_for, [uav.id])
+
+        with self.app.object_registry.use(uav):
+            while True:
+                # Simulate the UAV behaviour from boot time
+                await self.simulate_uav_single_boot(uav, notify=updater, spawn=spawn)
+
+                # UAV stopped, user probably requested a reboot. Wait a bit to
+                # simulate the shutdown time, then we restart the loop.
+                await sleep(0.2)
+
+    async def simulate_uav_single_boot(
+        self, uav: VirtualUAV, *, notify: Callable[[], None], spawn: Callable
+    ):
+        """Simulates a single boot session of the virtual UAV.
+
+        Parameters:
+            uav: the virtual UAV to simulate
+            notify: function to call when new status information should be
+                dispatched about the UAV
+            spawn: function to call when the UAV wishes to spawn a background
+                task
+        """
+        # Booting takes a bit of time; we simulate this with a random delay
+        await sleep(random() + 1)
+
+        # Now we enter the main control loop of the UAV. We assume that the
+        # autopilot initialization takes about 2 seconds.
+        uav.notify_booted()
+        spawn(
+            delayed(
+                random() * 0.5 + 2, uav.notify_autopilot_initialized, ensure_async=True
+            )
+        )
+
+        try:
+            async for uptime, _ in periodic(self._delay):
+                with self.create_device_tree_mutation_context() as mutator:
+                    uav.step(mutator=mutator, dt=self._delay)
+
+                notify()
+        finally:
+            uav.notify_shutdown()
+
     async def worker(self, app, configuration, logger):
         """Main background task of the extension that updates the state of
         the UAVs periodically.
         """
-        with app.object_registry.use(*self.uavs):
-            async for _ in periodic(self._delay):
-                with self.create_device_tree_mutation_context() as mutator:
-                    for uav in self.uavs:
-                        uav.step(mutator=mutator, dt=self._delay)
-
-                app.request_to_send_UAV_INF_message_for(self.uav_ids)
+        async with open_nursery() as nursery:
+            for uav in self.uavs:
+                nursery.start_soon(self.simulate_uav, uav, nursery.start_soon)
 
 
 construct = VirtualUAVProviderExtension

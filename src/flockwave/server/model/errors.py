@@ -1,7 +1,7 @@
 """Error classes specific to the Flockwave model."""
 
 from builtins import str
-from enum import Enum
+from enum import IntEnum
 
 
 __all__ = ("ClientNotSubscribedError", "NoSuchPathError")
@@ -47,7 +47,7 @@ class NoSuchPathError(FlockwaveError):
         self.path = path
 
 
-class FlockwaveErrorCode(Enum):
+class FlockwaveErrorCode(IntEnum):
     """Error codes defined in the Flockwave protocol."""
 
     NO_ERROR = 0

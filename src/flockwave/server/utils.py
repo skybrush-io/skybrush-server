@@ -10,6 +10,7 @@ from typing import Any, Callable
 
 __all__ = (
     "datetime_to_unix_timestamp",
+    "identity",
     "is_timezone_aware",
     "itersubclasses",
     "keydefaultdict",
@@ -88,6 +89,11 @@ def datetime_to_unix_timestamp(dt: datetime) -> float:
     if not is_timezone_aware(dt):
         raise ValueError("datetime object must be timezone-aware")
     return dt.timestamp()
+
+
+def identity(obj: Any) -> Any:
+    """Identity function that returns its input argument."""
+    return obj
 
 
 def is_timezone_aware(dt: datetime) -> bool:

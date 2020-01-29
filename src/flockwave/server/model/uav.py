@@ -198,6 +198,10 @@ class UAVBase(UAV):
         """
         pass
 
+    def clear_errors(self):
+        """Clears the error codes of the UAV."""
+        return self.update_status(errors=())
+
     def update_status(
         self,
         position=None,

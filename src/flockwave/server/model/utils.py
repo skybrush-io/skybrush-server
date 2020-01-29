@@ -12,6 +12,21 @@ def coerce(type: Callable) -> MapperPair:
     return type, type
 
 
+def coerce_optional(type: Callable) -> MapperPair:
+    """Returns a property mapper function pair that can be used when the value
+    has to be coerced into a specific type before saving it into JSON, assuming
+    that undefined (null) values are allowed in JSON.
+    """
+
+    def from_json(value):
+        return None if value is None else type(value)
+
+    def to_json(value):
+        return None if value is None else type(value)
+
+    return from_json, to_json
+
+
 def scaled_by(factor: Union[int, float]) -> MapperPair:
     """Returns a property mapper function pair that can be used when the value
     of a numeric property is scaled up by a factor and then cast to an integer

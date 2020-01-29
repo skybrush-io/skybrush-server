@@ -124,8 +124,8 @@ class ClockBase(Clock):
         now = time()
         result = {
             "id": self.id,
-            "retrievedAt": datetime.fromtimestamp(now, tz=timezone.utc),
-            "timestamp": self.ticks_given_time(now),
+            "retrievedAt": int(now * 1000),
+            "ticks": self.ticks_given_time(now),
             "running": self.running,
         }
         if self._epoch is not None:

@@ -1,25 +1,32 @@
 """Mixin classes for other model objects."""
 
-from datetime import datetime, timezone
+from datetime import datetime
 from flockwave.server.utils import is_timezone_aware
+from time import time
+from typing import Optional, Union
 
 __all__ = ("TimestampMixin",)
 
 
-class TimestampMixin(object):
+#: Type specification for timestamps that we accept in a TimestampMixin
+TimestampLike = Union[datetime, int]
+
+
+class TimestampMixin:
     """Mixin for classes that support a timestamp property."""
 
-    def __init__(self, timestamp=None):
+    def __init__(self, timestamp: Optional[TimestampLike] = None):
         """Mixin constructor. Must be called from the constructor of the
         class where this mixin is mixed in.
 
         Parameters:
-            timestamp (datetime or None): the initial timestamp; ``None``
-            means to use the current date and time.
+            timestamp: the initial timestamp. ``None`` means to use the current
+                date and time. Integers mean the number of milliseconds elapsed
+                since the UNIX epoch, in UTC.
         """
         self.update_timestamp(timestamp)
 
-    def update_timestamp(self, timestamp=None):
+    def update_timestamp(self, timestamp: Optional[TimestampLike] = None):
         """Updates the timestamp of the connection status information.
 
         Parameters:
@@ -27,13 +34,12 @@ class TimestampMixin(object):
             to use the current date and time.
         """
         if timestamp is None:
-            # datetime.utcnow() alone is not okay here because it returns a
-            # datetime object with tzinfo set to None. As a consequence,
-            # isoformat() would not add the timezone information correctly
-            # when the datetime object is formatted into JSON. That's why
-            # we need to use datetime.now(timezone.utc)
-            timestamp = datetime.now(timezone.utc)
-        assert is_timezone_aware(
-            timestamp
-        ), "UAV status information timestamp must be timezone-aware"
+            timestamp = int(round(time() * 1000))
+        elif isinstance(timestamp, datetime):
+            assert is_timezone_aware(
+                timestamp
+            ), "UAV status information timestamp must be timezone-aware"
+            timestamp = int(round(timestamp.timestamp() * 1000))
+        else:
+            timestamp = int(timestamp)
         self.timestamp = timestamp

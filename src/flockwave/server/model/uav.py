@@ -12,9 +12,9 @@ from flockwave.spec.schema import get_complex_object_schema
 
 from .devices import ObjectNode
 from .metamagic import ModelMeta
-from .mixins import TimestampMixin
+from .mixins import TimestampLike, TimestampMixin
 from .object import ModelObject, register
-from .utils import coerce, scaled_by
+from .utils import scaled_by
 
 __all__ = (
     "BatteryInfo",
@@ -29,12 +29,49 @@ __all__ = (
 log = base_log.getChild("uav")
 
 
-class BatteryInfo(metaclass=ModelMeta):
+class BatteryInfo:
     """Class representing the battery information of a single UAV."""
 
-    class __meta__:
-        schema = get_complex_object_schema("batteryInfo")
-        mappers = {"percentage": coerce(int), "voltage": scaled_by(10)}
+    def __init__(self):
+        self._voltage = None
+        self._percentage = None
+
+    @property
+    def percentage(self) -> Optional[int]:
+        return self._percentage
+
+    @percentage.setter
+    def percentage(self, value: Optional[int]) -> None:
+        self._percentage = int(value) if value is not None else None
+
+    @property
+    def voltage(self) -> Optional[float]:
+        return self._voltage
+
+    @voltage.setter
+    def voltage(self, value: Optional[float]) -> None:
+        self._voltage = float(value) if value is not None else None
+
+    @property
+    def json(self):
+        if self.voltage is None:
+            return [0.0]
+        elif self.percentage is None:
+            return [int(round(self.voltage * 10))]
+        else:
+            return [int(round(self.voltage * 10)), self.percentage]
+
+    @json.setter
+    def json(self, value):
+        if len(value) == 0:
+            self._voltage = self._percentage = None
+        else:
+            self._voltage = value[0] / 10
+            self._percentage = None if len(value) < 2 else int(value[1])
+
+    def update_from(self, other):
+        self._voltage = other._voltage
+        self._percentage = other._percentage
 
 
 class UAVStatusInfo(TimestampMixin, metaclass=ModelMeta):
@@ -46,14 +83,16 @@ class UAVStatusInfo(TimestampMixin, metaclass=ModelMeta):
         schema = get_complex_object_schema("uavStatusInfo")
         mappers = {"heading": scaled_by(10)}
 
-    def __init__(self, id=None, timestamp=None):
+    def __init__(
+        self, id: Optional[str] = None, timestamp: Optional[TimestampLike] = None
+    ):
         """Constructor.
 
         Parameters:
-            id (Optional[str]): ID of the UAV
-            timestamp (Optional[datetime]): time when the status information
-                was received. ``None`` means to use the current date and
-                time.
+            id: ID of the UAV
+            timestamp: time when the status information was received. ``None``
+                means to use the current date and time. Integers represent
+                milliseconds elapsed since the UNIX epoch.
         """
         TimestampMixin.__init__(self, timestamp)
         self.heading = 0.0
@@ -166,7 +205,7 @@ class UAVBase(UAV):
         heading=None,
         algorithm=None,
         battery=None,
-        error=None,
+        errors=None,
     ):
         """Updates the status information of the UAV.
 
@@ -186,7 +225,7 @@ class UAVBase(UAV):
                 of the battery on the UAV. It will be cloned to ensure that
                 modifying this object from the caller will not affect the
                 UAV itself.
-            error (Optional[Union[int,Iterable[int]]]): the error code or
+            errors (Optional[Union[int,Iterable[int]]]): the error code or
                 error codes of the UAV; use an empty list or tuple if the
                 UAV has no errors
         """
@@ -203,15 +242,15 @@ class UAVBase(UAV):
             self._status.algorithm = algorithm
         if battery is not None:
             self._status.battery.update_from(battery)
-        if error is not None:
-            if isinstance(error, int):
-                error = [error] if error > 0 else []
+        if errors is not None:
+            if isinstance(errors, int):
+                errors = [errors] if errors > 0 else []
             else:
-                error = sorted(code for code in error if code > 0)
-            if error:
-                self._status.error = error
-            elif hasattr(self._status, "error"):
-                del self._status.error
+                errors = sorted(code for code in errors if code > 0)
+            if errors:
+                self._status.errors = errors
+            elif hasattr(self._status, "errors"):
+                del self._status.errors
         self._status.update_timestamp()
 
 

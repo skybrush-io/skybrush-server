@@ -2,7 +2,6 @@
 UAVs.
 """
 
-from datetime import datetime
 from flockwave.spec.schema import get_complex_object_schema
 from time import time
 
@@ -61,14 +60,14 @@ class CommandExecutionStatus(metaclass=ModelMeta):
         either. Otherwise this function is a no-op.
         """
         if self.is_in_progress:
-            self.cancelled = datetime.now()
+            self.cancelled = time()
 
     def mark_as_clients_notified(self):
         """Marks that the receipt ID of the command was sent to the client that
         initially wished to execute the command.
         """
         if self.client_notified is None:
-            self.client_notified = datetime.now()
+            self.client_notified = time()
 
     def mark_as_finished(self):
         """Marks the command as being finished with the current timestamp if
@@ -76,7 +75,7 @@ class CommandExecutionStatus(metaclass=ModelMeta):
         either. Otherwise this function is a no-op.
         """
         if self.is_in_progress:
-            self.finished = datetime.now()
+            self.finished = time()
 
     def mark_as_sent(self):
         """Marks the command as being sent to the UAV that will ultimately
@@ -84,4 +83,4 @@ class CommandExecutionStatus(metaclass=ModelMeta):
         been marked as sent yet. Otherwise this function is a no-op.
         """
         if self.sent is None:
-            self.sent = datetime.now()
+            self.sent = time()

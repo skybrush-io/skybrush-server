@@ -62,7 +62,7 @@ class FakeUAVDriver(UAVDriver):
 
     def handle_command_error(self, uav, value=0):
         value = int(value)
-        uav.error = value
+        uav.errors = value
         return (
             f"Error code set to {uav.error}" if uav.has_error else "Error code cleared"
         )
@@ -100,12 +100,17 @@ class FakeUAVState(Enum):
     LANDING = 3
 
 
-class FakeBattery(object):
+class FakeBattery:
     """A fake battery with voltage limits, linear discharge and a magical
     automatic recharge when it is about to be depleted.
     """
 
-    def __init__(self, min_voltage=9, max_voltage=12.3, discharge_time=120):
+    def __init__(
+        self,
+        min_voltage: float = 9,
+        max_voltage: float = 12.4,
+        discharge_time: float = 120,
+    ):
         """Constructor.
 
         Parameters:
@@ -233,7 +238,7 @@ class FakeUAV(UAVBase):
         self.angle = 0.0
         self.angular_velocity = 0.0
         self.cruise_altitude = 20
-        self.error = 0
+        self.errors = []
         self.max_ascent_rate = 2
         self.max_velocity = 10
         self.radiation_ext = None
@@ -252,7 +257,7 @@ class FakeUAV(UAVBase):
 
     @property
     def has_error(self):
-        return self.error > 0
+        return bool(self.errors)
 
     @property
     def home(self):
@@ -394,7 +399,7 @@ class FakeUAV(UAVBase):
         # Update the UAV status
         updates = {
             "position": position,
-            "error": self.error if self.has_error else (),
+            "errors": self.errors if self.has_error else (),
             "battery": self.battery.status,
         }
         if self.radius > 0:

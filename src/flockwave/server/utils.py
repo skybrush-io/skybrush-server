@@ -5,6 +5,7 @@ from contextlib import contextmanager
 from datetime import datetime
 from functools import partial as partial_
 from inspect import Parameter, signature
+from typing import Any, Callable
 
 
 __all__ = (
@@ -50,7 +51,7 @@ def bind(func, args=None, kwds=None, *, partial=False):
         return partial_(func, *args, **kwds)
 
 
-def constant(x):
+def constant(x: Any) -> Callable[..., Any]:
     """Function factory that returns a function that accepts an arbitrary
     number of arguments and always returns the same constant.
 
@@ -62,7 +63,7 @@ def constant(x):
             irrespectively of its input
     """
 
-    def func(*args, **kwds):
+    def func(*args, **kwds) -> Any:
         return x
 
     return func

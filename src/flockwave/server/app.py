@@ -683,6 +683,7 @@ class FlockwaveServer:
             ),
             "UAV-HALT": ("send_shutdown_signal", None),
             "UAV-LAND": ("send_landing_signal", None),
+            "UAV-RST": ("send_reset_signal", None),
             "UAV-RTH": ("send_return_to_home_signal", None),
             "UAV-TAKEOFF": ("send_takeoff_signal", None),
         }.get(message_type, (None, None))
@@ -745,6 +746,10 @@ class FlockwaveServer:
                     for uav, result in results.items():
                         if isinstance(result, Exception):
                             response.add_failure(uav.id, str(result))
+                        elif result is False:
+                            response.add_failure(uav.id)
+                        elif result is True:
+                            response.add_success(uav.id)
                         else:
                             receipt = await cmd_manager.new(
                                 result, client_to_notify=sender.id
@@ -1204,7 +1209,7 @@ def handle_UAV_LIST(message, sender, hub):
 
 
 @app.message_hub.on(
-    "CMD-REQ", "UAV-FLY", "UAV-HALT", "UAV-LAND", "UAV-RTH", "UAV-TAKEOFF"
+    "CMD-REQ", "UAV-FLY", "UAV-HALT", "UAV-LAND", "UAV-RST", "UAV-RTH", "UAV-TAKEOFF"
 )
 async def handle_UAV_operations(message, sender, hub):
     return await app.dispatch_to_uavs(message, sender)

@@ -10,7 +10,7 @@ from enum import Enum
 from functools import partial
 from math import atan2, cos, hypot, sin, pi
 from random import random, choice
-from trio import open_nursery, sleep
+from trio import CancelScope, open_nursery, sleep
 from trio_util import periodic
 from typing import Callable
 
@@ -88,6 +88,18 @@ class VirtualUAVDriver(UAVDriver):
 
     def _send_landing_signal_single(self, uav):
         uav.land()
+        return True
+
+    def _send_reset_signal_single(self, uav, component):
+        if not component:
+            # Resetting the whole UAV, this is supported
+            uav.reset()
+        else:
+            # No components on this UAV
+            return False
+
+    def _send_shutdown_signal_single(self, uav):
+        uav.shutdown()
         return True
 
     def _send_takeoff_signal_single(self, uav):
@@ -231,8 +243,10 @@ class VirtualUAV(UAVBase):
         super().__init__(*args, **kwds)
 
         self._autopilot_initializing = False
+        self._request_shutdown = None
         self._pos_flat = Vector3D()
         self._pos_flat_circle = FlatEarthCoordinate()
+        self._shutdown_reason = None
         self._state = None
         self._target_xyz = None
         self._trans = FlatEarthToGPSCoordinateTransformation(
@@ -289,18 +303,6 @@ class VirtualUAV(UAVBase):
     @home.setter
     def home(self, value):
         self._trans.origin = value
-
-    def notify_booted(self) -> None:
-        """Notifies the virtual UAV that the boot process has ended."""
-        self.autopilot_initializing = True
-
-    def notify_autopilot_initialized(self) -> None:
-        """Notifies the virtual UAV that the autopilot has initialized."""
-        self.autopilot_initializing = False
-
-    def notify_shutdown(self) -> None:
-        """Notifies the virtual UAV that it is about to shut down."""
-        self.autopilot_initializing = False
 
     @property
     def state(self):
@@ -363,6 +365,66 @@ class VirtualUAV(UAVBase):
             self._target_xyz = self._pos_flat.copy()
         self._target_xyz.z = 0
         self.state = VirtualUAVState.LANDING
+
+    def reset(self):
+        """Requests the UAV to reset itself if it is currently running."""
+        if self._request_shutdown:
+            self._shutdown_reason = "reset"
+            self._request_shutdown()
+
+    async def run_single_boot(
+        self,
+        delay: float,
+        *,
+        mutate: Callable,
+        notify: Callable[[], None],
+        spawn: Callable,
+    ) -> str:
+        """Simulates a single boot session of the virtual UAV.
+
+        Parameters:
+            delay: number of seconds to wait between consecutive status updates
+            notify: function to call when new status information should be
+                dispatched about the UAV
+            spawn: function to call when the UAV wishes to spawn a background
+                task
+
+        Returns:
+            `"shutdown"` if the user requested the UAV to shut down;
+            `"reset"` if the user requested the UAV to reset itself.
+        """
+        # Booting takes a bit of time; we simulate this with a random delay
+        await sleep(random() + 1)
+
+        # Now we enter the main control loop of the UAV. We assume that the
+        # autopilot initialization takes about 2 seconds.
+        self._notify_booted()
+        spawn(
+            delayed(
+                random() * 0.5 + 2,
+                self._notify_autopilot_initialized,
+                ensure_async=True,
+            )
+        )
+
+        try:
+            with CancelScope() as scope:
+                self._request_shutdown = scope.cancel
+                async for _ in periodic(delay):
+                    with mutate() as mutator:
+                        self.step(mutator=mutator, dt=delay)
+
+                    notify()
+
+            return self._shutdown_reason
+        finally:
+            self._notify_shutdown()
+
+    def shutdown(self):
+        """Requests the UAV to shutdown if it is currently running."""
+        if self._request_shutdown:
+            self._shutdown_reason = "shutdown"
+            self._request_shutdown()
 
     def step(self, dt, mutator=None):
         """Simulates a single step of the trajectory of the virtual UAV based
@@ -522,6 +584,24 @@ class VirtualUAV(UAVBase):
             ),
         }
 
+    def _notify_booted(self) -> None:
+        """Notifies the virtual UAV that the boot process has ended."""
+        self._request_shutdown = None
+        self._shutdown_reason = None
+
+        self.autopilot_initializing = True
+
+    def _notify_autopilot_initialized(self) -> None:
+        """Notifies the virtual UAV that the autopilot has initialized."""
+        self.autopilot_initializing = False
+
+    def _notify_shutdown(self) -> None:
+        """Notifies the virtual UAV that it is about to shut down."""
+        self._request_shutdown = None
+        self._shutdown_reason = None
+
+        self.autopilot_initializing = False
+
 
 class VirtualUAVProviderExtension(UAVExtensionBase):
     """Extension that creates one or more virtual UAVs in the server.
@@ -613,44 +693,19 @@ class VirtualUAVProviderExtension(UAVExtensionBase):
         with self.app.object_registry.use(uav):
             while True:
                 # Simulate the UAV behaviour from boot time
-                await self.simulate_uav_single_boot(uav, notify=updater, spawn=spawn)
+                shutdown_reason = await uav.run_single_boot(
+                    self._delay,
+                    mutate=self.create_device_tree_mutation_context,
+                    notify=updater,
+                    spawn=spawn,
+                )
 
-                # UAV stopped, user probably requested a reboot. Wait a bit to
-                # simulate the shutdown time, then we restart the loop.
-                await sleep(0.2)
-
-    async def simulate_uav_single_boot(
-        self, uav: VirtualUAV, *, notify: Callable[[], None], spawn: Callable
-    ):
-        """Simulates a single boot session of the virtual UAV.
-
-        Parameters:
-            uav: the virtual UAV to simulate
-            notify: function to call when new status information should be
-                dispatched about the UAV
-            spawn: function to call when the UAV wishes to spawn a background
-                task
-        """
-        # Booting takes a bit of time; we simulate this with a random delay
-        await sleep(random() + 1)
-
-        # Now we enter the main control loop of the UAV. We assume that the
-        # autopilot initialization takes about 2 seconds.
-        uav.notify_booted()
-        spawn(
-            delayed(
-                random() * 0.5 + 2, uav.notify_autopilot_initialized, ensure_async=True
-            )
-        )
-
-        try:
-            async for uptime, _ in periodic(self._delay):
-                with self.create_device_tree_mutation_context() as mutator:
-                    uav.step(mutator=mutator, dt=self._delay)
-
-                notify()
-        finally:
-            uav.notify_shutdown()
+                # If we need to restart, let's restart after a short delay.
+                # Otherwise let's stop the loop.
+                if shutdown_reason == "shutdown":
+                    break
+                else:
+                    await sleep(0.2)
 
     async def worker(self, app, configuration, logger):
         """Main background task of the extension that updates the state of

@@ -251,10 +251,7 @@ class UAVBase(UAV):
                 errors = [errors] if errors > 0 else []
             else:
                 errors = sorted(code for code in errors if code > 0)
-            if errors:
-                self._status.errors = errors
-            elif hasattr(self._status, "errors"):
-                del self._status.errors
+            self._status.errors = errors
         self._status.update_timestamp()
 
 

@@ -151,7 +151,7 @@ class ModelMetaHelpers(object):
         Parameters:
             dct (dict): the class dictionary
         """
-        orig_init = dct.get("__init__", None)
+        orig_init = dct.get("__init__")
 
         def __init__(self, json=None, *args, **kwds):
             self.__dict__["_json"] = {}

@@ -30,8 +30,9 @@ class FlockwaveResponse(FlockwaveMessage):
     other message.
     """
 
-    def __init__(self):
+    def __init__(self, *args, **kwds):
         self._on_sent = []
+        super().__init__(*args, **kwds)
 
     def add_failure(
         self, failed_id: str, reason: Optional[Union[str, Exception]] = None

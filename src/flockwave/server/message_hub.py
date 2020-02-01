@@ -751,7 +751,8 @@ class MessageHub:
                 "Error while sending message to client", extra={"id": client.id}
             )
         else:
-            message._notify_sent()
+            if hasattr(message, "_notify_sent"):
+                message._notify_sent()
 
     async def _send_response(self, message, to, in_response_to):
         """Sends a response to a message from this message hub.

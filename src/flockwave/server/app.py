@@ -755,7 +755,9 @@ class FlockwaveServer:
                                 result, client_to_notify=sender.id
                             )
                             response.add_receipt(uav.id, receipt)
-                            receipt.mark_as_clients_notified()
+                            response.when_sent(
+                                cmd_manager.mark_as_clients_notified, receipt.id
+                            )
 
         return response
 

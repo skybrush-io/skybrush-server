@@ -12,7 +12,7 @@ from math import atan2, cos, hypot, sin, pi
 from random import random, choice
 from trio import CancelScope, open_nursery, sleep
 from trio_util import periodic
-from typing import Callable
+from typing import Callable, Optional
 
 from flockwave.gps.vectors import (
     FlatEarthCoordinate,
@@ -64,11 +64,19 @@ class VirtualUAVDriver(UAVDriver):
         uav.target = center
         return uav
 
+    async def handle_command_arm(self, uav):
+        uav.armed = True
+
+    async def handle_command_disarm(self, uav):
+        uav.armed = False
+
     def handle_command_error(self, uav, value=0):
         value = int(value)
-        uav.errors = value
+        uav.user_defined_error = value
         return (
-            f"Error code set to {uav.error}" if uav.has_error else "Error code cleared"
+            f"Error code set to {uav.user_defined_error}"
+            if uav.has_user_defined_error
+            else "Error code cleared"
         )
 
     async def handle_command_timeout(self, uav):
@@ -214,7 +222,8 @@ class VirtualUAV(UAVBase):
             UAV will consider a take-off attempt as finished
         error (int): the simulated error code of the UAV; zero if there is
             no error.
-        has_error (bool): whether the UAV currently has a non-zero error code
+        has_user_defined_error (bool): whether the UAV currently has at least
+            one user-defined (simulated) non-zero error code
         home (GPSCoordinate): the home coordinate of the UAV and the origin
             of the flat Earth transformation that the UAV uses. Altitude
             component is used to define the cruise altitude where a take-off
@@ -242,17 +251,20 @@ class VirtualUAV(UAVBase):
     def __init__(self, *args, **kwds):
         super().__init__(*args, **kwds)
 
+        self._armed = True  # will be disarmed when booting
         self._autopilot_initializing = False
-        self._request_shutdown = None
         self._pos_flat = Vector3D()
         self._pos_flat_circle = FlatEarthCoordinate()
-        self._shutdown_reason = None
         self._state = None
         self._target_xyz = None
         self._trans = FlatEarthToGPSCoordinateTransformation(
             origin=GPSCoordinate(lat=0, lon=0)
         )
         self._transition_progress = 0.0
+        self._user_defined_error = None
+
+        self._request_shutdown = None
+        self._shutdown_reason = None
 
         self.angle = 0.0
         self.angular_velocity = 0.0
@@ -266,6 +278,16 @@ class VirtualUAV(UAVBase):
         self.target = None
 
         self.step(0)
+
+    @property
+    def armed(self) -> bool:
+        """Returns whether the drone is armed."""
+        return self._armed
+
+    @armed.setter
+    def armed(self, value: bool) -> None:
+        self._armed = value
+        self.ensure_error(FlockwaveErrorCode.DISARMED, present=not self._armed)
 
     @property
     def autopilot_initializing(self) -> bool:
@@ -293,8 +315,8 @@ class VirtualUAV(UAVBase):
             self.radius = 0
 
     @property
-    def has_error(self):
-        return bool(self.errors)
+    def has_user_defined_error(self):
+        return bool(self._user_defined_error)
 
     @property
     def home(self):
@@ -338,6 +360,29 @@ class VirtualUAV(UAVBase):
         self._target.update(agl=new_altitude)
         flat = self._trans.to_flat_earth(value)
         self._target_xyz = Vector3D(x=flat.x, y=flat.y, z=new_altitude)
+
+    @property
+    def user_defined_error(self) -> Optional[int]:
+        """Returns the single user-defined error code or `None` if the UAV
+        is currently not simulating any error condition.
+        """
+        return self._user_defined_error
+
+    @user_defined_error.setter
+    def user_defined_error(self, value: Optional[int]) -> None:
+        if value is not None:
+            value = int(value)
+
+        if self._user_defined_error == value:
+            return
+
+        if self._user_defined_error is not None:
+            self.ensure_error(self._user_defined_error, present=False)
+
+        self._user_defined_error = value
+
+        if self._user_defined_error is not None:
+            self.ensure_error(self._user_defined_error, present=True)
 
     def ensure_error(self, code: int, present: bool = True) -> None:
         """Ensures that the given error code is present (or not present) in the
@@ -589,6 +634,7 @@ class VirtualUAV(UAVBase):
         self._request_shutdown = None
         self._shutdown_reason = None
 
+        self.armed = False
         self.autopilot_initializing = True
 
     def _notify_autopilot_initialized(self) -> None:

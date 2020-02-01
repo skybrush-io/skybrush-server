@@ -56,6 +56,7 @@ class FlockwaveErrorCode(IntEnum):
     LOGGING_DEACTIVATED = 1
     AUTOPILOT_INITIALIZING = 2
     PREARM_CHECK_IN_PROGRESS = 3
+    DISARMED = 4
 
     # Warnings
     LOW_DISK_SPACE = 64

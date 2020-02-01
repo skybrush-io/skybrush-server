@@ -491,8 +491,12 @@ class MessageHub:
                 # Message was rejected by the handler, nothing to do
                 pass
             elif isinstance(response, (dict, FlockwaveResponse)):
-                # Handler returned a dict or a response; we must send it
-                await self._send_response(response, to=sender, in_response_to=message)
+                # Handler returned a dict or a response; we must enqueue it
+                # for later dispatch. (We cannot send it immediately due to
+                # ordering constraints; e.g., CMD-RESP notifications must be
+                # sent later than CMD-REQ responses because the latter contain
+                # the receipt IDs that the former ones refer to).
+                self.enqueue_message(response, to=sender, in_response_to=message)
                 handled = True
 
         return handled
@@ -545,7 +549,7 @@ class MessageHub:
                 message_type = message_type.decode("utf-8")
             self._handlers_by_type[message_type].append(func)
 
-    async def run(self, seconds=1):
+    async def run(self):
         """Runs the message hub periodically in an infinite loop. This
         method should be launched in a Trio nursery.
         """
@@ -746,6 +750,8 @@ class MessageHub:
             log.exception(
                 "Error while sending message to client", extra={"id": client.id}
             )
+        else:
+            message._notify_sent()
 
     async def _send_response(self, message, to, in_response_to):
         """Sends a response to a message from this message hub.

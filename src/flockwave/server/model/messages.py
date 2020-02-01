@@ -3,7 +3,7 @@
 from __future__ import absolute_import
 
 from flockwave.spec.schema import get_message_schema
-from typing import Optional, Union
+from typing import Iterable, Optional, Union
 
 from .commands import CommandExecutionStatus
 from .metamagic import ModelMeta
@@ -29,6 +29,9 @@ class FlockwaveResponse(FlockwaveMessage):
     """Specialized Flockwave message that represents a response to some
     other message.
     """
+
+    def __init__(self):
+        self._on_sent = []
 
     def add_failure(
         self, failed_id: str, reason: Optional[Union[str, Exception]] = None
@@ -133,3 +136,23 @@ class FlockwaveResponse(FlockwaveMessage):
         successes = body.setdefault("success", [])
         if successful_id not in successes:
             successes.append(successful_id)
+
+    def receipts(self) -> Iterable[str]:
+        """Iterates over all receipt IDs that are found in the body of the
+        message.
+        """
+        receipts = self.body.get("receipts")
+        if isinstance(receipts, dict):
+            yield from (receipt_id for receipt_id in receipts.values())
+
+    def when_sent(self, func, *args, **kwds):
+        """Registers a function to be called when the message is sent."""
+        self._on_sent.append((func, args, kwds))
+
+    def _notify_sent(self):
+        """Notifies the message that it was successfully sent to all the
+        clients it should have been sent to. Calls all registered handlers
+        in a synchronous manner.
+        """
+        for func, args, kwds in self._on_sent:
+            func(*args, **kwds)

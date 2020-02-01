@@ -215,7 +215,7 @@ class CommandExecutionManager(RegistryBase):
     def _send_finished_signal_if_needed(self, command):
         """Sends the 'finished' signal for the given command if it has been
         marked as **client notified** (meaning that the clients were notified
-        about the corresponding receipt IDs), as **finished** (meaning that
+        about the corresponding receipt IDs) and as **finished** (meaning that
         the execution of the command has finished and the result object was
         attached to it).
         """

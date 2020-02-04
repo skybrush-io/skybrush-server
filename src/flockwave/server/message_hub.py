@@ -6,7 +6,7 @@ import attr
 
 from abc import ABCMeta, abstractmethod
 from collections import defaultdict
-from contextlib import contextmanager
+from contextlib import contextmanager, ExitStack
 from functools import partial
 from inspect import isawaitable
 from itertools import chain
@@ -654,6 +654,24 @@ class MessageHub:
             yield
         finally:
             self.unregister_message_handler(func, message_types)
+
+    @contextmanager
+    def use_message_handlers(self, handlers: Dict[str, MessageHandler]) -> None:
+        """Context manager that registers multiple handler functions, specified
+        in a dictionary mapping message types to handlers, and then unregisters
+        the functions upon exiting the context.
+
+        Parameters:
+            handlers: the handlers to register. It must be a dictionary mapping
+                message types to their handler functions. Each handler will be
+                called with the incoming message, the sender and the message
+                hub object.
+        """
+        with ExitStack() as stack:
+            for message_type, handler in handlers.items():
+                self.register_message_handler(handler, [message_type])
+                stack.callback(self.unregister_message_handler, handler, [message_type])
+            yield
 
     def _decode_incoming_message(self, message):
         """Decodes an incoming, raw JSON message that has already been

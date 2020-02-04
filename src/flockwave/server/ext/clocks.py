@@ -2,6 +2,8 @@
 for the ``CLK-...`` commands defined in the Flockwave protocol.
 """
 
+from trio import sleep_forever
+
 from ..registries import ClockRegistry, find_in_registry
 
 message_hub = None
@@ -93,14 +95,18 @@ def load(app):
     message_hub = app.message_hub
     registry = ClockRegistry()
 
-    message_hub.register_message_handler(handle_CLK_INF, "CLK-INF")
-    message_hub.register_message_handler(handle_CLK_LIST, "CLK-LIST")
-
     registry.clock_changed.connect(on_clock_changed, sender=registry)
 
     exports.update(
         registry=registry, register_clock=registry.add, unregister_clock=registry.remove
     )
+
+
+async def run(app, configuration, logger):
+    handlers = {"CLK-INF": handle_CLK_INF, "CLK_LIST": handle_CLK_LIST}
+
+    with message_hub.use_message_handlers(handlers):
+        await sleep_forever()
 
 
 def unload(app):
@@ -109,9 +115,6 @@ def unload(app):
     exports.update(registry=None, register_clock=None, unregister_clock=None)
 
     registry.clock_changed.disconnect(on_clock_changed, sender=registry)
-
-    message_hub.unregister_message_handler(handle_CLK_INF, "CLK-INF")
-    message_hub.unregister_message_handler(handle_CLK_LIST, "CLK-LIST")
 
     registry = None
     message_hub = None

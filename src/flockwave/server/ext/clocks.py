@@ -103,7 +103,7 @@ def load(app):
 
 
 async def run(app, configuration, logger):
-    handlers = {"CLK-INF": handle_CLK_INF, "CLK_LIST": handle_CLK_LIST}
+    handlers = {"CLK-INF": handle_CLK_INF, "CLK-LIST": handle_CLK_LIST}
 
     with message_hub.use_message_handlers(handlers):
         await sleep_forever()

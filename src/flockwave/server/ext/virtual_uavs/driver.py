@@ -1,16 +1,9 @@
-"""Extension that creates one or more virtual UAVs in the server.
-
-Useful primarily for debugging purposes and for testing the server without
-having access to real hardware that provides UAV position and velocity data.
-"""
-
-from __future__ import absolute_import, division
+"""Driver class for virtual drones."""
 
 from enum import Enum
-from functools import partial
 from math import atan2, cos, hypot, sin, pi
 from random import random, choice
-from trio import CancelScope, open_nursery, sleep
+from trio import CancelScope, sleep
 from trio_util import periodic
 from typing import Callable, Optional
 
@@ -22,13 +15,21 @@ from flockwave.gps.vectors import (
 )
 from flockwave.server.concurrency import delayed
 from flockwave.server.model.errors import FlockwaveErrorCode
-from flockwave.server.model.uav import BatteryInfo, UAVBase, UAVDriver
-from flockwave.spec.ids import make_valid_object_id
+from flockwave.server.model.uav import UAVBase, UAVDriver
 
-from .base import UAVExtensionBase
+from .battery import VirtualBattery
 
 
-__all__ = ()
+__all__ = ("VirtualUAVDriver", )
+
+
+class VirtualUAVState(Enum):
+    """Enum class that represents the possible states of a virtual UAV."""
+
+    LANDED = 0
+    TAKEOFF = 1
+    AIRBORNE = 2
+    LANDING = 3
 
 
 class VirtualUAVDriver(UAVDriver):
@@ -113,90 +114,6 @@ class VirtualUAVDriver(UAVDriver):
     def _send_takeoff_signal_single(self, uav):
         uav.takeoff()
         return True
-
-
-class VirtualUAVState(Enum):
-    """Enum class that represents the possible states of a virtual UAV."""
-
-    LANDED = 0
-    TAKEOFF = 1
-    AIRBORNE = 2
-    LANDING = 3
-
-
-class VirtualBattery:
-    """A virtual battery with voltage limits, linear discharge and a magical
-    automatic recharge when it is about to be depleted.
-    """
-
-    def __init__(
-        self,
-        min_voltage: float = 9,
-        max_voltage: float = 12.4,
-        discharge_time: float = 120,
-    ):
-        """Constructor.
-
-        Parameters:
-            min_voltage (float): the minimum voltage of the battery when it
-                will magically recharge
-            max_voltage (float): the maximum voltage of the battery
-            discharge_time (float): number of seconds after which the battery
-                becomes discharged
-        """
-        self._status = BatteryInfo()
-        self._voltage_channel = None
-
-        self._min = float(min_voltage)
-        self._max = float(max_voltage)
-        if self._max < self._min:
-            self._min, self._max = self._max, self._min
-
-        self._range = self._max - self._min
-
-        self._discharge_rate = self._range / discharge_time
-
-        self.voltage = random() * self._range + self._min
-
-    @property
-    def status(self):
-        """The general status of the battery as a BatteryInfo_ object."""
-        return self._status
-
-    @property
-    def voltage(self):
-        """The current voltage of the battery."""
-        return self._status.voltage
-
-    @voltage.setter
-    def voltage(self, value):
-        percentage = 100 * (value - self._min) / self._range
-        self._status.voltage = value
-        self._status.percentage = int(max(min(percentage, 100), 0))
-
-    def recharge(self):
-        """Recharges the battery to the maximum voltage."""
-        self.voltage = self._max
-
-    def discharge(self, dt, mutator):
-        """Simulates the discharge of the battery over the given time
-        period.
-
-        Parameters:
-            dt (float): the time that has passed
-        """
-        new_voltage = self.voltage - dt * self._discharge_rate
-        while new_voltage < self._min:
-            new_voltage += self._range
-        self.voltage = new_voltage
-
-        if mutator is not None:
-            mutator.update(self._voltage_channel, self.voltage)
-
-    def register_in_device_tree(self, node):
-        """Registers the battery in the given device tree node of a UAV."""
-        device = node.add_device("battery")
-        self._voltage_channel = device.add_channel("voltage", type=float, unit="V")
 
 
 class VirtualUAV(UAVBase):
@@ -647,119 +564,3 @@ class VirtualUAV(UAVBase):
         self._shutdown_reason = None
 
         self.autopilot_initializing = False
-
-
-class VirtualUAVProviderExtension(UAVExtensionBase):
-    """Extension that creates one or more virtual UAVs in the server.
-
-    Virtual UAVs circle around a given point in a given radius, with constant
-    angular velocity. They are able to respond to landing and takeoff
-    requests, and also handle the following commands:
-
-    * Sending ``yo`` to a UAV makes it respond with either ``yo!``, ``yo?``
-      or ``yo.``, with a mean delay of 500 milliseconds.
-
-    * Sending ``timeout`` to a UAV makes it register the command but never
-      finish its execution. Useful for testing the timeout and cancellation
-      mechanism of the command execution manager of the server.
-    """
-
-    def __init__(self):
-        """Constructor."""
-        super(VirtualUAVProviderExtension, self).__init__()
-        self._delay = 1
-
-        self.radiation = None
-        self.uavs = []
-        self.uav_ids = []
-
-    def _create_driver(self):
-        return VirtualUAVDriver()
-
-    def configure(self, configuration):
-        # Get the number of UAVs to create and the format of the IDs
-        count = configuration.get("count", 0)
-        id_format = configuration.get("id_format", "VIRT-{0}")
-
-        # Set the status updater thread frequency
-        self.delay = configuration.get("delay", 1)
-
-        # Get the center of the circle
-        center = configuration.get("center")
-        center = GPSCoordinate(
-            lat=center["lat"], lon=center["lon"], agl=center["agl"], amsl=None
-        )
-
-        # Get the radius and angular velocity from the configuration
-        radius = float(configuration.get("radius", 10))
-        omega = 2 * pi / configuration.get("time_of_single_cycle", 10)
-
-        # Generate IDs for the UAVs and then create them
-        self.uav_ids = [
-            make_valid_object_id(id_format.format(index)) for index in range(count)
-        ]
-        self.uavs = [
-            self._driver.create_uav(
-                id,
-                center=center,
-                radius=radius,
-                angle=2 * pi / count * index,
-                angular_velocity=omega,
-            )
-            for index, id in enumerate(self.uav_ids)
-        ]
-
-        # Get hold of the 'radiation' extension and associate it to all our
-        # UAVs
-        radiation_ext = self.app.extension_manager.import_api("radiation")
-        for uav in self.uavs:
-            uav.radiation_ext = radiation_ext
-
-    @property
-    def delay(self):
-        """Number of seconds that must pass between two consecutive
-        simulated status updates to the UAVs.
-        """
-        return self._delay
-
-    @delay.setter
-    def delay(self, value):
-        self._delay = max(float(value), 0)
-
-    async def simulate_uav(self, uav: VirtualUAV, spawn: Callable):
-        """Simulates the behaviour of a single UAV in the application.
-
-        Parameters:
-            uav: the virtual UAV to simulate
-            spawn: function to call when the UAV wishes to spawn a background
-                task
-        """
-        updater = partial(self.app.request_to_send_UAV_INF_message_for, [uav.id])
-
-        with self.app.object_registry.use(uav):
-            while True:
-                # Simulate the UAV behaviour from boot time
-                shutdown_reason = await uav.run_single_boot(
-                    self._delay,
-                    mutate=self.create_device_tree_mutation_context,
-                    notify=updater,
-                    spawn=spawn,
-                )
-
-                # If we need to restart, let's restart after a short delay.
-                # Otherwise let's stop the loop.
-                if shutdown_reason == "shutdown":
-                    break
-                else:
-                    await sleep(0.2)
-
-    async def worker(self, app, configuration, logger):
-        """Main background task of the extension that updates the state of
-        the UAVs periodically.
-        """
-        async with open_nursery() as nursery:
-            for uav in self.uavs:
-                nursery.start_soon(self.simulate_uav, uav, nursery.start_soon)
-
-
-construct = VirtualUAVProviderExtension

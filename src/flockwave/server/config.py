@@ -76,5 +76,5 @@ EXTENSIONS = {
 # after a while if there is no MIDI device:
 #
 # MidiInCore::initialize: error creating OS-X MIDI client object (-50)
-if ON_MAC:
+if False and ON_MAC:
     EXTENSIONS.pop("smpte_timecode", None)

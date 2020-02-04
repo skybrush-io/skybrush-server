@@ -42,7 +42,8 @@ EXTENSIONS = {
             "lon": 19.062159,
             "agl": 20,
         },
-        "takeoff_area": {"type": "circle", "radius": 20},
+        "orientation": 0,
+        "takeoff_area": {"type": "grid", "spacing": 5},
     },
     "flockctrl": {
         "id_format": "{0:02}",

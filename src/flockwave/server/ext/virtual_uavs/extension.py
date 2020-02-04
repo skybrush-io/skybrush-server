@@ -80,7 +80,7 @@ class VirtualUAVProviderExtension(UAVExtensionBase):
 
         # Create a transformation from flat Earth to GPS
         trans = FlatEarthToGPSCoordinateTransformation(
-            origin=origin, orientation=orientation, type="nwu"
+            origin=origin, orientation=orientation, type="neu"
         )
 
         # Generate IDs for the UAVs and then create them
@@ -88,7 +88,7 @@ class VirtualUAVProviderExtension(UAVExtensionBase):
             make_valid_object_id(id_format.format(index)) for index in range(count)
         ]
         self.uavs = [
-            self._driver.create_uav(id, home=trans.to_gps(home))
+            self._driver.create_uav(id, home=trans.to_gps(home), heading=orientation)
             for id, home in zip(self.uav_ids, home_positions)
         ]
 

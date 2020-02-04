@@ -10,8 +10,8 @@ GPS coordinates using a FlatEarthToGPSCoordinateTransformation_ object.
 """
 
 from functools import partial
-from math import cos, pi, radians, sin
-from typing import Callable, List, Optional
+from math import cos, floor, pi, radians, sin
+from typing import Callable, List, Optional, Tuple, Union
 
 from flockwave.gps.vectors import Vector3D
 
@@ -102,3 +102,72 @@ def place_drones_on_circle(
 
     angles = [radians(i * 360 / n) for i in range(n)]
     return [Vector3D(x=radius * cos(angle), y=radius * sin(angle)) for angle in angles]
+
+
+@register("grid")
+def place_drones_on_grid(
+    n: int,
+    *,
+    spacing: Union[float, Tuple[float, float]] = 5,
+    rows: Optional[float] = None,
+) -> List[Vector3D]:
+    """Returns coordinates to place the given number of drones in a regular
+    grid.
+
+    The spacing argument specifies the distance between neighboring drones
+    along the X and the Y axes, respectively. When a single number is used for
+    the spacing, it is assumed that the spacing along both axes is the same.
+    You may flip the axes by specifying negative spacing.
+
+    The first drone of the grid will be at the origin. When a row count is
+    given, the first N drones will be placed in the first column (rows 1,
+    2, ..., N), the next N drones will be placed in the second column and so on.
+    When a row count is not given, the number of rows will be set to the
+    square root of the number of drones, rounded down.
+
+    Parameters:
+        n: the number of drones to place
+        spacing: distance between drones along the axes, in meters
+        rows: the desired number of rows; ``None`` means to choose automatically
+            by fitting the drones (roughly) in a square
+
+    Returns:
+        the list of calculated flat Earth coordinates
+    """
+    if n <= 0:
+        return []
+
+    n = int(n)
+
+    if not hasattr(spacing, "__iter__"):
+        spacing = spacing, spacing
+
+    if rows is None:
+        rows = int(floor(n ** 0.5))
+
+    result = []
+    x, y = 0, 0
+    xs, ys = spacing
+
+    for i in range(n):
+        y, x = divmod(i, rows)
+        result.append(Vector3D(x=x * xs, y=y * ys))
+
+    return result
+
+
+@register("line")
+def place_drones_on_line(n: int, *, spacing: float = 5) -> List[Vector3D]:
+    """Returns coordinates to place the given number of drones in a straight
+    line along the Y axis.
+
+    The spacing argument specifies the distance between neighboring drones.
+
+    Parameters:
+        n: the number of drones to place
+        spacing: distance between drones along the Y axis, in meters
+
+    Returns:
+        the list of calculated flat Earth coordinates
+    """
+    return place_drones_on_grid(n, spacing=spacing, rows=1)

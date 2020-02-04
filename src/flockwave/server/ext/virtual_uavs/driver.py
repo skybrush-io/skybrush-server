@@ -20,7 +20,7 @@ from flockwave.server.model.uav import UAVBase, UAVDriver
 from .battery import VirtualBattery
 
 
-__all__ = ("VirtualUAVDriver", )
+__all__ = ("VirtualUAVDriver",)
 
 
 class VirtualUAVState(Enum):
@@ -37,7 +37,7 @@ class VirtualUAVDriver(UAVDriver):
     extension.
     """
 
-    def create_uav(self, id, home):
+    def create_uav(self, id, home: GPSCoordinate, heading: float = 0):
         """Creates a new UAV that is to be managed by this driver.
 
         Parameters:
@@ -53,6 +53,7 @@ class VirtualUAVDriver(UAVDriver):
         uav.home.amsl = None
         uav.home.agl = 0
         uav.target = home.copy()
+        uav.update_status(heading=heading)
         return uav
 
     async def handle_command_arm(self, uav):
@@ -437,11 +438,7 @@ class VirtualUAV(UAVBase):
         if mutator is not None:
             mutator.update(
                 self.thermometer,
-                {
-                    "lat": position.lat,
-                    "lon": position.lon,
-                    "value": 24.0,
-                },
+                {"lat": position.lat, "lon": position.lon, "value": 24.0},
             )
             mutator.update(
                 self.geiger_counter["averaged"],

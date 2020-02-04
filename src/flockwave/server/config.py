@@ -36,14 +36,13 @@ EXTENSIONS = {
         "delay": 0.2,
         "enabled": True,
         "id_format": "{0:02}",
-        "center": {
+        "origin": {
             # ELTE kert
             "lat": 47.473360,
             "lon": 19.062159,
             "agl": 20,
         },
-        "radius": 50,
-        "time_of_single_cycle": 10,
+        "takeoff_area": {"type": "circle", "radius": 20},
     },
     "flockctrl": {
         "id_format": "{0:02}",

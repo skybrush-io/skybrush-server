@@ -1,7 +1,7 @@
 """Driver class for virtual drones."""
 
 from enum import Enum
-from math import atan2, cos, hypot, sin, pi
+from math import atan2, cos, hypot, sin
 from random import random, choice
 from trio import CancelScope, sleep
 from trio_util import periodic
@@ -37,32 +37,22 @@ class VirtualUAVDriver(UAVDriver):
     extension.
     """
 
-    def create_uav(self, id, center, radius, angle, angular_velocity):
+    def create_uav(self, id, home):
         """Creates a new UAV that is to be managed by this driver.
 
         Parameters:
             id (str): the identifier of the UAV to create
-            center (GPSCoordinate): the point around which the UAV will be
-                circling
-            radius (float): the radius of the circle; zero means that the
-                UAV will not circle around the center point but will float
-                over it
-            angle (float): the initial angle of the UAV along the circle
-            angular_velocity (float): the angular velocity of the UAV when
-                circling, in radians per second
+            home (GPSCoordinate): the home position of the UAV
 
         Returns:
             VirtualUAV: an appropriate virtual UAV object
         """
         uav = VirtualUAV(id, driver=self)
-        uav.angle = angle
-        uav.angular_velocity = angular_velocity
-        uav.cruise_altitude = center.agl
-        uav.home = center.copy()
+        uav.takeoff_altitude = 20
+        uav.home = home.copy()
         uav.home.amsl = None
         uav.home.agl = 0
-        uav.radius = radius
-        uav.target = center
+        uav.target = home.copy()
         return uav
 
     async def handle_command_arm(self, uav):
@@ -91,9 +81,8 @@ class VirtualUAVDriver(UAVDriver):
         if uav.state == VirtualUAVState.LANDED:
             uav.takeoff()
             if target.agl is None and target.amsl is None:
-                target.agl = uav.cruise_altitude
+                target.agl = uav.takeoff_altitude
         uav.target = target
-        uav.clear_radius()
 
     def _send_landing_signal_single(self, uav):
         uav.land()
@@ -119,24 +108,12 @@ class VirtualUAVDriver(UAVDriver):
 class VirtualUAV(UAVBase):
     """Model object representing a virtual UAV provided by this extension.
 
-    The virtual UAV will circle around a given target position by default, with
-    a given angular velocity and a given radius. The radius is scaled down
-    to half of the original radius during landing (this is to make it easier
-    to see the landing process on the web UI even if the altitude display
-    is not shown or not implemented). Similarly, the radius is scaled up
-    from half the original size to the full radius during takeoff.
-
-    The UAV may be given a new target position (and a new altitude), in
-    which case it will approach the new target with a reasonable maximum
-    velocity. No attempts are made to make the acceleration realistic.
+    The virtual UAV will follow a given target position by default. The UAV may
+    be given a new target position (and a new altitude), in which case it will
+    approach the new target with a reasonable maximum velocity. No attempts are
+    made to make the acceleration realistic.
 
     Attributes:
-        angle (float): the current angle of the UAV on the circle around the
-            target.
-        angular_velocity (float): the angular velocity of the UAV along the
-            circle around the target
-        cruise_altitude (float): the altitude (relative to home) where the
-            UAV will consider a take-off attempt as finished
         error (int): the simulated error code of the UAV; zero if there is
             no error.
         has_user_defined_error (bool): whether the UAV currently has at least
@@ -154,9 +131,6 @@ class VirtualUAV(UAVBase):
         position (GPSCoordinate): the current position of the center of the
             circle that the UAV traverses; altitude is given as relative to
             home.
-        radius (float): the radius of the circle. Set it to zero to get rid
-            of the circling behaviour; in this case, the UAV will float
-            statically above the target position.
         state (VirtualUAVState): the state of the UAV
         target (GPSCoordinate): the target coordinates of the UAV; altitude
             must be given as relative to home. Note that this is not the
@@ -170,8 +144,8 @@ class VirtualUAV(UAVBase):
 
         self._armed = True  # will be disarmed when booting
         self._autopilot_initializing = False
-        self._pos_flat = Vector3D()
-        self._pos_flat_circle = FlatEarthCoordinate()
+        self._position_xyz = Vector3D()
+        self._position_flat = FlatEarthCoordinate()
         self._state = None
         self._target_xyz = None
         self._trans = FlatEarthToGPSCoordinateTransformation(
@@ -183,14 +157,11 @@ class VirtualUAV(UAVBase):
         self._request_shutdown = None
         self._shutdown_reason = None
 
-        self.angle = 0.0
-        self.angular_velocity = 0.0
-        self.cruise_altitude = 20
+        self.takeoff_altitude = 20
         self.errors = []
         self.max_ascent_rate = 2
         self.max_velocity = 10
         self.radiation_ext = None
-        self.radius = 0.0
         self.state = VirtualUAVState.LANDED
         self.target = None
 
@@ -223,13 +194,6 @@ class VirtualUAV(UAVBase):
             FlockwaveErrorCode.AUTOPILOT_INITIALIZING,
             present=self._autopilot_initializing,
         )
-
-    def clear_radius(self):
-        if self.radius > 0:
-            self._pos_flat.x = self._pos_flat_circle.x
-            self._pos_flat.y = self._pos_flat_circle.y
-            self._pos_flat.z = self._pos_flat_circle.agl
-            self.radius = 0
 
     @property
     def has_user_defined_error(self):
@@ -271,7 +235,7 @@ class VirtualUAV(UAVBase):
             return
 
         # Calculate the real altitude component of the target
-        new_altitude = self._pos_flat.z if value.agl is None else value.agl
+        new_altitude = self._position_xyz.z if value.agl is None else value.agl
 
         # Update the target and its XYZ representation
         self._target.update(agl=new_altitude)
@@ -324,7 +288,7 @@ class VirtualUAV(UAVBase):
             return
 
         if self._target_xyz is None:
-            self._target_xyz = self._pos_flat.copy()
+            self._target_xyz = self._position_xyz.copy()
         self._target_xyz.z = 0
         self.state = VirtualUAVState.LANDING
 
@@ -399,24 +363,17 @@ class VirtualUAV(UAVBase):
         """
         state = self._state
 
-        # Update the angle
-        if state == VirtualUAVState.AIRBORNE and self.radius > 0:
-            # When airborne and the circle radius is positive, the UAV is
-            # circling in the air with a prescribed angular velocity.
-            # Otherwise, the angle does not change.
-            self.angle += self.angular_velocity * dt
-
         # Do we have a target?
         if self._target_xyz is not None:
             # We aim for the target in the XYZ plane only if we are airborne
             if state == VirtualUAVState.AIRBORNE:
-                dx = self._target_xyz.x - self._pos_flat.x
-                dy = self._target_xyz.y - self._pos_flat.y
+                dx = self._target_xyz.x - self._position_xyz.x
+                dy = self._target_xyz.y - self._position_xyz.y
             else:
                 dx, dy = 0, 0
 
             if state != VirtualUAVState.LANDED:
-                dz = self._target_xyz.z - self._pos_flat.z
+                dz = self._target_xyz.z - self._position_xyz.z
             else:
                 dz = 0
 
@@ -430,27 +387,9 @@ class VirtualUAV(UAVBase):
             if dz < 0:
                 displacement_z *= -1
 
-            self._pos_flat.x += cos(angle) * displacement_xy
-            self._pos_flat.y += sin(angle) * displacement_xy
-            self._pos_flat.z += displacement_z
-
-        # Scale the radius according to the progress of the transition if
-        # we are currently in a transition
-        if state in (VirtualUAVState.LANDING, VirtualUAVState.TAKEOFF):
-            delta_progress = dt / 3
-            remaining_progress = 1 - self._transition_progress
-            if delta_progress < remaining_progress:
-                self._transition_progress += delta_progress
-            else:
-                self._transition_progress = 1
-            eased_progress = self._transition_progress
-            if state == VirtualUAVState.LANDING:
-                eased_progress = 1 - eased_progress
-            radius = self.radius * (eased_progress + 1) / 2
-        elif state == VirtualUAVState.LANDED:
-            radius = self.radius * 0.5
-        else:
-            radius = self.radius
+            self._position_xyz.x += cos(angle) * displacement_xy
+            self._position_xyz.y += sin(angle) * displacement_xy
+            self._position_xyz.z += displacement_z
 
         # Finish the transition and enter the new state if needed
         if self._transition_progress >= 1:
@@ -459,15 +398,15 @@ class VirtualUAV(UAVBase):
             else:
                 self.state = VirtualUAVState.AIRBORNE
 
-        # Calculate our coordinates around the circle in flat Earth
-        self._pos_flat_circle.x = self._pos_flat.x + cos(self.angle) * radius
-        self._pos_flat_circle.y = self._pos_flat.y + sin(self.angle) * radius
-        self._pos_flat_circle.agl = self._pos_flat.z
-        self._pos_flat_circle.amsl = None
+        # Calculate our coordinates in flat Earth
+        self._position_flat.x = self._position_xyz.x
+        self._position_flat.y = self._position_xyz.y
+        self._position_flat.agl = self._position_xyz.z
+        self._position_flat.amsl = None
 
         # Transform the flat Earth coordinates to GPS around our
         # current position as origin
-        position = self._trans.to_gps(self._pos_flat_circle)
+        position = self._trans.to_gps(self._position_flat)
 
         # Discharge the battery
         self.battery.discharge(dt, mutator)
@@ -478,8 +417,6 @@ class VirtualUAV(UAVBase):
             "errors": self.errors,
             "battery": self.battery.status,
         }
-        if self.radius > 0:
-            updates["heading"] = self.angle / pi * 180 + 90
         self.update_status(**updates)
 
         # Measure radiation if possible
@@ -503,7 +440,7 @@ class VirtualUAV(UAVBase):
                 {
                     "lat": position.lat,
                     "lon": position.lon,
-                    "value": cos(self.angle) + 24.0,
+                    "value": 24.0,
                 },
             )
             mutator.update(
@@ -525,8 +462,8 @@ class VirtualUAV(UAVBase):
             return
 
         if self._target_xyz is None:
-            self._target_xyz = self._pos_flat.copy()
-        self._target_xyz.z = self.cruise_altitude
+            self._target_xyz = self._position_xyz.copy()
+        self._target_xyz.z = self.takeoff_altitude
         self.state = VirtualUAVState.TAKEOFF
 
     def _initialize_device_tree_node(self, node):

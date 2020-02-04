@@ -1,16 +1,20 @@
 from __future__ import absolute_import, division
 
 from functools import partial
-from math import pi
 from trio import open_nursery, sleep
 from typing import Callable
 
-from flockwave.gps.vectors import GPSCoordinate
+from flockwave.gps.vectors import (
+    FlatEarthCoordinate,
+    GPSCoordinate,
+    FlatEarthToGPSCoordinateTransformation,
+)
 from flockwave.spec.ids import make_valid_object_id
 
 from ..base import UAVExtensionBase
 
 from .driver import VirtualUAV, VirtualUAVDriver
+from .placement import place_drones
 
 
 __all__ = ("construct", "dependencies")
@@ -48,32 +52,44 @@ class VirtualUAVProviderExtension(UAVExtensionBase):
         count = configuration.get("count", 0)
         id_format = configuration.get("id_format", "VIRT-{0}")
 
+        # Specify the default takeoff area
+        default_takeoff_area = {"type": "grid", "spacing": 5}
+
+        # Place the given number of drones on a circle
+        home_positions = [
+            FlatEarthCoordinate(x=vec.x, y=vec.y)
+            for vec in place_drones(
+                count, **configuration.get("takeoff_area", default_takeoff_area)
+            )
+        ]
+
         # Set the status updater thread frequency
         self.delay = configuration.get("delay", 1)
 
         # Get the center of the circle
-        center = configuration.get("center")
-        center = GPSCoordinate(
-            lat=center["lat"], lon=center["lon"], agl=center["agl"], amsl=None
+        if "origin" not in configuration and "center" in configuration:
+            self.log.warn("'center' is deprecated; use 'origin' instead")
+            configuration["origin"] = configuration.pop("center")
+        origin = configuration.get("origin")
+        origin = GPSCoordinate(
+            lat=origin["lat"], lon=origin["lon"], agl=origin.get("agl", 0), amsl=None
         )
 
-        # Get the radius and angular velocity from the configuration
-        radius = float(configuration.get("radius", 10))
-        omega = 2 * pi / configuration.get("time_of_single_cycle", 10)
+        # Get the direction of the X axis
+        orientation = configuration.get("orientation", 0)
+
+        # Create a transformation from flat Earth to GPS
+        trans = FlatEarthToGPSCoordinateTransformation(
+            origin=origin, orientation=orientation, type="nwu"
+        )
 
         # Generate IDs for the UAVs and then create them
         self.uav_ids = [
             make_valid_object_id(id_format.format(index)) for index in range(count)
         ]
         self.uavs = [
-            self._driver.create_uav(
-                id,
-                center=center,
-                radius=radius,
-                angle=2 * pi / count * index,
-                angular_velocity=omega,
-            )
-            for index, id in enumerate(self.uav_ids)
+            self._driver.create_uav(id, home=trans.to_gps(home))
+            for id, home in zip(self.uav_ids, home_positions)
         ]
 
         # Get hold of the 'radiation' extension and associate it to all our

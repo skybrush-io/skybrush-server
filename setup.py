@@ -14,7 +14,7 @@ requires = [
     "colorama>=0.3.5",
     "colorlog>=2.6.0",
     "flockwave-conn[midi,serial] @ https://git.collmot.com/collmot/flockwave-conn/archive/1.7.1.tar.gz",
-    "flockwave-ext @ https://git.collmot.com/collmot/flockwave-ext/archive/1.1.1.tar.gz",
+    "flockwave-ext @ https://git.collmot.com/collmot/flockwave-ext/archive/1.2.0.tar.gz",
     "flockwave-flockctrl @ https://git.collmot.com/collmot/flockwave-flockctrl/archive/0.4.0.tar.gz",
     "flockwave-gps @ https://git.collmot.com/collmot/flockwave-gps/archive/0.12.0.tar.gz",
     "flockwave-logger @ https://git.collmot.com/collmot/flockwave-logger/archive/1.1.0.tar.gz",

@@ -186,8 +186,7 @@ def get_configuration_of_extension(ext: ExtensionManager, identifier: str):
     Returns:
         the configuration object of the extension
     """
-    # TODO(ntamas): flockwave-ext needs to support this
-    return {}
+    return ext.get_configuration_snapshot(identifier)
 
 
 async def load_extension(ext: ExtensionManager, identifier: str):
@@ -224,8 +223,6 @@ async def reload_extension(ext: ExtensionManager, identifier: str):
     # being reloaded, they also get unloaded, but we don't restore them at the
     # end. This should be fixed.
     await ext.unload(identifier)
-    # TODO(ntamas): flockwave-ext does not support reloading yet; the extension
-    # is "forgotten" when it is unloaded
     await ext.load(identifier)
     return {}
 
@@ -249,7 +246,7 @@ async def set_configuration_of_extension(
     Raises:
         RuntimeError: if the extension cannot be configured
     """
-    # TODO(ntamas): flockwave-ext needs to support this
+    ext.configure(identifier, configuration)
     return {}
 
 

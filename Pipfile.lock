@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "c4a431d7707ec779b17c402f0dd635478b410feb84a4ff951811c9f6bf1a65aa"
+            "sha256": "fd82d683f967537081ccac567ffd78090c42712daeafb651fe717d0ad5a6622d"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -100,7 +100,7 @@
             "file": "https://git.collmot.com/collmot/flockwave-parsers/archive/1.1.1.tar.gz"
         },
         "flockwave-spec": {
-            "file": "https://git.collmot.com/collmot/flockwave-spec/archive/0.26.0.tar.gz"
+            "file": "https://git.collmot.com/collmot/flockwave-spec/archive/0.27.0.tar.gz"
         },
         "future": {
             "hashes": [

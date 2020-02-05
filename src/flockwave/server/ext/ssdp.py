@@ -269,7 +269,7 @@ async def run(app, configuration, logger):
     """Loop that listens for incoming messages and calls a handler
     function for each incoming message.
     """
-    multicast_group = configuration.get("multicast_group", ("239.255.255.250"))
+    multicast_group = configuration.get("multicast_group", "239.255.255.250")
     port = configuration.get("port", 1900)
     label = getenv(
         "FLOCKWAVE_SSDP_LABEL",

@@ -858,6 +858,12 @@ class FlockwaveServer:
         def ignore_keyboard_interrupt(exc):
             return None if isinstance(exc, KeyboardInterrupt) else exc
 
+        # Load the configuration
+        extension_config = self.config.get("EXTENSIONS", {})
+
+        # Force-load the ext_manager extension
+        extension_config["ext_manager"] = {}
+
         try:
             with MultiError.catch(ignore_keyboard_interrupt):
                 self._starting.send(self)
@@ -865,7 +871,7 @@ class FlockwaveServer:
                     await nursery.start(
                         partial(
                             self.extension_manager.run,
-                            configuration=self.config.get("EXTENSIONS", {}),
+                            configuration=extension_config,
                             app=self,
                         )
                     )

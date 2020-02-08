@@ -48,7 +48,7 @@ class VirtualUAVDriver(UAVDriver):
             VirtualUAV: an appropriate virtual UAV object
         """
         uav = VirtualUAV(id, driver=self)
-        uav.takeoff_altitude = 20
+        uav.takeoff_altitude = 3
         uav.home = home.copy()
         uav.home.amsl = None
         uav.home.agl = 0
@@ -57,10 +57,16 @@ class VirtualUAVDriver(UAVDriver):
         return uav
 
     async def handle_command_arm(self, uav):
-        uav.armed = True
+        if uav.arm_if_on_ground():
+            return "Armed"
+        else:
+            return "Failed to arm"
 
     async def handle_command_disarm(self, uav):
-        uav.armed = False
+        if uav.disarm_if_on_ground():
+            return "Disarmed"
+        else:
+            return "Failed to disarm"
 
     def handle_command_error(self, uav, value=0):
         value = int(value)
@@ -123,12 +129,12 @@ class VirtualUAV(UAVBase):
             of the flat Earth transformation that the UAV uses. Altitude
             component is used to define the cruise altitude where a take-off
             attempt will stop.
-        max_ascent_rate (float): the maximum ascent rate of the UAV along
-            the Z axis (perpendicular to the surface of the Earth), in
-            metres per second
-        max_velocity (float): the maximum velocity of the UAV along the
+        max_velocity_xy (float): the maximum velocity of the UAV along the
             X-Y plane (parallel to the surface to the Earth), in metres
             per second
+        max_velocity_z (float): the maximum ascent rate of the UAV along
+            the Z axis (perpendicular to the surface of the Earth), in
+            metres per second
         position (GPSCoordinate): the current position of the center of the
             circle that the UAV traverses; altitude is given as relative to
             home.
@@ -152,16 +158,15 @@ class VirtualUAV(UAVBase):
         self._trans = FlatEarthToGPSCoordinateTransformation(
             origin=GPSCoordinate(lat=0, lon=0)
         )
-        self._transition_progress = 0.0
         self._user_defined_error = None
 
         self._request_shutdown = None
         self._shutdown_reason = None
 
-        self.takeoff_altitude = 20
+        self.takeoff_altitude = 3
         self.errors = []
-        self.max_ascent_rate = 2
-        self.max_velocity = 10
+        self.max_velocity_z = 2
+        self.max_velocity_xy = 10
         self.radiation_ext = None
         self.state = VirtualUAVState.LANDED
         self.target = None
@@ -177,6 +182,30 @@ class VirtualUAV(UAVBase):
     def armed(self, value: bool) -> None:
         self._armed = value
         self.ensure_error(FlockwaveErrorCode.DISARMED, present=not self._armed)
+
+    def arm_if_on_ground(self) -> bool:
+        """Arms the virtual drone if it is standing on the ground.
+
+        Returns:
+            whether the operation has succeeded
+        """
+        if self.state is VirtualUAVState.LANDED:
+            self.armed = True
+            return True
+        else:
+            return False
+
+    def disarm_if_on_ground(self) -> bool:
+        """Disarms the virtual drone if it is standing on the ground.
+
+        Returns:
+            whether the operation has succeeded
+        """
+        if self.state is VirtualUAVState.LANDED:
+            self.armed = False
+            return True
+        else:
+            return False
 
     @property
     def autopilot_initializing(self) -> bool:
@@ -221,7 +250,16 @@ class VirtualUAV(UAVBase):
             return
 
         self._state = value
-        self._transition_progress = 0.0
+
+        self.ensure_error(
+            FlockwaveErrorCode.TAKEOFF, present=self._state is VirtualUAVState.TAKEOFF
+        )
+        self.ensure_error(
+            FlockwaveErrorCode.LANDING, present=self._state is VirtualUAVState.LANDING
+        )
+        # self.ensure_error(
+        #     FlockwaveErrorCode.LANDED, present=self._state is VirtualUAVState.LANDED
+        # )
 
     @property
     def target(self):
@@ -366,14 +404,14 @@ class VirtualUAV(UAVBase):
 
         # Do we have a target?
         if self._target_xyz is not None:
-            # We aim for the target in the XYZ plane only if we are airborne
-            if state == VirtualUAVState.AIRBORNE:
+            # We aim for the target in the XY plane only if we are airborne
+            if state is VirtualUAVState.AIRBORNE:
                 dx = self._target_xyz.x - self._position_xyz.x
                 dy = self._target_xyz.y - self._position_xyz.y
             else:
                 dx, dy = 0, 0
 
-            if state != VirtualUAVState.LANDED:
+            if state is not VirtualUAVState.LANDED:
                 dz = self._target_xyz.z - self._position_xyz.z
             else:
                 dz = 0
@@ -383,8 +421,8 @@ class VirtualUAV(UAVBase):
             if dist < 1e-6:
                 dist = 0
 
-            displacement_xy = min(dist, dt * self.max_velocity)
-            displacement_z = min(abs(dz), dt * self.max_ascent_rate)
+            displacement_xy = min(dist, dt * self.max_velocity_xy)
+            displacement_z = min(abs(dz), dt * self.max_velocity_z)
             if dz < 0:
                 displacement_z *= -1
 
@@ -392,12 +430,17 @@ class VirtualUAV(UAVBase):
             self._position_xyz.y += sin(angle) * displacement_xy
             self._position_xyz.z += displacement_z
 
-        # Finish the transition and enter the new state if needed
-        if self._transition_progress >= 1:
-            if state == VirtualUAVState.LANDING:
-                self.state = VirtualUAVState.LANDED
-            else:
-                self.state = VirtualUAVState.AIRBORNE
+            # If we are above the takeoff altitude minus some threshold and
+            # we are in the TAKEOFF stage, move to being airborne. Also, if
+            # we are landing and we are very close to the ground, consider
+            # ourselves as landed.
+            eps = 0.2
+            if state is VirtualUAVState.TAKEOFF:
+                if self._position_xyz.z > max(eps, self.takeoff_altitude - eps):
+                    self.state = VirtualUAVState.AIRBORNE
+            elif state is VirtualUAVState.LANDING:
+                if self._position_xyz.z < eps:
+                    self.state = VirtualUAVState.LANDED
 
         # Calculate our coordinates in flat Earth
         self._position_flat.x = self._position_xyz.x
@@ -456,6 +499,9 @@ class VirtualUAV(UAVBase):
     def takeoff(self):
         """Starts a simulated take-off with the virtual UAV."""
         if self.state != VirtualUAVState.LANDED:
+            return
+
+        if not self.armed:
             return
 
         if self._target_xyz is None:

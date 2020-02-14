@@ -67,6 +67,41 @@ def place_drones(n: int, *, type: str, **kwds):
     return func(n, **kwds)
 
 
+@register("explicit")
+def place_drones_explicitly(n: int, *, coordinates: List[Vector3D]) -> List[Vector3D]:
+    """Returns coordinates to place the given number of drones with explicit
+    flat Earth coordinates.
+
+    Parameters:
+        n: the number of drones to place; must be less than or equal to the
+            length of the coordinate list
+        coordinates: the list of coordinates; each item must be another list or
+            tuple of X-Y or X-Y-Z coordinates.
+
+    Returns:
+        the list of flat Earth coordinates that were passed in
+    """
+    if len(coordinates) < n:
+        raise RuntimeError(f"coordinate list must contain at least {n} items")
+
+    result = []
+    for item in coordinates[:n]:
+        if len(item) < 2 or len(item) > 3:
+            raise ValueError(
+                "invalid coordinate list; we need two or three coordinates"
+            )
+
+        if len(item) == 2:
+            x, y = item
+            z = 0
+        else:
+            x, y, z = item
+
+        result.append(Vector3D(x=float(x), y=float(y), z=float(z)))
+
+    return result
+
+
 @register("circle")
 def place_drones_on_circle(
     n: int, *, radius: Optional[float] = None, min_distance: float = 5

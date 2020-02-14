@@ -78,9 +78,12 @@ class VirtualUAVProviderExtension(UAVExtensionBase):
         # Get the direction of the X axis
         orientation = configuration.get("orientation", 0)
 
+        # Get the type of the coordinate system
+        type = configuration.get("type", "neu")
+
         # Create a transformation from flat Earth to GPS
         trans = FlatEarthToGPSCoordinateTransformation(
-            origin=origin, orientation=orientation, type="neu"
+            origin=origin, orientation=orientation, type=type
         )
 
         # Generate IDs for the UAVs and then create them

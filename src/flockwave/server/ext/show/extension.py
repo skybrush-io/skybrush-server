@@ -13,6 +13,8 @@ class DroneShowExtension(ExtensionBase):
 
     def __init__(self):
         super().__init__()
+
+        self._clock = None
         self._config = DroneShowConfiguration()
 
     def handle_SHOW_CFG(self, message, sender, hub):
@@ -20,12 +22,23 @@ class DroneShowExtension(ExtensionBase):
             body={"configuration": self._config.json}, in_response_to=message
         )
 
-    async def run(self, app, configuration, logger):
-        clock = ShowClock()
-        handlers = {"SHOW-CFG": self.handle_SHOW_CFG}
+    def handle_SHOW_SETCFG(self, message, sender, hub):
+        try:
+            self._config.update_from_json(message.body.get("configuration", {}))
+            self._clock.start_time = self._config.start_time
+            return hub.acknowledge(message)
+        except Exception as ex:
+            return hub.acknowledge(message, outcome=False, reason=str(ex))
 
-        with app.message_hub.use_message_handlers(handlers):
-            with app.import_api("clocks").use_clock(clock):
+    async def run(self, app, configuration, logger):
+        self._clock = ShowClock()
+        handlers = {
+            "SHOW-CFG": self.handle_SHOW_CFG,
+            "SHOW-SETCFG": self.handle_SHOW_SETCFG,
+        }
+
+        with app.import_api("clocks").use_clock(self._clock):
+            with app.message_hub.use_message_handlers(handlers):
                 await sleep_forever()
 
 

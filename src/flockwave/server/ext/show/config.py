@@ -27,3 +27,17 @@ class DroneShowConfiguration:
         return {
             "start": {"time": self.start_time, "method": str(self.start_method.value)}
         }
+
+    def update_from_json(self, obj):
+        """Updates the configuration object from its JSON representation."""
+        start_conditions = obj.get("start")
+        if start_conditions:
+            if "time" in start_conditions:
+                start_time = start_conditions["time"]
+                if start_time is None:
+                    self.start_time = None
+                elif isinstance(start_time, (int, float)):
+                    self.start_time = float(start_time)
+
+            if "method" in start_conditions:
+                self.start_method = StartMethod(start_conditions["method"])

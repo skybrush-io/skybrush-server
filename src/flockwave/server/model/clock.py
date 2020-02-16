@@ -89,8 +89,7 @@ class ClockBase(Clock):
     def __init__(self, id, epoch=None):
         """Constructor.
 
-        Creates a new clock with the given ID and the given epoch. The clock
-        is stopped by default.
+        Creates a new clock with the given ID and the given epoch.
 
         Parameters:
             id (str): the identifier of the clock
@@ -101,8 +100,6 @@ class ClockBase(Clock):
         """
         self._epoch = epoch
         self._id = id
-        self._running = False
-        self._ticks_per_second = 1
 
     @property
     def epoch(self):
@@ -134,25 +131,6 @@ class ClockBase(Clock):
             result["ticksPerSecond"] = self.ticks_per_second
         return result
 
-    @property
-    def running(self):
-        """Returns whether the clock is running."""
-        return self._running
-
-    @property
-    def ticks_per_second(self):
-        """Returns the number of clock ticks per second (in wall clock
-        time).
-        """
-        return self._ticks_per_second
-
-    @ticks_per_second.setter
-    def ticks_per_second(self, value):
-        value = int(value)
-        if value <= 0:
-            raise ValueError("ticks per second must be positive")
-        self._ticks_per_second = value
-
     def _format_epoch(self, epoch):
         """Returns a formatted copy of the epoch value as it should appear
         in the JSON output.
@@ -168,7 +146,7 @@ class ClockBase(Clock):
         elif epoch == 0:
             return "unix"
         else:
-            return datetime.fromtimestamp(epoch, tz=utc)
+            return datetime.fromtimestamp(epoch, tz=timezone.utc)
 
 
 class StoppableClockBase(ClockBase):
@@ -176,7 +154,29 @@ class StoppableClockBase(ClockBase):
     started.
     """
 
-    @ClockBase.running.setter
+    def __init__(self, id, epoch=None):
+        """Constructor.
+
+        Creates a new stoppable clock with the given ID and the given epoch.
+        The clock is stopped by default.
+
+        Parameters:
+            id (str): the identifier of the clock
+            epoch (Optional[float]): the epoch of the clock, expressed as
+                the number of seconds from the Unix epoch to the epoch of
+                the clock, in UTC, or ``None`` if the clock has no epoch or
+                an unknown epoch.
+        """
+        super().__init__(id, epoch=epoch)
+        self._running = False
+        self._ticks_per_second = 1
+
+    @property
+    def running(self):
+        """Returns whether the clock is running."""
+        return self._running
+
+    @running.setter
     def running(self, value):
         """Sets whether the clock is running."""
         if self._running == value:
@@ -196,3 +196,17 @@ class StoppableClockBase(ClockBase):
     def stop(self):
         """Stops the clock if it was running."""
         self.running = False
+
+    @property
+    def ticks_per_second(self):
+        """Returns the number of clock ticks per second (in wall clock
+        time).
+        """
+        return self._ticks_per_second
+
+    @ticks_per_second.setter
+    def ticks_per_second(self, value):
+        value = int(value)
+        if value <= 0:
+            raise ValueError("ticks per second must be positive")
+        self._ticks_per_second = value

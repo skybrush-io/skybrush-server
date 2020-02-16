@@ -793,7 +793,7 @@ class MessageHub:
             FlockwaveResponse: the response that was sent back to the client
         """
         if isinstance(message, FlockwaveResponse):
-            assert message.correlationId == in_response_to.id
+            assert message.refs == in_response_to.id
             response = message
         else:
             try:

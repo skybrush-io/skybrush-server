@@ -57,18 +57,21 @@ class VirtualUAVDriver(UAVDriver):
         return uav
 
     async def handle_command_arm(self, uav):
+        """Command that arms the virtual drone if it is on the ground."""
         if uav.arm_if_on_ground():
             return "Armed"
         else:
             return "Failed to arm"
 
     async def handle_command_disarm(self, uav):
+        """Command that disarms the virtual drone if it is on the ground."""
         if uav.disarm_if_on_ground():
             return "Disarmed"
         else:
             return "Failed to disarm"
 
     def handle_command_error(self, uav, value=0):
+        """Sets or clears the error code of the virtual drone."""
         value = int(value)
         uav.user_defined_error = value
         return (
@@ -77,7 +80,21 @@ class VirtualUAVDriver(UAVDriver):
             else "Error code cleared"
         )
 
+    async def handle_command_progress(self, uav):
+        """Dummy command that can be used to test progress reports sent
+        during the execution of a command.
+
+        The execution of this command takes five seconds. A progress report
+        is sent every 500 milliseconds.
+        """
+        for i in range(10):
+            await sleep(0.5)
+        return "Result."
+
     async def handle_command_timeout(self, uav):
+        """Dummy command that does not respond in a reasonable amount of time.
+        Can be used on the client side to test response timeouts.
+        """
         await sleep(1000000)
 
     async def handle_command_yo(self, uav):

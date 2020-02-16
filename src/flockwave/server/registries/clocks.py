@@ -5,6 +5,7 @@ the server knows.
 __all__ = ("ClockRegistry",)
 
 from blinker import Signal
+from contextlib import contextmanager
 from typing import Optional
 
 from ..model.clock import Clock
@@ -78,6 +79,23 @@ class ClockRegistry(RegistryBase):
         if clock:
             self._unsubscribe_from_clock(clock)
         return clock
+
+    @contextmanager
+    def use(self, clock: Clock):
+        """Temporarily adds a new clock, hands control back to the caller in a
+        context, and then removes the clock when the caller exits the context.
+
+        Arguments:
+            clock (Clock): the clock to add
+
+        Yields:
+            Clock: the clock object that was added
+        """
+        self.add(clock)
+        try:
+            yield clock
+        finally:
+            self.remove(clock)
 
     def _subscribe_to_clock(self, clock: Clock) -> None:
         """Subscribes to the signals of the given clock in order to

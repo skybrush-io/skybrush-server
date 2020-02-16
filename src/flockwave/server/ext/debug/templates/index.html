@@ -176,7 +176,7 @@
             var numNotifications = 0;
 
             socket.on('fw', function(data) {
-                var isResponse = data.hasOwnProperty("correlationId");
+                var isResponse = data.hasOwnProperty("refs");
                 if (data.hasOwnProperty("body") && data.body.hasOwnProperty("type") &&
                     !isResponse && filteredTypes[data.body.type]) {
                     return

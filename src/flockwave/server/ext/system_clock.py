@@ -4,7 +4,6 @@ according to the server, expressed as the number of seconds elapsed since
 the Unix epoch, in UTC.
 """
 
-from flockwave.server.errors import NotSupportedError
 from flockwave.server.model import ClockBase
 
 
@@ -13,8 +12,11 @@ class SystemClock(ClockBase):
 
     def __init__(self):
         """Constructor."""
-        super(SystemClock, self).__init__(id="system", epoch=0)
-        self._running = True
+        super().__init__(id="system", epoch=0)
+
+    @property
+    def running(self):
+        return True
 
     def ticks_given_time(self, now):
         """Returns the number of clock ticks elapsed since the Unix epoch,
@@ -30,12 +32,9 @@ class SystemClock(ClockBase):
         """
         return now
 
-    @ClockBase.ticks_per_second.setter
-    def ticks_per_second(self, value):
-        """Overrides the ``ticks_per_second`` setter to disallow setting
-        the frequency of the clock.
-        """
-        raise NotSupportedError("this property is read-only")
+    @property
+    def ticks_per_second(self):
+        return 1
 
 
 clock = SystemClock()

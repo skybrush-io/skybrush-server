@@ -121,5 +121,5 @@ class FlockwaveMessageBuilder(object):
             message_id = message["id"]
 
         result = self._create_message_object(body)
-        result["correlationId"] = message_id
+        result["refs"] = message_id
         return FlockwaveResponse.from_json(result, validate=False)

@@ -9,7 +9,12 @@ from ..registries import ClockRegistry, find_in_registry
 message_hub = None
 registry = None
 
-exports = {"register_clock": None, "registry": None, "unregister_clock": None}
+exports = {
+    "register_clock": None,
+    "registry": None,
+    "unregister_clock": None,
+    "use_clock": None,
+}
 
 
 def create_CLK_INF_message_for(clock_ids, in_response_to=None):
@@ -98,7 +103,10 @@ def load(app):
     registry.clock_changed.connect(on_clock_changed, sender=registry)
 
     exports.update(
-        registry=registry, register_clock=registry.add, unregister_clock=registry.remove
+        registry=registry,
+        register_clock=registry.add,
+        unregister_clock=registry.remove,
+        use_clock=registry.use,
     )
 
 
@@ -112,7 +120,9 @@ async def run(app, configuration, logger):
 def unload(app):
     global message_hub, registry
 
-    exports.update(registry=None, register_clock=None, unregister_clock=None)
+    exports.update(
+        registry=None, register_clock=None, unregister_clock=None, use_clock=None
+    )
 
     registry.clock_changed.disconnect(on_clock_changed, sender=registry)
 

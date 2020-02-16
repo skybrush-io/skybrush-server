@@ -129,7 +129,7 @@ class CommandExecutionManager(RegistryBase):
         command = self._get_command_from_id(receipt_id)
         if command is None:
             # Request has probably expired in the meanwhile
-            log.warn("Received response for expired receipt: " "{0}".format(receipt_id))
+            log.warn("Received response for expired receipt: {0}".format(receipt_id))
             return
 
         if isinstance(result, Exception):
@@ -164,7 +164,7 @@ class CommandExecutionManager(RegistryBase):
 
         self._send_finished_signal_if_needed(command)
 
-    async def new(self, result=None, client_to_notify=None):
+    async def new(self, result, client_to_notify=None):
         """Registers the execution of a new asynchronous command in the
         command manager.
 

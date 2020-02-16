@@ -31,20 +31,6 @@ EXTENSIONS = {
     "auth_basic": {},
     "debug": {"route": "/debug"},
     "dock": {"listener": "unix:/tmp/flockwaved-dock.sock"},
-    "virtual_uavs": {
-        "count": 3,
-        "delay": 0.2,
-        "enabled": True,
-        "id_format": "{0:02}",
-        "origin": {
-            # ELTE kert
-            "lat": 47.473360,
-            "lon": 19.062159,
-            "agl": 20,
-        },
-        "orientation": 0,
-        "takeoff_area": {"type": "grid", "spacing": 5},
-    },
     "flockctrl": {
         "id_format": "{0:02}",
         "connections": {
@@ -63,12 +49,27 @@ EXTENSIONS = {
         "sources": [{"lat": 47.473703, "lon": 19.061739, "intensity": 50000}],
         "background_intensity": 10,
     },
+    "show": {},
     "socketio": {},
     "smpte_timecode": {"connection": "midi:IAC Driver Bus 1"},
     "ssdp": {},
     "system_clock": {},
     "tcp": {},
     "udp": {},
+    "virtual_uavs": {
+        "count": 5,
+        "delay": 0.2,
+        "enabled": True,
+        "id_format": "{0:02}",
+        "origin": {
+            # ELTE kert
+            "lat": 47.473360,
+            "lon": 19.062159,
+            "agl": 20,
+        },
+        "orientation": 0,
+        "takeoff_area": {"type": "grid", "spacing": 5},
+    },
 }
 
 # smpte_timecode seems to have some problems on a Mac - it consumes 15% CPU

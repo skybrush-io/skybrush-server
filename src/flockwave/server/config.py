@@ -57,6 +57,7 @@ EXTENSIONS = {
     "tcp": {},
     "udp": {},
     "virtual_uavs": {
+        "arm_after_boot": True,
         "count": 5,
         "delay": 0.2,
         "enabled": True,

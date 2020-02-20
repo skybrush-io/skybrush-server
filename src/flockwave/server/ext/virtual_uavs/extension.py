@@ -42,12 +42,15 @@ class VirtualUAVProviderExtension(UAVExtensionBase):
 
         self.radiation = None
         self.uavs = []
+        self.uavs_armed_after_boot = False
         self.uav_ids = []
 
     def _create_driver(self):
         return VirtualUAVDriver()
 
     def configure(self, configuration):
+        super().configure(configuration)
+
         # Get the number of UAVs to create and the format of the IDs
         count = configuration.get("count", 0)
         id_format = configuration.get("id_format", "VIRT-{0}")
@@ -100,6 +103,10 @@ class VirtualUAVProviderExtension(UAVExtensionBase):
         radiation_ext = self.app.extension_manager.import_api("radiation")
         for uav in self.uavs:
             uav.radiation_ext = radiation_ext
+
+    def configure_driver(self, driver, configuration):
+        # Set whether the virtual drones should be armed after boot
+        driver.uavs_armed_after_boot = bool(configuration.get("arm_after_boot"))
 
     @property
     def delay(self):

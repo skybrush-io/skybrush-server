@@ -15,7 +15,7 @@ class UAVExtensionBase(ExtensionBase):
     """
 
     def __init__(self):
-        super(UAVExtensionBase, self).__init__()
+        super().__init__()
         self._driver = None
 
     def create_device_tree_mutation_context(self):
@@ -30,7 +30,7 @@ class UAVExtensionBase(ExtensionBase):
         return self.app.device_tree.create_mutator()
 
     def configure(self, configuration):
-        super(UAVExtensionBase, self).configure(configuration)
+        super().configure(configuration)
         self.configure_driver(self.driver, configuration)
 
     def configure_driver(self, driver, configuration):

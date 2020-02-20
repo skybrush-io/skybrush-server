@@ -37,6 +37,10 @@ class VirtualUAVDriver(UAVDriver):
     extension.
     """
 
+    def __init__(self, *args, **kwds):
+        super().__init__(*args, **kwds)
+        self.uavs_armed_after_boot = False
+
     def create_uav(self, id, home: GPSCoordinate, heading: float = 0):
         """Creates a new UAV that is to be managed by this driver.
 
@@ -48,6 +52,7 @@ class VirtualUAVDriver(UAVDriver):
             VirtualUAV: an appropriate virtual UAV object
         """
         uav = VirtualUAV(id, driver=self)
+        uav.boots_armed = bool(self.uavs_armed_after_boot)
         uav.takeoff_altitude = 3
         uav.home = home.copy()
         uav.home.amsl = None
@@ -96,6 +101,11 @@ class VirtualUAVDriver(UAVDriver):
         Can be used on the client side to test response timeouts.
         """
         await sleep(1000000)
+
+    async def handle_command___show_upload(self, uav, *, show):
+        """Handles a drone show upload request for the given UAV."""
+        await sleep(0.25 + random() * 0.5)
+        return True
 
     async def handle_command_yo(self, uav):
         await sleep(0.5 + random())
@@ -166,7 +176,7 @@ class VirtualUAV(UAVBase):
     def __init__(self, *args, **kwds):
         super().__init__(*args, **kwds)
 
-        self._armed = True  # will be disarmed when booting
+        self._armed = True  # will be disarmed when booting if needed
         self._autopilot_initializing = False
         self._position_xyz = Vector3D()
         self._position_flat = FlatEarthCoordinate()
@@ -180,12 +190,13 @@ class VirtualUAV(UAVBase):
         self._request_shutdown = None
         self._shutdown_reason = None
 
-        self.takeoff_altitude = 3
+        self.boots_armed = False
         self.errors = []
         self.max_velocity_z = 2
         self.max_velocity_xy = 10
         self.radiation_ext = None
         self.state = VirtualUAVState.LANDED
+        self.takeoff_altitude = 3
         self.target = None
 
         self.step(0)
@@ -548,7 +559,7 @@ class VirtualUAV(UAVBase):
         self._request_shutdown = None
         self._shutdown_reason = None
 
-        self.armed = False
+        self.armed = bool(self.boots_armed)
         self.autopilot_initializing = True
 
     def _notify_autopilot_initialized(self) -> None:

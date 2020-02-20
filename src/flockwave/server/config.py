@@ -62,12 +62,7 @@ EXTENSIONS = {
         "delay": 0.2,
         "enabled": True,
         "id_format": "{0:02}",
-        "origin": {
-            # ELTE kert
-            "lat": 47.473360,
-            "lon": 19.062159,
-            "agl": 20,
-        },
+        "origin": [19.062159, 47.473360],  # ELTE kert
         "orientation": 0,
         "takeoff_area": {"type": "grid", "spacing": 5},
     },

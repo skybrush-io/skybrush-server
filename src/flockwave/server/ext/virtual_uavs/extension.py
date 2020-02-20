@@ -6,7 +6,6 @@ from typing import Callable
 
 from flockwave.gps.vectors import (
     FlatEarthCoordinate,
-    GPSCoordinate,
     FlatEarthToGPSCoordinateTransformation,
 )
 from flockwave.spec.ids import make_valid_object_id
@@ -73,28 +72,23 @@ class VirtualUAVProviderExtension(UAVExtensionBase):
         if "origin" not in configuration and "center" in configuration:
             self.log.warn("'center' is deprecated; use 'origin' instead")
             configuration["origin"] = configuration.pop("center")
-        origin = configuration.get("origin")
-        origin = GPSCoordinate(
-            lat=origin["lat"], lon=origin["lon"], agl=origin.get("agl", 0), amsl=None
-        )
-
-        # Get the direction of the X axis
-        orientation = configuration.get("orientation", 0)
-
-        # Get the type of the coordinate system
-        type = configuration.get("type", "neu")
 
         # Create a transformation from flat Earth to GPS
-        trans = FlatEarthToGPSCoordinateTransformation(
-            origin=origin, orientation=orientation, type=type
-        )
+        coordinate_system = {
+            "origin": configuration["origin"],
+            "orientation": configuration.get("orientation", 0),
+            "type": configuration.get("type", "nwu"),
+        }
+        trans = FlatEarthToGPSCoordinateTransformation.from_json(coordinate_system)
 
         # Generate IDs for the UAVs and then create them
         self.uav_ids = [
             make_valid_object_id(id_format.format(index)) for index in range(count)
         ]
         self.uavs = [
-            self._driver.create_uav(id, home=trans.to_gps(home), heading=orientation)
+            self._driver.create_uav(
+                id, home=trans.to_gps(home), heading=trans.orientation
+            )
             for id, home in zip(self.uav_ids, home_positions)
         ]
 

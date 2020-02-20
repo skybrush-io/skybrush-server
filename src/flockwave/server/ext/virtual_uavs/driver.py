@@ -115,8 +115,6 @@ class VirtualUAVDriver(UAVDriver):
 
     async def handle_command___show_upload(self, uav, *, show):
         """Handles a drone show upload request for the given UAV."""
-        # TODO(ntamas): conversion from show coordinate system to drone's
-        # own flat Earth coordinate system?
         uav.handle_show_upload(show)
         await sleep(0.25 + random() * 0.5)
         return True
@@ -209,6 +207,7 @@ class VirtualUAV(UAVBase):
         self._target_xyz = None
         self._trajectory = None
         self._trajectory_player = None
+        self._trajectory_transformation = None
         self._trans = FlatEarthToGPSCoordinateTransformation(
             origin=GPSCoordinate(lat=0, lon=0)
         )
@@ -414,6 +413,13 @@ class VirtualUAV(UAVBase):
         if self.state is not VirtualUAVState.LANDED:
             raise RuntimeError("Cannot upload a show while the drone is airborne")
 
+        coordinate_system = show.get("coordinateSystem")
+        try:
+            trans = FlatEarthToGPSCoordinateTransformation.from_json(coordinate_system)
+        except Exception:
+            raise RuntimeError("Invalid or missing coordinate system specification")
+
+        self._trajectory_transformation = trans
         self._trajectory = show.get("trajectory", None)
         self._light_program = show.get("lights", None)
 
@@ -618,9 +624,10 @@ class VirtualUAV(UAVBase):
         Also makes the UAV "forget" its current trajectory.
         """
         if self._trajectory_player:
-            self._trajectory_player = False
-            self._trajectory = None
             self._lights = None
+            self._trajectory = None
+            self._trajectory_player = None
+            self._trajectory_transformation = None
 
     def takeoff(self):
         """Starts a simulated take-off with the virtual UAV."""
@@ -678,5 +685,7 @@ class VirtualUAV(UAVBase):
         and the trajectory that it needs to follow.
         """
         elapsed = time() - self._takeoff_at
-        self.target_xyz = self._trajectory_player.position_at(elapsed)
-        print("Going to", self.target_xyz)
+        x, y, z = self._trajectory_player.position_at(elapsed)
+        self.target = self._trajectory_transformation.to_gps(
+            FlatEarthCoordinate(x=x, y=y, agl=z)
+        )

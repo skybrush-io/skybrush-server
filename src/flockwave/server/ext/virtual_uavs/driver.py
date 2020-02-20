@@ -3,6 +3,7 @@
 from enum import Enum
 from math import atan2, cos, hypot, sin
 from random import random, choice
+from time import time
 from trio import CancelScope, sleep
 from trio_util import periodic
 from typing import Callable, Optional
@@ -18,6 +19,7 @@ from flockwave.server.model.errors import FlockwaveErrorCode
 from flockwave.server.model.uav import UAVBase, UAVDriver
 
 from .battery import VirtualBattery
+from .trajectory import TrajectoryPlayer
 
 
 __all__ = ("VirtualUAVDriver",)
@@ -113,6 +115,9 @@ class VirtualUAVDriver(UAVDriver):
 
     async def handle_command___show_upload(self, uav, *, show):
         """Handles a drone show upload request for the given UAV."""
+        # TODO(ntamas): conversion from show coordinate system to drone's
+        # own flat Earth coordinate system?
+        uav.handle_show_upload(show)
         await sleep(0.25 + random() * 0.5)
         return True
 
@@ -125,6 +130,8 @@ class VirtualUAVDriver(UAVDriver):
             uav.takeoff()
             if target.agl is None and target.amsl is None:
                 target.agl = uav.takeoff_altitude
+
+        uav.stop_trajectory()
         uav.target = target
 
     def _send_landing_signal_single(self, uav):
@@ -142,6 +149,8 @@ class VirtualUAVDriver(UAVDriver):
     def _send_return_to_home_signal_single(self, uav):
         target = uav.home.copy()
         target.agl = uav.status.position.agl
+
+        uav.stop_trajectory()
         uav.target = target
 
     def _send_shutdown_signal_single(self, uav):
@@ -192,10 +201,14 @@ class VirtualUAV(UAVBase):
 
         self._armed = True  # will be disarmed when booting if needed
         self._autopilot_initializing = False
+        self._light_program = None
         self._position_xyz = Vector3D()
         self._position_flat = FlatEarthCoordinate()
         self._state = None
+        self._takeoff_at = None
         self._target_xyz = None
+        self._trajectory = None
+        self._trajectory_player = None
         self._trans = FlatEarthToGPSCoordinateTransformation(
             origin=GPSCoordinate(lat=0, lon=0)
         )
@@ -291,6 +304,7 @@ class VirtualUAV(UAVBase):
         if self._state == value:
             return
 
+        old_state = self._state
         self._state = value
 
         self.ensure_error(
@@ -303,9 +317,18 @@ class VirtualUAV(UAVBase):
         #     FlockwaveErrorCode.LANDED, present=self._state is VirtualUAVState.LANDED
         # )
 
+        if self._state is VirtualUAVState.AIRBORNE:
+            if old_state is VirtualUAVState.TAKEOFF:
+                # Start following the trajectory if we have one
+                if self._trajectory is not None:
+                    self._trajectory_player = TrajectoryPlayer(self._trajectory)
+            else:
+                # Stop following the trajectory
+                self.stop_trajectory()
+
     @property
     def target(self):
-        """The target coordinates of the UAV."""
+        """The target coordinates of the UAV in GPS coordinates."""
         return self._target
 
     @target.setter
@@ -322,6 +345,22 @@ class VirtualUAV(UAVBase):
         self._target.update(agl=new_altitude)
         flat = self._trans.to_flat_earth(value)
         self._target_xyz = Vector3D(x=flat.x, y=flat.y, z=new_altitude)
+
+    @property
+    def target_xyz(self):
+        """The target coordinates of the UAV in flat Earth coordinates around
+        its home.
+        """
+        return self._target_xyz
+
+    @target_xyz.setter
+    def target_xyz(self, value):
+        if value is None:
+            self.target = None
+        else:
+            x, y, z = value
+            flat_earth = FlatEarthCoordinate(x=x, y=y, agl=z)
+            self.target = self._trans.to_gps(flat_earth)
 
     @property
     def user_defined_error(self) -> Optional[int]:
@@ -362,6 +401,21 @@ class VirtualUAV(UAVBase):
         else:
             if present:
                 self.errors.append(code)
+
+    def handle_show_upload(self, show):
+        """Handles the upload of a full drone show (trajectory + light program).
+
+        Parameters:
+            show: the uploaded show in Skybrush format
+
+        Raises:
+            RuntimeError: if the drone is not on the ground
+        """
+        if self.state is not VirtualUAVState.LANDED:
+            raise RuntimeError("Cannot upload a show while the drone is airborne")
+
+        self._trajectory = show.get("trajectory", None)
+        self._light_program = show.get("lights", None)
 
     def land(self):
         """Starts a simulated landing with the virtual UAV."""
@@ -444,6 +498,11 @@ class VirtualUAV(UAVBase):
         """
         state = self._state
 
+        # Update the target of the drone if it is currently following a
+        # predefined trajectory
+        if self._trajectory_player and self._takeoff_at is not None:
+            self._update_target_from_trajectory()
+
         # Do we have a target?
         if self._target_xyz is not None:
             # We aim for the target in the XY plane only if we are airborne
@@ -483,6 +542,7 @@ class VirtualUAV(UAVBase):
             elif state is VirtualUAVState.LANDING:
                 if self._position_xyz.z < eps:
                     self.state = VirtualUAVState.LANDED
+                    self._takeoff_at = None
 
         # Calculate our coordinates in flat Earth
         self._position_flat.x = self._position_xyz.x
@@ -550,6 +610,18 @@ class VirtualUAV(UAVBase):
                 {"lat": position.lat, "lon": position.lon, "value": observed_count},
             )
 
+    def stop_trajectory(self):
+        """Prevents the UAV from following its pre-defined trajectory if it is
+        currently following one. No-op if the UAV is not following a predefined
+        trajectory.
+
+        Also makes the UAV "forget" its current trajectory.
+        """
+        if self._trajectory_player:
+            self._trajectory_player = False
+            self._trajectory = None
+            self._lights = None
+
     def takeoff(self):
         """Starts a simulated take-off with the virtual UAV."""
         if self.state != VirtualUAVState.LANDED:
@@ -561,6 +633,8 @@ class VirtualUAV(UAVBase):
         if self._target_xyz is None:
             self._target_xyz = self._position_xyz.copy()
         self._target_xyz.z = self.takeoff_altitude
+        self._takeoff_at = time()
+
         self.state = VirtualUAVState.TAKEOFF
 
     def _initialize_device_tree_node(self, node):
@@ -598,3 +672,11 @@ class VirtualUAV(UAVBase):
         self._shutdown_reason = None
 
         self.autopilot_initializing = False
+
+    def _update_target_from_trajectory(self) -> None:
+        """Updates the target of the UAV based on the time elapsed since takeoff
+        and the trajectory that it needs to follow.
+        """
+        elapsed = time() - self._takeoff_at
+        self.target_xyz = self._trajectory_player.position_at(elapsed)
+        print("Going to", self.target_xyz)

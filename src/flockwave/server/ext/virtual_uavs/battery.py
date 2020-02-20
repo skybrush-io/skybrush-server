@@ -53,6 +53,38 @@ class VirtualBattery:
         self.voltage = initial_charge * self._range + self._min
 
     @property
+    def is_critical(self):
+        """Returns whether the battery voltage is considered critically."""
+        return self._status.percentage <= 5
+
+    @property
+    def is_low(self):
+        """Returns whether the battery voltage is considered low."""
+        return self._status.percentage <= 20
+
+    @property
+    def is_very_low(self):
+        """Returns whether the battery voltage is considered very low."""
+        return self._status.percentage <= 10
+
+    @property
+    def percentage(self):
+        """The current charge percentage of the battery, in the range of 0 to
+        100.
+        """
+        return self._status.percentage
+
+    @percentage.setter
+    def percentage(self, value):
+        value = max(min(value, 100), 0)
+
+        value = self._min + value / 100 * self._range
+        percentage = (value - self._min) / self._range * 100
+
+        self._status.voltage = value
+        self._status.percentage = percentage
+
+    @property
     def status(self):
         """The general status of the battery as a BatteryInfo_ object."""
         return self._status
@@ -64,9 +96,7 @@ class VirtualBattery:
 
     @voltage.setter
     def voltage(self, value):
-        percentage = 100 * (value - self._min) / self._range
-        self._status.voltage = value
-        self._status.percentage = int(max(min(percentage, 100), 0))
+        self.percentage = 100 * (value - self._min) / self._range
 
     def recharge(self):
         """Recharges the battery to the maximum voltage."""

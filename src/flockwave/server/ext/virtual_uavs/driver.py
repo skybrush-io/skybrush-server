@@ -68,6 +68,15 @@ class VirtualUAVDriver(UAVDriver):
         else:
             return "Failed to arm"
 
+    async def handle_command_battery(self, uav, value):
+        """Command that sets the battery voltage to a given value."""
+        if hasattr(value, "endswith") and value.endswith("%"):
+            uav.battery.percentage = float(value[:-1])
+            return f"Battery percentage set to {uav.battery.percentage:.2f}%"
+        else:
+            uav.battery.voltage = float(value)
+            return f"Voltage set to {uav.battery.voltage:.2f}V"
+
     async def handle_command_disarm(self, uav):
         """Command that disarms the virtual drone if it is on the ground."""
         if uav.disarm_if_on_ground():
@@ -129,6 +138,11 @@ class VirtualUAVDriver(UAVDriver):
         else:
             # No components on this UAV
             return False
+
+    def _send_return_to_home_signal_single(self, uav):
+        target = uav.home.copy()
+        target.agl = uav.status.position.agl
+        uav.target = target
 
     def _send_shutdown_signal_single(self, uav):
         uav.shutdown()
@@ -483,6 +497,17 @@ class VirtualUAV(UAVBase):
         # Discharge the battery
         load = 0.01 if self.state is VirtualUAVState.LANDED else 1.0
         self.battery.discharge(dt, load, mutator=mutator)
+
+        # Update the error code based on the battery status
+        self.ensure_error(
+            FlockwaveErrorCode.BATTERY_CRITICAL, present=self.battery.is_critical
+        )
+        self.ensure_error(
+            FlockwaveErrorCode.BATTERY_LOW_ERROR, present=self.battery.is_very_low
+        )
+        self.ensure_error(
+            FlockwaveErrorCode.BATTERY_LOW_WARNING, present=self.battery.is_low
+        )
 
         # Update the UAV status
         updates = {

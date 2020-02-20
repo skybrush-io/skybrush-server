@@ -18,6 +18,7 @@ class DroneShowConfiguration:
 
     def __init__(self):
         """Constructor."""
+        self.authorized_to_start = False  # type: bool
         self.start_time = None  # type: Optional[float]
         self.start_method = StartMethod.RC  # type: StartMethod
 
@@ -25,13 +26,22 @@ class DroneShowConfiguration:
     def json(self):
         """Returns the JSON representation of the configuration object."""
         return {
-            "start": {"time": self.start_time, "method": str(self.start_method.value)}
+            "start": {
+                "authorized": bool(self.authorized_to_start),
+                "time": self.start_time,
+                "method": str(self.start_method.value),
+            }
         }
 
     def update_from_json(self, obj):
         """Updates the configuration object from its JSON representation."""
         start_conditions = obj.get("start")
         if start_conditions:
+            if "authorized" in start_conditions:
+                # This is intentional; in order to be on the safe side, we only
+                # accept True for authorization, not any other truthy value
+                self.authorized_to_start = start_conditions["authorized"] is True
+
             if "time" in start_conditions:
                 start_time = start_conditions["time"]
                 if start_time is None:

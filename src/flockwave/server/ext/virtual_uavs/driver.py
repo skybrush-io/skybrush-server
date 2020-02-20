@@ -481,7 +481,8 @@ class VirtualUAV(UAVBase):
         position = self._trans.to_gps(self._position_flat)
 
         # Discharge the battery
-        self.battery.discharge(dt, mutator)
+        load = 0.01 if self.state is VirtualUAVState.LANDED else 1.0
+        self.battery.discharge(dt, load, mutator=mutator)
 
         # Update the UAV status
         updates = {

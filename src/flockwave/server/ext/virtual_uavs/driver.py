@@ -15,8 +15,8 @@ from flockwave.gps.vectors import (
     Vector3D,
 )
 from flockwave.server.concurrency import delayed
-from flockwave.server.model.errors import FlockwaveErrorCode
 from flockwave.server.model.uav import UAVBase, UAVDriver
+from flockwave.spec.errors import FlockwaveErrorCode
 
 from .battery import VirtualBattery
 from .trajectory import TrajectoryPlayer
@@ -145,11 +145,14 @@ class VirtualUAVDriver(UAVDriver):
             return False
 
     def _send_return_to_home_signal_single(self, uav):
-        target = uav.home.copy()
-        target.agl = uav.status.position.agl
+        if uav.state == VirtualUAVState.AIRBORNE:
+            target = uav.home.copy()
+            target.agl = uav.status.position.agl
 
-        uav.stop_trajectory()
-        uav.target = target
+            uav.stop_trajectory()
+            uav.target = target
+
+            uav.ensure_error(FlockwaveErrorCode.RETURN_TO_HOME)
 
     def _send_shutdown_signal_single(self, uav):
         uav.shutdown()
@@ -306,6 +309,7 @@ class VirtualUAV(UAVBase):
         old_state = self._state
         self._state = value
 
+        self.ensure_error(FlockwaveErrorCode.RETURN_TO_HOME, present=False)
         self.ensure_error(
             FlockwaveErrorCode.TAKEOFF, present=self._state is VirtualUAVState.TAKEOFF
         )
@@ -333,17 +337,20 @@ class VirtualUAV(UAVBase):
     @target.setter
     def target(self, value):
         self._target = value
+
+        # Clear the "return to home" error code (if any)
+        self.ensure_error(FlockwaveErrorCode.RETURN_TO_HOME, present=False)
+
         if self._target is None:
             self._target_xyz = None
-            return
+        else:
+            # Calculate the real altitude component of the target
+            new_altitude = self._position_xyz.z if value.agl is None else value.agl
 
-        # Calculate the real altitude component of the target
-        new_altitude = self._position_xyz.z if value.agl is None else value.agl
-
-        # Update the target and its XYZ representation
-        self._target.update(agl=new_altitude)
-        flat = self._trans.to_flat_earth(value)
-        self._target_xyz = Vector3D(x=flat.x, y=flat.y, z=new_altitude)
+            # Update the target and its XYZ representation
+            self._target.update(agl=new_altitude)
+            flat = self._trans.to_flat_earth(value)
+            self._target_xyz = Vector3D(x=flat.x, y=flat.y, z=new_altitude)
 
     @property
     def target_xyz(self):
@@ -524,12 +531,14 @@ class VirtualUAV(UAVBase):
                 dz = 0
 
             angle = atan2(dy, dx)
-            dist = hypot(dx, dy)
-            if dist < 1e-6:
-                dist = 0
+            dist_xy = hypot(dx, dy)
+            if dist_xy < 1e-6:
+                dist_xy = 0
 
-            displacement_xy = min(dist, dt * self.max_velocity_xy)
-            displacement_z = min(abs(dz), dt * self.max_velocity_z)
+            dist_z = abs(dz)
+
+            displacement_xy = min(dist_xy, dt * self.max_velocity_xy)
+            displacement_z = min(dist_z, dt * self.max_velocity_z)
             if dz < 0:
                 displacement_z *= -1
 
@@ -546,9 +555,13 @@ class VirtualUAV(UAVBase):
                 if self._position_xyz.z > max(eps, self.takeoff_altitude - eps):
                     self.state = VirtualUAVState.AIRBORNE
             elif state is VirtualUAVState.LANDING:
-                if self._position_xyz.z < eps:
+                if self._position_xyz.z < eps * 0.5:
                     self.state = VirtualUAVState.LANDED
                     self._takeoff_at = None
+            elif state is VirtualUAVState.AIRBORNE:
+                # If we have reached the target, we can clear it
+                if dist_xy < eps and dist_z < eps:
+                    self.target = None
 
         # Calculate our coordinates in flat Earth
         self._position_flat.x = self._position_xyz.x

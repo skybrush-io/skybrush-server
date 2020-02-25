@@ -1,6 +1,6 @@
 """Error classes specific to the FlockCtrl extension."""
 
-from flockwave.server.model.errors import FlockwaveErrorCode
+from flockwave.spec.errors import FlockwaveErrorCode
 
 
 __all__ = ("AddressConflictError", "map_flockctrl_error_code")

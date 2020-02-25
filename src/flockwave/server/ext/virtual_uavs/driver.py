@@ -203,7 +203,7 @@ class VirtualUAV(UAVBase):
 
         self._armed = True  # will be disarmed when booting if needed
         self._autopilot_initializing = False
-        self._light_controller = DefaultLightController()
+        self._light_controller = DefaultLightController(self)
         self._light_program = None
         self._position_xyz = Vector3D()
         self._position_flat = FlatEarthCoordinate()

@@ -5,6 +5,8 @@ on the UAVs.
 from abc import abstractmethod
 from typing import Callable, Iterable, List, Optional, Tuple, Union
 
+from flockwave.spec.errors import FlockwaveErrorCode
+
 __all__ = (
     "color_to_rgb565",
     "LightController",
@@ -24,6 +26,8 @@ LightModule = Callable[[float, RGBColor], RGBColor]
 class Colors:
     BLACK = (0, 0, 0)
     WHITE = (255, 255, 255)
+    RED = (255, 0, 0)
+    ORANGE = (255, 128, 0)
 
 
 def color_to_rgb565(color: RGBColor) -> int:
@@ -113,10 +117,32 @@ class DefaultLightController(ModularLightController):
     for a virtual UAV.
     """
 
-    def __init__(self):
+    def __init__(self, owner=None):
         super().__init__(self._create_default_modules())
+        self.owner = owner
 
     def _create_default_modules(self) -> List[LightModuleLike]:
         """Returns the default set of modules to use in this controller."""
-        result = [constant_color(Colors.WHITE)]
+        result = [constant_color(Colors.WHITE), self._error_module]
         return result
+
+    def _error_module(self, timestamp: float, color: RGBColor) -> RGBColor:
+        """Lighting module that sets the color unconditionally to red in case
+        of an error, orange in case of a warning, or flashing orange in RTH
+        mode.
+        """
+        errors = self.owner.errors
+        if errors:
+            max_code = max(errors)
+            if max_code >= 128:
+                return Colors.RED
+            elif max_code >= 64:
+                return Colors.ORANGE
+            elif max_code == FlockwaveErrorCode.RETURN_TO_HOME:
+                return (
+                    Colors.ORANGE
+                    if (timestamp - int(timestamp)) >= 0.5
+                    else Colors.BLACK
+                )
+
+        return color

@@ -19,6 +19,7 @@ from flockwave.server.model.uav import UAVBase, UAVDriver
 from flockwave.spec.errors import FlockwaveErrorCode
 
 from .battery import VirtualBattery
+from .lights import color_to_rgb565, DefaultLightController
 from .trajectory import TrajectoryPlayer
 
 
@@ -202,6 +203,7 @@ class VirtualUAV(UAVBase):
 
         self._armed = True  # will be disarmed when booting if needed
         self._autopilot_initializing = False
+        self._light_controller = DefaultLightController()
         self._light_program = None
         self._position_xyz = Vector3D()
         self._position_flat = FlatEarthCoordinate()
@@ -593,6 +595,7 @@ class VirtualUAV(UAVBase):
             "position": position,
             "errors": self.errors,
             "battery": self.battery.status,
+            "light": color_to_rgb565(self._light_controller.evaluate(time())),
         }
         self.update_status(**updates)
 
@@ -637,7 +640,7 @@ class VirtualUAV(UAVBase):
         Also makes the UAV "forget" its current trajectory.
         """
         if self._trajectory_player:
-            self._lights = None
+            self._light_program = None
             self._trajectory = None
             self._trajectory_player = None
             self._trajectory_transformation = None

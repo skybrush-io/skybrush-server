@@ -97,6 +97,7 @@ class UAVStatusInfo(TimestampMixin, metaclass=ModelMeta):
         TimestampMixin.__init__(self, timestamp)
         self.heading = 0.0
         self.id = id
+        self.light = 2016
         self.position = GPSCoordinate()
         self.velocity = VelocityNED()
         self.battery = BatteryInfo()
@@ -209,6 +210,7 @@ class UAVBase(UAV):
         heading=None,
         algorithm=None,
         battery=None,
+        light=None,
         errors=None,
     ):
         """Updates the status information of the UAV.
@@ -229,6 +231,8 @@ class UAVBase(UAV):
                 of the battery on the UAV. It will be cloned to ensure that
                 modifying this object from the caller will not affect the
                 UAV itself.
+            light (Optional[int]): the color of the primary light of the
+                UAV, in RGB565 encoding.
             errors (Optional[Union[int,Iterable[int]]]): the error code or
                 error codes of the UAV; use an empty list or tuple if the
                 UAV has no errors
@@ -246,6 +250,8 @@ class UAVBase(UAV):
             self._status.algorithm = algorithm
         if battery is not None:
             self._status.battery.update_from(battery)
+        if light is not None:
+            self._status.light = int(light)
         if errors is not None:
             if isinstance(errors, int):
                 errors = [errors] if errors > 0 else []

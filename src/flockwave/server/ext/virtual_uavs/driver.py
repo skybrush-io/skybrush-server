@@ -217,7 +217,6 @@ class VirtualUAV(UAVBase):
         self._armed = True  # will be disarmed when booting if needed
         self._autopilot_initializing = False
         self._light_controller = DefaultLightController(self)
-        self._light_program = None
         self._position_xyz = Vector3D()
         self._position_flat = FlatEarthCoordinate()
         self._state = None
@@ -335,7 +334,11 @@ class VirtualUAV(UAVBase):
         #     FlockwaveErrorCode.LANDED, present=self._state is VirtualUAVState.LANDED
         # )
 
-        if self._state is VirtualUAVState.AIRBORNE:
+        if self._state is VirtualUAVState.TAKEOFF:
+            if old_state is VirtualUAVState.LANDED:
+                # Start the light program
+                self._light_controller.play_light_program()
+        elif self._state is VirtualUAVState.AIRBORNE:
             if old_state is VirtualUAVState.TAKEOFF:
                 # Start following the trajectory if we have one
                 if self._trajectory is not None:
@@ -343,6 +346,9 @@ class VirtualUAV(UAVBase):
             else:
                 # Stop following the trajectory
                 self.stop_trajectory()
+        elif self._state is VirtualUAVState.LANDED:
+            # Mission ended, stop playing the light program
+            self._light_controller.stop_light_program()
 
     @property
     def target(self):
@@ -449,7 +455,8 @@ class VirtualUAV(UAVBase):
 
         self._trajectory_transformation = trans
         self._trajectory = show.get("trajectory", None)
-        self._light_program = show.get("lights", None)
+
+        self._light_controller.load_light_program(show.get("lights", None))
 
     def land(self):
         """Starts a simulated landing with the virtual UAV."""
@@ -659,7 +666,6 @@ class VirtualUAV(UAVBase):
         Also makes the UAV "forget" its current trajectory.
         """
         if self._trajectory_player:
-            self._light_program = None
             self._trajectory = None
             self._trajectory_player = None
             self._trajectory_transformation = None

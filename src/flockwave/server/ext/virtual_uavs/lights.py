@@ -4,7 +4,10 @@ on the UAVs.
 
 from abc import abstractmethod
 from colour import Color
+from time import time
 from typing import Callable, Iterable, List, Optional, Union
+
+from pyledctrl.player import Player
 
 from flockwave.spec.errors import FlockwaveErrorCode
 
@@ -119,7 +122,22 @@ class DefaultLightController(ModularLightController):
         super().__init__(self._create_default_modules())
 
         self.owner = owner
+
+        self._light_program_player = None  # type: Optional[Player]
+        self._light_program_start_time = None  # type: Optional[float]
+
         self._override = None
+
+    def clear_light_program(self) -> None:
+        """Clears the currently loaded light program."""
+        self._light_program_player = None
+        self._light_program_start_time = None
+
+    def load_light_program(self, light_program: dict) -> None:
+        """Loads a light program that will be played when `play_light_program()`
+        is called.
+        """
+        self._light_program_player = Player.from_json(light_program)
 
     @property
     def override(self) -> Optional[Color]:
@@ -131,10 +149,26 @@ class DefaultLightController(ModularLightController):
             raise TypeError(f"Color or None expected, got {type(value)!r}")
         self._override = value
 
+    def play_light_program(self) -> None:
+        """Starts playing the current light program.
+
+        This function is a no-op if there is no light program loaded.
+        """
+        if self._light_program_player is not None:
+            self._light_program_start_time = time()
+
+    def stop_light_program(self) -> None:
+        """Stops playing the current light program.
+
+        This function is a no-op if there is no light program being played.
+        """
+        self._light_program_start_time = None
+
     def _create_default_modules(self) -> List[LightModuleLike]:
         """Returns the default set of modules to use in this controller."""
         result = [
             constant_color(Colors.WHITE),
+            self._light_program_module,
             self._error_module,
             self._override_module,
         ]
@@ -158,6 +192,20 @@ class DefaultLightController(ModularLightController):
                     if (timestamp - int(timestamp)) >= 0.5
                     else Colors.BLACK
                 )
+
+        return color
+
+    def _light_program_module(self, timestamp: float, color: Color) -> Color:
+        """Lighting module that plays back a predefined light program in
+        `pyledctrl` compiled format.
+        """
+        if self._light_program_player and self._light_program_start_time:
+            if self._light_program_player.ended:
+                self.stop_light_program()
+            else:
+                dt = timestamp - self._light_program_start_time
+                r, g, b = self._light_program_player.get_color_at(dt)
+                color = Color(rgb=(r / 255, g / 255, b / 255))
 
         return color
 

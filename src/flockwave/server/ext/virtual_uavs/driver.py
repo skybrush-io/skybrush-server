@@ -1,5 +1,6 @@
 """Driver class for virtual drones."""
 
+from colour import Color
 from enum import Enum
 from math import atan2, cos, hypot, sin
 from random import random, choice
@@ -79,6 +80,18 @@ class VirtualUAVDriver(UAVDriver):
         else:
             uav.battery.voltage = float(value)
             return f"Voltage set to {uav.battery.voltage:.2f}V"
+
+    async def handle_command_color(self, uav, value=None):
+        """Command that overrides the color of the simulated light of the
+        UAV.
+        """
+        if not value:
+            uav.handle_color_override(None)
+            return "Color override turned off."
+        else:
+            color = Color(value)
+            uav.handle_color_override(color)
+            return f"Color set to {color}"
 
     async def handle_command_disarm(self, uav):
         """Command that disarms the virtual drone if it is on the ground."""
@@ -409,6 +422,12 @@ class VirtualUAV(UAVBase):
         else:
             if present:
                 self.errors.append(code)
+
+    def handle_color_override(self, color: Optional[Color]) -> None:
+        """Handles a command request to override the current color of the
+        simulated light on the drone.
+        """
+        self._light_controller.override = color
 
     def handle_show_upload(self, show):
         """Handles the upload of a full drone show (trajectory + light program).

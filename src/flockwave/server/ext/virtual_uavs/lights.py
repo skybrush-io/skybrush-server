@@ -3,7 +3,8 @@ on the UAVs.
 """
 
 from abc import abstractmethod
-from typing import Callable, Iterable, List, Optional, Tuple, Union
+from colour import Color
+from typing import Callable, Iterable, List, Optional, Union
 
 from flockwave.spec.errors import FlockwaveErrorCode
 
@@ -15,22 +16,19 @@ __all__ = (
 )
 
 
-#: Type specification for an RGB color triplet
-RGBColor = Tuple[int, int, int]
-
 #: Type specification of a light module for a modular light controller
-LightModule = Callable[[float, RGBColor], RGBColor]
+LightModule = Callable[[float, Color], Color]
 
 
 #: Object listing a few well-known colors
 class Colors:
-    BLACK = (0, 0, 0)
-    WHITE = (255, 255, 255)
-    RED = (255, 0, 0)
-    ORANGE = (255, 128, 0)
+    BLACK = Color("black")
+    WHITE = Color("white")
+    RED = Color(rgb=(1, 0, 0))
+    ORANGE = Color(rgb=(1, 0.5, 0))
 
 
-def color_to_rgb565(color: RGBColor) -> int:
+def color_to_rgb565(color: Color) -> int:
     """Converts a color given as an RGB triplet into its RGB565
     representation.
 
@@ -40,7 +38,7 @@ def color_to_rgb565(color: RGBColor) -> int:
     Returns:
         int: the color in its RGB565 representation
     """
-    red, green, blue = color
+    red, green, blue = [round(x * 255) for x in color.rgb]
     return (
         (((red >> 3) & 0x1F) << 11)
         + (((green >> 2) & 0x3F) << 5)
@@ -55,7 +53,7 @@ class LightController:
     """
 
     @abstractmethod
-    def evaluate(self, timestamp: float, base_color: RGBColor = Colors.BLACK):
+    def evaluate(self, timestamp: float, base_color: Color = Colors.BLACK):
         """Calculates the RGB triplet of the light that should be shown on the
         UAV at the given timestamp.
 
@@ -94,19 +92,19 @@ class ModularLightController(LightController):
             module = module.evaluate
         self._modules.append(module)
 
-    def evaluate(self, timestamp: float, base_color: RGBColor = Colors.BLACK):
+    def evaluate(self, timestamp: float, base_color: Color = Colors.BLACK):
         result = base_color
         for module in self._modules:
             result = module(timestamp, result)
         return result
 
 
-def constant_color(color: RGBColor) -> LightModule:
+def constant_color(color: Color) -> LightModule:
     """Light module factory that returns a light module that always returns the
     same color.
     """
 
-    def module(timestamp: float, base_color: RGBColor):
+    def module(timestamp: float, base_color: Color):
         return color
 
     return module
@@ -119,14 +117,30 @@ class DefaultLightController(ModularLightController):
 
     def __init__(self, owner=None):
         super().__init__(self._create_default_modules())
+
         self.owner = owner
+        self._override = None
+
+    @property
+    def override(self) -> Optional[Color]:
+        return self._override
+
+    @override.setter
+    def override(self, value: Optional[Color]):
+        if value is not None and not isinstance(value, Color):
+            raise TypeError(f"Color or None expected, got {type(value)!r}")
+        self._override = value
 
     def _create_default_modules(self) -> List[LightModuleLike]:
         """Returns the default set of modules to use in this controller."""
-        result = [constant_color(Colors.WHITE), self._error_module]
+        result = [
+            constant_color(Colors.WHITE),
+            self._error_module,
+            self._override_module,
+        ]
         return result
 
-    def _error_module(self, timestamp: float, color: RGBColor) -> RGBColor:
+    def _error_module(self, timestamp: float, color: Color) -> Color:
         """Lighting module that sets the color unconditionally to red in case
         of an error, orange in case of a warning, or flashing orange in RTH
         mode.
@@ -146,3 +160,10 @@ class DefaultLightController(ModularLightController):
                 )
 
         return color
+
+    def _override_module(self, timestamp: float, color: Color) -> Color:
+        """Lighting module that overrides the input color unconditionally with
+        a color specified by the user with the `override` property of the
+        default light controller.
+        """
+        return self._override or color

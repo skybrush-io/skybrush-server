@@ -14,6 +14,7 @@ from flockwave.gps.vectors import (
     GPSCoordinate,
     FlatEarthToGPSCoordinateTransformation,
     Vector3D,
+    VelocityNED,
 )
 from flockwave.server.concurrency import delayed
 from flockwave.server.model.uav import UAVBase, UAVDriver
@@ -194,12 +195,18 @@ class VirtualUAV(UAVBase):
             of the flat Earth transformation that the UAV uses. Altitude
             component is used to define the cruise altitude where a take-off
             attempt will stop.
+        max_acceleration_xy (float): the maximum acceleration of the UAV in
+            the X-Y plane (parallel to the surface of the Earth), in m/s2.
+            To simplify the simulation a bit, the virtual UAVs are capable
+            of infinite deceleration.
+        max_acceleration_z (float): the maximum acceleration of the UAV in
+            the X-Y plane (parallel to the surface of the Earth), in m/s2.
+            To simplify the simulation a bit, the virtual UAVs are capable
+            of infinite deceleration.
         max_velocity_xy (float): the maximum velocity of the UAV along the
-            X-Y plane (parallel to the surface to the Earth), in metres
-            per second
+            X-Y plane (parallel to the surface of the Earth), in m/s.
         max_velocity_z (float): the maximum ascent rate of the UAV along
-            the Z axis (perpendicular to the surface of the Earth), in
-            metres per second
+            the Z axis (perpendicular to the surface of the Earth), in m/s.
         position (GPSCoordinate): the current position of the center of the
             circle that the UAV traverses; altitude is given as relative to
             home.
@@ -229,12 +236,16 @@ class VirtualUAV(UAVBase):
             origin=GPSCoordinate(lat=0, lon=0)
         )
         self._user_defined_error = None
+        self._velocity_xyz = Vector3D()
+        self._velocity_ned = VelocityNED()
 
         self._request_shutdown = None
         self._shutdown_reason = None
 
         self.boots_armed = False
         self.errors = []
+        self.max_acceleration_xy = 4
+        self.max_acceleration_z = 1
         self.max_velocity_z = 2
         self.max_velocity_xy = 10
         self.radiation_ext = None
@@ -565,13 +576,37 @@ class VirtualUAV(UAVBase):
 
             dist_z = abs(dz)
 
-            displacement_xy = min(dist_xy, dt * self.max_velocity_xy)
-            displacement_z = min(dist_z, dt * self.max_velocity_z)
-            if dz < 0:
-                displacement_z *= -1
+            reachable_velocity_xy = min(
+                hypot(self._velocity_xyz.x, self._velocity_xyz.y)
+                + self.max_acceleration_xy * dt,
+                self.max_velocity_xy,
+            )
+            displacement_xy = min(dist_xy, dt * reachable_velocity_xy)
 
-            self._position_xyz.x += cos(angle) * displacement_xy
-            self._position_xyz.y += sin(angle) * displacement_xy
+            displacement_x = cos(angle) * displacement_xy
+            displacement_y = sin(angle) * displacement_xy
+
+            if dz < 0:
+                # Descending
+                reachable_velocity_z = max(
+                    self._velocity_xyz.z - self.max_acceleration_z * dt,
+                    -self.max_velocity_z,
+                )
+                displacement_z = max(dz, dt * reachable_velocity_z)
+            else:
+                # Ascending
+                reachable_velocity_z = min(
+                    self._velocity_xyz.z + self.max_acceleration_z * dt,
+                    self.max_velocity_z,
+                )
+                displacement_z = min(dz, dt * reachable_velocity_z)
+
+            self._velocity_xyz.x = displacement_x / dt if dt > 0 else 0.0
+            self._velocity_xyz.y = displacement_y / dt if dt > 0 else 0.0
+            self._velocity_xyz.z = displacement_z / dt if dt > 0 else 0.0
+
+            self._position_xyz.x += displacement_x
+            self._position_xyz.y += displacement_y
             self._position_xyz.z += displacement_z
 
             # If we are above the takeoff altitude minus some threshold and
@@ -601,6 +636,10 @@ class VirtualUAV(UAVBase):
         # current position as origin
         position = self._trans.to_gps(self._position_flat)
 
+        # Calculate the velocity in NED
+        # TODO(ntamas): update the North/East components as well
+        self._velocity_ned.update(down=-self._velocity_xyz.z)
+
         # Discharge the battery
         load = 0.01 if self.state is VirtualUAVState.LANDED else 1.0
         self.battery.discharge(dt, load, mutator=mutator)
@@ -619,6 +658,7 @@ class VirtualUAV(UAVBase):
         # Update the UAV status
         updates = {
             "position": position,
+            "velocity": self._velocity_ned,
             "errors": self.errors,
             "battery": self.battery.status,
             "light": color_to_rgb565(self._light_controller.evaluate(time())),

@@ -224,10 +224,10 @@ class VirtualUAV(UAVBase):
         self._armed = True  # will be disarmed when booting if needed
         self._autopilot_initializing = False
         self._light_controller = DefaultLightController(self)
+        self._mission_started_at = None
         self._position_xyz = Vector3D()
         self._position_flat = FlatEarthCoordinate()
         self._state = None
-        self._takeoff_at = None
         self._target_xyz = None
         self._trajectory = None
         self._trajectory_player = None
@@ -308,6 +308,17 @@ class VirtualUAV(UAVBase):
         )
 
     @property
+    def elapsed_time_in_mission(self):
+        """Returns the number of seconds elapsed in the execution of the current
+        mission (trajectory) or `None` if no mission is running yet.
+        """
+        return (
+            time() - self._mission_started_at
+            if self._mission_started_at is not None
+            else None
+        )
+
+    @property
     def has_user_defined_error(self):
         return bool(self._user_defined_error)
 
@@ -347,15 +358,15 @@ class VirtualUAV(UAVBase):
 
         if self._state is VirtualUAVState.TAKEOFF:
             if old_state is VirtualUAVState.LANDED:
-                # Start the light program
-                self._light_controller.play_light_program()
-        elif self._state is VirtualUAVState.AIRBORNE:
-            if old_state is VirtualUAVState.TAKEOFF:
                 # Start following the trajectory if we have one
                 if self._trajectory is not None:
                     self._trajectory_player = TrajectoryPlayer(self._trajectory)
-            else:
-                # Stop following the trajectory
+
+                # Start the light program
+                self._light_controller.play_light_program()
+        elif self._state is VirtualUAVState.AIRBORNE:
+            if old_state is not VirtualUAVState.TAKEOFF:
+                # Stop following the trajectory, just in case
                 self.stop_trajectory()
         elif self._state is VirtualUAVState.LANDED:
             # Mission ended, stop playing the light program
@@ -551,9 +562,10 @@ class VirtualUAV(UAVBase):
         state = self._state
 
         # Update the target of the drone if it is currently following a
-        # predefined trajectory
-        if self._trajectory_player and self._takeoff_at is not None:
-            self._update_target_from_trajectory()
+        # predefined trajectory and it is not landing or landed
+        if state is VirtualUAVState.TAKEOFF or state is VirtualUAVState.AIRBORNE:
+            if self._trajectory_player and self._mission_started_at is not None:
+                self._update_target_from_trajectory()
 
         # Do we have a target?
         if self._target_xyz is not None:
@@ -564,10 +576,14 @@ class VirtualUAV(UAVBase):
             else:
                 dx, dy = 0, 0
 
-            if state is not VirtualUAVState.LANDED:
-                dz = self._target_xyz.z - self._position_xyz.z
-            else:
-                dz = 0
+            # During the takeoff phase, if we are flying a mission and the
+            # takeoff time has not been reached yet, we are not allowed to
+            # move in the Z direction either
+            dz = self._target_xyz.z - self._position_xyz.z
+            if state is VirtualUAVState.TAKEOFF and self._trajectory_player:
+                t = self.elapsed_time_in_mission
+                if t is not None and self._trajectory_player.is_before_takeoff(t):
+                    dz = 0
 
             angle = atan2(dy, dx)
             dist_xy = hypot(dx, dy)
@@ -592,7 +608,11 @@ class VirtualUAV(UAVBase):
                     self._velocity_xyz.z - self.max_acceleration_z * dt,
                     -self.max_velocity_z,
                 )
-                displacement_z = max(dz, dt * reachable_velocity_z)
+                displacement_z = max(
+                    dz, dt * reachable_velocity_z, -self._position_xyz.z
+                )
+            elif dz == 0:
+                displacement_z = 0
             else:
                 # Ascending
                 reachable_velocity_z = min(
@@ -618,9 +638,10 @@ class VirtualUAV(UAVBase):
                 if self._position_xyz.z > max(eps, self.takeoff_altitude - eps):
                     self.state = VirtualUAVState.AIRBORNE
             elif state is VirtualUAVState.LANDING:
-                if self._position_xyz.z < eps * 0.5:
+                if dist_z < eps * 0.5:
                     self.state = VirtualUAVState.LANDED
-                    self._takeoff_at = None
+                    self._mission_started_at = None
+                    self.target = None
             elif state is VirtualUAVState.AIRBORNE:
                 # If we have reached the target, we can clear it
                 if dist_xy < eps and dist_z < eps:
@@ -718,10 +739,11 @@ class VirtualUAV(UAVBase):
         if not self.armed:
             return
 
+        self._mission_started_at = time()
+
         if self._target_xyz is None:
             self._target_xyz = self._position_xyz.copy()
         self._target_xyz.z = self.takeoff_altitude
-        self._takeoff_at = time()
 
         self.state = VirtualUAVState.TAKEOFF
 
@@ -765,8 +787,9 @@ class VirtualUAV(UAVBase):
         """Updates the target of the UAV based on the time elapsed since takeoff
         and the trajectory that it needs to follow.
         """
-        elapsed = time() - self._takeoff_at
-        x, y, z = self._trajectory_player.position_at(elapsed)
-        self.target = self._trajectory_transformation.to_gps(
-            FlatEarthCoordinate(x=x, y=y, agl=z)
-        )
+        t = self.elapsed_time_in_mission
+        if not self._trajectory_player.is_before_takeoff(t):
+            x, y, z = self._trajectory_player.position_at(t)
+            self.target = self._trajectory_transformation.to_gps(
+                FlatEarthCoordinate(x=x, y=y, agl=z)
+            )

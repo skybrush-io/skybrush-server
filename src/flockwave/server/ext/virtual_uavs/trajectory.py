@@ -48,15 +48,25 @@ class TrajectoryPlayer:
         if trajectory.get("version") != 1:
             raise RuntimeError("only version 1 trajectories are supported")
 
-        self._segments = trajectory["points"]
-        self._num_segments = len(self._segments)
-        self._start_times = [segment[0] for segment in self._segments]
+        items = trajectory["points"]
+
+        self._takeoff_time = float(trajectory.get("takeoffTime", 0.0))
+
+        self._num_segments = len(items)
+        self._start_times = [segment[0] + self._takeoff_time for segment in items]
+        self._segments = [segment[1:] for segment in items]
 
         self._reset()
 
     def _reset(self):
         """Resets the state of the trajectory player."""
         self._select_segment(-1)
+
+    def is_before_takeoff(self, time: float):
+        """Returns whether the given timestamp is before the takeoff time of
+        the mission.
+        """
+        return time < self._takeoff_time
 
     def position_at(self, time: float):
         """Returns the position where the drone should be at the given timestamp
@@ -114,7 +124,7 @@ class TrajectoryPlayer:
             self._current_segment_length = 0
             if self._num_segments > 0:
                 self._current_segment_end_time = self._start_times[0]
-                self._current_segment_func = constant(self._segments[0][1])
+                self._current_segment_func = constant(self._segments[0][0])
             else:
                 self._current_segment_end_time = float("inf")
                 self._current_segment_func = constant(ZERO)
@@ -124,7 +134,7 @@ class TrajectoryPlayer:
             self._current_segment_end_time = float("inf")
             if self._num_segments > 0:
                 self._current_segment_start_time = self._start_times[-1]
-                self._current_segment_func = constant(self._segments[-1][1])
+                self._current_segment_func = constant(self._segments[-1][0])
             else:
                 self._current_segment_start_time = -float("inf")
                 self._current_segment_func = constant(ZERO)
@@ -137,14 +147,14 @@ class TrajectoryPlayer:
                     self._current_segment_end_time - self._current_segment_start_time
                 )
                 self._current_segment_func = create_function_for_segment(
-                    start=self._current_segment[1],
-                    end=self._segments[index + 1][1],
-                    control_points=self._current_segment[2],
+                    start=self._current_segment[0],
+                    end=self._segments[index + 1][0],
+                    control_points=self._current_segment[1],
                 )
             else:
                 self._current_segment_end_time = float("inf")
                 self._current_segment_length = 0
-                self._current_segment_func = constant(self._current_segment[1])
+                self._current_segment_func = constant(self._current_segment[0])
 
 
 def test():
@@ -159,25 +169,27 @@ def test():
             [21.5, [1.41, 12.88, 17.88], []],
             [22, [2.79, 13.9, 18.9], []],
         ],
+        "takeoffTime": 3,
     }
 
     player = TrajectoryPlayer(test_data)
     for t in (
         18,
-        18.5,
-        19,
-        19.2,
-        19.4,
-        19.6,
-        19.8,
-        19.999,
-        20,
-        21.2,
-        21.7,
-        20,
-        15,
+        21,
+        21.5,
         22,
+        22.2,
+        22.4,
+        22.6,
+        22.8,
+        22.999,
+        23,
+        24.2,
+        24.7,
+        23,
+        18,
         25,
+        28,
     ):
         print(t, " ".join(str(x) for x in player.position_at(t)))
 

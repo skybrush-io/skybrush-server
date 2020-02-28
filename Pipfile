@@ -31,7 +31,7 @@ python-dotenv = "*"
 hypercorn = {extras = ["trio"],version = "*"}
 tinyrpc = {extras = ["msgpack"],version = ">=1.0.4"}
 multidict = "==4.6.1"
-pyledctrl = {file = "https://git.collmot.com/collmot/pyledctrl/archive/3.0.0.tar.gz"}
+pyledctrl = {file = "https://git.collmot.com/collmot/pyledctrl/archive/3.0.1.tar.gz"}
 colour = "*"
 
 [dev-packages]

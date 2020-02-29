@@ -49,26 +49,32 @@ class Clock(metaclass=ABCMeta):
         raise NotImplementedError
 
     @abstractproperty
-    def running(self):
+    def running(self) -> bool:
         """Whether the clock is running."""
         raise NotImplementedError
 
     @property
-    def ticks(self):
+    def seconds(self) -> float:
         """Returns the current timestamp of the clock, i.e. the number of
-        ticks elapsed since the epoch.
+        _seconds_ elapsed since the epoch.
+        """
+        return self.ticks_given_time(time()) / self.ticks_per_second
+
+    @property
+    def ticks(self) -> float:
+        """Returns the current tick count of the clock, i.e. the number of
+        _ticks_ elapsed since the epoch.
         """
         return self.ticks_given_time(time())
 
     @abstractmethod
-    def ticks_given_time(self, now):
+    def ticks_given_time(self, now: float) -> float:
         """Returns the timestamp of the clock, assuming that the internal
         clock of the server is set to the given time.
 
         Parameters:
-            now (float): the current time according to the internal
-                clock of the server, expressed as the number of seconds
-                elapsed since the Unix epoch
+            now: the current time according to the internal clock of the server,
+                expressed as the number of seconds elapsed since the Unix epoch
 
         Returns:
             float: the timestamp of the clock
@@ -76,7 +82,7 @@ class Clock(metaclass=ABCMeta):
         raise NotImplementedError
 
     @abstractproperty
-    def ticks_per_second(self):
+    def ticks_per_second(self) -> float:
         """Returns the number of clock ticks per second (in wall clock
         time).
         """

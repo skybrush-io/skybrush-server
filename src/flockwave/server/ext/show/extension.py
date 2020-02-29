@@ -1,9 +1,11 @@
-from trio import sleep_forever
+from contextlib import ExitStack
+from trio import CancelScope, open_nursery, sleep_forever
 
 from flockwave.ext.base import ExtensionBase
+from flockwave.server.tasks import wait_until
 
 from .clock import ShowClock
-from .config import DroneShowConfiguration
+from .config import DroneShowConfiguration, StartMethod
 
 __all__ = ("construct", "dependencies")
 
@@ -15,6 +17,9 @@ class DroneShowExtension(ExtensionBase):
         super().__init__()
 
         self._clock = None
+        self._clock_watcher = None
+        self._nursery = None
+
         self._config = DroneShowConfiguration()
 
     def handle_SHOW_CFG(self, message, sender, hub):
@@ -25,7 +30,6 @@ class DroneShowExtension(ExtensionBase):
     def handle_SHOW_SETCFG(self, message, sender, hub):
         try:
             self._config.update_from_json(message.body.get("configuration", {}))
-            self._clock.start_time = self._config.start_time
             return hub.acknowledge(message)
         except Exception as ex:
             return hub.acknowledge(message, outcome=False, reason=str(ex))
@@ -37,9 +41,49 @@ class DroneShowExtension(ExtensionBase):
             "SHOW-SETCFG": self.handle_SHOW_SETCFG,
         }
 
-        with app.import_api("clocks").use_clock(self._clock):
-            with app.message_hub.use_message_handlers(handlers):
+        async with open_nursery() as self._nursery:
+            with ExitStack() as stack:
+                stack.enter_context(
+                    self._config.updated.connected_to(
+                        self._on_config_updated, sender=self._config
+                    )
+                )
+                stack.enter_context(app.import_api("clocks").use_clock(self._clock))
+                stack.enter_context(app.message_hub.use_message_handlers(handlers))
                 await sleep_forever()
+
+    def _on_config_updated(self, sender):
+        """Handler that is called when the configuration of the extension was
+        updated from any source.
+        """
+        self._clock.start_time = self._config.start_time
+
+        if self._clock_watcher is not None:
+            self._clock_watcher.cancel()
+            self._clock_watcher = None
+
+        should_listen_to_clock = (
+            self._config.authorized_to_start
+            and self._clock.start_time is not None
+            and self._config.start_method is StartMethod.AUTO
+        )
+
+        if should_listen_to_clock:
+            # TODO(ntamas): what if we don't have a nursery here?
+            self._clock_watcher = CancelScope()
+            self._nursery.start_soon(self._start_show_when_needed, self._clock_watcher)
+
+    async def _start_show_when_needed(self, cancel_scope):
+        try:
+            with self._clock_watcher:
+                await wait_until(self._clock, seconds=0, edge_triggered=True)
+                delay = int(self._clock.seconds * 1000)
+                if delay >= 1:
+                    self.log.warn(f"Started show with a delay of {delay} ms")
+                else:
+                    self.log.info(f"Started show accurately")
+        finally:
+            self._clock_watcher = None
 
 
 construct = DroneShowExtension

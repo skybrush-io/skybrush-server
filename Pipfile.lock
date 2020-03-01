@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "b9206660f9949bfa2da6531f9b83a43af07685197b46d8b4eb89e9c945971bf8"
+            "sha256": "a5dca1d958491dd73be101896c3d9bc30b3bd46992674a534fc02d7889855ea4"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -108,7 +108,7 @@
             "file": "https://git.collmot.com/collmot/flockwave-parsers/archive/1.1.1.tar.gz"
         },
         "flockwave-spec": {
-            "file": "https://git.collmot.com/collmot/flockwave-spec/archive/0.29.0.tar.gz"
+            "file": "https://git.collmot.com/collmot/flockwave-spec/archive/0.31.0.tar.gz"
         },
         "future": {
             "hashes": [
@@ -142,11 +142,11 @@
                 "trio"
             ],
             "hashes": [
-                "sha256:8311b01c1003724f378b6cf619db3c913441a447216a00ecdd796143c5e4d47a",
-                "sha256:9ea50c5fee26cd3b7e342eb307953641f4c79c9e87dbc2e7529678601952a9aa"
+                "sha256:0f17937b7ce450c27f4780c18d564cc13585ce7694a4079b1d3781d9989b8b39",
+                "sha256:c1f7db2b75e4a640edce32a567f065251f4d69840f00cc40a9d5b8178c909bd9"
             ],
             "index": "pypi",
-            "version": "==0.9.1"
+            "version": "==0.9.2"
         },
         "hyperframe": {
             "hashes": [
@@ -361,11 +361,11 @@
         },
         "python-dotenv": {
             "hashes": [
-                "sha256:8429f459fc041237d98c9ff32e1938e7e5535b5ff24388876315a098027c3a57",
-                "sha256:ca9f3debf2262170d6f46571ce4d6ca1add60bb93b69c3a29dcb3d1a00a65c93"
+                "sha256:81822227f771e0cab235a2939f0f265954ac4763cafd806d845801c863bf372f",
+                "sha256:92b3123fb2d58a284f76cc92bfe4ee6c502c32ded73e8b051c4f6afc8b6751ed"
             ],
             "index": "pypi",
-            "version": "==0.11.0"
+            "version": "==0.12.0"
         },
         "quart": {
             "hashes": [

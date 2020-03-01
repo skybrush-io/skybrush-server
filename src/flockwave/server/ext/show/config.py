@@ -2,7 +2,7 @@
 
 from blinker import Signal
 from enum import Enum
-from typing import Optional
+from typing import List, Optional
 
 __all__ = ("DroneShowConfiguration", "StartMethod")
 
@@ -24,6 +24,7 @@ class DroneShowConfiguration:
         self.authorized_to_start = False  # type: bool
         self.start_time = None  # type: Optional[float]
         self.start_method = StartMethod.RC  # type: StartMethod
+        self.uav_ids = []  # type: List[Optional[str]]
 
     @property
     def json(self):
@@ -33,6 +34,7 @@ class DroneShowConfiguration:
                 "authorized": bool(self.authorized_to_start),
                 "time": self.start_time,
                 "method": str(self.start_method.value),
+                "uavIds": self.uav_ids,
             }
         }
 
@@ -52,13 +54,23 @@ class DroneShowConfiguration:
                 start_time = start_conditions["time"]
                 if start_time is None:
                     self.start_time = None
+                    changed = True
                 elif isinstance(start_time, (int, float)):
                     self.start_time = float(start_time)
-                changed = True
+                    changed = True
 
             if "method" in start_conditions:
                 self.start_method = StartMethod(start_conditions["method"])
                 changed = True
+
+            if "uavIds" in start_conditions:
+                uav_ids = start_conditions["uavIds"]
+                if isinstance(uav_ids, list) and all(
+                    item is None or isinstance(item, str) for item in uav_ids
+                ):
+                    print("Got new UAV ID list:", uav_ids)
+                    self.uav_ids = uav_ids
+                    changed = True
 
         if changed:
             self.updated.send(self)

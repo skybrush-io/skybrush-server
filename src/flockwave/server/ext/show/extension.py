@@ -1,5 +1,7 @@
+from blinker import Signal
 from contextlib import ExitStack
 from trio import CancelScope, open_nursery, sleep_forever
+from typing import Any, Dict
 
 from flockwave.ext.base import ExtensionBase
 from flockwave.server.tasks import wait_until
@@ -21,6 +23,16 @@ class DroneShowExtension(ExtensionBase):
         self._nursery = None
 
         self._config = DroneShowConfiguration()
+        self._start_signal = Signal(
+            doc="""Signal that will be dispatched by the extension when the
+            show is about to start.
+
+            Dispatched only when the show is set to automatic start mode.
+            """
+        )
+
+    def exports(self) -> Dict[str, Any]:
+        return {"started": self._start_signal}
 
     def handle_SHOW_CFG(self, message, sender, hub):
         return hub.create_response_or_notification(
@@ -77,6 +89,8 @@ class DroneShowExtension(ExtensionBase):
         try:
             with self._clock_watcher:
                 await wait_until(self._clock, seconds=0, edge_triggered=True)
+                self._start_signal.send(self)
+
                 delay = int(self._clock.seconds * 1000)
                 if delay >= 1:
                     self.log.warn(f"Started show with a delay of {delay} ms")

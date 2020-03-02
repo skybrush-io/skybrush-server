@@ -672,7 +672,7 @@ class FlockwaveServer:
         uav_ids = parameters.pop("ids")
 
         # Sort the UAVs being targeted by drivers
-        uavs_by_drivers = self._sort_uavs_by_drivers(uav_ids, response)
+        uavs_by_drivers = self.sort_uavs_by_drivers(uav_ids, response)
 
         # Find the method to invoke on the driver
         method_name, transformer = {
@@ -895,6 +895,26 @@ class FlockwaveServer:
         self._task_queue[0].send_nowait((func, args, scope))
         return scope
 
+    def sort_uavs_by_drivers(self, uav_ids, response=None):
+        """Given a list of UAV IDs, returns a mapping that maps UAV drivers
+        to the UAVs specified by the IDs.
+
+        Parameters:
+            uav_ids (List[str]): list of UAV IDs
+            response (Optional[FlockwaveResponse]): optional response in
+                which UAV lookup failures can be registered
+
+        Returns:
+            Dict[UAVDriver,UAV]: mapping of UAV drivers to the UAVs that
+                were selected by the given UAV IDs
+        """
+        result = defaultdict(list)
+        for uav_id in uav_ids:
+            uav = self._find_uav_by_id(uav_id, response)
+            if uav:
+                result[uav.driver].append(uav)
+        return result
+
     async def supervise(
         self,
         connection,
@@ -1100,26 +1120,6 @@ class FlockwaveServer:
         except BrokenResourceError:
             # App is probably shutting down, this is OK.
             pass
-
-    def _sort_uavs_by_drivers(self, uav_ids, response=None):
-        """Given a list of UAV IDs, returns a mapping that maps UAV drivers
-        to the UAVs specified by the IDs.
-
-        Parameters:
-            uav_ids (List[str]): list of UAV IDs
-            response (Optional[FlockwaveResponse]): optional response in
-                which UAV lookup failures can be registered
-
-        Returns:
-            Dict[UAVDriver,UAV]: mapping of UAV drivers to the UAVs that
-                were selected by the given UAV IDs
-        """
-        result = defaultdict(list)
-        for uav_id in uav_ids:
-            uav = self._find_uav_by_id(uav_id, response)
-            if uav:
-                result[uav.driver].append(uav)
-        return result
 
 
 ############################################################################

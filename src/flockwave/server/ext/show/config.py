@@ -68,7 +68,6 @@ class DroneShowConfiguration:
                 if isinstance(uav_ids, list) and all(
                     item is None or isinstance(item, str) for item in uav_ids
                 ):
-                    print("Got new UAV ID list:", uav_ids)
                     self.uav_ids = uav_ids
                     changed = True
 

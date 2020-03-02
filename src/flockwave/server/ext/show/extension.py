@@ -4,6 +4,7 @@ from trio import CancelScope, open_nursery, sleep_forever
 from typing import Any, Dict
 
 from flockwave.ext.base import ExtensionBase
+from flockwave.server.model.uav import UAV
 from flockwave.server.tasks import wait_until
 
 from .clock import ShowClock
@@ -89,6 +90,8 @@ class DroneShowExtension(ExtensionBase):
         try:
             with self._clock_watcher:
                 await wait_until(self._clock, seconds=0, edge_triggered=True)
+
+                self._start_uavs_if_needed()
                 self._start_signal.send(self)
 
                 delay = int(self._clock.seconds * 1000)
@@ -98,6 +101,11 @@ class DroneShowExtension(ExtensionBase):
                     self.log.info(f"Started show accurately")
         finally:
             self._clock_watcher = None
+
+    def _start_uavs_if_needed(self):
+        uavs_by_drivers = self.app.sort_uavs_by_drivers(self._config.uav_ids)
+        for driver, uavs in uavs_by_drivers.items():
+            driver.send_takeoff_signal(uavs)
 
 
 construct = DroneShowExtension

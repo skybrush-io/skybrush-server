@@ -15,7 +15,7 @@ import platform
 ON_MAC = platform.system().lower() == "darwin"
 
 # Label that is used to identify the server in SSDP discovery requests
-SERVER_NAME = "Flockwave server"
+SERVER_NAME = "Skybrush server"
 
 # Secret key to encode cookies and session data
 SECRET_KEY = (

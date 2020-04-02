@@ -106,6 +106,7 @@ class TrajectoryPlayer:
             else:
                 # Reached the end of the trajectory
                 self._select_segment(self._num_segments)
+                return
 
         # Do things the hard way, with binary search.
         index = bisect(self._start_times, time)

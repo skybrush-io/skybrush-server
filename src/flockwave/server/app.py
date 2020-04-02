@@ -281,6 +281,10 @@ class FlockwaveServer:
         the settings will not be up-to-date yet. Use `prepare()` for any
         preparations that depend on the configuration.
         """
+        # Placeholder for a nursery that parents all tasks in the server.
+        # This will be set to a real nursery when the server starts
+        self._nursery = None
+
         # Create a Trio task queue that will be used by other components of the
         # application to schedule background tasks to be executed in the main
         # Trio nursery.
@@ -868,6 +872,8 @@ class FlockwaveServer:
             with MultiError.catch(ignore_keyboard_interrupt):
                 self._starting.send(self)
                 async with open_nursery() as nursery:
+                    self._nursery = nursery
+
                     await nursery.start(
                         partial(
                             self.extension_manager.run,
@@ -887,7 +893,16 @@ class FlockwaveServer:
                         nursery.start_soon(func, *args)
 
         finally:
+            self._nursery = None
             await self.teardown()
+
+    def request_shutdown(self):
+        """Requests tha application to shut down in a clean way.
+
+        Has no effect if the main nursery of the app is not running.
+        """
+        if self._nursery:
+            self._nursery.cancel_scope.cancel()
 
     def run_in_background(self, func, *args, cancellable=False):
         """Runs the given function as a background task in the application."""

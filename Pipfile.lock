@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "a5dca1d958491dd73be101896c3d9bc30b3bd46992674a534fc02d7889855ea4"
+            "sha256": "ffb31a034409e676558e6808206a3ee486b522ea5ced37b19f3ab92424515648"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -327,6 +327,14 @@
                 "sha256:be4fcb94b5e37cdeb40af5533afe6dd603bd665fe9c8b3052610fc1001d5d1eb"
             ],
             "version": "==1.3.0"
+        },
+        "pyjwt": {
+            "hashes": [
+                "sha256:5c6eca3c2940464d106b99ba83b00c6add741c9becaec087fb7ccdefea71350e",
+                "sha256:8d59a976fb773f3e6a39c85636357c4f0e242707394cadadd9814f5cbaa20e96"
+            ],
+            "index": "pypi",
+            "version": "==1.7.1"
         },
         "pyledctrl": {
             "file": "https://git.collmot.com/collmot/pyledctrl/archive/3.0.1.tar.gz"

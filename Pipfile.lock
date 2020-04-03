@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "ffb31a034409e676558e6808206a3ee486b522ea5ced37b19f3ab92424515648"
+            "sha256": "a84a9ebfe223e12ef77177036dbc0176fa7ee417415f938453ac26b9d41e9967"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -108,7 +108,7 @@
             "file": "https://git.collmot.com/collmot/flockwave-parsers/archive/1.1.1.tar.gz"
         },
         "flockwave-spec": {
-            "file": "https://git.collmot.com/collmot/flockwave-spec/archive/0.31.0.tar.gz"
+            "file": "https://git.collmot.com/collmot/flockwave-spec/archive/0.32.0.tar.gz"
         },
         "future": {
             "hashes": [
@@ -485,11 +485,11 @@
         },
         "zeroconf": {
             "hashes": [
-                "sha256:83c4f611338096cafea46509d08e26891800b75abdead43d13bb13094c459187",
-                "sha256:893a841445663e0c4c20d1111ce41484bd62d58f59d653d0485187343368ef4a"
+                "sha256:1d8a3d971d186499f211656d66b39e4cbf46bf1c620b03c944f4ba847aa7ffd2",
+                "sha256:e65a65fbff2285d6196018c20d939772ebdafbe8d092aa4138c103ed9fb9c741"
             ],
             "index": "pypi",
-            "version": "==0.24.5"
+            "version": "==0.25.0"
         },
         "zipp": {
             "hashes": [

@@ -22,8 +22,11 @@ class TrioQueue:
         return self.qsize() >= self._maxsize
 
     async def join(self):
-        self._ensure_join_event()
-        await self._join_event.wait()
+        if self._tasks_pending == 0 and not self._join_event:
+            return
+        else:
+            self._ensure_join_event()
+            await self._join_event.wait()
 
     @property
     def maxsize(self):
@@ -238,7 +241,7 @@ class TrioServer(server.Server):
                 pass
             else:
                 await socket.close()
-                del self.sockets[sid]
+                self.sockets.pop(sid, None)
         else:
             async with trio.open_nursery() as nursery:
                 for client in self.sockets.values():
@@ -462,7 +465,7 @@ class TrioServer(server.Server):
             ret = await s.handle_get_request(environ)
             if s.closed:
                 # websocket connection ended, so we are done
-                del self.sockets[sid]
+                self.sockets.pop(sid, None)
             return ret
         else:
             s.connected = True

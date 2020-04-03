@@ -29,7 +29,6 @@ COMMAND_EXECUTION_MANAGER = {"timeout": 30}
 EXTENSIONS = {
     "auth": {},
     "auth_basic": {},
-    "auto_shutdown": {},
     "debug": {"route": "/debug"},
     "dock": {"listener": "unix:/tmp/flockwaved-dock.sock"},
     "flockctrl": {

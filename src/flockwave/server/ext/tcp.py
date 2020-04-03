@@ -9,7 +9,14 @@ import weakref
 
 from contextlib import ExitStack
 from functools import partial
-from trio import CapacityLimiter, Lock, open_nursery, serve_tcp
+from trio import (
+    aclose_forcefully,
+    CapacityLimiter,
+    ClosedResourceError,
+    Lock,
+    open_nursery,
+    serve_tcp,
+)
 from typing import Any, Optional
 
 from flockwave.channels import ParserChannel
@@ -48,6 +55,20 @@ class TCPChannel(CommunicationChannel):
             self.client_ref = weakref.ref(client, self._erase_stream)
         else:
             raise ValueError("client has no ID or address yet")
+
+    async def close(self, force: bool = False):
+        if self.stream is None:
+            if self.client_ref is not None:
+                self.stream = self.client_ref().stream
+                self.client_ref = None
+            else:
+                print("No client and no client_ref yet")
+                return
+
+        if force:
+            await aclose_forcefully(self.stream)
+        else:
+            await self.stream.aclose()
 
     async def send(self, message):
         """Inherited."""
@@ -110,7 +131,7 @@ async def handle_connection(stream, *, limit):
             too many requests concurrently
     """
     socket = stream.socket
-    address = socket.getsockname()
+    address = socket.getpeername()
 
     client_id = "tcp://{0}:{1}".format(*address)
     handler = partial(handle_message, limit=limit)
@@ -120,8 +141,12 @@ async def handle_connection(stream, *, limit):
         client.stream = stream
         async with open_nursery() as nursery:
             channel = ParserChannel(reader=stream.receive_some, parser=parser)
-            async for line in channel:
-                nursery.start_soon(handler, line, client)
+            try:
+                async for line in channel:
+                    nursery.start_soon(handler, line, client)
+            except ClosedResourceError:
+                # This is okay.
+                pass
 
 
 async def handle_connection_safely(stream, *, limit):
@@ -163,7 +188,7 @@ async def run(app, configuration, logger):
     pool_size = configuration.get("pool_size", 1000)
 
     if not host:
-        host = None     # empty string is not okay on Linux
+        host = None  # empty string is not okay on Linux
 
     with ExitStack() as stack:
         stack.enter_context(overridden(globals(), app=app, log=logger))

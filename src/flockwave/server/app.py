@@ -13,6 +13,7 @@ from trio import (
     BrokenResourceError,
     CancelScope,
     MultiError,
+    move_on_after,
     open_memory_channel,
     open_nursery,
 )
@@ -644,6 +645,39 @@ class FlockwaveServer:
                 statuses[uav_id] = uav.status.json
 
         return response
+
+    async def disconnect_client(
+        self, client: Client, reason: str = None, timeout: float = 10
+    ) -> None:
+        """Disconnects the given client from the server.
+
+        Parameters:
+            client: the client to disconnect
+            reason: the reason for disconnection. WHen it is not ``None``,
+                a ``SYS-CLOSE`` message is sent to the client before the
+                connection is closed.
+            timeout: maximum number of seconds to wait for the disconnection
+                to happen gracefully. A forceful disconnection is attempted
+                if the timeout expires.
+        """
+        if not client.channel:
+            return
+
+        if reason:
+            message = self.message_hub.create_notification(
+                body={"type": "SYS-CLOSE", "reason": reason}
+            )
+        else:
+            message = None
+
+        with move_on_after(timeout) as cancel_scope:
+            if message:
+                request = await self.message_hub.send_message(message, to=client)
+                await request.wait_until_sent()
+            await client.channel.close()
+
+        if cancel_scope.cancelled_caught:
+            await client.channel.close(force=True)
 
     async def dispatch_to_uavs(
         self, message: FlockwaveMessage, sender: Client

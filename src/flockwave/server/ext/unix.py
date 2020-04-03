@@ -11,7 +11,7 @@ from contextlib import ExitStack
 from functools import partial
 from pathlib import Path
 from tempfile import gettempdir
-from trio import CapacityLimiter, Lock, open_nursery
+from trio import aclose_forcefully, CapacityLimiter, Lock, open_nursery
 from typing import Optional
 
 from flockwave.channels import ParserChannel
@@ -49,6 +49,19 @@ class UnixDomainSocketChannel(CommunicationChannel):
             self.client_ref = weakref.ref(client, self._erase_stream)
         else:
             raise ValueError("client has no ID or address yet")
+
+    async def close(self, force: bool = False):
+        if self.stream is None:
+            if self.client_ref is not None:
+                self.stream = self.client_ref().stream
+                self.client_ref = None
+            else:
+                return
+
+        if force:
+            await aclose_forcefully(self.stream)
+        else:
+            await self.stream.aclose()
 
     async def send(self, message):
         """Inherited."""
@@ -138,7 +151,7 @@ async def handle_connection_safely(stream, *, limit):
         log.exception(ex)
 
 
-async def handle_message(message: Any, client, *, limit: CapacityLimiter) -> None:
+async def handle_message(message, client, *, limit: CapacityLimiter) -> None:
     """Handles a single message received from the given sender.
 
     Parameters:

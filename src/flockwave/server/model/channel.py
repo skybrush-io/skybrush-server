@@ -36,6 +36,14 @@ class CommunicationChannel(metaclass=ABCMeta):
         """
         pass
 
+    async def close(self, force: bool = False):
+        """Closes the server's endpoint of the channel.
+
+        Parameters:
+            force: whethr to attempt a forceful close
+        """
+        raise NotImplementedError
+
     @abstractmethod
     async def send(self, message):
         """Sends the given message over the communication channel."""

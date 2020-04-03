@@ -10,7 +10,7 @@ import trio.socket
 
 from contextlib import closing, ExitStack
 from functools import partial
-from trio import CapacityLimiter, open_nursery
+from trio import aclose_forcefully, CapacityLimiter, open_nursery
 from typing import Any, Optional, Tuple
 
 from flockwave.encoders.json import create_json_encoder
@@ -56,6 +56,13 @@ class UDPChannel(CommunicationChannel):
             self.address = host, int(port)
         else:
             raise ValueError("client has no ID or address yet")
+
+    async def close(self, force: bool = False):
+        if self.sock:
+            if force:
+                await aclose_forcefully(self.sock)
+            else:
+                await self.sock.aclose()
 
     async def send(self, message):
         """Inherited."""

@@ -80,6 +80,30 @@ class Request:
     #: Another, optional message that this message responds to
     in_response_to: Optional[FlockwaveMessage] = attr.ib(default=None)
 
+    #: Whether the request has been fulfilled
+    fulfilled: bool = attr.ib(default=False)
+
+    #: Event that will be dispatched when the request is processed by the
+    #: outbound queue of the message hub. Constructed lazily.
+    event: Optional[Event] = attr.ib(default=None)
+
+    def notify_sent(self):
+        """Marks the request as fulfilled."""
+        self.fulfilled = True
+        if self.event is not None:
+            self.event.set()
+
+    async def wait_until_sent(self):
+        """Waits until the request has been served from the outbound message
+        queue.
+        """
+        if self.fulfilled:
+            return
+
+        if self.event is None:
+            self.event = Event()
+        await self.event.wait()
+
 
 class MessageHub:
     """Central entity in a Flockwave server that handles incoming messages
@@ -155,11 +179,19 @@ class MessageHub:
 
         Parameters:
             message (FlockwaveNotification): the notification to broadcast.
+
+        Returns:
+            Request: the request object that identifies this message in the
+                outbound message queue. It can be used to wait until the message
+                is delivered
         """
         assert isinstance(
             message, FlockwaveNotification
         ), "only notifications may be broadcast"
-        await self._queue_tx.send(Request(message))
+
+        request = Request(message)
+        await self._queue_tx.send(request)
+        return request
 
     @property
     def channel_type_registry(self):
@@ -280,6 +312,9 @@ class MessageHub:
         assert isinstance(
             message, FlockwaveNotification
         ), "only notifications may be broadcast"
+
+        # Don't return the request here because it is not guaranteed that it
+        # ends up in the queue; it may be dropped
         self._queue_tx.send_nowait(Request(message))
 
     def enqueue_message(
@@ -321,6 +356,8 @@ class MessageHub:
             )
             return self.enqueue_broadcast_message(message)
         else:
+            # Don't return the request here because it is not guaranteed that it
+            # ends up in the queue; it may be dropped
             self._queue_tx.send_nowait(
                 Request(message, to=to, in_response_to=in_response_to)
             )
@@ -561,9 +598,12 @@ class MessageHub:
                         request.message,
                         request.to,
                         request.in_response_to,
+                        request.notify_sent,
                     )
                 else:
-                    nursery.start_soon(self._broadcast_message, request.message)
+                    nursery.start_soon(
+                        self._broadcast_message, request.message, request.notify_sent
+                    )
 
     async def send_message(
         self,
@@ -588,6 +628,11 @@ class MessageHub:
                 clients.
             in_response_to (Optional[FlockwaveMessage]): the message that
                 the message being sent responds to.
+
+        Returns:
+            Request: the request object that identifies this message in the
+                outbound message queue. It can be used to wait until the message
+                is delivered
         """
         if not isinstance(message, FlockwaveMessage):
             message = self.create_response_or_notification(
@@ -599,9 +644,10 @@ class MessageHub:
                 "particular message"
             )
             return await self.broadcast_message(message)
-        await self._queue_tx.send(
-            Request(message, to=to, in_response_to=in_response_to)
-        )
+
+        request = Request(message, to=to, in_response_to=in_response_to)
+        await self._queue_tx.send(request)
+        return request
 
     def unregister_message_handler(
         self, func: MessageHandler, message_types: Optional[Iterable[str]] = None
@@ -730,7 +776,7 @@ class MessageHub:
 
             log.info(f"Sending {type} message", extra=extra)
 
-    async def _broadcast_message(self, message):
+    async def _broadcast_message(self, message, done):
         if self._broadcast_methods is None:
             self._broadcast_methods = self._commit_broadcast_methods()
 
@@ -749,13 +795,17 @@ class MessageHub:
             if failures > 0:
                 log.error(f"Error while broadcasting message to {failures} client(s)")
 
-    async def _send_message(self, message, to, in_response_to=None):
+        done()
+
+    async def _send_message(self, message, to, in_response_to=None, done=None):
         self._log_message_sending(message, to, in_response_to)
         if not isinstance(to, Client):
             try:
                 client = self._client_registry[to]
             except KeyError:
                 log.warn("Client is gone; not sending message", extra={"id": str(to)})
+                if done:
+                    done()
                 return
         else:
             client = to
@@ -771,6 +821,8 @@ class MessageHub:
         else:
             if hasattr(message, "_notify_sent"):
                 message._notify_sent()
+            if done:
+                done()
 
     async def _send_response(self, message, to, in_response_to):
         """Sends a response to a message from this message hub.

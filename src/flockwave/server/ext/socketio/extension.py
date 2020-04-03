@@ -43,6 +43,11 @@ class SocketIOChannel(CommunicationChannel):
         else:
             raise ValueError("client has no ID yet")
 
+    async def close(self, force: bool = False):
+        # There is no forceful disconnection in the Socket.IO module so we
+        # simply try once again if force is True
+        await self.socketio.disconnect(self.sid)
+
     async def send(self, message):
         """Inherited."""
         await self.socketio.emit("fw", message, room=self.sid, namespace="/")

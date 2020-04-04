@@ -287,7 +287,7 @@ class UAVDriver(metaclass=ABCMeta):
     in the dictionary that is returned from the method.
 
     Attributes:
-        app (FlockwaveServer): the Flockwave server application that hosts
+        app (SkybrushServer): the Flockwave server application that hosts
             the driver
     """
 

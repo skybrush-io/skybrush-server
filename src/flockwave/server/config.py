@@ -1,4 +1,4 @@
-"""Default configuration for the Flockwave server.
+"""Default configuration for the Skybrush server.
 
 This script will be evaluated first when the server attempts to load its
 configuration. Configuration files may import variables from this module
@@ -73,5 +73,5 @@ EXTENSIONS = {
 # after a while if there is no MIDI device:
 #
 # MidiInCore::initialize: error creating OS-X MIDI client object (-50)
-if False and ON_MAC:
+if ON_MAC:
     EXTENSIONS.pop("smpte_timecode", None)

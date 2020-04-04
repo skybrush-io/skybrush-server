@@ -42,7 +42,7 @@ class FlockCtrlDriver(UAVDriver):
             ``False``, sending the second command is not allowed until the
             user cancels the execution of the first command explicitly.
             The default is ``True``.
-        app (FlockwaveServer): the app in which the driver lives
+        app (SkybrushServer): the app in which the driver lives
         id_format (str): Python format string that receives a numeric
             drone ID in the flock and returns its preferred formatted
             identifier that is used when the drone is registered in the
@@ -63,7 +63,7 @@ class FlockCtrlDriver(UAVDriver):
         """Constructor.
 
         Parameters:
-            app (FlockwaveServer): the app in which the driver lives
+            app (SkybrushServer): the app in which the driver lives
             id_format (str): the format of the UAV IDs used by this driver.
                 See the class documentation for more details.
         """

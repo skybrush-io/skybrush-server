@@ -14,14 +14,14 @@ override_dh_virtualenv:
 		--setuptools \
 		--extras dev \
 		--extra-pip-arg "--no-compile"
-	debian/flockwave-server/usr/lib/flockwave-server/bin/python3 setup.py --command-packages=click_man.commands man_pages --target debian/tmp/manpages
+	debian/skybrush-server/usr/lib/skybrush-server/bin/python3 setup.py --command-packages=click_man.commands man_pages --target debian/tmp/manpages
 	pyclean debian
 	py3clean debian
 	find debian -type f -name '*.exe' | xargs rm
-	find debian/flockwave-server/usr/lib/flockwave-server/bin ! -name flockwaved -type f | xargs rm
-	rm debian/flockwave-server/usr/lib/flockwave-server/lib/python3.7/site-packages/bitstring.py
-	chmod a-x debian/flockwave-server/usr/lib/flockwave-server/lib/python3.7/site-packages/bitstring-*.dist-info/*
-	find debian/flockwave-server/usr/lib/flockwave-server/lib/python3.7/site-packages/pymavlink -type f | xargs chmod a-x
+	find debian/skybrush-server/usr/lib/skybrush-server/bin ! -name skybrushd -type f | xargs rm
+	rm debian/skybrush-server/usr/lib/skybrush-server/lib/python3.7/site-packages/bitstring.py
+	chmod a-x debian/skybrush-server/usr/lib/skybrush-server/lib/python3.7/site-packages/bitstring-*.dist-info/*
+	find debian/skybrush-server/usr/lib/skybrush-server/lib/python3.7/site-packages/pymavlink -type f | xargs chmod a-x
 	dh_installman -O--buildsystem=pybuild
 
 override_dh_installinit:

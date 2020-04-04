@@ -1,4 +1,4 @@
-"""Command line launcher for the Flockwave server."""
+"""Command line launcher for the Skybrush gateway server."""
 
 import click
 import dotenv
@@ -10,14 +10,6 @@ from flockwave import logger
 from flockwave.logger import log
 
 
-@click.command()
-@click.option(
-    "-c",
-    "--config",
-    type=click.Path(resolve_path=True),
-    help="Name of the configuration file to load; defaults to "
-    "skybrush.cfg in the current directory",
-)
 @click.option(
     "-d", "--debug/--no-debug", default=False, help="Start the server in debug mode"
 )
@@ -31,29 +23,26 @@ from flockwave.logger import log
     help="Specify the style of the logging output",
 )
 def start(config, debug, quiet, log_style):
-    """Start the Skybrush server."""
+    """Start the Skybrush gateway server."""
     # Set up the logging format
     logger.install(
         level=logging.DEBUG if debug else logging.WARN if quiet else logging.INFO,
         style=log_style,
     )
 
-    # Also silence Engine.IO and Socket.IO when not in debug mode
-    if not debug:
-        for logger_name in ("engineio", "socketio"):
-            log_handler = logging.getLogger(logger_name)
-            log_handler.setLevel(logging.ERROR)
-
     # Load environment variables from .env
     dotenv.load_dotenv(verbose=debug)
 
+    """
     # Note the lazy import; this is to ensure that the logging is set up by the
     # time we start configuring the app.
-    from flockwave.server.app import app
+    from flockwave.gateway.app import app
+    """
 
     # Log what we are doing
-    log.info("Starting Skybrush server...")
+    log.info("Starting Skybrush gateway server...")
 
+    """
     # Configure the application
     retval = app.prepare(config)
     if retval is not None:
@@ -61,6 +50,7 @@ def start(config, debug, quiet, log_style):
 
     # Now start the server
     trio.run(app.run)
+    """
 
     # Log that we have stopped cleanly.
     log.info("Shutdown finished.")

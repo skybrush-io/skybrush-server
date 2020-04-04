@@ -1,2 +1,0 @@
-#!/usr/bin/dh-exec
-etc/envs/debian.cfg => /etc/flockwave/server/flockwaved.cfg

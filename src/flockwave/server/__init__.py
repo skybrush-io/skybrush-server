@@ -1,4 +1,4 @@
-"""Main package for the Flockwave server."""
+"""Main package for the Skybrush server."""
 
 from __future__ import absolute_import
 

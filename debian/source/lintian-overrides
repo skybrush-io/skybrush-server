@@ -1,4 +1,3 @@
 # Some Python modules installed by third-party deps have a shebang
-flockwave-server source: script-not-executable
-flockwave-server source: source-is-missing
-
+skybrush-server source: script-not-executable
+skybrush-server source: source-is-missing

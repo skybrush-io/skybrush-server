@@ -1,4 +1,4 @@
-"""Application object for the Flockwave server."""
+"""Application object for the Skybrush server."""
 
 import errno
 import logging
@@ -848,8 +848,8 @@ class FlockwaveServer:
         """
         configurator = AppConfigurator(
             self.config,
-            environment_variable="FLOCKWAVE_SETTINGS",
-            default_filename="flockwave.cfg",
+            environment_variable="SKYBRUSH_SETTINGS",
+            default_filename="skybrush.cfg",
             log=log,
         )
         if not configurator.configure(config):

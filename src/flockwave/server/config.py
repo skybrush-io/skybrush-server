@@ -29,10 +29,8 @@ COMMAND_EXECUTION_MANAGER = {"timeout": 30}
 EXTENSIONS = {
     "auth": {},
     "auth_basic": {},
-    "auth_jwt": {"secret": "foobar"},
     "debug": {"route": "/debug"},
     "dock": {"listener": "unix:/tmp/flockwaved-dock.sock"},
-    "fd": {},
     "flockctrl": {
         "id_format": "{0:02}",
         "connections": {

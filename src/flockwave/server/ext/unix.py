@@ -74,7 +74,7 @@ class UnixDomainSocketChannel(CommunicationChannel):
             # if a message was sent only partially but the message hub is
             # already trying to send another one (since the message hub
             # dispatches each message in a separate task)
-            await self.stream.send_all(encoder.dumps(message) + b"\n")
+            await self.stream.send_all(encoder(message))
 
     def _erase_stream(self, ref):
         self.stream = None

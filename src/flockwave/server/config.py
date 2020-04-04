@@ -29,8 +29,10 @@ COMMAND_EXECUTION_MANAGER = {"timeout": 30}
 EXTENSIONS = {
     "auth": {},
     "auth_basic": {},
+    "auth_jwt": {"secret": "foobar"},
     "debug": {"route": "/debug"},
     "dock": {"listener": "unix:/tmp/flockwaved-dock.sock"},
+    "fd": {},
     "flockctrl": {
         "id_format": "{0:02}",
         "connections": {
@@ -60,7 +62,7 @@ EXTENSIONS = {
         "arm_after_boot": True,
         "count": 5,
         "delay": 0.2,
-        "enabled": True,
+        "enabled": False,
         "id_format": "{0:02}",
         "origin": [19.062159, 47.473360],  # ELTE kert
         "orientation": 0,

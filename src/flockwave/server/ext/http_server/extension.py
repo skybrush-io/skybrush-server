@@ -219,6 +219,8 @@ async def run(app, configuration, logger):
                 # Re-raise the exception; the extension manager will take care
                 # of logging it nicely
                 raise
+        else:
+            break
 
 
 exports = {

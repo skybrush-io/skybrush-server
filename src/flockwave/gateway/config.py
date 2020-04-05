@@ -6,5 +6,11 @@ with `from flockwave.gateway.config import SOMETHING`, and may also modify
 them if the variables are mutable.
 """
 
+# IP address on which the gateway will be listening for incoming HTTP requests
+HOST = "127.0.0.1"
+
 # Port on which the gateway will be listening for incoming HTTP requests
-PORT = 8080
+PORT = 8082
+
+# Maximum number of workers to launch at the same time
+MAX_WORKERS = 4

@@ -52,9 +52,12 @@ async def start_worker(token):
     if not user_id or not username:
         return "Required information missing from token", 400
 
+    host = request.host.rpartition(":")[0]
+    scheme = request.scheme
+
     try:
         port = await api.request_worker(id=user_id, name=username)
-        return {"result": port}
+        return {"result": {"url": f"{scheme}://{host}:{port}"}}
     except Exception as ex:
         log.exception(ex)
         return {"error": str(ex) or str(type(ex).__name__)}

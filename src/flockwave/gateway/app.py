@@ -2,8 +2,9 @@
 
 import logging
 
+from copy import deepcopy
 from trio import current_time, MultiError, Nursery, open_nursery, sleep
-from typing import Optional
+from typing import Any, Optional, Tuple
 
 from hypercorn.config import Config as HyperConfig
 from hypercorn.trio import serve
@@ -74,6 +75,7 @@ class SkybrushGatewayServer:
             return 1
 
         self.worker_manager.max_count = self.config.get("MAX_WORKERS", 1)
+        self.worker_manager.worker_config_factory = self._create_worker_config
 
     async def run(self) -> None:
         # Helper function to ignore KeyboardInterrupt exceptions even if
@@ -91,6 +93,15 @@ class SkybrushGatewayServer:
             return False
         else:
             return decode(token, secret, algorithms=["HS256"])
+
+    def _create_worker_config(self, index: int) -> Tuple[Any, int]:
+        config = deepcopy(self.config.get("WORKER_CONFIG", {}))
+        base_port = self.config.get("PORT")
+        port = base_port + index + 1
+        if "EXTENSIONS" in config:
+            if "http_server" in config["EXTENSIONS"]:
+                config["EXTENSIONS"]["http_server"]["port"] = port
+        return config, port
 
     async def _serve(self, nursery: Nursery) -> None:
         address = host, port = self.config.get("HOST"), self.config.get("PORT")
@@ -129,7 +140,7 @@ class SkybrushGatewayServer:
 
             started_at = current_time()
 
-            nursery.start_soon(self.worker_manager.run, nursery)
+            nursery.start_soon(self.worker_manager.run)
 
             try:
                 await serve(asgi_app, config)

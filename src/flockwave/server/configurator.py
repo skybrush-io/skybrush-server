@@ -6,6 +6,7 @@ import errno
 import os
 
 from importlib import import_module
+from json import load
 from logging import Logger
 from typing import Any, Dict, Optional
 
@@ -135,11 +136,15 @@ class AppConfigurator:
         """
         original, filename = filename, os.path.abspath(filename)
 
+        config = {}
+
         exists = True
         try:
-            config = {}
             with open(filename, mode="rb") as config_file:
-                exec(compile(config_file.read(), filename, "exec"), config)
+                if filename.endswith(".json"):
+                    config = load(config_file)
+                else:
+                    exec(compile(config_file.read(), filename, "exec"), config)
         except IOError as e:
             if e.errno in (errno.ENOENT, errno.EISDIR, errno.ENOTDIR):
                 exists = False

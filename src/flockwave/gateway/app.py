@@ -7,6 +7,7 @@ from typing import Optional
 
 from hypercorn.config import Config as HyperConfig
 from hypercorn.trio import serve
+from jwt import decode
 
 from flockwave.networking import format_socket_address
 from flockwave.server.configurator import AppConfigurator
@@ -83,6 +84,13 @@ class SkybrushGatewayServer:
         with MultiError.catch(ignore_keyboard_interrupt):
             async with open_nursery() as nursery:
                 await self._serve(nursery)
+
+    def validate_jwt_token(self, token: bytes):
+        secret = self.config.get("JWT_SECRET")
+        if not secret:
+            return False
+        else:
+            return decode(token, secret, algorithms=["HS256"])
 
     async def _serve(self, nursery: Nursery) -> None:
         address = host, port = self.config.get("HOST"), self.config.get("PORT")

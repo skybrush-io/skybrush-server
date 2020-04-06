@@ -1,7 +1,9 @@
 """Class responsible for spinning up and stopping workers as needed."""
 
+from dataclasses import dataclass
 from subprocess import PIPE, STDOUT
 from trio import move_on_after, Nursery, open_process, Process, sleep_forever
+from typing import Optional
 
 from .errors import NoIdleWorkerError
 from .logger import log as base_log
@@ -9,6 +11,26 @@ from .logger import log as base_log
 __all__ = ("WorkerManager",)
 
 log = base_log.getChild("workers")
+
+
+@dataclass
+class WorkerEntry:
+    id: str
+    name: Optional[str] = None
+    process: Optional[Process] = None
+    starting: bool = True
+
+    def assign_process(self, process: Process) -> None:
+        self.process = process
+        self.starting = False
+
+    async def terminate(self):
+        if self.process:
+            with move_on_after(3) as cancel_scope:
+                self.process.terminate()
+                await self.process.wait()
+            if cancel_scope.cancelled_caught:
+                self.process.kill()
 
 
 class WorkerManager:
@@ -21,7 +43,9 @@ class WorkerManager:
             max_workers: maximum number of workers allowed to run concurrently
         """
         self._nursery = None
+
         self._processes = [None] * max_count
+        self._users_to_entries = {}
 
     @property
     def max_count(self) -> int:
@@ -39,23 +63,46 @@ class WorkerManager:
 
         self._processes += [None] * (value - self.max_count)
 
-    async def request_worker(self) -> int:
+    async def request_worker(self, id, name) -> int:
         """Requests the worker manager to spin up a new worker and then
         return the port that the worker will be listening on.
 
+        May cancel existing workers registered under the same ID to ensure that
+        a user has only one worker.
+
+        Parameters:
+            id: ID of the user who is requesting a new worker. Used to ensure
+                that there is only one worker running for a given user. Existing
+                workers belonging to the same user will be terminated.
+            name: username or a human-readable identifier of the user who is
+                requesting a new worker. Used only in logging messages.
         Returns:
             the port that the worker will be listening on
 
         Raises:
             NoIdleWorkerError: when there aren't any idle workers available
         """
+        entry = self._users_to_entries.get(id)
+        if entry:
+            log.info(f"Terminating existing process of user {name or id }")
+            await entry.terminate()
+            try:
+                index = self._processes.index(entry)
+                self._processes[index] = None
+                if self._users_to_entries[entry.id] is entry:
+                    del self._users_to_entries[id]
+            except ValueError:
+                pass
+
         index = self._find_vacant_slot()
         if index is None:
             raise NoIdleWorkerError("No idle worker available")
 
-        log.info(f"Launching new worker in slot {index}")
+        log.info(f"Launching new worker for user {name or id} in slot {index}")
 
-        self._processes[index] = "starting"
+        self._processes[index] = entry = WorkerEntry(id=str(id), name=name)
+        self._users_to_entries[id] = entry
+
         with move_on_after(10) as cancel_scope:
             process = await open_process(
                 ["python", "test.py"], stdout=PIPE, stderr=STDOUT, bufsize=0
@@ -63,10 +110,13 @@ class WorkerManager:
 
         if cancel_scope.cancelled_caught:
             self._processes[index] = None
+            if self._users_to_entries.get(id) is entry:
+                del self._users_to_entries[id]
         else:
-            self._processes[index] = process
+            entry.assign_process(process)
+
             self._nursery.start_soon(self._stream_process_output, index, process)
-            self._nursery.start_soon(self._supervise_process, index, process)
+            self._nursery.start_soon(self._supervise_process, index, entry)
 
     async def run(self, nursery: Nursery) -> None:
         try:
@@ -100,16 +150,24 @@ class WorkerManager:
             log.error(f"Worker #{index} stdout streaming stopped.")
             log.exception(ex)
 
-    async def _supervise_process(self, index: int, process: Process) -> None:
-        log.info(f"Worker #{index} (PID={process.pid}) started")
+    async def _supervise_process(self, index: int, entry: WorkerEntry) -> None:
+        process = entry.process
+        user = entry.name or entry.id
+        worker = f"Worker #{index} (user={user}, PID={process.pid})"
+
+        log.info(f"{worker} started")
         try:
             code = await process.wait()
             if code:
-                log.warn(f"Worker #{index} (PID={process.pid}) exited with code {code}")
+                log.warn(f"{worker} exited with code {code}")
             else:
-                log.info(f"Worker #{index} (PID={process.pid}) exited.")
+                log.info(f"{worker} exited.")
         except Exception as ex:
-            log.error(f"Worker #{index} exited with an exception.")
+            log.error(f"{worker} exited with an exception.")
             log.exception(ex)
         finally:
+            entry = self._processes[index]
             self._processes[index] = None
+
+            if self._users_to_entries[entry.id] is entry:
+                del self._users_to_entries[entry.id]

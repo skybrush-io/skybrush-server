@@ -14,3 +14,7 @@ PORT = 8082
 
 # Maximum number of workers to launch at the same time
 MAX_WORKERS = 4
+
+# Secret key used for JWT tokens sent to the gateway when someone wants to
+# spin up a new worker. Only tokens signed with this key will be accepted.
+JWT_SECRET = b"bhu8nji9"

@@ -45,6 +45,9 @@ RUN sed -i 's/, int,/, unsigned int,/' /usr/include/assert.h
 ENV PIP_NO_CACHE_DIR=1
 RUN .venv/bin/pip install -r requirements.txt
 
+# Clean up __pycache__ files
+RUN find . | grep -E "(__pycache__|\.pyc$)" | xargs rm -rf
+
 # Start the second stage where we don't add the stuff that we only need for
 # compiling things
 FROM python:3.7-alpine

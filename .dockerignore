@@ -1,6 +1,7 @@
 .python-ersion
 .tags
 .git
+.venv/
 *.egg-info
 *.pyc
 *.pyo

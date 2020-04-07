@@ -29,7 +29,8 @@ PyInstaller will create a single-file distribution in `dist/skybrushd`.
 You can build a Docker container on Linux with the following command line:
 
 ```sh
-$ docker build -t skybrush-server:latest -f etc/docker/amd64/Dockerfile \
+$ docker build -t docker.collmot.com/skybrush-server:latest \
+    -f etc/docker/amd64/Dockerfile \
     --build-arg GIT_ACCESS_TOKEN_USERNAME=username \
 	--build-arg GIT_ACCESS_TOKEN_PASSWORD=password .
 ```
@@ -42,7 +43,7 @@ several of our Python modules during the build process.
 To test the container, run this:
 
 ```sh
-$ docker run -p 5000:5000 -p 4242:4242/udp --rm skybrush-server:latest
+$ docker run -p 5000:5000 -p 4242:4242/udp --rm docker.collmot.com/skybrush-server:latest
 ```
 
 You may also need to map additional ports depending on your use-case; port 5000 is the
@@ -54,5 +55,5 @@ by creating a folder and placing a file named `skybrush.cfg` in it, and then
 mounting the folder at the `/data` path in the container:
 
 ```sh
-$ docker run -p 5000:5000 -p 4242:4242/udp -v /path/to/folder:/data --rm skybrush-server:latest
+$ docker run -p 5000:5000 -p 4242:4242/udp -v /path/to/folder:/data --rm docker.collmot.com/skybrush-server:latest
 ```

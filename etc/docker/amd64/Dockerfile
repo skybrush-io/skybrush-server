@@ -69,3 +69,6 @@ COPY etc/docker/amd64/entrypoint.sh /usr/local/bin/
 RUN chmod 755 /usr/local/bin/entrypoint.sh
 ENTRYPOINT ["/sbin/tini", "--", "entrypoint.sh"]
 
+# Expose the default port
+EXPOSE 5000
+

@@ -10,7 +10,7 @@ them if the variables are mutable.
 HOST = "127.0.0.1"
 
 # Port on which the gateway will be listening for incoming HTTP requests
-PORT = 8082
+PORT = 8080
 
 # Maximum number of workers to launch at the same time
 MAX_WORKERS = 4

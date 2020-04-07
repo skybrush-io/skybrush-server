@@ -9,5 +9,4 @@ build/
 dist/
 tmp/
 */__pycache__/*
-requirements*.txt
-
+Pipfile*

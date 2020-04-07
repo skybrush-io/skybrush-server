@@ -65,7 +65,7 @@ for ext_name in config["EXTENSIONS"]:
 
 # Now comes the PyInstaller dance
 a = Analysis(
-    [os.path.join(root_dir, "bin", "flockwaved")],
+    [os.path.join(root_dir, "bin", "skybrushd")],
     pathex=[root_dir],
     binaries=[],
     datas=[],
@@ -90,7 +90,7 @@ if single_file:
         a.binaries,
         a.zipfiles,
         a.datas,
-        name="flockwaved",
+        name="skybrushd",
         debug=False,
         strip=False,
         upx=True,
@@ -102,7 +102,7 @@ else:
         pyz,
         a.scripts,
         exclude_binaries=True,
-        name="flockwaved",
+        name="skybrushd",
         debug=False,
         strip=False,
         upx=True,
@@ -115,5 +115,5 @@ else:
         a.datas,
         strip=False,
         upx=True,
-        name="flockwaved"
+        name="skybrushd"
     )

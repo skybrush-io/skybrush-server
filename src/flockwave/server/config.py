@@ -29,7 +29,7 @@ COMMAND_EXECUTION_MANAGER = {"timeout": 30}
 EXTENSIONS = {
     "auth": {},
     "auth_basic": {},
-    "debug": {"route": "/debug"},
+    "debug": {},
     "dock": {"listener": "unix:/tmp/flockwaved-dock.sock"},
     "flockctrl": {
         "id_format": "{0:02}",
@@ -38,7 +38,7 @@ EXTENSIONS = {
             "wireless": "local"
         },
     },
-    "frontend": {},
+    "frontend": {"path": "/Users/tamas/dev/collmot/flockwave-web/build"},
     "gps": {
         # "connection": "/dev/cu.usbmodem1411",
         "connection": "gpsd",

@@ -47,5 +47,6 @@ pip-licenses = "*"
 python_version = "3.7"
 
 [scripts]
-start = "bin/flockwaved"
+start = "bin/skybrushd"
+gateway = "bin/skybrush-gateway"
 test = "pytest"

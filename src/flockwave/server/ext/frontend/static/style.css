@@ -1,0 +1,34 @@
+@import url('https://fonts.googleapis.com/css?family=Roboto:300,400&display=swap');
+
+.cover-page {
+  background: #ECEFF1;
+  font-family: "Roboto", "Open Sans", "SF UI Text", Arial, sans-serif;
+  font-size: 16px;
+  height: 100%;
+  text-align: center;
+  width: 100%;
+  z-index: 10000;
+
+  -webkit-touch-callout: none; /* iOS Safari */
+    -webkit-user-select: none; /* Safari */
+     -khtml-user-select: none; /* Konqueror HTML */
+       -moz-user-select: none; /* Firefox */
+        -ms-user-select: none; /* Internet Explorer/Edge */
+            user-select: none;
+}
+
+.cover-page-content {
+  color: #607D8B;
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.cover-page h1 {
+  color: #455A64;
+  font-size: 32px;
+  font-weight: 200;
+  margin: 0.25em 0;
+  text-shadow: 0 1px 1px rgba(0,0,0,0.3);
+}

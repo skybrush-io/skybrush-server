@@ -38,6 +38,7 @@ EXTENSIONS = {
             "wireless": "local"
         },
     },
+    "frontend": {},
     "gps": {
         # "connection": "/dev/cu.usbmodem1411",
         "connection": "gpsd",

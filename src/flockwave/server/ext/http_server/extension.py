@@ -7,6 +7,7 @@ Socket.IO-based channel.
 """
 
 from contextlib import contextmanager
+from dataclasses import dataclass
 from flockwave.networking import format_socket_address
 from heapq import heappush
 from hypercorn.config import Config as HyperConfig
@@ -28,6 +29,15 @@ PACKAGE_NAME = __name__.rpartition(".")[0]
 
 proposed_index_pages = []
 quart_app = None
+
+############################################################################
+
+
+@dataclass(order=True)
+class ProposedIndexPage:
+    priority: int = 0
+    route: str = "/"
+
 
 ############################################################################
 
@@ -66,7 +76,7 @@ def get_index_url():
     """
     global proposed_index_pages
     if proposed_index_pages:
-        return url_for(proposed_index_pages[0][1])
+        return url_for(proposed_index_pages[0].route)
     else:
         return None
 
@@ -126,7 +136,7 @@ def mounted(
 
 def propose_index_page(route, priority=0):
     """Proposes the given route as a potential index page for the
-    Flockwave server. This method can be called from the ``load()``
+    Skybrush server. This method can be called from the ``load()``
     functions of extensions when they want to propose one of their own
     routes as an index page. The server will select the index page with
     the highest priority when all the extensions have been loaded.
@@ -138,7 +148,7 @@ def propose_index_page(route, priority=0):
         priority (Optional[int]): the priority of the proposed route.
     """
     global proposed_index_pages
-    heappush(proposed_index_pages, (priority, route))
+    heappush(proposed_index_pages, ProposedIndexPage(priority=-priority, route=route))
 
 
 ############################################################################

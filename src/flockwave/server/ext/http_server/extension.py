@@ -12,7 +12,7 @@ from flockwave.networking import format_socket_address
 from heapq import heappush
 from hypercorn.config import Config as HyperConfig
 from hypercorn.trio import serve
-from quart import Blueprint, abort, redirect, url_for
+from quart import Blueprint, abort, redirect, request, url_for
 from quart_trio import QuartTrio
 from trio import current_time, sleep
 from typing import Callable, Iterable, Optional
@@ -57,6 +57,9 @@ def create_app():
     async def index():
         index_url = get_index_url()
         if index_url:
+            index_url = index_url.encode("ascii")
+            if request.query_string:
+                index_url += b"?" + request.query_string
             return redirect(index_url)
         else:
             abort(404)

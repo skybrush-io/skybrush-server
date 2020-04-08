@@ -114,7 +114,7 @@ class SkybrushGatewayServer:
     def validate_jwt_token(self, token: bytes):
         secret = self.config.get("JWT_SECRET")
         if not secret:
-            return False
+            raise ValueError("no JWT secret was configured")
         else:
             return decode(token, secret, algorithms=["HS256"])
 

@@ -18,6 +18,7 @@ api = Namespace()
 
 def update_api(app):
     api.get_root_redirect_url = partial(app.config.get, "ROOT_REDIRECTS_TO")
+    api.get_public_url_from_port = app.get_public_url_of_worker_from_port
     api.request_worker = app.worker_manager.request_worker
     api.validate_jwt_token = app.validate_jwt_token
 
@@ -57,12 +58,9 @@ async def start_worker(token):
     if not user_id or not username:
         return "Required information missing from token", 400
 
-    host = request.host.rpartition(":")[0]
-    scheme = request.scheme
-
     try:
         port = await api.request_worker(id=user_id, name=username)
-        return {"result": {"url": f"{scheme}://{host}:{port}"}}
+        return {"result": {"url": api.get_public_url_from_port(port)}}
     except Exception as ex:
         log.exception(ex)
         return {"error": str(ex) or str(type(ex).__name__)}

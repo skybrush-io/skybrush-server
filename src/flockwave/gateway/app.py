@@ -5,6 +5,7 @@ import logging
 from copy import deepcopy
 from trio import current_time, MultiError, Nursery, open_nursery, sleep
 from typing import Any, Optional, Tuple
+from urllib.parse import urlparse, urlunparse
 
 from hypercorn.config import Config as HyperConfig
 from hypercorn.trio import serve
@@ -37,6 +38,7 @@ class SkybrushGatewayServer:
         self.debug = False
 
         self._nursery = None
+        self._public_url_parts = None
 
         self._create_components()
 
@@ -52,6 +54,22 @@ class SkybrushGatewayServer:
         preparations that depend on the configuration.
         """
         self.worker_manager = WorkerManager()
+
+    def get_public_url_of_worker_from_port(self, port: int) -> str:
+        """Returns the public URL where a worker is accessible, given the port
+        that the worker listens on.
+
+        Defaults to the same host where the server listens on. The configuration
+        may specify an alternative URL template to use.
+        """
+        if self._public_url_parts:
+            host, _, _ = self._public_url_parts.netloc.partition(":")
+            parts = self._public_url_parts._replace(netloc=f"{host}:{port}")
+            return urlunparse(parts)
+        else:
+            host, _ = self._get_listening_address()
+            scheme = "https" if self._is_listening_securely() else "http"
+            return f"{scheme}://{host}:{port}"
 
     def prepare(self, config: Optional[str]) -> Optional[int]:
         """Hook function that contains preparation steps that should be
@@ -73,6 +91,12 @@ class SkybrushGatewayServer:
         )
         if not configurator.configure(config):
             return 1
+
+        self._public_url_parts = (
+            urlparse(self.config["PUBLIC_URL"])
+            if self.config.get("PUBLIC_URL")
+            else None
+        )
 
         self.worker_manager.max_count = self.config.get("MAX_WORKERS", 1)
         self.worker_manager.worker_config_factory = self._create_worker_config
@@ -103,11 +127,28 @@ class SkybrushGatewayServer:
                 config["EXTENSIONS"]["http_server"]["port"] = port
         return config, port
 
+    def _get_listening_address(self) -> Tuple[str, int]:
+        """Returns the hostname and port where the server is listening, or
+        `None` if the address is not configured in the configuration file.
+        """
+        host, port = self.config.get("HOST"), self.config.get("PORT")
+        if (not host and host != "") or not port:
+            return None
+
+        port = int(port)
+        return host, port
+
+    def _is_listening_securely(self) -> bool:
+        """Returns whether the application is listening on a secure socket."""
+        return self.config.get("certfile") and self.config.get("keyfile")
+
     async def _serve(self, nursery: Nursery) -> None:
-        address = host, port = self.config.get("HOST"), self.config.get("PORT")
-        if not host or not port:
+        address = self._get_listening_address()
+        if address is None:
             log.warn("HTTP server address is not specified in configuration")
             return
+
+        host, port = address
 
         # Don't show info messages by default (unless the app is in debug mode),
         # show warnings and errors only

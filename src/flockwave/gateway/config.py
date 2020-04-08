@@ -22,6 +22,10 @@ JWT_SECRET = "bhu8nji9"
 # Set this to a truthy value to make the root URL redirect to aonther address
 ROOT_REDIRECTS_TO = None
 
+# Specify a custom URL template to return for the spawned worker processes
+# if you are sitting behind a proxy.
+PUBLIC_URL = None
+
 # Configuration object to use for spawned workers
 WORKER_CONFIG = {
     "EXTENSIONS": {

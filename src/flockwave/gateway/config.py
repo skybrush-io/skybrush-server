@@ -19,6 +19,9 @@ MAX_WORKERS = 4
 # spin up a new worker. Only tokens signed with this key will be accepted.
 JWT_SECRET = "bhu8nji9"
 
+# Set this to a truthy value to make the root URL redirect to aonther address
+ROOT_REDIRECTS_TO = None
+
 # Configuration object to use for spawned workers
 WORKER_CONFIG = {
     "EXTENSIONS": {

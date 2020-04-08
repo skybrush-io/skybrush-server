@@ -1,9 +1,9 @@
 """ASGI web application for the gateway server."""
 
 from argparse import Namespace
-from functools import wraps
+from functools import partial, wraps
 
-from quart import request
+from quart import abort, redirect, request
 from quart_trio import QuartTrio
 
 from .logger import log as base_log
@@ -17,6 +17,7 @@ api = Namespace()
 
 
 def update_api(app):
+    api.get_root_redirect_url = partial(app.config.get, "ROOT_REDIRECTS_TO")
     api.request_worker = app.worker_manager.request_worker
     api.validate_jwt_token = app.validate_jwt_token
 
@@ -40,7 +41,11 @@ def use_jwt_token(func):
 
 @app.route("/")
 async def index():
-    return "Hello"
+    url = api.get_root_redirect_url()
+    if url:
+        return redirect(url)
+    else:
+        abort(404)
 
 
 @app.route("/api/operations/start-worker", methods=["POST"])

@@ -207,10 +207,10 @@ class WorkerManager:
             log.error(f"{worker} exited with an exception.")
             log.exception(ex)
         finally:
-            entry = self._processes[index]
-            self._processes[index] = None
+            if self._processes[index] is entry:
+                self._processes[index] = None
 
-            if self._users_to_entries[entry.id] is entry:
+            if self._users_to_entries.get(entry.id) is entry:
                 del self._users_to_entries[entry.id]
 
             entry.remove_configuration_file_if_needed()

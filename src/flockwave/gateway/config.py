@@ -24,7 +24,7 @@ ROOT_REDIRECTS_TO = None
 
 # Specify a custom URL template to return for the spawned worker processes
 # if you are sitting behind a proxy.
-PUBLIC_URL = None
+PUBLIC_URL = "http://share.skybrush.io:4117/app/"
 
 # Configuration object to use for spawned workers
 WORKER_CONFIG = {

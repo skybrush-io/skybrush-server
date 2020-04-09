@@ -89,8 +89,9 @@ class WorkerManager:
                 workers belonging to the same user will be terminated.
             name: username or a human-readable identifier of the user who is
                 requesting a new worker. Used only in logging messages.
+
         Returns:
-            the port that the worker will be listening on
+            the index of the worker that was assigned to the user ID
 
         Raises:
             NoIdleWorkerError: when there aren't any idle workers available
@@ -117,9 +118,9 @@ class WorkerManager:
         self._users_to_entries[id] = entry
 
         if self.worker_config_factory:
-            config, port = self.worker_config_factory(index)
+            config = self.worker_config_factory(index)
         else:
-            config, port = {}, None
+            config = {}
 
         entry.config_fp = NamedTemporaryFile(
             mode="w+", encoding="utf-8", suffix=".cfg", delete=False
@@ -152,7 +153,7 @@ class WorkerManager:
                 self._nursery.start_soon(self._supervise_process, index, entry)
                 entry.assign_process(process)
 
-            return port
+            return index
         finally:
             if entry.process is None:
                 # Process was not started in the end so remove the temporary file

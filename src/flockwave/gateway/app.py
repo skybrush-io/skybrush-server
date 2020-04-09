@@ -55,19 +55,34 @@ class SkybrushGatewayServer:
         """
         self.worker_manager = WorkerManager()
 
-    def get_public_url_of_worker_from_port(self, port: int) -> str:
-        """Returns the public URL where a worker is accessible, given the port
-        that the worker listens on.
+    @property
+    def base_port(self) -> Optional[int]:
+        """The base port that the server is listening on."""
+        base_port = self.config.get("PORT")
+        if base_port is not None:
+            return int(base_port)
+        else:
+            return base_port
 
-        Defaults to the same host where the server listens on. The configuration
+    def get_public_url_of_worker(self, index: int) -> str:
+        """Returns the public URL where a worker is accessible, given the index
+        of the worker.
+
+        Defaults to the same host where the server listens on, with an offset
+        from the base port. The configuration
         may specify an alternative URL template to use.
         """
         if self._public_url_parts:
-            host, _, _ = self._public_url_parts.netloc.partition(":")
+            host, sep, port = self._public_url_parts.netloc.partition(":")
+            if sep:
+                port = self._get_port_for_worker(index, base=port)
+            else:
+                port = self._get_port_for_worker(index)
             parts = self._public_url_parts._replace(netloc=f"{host}:{port}")
             return urlunparse(parts)
         else:
             host, _ = self._get_listening_address()
+            port = self._get_port_for_worker(index)
             scheme = "https" if self._is_listening_securely() else "http"
             return f"{scheme}://{host}:{port}"
 
@@ -118,25 +133,31 @@ class SkybrushGatewayServer:
         else:
             return decode(token, secret, algorithms=["HS256"])
 
-    def _create_worker_config(self, index: int) -> Tuple[Any, int]:
+    def _create_worker_config(self, index: int) -> Any:
         config = deepcopy(self.config.get("WORKER_CONFIG", {}))
-        base_port = self.config.get("PORT")
-        port = base_port + index + 1
+        port = self._get_port_for_worker(index)
         if "EXTENSIONS" in config:
             if "http_server" in config["EXTENSIONS"]:
                 config["EXTENSIONS"]["http_server"]["port"] = port
-        return config, port
+        return config
 
     def _get_listening_address(self) -> Tuple[str, int]:
         """Returns the hostname and port where the server is listening, or
         `None` if the address is not configured in the configuration file.
         """
-        host, port = self.config.get("HOST"), self.config.get("PORT")
+        host, port = self.config.get("HOST"), self.base_port
         if (not host and host != "") or not port:
             return None
 
         port = int(port)
         return host, port
+
+    def _get_port_for_worker(self, index: int, base: Optional[int] = None) -> int:
+        if base is None:
+            base = self.base_port
+            if base is None:
+                raise ValueError("base port not configured")
+        return int(base) + index + 1
 
     def _is_listening_securely(self) -> bool:
         """Returns whether the application is listening on a secure socket."""

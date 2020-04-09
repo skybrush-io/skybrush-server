@@ -3,7 +3,6 @@
 import sys
 
 from dataclasses import dataclass
-from json import dump
 from pathlib import Path
 from subprocess import PIPE, STDOUT
 from tempfile import NamedTemporaryFile
@@ -123,11 +122,12 @@ class WorkerManager:
             config, port = {}, None
 
         entry.config_fp = NamedTemporaryFile(
-            mode="w+", encoding="utf-8", suffix=".json", delete=False
+            mode="w+", encoding="utf-8", suffix=".cfg", delete=False
         )
         try:
             with entry.config_fp as fp:
-                dump(config, fp)
+                for key, value in config.items():
+                    fp.write(f"{key} = {value!r}\n")
             with move_on_after(10) as cancel_scope:
                 process = await open_process(
                     [

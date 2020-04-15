@@ -179,6 +179,8 @@ class WorkerManager:
             chunks = []
             while True:
                 chunk = await process.stdout.receive_some()
+                if not chunk:
+                    break
                 while chunk:
                     first, sep, chunk = chunk.partition(b"\n")
                     chunks.append(first)

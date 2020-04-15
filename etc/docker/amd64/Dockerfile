@@ -17,10 +17,9 @@ RUN mkdir -p -m 0600 ~/.ssh && ssh-keyscan git.collmot.com >>~/.ssh/known_hosts
 # Switch working directory
 WORKDIR /app
 
-# Copy the application itself
+# Copy the requirements file first so we don't need to rebuild the image from
+# scratch if the requirements don't change
 COPY requirements.txt ./
-COPY src/flockwave ./src/flockwave/
-COPY bin ./bin/
 
 # Create a virtual environment
 RUN python -m venv .venv
@@ -44,6 +43,10 @@ RUN sed -i 's/, int,/, unsigned int,/' /usr/include/assert.h
 # Run the build script
 ENV PIP_NO_CACHE_DIR=1
 RUN .venv/bin/pip install -r requirements.txt
+
+# Now we can copy the application itself
+COPY src/flockwave ./src/flockwave/
+COPY bin ./bin/
 
 # Clean up __pycache__ files
 RUN find . | grep -E "(__pycache__|\.pyc$)" | xargs rm -rf

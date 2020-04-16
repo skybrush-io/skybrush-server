@@ -96,9 +96,10 @@ class WorkerManager:
         Raises:
             NoIdleWorkerError: when there aren't any idle workers available
         """
+        user = f"{name} (id={id})" if name else id
         entry = self._users_to_entries.get(id)
         if entry:
-            log.info(f"Terminating existing process of user {name or id }")
+            log.info(f"Terminating existing process of user {user}")
             await entry.terminate()
             try:
                 index = self._processes.index(entry)
@@ -112,7 +113,7 @@ class WorkerManager:
         if index is None:
             raise NoIdleWorkerError("No idle worker available")
 
-        log.info(f"Launching new worker for user {name or id} in slot {index}")
+        log.info(f"Launching new worker for user {user} in slot {index}")
 
         self._processes[index] = entry = WorkerEntry(id=str(id), name=name)
         self._users_to_entries[id] = entry
@@ -196,7 +197,7 @@ class WorkerManager:
 
     async def _supervise_process(self, index: int, entry: WorkerEntry) -> None:
         process = entry.process
-        user = entry.name or entry.id
+        user = entry.id
         worker = f"Worker #{index} (user={user}, PID={process.pid})"
 
         log.info(f"{worker} started")

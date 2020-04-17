@@ -124,6 +124,7 @@ class SkybrushGatewayServer:
 
         with MultiError.catch(ignore_keyboard_interrupt):
             async with open_nursery() as nursery:
+                nursery.start_soon(self.worker_manager.run)
                 await self._serve(nursery)
 
     def validate_jwt_token(self, token: bytes):
@@ -201,8 +202,6 @@ class SkybrushGatewayServer:
             )
 
             started_at = current_time()
-
-            nursery.start_soon(self.worker_manager.run)
 
             try:
                 await serve(asgi_app, config)

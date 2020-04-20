@@ -111,7 +111,11 @@ async def handle_flockwave_message(client_id, message):
             on the Python side.
     """
     client_id = _convert_client_id(client_id)
-    client = app.client_registry[client_id]
+    try:
+        client = app.client_registry[client_id]
+    except KeyError:
+        # client disconnected in the meanwhile; let's ignore the message
+        return
     await app.message_hub.handle_incoming_message(message, client)
 
 

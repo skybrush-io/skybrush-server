@@ -194,34 +194,35 @@ class SkybrushGatewayServer:
 
         update_api(self)
 
-        while True:
-            log.info(
-                "Starting {1} server on {0}...".format(
-                    format_socket_address(address), "HTTPS" if secure else "HTTP"
+        try:
+            while True:
+                log.info(
+                    "Starting {1} server on {0}...".format(
+                        format_socket_address(address), "HTTPS" if secure else "HTTP"
+                    )
                 )
-            )
 
-            started_at = current_time()
+                started_at = current_time()
 
-            try:
-                await serve(asgi_app, config)
-            except Exception:
-                # Server crashed -- maybe a change in IP address? Let's try
-                # again if we have not reached the maximum retry count.
-                if current_time() - started_at >= 5:
-                    retries = 0
+                try:
+                    await serve(asgi_app, config)
+                except Exception:
+                    # Server crashed -- maybe a change in IP address? Let's try
+                    # again if we have not reached the maximum retry count.
+                    if current_time() - started_at >= 5:
+                        retries = 0
 
-                if retries < max_retries:
-                    log.error("Server stopped unexpectedly, retrying...")
-                    await sleep(1)
-                    retries += 1
+                    if retries < max_retries:
+                        log.error("Server stopped unexpectedly, retrying...")
+                        await sleep(1)
+                        retries += 1
+                    else:
+                        # Re-raise the exception
+                        raise
                 else:
-                    # Re-raise the exception
-                    raise
-            else:
-                break
-            finally:
-                nursery.cancel_scope.cancel()
+                    break
+        finally:
+            nursery.cancel_scope.cancel()
 
 
 ############################################################################

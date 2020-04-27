@@ -1,6 +1,7 @@
 """Error classes specific to the FlockCtrl extension."""
 
 from flockwave.spec.errors import FlockwaveErrorCode
+from typing import Tuple, Union
 
 
 __all__ = ("AddressConflictError", "map_flockctrl_error_code")
@@ -40,44 +41,46 @@ class AddressConflictError(FlockCtrlError):
 
 
 _error_code_mapping = {
-    0: FlockwaveErrorCode.NO_ERROR,
-    1: FlockwaveErrorCode.HW_SW_INCOMPATIBLE,
-    2: FlockwaveErrorCode.AUTOPILOT_COMM_TIMEOUT,
-    3: FlockwaveErrorCode.AUTOPILOT_ACK_TIMEOUT,
-    4: FlockwaveErrorCode.MAGNETIC_ERROR,
-    5: FlockwaveErrorCode.GPS_SIGNAL_LOST,
-    6: FlockwaveErrorCode.SENSOR_FAILURE,
-    7: FlockwaveErrorCode.RC_SIGNAL_LOST_WARNING,
-    10: FlockwaveErrorCode.GYROSCOPE_ERROR,
-    13: FlockwaveErrorCode.ACCELEROMETER_ERROR,
-    16: FlockwaveErrorCode.PRESSURE_SENSOR_ERROR,
-    18: FlockwaveErrorCode.MOTOR_MALFUNCTION,
-    19: FlockwaveErrorCode.AUTOPILOT_PROTOCOL_ERROR,
-    20: FlockwaveErrorCode.UNSPECIFIED_CRITICAL_ERROR,
-    21: FlockwaveErrorCode.AUTOPILOT_INIT_FAILED,
-    22: FlockwaveErrorCode.AUTOPILOT_COMM_FAILED,
-    42: FlockwaveErrorCode.SIMULATED_CRITICAL_ERROR,
-    43: FlockwaveErrorCode.TARGET_NOT_FOUND,
-    44: FlockwaveErrorCode.TARGET_TOO_FAR,
-    45: FlockwaveErrorCode.REQUIRED_HW_COMPONENT_MISSING,
-    46: FlockwaveErrorCode.BATTERY_CRITICAL,
-    47: FlockwaveErrorCode.NO_GPS_HOME_POSITION,
-    48: FlockwaveErrorCode.GEOFENCE_VIOLATION,
-    49: FlockwaveErrorCode.GEOFENCE_VIOLATION,
-    50: FlockwaveErrorCode.UNSPECIFIED_ERROR,
-    51: FlockwaveErrorCode.CONTROL_ALGORITHM_ERROR,
-    52: FlockwaveErrorCode.CONTROL_ALGORITHM_ERROR,
-    53: FlockwaveErrorCode.EXTERNAL_CLOCK_ERROR,
-    54: FlockwaveErrorCode.CONFIGURATION_ERROR,
-    55: FlockwaveErrorCode.CONFIGURATION_ERROR,
-    200: FlockwaveErrorCode.LOGGING_DEACTIVATED,
-    201: FlockwaveErrorCode.LOW_DISK_SPACE,
-    202: FlockwaveErrorCode.TIMESYNC_ERROR,
-    203: FlockwaveErrorCode.TIMESYNC_ERROR,
+    0: (),
+    1: (FlockwaveErrorCode.HW_SW_INCOMPATIBLE.value,),
+    2: (FlockwaveErrorCode.AUTOPILOT_COMM_TIMEOUT.value,),
+    3: (FlockwaveErrorCode.AUTOPILOT_ACK_TIMEOUT.value,),
+    4: (FlockwaveErrorCode.MAGNETIC_ERROR.value,),
+    5: (FlockwaveErrorCode.GPS_SIGNAL_LOST.value,),
+    6: (FlockwaveErrorCode.SENSOR_FAILURE.value,),
+    7: (FlockwaveErrorCode.RC_SIGNAL_LOST_WARNING.value,),
+    10: (FlockwaveErrorCode.GYROSCOPE_ERROR.value,),
+    13: (FlockwaveErrorCode.ACCELEROMETER_ERROR.value,),
+    16: (FlockwaveErrorCode.PRESSURE_SENSOR_ERROR.value,),
+    18: (FlockwaveErrorCode.MOTOR_MALFUNCTION.value,),
+    19: (FlockwaveErrorCode.AUTOPILOT_PROTOCOL_ERROR.value,),
+    20: (FlockwaveErrorCode.UNSPECIFIED_CRITICAL_ERROR.value,),
+    21: (FlockwaveErrorCode.AUTOPILOT_INIT_FAILED.value,),
+    22: (FlockwaveErrorCode.AUTOPILOT_COMM_FAILED.value,),
+    42: (FlockwaveErrorCode.SIMULATED_CRITICAL_ERROR.value,),
+    43: (FlockwaveErrorCode.TARGET_NOT_FOUND.value,),
+    44: (FlockwaveErrorCode.TARGET_TOO_FAR.value,),
+    45: (FlockwaveErrorCode.REQUIRED_HW_COMPONENT_MISSING.value,),
+    46: (FlockwaveErrorCode.BATTERY_CRITICAL.value,),
+    47: (FlockwaveErrorCode.NO_GPS_HOME_POSITION.value,),
+    48: (FlockwaveErrorCode.GEOFENCE_VIOLATION.value,),
+    49: (FlockwaveErrorCode.GEOFENCE_VIOLATION.value,),
+    50: (FlockwaveErrorCode.UNSPECIFIED_ERROR.value,),
+    51: (FlockwaveErrorCode.CONTROL_ALGORITHM_ERROR.value,),
+    52: (FlockwaveErrorCode.CONTROL_ALGORITHM_ERROR.value,),
+    53: (FlockwaveErrorCode.EXTERNAL_CLOCK_ERROR.value,),
+    54: (FlockwaveErrorCode.CONFIGURATION_ERROR.value,),
+    55: (FlockwaveErrorCode.CONFIGURATION_ERROR.value,),
+    200: (FlockwaveErrorCode.LOGGING_DEACTIVATED.value,),
+    201: (FlockwaveErrorCode.LOW_DISK_SPACE.value,),
+    202: (FlockwaveErrorCode.TIMESYNC_ERROR.value,),
+    203: (FlockwaveErrorCode.TIMESYNC_ERROR.value,),
 }
 
 
-def map_flockctrl_error_code(error_code: int) -> FlockwaveErrorCode:
+def map_flockctrl_error_code(
+    error_code: int
+) -> Union[Tuple[FlockwaveErrorCode], Tuple[()]]:
     """Maps an error code from a FlockCtrl status packet to the corresponding
     Flockwave error code.
 

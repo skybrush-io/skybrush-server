@@ -267,7 +267,7 @@ class FlockCtrlDriver(UAVDriver):
             velocity=packet.velocity,
             heading=packet.heading,
             algorithm=packet.algorithm_name,
-            error=map_flockctrl_error_code(packet.error).value,
+            errors=map_flockctrl_error_code(packet.error),
         )
 
         self.app.request_to_send_UAV_INF_message_for([uav.id])

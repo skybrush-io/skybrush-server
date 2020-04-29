@@ -23,6 +23,15 @@ def update_api(app):
     api.validate_jwt_token = app.validate_jwt_token
 
 
+def use_fake_token(func):
+    @wraps(func)
+    async def handler(*args, **kwds):
+        token = {"sub": "foo", "name": "bar"}
+        return await func(token, *args, **kwds)
+
+    return handler
+
+
 def use_jwt_token(func):
     @wraps(func)
     async def handler(*args, **kwds):

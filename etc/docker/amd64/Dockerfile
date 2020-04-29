@@ -1,5 +1,5 @@
 # syntax = docker/dockerfile:1.0-experimental
-FROM python:3.7-alpine AS builder
+FROM python:3.7-slim AS builder
 
 # Specify the argument that we use to pass in the personal access token used to
 # check out stuff from our private git server
@@ -7,9 +7,10 @@ ARG GIT_ACCESS_TOKEN_USERNAME="nothing"
 ARG GIT_ACCESS_TOKEN_PASSWORD="nothin"
 
 # Update all the things
-RUN apk update && apk upgrade && \
-    apk add --no-cache bash gcc git libxslt-dev \
-	    linux-headers musl-dev openssh-client
+RUN apt-get update && apt-get -y upgrade
+
+# Install some additional requirements
+RUN apt-get install -y gcc git openssh-client
 
 # Download public key for git.collmot.com
 RUN mkdir -p -m 0600 ~/.ssh && ssh-keyscan git.collmot.com >>~/.ssh/known_hosts
@@ -31,14 +32,9 @@ RUN printf "machine git.collmot.com\n\
 	>> /root/.netrc
 RUN chmod 600 /root/.netrc
 
-# Temporarily remove rtmidi-related dependencies from the requirements because
-# rtmidi compilation is broken in Alpine. (setup.py in python-rtmidi relies on
-# ctypes.util.find_library, which is broken in Alpine).
+# Remove rtmidi-related dependencies from the requirements; we don't need MIDI
+# stuff in the container
 RUN sed -i -e 's/midi,//' requirements.txt
-
-# Hack /usr/include/assert.h to make the prototypes compatible with what
-# mavnative expects
-RUN sed -i 's/, int,/, unsigned int,/' /usr/include/assert.h
 
 # Run the build script
 ENV PIP_NO_CACHE_DIR=1
@@ -53,10 +49,12 @@ RUN find . | grep -E "(__pycache__|\.pyc$)" | xargs rm -rf
 
 # Start the second stage where we don't add the stuff that we only need for
 # compiling things
-FROM python:3.7-alpine
+FROM python:3.7-slim
 
-# Update all the things
-RUN apk update && apk upgrade && apk add --no-cache tini
+# Add tini as an init system
+ENV TINI_VERSION v0.19.0
+ADD https://github.com/krallin/tini/releases/download/${TINI_VERSION}/tini /tini
+RUN chmod +x /tini
 
 # Switch working directory
 WORKDIR /app
@@ -70,8 +68,7 @@ RUN mkdir /data
 # Set up the entrypoint
 COPY etc/docker/amd64/entrypoint.sh /usr/local/bin/
 RUN chmod 755 /usr/local/bin/entrypoint.sh
-ENTRYPOINT ["/sbin/tini", "--", "entrypoint.sh"]
+ENTRYPOINT ["/tini", "--", "entrypoint.sh"]
 
 # Expose the default port
 EXPOSE 5000
-

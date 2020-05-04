@@ -4,6 +4,7 @@ from __future__ import absolute_import
 
 import attr
 
+from trio import Event
 from typing import Optional, Union
 
 from flockwave.server.logger import log as base_log
@@ -17,8 +18,15 @@ log = base_log.getChild("model.clients")  # plural to match registry.clients
 
 
 @attr.s(eq=False)
-class Client(object):
-    """A single client connected to the Flockwave server."""
+class Client:
+    """A single client connected to the Flockwave server.
+
+    Attributes:
+        authenticated: signal that is sent when the client changes from an
+            unauthenticated to an authenticated state
+        deauthenticated: signal that is sent when the client changes from an
+            authenticated to an unauthenticated state
+    """
 
     _id: str = attr.ib()
     _channel: CommunicationChannel = attr.ib()
@@ -61,6 +69,21 @@ class Client(object):
         self._user = value
 
         if value:
+            if hasattr(self, "_authenticated_event"):
+                self._authenticated_event.set()
             log.info(f"Authenticated as {value}", extra={"id": self._id})
         else:
             log.info("Deauthenticated current user")
+
+    async def wait_until_authenticated(self) -> None:
+        """Waits until the client is authenticated."""
+        if self.user is not None:
+            return
+
+        if not hasattr(self, "_authenticated_event"):
+            self._authenticated_event = Event()
+
+        try:
+            await self._authenticated_event.wait()
+        finally:
+            del self._authenticated_event

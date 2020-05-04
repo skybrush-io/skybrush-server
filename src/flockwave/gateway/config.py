@@ -32,7 +32,11 @@ WORKER_CONFIG = {
         "auth": {},
         "auth_jwt": {"secret": JWT_SECRET},
         "auto_shutdown": {"timeout": 30},
-        "connection_limits": {"max_clients": 1, "max_duration": 3600},
+        "connection_limits": {
+            "auth_deadline": 10,
+            "max_clients": 1,
+            "max_duration": 3600,
+        },
         "frontend": {},
         "http_server": {"host": "", "port": "@PORT@"},
         "show": {},

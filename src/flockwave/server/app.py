@@ -4,6 +4,7 @@ from blinker import Signal
 from collections import defaultdict
 from functools import partial
 from inspect import isawaitable
+from time import time
 from trio import (
     BrokenResourceError,
     CancelScope,
@@ -1082,6 +1083,11 @@ def handle_OBJ_LIST(message, sender, hub):
 @app.message_hub.on("SYS-PING")
 def handle_SYS_PING(message, sender, hub):
     return hub.acknowledge(message)
+
+
+@app.message_hub.on("SYS-TIME")
+def handle_SYS_TIME(message, sender, hub):
+    return {"timestamp": int(round(time() * 1000))}
 
 
 @app.message_hub.on("SYS-VER")

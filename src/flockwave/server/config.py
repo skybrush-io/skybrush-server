@@ -38,7 +38,6 @@ EXTENSIONS = {
             "wireless": "local"
         },
     },
-    "frontend": {"path": "/Users/tamas/dev/collmot/flockwave-web/build"},
     "gps": {
         # "connection": "/dev/cu.usbmodem1411",
         "connection": "gpsd",

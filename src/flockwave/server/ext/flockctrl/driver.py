@@ -14,7 +14,7 @@ from flockwave.protocols.flockctrl.packets import (
     StatusPacket,
 )
 from flockwave.server.ext.logger import log
-from flockwave.server.model.uav import UAVBase, UAVDriver
+from flockwave.server.model.uav import BatteryInfo, UAVBase, UAVDriver
 from flockwave.server.utils import nop
 from flockwave.spec.ids import make_valid_object_id
 from time import time
@@ -262,10 +262,14 @@ class FlockCtrlDriver(UAVDriver):
 
         self._check_or_record_uav_address(uav, medium, address)
 
+        battery = BatteryInfo()
+        battery.voltage = packet.voltage
+
         uav.update_status(
             position=packet.location,
             velocity=packet.velocity,
             heading=packet.heading,
+            battery=battery,
             algorithm=packet.algorithm_name,
             errors=map_flockctrl_error_code(packet.error),
         )

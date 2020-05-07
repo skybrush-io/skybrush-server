@@ -9,10 +9,10 @@ from typing import Callable, Iterable, List, Optional, Union
 
 from pyledctrl.player import Player
 
+from flockwave.server.utils import color_to_rgb565
 from flockwave.spec.errors import FlockwaveErrorCode
 
 __all__ = (
-    "color_to_rgb565",
     "LightController",
     "ModularLightController",
     "DefaultLightController",
@@ -29,24 +29,6 @@ class Colors:
     WHITE = Color("white")
     RED = Color(rgb=(1, 0, 0))
     ORANGE = Color(rgb=(1, 0.5, 0))
-
-
-def color_to_rgb565(color: Color) -> int:
-    """Converts a color given as an RGB triplet into its RGB565
-    representation.
-
-    Parameters:
-        color: the color to convert
-
-    Returns:
-        int: the color in its RGB565 representation
-    """
-    red, green, blue = [round(x * 255) for x in color.rgb]
-    return (
-        (((red >> 3) & 0x1F) << 11)
-        + (((green >> 2) & 0x3F) << 5)
-        + ((blue >> 3) & 0x1F)
-    )
 
 
 class LightController:

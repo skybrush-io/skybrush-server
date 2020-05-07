@@ -1,6 +1,7 @@
 """Utility functions that do not fit elsewhere."""
 
 from collections import defaultdict
+from colour import Color
 from contextlib import contextmanager
 from datetime import datetime
 from functools import partial as partial_
@@ -9,6 +10,7 @@ from typing import Any, Callable
 
 
 __all__ = (
+    "color_to_rgb565",
     "datetime_to_unix_timestamp",
     "identity",
     "is_timezone_aware",
@@ -51,6 +53,22 @@ def bind(func, args=None, kwds=None, *, partial=False):
     else:
         return partial_(func, *args, **kwds)
 
+def color_to_rgb565(color: Color) -> int:
+    """Converts a color given as an RGB triplet into its RGB565
+    representation.
+
+    Parameters:
+        color: the color to convert
+
+    Returns:
+        int: the color in its RGB565 representation
+    """
+    red, green, blue = [round(x * 255) for x in color.rgb]
+    return (
+        (((red >> 3) & 0x1F) << 11)
+        + (((green >> 2) & 0x3F) << 5)
+        + ((blue >> 3) & 0x1F)
+    )
 
 def constant(x: Any) -> Callable[..., Any]:
     """Function factory that returns a function that accepts an arbitrary

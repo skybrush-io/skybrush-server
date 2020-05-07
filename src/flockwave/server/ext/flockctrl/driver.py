@@ -2,6 +2,7 @@
 
 from __future__ import division
 
+from colour import Color
 from flockwave.concurrency import FutureCancelled, FutureMap
 from flockwave.protocols.flockctrl.packets import (
     ChunkedPacketAssembler,
@@ -15,7 +16,7 @@ from flockwave.protocols.flockctrl.packets import (
 )
 from flockwave.server.ext.logger import log
 from flockwave.server.model.uav import BatteryInfo, UAVBase, UAVDriver
-from flockwave.server.utils import nop
+from flockwave.server.utils import color_to_rgb565, nop
 from flockwave.spec.ids import make_valid_object_id
 from time import time
 from typing import Optional
@@ -262,15 +263,29 @@ class FlockCtrlDriver(UAVDriver):
 
         self._check_or_record_uav_address(uav, medium, address)
 
+        # parse voltage level in proper format
         battery = BatteryInfo()
         battery.voltage = packet.voltage
 
+        # parse light status in proper format
+        if packet.light_status is None:
+            light = None
+        else:
+            color = Color(
+                red=packet.light_status.red / 255,
+                green=packet.light_status.green / 255,
+                blue=packet.light_status.blue / 255
+            )
+            light = color_to_rgb565(color)
+
+        # update generic uav status
         uav.update_status(
             position=packet.location,
             velocity=packet.velocity,
             heading=packet.heading,
-            battery=battery,
             algorithm=packet.algorithm_name,
+            battery=battery,
+            light=light,
             errors=map_flockctrl_error_code(packet.error),
         )
 

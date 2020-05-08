@@ -108,6 +108,9 @@ class DefaultLightController(ModularLightController):
         self._light_program_player = None  # type: Optional[Player]
         self._light_program_start_time = None  # type: Optional[float]
 
+        self._where_are_you_duration_ms = 1000 # type: Optional[float]
+        self._where_are_you_start_time = None # type: Optional[float]
+
         self._override = None
 
     def clear_light_program(self) -> None:
@@ -153,8 +156,18 @@ class DefaultLightController(ModularLightController):
             self._light_program_module,
             self._error_module,
             self._override_module,
+            self._where_are_you_module
         ]
         return result
+
+    def where_are_you(self, duration=1000) -> None:
+        """Initiates a 'where are you' command in the light program.
+
+        Parameters:
+            duration (int): duration of the light signal in milliseconds
+        """
+        self._where_are_you_start_time = time()
+        self._where_are_you_duration_ms = duration
 
     def _error_module(self, timestamp: float, color: Color) -> Color:
         """Lighting module that sets the color unconditionally to red in case
@@ -197,3 +210,21 @@ class DefaultLightController(ModularLightController):
         default light controller.
         """
         return self._override or color
+
+    def _where_are_you_module(self, timestamp: float, color: Color) -> Color:
+        """Lighting module that sets the color to flashing white for a while
+        to be able to find it in on the field or on the map.
+        """
+        if self._where_are_you_start_time is not None:
+            dt = int((timestamp - self._where_are_you_start_time) * 1000)
+            if dt < self._where_are_you_duration_ms:
+                return (
+                    Colors.WHITE 
+                    if ((dt // 200) % 2) == 0
+                    else Colors.BLACK
+                )
+            else:
+                self._where_are_you_start_time = None
+        
+        return color
+

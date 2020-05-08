@@ -151,6 +151,11 @@ class VirtualUAVDriver(UAVDriver):
         uav.land()
         return True
 
+    def _send_light_or_sound_emission_signal_single(self, uav, signals, duration):
+        if "light" in signals:
+            uav.handle_where_are_you(duration)
+        return True
+
     def _send_reset_signal_single(self, uav, component):
         if not component:
             # Resetting the whole UAV, this is supported
@@ -479,6 +484,14 @@ class VirtualUAV(UAVBase):
         self._trajectory = show.get("trajectory", None)
 
         self._light_controller.load_light_program(show.get("lights", None))
+
+    def handle_where_are_you(self, duration):
+        """Handles a 'where are you' command.
+
+        Parameters:
+            duration(int): duration of the signal in milliseconds.
+        """
+        self._light_controller.where_are_you(duration)
 
     def land(self):
         """Starts a simulated landing with the virtual UAV."""

@@ -557,6 +557,7 @@ class SkybrushServer:
             "UAV-LAND": ("send_landing_signal", None),
             "UAV-RST": ("send_reset_signal", None),
             "UAV-RTH": ("send_return_to_home_signal", None),
+            "UAV-SIGNAL": ("send_light_or_sound_emission_signal", None),
             "UAV-TAKEOFF": ("send_takeoff_signal", None),
         }.get(message_type, (None, None))
 
@@ -1106,7 +1107,8 @@ def handle_UAV_LIST(message, sender, hub):
 
 
 @app.message_hub.on(
-    "CMD-REQ", "UAV-FLY", "UAV-HALT", "UAV-LAND", "UAV-RST", "UAV-RTH", "UAV-TAKEOFF"
+    "CMD-REQ", "UAV-FLY", "UAV-HALT", "UAV-LAND", "UAV-RST", "UAV-RTH", 
+    "UAV-SIGNAL", "UAV-TAKEOFF"
 )
 async def handle_UAV_operations(message, sender, hub):
     return await app.dispatch_to_uavs(message, sender)

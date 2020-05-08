@@ -373,6 +373,11 @@ class FlockCtrlDriver(UAVDriver):
     async def _send_return_to_home_signal_single(self, uav):
         return await self._send_command_to_uav("rth", uav)
 
+    async def _send_light_or_sound_emission_signal_single(self, uav, signals, 
+        duration
+    ):
+        return await self._send_command_to_uav("where", uav)
+
     async def _send_shutdown_signal_single(self, uav):
         return await self._send_command_to_uav("halt", uav)
 

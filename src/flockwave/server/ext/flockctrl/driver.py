@@ -94,17 +94,28 @@ class FlockCtrlDriver(UAVDriver):
 
         The current implementation works as follows. If the old address and
         the new address are both associated to localhost, the two addresses
-        are assumed to be compatible. (In testing scenarios, it happens a lot
-        that the ports from which the virtual UAVs broadcast their messages
-        change over time if one of the UAVs is restarted). Otherwise, the
-        two addresses are deemed incompatible.
+        are assumed to be compatible (virtual uavs assumed). If not, 
+        they are compatible only if their IP match and their ports are in the
+        standard ephemeral port range. (It happens a lot that the ports 
+        from which the UAVs broadcast their messages change over time 
+        if one of the UAVs is restarted). 
+        
+        In all other cases the two addresses are deemed incompatible.
         """
-        old_ip, _ = old
-        new_ip, _ = new
-        if old_ip == new_ip and old_ip in ("127.0.0.1", "::1"):
-            return False
-        else:
+        old_ip, old_port = old
+        new_ip, new_port = new
+        # if IPs do not match, addresses are surely incompatible
+        if old_ip != new_ip:
             return True
+        # if we are in localhost, we allow different ports
+        if old_ip in ("127.0.0.1", "::1"):
+            return False
+        # if we are in other networks, we allow different ports only if 
+        # they are both in standard UDP ephemeral port range
+        if old_port >= 32768 and new_port >= 32768:
+            return False
+        # all special cases checked, there is incompatibility
+        return True
 
     def _check_or_record_uav_address(self, uav, medium, address):
         """Records that the given UAV has the given address,
@@ -130,6 +141,10 @@ class FlockCtrlDriver(UAVDriver):
             if self._are_addresses_in_conflict(existing_address, address):
                 raise AddressConflictError(uav, medium, address)
 
+        if existing_address is not None:
+            self.log.warn("UAV possibly rebooted, address changed to {}"
+                .format(address)
+            )
         uav.addresses[medium] = address
         self._uavs_by_source_address[medium, address] = uav
 

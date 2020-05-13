@@ -288,9 +288,16 @@ async def run(app, configuration, logger):
     )
     # TODO(ntamas): make sure that this works even if there is no network
     # connection
-    receiver.setsockopt(
-        trio.socket.IPPROTO_IP, trio.socket.IP_ADD_MEMBERSHIP, membership_request
-    )
+    # except OSError in case ad-hoc wifi is not compatible with IP multicast group
+    try:
+        receiver.setsockopt(
+            trio.socket.IPPROTO_IP, trio.socket.IP_ADD_MEMBERSHIP, membership_request
+        )
+    except OSError as error:
+        logger.warn("OSError while calling receiver.setsockopt(): '{}'"
+            .format(error)
+        )
+        
     await receiver.bind((multicast_group, port))
 
     context = dict(app=app, label=label, log=logger)

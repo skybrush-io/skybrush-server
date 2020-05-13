@@ -385,6 +385,14 @@ class FlockCtrlDriver(UAVDriver):
     async def _send_landing_signal_single(self, uav):
         return await self._send_command_to_uav("land", uav)
 
+    async def _send_reset_signal_single(self, uav, component):
+        if not component:
+            # Resetting the whole UAV, this is supported
+            return await self._send_command_to_uav("restart", uav)
+        else:
+            # No component resets are implemented on this UAV yet
+            return False
+
     async def _send_return_to_home_signal_single(self, uav):
         return await self._send_command_to_uav("rth", uav)
 

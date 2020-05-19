@@ -28,7 +28,7 @@ COMMAND_EXECUTION_MANAGER = {"timeout": 30}
 # Declare the list of extensions to load
 EXTENSIONS = {
     "auth": {},
-    "auth_basic": {},
+    "auth_basic": {"passwords": {"user@domain.xyz": "password"}},
     "debug": {},
     "dock": {"listener": "unix:/tmp/flockwaved-dock.sock"},
     "flockctrl": {

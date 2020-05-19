@@ -34,6 +34,7 @@ multidict = "==4.6.1"
 pyledctrl = {file = "https://git.collmot.com/collmot/pyledctrl/archive/3.0.1.tar.gz"}
 colour = "*"
 pyjwt = "*"
+passlib = {extras = ["bcrypt"],version = "*"}
 
 [dev-packages]
 PyInstaller = "*"

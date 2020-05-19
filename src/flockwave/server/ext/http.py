@@ -89,7 +89,7 @@ def ensure_authorization_header_is_present_if_needed() -> None:
     """
     global app
 
-    if not request.headers["Authorization"]:
+    if not request.headers.get("Authorization"):
         auth = app.import_api("auth")
         if auth.is_required():
             headers = []
@@ -130,7 +130,7 @@ async def authenticate_client_if_needed(client) -> None:
     global app
 
     auth = app.import_api("auth")
-    authorization_header = request.headers["Authorization"]
+    authorization_header = request.headers.get("Authorization")
     if not authorization_header:
         if auth.is_required():
             abort(403)  # Forbidden

@@ -8,9 +8,9 @@ HTTP authentication headers will be translated to AUTH-REQ requests.
 
 from contextlib import ExitStack
 from json import loads
-from quart import abort, Blueprint, request
+from quart import abort, Blueprint, Response, request
 from trio import Event, fail_after, sleep_forever, TooSlowError
-from typing import Any, Tuple
+from typing import Any, Dict
 
 from flockwave.encoders.json import create_json_encoder
 from flockwave.server.model import CommunicationChannel, FlockwaveMessageBuilder
@@ -79,6 +79,98 @@ class HTTPChannel(CommunicationChannel):
 ############################################################################
 
 
+def ensure_authorization_header_is_present_if_needed() -> None:
+    """Helper function that must be called from a Quart request handler.
+    Ensures that the current request has authentication information if
+    the server requires authentication.
+
+    Aborts the request with HTTP error 401 if no credentials were presented
+    and the server requires authentication.
+    """
+    global app
+
+    if not request.headers["Authorization"]:
+        auth = app.import_api("auth")
+        if auth.is_required():
+            headers = []
+            for method in auth.get_supported_methods():
+                if method == "basic":
+                    headers.append(("WWW-Authenticate", "Basic"))
+                elif method == "jwt":
+                    headers.append(("WWW-Authenticate", "Bearer"))
+
+            abort(Response("Unauthorized", 401, headers))
+
+
+def wrap_message_in_envelope(message: Dict[str, Any]) -> Dict[str, Any]:
+    """Ensures that the given message has an envelope and possibly returns a
+    new message object that includes the Flockwave envelope.
+    """
+    global builder
+
+    has_envelope = "$fw.version" in message
+    if not has_envelope:
+        message = {"$fw.version": "1.0", "body": message}
+
+    # Generate a unique ID for the message if needed
+    if "id" not in message:
+        message["id"] = str(builder.id_generator())
+
+    return message
+
+
+async def authenticate_client_if_needed(client) -> None:
+    """Helper function that injects an AUTH-REQ message and inspects the
+    corresponding AUTH-RESP message from the server to decide whether the
+    credentials presented by the user are sufficient.
+
+    Aborts the request with HTTP error 403 if the credentials presented by
+    the user were not accepted by the server.
+    """
+    global app
+
+    auth = app.import_api("auth")
+    authorization_header = request.headers["Authorization"]
+    if not authorization_header:
+        if auth.is_required():
+            abort(403)  # Forbidden
+        else:
+            return
+
+    method, _, data = authorization_header.partition(" ")
+    method = method.lower()
+
+    if method == "basic":
+        auth_request = {"type": "AUTH-REQ", "method": "basic", "data": data}
+    elif method == "bearer":
+        auth_request = {"type": "AUTH-REQ", "method": "jwt", "data": data}
+    else:
+        auth_request = None
+
+    if not auth_request or auth_request["method"] not in auth.get_supported_methods():
+        abort(403)  # Forbidden
+
+    channel = client.channel
+
+    auth_request = wrap_message_in_envelope(auth_request)
+    channel.expect_response_for(auth_request)
+
+    handled = await app.message_hub.handle_incoming_message(auth_request, client)
+    if not handled:
+        abort(403)  # Forbidden
+
+    response = await channel.wait_for_response()
+    if response is None:
+        abort(408)  # Request timeout
+
+    body = response["body"]
+    if body.get("type") != "AUTH-RESP" or body.get("result") is not True:
+        abort(403)  # Forbidden
+
+
+############################################################################
+
+
 blueprint = Blueprint("http", __name__)
 
 
@@ -88,6 +180,10 @@ async def index():
     response.
     """
     global app
+
+    # If authentication is required and we don't have an Authorization header,
+    # bail out
+    ensure_authorization_header_is_present_if_needed()
 
     # We only accept JSON messages
     if not request.is_json:
@@ -101,27 +197,22 @@ async def index():
         abort(408)  # Request timeout
 
     # Wrap the message in an envelope if needed
-    has_envelope = "$fw.version" in message
-    if not has_envelope:
-        message = {"$fw.version": "1.0", "body": message}
-
-    # Generate a unique ID for the message if needed
-    if "id" not in message:
-        message["id"] = str(builder.id_generator())
+    message = wrap_message_in_envelope(message)
 
     # Create a dummy client in the registry, send the message and wait for the
     # response
     client_id = f"http://{request.host}"
     with app.client_registry.use(client_id, "http") as client:
-        channel = client.channel
+        await authenticate_client_if_needed(client)
 
+        channel = client.channel
         channel.expect_response_for(message)
 
         handled = await app.message_hub.handle_incoming_message(message, client)
         if not handled:
             abort(400)  # Bad request
 
-        response = await client.channel.wait_for_response()
+        response = await channel.wait_for_response()
 
     # If we did not get a response, indicate a timeout, otherwise send the
     # response to the client
@@ -129,20 +220,7 @@ async def index():
         abort(408)  # Request timeout
     else:
         response = loads(encoder(response))
-        return response if has_envelope else response.get("body")
-
-
-async def handle_message(message: Any, sender: Tuple[str, int]) -> None:
-    """Handles a single message received from the given sender.
-
-    Parameters:
-        message: the incoming message
-        sender: the IP address and port of the sender
-    """
-    client_id = "udp://{0}:{1}".format(*sender)
-
-    with app.client_registry.use(client_id, "udp") as client:
-        await app.message_hub.handle_incoming_message(message, client)
+        return response.get("body")
 
 
 ############################################################################

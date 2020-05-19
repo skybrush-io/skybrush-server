@@ -8,11 +8,11 @@ from flockwave.server.registries import AuthenticationMethodRegistry
 
 from .base import UAVExtensionBase
 
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 
 class AuthenticationExtension(UAVExtensionBase):
-    """Extension that implements basic handling for authentication-related
+    """Extension that implements basic handling of authentication-related
     messages in the server.
 
     Note that this extension does not implement any particular authentication
@@ -30,6 +30,8 @@ class AuthenticationExtension(UAVExtensionBase):
 
     def exports(self) -> Dict[str, Any]:
         return {
+            "get_supported_methods": self._get_supported_methods,
+            "is_required": self._is_required,
             "register": self._registry.add,
             "unregister": self._registry.remove,
             "use": self._registry.use,
@@ -98,6 +100,16 @@ class AuthenticationExtension(UAVExtensionBase):
             except Exception as ex:
                 response = {"type": "ACK-NAK", "reason": str(ex)}
             responder(response)
+
+    def _get_supported_methods(self) -> List[str]:
+        """Returns the list of supported authentication methods."""
+        return sorted(self._registry.ids)
+
+    def _is_required(self) -> bool:
+        """Getter function that returns whether authentication is required
+        on this server.
+        """
+        return self._required
 
 
 construct = AuthenticationExtension

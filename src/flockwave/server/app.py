@@ -1093,7 +1093,7 @@ def handle_SYS_TIME(message, sender, hub):
 
 @app.message_hub.on("SYS-VER")
 def handle_SYS_VER(message, sender, hub):
-    return {"software": "flockwave-server", "version": server_version}
+    return {"software": "skybrushd", "version": server_version}
 
 
 @app.message_hub.on("UAV-INF")
@@ -1107,8 +1107,14 @@ def handle_UAV_LIST(message, sender, hub):
 
 
 @app.message_hub.on(
-    "CMD-REQ", "UAV-FLY", "UAV-HALT", "UAV-LAND", "UAV-RST", "UAV-RTH", 
-    "UAV-SIGNAL", "UAV-TAKEOFF"
+    "CMD-REQ",
+    "UAV-FLY",
+    "UAV-HALT",
+    "UAV-LAND",
+    "UAV-RST",
+    "UAV-RTH",
+    "UAV-SIGNAL",
+    "UAV-TAKEOFF",
 )
 async def handle_UAV_operations(message, sender, hub):
     return await app.dispatch_to_uavs(message, sender)

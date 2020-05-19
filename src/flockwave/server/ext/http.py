@@ -13,7 +13,6 @@ from trio import Event, fail_after, sleep_forever, TooSlowError
 from typing import Any, Tuple
 
 from flockwave.encoders.json import create_json_encoder
-from flockwave.server.message_hub import MessageValidationError
 from flockwave.server.model import CommunicationChannel, FlockwaveMessageBuilder
 from flockwave.server.utils import overridden
 
@@ -38,7 +37,7 @@ class HTTPChannel(CommunicationChannel):
         """Constructor."""
         self.address = None
 
-        self._event = Event()
+        self._event = None
         self._message_id = None
         self._response = None
 
@@ -52,6 +51,18 @@ class HTTPChannel(CommunicationChannel):
 
     async def close(self, force: bool = False):
         raise NotImplementedError
+
+    def expect_response_for(self, message):
+        """Notifies the communication channel that we are about to send the
+        given message and it should prepare for capturing its response so it
+        can be forwarded back to the client.
+        """
+        if self._message_id != message["id"]:
+            self._message_id = message["id"]
+            if self._event:
+                # in case anyone was waiting for the previous message ID
+                self._event.set()
+            self._event = Event()
 
     async def send(self, message):
         """Inherited."""
@@ -78,25 +89,33 @@ async def index():
     """
     global app
 
+    # We only accept JSON messages
     if not request.is_json:
         abort(415)  # Unsupported media type
 
+    # Read the message; the client has 5 seconds to send it
     try:
         with fail_after(5):
             message = await request.get_json()
     except TooSlowError:
         abort(408)  # Request timeout
 
+    # Wrap the message in an envelope if needed
     has_envelope = "$fw.version" in message
     if not has_envelope:
         message = {"$fw.version": "1.0", "body": message}
 
+    # Generate a unique ID for the message if needed
     if "id" not in message:
         message["id"] = str(builder.id_generator())
 
+    # Create a dummy client in the registry, send the message and wait for the
+    # response
     client_id = f"http://{request.host}"
     with app.client_registry.use(client_id, "http") as client:
-        client.channel._message_id = message["id"]
+        channel = client.channel
+
+        channel.expect_response_for(message)
 
         handled = await app.message_hub.handle_incoming_message(message, client)
         if not handled:
@@ -104,8 +123,13 @@ async def index():
 
         response = await client.channel.wait_for_response()
 
-    response = loads(encoder(response))
-    return response if has_envelope else response.get("body")
+    # If we did not get a response, indicate a timeout, otherwise send the
+    # response to the client
+    if response is None:
+        abort(408)  # Request timeout
+    else:
+        response = loads(encoder(response))
+        return response if has_envelope else response.get("body")
 
 
 async def handle_message(message: Any, sender: Tuple[str, int]) -> None:
@@ -141,4 +165,4 @@ async def run(app, configuration, logger):
         await sleep_forever()
 
 
-dependencies = ("http_server",)
+dependencies = ("auth", "http_server")

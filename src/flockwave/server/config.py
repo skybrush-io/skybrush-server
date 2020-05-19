@@ -43,6 +43,7 @@ EXTENSIONS = {
         "connection": "gpsd",
         "id_format": "BEACON:{0}",
     },
+    "http": {},
     "http_server": {},
     "mavlink": {"enabled": False, "id_format": "MAV-{0:02}"},
     "radiation": {
@@ -60,7 +61,7 @@ EXTENSIONS = {
         "arm_after_boot": True,
         "count": 5,
         "delay": 0.2,
-        "enabled": False,
+        "enabled": True,
         "id_format": "{0:02}",
         "origin": [19.062159, 47.473360],  # ELTE kert
         "orientation": 0,

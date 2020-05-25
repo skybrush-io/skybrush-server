@@ -670,12 +670,13 @@ class SkybrushServer:
         """The number of clients connected to the server."""
         return self.client_registry.num_entries
 
-    def prepare(self, config: Optional[str]) -> Optional[int]:
+    def prepare(self, config: Optional[str], debug: bool = False) -> Optional[int]:
         """Hook function that contains preparation steps that should be
         performed by the server before it starts serving requests.
 
         Parameters:
             config: name of the configuration file to load
+            debug: whether to force the app into debug mode
 
         Returns:
             error code to terminate the app with if the preparation was not
@@ -690,6 +691,9 @@ class SkybrushServer:
         )
         if not configurator.configure(config):
             return 1
+
+        if debug or self.config.get("DEBUG"):
+            self.debug = True
 
         # Process the configuration options
         cfg = self.config.get("COMMAND_EXECUTION_MANAGER", {})

@@ -55,7 +55,7 @@ def start(config, debug, quiet, log_style):
     log.info("Starting Skybrush server...")
 
     # Configure the application
-    retval = app.prepare(config)
+    retval = app.prepare(config, debug=debug)
     if retval is not None:
         return retval
 

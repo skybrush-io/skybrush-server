@@ -86,12 +86,13 @@ class SkybrushGatewayServer:
             scheme = "https" if self._is_listening_securely() else "http"
             return f"{scheme}://{host}:{port}"
 
-    def prepare(self, config: Optional[str]) -> Optional[int]:
+    def prepare(self, config: Optional[str], debug: bool = False) -> Optional[int]:
         """Hook function that contains preparation steps that should be
         performed by the server before it starts serving requests.
 
         Parameters:
             config: name of the configuration file to load
+            debug: whether to force the app into debug mode
 
         Returns:
             error code to terminate the app with if the preparation was not
@@ -106,6 +107,9 @@ class SkybrushGatewayServer:
         )
         if not configurator.configure(config):
             return 1
+
+        if debug or self.config.get("DEBUG"):
+            self.debug = True
 
         self._public_url_parts = (
             urlparse(self.config["PUBLIC_URL"])

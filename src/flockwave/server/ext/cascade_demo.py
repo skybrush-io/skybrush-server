@@ -2,9 +2,22 @@
 and a Skybrush server, in collaboration with Cascade Ltd
 """
 
+from collections import defaultdict
+from dataclasses import dataclass
+from time import time
 from trio import sleep_forever
+from typing import List
 
 from .base import ExtensionBase
+
+
+@dataclass
+class Trip:
+    """Model object representing a single scheduled trip of a UAV in the demo."""
+
+    uav_id: str
+    start_time: float
+    route: List[str]
 
 
 class ERPSystemConnectionDemoExtension(ExtensionBase):
@@ -12,12 +25,52 @@ class ERPSystemConnectionDemoExtension(ExtensionBase):
     and a Skybrush server, in collaboration with Cascade Ltd
     """
 
+    def __init__(self):
+        super().__init__()
+
+        self._trips = defaultdict(Trip)
+
     def handle_trip_addition(self, message, sender, hub):
         """Handles the addition of a new trip to the list of scheduled trips."""
+        uav_id = message.body.get("uavId")
+        if not isinstance(uav_id, str):
+            return hub.reject(message, "Missing UAV ID or it is not a string")
+
+        start_time_ms = message.body.get("startTime")
+        try:
+            start_time_ms = int(start_time_ms)
+        except Exception:
+            pass
+        if not isinstance(start_time_ms, int):
+            return hub.reject(message, "Missing start time or it is not an integer")
+
+        start_time_sec = start_time_ms / 1000
+        if start_time_sec < time():
+            return hub.reject(message, "Start time is in the past")
+
+        route = message.body.get("route")
+        if not isinstance(route, list) or not route:
+            return hub.reject(message, "Route is not specified or is empty")
+
+        if any(not isinstance(station, str) for station in route):
+            return hub.reject(message, "Station names in route must be strings")
+
+        self._trips[uav_id] = Trip(
+            uav_id=uav_id, start_time=start_time_sec, route=route
+        )
+
         return hub.acknowledge(message)
 
     def handle_trip_cancellation(self, message, sender, hub):
         """Cancels the current trip on a given drone."""
+        uav_id = message.body.get("uavId")
+        if not isinstance(uav_id, str):
+            return hub.reject(message, "Missing UAV ID or it is not a string")
+
+        trip = self._trips.pop(uav_id, None)
+        if trip is None:
+            return hub.reject(message, "UAV has no scheduled trip")
+
         return hub.acknowledge(message)
 
     async def run(self):

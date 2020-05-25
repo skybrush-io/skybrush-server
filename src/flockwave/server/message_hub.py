@@ -149,21 +149,25 @@ class MessageHub:
 
         self._queue_tx, self._queue_rx = open_memory_channel(4096)
 
-    def acknowledge(self, message=None, outcome=True, reason=None):
+    def acknowledge(
+        self,
+        message: Optional[FlockwaveMessage] = None,
+        outcome: bool = True,
+        reason: Optional[str] = None,
+    ) -> FlockwaveResponse:
         """Creates a new positive or negative acknowledgment of the given
         message.
 
         Parameters:
-            message (FlockwaveMessage): the message to respond to with a
-                positive or negative acknowledgmnt
-            outcome (bool): ``True`` to construct a positive acknowledgment,
-                ``False`` otherwise.
-            reason (Optional[str]): the reason for a negative acknowledgment;
-                ignored for positive acknowledgments
+            message: the message to respond to with a positive or negative
+                acknowledgment
+            outcome: ``True`` to construct a positive acknowledgment, ``False``
+                otherwise.
+            reason: the reason for a negative acknowledgment; ignored for
+                positive acknowledgments
 
         Returns:
-            FlockwaveResponse: a response object that acknowledges the
-                given message
+            a response object that acknowledges the given message
         """
         body = {"type": "ACK-ACK" if outcome else "ACK-NAK"}
         if not outcome and reason:
@@ -382,7 +386,7 @@ class MessageHub:
             reason = str(ex)
             log.exception(reason)
             if "id" in message:
-                ack = self.acknowledge(message, outcome=False, reason=reason)
+                ack = self.reject(message, reason=reason)
                 await self.send_message(ack, to=sender)
                 return True
             else:
@@ -404,10 +408,8 @@ class MessageHub:
                 "Unhandled message: {0.body[type]}".format(message),
                 extra={"id": message.id},
             )
-            ack = self.acknowledge(
-                message,
-                outcome=False,
-                reason="No handler managed to parse this message in the server",
+            ack = self.reject(
+                message, reason="No handler managed to parse this message in the server"
             )
             await self.send_message(ack, to=sender)
             return False
@@ -585,6 +587,25 @@ class MessageHub:
             if message_type is not None and not isinstance(message_type, str):
                 message_type = message_type.decode("utf-8")
             self._handlers_by_type[message_type].append(func)
+
+    def reject(
+        self, message: Optional[FlockwaveMessage] = None, reason: Optional[str] = None
+    ) -> FlockwaveResponse:
+        """Creates a new negative acknowledgment (i.e. rejection) of the given
+        message.
+
+        Parameters:
+            message: the message to respond to with a negative acknowledgment
+            reason: the reason for the negative acknowledgment
+
+        Returns:
+            a response object that negatively acknowledges (i.e. rejects) the
+                given message
+        """
+        body = {"type": "ACK-NAK"}
+        if reason:
+            body["reason"] = reason
+        return self._message_builder.create_response_to(message, body)
 
     async def run(self):
         """Runs the message hub periodically in an infinite loop. This

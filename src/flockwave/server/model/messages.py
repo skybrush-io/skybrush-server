@@ -18,6 +18,16 @@ class FlockwaveMessage(metaclass=ModelMeta):
     class __meta__:
         schema = get_message_schema()
 
+    @staticmethod
+    def is_experimental(message: dict) -> str:
+        """Returns whether the given raw JSON representation of a Flockwave
+        message contains an experimental message type for which no validation
+        schema exusts.
+        """
+        body = message.get("body")
+        type = body.get("type") if isinstance(body, dict) else None
+        return isinstance(type, str) and type.startswith("X-")
+
 
 class FlockwaveNotification(FlockwaveMessage):
     """Class representing a single Flockwave notification."""

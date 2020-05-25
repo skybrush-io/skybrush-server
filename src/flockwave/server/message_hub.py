@@ -741,7 +741,17 @@ class MessageHub:
             # We should not re-raise directly from here because on Python 3.x
             # we would get a very long stack trace that includes the original
             # exception as well.
-            error = MessageValidationError("Flockwave message does not match schema")
+            if FlockwaveMessage.is_experimental(message):
+                try:
+                    return FlockwaveMessage.from_json(message, validate=False)
+                except Exception as ex:
+                    error = MessageValidationError(
+                        "Unexpected exception: {0!r}".format(ex)
+                    )
+            else:
+                error = MessageValidationError(
+                    "Flockwave message does not match schema"
+                )
         except Exception as ex:
             # We should not re-raise directly from here because on Python 3.x
             # we would get a very long stack trace that includes the original

@@ -6,12 +6,12 @@ from flockwave.server.model.authentication import AuthenticationResult
 from flockwave.server.model.client import Client
 from flockwave.server.registries import AuthenticationMethodRegistry
 
-from .base import UAVExtensionBase
+from .base import ExtensionBase
 
 from typing import Any, Dict, List
 
 
-class AuthenticationExtension(UAVExtensionBase):
+class AuthenticationExtension(ExtensionBase):
     """Extension that implements basic handling of authentication-related
     messages in the server.
 

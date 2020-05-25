@@ -57,9 +57,8 @@ def create_app():
     async def index():
         index_url = get_index_url()
         if index_url:
-            index_url = index_url.encode("ascii")
             if request.query_string:
-                index_url += b"?" + request.query_string
+                index_url += "?" + request.query_string.encode("utf-8")
             return redirect(index_url)
         else:
             abort(404)

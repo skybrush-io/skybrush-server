@@ -6,9 +6,27 @@ from collections import defaultdict
 from dataclasses import dataclass
 from time import time
 from trio import sleep_forever
-from typing import List
+from typing import Dict, List
+
+from flockwave.gps.vectors import GPSCoordinate
 
 from .base import ExtensionBase
+from .dock.model import Dock
+
+
+@dataclass
+class Station:
+    """Model object representing a single station in the demo."""
+
+    id: str
+    position: GPSCoordinate
+
+    @classmethod
+    def from_json(cls, obj, id: str):
+        """Creates a station from its JSON representation."""
+        pos = GPSCoordinate.from_json(obj)
+        pos.update(agl=0)
+        return cls(id=id, position=pos)
 
 
 @dataclass
@@ -28,7 +46,26 @@ class ERPSystemConnectionDemoExtension(ExtensionBase):
     def __init__(self):
         super().__init__()
 
+        self._stations = []
         self._trips = defaultdict(Trip)
+
+    def configure(self, configuration):
+        super().configure(configuration)
+        self.configure_stations(configuration.get("stations"))
+
+    def configure_stations(self, stations: Dict[str, Dict]):
+        """Parses the list of stations from the configuration file so they
+        can be added as docks later.
+        """
+        stations = stations or {}
+        station_ids = sorted(stations.keys())
+        self._stations = [
+            Station.from_json(stations[station_id], id=station_id)
+            for station_id in station_ids
+        ]
+
+        if self._stations:
+            self.log.info(f"Loaded {len(self._stations)} stations.")
 
     def handle_trip_addition(self, message, sender, hub):
         """Handles the addition of a new trip to the list of scheduled trips."""
@@ -78,8 +115,12 @@ class ERPSystemConnectionDemoExtension(ExtensionBase):
             "X-TRIP-ADD": self.handle_trip_addition,
             "X-TRIP-CANCEL": self.handle_trip_cancellation,
         }
+
+        docks = [Dock(station.id) for station in self._stations]
+
         with self.app.message_hub.use_message_handlers(handlers):
-            await sleep_forever()
+            with self.app.object_registry.use(*docks):
+                await sleep_forever()
 
 
 construct = ERPSystemConnectionDemoExtension

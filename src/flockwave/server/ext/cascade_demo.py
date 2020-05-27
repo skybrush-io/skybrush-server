@@ -6,7 +6,7 @@ from collections import defaultdict
 from dataclasses import dataclass
 from time import time
 from trio import sleep_forever
-from typing import Dict, List
+from typing import Dict, List, Tuple
 
 from flockwave.gps.vectors import GPSCoordinate
 
@@ -22,11 +22,16 @@ class Station:
     position: GPSCoordinate
 
     @classmethod
-    def from_json(cls, obj, id: str):
+    def from_json(cls, obj: Tuple[float, float], id: str):
         """Creates a station from its JSON representation."""
-        pos = GPSCoordinate.from_json(obj)
-        pos.update(agl=0)
+        pos = GPSCoordinate(lon=obj[0], lat=obj[1], agl=0)
         return cls(id=id, position=pos)
+
+    def create_dock(self) -> Dock:
+        """Creates a docking station object from this specification."""
+        dock = Dock(id=self.id)
+        dock.update_status(position=self.position)
+        return dock
 
 
 @dataclass
@@ -116,7 +121,7 @@ class ERPSystemConnectionDemoExtension(ExtensionBase):
             "X-TRIP-CANCEL": self.handle_trip_cancellation,
         }
 
-        docks = [Dock(station.id) for station in self._stations]
+        docks = [station.create_dock() for station in self._stations]
 
         with self.app.message_hub.use_message_handlers(handlers):
             with self.app.object_registry.use(*docks):

@@ -130,7 +130,7 @@ class DockExtension(UAVExtensionBase):
         for dock_id in dock_ids:
             dock = self._find_dock_by_id(dock_id, response)
             if dock:
-                statuses[dock_id] = dock.json
+                statuses[dock_id] = dock.status.json
 
         return response
 

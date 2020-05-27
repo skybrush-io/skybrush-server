@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "71c5d36f2bcd6d18d3f416eff48b65a79a68f9ac3785e1a0fe0af4b3f113c257"
+            "sha256": "a564b4f990f2828f98cbf5f8c416eacda96666ee19bff706efab6bd52d6cbe8b"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -162,7 +162,7 @@
             "file": "https://git.collmot.com/collmot/flockwave-parsers/archive/1.1.1.tar.gz"
         },
         "flockwave-spec": {
-            "file": "https://git.collmot.com/collmot/flockwave-spec/archive/0.34.0.tar.gz"
+            "file": "https://git.collmot.com/collmot/flockwave-spec/archive/0.35.0.tar.gz"
         },
         "future": {
             "hashes": [
@@ -449,11 +449,11 @@
         },
         "quart": {
             "hashes": [
-                "sha256:187427d1a2d7fed20dcb825dddbe20fd971efd7ec413639f95d2e28ff59a0cb1",
-                "sha256:bd93650fa856dcfbc3890952ab3ca53f7755ab506d453a209db63713eceeceda"
+                "sha256:99a65bc90d0e1260c9cc9a7dd0b8523eb6cd9f4ec146e771e98a55ee180ae6c2",
+                "sha256:f706e6eff0ef756b88d9965359f7445c9c2773551dca822deb8c018c58c00902"
             ],
             "index": "pypi",
-            "version": "==0.11.5"
+            "version": "==0.12.0"
         },
         "quart-trio": {
             "hashes": [
@@ -473,11 +473,11 @@
         },
         "six": {
             "hashes": [
-                "sha256:236bdbdce46e6e6a3d61a337c0f8b763ca1e8717c03b369e87a7ec7ce1319c0a",
-                "sha256:8f3cd2e254d8f793e7f3d6d9df77b92252b52637291d0f0da013c76ea2724b6c"
+                "sha256:30639c035cdb23534cd4aa2dd52c3bf48f06e5f4a941509c8bafd8ce11080259",
+                "sha256:8b74bedcbbbaca38ff6d7491d76f2b06b3592611af620f8426e82dddb04a5ced"
             ],
             "index": "pypi",
-            "version": "==1.14.0"
+            "version": "==1.15.0"
         },
         "sniffio": {
             "hashes": [
@@ -512,11 +512,11 @@
         },
         "trio": {
             "hashes": [
-                "sha256:23b8e3b8e27202792c03ec716079b6b517e53ad68ee9864aa911378842f22e95",
-                "sha256:894d6e9a517299f354cb8d520748fec53ae1f34b7355445b3451c48cb665d367"
+                "sha256:3010864ab8d8b2ae44d3bc97b0e8924d8f5170bf32f07c7638a930a129687f33",
+                "sha256:992763e99c2c37df0796a2ce8c6f498a91df68570cfa3a63acf8367263903ce7"
             ],
             "index": "pypi",
-            "version": "==0.15.0"
+            "version": "==0.15.1"
         },
         "trio-util": {
             "hashes": [
@@ -557,11 +557,11 @@
         },
         "zeroconf": {
             "hashes": [
-                "sha256:51f25787c27cf7b903e6795e8763bccdaa71199f61b75af97f1bde036fa43b27",
-                "sha256:a0cdd43ee8f00e7082f784c4226d2609070ad0b2aeb34b0154466950d2134de6"
+                "sha256:43ad5006c00be2040cdca1fe768206f4a25356d3cc87eff8b66bd7ead2a82440",
+                "sha256:ee2015ed0df56640626e0c636d1c9b1751c7b9632515b329b86ffa7f258dddab"
             ],
             "index": "pypi",
-            "version": "==0.26.1"
+            "version": "==0.26.3"
         },
         "zipp": {
             "hashes": [
@@ -713,19 +713,19 @@
         },
         "pytest-trio": {
             "hashes": [
-                "sha256:6a50e9585ebbb0ce9ae83d33bde7865952d76c4d4b8759a0345a551f113d468c",
-                "sha256:848c2ba632d9c2d4e2770fe4eb149c8db69ecefc9239e2e6f77c41d9a2393d5e"
+                "sha256:3f48cc1df66d279d705af38ad38d1639c2e2380ddffcdc3a45bb81758de61f03",
+                "sha256:9bf0a490fd177a33617e8709242293fae47934de2b51f8209eb2c0545b6ca8fe"
             ],
             "index": "pypi",
-            "version": "==0.5.2"
+            "version": "==0.6.0"
         },
         "six": {
             "hashes": [
-                "sha256:236bdbdce46e6e6a3d61a337c0f8b763ca1e8717c03b369e87a7ec7ce1319c0a",
-                "sha256:8f3cd2e254d8f793e7f3d6d9df77b92252b52637291d0f0da013c76ea2724b6c"
+                "sha256:30639c035cdb23534cd4aa2dd52c3bf48f06e5f4a941509c8bafd8ce11080259",
+                "sha256:8b74bedcbbbaca38ff6d7491d76f2b06b3592611af620f8426e82dddb04a5ced"
             ],
             "index": "pypi",
-            "version": "==1.14.0"
+            "version": "==1.15.0"
         },
         "sniffio": {
             "hashes": [
@@ -750,11 +750,11 @@
         },
         "trio": {
             "hashes": [
-                "sha256:23b8e3b8e27202792c03ec716079b6b517e53ad68ee9864aa911378842f22e95",
-                "sha256:894d6e9a517299f354cb8d520748fec53ae1f34b7355445b3451c48cb665d367"
+                "sha256:3010864ab8d8b2ae44d3bc97b0e8924d8f5170bf32f07c7638a930a129687f33",
+                "sha256:992763e99c2c37df0796a2ce8c6f498a91df68570cfa3a63acf8367263903ce7"
             ],
             "index": "pypi",
-            "version": "==0.15.0"
+            "version": "==0.15.1"
         },
         "wcwidth": {
             "hashes": [

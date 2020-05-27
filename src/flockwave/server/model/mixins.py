@@ -27,7 +27,7 @@ class TimestampMixin:
         self.update_timestamp(timestamp)
 
     def update_timestamp(self, timestamp: Optional[TimestampLike] = None):
-        """Updates the timestamp of the connection status information.
+        """Updates the timestamp of the object.
 
         Parameters:
             timestamp (datetime or None): the new timestamp; ``None`` means
@@ -36,9 +36,7 @@ class TimestampMixin:
         if timestamp is None:
             timestamp = int(round(time() * 1000))
         elif isinstance(timestamp, datetime):
-            assert is_timezone_aware(
-                timestamp
-            ), "UAV status information timestamp must be timezone-aware"
+            assert is_timezone_aware(timestamp), "Timestamp must be timezone-aware"
             timestamp = int(round(timestamp.timestamp() * 1000))
         else:
             timestamp = int(timestamp)

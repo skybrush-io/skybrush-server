@@ -150,9 +150,9 @@ class DockExtension(UAVExtensionBase):
 
                 # If we have a dedicated listener where the docking station will
                 # connect to us, prepare the listener to handle the connections,
-                # add a connection object to the server to represent its status,
-                # and add a "dock" object as well. If there is no listener, we
-                # are responsible for handling dock-related messages only
+                # and add a connection object to the server to represent its
+                # status. If there is no listener, we are responsible for
+                # handling dock-related messages only
                 if listener:
                     listener = create_listener(listener)
                     listener.handler = self.handle_connection_safely

@@ -146,6 +146,8 @@ class DockExtension(UAVExtensionBase):
                     )
                 )
 
+                stack.enter_context(registered("dock", Dock))
+
                 # If we have a dedicated listener where the docking station will
                 # connect to us, prepare the listener to handle the connections,
                 # add a connection object to the server to represent its status,
@@ -155,8 +157,6 @@ class DockExtension(UAVExtensionBase):
                     listener = create_listener(listener)
                     listener.handler = self.handle_connection_safely
                     listener.nursery = nursery
-
-                    stack.enter_context(registered("dock", Dock))
 
                     stack.enter_context(
                         app.connection_registry.use(

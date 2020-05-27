@@ -29,16 +29,6 @@ COMMAND_EXECUTION_MANAGER = {"timeout": 30}
 EXTENSIONS = {
     "auth": {},
     "auth_basic": {"passwords": {"user@domain.xyz": "password"}},
-    "cascade_demo": {
-        "stations": {
-            # Farkashegy
-            "A": [18.914472, 47.486442],
-            "B": [18.915031, 47.484927],
-            "C": [18.914748, 47.488060],
-            "D": [18.915955, 47.486647],
-            "E": [18.917274, 47.485178],
-        }
-    },
     "debug": {},
     "dock": {"listener": "unix:/tmp/flockwaved-dock.sock"},
     "flockctrl": {
@@ -71,7 +61,7 @@ EXTENSIONS = {
         "arm_after_boot": True,
         "count": 1,
         "delay": 0.2,
-        "enabled": True,
+        "enabled": False,
         "id_format": "{0:02}",
         "origin": [18.915125, 47.486305],  # Fahegy
         # "origin": [19.062159, 47.473360],  # ELTE kert

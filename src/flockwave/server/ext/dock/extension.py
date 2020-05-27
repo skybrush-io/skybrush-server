@@ -3,18 +3,23 @@ from tinyrpc.dispatch import RPCDispatcher
 from tinyrpc.protocols.msgpackrpc import MSGPACKRPCProtocol
 from trio import open_nursery, sleep_forever
 from trio.abc import Stream
+from typing import Optional
 
 from flockwave.connections import create_connection, StreamWrapperConnection
 from flockwave.channels import MessageChannel
 from flockwave.listeners import create_listener
 from flockwave.parsers.rpc import RPCMessage
+from flockwave.server.message_hub import MessageHub
 from flockwave.server.model import ConnectionPurpose
+from flockwave.server.model.client import Client
+from flockwave.server.model.messages import FlockwaveMessage, FlockwaveResponse
 from flockwave.server.model.object import registered
 from flockwave.server.model.uav import PassiveUAVDriver
+from flockwave.server.registries import find_in_registry
 
 from ..base import UAVExtensionBase
 
-from .model import Dock
+from .model import Dock, is_dock
 from .rpc import DockRPCServer
 
 ############################################################################
@@ -103,30 +108,91 @@ class DockExtension(UAVExtensionBase):
 
             self._current_stream = None
 
+    def handle_DOCK_INF(
+        self, message: FlockwaveMessage, sender: Client, hub: MessageHub
+    ):
+        """Handles incoming DOCK-INF messages.
+
+        Parameters:
+            message: the message that was received
+            sender: the client that sent the message
+            hub: the message hub that handles the message
+        """
+        statuses = {}
+
+        dock_ids = message.body["ids"]
+
+        body = {"status": statuses, "type": "DOCK-INF"}
+        response = hub.create_response_or_notification(
+            body=body, in_response_to=message
+        )
+
+        for dock_id in dock_ids:
+            dock = self._find_dock_by_id(dock_id, response)
+            if dock:
+                statuses[dock_id] = dock.json
+
+        return response
+
     async def run(self, app, configuration, logger):
         listener = configuration.get("listener")
-        if not listener:
-            logger.warn("No listener specified; dock extension disabled")
-            return
 
         async with open_nursery() as nursery:
-            listener = create_listener(listener)
-            listener.handler = self.handle_connection_safely
-            listener.nursery = nursery
-
             with ExitStack() as stack:
-                stack.enter_context(registered("dock", Dock))
+                # Register message handlers for dock-related messages
                 stack.enter_context(
-                    app.connection_registry.use(
-                        self._connection,
-                        "Dock",
-                        "Docking station",
-                        purpose=ConnectionPurpose.dock,
+                    app.message_hub.use_message_handlers(
+                        {"DOCK-INF": self.handle_DOCK_INF}
                     )
                 )
 
-                async with listener:
+                # If we have a dedicated listener where the docking station will
+                # connect to us, prepare the listener to handle the connections,
+                # add a connection object to the server to represent its status,
+                # and add a "dock" object as well. If there is no listener, we
+                # are responsible for handling dock-related messages only
+                if listener:
+                    listener = create_listener(listener)
+                    listener.handler = self.handle_connection_safely
+                    listener.nursery = nursery
+
+                    stack.enter_context(registered("dock", Dock))
+
+                    stack.enter_context(
+                        app.connection_registry.use(
+                            self._connection,
+                            "Dock",
+                            "Docking station",
+                            purpose=ConnectionPurpose.dock,
+                        )
+                    )
+
+                    async with listener:
+                        await sleep_forever()
+                else:
                     await sleep_forever()
+
+    def _find_dock_by_id(
+        self, dock_id: str, response: Optional[FlockwaveResponse] = None
+    ) -> Optional[Dock]:
+        """Finds the dock with the given ID in the object registry or registers
+        a failure in the given response object if there is no dock with the
+        given ID.
+
+        Parameters:
+            dock_id: the ID of the dock to find
+            response: the response in which the failure can be registered
+
+        Returns:
+            the dock with the given ID or ``None`` if there is no such dock
+        """
+        return find_in_registry(
+            self.app.object_registry,
+            dock_id,
+            predicate=is_dock,
+            response=response,
+            failure_reason="No such dock",
+        )
 
 
 construct = DockExtension

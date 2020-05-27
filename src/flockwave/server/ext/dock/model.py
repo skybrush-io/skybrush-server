@@ -1,9 +1,9 @@
-from typing import Optional
+from typing import Any, Optional
 
 from flockwave.server.model.devices import DeviceTreeMutator, ObjectNode
 from flockwave.server.model.object import ModelObject
 
-__all__ = ("Dock",)
+__all__ = ("Dock", "is_dock")
 
 
 class Dock(ModelObject):
@@ -27,6 +27,10 @@ class Dock(ModelObject):
     @property
     def id(self):
         return self._id
+
+    @property
+    def json(self):
+        return {}
 
     def _initialize_device_tree_node(self, node):
         thermometer = node.add_device("thermometer")
@@ -56,3 +60,8 @@ class Dock(ModelObject):
             mutator.update(self._channels["external_temperature"], external)
         if internal is not None:
             mutator.update(self._channels["internal_temperature"], internal)
+
+
+def is_dock(x: Any) -> bool:
+    """Returns whether the given object is a docking station."""
+    return isinstance(x, Dock)

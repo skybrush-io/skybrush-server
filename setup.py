@@ -27,7 +27,6 @@ requires = [
     "python-dotenv>=0.10.3",
     "pyledctrl @ https://git.collmot.com/collmot/pyledctrl/archive/3.0.1.tar.gz",
     "sentry-sdk>=0.12.3",
-    "six>=1.10.0",
     "quart>=0.10.0",
     "quart-trio>=0.4.0",
     "tinyrpc[msgpack]>=1.0.4",

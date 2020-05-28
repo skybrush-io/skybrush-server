@@ -1,4 +1,3 @@
-import six
 import sys
 import time
 import trio
@@ -112,7 +111,7 @@ class Socket(object):
         except exceptions.QueueEmpty:
             exc = sys.exc_info()
             await self.close(wait=False)
-            six.reraise(*exc)
+            raise exc[0].with_traceback(exc[1], exc[2])
         return packets
 
     async def handle_post_request(self, environ):

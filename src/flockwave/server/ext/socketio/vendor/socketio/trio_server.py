@@ -1,5 +1,4 @@
 import inspect
-import six
 import trio
 
 import flockwave.server.ext.socketio.vendor.engineio as engineio
@@ -258,7 +257,7 @@ class TrioServer(server.Server):
         with trio.move_on_after(timeout) as cancel_scope:
             await callback_event.wait()
         if cancel_scope.cancelled_caught:
-            six.raise_from(exceptions.TimeoutError(), None)
+            raise exceptions.TimeoutError() from None
         return (
             callback_args[0]
             if len(callback_args[0]) > 1

@@ -43,7 +43,6 @@ python-dotenv==0.12.0
 quart-trio==0.5.1
 quart==0.11.5
 sentry-sdk==0.14.3
-six==1.14.0
 sniffio==1.1.0
 sortedcontainers==2.1.0
 tinyrpc[msgpack]==1.0.4

@@ -12,10 +12,10 @@ M-SEARCH requests for root devices, and for searches for
 
 from contextlib import closing
 from datetime import datetime
+from http.server import BaseHTTPRequestHandler
 from io import BytesIO
 from os import getenv
 from random import random
-from six.moves import BaseHTTPServer
 from time import mktime
 from trio import sleep
 from wsgiref.handlers import format_date_time
@@ -60,7 +60,7 @@ _UPNP_SERVICE_ID_REGEX = re.compile(
 ############################################################################
 
 
-class Request(BaseHTTPServer.BaseHTTPRequestHandler):
+class Request(BaseHTTPRequestHandler):
     """Class for parsing the contents of an incoming SSDP request (which is
     essentially a glorified HTTP request so the same parser can be used).
     """
@@ -294,10 +294,8 @@ async def run(app, configuration, logger):
             trio.socket.IPPROTO_IP, trio.socket.IP_ADD_MEMBERSHIP, membership_request
         )
     except OSError as error:
-        logger.warn("OSError while calling receiver.setsockopt(): '{}'"
-            .format(error)
-        )
-        
+        logger.warn("OSError while calling receiver.setsockopt(): '{}'".format(error))
+
     await receiver.bind((multicast_group, port))
 
     context = dict(app=app, label=label, log=logger)

@@ -94,12 +94,12 @@ class FlockCtrlDriver(UAVDriver):
 
         The current implementation works as follows. If the old address and
         the new address are both associated to localhost, the two addresses
-        are assumed to be compatible (virtual uavs assumed). If not, 
+        are assumed to be compatible (virtual uavs assumed). If not,
         they are compatible only if their IP match and their ports are in the
-        standard ephemeral port range. (It happens a lot that the ports 
-        from which the UAVs broadcast their messages change over time 
-        if one of the UAVs is restarted). 
-        
+        standard ephemeral port range. (It happens a lot that the ports
+        from which the UAVs broadcast their messages change over time
+        if one of the UAVs is restarted).
+
         In all other cases the two addresses are deemed incompatible.
         """
         old_ip, old_port = old
@@ -110,7 +110,7 @@ class FlockCtrlDriver(UAVDriver):
         # if we are in localhost, we allow different ports
         if old_ip in ("127.0.0.1", "::1"):
             return False
-        # if we are in other networks, we allow different ports only if 
+        # if we are in other networks, we allow different ports only if
         # they are both in standard UDP ephemeral port range
         if old_port >= 32768 and new_port >= 32768:
             return False
@@ -142,8 +142,8 @@ class FlockCtrlDriver(UAVDriver):
                 raise AddressConflictError(uav, medium, address)
 
         if existing_address is not None:
-            self.log.warn("UAV possibly rebooted, address changed to {}"
-                .format(address)
+            self.log.warn(
+                "UAV possibly rebooted, address changed to {}".format(address)
             )
         uav.addresses[medium] = address
         self._uavs_by_source_address[medium, address] = uav
@@ -193,6 +193,20 @@ class FlockCtrlDriver(UAVDriver):
             uav = self._create_uav(formatted_id)
             object_registry.add(uav)
         return object_registry.find_by_id(formatted_id)
+
+    async def handle_command___mission_upload(self, uav, *, mission):
+        """Handles a mission upload request for the given UAV.
+
+        This is a temporary solution until we figure out something that is
+        more sustainable in the long run.
+
+        Parameters:
+            mission: the mission file, in ZIP format, encoded as base64
+        """
+        from trio import sleep
+
+        await sleep(0.5)
+        return True
 
     def handle_generic_command(self, uav, command, args, kwds):
         """Sends a generic command execution request to the given UAV."""
@@ -289,7 +303,7 @@ class FlockCtrlDriver(UAVDriver):
             color = Color(
                 red=packet.light_status.red / 255,
                 green=packet.light_status.green / 255,
-                blue=packet.light_status.blue / 255
+                blue=packet.light_status.blue / 255,
             )
             light = color_to_rgb565(color)
 
@@ -396,9 +410,7 @@ class FlockCtrlDriver(UAVDriver):
     async def _send_return_to_home_signal_single(self, uav):
         return await self._send_command_to_uav("rth", uav)
 
-    async def _send_light_or_sound_emission_signal_single(self, uav, signals, 
-        duration
-    ):
+    async def _send_light_or_sound_emission_signal_single(self, uav, signals, duration):
         if "light" in signals:
             return await self._send_command_to_uav("where", uav)
 

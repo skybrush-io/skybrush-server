@@ -2,6 +2,7 @@
 
 from __future__ import division
 
+from base64 import b64decode
 from colour import Color
 from flockwave.concurrency import FutureCancelled, FutureMap
 from flockwave.protocols.flockctrl.packets import (
@@ -19,16 +20,21 @@ from flockwave.server.model.uav import BatteryInfo, UAVBase, UAVDriver
 from flockwave.server.utils import color_to_rgb565, nop
 from flockwave.spec.ids import make_valid_object_id
 from time import time
-from typing import Optional
+from trio import CapacityLimiter, to_thread
+from typing import Optional, Tuple
 from zlib import decompress
 
 from .algorithms import handle_algorithm_data_packet
+from .comm import upload_mission
 from .errors import AddressConflictError, map_flockctrl_error_code
 
 __all__ = ("FlockCtrlDriver",)
 
 MAX_GEIGER_TUBE_COUNT = 2
 MAX_CAMERA_FEATURE_COUNT = 32
+
+#: Type specification for UAV network addresses in this driver
+UAVAddress = Tuple[str, int]
 
 
 class FlockCtrlDriver(UAVDriver):
@@ -77,6 +83,7 @@ class FlockCtrlDriver(UAVDriver):
         self._packet_assembler = ChunkedPacketAssembler()
         self._index_to_uav_id = {}
         self._uavs_by_source_address = {}
+        self._upload_capacity = CapacityLimiter(5)
 
         self.allow_multiple_commands_per_uav = True
         self.app = app
@@ -194,7 +201,9 @@ class FlockCtrlDriver(UAVDriver):
             object_registry.add(uav)
         return object_registry.find_by_id(formatted_id)
 
-    async def handle_command___mission_upload(self, uav, *, mission):
+    async def handle_command___mission_upload(
+        self, uav: "FlockCtrlUAV", mission: bytes
+    ):
         """Handles a mission upload request for the given UAV.
 
         This is a temporary solution until we figure out something that is
@@ -203,9 +212,19 @@ class FlockCtrlDriver(UAVDriver):
         Parameters:
             mission: the mission file, in ZIP format, encoded as base64
         """
-        from trio import sleep
+        medium, address = self._get_address_of_uav(uav)
+        if medium != "wireless":
+            raise ValueError("UAV does not have a wireless connection")
 
-        await sleep(0.5)
+        host, _ = address
+
+        await to_thread.run_sync(
+            upload_mission,
+            b64decode(mission),
+            host,
+            cancellable=True,
+            limiter=self._upload_capacity,
+        )
         return True
 
     def handle_generic_command(self, uav, command, args, kwds):
@@ -244,6 +263,17 @@ class FlockCtrlDriver(UAVDriver):
             return "Keyword arguments not supported"
         if args and any(not isinstance(arg, str) for arg in args):
             return "Non-string positional arguments not supported"
+
+    def _get_address_of_uav(self, uav: "FlockCtrlUAV") -> UAVAddress:
+        """Returns the network address of the given UAV.
+
+        Raises:
+            ValueError: if no address is known for the UAV yet
+        """
+        try:
+            return uav.preferred_address
+        except ValueError:
+            raise ValueError("Address of UAV is not known yet")
 
     def _handle_inbound_algorithm_data_packet(self, packet, source):
         """Handles an inbound FlockCtrl packet containing algorithm-specific
@@ -355,11 +385,7 @@ class FlockCtrlDriver(UAVDriver):
         Returns:
             the result of the command
         """
-        try:
-            address = uav.preferred_address
-        except ValueError:
-            raise ValueError("Address of UAV is not known yet")
-
+        address = self._get_address_of_uav(uav)
         await self._send_command_to_address(command, address)
 
         async with self._pending_commands_by_uav.new(
@@ -436,7 +462,7 @@ class FlockCtrlUAV(UAVBase):
         self.addresses = {}
 
     @property
-    def preferred_address(self):
+    def preferred_address(self) -> UAVAddress:
         """Returns the preferred medium and address via which the packets
         should be sent to this UAV.
 

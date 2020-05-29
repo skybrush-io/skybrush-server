@@ -6,10 +6,14 @@ link (e.g., standard 802.11 wifi).
 import attr
 
 from collections import defaultdict
+from datetime import datetime
 from functools import partial
+from io import BytesIO
+from paramiko import SSHClient
+from select import select
 from trio import open_memory_channel
 from trio_util import wait_all
-from typing import Generator, Optional, Tuple
+from typing import Generator, Optional, Tuple, Union
 
 from flockwave.channels import MessageChannel
 from flockwave.connections import Connection, IPAddressAndPort, UDPSocketConnection
@@ -19,6 +23,13 @@ from flockwave.protocols.flockctrl import (
     FlockCtrlEncoder,
     FlockCtrlPacket,
     FlockCtrlParser,
+)
+
+__all__ = (
+    "create_flockctrl_udp_message_channel",
+    "CommunicationManager",
+    "execute_ssh_command",
+    "upload_mission",
 )
 
 
@@ -177,3 +188,100 @@ class CommunicationManager:
             entry.channel = None
             if address and not has_error:
                 self.log.info(f"Connection at {address} closed.")
+
+
+def execute_ssh_command(
+    ssh: SSHClient, command: str, stdin: Optional[bytes] = None, timeout: float = 5
+):
+    """Executes the given command on an established SSH connection, optionally
+    submitting the given data on the standard input stream before reading
+    anything from stdout or stderr. stdout and stderr is then read until the
+    end.
+
+    Parameters:
+        ssh: the SSH connection
+        command: the command string to send
+        stdin: optional input to send on the standard input
+        timeout: number of seconds to wait for a response before the attempt is
+            considered to have timed out
+
+    Returns:
+        Tuple[bytes, bytes, int]: the data read from the standard output and
+        standard error streams as well as the exit code of the command
+    """
+    stdin_stream, stdout_stream, stderr_stream = ssh.exec_command(
+        command, timeout=timeout
+    )
+    channel = stdout_stream.channel
+
+    if stdin is not None:
+        stdin_stream.write(stdin)
+
+    channel.shutdown_write()
+    stdin_stream.close()
+
+    stdout, stderr = [], []
+
+    while True:
+        rl, _, _ = select([channel], [], [])
+        if rl:
+            num_bytes = 0
+            if channel.recv_stderr_ready():
+                recv_bytes = channel.recv_stderr(1024)
+                num_bytes += len(recv_bytes)
+                stderr.append(recv_bytes)
+            if channel.recv_ready():
+                recv_bytes = channel.recv(1024)
+                num_bytes += len(recv_bytes)
+                stdout.append(recv_bytes)
+            if not num_bytes:
+                break
+
+    channel.close()
+
+    exit_code = channel.recv_exit_status()
+    if exit_code == -1:
+        # Bad, bad server...
+        exit_code = 0
+
+    return b"".join(stdout), b"".join(stderr), exit_code
+
+
+def upload_mission(raw_data: bytes, address: Union[str, Tuple[str, int]]) -> None:
+    """Uploads the given raw mission data to the inbox of a drone at the given
+    address.
+
+    This function blocks the thread it is running in; it is advised to run it
+    in a separate thread in order not to block the main event loop.
+
+    Parameters:
+        raw_data: the raw data to upload. It must be an in-memory mission ZIP
+            file. Some basic validity checks will be performed on it before
+            attempting the upload.
+        address: the network address of the UAV, either as a hostname or as a
+            tuple consisting of a hostname and a port
+    """
+    from zipfile import ZipFile
+    from .ssh import open_scp, open_ssh
+
+    with ZipFile(BytesIO(raw_data)) as parsed_data:
+        if parsed_data.testzip():
+            raise ValueError("Invalid mission file")
+
+        version_info = parsed_data.read("_meta/version").strip()
+        if version_info != b"1":
+            raise ValueError("Only version 1 mission files are supported")
+
+        if "mission.cfg" not in parsed_data.namelist():
+            raise ValueError("No mission configuration in mission file")
+
+    name = datetime.now().replace(microsecond=0).isoformat()
+    with open_ssh(address) as ssh:
+        scp = open_scp(ssh)
+        scp.putfo(BytesIO(raw_data), f"/home/tamas/.flockctrl/inbox/{name}.mission")
+        stdout, stderr, exit_code = execute_ssh_command(
+            ssh, "systemctl restart flockctrl"
+        )
+
+        if exit_code != 0:
+            raise ValueError("Failed to restart flockctrl process")

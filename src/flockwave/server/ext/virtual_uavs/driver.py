@@ -228,6 +228,7 @@ class VirtualUAV(UAVBase):
 
         self._armed = True  # will be disarmed when booting if needed
         self._autopilot_initializing = False
+        self._home_amsl = None
         self._light_controller = DefaultLightController(self)
         self._mission_started_at = None
         self._position_xyz = Vector3D()
@@ -329,11 +330,16 @@ class VirtualUAV(UAVBase):
 
     @property
     def home(self):
-        return self._trans.origin
+        coord = self._trans.origin.copy()
+        if self._home_amsl:
+            coord.amsl = self._home_amsl
+        return coord
 
     @home.setter
     def home(self, value):
         self._trans.origin = value
+        if value.amsl is not None:
+            self._home_amsl = float(value.amsl)
 
     @property
     def state(self):
@@ -413,7 +419,8 @@ class VirtualUAV(UAVBase):
             self.target = None
         else:
             x, y, z = value
-            flat_earth = FlatEarthCoordinate(x=x, y=y, agl=z)
+            amsl = self._home_amsl + z if self._home_amsl is not None else None
+            flat_earth = FlatEarthCoordinate(x=x, y=y, amsl=amsl, agl=z)
             self.target = self._trans.to_gps(flat_earth)
 
     @property
@@ -664,7 +671,11 @@ class VirtualUAV(UAVBase):
         self._position_flat.x = self._position_xyz.x
         self._position_flat.y = self._position_xyz.y
         self._position_flat.agl = self._position_xyz.z
-        self._position_flat.amsl = None
+        self._position_flat.amsl = (
+            self._position_xyz.z + self._home_amsl
+            if self._home_amsl is not None
+            else None
+        )
 
         # Transform the flat Earth coordinates to GPS around our
         # current position as origin

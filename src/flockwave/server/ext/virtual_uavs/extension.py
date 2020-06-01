@@ -57,14 +57,6 @@ class VirtualUAVProviderExtension(UAVExtensionBase):
         # Specify the default takeoff area
         default_takeoff_area = {"type": "grid", "spacing": 5}
 
-        # Place the given number of drones on a circle
-        home_positions = [
-            FlatEarthCoordinate(x=vec.x, y=vec.y)
-            for vec in place_drones(
-                count, **configuration.get("takeoff_area", default_takeoff_area)
-            )
-        ]
-
         # Set the status updater thread frequency
         self.delay = configuration.get("delay", 1)
 
@@ -74,12 +66,23 @@ class VirtualUAVProviderExtension(UAVExtensionBase):
             configuration["origin"] = configuration.pop("center")
 
         # Create a transformation from flat Earth to GPS
+        origin_amsl = (
+            configuration["origin"][2] if len(configuration["origin"]) > 2 else None
+        )
         coordinate_system = {
-            "origin": configuration["origin"],
+            "origin": configuration["origin"][:2],
             "orientation": configuration.get("orientation", 0),
             "type": configuration.get("type", "nwu"),
         }
         trans = FlatEarthToGPSCoordinateTransformation.from_json(coordinate_system)
+
+        # Place the given number of drones on a circle
+        home_positions = [
+            FlatEarthCoordinate(x=vec.x, y=vec.y, amsl=origin_amsl, agl=0)
+            for vec in place_drones(
+                count, **configuration.get("takeoff_area", default_takeoff_area)
+            )
+        ]
 
         # Generate IDs for the UAVs and then create them
         self.uav_ids = [

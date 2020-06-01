@@ -3,7 +3,7 @@
 from random import random
 from typing import Optional
 
-from flockwave.server.model.uav import BatteryInfo
+from flockwave.server.model.battery import BatteryInfo
 
 __all__ = ("VirtualBattery",)
 

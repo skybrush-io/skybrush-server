@@ -3,75 +3,24 @@
 from __future__ import absolute_import
 
 from abc import ABCMeta, abstractproperty
-from typing import Any, List, Optional
+from typing import Any, Iterable, List, Optional, Union
 
 from flockwave.gps.vectors import GPSCoordinate, VelocityNED
 from flockwave.server.errors import NotSupportedError
 from flockwave.server.logger import log as base_log
 from flockwave.spec.schema import get_complex_object_schema
 
+from .battery import BatteryInfo
 from .devices import ObjectNode
+from .gps import GPSFix
 from .metamagic import ModelMeta
 from .mixins import TimestampLike, TimestampMixin
 from .object import ModelObject, register
 from .utils import scaled_by
 
-__all__ = (
-    "BatteryInfo",
-    "is_uav",
-    "PassiveUAVDriver",
-    "UAV",
-    "UAVBase",
-    "UAVDriver",
-    "UAVStatusInfo",
-)
+__all__ = ("is_uav", "PassiveUAVDriver", "UAV", "UAVBase", "UAVDriver", "UAVStatusInfo")
 
 log = base_log.getChild("uav")
-
-
-class BatteryInfo:
-    """Class representing the battery information of a single UAV."""
-
-    def __init__(self):
-        self._voltage = None
-        self._percentage = None
-
-    @property
-    def percentage(self) -> Optional[int]:
-        return self._percentage
-
-    @percentage.setter
-    def percentage(self, value: Optional[int]) -> None:
-        self._percentage = int(value) if value is not None else None
-
-    @property
-    def voltage(self) -> Optional[float]:
-        return self._voltage
-
-    @voltage.setter
-    def voltage(self, value: Optional[float]) -> None:
-        self._voltage = float(value) if value is not None else None
-
-    @property
-    def json(self):
-        if self.voltage is None:
-            return [0.0]
-        elif self.percentage is None:
-            return [int(round(self.voltage * 10))]
-        else:
-            return [int(round(self.voltage * 10)), self.percentage]
-
-    @json.setter
-    def json(self, value):
-        if len(value) == 0:
-            self._voltage = self._percentage = None
-        else:
-            self._voltage = value[0] / 10
-            self._percentage = None if len(value) < 2 else int(value[1])
-
-    def update_from(self, other):
-        self._voltage = other._voltage
-        self._percentage = other._percentage
 
 
 class UAVStatusInfo(TimestampMixin, metaclass=ModelMeta):
@@ -205,37 +154,36 @@ class UAVBase(UAV):
 
     def update_status(
         self,
-        position=None,
-        velocity=None,
-        heading=None,
-        algorithm=None,
-        battery=None,
-        light=None,
-        errors=None,
+        position: Optional[GPSCoordinate] = None,
+        velocity: Optional[VelocityNED] = None,
+        heading: Optional[float] = None,
+        mode: Optional[str] = None,
+        gps: Optional[GPSFix] = None,
+        battery: Optional[BatteryInfo] = None,
+        light: Optional[int] = None,
+        errors: Optional[Union[int, Iterable[int]]] = None,
     ):
         """Updates the status information of the UAV.
 
         Parameters with values equal to ``None`` are ignored.
 
         Parameters:
-            position (Optional[GPSCoordinate]): the position of the UAV.
-                It will be cloned to ensure that modifying this position
-                object from the caller will not affect the UAV itself.
-            velocity (Optional[VelocityNED]): the velocity of the UAV.
-                It will be cloned to ensure that modifying this velocity
-                object from the caller will not affect the UAV itself.
-            heading (Optional[float]): the heading of the UAV, in degrees.
-            algorithm (Optional[str]): the algorithm that the UAV is
-                currently executing
-            battery (Optional[BatteryInfo]): information about the status
-                of the battery on the UAV. It will be cloned to ensure that
-                modifying this object from the caller will not affect the
-                UAV itself.
-            light (Optional[int]): the color of the primary light of the
-                UAV, in RGB565 encoding.
-            errors (Optional[Union[int,Iterable[int]]]): the error code or
-                error codes of the UAV; use an empty list or tuple if the
-                UAV has no errors
+            position: the position of the UAV. It will be cloned to ensure that
+                modifying this position object from the caller will not affect
+                the UAV itself.
+            velocity: the velocity of the UAV. It will be cloned to ensure that
+                modifying this velocity object from the caller will not affect
+                the UAV itself.
+            heading: the heading of the UAV, in degrees.
+            mode: the flight mode that the UAV is currently operating in
+            gps: information about the GPS fix of the UAV
+            battery: information about the status of the battery on the UAV.
+                It will be cloned to ensure that modifying this object from
+                the caller will not affect the UAV itself.
+            light: the color of the primary light of the UAV, in RGB565
+                encoding.
+            errors: the error code or error codes of the UAV; use an empty list
+                or tuple if the UAV has no errors
         """
         if position is not None:
             self._status.position.update_from(position, precision=7)
@@ -246,8 +194,8 @@ class UAVBase(UAV):
             self._status.heading = round(heading % 360, 2)
         if velocity is not None:
             self._status.velocity.update_from(velocity, precision=2)
-        if algorithm is not None:
-            self._status.algorithm = algorithm
+        if mode is not None:
+            self._status.mode = mode
         if battery is not None:
             self._status.battery.update_from(battery)
         if light is not None:
@@ -258,6 +206,8 @@ class UAVBase(UAV):
             else:
                 errors = sorted(code for code in errors if code > 0)
             self._status.errors = errors
+        if gps is not None:
+            self._status.gps.update_from(gps)
         self._status.update_timestamp()
 
 

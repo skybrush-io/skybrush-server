@@ -45,7 +45,8 @@ EXTENSIONS = {
         "id_format": "{0:02}",
         "connections": {
             # "wireless": "default"
-            "wireless": "local"
+            # "wireless": "local",
+            "wireless": "192.168.1.0/24"
         },
     },
     "gps": {
@@ -69,11 +70,11 @@ EXTENSIONS = {
     "udp": {},
     "virtual_uavs": {
         "arm_after_boot": True,
-        "count": 1,
+        "count": 5,
         "delay": 0.2,
         "enabled": True,
         "id_format": "{0:02}",
-        "origin": [18.915125, 47.486305],  # Fahegy
+        "origin": [18.915125, 47.486305, 215],  # Fahegy
         # "origin": [19.062159, 47.473360],  # ELTE kert
         "orientation": 59,
         "takeoff_area": {"type": "grid", "spacing": 5},

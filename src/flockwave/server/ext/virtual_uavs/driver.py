@@ -325,6 +325,10 @@ class VirtualUAV(UAVBase):
         )
 
     @property
+    def has_trajectory(self):
+        return self._trajectory is not None
+
+    @property
     def has_user_defined_error(self):
         return bool(self._user_defined_error)
 
@@ -491,6 +495,8 @@ class VirtualUAV(UAVBase):
         self._trajectory = show.get("trajectory", None)
 
         self._light_controller.load_light_program(show.get("lights", None))
+
+        self.update_status(mode="mission" if self.has_trajectory else "stab")
 
     def handle_where_are_you(self, duration):
         """Handles a 'where are you' command.
@@ -795,6 +801,12 @@ class VirtualUAV(UAVBase):
 
         self.armed = bool(self.boots_armed)
         self.autopilot_initializing = True
+
+        self._trajectory = None
+        self._trajectory_player = None
+        self._trajectory_transformation = None
+
+        self.update_status(mode="mission" if self.has_trajectory else "stab")
 
     def _notify_autopilot_initialized(self) -> None:
         """Notifies the virtual UAV that the autopilot has initialized."""

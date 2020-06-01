@@ -5,6 +5,7 @@ from __future__ import division
 from base64 import b64decode
 from colour import Color
 from flockwave.concurrency import FutureCancelled, FutureMap
+from flockwave.protocols.flockctrl.enums import StatusFlag
 from flockwave.protocols.flockctrl.packets import (
     ChunkedPacketAssembler,
     AlgorithmDataPacket,
@@ -16,7 +17,9 @@ from flockwave.protocols.flockctrl.packets import (
     StatusPacket,
 )
 from flockwave.server.ext.logger import log
-from flockwave.server.model.uav import BatteryInfo, UAVBase, UAVDriver
+from flockwave.server.model.battery import BatteryInfo
+from flockwave.server.model.gps import GPSFixType
+from flockwave.server.model.uav import UAVBase, UAVDriver
 from flockwave.server.utils import color_to_rgb565, nop
 from flockwave.spec.ids import make_valid_object_id
 from time import time
@@ -337,12 +340,44 @@ class FlockCtrlDriver(UAVDriver):
             )
             light = color_to_rgb565(color)
 
+        # derive flight mode
+        if packet.flags & StatusFlag.MODE_GUIDED:
+            mode = packet.algorithm_name or "guided"
+        elif packet.flags & StatusFlag.MODE_STABILIZE:
+            mode = "stab"
+        elif packet.flags & StatusFlag.MODE_ALT_HOLD:
+            mode = "alt"
+        elif packet.flags & StatusFlag.MODE_LOITER:
+            mode = "loiter"
+        elif packet.flags & StatusFlag.MODE_AUTO:
+            mode = "mission"
+        elif packet.flags & StatusFlag.MODE_AUTOPILOT_LAND:
+            mode = "land"
+        elif packet.flags & StatusFlag.MODE_AUTOPILOT_RTH:
+            mode = "rth"
+        elif packet.flags & StatusFlag.MODE_AUTOPILOT_OTHER:
+            mode = "other"
+        else:
+            mode = "unknown"
+
+        # derive GPS fix. Note that the status packets do not
+        # contain information about the GPS fix if it is not
+        # DGPS-augmented or RTK-based; in this case we pretend
+        # that we have no GPS
+        if packet.flags & StatusFlag.DGPS:
+            gps_fix = GPSFixType.DGPS
+        elif packet.flags & StatusFlag.RTK:
+            gps_fix = GPSFixType.RTK
+        else:
+            gps_fix = GPSFixType.NO_GPS
+
         # update generic uav status
         uav.update_status(
             position=packet.location,
+            gps=gps_fix,
             velocity=packet.velocity,
             heading=packet.heading,
-            algorithm=packet.algorithm_name,
+            mode=mode,
             battery=battery,
             light=light,
             errors=map_flockctrl_error_code(packet.error),

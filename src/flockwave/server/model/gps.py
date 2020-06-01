@@ -26,6 +26,14 @@ class GPSFix:
     type: GPSFixType = GPSFixType.NO_GPS
     num_satellites: Optional[int] = None
 
+    @property
+    def json(self):
+        return (
+            [int(self.type)]
+            if self.num_satellites is None
+            else [int(self.type), int(self.num_satellites)]
+        )
+
     def update_from(self, other) -> None:
         """Updates this GPS fix object from another one. You may also specify a
         single GPSFixType_ as the input; in this case, the fix type will be

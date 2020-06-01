@@ -17,6 +17,7 @@ from flockwave.gps.vectors import (
     VelocityNED,
 )
 from flockwave.server.concurrency import delayed
+from flockwave.server.model.gps import GPSFixType
 from flockwave.server.model.uav import UAVBase, UAVDriver
 from flockwave.spec.errors import FlockwaveErrorCode
 
@@ -806,7 +807,9 @@ class VirtualUAV(UAVBase):
         self._trajectory_player = None
         self._trajectory_transformation = None
 
-        self.update_status(mode="mission" if self.has_trajectory else "stab")
+        self.update_status(
+            gps=GPSFixType.DGPS, mode="mission" if self.has_trajectory else "stab"
+        )
 
     def _notify_autopilot_initialized(self) -> None:
         """Notifies the virtual UAV that the autopilot has initialized."""

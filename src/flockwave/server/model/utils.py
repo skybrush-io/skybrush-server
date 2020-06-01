@@ -1,8 +1,26 @@
+from base64 import b64decode, b64encode
 from typing import Callable, Union
 
 from .metamagic import MapperPair
 
-__all__ = ("coerce", "scaled_by")
+__all__ = ("as_base64", "coerce", "scaled_by")
+
+
+def as_base64() -> MapperPair:
+    """Returns a property mapper function pair that can be used to represent
+    a byte array as a base64-encoded string when saving it into JSON.
+    """
+
+    def from_json(value):
+        return None if value is None else b64decode(value.encode("ascii"))
+
+    def to_json(value):
+        return None if value is None else b64encode(value).decode("ascii")
+
+    return from_json, to_json
+
+
+as_base64 = as_base64()
 
 
 def coerce(type: Callable) -> MapperPair:

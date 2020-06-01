@@ -16,7 +16,7 @@ from .gps import GPSFix
 from .metamagic import ModelMeta
 from .mixins import TimestampLike, TimestampMixin
 from .object import ModelObject, register
-from .utils import scaled_by
+from .utils import as_base64, scaled_by
 
 __all__ = ("is_uav", "PassiveUAVDriver", "UAV", "UAVBase", "UAVDriver", "UAVStatusInfo")
 
@@ -30,7 +30,7 @@ class UAVStatusInfo(TimestampMixin, metaclass=ModelMeta):
 
     class __meta__:
         schema = get_complex_object_schema("uavStatusInfo")
-        mappers = {"heading": scaled_by(10)}
+        mappers = {"heading": scaled_by(10), "debug": as_base64}
 
     def __init__(
         self, id: Optional[str] = None, timestamp: Optional[TimestampLike] = None
@@ -44,6 +44,8 @@ class UAVStatusInfo(TimestampMixin, metaclass=ModelMeta):
                 milliseconds elapsed since the UNIX epoch.
         """
         TimestampMixin.__init__(self, timestamp)
+
+        self.gps = GPSFix()
         self.heading = 0.0
         self.id = id
         self.light = 2016
@@ -162,6 +164,7 @@ class UAVBase(UAV):
         battery: Optional[BatteryInfo] = None,
         light: Optional[int] = None,
         errors: Optional[Union[int, Iterable[int]]] = None,
+        debug: Optional[bytes] = None,
     ):
         """Updates the status information of the UAV.
 
@@ -184,6 +187,7 @@ class UAVBase(UAV):
                 encoding.
             errors: the error code or error codes of the UAV; use an empty list
                 or tuple if the UAV has no errors
+            debug: additional debug information to store
         """
         if position is not None:
             self._status.position.update_from(position, precision=7)
@@ -208,6 +212,8 @@ class UAVBase(UAV):
             self._status.errors = errors
         if gps is not None:
             self._status.gps.update_from(gps)
+        if debug is not None:
+            self._status.debug = debug
         self._status.update_timestamp()
 
 

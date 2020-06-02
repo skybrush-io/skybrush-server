@@ -367,7 +367,7 @@ class FlockCtrlDriver(UAVDriver):
         if packet.flags & StatusFlag.DGPS:
             gps_fix = GPSFixType.DGPS
         elif packet.flags & StatusFlag.RTK:
-            gps_fix = GPSFixType.RTK
+            gps_fix = GPSFixType.RTK_FLOAT
         else:
             gps_fix = GPSFixType.NO_GPS
 
@@ -381,6 +381,7 @@ class FlockCtrlDriver(UAVDriver):
             battery=battery,
             light=light,
             errors=map_flockctrl_error_code(packet.error),
+            debug=packet.debug,
         )
 
         self.app.request_to_send_UAV_INF_message_for([uav.id])

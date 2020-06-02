@@ -1,10 +1,11 @@
 """Error classes specific to the FlockCtrl extension."""
 
+from flockwave.protocols.flockctrl.enums import StatusFlag
 from flockwave.spec.errors import FlockwaveErrorCode
 from typing import Tuple, Union
 
 
-__all__ = ("AddressConflictError", "map_flockctrl_error_code")
+__all__ = ("AddressConflictError", "map_flockctrl_error_code_and_flags")
 
 
 class FlockCtrlError(RuntimeError):
@@ -78,14 +79,22 @@ _error_code_mapping = {
 }
 
 
-def map_flockctrl_error_code(
-    error_code: int
+def map_flockctrl_error_code_and_flags(
+    error_code: int, flags: int = 0
 ) -> Union[Tuple[FlockwaveErrorCode], Tuple[()]]:
     """Maps an error code from a FlockCtrl status packet to the corresponding
     Flockwave error code.
 
     Returns:
-        FlockwaveErrorCode: the Flockwave error code corresponding to the
-            given FlockCtrl error code
+        FlockwaveErrorCode: the Flockwave error codes corresponding to the
+            given FlockCtrl error code and flags
     """
-    return _error_code_mapping.get(error_code, FlockwaveErrorCode.UNSPECIFIED_ERROR)
+    base = _error_code_mapping.get(error_code, FlockwaveErrorCode.UNSPECIFIED_ERROR)
+    aux = None
+
+    if flags & StatusFlag.PREARM:
+        aux = FlockwaveErrorCode.PREARM_CHECK_IN_PROGRESS.value
+    else:
+        aux = None
+
+    return base if aux is None else base + (aux,)

@@ -29,7 +29,7 @@ from zlib import decompress
 
 from .algorithms import handle_algorithm_data_packet
 from .comm import upload_mission
-from .errors import AddressConflictError, map_flockctrl_error_code
+from .errors import AddressConflictError, map_flockctrl_error_code_and_flags
 
 __all__ = ("FlockCtrlDriver",)
 
@@ -373,6 +373,16 @@ class FlockCtrlDriver(UAVDriver):
         else:
             gps_fix = GPSFixType.NO_GPS
 
+        # derive debug information that includes the clock status and the
+        # choreography index as well. This is because the Flockwave protocol
+        # does not have a separate item for the choreography index and the
+        # clock status.
+        seconds = round(packet.clock_status.seconds) if packet.clock_status else 0
+        minutes, seconds = divmod(seconds, 60)
+        sep = ":" if seconds % 2 == 0 else "."
+        debug = f"[{packet.choreography_index:02}] {minutes:02}{sep}{seconds:02} ["
+        debug = b"".join([debug.encode("ascii"), packet.debug, b"]"])
+
         # update generic uav status
         uav.update_status(
             position=packet.location,
@@ -382,8 +392,8 @@ class FlockCtrlDriver(UAVDriver):
             mode=mode,
             battery=battery,
             light=light,
-            errors=map_flockctrl_error_code(packet.error),
-            debug=packet.debug,
+            errors=map_flockctrl_error_code_and_flags(packet.error, packet.flags),
+            debug=debug,
         )
 
         self.app.request_to_send_UAV_INF_message_for([uav.id])

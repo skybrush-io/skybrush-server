@@ -90,11 +90,16 @@ def map_flockctrl_error_code_and_flags(
             given FlockCtrl error code and flags
     """
     base = _error_code_mapping.get(error_code, FlockwaveErrorCode.UNSPECIFIED_ERROR)
-    aux = None
+    aux = []
 
     if flags & StatusFlag.PREARM:
-        aux = FlockwaveErrorCode.PREARM_CHECK_IN_PROGRESS.value
-    else:
-        aux = None
+        aux.append(FlockwaveErrorCode.PREARM_CHECK_IN_PROGRESS.value)
+    if (
+        flags & (StatusFlag.MOTOR_RUNNING | StatusFlag.ON_GROUND)
+        == StatusFlag.MOTOR_RUNNING | StatusFlag.ON_GROUND
+    ):
+        aux.append(FlockwaveErrorCode.MOTORS_RUNNING_WHILE_ON_GROUND.value)
+    if not flags & StatusFlag.ARMED:
+        aux.append(FlockwaveErrorCode.DISARMED)
 
-    return base if aux is None else base + (aux,)
+    return base + tuple(aux) if aux else base

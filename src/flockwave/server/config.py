@@ -40,23 +40,24 @@ EXTENSIONS = {
         }
     },
     "debug": {},
-    "dock": {"listener": "unix:/tmp/flockwaved-dock.sock"},
+    "dock": {"enabled": False, "listener": "unix:/tmp/flockwaved-dock.sock"},
     "flockctrl": {
         "id_format": "{0:02}",
         "connections": {
-            # "wireless": "default"
+            "wireless": "default"
             # "wireless": "local",
-            "wireless": "192.168.1.0/24"
+            # "wireless": "192.168.1.0/24"
         },
     },
     "gps": {
         # "connection": "/dev/cu.usbmodem1411",
         "connection": "gpsd",
+        "enabled": False,
         "id_format": "BEACON:{0}",
     },
     "http": {},
     "http_server": {},
-    "mavlink": {"enabled": False, "id_format": "MAV-{0:02}"},
+    "mavlink": {"enabled": False, "id_format": "APM-{0:03}"},
     "radiation": {
         "sources": [{"lat": 47.473703, "lon": 19.061739, "intensity": 50000}],
         "background_intensity": 10,
@@ -72,7 +73,7 @@ EXTENSIONS = {
         "arm_after_boot": True,
         "count": 5,
         "delay": 0.2,
-        "enabled": True,
+        "enabled": False,
         "id_format": "{0:02}",
         "origin": [18.915125, 47.486305, 215],  # Fahegy
         # "origin": [19.062159, 47.473360],  # ELTE kert

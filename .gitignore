@@ -11,4 +11,5 @@ dist/
 tmp/
 .venv/
 __pycache__/
+skybrush.cfg
 

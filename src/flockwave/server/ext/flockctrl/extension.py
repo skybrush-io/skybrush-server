@@ -18,7 +18,7 @@ from flockwave.server.ext.base import UAVExtensionBase
 from flockwave.server.model import ConnectionPurpose
 from flockwave.server.utils import datetime_to_unix_timestamp
 
-from .comm import CommunicationManager
+from .comm import create_communication_manager
 from .driver import FlockCtrlDriver
 
 # from .wireless import WirelessCommunicationManager
@@ -124,7 +124,7 @@ class FlockCtrlDronesExtension(UAVExtensionBase):
             )
 
             # Create the communication manager
-            manager = CommunicationManager()
+            manager = create_communication_manager()
 
             # Register the links with the communication manager. The order is
             # important here; the first one will be used for sending, so that

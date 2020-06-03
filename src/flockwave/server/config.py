@@ -57,7 +57,11 @@ EXTENSIONS = {
     },
     "http": {},
     "http_server": {},
-    "mavlink": {"enabled": False, "id_format": "APM-{0:03}"},
+    "mavlink": {
+        "enabled": False,
+        "id_format": "APM-{0:03}",
+        "connections": {"sitl": "tcp://localhost:5760"},
+    },
     "radiation": {
         "sources": [{"lat": 47.473703, "lon": 19.061739, "intensity": 50000}],
         "background_intensity": 10,

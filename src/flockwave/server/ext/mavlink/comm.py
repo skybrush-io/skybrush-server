@@ -4,10 +4,19 @@ UAV and the ground station via some communication link.
 
 from blinker import Signal
 from importlib import import_module
+from logging import Logger
 from os import devnull
+from typing import Callable, Optional, Union
 
 
-def get_mavlink_parser_factory(dialect):
+def get_mavlink_parser_factory(dialect: Union[str, Callable]):
+    """Constructs a function that can be called with a file-like object and that
+    constructs a new MAVLink parser.
+
+    Parameters:
+        dialect: the name of the MAVLink dialect that will be used by the
+            parser. When it is a callable, it is returned intact.
+    """
     if callable(dialect):
         return dialect
 
@@ -15,7 +24,7 @@ def get_mavlink_parser_factory(dialect):
     return module.MAVLink
 
 
-class CommunicationManager(object):
+class CommunicationManager:
     """Abstract communication manager base class and interface specification.
 
     Attributes:
@@ -29,17 +38,19 @@ class CommunicationManager(object):
 
     on_packet = Signal()
 
-    def __init__(self, ext, identifier, dialect="ardupilotmega"):
+    def __init__(
+        self, ext, identifier: str, dialect: Union[str, Callable] = "ardupilotmega"
+    ):
         """Constructor.
 
         Parameters:
             ext (MAVLinkDronesExtension): the extension that owns this
                 manager
-            identifier (str): unique identifier of this communication
-                mananger. The purpose of this identifier is that the
-                ``(identifier, system_id)`` pair of a UAV must be
-                unique (in other words, each UAV must have a unique system ID
-                *within* each communication link that we handle)
+            identifier: unique identifier of this communication mananger. The
+                purpose of this identifier is that the ``(identifier, system_id)``
+                pair of a UAV must be unique (in other words, each UAV must
+                have a unique system ID *within* each communication link that
+                we handle)
             dialect (Union[str, callable]): the MAVLink dialect to use or
                 a callable that can be called with no arguments to construct
                 a MAVLink instance. When it is a dialect name, we will attempt
@@ -52,12 +63,11 @@ class CommunicationManager(object):
         self._parser = parser_factory(file=open(devnull, "wb"))
 
     @property
-    def log(self):
+    def log(self) -> Optional[Logger]:
         """Returns the logger of the extension that owns this manager.
 
         Returns:
-            Optional[logging.Logger]: the logger of the extension that owns
-                this manager, or ``None`` if the manager is not associated
-                to an extension yet.
+            the logger of the extension that owns this manager, or ``None`` if
+            the manager is not associated to an extension yet.
         """
         return self.ext.log if self.ext else None

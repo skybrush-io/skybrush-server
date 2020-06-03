@@ -77,7 +77,7 @@ class FlockCtrlDriver(UAVDriver):
             id_format (str): the format of the UAV IDs used by this driver.
                 See the class documentation for more details.
         """
-        super(FlockCtrlDriver, self).__init__()
+        super().__init__()
 
         self._pending_commands_by_uav = FutureMap()
 

@@ -33,8 +33,11 @@ class MAVLinkDronesExtension(UAVExtensionBase):
             configuration (dict): the configuration dictionary of the
                 extension
         """
-        # TODO(ntamas)
-        self._links["default"] = CommunicationManager(self, "default")
+        connection_config = configuration.get("connections", {})
+
+        for name, spec in connection_config.items():
+            # TODO(ntamas): use spec
+            self._links[name] = CommunicationManager(self, name)
 
     def configure_driver(self, driver, configuration):
         """Configures the driver that will manage the UAVs created by

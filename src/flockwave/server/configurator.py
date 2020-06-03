@@ -159,7 +159,10 @@ class AppConfigurator:
             return False
         elif exists:
             if self._log:
-                self._log.info("Loaded configuration from {0!r}".format(original))
+                self._log.info(
+                    "Loaded configuration from {0!r}".format(original),
+                    extra={"semantics": "success"},
+                )
 
         return True
 

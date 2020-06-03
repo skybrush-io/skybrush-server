@@ -29,34 +29,20 @@ class MAVLinkDriver(UAVDriver):
             destination address in that medium.
     """
 
-    def __init__(self, app=None, id_format="{0:02}"):
+    def __init__(self, app=None, id_format: str = "{0:02}"):
         """Constructor.
 
         Parameters:
             app (SkybrushServer): the app in which the driver lives
-            id_format (str): the format of the UAV IDs used by this driver.
-                See the class documentation for more details.
+            id_format: the format of the UAV IDs used by this driver
         """
-        self._app = None
-        super(MAVLinkDriver, self).__init__()
+        super().__init__()
 
         self.app = app
         self.create_device_tree_mutator = None
         self.id_format = id_format
-        self.log = log.getChild("flockctrl").getChild("driver")
+        self.log = log.getChild("mavlink").getChild("driver")
         self.send_packet = None
-
-    @property
-    def app(self):
-        """The app in which the driver lives."""
-        return self._app
-
-    @app.setter
-    def app(self, value):
-        if self._app == value:
-            return
-
-        self._app = value
 
 
 class MAVLinkUAV(UAVBase):

@@ -125,7 +125,7 @@ class ChannelTypeRegistry(RegistryBase):
         )
         self._entries[channel_id] = descriptor
 
-        log.info("Channel registered", extra={"id": channel_id, "semantics": "success"})
+        log.debug("Channel registered", extra={"id": channel_id})
 
         self.added.send(self, id=channel_id, descriptor=descriptor)
         self.count_changed.send(self)
@@ -171,7 +171,7 @@ class ChannelTypeRegistry(RegistryBase):
         except KeyError:
             return
 
-        log.info("Channel deregistered", extra={"id": channel_id})
+        log.debug("Channel deregistered", extra={"id": channel_id})
         self.count_changed.send(self)
         self.removed.send(self, id=channel_id, descriptor=descriptor)
 

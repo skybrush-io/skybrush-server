@@ -70,7 +70,10 @@ class ERPSystemConnectionDemoExtension(ExtensionBase):
         ]
 
         if self._stations:
-            self.log.info(f"Loaded {len(self._stations)} stations.")
+            self.log.info(
+                f"Loaded {len(self._stations)} stations.",
+                extra={"semantics": "success"},
+            )
 
     def handle_trip_addition(self, message, sender, hub):
         """Handles the addition of a new trip to the list of scheduled trips."""

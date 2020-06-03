@@ -1,6 +1,5 @@
-"""Base classes for implementing communication managers that facilitate
-communication between UAVs and a ground station via some communication
-link (e.g., standard 802.11 wifi).
+"""Communication manager that facilitates communication between a flockctrl-based
+UAV and the ground station via some communication link.
 """
 
 from datetime import datetime
@@ -21,13 +20,7 @@ from flockwave.protocols.flockctrl import (
 from flockwave.server.comm import CommunicationManager
 
 
-__all__ = (
-    "create_communication_manager",
-    "create_flockctrl_udp_message_channel",
-    "CommunicationManager",
-    "execute_ssh_command",
-    "upload_mission",
-)
+__all__ = ("create_communication_manager", "execute_ssh_command", "upload_mission")
 
 
 def create_communication_manager() -> CommunicationManager[

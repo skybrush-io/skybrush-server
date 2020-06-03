@@ -223,7 +223,6 @@ def is_valid_service(service):
         return False
 
     service = match.group(1)
-    print(repr(service))
     channel = app.channel_type_registry.find_by_id(service)
     return channel and channel.get_ssdp_location() is not None
 

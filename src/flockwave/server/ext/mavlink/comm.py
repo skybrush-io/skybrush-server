@@ -2,11 +2,23 @@
 UAV and the ground station via some communication link.
 """
 
-from blinker import Signal
 from importlib import import_module
-from logging import Logger
 from os import devnull
-from typing import Callable, Optional, Union
+from typing import Any, Callable, List, Union, Tuple
+
+from flockwave.channels import MessageChannel
+from flockwave.connections import Connection
+from flockwave.logger import Logger
+
+from flockwave.server.comm import CommunicationManager
+
+
+__all__ = ("create_communication_manager",)
+
+#: Type specification for messages parsed by the MAVLink parser. Unfortunately
+#: we cannot refer to an exact Python class here because that depends on the
+#: dialoect that we will be parsing
+MAVLinkMessage = Any
 
 
 def get_mavlink_parser_factory(dialect: Union[str, Callable]):
@@ -21,53 +33,43 @@ def get_mavlink_parser_factory(dialect: Union[str, Callable]):
         return dialect
 
     module = import_module(f"pymavlink.dialects.v20.{dialect}")
-    return module.MAVLink
+
+    def factory(fp):
+        # Use robust parsing so we don't freak out if we see some noise on the
+        # line
+        parser = module.MAVLink(fp)
+        parser.robust_parsing = True
+        return parser
+
+    return factory
 
 
-class CommunicationManager:
-    """Abstract communication manager base class and interface specification.
+def create_communication_manager() -> CommunicationManager[Any, Any]:
+    """Creates a communication manager instance for the extension."""
+    return CommunicationManager(channel_factory=create_mavlink_message_channel)
 
-    Attributes:
-        identifier (str): unique identifier of the communication manager;
-            see the constructor documentation for its purpose
-        on_packet (Signal): signal that is emitted when the communication
-            manager receives a new MAVLink packet from an UAV. The signal is
-            called with the parsed MAVLink packet class instance as its only
-            argument.
+
+def create_mavlink_message_channel(
+    connection: Connection,
+    log: Logger,
+    *,
+    dialect: Union[str, Callable] = "ardupilotmega",
+) -> MessageChannel[Tuple[MAVLinkMessage, str]]:
+    """Creates a bidirectional Trio-style channel that reads data from and
+    writes data to the given connection, and does the parsing of MAVLink
+    messages automatically. The channel will accept and yield
+    tuples containing a MAVLinkMessage_ object and a "swarm ID" that identifies
+    a namespace within which all MAVLink system IDs are considered to be
+    unique.
+
+    Parameters:
+        connection: the connection to read data from and write data to
+        log: the logger on which any error messages and warnings should be logged
     """
+    mavlink_parser_factory = get_mavlink_parser_factory(dialect)
+    mavlink_parser = mavlink_parser_factory(open(devnull, "wb"))
 
-    on_packet = Signal()
+    def parser(data: bytes) -> List[Tuple[MAVLinkMessage, str]]:
+        return [(message, "default") for message in mavlink_parser.parse_buffer(data)]
 
-    def __init__(
-        self, ext, identifier: str, dialect: Union[str, Callable] = "ardupilotmega"
-    ):
-        """Constructor.
-
-        Parameters:
-            ext (MAVLinkDronesExtension): the extension that owns this
-                manager
-            identifier: unique identifier of this communication mananger. The
-                purpose of this identifier is that the ``(identifier, system_id)``
-                pair of a UAV must be unique (in other words, each UAV must
-                have a unique system ID *within* each communication link that
-                we handle)
-            dialect (Union[str, callable]): the MAVLink dialect to use or
-                a callable that can be called with no arguments to construct
-                a MAVLink instance. When it is a dialect name, we will attempt
-                to import `MAVLink` from `pymavlink.dialects.v20.{dialect}`
-        """
-        self.ext = ext
-        self.identifier = identifier
-
-        parser_factory = get_mavlink_parser_factory(dialect)
-        self._parser = parser_factory(file=open(devnull, "wb"))
-
-    @property
-    def log(self) -> Optional[Logger]:
-        """Returns the logger of the extension that owns this manager.
-
-        Returns:
-            the logger of the extension that owns this manager, or ``None`` if
-            the manager is not associated to an extension yet.
-        """
-        return self.ext.log if self.ext else None
+    return MessageChannel(connection, parser=parser, encoder=None)

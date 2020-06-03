@@ -12,13 +12,10 @@ from flockwave.logger import Logger
 
 from flockwave.server.comm import CommunicationManager
 
+from .types import MAVLinkMessage
+
 
 __all__ = ("create_communication_manager",)
-
-#: Type specification for messages parsed by the MAVLink parser. Unfortunately
-#: we cannot refer to an exact Python class here because that depends on the
-#: dialoect that we will be parsing
-MAVLinkMessage = Any
 
 
 def get_mavlink_parser_factory(dialect: Union[str, Callable]):
@@ -69,7 +66,9 @@ def create_mavlink_message_channel(
     mavlink_parser_factory = get_mavlink_parser_factory(dialect)
     mavlink_parser = mavlink_parser_factory(open(devnull, "wb"))
 
+    swarm_id = ""
+
     def parser(data: bytes) -> List[Tuple[MAVLinkMessage, str]]:
-        return [(message, "default") for message in mavlink_parser.parse_buffer(data)]
+        return [(message, swarm_id) for message in mavlink_parser.parse_buffer(data)]
 
     return MessageChannel(connection, parser=parser, encoder=None)

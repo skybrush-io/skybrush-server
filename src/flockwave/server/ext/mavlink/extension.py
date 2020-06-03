@@ -11,9 +11,12 @@ from typing import Any, Dict
 from flockwave.connections import Connection, create_connection
 from flockwave.server.ext.base import UAVExtensionBase
 from flockwave.server.model import ConnectionPurpose
+from flockwave.server.utils import nop
 
-from .comm import create_communication_manager
+from .comm import create_communication_manager, MAVLinkMessage
 from .driver import MAVLinkDriver
+from .utils import log_level_from_severity, log_id_from_message
+
 
 __all__ = ("construct", "dependencies")
 
@@ -102,9 +105,31 @@ class MAVLinkDronesExtension(UAVExtensionBase):
         Parameters:
             channel: a Trio receive channel that yields inbound data packets.
         """
-        async for name, (packet, swarm_id) in channel:
-            # TODO(ntamas): do something with the messages
-            self.log.info(f"{name}: {packet} from swarm {swarm_id}")
+        handlers = {"BAD_DATA": nop, "STATUSTEXT": self._handle_message_statustext}
+
+        async for name, (message, swarm_id) in channel:
+            type = message.get_type()
+            handler = handlers.get(type)
+            if handler:
+                handler(message, name=name, swarm_id=swarm_id)
+            else:
+                self.log.warn(
+                    f"Unhandled MAVLink message type: {type}",
+                    extra={"id": log_id_from_message(message, swarm_id)},
+                )
+                handlers[type] = nop
+
+    def _handle_message_statustext(
+        self, message: MAVLinkMessage, *, name: str, swarm_id: str
+    ):
+        """Handles an incoming MAVLink STATUSTEXT message and forwards it to the
+        log console.
+        """
+        self.log.log(
+            log_level_from_severity(message.severity),
+            message.text,
+            extra={"id": log_id_from_message(message, swarm_id)},
+        )
 
 
 construct = MAVLinkDronesExtension

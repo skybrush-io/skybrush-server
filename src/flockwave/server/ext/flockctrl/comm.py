@@ -275,8 +275,14 @@ def upload_mission(raw_data: bytes, address: Union[str, Tuple[str, int]]) -> Non
         if "mission.cfg" not in parsed_data.namelist():
             raise ValueError("No mission configuration in mission file")
 
-    name = datetime.now().replace(microsecond=0).isoformat()
-    with open_ssh(address) as ssh:
+    name = (
+        datetime.now()
+        .replace(microsecond=0)
+        .isoformat()
+        .replace(":", "")
+        .replace("-", "")
+    )
+    with open_ssh(address, username="root") as ssh:
         scp = open_scp(ssh)
         scp.putfo(BytesIO(raw_data), f"/home/tamas/.flockctrl/inbox/{name}.mission")
         stdout, stderr, exit_code = execute_ssh_command(

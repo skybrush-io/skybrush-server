@@ -140,7 +140,8 @@ class ERPSystemConnectionDemoExtension(ExtensionBase):
         )
 
     def generate_mission_from_route(self, uav_id, vxy=4, vz=1, agl=5):
-        """Generate a mission .zip file from a route between stations."""
+        """Generate a complete mission file as an in-memory .zip buffer
+        for the given UAV with the given parameters."""
         # generate individual files to be contained in the zip file
         waypoint_ground_str = self.generate_waypoint_file_from_route(0)
         waypoint_str = self.generate_waypoint_file_from_route(uav_id,

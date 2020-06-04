@@ -4,9 +4,11 @@ and a Skybrush server, in collaboration with Cascade Ltd
 
 from collections import defaultdict
 from dataclasses import dataclass
+from io import BytesIO
 from time import time
 from trio import sleep_forever
 from typing import Dict, List, Tuple
+from zipfile import ZipFile, ZIP_DEFLATED
 
 from flockwave.gps.vectors import GPSCoordinate
 
@@ -21,7 +23,8 @@ wait_on_ground=waypoint
 go_on_route=waypoint
 
 [wait_on_ground]
-waypoint.waypoint_file=TODO
+waypoint.waypoint_file=waypoint_ground.cfg
+waypoint.whats_next=loiter
 
 [go_on_route]
 waypoint.waypoint_file=waypoints.cfg
@@ -136,6 +139,31 @@ class ERPSystemConnectionDemoExtension(ExtensionBase):
             vz=vz
         )
 
+    def generate_mission_from_route(self, uav_id, vxy=4, vz=1, agl=5):
+        """Generate a mission .zip file from a route between stations."""
+        # generate individual files to be contained in the zip file
+        waypoint_ground_str = self.generate_waypoint_file_from_route(0)
+        waypoint_str = self.generate_waypoint_file_from_route(uav_id,
+            vxy=vxy, vz=vz, agl=agl
+        )
+        choreography_str = self.generate_choreography_file_from_route(uav_id,
+            vxy=vxy, vz=vz, agl=agl
+        )
+        mission_str = self.generate_mission_file_from_route(uav_id)
+
+        # create the zipfile and write content to it
+        buffer = BytesIO()
+        zip_archive = ZipFile(buffer, 'w', ZIP_DEFLATED)
+        zip_archive.writestr("waypoint.cfg", waypoint_str)
+        zip_archive.writestr("waypoint_ground.cfg", waypoint_ground_str)
+        zip_archive.writestr("choreography.cfg", choreography_str)
+        zip_archive.writestr("mission.cfg", mission_str)
+        zip_archive.writestr("_meta/version", META_VERSION_STR)
+        zip_archive.writestr("_meta/name", META_NAME_STR)
+        zip_archive.close()
+
+        return buffer
+
     def generate_mission_file_from_route(self, uav_id):
         """Generate a mission file from a given route between stations."""
         # TODO: we might have some parametrized stuff here later on
@@ -144,16 +172,18 @@ class ERPSystemConnectionDemoExtension(ExtensionBase):
     def generate_waypoint_file_from_route(self, uav_id, vxy=4, vz=1, agl=5):
         """Generate a waypoint file from a given route between stations."""
         waypoint_str = WAYPOINT_INIT_STR
-        for name in self._trips[uav_id].route:
-            pos = self._stations[name].position
-            waypoint_str += WAYPOINT_STR.format(
-                station=name,
-                lat=pos.lat,
-                lon=pos.lon,
-                agl=agl,
-                vxy=vxy,
-                vz=vz
-            )
+        if uav_id:
+            for name in self._trips[uav_id].route:
+                pos = self._stations[name].position
+                waypoint_str += WAYPOINT_STR.format(
+                    station=name,
+                    lat=pos.lat,
+                    lon=pos.lon,
+                    agl=agl,
+                    vxy=vxy,
+                    vz=vz
+                )
+
         return waypoint_str
 
     def handle_trip_addition(self, message, sender, hub):
@@ -185,13 +215,12 @@ class ERPSystemConnectionDemoExtension(ExtensionBase):
             uav_id=uav_id, start_time=start_time_sec, route=route
         )
 
-        waypoint_str = self.generate_waypoint_file_from_route(uav_id)
-        choreography_str = self.generate_choreography_file_from_route(uav_id)
-        mission_str = self.generate_mission_file_from_route(uav_id)
-        meta_name_str = META_NAME_STR
-        meta_version_str = META_VERSION_STR
+        # generate mission files
+        zip_buffer = self.generate_mission_from_route(uav_id, vxy=4, vz=1, agl=5)
 
-        # TODO: pack these into a zip file
+        # TODO: this is a temporary unit test only to check functionality - it works :)
+        #with open('test.zip', 'wb') as f:
+        #    f.write(zip_buffer.getvalue())
 
         return hub.acknowledge(message)
 

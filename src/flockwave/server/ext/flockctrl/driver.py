@@ -343,7 +343,7 @@ class FlockCtrlDriver(UAVDriver):
         # derive flight mode
         if packet.flags & StatusFlag.MODE_GUIDED:
             mode = (
-                packet.algorithm_name if packet.algorithm_id > 0 else None
+                f"g{packet.algorithm_name[:3]}" if packet.algorithm_id > 0 else None
             ) or "guided"
         elif packet.flags & StatusFlag.MODE_STABILIZE:
             mode = "stab"

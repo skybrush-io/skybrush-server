@@ -2,15 +2,18 @@
 and a Skybrush server, in collaboration with Cascade Ltd
 """
 
+from base64 import b64encode
 from collections import defaultdict
 from dataclasses import dataclass
 from enum import Enum
+from inspect import isawaitable
 from io import BytesIO
 from time import time
-from trio import open_memory_channel, sleep
+from trio import open_memory_channel
 from typing import Dict, List, Tuple
 from zipfile import ZipFile, ZIP_DEFLATED
 
+from flockwave.server.errors import NotSupportedError
 from flockwave.gps.vectors import GPSCoordinate
 
 from .base import ExtensionBase
@@ -24,11 +27,11 @@ wait_on_ground=waypoint
 go_on_route=waypoint
 
 [wait_on_ground]
-waypoint.waypoint_file=waypoint_ground.cfg
+waypoint.file=waypoints_ground.cfg
 waypoint.whats_next=loiter
 
 [go_on_route]
-waypoint.waypoint_file=waypoints.cfg
+waypoint.file=waypoints.cfg
 waypoint.minimum_altitude=3
 waypoint.altitude_setpoint={agl:.2f}
 waypoint.velocity_xy={velocity_xy:.2f}
@@ -57,8 +60,9 @@ ground_altitude=0
 #origin=
 
 [waypoints]
-motoroff=10
 """
+
+WAYPOINT_GROUND_STR = """do_nothing=10"""
 
 WAYPOINT_STR = """
 # taking off towards station '{station}'
@@ -122,11 +126,11 @@ class ERPSystemConnectionDemoExtension(ExtensionBase):
         self._trips = defaultdict(Trip)
         self._command_queue_rx = self._command_queue_tx = None
 
-    def configure(self, configuration):
+    def configure(self, configuration) -> None:
         super().configure(configuration)
         self.configure_stations(configuration.get("stations"))
 
-    def configure_stations(self, stations: Dict[str, Dict]):
+    def configure_stations(self, stations: Dict[str, Dict]) -> None:
         """Parses the list of stations from the configuration file so they
         can be added as docks later.
         """
@@ -143,68 +147,67 @@ class ERPSystemConnectionDemoExtension(ExtensionBase):
                 extra={"semantics": "success"},
             )
 
-    def generate_choreography_file_from_route(
-        self, uav_id: str, velocity_xy: float = 4, velocity_z: float = 1, agl: float = 5
-    ):
+    def generate_choreography_file_for_trip(
+        self, trip: Trip, velocity_xy: float = 4, velocity_z: float = 1, agl: float = 5
+    ) -> str:
         """Generate a choreography file from a given route between stations."""
         return CHOREO_STR.format(
             agl=agl, velocity_xy=velocity_xy, velocity_z=velocity_z
         )
 
-    def generate_mission_from_route(
-        self, uav_id: str, velocity_xy: float = 4, velocity_z: float = 1, agl: float = 5
-    ):
+    def generate_mission_for_trip(
+        self, trip: Trip, velocity_xy: float = 4, velocity_z: float = 1, agl: float = 5
+    ) -> bytes:
         """Generate a complete mission file as an in-memory .zip buffer
         for the given UAV with the given parameters."""
         # generate individual files to be contained in the zip file
-        waypoint_ground_str = self.generate_waypoint_file_from_route(0)
-        waypoint_str = self.generate_waypoint_file_from_route(
-            uav_id, velocity_xy=velocity_xy, velocity_z=velocity_z, agl=agl
+        waypoint_ground_str = WAYPOINT_INIT_STR + WAYPOINT_GROUND_STR
+        waypoint_str = self.generate_waypoint_file_for_trip(
+            trip, velocity_xy=velocity_xy, velocity_z=velocity_z, agl=agl
         )
-        choreography_str = self.generate_choreography_file_from_route(
-            uav_id, velocity_xy=velocity_xy, velocity_z=velocity_z, agl=agl
+        choreography_str = self.generate_choreography_file_for_trip(
+            trip, velocity_xy=velocity_xy, velocity_z=velocity_z, agl=agl
         )
-        mission_str = self.generate_mission_file_from_route(uav_id)
+        mission_str = self.generate_mission_file_for_trip(trip)
 
         # create the zipfile and write content to it
         buffer = BytesIO()
         zip_archive = ZipFile(buffer, "w", ZIP_DEFLATED)
-        zip_archive.writestr("waypoint.cfg", waypoint_str)
-        zip_archive.writestr("waypoint_ground.cfg", waypoint_ground_str)
+        zip_archive.writestr("waypoints.cfg", waypoint_str)
+        zip_archive.writestr("waypoints_ground.cfg", waypoint_ground_str)
         zip_archive.writestr("choreography.cfg", choreography_str)
         zip_archive.writestr("mission.cfg", mission_str)
         zip_archive.writestr("_meta/version", META_VERSION_STR)
         zip_archive.writestr("_meta/name", META_NAME_STR)
         zip_archive.close()
 
-        return buffer
+        return buffer.getvalue()
 
-    def generate_mission_file_from_route(self, uav_id: str):
+    def generate_mission_file_for_trip(self, trip: Trip) -> str:
         """Generate a mission file from a given route between stations."""
         return MISSION_STR
 
-    def generate_waypoint_file_from_route(
-        self, uav_id: str, velocity_xy: float = 4, velocity_z: float = 1, agl: float = 5
-    ):
+    def generate_waypoint_file_for_trip(
+        self, trip: Trip, velocity_xy: float = 4, velocity_z: float = 1, agl: float = 5
+    ) -> str:
         """Generate a waypoint file from a given route between stations."""
         waypoint_str_parts = [WAYPOINT_INIT_STR]
-        if uav_id:
-            for name in self._trips[uav_id].route:
-                pos = self._stations[name].position
-                waypoint_str_parts.append(
-                    WAYPOINT_STR.format(
-                        station=name,
-                        lat=pos.lat,
-                        lon=pos.lon,
-                        agl=agl,
-                        velocity_xy=velocity_xy,
-                        velocity_z=velocity_z,
-                    )
+        for name in trip.route:
+            pos = self._stations[name].position
+            waypoint_str_parts.append(
+                WAYPOINT_STR.format(
+                    station=name,
+                    lat=pos.lat,
+                    lon=pos.lon,
+                    agl=agl,
+                    velocity_xy=velocity_xy,
+                    velocity_z=velocity_z,
                 )
+            )
 
         return "".join(waypoint_str_parts)
 
-    async def handle_trip_addition(self, message, sender, hub):
+    async def handle_trip_addition(self, message, sender, hub) -> None:
         """Handles the addition of a new trip to the list of scheduled trips."""
         uav_id = message.body.get("uavId")
         if not isinstance(uav_id, str):
@@ -241,7 +244,7 @@ class ERPSystemConnectionDemoExtension(ExtensionBase):
 
         return hub.acknowledge(message)
 
-    def handle_trip_cancellation(self, message, sender, hub):
+    def handle_trip_cancellation(self, message, sender, hub) -> None:
         """Cancels the current trip on a given drone."""
         uav_id = message.body.get("uavId")
         if not isinstance(uav_id, str):
@@ -255,7 +258,7 @@ class ERPSystemConnectionDemoExtension(ExtensionBase):
 
         return hub.acknowledge(message)
 
-    async def manage_trips(self, queue):
+    async def manage_trips(self, queue) -> None:
         """Background task that waits for UAV IDs in a queue and then uploads
         the trip corresponding to the given UAV to the UAV itself.
         """
@@ -263,7 +266,7 @@ class ERPSystemConnectionDemoExtension(ExtensionBase):
             async for uav_id in queue:
                 await self.upload_trip_to_uav(uav_id)
 
-    async def run(self):
+    async def run(self) -> None:
         handlers = {
             "X-TRIP-ADD": self.handle_trip_addition,
             "X-TRIP-CANCEL": self.handle_trip_cancellation,
@@ -293,10 +296,42 @@ class ERPSystemConnectionDemoExtension(ExtensionBase):
             )
             return
 
+        uav = self.app.find_uav_by_id(uav_id)
+        if not uav:
+            self.log.warn(
+                f"Cannot upload trip to UAV, no such UAV in registry", extra=extra
+            )
+            return
+
         self.log.info(f"Uplading trip...", extra=extra)
         trip.status = TripStatus.UPLOADING
         try:
-            await sleep(5)
+            mission_data = self.generate_mission_for_trip(trip)
+
+            # HACK HACK HACK; find a better way to do this than a hidden
+            # __mission_upload command
+            response = uav.driver.send_command(
+                [uav], "__mission_upload", (b64encode(mission_data).decode("ascii"),)
+            )
+            if uav not in response:
+                self.log.error(
+                    f"Cannot upload trip, UAV driver did not respond to mission upload request.",
+                    extra=extra,
+                )
+            else:
+                result = response[uav]
+                if isawaitable(result):
+                    await result
+
+            # print(response[uav])
+
+        except NotSupportedError:
+            self.log.error(
+                f"Cannot upload trip, UAV does not support mission uploads.",
+                extra=extra,
+            )
+            trip.status = TripStatus.ERROR
+
         except Exception:
             self.log.exception(
                 f"Unexpected error while uploading trip to UAV.", extra=extra

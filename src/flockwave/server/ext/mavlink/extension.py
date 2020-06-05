@@ -5,6 +5,7 @@ MAVLink protocol.
 from __future__ import absolute_import
 
 from contextlib import ExitStack
+from time import time_ns
 from trio.abc import ReceiveChannel
 from typing import Any, Dict
 
@@ -29,6 +30,7 @@ class MAVLinkDronesExtension(UAVExtensionBase):
     def __init__(self):
         super(MAVLinkDronesExtension, self).__init__()
         self._driver = None
+        self._manager = None
 
     def _create_driver(self):
         return MAVLinkDriver()
@@ -92,35 +94,53 @@ class MAVLinkDronesExtension(UAVExtensionBase):
                 manager.add(link, name=name)
 
             # Start the communication manager
-            await manager.run(
-                consumer=self._handle_inbound_packets,
-                supervisor=app.supervise,
-                log=self.log,
-            )
+            try:
+                self._manager = manager
+                await manager.run(
+                    consumer=self._handle_inbound_messages,
+                    supervisor=app.supervise,
+                    log=self.log,
+                )
+            finally:
+                self._manager = None
 
-    async def _handle_inbound_packets(self, channel: ReceiveChannel):
-        """Handles inbound data packets from all the communication links
+    async def _handle_inbound_messages(self, channel: ReceiveChannel):
+        """Handles inbound MAVLink messages from all the communication links
         that the extension manages.
 
         Parameters:
-            channel: a Trio receive channel that yields inbound data packets.
+            channel: a Trio receive channel that yields inbound MAVLink messages.
         """
-        handlers = {"BAD_DATA": nop, "STATUSTEXT": self._handle_message_statustext}
+        handlers = {
+            "BAD_DATA": nop,
+            "HEARTBEAT": self._handle_message_heartbeat,
+            "STATUSTEXT": self._handle_message_statustext,
+            "TIMESYNC": self._handle_message_timesync,
+        }
 
-        async for name, (message, swarm_id) in channel:
+        async for connection_id, (message, network_id) in channel:
             type = message.get_type()
             handler = handlers.get(type)
             if handler:
-                handler(message, name=name, swarm_id=swarm_id)
+                handler(message, connection_id=connection_id, network_id=network_id)
             else:
                 self.log.warn(
                     f"Unhandled MAVLink message type: {type}",
-                    extra={"id": log_id_from_message(message, swarm_id)},
+                    extra={"id": log_id_from_message(message, network_id)},
                 )
                 handlers[type] = nop
 
+    def _handle_message_heartbeat(
+        self, message: MAVLinkMessage, *, connection_id: str, network_id: str
+    ):
+        """Handles an incoming MAVLink HEARTBEAT message."""
+        pass
+        # Send a timesync message for testing purposes
+        # spec = ("TIMESYNC", {"tc1": 0, "ts1": time_ns() // 1000})
+        # self._manager.enqueue_packet((spec, network_id), (connection_id, None))
+
     def _handle_message_statustext(
-        self, message: MAVLinkMessage, *, name: str, swarm_id: str
+        self, message: MAVLinkMessage, *, connection_id: str, network_id: str
     ):
         """Handles an incoming MAVLink STATUSTEXT message and forwards it to the
         log console.
@@ -128,8 +148,19 @@ class MAVLinkDronesExtension(UAVExtensionBase):
         self.log.log(
             log_level_from_severity(message.severity),
             message.text,
-            extra={"id": log_id_from_message(message, swarm_id)},
+            extra={"id": log_id_from_message(message, network_id)},
         )
+
+    def _handle_message_timesync(
+        self, message: MAVLinkMessage, *, connection_id: str, network_id: str
+    ):
+        """Handles an incoming MAVLink TIMESYNC message."""
+        if message.tc1 != 0:
+            now = time_ns() // 1000
+            self.log.info(f"Roundtrip time: {(now - message.ts1) // 1000} msec")
+        else:
+            # Timesync request, ignore it.
+            pass
 
 
 construct = MAVLinkDronesExtension

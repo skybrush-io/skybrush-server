@@ -18,13 +18,15 @@ _severity_to_log_level = [
 ]
 
 
-def log_id_from_message(message: MAVLinkMessage, swarm_id: Optional[str] = None) -> str:
+def log_id_from_message(
+    message: MAVLinkMessage, network_id: Optional[str] = None
+) -> str:
     """Returns an identifier composed from the MAVLink system and component ID
     that is suitable for displaying in the logging output.
     """
     system_id, component_id = message.get_srcSystem(), message.get_srcComponent()
-    if swarm_id:
-        return f"{swarm_id}/{system_id:02x}:{component_id:02x}"
+    if network_id:
+        return f"{network_id}/{system_id:02x}:{component_id:02x}"
     else:
         return f"{system_id:02x}:{component_id:02x}"
 

@@ -16,9 +16,9 @@ pymavlink = "*"
 trio = "*"
 quart = "*"
 quart-trio = "*"
-trio-util = "*"
+trio-util = ">=0.1.1"
 attrs = "*"
-flockwave-conn = {extras = ["midi", "serial"],file = "https://git.collmot.com/collmot/flockwave-conn/archive/1.7.1.tar.gz"}
+flockwave-conn = {extras = ["midi", "serial"],file = "https://git.collmot.com/collmot/flockwave-conn/archive/1.7.2.tar.gz"}
 flockwave-ext = {file = "https://git.collmot.com/collmot/flockwave-ext/archive/1.2.0.tar.gz"}
 flockwave-flockctrl = {file = "https://git.collmot.com/collmot/flockwave-flockctrl/archive/0.6.0.tar.gz"}
 flockwave-gps = {file = "https://git.collmot.com/collmot/flockwave-gps/archive/0.13.0.tar.gz"}

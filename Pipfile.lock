@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "861247104570fd7b54de9c36b7eac07cd39bb090a86b21cdd82c4055339c83ee"
+            "sha256": "950c3c7bfd9e899a30c9f2ba24ccd6ba6fbf63a69d92d08cf59ca406a296cd39"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -168,7 +168,7 @@
                 "midi",
                 "serial"
             ],
-            "file": "https://git.collmot.com/collmot/flockwave-conn/archive/1.7.1.tar.gz"
+            "file": "https://git.collmot.com/collmot/flockwave-conn/archive/1.7.2.tar.gz"
         },
         "flockwave-ext": {
             "file": "https://git.collmot.com/collmot/flockwave-ext/archive/1.2.0.tar.gz"
@@ -580,11 +580,11 @@
         },
         "trio-util": {
             "hashes": [
-                "sha256:418868667c47ac74978876ff73615eebdf6cdb13a1d171c03d7268bd3e676726",
-                "sha256:cf1b90961e39084effc9ad224cd14175ddf5f685627b7f329b08ed22ddb559d4"
+                "sha256:4922200331f88d7eea02735b7c866dc931011e3ec12e3c8d6b84bcdfb15e9b83",
+                "sha256:af3354255d6664c9bb7880217f81af9ee73b779f084be00c1a96f8742ef2e811"
             ],
             "index": "pypi",
-            "version": "==0.1.0"
+            "version": "==0.1.1"
         },
         "typing-extensions": {
             "hashes": [

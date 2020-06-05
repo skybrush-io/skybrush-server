@@ -15,7 +15,7 @@ future==0.18.2
 h11==0.9.0
 h2==3.2.0
 hpack==3.0.0
-https://git.collmot.com/collmot/flockwave-conn/archive/1.7.1.tar.gz#egg=flockwave-conn[midi,serial]
+https://git.collmot.com/collmot/flockwave-conn/archive/1.7.2.tar.gz#egg=flockwave-conn[midi,serial]
 https://git.collmot.com/collmot/flockwave-ext/archive/1.2.0.tar.gz#egg=flockwave-ext
 https://git.collmot.com/collmot/flockwave-flockctrl/archive/0.6.0.tar.gz#egg=flockwave-flockctrl
 https://git.collmot.com/collmot/flockwave-gps/archive/0.13.0.tar.gz#egg=flockwave-gps

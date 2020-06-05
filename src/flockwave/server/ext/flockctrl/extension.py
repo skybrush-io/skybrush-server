@@ -130,7 +130,7 @@ class FlockCtrlDronesExtension(UAVExtensionBase):
             # important here; the first one will be used for sending, so that
             # must be the unicast link.
             manager.add(unicast_link, name="wireless")
-            manager.add(broadcast_link, name="wireless")
+            manager.add(broadcast_link, name="wireless", can_send=False)
 
             # Start the communication manager
             try:

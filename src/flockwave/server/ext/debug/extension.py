@@ -6,7 +6,7 @@ import threading
 
 from operator import attrgetter
 from quart import Blueprint, render_template
-from trio.hazmat import current_root_task
+from trio.lowlevel import current_root_task
 
 __all__ = ("load", "index")
 

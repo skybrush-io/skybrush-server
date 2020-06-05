@@ -101,5 +101,9 @@ def map_flockctrl_error_code_and_flags(
         aux.append(FlockwaveErrorCode.MOTORS_RUNNING_WHILE_ON_GROUND.value)
     if not flags & StatusFlag.ARMED:
         aux.append(FlockwaveErrorCode.DISARMED)
+    if flags & StatusFlag.TAKEOFF:
+        aux.append(FlockwaveErrorCode.TAKEOFF)
+    if flags & StatusFlag.LANDING:
+        aux.append(FlockwaveErrorCode.LANDING)
 
     return base + tuple(aux) if aux else base

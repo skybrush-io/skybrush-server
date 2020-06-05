@@ -13,7 +13,7 @@ from trio import (
     open_memory_channel,
     open_nursery,
 )
-from typing import Callable, Optional
+from typing import Callable, Dict, List, Optional
 
 from flockwave.connections import (
     ConnectionSupervisor,
@@ -38,7 +38,7 @@ from .model.devices import DeviceTree, DeviceTreeSubscriptionManager
 from .model.errors import ClientNotSubscribedError, NoSuchPathError
 from .model.messages import FlockwaveMessage, FlockwaveResponse
 from .model.object import ModelObject
-from .model.uav import is_uav, UAV
+from .model.uav import is_uav, UAV, UAVDriver
 from .model.world import World
 from .registries import (
     ChannelTypeRegistry,
@@ -474,7 +474,7 @@ class SkybrushServer:
         )
 
         for uav_id in uav_ids:
-            uav = self._find_uav_by_id(uav_id, response)
+            uav = self.find_uav_by_id(uav_id, response)
             if uav:
                 statuses[uav_id] = uav.status.json
 
@@ -634,6 +634,29 @@ class SkybrushServer:
 
         return response
 
+    def find_uav_by_id(
+        self, uav_id: str, response: Optional[FlockwaveResponse] = None
+    ) -> Optional[UAV]:
+        """Finds the UAV with the given ID in the object registry or registers
+        a failure in the given response object if there is no UAV with the
+        given ID.
+
+        Parameters:
+            uav_id: the ID of the UAV to find
+            response: the response in which
+                the failure can be registered
+
+        Returns:
+            the UAV with the given ID or ``None`` if there is no such UAV
+        """
+        return find_in_registry(
+            self.object_registry,
+            uav_id,
+            predicate=is_uav,
+            response=response,
+            failure_reason="No such UAV",
+        )
+
     def import_api(self, extension_name: str) -> ExtensionAPIProxy:
         """Imports the API exposed by an extension.
 
@@ -784,22 +807,23 @@ class SkybrushServer:
         self._task_queue[0].send_nowait((func, args, scope))
         return scope
 
-    def sort_uavs_by_drivers(self, uav_ids, response=None):
+    def sort_uavs_by_drivers(
+        self, uav_ids: List[str], response: Optional[FlockwaveResponse] = None
+    ) -> Dict[UAVDriver, List[UAV]]:
         """Given a list of UAV IDs, returns a mapping that maps UAV drivers
         to the UAVs specified by the IDs.
 
         Parameters:
-            uav_ids (List[str]): list of UAV IDs
-            response (Optional[FlockwaveResponse]): optional response in
-                which UAV lookup failures can be registered
+            uav_ids: list of UAV IDs
+            response: optional response in which UAV lookup failures can be
+                registered
 
         Returns:
-            Dict[UAVDriver,UAV]: mapping of UAV drivers to the UAVs that
-                were selected by the given UAV IDs
+            mapping of UAV drivers to the UAVs that were selected by the given UAV IDs
         """
         result = defaultdict(list)
         for uav_id in uav_ids:
-            uav = self._find_uav_by_id(uav_id, response)
+            uav = self.find_uav_by_id(uav_id, response)
             if uav:
                 result[uav.driver].append(uav)
         return result
@@ -905,28 +929,6 @@ class SkybrushServer:
             object_id,
             response=response,
             failure_reason="No such object",
-        )
-
-    def _find_uav_by_id(self, uav_id, response=None):
-        """Finds the UAV with the given ID in the object registry or registers
-        a failure in the given response object if there is no UAV with the
-        given ID.
-
-        Parameters:
-            uav_id (str): the ID of the UAV to find
-            response (Optional[FlockwaveResponse]): the response in which
-                the failure can be registered
-
-        Returns:
-            Optional[UAV]: the UAV with the given ID or ``None`` if there
-                is no such UAV
-        """
-        return find_in_registry(
-            self.object_registry,
-            uav_id,
-            predicate=is_uav,
-            response=response,
-            failure_reason="No such UAV",
         )
 
     def _on_client_count_changed(self, sender):

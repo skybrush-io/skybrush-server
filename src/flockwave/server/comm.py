@@ -235,7 +235,7 @@ class CommunicationManager(Generic[PacketType, AddressType]):
                 for index, entry in enumerate(entries):
                     if entry.channel is not None and entry.can_send:
                         try:
-                            await entry.channel.send(message)
+                            await entry.channel.send((message, address))
                             sent = True
                             break
                         except Exception:

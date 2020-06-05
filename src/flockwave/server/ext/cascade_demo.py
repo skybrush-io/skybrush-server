@@ -4,9 +4,10 @@ and a Skybrush server, in collaboration with Cascade Ltd
 
 from collections import defaultdict
 from dataclasses import dataclass
+from enum import Enum
 from io import BytesIO
 from time import time
-from trio import sleep_forever
+from trio import open_memory_channel, sleep
 from typing import Dict, List, Tuple
 from zipfile import ZipFile, ZIP_DEFLATED
 
@@ -30,8 +31,8 @@ waypoint.whats_next=loiter
 waypoint.waypoint_file=waypoints.cfg
 waypoint.minimum_altitude=3
 waypoint.altitude_setpoint={agl:.2f}
-waypoint.velocity_xy={vxy:.2f}
-waypoint.velocity_z={vz:.2f}
+waypoint.velocity_xy={velocity_xy:.2f}
+waypoint.velocity_z={velocity_z:.2f}
 waypoint.velocity_threshold=6
 waypoint.manual_override_rp=stop
 waypoint.manual_override_gas=shift
@@ -63,7 +64,7 @@ WAYPOINT_STR = """
 # taking off towards station '{station}'
 motoron=5
 takeoff=5 4 1 0
-waypoint=N{lat:.8f} E{lon:.8f} {agl:.2f} {vxy:.2f} {vz:.2f} 5 0
+waypoint=N{lat:.8f} E{lon:.8f} {agl:.2f} {velocity_xy:.2f} {velocity_z:.2f} 5 0
 # landing at station '{station}'
 land=4 1 0
 motoroff=10
@@ -90,6 +91,15 @@ class Station:
         return dock
 
 
+class TripStatus(Enum):
+    """Enum class representing the possible statuses of a trip."""
+
+    NEW = "new"
+    UPLOADING = "uploading"
+    UPLOADED = "uploaded"
+    ERROR = "error"
+
+
 @dataclass
 class Trip:
     """Model object representing a single scheduled trip of a UAV in the demo."""
@@ -97,6 +107,7 @@ class Trip:
     uav_id: str
     start_time: float
     route: List[str]
+    status: TripStatus = TripStatus.NEW
 
 
 class ERPSystemConnectionDemoExtension(ExtensionBase):
@@ -109,6 +120,7 @@ class ERPSystemConnectionDemoExtension(ExtensionBase):
 
         self._stations = {}
         self._trips = defaultdict(Trip)
+        self._command_queue_rx = self._command_queue_tx = None
 
     def configure(self, configuration):
         super().configure(configuration)
@@ -135,7 +147,6 @@ class ERPSystemConnectionDemoExtension(ExtensionBase):
         self, uav_id, velocity_xy=4, velocity_z=1, agl=5
     ):
         """Generate a choreography file from a given route between stations."""
-        # TODO: add automatic start if needed here
         return CHOREO_STR.format(
             agl=agl, velocity_xy=velocity_xy, velocity_z=velocity_z
         )
@@ -168,7 +179,6 @@ class ERPSystemConnectionDemoExtension(ExtensionBase):
 
     def generate_mission_file_from_route(self, uav_id):
         """Generate a mission file from a given route between stations."""
-        # TODO: we might have some parametrized stuff here later on
         return MISSION_STR
 
     def generate_waypoint_file_from_route(
@@ -192,7 +202,7 @@ class ERPSystemConnectionDemoExtension(ExtensionBase):
 
         return "".join(waypoint_str_parts)
 
-    def handle_trip_addition(self, message, sender, hub):
+    async def handle_trip_addition(self, message, sender, hub):
         """Handles the addition of a new trip to the list of scheduled trips."""
         uav_id = message.body.get("uavId")
         if not isinstance(uav_id, str):
@@ -221,12 +231,11 @@ class ERPSystemConnectionDemoExtension(ExtensionBase):
             uav_id=uav_id, start_time=start_time_sec, route=route
         )
 
-        # generate mission files
-        zip_buffer = self.generate_mission_from_route(uav_id, vxy=4, vz=1, agl=5)
+        await self._command_queue_tx.send(uav_id)
 
-        # TODO: this is a temporary unit test only to check functionality - it works :)
-        # with open('test.zip', 'wb') as f:
-        #    f.write(zip_buffer.getvalue())
+        self.log.info(
+            f"Trip successfully received.", extra={"semantics": "success", "id": uav_id}
+        )
 
         return hub.acknowledge(message)
 
@@ -240,7 +249,17 @@ class ERPSystemConnectionDemoExtension(ExtensionBase):
         if trip is None:
             return hub.reject(message, "UAV has no scheduled trip")
 
+        self.log.info(f"Trip cancelled.", extra={"semantics": "failure", "id": uav_id})
+
         return hub.acknowledge(message)
+
+    async def manage_trips(self, queue):
+        """Background task that waits for UAV IDs in a queue and then uploads
+        the trip corresponding to the given UAV to the UAV itself.
+        """
+        async with queue:
+            async for uav_id in queue:
+                await self.upload_trip_to_uav(uav_id)
 
     async def run(self):
         handlers = {
@@ -252,7 +271,39 @@ class ERPSystemConnectionDemoExtension(ExtensionBase):
 
         with self.app.message_hub.use_message_handlers(handlers):
             with self.app.object_registry.use(*docks):
-                await sleep_forever()
+                self._command_queue_tx, self._command_queue_rx = open_memory_channel(32)
+                async with self._command_queue_tx:
+                    await self.manage_trips(self._command_queue_rx)
+
+    async def upload_trip_to_uav(self, uav_id: str) -> None:
+        """Uploads the current trip belonging to the given UAV if needed."""
+        extra = {"id": uav_id}
+        trip = self._trips.get(uav_id)
+        if trip is None:
+            self.log.warn(
+                f"upload_trip_to_uav() called with no scheduled trip", extra=extra
+            )
+            return
+
+        if trip.status != TripStatus.NEW:
+            self.log.warn(
+                f"Trip status is {trip.status!r}, this might be a bug?", extra=extra
+            )
+            return
+
+        self.log.info(f"Uplading trip...", extra=extra)
+        trip.status = TripStatus.UPLOADING
+        try:
+            await sleep(5)
+        except Exception:
+            self.log.exception(
+                f"Unexpected error while uploading trip to UAV.", extra=extra
+            )
+            trip.status = TripStatus.ERROR
+        else:
+            extra["semantics"] = "success"
+            self.log.info(f"Trip uploaded successfully.", extra=extra)
+            trip.status = TripStatus.UPLOADED
 
 
 construct = ERPSystemConnectionDemoExtension

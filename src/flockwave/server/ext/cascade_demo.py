@@ -144,14 +144,16 @@ class ERPSystemConnectionDemoExtension(ExtensionBase):
             )
 
     def generate_choreography_file_from_route(
-        self, uav_id, velocity_xy=4, velocity_z=1, agl=5
+        self, uav_id: str, velocity_xy: float = 4, velocity_z: float = 1, agl: float = 5
     ):
         """Generate a choreography file from a given route between stations."""
         return CHOREO_STR.format(
             agl=agl, velocity_xy=velocity_xy, velocity_z=velocity_z
         )
 
-    def generate_mission_from_route(self, uav_id, velocity_xy=4, velocity_z=1, agl=5):
+    def generate_mission_from_route(
+        self, uav_id: str, velocity_xy: float = 4, velocity_z: float = 1, agl: float = 5
+    ):
         """Generate a complete mission file as an in-memory .zip buffer
         for the given UAV with the given parameters."""
         # generate individual files to be contained in the zip file
@@ -177,12 +179,12 @@ class ERPSystemConnectionDemoExtension(ExtensionBase):
 
         return buffer
 
-    def generate_mission_file_from_route(self, uav_id):
+    def generate_mission_file_from_route(self, uav_id: str):
         """Generate a mission file from a given route between stations."""
         return MISSION_STR
 
     def generate_waypoint_file_from_route(
-        self, uav_id, velocity_xy=4, velocity_z=1, agl=5
+        self, uav_id: str, velocity_xy: float = 4, velocity_z: float = 1, agl: float = 5
     ):
         """Generate a waypoint file from a given route between stations."""
         waypoint_str_parts = [WAYPOINT_INIT_STR]

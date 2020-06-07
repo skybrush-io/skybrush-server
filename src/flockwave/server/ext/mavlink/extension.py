@@ -4,19 +4,22 @@ MAVLink protocol.
 
 from __future__ import absolute_import
 
-from contextlib import ExitStack
-from time import time_ns
-from trio.abc import ReceiveChannel
-from typing import Any, Dict
+from functools import partial
+from trio import open_nursery
+from typing import Optional
 
-from flockwave.connections import Connection, create_connection
 from flockwave.server.ext.base import UAVExtensionBase
-from flockwave.server.model import ConnectionPurpose
-from flockwave.server.utils import nop
+from flockwave.server.model.uav import UAV
+from flockwave.server.utils import overridden
 
-from .comm import create_communication_manager, MAVLinkMessage
 from .driver import MAVLinkDriver
-from .utils import log_level_from_severity, log_id_from_message
+from .network import MAVLinkNetwork
+from .tasks import check_connections_alive
+from .types import (
+    MAVLinkMessage,
+    MAVLinkMessageSpecification,
+    MAVLinkNetworkSpecification,
+)
 
 
 __all__ = ("construct", "dependencies")
@@ -30,27 +33,12 @@ class MAVLinkDronesExtension(UAVExtensionBase):
     def __init__(self):
         super(MAVLinkDronesExtension, self).__init__()
         self._driver = None
-        self._manager = None
+        self._networks = None
+        self._nursery = None
+        self._uavs = None
 
     def _create_driver(self):
         return MAVLinkDriver()
-
-    def _create_communication_links(
-        self, configuration: Dict[str, Any]
-    ) -> Dict[str, Connection]:
-        """Creates the communication manager objects corresponding to the
-        various MAVLink streams used by this extension.
-
-        Parameters:
-            configuration: the configuration dictionary of the extension
-
-        Returns:
-            Dict[]
-        """
-        connection_config = configuration.get("connections", {})
-        return {
-            name: create_connection(spec) for name, spec in connection_config.items()
-        }
 
     def configure_driver(self, driver, configuration):
         """Configures the driver that will manage the UAVs created by
@@ -65,102 +53,112 @@ class MAVLinkDronesExtension(UAVExtensionBase):
             configuration (dict): the configuration dictionary of the
                 extension
         """
-        driver.id_format = configuration.get("id_format", "{0:02}")
-        driver.log = self.log.getChild("driver")
         driver.create_device_tree_mutator = self.create_device_tree_mutation_context
+        driver.log = self.log.getChild("driver")
+        driver.run_in_background = self._run_in_background
+        driver.send_packet = self._send_packet
 
     async def run(self, app, configuration):
-        links = self._create_communication_links(configuration)
-
-        with ExitStack() as stack:
-            # Register the communication links
-            for name, link in links.items():
-                stack.enter_context(
-                    app.connection_registry.use(
-                        link,
-                        f"MAVLink: {name}",
-                        description=f"Upstream MAVLink connection ({name})",
-                        purpose=ConnectionPurpose.uavRadioLink,
-                    )
-                )
-
-            # Create the communication manager
-            manager = create_communication_manager()
-
-            # Register the links with the communication manager. The order is
-            # important here; the first one will be used for sending, so that
-            # must be the unicast link.
-            for name, link in links.items():
-                manager.add(link, name=name)
-
-            # Start the communication manager
-            try:
-                self._manager = manager
-                await manager.run(
-                    consumer=self._handle_inbound_messages,
-                    supervisor=app.supervise,
-                    log=self.log,
-                )
-            finally:
-                self._manager = None
-
-    async def _handle_inbound_messages(self, channel: ReceiveChannel):
-        """Handles inbound MAVLink messages from all the communication links
-        that the extension manages.
-
-        Parameters:
-            channel: a Trio receive channel that yields inbound MAVLink messages.
-        """
-        handlers = {
-            "BAD_DATA": nop,
-            "HEARTBEAT": self._handle_message_heartbeat,
-            "STATUSTEXT": self._handle_message_statustext,
-            "TIMESYNC": self._handle_message_timesync,
+        networks = {
+            network_id: MAVLinkNetwork.from_specification(spec)
+            for network_id, spec in self._get_network_specifications_from_configuration(
+                configuration
+            ).items()
         }
 
-        async for connection_id, (message, network_id) in channel:
-            type = message.get_type()
-            handler = handlers.get(type)
-            if handler:
-                handler(message, connection_id=connection_id, network_id=network_id)
-            else:
+        kwds = {
+            "driver": self._driver,
+            "log": self.log,
+            "register_uav": self._register_uav,
+            "supervisor": app.supervise,
+            "use_connection": app.connection_registry.use,
+        }
+
+        # Create self._uavs only here and not in the constructor; this is to
+        # ensure that we cannot accidentally register a UAV when the extension
+        # is not running yet
+        uavs = []
+        with overridden(self, _uavs=uavs, _networks=networks):
+            try:
+                async with open_nursery() as nursery:
+                    self._nursery = nursery
+
+                    # Create one task for each network
+                    for network in networks.values():
+                        nursery.start_soon(partial(network.run, **kwds))
+
+                    # Create an additional task that periodically checks whether the UAVs
+                    # registered in the extension are still alive
+                    nursery.start_soon(check_connections_alive, uavs)
+            finally:
+                self._nursery = None
+
+                for uav in uavs:
+                    app.object_registry.remove(uav)
+
+    def _get_network_specifications_from_configuration(self, configuration):
+        if "networks" in configuration:
+            if "connections" in configuration:
                 self.log.warn(
-                    f"Unhandled MAVLink message type: {type}",
-                    extra={"id": log_id_from_message(message, network_id)},
+                    "Move the 'connections' configuration key inside a network; "
+                    + "'connections' ignored when 'networks' is present"
                 )
-                handlers[type] = nop
-
-    def _handle_message_heartbeat(
-        self, message: MAVLinkMessage, *, connection_id: str, network_id: str
-    ):
-        """Handles an incoming MAVLink HEARTBEAT message."""
-        pass
-        # Send a timesync message for testing purposes
-        # spec = ("TIMESYNC", {"tc1": 0, "ts1": time_ns() // 1000})
-        # self._manager.enqueue_packet((spec, network_id), (connection_id, None))
-
-    def _handle_message_statustext(
-        self, message: MAVLinkMessage, *, connection_id: str, network_id: str
-    ):
-        """Handles an incoming MAVLink STATUSTEXT message and forwards it to the
-        log console.
-        """
-        self.log.log(
-            log_level_from_severity(message.severity),
-            message.text,
-            extra={"id": log_id_from_message(message, network_id)},
-        )
-
-    def _handle_message_timesync(
-        self, message: MAVLinkMessage, *, connection_id: str, network_id: str
-    ):
-        """Handles an incoming MAVLink TIMESYNC message."""
-        if message.tc1 != 0:
-            now = time_ns() // 1000
-            self.log.info(f"Roundtrip time: {(now - message.ts1) // 1000} msec")
+            network_specs = configuration["networks"]
         else:
-            # Timesync request, ignore it.
-            pass
+            network_specs = {"": {"connections": configuration.get("connections", ())}}
+
+        return {
+            key: MAVLinkNetworkSpecification.from_json(value, id=key)
+            for key, value in network_specs.items()
+        }
+
+    def _register_uav(self, uav: UAV) -> None:
+        """Registers a new UAV object in the object registry of the application
+        in a manner that ensures that the UAV is unregistered when the extension
+        is stopped.
+        """
+        if self._uavs is None:
+            raise RuntimeError("cannot register a UAV before the extension is started")
+
+        self.app.object_registry.add(uav)
+        self._uavs.append(uav)
+
+    def _run_in_background(self, func, *args) -> None:
+        """Schedules the given async function to be executed as a background
+        task in the nursery of the extension.
+
+        The task will be cancelled if the extension is unloaded.
+        """
+        if self._nursery:
+            self._nursery.start_soon(func, *args)
+        else:
+            raise RuntimeError("cannot run task in background, extension is not loaded")
+
+    async def _send_packet(
+        self,
+        spec: MAVLinkMessageSpecification,
+        target: UAV,
+        wait_for_response: Optional[MAVLinkMessageSpecification] = None,
+    ) -> Optional[MAVLinkMessage]:
+        """Sends a message to the given UAV and optionally waits for a matching
+        response.
+
+        Parameters:
+            spec: the specification of the MAVLink message to send
+            target: the UAV to send the message to
+            wait_for_response: when not `None`, specifies a MAVLink message to
+                wait for as a response. The message specification will be
+                matched with all incoming MAVLink messages that have the same
+                type as the type in the specification; all parameters of the
+                incoming message must be equal to the template specified in
+                this argument to accept it as a response.
+        """
+        network_id = target.network_id
+        if not self._networks:
+            raise RuntimeError("Cannot send packet; extension is not running")
+
+        network = self._networks[network_id]
+        return await network.send_packet(spec, target, wait_for_response)
 
 
 construct = MAVLinkDronesExtension

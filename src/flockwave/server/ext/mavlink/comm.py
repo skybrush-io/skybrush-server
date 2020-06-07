@@ -12,7 +12,7 @@ from flockwave.logger import Logger
 from flockwave.server.comm import CommunicationManager
 
 from .enums import MAVComponent
-from .types import MAVLinkMessage, MAVLinkNetworkSpecification
+from .types import MAVLinkMessage, MAVLinkMessageSpecification
 
 
 __all__ = ("create_communication_manager",)
@@ -80,10 +80,10 @@ def create_mavlink_message_channel(
 ) -> MessageChannel[Tuple[MAVLinkMessage, str]]:
     """Creates a bidirectional Trio-style channel that reads data from and
     writes data to the given connection, and does the parsing of MAVLink
-    messages automatically. The channel will accept and yield
-    tuples containing a MAVLinkMessage_ object and a "network ID" that identifies
-    a namespace within which all MAVLink system IDs are considered to be
-    unique.
+    messages automatically. The channel will yield MAVLinkMessage_ objects
+    and accept MAVLink message specifications, which are essentially tuples
+    consisting of a MAVLink message type and the corresponding arguments. This
+    is because the actual message is constructed by the encoder of the channel.
 
     Parameters:
         connection: the connection to read data from and write data to
@@ -92,16 +92,14 @@ def create_mavlink_message_channel(
     mavlink_factory = get_mavlink_factory(dialect)
     mavlink = mavlink_factory()
 
-    network = MAVLinkNetworkSpecification(id="")
+    def parser(data: bytes) -> List[Tuple[MAVLinkMessage, Any]]:
+        # TODO(ntamas): sometimes mavlink.parse_buffer() returns None, how
+        # can that happen?
+        messages = mavlink.parse_buffer(data) or ()
+        return [(message, "") for message in messages]
 
-    def parser(data: bytes) -> List[Tuple[MAVLinkMessage, str]]:
-        return [(message, network.id) for message in mavlink.parse_buffer(data)]
-
-    def encoder(spec_and_network_id: Tuple[MAVLinkMessage, str]) -> bytes:
-        # TODO(ntamas): use a separate MAVLink object by network, each
-        # pre-configured for the appropriate system and component ID, and then
-        # use the appropriate MAVLink object to pack the message
-        spec, _ = spec_and_network_id
+    def encoder(spec_and_address: Tuple[MAVLinkMessageSpecification, Any]) -> bytes:
+        spec, _ = spec_and_address
         type, kwds = spec
         message = create_mavlink_message(mavlink, type, **kwds)
         result = message.pack(mavlink)

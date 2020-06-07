@@ -3,6 +3,7 @@ import urllib
 import trio
 
 from functools import partial
+from math import inf
 
 from . import exceptions, packet, server
 from .socket import Socket
@@ -10,7 +11,7 @@ from .socket import Socket
 
 class TrioQueue:
     def __init__(self, maxsize=0):
-        self._maxsize = maxsize if maxsize > 0 else float("inf")
+        self._maxsize = maxsize if maxsize > 0 else inf
         self._sender, self._receiver = trio.open_memory_channel(self._maxsize)
         self._join_event = None
         self._tasks_pending = 0

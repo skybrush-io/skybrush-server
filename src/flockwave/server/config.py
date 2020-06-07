@@ -60,7 +60,7 @@ EXTENSIONS = {
     "mavlink": {
         "enabled": False,
         "id_format": "APM-{0:03}",
-        "connections": {"SITL": "tcp://localhost:5760"},
+        "connections": ["tcp://localhost:5760"],
     },
     "radiation": {
         "sources": [{"lat": 47.473703, "lon": 19.061739, "intensity": 50000}],

@@ -506,7 +506,7 @@ class FlockCtrlUAV(UAVBase):
     """
 
     def __init__(self, *args, **kwds):
-        super(FlockCtrlUAV, self).__init__(*args, **kwds)
+        super().__init__(*args, **kwds)
         self.addresses = {}
 
     @property

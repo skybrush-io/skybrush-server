@@ -3,6 +3,7 @@ trajectory.
 """
 
 from bisect import bisect
+from math import inf
 from typing import Any
 
 from flockwave.server.utils import constant
@@ -121,23 +122,23 @@ class TrajectoryPlayer:
 
         if index < 0:
             self._current_segment = None
-            self._current_segment_start_time = -float("inf")
+            self._current_segment_start_time = -inf
             self._current_segment_length = 0
             if self._num_segments > 0:
                 self._current_segment_end_time = self._start_times[0]
                 self._current_segment_func = constant(self._segments[0][0])
             else:
-                self._current_segment_end_time = float("inf")
+                self._current_segment_end_time = inf
                 self._current_segment_func = constant(ZERO)
         elif index >= self._num_segments:
             self._current_segment = None
             self._current_segment_length = 0
-            self._current_segment_end_time = float("inf")
+            self._current_segment_end_time = inf
             if self._num_segments > 0:
                 self._current_segment_start_time = self._start_times[-1]
                 self._current_segment_func = constant(self._segments[-1][0])
             else:
-                self._current_segment_start_time = -float("inf")
+                self._current_segment_start_time = -inf
                 self._current_segment_func = constant(ZERO)
         else:
             self._current_segment = self._segments[index]
@@ -153,7 +154,7 @@ class TrajectoryPlayer:
                     control_points=self._current_segment[1],
                 )
             else:
-                self._current_segment_end_time = float("inf")
+                self._current_segment_end_time = inf
                 self._current_segment_length = 0
                 self._current_segment_func = constant(self._current_segment[0])
 

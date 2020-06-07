@@ -53,6 +53,7 @@ def bind(func, args=None, kwds=None, *, partial=False):
     else:
         return partial_(func, *args, **kwds)
 
+
 def color_to_rgb565(color: Color) -> int:
     """Converts a color given as an RGB triplet into its RGB565
     representation.
@@ -69,6 +70,7 @@ def color_to_rgb565(color: Color) -> int:
         + (((green >> 2) & 0x3F) << 5)
         + ((blue >> 3) & 0x1F)
     )
+
 
 def constant(x: Any) -> Callable[..., Any]:
     """Function factory that returns a function that accepts an arbitrary
@@ -183,23 +185,46 @@ def once(func):
 
 
 @contextmanager
-def overridden(dictionary, **kwds):
-    """Context manager that updates a dictionary with some key-value
-    pairs, restoring the original values in the dictionary when the
+def overridden(obj: Any, **kwds):
+    """Context manager that updates an object or dictionary with some key-value
+    pairs, restoring the original values in the object or dictionary when the
     context is exited.
+
+    When the input object is a dictionary, the given keyword arguments will be
+    registered as keys and values (obviously). When the input object is _not_
+    a dictionary, the given keyword arguments will be set on the object as
+    _attributes_. In both cases, the original values are restored when the
+    context exits.
     """
     names = list(kwds.keys()) if kwds else []
     originals = {}
 
+    is_dict = isinstance(obj, dict)
+
     try:
-        for name in names:
-            if name in dictionary:
-                originals[name] = dictionary[name]
-            dictionary[name] = kwds[name]
+        if is_dict:
+            for name in names:
+                if name in obj:
+                    originals[name] = obj[name]
+                obj[name] = kwds[name]
+        else:
+            for name in names:
+                if hasattr(obj, name):
+                    originals[name] = getattr(obj, name)
+                setattr(obj, name, kwds[name])
+
         yield
+
     finally:
-        for name in names:
-            if name in originals:
-                dictionary[name] = originals[name]
-            else:
-                del dictionary[name]
+        if is_dict:
+            for name in names:
+                if name in originals:
+                    obj[name] = originals[name]
+                else:
+                    del obj[name]
+        else:
+            for name in names:
+                if name in originals:
+                    setattr(obj, name, originals[name])
+                else:
+                    delattr(obj, name)

@@ -2,10 +2,25 @@
 
 from __future__ import division
 
-from flockwave.server.ext.logger import log
+from collections import defaultdict
+from dataclasses import dataclass
+from math import inf
+from time import monotonic
+from trio import move_on_after
+from typing import Optional
+
+from flockwave.server.errors import NotSupportedError
+from flockwave.server.model.gps import GPSFix
 from flockwave.server.model.uav import UAVBase, UAVDriver
 
+from .enums import GPSFixType, MAVDataStream, MAVResult
+from .types import MAVLinkMessage, spec
+
 __all__ = ("MAVLinkDriver",)
+
+
+#: Conversion constant from seconds to microseconds
+SEC_TO_USEC = 1000000
 
 
 class MAVLinkDriver(UAVDriver):
@@ -13,12 +28,6 @@ class MAVLinkDriver(UAVDriver):
 
     Attributes:
         app (SkybrushServer): the app in which the driver lives
-        id_format (str): Python format string that receives a numeric
-            drone ID in the flock and returns its preferred formatted
-            identifier that is used when the drone is registered in the
-            server, or any other object that has a ``format()`` method
-            accepting a single integer as an argument and returning the
-            preferred UAV identifier.
         create_device_tree_mutator (callable): a function that should be
             called by the driver as a context manager whenever it wants to
             mutate the state of the device tree
@@ -29,20 +38,113 @@ class MAVLinkDriver(UAVDriver):
             destination address in that medium.
     """
 
-    def __init__(self, app=None, id_format: str = "{0:02}"):
+    def __init__(self, app=None):
         """Constructor.
 
         Parameters:
-            app (SkybrushServer): the app in which the driver lives
-            id_format: the format of the UAV IDs used by this driver
+            app: the app in which the driver lives
         """
         super().__init__()
 
         self.app = app
+
         self.create_device_tree_mutator = None
-        self.id_format = id_format
-        self.log = log.getChild("mavlink").getChild("driver")
+        self.log = None
+        self.run_in_background = None
         self.send_packet = None
+
+    def create_uav(self, id: str) -> "MAVLinkUAV":
+        """Creates a new UAV that is to be managed by this driver.
+
+        Parameters:
+            id: the identifier of the UAV to create
+
+        Returns:
+            MAVLinkUAV: an appropriate MAVLink UAV object
+        """
+        uav = MAVLinkUAV(id, driver=self)
+        return uav
+
+    async def send_command_long(
+        self,
+        target: "MAVLinkUAV",
+        command_id: int,
+        param1: float = 0,
+        param2: float = 0,
+        param3: float = 0,
+        param4: float = 0,
+        param5: float = 0,
+        param6: float = 0,
+        param7: float = 0,
+        *,
+        confirmation: int = 0,
+    ) -> Optional[MAVLinkMessage]:
+        """Sends a MAVLink command to a given UAV and waits for an acknowlegment.
+
+        Parameters:
+            target: the UAV to send the command to
+            param1: the first parameter of the command
+            param2: the second parameter of the command
+            param3: the third parameter of the command
+            param4: the fourth parameter of the command
+            param5: the fifth parameter of the command
+            param6: the sixth parameter of the command
+            param7: the seventh parameter of the command
+            confirmation: confirmation count for commands that require a
+                confirmation
+
+        Returns:
+            whether the command was executed successfully
+
+        Raises:
+            NotSupportedError: if the command is not supported by the UAV
+        """
+        response = await self.send_packet(
+            (
+                "COMMAND_LONG",
+                {
+                    "command": command_id,
+                    "param1": param1,
+                    "param2": param2,
+                    "param3": param3,
+                    "param4": param4,
+                    "param5": param5,
+                    "param6": param6,
+                    "param7": param7,
+                    "confirmation": confirmation,
+                },
+            ),
+            target,
+            wait_for_response=("COMMAND_ACK", {"command": command_id}),
+        )
+        result = response.result
+
+        if result == MAVResult.UNSUPPORTED:
+            raise NotSupportedError
+
+        return result == MAVResult.ACCEPTED
+
+
+@dataclass
+class MAVLinkMessageRecord:
+    """Simple object holding a pair of a MAVLink message and the corresponding
+    monotonic timestamp when the message was observed.
+    """
+
+    message: MAVLinkMessage = None
+    timestamp: float = None
+
+    @property
+    def age(self) -> float:
+        """Returns the number of seconds elapsed since the record was updated
+        the last time.
+        """
+        return monotonic() - self.timestamp
+
+    def update(self, message: MAVLinkMessage) -> None:
+        """Updates the record with a new MAVLink message."""
+        self.message = message
+        self.timestamp = monotonic()
 
 
 class MAVLinkUAV(UAVBase):
@@ -50,4 +152,163 @@ class MAVLinkUAV(UAVBase):
     """
 
     def __init__(self, *args, **kwds):
-        super(MAVLinkUAV, self).__init__(*args, **kwds)
+        super().__init__(*args, **kwds)
+
+        self._gps_fix = GPSFix()
+        self._is_connected = False
+        self._last_messages = defaultdict(MAVLinkMessageRecord)
+        self._network_id = None
+        self._system_id = None
+
+    def assign_to_network_and_system_id(self, network_id: str, system_id: int) -> None:
+        """Assigns the UAV to the MAVLink network with the given network ID.
+        The UAV is assumed to have the given system ID in the given network, and
+        it is assumed to have a component ID of 1 (primary autopilot). We are
+        not talking to any other component of a MAVLink system yet.
+        """
+        if self._network_id is not None:
+            raise RuntimeError(
+                f"This UAV is already a member of MAVLink network {self._network_id}"
+            )
+
+        self._network_id = network_id
+        self._system_id = system_id
+
+    def handle_message_heartbeat(self, message: MAVLinkMessage):
+        """Handles an incoming MAVLink HEARTBEAT message targeted at this UAV."""
+        self._store_message(message)
+        if not self._is_connected:
+            self.notify_reconnection()
+
+    def handle_message_gps_raw_int(self, message: MAVLinkMessage):
+        num_sats = message.satellites_visible
+        self._gps_fix.type = GPSFixType(message.fix_type).to_ours()
+        self._gps_fix.num_satellites = (
+            num_sats if num_sats < 255 else None
+        )  # 255 = unknown
+        self.update_status(gps=self._gps_fix)
+
+    def handle_message_system_time(self, message: MAVLinkMessage):
+        """Handles an incoming MAVLink HEARTBEAT message targeted at this UAV."""
+        previous_message = self._get_previous_copy_of_message(message)
+        if previous_message:
+            # TODO(ntamas): compare the time since boot with the previous
+            # version to detect reboot events
+            pass
+
+        self._store_message(message)
+
+    @property
+    def is_connected(self) -> bool:
+        """Returns whether the UAV is connected to the network."""
+        return self._is_connected
+
+    @property
+    def network_id(self) -> str:
+        """The network ID Of the UAV."""
+        return self._network_id
+
+    @property
+    def system_id(self) -> str:
+        """The system ID Of the UAV."""
+        return self._system_id
+
+    def notify_disconnection(self) -> None:
+        """Notifies the UAV state object that we have detected that it has been
+        disconnected from the network.
+        """
+        self._is_connected = False
+        # TODO(ntamas): trigger a warning flag in the UAV?
+
+    def notify_reconnection(self) -> None:
+        """Notifies the UAV state object that it has been reconnected to the
+        network.
+        """
+        self._is_connected = True
+        # TODO(ntamas): clear a warning flag in the UAV?
+
+        if self._was_probably_rebooted_after_reconnection():
+            self._handle_reboot()
+
+    async def _configure_data_streams(self) -> None:
+        """Configures the data streams that we want to receive from the UAV."""
+        # We give ourselves 5 seconds to configure everything
+        with move_on_after(5):
+            # TODO(ntamas): this is unsafe; there are no confirmations for
+            # REQUEST_DAYA_STREAM commands so we never know if we succeeded or
+            # not
+            await self.driver.send_packet(
+                spec.request_data_stream(
+                    req_stream_id=0, req_message_rate=0, start_stop=0
+                ),
+                target=self,
+            )
+
+            # EXTENDED_STATUS: we need SYS_STATUS from it for the general status
+            # flags and GPS_RAW_INT for the GPS fix info.
+            # We might also need MISSION_CURRENT.
+            await self.driver.send_packet(
+                spec.request_data_stream(
+                    req_stream_id=MAVDataStream.EXTENDED_STATUS,
+                    req_message_rate=1,
+                    start_stop=1,
+                ),
+                target=self,
+            )
+
+    def _handle_reboot(self) -> None:
+        """Handles a reboot event on the autopilot and attempts to re-initialize
+        the data streams.
+        """
+        self.driver.run_in_background(self._configure_data_streams)
+
+    def get_age_of_message(self, type: int, now: Optional[float] = None) -> float:
+        """Returns the number of seconds elapsed since we have last seen a
+        message of the given type.
+        """
+        record = self._last_messages.get(int(type))
+        if now is None:
+            now = monotonic()
+        return record.timestamp - now if record else inf
+
+    def get_last_message(self, type: int) -> Optional[MAVLinkMessage]:
+        """Returns the last MAVLink message that was observed with the given
+        type or `None` if we have not observed such a message yet.
+        """
+        record = self._last_messages.get(int(type))
+        return record.message if record else None
+
+    def _get_previous_copy_of_message(
+        self, message: MAVLinkMessage
+    ) -> Optional[MAVLinkMessage]:
+        """Returns the previous copy of this MAVLink message, or `None` if we
+        have not observed such a message yet.
+        """
+        record = self._get_previous_record_of_message(message)
+        return record.message if record else None
+
+    def _get_previous_record_of_message(
+        self, message: MAVLinkMessage
+    ) -> Optional[MAVLinkMessageRecord]:
+        """Returns the previous copy of this MAVLink message and its timestamp,
+        or `None` if we have not observed such a message yet.
+        """
+        return self._last_messages.get(message.get_msgId())
+
+    def _store_message(self, message: MAVLinkMessage) -> None:
+        """Stores the given MAVLink message in the dictionary that maps
+        MAVLink message types to their most recent versions that were seen
+        for this UAV.
+        """
+        self._last_messages[message.get_msgId()].update(message)
+
+    def _was_probably_rebooted_after_reconnection(self) -> bool:
+        """Returns whether the UAV was probably rebooted recently, _assuming_
+        that a reconnection event happened.
+
+        This function _must_ be called only after a reconnection event. Right
+        now we always return `True`, but we could implement a more sophisticated
+        check in the future based on the `SYSTEM_TIME` messages and whether the
+        `time_boot_ms` timestamp has decreased.
+        """
+        return True

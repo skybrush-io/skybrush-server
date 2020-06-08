@@ -11,6 +11,7 @@ from flockwave.connections import (
     create_connection,
     create_connection_factory,
 )
+from flockwave.networking import format_socket_address
 from flockwave.server.configurator import AppConfigurator
 
 from .logger import log
@@ -141,6 +142,7 @@ class SkybrushProxyServer:
 
     async def run_remote_connection(self, conn: Connection) -> None:
         try:
+            log.info(f"Opened connection to {format_socket_address(conn.address)}")
             async with conn:
                 while True:
                     should_close = await self.handle_single_request_from_remote_connection(
@@ -151,6 +153,8 @@ class SkybrushProxyServer:
 
         except Exception:
             log.exception("Unhandled exception")
+        finally:
+            log.info(f"Closed connection to {format_socket_address(conn.address)}")
 
     async def handle_single_request_from_remote_connection(
         self, conn: Connection

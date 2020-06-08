@@ -8,6 +8,7 @@ from typing import Optional, Tuple
 from flockwave.connections import (
     Connection,
     ConnectionSupervisor,
+    StreamConnection,
     create_connection,
     create_connection_factory,
 )
@@ -58,6 +59,15 @@ async def parse_http_headers_from_connection(
             headers, _, body = b"".join(headers).partition(CRLFCRLF)
             status_line, _, headers = headers.partition(CRLF)
             return status_line, headers, body
+
+
+async def copy_stream(source: StreamConnection, target: StreamConnection) -> None:
+    while True:
+        data = await source.read()
+        if not data:
+            break
+
+        await target.write(data)
 
 
 class SkybrushProxyServer:
@@ -151,6 +161,22 @@ class SkybrushProxyServer:
                     if should_close:
                         break
 
+        except Exception:
+            log.exception("Unhandled exception")
+        finally:
+            log.info(f"Closed connection to {format_socket_address(conn.address)}")
+
+    async def run_remote_connection_new(self, conn: Connection) -> None:
+        # TODO(ntamas): this should be conceptually simpler and not dependent
+        # on HTTP, but it does not work yet for some reason. Investigate.
+        try:
+            log.info(f"Opened connection to {format_socket_address(conn.address)}")
+            async with conn:
+                local_conn = self.local_connection_factory()
+                async with local_conn:
+                    async with open_nursery() as nursery:
+                        nursery.start_soon(copy_stream, conn, local_conn)
+                        nursery.start_soon(copy_stream, local_conn, conn)
         except Exception:
             log.exception("Unhandled exception")
         finally:

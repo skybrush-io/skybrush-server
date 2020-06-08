@@ -70,7 +70,7 @@ motoron=5
 takeoff=5 4 1 0
 waypoint=N{lat:.8f} E{lon:.8f} {agl:.2f} {velocity_xy:.2f} {velocity_z:.2f} 5 0
 # landing at station '{station}'
-land=4 1 10
+land=4 1 0
 motoroff=10
 """
 

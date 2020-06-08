@@ -10,6 +10,7 @@ from trio import move_on_after
 from typing import Optional
 
 from flockwave.server.errors import NotSupportedError
+from flockwave.server.model.battery import BatteryInfo
 from flockwave.server.model.gps import GPSFix
 from flockwave.server.model.uav import UAVBase, UAVDriver
 
@@ -154,6 +155,7 @@ class MAVLinkUAV(UAVBase):
     def __init__(self, *args, **kwds):
         super().__init__(*args, **kwds)
 
+        self._battery = BatteryInfo()
         self._gps_fix = GPSFix()
         self._is_connected = False
         self._last_messages = defaultdict(MAVLinkMessageRecord)
@@ -187,6 +189,12 @@ class MAVLinkUAV(UAVBase):
             num_sats if num_sats < 255 else None
         )  # 255 = unknown
         self.update_status(gps=self._gps_fix)
+
+    def handle_message_sys_status(self, message: MAVLinkMessage):
+        # TODO(ntamas): check sensor health, update flags accordingly
+        self._battery.voltage = message.voltage_battery / 1000
+        self._battery.percentage = message.battery_remaining
+        self.update_status(battery=self._battery)
 
     def handle_message_system_time(self, message: MAVLinkMessage):
         """Handles an incoming MAVLink HEARTBEAT message targeted at this UAV."""
@@ -251,6 +259,16 @@ class MAVLinkUAV(UAVBase):
                 spec.request_data_stream(
                     req_stream_id=MAVDataStream.EXTENDED_STATUS,
                     req_message_rate=1,
+                    start_stop=1,
+                ),
+                target=self,
+            )
+
+            # POSITION: we need GLOBAL_POSITION_INT for position and velocity
+            await self.driver.send_packet(
+                spec.request_data_stream(
+                    req_stream_id=MAVDataStream.POSITION,
+                    req_message_rate=2,
                     start_stop=1,
                 ),
                 target=self,

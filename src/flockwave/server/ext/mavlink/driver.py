@@ -10,7 +10,7 @@ from time import monotonic
 from trio import move_on_after
 from typing import Optional
 
-from flockwave.gps.vectors import GPSCoordinate
+from flockwave.gps.vectors import GPSCoordinate, VelocityNED
 
 from flockwave.server.errors import NotSupportedError
 from flockwave.server.model.battery import BatteryInfo
@@ -182,6 +182,7 @@ class MAVLinkUAV(UAVBase):
         self._last_messages = defaultdict(MAVLinkMessageRecord)
         self._network_id = None
         self._position = GPSCoordinate()
+        self._velocity = VelocityNED()
         self._system_id = None
 
         self.notify_updated = None
@@ -208,11 +209,19 @@ class MAVLinkUAV(UAVBase):
 
     def handle_message_global_position_int(self, message: MAVLinkMessage):
         # TODO(ntamas): reboot detection with time_boot_ms
+
         self._position.lat = message.lat / 1e7
         self._position.lon = message.lon / 1e7
         self._position.amsl = message.alt / 1e3
         self._position.agl = message.relative_alt / 1e3
-        self.update_status(position=self._position)
+
+        self._velocity.x = message.vx / 100
+        self._velocity.y = message.vy / 100
+        self._velocity.z = message.vz / 100
+
+        self.update_status(
+            position=self._position, velocity=self._velocity, heading=message.hdg / 10
+        )
         self.notify_updated()
 
     def handle_message_gps_raw_int(self, message: MAVLinkMessage):

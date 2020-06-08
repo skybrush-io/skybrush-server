@@ -4,17 +4,20 @@ from __future__ import division
 
 from collections import defaultdict
 from dataclasses import dataclass
+from functools import partial
 from math import inf
 from time import monotonic
 from trio import move_on_after
 from typing import Optional
+
+from flockwave.gps.vectors import GPSCoordinate
 
 from flockwave.server.errors import NotSupportedError
 from flockwave.server.model.battery import BatteryInfo
 from flockwave.server.model.gps import GPSFix
 from flockwave.server.model.uav import UAVBase, UAVDriver
 
-from .enums import GPSFixType, MAVDataStream, MAVResult
+from .enums import GPSFixType, MAVCommand, MAVDataStream, MAVResult
 from .types import MAVLinkMessage, spec
 
 __all__ = ("MAVLinkDriver",)
@@ -64,6 +67,7 @@ class MAVLinkDriver(UAVDriver):
             MAVLinkUAV: an appropriate MAVLink UAV object
         """
         uav = MAVLinkUAV(id, driver=self)
+        uav.notify_updated = partial(self.app.request_to_send_UAV_INF_message_for, [id])
         return uav
 
     async def send_command_long(
@@ -125,6 +129,23 @@ class MAVLinkDriver(UAVDriver):
 
         return result == MAVResult.ACCEPTED
 
+    async def _send_reset_signal_single(self, uav, component):
+        if not component:
+            # Resetting the whole UAV, this is supported
+            result = await self.send_command_long(
+                uav, MAVCommand.PREFLIGHT_REBOOT_SHUTDOWN, 1  # reboot autopilot
+            )
+            return bool(result)
+        else:
+            # No component resets are implemented on this UAV yet
+            return False
+
+    async def _send_shutdown_signal_single(self, uav):
+        result = await self.send_command_long(
+            uav, MAVCommand.PREFLIGHT_REBOOT_SHUTDOWN, 2  # shutdown autopilot
+        )
+        return bool(result)
+
 
 @dataclass
 class MAVLinkMessageRecord:
@@ -160,7 +181,10 @@ class MAVLinkUAV(UAVBase):
         self._is_connected = False
         self._last_messages = defaultdict(MAVLinkMessageRecord)
         self._network_id = None
+        self._position = GPSCoordinate()
         self._system_id = None
+
+        self.notify_updated = None
 
     def assign_to_network_and_system_id(self, network_id: str, system_id: int) -> None:
         """Assigns the UAV to the MAVLink network with the given network ID.
@@ -182,6 +206,15 @@ class MAVLinkUAV(UAVBase):
         if not self._is_connected:
             self.notify_reconnection()
 
+    def handle_message_global_position_int(self, message: MAVLinkMessage):
+        # TODO(ntamas): reboot detection with time_boot_ms
+        self._position.lat = message.lat / 1e7
+        self._position.lon = message.lon / 1e7
+        self._position.amsl = message.alt / 1e3
+        self._position.agl = message.relative_alt / 1e3
+        self.update_status(position=self._position)
+        self.notify_updated()
+
     def handle_message_gps_raw_int(self, message: MAVLinkMessage):
         num_sats = message.satellites_visible
         self._gps_fix.type = GPSFixType(message.fix_type).to_ours()
@@ -189,12 +222,14 @@ class MAVLinkUAV(UAVBase):
             num_sats if num_sats < 255 else None
         )  # 255 = unknown
         self.update_status(gps=self._gps_fix)
+        self.notify_updated()
 
     def handle_message_sys_status(self, message: MAVLinkMessage):
         # TODO(ntamas): check sensor health, update flags accordingly
         self._battery.voltage = message.voltage_battery / 1000
         self._battery.percentage = message.battery_remaining
         self.update_status(battery=self._battery)
+        self.notify_updated()
 
     def handle_message_system_time(self, message: MAVLinkMessage):
         """Handles an incoming MAVLink HEARTBEAT message targeted at this UAV."""

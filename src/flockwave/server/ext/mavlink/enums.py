@@ -11,6 +11,7 @@ class MAVCommand(IntEnum):
     Not all values are listed here, only the ones that we do actually use.
     """
 
+    PREFLIGHT_REBOOT_SHUTDOWN = 246
     SET_MESSAGE_INTERVAL = 511
 
 

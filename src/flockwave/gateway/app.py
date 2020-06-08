@@ -43,13 +43,13 @@ class SkybrushGatewayServer:
         self._create_components()
 
     def _create_components(self):
-        """Creates all the components and registries of the server.
+        """Creates all the components and registries of the gateway.
 
         This function is called by the constructor once at construction time.
         You should not need to call it later.
 
-        The configuration of the server is not loaded yet when this function is
-        executed. Avoid querying the configuration of the server here because
+        The configuration of the gateway is not loaded yet when this function is
+        executed. Avoid querying the configuration of the gateway here because
         the settings will not be up-to-date yet. Use `prepare()` for any
         preparations that depend on the configuration.
         """
@@ -57,7 +57,7 @@ class SkybrushGatewayServer:
 
     @property
     def base_port(self) -> Optional[int]:
-        """The base port that the server is listening on."""
+        """The base port that the gateway is listening on."""
         base_port = self.config.get("PORT")
         if base_port is not None:
             return int(base_port)

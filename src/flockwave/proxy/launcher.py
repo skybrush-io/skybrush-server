@@ -1,4 +1,4 @@
-"""Command line launcher for the Skybrush gateway server."""
+"""Command line launcher for the Skybrush proxy server."""
 
 import click
 import dotenv
@@ -16,13 +16,13 @@ from flockwave.logger import log
     "--config",
     type=click.Path(resolve_path=True),
     help="Name of the configuration file to load; defaults to "
-    "skybrush-gateway.cfg in the current directory",
+    "skybrush-proxy.cfg in the current directory",
 )
 @click.option(
-    "-d", "--debug/--no-debug", default=False, help="Start the gateway in debug mode"
+    "-d", "--debug/--no-debug", default=False, help="Start the proxy in debug mode"
 )
 @click.option(
-    "-q", "--quiet/--no-quiet", default=False, help="Start the gateway in quiet mode"
+    "-q", "--quiet/--no-quiet", default=False, help="Start the proxy in quiet mode"
 )
 @click.option(
     "--log-style",
@@ -31,7 +31,7 @@ from flockwave.logger import log
     help="Specify the style of the logging output",
 )
 def start(config, debug, quiet, log_style):
-    """Start the Skybrush gateway server."""
+    """Start the Skybrush proxy server."""
     # Set up the logging format
     logger.install(
         level=logging.DEBUG if debug else logging.WARN if quiet else logging.INFO,
@@ -43,10 +43,10 @@ def start(config, debug, quiet, log_style):
 
     # Note the lazy import; this is to ensure that the logging is set up by the
     # time we start configuring the app.
-    from flockwave.gateway.app import app
+    from flockwave.proxy.app import app
 
     # Log what we are doing
-    log.info("Starting Skybrush gateway server...")
+    log.info("Starting Skybrush proxy server...")
 
     # Configure the application
     retval = app.prepare(config, debug=debug)

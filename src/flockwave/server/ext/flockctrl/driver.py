@@ -14,6 +14,7 @@ from flockwave.protocols.flockctrl.packets import (
     CompressedCommandResponsePacket,
     MissionInfoPacket,
     PrearmStatusPacket,
+    RawGPSInjectionPacket,
     StatusPacket,
 )
 from flockwave.server.ext.logger import log
@@ -169,6 +170,7 @@ class FlockCtrlDriver(UAVDriver):
             CommandResponsePacket: self._handle_inbound_command_response_packet,
             AlgorithmDataPacket: self._handle_inbound_algorithm_data_packet,
             MissionInfoPacket: nop,
+            RawGPSInjectionPacket: nop,
         }
 
     def _create_uav(self, formatted_id):

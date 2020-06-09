@@ -146,7 +146,7 @@ def upload_mission(raw_data: bytes, address: Union[str, Tuple[str, int]]) -> Non
     )
     with open_ssh(address, username="root") as ssh:
         scp = open_scp(ssh)
-        scp.putfo(BytesIO(raw_data), f"/home/tamas/.flockctrl/inbox/{name}.mission")
+        scp.putfo(BytesIO(raw_data), f"/data/inbox/{name}.mission")
         stdout, stderr, exit_code = execute_ssh_command(
             ssh, "systemctl restart flockctrl"
         )

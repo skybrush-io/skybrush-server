@@ -3,7 +3,7 @@
 from __future__ import absolute_import
 
 from abc import ABCMeta, abstractproperty
-from typing import Any, Iterable, List, Optional, Union
+from typing import Any, Dict, Iterable, List, Optional, Union
 
 from flockwave.gps.vectors import GPSCoordinate, VelocityNED
 from flockwave.server.errors import NotSupportedError
@@ -153,6 +153,42 @@ class UAVBase(UAV):
     def clear_errors(self):
         """Clears the error codes of the UAV."""
         return self.update_status(errors=())
+
+    def ensure_error(self, code: int, present: bool = True) -> None:
+        """Ensures that the given error code is present (or not present) in the
+        error code list.
+
+        This function does _not_ update the timestamp of the status information;
+        you need to do it on your own by calling `update_status()`.
+
+        Parameters:
+            code: the code to add or remove
+            present: whether to add the code (True) or remove it (False)
+        """
+        # If the error code is to be cleared and we don't have any errors
+        # (which is the common code path), we can bail out immediately.
+        if present or getattr(self._status, "errors", None):
+            code = int(code)
+
+            if code in self._status.errors:
+                if not present:
+                    self._status.errors.remove(code)
+            else:
+                if present:
+                    self._status.errors.append(code)
+
+    def ensure_errors(self, codes: Dict[int, bool]) -> None:
+        """Updates multiple error codes with a single function call.
+
+        Parameters:
+            codes: dictionary mapping error codes to a boolean specifying
+                whether the error code should be present or absent
+        """
+        if getattr(self._status, "errors", None) or any(
+            present for present in codes.values()
+        ):
+            for code, present in codes.items():
+                self.ensure_error(code, present)
 
     def update_status(
         self,

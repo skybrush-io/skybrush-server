@@ -1,4 +1,4 @@
-from enum import IntEnum
+from enum import IntEnum, IntFlag
 from flockwave.server.model.gps import GPSFixType as OurGPSFixType
 
 __all__ = ("MAVComponent",)
@@ -66,6 +66,59 @@ class MAVDataStream(IntEnum):
     EXTRA1 = 10
     EXTRA2 = 11
     EXTRA3 = 12
+
+
+class MAVState(IntEnum):
+    """Replica of the `MAV_STATE` enum of the MAVLink protocol, using proper
+    Python enums.
+    """
+
+    UNINIT = 0
+    BOOT = 1
+    CALIBRATING = 2
+    STANDBY = 3
+    ACTIVE = 4
+    CRITICAL = 5
+    EMERGENCY = 6
+    POWEROFF = 7
+    FLIGHT_TERMINATION = 8
+
+
+class MAVSysStatusSensor(IntFlag):
+    """Replica of the `MAV_SYS_STATUS_SENSOR` flag set of the MAVLink protocol,
+    using proper Python enums.
+    """
+
+    GYRO_3D = 1
+    ACCEL_3D = 2
+    MAG_3D = 4
+    ABSOLUTE_PRESSURE = 8
+    DIFFERENTIAL_PRESSURE = 0x10
+    GPS = 0x20
+    OPTICAL_FLOW = 0x40
+    VISION_POSITION = 0x80
+    LASER_POSITION = 0x100
+    EXTERNAL_GROUND_TRUTH = 0x200
+    ANGULAR_RATE_CONTROL = 0x400
+    ATTITUDE_STABILIZATION = 0x800
+    YAW_POSITION = 0x1000
+    Z_ALTITUDE_CONTROL = 0x2000
+    XY_POSITION_CONTROL = 0x4000
+    MOTOR_OUTPUTS = 0x8000
+    RC_RECEIVER = 0x10000
+    GYRO2_3D = 0x20000
+    ACCEL2_3D = 0x40000
+    MAG2_3D = 0x80000
+    GEOFENCE = 0x100000
+    AHRS = 0x200000
+    TERRAIN = 0x400000
+    REVERSE_MOTOR = 0x800000
+    LOGGING = 0x1000000
+    BATTERY = 0x2000000
+    PROXIMITY = 0x4000000
+    SATCOM = 0x8000000
+    PREARM_CHECK = 0x10000000
+    OBSTACLE_AVOIDANCE = 0x20000000
 
 
 class GPSFixType(IntEnum):

@@ -84,7 +84,7 @@ class ArduPilot(Autopilot):
         15: "tune",
         16: "pos hold",
         17: "brake",
-        18: "thrpw",
+        18: "throw",
         19: "avoid ADSB",
         20: "guided no GPS",
         21: "smart RTH",

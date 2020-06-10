@@ -16,9 +16,17 @@ from flockwave.server.errors import NotSupportedError
 from flockwave.server.model.battery import BatteryInfo
 from flockwave.server.model.gps import GPSFix
 from flockwave.server.model.uav import UAVBase, UAVDriver
+from flockwave.spec.errors import FlockwaveErrorCode
 
 from .autopilots import Autopilot, UnknownAutopilot
-from .enums import GPSFixType, MAVCommand, MAVDataStream, MAVResult
+from .enums import (
+    GPSFixType,
+    MAVCommand,
+    MAVDataStream,
+    MAVResult,
+    MAVState,
+    MAVSysStatusSensor,
+)
 from .types import MAVLinkMessage, spec
 
 __all__ = ("MAVLinkDriver",)
@@ -211,10 +219,34 @@ class MAVLinkUAV(UAVBase):
             self._autopilot = Autopilot.from_heartbeat(message)
             self.notify_reconnection()
 
+        system_status = message.system_status
+        self.ensure_error(
+            FlockwaveErrorCode.AUTOPILOT_INIT_FAILED, system_status == MAVState.UNINIT
+        )
+        self.ensure_error(
+            FlockwaveErrorCode.AUTOPILOT_INITIALIZING, system_status == MAVState.BOOT
+        )
+        self.ensure_error(
+            FlockwaveErrorCode.PREARM_CHECK_IN_PROGRESS,
+            system_status == MAVState.CALIBRATING,
+        )
+
+        # TODO(ntamas): these error flags have to be triggered only if the
+        # heartbeat indicates that there is an error but there is no further
+        # information in the SYS_STATUS message that would give us more details
+        """
+        self.ensure_error(
+            FlockwaveErrorCode.UNSPECIFIED_ERROR, system_status == MAVState.CRITICAL
+        )
+        self.ensure_error(
+            FlockwaveErrorCode.UNSPECIFIED_CRITICAL_ERROR,
+            system_status == MAVState.EMERGENCY,
+        )
+        """
+
         self.update_status(
             mode=self._autopilot.describe_mode(message.base_mode, message.custom_mode)
         )
-        self.notify_updated()
 
     def handle_message_global_position_int(self, message: MAVLinkMessage):
         # TODO(ntamas): reboot detection with time_boot_ms
@@ -243,10 +275,63 @@ class MAVLinkUAV(UAVBase):
         self.notify_updated()
 
     def handle_message_sys_status(self, message: MAVLinkMessage):
-        # TODO(ntamas): check sensor health, update flags accordingly
+        # Check error conditions
+        sensor_mask = (
+            message.onboard_control_sensors_enabled
+            & message.onboard_control_sensors_present
+        )
+        not_healthy_sensors = sensor_mask & (
+            # Python has no proper bitwise negation on unsigned integers
+            # so we use XOR instead
+            message.onboard_control_sensors_health
+            ^ 0xFFFFFFFF
+        )
+
+        if not_healthy_sensors:
+            has_gyro_error = not_healthy_sensors & (
+                MAVSysStatusSensor.GYRO_3D | MAVSysStatusSensor.GYRO2_3D
+            )
+            has_mag_error = not_healthy_sensors & (
+                MAVSysStatusSensor.MAG_3D | MAVSysStatusSensor.MAG2_3D
+            )
+            has_accel_error = not_healthy_sensors & (
+                MAVSysStatusSensor.ACCEL_3D | MAVSysStatusSensor.ACCEL2_3D
+            )
+            has_baro_error = not_healthy_sensors & (
+                MAVSysStatusSensor.ABSOLUTE_PRESSURE
+                | MAVSysStatusSensor.DIFFERENTIAL_PRESSURE
+            )
+            has_gps_error = not_healthy_sensors & MAVSysStatusSensor.GPS
+            has_motor_error = not_healthy_sensors & (
+                MAVSysStatusSensor.MOTOR_OUTPUTS | MAVSysStatusSensor.REVERSE_MOTOR
+            )
+            has_geofence_error = not_healthy_sensors & (
+                MAVSysStatusSensor.MAV_SYS_STATUS_GEOFENCE
+            )
+            has_rc_error = not_healthy_sensors & MAVSysStatusSensor.RC_RECEIVER
+            has_battery_error = not_healthy_sensors & MAVSysStatusSensor.BATTERY
+            has_logging_error = not_healthy_sensors & MAVSysStatusSensor.LOGGING
+
+            errors = {
+                FlockwaveErrorCode.MAGNETIC_ERROR: has_mag_error,
+                FlockwaveErrorCode.GYROSCOPE_ERROR: has_gyro_error,
+                FlockwaveErrorCode.ACCELEROMETER_ERROR: has_accel_error,
+                FlockwaveErrorCode.PRESSURE_SENSOR_ERROR: has_baro_error,
+                FlockwaveErrorCode.GPS_SIGNAL_LOST: has_gps_error,
+                FlockwaveErrorCode.MOTOR_MALFUNCTION: has_motor_error,
+                FlockwaveErrorCode.GEOFENCE_VIOLATION: has_geofence_error,
+                FlockwaveErrorCode.RC_SIGNAL_LOST_WARNING: has_rc_error,
+                FlockwaveErrorCode.BATTERY_CRITICAL: has_battery_error,
+                FlockwaveErrorCode.LOGGING: has_logging_error,
+            }
+
+            self.ensure_errors(errors)
+
+        # Update battery status
         self._battery.voltage = message.voltage_battery / 1000
         self._battery.percentage = message.battery_remaining
         self.update_status(battery=self._battery)
+
         self.notify_updated()
 
     def handle_message_system_time(self, message: MAVLinkMessage):

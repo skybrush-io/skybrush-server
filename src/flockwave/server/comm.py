@@ -9,10 +9,11 @@ from functools import partial
 from logging import Logger
 from trio import open_memory_channel, WouldBlock
 from trio_util import wait_all
-from typing import Callable, Generator, Generic, Tuple, TypeVar
+from typing import Callable, Generator, Generic, Optional, Tuple, TypeVar
 
 from flockwave.channels import MessageChannel
 from flockwave.connections import Connection
+from flockwave.connections.socket import BroadcastUDPSocketConnection
 
 
 __all__ = ("CommunicationManager",)
@@ -80,7 +81,7 @@ class CommunicationManager(Generic[PacketType, AddressType]):
         self._entries_by_name = defaultdict(list)
         self._running = False
 
-    def add(self, connection, *, name: str, can_send: bool = True):
+    def add(self, connection, *, name: str, can_send: Optional[bool] = None):
         """Adds the given connection to the list of connections managed by
         the communication manager.
 
@@ -89,10 +90,16 @@ class CommunicationManager(Generic[PacketType, AddressType]):
             name: the name of the connection; passed back to consumers of the
                 incoming packet queue along with the received packets so they
                 know which connection the packet was received from
-            can_send: whether the channel can be used for sending messages
+            can_send: whether the channel can be used for sending messages.
+                `None` means to try figuring it out from the connection object
+                itself; right now we treat BroadcastUDPSocketConnection_ as the
+                only connection that cannot be used for sending.
         """
         if self._running:
             raise RuntimeError("cannot add new connections when the manager is running")
+
+        if can_send is None:
+            can_send = not isinstance(connection, BroadcastUDPSocketConnection)
 
         entry = self.Entry(connection, name=name, can_send=bool(can_send))
         self._entries_by_name[name].append(entry)

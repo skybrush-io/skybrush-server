@@ -61,6 +61,7 @@ EXTENSIONS = {
         "enabled": False,
         "id_format": "APM-{0:03}",
         "connections": ["tcp://localhost:5760"],
+        # "connections": ["udp-subnet:192.168.1.255/24"],
     },
     "radiation": {
         "sources": [{"lat": 47.473703, "lon": 19.061739, "intensity": 50000}],

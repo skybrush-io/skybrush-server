@@ -77,6 +77,7 @@ class MAVLinkNetwork:
 
         self._connections = []
         self._uavs = {}
+        self._uav_addresses = {}
 
     def add_connection(self, connection: Connection):
         """Adds the given connection object to this network.
@@ -218,15 +219,19 @@ class MAVLinkNetwork:
             target_system=target.system_id, target_component=MAVComponent.AUTOPILOT1
         )
 
+        address = self._uav_addresses.get(target)
+        if address is None:
+            raise RuntimeError("UAV has no address in this network")
+
         if wait_for_response:
             response_type, response_fields = wait_for_response
             with self.expect_packet(response_type, response_fields) as future:
                 # TODO(ntamas): in theory, we could be getting a matching packet
                 # _before_ we sent ours. Sort this out if it causes problems.
-                await self.manager.send_packet(spec, (DEFAULT_NAME, None))
+                await self.manager.send_packet(spec, (DEFAULT_NAME, address))
                 return await future.wait()
         else:
-            await self.manager.send_packet(spec, (DEFAULT_NAME, None))
+            await self.manager.send_packet(spec, (DEFAULT_NAME, address))
 
     def _create_uav(self, system_id: str) -> MAVLinkUAV:
         """Creates a new UAV with the given system ID in this network and
@@ -241,9 +246,15 @@ class MAVLinkNetwork:
 
         return uav
 
-    def _find_uav_from_message(self, message: MAVLinkMessage) -> Optional[UAV]:
-        """Finds the UAV that this message refers to, creating a new UAV object
-        if we have not seen the UAV yet.
+    def _find_uav_from_message(
+        self, message: MAVLinkMessage, address: Any
+    ) -> Optional[UAV]:
+        """Finds the UAV that this message is sent from, based on its system ID,
+        creating a new UAV object if we have not seen the UAV yet.
+
+        Parameters:
+            message: the message
+            address: the address that the message was sent from
 
         Returns:
             the UAV belonging to the system ID of the message or `None` if the
@@ -256,6 +267,10 @@ class MAVLinkNetwork:
             uav = self._uavs.get(system_id)
             if not uav:
                 uav = self._create_uav(system_id)
+
+            # TODO(ntamas): protect from address hijacking!
+            self._uav_addresses[uav] = address
+
             return uav
 
     async def _handle_inbound_messages(self, channel: ReceiveChannel):
@@ -313,14 +328,14 @@ class MAVLinkNetwork:
     def _handle_message_global_position_int(
         self, message: MAVLinkMessage, *, connection_id: str, address: Any
     ):
-        uav = self._find_uav_from_message(message)
+        uav = self._find_uav_from_message(message, address)
         if uav:
             uav.handle_message_global_position_int(message)
 
     def _handle_message_gps_raw_int(
         self, message: MAVLinkMessage, *, connection_id: str, address: Any
     ):
-        uav = self._find_uav_from_message(message)
+        uav = self._find_uav_from_message(message, address)
         if uav:
             uav.handle_message_gps_raw_int(message)
 
@@ -332,7 +347,7 @@ class MAVLinkNetwork:
             # Ignore non-vehicle heartbeats
             return
 
-        uav = self._find_uav_from_message(message)
+        uav = self._find_uav_from_message(message, address)
         if uav:
             uav.handle_message_heartbeat(message)
 
@@ -364,7 +379,7 @@ class MAVLinkNetwork:
     def _handle_message_sys_status(
         self, message: MAVLinkMessage, *, connection_id: str, address: Any
     ):
-        uav = self._find_uav_from_message(message)
+        uav = self._find_uav_from_message(message, address)
         if uav:
             uav.handle_message_sys_status(message)
 

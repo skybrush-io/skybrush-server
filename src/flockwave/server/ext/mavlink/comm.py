@@ -2,11 +2,12 @@
 UAV and the ground station via some communication link.
 """
 
+from collections import defaultdict
 from importlib import import_module
 from typing import Any, Callable, List, Union, Tuple
 
 from flockwave.channels import MessageChannel
-from flockwave.connections import Connection
+from flockwave.connections import Connection, StreamConnection
 from flockwave.logger import Logger
 
 from flockwave.server.comm import CommunicationManager
@@ -89,6 +90,41 @@ def create_mavlink_message_channel(
         connection: the connection to read data from and write data to
         log: the logger on which any error messages and warnings should be logged
     """
+    if isinstance(connection, StreamConnection):
+        return _create_stream_based_mavlink_message_channel(
+            connection, log, dialect=dialect
+        )
+    else:
+        return _create_datagram_based_mavlink_message_channel(
+            connection, log, dialect=dialect
+        )
+
+
+def _create_stream_based_mavlink_message_channel(
+    connection: Connection,
+    log: Logger,
+    *,
+    dialect: Union[str, Callable] = "ardupilotmega",
+) -> MessageChannel[Tuple[MAVLinkMessage, str]]:
+    """Creates a bidirectional Trio-style channel that reads data from and
+    writes data to the given stream-based connection, and does the parsing
+    of MAVLink messages automatically.
+
+    The channel will yield pairs of a MAVLinkMessage_ object and an empty string
+    as an "address" to make the interface similar to the datagram-based MAVLink
+    channels. (In other words, the caller does not have to know whether she is
+    working with a datagram-based or a stream-based channel).
+
+    The channel accepts pairs of MAVLink message specification and an empty
+    string. The message specifications are essentially tuples consisting of
+    a MAVLink message type and the corresponding arguments. This is needed
+    because the actual message is constructed by the encoder of the channel
+    to ensure continuity of sequence numbers.
+
+    Parameters:
+        connection: the connection to read data from and write data to
+        log: the logger on which any error messages and warnings should be logged
+    """
     mavlink_factory = get_mavlink_factory(dialect)
     mavlink = mavlink_factory()
 
@@ -103,12 +139,74 @@ def create_mavlink_message_channel(
         type, kwds = spec
         message = create_mavlink_message(mavlink, type, **kwds)
         result = message.pack(mavlink)
-
-        # Bookkeeping copied from the MAVLink.send() method
-        mavlink.seq = (mavlink.seq + 1) % 256
-        mavlink.total_packets_sent += 1
-        mavlink.total_bytes_sent += len(result)
-
+        _notify_mavlink_packet_sent(mavlink, result)
         return result
 
     return MessageChannel(connection, parser=parser, encoder=encoder)
+
+
+def _create_datagram_based_mavlink_message_channel(
+    connection: Connection,
+    log: Logger,
+    *,
+    dialect: Union[str, Callable] = "ardupilotmega",
+) -> MessageChannel[Tuple[MAVLinkMessage, str]]:
+    """Creates a bidirectional Trio-style channel that reads data from and
+    writes data to the given datagram-based connection, and does the parsing
+    of MAVLink messages automatically. The channel will yield pairs of
+    MAVLinkMessage_ objects and the addresses they were sent from, and accept
+    pairs of MAVLink message specifications and the addresses they should be
+    sent to. The message specifications are are essentially tuples consisting of
+    a MAVLink message type and the corresponding arguments. This is needed
+    because the actual message is constructed by the encoder of the channel
+    to ensure continuity of sequence numbers.
+
+    Parameters:
+        connection: the connection to read data from and write data to
+        log: the logger on which any error messages and warnings should be logged
+    """
+    mavlink_factory = get_mavlink_factory(dialect)
+
+    # We will need one MAVLink object per _address_ that we are talking to
+    # because each address needs a unique sequence number counter.
+    #
+    # Should this become a performance bottleneck: maybe we can do away with
+    # one MAVLink parser and a separate dict that keeps track of the sequence
+    # numbers? This could be tricky because the MAVLink checksum depends on the
+    # sequence number so we need to feed the _current_ sequence number into the
+    # MAVLink object _before_ calling pack().
+    mavlink_by_address = defaultdict(mavlink_factory)
+
+    # Connection is a datagram-based connection so we will be receiving
+    # full messages along with the addresses they were sent from
+    def parser(data_and_address: Tuple[bytes, Any]) -> List[Tuple[MAVLinkMessage, Any]]:
+        data, address = data_and_address
+
+        mavlink = mavlink_by_address[address]
+        messages = mavlink.parse_buffer(data) or ()
+
+        return [(message, address) for message in messages]
+
+    def encoder(
+        spec_and_address: Tuple[MAVLinkMessageSpecification, Any]
+    ) -> Tuple[bytes, Any]:
+        spec, address = spec_and_address
+
+        type, kwds = spec
+        mavlink = mavlink_by_address[address]
+
+        message = create_mavlink_message(mavlink, type, **kwds)
+        result = message.pack(mavlink)
+
+        _notify_mavlink_packet_sent(mavlink, result)
+
+        return (result, address)
+
+    return MessageChannel(connection, parser=parser, encoder=encoder)
+
+
+def _notify_mavlink_packet_sent(mavlink, packet: bytes) -> None:
+    # Bookkeeping copied from the MAVLink.send() method
+    mavlink.seq = (mavlink.seq + 1) % 256
+    mavlink.total_packets_sent += 1
+    mavlink.total_bytes_sent += len(packet)

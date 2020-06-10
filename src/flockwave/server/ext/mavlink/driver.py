@@ -17,6 +17,7 @@ from flockwave.server.model.battery import BatteryInfo
 from flockwave.server.model.gps import GPSFix
 from flockwave.server.model.uav import UAVBase, UAVDriver
 
+from .autopilots import Autopilot, UnknownAutopilot
 from .enums import GPSFixType, MAVCommand, MAVDataStream, MAVResult
 from .types import MAVLinkMessage, spec
 
@@ -176,6 +177,7 @@ class MAVLinkUAV(UAVBase):
     def __init__(self, *args, **kwds):
         super().__init__(*args, **kwds)
 
+        self._autopilot = UnknownAutopilot
         self._battery = BatteryInfo()
         self._gps_fix = GPSFix()
         self._is_connected = False
@@ -204,8 +206,15 @@ class MAVLinkUAV(UAVBase):
     def handle_message_heartbeat(self, message: MAVLinkMessage):
         """Handles an incoming MAVLink HEARTBEAT message targeted at this UAV."""
         self._store_message(message)
+
         if not self._is_connected:
+            self._autopilot = Autopilot.from_heartbeat(message)
             self.notify_reconnection()
+
+        self.update_status(
+            mode=self._autopilot.describe_mode(message.base_mode, message.custom_mode)
+        )
+        self.notify_updated()
 
     def handle_message_global_position_int(self, message: MAVLinkMessage):
         # TODO(ntamas): reboot detection with time_boot_ms

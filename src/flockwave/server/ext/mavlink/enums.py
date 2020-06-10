@@ -4,6 +4,32 @@ from flockwave.server.model.gps import GPSFixType as OurGPSFixType
 __all__ = ("MAVComponent",)
 
 
+class MAVAutopilot(IntEnum):
+    """Replica of the `MAV_AUTOPILOT` enum of the MAVLink protocol, using
+    proper Python enums.
+    """
+
+    GENERIC = 0
+    SLUGS = 2
+    ARDUPILOTMEGA = 3
+    OPENPILOT = 4
+    GENERIC_WAYPOINTS_ONLY = 5
+    GENERIC_WAYPOINTS_AND_SIMPLE_NAVIGATION_ONLY = 6
+    GENERIC_MISSION_FULL = 7
+    INVALUD = 8
+    PPZ = 9
+    UDB = 10
+    FP = 11
+    PX4 = 12
+    SMACCMPILOT = 13
+    AUTOQUAD = 14
+    ARMAZILA = 15
+    AEROB = 16
+    ASLUAV = 17
+    SMARTAP = 18
+    AIRRAILS = 19
+
+
 class MAVCommand(IntEnum):
     """Replica of the `MAV_CMD` enum of the MAVLink protocol, using proper
     Python enums.

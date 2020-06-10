@@ -137,20 +137,24 @@ class MAVLinkNetwork:
                 network manager wishes to register a connection in the
                 application
         """
-        with ExitStack() as stack:
-            # Register the communication links
-            if len(self._connections) > 1:
+        if len(self._connections) > 1:
+            if self.id:
                 id_format = "{0}/{1}"
             else:
-                id_format = "{0}"
+                id_format = "{1}"
+        else:
+            id_format = "{0}"
 
+        # Register the communication links
+        with ExitStack() as stack:
             for index, connection in enumerate(self._connections):
                 full_id = id_format.format(self.id, index)
                 stack.enter_context(
                     use_connection(
                         connection,
-                        f"MAVLink: {full_id}",
-                        description=f"Upstream MAVLink connection ({full_id})",
+                        f"MAVLink: {full_id}" if full_id else "MAVLink",
+                        description="Upstream MAVLink connection"
+                        + (f" ({full_id})" if full_id else ""),
                         purpose=ConnectionPurpose.uavRadioLink,
                     )
                 )

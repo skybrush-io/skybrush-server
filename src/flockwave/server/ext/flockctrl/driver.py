@@ -348,9 +348,9 @@ class FlockCtrlDriver(UAVDriver):
                 f"g{packet.algorithm_name[:3]}" if packet.algorithm_id > 0 else None
             ) or "guided"
         elif packet.flags & StatusFlag.MODE_STABILIZE:
-            mode = "stab"
+            mode = "stabilize"
         elif packet.flags & StatusFlag.MODE_ALT_HOLD:
-            mode = "alt"
+            mode = "alt hold"
         elif packet.flags & StatusFlag.MODE_LOITER:
             mode = "loiter"
         elif packet.flags & StatusFlag.MODE_AUTO:

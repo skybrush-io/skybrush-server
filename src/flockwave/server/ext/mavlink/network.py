@@ -220,8 +220,7 @@ class MAVLinkNetwork:
         Parameters:
             spec: the specification of the MAVLink message to send
         """
-        destination = (DEFAULT_NAME, "FOO")
-        await self.manager.send_packet(spec, destination)
+        await self.manager.broadcast_packet(spec)
 
     async def send_heartbeat(self, target: UAV) -> Optional[MAVLinkMessage]:
         """Sends a heartbeat targeted to the given UAV.
@@ -327,8 +326,7 @@ class MAVLinkNetwork:
         network.
         """
         async for _ in periodic(1):
-            for channel in manager.outbound_channels():
-                print("Heartbeat on", channel)
+            await manager.broadcast_packet(HEARTBEAT_SPEC, allow_failure=True)
 
     async def _handle_inbound_messages(self, channel: ReceiveChannel):
         """Handles inbound MAVLink messages from all the communication links
@@ -364,7 +362,8 @@ class MAVLinkNetwork:
                 # autopilot
                 continue
 
-            print(message)
+            # Uncomment this for debugging
+            # self.log.info(repr(message))
 
             # Get the message type
             type = message.get_type()

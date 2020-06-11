@@ -81,6 +81,7 @@ class CommunicationManager(Generic[PacketType, AddressType]):
 
         self._entries_by_name = defaultdict(list)
         self._running = False
+        self._outbound_tx_queue = None
 
     def add(self, connection, *, name: str, can_send: Optional[bool] = None):
         """Adds the given connection to the list of connections managed by
@@ -105,6 +106,34 @@ class CommunicationManager(Generic[PacketType, AddressType]):
         entry = self.Entry(connection, name=name, can_send=bool(can_send))
         self._entries_by_name[name].append(entry)
 
+    async def broadcast_packet(self, packet: PacketType, allow_failure: bool = False):
+        """Requests the communication manager to broadcast the given message
+        packet to all connections.
+
+        Blocks until the packet is enqueued in the outbound queue, allowing
+        other tasks to run.
+
+        Parameters:
+            packet: the packet to send
+        """
+        queue = self._outbound_tx_queue
+        if not queue:
+            if not allow_failure:
+                raise RuntimeError(f"Outbound message queue is closed")
+            else:
+                return
+
+        await queue.send((packet, None))
+
+    def channels(self) -> Iterator[MessageChannel]:
+        """Returns an iterator that iterates over the list of open message
+        channels corresponding to this network.
+        """
+        for entries in self._entries_by_name.values():
+            for entry in entries:
+                if entry.channel:
+                    yield entry.channel
+
     def enqueue_packet(self, packet: PacketType, destination: Tuple[str, AddressType]):
         """Requests the communication manager to send the given message packet
         to the given destination and return immediately.
@@ -127,15 +156,6 @@ class CommunicationManager(Generic[PacketType, AddressType]):
                 self.log.warn(
                     "Dropping outbound packet; outbound message queue is full"
                 )
-
-    def outbound_channels(self) -> Iterator[MessageChannel]:
-        """Returns an iterator that iterates over the list of message channels
-        corresponding to this network that can send messages.
-        """
-        for entries in self._entries_by_name.values():
-            for entry in entries:
-                if entry.channel and entry.can_send:
-                    yield entry.channel
 
     async def run(self, *, consumer, supervisor, log, tasks=None):
         """Runs the communication manager in a separate task, using the
@@ -248,28 +268,45 @@ class CommunicationManager(Generic[PacketType, AddressType]):
         # TODO(ntamas): a slow outbound link may block sending messages on other
         # outbound links; revise if this causes a problem
         async for message, destination in queue:
-            name, address = destination
-            entries = self._entries_by_name.get(name)
-            sent = False
+            if destination is None:
+                await self._send_message_to_all_channels(message)
+            else:
+                await self._send_message_to_single_destination(message, destination)
 
+    async def _send_message_to_all_channels(self, message):
+        for entries in self._entries_by_name.values():
+            for index, entry in enumerate(entries):
+                channel = entry.channel
+                address = getattr(channel, "broadcast_address", None)
+                if address is not None:
+                    try:
+                        await channel.send((message, address))
+                    except Exception:
+                        # we are going to try all channels so it does not matter
+                        # if a few of them fail for whatever reason
+                        pass
+
+    async def _send_message_to_single_destination(self, message, destination):
+        name, address = destination
+        entries = self._entries_by_name.get(name)
+        sent = False
+
+        if entries:
+            for index, entry in enumerate(entries):
+                if entry.channel is not None and entry.can_send:
+                    try:
+                        await entry.channel.send((message, address))
+                        sent = True
+                        break
+                    except Exception:
+                        self.log.exception(
+                            f"Error while sending message on channel {name}[{index}]"
+                        )
+
+        if not sent:
             if entries:
-                for index, entry in enumerate(entries):
-                    if entry.channel is not None and entry.can_send:
-                        try:
-                            await entry.channel.send((message, address))
-                            sent = True
-                            break
-                        except Exception:
-                            self.log.exception(
-                                f"Error while sending message on channel {name}[{index}]"
-                            )
-
-            if not sent:
-                if entries:
-                    self.log.error(
-                        f"Dropping outbound message, all channels broken for: {name!r}"
-                    )
-                else:
-                    self.log.error(
-                        f"Dropping outbound message, no such channel: {name!r}"
-                    )
+                self.log.error(
+                    f"Dropping outbound message, all channels broken for: {name!r}"
+                )
+            else:
+                self.log.error(f"Dropping outbound message, no such channel: {name!r}")

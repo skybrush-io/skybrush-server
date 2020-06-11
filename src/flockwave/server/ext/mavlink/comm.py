@@ -8,6 +8,7 @@ from typing import Any, Callable, List, Union, Tuple
 
 from flockwave.channels import MessageChannel
 from flockwave.connections import Connection, StreamConnectionBase
+from flockwave.connections.socket import SubnetBindingUDPSocketConnection
 from flockwave.logger import Logger
 
 from flockwave.server.comm import CommunicationManager
@@ -150,7 +151,9 @@ def _create_stream_based_mavlink_message_channel(
 
         return result
 
-    return MessageChannel(connection, parser=parser, encoder=encoder)
+    channel = MessageChannel(connection, parser=parser, encoder=encoder)
+    channel.broadcast_address = ""
+    return channel
 
 
 def _create_datagram_based_mavlink_message_channel(
@@ -211,7 +214,16 @@ def _create_datagram_based_mavlink_message_channel(
 
         return (result, address)
 
-    return MessageChannel(connection, parser=parser, encoder=encoder)
+    channel = MessageChannel(connection, parser=parser, encoder=encoder)
+
+    # TODO(ntamas): HACK HACK HACK; SubnetBindingUDPSocketConnection should have
+    # a broadcast_address property
+    if isinstance(connection, SubnetBindingUDPSocketConnection):
+        channel.broadcast_address = connection._network.broadcast_address
+    else:
+        channel.broadcast_address = getattr(connection, "broadcast_address", None)
+
+    return channel
 
 
 def _notify_mavlink_packet_sent(mavlink, packet: bytes) -> None:

@@ -14,7 +14,7 @@ from flockwave.server.utils import overridden
 
 from .driver import MAVLinkDriver
 from .network import MAVLinkNetwork
-from .tasks import check_connections_alive
+from .tasks import check_uavs_alive
 from .types import (
     MAVLinkMessage,
     MAVLinkMessageSpecification,
@@ -89,7 +89,7 @@ class MAVLinkDronesExtension(UAVExtensionBase):
 
                     # Create an additional task that periodically checks whether the UAVs
                     # registered in the extension are still alive
-                    nursery.start_soon(check_connections_alive, uavs)
+                    nursery.start_soon(check_uavs_alive, uavs)
             finally:
                 self._nursery = None
 

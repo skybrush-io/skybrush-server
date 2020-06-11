@@ -260,6 +260,11 @@ class MAVLinkUAV(UAVBase):
 
     def handle_message_heartbeat(self, message: MAVLinkMessage):
         """Handles an incoming MAVLink HEARTBEAT message targeted at this UAV."""
+        if self._mavlink_version < 2 and message.get_msgbuf()[0] == 253:
+            # Other side sent a MAVLink 2 heartbeat so we can switch to MAVLink
+            # 2 as well
+            self._mavlink_version = 2
+
         self._store_message(message)
 
         if not self._is_connected:
@@ -275,17 +280,30 @@ class MAVLinkUAV(UAVBase):
     def handle_message_global_position_int(self, message: MAVLinkMessage):
         # TODO(ntamas): reboot detection with time_boot_ms
 
-        self._position.lat = message.lat / 1e7
-        self._position.lon = message.lon / 1e7
-        self._position.amsl = message.alt / 1e3
-        self._position.agl = message.relative_alt / 1e3
+        if abs(message.lat) <= 900000000:
+            self._position.lat = message.lat / 1e7
+            self._position.lon = message.lon / 1e7
+            self._position.amsl = message.alt / 1e3
+            self._position.agl = message.relative_alt / 1e3
+        else:
+            # Some drones, such as the Parrot Bebop 2, use 2^31-1 as latitude
+            # and longitude to indicate that no GPS fix has been obtained yet,
+            # so treat any values outside the valid latitude range as invalid
+            self._position.lat = (
+                self._position.lon
+            ) = self._position.amsl = self._position.agl = 0
 
         self._velocity.x = message.vx / 100
         self._velocity.y = message.vy / 100
         self._velocity.z = message.vz / 100
 
+        if abs(message.hdg) <= 3600:
+            heading = message.hdg / 10
+        else:
+            heading = 0
+
         self.update_status(
-            position=self._position, velocity=self._velocity, heading=message.hdg / 10
+            position=self._position, velocity=self._velocity, heading=heading
         )
         self.notify_updated()
 

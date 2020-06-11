@@ -7,8 +7,10 @@ from typing import List
 from .driver import MAVLinkUAV
 from .enums import MAVMessageType
 
+__all__ = ("check_uavs_alive",)
 
-async def check_connections_alive(
+
+async def check_uavs_alive(
     uavs: List[MAVLinkUAV], delay: float = 0.5, timeout: float = 5
 ) -> None:
     """Worker task that runs in the background and checks whether we are

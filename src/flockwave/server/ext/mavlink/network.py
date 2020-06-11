@@ -14,22 +14,37 @@ from collections import defaultdict
 from contextlib import contextmanager, ExitStack
 from time import time_ns
 from trio.abc import ReceiveChannel
+from trio_util import periodic
 from typing import Any, Callable, Dict, Optional, Union
 
 from flockwave.connections import Connection, create_connection
+from flockwave.server.comm import CommunicationManager
 from flockwave.server.concurrency import Future
 from flockwave.server.model import ConnectionPurpose, UAV
 from flockwave.server.utils import nop, overridden
 
 from .comm import create_communication_manager, MAVLinkMessage
 from .driver import MAVLinkUAV
-from .enums import MAVComponent, MAVMessageType, MAVType
+from .enums import MAVAutopilot, MAVComponent, MAVMessageType, MAVState, MAVType
 from .types import MAVLinkMessageSpecification, MAVLinkNetworkSpecification
 from .utils import log_level_from_severity, log_id_from_message
 
 __all__ = ("MAVLinkNetwork",)
 
 DEFAULT_NAME = ""
+
+#: MAVLink message specification for heartbeat messages that we are sending
+#: to connected UAVs to keep them sending telemetry data
+HEARTBEAT_SPEC = (
+    "HEARTBEAT",
+    {
+        "type": MAVType.GCS,
+        "autopilot": MAVAutopilot.INVALID,
+        "base_mode": 0,
+        "custom_mode": 0,
+        "system_status": MAVState.STANDBY,
+    },
+)
 
 
 class MAVLinkNetwork:
@@ -192,11 +207,37 @@ class MAVLinkNetwork:
                     consumer=self._handle_inbound_messages,
                     supervisor=supervisor,
                     log=log,
+                    tasks=[self._generate_heartbeats],
                 )
             finally:
                 for matcher in matchers.values():
                     for _, future in matcher:
                         future.cancel()
+
+    async def broadcast_packet(self, spec: MAVLinkMessageSpecification) -> None:
+        """Broadcasts a message to all UAVs in the network.
+
+        Parameters:
+            spec: the specification of the MAVLink message to send
+        """
+        destination = (DEFAULT_NAME, "FOO")
+        await self.manager.send_packet(spec, destination)
+
+    async def send_heartbeat(self, target: UAV) -> Optional[MAVLinkMessage]:
+        """Sends a heartbeat targeted to the given UAV.
+
+        It is assumed (and not checked) that the UAV belongs to this network.
+
+        Parameters:
+            target: the UAV to send the heartbeat to
+        """
+        spec = HEARTBEAT_SPEC
+        address = self._uav_addresses.get(target)
+        if address is None:
+            raise RuntimeError("UAV has no address in this network")
+
+        destination = (DEFAULT_NAME, address)
+        await self.manager.send_packet(spec, destination)
 
     async def send_packet(
         self,
@@ -281,6 +322,14 @@ class MAVLinkNetwork:
 
             return uav
 
+    async def _generate_heartbeats(self, manager: CommunicationManager):
+        """Generates heartbeat messages on the channels corresponding to the
+        network.
+        """
+        async for _ in periodic(1):
+            for channel in manager.outbound_channels():
+                print("Heartbeat on", channel)
+
     async def _handle_inbound_messages(self, channel: ReceiveChannel):
         """Handles inbound MAVLink messages from all the communication links
         that the extension manages.
@@ -314,6 +363,8 @@ class MAVLinkNetwork:
                 # We do not handle messages from any other component but an
                 # autopilot
                 continue
+
+            print(message)
 
             # Get the message type
             type = message.get_type()
@@ -372,6 +423,7 @@ class MAVLinkNetwork:
         uav = self._find_uav_from_message(message, address)
         if uav:
             uav.handle_message_heartbeat(message)
+            self.driver.run_in_background(self.send_heartbeat, uav)
 
     def _handle_message_param_value(
         self, message: MAVLinkMessage, *, connection_id: str, address: Any

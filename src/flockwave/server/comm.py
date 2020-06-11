@@ -9,7 +9,7 @@ from functools import partial
 from logging import Logger
 from trio import open_memory_channel, WouldBlock
 from trio_util import wait_all
-from typing import Callable, Generator, Generic, Optional, Tuple, TypeVar
+from typing import Callable, Generator, Generic, Iterator, Optional, Tuple, TypeVar
 
 from flockwave.channels import MessageChannel
 from flockwave.connections import Connection
@@ -61,6 +61,7 @@ class CommunicationManager(Generic[PacketType, AddressType]):
         connection: Connection
         name: str
         can_send: bool = True
+        channel: Optional[MessageChannel] = None
 
     def __init__(
         self,
@@ -127,7 +128,16 @@ class CommunicationManager(Generic[PacketType, AddressType]):
                     "Dropping outbound packet; outbound message queue is full"
                 )
 
-    async def run(self, *, consumer, supervisor, log):
+    def outbound_channels(self) -> Iterator[MessageChannel]:
+        """Returns an iterator that iterates over the list of message channels
+        corresponding to this network that can send messages.
+        """
+        for entries in self._entries_by_name.values():
+            for entry in entries:
+                if entry.channel and entry.can_send:
+                    yield entry.channel
+
+    async def run(self, *, consumer, supervisor, log, tasks=None):
         """Runs the communication manager in a separate task, using the
         given supervisor function to ensure that the connections associated to
         the communication manager stay open.
@@ -147,11 +157,14 @@ class CommunicationManager(Generic[PacketType, AddressType]):
                 in here.
             log: logger that will be used to log messages from the
                 communication manager
+            tasks: optional list of additional tasks that should be executed
+                while the communication manager is managing the messages. Can
+                be used to implement heartbeating on the connection channel.
         """
         try:
             self._running = True
             self.log = log
-            await self._run(consumer=consumer, supervisor=supervisor)
+            await self._run(consumer=consumer, supervisor=supervisor, tasks=tasks)
         finally:
             self.log = None
             self._running = False
@@ -180,19 +193,20 @@ class CommunicationManager(Generic[PacketType, AddressType]):
         for _, entries in self._entries_by_name.items():
             yield from entries
 
-    async def _run(self, *, consumer, supervisor):
+    async def _run(self, *, consumer, supervisor, tasks):
         tx_queue, rx_queue = open_memory_channel(0)
 
-        tasks = [
+        tasks = [partial(task, self) for task in (tasks or [])]
+        tasks.extend(
             partial(
                 supervisor,
                 entry.connection,
                 task=partial(self._run_inbound_link, entry=entry, queue=tx_queue),
             )
             for entry in self._iter_entries()
-        ]
+        )
         tasks.append(partial(consumer, rx_queue))
-        tasks.append(partial(self._run_outbound_links))
+        tasks.append(self._run_outbound_links)
 
         async with tx_queue, rx_queue:
             await wait_all(*tasks)

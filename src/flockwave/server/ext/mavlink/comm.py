@@ -50,13 +50,13 @@ def create_communication_manager() -> CommunicationManager[Any, Any]:
     return CommunicationManager(channel_factory=create_mavlink_message_channel)
 
 
-def create_mavlink_message(link, type: str, *args, **kwds) -> MAVLinkMessage:
+def create_mavlink_message(link, _type: str, *args, **kwds) -> MAVLinkMessage:
     """Creates a MAVLink message from the methods of a MAVLink object received
     from the low-level `pymavlink` library.
 
     Parameters:
         link: the low-level MAVLink object
-        type: the type of the message to construct. It will be lower-cased
+        _type: the type of the message to construct. It will be lower-cased
             automatically and it will be used to look up a function named
             `<type>_encode` on the low-level MAVLink object
 
@@ -67,9 +67,9 @@ def create_mavlink_message(link, type: str, *args, **kwds) -> MAVLinkMessage:
         the MAVLink message as returned from the low-level MAVLink object
     """
     try:
-        func = getattr(link, f"{type.lower()}_encode")
+        func = getattr(link, f"{_type.lower()}_encode")
     except AttributeError:
-        raise ValueError(f"unknown MAVLink message type: {type}")
+        raise ValueError(f"unknown MAVLink message type: {_type}")
     return func(*args, **kwds)
 
 

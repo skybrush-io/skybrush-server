@@ -220,22 +220,26 @@ class MAVLinkNetwork:
                 this argument to accept it as a response.
         """
         spec[1].update(
-            target_system=target.system_id, target_component=MAVComponent.AUTOPILOT1
+            target_system=target.system_id,
+            target_component=MAVComponent.AUTOPILOT1,
+            _mavlink_version=target.mavlink_version,
         )
 
         address = self._uav_addresses.get(target)
         if address is None:
             raise RuntimeError("UAV has no address in this network")
 
+        destination = (DEFAULT_NAME, address)
+
         if wait_for_response:
             response_type, response_fields = wait_for_response
             with self.expect_packet(response_type, response_fields) as future:
                 # TODO(ntamas): in theory, we could be getting a matching packet
                 # _before_ we sent ours. Sort this out if it causes problems.
-                await self.manager.send_packet(spec, (DEFAULT_NAME, address))
+                await self.manager.send_packet(spec, destination)
                 return await future.wait()
         else:
-            await self.manager.send_packet(spec, (DEFAULT_NAME, address))
+            await self.manager.send_packet(spec, destination)
 
     def _create_uav(self, system_id: str) -> MAVLinkUAV:
         """Creates a new UAV with the given system ID in this network and
@@ -285,6 +289,7 @@ class MAVLinkNetwork:
             channel: a Trio receive channel that yields inbound MAVLink messages.
         """
         handlers = {
+            "AUTOPILOT_VERSION": self._handle_message_autopilot_version,
             "BAD_DATA": nop,
             "COMMAND_ACK": nop,
             "GLOBAL_POSITION_INT": self._handle_message_global_position_int,
@@ -334,6 +339,13 @@ class MAVLinkNetwork:
                 )
                 handlers[type] = nop
 
+    def _handle_message_autopilot_version(
+        self, message: MAVLinkMessage, *, connection_id: str, address: Any
+    ):
+        uav = self._find_uav_from_message(message, address)
+        if uav:
+            uav.handle_message_autopilot_version(message)
+
     def _handle_message_global_position_int(
         self, message: MAVLinkMessage, *, connection_id: str, address: Any
     ):
@@ -356,13 +368,10 @@ class MAVLinkNetwork:
             # Ignore non-vehicle heartbeats
             return
 
+        # Forward heartbeat to the appropriate UAV
         uav = self._find_uav_from_message(message, address)
         if uav:
             uav.handle_message_heartbeat(message)
-
-        # Send a timesync message for testing purposes
-        # spec = ("TIMESYNC", {"tc1": 0, "ts1": time_ns() // 1000})
-        # self._manager.enqueue_packet(spec, (connection_id, network_id))
 
     def _handle_message_param_value(
         self, message: MAVLinkMessage, *, connection_id: str, address: Any

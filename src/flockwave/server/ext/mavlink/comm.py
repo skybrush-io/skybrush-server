@@ -7,7 +7,7 @@ from importlib import import_module
 from typing import Any, Callable, List, Union, Tuple
 
 from flockwave.channels import MessageChannel
-from flockwave.connections import Connection, StreamConnection
+from flockwave.connections import Connection, StreamConnectionBase
 from flockwave.logger import Logger
 
 from flockwave.server.comm import CommunicationManager
@@ -90,7 +90,7 @@ def create_mavlink_message_channel(
         connection: the connection to read data from and write data to
         log: the logger on which any error messages and warnings should be logged
     """
-    if isinstance(connection, StreamConnection):
+    if isinstance(connection, StreamConnectionBase):
         return _create_stream_based_mavlink_message_channel(
             connection, log, dialect=dialect
         )
@@ -131,15 +131,23 @@ def _create_stream_based_mavlink_message_channel(
     def parser(data: bytes) -> List[Tuple[MAVLinkMessage, Any]]:
         # TODO(ntamas): sometimes mavlink.parse_buffer() returns None, how
         # can that happen?
+
+        # Parse the MAVLink messages from the buffer
         messages = mavlink.parse_buffer(data) or ()
+
         return [(message, "") for message in messages]
 
     def encoder(spec_and_address: Tuple[MAVLinkMessageSpecification, Any]) -> bytes:
         spec, _ = spec_and_address
+
         type, kwds = spec
+        mavlink_version = kwds.pop("_mavlink_version", 1)
+
         message = create_mavlink_message(mavlink, type, **kwds)
-        result = message.pack(mavlink)
+        result = message.pack(mavlink, force_mavlink1=mavlink_version < 2)
+
         _notify_mavlink_packet_sent(mavlink, result)
+
         return result
 
     return MessageChannel(connection, parser=parser, encoder=encoder)
@@ -194,9 +202,10 @@ def _create_datagram_based_mavlink_message_channel(
 
         type, kwds = spec
         mavlink = mavlink_by_address[address]
+        mavlink_version = kwds.pop("_mavlink_version", 1)
 
         message = create_mavlink_message(mavlink, type, **kwds)
-        result = message.pack(mavlink)
+        result = message.pack(mavlink, force_mavlink1=mavlink_version < 2)
 
         _notify_mavlink_packet_sent(mavlink, result)
 

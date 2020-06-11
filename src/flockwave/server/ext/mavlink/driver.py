@@ -25,6 +25,7 @@ from .enums import (
     MAVDataStream,
     MAVMessageType,
     MAVModeFlag,
+    MAVProtocolCapability,
     MAVResult,
     MAVState,
     MAVSysStatusSensor,
@@ -219,6 +220,7 @@ class MAVLinkUAV(UAVBase):
         self._gps_fix = GPSFix()
         self._is_connected = False
         self._last_messages = defaultdict(MAVLinkMessageRecord)
+        self._mavlink_version = 1
         self._network_id = None
         self._position = GPSCoordinate()
         self._velocity = VelocityNED()
@@ -239,6 +241,22 @@ class MAVLinkUAV(UAVBase):
 
         self._network_id = network_id
         self._system_id = system_id
+
+    def handle_message_autopilot_version(self, message: MAVLinkMessage):
+        """Handles an incoming MAVLink AUTOPILOT_VERSION message targeted at
+        this UAV.
+        """
+        self._store_message(message)
+
+        if self._mavlink_version < 2 and (
+            message.capabilities & MAVProtocolCapability.MAVLINK2
+        ):
+            # Autopilot supports MAVLink 2 so switch to it
+            self._mavlink_version = 2
+
+            # The other side has to know that we have switched; we do it by
+            # sending it a REQUEST_AUTOPILOT_CAPABILITIES message again
+            self.driver.run_in_background(self._request_autopilot_capabilities)
 
     def handle_message_heartbeat(self, message: MAVLinkMessage):
         """Handles an incoming MAVLink HEARTBEAT message targeted at this UAV."""
@@ -307,13 +325,18 @@ class MAVLinkUAV(UAVBase):
         return self._is_connected
 
     @property
+    def mavlink_version(self) -> int:
+        """The MAVLink version supported by this UAV."""
+        return self._mavlink_version
+
+    @property
     def network_id(self) -> str:
-        """The network ID Of the UAV."""
+        """The network ID of the UAV."""
         return self._network_id
 
     @property
     def system_id(self) -> str:
-        """The system ID Of the UAV."""
+        """The system ID of the UAV."""
         return self._system_id
 
     def notify_disconnection(self) -> None:
@@ -373,7 +396,12 @@ class MAVLinkUAV(UAVBase):
         """Handles a reboot event on the autopilot and attempts to re-initialize
         the data streams.
         """
+        # Revert to MAVLink version 1 in case the UAV was somehow reset and it
+        # does not "understand" MAVLink v2 in its new configuration
+        self._mavlink_version = 1
+
         self.driver.run_in_background(self._configure_data_streams)
+        self.driver.run_in_background(self._request_autopilot_capabilities)
 
     def get_age_of_message(self, type: int, now: Optional[float] = None) -> float:
         """Returns the number of seconds elapsed since we have last seen a
@@ -390,6 +418,12 @@ class MAVLinkUAV(UAVBase):
         """
         record = self._last_messages.get(int(type))
         return record.message if record else None
+
+    async def _request_autopilot_capabilities(self) -> None:
+        """Retrieves the capabilities of the autopilot via MAVLink."""
+        await self.driver.send_command_long(
+            self, MAVCommand.REQUEST_AUTOPILOT_CAPABILITIES, param1=1
+        )
 
     def _get_previous_copy_of_message(
         self, message: MAVLinkMessage

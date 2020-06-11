@@ -130,9 +130,21 @@ class MAVLinkDronesExtension(UAVExtensionBase):
         The task will be cancelled if the extension is unloaded.
         """
         if self._nursery:
-            self._nursery.start_soon(func, *args)
+            self._nursery.start_soon(self._run_protected, func, *args)
         else:
             raise RuntimeError("cannot run task in background, extension is not loaded")
+
+    async def _run_protected(self, func, *args) -> None:
+        """Runs the given function in a "protected" mode that prevents exceptions
+        emitted from it to crash the nursery that the function is being executed
+        in.
+        """
+        try:
+            await func(*args)
+        except Exception:
+            self.log.exception(
+                f"Unexpected exception caught from background task {func.__name__}"
+            )
 
     async def _send_packet(
         self,

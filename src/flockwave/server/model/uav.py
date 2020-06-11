@@ -45,6 +45,7 @@ class UAVStatusInfo(TimestampMixin, metaclass=ModelMeta):
         """
         TimestampMixin.__init__(self, timestamp)
 
+        self.errors = []
         self.gps = GPSFix()
         self.heading = 0.0
         self.id = id
@@ -167,7 +168,7 @@ class UAVBase(UAV):
         """
         # If the error code is to be cleared and we don't have any errors
         # (which is the common code path), we can bail out immediately.
-        if present or getattr(self._status, "errors", None):
+        if present or self._status.errors:
             code = int(code)
 
             if code in self._status.errors:
@@ -184,9 +185,7 @@ class UAVBase(UAV):
             codes: dictionary mapping error codes to a boolean specifying
                 whether the error code should be present or absent
         """
-        if getattr(self._status, "errors", None) or any(
-            present for present in codes.values()
-        ):
+        if self._status.errors or any(present for present in codes.values()):
             for code, present in codes.items():
                 self.ensure_error(code, present)
 

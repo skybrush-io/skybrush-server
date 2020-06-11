@@ -37,7 +37,10 @@ class MAVCommand(IntEnum):
     Not all values are listed here, only the ones that we do actually use.
     """
 
+    NAV_LAND = 21
+    NAV_TAKEOFF = 22
     PREFLIGHT_REBOOT_SHUTDOWN = 246
+    COMPONENT_ARM_DISARM = 400
     SET_MESSAGE_INTERVAL = 511
 
 
@@ -66,6 +69,21 @@ class MAVDataStream(IntEnum):
     EXTRA1 = 10
     EXTRA2 = 11
     EXTRA3 = 12
+
+
+class MAVModeFlag(IntFlag):
+    """Replica of the `MAV_MODE_FLAG` enum of the MAVLink protocol, using
+    proper Python enums.
+    """
+
+    CUSTOM_MODE_ENABLED = 0x01
+    TEST_ENABLED = 0x02
+    AUTO_ENABLED = 0x04
+    GUIDED_ENABLED = 0x08
+    STABILIZE_ENABLED = 0x10
+    HIL_ENABLED = 0x20
+    MANUAL_INPUT_ENABLED = 0x40
+    SAFETY_ARMED = 0x80
 
 
 class MAVState(IntEnum):
@@ -147,6 +165,7 @@ class MAVMessageType(IntEnum):
     """
 
     HEARTBEAT = 0
+    SYS_STATUS = 1
     SYSTEM_TIME = 2
     REQUEST_DATA_STREAM = 66
     DATA_STREAM = 67

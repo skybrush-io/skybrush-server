@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from functools import partial
 from math import inf
 from time import monotonic
-from trio import move_on_after
+from trio import move_on_after, sleep
 from typing import Optional
 
 from flockwave.gps.vectors import GPSCoordinate, VelocityNED
@@ -23,6 +23,8 @@ from .enums import (
     GPSFixType,
     MAVCommand,
     MAVDataStream,
+    MAVMessageType,
+    MAVModeFlag,
     MAVResult,
     MAVState,
     MAVSysStatusSensor,
@@ -34,6 +36,10 @@ __all__ = ("MAVLinkDriver",)
 
 #: Conversion constant from seconds to microseconds
 SEC_TO_USEC = 1000000
+
+#: Magic number to force an arming or disarming operation even if it is unsafe
+#: to do so
+FORCE_MAGIC = 21196
 
 
 class MAVLinkDriver(UAVDriver):
@@ -92,7 +98,7 @@ class MAVLinkDriver(UAVDriver):
         param7: float = 0,
         *,
         confirmation: int = 0,
-    ) -> Optional[MAVLinkMessage]:
+    ) -> bool:
         """Sends a MAVLink command to a given UAV and waits for an acknowlegment.
 
         Parameters:
@@ -138,22 +144,45 @@ class MAVLinkDriver(UAVDriver):
 
         return result == MAVResult.ACCEPTED
 
+    async def _send_landing_signal_single(self, uav):
+        return await self.send_command_long(uav, MAVCommand.NAV_LAND)
+
     async def _send_reset_signal_single(self, uav, component):
         if not component:
             # Resetting the whole UAV, this is supported
-            result = await self.send_command_long(
+            return await self.send_command_long(
                 uav, MAVCommand.PREFLIGHT_REBOOT_SHUTDOWN, 1  # reboot autopilot
             )
-            return bool(result)
         else:
             # No component resets are implemented on this UAV yet
             return False
 
     async def _send_shutdown_signal_single(self, uav):
-        result = await self.send_command_long(
+        if not await self.send_command_long(
+            uav, MAVCommand.COMPONENT_ARM_DISARM, 0, FORCE_MAGIC  # disarm
+        ):
+            return False
+
+        return await self.send_command_long(
             uav, MAVCommand.PREFLIGHT_REBOOT_SHUTDOWN, 2  # shutdown autopilot
         )
-        return bool(result)
+
+    async def _send_takeoff_signal_single(self, uav):
+        if not await self.send_command_long(
+            uav, MAVCommand.COMPONENT_ARM_DISARM, 1  # arm
+        ):
+            return False
+
+        # Wait a bit to give the autopilot some time to start the motors, just
+        # in case. Not sure whether this is needed.
+        await sleep(0.1)
+
+        return await self.send_command_long(
+            uav,
+            MAVCommand.NAV_TAKEOFF,
+            param4=float("nan"),  # yaw should stay the same
+            param7=5,  # takeoff to 5m
+        )
 
 
 @dataclass
@@ -219,30 +248,7 @@ class MAVLinkUAV(UAVBase):
             self._autopilot = Autopilot.from_heartbeat(message)
             self.notify_reconnection()
 
-        system_status = message.system_status
-        self.ensure_error(
-            FlockwaveErrorCode.AUTOPILOT_INIT_FAILED, system_status == MAVState.UNINIT
-        )
-        self.ensure_error(
-            FlockwaveErrorCode.AUTOPILOT_INITIALIZING, system_status == MAVState.BOOT
-        )
-        self.ensure_error(
-            FlockwaveErrorCode.PREARM_CHECK_IN_PROGRESS,
-            system_status == MAVState.CALIBRATING,
-        )
-
-        # TODO(ntamas): these error flags have to be triggered only if the
-        # heartbeat indicates that there is an error but there is no further
-        # information in the SYS_STATUS message that would give us more details
-        """
-        self.ensure_error(
-            FlockwaveErrorCode.UNSPECIFIED_ERROR, system_status == MAVState.CRITICAL
-        )
-        self.ensure_error(
-            FlockwaveErrorCode.UNSPECIFIED_CRITICAL_ERROR,
-            system_status == MAVState.EMERGENCY,
-        )
-        """
+        self._update_errors_from_sys_status_and_heartbeat()
 
         self.update_status(
             mode=self._autopilot.describe_mode(message.base_mode, message.custom_mode)
@@ -275,57 +281,8 @@ class MAVLinkUAV(UAVBase):
         self.notify_updated()
 
     def handle_message_sys_status(self, message: MAVLinkMessage):
-        # Check error conditions
-        sensor_mask = (
-            message.onboard_control_sensors_enabled
-            & message.onboard_control_sensors_present
-        )
-        not_healthy_sensors = sensor_mask & (
-            # Python has no proper bitwise negation on unsigned integers
-            # so we use XOR instead
-            message.onboard_control_sensors_health
-            ^ 0xFFFFFFFF
-        )
-
-        if not_healthy_sensors:
-            has_gyro_error = not_healthy_sensors & (
-                MAVSysStatusSensor.GYRO_3D | MAVSysStatusSensor.GYRO2_3D
-            )
-            has_mag_error = not_healthy_sensors & (
-                MAVSysStatusSensor.MAG_3D | MAVSysStatusSensor.MAG2_3D
-            )
-            has_accel_error = not_healthy_sensors & (
-                MAVSysStatusSensor.ACCEL_3D | MAVSysStatusSensor.ACCEL2_3D
-            )
-            has_baro_error = not_healthy_sensors & (
-                MAVSysStatusSensor.ABSOLUTE_PRESSURE
-                | MAVSysStatusSensor.DIFFERENTIAL_PRESSURE
-            )
-            has_gps_error = not_healthy_sensors & MAVSysStatusSensor.GPS
-            has_motor_error = not_healthy_sensors & (
-                MAVSysStatusSensor.MOTOR_OUTPUTS | MAVSysStatusSensor.REVERSE_MOTOR
-            )
-            has_geofence_error = not_healthy_sensors & (
-                MAVSysStatusSensor.MAV_SYS_STATUS_GEOFENCE
-            )
-            has_rc_error = not_healthy_sensors & MAVSysStatusSensor.RC_RECEIVER
-            has_battery_error = not_healthy_sensors & MAVSysStatusSensor.BATTERY
-            has_logging_error = not_healthy_sensors & MAVSysStatusSensor.LOGGING
-
-            errors = {
-                FlockwaveErrorCode.MAGNETIC_ERROR: has_mag_error,
-                FlockwaveErrorCode.GYROSCOPE_ERROR: has_gyro_error,
-                FlockwaveErrorCode.ACCELEROMETER_ERROR: has_accel_error,
-                FlockwaveErrorCode.PRESSURE_SENSOR_ERROR: has_baro_error,
-                FlockwaveErrorCode.GPS_SIGNAL_LOST: has_gps_error,
-                FlockwaveErrorCode.MOTOR_MALFUNCTION: has_motor_error,
-                FlockwaveErrorCode.GEOFENCE_VIOLATION: has_geofence_error,
-                FlockwaveErrorCode.RC_SIGNAL_LOST_WARNING: has_rc_error,
-                FlockwaveErrorCode.BATTERY_CRITICAL: has_battery_error,
-                FlockwaveErrorCode.LOGGING: has_logging_error,
-            }
-
-            self.ensure_errors(errors)
+        self._store_message(message)
+        self._update_errors_from_sys_status_and_heartbeat()
 
         # Update battery status
         self._battery.voltage = message.voltage_battery / 1000
@@ -457,6 +414,87 @@ class MAVLinkUAV(UAVBase):
         for this UAV.
         """
         self._last_messages[message.get_msgId()].update(message)
+
+    def _update_errors_from_sys_status_and_heartbeat(self):
+        """Updates the error codes based on the most recent HEARTBEAT and
+        SYS_STATUS messages. We need both to have an accurate picture of what is
+        going on, hence a separate function that is called from both message
+        handlers.
+        """
+        heartbeat = self.get_last_message(MAVMessageType.HEARTBEAT)
+        sys_status = self.get_last_message(MAVMessageType.SYS_STATUS)
+        if not heartbeat or not sys_status:
+            return
+
+        # Check error conditions from SYS_STATUS
+        sensor_mask = (
+            sys_status.onboard_control_sensors_enabled
+            & sys_status.onboard_control_sensors_present
+        )
+        not_healthy_sensors = sensor_mask & (
+            # Python has no proper bitwise negation on unsigned integers
+            # so we use XOR instead
+            sys_status.onboard_control_sensors_health
+            ^ 0xFFFFFFFF
+        )
+
+        has_gyro_error = not_healthy_sensors & (
+            MAVSysStatusSensor.GYRO_3D | MAVSysStatusSensor.GYRO2_3D
+        )
+        has_mag_error = not_healthy_sensors & (
+            MAVSysStatusSensor.MAG_3D | MAVSysStatusSensor.MAG2_3D
+        )
+        has_accel_error = not_healthy_sensors & (
+            MAVSysStatusSensor.ACCEL_3D | MAVSysStatusSensor.ACCEL2_3D
+        )
+        has_baro_error = not_healthy_sensors & (
+            MAVSysStatusSensor.ABSOLUTE_PRESSURE
+            | MAVSysStatusSensor.DIFFERENTIAL_PRESSURE
+        )
+        has_gps_error = not_healthy_sensors & MAVSysStatusSensor.GPS
+        has_motor_error = not_healthy_sensors & (
+            MAVSysStatusSensor.MOTOR_OUTPUTS | MAVSysStatusSensor.REVERSE_MOTOR
+        )
+        has_geofence_error = not_healthy_sensors & MAVSysStatusSensor.GEOFENCE
+        has_rc_error = not_healthy_sensors & MAVSysStatusSensor.RC_RECEIVER
+        has_battery_error = not_healthy_sensors & MAVSysStatusSensor.BATTERY
+        has_logging_error = not_healthy_sensors & MAVSysStatusSensor.LOGGING
+
+        errors = {
+            FlockwaveErrorCode.AUTOPILOT_INIT_FAILED: heartbeat.system_status
+            == MAVState.UNINIT,
+            FlockwaveErrorCode.AUTOPILOT_INITIALIZING: heartbeat.system_status
+            == MAVState.BOOT,
+            FlockwaveErrorCode.UNSPECIFIED_ERROR: heartbeat.system_status
+            == MAVState.CRITICAL
+            and not not_healthy_sensors,
+            FlockwaveErrorCode.UNSPECIFIED_CRITICAL_ERROR: heartbeat.system_status
+            == MAVState.EMERGENCY
+            and not not_healthy_sensors,
+            FlockwaveErrorCode.MAGNETIC_ERROR: has_mag_error,
+            FlockwaveErrorCode.GYROSCOPE_ERROR: has_gyro_error,
+            FlockwaveErrorCode.ACCELEROMETER_ERROR: has_accel_error,
+            FlockwaveErrorCode.PRESSURE_SENSOR_ERROR: has_baro_error,
+            FlockwaveErrorCode.GPS_SIGNAL_LOST: has_gps_error,
+            FlockwaveErrorCode.MOTOR_MALFUNCTION: has_motor_error,
+            FlockwaveErrorCode.GEOFENCE_VIOLATION: has_geofence_error,
+            FlockwaveErrorCode.RC_SIGNAL_LOST_WARNING: has_rc_error,
+            FlockwaveErrorCode.BATTERY_CRITICAL: has_battery_error,
+            FlockwaveErrorCode.LOGGING_DEACTIVATED: has_logging_error,
+            # valid in our patched ArduCopter only, the stock ArduCopter
+            # does not use this flag
+            FlockwaveErrorCode.PREARM_CHECK_IN_PROGRESS: heartbeat.system_status
+            == MAVState.CALIBRATING,
+            # If the motors are running but we are not in the air yet; we use an
+            # informational flag to let the user know
+            FlockwaveErrorCode.MOTORS_RUNNING_WHILE_ON_GROUND: (
+                heartbeat.base_mode & MAVModeFlag.SAFETY_ARMED
+                and heartbeat.system_status == MAVState.STANDBY
+            ),
+        }
+
+        # Update the error flags as needed
+        self.ensure_errors(errors)
 
     def _was_probably_rebooted_after_reconnection(self) -> bool:
         """Returns whether the UAV was probably rebooted recently, _assuming_

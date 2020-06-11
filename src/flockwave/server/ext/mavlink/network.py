@@ -321,7 +321,12 @@ class MAVLinkNetwork:
             # Call the message handler if we have one
             handler = handlers.get(type)
             if handler:
-                handler(message, connection_id=connection_id, address=address)
+                try:
+                    handler(message, connection_id=connection_id, address=address)
+                except Exception:
+                    self.log.exception(
+                        f"Error while handling MAVLink message of type {type}"
+                    )
             else:
                 self.log.warn(
                     f"Unhandled MAVLink message type: {type}",
@@ -364,7 +369,7 @@ class MAVLinkNetwork:
     ):
         """Handles an incoming MAVLink PARAM_VALUE message."""
         self.log.info(
-            f"{message.param_id!r} = {message.param_value}",
+            f"Parameter value changed: {message.param_id!r} = {message.param_value}",
             extra=self._log_extra_from_message(message),
         )
 

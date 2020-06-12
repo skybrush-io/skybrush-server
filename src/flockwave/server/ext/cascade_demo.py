@@ -60,6 +60,8 @@ ground_altitude=0
 #origin=
 
 [waypoints]
+yaw=auto 30 0
+
 """
 
 WAYPOINT_GROUND_STR = """motoroff=10"""

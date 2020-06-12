@@ -582,7 +582,9 @@ class UAVDriver(metaclass=ABCMeta):
 
         Parameters:
             uav (UAV): the UAV to address with this request.
-            target (object): the target to fly to
+            target (GPSCoordinate): the target to fly to; the altitude above
+                ground level may be set to `None` to indicate the current
+                altitude
 
         Returns:
             bool: whether the signal was *sent* successfully
@@ -603,6 +605,31 @@ class UAVDriver(metaclass=ABCMeta):
 
         Parameters:
             uav (UAV): the UAV to address with this request.
+
+        Returns:
+            bool: whether the signal was *sent* successfully
+
+        Raises:
+            NotImplementedError: if the operation is not supported by the
+                driver yet, but there are plans to implement it
+            NotSupportedError: if the operation is not supported by the
+                driver and will not be supported in the future either
+        """
+        raise NotImplementedError
+
+    def _send_light_or_sound_emission_signal_single(
+        self, uav, signals: List[str], duration: int
+    ):
+        """Asks the driver to send a light or sound emission signal to a
+        single UAV managed by this driver.
+
+        May return an awaitable if sending the signal takes a longer time.
+
+        Parameters:
+            uav (UAV): the UAV to address with this request.
+            signals (List[str]): the list of signal types that the
+                targeted UAV should emit (e.g., 'sound', 'light')
+            duration (int): the duration of the required signal in milliseconds
 
         Returns:
             bool: whether the signal was *sent* successfully
@@ -645,31 +672,6 @@ class UAVDriver(metaclass=ABCMeta):
 
         Parameters:
             uav (UAV): the UAV to address with this request.
-
-        Returns:
-            bool: whether the signal was *sent* successfully
-
-        Raises:
-            NotImplementedError: if the operation is not supported by the
-                driver yet, but there are plans to implement it
-            NotSupportedError: if the operation is not supported by the
-                driver and will not be supported in the future either
-        """
-        raise NotImplementedError
-
-    def _send_light_or_sound_emission_signal_single(
-        self, uav, signals: List[str], duration: int
-    ):
-        """Asks the driver to send a light or sound emission signal to a
-        single UAV managed by this driver.
-
-        May return an awaitable if sending the signal takes a longer time.
-
-        Parameters:
-            uav (UAV): the UAV to address with this request.
-            signals (List[str]): the list of signal types that the
-                targeted UAV should emit (e.g., 'sound', 'light')
-            duration (int): the duration of the required signal in milliseconds
 
         Returns:
             bool: whether the signal was *sent* successfully

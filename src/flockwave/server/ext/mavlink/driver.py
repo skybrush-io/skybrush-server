@@ -23,12 +23,14 @@ from .enums import (
     GPSFixType,
     MAVCommand,
     MAVDataStream,
+    MAVFrame,
     MAVMessageType,
     MAVModeFlag,
     MAVProtocolCapability,
     MAVResult,
     MAVState,
     MAVSysStatusSensor,
+    PositionTargetTypemask,
 )
 from .types import MAVLinkMessage, spec
 
@@ -41,6 +43,10 @@ SEC_TO_USEC = 1000000
 #: Magic number to force an arming or disarming operation even if it is unsafe
 #: to do so
 FORCE_MAGIC = 21196
+
+#: "Not a number" constant, used in some MAVLink messages to indicate a default
+#: value
+nan = float("nan")
 
 
 class MAVLinkDriver(UAVDriver):
@@ -145,6 +151,64 @@ class MAVLinkDriver(UAVDriver):
 
         return result == MAVResult.ACCEPTED
 
+    async def _send_fly_to_target_signal_single(self, uav, target):
+        type_mask = (
+            PositionTargetTypemask.VX_IGNORE
+            | PositionTargetTypemask.VY_IGNORE
+            | PositionTargetTypemask.VZ_IGNORE
+            | PositionTargetTypemask.AX_IGNORE
+            | PositionTargetTypemask.AY_IGNORE
+            | PositionTargetTypemask.AZ_IGNORE
+            | PositionTargetTypemask.YAW_IGNORE
+            | PositionTargetTypemask.YAW_RATE_IGNORE
+        )
+
+        if target.amsl is None:
+            frame = MAVFrame.GLOBAL_RELATIVE_ALT_INT
+            if target.agl is None:
+                # We cannot simply set Z_IGNORE in the type mask because that
+                # does not work with ArduCopter (it would ignore the whole
+                # position).
+                altitude = uav.status.position.agl
+            else:
+                altitude = target.agl
+        else:
+            frame = MAVFrame.GLOBAL_RELATIVE_ALT_INT
+            altitude = target.amsl
+
+        lat, lon = int(target.lat * 1e7), int(target.lon * 1e7)
+
+        message = spec.set_position_target_global_int(
+            time_boot_ms=int(monotonic() * 1000),
+            coordinate_frame=frame,
+            type_mask=type_mask,
+            # position
+            lat_int=lat,
+            lon_int=lon,
+            alt=altitude,
+            # velocity
+            vx=0,
+            vy=0,
+            vz=0,
+            # acceleration or force
+            afx=0,
+            afy=0,
+            afz=0,
+            # yaw
+            yaw=0,
+            yaw_rate=0,
+        )
+        response = spec.position_target_global_int(
+            # position
+            lat_int=lat,
+            lon_int=lon,
+            # note that we don't check the altitude in the response because the
+            # position target feedback could come in AMSL or AGL
+        )
+        await self.send_packet(message, uav, wait_for_response=response)
+
+        return True
+
     async def _send_landing_signal_single(self, uav):
         return await self.send_command_long(uav, MAVCommand.NAV_LAND)
 
@@ -157,6 +221,9 @@ class MAVLinkDriver(UAVDriver):
         else:
             # No component resets are implemented on this UAV yet
             return False
+
+    async def _send_return_to_home_signal_single(self, uav):
+        return await self.send_command_long(uav, MAVCommand.NAV_RETURN_TO_LAUNCH)
 
     async def _send_shutdown_signal_single(self, uav):
         if not await self.send_command_long(
@@ -181,7 +248,7 @@ class MAVLinkDriver(UAVDriver):
         return await self.send_command_long(
             uav,
             MAVCommand.NAV_TAKEOFF,
-            param4=float("nan"),  # yaw should stay the same
+            param4=nan,  # yaw should stay the same
             param7=5,  # takeoff to 5m
         )
 

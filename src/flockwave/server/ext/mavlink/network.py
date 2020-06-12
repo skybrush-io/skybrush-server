@@ -348,6 +348,7 @@ class MAVLinkNetwork:
             "MISSION_CURRENT": nop,  # maybe later?
             "NAV_CONTROLLER_OUTPUT": nop,
             "PARAM_VALUE": self._handle_message_param_value,
+            "POSITION_TARGET_GLOBAL_INT": nop,
             "POWER_STATUS": nop,
             "STATUSTEXT": self._handle_message_statustext,
             "SYS_STATUS": self._handle_message_sys_status,

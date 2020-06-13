@@ -157,7 +157,9 @@ class VirtualUAVDriver(UAVDriver):
         uav.stop_trajectory()
         uav.target = target
 
-    def _send_landing_signal_single(self, uav):
+    async def _send_landing_signal_single(self, uav):
+        # Make the landing signal async to simulate how it works for "real" drones
+        await sleep(0.2)
         uav.land()
         return True
 
@@ -188,7 +190,9 @@ class VirtualUAVDriver(UAVDriver):
         uav.shutdown()
         return True
 
-    def _send_takeoff_signal_single(self, uav):
+    async def _send_takeoff_signal_single(self, uav):
+        # Make the takeoff signal async to simulate how it works for "real" drones
+        await sleep(0.2)
         uav.takeoff()
         return True
 

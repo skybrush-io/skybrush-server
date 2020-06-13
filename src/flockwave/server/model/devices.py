@@ -885,8 +885,8 @@ class DeviceTreeSubscriptionManager(object):
         try:
             return self._tree.resolve(path)
         except NoSuchPathError:
-            if hasattr(response, "add_failure"):
-                response.add_failure(path, "No such device tree path")
+            if hasattr(response, "add_error"):
+                response.add_error(path, "No such device tree path")
             return None
 
     def _notify_subscriber(self, subscriber, channel_values):

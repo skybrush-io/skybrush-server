@@ -49,7 +49,7 @@ def for_each_id(func, key="status", has_param=False):
 
             for extension_id, param in get_ids_and_params(message):
                 if extension_id == _my_name:
-                    response.add_failure(extension_id, "Extension is protected")
+                    response.add_error(extension_id, "Extension is protected")
                 else:
                     try:
                         if has_param:
@@ -57,7 +57,7 @@ def for_each_id(func, key="status", has_param=False):
                         else:
                             result = await func(ext, extension_id)
                     except Exception as ex:
-                        response.add_failure(extension_id, ex)
+                        response.add_error(extension_id, ex)
                     else:
                         status[extension_id] = result
 
@@ -75,7 +75,7 @@ def for_each_id(func, key="status", has_param=False):
 
             for extension_id, param in get_ids_and_params(message):
                 if extension_id == _my_name:
-                    response.add_failure(extension_id, "Extension is protected")
+                    response.add_error(extension_id, "Extension is protected")
                 else:
                     try:
                         if has_param:
@@ -83,7 +83,7 @@ def for_each_id(func, key="status", has_param=False):
                         else:
                             result = func(ext, extension_id)
                     except Exception as ex:
-                        response.add_failure(extension_id, ex)
+                        response.add_error(extension_id, ex)
                     else:
                         status[extension_id] = result
 

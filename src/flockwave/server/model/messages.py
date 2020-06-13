@@ -3,7 +3,7 @@
 from __future__ import absolute_import
 
 from flockwave.spec.schema import get_message_schema
-from typing import Iterable, Optional, Union
+from typing import Any, Iterable, Optional, Union
 
 from .commands import CommandExecutionStatus
 from .metamagic import ModelMeta
@@ -44,10 +44,8 @@ class FlockwaveResponse(FlockwaveMessage):
         self._on_sent = []
         super().__init__(*args, **kwds)
 
-    def add_failure(
-        self, failed_id: str, reason: Optional[Union[str, Exception]] = None
-    ):
-        """Adds a failure notification to the response body.
+    def add_error(self, failed_id: str, reason: Optional[Union[str, Exception]] = None):
+        """Adds an error message to the response body.
 
         A common pattern in the Flockwave protocol is that a request
         (such as UAV-INF or CONN-INF) is able to target multiple identifiers
@@ -57,18 +55,15 @@ class FlockwaveResponse(FlockwaveMessage):
         one of these requests fail, we do not want to send an error message
         back to the client because the same request could have succeeded for
         *other* IDs. The Flockwave protocol specifies that for such
-        messages, the response is allowed to hold a ``failure`` key (whose
-        value is a list of failed IDs) and an optional ``reasons`` object
-        (which maps failed IDs to textual descriptions of why the operation
-        failed). This function handles these two keys in a message.
+        messages, the response is allowed to hold an ``error`` key (whose
+        value is a mapping from failed IDs to the corresponding error messages).
+        This function handles the ``error`` key in such messages.
 
         When this function is invoked, the given ID will be added to
-        the ``failure`` key of the message. The key will be created if it
-        does not exist, and the function also checks whether the ID is
-        already present in the ``failure`` key or not to ensure that the
-        values for the ``failure`` key are unique. When the optional
-        ``reason`` argument of this function is not ``None``, the given
-        reason is also added to the ``reasons`` key of the message.
+        the ``error`` mapping of the message. The key will be created if it
+        does not exist. When the optional ``reason`` argument of this function
+        is not ``None``, the given reason is added to the error mapping;
+        otherwise an empty string is added to the ``error`` key of the message.
 
         Parameters:
             failed_id (str): the ID for which we want to add a failure
@@ -77,20 +72,15 @@ class FlockwaveResponse(FlockwaveMessage):
                 known or not provided.
         """
         body = self.body
-        failures = body.setdefault("failure", [])
-        if failed_id not in failures:
-            failures.append(failed_id)
-        if reason is not None:
-            reasons = body.setdefault("reasons", {})
-            if failed_id not in reasons:
-                reasons[failed_id] = str(reason)
+        errors = body.setdefault("error", {})
+        errors[failed_id] = str(reason or "")
 
     def add_receipt(self, id: str, receipt: CommandExecutionStatus):
         """Adds a receipt for an asynchronous operation to the response
         body.
 
         A common pattern in the Flockwave protocol is that a request
-        (such as CMD-REQ) is able to target multiple identifiers
+        (such as OBJ-CMD) is able to target multiple identifiers
         (e.g., UAV identifiers or connection identifiers). The request is
         then executed independently for the different IDs, and some of these
         requests may actually trigger the execution of an asynchronous
@@ -98,13 +88,8 @@ class FlockwaveResponse(FlockwaveMessage):
         the asynchronous command completes, it may choose to create a
         CommandExecutionStatus_ object to track the execution of the command
         and then return the ID of this obejct in the response for a specific
-        targeted ID. Clients will then be able to retrieve the status of
-        the execution of this command with a CMD-STATUS message, and they
-        will also be notified about the completion of these commands in
-        separate notifications from the server (the type of which will
-        depend on the type of the original message that triggered the
-        asynchronous command; for instance, CMD-REQ messages will be
-        accompanied with CMD-RESP notifications).
+        targeted ID. Clients will then be notified about the completion of these
+        commands in separate ASYNC-RESP notifications from the server.
 
         When this function is invoked, the given ID will be added to
         the ``receipts`` key of the message and it will be associated to
@@ -121,6 +106,30 @@ class FlockwaveResponse(FlockwaveMessage):
         body = self.body
         receipts = body.setdefault("receipts", {})
         receipts[id] = receipt.id
+
+    def add_result(self, id: str, value: Any = None) -> None:
+        """Adds a result object to the response body.
+
+        A common pattern in the Flockwave protocol is that a request
+        (such as UAV-INF or CONN-INF) is able to target multiple identifiers
+        (e.g., UAV identifiers or connection identifiers). The request is
+        then executed independently for the different IDs (for instance,
+        UAV status information is retrieved for all the UAV IDs). For
+        successful executions, the result of the execution should be added to
+        a dictionary mapping IDs to the results.
+
+        When this function is invoked, the given ID will be added to
+        the ``result`` mapping of the message. mapping key will be created if it
+        does not exist.
+
+        Parameters:
+            successful_id: the ID for which we want to add a success
+                notification
+            value: the result object to associate to the given ID
+        """
+        body = self.body
+        results = body.setdefault("result", {})
+        results[id] = value
 
     def add_success(self, successful_id: str) -> None:
         """Adds a success notification to the response body.

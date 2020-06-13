@@ -201,60 +201,6 @@ class SkybrushServer:
         self.device_tree_subscriptions.client_registry = self.client_registry
         self.device_tree_subscriptions.message_hub = self.message_hub
 
-    def create_CMD_DEL_message_for(self, receipt_ids, in_response_to):
-        """Creates a CMD-DEL message after having cancelled the execution of
-        the asynchronous commands with the given receipt IDs.
-
-        Parameters:
-            receipt_ids (iterable): list of receipt IDs
-            in_response_to (FlockwaveMessage or None): the message that the
-                constructed message will respond to.
-
-        Returns:
-            FlockwaveMessage: the CMD-DEL message that acknowledges the
-                cancellation of the given asynchronous commands
-        """
-        body = {"type": "CMD-DEL"}
-        response = self.message_hub.create_response_or_notification(
-            body=body, in_response_to=in_response_to
-        )
-
-        for receipt_id in receipt_ids:
-            entry = self._find_command_receipt_by_id(receipt_id, response)
-            if entry:
-                self.command_execution_manager.cancel(entry)
-                response.add_success(receipt_id)
-
-        return response
-
-    def create_CMD_INF_message_for(self, receipt_ids, in_response_to=None):
-        """Creates a CMD-INF message that contains information regarding
-        the asynchronous commands being executed with the given receipt IDs.
-
-        Parameters:
-            receipt_ids (iterable): list of receipt IDs
-            in_response_to (FlockwaveMessage or None): the message that the
-                constructed message will respond to. ``None`` means that the
-                constructed message will be a notification.
-
-        Returns:
-            FlockwaveMessage: the CMD-INF message with the status info of
-                the given asynchronous commands
-        """
-        receipts = {}
-
-        body = {"receipts": receipts, "type": "CMD-INF"}
-        response = self.message_hub.create_response_or_notification(
-            body=body, in_response_to=in_response_to
-        )
-
-        for receipt_id in receipt_ids:
-            entry = self._find_command_receipt_by_id(receipt_id, response)
-            if entry:
-                receipts[receipt_id] = entry.json
-
-        return response
-
     def create_CONN_INF_message_for(self, connection_ids, in_response_to=None):
         """Creates a CONN-INF message that contains information regarding
         the connections with the given IDs.
@@ -387,7 +333,7 @@ class SkybrushServer:
             try:
                 manager.subscribe(client, path)
             except NoSuchPathError:
-                response.add_failure(path, "No such device tree path")
+                response.add_error(path, "No such device tree path")
             else:
                 response.add_success(path)
 
@@ -433,9 +379,9 @@ class SkybrushServer:
             try:
                 manager.unsubscribe(client, path, force=remove_all)
             except NoSuchPathError:
-                response.add_failure(path, "No such device tree path")
+                response.add_error(path, "No such device tree path")
             except ClientNotSubscribedError:
-                response.add_failure(path, "Not subscribed to this path")
+                response.add_error(path, "Not subscribed to this path")
             else:
                 response.add_success(path)
 
@@ -548,7 +494,7 @@ class SkybrushServer:
 
         # Find the method to invoke on the driver
         method_name, transformer = {
-            "CMD-REQ": ("send_command", None),
+            "OBJ-CMD": ("send_command", None),
             "UAV-FLY": (
                 "send_fly_to_target_signal",
                 {"target": GPSCoordinate.from_json},
@@ -597,7 +543,7 @@ class SkybrushServer:
             # Update the response
             if common_error is not None:
                 for uav in uavs:
-                    response.add_failure(uav.id, common_error)
+                    response.add_error(uav.id, common_error)
             else:
                 if isawaitable(results):
                     # Results are produced by an async function; we have to wait
@@ -611,19 +557,15 @@ class SkybrushServer:
                         results = ex
 
                 if isinstance(results, Exception):
-                    # Received an exception; send it back to all UAVs
+                    # Received an exception; send it back for all UAVs
                     for uav in uavs:
-                        response.add_failure(uav.id, str(results))
+                        response.add_error(uav.id, str(results))
                 else:
                     # Results have arrived, process them
                     for uav, result in results.items():
                         if isinstance(result, Exception):
-                            response.add_failure(uav.id, str(result))
-                        elif result is False:
-                            response.add_failure(uav.id)
-                        elif result is True:
-                            response.add_success(uav.id)
-                        else:
+                            response.add_error(uav.id, str(result))
+                        elif isawaitable(result):
                             receipt = await cmd_manager.new(
                                 result, client_to_notify=sender.id
                             )
@@ -631,6 +573,8 @@ class SkybrushServer:
                             response.when_sent(
                                 cmd_manager.mark_as_clients_notified, receipt.id
                             )
+                        else:
+                            response.add_result(uav.id, result)
 
         return response
 
@@ -954,18 +898,24 @@ class SkybrushServer:
 
     def _on_command_execution_finished(self, sender, status):
         """Handler called when the execution of a remote asynchronous
-        command finished. Dispatches an appropriate ``CMD-RESP`` message.
+        command finished. Dispatches an appropriate ``ASYNC-RESP`` message.
 
         Parameters:
             sender (CommandExecutionManager): the command execution manager
             status (CommandExecutionStatus): the status object corresponding
                 to the command whose execution has just finished.
         """
-        body = {
-            "type": "CMD-RESP",
-            "id": status.id,
-            "response": status.response if status.response is not None else "",
-        }
+        body = {"type": "ASYNC-RESP", "id": status.id}
+
+        if status.error:
+            body["error"] = (
+                str(status.error)
+                if not hasattr(status.error, "json")
+                else status.error.json
+            )
+        else:
+            body["result"] = status.result
+
         message = self.message_hub.create_response_or_notification(body)
         for client_id in status.clients_to_notify:
             self.message_hub.enqueue_message(message, to=client_id)
@@ -973,7 +923,7 @@ class SkybrushServer:
     def _on_command_execution_timeout(self, sender, statuses):
         """Handler called when the execution of a remote asynchronous
         command was abandoned with a timeout. Dispatches an appropriate
-        ``CMD-TIMEOUT`` message.
+        ``ASYNC-TIMEOUT`` message.
 
         Parameters:
             sender (CommandExecutionManager): the command execution manager
@@ -982,7 +932,7 @@ class SkybrushServer:
         """
         # Multiple commands may have timed out at the same time, and we
         # need to sort them by the clients that originated these requests
-        # so we can dispatch individual CMD-TIMEOUT messages to each of
+        # so we can dispatch individual ASYNC-TIMEOUT messages to each of
         # them
         receipt_ids_by_clients = defaultdict(list)
         for status in statuses:
@@ -992,7 +942,7 @@ class SkybrushServer:
 
         hub = self.message_hub
         for client, receipt_ids in receipt_ids_by_clients.items():
-            body = {"type": "CMD-TIMEOUT", "ids": receipt_ids}
+            body = {"type": "ASYNC-TIMEOUT", "ids": receipt_ids}
             message = hub.create_response_or_notification(body)
             hub.enqueue_message(message, to=client)
 
@@ -1018,16 +968,6 @@ class SkybrushServer:
 app = SkybrushServer()
 
 # ######################################################################## #
-
-
-@app.message_hub.on("CMD-DEL")
-def handle_CMD_DEL(message, sender, hub):
-    return app.create_CMD_DEL_message_for(message.body["ids"], in_response_to=message)
-
-
-@app.message_hub.on("CMD-INF")
-def handle_CMD_INF(message, sender, hub):
-    return app.create_CMD_INF_message_for(message.body["ids"], in_response_to=message)
 
 
 @app.message_hub.on("CONN-INF")
@@ -1113,7 +1053,7 @@ def handle_UAV_LIST(message, sender, hub):
 
 
 @app.message_hub.on(
-    "CMD-REQ",
+    "OBJ-CMD",
     "UAV-FLY",
     "UAV-HALT",
     "UAV-LAND",

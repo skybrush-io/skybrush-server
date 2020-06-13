@@ -7,6 +7,7 @@ from inspect import isawaitable
 from time import time
 from trio import CancelScope, current_time, open_memory_channel, open_nursery
 from trio_util import periodic
+from typing import Any
 
 from .logger import log as base_log
 from .model import CommandExecutionStatus, CommandExecutionStatusBuilder
@@ -64,40 +65,13 @@ class CommandExecutionManager(RegistryBase):
         self._tx_queue, self._rx_queue = open_memory_channel(0)
         self.timeout = timeout
 
-    def cleanup(self):
-        """Runs a cleanup process on the dictionary containing the commands
-        currently in progress, removing items that have expired and those
-        for which the command has finished its execution and the result has
-        been sent via a ``finished`` signal.
-
-        An item is considered to be expired if it has been created more than
-        ``self.timeout`` seconds ago and it has not finished execution yet.
-        """
-        commands = self._entries
-        expiry = time() - self.timeout
-        to_remove = [
-            key
-            for key, status in commands.items()
-            if status.finished is not None
-            or status.cancelled is not None
-            or status.created_at < expiry
-        ]
-        if to_remove:
-            expired = [commands.pop(key) for key in to_remove]
-            expired = [command for command in expired if command.is_in_progress]
-            self.expired.send(self, statuses=expired)
-
-    def cancel(self, receipt_id):
+    def cancel(self, receipt_id: str):
         """Cancels the execution of the asynchronous command with the given
         receipt ID.
 
         Parameters:
-            receipt_id (str or CommandExecutionStatus): the receipt
-                identifier of the command that was finished, or the
-                execution status object of the command itself.
-
-        Throws:
-            ValueError: if the given receipt belongs to a different manager
+            receipt_id: the receipt identifier of the command that should be
+                cancelled
         """
         command = self._get_command_from_id(receipt_id)
         if command is None:
@@ -110,37 +84,6 @@ class CommandExecutionManager(RegistryBase):
 
         command.mark_as_cancelled()
         self.cancelled.send(self, status=command)
-
-    def finish(self, receipt_id, result=None):
-        """Marks the asynchronous command with the given receipt identifier
-        as finished, optionally adding the given object as a result.
-
-        Parameters:
-            receipt_id (str or CommandExecutionStatus): the receipt
-                identifier of the command that was finished, or the
-                execution status object of the command itself.
-            result (Optional[object]): the result of the command; ``None``
-                if the command needs no response. May also be an instance of
-                an exception; this will be handled appropriately.
-
-        Throws:
-            ValueError: if the given receipt belongs to a different manager
-        """
-        command = self._get_command_from_id(receipt_id)
-        if command is None:
-            # Request has probably expired in the meanwhile
-            log.warn("Received response for expired receipt: {0}".format(receipt_id))
-            return
-
-        if isinstance(result, Exception):
-            # TODO(ntamas): this should be handled better; the protocol needs
-            # to support error responses
-            result = f"Unexpected error: {result}"
-
-        command.response = result
-        command.mark_as_finished()
-
-        self._send_finished_signal_if_needed(command)
 
     def mark_as_clients_notified(self, receipt_id):
         """Marks that the asynchronous command with the given receipt identifier
@@ -188,6 +131,43 @@ class CommandExecutionManager(RegistryBase):
 
         return receipt
 
+    async def run(self, cleanup_period: float = 1) -> None:
+        """Runs the background tasks related to the command execution
+        manager. This method should be launched in a Trio nursery.
+
+        Parameters:
+            cleanup_period: number of seconds to wait between consecutive
+                cleanups.
+        """
+        # TODO(ntamas): no need for regular cleanups if we utilize
+        # trio.move_on_after() instead
+        async with open_nursery() as nursery:
+            nursery.start_soon(self._run_cleanup, cleanup_period)
+            nursery.start_soon(self._run_execution, nursery)
+
+    def _cleanup(self) -> None:
+        """Runs a cleanup process on the dictionary containing the commands
+        currently in progress, removing items that have expired and those
+        for which the command has finished its execution and the result has
+        been sent via a ``finished`` signal.
+
+        An item is considered to be expired if it has been created more than
+        ``self.timeout`` seconds ago and it has not finished execution yet.
+        """
+        commands = self._entries
+        expiry = time() - self.timeout
+        to_remove = [
+            key
+            for key, status in commands.items()
+            if status.finished is not None
+            or status.cancelled is not None
+            or status.created_at < expiry
+        ]
+        if to_remove:
+            expired = [commands.pop(key) for key in to_remove]
+            expired = [command for command in expired if command.is_in_progress]
+            self.expired.send(self, statuses=expired)
+
     def _get_command_from_id(self, receipt_id):
         """Returns the command execution status object corresponding to the
         given receipt ID, or, if the function is given a
@@ -212,40 +192,15 @@ class CommandExecutionManager(RegistryBase):
             receipt = self._entries.get(receipt_id)
         return receipt
 
-    def _send_finished_signal_if_needed(self, command):
-        """Sends the 'finished' signal for the given command if it has been
-        marked as **client notified** (meaning that the clients were notified
-        about the corresponding receipt IDs) and as **finished** (meaning that
-        the execution of the command has finished and the result object was
-        attached to it).
-        """
-        if command.client_notified and command.finished:
-            self.finished.send(self, status=command)
-
-    async def run(self, cleanup_period=1):
-        """Runs the background tasks related to the command execution
-        manager. This method should be launched in a Trio nursery.
-
-        Parameters:
-            cleanup_period (int or float): number of seconds to wait
-                between consecutive cleanups.
-        """
-        # TODO(ntamas): no need for regular cleanups if we utilize
-        # trio.move_on_after() instead
-        async with open_nursery() as nursery:
-            nursery.start_soon(self._run_cleanup, cleanup_period)
-            nursery.start_soon(self._run_execution, nursery)
-
-    async def _run_cleanup(self, seconds=1):
+    async def _run_cleanup(self, seconds: float = 1) -> None:
         """Runs the cleanup process periodically in an infinite loop.
 
         Parameters:
-            second (int or float): number of seconds to wait between
-                consecutive cleanups.
+            second: number of seconds to wait between consecutive cleanups.
         """
         async for _ in periodic(seconds):
             try:
-                self.cleanup()
+                self._cleanup()
             except Exception as ex:
                 log.exception(ex)
 
@@ -257,27 +212,68 @@ class CommandExecutionManager(RegistryBase):
         while True:
             result, receipt_id = await self._rx_queue.receive()
             if isawaitable(result):
+                # We need to construct the cancel scope here, not inside
+                # self._wait_for, otherwise we would not take into account the
+                # time it takes for the nursery to start the execution
                 scope = CancelScope(deadline=current_time() + self.timeout)
                 nursery.start_soon(self._wait_for, result, receipt_id, scope)
             else:
-                self.finish(receipt_id, result)
+                self._finish(receipt_id, result)
 
-    def _timeout(self, receipt_id):
+    def _finish(self, receipt_id: str, result: Any = None) -> None:
+        """Marks the asynchronous command with the given receipt identifier
+        as finished, optionally adding the given object as a result.
+
+        Parameters:
+            receipt_id: the receipt identifier of the command that was finished
+            result: the result of the command; ``None`` if the command needs no
+                response. May also be an instance of an exception; this will be
+                handled appropriately.
+        """
+        command = self._get_command_from_id(receipt_id)
+        if command is None:
+            # Request has probably expired in the meanwhile. This should happen
+            # only in rare cases as we cancel the awaitables when needed.
+            log.warn("Received response for expired receipt: {0}".format(receipt_id))
+            return
+
+        command.mark_as_finished(result)
+        self._send_finished_signal_if_needed(command)
+
+    def _send_finished_signal_if_needed(self, command: CommandExecutionStatus):
+        """Sends the 'finished' signal for the given command if it has been
+        marked as **client notified** (meaning that the clients were notified
+        about the corresponding receipt IDs) and as **finished** (meaning that
+        the execution of the command has finished and the result object was
+        attached to it).
+        """
+        if command.client_notified and command.finished:
+            self.finished.send(self, status=command)
+
+    def _timeout(self, receipt_id: str) -> None:
         command = self._entries.pop(receipt_id, None)
         if command:
             self.expired.send(self, statuses=[command])
 
-    async def _wait_for(self, awaitable, receipt_id, scope):
+    async def _wait_for(self, awaitable, receipt_id: str, scope: CancelScope) -> None:
         """Waits for the result of the given awaitable and updates the
         command execution receipt with the given ID when the result is
         retrieved from the awaitable.
+
+        Parameters:
+            awaitable: the awaitable to wait for
+            receipt_id: the receipt corresponding to the awaitable; this receipt
+                will be updated when the awaitable finishes
+            scope: the cancellation scope that can be used to terminate the
+                awaitable earlier
         """
         try:
             with scope:
                 result = await awaitable
         except Exception as ex:
             result = ex
+
         if scope.cancelled_caught:
             self._timeout(receipt_id)
         else:
-            self.finish(receipt_id, result)
+            self._finish(receipt_id, result)

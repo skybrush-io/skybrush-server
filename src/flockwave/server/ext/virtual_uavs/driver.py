@@ -74,6 +74,11 @@ class VirtualUAVDriver(UAVDriver):
         else:
             return "Failed to arm"
 
+    async def handle_command_async_exception(self, uav):
+        """Throws an synchronous exception."""
+        await sleep(0.2)
+        raise ValueError("Async exception raised")
+
     async def handle_command_battery(self, uav, value):
         """Command that sets the battery voltage to a given value."""
         if hasattr(value, "endswith") and value.endswith("%"):
@@ -111,6 +116,10 @@ class VirtualUAVDriver(UAVDriver):
             if uav.has_user_defined_error
             else "Error code cleared"
         )
+
+    def handle_command_exception(self, uav):
+        """Throws a synchronous exception."""
+        raise ValueError("Sync exception raised")
 
     async def handle_command_progress(self, uav):
         """Dummy command that can be used to test progress reports sent

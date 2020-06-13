@@ -170,8 +170,8 @@ def find_in_registry(
     exists = exists and (not predicate or predicate(entry))
 
     if not exists:
-        if hasattr(response, "add_failure"):
-            response.add_failure(entry_id, failure_reason)
+        if hasattr(response, "add_error"):
+            response.add_error(entry_id, failure_reason)
         return None
     else:
         return entry

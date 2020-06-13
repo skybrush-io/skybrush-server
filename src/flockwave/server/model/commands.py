@@ -27,7 +27,8 @@ class CommandExecutionStatus(metaclass=ModelMeta):
         self.id = id
         self.created_at = time()
         self.client_notified = None
-        self.response = None
+        self.error = None
+        self.result = None
         self.sent = None
         self.finished = None
         self.cancelled = None
@@ -69,12 +70,20 @@ class CommandExecutionStatus(metaclass=ModelMeta):
         if self.client_notified is None:
             self.client_notified = time()
 
-    def mark_as_finished(self):
+    def mark_as_finished(self, result_or_error):
         """Marks the command as being finished with the current timestamp if
         it has not been marked as finished yet and it has not been cancelled
         either. Otherwise this function is a no-op.
+
+        Parameters:
+            result_or_error: the result or error corresponding to the outcome
+                of the command
         """
         if self.is_in_progress:
+            if isinstance(result_or_error, Exception):
+                self.error = result_or_error
+            else:
+                self.result = result_or_error
             self.finished = time()
 
     def mark_as_sent(self):

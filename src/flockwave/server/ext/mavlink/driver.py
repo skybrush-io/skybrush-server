@@ -92,6 +92,12 @@ class MAVLinkDriver(UAVDriver):
         uav.notify_updated = partial(self.app.request_to_send_UAV_INF_message_for, [id])
         return uav
 
+    def get_time_boot_ms() -> int:
+        """Returns a monotonic "time since boot" timestamp in milliseconds that
+        can be used in MAVLink messages.
+        """
+        return int(monotonic() * 1000)
+
     async def send_command_long(
         self,
         target: "MAVLinkUAV",
@@ -179,7 +185,7 @@ class MAVLinkDriver(UAVDriver):
         lat, lon = int(target.lat * 1e7), int(target.lon * 1e7)
 
         message = spec.set_position_target_global_int(
-            time_boot_ms=int(monotonic() * 1000),
+            time_boot_ms=self.get_time_boot_ms(),
             coordinate_frame=frame,
             type_mask=type_mask,
             # position

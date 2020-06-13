@@ -532,9 +532,9 @@ class MessageHub:
             elif isinstance(response, (dict, FlockwaveResponse)):
                 # Handler returned a dict or a response; we must enqueue it
                 # for later dispatch. (We cannot send it immediately due to
-                # ordering constraints; e.g., CMD-RESP notifications must be
-                # sent later than CMD-REQ responses because the latter contain
-                # the receipt IDs that the former ones refer to).
+                # ordering constraints; e.g., async operation notifications
+                # must be sent later than the initial responses because the
+                # latter contain the receipt IDs that the former ones refer to).
                 self.enqueue_message(response, to=sender, in_response_to=message)
                 handled = True
 

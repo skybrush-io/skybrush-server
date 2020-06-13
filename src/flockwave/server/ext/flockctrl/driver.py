@@ -424,6 +424,24 @@ class FlockCtrlDriver(UAVDriver):
         except KeyError:
             self.log.warn(f"Dropped stale command response from UAV {uav.id}")
 
+    async def _send_command_to_address(
+        self, command: str, address
+    ) -> CommandRequestPacket:
+        """Sends a command packet with the given command string to the
+        given UAV address.
+
+        Parameters:
+            command: the command to send. It will be encoded in UTF-8
+                before sending it.
+            address (object): the address to send the command to
+
+        Returns:
+            the packet that was sent
+        """
+        packet = CommandRequestPacket(command.encode("utf-8"))
+        await self.send_packet(packet, address)
+        return packet
+
     async def _send_command_to_uav(self, command, uav):
         """Sends a command string to the given UAV.
 
@@ -446,23 +464,16 @@ class FlockCtrlDriver(UAVDriver):
             except FutureCancelled:
                 return "Execution cancelled"
 
-    async def _send_command_to_address(
-        self, command: str, address
-    ) -> CommandRequestPacket:
-        """Sends a command packet with the given command string to the
-        given UAV address.
+    async def _send_command_to_uav_and_check_for_errors(self, cmd, uav) -> None:
+        """Sends a single command to a UAV and checks the response to determine
+        whether it looks like an error.
 
-        Parameters:
-            command: the command to send. It will be encoded in UTF-8
-                before sending it.
-            address (object): the address to send the command to
-
-        Returns:
-            the packet that was sent
+        Raises:
+            RuntimeError: if the response looks like an error
         """
-        packet = CommandRequestPacket(command.encode("utf-8"))
-        await self.send_packet(packet, address)
-        return packet
+        response = await self._send_command_to_uav(cmd, uav)
+        if response and response.startswith("/!\\"):
+            raise RuntimeError(response[3:].strip())
 
     async def _send_fly_to_target_signal_single(self, uav, target):
         altitude = target.agl
@@ -470,31 +481,31 @@ class FlockCtrlDriver(UAVDriver):
             cmd = "go N{0.lat:.7f} E{0.lon:.7f} {1}".format(target, altitude)
         else:
             cmd = "go N{0.lat:.7f} E{0.lon:.7f}".format(target, altitude)
-        return await self._send_command_to_uav(cmd, uav)
+        return await self._send_command_to_uav_and_check_for_errors(cmd, uav)
 
     async def _send_landing_signal_single(self, uav):
-        return await self._send_command_to_uav("land", uav)
+        return await self._send_command_to_uav_and_check_for_errors("land", uav)
 
     async def _send_reset_signal_single(self, uav, component):
         if not component:
             # Resetting the whole UAV, this is supported
-            return await self._send_command_to_uav("restart", uav)
+            return await self._send_command_to_uav_and_check_for_errors("restart", uav)
         else:
             # No component resets are implemented on this UAV yet
-            return False
+            raise RuntimeError(f"Resetting {component!r} is not supported")
 
     async def _send_return_to_home_signal_single(self, uav):
         return await self._send_command_to_uav("rth", uav)
 
     async def _send_light_or_sound_emission_signal_single(self, uav, signals, duration):
         if "light" in signals:
-            return await self._send_command_to_uav("where", uav)
+            return await self._send_command_to_uav_and_check_for_errors("where", uav)
 
     async def _send_shutdown_signal_single(self, uav):
-        return await self._send_command_to_uav("halt", uav)
+        return await self._send_command_to_uav_and_check_for_errors("halt", uav)
 
     async def _send_takeoff_signal_single(self, uav):
-        return await self._send_command_to_uav("motoron", uav)
+        return await self._send_command_to_uav_and_check_for_errors("motoron", uav)
 
 
 class FlockCtrlUAV(UAVBase):

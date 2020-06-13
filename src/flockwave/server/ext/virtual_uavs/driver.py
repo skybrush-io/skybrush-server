@@ -148,7 +148,7 @@ class VirtualUAVDriver(UAVDriver):
         await sleep(0.5 + random())
         return "yo" + choice("?!.")
 
-    def _send_fly_to_target_signal_single(self, uav, target):
+    def _send_fly_to_target_signal_single(self, uav, target) -> None:
         if uav.state == VirtualUAVState.LANDED:
             uav.takeoff()
             if target.agl is None and target.amsl is None:
@@ -157,26 +157,26 @@ class VirtualUAVDriver(UAVDriver):
         uav.stop_trajectory()
         uav.target = target
 
-    async def _send_landing_signal_single(self, uav):
+    async def _send_landing_signal_single(self, uav) -> None:
         # Make the landing signal async to simulate how it works for "real" drones
         await sleep(0.2)
         uav.land()
-        return True
 
-    def _send_light_or_sound_emission_signal_single(self, uav, signals, duration):
+    def _send_light_or_sound_emission_signal_single(
+        self, uav, signals, duration
+    ) -> None:
         if "light" in signals:
             uav.handle_where_are_you(duration)
-        return True
 
-    def _send_reset_signal_single(self, uav, component):
+    def _send_reset_signal_single(self, uav, component) -> None:
         if not component:
             # Resetting the whole UAV, this is supported
             uav.reset()
         else:
             # No components on this UAV
-            return False
+            raise RuntimeError(f"Resetting {component!r} is not supported")
 
-    def _send_return_to_home_signal_single(self, uav):
+    def _send_return_to_home_signal_single(self, uav) -> bool:
         if uav.state == VirtualUAVState.AIRBORNE:
             target = uav.home.copy()
             target.agl = uav.status.position.agl
@@ -185,16 +185,16 @@ class VirtualUAVDriver(UAVDriver):
             uav.target = target
 
             uav.ensure_error(FlockwaveErrorCode.RETURN_TO_HOME)
+        else:
+            raise RuntimeError("UAV is not airborne, cannot start RTH")
 
-    def _send_shutdown_signal_single(self, uav):
+    def _send_shutdown_signal_single(self, uav) -> bool:
         uav.shutdown()
-        return True
 
-    async def _send_takeoff_signal_single(self, uav):
+    async def _send_takeoff_signal_single(self, uav) -> bool:
         # Make the takeoff signal async to simulate how it works for "real" drones
         await sleep(0.2)
         uav.takeoff()
-        return True
 
 
 class VirtualUAV(UAVBase):

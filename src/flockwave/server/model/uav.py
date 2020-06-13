@@ -398,7 +398,8 @@ class UAVDriver(metaclass=ABCMeta):
             uavs (List[UAV]): the UAVs to address with this request.
 
         Returns:
-            Dict[UAV,object]: dict mapping UAVs to the corresponding results.
+            Dict[UAV,object]: dict mapping UAVs to the corresponding results
+                (which may also be errors)
         """
         return self._send_signal(
             uavs,
@@ -418,13 +419,8 @@ class UAVDriver(metaclass=ABCMeta):
             uavs (List[UAV]): the UAVs to address with this request.
 
         Returns:
-            Dict[UAV,object]: dict mapping UAVs to the corresponding results.
-
-        Raises:
-            NotImplementedError: if the operation is not supported by the
-                driver yet, but there are plans to implement it
-            NotSupportedError: if the operation is not supported by the
-                driver and will not be supported in the future either
+            Dict[UAV,object]: dict mapping UAVs to the corresponding results
+                (which may also be errors)
         """
         return self._send_signal(
             uavs, "landing signal", self._send_landing_signal_single
@@ -447,7 +443,8 @@ class UAVDriver(metaclass=ABCMeta):
             duration (int): the duration of the required signal in milliseconds
 
         Returns:
-            Dict[UAV,object]: dict mapping UAVs to the corresponding results.
+            Dict[UAV,object]: dict mapping UAVs to the corresponding results
+                (which may also be errors)
         """
         return self._send_signal(
             uavs,
@@ -469,7 +466,8 @@ class UAVDriver(metaclass=ABCMeta):
                 to reset the entire UAV.
 
         Returns:
-            Dict[UAV,object]: dict mapping UAVs to the corresponding results.
+            Dict[UAV,object]: dict mapping UAVs to the corresponding results
+                (which may also be errors)
         """
         return self._send_signal(
             uavs,
@@ -489,7 +487,8 @@ class UAVDriver(metaclass=ABCMeta):
             uavs (List[UAV]): the UAVs to address with this request.
 
         Returns:
-            Dict[UAV,object]: dict mapping UAVs to the corresponding results.
+            Dict[UAV,object]: dict mapping UAVs to the corresponding results
+                (which may also be errors)
         """
         return self._send_signal(
             uavs, "return to home signal", self._send_return_to_home_signal_single
@@ -506,7 +505,8 @@ class UAVDriver(metaclass=ABCMeta):
             uavs (List[UAV]): the UAVs to address with this request.
 
         Returns:
-            Dict[UAV,object]: dict mapping UAVs to the corresponding results.
+            Dict[UAV,object]: dict mapping UAVs to the corresponding results
+                (which may also be errors)
         """
         return self._send_signal(
             uavs, "shutdown signal", self._send_shutdown_signal_single
@@ -523,7 +523,8 @@ class UAVDriver(metaclass=ABCMeta):
             uavs (List[UAV]): the UAVs to address with this request.
 
         Returns:
-            Dict[UAV,object]: dict mapping UAVs to the corresponding results.
+            Dict[UAV,object]: dict mapping UAVs to the corresponding results
+                (which may also be errors)
         """
         return self._send_signal(
             uavs, "takeoff signal", self._send_takeoff_signal_single
@@ -556,7 +557,9 @@ class UAVDriver(metaclass=ABCMeta):
         """
         pass
 
-    def _send_signal(self, uavs, signal_name, handler, *args, **kwds):
+    def _send_signal(
+        self, uavs: UAV, signal_name: str, handler, *args, **kwds
+    ) -> Dict[UAV, Any]:
         """Common implementation for the body of several ``send_*_signal()``
         methods in this class.
         """
@@ -565,29 +568,35 @@ class UAVDriver(metaclass=ABCMeta):
             try:
                 outcome = handler(uav, *args, **kwds)
             except NotImplementedError:
-                outcome = f"{signal_name} not implemented yet"
-            except NotSupportedError:
-                outcome = f"{signal_name} not supported"
+                outcome = NotImplementedError(f"{signal_name} not implemented yet")
+            except NotSupportedError as ex:
+                outcome = NotSupportedError(str(ex) or f"{signal_name} not supported")
+            except RuntimeError as ex:
+                outcome = RuntimeError(f"Error while sending {signal_name}: {str(ex)}")
             except Exception as ex:
                 log.exception(ex)
-                outcome = f"Unexpected error while sending {signal_name}: {repr(ex)}"
+                outcome = ex.__class__(
+                    f"Unexpected error while sending {signal_name}: {ex!r}"
+                )
             result[uav] = outcome
         return result
 
-    def _send_fly_to_target_signal_single(self, uav, target):
+    def _send_fly_to_target_signal_single(self, uav: UAV, target) -> None:
         """Asks the driver to send a "fly to target" signal to a single UAV
         managed by this driver.
 
         May return an awaitable if sending the signal takes a longer time.
 
+        The function follows the "samurai principle", i.e. "return victorious,
+        or not at all". It means that if it returns, the operation succeeded.
+        Raise an exception if the operation cannot be executed for any reason;
+        a RuntimeError is typically sufficient.
+
         Parameters:
-            uav (UAV): the UAV to address with this request.
+            uav: the UAV to address with this request.
             target (GPSCoordinate): the target to fly to; the altitude above
                 ground level may be set to `None` to indicate the current
                 altitude
-
-        Returns:
-            bool: whether the signal was *sent* successfully
 
         Raises:
             NotImplementedError: if the operation is not supported by the
@@ -597,17 +606,19 @@ class UAVDriver(metaclass=ABCMeta):
         """
         raise NotImplementedError
 
-    def _send_landing_signal_single(self, uav):
+    def _send_landing_signal_single(self, uav: UAV) -> None:
         """Asks the driver to send a landing signal to a single UAV managed
         by this driver.
 
         May return an awaitable if sending the signal takes a longer time.
 
-        Parameters:
-            uav (UAV): the UAV to address with this request.
+        The function follows the "samurai principle", i.e. "return victorious,
+        or not at all". It means that if it returns, the operation succeeded.
+        Raise an exception if the operation cannot be executed for any reason;
+        a RuntimeError is typically sufficient.
 
-        Returns:
-            bool: whether the signal was *sent* successfully
+        Parameters:
+            uav: the UAV to address with this request.
 
         Raises:
             NotImplementedError: if the operation is not supported by the
@@ -618,21 +629,28 @@ class UAVDriver(metaclass=ABCMeta):
         raise NotImplementedError
 
     def _send_light_or_sound_emission_signal_single(
-        self, uav, signals: List[str], duration: int
-    ):
+        self, uav: UAV, signals: List[str], duration: int
+    ) -> None:
         """Asks the driver to send a light or sound emission signal to a
         single UAV managed by this driver.
 
         May return an awaitable if sending the signal takes a longer time.
 
-        Parameters:
-            uav (UAV): the UAV to address with this request.
-            signals (List[str]): the list of signal types that the
-                targeted UAV should emit (e.g., 'sound', 'light')
-            duration (int): the duration of the required signal in milliseconds
+        The function follows the "samurai principle", i.e. "return victorious,
+        or not at all", with one exception. The specification says that signal
+        names may be defined and extended by the user without modifying the
+        formal protocol specification, and implementations should accept any
+        signal name and simply not respond to signals that they do not know.
+        Therefore, it is valid to return even if no visible light or audio
+        signal was emitted by the UAV as long as no other errors happened.
+        Raise an exception if the operation cannot be executed for any other
+        reason; a RuntimeError is typically sufficient.
 
-        Returns:
-            bool: whether the signal was *sent* successfully
+        Parameters:
+            uav: the UAV to address with this request.
+            signals: the list of signal types that the targeted UAV should emit
+                (e.g., 'sound', 'light')
+            duration: the duration of the required signal in milliseconds
 
         Raises:
             NotImplementedError: if the operation is not supported by the
@@ -642,20 +660,22 @@ class UAVDriver(metaclass=ABCMeta):
         """
         raise NotImplementedError
 
-    def _send_reset_signal_single(self, uav: UAV, *, component: str):
+    def _send_reset_signal_single(self, uav: UAV, *, component: str) -> None:
         """Asks the driver to send a reset signal to a single UAV managed by
         this driver.
 
         May return an awaitable if sending the signal takes a longer time.
+
+        The function follows the "samurai principle", i.e. "return victorious,
+        or not at all". It means that if it returns, the operation succeeded.
+        Raise an exception if the operation cannot be executed for any reason;
+        a RuntimeError is typically sufficient.
 
         Parameters:
             uav: the UAV to address with this request.
             component: the component to reset; an empty string means that the
                 entire UAV should be reset.
 
-        Returns:
-            bool: whether the signal was *sent* successfully
-
         Raises:
             NotImplementedError: if the operation is not supported by the
                 driver yet, but there are plans to implement it
@@ -664,17 +684,19 @@ class UAVDriver(metaclass=ABCMeta):
         """
         raise NotImplementedError
 
-    def _send_return_to_home_signal_single(self, uav):
+    def _send_return_to_home_signal_single(self, uav: UAV):
         """Asks the driver to send a return-to-home signal to a single UAV
         managed by this driver.
 
         May return an awaitable if sending the signal takes a longer time.
 
-        Parameters:
-            uav (UAV): the UAV to address with this request.
+        The function follows the "samurai principle", i.e. "return victorious,
+        or not at all". It means that if it returns, the operation succeeded.
+        Raise an exception if the operation cannot be executed for any reason;
+        a RuntimeError is typically sufficient.
 
-        Returns:
-            bool: whether the signal was *sent* successfully
+        Parameters:
+            uav: the UAV to address with this request.
 
         Raises:
             NotImplementedError: if the operation is not supported by the
@@ -684,17 +706,19 @@ class UAVDriver(metaclass=ABCMeta):
         """
         raise NotImplementedError
 
-    def _send_shutdown_signal_single(self, uav):
+    def _send_shutdown_signal_single(self, uav: UAV):
         """Asks the driver to send a shutdown signal to a single UAV managed
         by this driver.
 
         May return an awaitable if sending the signal takes a longer time.
 
-        Parameters:
-            uav (UAV): the UAV to address with this request.
+        The function follows the "samurai principle", i.e. "return victorious,
+        or not at all". It means that if it returns, the operation succeeded.
+        Raise an exception if the operation cannot be executed for any reason;
+        a RuntimeError is typically sufficient.
 
-        Returns:
-            bool: whether the signal was *sent* successfully
+        Parameters:
+            uav: the UAV to address with this request.
 
         Raises:
             NotImplementedError: if the operation is not supported by the
@@ -704,17 +728,19 @@ class UAVDriver(metaclass=ABCMeta):
         """
         raise NotImplementedError
 
-    def _send_takeoff_signal_single(self, uav):
+    def _send_takeoff_signal_single(self, uav: UAV):
         """Asks the driver to send a takeoff signal to a single UAV managed
         by this driver.
 
         May return an awaitable if sending the signal takes a longer time.
 
-        Parameters:
-            uav (UAV): the UAV to address with this request.
+        The function follows the "samurai principle", i.e. "return victorious,
+        or not at all". It means that if it returns, the operation succeeded.
+        Raise an exception if the operation cannot be executed for any reason;
+        a RuntimeError is typically sufficient.
 
-        Returns:
-            bool: whether the signal was *sent* successfully
+        Parameters:
+            uav: the UAV to address with this request.
 
         Raises:
             NotImplementedError: if the operation is not supported by the
@@ -771,14 +797,9 @@ class PassiveUAVDriver(UAVDriver):
             object_registry.add(uav)
         return object_registry.find_by_id(id)
 
-    def _send_signal(self, uavs, signal_name, handler):
-        message = "{0} not supported".format(signal_name)
-
-        result = {}
-        for uav in uavs:
-            result[uav] = message
-
-        return result
+    def _send_signal(self, uavs: UAV, signal_name: str, handler):
+        error = RuntimeError("{0} not supported".format(signal_name))
+        return {uav: error for uav in uavs}
 
 
 def is_uav(x: Any) -> bool:

@@ -139,7 +139,14 @@ class VirtualUAVDriver(UAVDriver):
         await sleep(1000000)
 
     async def handle_command___show_upload(self, uav, *, show):
-        """Handles a drone show upload request for the given UAV."""
+        """Handles a drone show upload request for the given UAV.
+
+        This is a temporary solution until we figure out something that is
+        more sustainable in the long run.
+
+        Parameters:
+            show: the show data
+        """
         uav.handle_show_upload(show)
         await sleep(0.25 + random() * 0.5)
 

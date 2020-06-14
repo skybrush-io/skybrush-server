@@ -232,6 +232,19 @@ class FlockCtrlDriver(UAVDriver):
         )
         return True
 
+    async def handle_command___show_upload(self, uav, *, show):
+        """Handles a drone show upload request for the given UAV.
+
+        This is a temporary solution until we figure out something that is
+        more sustainable in the long run.
+
+        Parameters:
+            show: the show data
+        """
+        # import json
+        # print(json.dumps(show, indent=2, sort_keys=True))
+        raise NotImplementedError
+
     def handle_generic_command(self, uav, command, args, kwds):
         """Sends a generic command execution request to the given UAV."""
         command = " ".join([command, *args])
@@ -262,12 +275,16 @@ class FlockCtrlDriver(UAVDriver):
                 self._disable_warnings_until[uav_id] = now + 1
 
     def validate_command(self, command: str, args, kwds) -> Optional[str]:
+        if command in ("__mission_upload", "__show_upload"):
+            # Anything is allowed for our temporary commands
+            return
+
         # Prevent the usage of keyword arguments; they are not supported.
         # Also prevent non-string positional arguments.
         if kwds:
-            return "Keyword arguments not supported"
+            raise RuntimeError("Keyword arguments not supported")
         if args and any(not isinstance(arg, str) for arg in args):
-            return "Non-string positional arguments not supported"
+            raise RuntimeError("Non-string positional arguments not supported")
 
     def _get_address_of_uav(self, uav: "FlockCtrlUAV") -> UAVAddress:
         """Returns the network address of the given UAV.

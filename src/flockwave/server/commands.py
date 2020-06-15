@@ -270,10 +270,17 @@ class CommandExecutionManager(RegistryBase):
         try:
             with scope:
                 result = await awaitable
+        except RuntimeError as ex:
+            # this is okay, samurai principle
+            result = ex
         except Exception as ex:
+            # this might not be okay, let's log it
+            log.exception("Unexpected exception caught")
             result = ex
 
         if scope.cancelled_caught:
             self._timeout(receipt_id)
         else:
             self._finish(receipt_id, result)
+
+

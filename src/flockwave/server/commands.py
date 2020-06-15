@@ -282,5 +282,3 @@ class CommandExecutionManager(RegistryBase):
             self._timeout(receipt_id)
         else:
             self._finish(receipt_id, result)
-
-

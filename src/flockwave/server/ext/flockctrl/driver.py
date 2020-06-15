@@ -5,7 +5,6 @@ from __future__ import division
 from base64 import b64decode
 from colour import Color
 from flockwave.concurrency import FutureCancelled, FutureMap
-from flockwave.gps.vectors import FlatEarthToGPSCoordinateTransformation
 from flockwave.protocols.flockctrl.enums import StatusFlag
 from flockwave.protocols.flockctrl.packets import (
     ChunkedPacketAssembler,
@@ -24,24 +23,18 @@ from flockwave.server.model.gps import GPSFixType
 from flockwave.server.model.uav import UAVBase, UAVDriver
 from flockwave.server.utils import color_to_rgb565, nop
 from flockwave.spec.ids import make_valid_object_id
-from io import BytesIO
 from time import time
 from trio import CapacityLimiter, to_thread
 from typing import Optional, Tuple
 from zlib import decompress
-from zipfile import ZipFile, ZIP_DEFLATED
 
 from .algorithms import handle_algorithm_data_packet
 from .comm import upload_mission
 from .errors import AddressConflictError, map_flockctrl_error_code_and_flags
-from .mission_templates import (
-    gps_coordinate_to_string,
-    CHOREOGRAPHY_FILE_TEMPLATE,
-    MISSION_FILE_TEMPLATE,
-    WAYPOINT_FILE_TEMPLATE,
-)
 
-__all__ = ("FlockCtrlDriver")
+from .mission import generate_mission_file_from_show_specification
+
+__all__ = ("FlockCtrlDriver",)
 
 MAX_GEIGER_TUBE_COUNT = 2
 MAX_CAMERA_FEATURE_COUNT = 32
@@ -215,9 +208,7 @@ class FlockCtrlDriver(UAVDriver):
             object_registry.add(uav)
         return object_registry.find_by_id(formatted_id)
 
-    async def handle_command___mission_upload(
-        self, uav: "FlockCtrlUAV", mission: bytes
-    ):
+    async def handle_command___mission_upload(self, uav: "FlockCtrlUAV", mission: str):
         """Handles a mission upload request for the given UAV.
 
         This is a temporary solution until we figure out something that is
@@ -226,20 +217,7 @@ class FlockCtrlDriver(UAVDriver):
         Parameters:
             mission: the mission file, in ZIP format, encoded as base64
         """
-        medium, address = self._get_address_of_uav(uav)
-        if medium != "wireless":
-            raise ValueError("UAV does not have a wireless connection")
-
-        host, _ = address
-
-        await to_thread.run_sync(
-            upload_mission,
-            b64decode(mission),
-            host,
-            cancellable=True,
-            limiter=self._upload_capacity,
-        )
-        return True
+        await self._handle_mission_upload(uav, b64decode(mission))
 
     async def handle_command___show_upload(self, uav: "FlockCtrlUAV", *, show):
         """Handles a drone show upload request for the given UAV.
@@ -250,18 +228,12 @@ class FlockCtrlDriver(UAVDriver):
         Parameters:
             show: the show data
         """
-        uav.handle_show_upload(show)
+        # prevent show uploads if the drone is airborne
+        if uav.is_airborne:
+            raise RuntimeError("Cannot upload a show while the drone is airborne")
 
-        # await to_thread.run_sync(
-        #     upload_mission,
-        #     b64decode(mission),
-        #     host,
-        #     cancellable=True,
-        #     limiter=self._upload_capacity,
-        # )
-        # return True
-
-        raise NotImplementedError
+        mission = generate_mission_file_from_show_specification(show)
+        await self._handle_mission_upload(uav, mission)
 
     def handle_generic_command(self, uav, command, args, kwds):
         """Sends a generic command execution request to the given UAV."""
@@ -420,6 +392,13 @@ class FlockCtrlDriver(UAVDriver):
         debug = f"[{packet.choreography_index:02}] {minutes:02}{sep}{seconds:02} ["
         debug = b"".join([debug.encode("ascii"), packet.debug, b"]"])
 
+        # update whether we are probably airborne; we need this info to decide
+        # whether we allow mission uploads or not
+        self._is_airborne = (
+            packet.flags & (StatusFlag.MOTOR_RUNNING | StatusFlag.ON_GROUND)
+            == StatusFlag.MOTOR_RUNNING
+        )
+
         # update generic uav status
         uav.update_status(
             position=packet.location,
@@ -434,6 +413,31 @@ class FlockCtrlDriver(UAVDriver):
         )
 
         self.app.request_to_send_UAV_INF_message_for([uav.id])
+
+    async def _handle_mission_upload(self, uav: "FlockCtrlUAV", data: bytes) -> None:
+        """Uploads the given mission data file to a drone.
+
+        Uploading a mission file when the drone is airborne is not permitted;
+        doing so would yield a RuntimeError.
+
+        Parameters:
+            uav: the drone to upload the mission data to
+            data: the contents of the mission file to upload
+
+        Raises:
+            RuntimeError: if the file cannot be uploaded
+        """
+        # prevent mission uploads if the drone is airborne
+        if uav.is_airborne:
+            raise RuntimeError("Cannot upload a mission while the drone is airborne")
+
+        await to_thread.run_sync(
+            upload_mission,
+            data,
+            uav.ssh_host,
+            cancellable=True,
+            limiter=self._upload_capacity,
+        )
 
     def _on_chunked_packet_assembled(self, body, source):
         """Handler called when the response chunk handler has assembled
@@ -556,125 +560,14 @@ class FlockCtrlUAV(UAVBase):
     def __init__(self, *args, **kwds):
         super().__init__(*args, **kwds)
         self.addresses = {}
+        self._is_airborne = False
 
-    def handle_show_upload(self, show):
-        """Handles the upload of a full drone show (trajectory + light program).
-
-        Parameters:
-            show: the show to be uploaded, arriving in Skybrush json format
-
-        Raises:
-            RuntimeError: in case of different runtime errors
+    @property
+    def is_airborne(self) -> bool:
+        """Returns whether the UAV is probably airborne (motors running and
+        is not on ground).
         """
-
-        # TODO: move this to a proper place, I do not know where...
-        # TODO: generalize all conversions in flockwave.gps.vectors
-        def to_neu(pos, type_string):
-            """Convert a flat earth coordinate to 'neu' type."""
-            if type_string == "neu":
-                pos_neu = (pos[0], pos[1], pos[2])
-            elif type_string == "nwu":
-                pos_neu = (pos[0], -pos[1], pos[2])
-            elif type_string == "ned":
-                pos_neu = (pos[0], pos[1], -pos[2])
-            elif type_string == "nwd":
-                pos_neu = (pos[0], -pos[1], -pos[2])
-            else:
-                raise NotImplementedError("GPS coordinate system type unknown.")
-
-            return pos_neu
-
-        # TODO: how to check status flags and detect airborne state?
-        if self._status.position.agl > 5:
-            raise RuntimeError("Cannot upload a show while the drone is airborne")
-
-        # parse coordinate system
-        coordinate_system = show.get("coordinateSystem")
-        try:
-            trans = FlatEarthToGPSCoordinateTransformation.from_json(coordinate_system)
-        except Exception:
-            raise RuntimeError("Invalid or missing coordinate system specification")
-
-        # parse trajectory
-        trajectory = show.get("trajectory", None)
-        takeoff_time = trajectory["takeoffTime"]
-        points = trajectory["points"]
-        home = to_neu(show.get("home", None), trans.type)
-
-        # create waypoints
-        last_t = 0
-        waypoints = []
-        for t, p, _ in points:
-            # add takeoff time to waypoints
-            t += takeoff_time
-            # convert position to neu
-            pos = to_neu(p, trans.type)
-            waypoints.append("waypoint={x} {y} {z} {vxy} {vz} T{t} 6".format(
-                x=pos[0],
-                y=pos[1],
-                z=pos[2],
-                vxy=8, # TODO: get from show
-                vz=2.5, # TODO: get from show
-                t=t - last_t,
-            ))
-            last_t = t
-
-        # create waypoint file template
-        waypoint_str = WAYPOINT_FILE_TEMPLATE.format(
-            angle=trans.orientation,
-            ground_altitude=0, # TODO: use this if needed
-            origin=gps_coordinate_to_string(
-                lat=trans.origin.lat,
-                lon=trans.origin.lon
-            ),
-            waypoints="\n".join(waypoints)
-        )
-
-        # create empty waypoint file template
-        waypoint_ground_str = WAYPOINT_FILE_TEMPLATE.format(
-            angle=trans.orientation,
-            ground_altitude=0, # TODO: use this if needed
-            origin=gps_coordinate_to_string(
-                lat=trans.origin.lat,
-                lon=trans.origin.lon
-            ),
-            waypoints="waypoint={} {} -100 4 2 1000 6".format(home[0], home[1])
-        )
-
-        # create mission files
-        mission_str = MISSION_FILE_TEMPLATE
-
-        # create choreography file
-        choreography_str = CHOREOGRAPHY_FILE_TEMPLATE.format(
-            altitude_setpoint=5, # TODO: get from show if needed
-            velocity_xy=8, # TODO: get from show
-            velocity_z=2.5, # TODO: get from show
-        )
-
-        # parse lights
-        lights = show.get("lights", None)
-        light_data = b64decode(lights["data"])
-
-        # create mission.zip
-        # create the zipfile and write content to it
-        buffer = BytesIO()
-        zip_archive = ZipFile(buffer, "w", ZIP_DEFLATED)
-        zip_archive.writestr("waypoints.cfg", waypoint_str)
-        zip_archive.writestr("waypoints_ground.cfg", waypoint_ground_str)
-        zip_archive.writestr("choreography.cfg", choreography_str)
-        zip_archive.writestr("mission.cfg", mission_str)
-        zip_archive.writestr("light_show.bin", light_data)
-        # TODO: what is needed from this?
-        #zip_archive.writestr("_meta/version", META_VERSION_STR)
-        #zip_archive.writestr("_meta/name", META_NAME_STR)
-        zip_archive.close()
-
-        # temporary check
-        #with open("temp.zip", "wb") as f:
-        #    f.write(buffer.getvalue())
-
-        # TODO: upload mission that should be prepared by now
-
+        return self._is_airborne
 
     @property
     def preferred_address(self) -> UAVAddress:
@@ -695,6 +588,25 @@ class FlockCtrlUAV(UAVBase):
         raise ValueError(
             "UAV has no address yet in any of the supported communication media"
         )
+
+    @property
+    def ssh_host(self) -> str:
+        """Returns the hostname where the UAV is accessible for file uploads
+        and commands via SSH.
+
+        Returns:
+            the SSH hostname of the UAV
+
+        Throws:
+            ValueError: if the UAV has no known SSH address yet
+        """
+        for medium in ("wireless",):
+            address = self.addresses.get(medium)
+            if address is not None:
+                host, _ = address
+                return host
+
+        raise ValueError("UAV has no SSH hostname yet")
 
     def update_detected_features(self, itow, features, mutator):
         """Updates the visual features detected by the camera attached to the

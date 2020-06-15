@@ -116,7 +116,7 @@ def generate_mission_file_from_show_specification(show) -> bytes:
     mission_str = get_template("mission.cfg")
 
     # create choreography file
-    choreography_str = get_template("choreography.cfg").format(
+    choreography_str = get_template("choreography_show.cfg").format(
         altitude_setpoint=5,  # TODO: get from show if needed
         velocity_xy=8,  # TODO: get from show
         velocity_z=2.5,  # TODO: get from show

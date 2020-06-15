@@ -14,13 +14,18 @@ from typing import Dict, List, Tuple
 from zipfile import ZipFile, ZIP_DEFLATED
 
 from flockwave.server.errors import NotSupportedError
+from flockwave.gps.vectors import GPSCoordinate
+from .base import ExtensionBase
+from .dock.model import Dock
+
+# TODO(ntamas): hack hack hack, this is a temporary solution, we are not supposed
+# to import the internals of one extension from another one; extensions are
+# supposed to be independent and they must interact with each other via their
+# published API objects
 from flockwave.server.ext.flockctrl.mission_templates import (
     CHOREOGRAPHY_FILE_TEMPLATE,
     MISSION_FILE_TEMPLATE,
 )
-from flockwave.gps.vectors import GPSCoordinate
-from .base import ExtensionBase
-from .dock.model import Dock
 
 META_NAME_STR = "cascade_demo"
 

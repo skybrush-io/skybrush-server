@@ -104,7 +104,7 @@ class FlockwaveResponse(FlockwaveMessage):
                 receipt to return to the client
         """
         body = self.body
-        receipts = body.setdefault("receipts", {})
+        receipts = body.setdefault("receipt", {})
         receipts[id] = receipt.id
 
     def add_result(self, id: str, value: Any = None) -> None:
@@ -161,7 +161,7 @@ class FlockwaveResponse(FlockwaveMessage):
         """Iterates over all receipt IDs that are found in the body of the
         message.
         """
-        receipts = self.body.get("receipts")
+        receipts = self.body.get("receipt")
         if isinstance(receipts, dict):
             yield from (receipt_id for receipt_id in receipts.values())
 

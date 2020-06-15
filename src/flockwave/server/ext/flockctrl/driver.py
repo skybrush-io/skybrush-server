@@ -5,6 +5,7 @@ from __future__ import division
 from base64 import b64decode
 from colour import Color
 from flockwave.concurrency import FutureCancelled, FutureMap
+from flockwave.gps.vectors import FlatEarthToGPSCoordinateTransformation
 from flockwave.protocols.flockctrl.enums import StatusFlag
 from flockwave.protocols.flockctrl.packets import (
     ChunkedPacketAssembler,
@@ -23,16 +24,24 @@ from flockwave.server.model.gps import GPSFixType
 from flockwave.server.model.uav import UAVBase, UAVDriver
 from flockwave.server.utils import color_to_rgb565, nop
 from flockwave.spec.ids import make_valid_object_id
+from io import BytesIO
 from time import time
 from trio import CapacityLimiter, to_thread
 from typing import Optional, Tuple
 from zlib import decompress
+from zipfile import ZipFile, ZIP_DEFLATED
 
 from .algorithms import handle_algorithm_data_packet
 from .comm import upload_mission
 from .errors import AddressConflictError, map_flockctrl_error_code_and_flags
+from .mission_templates import (
+    gps_coordinate_to_string,
+    CHOREOGRAPHY_FILE_TEMPLATE,
+    MISSION_FILE_TEMPLATE,
+    WAYPOINT_FILE_TEMPLATE,
+)
 
-__all__ = ("FlockCtrlDriver",)
+__all__ = ("FlockCtrlDriver")
 
 MAX_GEIGER_TUBE_COUNT = 2
 MAX_CAMERA_FEATURE_COUNT = 32
@@ -232,7 +241,7 @@ class FlockCtrlDriver(UAVDriver):
         )
         return True
 
-    async def handle_command___show_upload(self, uav, *, show):
+    async def handle_command___show_upload(self, uav: "FlockCtrlUAV", *, show):
         """Handles a drone show upload request for the given UAV.
 
         This is a temporary solution until we figure out something that is
@@ -241,8 +250,17 @@ class FlockCtrlDriver(UAVDriver):
         Parameters:
             show: the show data
         """
-        # import json
-        # print(json.dumps(show, indent=2, sort_keys=True))
+        uav.handle_show_upload(show)
+
+        # await to_thread.run_sync(
+        #     upload_mission,
+        #     b64decode(mission),
+        #     host,
+        #     cancellable=True,
+        #     limiter=self._upload_capacity,
+        # )
+        # return True
+
         raise NotImplementedError
 
     def handle_generic_command(self, uav, command, args, kwds):
@@ -538,6 +556,125 @@ class FlockCtrlUAV(UAVBase):
     def __init__(self, *args, **kwds):
         super().__init__(*args, **kwds)
         self.addresses = {}
+
+    def handle_show_upload(self, show):
+        """Handles the upload of a full drone show (trajectory + light program).
+
+        Parameters:
+            show: the show to be uploaded, arriving in Skybrush json format
+
+        Raises:
+            RuntimeError: in case of different runtime errors
+        """
+
+        # TODO: move this to a proper place, I do not know where...
+        # TODO: generalize all conversions in flockwave.gps.vectors
+        def to_neu(pos, type_string):
+            """Convert a flat earth coordinate to 'neu' type."""
+            if type_string == "neu":
+                pos_neu = (pos[0], pos[1], pos[2])
+            elif type_string == "nwu":
+                pos_neu = (pos[0], -pos[1], pos[2])
+            elif type_string == "ned":
+                pos_neu = (pos[0], pos[1], -pos[2])
+            elif type_string == "nwd":
+                pos_neu = (pos[0], -pos[1], -pos[2])
+            else:
+                raise NotImplementedError("GPS coordinate system type unknown.")
+
+            return pos_neu
+
+        # TODO: how to check status flags and detect airborne state?
+        if self._status.position.agl > 5:
+            raise RuntimeError("Cannot upload a show while the drone is airborne")
+
+        # parse coordinate system
+        coordinate_system = show.get("coordinateSystem")
+        try:
+            trans = FlatEarthToGPSCoordinateTransformation.from_json(coordinate_system)
+        except Exception:
+            raise RuntimeError("Invalid or missing coordinate system specification")
+
+        # parse trajectory
+        trajectory = show.get("trajectory", None)
+        takeoff_time = trajectory["takeoffTime"]
+        points = trajectory["points"]
+        home = to_neu(show.get("home", None), trans.type)
+
+        # create waypoints
+        last_t = 0
+        waypoints = []
+        for t, p, _ in points:
+            # add takeoff time to waypoints
+            t += takeoff_time
+            # convert position to neu
+            pos = to_neu(p, trans.type)
+            waypoints.append("waypoint={x} {y} {z} {vxy} {vz} T{t} 6".format(
+                x=pos[0],
+                y=pos[1],
+                z=pos[2],
+                vxy=8, # TODO: get from show
+                vz=2.5, # TODO: get from show
+                t=t - last_t,
+            ))
+            last_t = t
+
+        # create waypoint file template
+        waypoint_str = WAYPOINT_FILE_TEMPLATE.format(
+            angle=trans.orientation,
+            ground_altitude=0, # TODO: use this if needed
+            origin=gps_coordinate_to_string(
+                lat=trans.origin.lat,
+                lon=trans.origin.lon
+            ),
+            waypoints="\n".join(waypoints)
+        )
+
+        # create empty waypoint file template
+        waypoint_ground_str = WAYPOINT_FILE_TEMPLATE.format(
+            angle=trans.orientation,
+            ground_altitude=0, # TODO: use this if needed
+            origin=gps_coordinate_to_string(
+                lat=trans.origin.lat,
+                lon=trans.origin.lon
+            ),
+            waypoints="waypoint={} {} -100 4 2 1000 6".format(home[0], home[1])
+        )
+
+        # create mission files
+        mission_str = MISSION_FILE_TEMPLATE
+
+        # create choreography file
+        choreography_str = CHOREOGRAPHY_FILE_TEMPLATE.format(
+            altitude_setpoint=5, # TODO: get from show if needed
+            velocity_xy=8, # TODO: get from show
+            velocity_z=2.5, # TODO: get from show
+        )
+
+        # parse lights
+        lights = show.get("lights", None)
+        light_data = b64decode(lights["data"])
+
+        # create mission.zip
+        # create the zipfile and write content to it
+        buffer = BytesIO()
+        zip_archive = ZipFile(buffer, "w", ZIP_DEFLATED)
+        zip_archive.writestr("waypoints.cfg", waypoint_str)
+        zip_archive.writestr("waypoints_ground.cfg", waypoint_ground_str)
+        zip_archive.writestr("choreography.cfg", choreography_str)
+        zip_archive.writestr("mission.cfg", mission_str)
+        zip_archive.writestr("light_show.bin", light_data)
+        # TODO: what is needed from this?
+        #zip_archive.writestr("_meta/version", META_VERSION_STR)
+        #zip_archive.writestr("_meta/name", META_NAME_STR)
+        zip_archive.close()
+
+        # temporary check
+        #with open("temp.zip", "wb") as f:
+        #    f.write(buffer.getvalue())
+
+        # TODO: upload mission that should be prepared by now
+
 
     @property
     def preferred_address(self) -> UAVAddress:

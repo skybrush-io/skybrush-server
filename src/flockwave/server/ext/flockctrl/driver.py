@@ -10,6 +10,7 @@ from flockwave.protocols.flockctrl.packets import (
     ChunkedPacketAssembler,
     AlgorithmDataPacket,
     CommandRequestPacket,
+    CommandResponsePacketBase,
     CommandResponsePacket,
     CompressedCommandResponsePacket,
     MissionInfoPacket,
@@ -171,7 +172,7 @@ class FlockCtrlDriver(UAVDriver):
             CompressedCommandResponsePacket: self._handle_inbound_command_response_packet,
             CommandResponsePacket: self._handle_inbound_command_response_packet,
             AlgorithmDataPacket: self._handle_inbound_algorithm_data_packet,
-            MissionInfoPacket: nop,
+            MissionInfoPacket: self._handle_inbound_mission_info_packet,
             RawGPSInjectionPacket: nop,
         }
 
@@ -287,12 +288,14 @@ class FlockCtrlDriver(UAVDriver):
         except ValueError:
             raise ValueError("Address of UAV is not known yet")
 
-    def _handle_inbound_algorithm_data_packet(self, packet, source):
+    def _handle_inbound_algorithm_data_packet(
+        self, packet: AlgorithmDataPacket, source
+    ):
         """Handles an inbound FlockCtrl packet containing algorithm-specific
         data.
 
         Parameters:
-            packet (AlgorithmDataPacket): the packet to handle
+            packet: the packet to handle
             source: the source the packet was received from
         """
         uav = self._get_or_create_uav(packet.uav_id)
@@ -309,11 +312,13 @@ class FlockCtrlDriver(UAVDriver):
                 mutate=self.create_device_tree_mutator,
             )
 
-    def _handle_inbound_command_response_packet(self, packet, source):
+    def _handle_inbound_command_response_packet(
+        self, packet: CommandResponsePacketBase, source
+    ):
         """Handles an inbound FlockCtrl command response packet.
 
         Parameters:
-            packet (CommandResponsePacketBase): the packet to handle
+            packet: the packet to handle
             source: the source the packet was received from
         """
         body = self._packet_assembler.add_packet(packet, source)
@@ -322,11 +327,26 @@ class FlockCtrlDriver(UAVDriver):
                 body = decompress(body)
             self._on_chunked_packet_assembled(body, source)
 
-    def _handle_inbound_status_packet(self, packet, source):
+    def _handle_inbound_mission_info_packet(self, packet: MissionInfoPacket, source):
+        """Handles an inbound FlockCtrl mision information packet.
+
+        Parameters:
+            packet: the packet to handle
+            source: the source the packet was received from
+        """
+        try:
+            uav = self._uavs_by_source_address[source]
+        except KeyError:
+            # Stale packet, ignore
+            return
+
+        uav.mission_name = packet.name
+
+    def _handle_inbound_status_packet(self, packet: StatusPacket, source):
         """Handles an inbound FlockCtrl status packet.
 
         Parameters:
-            packet (StatusPacket): the packet to handle
+            packet: the packet to handle
             source: the source the packet was received from
         """
         uav = self._get_or_create_uav(packet.id)
@@ -390,11 +410,15 @@ class FlockCtrlDriver(UAVDriver):
         minutes, seconds = divmod(seconds, 60)
         sep = ":" if seconds % 2 == 0 else "."
         debug = f"[{packet.choreography_index:02}] {minutes:02}{sep}{seconds:02} ["
-        debug = b"".join([debug.encode("ascii"), packet.debug, b"]"])
+        debug = [debug.encode("ascii"), packet.debug, b"]"]
+        if uav.mission_name:
+            debug.append(b" ")
+            debug.append(uav.mission_name.encode("ascii", "ignore"))
+        debug = b"".join(debug)
 
         # update whether we are probably airborne; we need this info to decide
         # whether we allow mission uploads or not
-        self._is_airborne = (
+        uav._is_airborne = (
             packet.flags & (StatusFlag.MOTOR_RUNNING | StatusFlag.ON_GROUND)
             == StatusFlag.MOTOR_RUNNING
         )
@@ -560,6 +584,7 @@ class FlockCtrlUAV(UAVBase):
     def __init__(self, *args, **kwds):
         super().__init__(*args, **kwds)
         self.addresses = {}
+        self.mission_name = None
         self._is_airborne = False
 
     @property

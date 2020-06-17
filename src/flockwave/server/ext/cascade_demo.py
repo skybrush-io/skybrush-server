@@ -15,6 +15,7 @@ from zipfile import ZipFile, ZIP_DEFLATED
 
 from flockwave.server.errors import NotSupportedError
 from flockwave.gps.vectors import GPSCoordinate
+from flockwave.gps.distances import haversine
 from .base import ExtensionBase
 from .dock.model import Dock
 
@@ -38,10 +39,13 @@ yaw=auto 30 0
 
 WAYPOINT_GROUND_STR = """motoroff=10"""
 
-WAYPOINT_STR = """
-# taking off towards station '{station}'
+TIMELINE_WAYPOINT_STR="N{lat:.8f} E{lon:.8f} {agl:.2f} {velocity_xy:.2f} {velocity_z:.2f} T{time:.6f} 6"
+
+TRIP_STR = """
+# taking off from station '{last_station}' towards station '{station}'
 motoron=5
 takeoff=5 4 1 0
+{route}
 waypoint=N{lat:.8f} E{lon:.8f} {agl:.2f} {velocity_xy:.2f} {velocity_z:.2f} 5 0
 # landing at station '{station}'
 land=4 1 1
@@ -67,6 +71,28 @@ class Station:
         dock = Dock(id=self.id)
         dock.update_status(position=self.position)
         return dock
+
+
+@dataclass
+class Route:
+    """Model object representing a route between two stations in the demo."""
+
+    id_from: str
+    id_to: str
+    route: List[GPSCoordinate]
+
+    @classmethod
+    def from_json(cls, obj: List[str], id_from: str, id_to: str, waypoints: Dict[str, Station]):
+        """Creates a route from its JSON representation."""
+        route = [waypoints[id].position for id in obj]
+        return cls(id_from=id_from, id_to=id_to, route=route)
+
+    # TODO: should this be a classmethod or not?
+    def reversed(self):
+        """Creates a reversed route class from the current one."""
+        return Route(id_from=self.id_to, id_to=self.id_from, route=self.route[::-1])
+
+    # TODO: add method to create a polygon to be visualized in Skybrush Live
 
 
 class TripStatus(Enum):
@@ -97,12 +123,46 @@ class ERPSystemConnectionDemoExtension(ExtensionBase):
         super().__init__()
 
         self._stations = {}
+        self._waypoints = {}
+        self._routes = {}
         self._trips = defaultdict(Trip)
         self._command_queue_rx = self._command_queue_tx = None
 
     def configure(self, configuration) -> None:
         super().configure(configuration)
         self.configure_stations(configuration.get("stations"))
+        self.configure_routes(configuration.get("routes"), configuration.get("waypoints"))
+
+    def configure_routes(self, routes: Dict[str, List], waypoints: Dict[str, List]) -> None:
+        """Parses the list of waypoints and routes from the configuration file."""
+        # initialize variables
+        routes = routes or {}
+        route_ids = routes.keys()
+        waypoints = waypoints or {}
+        waypoint_ids = waypoints.keys()
+
+        # parse waypoints as Stations temporarily
+        waypoints = dict(
+            (waypoint_id, Station.from_json(waypoints[waypoint_id], id=waypoint_id))
+            for waypoint_id in waypoint_ids
+        )
+
+        # create routes between stations
+        self._routes = defaultdict(dict)
+        for route_id in route_ids:
+            id_from, id_to = route_id.split("->")
+            self._routes[id_from][id_to] = Route.from_json(routes[route_id],
+                id_from=id_from, id_to=id_to, waypoints=waypoints
+            )
+            # if reversed route does not exist yet, we add from this definition
+            if id_to not in self._routes or id_from not in self._routes[id_to]:
+                self._routes[id_to][id_from] = self._routes[id_from][id_to].reversed()
+
+        if self._routes:
+            self.log.info(
+                f"Loaded {len(self._routes)} routes.",
+                extra={"semantics": "success"},
+            )
 
     def configure_stations(self, stations: Dict[str, Dict]) -> None:
         """Parses the list of stations from the configuration file so they
@@ -165,12 +225,36 @@ class ERPSystemConnectionDemoExtension(ExtensionBase):
         self, trip: Trip, velocity_xy: float = 4, velocity_z: float = 1, agl: float = 5
     ) -> str:
         """Generate a waypoint file from a given route between stations."""
+        # TODO TODO: we need to get the info HERE where the uav is at currently,
+        # as the routes between stations is dependent on this info!!!
+        # now we assume that we are at the first station of the defined Trip,
+        # which is NOT VALID, but at least compiles...
+        starting_station = trip.route[0]
+
         waypoint_str_parts = [WAYPOINT_INIT_STR]
-        for name in trip.route:
-            pos = self._stations[name].position
+        last_station = starting_station
+        for station in trip.route:
+            if station == last_station: continue
+            # add route between stations if it is defined
+            route_parts = []
+            if last_station in self._routes and station in self._routes[last_station]:
+                last_pos = self._stations[last_station].position
+                for pos in self._routes[last_station][station].route:
+                    route_parts.append(TIMELINE_WAYPOINT_STR.format(
+                        lat=pos.lat,
+                        lon=pos.lon,
+                        agl=agl,
+                        velocity_xy=velocity_xy,
+                        velocity_z=velocity_z,
+                        time=haversine(last_pos, pos) / velocity_xy,
+                    ))
+                    last_pos = pos
+            pos = self._stations[station].position
             waypoint_str_parts.append(
-                WAYPOINT_STR.format(
-                    station=name,
+                TRIP_STR.format(
+                    last_station=last_station,
+                    station=station,
+                    route="\n".join(route_parts),
                     lat=pos.lat,
                     lon=pos.lon,
                     agl=agl,
@@ -178,7 +262,9 @@ class ERPSystemConnectionDemoExtension(ExtensionBase):
                     velocity_z=velocity_z,
                 )
             )
+            last_station = station
 
+        print("".join(waypoint_str_parts))
         return "".join(waypoint_str_parts)
 
     async def handle_trip_addition(self, message, sender, hub) -> None:

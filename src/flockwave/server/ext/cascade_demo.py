@@ -264,7 +264,6 @@ class ERPSystemConnectionDemoExtension(ExtensionBase):
             )
             last_station = station
 
-        print("".join(waypoint_str_parts))
         return "".join(waypoint_str_parts)
 
     async def handle_trip_addition(self, message, sender, hub) -> None:

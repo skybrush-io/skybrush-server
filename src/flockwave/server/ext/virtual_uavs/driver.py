@@ -522,7 +522,7 @@ class VirtualUAV(UAVBase):
         """Handles a 'where are you' command.
 
         Parameters:
-            duration(int): duration of the signal in milliseconds.
+            duration(int): duration of the signal in seconds.
         """
         self._light_controller.where_are_you(duration)
 

@@ -9,14 +9,9 @@ from typing import Callable, Iterable, List, Optional, Union
 
 from pyledctrl.player import Player
 
-from flockwave.server.utils import color_to_rgb565
 from flockwave.spec.errors import FlockwaveErrorCode
 
-__all__ = (
-    "LightController",
-    "ModularLightController",
-    "DefaultLightController",
-)
+__all__ = ("LightController", "ModularLightController", "DefaultLightController")
 
 
 #: Type specification of a light module for a modular light controller
@@ -108,8 +103,8 @@ class DefaultLightController(ModularLightController):
         self._light_program_player = None  # type: Optional[Player]
         self._light_program_start_time = None  # type: Optional[float]
 
-        self._where_are_you_duration_ms = 1000 # type: Optional[float]
-        self._where_are_you_start_time = None # type: Optional[float]
+        self._where_are_you_duration_ms = 1000  # type: Optional[float]
+        self._where_are_you_start_time = None  # type: Optional[float]
 
         self._override = None
 
@@ -156,18 +151,18 @@ class DefaultLightController(ModularLightController):
             self._light_program_module,
             self._error_module,
             self._override_module,
-            self._where_are_you_module
+            self._where_are_you_module,
         ]
         return result
 
-    def where_are_you(self, duration=1000) -> None:
+    def where_are_you(self, duration: float = 1) -> None:
         """Initiates a 'where are you' command in the light program.
 
         Parameters:
-            duration (int): duration of the light signal in milliseconds
+            duration: duration of the light signal in seconds
         """
         self._where_are_you_start_time = time()
-        self._where_are_you_duration_ms = duration
+        self._where_are_you_duration_ms = duration * 1000
 
     def _error_module(self, timestamp: float, color: Color) -> Color:
         """Lighting module that sets the color unconditionally to red in case
@@ -218,13 +213,8 @@ class DefaultLightController(ModularLightController):
         if self._where_are_you_start_time is not None:
             dt = int((timestamp - self._where_are_you_start_time) * 1000)
             if dt < self._where_are_you_duration_ms:
-                return (
-                    Colors.WHITE 
-                    if ((dt // 200) % 2) == 0
-                    else Colors.BLACK
-                )
+                return Colors.WHITE if ((dt // 200) % 2) == 0 else Colors.BLACK
             else:
                 self._where_are_you_start_time = None
-        
-        return color
 
+        return color

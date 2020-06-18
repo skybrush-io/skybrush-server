@@ -4,8 +4,9 @@ from collections import defaultdict
 from colour import Color
 from contextlib import contextmanager
 from datetime import datetime
-from functools import partial as partial_
+from functools import partial
 from inspect import Parameter, signature
+from operator import mul
 from typing import Any, Callable
 
 
@@ -16,6 +17,7 @@ __all__ = (
     "is_timezone_aware",
     "itersubclasses",
     "keydefaultdict",
+    "multiply_by",
     "nop",
     "overridden",
 )
@@ -49,9 +51,9 @@ def bind(func, args=None, kwds=None, *, partial=False):
         args = args[:num_args]
 
     if kwds is None:
-        return partial_(func, *args)
+        return partial(func, *args)
     else:
-        return partial_(func, *args, **kwds)
+        return partial(func, *args, **kwds)
 
 
 def color_to_rgb565(color: Color) -> int:
@@ -111,6 +113,13 @@ def datetime_to_unix_timestamp(dt: datetime) -> float:
     return dt.timestamp()
 
 
+def divide_by(value: float) -> Callable[[float], float]:
+    """Returns a function that divides every number received as an input
+    with the given value.
+    """
+    return partial(mul, 1.0 / value)
+
+
 def identity(obj: Any) -> Any:
     """Identity function that returns its input argument."""
     return obj
@@ -159,6 +168,13 @@ class keydefaultdict(defaultdict):
         else:
             ret = self[key] = self.default_factory(key)
             return ret
+
+
+def multiply_by(term: float) -> Callable[[float], float]:
+    """Returns a function that multiplies every number received as an input
+    with the given term.
+    """
+    return partial(mul, term)
 
 
 def nop(*args, **kwds):

@@ -132,7 +132,9 @@ class MAVLinkDronesExtension(UAVExtensionBase):
         if self._nursery:
             self._nursery.start_soon(self._run_protected, func, *args)
         else:
-            raise RuntimeError("cannot run task in background, extension is not loaded")
+            raise RuntimeError(
+                "cannot run task in background, extension is not running"
+            )
 
     async def _run_protected(self, func, *args) -> None:
         """Runs the given function in a "protected" mode that prevents exceptions

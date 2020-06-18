@@ -22,6 +22,7 @@ from flockwave.connections import (
 )
 from flockwave.ext.manager import ExtensionAPIProxy, ExtensionManager
 from flockwave.gps.vectors import GPSCoordinate
+from flockwave.server.utils import divide_by
 
 from .commands import CommandExecutionManager
 from .configurator import AppConfigurator
@@ -503,7 +504,10 @@ class SkybrushServer:
             "UAV-LAND": ("send_landing_signal", None),
             "UAV-RST": ("send_reset_signal", None),
             "UAV-RTH": ("send_return_to_home_signal", None),
-            "UAV-SIGNAL": ("send_light_or_sound_emission_signal", None),
+            "UAV-SIGNAL": (
+                "send_light_or_sound_emission_signal",
+                {"duration": divide_by(1000)},
+            ),
             "UAV-TAKEOFF": ("send_takeoff_signal", None),
         }.get(message_type, (None, None))
 
@@ -552,16 +556,25 @@ class SkybrushServer:
                     # to create a receipt for each UAV and then send a response
                     # now
                     try:
-                        await results
-                    except Exception as ex:
+                        results = await results
+                    except RuntimeError as ex:
+                        # this is probably okay
                         results = ex
+                    except Exception as ex:
+                        # this is unexpected; let's log it
+                        results = ex
+                        log.exception(ex)
 
                 if isinstance(results, Exception):
                     # Received an exception; send it back for all UAVs
                     for uav in uavs:
                         response.add_error(uav.id, str(results))
+                elif not isinstance(results, dict):
+                    # Common result has arrived, send it back for all UAVs
+                    for uav in uavs:
+                        response.add_result(uav.id, results)
                 else:
-                    # Results have arrived, process them
+                    # Results have arrived for each UAV individually, process them
                     for uav, result in results.items():
                         if isinstance(result, Exception):
                             response.add_error(uav.id, str(result))

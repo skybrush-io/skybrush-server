@@ -6,7 +6,8 @@ from datetime import datetime
 from io import BytesIO
 from paramiko import SSHClient
 from select import select
-from typing import Optional, Tuple, Union
+from trio_util import periodic
+from typing import Callable, Iterable, Optional, Tuple, Union
 
 from flockwave.channels import MessageChannel
 from flockwave.connections import IPAddressAndPort, UDPSocketConnection
@@ -16,7 +17,9 @@ from flockwave.protocols.flockctrl import (
     FlockCtrlEncoder,
     FlockCtrlPacket,
     FlockCtrlParser,
+    MultiTargetCommand,
 )
+from flockwave.protocols.flockctrl.packets import MultiTargetCommandPacket
 from flockwave.server.comm import CommunicationManager
 
 
@@ -153,3 +156,58 @@ def upload_mission(raw_data: bytes, address: Union[str, Tuple[str, int]]) -> Non
 
         if exit_code != 0:
             raise ValueError("Failed to restart flockctrl process")
+
+
+class BurstedMultiTargetMessageManager:
+    """Class that is responsible for sending multi-target messages to the
+    drones in the flock and keeping track of sequence numbers.
+    """
+
+    def __init__(
+        self,
+        broadcast_packet: Callable[[FlockCtrlPacket, str], None],
+        run_in_background: Callable[..., None],
+    ):
+        """Constructor."""
+        self._send_packet = None
+        self._sequence_ids = [0] * 16
+        self._broadcast_packet = broadcast_packet
+        self._run_in_background = run_in_background
+
+    def schedule_burst(
+        self, command: MultiTargetCommand, uav_ids: Iterable[int], duration: float
+    ) -> None:
+        """Schedules a bursted simple command execution targeting multiple UAVs.
+
+        Parameters:
+            command: the command code to send
+            uav_ids: the IDs of the UAVs to target. The IDs presented here are
+                the numeric IDs in the FlockCtrl network, not the global UAV IDs.
+            duration: duration of the burst, in seconds.
+        """
+        self._run_in_background(self._execute_burst, command, uav_ids, duration)
+
+    async def _execute_burst(
+        self, command: MultiTargetCommand, uav_ids: Iterable[int], duration: float
+    ) -> None:
+        """Performs a bursted simple command transmission targeting multiple
+        UAVs.
+
+        The command packet will be repeated once every 100 msec, until the given
+        duration.
+
+        Parameters:
+            command: the command code to send
+            uav_ids: the IDs of the UAVs to target. The IDs presented here are
+                the numeric IDs in the FlockCtrl network, not the global UAV IDs.
+            duration: duration of the burst, in seconds.
+        """
+        packet = MultiTargetCommandPacket(uav_ids, command, self._sequence_ids[command])
+        self._sequence_ids[command] += 1
+
+        async for elapsed, _ in periodic(0.1):
+            # We want to ensure that the packet is sent at least once so we
+            # broadcast first and then check the elapsed time
+            await self._broadcast_packet(packet, "wireless")
+            if elapsed >= duration:
+                break

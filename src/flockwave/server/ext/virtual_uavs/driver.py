@@ -19,10 +19,11 @@ from flockwave.gps.vectors import (
 from flockwave.server.concurrency import delayed
 from flockwave.server.model.gps import GPSFixType
 from flockwave.server.model.uav import UAVBase, UAVDriver
+from flockwave.server.utils import color_to_rgb565
 from flockwave.spec.errors import FlockwaveErrorCode
 
 from .battery import VirtualBattery
-from .lights import color_to_rgb565, DefaultLightController
+from .lights import DefaultLightController
 from .trajectory import TrajectoryPlayer
 
 

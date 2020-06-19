@@ -39,7 +39,9 @@ yaw=auto 30 0
 
 WAYPOINT_GROUND_STR = """motoroff=10"""
 
-TIMELINE_WAYPOINT_STR="N{lat:.8f} E{lon:.8f} {agl:.2f} {velocity_xy:.2f} {velocity_z:.2f} T{time:.6f} 6"
+TIMELINE_WAYPOINT_STR = (
+    "N{lat:.8f} E{lon:.8f} {agl:.2f} {velocity_xy:.2f} {velocity_z:.2f} T{time:.6f} 6"
+)
 
 TRIP_STR = """
 # taking off from station '{last_station}' towards station '{station}'
@@ -82,7 +84,9 @@ class Route:
     route: List[GPSCoordinate]
 
     @classmethod
-    def from_json(cls, obj: List[str], id_from: str, id_to: str, waypoints: Dict[str, Station]):
+    def from_json(
+        cls, obj: List[str], id_from: str, id_to: str, waypoints: Dict[str, Station]
+    ):
         """Creates a route from its JSON representation."""
         route = [waypoints[id].position for id in obj]
         return cls(id_from=id_from, id_to=id_to, route=route)
@@ -131,9 +135,13 @@ class ERPSystemConnectionDemoExtension(ExtensionBase):
     def configure(self, configuration) -> None:
         super().configure(configuration)
         self.configure_stations(configuration.get("stations"))
-        self.configure_routes(configuration.get("routes"), configuration.get("waypoints"))
+        self.configure_routes(
+            configuration.get("routes"), configuration.get("waypoints")
+        )
 
-    def configure_routes(self, routes: Dict[str, List], waypoints: Dict[str, List]) -> None:
+    def configure_routes(
+        self, routes: Dict[str, List], waypoints: Dict[str, List]
+    ) -> None:
         """Parses the list of waypoints and routes from the configuration file."""
         # initialize variables
         routes = routes or {}
@@ -151,8 +159,8 @@ class ERPSystemConnectionDemoExtension(ExtensionBase):
         self._routes = defaultdict(dict)
         for route_id in route_ids:
             id_from, id_to = route_id.split("->")
-            self._routes[id_from][id_to] = Route.from_json(routes[route_id],
-                id_from=id_from, id_to=id_to, waypoints=waypoints
+            self._routes[id_from][id_to] = Route.from_json(
+                routes[route_id], id_from=id_from, id_to=id_to, waypoints=waypoints
             )
             # if reversed route does not exist yet, we add from this definition
             if id_to not in self._routes or id_from not in self._routes[id_to]:
@@ -160,8 +168,7 @@ class ERPSystemConnectionDemoExtension(ExtensionBase):
 
         if self._routes:
             self.log.info(
-                f"Loaded {len(self._routes)} routes.",
-                extra={"semantics": "success"},
+                f"Loaded {len(self._routes)} routes.", extra={"semantics": "success"}
             )
 
     def configure_stations(self, stations: Dict[str, Dict]) -> None:
@@ -185,7 +192,7 @@ class ERPSystemConnectionDemoExtension(ExtensionBase):
         self, trip: Trip, velocity_xy: float = 4, velocity_z: float = 1, agl: float = 5
     ) -> str:
         """Generate a choreography file from a given route between stations."""
-        return get_template("choreography.cfg").format(
+        return get_template("mission/choreography.cfg").format(
             altitude_setpoint=agl, velocity_xy=velocity_xy, velocity_z=velocity_z
         )
 
@@ -219,7 +226,7 @@ class ERPSystemConnectionDemoExtension(ExtensionBase):
 
     def generate_mission_file_for_trip(self, trip: Trip) -> str:
         """Generate a mission file from a given route between stations."""
-        return get_template("mission.cfg")
+        return get_template("mission/mission.cfg")
 
     def generate_waypoint_file_for_trip(
         self, trip: Trip, velocity_xy: float = 4, velocity_z: float = 1, agl: float = 5
@@ -234,20 +241,23 @@ class ERPSystemConnectionDemoExtension(ExtensionBase):
         waypoint_str_parts = [WAYPOINT_INIT_STR]
         last_station = starting_station
         for station in trip.route:
-            if station == last_station: continue
+            if station == last_station:
+                continue
             # add route between stations if it is defined
             route_parts = []
             if last_station in self._routes and station in self._routes[last_station]:
                 last_pos = self._stations[last_station].position
                 for pos in self._routes[last_station][station].route:
-                    route_parts.append(TIMELINE_WAYPOINT_STR.format(
-                        lat=pos.lat,
-                        lon=pos.lon,
-                        agl=agl,
-                        velocity_xy=velocity_xy,
-                        velocity_z=velocity_z,
-                        time=haversine(last_pos, pos) / velocity_xy,
-                    ))
+                    route_parts.append(
+                        TIMELINE_WAYPOINT_STR.format(
+                            lat=pos.lat,
+                            lon=pos.lon,
+                            agl=agl,
+                            velocity_xy=velocity_xy,
+                            velocity_z=velocity_z,
+                            time=haversine(last_pos, pos) / velocity_xy,
+                        )
+                    )
                     last_pos = pos
             pos = self._stations[station].position
             waypoint_str_parts.append(

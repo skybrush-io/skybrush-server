@@ -28,7 +28,9 @@ def get_template(name: str, *, encoding: str = "utf-8", errors: str = "strict") 
     Returns:
         the loaded template file
     """
-    return read_text(_template_pkg, name, encoding=encoding, errors=errors)
+    dirs, _, name = name.rpartition("/")
+    package = ".".join([_template_pkg] + dirs)
+    return read_text(package, name, encoding=encoding, errors=errors)
 
 
 def generate_mission_file_from_show_specification(show) -> bytes:
@@ -113,10 +115,10 @@ def generate_mission_file_from_show_specification(show) -> bytes:
     )
 
     # create mission files
-    mission_str = get_template("mission.cfg")
+    mission_str = get_template("show/mission.cfg")
 
     # create choreography file
-    choreography_str = get_template("choreography_show.cfg").format(
+    choreography_str = get_template("show/choreography.cfg").format(
         altitude_setpoint=5,  # TODO: get from show if needed
         velocity_xy=8,  # TODO: get from show
         velocity_z=2.5,  # TODO: get from show

@@ -114,15 +114,22 @@ def generate_mission_file_from_show_specification(show) -> bytes:
         waypoints="waypoint={} {} -100 4 2 1000 6".format(home[0], home[1]),
     )
 
+    # gather parameters that are used in the mission and choreography file
+    # templates
+    params = {
+        "altitude_setpoint": 5,  # TODO: get from show if needed
+        "max_flying_height": 200,  # TODO: get from show
+        "max_flying_range": 1000,  # TODO: get from show
+        "orientation": -1,  # TODO: get from show
+        "velocity_xy": 8,  # TODO: get from show
+        "velocity_z": 2.5,  # TODO: get from show
+    }
+
     # create mission files
-    mission_str = get_template("show/mission.cfg")
+    mission_str = get_template("show/mission.cfg").format(**params)
 
     # create choreography file
-    choreography_str = get_template("show/choreography.cfg").format(
-        altitude_setpoint=5,  # TODO: get from show if needed
-        velocity_xy=8,  # TODO: get from show
-        velocity_z=2.5,  # TODO: get from show
-    )
+    choreography_str = get_template("show/choreography.cfg").format(**params)
 
     # parse lights
     lights = show.get("lights", None)

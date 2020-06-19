@@ -13,10 +13,13 @@ from typing import Callable, Generator, Generic, Iterator, Optional, Tuple, Type
 
 from flockwave.channels import MessageChannel
 from flockwave.connections import Connection
-from flockwave.connections.socket import BroadcastUDPSocketConnection
+from flockwave.connections.socket import (
+    BroadcastUDPSocketConnection,
+    MulticastUDPSocketConnection,
+)
 
 
-__all__ = ("CommunicationManager",)
+__all__ = ("BROADCAST", "CommunicationManager")
 
 
 #: Type variable representing the type of addresses used by a CommunicationManager
@@ -24,6 +27,13 @@ AddressType = TypeVar("AddressType")
 
 #: Type variable representing the type of packets handled by a CommunicationManager
 PacketType = TypeVar("PacketType")
+
+#: Marker object used to denote packets that should be broadcast over a
+#: communication channel with no specific destination address
+BROADCAST = object()
+
+#: Marker object used to denote "no broadcast address"
+_NO_BROADCAST_ADDRESS = object()
 
 
 class CommunicationManager(Generic[PacketType, AddressType]):
@@ -94,14 +104,14 @@ class CommunicationManager(Generic[PacketType, AddressType]):
                 know which connection the packet was received from
             can_send: whether the channel can be used for sending messages.
                 `None` means to try figuring it out from the connection object
-                itself; right now we treat BroadcastUDPSocketConnection_ as the
-                only connection that cannot be used for sending.
+                itself by querying its `can_send` attribute. If the attribute
+                is missing, we assume that the connection _can_ send messages.
         """
         if self._running:
             raise RuntimeError("cannot add new connections when the manager is running")
 
         if can_send is None:
-            can_send = not isinstance(connection, BroadcastUDPSocketConnection)
+            can_send = bool(getattr(connection, "can_send", True))
 
         entry = self.Entry(connection, name=name, can_send=bool(can_send))
         self._entries_by_name[name].append(entry)
@@ -123,7 +133,7 @@ class CommunicationManager(Generic[PacketType, AddressType]):
             else:
                 return
 
-        await queue.send((packet, None))
+        await queue.send((packet, BROADCAST))
 
     def channels(self) -> Iterator[MessageChannel]:
         """Returns an iterator that iterates over the list of open message
@@ -268,7 +278,7 @@ class CommunicationManager(Generic[PacketType, AddressType]):
         # TODO(ntamas): a slow outbound link may block sending messages on other
         # outbound links; revise if this causes a problem
         async for message, destination in queue:
-            if destination is None:
+            if destination is BROADCAST:
                 await self._send_message_to_all_channels(message)
             else:
                 await self._send_message_to_single_destination(message, destination)
@@ -277,8 +287,8 @@ class CommunicationManager(Generic[PacketType, AddressType]):
         for entries in self._entries_by_name.values():
             for index, entry in enumerate(entries):
                 channel = entry.channel
-                address = getattr(channel, "broadcast_address", None)
-                if address is not None:
+                address = getattr(channel, "broadcast_address", _NO_BROADCAST_ADDRESS)
+                if address is not _NO_BROADCAST_ADDRESS:
                     try:
                         await channel.send((message, address))
                     except Exception:
@@ -295,9 +305,21 @@ class CommunicationManager(Generic[PacketType, AddressType]):
             for index, entry in enumerate(entries):
                 if entry.channel is not None and entry.can_send:
                     try:
-                        await entry.channel.send((message, address))
-                        sent = True
-                        break
+                        if address is BROADCAST:
+                            # This must be a broadcast
+                            address = getattr(
+                                entry.channel,
+                                "broadcast_address",
+                                _NO_BROADCAST_ADDRESS,
+                            )
+                            if address is not _NO_BROADCAST_ADDRESS:
+                                await entry.channel.send((message, address))
+                                sent = True
+                        else:
+                            await entry.channel.send((message, address))
+                            sent = True
+                        if sent:
+                            break
                     except Exception:
                         self.log.exception(
                             f"Error while sending message on channel {name}[{index}]"
@@ -310,3 +332,6 @@ class CommunicationManager(Generic[PacketType, AddressType]):
                 )
             else:
                 self.log.error(f"Dropping outbound message, no such channel: {name!r}")
+
+
+CommunicationManager.BROADCAST = BROADCAST

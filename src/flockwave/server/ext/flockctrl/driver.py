@@ -16,10 +16,12 @@ from flockwave.protocols.flockctrl.packets import (
     CompressedCommandResponsePacket,
     FlockCtrlPacket,
     MissionInfoPacket,
+    MultiTargetCommandPacket,
     PrearmStatusPacket,
     RawGPSInjectionPacket,
     StatusPacket,
 )
+from flockwave.server.comm import BROADCAST
 from flockwave.server.ext.logger import log
 from flockwave.server.model.battery import BatteryInfo
 from flockwave.server.model.gps import GPSFixType
@@ -234,8 +236,7 @@ class FlockCtrlDriver(UAVDriver):
         """Broadcasts a FlockCtrl packet to all UAVs in the network managed
         by the extension.
         """
-        # TODO(ntamas)
-        pass
+        await self.send_packet(packet, (medium, BROADCAST))
 
     def _check_or_record_uav_address(self, uav, medium, address):
         """Records that the given UAV has the given address,
@@ -279,6 +280,7 @@ class FlockCtrlDriver(UAVDriver):
             CommandResponsePacket: self._handle_inbound_command_response_packet,
             AlgorithmDataPacket: self._handle_inbound_algorithm_data_packet,
             MissionInfoPacket: self._handle_inbound_mission_info_packet,
+            MultiTargetCommandPacket: nop,
             RawGPSInjectionPacket: nop,
         }
 
@@ -550,7 +552,7 @@ class FlockCtrlDriver(UAVDriver):
             the packet that was sent
         """
         packet = CommandRequestPacket(command.encode("utf-8"))
-        await self._send_packet(packet, address)
+        await self.send_packet(packet, address)
         return packet
 
     async def _send_command_to_uav(self, command, uav):

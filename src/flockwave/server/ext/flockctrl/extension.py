@@ -40,7 +40,7 @@ def create_wireless_connection_configuration_for_subnet(
     """
     return {
         "broadcast": f"udp-broadcast:{subnet}?port={port}",
-        "unicast": f"udp-subnet:{subnet}",
+        "unicast": f"udp-subnet:{subnet}?allow_broadcast=1",
     }
 
 
@@ -49,7 +49,9 @@ PRESETS = {
     "default": create_wireless_connection_configuration_for_subnet("10.0.0.0/8"),
     "local": {
         "broadcast": "udp-multicast://239.255.67.77:4243?interface=127.0.0.1",
-        "unicast": "udp://127.0.0.1",
+        # ?multicast_interface=127.0.0.1 ensures that multicast packets from
+        # this socket are sent on the loopback interface
+        "unicast": "udp://127.0.0.1?multicast_interface=127.0.0.1",
     },
 }
 
@@ -97,6 +99,9 @@ class FlockCtrlDronesExtension(UAVExtensionBase):
             wireless_config.get("broadcast")
         )
         unicast_link = self._create_lowlevel_connection(wireless_config.get("unicast"))
+
+        # Let the unicast link know where to send broadcast packets
+        unicast_link.broadcast_address = broadcast_link.address
 
         return broadcast_link, unicast_link
 

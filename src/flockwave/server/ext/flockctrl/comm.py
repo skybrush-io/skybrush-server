@@ -42,17 +42,22 @@ def create_flockctrl_udp_message_channel(
     """Creates a bidirectional Trio-style channel that reads data from and
     writes data to the given UDP connection, and does the parsing of
     `flockctrl` messages automatically. The channel will accept and yield
-    tuples containing an IP address - port pair and a FlockCtrlPacket_ object.
+    tuples containing an IP address-port pair and a FlockCtrlPacket_ object.
 
     Parameters:
         connection: the connection to read data from and write data to
         log: the logger on which any error messages and warnings should be logged
     """
-    return MessageChannel(
+    channel = MessageChannel(
         connection,
         parser=FlockCtrlParser.create_udp_parser_function(log),
         encoder=FlockCtrlEncoder.create_udp_encoder_function(log),
     )
+
+    if hasattr(connection, "broadcast_address"):
+        channel.broadcast_address = connection.broadcast_address
+
+    return channel
 
 
 def execute_ssh_command(

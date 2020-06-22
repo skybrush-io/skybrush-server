@@ -32,7 +32,7 @@ requires = [
     "quart>=0.10.0",
     "quart-trio>=0.4.0",
     "tinyrpc[msgpack]>=1.0.4",
-    "trio>=0.12.1",
+    "trio>=0.16.0",
     "trio-util>=0.1.0",
     "zeroconf>=0.23.0",
 ]

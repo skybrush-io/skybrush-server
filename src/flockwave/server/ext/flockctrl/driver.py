@@ -47,6 +47,9 @@ MAX_CAMERA_FEATURE_COUNT = 32
 #: Type specification for UAV network addresses in this driver
 UAVAddress = Tuple[str, int]
 
+#: Default duration of bursted command packets, in seconds
+BURST_DURATION = 5
+
 
 class FlockCtrlDriver(UAVDriver):
     """Driver class for FlockCtrl-based drones.
@@ -167,6 +170,13 @@ class FlockCtrlDriver(UAVDriver):
                 )
                 self._disable_warnings_until[uav_id] = now + 1
 
+    def send_landing_signal(self, uavs):
+        self._bursted_message_manager.schedule_burst(
+            MultiTargetCommand.LAND,
+            uav_ids=self._uavs_to_ids(uavs),
+            duration=BURST_DURATION,
+        )
+
     def send_light_or_sound_emission_signal(
         self, uavs, signals: List[str], duration: int
     ):
@@ -182,10 +192,24 @@ class FlockCtrlDriver(UAVDriver):
         if "light" not in signals:
             return
 
-        inverse_id_map = self._index_to_uav_id.inverse
-        uav_ids = [inverse_id_map.get(uav.id) for uav in uavs]
         self._bursted_message_manager.schedule_burst(
-            MultiTargetCommand.FLASH_LIGHT, uav_ids=uav_ids, duration=duration
+            MultiTargetCommand.FLASH_LIGHT,
+            uav_ids=self._uavs_to_ids(uavs),
+            duration=duration,
+        )
+
+    def send_return_to_home_signal(self, uavs):
+        self._bursted_message_manager.schedule_burst(
+            MultiTargetCommand.RTH,
+            uav_ids=self._uavs_to_ids(uavs),
+            duration=BURST_DURATION,
+        )
+
+    def send_takeoff_signal(self, uavs):
+        self._bursted_message_manager.schedule_burst(
+            MultiTargetCommand.TAKEOFF,
+            uav_ids=self._uavs_to_ids(uavs),
+            duration=BURST_DURATION,
         )
 
     def validate_command(self, command: str, args, kwds) -> Optional[str]:
@@ -619,6 +643,10 @@ class FlockCtrlDriver(UAVDriver):
 
     async def _send_takeoff_signal_single(self, uav):
         return await self._send_command_to_uav_and_check_for_errors("motoron", uav)
+
+    def _uavs_to_ids(self, uavs):
+        inverse_id_map = self._index_to_uav_id.inverse
+        return [inverse_id_map.get(uav.id) for uav in uavs]
 
 
 class FlockCtrlUAV(UAVBase):

@@ -4,7 +4,6 @@ from trio import CancelScope, open_nursery, sleep_forever
 from typing import Any, Dict
 
 from flockwave.ext.base import ExtensionBase
-from flockwave.server.model.uav import UAV
 from flockwave.server.tasks import wait_until
 
 from .clock import ShowClock

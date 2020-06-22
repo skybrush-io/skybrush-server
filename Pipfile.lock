@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "0056ebc4adbedaba368aeb78fb107f46a313c0903c7e5a29c8c31c64263fd447"
+            "sha256": "1dc244313cbdf754bfa6d0aa871d2eeaba7c379bb307ffd3451d0956c67a5ffb"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -85,10 +85,10 @@
         },
         "certifi": {
             "hashes": [
-                "sha256:5ad7e9a056d25ffa5082862e36f119f7f7cec6457fa07ee2f8c339814b80c9b1",
-                "sha256:9cd41137dc19af6a5e03b630eefe7d1f458d964d406342dd3edf625839b944cc"
+                "sha256:5930595817496dd21bb8dc35dad090f1c2cd0adfaf21204bf6732ca5d8ee34d3",
+                "sha256:8fc0819f1f30ba15bdb34cceffb9ef04d99f420f68eb75d901e9560b8749fc41"
             ],
-            "version": "==2020.4.5.2"
+            "version": "==2020.6.20"
         },
         "cffi": {
             "hashes": [
@@ -171,7 +171,7 @@
             "file": "https://git.collmot.com/collmot/flockwave-conn/archive/1.8.0.tar.gz"
         },
         "flockwave-ext": {
-            "file": "https://git.collmot.com/collmot/flockwave-ext/archive/1.2.0.tar.gz"
+            "file": "https://git.collmot.com/collmot/flockwave-ext/archive/1.3.0.tar.gz"
         },
         "flockwave-flockctrl": {
             "file": "https://git.collmot.com/collmot/flockwave-flockctrl/archive/0.7.0.tar.gz"
@@ -446,10 +446,10 @@
         },
         "pymavlink": {
             "hashes": [
-                "sha256:b39749d9c75117c03cca8e0ac670d2f5a1fcff89f1567a398b29d0f198c95fb6"
+                "sha256:6049f270aa0a1013c7dcd32b9f4756d79b6a2ccf73babeca2c46b9e391e644fe"
             ],
             "index": "pypi",
-            "version": "==2.4.8"
+            "version": "==2.4.9"
         },
         "pynacl": {
             "hashes": [

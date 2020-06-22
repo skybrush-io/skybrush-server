@@ -5,7 +5,6 @@ MAVLink protocol.
 from __future__ import absolute_import
 
 from functools import partial
-from trio import open_nursery
 from typing import Optional
 
 from flockwave.server.ext.base import UAVExtensionBase
@@ -34,7 +33,6 @@ class MAVLinkDronesExtension(UAVExtensionBase):
         super(MAVLinkDronesExtension, self).__init__()
         self._driver = None
         self._networks = None
-        self._nursery = None
         self._uavs = None
 
     def _create_driver(self):
@@ -55,7 +53,7 @@ class MAVLinkDronesExtension(UAVExtensionBase):
         """
         driver.create_device_tree_mutator = self.create_device_tree_mutation_context
         driver.log = self.log.getChild("driver")
-        driver.run_in_background = self._run_in_background
+        driver.run_in_background = self.run_in_background
         driver.send_packet = self._send_packet
 
     async def run(self, app, configuration):
@@ -80,9 +78,7 @@ class MAVLinkDronesExtension(UAVExtensionBase):
         uavs = []
         with overridden(self, _uavs=uavs, _networks=networks):
             try:
-                async with open_nursery() as nursery:
-                    self._nursery = nursery
-
+                async with self.use_nursery() as nursery:
                     # Create one task for each network
                     for network in networks.values():
                         nursery.start_soon(partial(network.run, **kwds))
@@ -91,8 +87,6 @@ class MAVLinkDronesExtension(UAVExtensionBase):
                     # registered in the extension are still alive
                     nursery.start_soon(check_uavs_alive, uavs)
             finally:
-                self._nursery = None
-
                 for uav in uavs:
                     app.object_registry.remove(uav)
 
@@ -122,31 +116,6 @@ class MAVLinkDronesExtension(UAVExtensionBase):
 
         self.app.object_registry.add(uav)
         self._uavs.append(uav)
-
-    def _run_in_background(self, func, *args) -> None:
-        """Schedules the given async function to be executed as a background
-        task in the nursery of the extension.
-
-        The task will be cancelled if the extension is unloaded.
-        """
-        if self._nursery:
-            self._nursery.start_soon(self._run_protected, func, *args)
-        else:
-            raise RuntimeError(
-                "cannot run task in background, extension is not running"
-            )
-
-    async def _run_protected(self, func, *args) -> None:
-        """Runs the given function in a "protected" mode that prevents exceptions
-        emitted from it to crash the nursery that the function is being executed
-        in.
-        """
-        try:
-            await func(*args)
-        except Exception:
-            self.log.exception(
-                f"Unexpected exception caught from background task {func.__name__}"
-            )
 
     async def _send_packet(
         self,

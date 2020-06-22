@@ -8,7 +8,6 @@ from contextlib import ExitStack
 from datetime import datetime, timezone
 from functools import partial
 from trio.abc import ReceiveChannel
-from trio import open_nursery
 from typing import Any, Dict, Optional, Tuple
 
 from flockwave.connections import Connection, create_connection, IPAddressAndPort
@@ -141,10 +140,8 @@ class FlockCtrlDronesExtension(UAVExtensionBase):
 
             # Start the communication manager
             try:
-                async with open_nursery() as nursery:
-                    self._nursery = nursery
+                async with self.use_nursery() as nursery:
                     self._manager = manager
-
                     nursery.start_soon(
                         partial(
                             manager.run,
@@ -155,7 +152,6 @@ class FlockCtrlDronesExtension(UAVExtensionBase):
                     )
             finally:
                 self._manager = None
-                self._nursery = None
 
     def configure_driver(self, driver, configuration):
         """Configures the driver that will manage the UAVs created by
@@ -174,7 +170,7 @@ class FlockCtrlDronesExtension(UAVExtensionBase):
         driver.log = self.log.getChild("driver")
         driver.create_device_tree_mutator = self.create_device_tree_mutation_context
         driver.send_packet = self._send_packet
-        driver.run_in_background = self._run_in_background
+        driver.run_in_background = self.run_in_background
 
     def _create_lowlevel_connection(
         self, specifier: Optional[str]
@@ -225,31 +221,6 @@ class FlockCtrlDronesExtension(UAVExtensionBase):
             ticks_per_second=clock.ticks_per_second,
         )
         self._send_packet(packet)
-
-    def _run_in_background(self, func, *args) -> None:
-        """Schedules the given async function to be executed as a background
-        task in the nursery of the extension.
-
-        The task will be cancelled if the extension is unloaded.
-        """
-        if self._nursery:
-            self._nursery.start_soon(self._run_protected, func, *args)
-        else:
-            raise RuntimeError(
-                "cannot run task in background, extension is not running"
-            )
-
-    async def _run_protected(self, func, *args) -> None:
-        """Runs the given function in a "protected" mode that prevents exceptions
-        emitted from it to crash the nursery that the function is being executed
-        in.
-        """
-        try:
-            await func(*args)
-        except Exception:
-            self.log.exception(
-                f"Unexpected exception caught from background task {func.__name__}"
-            )
 
     async def _send_packet(
         self,

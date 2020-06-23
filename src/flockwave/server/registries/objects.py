@@ -29,8 +29,22 @@ class ObjectRegistry(RegistryBase[ModelObject]):
             removed from the registry.
     """
 
-    added = Signal()
-    removed = Signal()
+    added = Signal(
+        doc="""\
+        Signal sent whenever a new object is added to the registry.
+
+        Parameters:
+            object (ModelObject): the object that was added
+        """
+    )
+    removed = Signal(
+        doc="""\
+        Signal sent whenever an object was removed from the registry.
+
+        Parameters:
+            object (ModelObject): the object that was removed
+        """
+    )
 
     def add(self, object: ModelObject) -> None:
         """Registers an object in the registry.
@@ -116,7 +130,7 @@ class ObjectRegistry(RegistryBase[ModelObject]):
             the object that was deregistered, or ``None`` if the object was not
             registered
         """
-        object = self._entries.pop(object_id)
+        object = self._entries.pop(object_id, None)
         if object is not None:
             self.removed.send(self, object=object)
         return object

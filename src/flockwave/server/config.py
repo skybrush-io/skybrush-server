@@ -35,19 +35,15 @@ EXTENSIONS = {
             "A": [18.9157319, 47.4848304],
             "B": [18.9150453, 47.4857730],
             "C": [18.9164507, 47.4856715],
-            #"D": [18.915955, 47.486647],
-            #"E": [18.917274, 47.485178],
+            # "D": [18.915955, 47.486647],
+            # "E": [18.917274, 47.485178],
         },
         "waypoints": {
             "a": [18.9157748, 47.4854612],
             "b": [18.9163113, 47.4850407],
             "c": [18.9165688, 47.4853815],
         },
-        "routes": {
-            "A->B": [],
-            "A->C": ["b", "c"],
-            "B->C": ["a"],
-        }
+        "routes": {"A->B": [], "A->C": ["b", "c"], "B->C": ["a"]},
     },
     "debug": {},
     "dock": {"enabled": False, "listener": "unix:/tmp/flockwaved-dock.sock"},
@@ -77,6 +73,25 @@ EXTENSIONS = {
     "radiation": {
         "sources": [{"lat": 47.473703, "lon": 19.061739, "intensity": 50000}],
         "background_intensity": 10,
+    },
+    "rtk": {
+        "presets": {
+            "ephemeris": {
+                "title": "Ephemeris only",
+                "source": "ntrip://ntrip.use-snip.com:2101/RTCM3EPH",  # may also be a list
+            },
+            "elte-rtk": {
+                "title": "ELTE RTK",
+                "source": "ntrip://elte5:5etle@geotradegnss.hu/BUDA.RTCM3",
+                "filter": {"reject": ["rtcm3/1007", "rtcm3/1019"]},
+            },
+            "javad": {
+                "title": "JAVAD Triumph-2",
+                "source": "serial:/dev/cu.TRIUMPH201421-SerialPort?baud=1500000",
+                "format": "rtcmv3",  # can be rtcmv2, rtcmv3 or auto
+                "init": "dm\nem,,rtcm3/{1004,1012}:1\nem,,rtcm3/{1006,1008,1033}:10\n",
+            },
+        }
     },
     "show": {},
     "socketio": {},

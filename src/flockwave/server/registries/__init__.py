@@ -11,7 +11,7 @@ from .base import Registry, RegistryBase, find_in_registry
 from .channels import ChannelTypeRegistry
 from .clients import ClientRegistry
 from .clocks import ClockRegistry
-from .connections import ConnectionRegistry
+from .connections import ConnectionRegistry, ConnectionRegistryEntry
 from .objects import ObjectRegistry
 
 __all__ = (
@@ -22,6 +22,7 @@ __all__ = (
     "ClientRegistry",
     "ClockRegistry",
     "ConnectionRegistry",
+    "ConnectionRegistryEntry",
     "ChannelTypeRegistry",
     "ObjectRegistry",
 )

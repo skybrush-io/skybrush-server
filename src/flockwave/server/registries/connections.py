@@ -24,13 +24,29 @@ class ConnectionRegistry(RegistryBase):
     connection by its identifier.
     """
 
+    added = Signal(
+        doc="""\
+        Signal sent whenever a new connection is added to the registry.
+
+        Parameters:
+            entry (ConnectionRegistryEntry): the connection entry that was added
+        """
+    )
+    removed = Signal(
+        doc="""\
+        Signal sent whenever a connection was removed from the registry.
+
+        Parameters:
+            entry (ConnectionRegistryEntry): the connection entry that was removed
+        """
+    )
     connection_state_changed = Signal(
         doc="""\
         Signal sent whenever the state of a connection in the registry
         changes.
 
         Parameters:
-            entry (ConnectionEntry): the connection entry whose state
+            entry (ConnectionRegistryEntry): the connection entry whose state
                 changed
             new_state (str): the new state
             old_state (str): the old state
@@ -69,6 +85,8 @@ class ConnectionRegistry(RegistryBase):
             entry.description = description
 
         self._entries[name] = entry
+        self.added.send(self, entry=entry)
+
         return entry
 
     def remove(self, name):
@@ -78,11 +96,15 @@ class ConnectionRegistry(RegistryBase):
 
         Arguments:
             name (str): the name of the connection to remove
+
+        Returns:
+            the entry that was deregistered, or ``None`` if no connection was
+            registered with the given name
         """
-        try:
-            del self._entries[name]
-        except KeyError:
-            return
+        entry = self._entries.pop(name, None)
+        if entry is not None:
+            self.removed.send(self, entry=entry)
+        return entry
 
     @contextmanager
     def use(self, connection, name, *args, **kwds):
@@ -133,7 +155,7 @@ class ConnectionRegistry(RegistryBase):
         )
 
 
-class ConnectionRegistryEntry(object):
+class ConnectionRegistryEntry:
     """A single entry in the connection registry."""
 
     def __init__(self, registry, connection=None, name=None):

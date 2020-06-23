@@ -45,6 +45,7 @@ from .registries import (
     ChannelTypeRegistry,
     ClientRegistry,
     ConnectionRegistry,
+    ConnectionRegistryEntry,
     ObjectRegistry,
     find_in_registry,
 )
@@ -159,6 +160,12 @@ class SkybrushServer:
         self.connection_registry = ConnectionRegistry()
         self.connection_registry.connection_state_changed.connect(
             self._on_connection_state_changed, sender=self.connection_registry
+        )
+        self.connection_registry.added.connect(
+            self._on_connection_added, sender=self.connection_registry
+        )
+        self.connection_registry.removed.connect(
+            self._on_connection_removed, sender=self.connection_registry
         )
 
         # Create the extension manager of the application
@@ -959,12 +966,49 @@ class SkybrushServer:
             message = hub.create_response_or_notification(body)
             hub.enqueue_message(message, to=client)
 
-    def _on_object_removed(self, sender, object):
+    def _on_connection_added(
+        self, sender: ConnectionRegistry, entry: ConnectionRegistryEntry
+    ) -> None:
+        """Handler called when a connection is added to the connection registry.
+
+        Sends a CONN-INF notification to all connected clients so they know that
+        the connection was added.
+
+        Parameters:
+            sender: the connection registry
+            object: the connection that was added
+        """
+        notification = self.create_CONN_INF_message_for([entry.id])
+        self.message_hub.enqueue_message(notification)
+
+    def _on_connection_removed(
+        self, sender: ConnectionRegistry, entry: ConnectionRegistryEntry
+    ) -> None:
+        """Handler called when a connection is removed from the connection
+        registry.
+
+        Sends a CONN-DEL notification to all connected clients so they know that
+        the connection was removed.
+
+        Parameters:
+            sender: the connection registry
+            object: the connection that was removed
+        """
+        notification = self.message_hub.create_response_or_notification(
+            {"type": "CONN-DEL", "ids": [entry.id]}
+        )
+        try:
+            self.message_hub.enqueue_message(notification)
+        except BrokenResourceError:
+            # App is probably shutting down, this is OK.
+            pass
+
+    def _on_object_removed(self, sender: ObjectRegistry, object: ModelObject) -> None:
         """Handler called when an object is removed from the object registry.
 
         Parameters:
-            sender (ObjectRegistry): the object registry
-            object (ModelObject): the object that was removed
+            sender: the object registry
+            object: the object that was removed
         """
         notification = self.message_hub.create_response_or_notification(
             {"type": "OBJ-DEL", "ids": [object.id]}

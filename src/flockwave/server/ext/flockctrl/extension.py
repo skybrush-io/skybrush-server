@@ -14,7 +14,9 @@ from flockwave.connections import Connection, create_connection, IPAddressAndPor
 from flockwave.protocols.flockctrl.packets import (
     FlockCtrlPacket,
     ClockSynchronizationPacket,
+    RawGPSInjectionPacket,
 )
+from flockwave.server.comm import BROADCAST
 from flockwave.server.ext.base import UAVExtensionBase
 from flockwave.server.model import ConnectionPurpose
 from flockwave.server.utils import datetime_to_unix_timestamp
@@ -62,6 +64,7 @@ class FlockCtrlDronesExtension(UAVExtensionBase):
 
     def __init__(self):
         super(FlockCtrlDronesExtension, self).__init__()
+
         self._driver = None
         self._manager = None
 
@@ -111,6 +114,8 @@ class FlockCtrlDronesExtension(UAVExtensionBase):
         broadcast_link, unicast_link = self._create_connections(configuration)
 
         clock_registry = app.import_api("clocks").registry
+        rtk_signal = app.import_api("signals").get("rtk:packet")
+
         with ExitStack() as stack:
             # Attach ourselves to the clock registry
             stack.enter_context(
@@ -137,6 +142,9 @@ class FlockCtrlDronesExtension(UAVExtensionBase):
             # must be the unicast link.
             manager.add(unicast_link, name="wireless")
             manager.add(broadcast_link, name="wireless", can_send=False)
+
+            # Register a callback for RTK correction packets
+            stack.enter_context(rtk_signal.connected_to(self._on_rtk_correction_packet))
 
             # Start the communication manager
             try:
@@ -168,6 +176,8 @@ class FlockCtrlDronesExtension(UAVExtensionBase):
         """
         driver.id_format = configuration.get("id_format", "{0:02}")
         driver.log = self.log.getChild("driver")
+
+        driver.broadcast_packet = self._broadcast_packet
         driver.create_device_tree_mutator = self.create_device_tree_mutation_context
         driver.send_packet = self._send_packet
         driver.run_in_background = self.run_in_background
@@ -222,6 +232,25 @@ class FlockCtrlDronesExtension(UAVExtensionBase):
         )
         self._send_packet(packet)
 
+    def _on_rtk_correction_packet(self, sender, packet: bytes):
+        """Handles an RTK correction packet that the server wishes to forward
+        to the drones managed by this extension.
+
+        Parameters:
+            packet: the raw RTK correction packet to forward to the drone
+        """
+        packet = RawGPSInjectionPacket(packet)
+
+        # TODO(ntamas): use radio instead of wireless if available
+        if self._manager:
+            self._manager.enqueue_packet(packet, ("wireless", BROADCAST))
+
+    async def _broadcast_packet(self, packet: FlockCtrlPacket, medium: str) -> None:
+        """Broadcasts a FlockCtrl packet to all UAVs in the network managed
+        by the extension.
+        """
+        await self._send_packet(packet, (medium, BROADCAST))
+
     async def _send_packet(
         self,
         packet: FlockCtrlPacket,
@@ -244,4 +273,4 @@ class FlockCtrlDronesExtension(UAVExtensionBase):
 
 
 construct = FlockCtrlDronesExtension
-dependencies = ("clocks",)
+dependencies = ("clocks", "signals")

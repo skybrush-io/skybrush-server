@@ -14,14 +14,12 @@ from flockwave.protocols.flockctrl.packets import (
     CommandResponsePacketBase,
     CommandResponsePacket,
     CompressedCommandResponsePacket,
-    FlockCtrlPacket,
     MissionInfoPacket,
     MultiTargetCommandPacket,
     PrearmStatusPacket,
     RawGPSInjectionPacket,
     StatusPacket,
 )
-from flockwave.server.comm import BROADCAST
 from flockwave.server.ext.logger import log
 from flockwave.server.model.battery import BatteryInfo
 from flockwave.server.model.gps import GPSFixType
@@ -78,6 +76,10 @@ class FlockCtrlDriver(UAVDriver):
             be called with the packet to send, and a pair formed by the
             medium via which the packet should be forwarded and the
             destination address in that medium.
+        broadcast_packet (callable): a function that should be called by the
+            driver whenever it wants to broadcast a packet. The function must
+            be called with the packet to send and the name of the medium via
+            which the packet should be forwarded.
     """
 
     def __init__(self, app=None, id_format="{0:02}"):
@@ -92,15 +94,14 @@ class FlockCtrlDriver(UAVDriver):
 
         self._pending_commands_by_uav = FutureMap()
 
-        self._bursted_message_manager = BurstedMultiTargetMessageManager(
-            self._broadcast_packet, self._run_in_background
-        )
+        self._bursted_message_manager = BurstedMultiTargetMessageManager(self)
         self._disable_warnings_until = {}
         self._index_to_uav_id = bidict()
         self._uavs_by_source_address = {}
         self._upload_capacity = CapacityLimiter(5)
 
         # These functions will be provided to the driver by the extension
+        self.broadcast_packet = None
         self.create_device_tree_mutator = None
         self.run_in_background = None
         self.send_packet = None
@@ -255,12 +256,6 @@ class FlockCtrlDriver(UAVDriver):
             return False
         # all special cases checked, there is incompatibility
         return True
-
-    async def _broadcast_packet(self, packet: FlockCtrlPacket, medium: str) -> None:
-        """Broadcasts a FlockCtrl packet to all UAVs in the network managed
-        by the extension.
-        """
-        await self.send_packet(packet, (medium, BROADCAST))
 
     def _check_or_record_uav_address(self, uav, medium, address):
         """Records that the given UAV has the given address,

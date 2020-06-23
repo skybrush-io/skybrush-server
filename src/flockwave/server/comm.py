@@ -13,10 +13,6 @@ from typing import Callable, Generator, Generic, Iterator, Optional, Tuple, Type
 
 from flockwave.channels import MessageChannel
 from flockwave.connections import Connection
-from flockwave.connections.socket import (
-    BroadcastUDPSocketConnection,
-    MulticastUDPSocketConnection,
-)
 
 
 __all__ = ("BROADCAST", "CommunicationManager")

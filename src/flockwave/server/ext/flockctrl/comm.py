@@ -7,7 +7,7 @@ from io import BytesIO
 from paramiko import SSHClient
 from select import select
 from trio_util import periodic
-from typing import Callable, Iterable, Optional, Tuple, Union
+from typing import Iterable, Optional, Tuple, Union
 
 from flockwave.channels import MessageChannel
 from flockwave.connections import IPAddressAndPort, UDPSocketConnection
@@ -168,16 +168,10 @@ class BurstedMultiTargetMessageManager:
     drones in the flock and keeping track of sequence numbers.
     """
 
-    def __init__(
-        self,
-        broadcast_packet: Callable[[FlockCtrlPacket, str], None],
-        run_in_background: Callable[..., None],
-    ):
+    def __init__(self, driver):
         """Constructor."""
-        self._send_packet = None
+        self._driver = driver
         self._sequence_ids = [0] * 16
-        self._broadcast_packet = broadcast_packet
-        self._run_in_background = run_in_background
 
     def schedule_burst(
         self, command: MultiTargetCommand, uav_ids: Iterable[int], duration: float
@@ -190,7 +184,7 @@ class BurstedMultiTargetMessageManager:
                 the numeric IDs in the FlockCtrl network, not the global UAV IDs.
             duration: duration of the burst, in seconds.
         """
-        self._run_in_background(self._execute_burst, command, uav_ids, duration)
+        self._driver.run_in_background(self._execute_burst, command, uav_ids, duration)
 
     async def _execute_burst(
         self, command: MultiTargetCommand, uav_ids: Iterable[int], duration: float
@@ -213,6 +207,6 @@ class BurstedMultiTargetMessageManager:
         async for elapsed, _ in periodic(0.1):
             # We want to ensure that the packet is sent at least once so we
             # broadcast first and then check the elapsed time
-            await self._broadcast_packet(packet, "wireless")
+            await self._driver.broadcast_packet(packet, "wireless")
             if elapsed >= duration:
                 break

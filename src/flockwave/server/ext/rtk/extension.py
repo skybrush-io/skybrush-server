@@ -225,16 +225,11 @@ class RTKExtension(ExtensionBase):
         signal = self.app.import_api("signals").get("rtk:packet")
         encoder = preset.create_encoder()
 
-        try:
+        async with channel:
             async for packet in channel:
                 if preset.accepts(packet):
                     encoded = encoder(packet)
                     signal.send(packet=encoded)
-        except Exception:
-            import traceback
-
-            traceback.print_exc()
-            raise
 
 
 construct = RTKExtension

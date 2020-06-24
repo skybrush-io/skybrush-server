@@ -98,8 +98,8 @@ class RTKExtension(ExtensionBase):
             body={"ids": self._registry.ids}, in_response_to=message
         )
 
-    def handle_RTK_SELECT(self, message: FlockwaveMessage, sender, hub: MessageHub):
-        """Handles an incoming RTK-SELECT message."""
+    def handle_RTK_SOURCE(self, message: FlockwaveMessage, sender, hub: MessageHub):
+        """Handles an incoming RTK-SOURCE message."""
         if "id" in message.body:
             # Selecting a new RTK source to use
             if message.body["id"] is None:
@@ -141,7 +141,7 @@ class RTKExtension(ExtensionBase):
                     {
                         "X-RTK-INF": self.handle_RTK_INF,
                         "X-RTK-LIST": self.handle_RTK_LIST,
-                        "X-RTK-SELECT": self.handle_RTK_SELECT,
+                        "X-RTK-SOURCE": self.handle_RTK_SOURCE,
                     }
                 )
             )

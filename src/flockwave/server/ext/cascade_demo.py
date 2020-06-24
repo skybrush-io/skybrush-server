@@ -231,8 +231,8 @@ class ERPSystemConnectionDemoExtension(ExtensionBase):
         # list of waypoints from the Trip object, and then feed that into
         # both generate_waypoint_file_for_trip() and generate_mission_file_for_trip()
         # so we don't have to calculate the waypoints twice.
-        return get_template(
-            "mission/mission.cfg", max_flying_range=1000, max_flying_height=100
+        return get_template("mission/mission.cfg").format(
+            max_flying_range=1000, max_flying_height=100
         )
 
     def generate_waypoint_file_for_trip(

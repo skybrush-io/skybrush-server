@@ -6,7 +6,7 @@ from base64 import b64decode
 from functools import partial
 from importlib.resources import read_text
 from io import BytesIO
-from math import ceil
+from math import ceil, hypot
 from typing import Iterable, Tuple
 from zipfile import ZipFile, ZIP_DEFLATED
 
@@ -57,7 +57,7 @@ def get_all_points_from_trajectory(trajectory: Trajectory) -> Iterable[XYZ]:
         yield point
 
 
-def get_maximum_altitude_safety_limit(
+def get_maximum_altitude_with_safety_margin(
     trajectory: Trajectory, margin: float = 20, steps: int = 10
 ) -> float:
     """Proposes a safety limit to use for the altitude component of the geofence
@@ -79,6 +79,33 @@ def get_maximum_altitude_safety_limit(
     except ValueError:
         largest_z = 0
     return int(ceil((largest_z + margin) / steps)) * steps
+
+
+def get_maximum_distance_with_safety_margin(
+    trajectory: Trajectory, margin: float = 20, steps: int = 10
+) -> float:
+    """Proposes a safety limit to use for the distance component of the
+    circular geofence in the uploaded mission file.
+
+    Parameters:
+        trajectory: the trajectory that the UAV will fly
+        margin: margin to add to the distance of the farthest point (in the
+            horizontal plane)
+        steps: integer number to round the result to
+
+    Returns:
+        the smallest multiple of `steps` that is larger than or equal to the
+        distance of the farthest point in the trajectory plus the margin
+    """
+    xys = [(point[0], point[1]) for point in get_all_points_from_trajectory(trajectory)]
+
+    if not xys:
+        max_distance = 0
+    else:
+        origin_x, origin_y = xys[0]
+        max_distance = max(hypot(origin_x - x, origin_y - y) for x, y in xys)
+
+    return int(ceil((max_distance + margin) / steps)) * steps
 
 
 def generate_mission_file_from_show_specification(show) -> bytes:
@@ -153,8 +180,9 @@ def generate_mission_file_from_show_specification(show) -> bytes:
         )
         last_t = t
 
-    # find maximum height and derive the safety limit
-    max_altitude = get_maximum_altitude_safety_limit(points)
+    # derive the properties of the geofence
+    max_altitude = get_maximum_altitude_with_safety_margin(points)
+    max_distance = get_maximum_distance_with_safety_margin(points)
 
     # create waypoint file template
     waypoint_str = get_template("waypoints.cfg").format(
@@ -177,7 +205,7 @@ def generate_mission_file_from_show_specification(show) -> bytes:
     params = {
         "altitude_setpoint": 5,  # TODO: get from show if needed
         "max_flying_height": max_altitude,
-        "max_flying_range": 1000,  # TODO: get from show
+        "max_flying_range": max_distance,
         "orientation": -1,  # TODO: get from show
         "velocity_xy": 8,  # TODO: get from show
         "velocity_z": 2.5,  # TODO: get from show

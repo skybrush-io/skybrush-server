@@ -11,6 +11,7 @@ from functools import partial
 from inspect import isawaitable
 from itertools import chain
 from jsonschema import ValidationError
+from time import monotonic
 from trio import (
     BrokenResourceError,
     ClosedResourceError,
@@ -974,10 +975,19 @@ class ConnectionStatusMessageRateLimiter(RateLimiter):
     @attr.s
     class Entry:
         last_stable_state: ConnectionState = attr.ib()
+        last_stable_state_timestamp: float = attr.ib(factory=monotonic)
         settled: Event = attr.ib(factory=Event)
+
+        @property
+        def is_last_stable_state_fresh(self) -> bool:
+            return (monotonic() - self.last_stable_state_timestamp) < 0.2
 
         def notify_settled(self):
             self.settled.set()
+
+        def set_stable_state(self, state):
+            self.last_stable_state = state
+            self.last_stable_state_timestamp = monotonic()
 
         async def wait_to_see_if_settles(self, dispatcher):
             with move_on_after(0.1):
@@ -1045,10 +1055,15 @@ class ConnectionStatusMessageRateLimiter(RateLimiter):
                         # Let the background task know that we have reached a
                         # stable state so no need to wait further
                         entry.notify_settled()
-                        if entry.last_stable_state == new_state:
+                        if (
+                            entry.last_stable_state == new_state
+                            and entry.is_last_stable_state_fresh
+                        ):
                             # Stable state is the same as the one we have started
                             # from so no need to send a message
                             send = False
+                        else:
+                            entry.set_stable_state(new_state)
 
                 if send:
                     await dispatch_tx_queue.send(connection_id)

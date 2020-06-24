@@ -3,8 +3,11 @@ the flockctrl system.
 """
 
 from base64 import b64decode
+from functools import partial
 from importlib.resources import read_text
 from io import BytesIO
+from math import ceil
+from typing import Iterable, Tuple
 from zipfile import ZipFile, ZIP_DEFLATED
 
 from flockwave.gps.vectors import FlatEarthToGPSCoordinateTransformation
@@ -13,6 +16,15 @@ __all__ = ("get_template", "gps_coordinate_to_string")
 
 
 _template_pkg = __name__.rpartition(".")[0] + ".templates"
+
+
+#: Type specification for a 3D XYZ-style coordinate
+XYZ = Tuple[float, float, float]
+
+#: Type specification for a trajectory consisting of a sequence of
+#: timestamps, the corresponding waypoints and the corresponding auxiliary
+#: Bexier control points
+Trajectory = Tuple[float, XYZ, Iterable[XYZ]]
 
 
 def get_template(name: str, *, encoding: str = "utf-8", errors: str = "strict") -> str:
@@ -29,8 +41,44 @@ def get_template(name: str, *, encoding: str = "utf-8", errors: str = "strict") 
         the loaded template file
     """
     dirs, _, name = name.rpartition("/")
-    package = ".".join([_template_pkg] + dirs)
+    package = ".".join([_template_pkg] + (dirs.split("/") if dirs else []))
     return read_text(package, name, encoding=encoding, errors=errors)
+
+
+def get_all_points_from_trajectory(trajectory: Trajectory) -> Iterable[XYZ]:
+    """Given a trajectory, returns an iterable that will iterate over all the
+    points of the trajectory.
+
+    For each item in the trajectory, the Bezier control points are iterated
+    first, followed by the waypoint itself.
+    """
+    for _, point, control_points in trajectory:
+        yield from control_points
+        yield point
+
+
+def get_maximum_altitude_safety_limit(
+    trajectory: Trajectory, margin: float = 20, steps: int = 10
+) -> float:
+    """Proposes a safety limit to use for the altitude component of the geofence
+    in the uploaded mission file.
+
+    Parameters:
+        trajectory: the trajectory that the UAV will fly
+        margin: margin to add to the AGL of the point with the largest AGL
+        steps: integer number to round the result to
+
+    Returns:
+        the smallest multiple of `steps` that is larger than or equal to the
+        AGL of the highest point in the trajectory plus the margin
+    """
+    try:
+        largest_z = max(
+            point[2] for point in get_all_points_from_trajectory(trajectory)
+        )
+    except ValueError:
+        largest_z = 0
+    return int(ceil((largest_z + margin) / steps)) * steps
 
 
 def generate_mission_file_from_show_specification(show) -> bytes:
@@ -64,9 +112,12 @@ def generate_mission_file_from_show_specification(show) -> bytes:
     except Exception:
         raise RuntimeError("Invalid or missing coordinate system specification")
 
+    # pin down to_neu to the transformation type
+    to_neu = partial(to_neu, type_string=trans.type)
+
     # parse home coordinate
     if "home" in show:
-        home = to_neu(show["home"], trans.type)
+        home = to_neu(show["home"])
     else:
         raise RuntimeError("No home coordinate in show specification")
 
@@ -78,25 +129,32 @@ def generate_mission_file_from_show_specification(show) -> bytes:
     else:
         raise RuntimeError("No trajectory in show specification")
 
+    # convert all points in trajectory to NEU coordinates
+    points = [
+        (t, to_neu(point), map(to_neu, control_points))
+        for t, point, control_points in points
+    ]
+
     # create waypoints
     last_t = 0
     waypoints = []
-    for t, p, _ in points:
+    for t, point, _ in points:
         # add takeoff time to waypoints
         t += takeoff_time
-        # convert position to NEU
-        pos = to_neu(p, trans.type)
         waypoints.append(
             "waypoint={x} {y} {z} {vxy} {vz} T{t} 6".format(
-                x=pos[0],
-                y=pos[1],
-                z=pos[2],
+                x=point[0],
+                y=point[1],
+                z=point[2],
                 vxy=8,  # TODO: get from show
                 vz=2.5,  # TODO: get from show
                 t=t - last_t,
             )
         )
         last_t = t
+
+    # find maximum height and derive the safety limit
+    max_altitude = get_maximum_altitude_safety_limit(points)
 
     # create waypoint file template
     waypoint_str = get_template("waypoints.cfg").format(
@@ -118,7 +176,7 @@ def generate_mission_file_from_show_specification(show) -> bytes:
     # templates
     params = {
         "altitude_setpoint": 5,  # TODO: get from show if needed
-        "max_flying_height": 200,  # TODO: get from show
+        "max_flying_height": max_altitude,
         "max_flying_range": 1000,  # TODO: get from show
         "orientation": -1,  # TODO: get from show
         "velocity_xy": 8,  # TODO: get from show

@@ -197,7 +197,7 @@ def generate_mission_file_from_show_specification(show) -> bytes:
         angle=trans.orientation,
         ground_altitude=0,  # TODO: use this if needed
         origin=gps_coordinate_to_string(lat=trans.origin.lat, lon=trans.origin.lon),
-        waypoints="waypoint={} {} -100 4 2 1000 6".format(home[0], home[1]),
+        waypoints="waypoint={} {} -100 4 2 T1000 6".format(home[0], home[1]),
     )
 
     # gather parameters that are used in the mission and choreography file

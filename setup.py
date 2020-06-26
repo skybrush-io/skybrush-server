@@ -21,7 +21,6 @@ requires = [
     "flockwave-parsers @ https://git.collmot.com/collmot/flockwave-parsers/archive/1.1.1.tar.gz",
     "flockwave-spec @ https://git.collmot.com/collmot/flockwave-spec/archive/0.37.3.tar.gz",
     "jsonschema>=3.0.1",
-    "netifaces>=0.10.5",
     "paramiko>=2.7.1",
     "pynmea2>=1.12.0",
     "python-baseconv>=1.1.3",

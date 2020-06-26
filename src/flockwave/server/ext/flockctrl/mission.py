@@ -237,18 +237,24 @@ def generate_mission_file_from_show_specification(show) -> bytes:
     return buffer.getvalue()
 
 
-def gps_coordinate_to_string(lat: float, lon: float) -> str:
+def gps_coordinate_to_string(lat: float, lon: float, amsl: float = None) -> str:
     """Return a string to be used in waypoint files when absolute coordinates
     are needed.
 
     Parameters:
         lat: latitude in degrees
         lon: longitude in degrees
+        amsl: above mean sea level in meters (optional)
 
     Return:
         gps coordinate string in flockctrl format
     """
     lat_sign = "N" if lat >= 0 else "S"
     lon_sign = "E" if lon >= 0 else "W"
+    retval = f"{lat_sign}{lat:.7f} {lon_sign}{lon:.7f}"
 
-    return f"{lat_sign}{lat:.7f} {lon_sign}{lon:.7f}"
+    if amsl is not None:
+        amsl_sign = "U" if amsl >= 0 else "D"
+        retval += f" {amsl_sign}{amsl:.3f}"
+
+    return retval

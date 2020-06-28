@@ -19,7 +19,7 @@ requires = [
     "flockwave-gps @ https://git.collmot.com/collmot/flockwave-gps/archive/0.14.0.tar.gz",
     "flockwave-logger @ https://git.collmot.com/collmot/flockwave-logger/archive/1.2.0.tar.gz",
     "flockwave-parsers @ https://git.collmot.com/collmot/flockwave-parsers/archive/1.1.1.tar.gz",
-    "flockwave-spec @ https://git.collmot.com/collmot/flockwave-spec/archive/0.37.3.tar.gz",
+    "flockwave-spec @ https://git.collmot.com/collmot/flockwave-spec/archive/0.38.0.tar.gz",
     "jsonschema>=3.0.1",
     "paramiko>=2.7.1",
     "pynmea2>=1.12.0",

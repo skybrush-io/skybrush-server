@@ -199,6 +199,19 @@ class FlockCtrlDriver(UAVDriver):
             duration=duration,
         )
 
+    def send_motor_start_stop_signal(
+        self, uavs, start: bool = False, force: bool = True
+    ):
+        if start:
+            command = MultiTargetCommand.MOTOR_ON
+        elif force:
+            command = MultiTargetCommand.FORCE_MOTOR_OFF
+        else:
+            command = MultiTargetCommand.MOTOR_OFF
+        self._bursted_message_manager.schedule_burst(
+            command, uav_ids=self._uavs_to_ids(uavs), duration=BURST_DURATION
+        )
+
     def send_return_to_home_signal(self, uavs):
         self._bursted_message_manager.schedule_burst(
             MultiTargetCommand.RTH,
@@ -615,9 +628,6 @@ class FlockCtrlDriver(UAVDriver):
             cmd = "go N{0.lat:.7f} E{0.lon:.7f}".format(target, altitude)
         return await self._send_command_to_uav_and_check_for_errors(cmd, uav)
 
-    async def _send_landing_signal_single(self, uav):
-        return await self._send_command_to_uav_and_check_for_errors("land", uav)
-
     async def _send_reset_signal_single(self, uav, component):
         if not component:
             # Resetting the whole UAV, this is supported
@@ -626,18 +636,8 @@ class FlockCtrlDriver(UAVDriver):
             # No component resets are implemented on this UAV yet
             raise RuntimeError(f"Resetting {component!r} is not supported")
 
-    async def _send_return_to_home_signal_single(self, uav):
-        return await self._send_command_to_uav("rth", uav)
-
-    async def _send_light_or_sound_emission_signal_single(self, uav, signals, duration):
-        if "light" in signals:
-            return await self._send_command_to_uav_and_check_for_errors("where", uav)
-
     async def _send_shutdown_signal_single(self, uav):
         return await self._send_command_to_uav_and_check_for_errors("halt", uav)
-
-    async def _send_takeoff_signal_single(self, uav):
-        return await self._send_command_to_uav_and_check_for_errors("motoron", uav)
 
     def _uavs_to_ids(self, uavs):
         inverse_id_map = self._index_to_uav_id.inverse

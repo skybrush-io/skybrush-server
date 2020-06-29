@@ -218,6 +218,19 @@ class MAVLinkDriver(UAVDriver):
         if not success:
             raise RuntimeError("Landing command failed")
 
+    async def _send_motor_start_stop_signal_single(
+        self, uav, start: bool, force: bool = False
+    ) -> None:
+        if not await self.send_command_long(
+            uav,
+            MAVCommand.COMPONENT_ARM_DISARM,
+            1 if start else 0,
+            FORCE_MAGIC if force else 0,
+        ):
+            raise RuntimeError(
+                "Failed to arm motors" if start else "Failed to disarm motors"
+            )
+
     async def _send_reset_signal_single(self, uav, component) -> None:
         if not component:
             # Resetting the whole UAV, this is supported
@@ -234,10 +247,7 @@ class MAVLinkDriver(UAVDriver):
         return await self.send_command_long(uav, MAVCommand.NAV_RETURN_TO_LAUNCH)
 
     async def _send_shutdown_signal_single(self, uav) -> None:
-        if not await self.send_command_long(
-            uav, MAVCommand.COMPONENT_ARM_DISARM, 0, FORCE_MAGIC  # disarm
-        ):
-            raise RuntimeError("Failed to disarm motors")
+        await self._send_motor_start_stop_signal_single(uav, start=False, force=True)
 
         if not await self.send_command_long(
             uav, MAVCommand.PREFLIGHT_REBOOT_SHUTDOWN, 2  # shutdown autopilot
@@ -245,10 +255,7 @@ class MAVLinkDriver(UAVDriver):
             raise RuntimeError("Failed to send shutdown command to autopilot")
 
     async def _send_takeoff_signal_single(self, uav) -> None:
-        if not await self.send_command_long(
-            uav, MAVCommand.COMPONENT_ARM_DISARM, 1  # arm
-        ):
-            raise RuntimeError("Failed to arm motors")
+        await self._send_motor_start_stop_signal_single(uav, start=True)
 
         # Wait a bit to give the autopilot some time to start the motors, just
         # in case. Not sure whether this is needed.

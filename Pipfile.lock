@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "9f67d360a0827dd4b791c0796676d3786067e44a720fd384b7c975c76be974ba"
+            "sha256": "a94aed84db46ec7d1a1aa85fa2b2bb28ebb03567b28f4a61c6a826843f406ea9"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -174,7 +174,7 @@
             "file": "https://git.collmot.com/collmot/flockwave-ext/archive/1.3.1.tar.gz"
         },
         "flockwave-flockctrl": {
-            "file": "https://git.collmot.com/collmot/flockwave-flockctrl/archive/0.8.0.tar.gz"
+            "file": "https://git.collmot.com/collmot/flockwave-flockctrl/archive/0.8.1.tar.gz"
         },
         "flockwave-gps": {
             "file": "https://git.collmot.com/collmot/flockwave-gps/archive/0.14.0.tar.gz"

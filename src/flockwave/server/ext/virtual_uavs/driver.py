@@ -175,6 +175,14 @@ class VirtualUAVDriver(UAVDriver):
         if "light" in signals:
             uav.handle_where_are_you(duration)
 
+    def _send_motor_start_stop_signal_single(
+        self, uav, start: bool, force: bool = False
+    ) -> None:
+        if start:
+            uav.start_motors()
+        else:
+            uav.stop_motors()
+
     def _send_reset_signal_single(self, uav, component) -> None:
         if not component:
             # Resetting the whole UAV, this is supported
@@ -252,6 +260,7 @@ class VirtualUAV(UAVBase):
         self._home_amsl = None
         self._light_controller = DefaultLightController(self)
         self._mission_started_at = None
+        self._motors_running = False
         self._position_xyz = Vector3D()
         self._position_flat = FlatEarthCoordinate()
         self._state = None
@@ -367,6 +376,11 @@ class VirtualUAV(UAVBase):
             self._home_amsl = float(value.amsl)
 
     @property
+    def motors_running(self) -> bool:
+        """Returns whether motors of the drone are running."""
+        return self._motors_running
+
+    @property
     def state(self):
         """The state of the UAV; one of the constants from the VirtualUAVState_
         enum class.
@@ -388,9 +402,10 @@ class VirtualUAV(UAVBase):
         self.ensure_error(
             FlockwaveErrorCode.LANDING, present=self._state is VirtualUAVState.LANDING
         )
-        # self.ensure_error(
-        #     FlockwaveErrorCode.LANDED, present=self._state is VirtualUAVState.LANDED
-        # )
+
+        # Motors must be running if the UAV is not on the ground
+        if self._state is not VirtualUAVState.LANDED:
+            self.start_motors()
 
         if self._state is VirtualUAVState.TAKEOFF:
             if old_state is VirtualUAVState.LANDED:
@@ -405,8 +420,9 @@ class VirtualUAV(UAVBase):
                 # Stop following the trajectory, just in case
                 self.stop_trajectory()
         elif self._state is VirtualUAVState.LANDED:
-            # Mission ended, stop playing the light program
+            # Mission ended, stop playing the light program and stop the motors
             self._light_controller.stop_light_program()
+            self.stop_motors()
 
     @property
     def target(self):
@@ -597,7 +613,18 @@ class VirtualUAV(UAVBase):
             self._shutdown_reason = "shutdown"
             self._request_shutdown()
 
-    def step(self, dt, mutator=None):
+    def start_motors(self) -> None:
+        """Starts the motors of the UAV if they are not running yet."""
+        self._motors_running = True
+
+    def stop_motors(self) -> None:
+        """Stop the motors of the UAV if they are running and the UAV has
+        landed.
+        """
+        if self.state is VirtualUAVState.LANDED:
+            self._motors_running = False
+
+    def step(self, dt: float, mutator=None) -> None:
         """Simulates a single step of the trajectory of the virtual UAV based
         on its state and the amount of time that has passed.
 
@@ -725,6 +752,13 @@ class VirtualUAV(UAVBase):
         )
         self.ensure_error(
             FlockwaveErrorCode.BATTERY_LOW_WARNING, present=self.battery.is_low
+        )
+
+        # Update the error code based on whether the motors are running and the
+        # UAV is airborne
+        self.ensure_error(
+            FlockwaveErrorCode.MOTORS_RUNNING_WHILE_ON_GROUND,
+            self.state is VirtualUAVState.LANDED and self.motors_running,
         )
 
         # Update the UAV status

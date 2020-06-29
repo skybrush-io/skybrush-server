@@ -454,6 +454,30 @@ class UAVDriver(metaclass=ABCMeta):
             duration=duration,
         )
 
+    def send_motor_start_stop_signal(self, uavs, start: bool, force: bool = False):
+        """Asks the driver to send a signal to start or stop the motors of the
+        given UAVs, each of which are assumed to be managed by this driver.
+
+        Typically, you don't need to override this method when implementing
+        a driver; override ``_send_motor_start_stop_signal_single()`` instead.
+
+        Parameters:
+            uavs (List[UAV]): the UAVs to address with this request.
+            start: whether the motors should be started (`True`) or stopped
+                (`False`)
+            force: whether to force the execution of the command even if it is
+                unsafe (e.g., stopping the motors while airborne)
+
+        Returns:
+            Dict[UAV,object]: dict mapping UAVs to the corresponding results
+                (which may also be errors)
+        """
+        return self._send_signal(
+            uavs,
+            "motor start signal" if start else "motor stop signal",
+            self._send_motor_start_stop_signal_single,
+        )
+
     def send_reset_signal(self, uavs, *, component: Optional[str] = None):
         """Asks the driver to send a reset signal to the given UAVs in order
         to restart some component of the UAV or the whole UAV itself.
@@ -651,6 +675,34 @@ class UAVDriver(metaclass=ABCMeta):
             signals: the list of signal types that the targeted UAV should emit
                 (e.g., 'sound', 'light')
             duration: the duration of the required signal in milliseconds
+
+        Raises:
+            NotImplementedError: if the operation is not supported by the
+                driver yet, but there are plans to implement it
+            NotSupportedError: if the operation is not supported by the
+                driver and will not be supported in the future either
+        """
+        raise NotImplementedError
+
+    def _send_motor_start_stop_signal_single(
+        self, uav: UAV, start: bool, force: bool = False
+    ) -> None:
+        """Asks the driver to send a signal to start or stop the motors of the
+        given UAVs, each of which are assumed to be managed by this driver.
+
+        May return an awaitable if sending the signal takes a longer time.
+
+        The function follows the "samurai principle", i.e. "return victorious,
+        or not at all". It means that if it returns, the operation succeeded.
+        Raise an exception if the operation cannot be executed for any reason;
+        a RuntimeError is typically sufficient.
+
+        Parameters:
+            uav: the UAV to address with this request.
+            start: whether the motors should be started (`True`) or stopped
+                (`False`)
+            force: whether to force the execution of the command even if it is
+                unsafe (e.g., stopping the motors while airborne)
 
         Raises:
             NotImplementedError: if the operation is not supported by the

@@ -785,7 +785,7 @@ class MessageHub:
         type = message.body.get("type") if hasattr(message, "body") else "NO-TYPE"
 
         if to is None:
-            if type not in ("UAV-INF", "DEV-INF"):
+            if type not in ("CONN-INF", "UAV-INF", "DEV-INF"):
                 log.info(
                     f"Broadcasting {type} notification",
                     extra={"id": message.id, "semantics": "notification"},

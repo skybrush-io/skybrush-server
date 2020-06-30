@@ -106,6 +106,7 @@ class MAVMessageType(IntEnum):
     COMMAND_LONG = 76
     COMMAND_ACK = 77
     SET_POSITION_TARGET_GLOBAL_INT = 86
+    AUTOPILOT_VERSION = 148
 
 
 class MAVModeFlag(IntFlag):

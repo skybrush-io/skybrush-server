@@ -15,7 +15,7 @@ from flockwave.gps.vectors import GPSCoordinate, VelocityNED
 from flockwave.server.errors import NotSupportedError
 from flockwave.server.model.battery import BatteryInfo
 from flockwave.server.model.gps import GPSFix
-from flockwave.server.model.uav import UAVBase, UAVDriver
+from flockwave.server.model.uav import VersionInfo, UAVBase, UAVDriver
 from flockwave.spec.errors import FlockwaveErrorCode
 
 from .autopilots import Autopilot, UnknownAutopilot
@@ -33,6 +33,7 @@ from .enums import (
     PositionTargetTypemask,
 )
 from .types import MAVLinkMessage, spec
+from .utils import mavlink_version_number_to_semver
 
 __all__ = ("MAVLinkDriver",)
 
@@ -156,6 +157,26 @@ class MAVLinkDriver(UAVDriver):
             raise NotSupportedError
 
         return result == MAVResult.ACCEPTED
+
+    def _request_version_info_single(self, uav) -> VersionInfo:
+        version_info = uav.get_last_message(MAVMessageType.AUTOPILOT_VERSION)
+        result = {}
+
+        for version in ("flight", "middleware", "os"):
+            if getattr(version_info, f"{version}_sw_version", 0) > 0:
+                result[f"{version}_sw"] = mavlink_version_number_to_semver(
+                    getattr(version_info, f"{version}_sw_version", 0),
+                    getattr(version_info, f"{version}_custom_version", None),
+                )
+
+        if version_info.board_version > 0:
+            result["board"] = mavlink_version_number_to_semver(
+                version_info.board_version
+            )
+
+        print(repr(result))
+
+        return result
 
     async def _send_fly_to_target_signal_single(self, uav, target) -> None:
         type_mask = (

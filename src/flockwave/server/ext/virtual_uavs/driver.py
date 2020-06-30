@@ -18,7 +18,7 @@ from flockwave.gps.vectors import (
 )
 from flockwave.server.concurrency import delayed
 from flockwave.server.model.gps import GPSFixType
-from flockwave.server.model.uav import UAVBase, UAVDriver
+from flockwave.server.model.uav import VersionInfo, UAVBase, UAVDriver
 from flockwave.server.utils import color_to_rgb565
 from flockwave.spec.errors import FlockwaveErrorCode
 
@@ -154,6 +154,9 @@ class VirtualUAVDriver(UAVDriver):
     async def handle_command_yo(self, uav):
         await sleep(0.5 + random())
         return "yo" + choice("?!.")
+
+    def _request_version_info_single(self, uav) -> VersionInfo:
+        return {"firmware": self.app.version}
 
     def _send_fly_to_target_signal_single(self, uav, target) -> None:
         if uav.state == VirtualUAVState.LANDED:

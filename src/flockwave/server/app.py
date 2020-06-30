@@ -831,6 +831,11 @@ class SkybrushServer:
         """
         self._stopping.disconnect(func, sender=self)
 
+    @property
+    def version(self) -> str:
+        """The version number of the server application."""
+        return server_version
+
     def _find_command_receipt_by_id(self, receipt_id, response=None):
         """Finds the asynchronous command execution receipt with the given
         ID in the command execution manager or registers a failure in the

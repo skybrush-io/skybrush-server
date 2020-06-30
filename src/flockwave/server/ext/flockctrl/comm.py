@@ -6,6 +6,7 @@ from datetime import datetime
 from io import BytesIO
 from paramiko import SSHClient
 from select import select
+from trio import Event
 from trio_util import periodic
 from typing import Iterable, Optional, Tuple, Union
 
@@ -172,6 +173,7 @@ class BurstedMultiTargetMessageManager:
         """Constructor."""
         self._driver = driver
         self._sequence_ids = [0] * 16
+        self._active_bursts = [None] * 16
 
     def schedule_burst(
         self, command: MultiTargetCommand, uav_ids: Iterable[int], duration: float
@@ -184,10 +186,21 @@ class BurstedMultiTargetMessageManager:
                 the numeric IDs in the FlockCtrl network, not the global UAV IDs.
             duration: duration of the burst, in seconds.
         """
-        self._driver.run_in_background(self._execute_burst, command, uav_ids, duration)
+        if self._active_bursts[command]:
+            # Cancel the previous burst for this command
+            self._active_bursts[command].set()
+
+        event = self._active_bursts[command] = Event()
+        self._driver.run_in_background(
+            self._execute_burst, command, uav_ids, duration, event
+        )
 
     async def _execute_burst(
-        self, command: MultiTargetCommand, uav_ids: Iterable[int], duration: float
+        self,
+        command: MultiTargetCommand,
+        uav_ids: Iterable[int],
+        duration: float,
+        event: Event,
     ) -> None:
         """Performs a bursted simple command transmission targeting multiple
         UAVs.
@@ -200,6 +213,7 @@ class BurstedMultiTargetMessageManager:
             uav_ids: the IDs of the UAVs to target. The IDs presented here are
                 the numeric IDs in the FlockCtrl network, not the global UAV IDs.
             duration: duration of the burst, in seconds.
+            event: a Trio event that can be used to cancel the burst
         """
         packet = MultiTargetCommandPacket(uav_ids, command, self._sequence_ids[command])
         self._sequence_ids[command] += 1
@@ -207,6 +221,7 @@ class BurstedMultiTargetMessageManager:
         async for elapsed, _ in periodic(0.1):
             # We want to ensure that the packet is sent at least once so we
             # broadcast first and then check the elapsed time
-            await self._driver.broadcast_packet(packet, "wireless")
-            if elapsed >= duration:
+            if elapsed >= duration or event.is_set():
                 break
+
+            await self._driver.broadcast_packet(packet, "wireless")

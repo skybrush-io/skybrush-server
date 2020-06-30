@@ -23,6 +23,11 @@ __all__ = ("is_uav", "PassiveUAVDriver", "UAV", "UAVBase", "UAVDriver", "UAVStat
 log = base_log.getChild("uav")
 
 
+#: Type alias for version information objects returned from UAVDriver, mapping
+#: component names to version numbers
+VersionInfo = Dict[str, str]
+
+
 class UAVStatusInfo(TimestampMixin, metaclass=ModelMeta):
     """Class representing the status information available about a single
     UAV.
@@ -297,6 +302,11 @@ class UAVDriver(metaclass=ABCMeta):
     def __init__(self):
         """Constructor."""
         self.app = None
+
+    def request_version_info(self, uavs) -> Dict[str, VersionInfo]:
+        return self._send_signal(
+            uavs, "version info request", self._request_version_info_single
+        )
 
     def send_command(self, uavs, command, args=None, kwds=None):
         """Asks the driver to send a direct command to the given UAVs, each
@@ -604,6 +614,25 @@ class UAVDriver(metaclass=ABCMeta):
                 )
             result[uav] = outcome
         return result
+
+    def _request_version_info_single(self, uav: UAV) -> VersionInfo:
+        """Asks the driver to return a mapping from component names to the
+        corresponding version numbers for a single UAV managed by this driver.
+
+        May return an awaitable if sending the signal takes a longer time.
+
+        The function follows the "samurai principle", i.e. "return victorious,
+        or not at all". It means that if it returns, the operation succeeded.
+        Raise an exception if the operation cannot be executed for any reason;
+        a RuntimeError is typically sufficient.
+
+        Raises:
+            NotImplementedError: if the operation is not supported by the
+                driver yet, but there are plans to implement it
+            NotSupportedError: if the operation is not supported by the
+                driver and will not be supported in the future either
+        """
+        raise NotImplementedError
 
     def _send_fly_to_target_signal_single(self, uav: UAV, target) -> None:
         """Asks the driver to send a "fly to target" signal to a single UAV

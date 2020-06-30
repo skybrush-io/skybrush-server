@@ -517,6 +517,7 @@ class SkybrushServer:
                 {"duration": divide_by(1000)},
             ),
             "UAV-TAKEOFF": ("send_takeoff_signal", None),
+            "UAV-VER": ("request_version_info", None),
         }.get(message_type, (None, None))
 
         # Transform the incoming arguments if needed before sending them

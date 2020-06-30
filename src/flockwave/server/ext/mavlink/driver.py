@@ -174,8 +174,6 @@ class MAVLinkDriver(UAVDriver):
                 version_info.board_version
             )
 
-        print(repr(result))
-
         return result
 
     async def _send_fly_to_target_signal_single(self, uav, target) -> None:

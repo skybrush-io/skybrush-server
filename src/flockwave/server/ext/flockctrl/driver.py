@@ -23,7 +23,7 @@ from flockwave.protocols.flockctrl.packets import (
 from flockwave.server.ext.logger import log
 from flockwave.server.model.battery import BatteryInfo
 from flockwave.server.model.gps import GPSFixType
-from flockwave.server.model.uav import UAVBase, UAVDriver
+from flockwave.server.model.uav import UAVBase, UAVDriver, VersionInfo
 from flockwave.server.utils import color_to_rgb565, nop
 from flockwave.spec.ids import make_valid_object_id
 from time import time
@@ -613,12 +613,25 @@ class FlockCtrlDriver(UAVDriver):
         """Sends a single command to a UAV and checks the response to determine
         whether it looks like an error.
 
+        Returns:
+            the result of the command
+
         Raises:
             RuntimeError: if the response looks like an error
         """
         response = await self._send_command_to_uav(cmd, uav)
         if response and response.startswith("/!\\"):
             raise RuntimeError(response[3:].strip())
+        return response
+
+    async def _request_version_info_single(self, uav) -> VersionInfo:
+        response = await self._send_command_to_uav_and_check_for_errors("version", uav)
+        result = {}
+        for line in response.splitlines():
+            component, sep, version = line.partition(":")
+            if sep:
+                result[component] = version.strip()
+        return result
 
     async def _send_fly_to_target_signal_single(self, uav, target):
         altitude = target.agl

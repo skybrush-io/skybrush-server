@@ -5,7 +5,7 @@ and forwards the corrections to the UAVs managed by the server.
 from contextlib import ExitStack
 from functools import partial
 from trio import open_memory_channel, open_nursery, sleep_forever
-from typing import Iterable, Optional
+from typing import Optional
 
 from flockwave.channels import ParserChannel
 from flockwave.connections import Connection, create_connection
@@ -19,6 +19,7 @@ from ..base import ExtensionBase
 
 from .preset import RTKConfigurationPreset
 from .registry import RTKPresetRegistry
+from .statistics import RTKStatistics
 
 
 class RTKExtension(ExtensionBase):
@@ -34,8 +35,8 @@ class RTKExtension(ExtensionBase):
         self._current_preset = None
         self._presets = []
         self._registry = None
+        self._statistics = RTKStatistics()
         self._rtk_preset_task_cancel_scope = None
-        self._satellite_cnrs = {}
 
     def configure(self, configuration):
         """Loads the extension."""
@@ -122,13 +123,7 @@ class RTKExtension(ExtensionBase):
 
     def handle_RTK_STAT(self, message: FlockwaveMessage, sender, hub: MessageHub):
         """Handles an incoming RTK-STAT message."""
-        return {
-            "messages": {
-                "rtcm3/1003": [16384, 1177],  # age in msec, bits per sec
-                "rtcm3/1005": [16384, 1177],  # age in msec, bits per sec
-            },
-            "cnr": self._satellite_cnrs,
-        }
+        return self._statistics.json
 
     async def run(self, app, configuration, logger):
         with ExitStack() as stack:
@@ -163,12 +158,6 @@ class RTKExtension(ExtensionBase):
                     if message == "set_preset":
                         await self._perform_preset_switch(args)
 
-    def _clear_satellite_cnrs(self) -> None:
-        """Clears the locally stored information about the carrier-to-noise
-        ratios of the various satellites.
-        """
-        self._satellite_cnrs.clear()
-
     async def _request_preset_switch(self, value: RTKConfigurationPreset) -> None:
         """Requests the extension to switch to a new RTK preset."""
         if not self._tx_queue:
@@ -201,9 +190,9 @@ class RTKExtension(ExtensionBase):
         """Master task that handles all the connections that constitute a single
         RTK preset.
         """
-        self._clear_satellite_cnrs()
-
         with ExitStack() as stack:
+            stack.enter_context(self._statistics.use())
+
             async with open_nursery() as nursery:
                 task_status.started(nursery.cancel_scope)
 
@@ -247,31 +236,10 @@ class RTKExtension(ExtensionBase):
 
         async with channel:
             async for packet in channel:
-                if hasattr(packet, "satellites"):
-                    self._update_satellite_status(packet.satellites)
-
+                self._statistics.notify(packet)
                 if preset.accepts(packet):
                     encoded = encoder(packet)
                     signal.send(packet=encoded)
-
-    def _update_satellite_status(self, satellites: Iterable[object]) -> None:
-        """Update the locally stored information about the satellites based on
-        the given satellite list retrieved from an RTCM packet.
-        """
-        for satellite in satellites:
-            id = getattr(satellite, "id", None)
-            if not id:
-                continue
-
-            cnr = getattr(satellite, "cnr", None)
-            if cnr is None:
-                continue
-
-            if hasattr(cnr, "__iter__"):
-                # multiple CNRs (e.g., for L1 and L2 channels), take the average
-                cnr = sum(cnr) / len(cnr)
-
-            self._satellite_cnrs[id] = cnr
 
 
 construct = RTKExtension

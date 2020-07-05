@@ -79,6 +79,7 @@ class RTKStatistics:
 
     def clear(self) -> None:
         """Clears the contents of the RTK statistics object."""
+        self._message_observations.clear()
         self._satellite_cnrs.clear()
 
     @property

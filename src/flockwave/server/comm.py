@@ -69,6 +69,13 @@ class CommunicationManager(Generic[PacketType, AddressType]):
         can_send: bool = True
         channel: Optional[MessageChannel] = None
 
+        @property
+        def is_open(self) -> bool:
+            """Returns whehther the communication channel represented by this
+            entry is up and running.
+            """
+            return self.channel is not None
+
     def __init__(
         self,
         channel_factory: Callable[[Connection, Logger], MessageChannel],
@@ -131,15 +138,6 @@ class CommunicationManager(Generic[PacketType, AddressType]):
 
         await queue.send((packet, BROADCAST))
 
-    def channels(self) -> Iterator[MessageChannel]:
-        """Returns an iterator that iterates over the list of open message
-        channels corresponding to this network.
-        """
-        for entries in self._entries_by_name.values():
-            for entry in entries:
-                if entry.channel:
-                    yield entry.channel
-
     def enqueue_packet(self, packet: PacketType, destination: Tuple[str, AddressType]):
         """Requests the communication manager to send the given message packet
         to the given destination and return immediately.
@@ -162,6 +160,22 @@ class CommunicationManager(Generic[PacketType, AddressType]):
                 self.log.warn(
                     "Dropping outbound packet; outbound message queue is full"
                 )
+
+    def is_channel_open(self, name: str) -> bool:
+        """Returns whether the channel with the given name is currently up and
+        running.
+        """
+        entries = self._entries_by_name.get(name)
+        return any(entry.is_open for entry in entries)
+
+    def open_channels(self) -> Iterator[MessageChannel]:
+        """Returns an iterator that iterates over the list of open message
+        channels corresponding to this network.
+        """
+        for entries in self._entries_by_name.values():
+            for entry in entries:
+                if entry.channel:
+                    yield entry.channel
 
     async def run(self, *, consumer, supervisor, log, tasks=None):
         """Runs the communication manager in a separate task, using the
@@ -238,31 +252,38 @@ class CommunicationManager(Generic[PacketType, AddressType]):
             await wait_all(*tasks)
 
     async def _run_inbound_link(self, connection, *, entry, queue):
-        address = getattr(connection, "address")
-        address = self.format_address(address) if address else None
         has_error = False
+        channel_created = False
+        address = None
 
         try:
+            address = getattr(connection, "address")
+            address = self.format_address(address) if address else None
+
+            entry.channel = self.channel_factory(connection, self.log)
+
+            channel_created = True
             if address:
                 self.log.info(f"Connection at {address} up and running.")
 
-            entry.channel = self.channel_factory(connection, self.log)
             async for message in entry.channel:
                 await queue.send((entry.name, message))
 
         except Exception as ex:
             has_error = True
             self.log.exception(ex)
-            if address:
+            if address and channel_created:
                 self.log.warn(f"Connection at {address} down, trying to reopen.")
 
         finally:
             entry.channel = None
-            if address and not has_error:
+            if address and channel_created and not has_error:
                 self.log.info(f"Connection at {address} closed.")
 
     async def _run_outbound_links(self):
-        tx_queue, rx_queue = open_memory_channel(32)
+        # ephemeris RTK streams send messages in bursts so it's better to have
+        # a relatively large queue here
+        tx_queue, rx_queue = open_memory_channel(128)
         async with tx_queue, rx_queue:
             try:
                 self._outbound_tx_queue = tx_queue
@@ -299,7 +320,7 @@ class CommunicationManager(Generic[PacketType, AddressType]):
 
         if entries:
             for index, entry in enumerate(entries):
-                if entry.channel is not None and entry.can_send:
+                if entry.is_open and entry.can_send:
                     try:
                         if address is BROADCAST:
                             # This must be a broadcast

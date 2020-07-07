@@ -8,10 +8,15 @@ from paramiko import SSHClient
 from select import select
 from trio import Event
 from trio_util import periodic
-from typing import Iterable, Optional, Tuple, Union
+from typing import Any, Iterable, Optional, Tuple, Union
 
 from flockwave.channels import MessageChannel
-from flockwave.connections import IPAddressAndPort, UDPSocketConnection
+from flockwave.connections import (
+    Connection,
+    IPAddressAndPort,
+    StreamConnectionBase,
+    UDPSocketConnection,
+)
 from flockwave.logger import Logger
 from flockwave.networking import format_socket_address
 from flockwave.protocols.flockctrl import (
@@ -22,6 +27,7 @@ from flockwave.protocols.flockctrl import (
 )
 from flockwave.protocols.flockctrl.packets import MultiTargetCommandPacket
 from flockwave.server.comm import CommunicationManager
+from flockwave.server.utils import constant
 
 
 __all__ = ("create_communication_manager", "execute_ssh_command", "upload_mission")
@@ -32,22 +38,90 @@ def create_communication_manager() -> CommunicationManager[
 ]:
     """Creates a communication manager instance for the extension."""
     return CommunicationManager(
-        channel_factory=create_flockctrl_udp_message_channel,
-        format_address=format_socket_address,
+        channel_factory=create_flockctrl_message_channel,
+        format_address=format_flockctrl_address,
     )
+
+
+def create_flockctrl_message_channel(
+    connection: Connection, log: Logger
+) -> MessageChannel[Tuple[FlockCtrlPacket, Union[int, IPAddressAndPort]]]:
+    """Creates a bidirectional Trio-style channel that reads data from and
+    writes data to the given connection, and handles the parsing of `flockctrl`
+    messages automaticaly. The channel will accept and yield tuples containing
+    a FlockCtrlPacket_ object and a corresponding address; the address is
+    connection-dependent. For UDP connections, the address is a tuple consisting
+    of an IP address and a port. For radio connections, the address is an
+    integer where zero denotes the ground station and 32767 is the broadcast
+    address.
+
+    Parameters:
+        connection: the connection to read data from and write data to
+        log: the logger on which any error messages and warnings should be logged
+
+    Returns:
+        the message channel
+
+    Raises:
+        TypeError: if we do not support the given connection type in this
+            extension
+    """
+    if isinstance(connection, UDPSocketConnection):
+        return create_flockctrl_udp_message_channel(connection, log)
+    elif isinstance(connection, StreamConnectionBase):
+        return create_flockctrl_radio_message_channel(connection, log)
+
+    raise TypeError(f"Connection type not supported: {connection.__class__.__name__}")
+
+
+def create_flockctrl_radio_message_channel(
+    connection: StreamConnectionBase, log: Logger
+) -> MessageChannel[Tuple[FlockCtrlPacket, int]]:
+    """Creates a bidirectional Trio-style channel that reads data from and
+    writes data to the given radio connection, and handles the parsing of
+    `flockctrl` messages automatically. The channel will accept and yield
+    tuples containing a FlockCtrlPacket_ object and an address, which is an
+    integer that uniquely identifies drones and the ground station.
+
+    By convention, the address of the ground station is 0 and the broadcast
+    address is 32767.
+
+    Parameters:
+        connection: the connection to write data to
+        log: the logger on which any error messages and warnings should be logged
+
+    Returns:
+        the message channel
+    """
+
+    # TODO(ntamas): the parser does nothing for the time being, just consumes
+    # everything
+    channel = MessageChannel(
+        connection,
+        parser=constant(()),
+        encoder=FlockCtrlEncoder.create_radio_encoder_function(
+            log=log, source_address=0
+        ),
+    )
+    channel.broadcast_address = 32767
+
+    return channel
 
 
 def create_flockctrl_udp_message_channel(
     connection: UDPSocketConnection, log: Logger
 ) -> MessageChannel[Tuple[FlockCtrlPacket, IPAddressAndPort]]:
     """Creates a bidirectional Trio-style channel that reads data from and
-    writes data to the given UDP connection, and does the parsing of
+    writes data to the given UDP connection, and handles the parsing of
     `flockctrl` messages automatically. The channel will accept and yield
-    tuples containing an IP address-port pair and a FlockCtrlPacket_ object.
+    tuples containing a FlockCtrlPacket_ object and an IP address-port pair.
 
     Parameters:
         connection: the connection to read data from and write data to
         log: the logger on which any error messages and warnings should be logged
+
+    Returns:
+        the message channel
     """
     channel = MessageChannel(
         connection,
@@ -116,6 +190,16 @@ def execute_ssh_command(
         exit_code = 0
 
     return b"".join(stdout), b"".join(stderr), exit_code
+
+
+def format_flockctrl_address(address: Any) -> str:
+    """Returns a formatted representation of the address of a `flockctrl`
+    message channel.
+    """
+    try:
+        return format_socket_address(address)
+    except ValueError:
+        return str(address)
 
 
 def upload_mission(raw_data: bytes, address: Union[str, Tuple[str, int]]) -> None:

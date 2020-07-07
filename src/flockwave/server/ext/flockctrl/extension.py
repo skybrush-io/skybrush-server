@@ -45,8 +45,9 @@ def create_wireless_connection_configuration_for_subnet(
     }
 
 
-#: Dictionary that resolves common preset aliases used in the configuration file
-PRESETS = {
+#: Dictionary that resolves common wireless connection preset aliases used in
+#: the configuration file
+WIRELESS_PRESETS = {
     "default": create_wireless_connection_configuration_for_subnet("10.0.0.0/8"),
     "local": {
         "broadcast": "udp-multicast://239.255.67.77:4243?interface=127.0.0.1",
@@ -54,6 +55,12 @@ PRESETS = {
         # this socket are sent on the loopback interface
         "unicast": "udp://127.0.0.1?multicast_interface=127.0.0.1",
     },
+}
+
+#: Dictionary that resolves common radio connection preset aliases used in
+#: the configuration file
+RADIO_PRESETS = {
+    "default": "serial:0403:6015?baud=57600"  # SiK radio, FTDI USB serial device
 }
 
 
@@ -70,19 +77,21 @@ class FlockCtrlDronesExtension(UAVExtensionBase):
 
     def _create_connections(
         self, configuration
-    ) -> Tuple[Optional[Connection], Optional[Connection]]:
-        """Creates the wireless broadcast and unicast link objects from the
-        configuration object of the extension.
+    ) -> Tuple[Optional[Connection], Optional[Connection], Optional[Connection]]:
+        """Creates the wireless broadcast and unicast link objects and the
+        radio backup link (if any) from the configuration object of the
+        extension.
 
         Parameters:
             configuration: the configuration object of the extension
 
         Returns:
-            the broadcast and the unicast link; either of them may be
-            `None` if they are not configured
+            the broadcast and the unicast link, and the radio backup link. Any
+            of these can be `None` if they are not configured.
         """
         connection_config = configuration.get("connections", {})
         wireless_config = connection_config.get("wireless", {})
+        radio_config = connection_config.get("radio", {})
 
         if isinstance(wireless_config, str):
             if "/" in wireless_config:
@@ -91,27 +100,45 @@ class FlockCtrlDronesExtension(UAVExtensionBase):
                     wireless_config
                 )
             else:
-                preset = PRESETS.get(wireless_config)
+                preset = WIRELESS_PRESETS.get(wireless_config)
                 if preset:
                     wireless_config = preset
                 else:
-                    raise KeyError(f"no such configuration preset: {wireless_config}")
+                    raise KeyError(
+                        f"no such wireless configuration preset: {wireless_config}"
+                    )
+
+        if isinstance(radio_config, str) and ":" not in radio_config:
+            preset = RADIO_PRESETS.get(radio_config)
+            if preset:
+                radio_config = preset
+            else:
+                raise KeyError(f"no such radio configuration preset: {radio_config}")
 
         broadcast_link = self._create_lowlevel_connection(
             wireless_config.get("broadcast")
         )
         unicast_link = self._create_lowlevel_connection(wireless_config.get("unicast"))
+        radio_link = self._create_lowlevel_connection(radio_config)
 
         # Let the unicast link know where to send broadcast packets
         unicast_link.broadcast_address = broadcast_link.address
 
-        return broadcast_link, unicast_link
+        # The radio link also needs a dummy broadcast address; there are not
+        # really any addresses in the radio link, but the system needs to have
+        # one so it can recognize that the link can broaddcast
+        radio_link.address = "backup radio"
+        radio_link.broadcast_address = ""
+
+        return broadcast_link, unicast_link, radio_link
 
     def _create_driver(self):
         return FlockCtrlDriver()
 
     async def run(self, app, configuration):
-        broadcast_link, unicast_link = self._create_connections(configuration)
+        broadcast_link, unicast_link, radio_link = self._create_connections(
+            configuration
+        )
 
         clock_registry = app.import_api("clocks").registry
         rtk_signal = app.import_api("signals").get("rtk:packet")
@@ -124,15 +151,27 @@ class FlockCtrlDronesExtension(UAVExtensionBase):
                 )
             )
 
-            # Register the broadcast link
-            stack.enter_context(
-                app.connection_registry.use(
-                    broadcast_link,
-                    "Wireless",
-                    description="Upstream wireless connection",
-                    purpose=ConnectionPurpose.uavRadioLink,
+            # Register the broadcast link (if any)
+            if broadcast_link:
+                stack.enter_context(
+                    app.connection_registry.use(
+                        broadcast_link,
+                        "Wireless",
+                        description="Upstream wireless connection",
+                        purpose=ConnectionPurpose.uavRadioLink,
+                    )
                 )
-            )
+
+            # Register the radio backup link (if any)
+            if radio_link:
+                stack.enter_context(
+                    app.connection_registry.use(
+                        radio_link,
+                        "Radio",
+                        description="Upstream radio connection",
+                        purpose=ConnectionPurpose.uavRadioLink,
+                    )
+                )
 
             # Create the communication manager
             manager = create_communication_manager()
@@ -142,6 +181,7 @@ class FlockCtrlDronesExtension(UAVExtensionBase):
             # must be the unicast link.
             manager.add(unicast_link, name="wireless")
             manager.add(broadcast_link, name="wireless", can_send=False)
+            manager.add(radio_link, name="radio")
 
             # Register a callback for RTK correction packets
             stack.enter_context(rtk_signal.connected_to(self._on_rtk_correction_packet))
@@ -241,9 +281,14 @@ class FlockCtrlDronesExtension(UAVExtensionBase):
         """
         packet = RawGPSInjectionPacket(packet)
 
-        # TODO(ntamas): use radio instead of wireless if available
         if self._manager:
-            self._manager.enqueue_packet(packet, ("wireless", BROADCAST))
+            # For RTK packets, we primarily send them over the radio link,
+            # unless we don't have a radio, in which case we fall back to the
+            # wireless connection
+            if self._manager.is_channel_open("radio"):
+                self._manager.enqueue_packet(packet, ("radio", BROADCAST))
+            else:
+                self._manager.enqueue_packet(packet, ("wireless", BROADCAST))
 
     async def _broadcast_packet(self, packet: FlockCtrlPacket, medium: str) -> None:
         """Broadcasts a FlockCtrl packet to all UAVs in the network managed

@@ -36,6 +36,7 @@ pyjwt = "*"
 passlib = {extras = ["bcrypt"],version = "*"}
 paramiko = "*"
 scp = "*"
+colorlog = "*"
 
 [dev-packages]
 PyInstaller = "*"

@@ -409,7 +409,9 @@ class UAVDriver(metaclass=ABCMeta):
 
         Returns:
             Dict[UAV,object]: dict mapping UAVs to the corresponding results
-                (which may also be errors)
+                (which may also be errors or awaitables; it is the
+                responsibility of the caller to evaluate errors and wait for
+                awaitables)
         """
         return self._send_signal(
             uavs,
@@ -430,7 +432,9 @@ class UAVDriver(metaclass=ABCMeta):
 
         Returns:
             Dict[UAV,object]: dict mapping UAVs to the corresponding results
-                (which may also be errors)
+                (which may also be errors or awaitables; it is the
+                responsibility of the caller to evaluate errors and wait for
+                awaitables)
         """
         return self._send_signal(
             uavs, "landing signal", self._send_landing_signal_single
@@ -454,7 +458,9 @@ class UAVDriver(metaclass=ABCMeta):
 
         Returns:
             Dict[UAV,object]: dict mapping UAVs to the corresponding results
-                (which may also be errors)
+                (which may also be errors or awaitables; it is the
+                responsibility of the caller to evaluate errors and wait for
+                awaitables)
         """
         return self._send_signal(
             uavs,
@@ -480,7 +486,9 @@ class UAVDriver(metaclass=ABCMeta):
 
         Returns:
             Dict[UAV,object]: dict mapping UAVs to the corresponding results
-                (which may also be errors)
+                (which may also be errors or awaitables; it is the
+                responsibility of the caller to evaluate errors and wait for
+                awaitables)
         """
         return self._send_signal(
             uavs,
@@ -501,7 +509,9 @@ class UAVDriver(metaclass=ABCMeta):
 
         Returns:
             Dict[UAV,object]: dict mapping UAVs to the corresponding results
-                (which may also be errors)
+                (which may also be errors or awaitables; it is the
+                responsibility of the caller to evaluate errors and wait for
+                awaitables)
         """
         return self._send_signal(
             uavs,
@@ -522,7 +532,9 @@ class UAVDriver(metaclass=ABCMeta):
 
         Returns:
             Dict[UAV,object]: dict mapping UAVs to the corresponding results
-                (which may also be errors)
+                (which may also be errors or awaitables; it is the
+                responsibility of the caller to evaluate errors and wait for
+                awaitables)
         """
         return self._send_signal(
             uavs, "return to home signal", self._send_return_to_home_signal_single
@@ -540,7 +552,9 @@ class UAVDriver(metaclass=ABCMeta):
 
         Returns:
             Dict[UAV,object]: dict mapping UAVs to the corresponding results
-                (which may also be errors)
+                (which may also be errors or awaitables; it is the
+                responsibility of the caller to evaluate errors and wait for
+                awaitables)
         """
         return self._send_signal(
             uavs, "shutdown signal", self._send_shutdown_signal_single
@@ -558,7 +572,9 @@ class UAVDriver(metaclass=ABCMeta):
 
         Returns:
             Dict[UAV,object]: dict mapping UAVs to the corresponding results
-                (which may also be errors)
+                (which may also be errors or awaitables; it is the
+                responsibility of the caller to evaluate errors and wait for
+                awaitables)
         """
         return self._send_signal(
             uavs, "takeoff signal", self._send_takeoff_signal_single

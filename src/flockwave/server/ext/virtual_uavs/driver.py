@@ -209,9 +209,11 @@ class VirtualUAVDriver(UAVDriver):
     def _send_shutdown_signal_single(self, uav) -> bool:
         uav.shutdown()
 
-    async def _send_takeoff_signal_single(self, uav) -> bool:
-        # Make the takeoff signal async to simulate how it works for "real" drones
-        await sleep(0.2)
+    def _send_takeoff_signal_single(self, uav) -> bool:
+        # TODO(ntamas): Make the takeoff signal async to simulate how it
+        # works for "real" drones. Right now it would break the live demo
+        # because the show extension does not handle async responses properly.
+        # await sleep(0.2)
         uav.takeoff()
 
 

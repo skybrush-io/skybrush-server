@@ -470,7 +470,9 @@ class UAVDriver(metaclass=ABCMeta):
             duration=duration,
         )
 
-    def send_motor_start_stop_signal(self, uavs, start: bool, force: bool = False):
+    def send_motor_start_stop_signal(
+        self, uavs, start: bool = False, force: bool = False
+    ):
         """Asks the driver to send a signal to start or stop the motors of the
         given UAVs, each of which are assumed to be managed by this driver.
 

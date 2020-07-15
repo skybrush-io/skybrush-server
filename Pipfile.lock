@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "8e3bce7e4eb7b552a47c7e9aabfde2eb28e7485a9d23a6914385ea919be1ff95"
+            "sha256": "196217c77cc0df7ceebf3a10220830e9146117e1a3fcb96653547e9790a19d02"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -210,12 +210,15 @@
             "version": "==0.10.0"
         },
         "flockwave-gps": {
+            "extras": [
+                "ntrip"
+            ],
             "hashes": [
-                "sha256:71e010cc191b6578443e47451797a455ee21e58353f7af2a60aaf54f0a0fa4d7",
-                "sha256:f2bf9814f36661f69b712c38de8f7cc91479c35699b65049bc5655af90f40e6b"
+                "sha256:a8cd1345d141bdbeeef2b539aee26b1c00aca0a98126786edafcd40ba3e4ed52",
+                "sha256:d3dfd8603ec27a97f5e05fc24bd06b9b6e09f92b8ca978cb74a1e78dad4001e3"
             ],
             "index": "collmot",
-            "version": "==0.15.0"
+            "version": "==0.15.1"
         },
         "flockwave-logger": {
             "hashes": [
@@ -548,7 +551,12 @@
             "version": "==1.7.1"
         },
         "pyledctrl": {
-            "file": "https://git.collmot.com/collmot/pyledctrl/archive/3.0.1.tar.gz"
+            "hashes": [
+                "sha256:15d4910ad971cd90d95a51887c65fe9f181155627e76b176bfa38187df4dd8a7",
+                "sha256:888c5312018b5c35787e20401a5c6710f9d5058acc0e488f95e2c6a3631fb65c"
+            ],
+            "index": "collmot",
+            "version": "==3.1.0"
         },
         "pymavlink": {
             "hashes": [
@@ -700,6 +708,13 @@
                 "sha256:bda89d5935c2eac546d648028b9901107a595863cb36bae0c73ac804a9b4ce88"
             ],
             "version": "==0.10.1"
+        },
+        "tqdm": {
+            "hashes": [
+                "sha256:63ef7a6d3eb39f80d6b36e4867566b3d8e5f1fe3d6cb50c5e9ede2b3198ba7b7",
+                "sha256:7810e627bcf9d983a99d9ff8a0c09674400fd2927eddabeadf153c14a2ec8656"
+            ],
+            "version": "==4.47.0"
         },
         "trio": {
             "hashes": [

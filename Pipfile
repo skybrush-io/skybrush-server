@@ -28,8 +28,8 @@ flockwave-ext = {file = "https://git.collmot.com/collmot/flockwave-ext/archive/1
 flockwave-flockctrl = {file = "https://git.collmot.com/collmot/flockwave-flockctrl/archive/0.9.1.tar.gz"}
 flockwave-gps = {file = "https://git.collmot.com/collmot/flockwave-gps/archive/0.14.0.tar.gz"}
 flockwave-logger = {version = ">=1.3.0",index = "collmot"}
-flockwave-parsers = {version = ">=1.2.0", index = "collmot"}
-flockwave-spec = {file = "https://git.collmot.com/collmot/flockwave-spec/archive/0.38.0.tar.gz"}
+flockwave-parsers = {version = ">=1.2.0",index = "collmot"}
+flockwave-spec = {version = ">=0.39.0",index="collmot"}
 sentry-sdk = "*"
 python-dotenv = "*"
 hypercorn = {extras = ["trio"],version = "*"}

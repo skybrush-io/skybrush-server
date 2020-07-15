@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "01071823029abe768f1b07c86506b3a835071ba5269a3b7971a96bcf7775d170"
+            "sha256": "43026744201452684ee1399a16e85a31403fba4a22bcbe954df58cf39911ed71"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -213,7 +213,12 @@
             "version": "==1.2.0"
         },
         "flockwave-spec": {
-            "file": "https://git.collmot.com/collmot/flockwave-spec/archive/0.38.0.tar.gz"
+            "hashes": [
+                "sha256:24d614b859576a419984f56f9a899f83e94682a650d3bc9fd7a86aec985c4eb6",
+                "sha256:a577b283adcdbd10472129b1e79c81b2d6f728cf3a13cc4aaa32f7da05dea9d3"
+            ],
+            "index": "collmot",
+            "version": "==0.39.0"
         },
         "future": {
             "hashes": [
@@ -296,6 +301,13 @@
             ],
             "version": "==2.11.2"
         },
+        "jsonpointer": {
+            "hashes": [
+                "sha256:c192ba86648e05fdae4f08a17ec25180a9aef5008d973407b581798a83975362",
+                "sha256:ff379fa021d1b81ab539f5ec467c7745beb1a5671463f9dcc2b2d458bd361c1e"
+            ],
+            "version": "==2.0"
+        },
         "jsonschema": {
             "hashes": [
                 "sha256:4e5b3cf8216f577bee9ce139cbe72eca3ea4f292ec60928ff24758ce626cd163",
@@ -373,6 +385,12 @@
                 "sha256:e8313f01ba26fbbe36c7be1966a7b7424942f670f38e666995b88d012765b9be"
             ],
             "version": "==1.1.1"
+        },
+        "memoized": {
+            "hashes": [
+                "sha256:cdce8bacc6941a64f9a825067602c13810cfd9b84efaaf024c400ef6e7d378d8"
+            ],
+            "version": "==0.3"
         },
         "mido": {
             "hashes": [

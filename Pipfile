@@ -24,9 +24,9 @@ quart-trio = "*"
 trio-util = ">=0.1.1"
 attrs = "*"
 flockwave-conn = {extras = ["midi", "serial"],version = ">=1.11.0",index = "collmot"}
-flockwave-ext = {file = "https://git.collmot.com/collmot/flockwave-ext/archive/1.3.1.tar.gz"}
+flockwave-ext = {version = ">=1.4.0",index = "collmot"}
 flockwave-flockctrl = {file = "https://git.collmot.com/collmot/flockwave-flockctrl/archive/0.9.1.tar.gz"}
-flockwave-gps = {file = "https://git.collmot.com/collmot/flockwave-gps/archive/0.14.0.tar.gz"}
+flockwave-gps = {version = ">=0.15.0",index = "collmot"}
 flockwave-logger = {version = ">=1.3.0",index = "collmot"}
 flockwave-parsers = {version = ">=1.2.0",index = "collmot"}
 flockwave-spec = {version = ">=0.39.0",index="collmot"}

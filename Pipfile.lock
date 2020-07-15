@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "fde48dfe1d65f7ea3a06c89a3572c8151e489ba69e79a46dfbb412ad96de66ed"
+            "sha256": "8e3bce7e4eb7b552a47c7e9aabfde2eb28e7485a9d23a6914385ea919be1ff95"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -151,6 +151,12 @@
             "index": "pypi",
             "version": "==0.1.5"
         },
+        "crcmod": {
+            "hashes": [
+                "sha256:dc7051a0db5f2bd48665a990d3ec1cc305a466a77358ca4492826f41f283601e"
+            ],
+            "version": "==1.7"
+        },
         "cryptography": {
             "hashes": [
                 "sha256:091d31c42f444c6f519485ed528d8b451d1a0c7bf30e8ca583a0cac44b8a0df6",
@@ -196,7 +202,12 @@
             "version": "==1.4.0"
         },
         "flockwave-flockctrl": {
-            "file": "https://git.collmot.com/collmot/flockwave-flockctrl/archive/0.9.1.tar.gz"
+            "hashes": [
+                "sha256:716437ec56a9218cc10367ef835319c117b6572b91c710aff082efa12c29dcfa",
+                "sha256:f69718a568813b021fc2e2d547b78238e52758acf529f74e1b52ce6c6e5e9689"
+            ],
+            "index": "collmot",
+            "version": "==0.10.0"
         },
         "flockwave-gps": {
             "hashes": [
@@ -249,6 +260,12 @@
                 "sha256:875f41ebd6f2c44781259005b157faed1a5031df3ae5aa7bcb4628a6c0782f14"
             ],
             "version": "==3.2.0"
+        },
+        "hexdump": {
+            "hashes": [
+                "sha256:d781a43b0c16ace3f9366aade73e8ad3a7bd5137d58f0b45ab2d3f54876f20db"
+            ],
+            "version": "==3.3"
         },
         "hpack": {
             "hashes": [

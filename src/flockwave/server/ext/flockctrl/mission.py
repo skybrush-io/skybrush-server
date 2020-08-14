@@ -174,7 +174,7 @@ def generate_mission_file_from_show_specification(show) -> bytes:
                 y=point[1],
                 z=point[2],
                 vxy=8,  # TODO: get from show
-                vz=2.5,  # TODO: get from show
+                vz=2.9,  # TODO: get from show
                 t=t - last_t,
             )
         )
@@ -208,7 +208,7 @@ def generate_mission_file_from_show_specification(show) -> bytes:
         "max_flying_range": max_distance,
         "orientation": -1,  # TODO: get from show
         "velocity_xy": 8,  # TODO: get from show
-        "velocity_z": 2.5,  # TODO: get from show
+        "velocity_z": 2.9,  # TODO: get from show
     }
 
     # create mission files

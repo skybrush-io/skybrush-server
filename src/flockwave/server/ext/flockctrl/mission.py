@@ -207,8 +207,10 @@ def generate_mission_file_from_show_specification(show) -> bytes:
         "max_flying_height": max_altitude,
         "max_flying_range": max_distance,
         "orientation": -1,  # TODO: get from show
-        "velocity_xy": 8,  # TODO: get from show
-        "velocity_z": 2.9,  # TODO: get from show
+        "velocity_xy": 5,  # TODO: get from show
+        "velocity_z": 2,  # TODO: get from show
+        "max_velocity_xy": 8,  # TODO: get from show
+        "max_velocity_z": 2.9,  # TODO: get from show
     }
 
     # create mission files

@@ -40,7 +40,7 @@ yaw=auto 30 0
 WAYPOINT_GROUND_STR = """motoroff=10"""
 
 TIMELINE_WAYPOINT_STR = (
-    "N{lat:.8f} E{lon:.8f} {agl:.2f} {velocity_xy:.2f} {velocity_z:.2f} T{time:.6f} 6"
+    "N{lat:.8f} E{lon:.8f} {agl:.2f} {max_velocity_xy:.2f} {max_velocity_z:.2f} T{time:.6f} 6"
 )
 
 TRIP_STR = """
@@ -189,25 +189,32 @@ class ERPSystemConnectionDemoExtension(ExtensionBase):
             )
 
     def generate_choreography_file_for_trip(
-        self, trip: Trip, velocity_xy: float = 4, velocity_z: float = 1, agl: float = 5
+        self, trip: Trip, velocity_xy: float = 4, velocity_z: float = 1,
+        max_velocity_xy: float = 6, max_velocity_z: float = 2, agl: float = 5
     ) -> str:
         """Generate a choreography file from a given route between stations."""
         return get_template("mission/choreography.cfg").format(
-            altitude_setpoint=agl, velocity_xy=velocity_xy, velocity_z=velocity_z
+            altitude_setpoint=agl, velocity_xy=velocity_xy, velocity_z=velocity_z,
+            max_velocity_xy=max_velocity_xy, max_velocity_z=max_velocity_z
         )
 
     def generate_mission_for_trip(
-        self, trip: Trip, velocity_xy: float = 4, velocity_z: float = 1, agl: float = 5
+        self, trip: Trip, velocity_xy: float = 4, velocity_z: float = 1,
+        max_velocity_xy: float = 6, max_velocity_z: float = 2, agl: float = 5
     ) -> bytes:
         """Generate a complete mission file as an in-memory .zip buffer
         for the given UAV with the given parameters."""
         # generate individual files to be contained in the zip file
         waypoint_ground_str = WAYPOINT_INIT_STR + WAYPOINT_GROUND_STR
         waypoint_str = self.generate_waypoint_file_for_trip(
-            trip, velocity_xy=velocity_xy, velocity_z=velocity_z, agl=agl
+            trip, velocity_xy=velocity_xy, velocity_z=velocity_z,
+            max_velocity_xy=max_velocity_xy, max_velocity_z=max_velocity_z,
+            agl=agl
         )
         choreography_str = self.generate_choreography_file_for_trip(
-            trip, velocity_xy=velocity_xy, velocity_z=velocity_z, agl=agl
+            trip, velocity_xy=velocity_xy, velocity_z=velocity_z,
+            max_velocity_xy=max_velocity_xy, max_velocity_z=max_velocity_z,
+            agl=agl
         )
         mission_str = self.generate_mission_file_for_trip(trip)
 
@@ -236,7 +243,9 @@ class ERPSystemConnectionDemoExtension(ExtensionBase):
         )
 
     def generate_waypoint_file_for_trip(
-        self, trip: Trip, velocity_xy: float = 4, velocity_z: float = 1, agl: float = 5
+        self, trip: Trip, velocity_xy: float = 4, velocity_z: float = 1,
+        max_velocity_xy: float = 6, max_velocity_z: float = 2,
+        agl: float = 5
     ) -> str:
         """Generate a waypoint file from a given route between stations."""
         # TODO TODO: we need to get the info HERE where the uav is at currently,
@@ -260,8 +269,8 @@ class ERPSystemConnectionDemoExtension(ExtensionBase):
                             lat=pos.lat,
                             lon=pos.lon,
                             agl=agl,
-                            velocity_xy=velocity_xy,
-                            velocity_z=velocity_z,
+                            max_velocity_xy=max_velocity_xy,
+                            max_velocity_z=max_velocity_z,
                             time=haversine(last_pos, pos) / velocity_xy,
                         )
                     )

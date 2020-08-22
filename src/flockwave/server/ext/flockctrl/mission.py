@@ -148,6 +148,20 @@ def generate_mission_file_from_show_specification(show) -> bytes:
     else:
         raise RuntimeError("No home coordinate in show specification")
 
+    # parse display name of mission
+    mission_spec = show.get("mission")
+    if mission_spec:
+        display_name = str(mission_spec.get("displayName"))
+        if not display_name:
+            mission_id = mission_spec.get("id")
+            mission_index = mission_spec.get("index")
+            if mission_id is not None and mission_index is not None:
+                display_name = f"{mission_id}/{mission_index}"
+            else:
+                display_name = ""
+    else:
+        display_name = ""
+
     # parse trajectory
     if "trajectory" in show:
         trajectory = show["trajectory"]
@@ -204,6 +218,7 @@ def generate_mission_file_from_show_specification(show) -> bytes:
     # templates
     params = {
         "altitude_setpoint": 5,  # TODO: get from show if needed
+        "display_name": display_name,
         "max_flying_height": max_altitude,
         "max_flying_range": max_distance,
         "orientation": -1,  # TODO: get from show
@@ -225,6 +240,7 @@ def generate_mission_file_from_show_specification(show) -> bytes:
 
     # create mission.zip
     # create the zipfile and write content to it
+    print(repr(mission_str))
     buffer = BytesIO()
     with ZipFile(buffer, "w", ZIP_DEFLATED) as zip_archive:
         zip_archive.writestr("waypoints.cfg", waypoint_str)

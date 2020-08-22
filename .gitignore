@@ -10,6 +10,7 @@ build/
 dist/
 tmp/
 .venv/
+.vscode/
 __pycache__/
 skybrush.cfg
 

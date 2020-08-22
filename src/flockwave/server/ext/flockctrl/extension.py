@@ -127,8 +127,9 @@ class FlockCtrlDronesExtension(UAVExtensionBase):
         # The radio link also needs a dummy broadcast address; there are not
         # really any addresses in the radio link, but the system needs to have
         # one so it can recognize that the link can broaddcast
-        radio_link.address = "backup radio"
-        radio_link.broadcast_address = ""
+        if radio_link:
+            radio_link.address = "backup radio"
+            radio_link.broadcast_address = ""
 
         return broadcast_link, unicast_link, radio_link
 

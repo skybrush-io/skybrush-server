@@ -30,6 +30,8 @@ EXTENSIONS = {
     "auth": {},
     "auth_basic": {"passwords": {"user@domain.xyz": "password"}},
     "cascade_demo": {
+        "enabled": False,
+
         # Farkashegy
         "stations": {
             "A": [18.9157319, 47.4848304],

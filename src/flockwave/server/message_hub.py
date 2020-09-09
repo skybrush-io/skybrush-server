@@ -397,10 +397,11 @@ class MessageHub:
             log.warning("Error message from Flockwave client silently dropped")
             return True
 
-        log.info(
-            "Received {0.body[type]} message".format(message),
-            extra={"id": message.id, "semantics": "request"},
-        )
+        if type not in ("RTK-STAT", "X-RTK-STAT"):
+            log.info(
+                "Received {0.body[type]} message".format(message),
+                extra={"id": message.id, "semantics": "request"},
+            )
 
         handled = await self._feed_message_to_handlers(message, sender)
 
@@ -791,10 +792,11 @@ class MessageHub:
                     extra={"id": message.id, "semantics": "notification"},
                 )
         elif in_response_to is not None:
-            log.info(
-                f"Sending {type} response",
-                extra={"id": in_response_to.id, "semantics": "response_success"},
-            )
+            if type not in ("RTK-STAT", "X-RTK-STAT"):
+                log.info(
+                    f"Sending {type} response",
+                    extra={"id": in_response_to.id, "semantics": "response_success"},
+                )
         elif isinstance(message, FlockwaveNotification):
             if type not in ("UAV-INF", "DEV-INF"):
                 log.info(

@@ -88,9 +88,8 @@ EXTENSIONS = {
             },
             "javad": {
                 "title": "JAVAD Triumph-2",
-                "source": "serial:/dev/cu.TRIUMPH201421-SerialPort?baud=1500000",
-                "format": "rtcmv3",  # can be rtcmv2, rtcmv3 or auto
-                "init": "dm\nem,,rtcm3/{1004,1012}:1\nem,,rtcm3/{1006,1008,1033}:10\n",
+                "source": "tcp://192.168.47.1:8010",
+                "format": "rtcm3"  # can be rtcm2, rtcm3 or auto
             },
         }
     },

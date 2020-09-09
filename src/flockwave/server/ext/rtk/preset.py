@@ -12,7 +12,7 @@ __all__ = ("RTKConfigurationPreset",)
 RTKPacketFilter = Callable[[RTCMPacket], bool]
 
 #: Allowed packet formats in RTK streams
-ALLOWED_FORMATS = set("auto rtcmv2 rtcmv3".split())
+ALLOWED_FORMATS = set("auto rtcm2 rtcm3".split())
 
 
 @dataclass

@@ -7,11 +7,82 @@ from collections import defaultdict, deque
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from trio import current_time
-from typing import Deque, Iterable, Tuple
+from typing import Deque, Iterable, Optional, Tuple
 
-from flockwave.gps.rtcm.packets import RTCMPacket, RTCMV2Packet, RTCMV3Packet
+from flockwave.gps.rtcm.packets import (
+    RTCMPacket,
+    RTCMV2Packet,
+    RTCMV3Packet,
+    RTCMV3StationaryAntennaPacket,
+    RTCMV3AntennaDescriptorPacket,
+    RTCMV3ExtendedAntennaDescriptorPacket,
+)
+from flockwave.gps.vectors import ECEFToGPSCoordinateTransformation, GPSCoordinate
 
 __all__ = ("RTKStatistics",)
+
+#: ECEF-to-GPS transformation used to convert antenna coordinates
+_ecef_to_gps = ECEFToGPSCoordinateTransformation()
+
+
+@dataclass
+class AntennaInformation:
+    """Simple data class holding information about the current RTK antenna."""
+
+    station_id: Optional[int] = None
+    descriptor: Optional[str] = None
+    serial_number: Optional[str] = None
+    position: Optional[GPSCoordinate] = None
+
+    @staticmethod
+    def is_antenna_related_packet(packet: RTCMPacket) -> bool:
+        """Returns whether the given RTCM packet conveys information that
+        relates to the antenna itself.
+        """
+        return isinstance(
+            packet,
+            (
+                RTCMV3StationaryAntennaPacket,
+                RTCMV3AntennaDescriptorPacket,
+                RTCMV3ExtendedAntennaDescriptorPacket,
+            ),
+        )
+
+    def clear(self) -> None:
+        self.station_id = None
+        self.descriptor = None
+        self.serial_number = None
+        self.position = None
+
+    @property
+    def json(self):
+        """Returns the JSON representation of this object that we post in the
+        response of an RTK-STAT message.
+        """
+        return {
+            "stationId": self.station_id,
+            "descriptor": self.descriptor,
+            "serialNumber": self.serial_number,
+            "position": self.position,
+        }
+
+    def notify(self, packet: RTCMPacket) -> None:
+        """Notifies the statistics object about the arrival of a new packet."""
+        station_id = getattr(packet, "station_id", None)
+        if station_id is not None:
+            self.station_id = station_id
+
+        serial = getattr(packet, "serial", None)
+        if serial is not None:
+            self.serial_number = serial
+
+        descriptor = getattr(packet, "descriptor", None)
+        if descriptor is not None:
+            self.descriptor = descriptor
+
+        position = getattr(packet, "position", None)
+        if position is not None:
+            self.position = _ecef_to_gps.to_gps(position)
 
 
 @dataclass
@@ -75,10 +146,12 @@ class RTKStatistics:
         """Constructor."""
         self._message_observations = defaultdict(MessageObservations)
         self._satellite_cnrs = {}
+        self._antenna_information = AntennaInformation()
         self.clear()
 
     def clear(self) -> None:
         """Clears the contents of the RTK statistics object."""
+        self._antenna_information.clear()
         self._message_observations.clear()
         self._satellite_cnrs.clear()
 
@@ -87,7 +160,11 @@ class RTKStatistics:
         """Returns the JSON representation of this object that we post in the
         response of an RTK-STAT message.
         """
-        return {"messages": self._message_observations, "cnr": self._satellite_cnrs}
+        return {
+            "antenna": self._antenna_information,
+            "messages": self._message_observations,
+            "cnr": self._satellite_cnrs,
+        }
 
     def notify(self, packet: RTCMPacket) -> None:
         """Notifies the statistics object about the arrival of a new packet."""
@@ -96,6 +173,9 @@ class RTKStatistics:
 
         if hasattr(packet, "satellites"):
             self._update_satellite_status(packet.satellites)
+
+        if AntennaInformation.is_antenna_related_packet(packet):
+            self._antenna_information.notify(packet)
 
     @contextmanager
     def use(self):

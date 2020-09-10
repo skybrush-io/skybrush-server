@@ -397,6 +397,7 @@ class MessageHub:
             log.warning("Error message from Flockwave client silently dropped")
             return True
 
+        type = message.body.get("type") if hasattr(message, "body") else "NO-TYPE"
         if type not in ("RTK-STAT", "X-RTK-STAT"):
             log.info(
                 "Received {0.body[type]} message".format(message),

@@ -50,6 +50,7 @@ pyledctrl = "^3.1.0"
 pytest = "^5.4.3"
 pytest-trio = "^0.6.0"
 click-man = "^0.4.1"
+black = {version = "^20.8b1", allow-prereleases = true}
 
 [tool.poetry.scripts]
 skybrushd = "flockwave.server.launcher:start"

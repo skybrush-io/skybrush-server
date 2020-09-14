@@ -86,7 +86,7 @@ class VirtualUAVProviderExtension(UAVExtensionBase):
 
         # Generate IDs for the UAVs and then create them
         self.uav_ids = [
-            make_valid_object_id(id_format.format(index)) for index in range(count)
+            make_valid_object_id(id_format.format(index * 4)) for index in range(count)
         ]
         self.uavs = [
             self._driver.create_uav(

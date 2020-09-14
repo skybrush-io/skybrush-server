@@ -31,7 +31,6 @@ EXTENSIONS = {
     "auth_basic": {"passwords": {"user@domain.xyz": "password"}},
     "cascade_demo": {
         "enabled": False,
-
         # Farkashegy
         "stations": {
             "A": [18.9157319, 47.4848304],
@@ -47,6 +46,10 @@ EXTENSIONS = {
         },
         "routes": {"A->B": [], "A->C": ["b", "c"], "B->C": ["a"]},
     },
+    "crazyflie": {
+        "id_format": "CF-{0:02}",
+        "connections": ["crazyradio://0/80/2M/E7E7E7E7"],
+    },
     "debug": {},
     "dock": {"enabled": False, "listener": "unix:/tmp/flockwaved-dock.sock"},
     "flockctrl": {
@@ -55,7 +58,7 @@ EXTENSIONS = {
             "wireless": "default",
             # "wireless": "local",
             # "wireless": "192.168.1.0/24",
-            "radio": "default"
+            "radio": "default",
         },
     },
     "gps": {
@@ -91,7 +94,7 @@ EXTENSIONS = {
             "javad": {
                 "title": "JAVAD Triumph-2",
                 "source": "tcp://192.168.47.1:8010",
-                "format": "rtcm3"  # can be rtcm2, rtcm3 or auto
+                "format": "rtcm3",  # can be rtcm2, rtcm3 or auto
             },
         }
     },

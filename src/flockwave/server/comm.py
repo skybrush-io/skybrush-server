@@ -134,7 +134,7 @@ class CommunicationManager(Generic[PacketType, AddressType]):
         queue = self._outbound_tx_queue
         if not queue:
             if not allow_failure:
-                raise RuntimeError(f"Outbound message queue is closed")
+                raise RuntimeError("Outbound message queue is closed")
             else:
                 return
 
@@ -153,7 +153,7 @@ class CommunicationManager(Generic[PacketType, AddressType]):
         """
         queue = self._outbound_tx_queue
         if not queue:
-            raise RuntimeError(f"Outbound message queue is closed")
+            raise RuntimeError("Outbound message queue is closed")
 
         try:
             queue.send_nowait((packet, destination))
@@ -227,7 +227,7 @@ class CommunicationManager(Generic[PacketType, AddressType]):
         """
         queue = self._outbound_tx_queue
         if not queue:
-            raise RuntimeError(f"Outbound message queue is closed")
+            raise RuntimeError("Outbound message queue is closed")
 
         await queue.send((packet, destination))
 

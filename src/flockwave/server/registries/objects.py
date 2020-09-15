@@ -6,7 +6,7 @@ __all__ = ("ObjectRegistry",)
 
 from blinker import Signal
 from contextlib import contextmanager
-from typing import Iterable, Optional, Type, Union
+from typing import Callable, Iterable, Optional, Type, Union
 
 from .base import RegistryBase
 
@@ -62,6 +62,26 @@ class ObjectRegistry(RegistryBase[ModelObject]):
             raise KeyError("Object ID already taken: {0!r}".format(object.id))
         self._entries[object.id] = object
         self.added.send(self, object=object)
+
+    def add_if_missing(
+        self, id: str, factory: Callable[[str], ModelObject]
+    ) -> ModelObject:
+        """Checks whether an object with the given ID already exists in the
+        registry, and if not, creates it with a factory function and then adds
+        it to the registry.
+
+        Parameters:
+            id: the ID of the object to look for
+            factory: a callable that can be called with a single object ID to
+                create the object to be registered if it is missing
+
+        Returns:
+            the object in the registry with the given ID; freshly created if it
+            was not in the registry
+        """
+        if not self.contains(id):
+            self.add(factory(id))
+        return self.find_by_id(id)
 
     def ids_by_type(self, cls: Union[str, Type[ModelObject]]) -> Iterable[str]:
         """Returns an iterable that iterates over all the identifiers in the

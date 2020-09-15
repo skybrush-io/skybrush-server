@@ -111,7 +111,6 @@ class FlockCtrlDriver(UAVDriver):
 
         self.allow_multiple_commands_per_uav = True
         self.app = app
-        self.create_device_tree_mutator = None
         self.id_format = id_format
         self.log = log.getChild("flockctrl").getChild("driver")
 
@@ -354,11 +353,9 @@ class FlockCtrlDriver(UAVDriver):
             formatted_id = make_valid_object_id(self.id_format.format(id))
             self._index_to_uav_id[id] = formatted_id
 
-        object_registry = self.app.object_registry
-        if not object_registry.contains(formatted_id):
-            uav = self._create_uav(formatted_id)
-            object_registry.add(uav)
-        return object_registry.find_by_id(formatted_id)
+        return self.app.object_registry.add_if_missing(
+            formatted_id, factory=self._create_uav
+        )
 
     def _handle_inbound_algorithm_data_packet(
         self, packet: AlgorithmDataPacket, source
@@ -638,7 +635,7 @@ class FlockCtrlDriver(UAVDriver):
         if altitude is not None:
             cmd = "go N{0.lat:.7f} E{0.lon:.7f} {1}".format(target, altitude)
         else:
-            cmd = "go N{0.lat:.7f} E{0.lon:.7f}".format(target, altitude)
+            cmd = "go N{0.lat:.7f} E{0.lon:.7f}".format(target)
         return await self._send_command_to_uav_and_check_for_errors(cmd, uav)
 
     async def _send_reset_signal_single(self, uav, component):

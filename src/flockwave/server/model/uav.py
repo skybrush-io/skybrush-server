@@ -890,11 +890,7 @@ class PassiveUAVDriver(UAVDriver):
         Returns:
             UAVBase: an appropriate UAV object
         """
-        object_registry = self.app.object_registry
-        if not object_registry.contains(id):
-            uav = self._create_uav(id)
-            object_registry.add(uav)
-        return object_registry.find_by_id(id)
+        return self.app.object_registry.add_if_missing(id, factory=self._create_uav)
 
     def _send_signal(self, uavs: UAV, signal_name: str, handler):
         error = RuntimeError("{0} not supported".format(signal_name))

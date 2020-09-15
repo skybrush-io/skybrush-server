@@ -110,6 +110,8 @@ class CommunicationManager(Generic[PacketType, AddressType]):
                 itself by querying its `can_send` attribute. If the attribute
                 is missing, we assume that the connection _can_ send messages.
         """
+        assert connection is not None
+
         if self._running:
             raise RuntimeError("cannot add new connections when the manager is running")
 

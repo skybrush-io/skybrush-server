@@ -182,7 +182,8 @@ class FlockCtrlDronesExtension(UAVExtensionBase):
             # must be the unicast link.
             manager.add(unicast_link, name="wireless")
             manager.add(broadcast_link, name="wireless", can_send=False)
-            manager.add(radio_link, name="radio")
+            if radio_link is not None:
+                manager.add(radio_link, name="radio")
 
             # Register a callback for RTK correction packets
             stack.enter_context(rtk_signal.connected_to(self._on_rtk_correction_packet))

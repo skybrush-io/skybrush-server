@@ -2,15 +2,16 @@
 of a Crazyflie address space for Crazyflie drones.
 """
 
-from trio import sleep
+from trio import MemorySendChannel, sleep
 from typing import AsyncIterable, Callable, List, Optional
 
 from aiocflib.drivers.crazyradio import RadioConfiguration
+from flockwave.server.concurrency import aclosing
 
 from .connection import CrazyradioConnection
 
 
-__all__ = ("scan_connection",)
+__all__ = ("scan_connection", "CrazyradioScannerTask")
 
 
 async def create_default_schedule_for(
@@ -84,3 +85,57 @@ async def scan_connection(
             if exclude:
                 address = target.to_uri(index=index)
                 excluded.add(address)
+
+
+class CrazyradioScannerTask:
+    """Class responsible for handling a single Crazyradio connection from the
+    time it is opened to the time it is closed.
+    """
+
+    @classmethod
+    async def create_and_run(
+        cls, conn: CrazyradioConnection, channel: MemorySendChannel, *args, **kwds
+    ):
+        """Creates and runs a new connection handler for the given radio
+        connection.
+        """
+        await CrazyradioScannerTask(conn, *args, **kwds).run(channel)
+
+    def __init__(self, conn: CrazyradioConnection, log=None):
+        """Constructor.
+
+        Parameters:
+            conn: the connection that the task handles
+        """
+        self._conn = conn
+        self._log = log
+
+    async def run(self, channel: MemorySendChannel) -> None:
+        """Implementation of the task itself.
+
+        Parameters:
+            channel: channel in which we should put the address space and index
+                of any newly detected UAV
+        """
+        from .scanning import scan_connection
+
+        gen = scan_connection(self._conn)
+        async with aclosing(gen):
+            while True:
+                target = await gen.__anext__()
+
+                address_space = self._conn.address_space
+
+                try:
+                    index = address_space.index(target.to_uri())
+                except ValueError:
+                    if self._log:
+                        self._log.warn(
+                            f"{target.to_uri()} not found in address space; this is most likely a bug"
+                        )
+                    index = -1
+
+                if index >= 0:
+                    await channel.send((address_space, index))
+
+                await gen.asend(True)

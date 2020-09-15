@@ -28,23 +28,23 @@ class CrazyradioConnection(TaskConnectionBase):
 
         super().__init__()
 
-        self._crazyradio_uri = f"radio://{host}"
+        try:
+            self._crazyradio_index = int(host)
+        except ValueError:
+            raise RuntimeError("Radio index must be integer")
+
         self._crazyflie_address_space = RadioAddressSpace.from_uri(
             f"radio://{host}{path}", length=64
         )
         self._radio = None
 
     async def _run(self, started):
-        from aiocflib.drivers.crazyradio import Crazyradio
+        from aiocflib.crtp.drivers.radio import SharedCrazyradio
 
-        radio = await Crazyradio.from_uri(self._crazyradio_uri)
         try:
-            async with radio as self._radio:
+            async with SharedCrazyradio(self._crazyradio_index) as self._radio:
                 started()
                 await sleep_forever()
-        except Exception as ex:
-            print(repr(ex))
-            raise
         finally:
             self._radio = None
 
@@ -65,4 +65,7 @@ class CrazyradioConnection(TaskConnectionBase):
             targets: the addresses to scan; `None` to scan the entire address
                 space
         """
-        return await self._radio.scan(targets)
+        if self._radio:
+            return await self._radio.scan(targets or self.address_space)
+        else:
+            return []

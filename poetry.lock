@@ -4,11 +4,10 @@ description = "asyncio-based API for Crazyflie drones"
 name = "aiocflib"
 optional = false
 python-versions = ">=3.7,<4.0"
-version = "0.2.2"
+version = "0.3.0"
 
 [package.dependencies]
-anyio = ">=1.4.0,<2.0.0"
-async-exit-stack = ">=1.0.1,<2.0.0"
+anyio = ">=2.0.0,<3.0.0"
 async-generator = ">=1.10,<2.0"
 colorama = ">=0.4.3,<0.5.0"
 hexdump = ">=3.3,<4.0"
@@ -34,19 +33,22 @@ category = "main"
 description = "High level compatibility layer for multiple asynchronous event loop implementations"
 name = "anyio"
 optional = false
-python-versions = ">=3.5.3"
-version = "1.4.0"
+python-versions = ">=3.6.2"
+version = "2.0.0"
 
 [package.dependencies]
-async-generator = "*"
 idna = ">=2.8"
 sniffio = ">=1.1"
 
+[package.dependencies.typing-extensions]
+python = "<3.8"
+version = "*"
+
 [package.extras]
-curio = ["curio (>=0.9)"]
+curio = ["curio (>=1.4)"]
 doc = ["sphinx-rtd-theme", "sphinx-autodoc-typehints (>=1.2.0)"]
-test = ["coverage (>=4.5)", "hypothesis (>=4.0)", "pytest (>=3.7.2)", "uvloop"]
-trio = ["trio (>=0.12)"]
+test = ["coverage (>=4.5)", "hypothesis (>=4.0)", "pytest (>=4.3)", "trustme", "uvloop"]
+trio = ["trio (>=0.16)"]
 
 [[package]]
 category = "dev"
@@ -55,14 +57,6 @@ name = "appdirs"
 optional = false
 python-versions = "*"
 version = "1.4.4"
-
-[[package]]
-category = "main"
-description = "AsyncExitStack backport for Python 3.5+"
-name = "async-exit-stack"
-optional = false
-python-versions = ">=3.5"
-version = "1.0.1"
 
 [[package]]
 category = "main"
@@ -87,13 +81,13 @@ description = "Classes Without Boilerplate"
 name = "attrs"
 optional = false
 python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
-version = "19.3.0"
+version = "20.2.0"
 
 [package.extras]
-azure-pipelines = ["coverage", "hypothesis", "pympler", "pytest (>=4.3.0)", "six", "zope.interface", "pytest-azurepipelines"]
-dev = ["coverage", "hypothesis", "pympler", "pytest (>=4.3.0)", "six", "zope.interface", "sphinx", "pre-commit"]
-docs = ["sphinx", "zope.interface"]
-tests = ["coverage", "hypothesis", "pympler", "pytest (>=4.3.0)", "six", "zope.interface"]
+dev = ["coverage (>=5.0.2)", "hypothesis", "pympler", "pytest (>=4.3.0)", "six", "zope.interface", "sphinx", "sphinx-rtd-theme", "pre-commit"]
+docs = ["sphinx", "sphinx-rtd-theme", "zope.interface"]
+tests = ["coverage (>=5.0.2)", "hypothesis", "pympler", "pytest (>=4.3.0)", "six", "zope.interface"]
+tests_no_zope = ["coverage (>=5.0.2)", "hypothesis", "pympler", "pytest (>=4.3.0)", "six"]
 
 [[package]]
 category = "main"
@@ -269,14 +263,14 @@ description = "Connection objects for various data sources"
 name = "flockwave-conn"
 optional = false
 python-versions = ">=3.7,<4.0"
-version = "1.12.1"
+version = "1.13.0"
 
 [package.dependencies]
 blinker = ">=1.4,<2.0"
 flockwave-parsers = ">=1.2.0,<2.0.0"
-netifaces = ">=0.10.9,<0.11.0"
-trio = ">=0.16.0,<0.17.0"
-trio-util = ">=0.1.1,<0.2.0"
+netifaces = ">=0.10.9"
+trio = ">=0.17.0"
+trio-util = ">=0.2.0"
 
 [package.dependencies.mido]
 optional = true
@@ -305,12 +299,12 @@ description = "Generic extension manager for Skybrush-related projects"
 name = "flockwave-ext"
 optional = false
 python-versions = ">=3.7,<4.0"
-version = "1.4.0"
+version = "1.4.1"
 
 [package.dependencies]
 blinker = ">=1.4,<2.0"
 flockwave-logger = ">=1.3.0,<2.0.0"
-trio = ">=0.16.0,<0.17.0"
+trio = ">=0.17.0"
 
 [package.source]
 reference = "collmot"
@@ -1087,7 +1081,7 @@ description = "A friendly Python library for async concurrency and I/O"
 name = "trio"
 optional = false
 python-versions = ">=3.6"
-version = "0.16.0"
+version = "0.17.0"
 
 [package.dependencies]
 async-generator = ">=1.9"
@@ -1104,7 +1098,7 @@ description = "Utility library for the Trio async/await framework"
 name = "trio-util"
 optional = false
 python-versions = ">=3.7"
-version = "0.1.1"
+version = "0.2.0"
 
 [package.dependencies]
 trio = ">=0.11.0"
@@ -1194,29 +1188,25 @@ docs = ["sphinx", "jaraco.packaging (>=3.2)", "rst.linker (>=1.9)"]
 testing = ["jaraco.itertools", "func-timeout"]
 
 [metadata]
-content-hash = "74e6add99cb26f2d76e531cbb6b36837a621be6668387d014203ff5f168b1662"
+content-hash = "73afb3087bf1b7164d22a4941712f7d8883a9fd30da4a0af75f334d007bea540"
 python-versions = "^3.7"
 
 [metadata.files]
 aiocflib = [
-    {file = "aiocflib-0.2.2-py3-none-any.whl", hash = "md5:9c2dcfcb538926cfcd5e818abf78e107"},
-    {file = "aiocflib-0.2.2.tar.gz", hash = "md5:6fcbae25d79f72b6fd70a18ea617d80c"},
+    {file = "aiocflib-0.3.0-py3-none-any.whl", hash = "md5:057eedd0a03f03ac75e0005e3b336f43"},
+    {file = "aiocflib-0.3.0.tar.gz", hash = "md5:ac2634c55d7bdadb25833f56eeb02634"},
 ]
 aiofiles = [
     {file = "aiofiles-0.5.0-py3-none-any.whl", hash = "sha256:377fdf7815cc611870c59cbd07b68b180841d2a2b79812d8c218be02448c2acb"},
     {file = "aiofiles-0.5.0.tar.gz", hash = "sha256:98e6bcfd1b50f97db4980e182ddd509b7cc35909e903a8fe50d8849e02d815af"},
 ]
 anyio = [
-    {file = "anyio-1.4.0-py3-none-any.whl", hash = "sha256:9ee67e8131853f42957e214d4531cee6f2b66dda164a298d9686a768b7161a4f"},
-    {file = "anyio-1.4.0.tar.gz", hash = "sha256:95f60964fc4583f3f226f8dc275dfb02aefe7b39b85a999c6d14f4ec5323c1d8"},
+    {file = "anyio-2.0.0-py3-none-any.whl", hash = "sha256:0b8375c8fc665236cb4d143ea13e849eb9e074d727b1b5c27d88aba44ca8c547"},
+    {file = "anyio-2.0.0.tar.gz", hash = "sha256:ceca4669ffa3f02bf20ef3d6c2a0c323b16cdc71d1ce0b0bc03c6f1f36054826"},
 ]
 appdirs = [
     {file = "appdirs-1.4.4-py2.py3-none-any.whl", hash = "sha256:a841dacd6b99318a741b166adb07e19ee71a274450e68237b4650ca1055ab128"},
     {file = "appdirs-1.4.4.tar.gz", hash = "sha256:7d5d0167b2b1ba821647616af46a749d1c653740dd0d2415100fe26e27afdf41"},
-]
-async-exit-stack = [
-    {file = "async_exit_stack-1.0.1-py3-none-any.whl", hash = "sha256:9b43b17683b3438f428ef3bbec20689f5abbb052aa4b564c643397330adfaa99"},
-    {file = "async_exit_stack-1.0.1.tar.gz", hash = "sha256:24de1ad6d0ff27be97c89d6709fa49bf20db179eaf1f4d2e6e9b4409b80e747d"},
 ]
 async-generator = [
     {file = "async_generator-1.10-py3-none-any.whl", hash = "sha256:01c7bf666359b4967d2cda0000cc2e4af16a0ae098cbffcb8472fb9e8ad6585b"},
@@ -1227,8 +1217,8 @@ atomicwrites = [
     {file = "atomicwrites-1.4.0.tar.gz", hash = "sha256:ae70396ad1a434f9c7046fd2dd196fc04b12f9e91ffb859164193be8b6168a7a"},
 ]
 attrs = [
-    {file = "attrs-19.3.0-py2.py3-none-any.whl", hash = "sha256:08a96c641c3a74e44eb59afb61a24f2cb9f4d7188748e76ba4bb5edfa3cb7d1c"},
-    {file = "attrs-19.3.0.tar.gz", hash = "sha256:f7b7ce16570fe9965acd6d30101a28f62fb4a7f9e926b3bbc9b61f8b04247e72"},
+    {file = "attrs-20.2.0-py2.py3-none-any.whl", hash = "sha256:fce7fc47dfc976152e82d53ff92fa0407700c21acd20886a13777a0d20e655dc"},
+    {file = "attrs-20.2.0.tar.gz", hash = "sha256:26b54ddbbb9ee1d34d5d3668dd37d6cf74990ab23c828c2888dccdceee395594"},
 ]
 bcrypt = [
     {file = "bcrypt-3.2.0-cp36-abi3-macosx_10_9_x86_64.whl", hash = "sha256:c95d4cbebffafcdd28bd28bb4e25b31c50f6da605c81ffd9ad8a3d1b2ab7b1b6"},
@@ -1346,12 +1336,12 @@ cryptography = [
     {file = "cryptography-3.1.tar.gz", hash = "sha256:26409a473cc6278e4c90f782cd5968ebad04d3911ed1c402fc86908c17633e08"},
 ]
 flockwave-conn = [
-    {file = "flockwave-conn-1.12.1.tar.gz", hash = "md5:df1aa4b36bfdd192defef7cfe65bfd1a"},
-    {file = "flockwave_conn-1.12.1-py3-none-any.whl", hash = "md5:e19d020234e359f650709c0252729a4e"},
+    {file = "flockwave-conn-1.13.0.tar.gz", hash = "md5:d59f7c4b0da575ec2a49bd55f22ad150"},
+    {file = "flockwave_conn-1.13.0-py3-none-any.whl", hash = "md5:16e272b101958e68dc20c771616ddcc4"},
 ]
 flockwave-ext = [
-    {file = "flockwave-ext-1.4.0.tar.gz", hash = "md5:bd2291e6067a5d85d3222d96905cee4e"},
-    {file = "flockwave_ext-1.4.0-py3-none-any.whl", hash = "md5:67ff0bb4cb1b62367099abd0c2600b02"},
+    {file = "flockwave-ext-1.4.1.tar.gz", hash = "md5:9117bb199fb10fb5f22f0798426ad2da"},
+    {file = "flockwave_ext-1.4.1-py3-none-any.whl", hash = "md5:b54cd3c12fea51a99b5d8711abb9816d"},
 ]
 flockwave-flockctrl = [
     {file = "flockwave-flockctrl-0.11.0.tar.gz", hash = "md5:461c009635b4c3cf59782fe540165b45"},
@@ -1744,12 +1734,12 @@ tqdm = [
     {file = "tqdm-4.49.0.tar.gz", hash = "sha256:faf9c671bd3fad5ebaeee366949d969dca2b2be32c872a7092a1e1a9048d105b"},
 ]
 trio = [
-    {file = "trio-0.16.0-py3-none-any.whl", hash = "sha256:451ddb27b4e5215e00646fcbb8028d341fccf284e053dc376506a14bb133dbcf"},
-    {file = "trio-0.16.0.tar.gz", hash = "sha256:df067dd0560c321af39d412cd81fc3a7d13f55af9150527daab980683e9fcf3c"},
+    {file = "trio-0.17.0-py3-none-any.whl", hash = "sha256:fc70c74e8736d1105b3c05cc2e49b30c58755733740f9c51ae6d88a4d6d0a291"},
+    {file = "trio-0.17.0.tar.gz", hash = "sha256:e85cf9858e445465dfbb0e3fdf36efe92082d2df87bfe9d62585eedd6e8e9d7d"},
 ]
 trio-util = [
-    {file = "trio_util-0.1.1-py3-none-any.whl", hash = "sha256:af3354255d6664c9bb7880217f81af9ee73b779f084be00c1a96f8742ef2e811"},
-    {file = "trio_util-0.1.1.tar.gz", hash = "sha256:4922200331f88d7eea02735b7c866dc931011e3ec12e3c8d6b84bcdfb15e9b83"},
+    {file = "trio_util-0.2.0-py3-none-any.whl", hash = "sha256:abdcabf74ac670bbea947332966782cf6d6adf2551593f1f2ed8d41222f92610"},
+    {file = "trio_util-0.2.0.tar.gz", hash = "sha256:2f3a49085602885d2535fce43b17602c55a8fe98045a33c92e9c511054b20352"},
 ]
 typed-ast = [
     {file = "typed_ast-1.4.1-cp35-cp35m-manylinux1_i686.whl", hash = "sha256:73d785a950fc82dd2a25897d525d003f6378d1cb23ab305578394694202a58c3"},

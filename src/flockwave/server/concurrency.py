@@ -9,10 +9,25 @@ from typing import Any, Callable, Generic, Iterable, Iterator, TypeVar
 
 from flockwave.server.utils import identity
 
-__all__ = ("AsyncBundler", "cancellable", "Future", "FutureCancelled")
+__all__ = ("AsyncBundler", "aclosing", "cancellable", "Future", "FutureCancelled")
 
 
 T = TypeVar("T")
+
+
+class aclosing:
+    """Context manager that closes an async generator when the context is
+    exited. Similar to `closing()` in `contextlib`.
+    """
+
+    def __init__(self, aiter):
+        self._aiter = aiter
+
+    async def __aenter__(self):
+        return self._aiter
+
+    async def __aexit__(self, *args):
+        await self._aiter.aclose()
 
 
 def cancellable(func):

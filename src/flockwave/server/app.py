@@ -1,5 +1,6 @@
 """Application object for the Skybrush server."""
 
+from appdirs import AppDirs
 from blinker import Signal
 from collections import defaultdict
 from functools import partial
@@ -128,6 +129,10 @@ class SkybrushServer:
         # TODO(ntamas): not sure if this is going to be needed in the end; we
         # might just as well remove it
         self._task_queue = open_memory_channel(32)
+
+        # Create an object that can be used to get hold of commonly used
+        # directories within the app
+        self.dirs = AppDirs("Skybrush Server", "CollMot Robotics")
 
         # Create an object to hold information about all the registered
         # communication channel types that the server can handle

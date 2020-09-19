@@ -2,6 +2,8 @@
 
 from collections import defaultdict
 from contextlib import asynccontextmanager
+from pathlib import Path
+from typing import Optional
 
 from flockwave.server.ext.logger import log
 from flockwave.server.model.uav import UAVBase, UAVDriver
@@ -23,13 +25,17 @@ class CrazyflieDriver(UAVDriver):
             preferred UAV identifier
     """
 
-    def __init__(self, app=None, id_format="{0:02}"):
+    def __init__(
+        self, app=None, id_format: str = "{0:02}", cache: Optional[Path] = None
+    ):
         """Constructor.
 
         Parameters:
             app (SkybrushServer): the app in which the driver lives
-            id_format (str): the format of the UAV IDs used by this driver.
+            id_format: the format of the UAV IDs used by this driver.
                 See the class documentation for more details.
+            cache: optional cache folder that the driver can use to store the
+                parameter and log TOCs of the Crazyflie drones that it encounters
         """
         super().__init__()
 
@@ -37,6 +43,7 @@ class CrazyflieDriver(UAVDriver):
         self.id_format = id_format
         self.log = log.getChild("crazyflie").getChild("driver")
 
+        self._cache_folder = str(cache.resolve()) if cache else None
         self._uav_ids_by_address_space = defaultdict(dict)
 
     def _create_uav(self, formatted_id: str) -> "CrazyflieUAV":
@@ -50,6 +57,13 @@ class CrazyflieDriver(UAVDriver):
             an appropriate UAV object
         """
         return CrazyflieUAV(formatted_id, driver=self)
+
+    @property
+    def cache_folder(self) -> str:
+        """Returns the full path to a folder where the driver can store
+        the parameter TOC files of the Crazyflie drones that it sees.
+        """
+        return self._cache_folder
 
     def get_or_create_uav(self, address_space, index: int) -> "CrazyflieUAV":
         """Retrieves the UAV with the given index in the given address space
@@ -108,5 +122,5 @@ class CrazyflieUAV(UAVBase):
         if debug and "+log" not in uri:
             uri = uri.replace("://", "+log://")
 
-        async with Crazyflie(uri) as drone:
+        async with Crazyflie(uri, cache=self.driver.cache_folder) as drone:
             yield drone

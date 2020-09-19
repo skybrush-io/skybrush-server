@@ -500,7 +500,7 @@ class SkybrushServer:
         # Process the body
         parameters = dict(message.body)
         message_type = parameters.pop("type")
-        uav_ids = parameters.pop("ids")
+        uav_ids = parameters.pop("ids", ())
 
         # Sort the UAVs being targeted by drivers
         uavs_by_drivers = self.sort_uavs_by_drivers(uav_ids, response)

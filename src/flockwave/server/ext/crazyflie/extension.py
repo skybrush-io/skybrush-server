@@ -2,7 +2,8 @@
 
 from contextlib import ExitStack
 from functools import partial
-from trio import open_memory_channel, open_nursery, sleep_forever
+from pathlib import Path
+from trio import open_memory_channel, open_nursery
 from typing import Any, Dict
 
 from flockwave.connections.factory import create_connection
@@ -20,7 +21,9 @@ class CrazyflieDronesExtension(UAVExtensionBase):
     """Extension that adds support for Crazyflie drones."""
 
     def _create_driver(self):
-        return CrazyflieDriver()
+        return CrazyflieDriver(
+            cache=Path(self.app.dirs.user_cache_dir) / "ext" / "crazyflie"
+        )
 
     def configure_driver(self, driver, configuration: Dict[str, Any]) -> None:
         """Configures the driver that will manage the UAVs created by
@@ -30,6 +33,7 @@ class CrazyflieDronesExtension(UAVExtensionBase):
         when this function is called, and it is already associated to the
         server application.
         """
+        driver.debug = bool(configuration.get("debug", False))
         driver.id_format = configuration.get("id_format", "{0:02}")
         driver.log = self.log.getChild("driver")
 
@@ -39,7 +43,6 @@ class CrazyflieDronesExtension(UAVExtensionBase):
 
         init_drivers()
 
-        debug = bool(configuration.get("debug", False))
         connection_config = configuration.get("connections", [])
 
         # Create a channel that will be used to create new UAVs as needed
@@ -86,33 +89,7 @@ class CrazyflieDronesExtension(UAVExtensionBase):
                     async with new_uav_rx_channel:
                         async for address_space, index in new_uav_rx_channel:
                             uav = self._driver.get_or_create_uav(address_space, index)
-                            nursery.start_soon(
-                                CrazyflieHandlerTask(uav, debug=debug).run
-                            )
-
-
-class CrazyflieHandlerTask:
-    """Class responsible for handling communication with a single Crazyflie
-    drone.
-    """
-
-    def __init__(self, uav, debug: bool = False):
-        """Constructor.
-
-        Parameters:
-            uav: the Crazyflie UAV to communicate with
-            debug: whether to log the communication with the UAV on the console
-        """
-        self._uav = uav
-        self._debug = bool(debug)
-
-    async def run(self):
-        """Implementation of the task itself."""
-        async with self._uav.use(debug=self._debug) as cf:
-            print("Validating log...")
-            await cf.log.validate()
-            print("Validated log.")
-            await sleep_forever()
+                            nursery.start_soon(uav.run)
 
 
 construct = CrazyflieDronesExtension

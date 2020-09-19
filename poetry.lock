@@ -4,11 +4,10 @@ description = "asyncio-based API for Crazyflie drones"
 name = "aiocflib"
 optional = false
 python-versions = ">=3.7,<4.0"
-version = "0.3.1"
+version = "0.4.0"
 
 [package.dependencies]
 anyio = ">=2.0.0,<3.0.0"
-async-generator = ">=1.10,<2.0"
 colorama = ">=0.4.3,<0.5.0"
 hexdump = ">=3.3,<4.0"
 outcome = ">=1.0.1,<2.0.0"
@@ -751,6 +750,7 @@ version = "1.9.0"
 [[package]]
 category = "main"
 description = "C parser in Python"
+marker = "os_name == \"nt\" and implementation_name != \"pypy\""
 name = "pycparser"
 optional = false
 python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
@@ -1187,13 +1187,13 @@ docs = ["sphinx", "jaraco.packaging (>=3.2)", "rst.linker (>=1.9)"]
 testing = ["jaraco.itertools", "func-timeout"]
 
 [metadata]
-content-hash = "638e61e479eb1762368c479ef0aaa497937b5ff54a84e21f87a4e29cd8756183"
+content-hash = "6923a5bdf3ed2fe97b6c996e56032d9eb5e50db052de76c9327d3767ca34e954"
 python-versions = "^3.7"
 
 [metadata.files]
 aiocflib = [
-    {file = "aiocflib-0.3.1-py3-none-any.whl", hash = "md5:c8197f9f84d45b866b83902bd0516bb5"},
-    {file = "aiocflib-0.3.1.tar.gz", hash = "md5:a7a614c6c013a9247122caeb970bb0e0"},
+    {file = "aiocflib-0.4.0-py3-none-any.whl", hash = "md5:4a1669d1430c99174cb3d4703a008984"},
+    {file = "aiocflib-0.4.0.tar.gz", hash = "md5:3358271a0ea70da9a78e6631f9ed0d27"},
 ]
 aiofiles = [
     {file = "aiofiles-0.5.0-py3-none-any.whl", hash = "sha256:377fdf7815cc611870c59cbd07b68b180841d2a2b79812d8c218be02448c2acb"},

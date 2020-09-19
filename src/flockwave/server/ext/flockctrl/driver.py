@@ -123,6 +123,10 @@ class FlockCtrlDriver(UAVDriver):
         Parameters:
             mission: the mission file, in ZIP format, encoded as base64
         """
+        # prevent mission uploads if the drone is airborne
+        if uav.is_airborne:
+            raise RuntimeError("Cannot upload a mission while the drone is airborne")
+
         await self._handle_mission_upload(uav, b64decode(mission))
 
     async def handle_command___show_upload(self, uav: "FlockCtrlUAV", *, show):

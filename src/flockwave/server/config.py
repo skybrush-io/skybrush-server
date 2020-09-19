@@ -49,6 +49,7 @@ EXTENSIONS = {
     "crazyflie": {
         "id_format": "CF-{0:02}",
         "connections": ["crazyradio://0/80/2M/E7E7E7E7"],
+        "debug": True,
     },
     "debug": {},
     "dock": {"enabled": False, "listener": "unix:/tmp/flockwaved-dock.sock"},

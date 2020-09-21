@@ -4,7 +4,7 @@ description = "asyncio-based API for Crazyflie drones"
 name = "aiocflib"
 optional = false
 python-versions = ">=3.7,<4.0"
-version = "0.4.0"
+version = "0.5.0"
 
 [package.dependencies]
 anyio = ">=2.0.0,<3.0.0"
@@ -386,7 +386,7 @@ description = "JSON-Schema specification of the Flockwave protocol"
 name = "flockwave-spec"
 optional = false
 python-versions = ">=3.7,<4.0"
-version = "0.39.0"
+version = "0.40.0"
 
 [package.dependencies]
 click = ">=7.1.2,<8.0.0"
@@ -420,12 +420,12 @@ category = "main"
 description = "HTTP/2 State-Machine based protocol implementation"
 name = "h2"
 optional = false
-python-versions = "*"
-version = "3.2.0"
+python-versions = ">=3.6.1"
+version = "4.0.0"
 
 [package.dependencies]
-hpack = ">=3.0,<4"
-hyperframe = ">=5.2.0,<6"
+hpack = ">=4.0,<5"
+hyperframe = ">=6.0,<7"
 
 [[package]]
 category = "main"
@@ -440,8 +440,8 @@ category = "main"
 description = "Pure-Python HPACK header compression"
 name = "hpack"
 optional = false
-python-versions = "*"
-version = "3.0.0"
+python-versions = ">=3.6.1"
+version = "4.0.0"
 
 [[package]]
 category = "main"
@@ -474,8 +474,8 @@ category = "main"
 description = "HTTP/2 framing layer for Python"
 name = "hyperframe"
 optional = false
-python-versions = "*"
-version = "5.2.0"
+python-versions = ">=3.6.1"
+version = "6.0.0"
 
 [[package]]
 category = "main"
@@ -1187,13 +1187,13 @@ docs = ["sphinx", "jaraco.packaging (>=3.2)", "rst.linker (>=1.9)"]
 testing = ["jaraco.itertools", "func-timeout"]
 
 [metadata]
-content-hash = "6923a5bdf3ed2fe97b6c996e56032d9eb5e50db052de76c9327d3767ca34e954"
+content-hash = "b229e06b920cbbdb24ab301425c5aab257ea869f37cb3b35bc1d6fdc8beb6297"
 python-versions = "^3.7"
 
 [metadata.files]
 aiocflib = [
-    {file = "aiocflib-0.4.0-py3-none-any.whl", hash = "md5:4a1669d1430c99174cb3d4703a008984"},
-    {file = "aiocflib-0.4.0.tar.gz", hash = "md5:3358271a0ea70da9a78e6631f9ed0d27"},
+    {file = "aiocflib-0.5.0-py3-none-any.whl", hash = "md5:2738f266a91336859ddd76528b8d80b9"},
+    {file = "aiocflib-0.5.0.tar.gz", hash = "md5:c8667f7dbf1979a5ae97845fcf0d840c"},
 ]
 aiofiles = [
     {file = "aiofiles-0.5.0-py3-none-any.whl", hash = "sha256:377fdf7815cc611870c59cbd07b68b180841d2a2b79812d8c218be02448c2acb"},
@@ -1359,8 +1359,8 @@ flockwave-parsers = [
     {file = "flockwave_parsers-1.2.0-py3-none-any.whl", hash = "md5:4f53aadf684d06c79998b332ec2dcaa0"},
 ]
 flockwave-spec = [
-    {file = "flockwave-spec-0.39.0.tar.gz", hash = "md5:011ebb5af70d419a3f9a16f8f4ad29f0"},
-    {file = "flockwave_spec-0.39.0-py3-none-any.whl", hash = "md5:8cb8e0823bcb098ba2a6b77ce3b98f29"},
+    {file = "flockwave-spec-0.40.0.tar.gz", hash = "md5:0e2ac9c395d2cabc95ba23aee2bbb717"},
+    {file = "flockwave_spec-0.40.0-py3-none-any.whl", hash = "md5:37d907cf267cf7c2b794dc1b61b6421e"},
 ]
 future = [
     {file = "future-0.18.2.tar.gz", hash = "sha256:b1bead90b70cf6ec3f0710ae53a525360fa360d306a86583adc6bf83a4db537d"},
@@ -1370,23 +1370,23 @@ h11 = [
     {file = "h11-0.10.0.tar.gz", hash = "sha256:311dc5478c2568cc07262e0381cdfc5b9c6ba19775905736c87e81ae6662b9fd"},
 ]
 h2 = [
-    {file = "h2-3.2.0-py2.py3-none-any.whl", hash = "sha256:61e0f6601fa709f35cdb730863b4e5ec7ad449792add80d1410d4174ed139af5"},
-    {file = "h2-3.2.0.tar.gz", hash = "sha256:875f41ebd6f2c44781259005b157faed1a5031df3ae5aa7bcb4628a6c0782f14"},
+    {file = "h2-4.0.0-py3-none-any.whl", hash = "sha256:ac9e293a1990b339d5d71b19c5fe630e3dd4d768c620d1730d355485323f1b25"},
+    {file = "h2-4.0.0.tar.gz", hash = "sha256:bb7ac7099dd67a857ed52c815a6192b6b1f5ba6b516237fc24a085341340593d"},
 ]
 hexdump = [
     {file = "hexdump-3.3.zip", hash = "sha256:d781a43b0c16ace3f9366aade73e8ad3a7bd5137d58f0b45ab2d3f54876f20db"},
 ]
 hpack = [
-    {file = "hpack-3.0.0-py2.py3-none-any.whl", hash = "sha256:0edd79eda27a53ba5be2dfabf3b15780928a0dff6eb0c60a3d6767720e970c89"},
-    {file = "hpack-3.0.0.tar.gz", hash = "sha256:8eec9c1f4bfae3408a3f30500261f7e6a65912dc138526ea054f9ad98892e9d2"},
+    {file = "hpack-4.0.0-py3-none-any.whl", hash = "sha256:84a076fad3dc9a9f8063ccb8041ef100867b1878b25ef0ee63847a5d53818a6c"},
+    {file = "hpack-4.0.0.tar.gz", hash = "sha256:fc41de0c63e687ebffde81187a948221294896f6bdc0ae2312708df339430095"},
 ]
 hypercorn = [
     {file = "Hypercorn-0.10.2-py3-none-any.whl", hash = "sha256:809d77f3bf9fa0794a598d8dfa0f8d889e7e1c2f927581cd33068803169dc474"},
     {file = "Hypercorn-0.10.2.tar.gz", hash = "sha256:19f32e7267225c8108ad585b2c5deddf1fe75950797a0e87a682a3a00ef1af95"},
 ]
 hyperframe = [
-    {file = "hyperframe-5.2.0-py2.py3-none-any.whl", hash = "sha256:5187962cb16dcc078f23cb5a4b110098d546c3f41ff2d4038a9896893bbd0b40"},
-    {file = "hyperframe-5.2.0.tar.gz", hash = "sha256:a9f5c17f2cc3c719b917c4f33ed1c61bd1f8dfac4b1bd23b7c80b3400971b41f"},
+    {file = "hyperframe-6.0.0-py3-none-any.whl", hash = "sha256:a51026b1591cac726fc3d0b7994fbc7dc5efab861ef38503face2930fd7b2d34"},
+    {file = "hyperframe-6.0.0.tar.gz", hash = "sha256:742d2a4bc3152a340a49d59f32e33ec420aa8e7054c1444ef5c7efff255842f1"},
 ]
 idna = [
     {file = "idna-2.10-py2.py3-none-any.whl", hash = "sha256:b97d804b1e9b523befed77c48dacec60e6dcb0b5391d57af6a65a312a90648c0"},

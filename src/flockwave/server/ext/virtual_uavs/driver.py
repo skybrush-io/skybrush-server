@@ -18,6 +18,7 @@ from flockwave.gps.vectors import (
 )
 from flockwave.server.concurrency import delayed
 from flockwave.server.model.gps import GPSFixType
+from flockwave.server.model.preflight import PreflightCheckResult, PreflightCheckInfo
 from flockwave.server.model.uav import VersionInfo, UAVBase, UAVDriver
 from flockwave.server.utils import color_to_rgb565
 from flockwave.spec.errors import FlockwaveErrorCode
@@ -37,6 +38,19 @@ class VirtualUAVState(Enum):
     TAKEOFF = 1
     AIRBORNE = 2
     LANDING = 3
+
+
+#: Dummy preflight check information object returned from all virtual UAVs
+_dummy_preflight_check_info = PreflightCheckInfo()
+_dummy_preflight_check_info.add_item("accel", "Accelerometer")
+_dummy_preflight_check_info.add_item("compass", "Compass")
+_dummy_preflight_check_info.add_item("ekf", "EKF")
+_dummy_preflight_check_info.add_item("gps", "GPS fix")
+_dummy_preflight_check_info.add_item("gyro", "Gyroscope")
+_dummy_preflight_check_info.add_item("pressure", "Pressure sensor")
+for item in _dummy_preflight_check_info.items:
+    item.result = PreflightCheckResult.PASS
+_dummy_preflight_check_info.update_summary()
 
 
 class VirtualUAVDriver(UAVDriver):
@@ -154,6 +168,9 @@ class VirtualUAVDriver(UAVDriver):
     async def handle_command_yo(self, uav):
         await sleep(0.5 + random())
         return "yo" + choice("?!.")
+
+    def _request_preflight_report_single(self, uav) -> PreflightCheckInfo:
+        return _dummy_preflight_check_info
 
     def _request_version_info_single(self, uav) -> VersionInfo:
         return {"firmware": self.app.version}

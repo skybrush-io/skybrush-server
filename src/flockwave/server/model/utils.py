@@ -1,9 +1,10 @@
 from base64 import b64decode, b64encode
-from typing import Callable, Union
+from enum import Enum, IntEnum
+from typing import Callable, Type, Union
 
 from .metamagic import MapperPair
 
-__all__ = ("as_base64", "coerce", "scaled_by")
+__all__ = ("as_base64", "coerce", "enum_to_json", "scaled_by")
 
 
 def as_base64() -> MapperPair:
@@ -41,6 +42,28 @@ def coerce_optional(type: Callable) -> MapperPair:
 
     def to_json(value):
         return None if value is None else type(value)
+
+    return from_json, to_json
+
+
+def enum_to_json(type: Type[Enum]) -> MapperPair:
+    """Returns a property mapper function pair that can be used when the value
+    is an enum and has to be replaced with its string or integer representation
+    before saving it into JSON.
+    """
+
+    def from_json(value):
+        return type(value)
+
+    if issubclass(type, IntEnum):
+
+        def to_json(value):
+            return int(value.value)
+
+    else:
+
+        def to_json(value):
+            return str(value.value)
 
     return from_json, to_json
 

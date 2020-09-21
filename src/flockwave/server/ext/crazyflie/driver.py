@@ -4,15 +4,31 @@ from collections import defaultdict
 from contextlib import asynccontextmanager, AsyncExitStack
 from functools import partial
 from pathlib import Path
-from typing import Optional
+from trio import open_memory_channel, open_nursery
+from trio_util import periodic
+from typing import List, Optional
 
 from aiocflib.crazyflie import Crazyflie
 from aiocflib.crazyflie.log import LogSession
+from aiocflib.crazyflie.mem import write_with_checksum
 
 from flockwave.gps.vectors import VelocityNED
 from flockwave.server.ext.logger import log as base_log
+from flockwave.server.model.preflight import PreflightCheckInfo, PreflightCheckResult
 from flockwave.server.model.uav import BatteryInfo, UAVBase, UAVDriver, VersionInfo
 from flockwave.spec.ids import make_valid_object_id
+
+from skybrush import get_skybrush_light_program_from_show_specification
+
+from .crtp_extensions import (
+    DRONE_SHOW_PORT,
+    DroneShowCommand,
+    DroneShowStatus,
+    LightProgramLocation,
+    LightProgramType,
+    LIGHT_PROGRAM_MEMORY_ID,
+    PREFLIGHT_STATUS_LIGHT_EFFECT,
+)
 
 __all__ = ("CrazyflieDriver",)
 
@@ -106,6 +122,20 @@ class CrazyflieDriver(UAVDriver):
 
         return uav
 
+    async def handle_command___show_upload(self, uav: "CrazyflieUAV", *, show):
+        """Handles a drone show upload request for the given UAV.
+
+        This is a temporary solution until we figure out something that is
+        more sustainable in the long run.
+
+        Parameters:
+            show: the show data
+        """
+        await uav.handle_show_upload(show)
+
+    def _request_preflight_report_single(self, uav) -> PreflightCheckInfo:
+        return uav.preflight_status
+
     async def _request_version_info_single(self, uav) -> VersionInfo:
         return await uav.get_version_info()
 
@@ -129,13 +159,25 @@ class CrazyflieUAV(UAVBase):
         uri: the Crazyflie URI of the drone
     """
 
+    _preflight_result_map = [
+        PreflightCheckResult.OFF,
+        PreflightCheckResult.FAILURE,
+        PreflightCheckResult.RUNNING,
+        PreflightCheckResult.PASS,
+    ]
+
     def __init__(self, *args, **kwds):
         super().__init__(*args, **kwds)
         self.uri = None
         self.notify_updated = None
 
+        self._command_queue_tx, self._command_queue_rx = open_memory_channel(0)
         self._crazyflie = None
         self._log_session = None
+        self._preflight_status = self._create_preflight_status_report()
+
+        self._trajectory = None
+        self._light_program = None
 
         self._battery = BatteryInfo()
         self._velocity = VelocityNED()
@@ -143,10 +185,62 @@ class CrazyflieUAV(UAVBase):
     async def get_version_info(self) -> VersionInfo:
         return {"firmware": await self._crazyflie.platform.get_firmware_version()}
 
+    async def handle_show_upload(self, show) -> None:
+        from trio import sleep
+
+        light_program = get_skybrush_light_program_from_show_specification(show)
+        await self._upload_light_program(light_program)
+
     @property
     def log_session(self) -> Optional[LogSession]:
         """Returns the logging session that the Crazyflie currently uses."""
         return self._log_session
+
+    @property
+    def preflight_status(self) -> PreflightCheckInfo:
+        return self._preflight_status
+
+    async def process_command_queue(self) -> None:
+        """Runs a task that processes the commands targeted to this UAV as they
+        are placed in the incoming command queue of the UAV.
+
+        The processor will not interleave the execution of commands; only one
+        command will be executed at the same time.
+        """
+        async with self._command_queue_rx:
+            async for command, args in self._command_queue_rx:
+                print(repr(command), repr(args))
+
+    async def process_drone_show_status_messages(self, period: float = 0.5) -> None:
+        """Runs a task that requests a drone show related status report from
+        the Crazyflie drone repeatedly.
+
+        Parameters:
+            period: the number of seconds elapsed between consecutive status
+                requests, in seconds
+        """
+        async for _ in periodic(period):
+            try:
+                status = await self._crazyflie.run_command(
+                    port=DRONE_SHOW_PORT, command=DroneShowCommand.STATUS
+                )
+                status = DroneShowStatus.from_bytes(status)
+            except TimeoutError:
+                status = None
+
+            if status:
+                self._battery.charging = status.charging
+                self._battery.voltage = status.battery_voltage
+                self._update_preflight_status_from_result_codes(status.preflight_checks)
+
+                # TODO(ntamas): store local position somewhere
+                self.update_status(battery=self._battery)
+
+    async def process_incoming_log_messages(self) -> None:
+        """Runs a task that processes incoming log messages and calls the
+        appropriate log message handlers.
+        """
+        await self._log_session.process_messages()
 
     async def reboot(self):
         """Reboots the UAV."""
@@ -188,12 +282,42 @@ class CrazyflieUAV(UAVBase):
         finally:
             self._crazyflie = None
 
-    async def process_incoming_log_messages(self) -> None:
-        await self._log_session.process_messages()
+    @asynccontextmanager
+    async def use_show_mode(self):
+        """Returns a context manager that turns on "drone show mode" on the
+        Crazyflie when entering the context and turns it off when exiting the
+        context.
+        """
+        await self._crazyflie.param.validate()
+        async with AsyncExitStack() as stack:
+            await stack.enter_async_context(
+                self._crazyflie.param.set_and_restore("show.enabled", 1, 0)
+            )
+            await stack.enter_async_context(
+                self._crazyflie.param.set_and_restore(
+                    "ring.effect", PREFLIGHT_STATUS_LIGHT_EFFECT
+                )
+            )
+            yield
+
+    @staticmethod
+    def _create_preflight_status_report() -> PreflightCheckInfo:
+        """Creates an empty preflight status report that will be updated
+        periodically.
+        """
+        report = PreflightCheckInfo()
+        report.add_item("battery", "Battery")
+        report.add_item("stabilizer", "Stabilizer")
+        report.add_item("kalman", "Kalman filter")
+        report.add_item("positioning", "Positioning")
+        report.add_item("home", "Home position")
+        report.add_item("trajectory", "Trajectory")
+        report.add_item("lights", "Light program")
+        return report
 
     def _on_battery_state_received(self, message):
         self._battery.voltage = message.items[0]
-        # TODO(ntamas): store whether the battery is charging
+        self._battery.charging = message.items[1] == 1  # PM state 1 = charging
         self.update_status(battery=self._battery)
 
         self.notify_updated()
@@ -228,6 +352,33 @@ class CrazyflieUAV(UAVBase):
         )
         return session
 
+    def _update_preflight_status_from_result_codes(self, codes: List[int]) -> None:
+        """Updates the result of the local preflight check report data structure
+        from the result codes received in a stauts package.
+        """
+        for check, code in zip(self._preflight_status.items, codes):
+            check.result = self._preflight_result_map[code & 0x03]
+        self._preflight_status.update_summary()
+
+    async def _upload_light_program(self, data: bytes) -> None:
+        """Uploads the given light program to the Crazyflie drone."""
+        try:
+            memory = await self._crazyflie.mem.find(LIGHT_PROGRAM_MEMORY_ID)
+        except ValueError:
+            raise RuntimeError("Light programs not supported on this drone")
+        addr = await write_with_checksum(memory, 0, data, only_if_changed=True)
+        await self._crazyflie.run_command(
+            port=DRONE_SHOW_PORT, command=DroneShowCommand.DEFINE_LIGHT_PROGRAM,
+            data=[
+                0, # light program ID
+                LightProgramLocation.MEM,
+                LightProgramType.SKYBRUSH,
+                0, # fps, not used
+                addr, # address in memory
+                len(data) # length of light program
+            ]
+        )
+
 
 class CrazyflieHandlerTask:
     """Class responsible for handling communication with a single Crazyflie
@@ -241,6 +392,7 @@ class CrazyflieHandlerTask:
             uav: the Crazyflie UAV to communicate with
             debug: whether to log the communication with the UAV on the console
         """
+        self._command_queue_tx = uav._command_queue_tx
         self._uav = uav
         self._debug = bool(debug)
 
@@ -264,8 +416,8 @@ class CrazyflieHandlerTask:
                 # and in 99% of the cases it is simply a communication error
                 pass
 
-            # TODO(ntamas): when the task stops, we have to notify the scanner
-            # that it can resume recognizing this drone again
+        # TODO(ntamas): when the task stops, we have to notify the scanner
+        # that it can resume recognizing this drone again
 
     async def _run(self):
         """Implementation of the task itself.
@@ -280,4 +432,10 @@ class CrazyflieHandlerTask:
 
             await enter(self._uav.use(debug=self._debug))
             await enter(self._uav.log_session)
-            await self._uav.process_incoming_log_messages()
+            await enter(self._uav.use_show_mode())
+            await enter(self._uav._command_queue_tx)
+
+            nursery = await enter(open_nursery())
+            nursery.start_soon(self._uav.process_incoming_log_messages)
+            nursery.start_soon(self._uav.process_drone_show_status_messages)
+            nursery.start_soon(self._uav.process_command_queue)

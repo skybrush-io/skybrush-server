@@ -515,6 +515,7 @@ class SkybrushServer:
             "UAV-HALT": ("send_shutdown_signal", None),
             "UAV-LAND": ("send_landing_signal", None),
             "UAV-MOTOR": ("send_motor_start_stop_signal", None),
+            "UAV-PREFLT": ("request_preflight_report", None),
             "UAV-RST": ("send_reset_signal", None),
             "UAV-RTH": ("send_return_to_home_signal", None),
             "UAV-SIGNAL": (
@@ -1127,6 +1128,7 @@ def handle_UAV_LIST(message, sender, hub):
     "UAV-HALT",
     "UAV-LAND",
     "UAV-MOTOR",
+    "UAV-PREFLT",
     "UAV-RST",
     "UAV-RTH",
     "UAV-SIGNAL",

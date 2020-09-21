@@ -2,7 +2,6 @@
 the flockctrl system.
 """
 
-from base64 import b64decode
 from functools import partial
 from importlib.resources import read_text
 from io import BytesIO
@@ -11,6 +10,7 @@ from typing import Iterable, Tuple
 from zipfile import ZipFile, ZIP_DEFLATED
 
 from flockwave.gps.vectors import FlatEarthToGPSCoordinateTransformation
+from skybrush import get_skybrush_light_program_from_show_specification
 
 __all__ = ("get_template", "gps_coordinate_to_string")
 
@@ -235,12 +235,10 @@ def generate_mission_file_from_show_specification(show) -> bytes:
     choreography_str = get_template("show/choreography.cfg").format(**params)
 
     # parse lights
-    lights = show.get("lights", None)
-    light_data = b64decode(lights["data"])
+    light_data = get_skybrush_light_program_from_show_specification(show)
 
     # create mission.zip
     # create the zipfile and write content to it
-    print(repr(mission_str))
     buffer = BytesIO()
     with ZipFile(buffer, "w", ZIP_DEFLATED) as zip_archive:
         zip_archive.writestr("waypoints.cfg", waypoint_str)

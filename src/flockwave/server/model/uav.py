@@ -16,9 +16,17 @@ from .gps import GPSFix
 from .metamagic import ModelMeta
 from .mixins import TimestampLike, TimestampMixin
 from .object import ModelObject, register
+from .preflight import PreflightCheckInfo
 from .utils import as_base64, scaled_by
 
-__all__ = ("is_uav", "PassiveUAVDriver", "UAV", "UAVBase", "UAVDriver", "UAVStatusInfo")
+__all__ = (
+    "is_uav",
+    "PassiveUAVDriver",
+    "UAV",
+    "UAVBase",
+    "UAVDriver",
+    "UAVStatusInfo",
+)
 
 log = base_log.getChild("uav")
 
@@ -303,7 +311,36 @@ class UAVDriver(metaclass=ABCMeta):
         """Constructor."""
         self.app = None
 
+    def request_preflight_report(self, uavs):
+        """Asks the driver to request a detailed report about the status of
+        preflight checks on the given UAVs.
+
+        Typically, you don't need to override this method when implementing
+        a driver; override ``_request_preflight_report_single()`` instead.
+
+        Returns:
+            Dict[UAV,object]: dict mapping UAVs to the corresponding results
+                (which may also be errors or awaitables; it is the
+                responsibility of the caller to evaluate errors and wait for
+                awaitables)
+        """
+        return self._send_signal(
+            uavs, "preflight report request", self._request_preflight_report_single,
+        )
+
     def request_version_info(self, uavs) -> Dict[str, VersionInfo]:
+        """Asks the driver to request detailed version information from the
+        given UAVs.
+
+        Typically, you don't need to override this method when implementing
+        a driver; override ``_request_version_info_single()`` instead.
+
+        Returns:
+            Dict[UAV,object]: dict mapping UAVs to the corresponding results
+                (which may also be errors or awaitables; it is the
+                responsibility of the caller to evaluate errors and wait for
+                awaitables)
+        """
         return self._send_signal(
             uavs, "version info request", self._request_version_info_single
         )
@@ -633,11 +670,30 @@ class UAVDriver(metaclass=ABCMeta):
             result[uav] = outcome
         return result
 
+    def _request_preflight_report_single(self, uav: UAV) -> PreflightCheckInfo:
+        """Asks the driver to return a detailed report about the results of the
+        preflight checks for a single UAV managed by this driver.
+
+        May return an awaitable if preparing the result takes a longer time.
+
+        The function follows the "samurai principle", i.e. "return victorious,
+        or not at all". It means that if it returns, the operation succeeded.
+        Raise an exception if the operation cannot be executed for any reason;
+        a RuntimeError is typically sufficient.
+
+        Raises:
+            NotImplementedError: if the operation is not supported by the
+                driver yet, but there are plans to implement it
+            NotSupportedError: if the operation is not supported by the
+                driver and will not be supported in the future either
+        """
+        raise NotImplementedError
+
     def _request_version_info_single(self, uav: UAV) -> VersionInfo:
         """Asks the driver to return a mapping from component names to the
         corresponding version numbers for a single UAV managed by this driver.
 
-        May return an awaitable if sending the signal takes a longer time.
+        May return an awaitable if preparing the result takes a longer time.
 
         The function follows the "samurai principle", i.e. "return victorious,
         or not at all". It means that if it returns, the operation succeeded.

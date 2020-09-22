@@ -6,12 +6,15 @@ from contextlib import contextmanager
 from datetime import datetime
 from functools import partial
 from inspect import Parameter, signature
+from itertools import tee
 from operator import mul
-from typing import Any, Callable
+from typing import Any, Callable, Generator, Iterable, Tuple, TypeVar
 
 
 __all__ = (
+    "bind",
     "color_to_rgb565",
+    "consecutive_pairs",
     "datetime_to_unix_timestamp",
     "identity",
     "is_timezone_aware",
@@ -72,6 +75,24 @@ def color_to_rgb565(color: Color) -> int:
         + (((green >> 2) & 0x3F) << 5)
         + ((blue >> 3) & 0x1F)
     )
+
+
+T = TypeVar("T")
+
+
+def consecutive_pairs(iterable: Iterable[T]) -> Generator[Tuple[T, T], None, None]:
+    """Given an iterable, returns a generator that generates consecutive
+    pairs of items from the iterable.
+
+    Parameters:
+        iterable: the iterable
+
+    Yields:
+        pairs of consecutive items from the iterable
+    """
+    a, b = tee(iterable)
+    next(b, None)
+    return zip(a, b)
 
 
 def constant(x: Any) -> Callable[..., Any]:

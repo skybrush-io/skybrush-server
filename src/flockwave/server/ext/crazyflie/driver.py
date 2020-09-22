@@ -4,11 +4,13 @@ from collections import defaultdict
 from contextlib import asynccontextmanager, AsyncExitStack
 from functools import partial
 from pathlib import Path
-from trio import open_memory_channel, open_nursery
+from trio import open_memory_channel, open_nursery, sleep
 from trio_util import periodic
-from typing import List, Optional
+from typing import List, Optional, Tuple, Union
 
 from aiocflib.crazyflie import Crazyflie
+from aiocflib.crtp.crtpstack import MemoryType
+from aiocflib.crazyflie.high_level_commander import TrajectoryType
 from aiocflib.crazyflie.log import LogSession
 from aiocflib.crazyflie.mem import write_with_checksum
 
@@ -18,7 +20,11 @@ from flockwave.server.model.preflight import PreflightCheckInfo, PreflightCheckR
 from flockwave.server.model.uav import BatteryInfo, UAVBase, UAVDriver, VersionInfo
 from flockwave.spec.ids import make_valid_object_id
 
-from skybrush import get_skybrush_light_program_from_show_specification
+from skybrush import (
+    get_skybrush_light_program_from_show_specification,
+    get_skybrush_trajectory_from_show_specification,
+    TrajectorySpecification,
+)
 
 from .crtp_extensions import (
     DRONE_SHOW_PORT,
@@ -29,6 +35,7 @@ from .crtp_extensions import (
     LIGHT_PROGRAM_MEMORY_ID,
     PREFLIGHT_STATUS_LIGHT_EFFECT,
 )
+from .trajectory import encode_trajectory, TrajectoryEncoding, to_poly4d_sequence
 
 __all__ = ("CrazyflieDriver",)
 
@@ -122,6 +129,65 @@ class CrazyflieDriver(UAVDriver):
 
         return uav
 
+    async def handle_command_home(self, uav):
+        """Command that retrieves the current home position of the UAV."""
+        home = await uav.get_home_position()
+        if home is None:
+            return "No home position yet"
+        else:
+            x, y, z = home
+            return f"Home: [{x:.2f}, {y:.2f}, {z:.2f}] m"
+
+    async def handle_command_param(
+        self, uav, name: Optional[str] = None, value: Optional[Union[str, float]] = None
+    ):
+        """Command that retrieves or sets the value of a parameter on the UAV."""
+        if not name:
+            raise RuntimeError("Missing parameter name")
+
+        name = str(name)
+        if "=" in name and value is None:
+            name, value = name.split("=", 1)
+
+        if value is not None:
+            try:
+                value = float(value)
+            except ValueError:
+                raise RuntimeError(f"Invalid parameter value: {value}")
+            if value.is_integer():
+                value = int(value)
+            try:
+                await uav.set_parameter(name, value)
+            except KeyError:
+                raise RuntimeError(f"No such parameter: {name}")
+
+        try:
+            value = await uav.get_parameter(name, fetch=True)
+            return f"{name} = {value}"
+        except KeyError:
+            raise RuntimeError(f"No such parameter: {name}")
+
+    async def handle_command_test(self, uav, component: Optional[str] = None) -> None:
+        """Runs a self-test on a component of the UAV."""
+        if component == "motor":
+            # TODO(ntamas): allow this only when the drone is on the ground!
+            await uav.set_parameter("health.startPropTest", 1)
+            return "Motor test started"
+        elif component == "led":
+            async with uav.set_and_restore_parameter("ring.effect", 8):
+                await sleep(2)
+            await uav.set_parameter("ring.headlightEnable", 0)
+            return "LED test executed"
+        else:
+            return "Usage: test <led|motor>"
+
+    async def handle_command_stop(self, uav):
+        """Stops the motors of the UAV immediately."""
+        await uav.stop()
+        return "Motor stop signal sent"
+
+    handle_command_motoroff = handle_command_stop
+
     async def handle_command___show_upload(self, uav: "CrazyflieUAV", *, show):
         """Handles a drone show upload request for the given UAV.
 
@@ -150,6 +216,9 @@ class CrazyflieDriver(UAVDriver):
 
     async def _send_shutdown_signal_single(self, uav):
         return await uav.shutdown()
+
+    async def _send_takeoff_signal_single(self, uav):
+        return await uav.takeoff()
 
 
 class CrazyflieUAV(UAVBase):
@@ -180,16 +249,47 @@ class CrazyflieUAV(UAVBase):
         self._light_program = None
 
         self._battery = BatteryInfo()
+        self._position = None
         self._velocity = VelocityNED()
+
+    async def get_home_position(self) -> Optional[Tuple[float, float, float]]:
+        """Returns the current home position of the UAV."""
+        x = await self.get_parameter("preflight.homeX", fetch=True)
+        y = await self.get_parameter("preflight.homeY", fetch=True)
+        z = await self.get_parameter("preflight.homeZ", fetch=True)
+        if not x and not y and z <= -10000:
+            return None
+        else:
+            return x / 1000, y / 1000, z / 1000
+
+    async def get_parameter(self, name: str, fetch: bool = False) -> float:
+        """Returns the value of a parameter from the Crazyflie."""
+        return await self._crazyflie.param.get(name, fetch=fetch)
 
     async def get_version_info(self) -> VersionInfo:
         return {"firmware": await self._crazyflie.platform.get_firmware_version()}
 
     async def handle_show_upload(self, show) -> None:
-        from trio import sleep
-
         light_program = get_skybrush_light_program_from_show_specification(show)
         await self._upload_light_program(light_program)
+
+        trajectory = get_skybrush_trajectory_from_show_specification(show)
+        await self._upload_trajectory(trajectory)
+
+    async def land(self, altitude: float = 0.0, velocity: float = 0.5):
+        """Initiates a landing to the given altitude (absolute or relative).
+
+        Parameters:
+            altitude: the altitude to reach at the end of the landing operation,
+                in meters
+            velocity: the desired takeoff velocity, in meters per second
+        """
+        # TODO(ntamas): here we (ab)use the extra features of our firmware
+        # TODO(ntamas): launch this in a separate background task and return
+        # early with the result
+        # TODO(ntamas): figure out how much time the landing will take
+        # approximately and shut down the motors at the end
+        await self._crazyflie.high_level_commander.land(altitude, duration=-velocity)
 
     @property
     def log_session(self) -> Optional[LogSession]:
@@ -231,10 +331,11 @@ class CrazyflieUAV(UAVBase):
             if status:
                 self._battery.charging = status.charging
                 self._battery.voltage = status.battery_voltage
+                self._battery.percentage = status.battery_percentage
                 self._update_preflight_status_from_result_codes(status.preflight_checks)
 
                 # TODO(ntamas): store local position somewhere
-                self.update_status(battery=self._battery)
+                self.update_status(battery=self._battery, mode=status.mode)
 
     async def process_incoming_log_messages(self) -> None:
         """Runs a task that processes incoming log messages and calls the
@@ -250,9 +351,63 @@ class CrazyflieUAV(UAVBase):
         """Starts the main message handler task of the UAV."""
         await CrazyflieHandlerTask(self, debug=self.driver.debug).run()
 
+    async def set_parameter(self, name: str, value: float) -> None:
+        """Sets the value of a parameter on the Crazyflie."""
+        await self._crazyflie.param.set(name, value)
+
+    @asynccontextmanager
+    async def set_and_restore_parameter(self, name: str, value: float) -> None:
+        """Context manager that sets the value of a parameter on the UAV upon
+        entering the context and resets it upon exiting.
+        """
+        async with self._crazyflie.param.set_and_restore(name, value):
+            yield
+
+    async def set_home_position(
+        self, pos: Optional[Tuple[float, float, float]]
+    ) -> None:
+        """Sets or clears the home position of the UAV.
+
+        Parameters:
+            pos: the home position of the UAV, in the local coordinate system.
+                Units are in meters. `None` means to clear the home position.
+        """
+        if pos is None:
+            x, y, z = 0, 0, -10000
+        else:
+            x, y, z = pos
+            x = int(round(x * 1000))
+            y = int(round(y * 1000))
+            z = int(round(z * 1000))
+        await self.set_parameter("preflight.homeX", x)
+        await self.set_parameter("preflight.homeY", y)
+        await self.set_parameter("preflight.homeZ", z)
+
+    async def stop(self) -> None:
+        """Stops the motors of the UAV immediately."""
+        await self._crazyflie.commander.stop()
+        await self._crazyflie.high_level_commander.stop()
+
     async def shutdown(self):
         """Shuts down the UAV."""
         return await self._crazyflie.shutdown()
+
+    async def takeoff(
+        self, altitude: float = 1.0, relative: bool = False, velocity: float = 0.5
+    ):
+        """Initiates a takeoff to the given altitude (absolute or relative).
+
+        Parameters:
+            altitude: the altitude to reach at the end of the takeoff operation,
+                in meters
+            relative: whether the altitude is relative to the current position
+            velocity: the desired takeoff velocity, in meters per second
+        """
+        if relative:
+            raise NotImplementedError("Not supported by the firmware yet")
+
+        # TODO(ntamas): here we (ab)use the extra features of our firmware
+        await self._crazyflie.high_level_commander.takeoff(altitude, duration=-velocity)
 
     @asynccontextmanager
     async def use(self, debug: bool = False):
@@ -290,6 +445,9 @@ class CrazyflieUAV(UAVBase):
         """
         await self._crazyflie.param.validate()
         async with AsyncExitStack() as stack:
+            await stack.enter_async_context(
+                self._crazyflie.param.set_and_restore("commander.enHighLevel", 1, 0)
+            )
             await stack.enter_async_context(
                 self._crazyflie.param.set_and_restore("show.enabled", 1, 0)
             )
@@ -365,18 +523,41 @@ class CrazyflieUAV(UAVBase):
         try:
             memory = await self._crazyflie.mem.find(LIGHT_PROGRAM_MEMORY_ID)
         except ValueError:
-            raise RuntimeError("Light programs not supported on this drone")
+            raise RuntimeError("Light programs are not supported on this drone")
         addr = await write_with_checksum(memory, 0, data, only_if_changed=True)
         await self._crazyflie.run_command(
-            port=DRONE_SHOW_PORT, command=DroneShowCommand.DEFINE_LIGHT_PROGRAM,
+            port=DRONE_SHOW_PORT,
+            command=DroneShowCommand.DEFINE_LIGHT_PROGRAM,
             data=[
-                0, # light program ID
+                0,  # light program ID
                 LightProgramLocation.MEM,
                 LightProgramType.SKYBRUSH,
-                0, # fps, not used
-                addr, # address in memory
-                len(data) # length of light program
-            ]
+                0,  # fps, not used
+                addr,  # address in memory
+                len(data),  # length of light program
+            ],
+        )
+
+    async def _upload_trajectory(self, trajectory: TrajectorySpecification) -> None:
+        """Uploads the given trajectory data to the Crazyflie drone."""
+        try:
+            memory = await self._crazyflie.mem.find(MemoryType.TRAJECTORY)
+        except ValueError:
+            raise RuntimeError("Trajectories are not supported on this drone")
+
+        # Define the home position and the takeoff time first
+        await self.set_home_position(trajectory.home_position)
+        await self.set_parameter("show.takeoffTime", trajectory.takeoff_time)
+
+        # Encode the trajectory and write it to the Crazyflie memory
+        data = encode_trajectory(
+            to_poly4d_sequence(trajectory), encoding=TrajectoryEncoding.COMPRESSED
+        )
+        addr = await write_with_checksum(memory, 0, data, only_if_changed=True)
+
+        # Now we can define the entire trajectory as well
+        await self._crazyflie.high_level_commander.define_trajectory(
+            0, addr=addr, type=TrajectoryType.COMPRESSED
         )
 
 

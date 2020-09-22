@@ -13,8 +13,10 @@ def get_skybrush_light_program_from_show_specification(show: Dict) -> bytes:
     show specification object.
     """
     lights = show.get("lights", None)
-    light_version = lights.get("version", 0)
-    if light_version != 1:
+    version = lights.get("version", 0)
+    if version is None:
+        raise RuntimeError("light program must have a version number")
+    if version != 1:
         raise RuntimeError("only version 1 light programs are supported")
     light_data = b64decode(lights["data"])
     return light_data

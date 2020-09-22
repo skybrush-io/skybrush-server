@@ -3,7 +3,7 @@ related to our extensions that we added to the Crazyflie firmware.
 """
 
 from dataclasses import dataclass
-from enum import IntEnum
+from enum import IntEnum, IntFlag
 from struct import Struct
 from typing import Optional, Tuple
 
@@ -65,6 +65,14 @@ class PreflightCheckStatus(IntEnum):
     PASS = 3
 
 
+class DroneShowStatusFlag(IntFlag):
+    """Flags for the status bits of the drone show status packet."""
+
+    BATTERY_CHARGING = 1
+    HIGH_LEVEL_COMMANDER_ENABLED = 2
+    DRONE_SHOW_MODE_ENABLED = 4
+
+
 @dataclass
 class DroneShowStatus:
     """Data class representing the response to a `DroneShowCommand.STATUS`
@@ -72,22 +80,51 @@ class DroneShowStatus:
     """
 
     battery_voltage: float = 0.0
-    charging: bool = False
+    flags: int = 0
     preflight_checks: Tuple[PreflightCheckStatus, ...] = ()
     position: Optional[Tuple[float, float, float]] = None
+    light_status: int = 0
 
-    _struct = Struct("<Hhhh")
+    _struct = Struct("<HhhhH")
+
+    @property
+    def battery_percentage(self) -> int:
+        """Returns the approximate battery charge percentage."""
+        percentage = round(100 * (self.battery_voltage - 3.1) / 1.1)
+        return min(max(percentage, 0), 100)
+
+    @property
+    def charging(self) -> bool:
+        """Returns whether the battery is charging."""
+        return self.flags & DroneShowStatusFlag.BATTERY_CHARGING
 
     @classmethod
     def from_bytes(cls, data: bytes):
         """Constructs a DroneShowStatus_ object from the raw response to the
         `DroneShowCommand.STATUS` command.
         """
-        checks, x, y, z = cls._struct.unpack(data[2:10])
+        checks, x, y, z, light_status = cls._struct.unpack(data[3:13])
         checks = tuple((checks >> (index * 2)) & 0x03 for index in range(8))
         return cls(
-            battery_voltage=(data[1] & 0x7F) / 10.0,
-            charging=bool(data[1] & 0x80),
+            battery_voltage=data[1] / 10.0,
+            flags=data[2],
             preflight_checks=checks,
             position=(x / 1000.0, y / 1000.0, z / 1000.0),
+            light_status=light_status,
         )
+
+    def has_flag(self, flag: DroneShowStatusFlag) -> bool:
+        """Returns whether the status object has the given flag."""
+        return bool(self.flags & flag)
+
+    @property
+    def mode(self) -> str:
+        """Returns a flight mode code that can be inferred from the status
+        packet.
+        """
+        if self.flags & DroneShowStatusFlag.DRONE_SHOW_MODE_ENABLED:
+            return "show"
+        elif self.flags & DroneShowStatusFlag.HIGH_LEVEL_COMMANDER_ENABLED:
+            return "hcmd"
+        else:
+            return "----"

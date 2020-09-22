@@ -4,7 +4,7 @@ description = "asyncio-based API for Crazyflie drones"
 name = "aiocflib"
 optional = false
 python-versions = ">=3.7,<4.0"
-version = "0.5.0"
+version = "0.6.0"
 
 [package.dependencies]
 anyio = ">=2.0.0,<3.0.0"
@@ -795,7 +795,7 @@ description = "Python MAVLink code"
 name = "pymavlink"
 optional = false
 python-versions = "*"
-version = "2.4.10"
+version = "2.4.11"
 
 [package.dependencies]
 future = "*"
@@ -1187,13 +1187,13 @@ docs = ["sphinx", "jaraco.packaging (>=3.2)", "rst.linker (>=1.9)"]
 testing = ["jaraco.itertools", "func-timeout"]
 
 [metadata]
-content-hash = "b229e06b920cbbdb24ab301425c5aab257ea869f37cb3b35bc1d6fdc8beb6297"
+content-hash = "57644e00d49f69462be83a44113b9b39ac7d80776529b4976e9cc286eb0a0340"
 python-versions = "^3.7"
 
 [metadata.files]
 aiocflib = [
-    {file = "aiocflib-0.5.0-py3-none-any.whl", hash = "md5:2738f266a91336859ddd76528b8d80b9"},
-    {file = "aiocflib-0.5.0.tar.gz", hash = "md5:c8667f7dbf1979a5ae97845fcf0d840c"},
+    {file = "aiocflib-0.6.0-py3-none-any.whl", hash = "md5:979e6b7cec58c0d3c08e5ea5dc3dd1be"},
+    {file = "aiocflib-0.6.0.tar.gz", hash = "md5:ebe350fd230953e60b457e92fb89dfb9"},
 ]
 aiofiles = [
     {file = "aiofiles-0.5.0-py3-none-any.whl", hash = "sha256:377fdf7815cc611870c59cbd07b68b180841d2a2b79812d8c218be02448c2acb"},
@@ -1603,7 +1603,7 @@ pyledctrl = [
     {file = "pyledctrl-3.1.0.tar.gz", hash = "md5:4b687590e44bf9dc38e23577bd26132d"},
 ]
 pymavlink = [
-    {file = "pymavlink-2.4.10.tar.gz", hash = "sha256:1bc6a6b8b3f4c6878ae7f662544ddb766e732dd1e07728ae7610cda8276b708d"},
+    {file = "pymavlink-2.4.11.tar.gz", hash = "sha256:0b1265b169f809c6ca94911ad2d7649b8e087a7cc573a0a6ea62ade9bea7ca5c"},
 ]
 pynacl = [
     {file = "PyNaCl-1.4.0-cp27-cp27m-macosx_10_10_x86_64.whl", hash = "sha256:ea6841bc3a76fa4942ce00f3bda7d436fda21e2d91602b9e21b7ca9ecab8f3ff"},

@@ -83,7 +83,7 @@ class DroneShowStatus:
     flags: int = 0
     preflight_checks: Tuple[PreflightCheckStatus, ...] = ()
     position: Optional[Tuple[float, float, float]] = None
-    light_status: int = 0
+    light: int = 0
 
     _struct = Struct("<HhhhH")
 
@@ -103,14 +103,14 @@ class DroneShowStatus:
         """Constructs a DroneShowStatus_ object from the raw response to the
         `DroneShowCommand.STATUS` command.
         """
-        checks, x, y, z, light_status = cls._struct.unpack(data[3:13])
+        checks, x, y, z, light = cls._struct.unpack(data[3:13])
         checks = tuple((checks >> (index * 2)) & 0x03 for index in range(8))
         return cls(
             battery_voltage=data[1] / 10.0,
             flags=data[2],
             preflight_checks=checks,
             position=(x / 1000.0, y / 1000.0, z / 1000.0),
-            light_status=light_status,
+            light=light,
         )
 
     def has_flag(self, flag: DroneShowStatusFlag) -> bool:

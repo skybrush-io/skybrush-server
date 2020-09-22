@@ -335,7 +335,9 @@ class CrazyflieUAV(UAVBase):
                 self._update_preflight_status_from_result_codes(status.preflight_checks)
 
                 # TODO(ntamas): store local position somewhere
-                self.update_status(battery=self._battery, mode=status.mode)
+                self.update_status(
+                    battery=self._battery, mode=status.mode, light=status.light
+                )
 
     async def process_incoming_log_messages(self) -> None:
         """Runs a task that processes incoming log messages and calls the

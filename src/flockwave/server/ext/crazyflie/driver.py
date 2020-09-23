@@ -6,7 +6,7 @@ from functools import partial
 from pathlib import Path
 from trio import open_memory_channel, open_nursery, sleep
 from trio_util import periodic
-from typing import List, Optional, Tuple, Union
+from typing import Callable, List, Optional, Tuple, Union
 
 from aiocflib.crazyflie import Crazyflie
 from aiocflib.crtp.crtpstack import MemoryType
@@ -14,7 +14,7 @@ from aiocflib.crazyflie.high_level_commander import TrajectoryType
 from aiocflib.crazyflie.log import LogSession
 from aiocflib.crazyflie.mem import write_with_checksum
 
-from flockwave.gps.vectors import VelocityNED
+from flockwave.gps.vectors import Vector3D, VelocityNED
 from flockwave.server.ext.logger import log as base_log
 from flockwave.server.model.preflight import PreflightCheckInfo, PreflightCheckResult
 from flockwave.server.model.uav import BatteryInfo, UAVBase, UAVDriver, VersionInfo
@@ -197,13 +197,19 @@ class CrazyflieDriver(UAVDriver):
         Parameters:
             show: the show data
         """
-        await uav.handle_show_upload(show)
+        await uav.upload_show(show, remember=True)
 
     def _request_preflight_report_single(self, uav) -> PreflightCheckInfo:
         return uav.preflight_status
 
     async def _request_version_info_single(self, uav) -> VersionInfo:
         return await uav.get_version_info()
+
+    async def _send_light_or_sound_emission_signal_single(
+        self, uav, signals, duration
+    ) -> None:
+        if "light" in signals:
+            return await uav.emit_light_signal()
 
     async def _send_reset_signal_single(self, uav, component):
         if not component:
@@ -241,16 +247,22 @@ class CrazyflieUAV(UAVBase):
         self.notify_updated = None
 
         self._command_queue_tx, self._command_queue_rx = open_memory_channel(0)
+
         self._crazyflie = None
         self._log_session = None
         self._preflight_status = self._create_preflight_status_report()
 
-        self._trajectory = None
-        self._light_program = None
+        self._last_uploaded_show = None
 
         self._battery = BatteryInfo()
-        self._position = None
+        self._position = Vector3D()
         self._velocity = VelocityNED()
+
+    async def emit_light_signal(self) -> None:
+        """Asks the UAV to emit a visible light signal from its LED ring to
+        attract attention.
+        """
+        await self.set_parameter("ring.lightSignalTrigger", 1)
 
     async def get_home_position(self) -> Optional[Tuple[float, float, float]]:
         """Returns the current home position of the UAV."""
@@ -269,13 +281,6 @@ class CrazyflieUAV(UAVBase):
     async def get_version_info(self) -> VersionInfo:
         return {"firmware": await self._crazyflie.platform.get_firmware_version()}
 
-    async def handle_show_upload(self, show) -> None:
-        light_program = get_skybrush_light_program_from_show_specification(show)
-        await self._upload_light_program(light_program)
-
-        trajectory = get_skybrush_trajectory_from_show_specification(show)
-        await self._upload_trajectory(trajectory)
-
     async def land(self, altitude: float = 0.0, velocity: float = 0.5):
         """Initiates a landing to the given altitude (absolute or relative).
 
@@ -290,6 +295,13 @@ class CrazyflieUAV(UAVBase):
         # TODO(ntamas): figure out how much time the landing will take
         # approximately and shut down the motors at the end
         await self._crazyflie.high_level_commander.land(altitude, duration=-velocity)
+
+    @property
+    def last_uploaded_show(self):
+        """Reference to the last show data that was uploaded to this Crazyflie,
+        even if it was rebooted in the meanwhile.
+        """
+        return self._last_uploaded_show
 
     @property
     def log_session(self) -> Optional[LogSession]:
@@ -307,9 +319,11 @@ class CrazyflieUAV(UAVBase):
         The processor will not interleave the execution of commands; only one
         command will be executed at the same time.
         """
-        async with self._command_queue_rx:
-            async for command, args in self._command_queue_rx:
-                print(repr(command), repr(args))
+        # Don't put this in an async with() block; we don't want to close the
+        # RX queue when the producer of the TX queue (i.e. the CrazyflieHandlerTask)
+        # disappears, we want to keep on listening
+        async for command, args in self._command_queue_rx:
+            print(repr(command), repr(args))
 
     async def process_drone_show_status_messages(self, period: float = 0.5) -> None:
         """Runs a task that requests a drone show related status report from
@@ -332,12 +346,18 @@ class CrazyflieUAV(UAVBase):
                 self._battery.charging = status.charging
                 self._battery.voltage = status.battery_voltage
                 self._battery.percentage = status.battery_percentage
+                self._position.update(
+                    x=status.position[0], y=status.position[1], z=status.position[2]
+                )
                 self._update_preflight_status_from_result_codes(status.preflight_checks)
 
-                # TODO(ntamas): store local position somewhere
                 self.update_status(
-                    battery=self._battery, mode=status.mode, light=status.light
+                    battery=self._battery,
+                    mode=status.mode,
+                    light=status.light,
+                    position_xyz=self._position,
                 )
+                self.notify_updated()
 
     async def process_incoming_log_messages(self) -> None:
         """Runs a task that processes incoming log messages and calls the
@@ -349,9 +369,18 @@ class CrazyflieUAV(UAVBase):
         """Reboots the UAV."""
         return await self._crazyflie.reboot()
 
-    async def run(self):
+    async def reupload_last_show(self) -> None:
+        """Uploads the last show that was uploaded to this drone again."""
+        if self.last_uploaded_show:
+            await self.upload_show(self.last_uploaded_show, remember=True)
+
+    async def run(self, disposer: Optional[Callable[[], None]] = None):
         """Starts the main message handler task of the UAV."""
-        await CrazyflieHandlerTask(self, debug=self.driver.debug).run()
+        try:
+            await CrazyflieHandlerTask(self, debug=self.driver.debug).run()
+        finally:
+            if disposer:
+                disposer()
 
     async def set_parameter(self, name: str, value: float) -> None:
         """Sets the value of a parameter on the Crazyflie."""
@@ -411,6 +440,15 @@ class CrazyflieUAV(UAVBase):
         # TODO(ntamas): here we (ab)use the extra features of our firmware
         await self._crazyflie.high_level_commander.takeoff(altitude, duration=-velocity)
 
+    async def upload_show(self, show, *, remember: bool = True) -> None:
+        light_program = get_skybrush_light_program_from_show_specification(show)
+        await self._upload_light_program(light_program)
+
+        trajectory = get_skybrush_trajectory_from_show_specification(show)
+        await self._upload_trajectory(trajectory)
+
+        self._last_uploaded_show = show if remember else None
+
     @asynccontextmanager
     async def use(self, debug: bool = False):
         """Async context manager that establishes a low-level connection to the
@@ -454,6 +492,9 @@ class CrazyflieUAV(UAVBase):
                 self._crazyflie.param.set_and_restore("show.enabled", 1, 0)
             )
             await stack.enter_async_context(
+                self._crazyflie.param.set_and_restore("show.testing", 1, 0)
+            )
+            await stack.enter_async_context(
                 self._crazyflie.param.set_and_restore(
                     "ring.effect", PREFLIGHT_STATUS_LIGHT_EFFECT
                 )
@@ -483,11 +524,8 @@ class CrazyflieUAV(UAVBase):
         self.notify_updated()
 
     def _on_position_velocity_info_received(self, message):
-        # TODO(ntamas): store local position somewhere
-        # TODO(ntamas): we should use a separate velocity field in the status
-        # because we are posting velocity in the local frame, not NED
         self._velocity.x, self._velocity.y, self._velocity.z = message.items[3:6]
-        self.update_status(velocity=self._velocity)
+        self.update_status(position_xyz=self._position, velocity_xyz=self._velocity)
         self.notify_updated()
 
     def _setup_logging_session(self):
@@ -622,3 +660,14 @@ class CrazyflieHandlerTask:
             nursery.start_soon(self._uav.process_incoming_log_messages)
             nursery.start_soon(self._uav.process_drone_show_status_messages)
             nursery.start_soon(self._uav.process_command_queue)
+
+            try:
+                if self._uav.last_uploaded_show is not None:
+                    # UAV was rebooted but we have already uploaded a show to it
+                    # before, so we should upload it again
+                    await self._uav.reupload_last_show()
+            except Exception as ex:
+                log.warn(
+                    f"Failed to re-upload previously uploaded show to possibly rebooted drone {self._uav.id}"
+                )
+                log.exception(ex)

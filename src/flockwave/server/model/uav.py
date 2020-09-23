@@ -5,7 +5,7 @@ from __future__ import absolute_import
 from abc import ABCMeta, abstractproperty
 from typing import Any, Dict, Iterable, List, Optional, Union
 
-from flockwave.gps.vectors import GPSCoordinate, VelocityNED
+from flockwave.gps.vectors import GPSCoordinate, Vector3D, VelocityNED
 from flockwave.server.errors import NotSupportedError
 from flockwave.server.logger import log as base_log
 from flockwave.spec.schema import get_complex_object_schema
@@ -65,6 +65,8 @@ class UAVStatusInfo(TimestampMixin, metaclass=ModelMeta):
         self.light = 0  # black
         self.position = GPSCoordinate()
         self.velocity = VelocityNED()
+        self.position_xyz = None
+        self.velocity_xyz = None
         self.battery = BatteryInfo()
 
 
@@ -204,8 +206,11 @@ class UAVBase(UAV):
 
     def update_status(
         self,
+        *,
         position: Optional[GPSCoordinate] = None,
+        position_xyz: Optional[Vector3D] = None,
         velocity: Optional[VelocityNED] = None,
+        velocity_xyz: Optional[Vector3D] = None,
         heading: Optional[float] = None,
         mode: Optional[str] = None,
         gps: Optional[GPSFix] = None,
@@ -219,12 +224,18 @@ class UAVBase(UAV):
         Parameters with values equal to ``None`` are ignored.
 
         Parameters:
-            position: the position of the UAV. It will be cloned to ensure that
-                modifying this position object from the caller will not affect
-                the UAV itself.
-            velocity: the velocity of the UAV. It will be cloned to ensure that
-                modifying this velocity object from the caller will not affect
-                the UAV itself.
+            position: the global (GPS) position of the UAV. It will be cloned to
+                ensure that modifying this position object from the caller will
+                not affect the UAV itself.
+            position_xyz: the position of the UAV in some local coordinate system.
+                It will be cloned to ensure that modifying this position object
+                from the caller will not affect the UAV itself.
+            velocity: the global (NED) velocity of the UAV. It will be cloned to
+                ensure that modifying this velocity object from the caller will
+                not affect the UAV itself.
+            velocity_xyz: the velocity of the UAV in some local coordinate system.
+                It will be cloned to ensure that modifying this position object
+                from the caller will not affect the UAV itself.
             heading: the heading of the UAV, in degrees.
             mode: the flight mode that the UAV is currently operating in
             gps: information about the GPS fix of the UAV
@@ -239,6 +250,10 @@ class UAVBase(UAV):
         """
         if position is not None:
             self._status.position.update_from(position, precision=7)
+        if position_xyz is not None:
+            if self._status.position_xyz is None:
+                self._status.position_xyz = Vector3D()
+            self._status.position_xyz.update_from(position_xyz, precision=3)
         if heading is not None:
             # Heading is rounded to 2 digits; it is unlikely that more
             # precision is needed and it saves space in the JSON
@@ -246,6 +261,10 @@ class UAVBase(UAV):
             self._status.heading = round(heading % 360, 2)
         if velocity is not None:
             self._status.velocity.update_from(velocity, precision=2)
+        if velocity_xyz is not None:
+            if self._status.velocity_xyz is None:
+                self._status.velocity_xyz = Vector3D()
+            self._status.velocity_xyz.update_from(velocity_xyz, precision=2)
         if mode is not None:
             self._status.mode = mode
         if battery is not None:

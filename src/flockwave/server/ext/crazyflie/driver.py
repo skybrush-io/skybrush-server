@@ -661,6 +661,7 @@ class CrazyflieHandlerTask:
             nursery.start_soon(self._uav.process_drone_show_status_messages)
             nursery.start_soon(self._uav.process_command_queue)
 
+            """
             try:
                 if self._uav.last_uploaded_show is not None:
                     # UAV was rebooted but we have already uploaded a show to it
@@ -671,3 +672,4 @@ class CrazyflieHandlerTask:
                     f"Failed to re-upload previously uploaded show to possibly rebooted drone {self._uav.id}"
                 )
                 log.exception(ex)
+            """

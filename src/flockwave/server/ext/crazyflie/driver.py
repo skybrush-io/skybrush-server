@@ -18,6 +18,7 @@ from flockwave.gps.vectors import Vector3D, VelocityNED
 from flockwave.server.ext.logger import log as base_log
 from flockwave.server.model.preflight import PreflightCheckInfo, PreflightCheckResult
 from flockwave.server.model.uav import BatteryInfo, UAVBase, UAVDriver, VersionInfo
+from flockwave.spec.errors import FlockwaveErrorCode
 from flockwave.spec.ids import make_valid_object_id
 
 from skybrush import (
@@ -29,6 +30,7 @@ from skybrush import (
 from .crtp_extensions import (
     DRONE_SHOW_PORT,
     DroneShowCommand,
+    DroneShowExecutionStage,
     DroneShowStatus,
     LightProgramLocation,
     LightProgramType,
@@ -239,6 +241,7 @@ class CrazyflieUAV(UAVBase):
         PreflightCheckResult.FAILURE,
         PreflightCheckResult.RUNNING,
         PreflightCheckResult.PASS,
+        PreflightCheckResult.SOFT_FAILURE,
     ]
 
     def __init__(self, *args, **kwds):
@@ -250,13 +253,9 @@ class CrazyflieUAV(UAVBase):
 
         self._crazyflie = None
         self._log_session = None
-        self._preflight_status = self._create_preflight_status_report()
-
         self._last_uploaded_show = None
 
-        self._battery = BatteryInfo()
-        self._position = Vector3D()
-        self._velocity = VelocityNED()
+        self._reset_status_variables()
 
     async def emit_light_signal(self) -> None:
         """Asks the UAV to emit a visible light signal from its LED ring to
@@ -350,7 +349,7 @@ class CrazyflieUAV(UAVBase):
                     x=status.position[0], y=status.position[1], z=status.position[2]
                 )
                 self._update_preflight_status_from_result_codes(status.preflight_checks)
-
+                self._update_error_codes()
                 self.update_status(
                     battery=self._battery,
                     mode=status.mode,
@@ -502,7 +501,7 @@ class CrazyflieUAV(UAVBase):
             yield
 
     @staticmethod
-    def _create_preflight_status_report() -> PreflightCheckInfo:
+    def _create_empty_preflight_status_report() -> PreflightCheckInfo:
         """Creates an empty preflight status report that will be updated
         periodically.
         """
@@ -519,14 +518,25 @@ class CrazyflieUAV(UAVBase):
     def _on_battery_state_received(self, message):
         self._battery.voltage = message.items[0]
         self._battery.charging = message.items[1] == 1  # PM state 1 = charging
+        self._update_error_codes()
         self.update_status(battery=self._battery)
-
         self.notify_updated()
 
     def _on_position_velocity_info_received(self, message):
         self._velocity.x, self._velocity.y, self._velocity.z = message.items[3:6]
+        self._update_error_codes()
         self.update_status(position_xyz=self._position, velocity_xyz=self._velocity)
         self.notify_updated()
+
+    def _reset_status_variables(self) -> None:
+        """Resets the status variables of the UAV, typically after connecting
+        to the UAV or after re-establishing a connection.
+        """
+        self._preflight_status = self._create_empty_preflight_status_report()
+        self._battery = BatteryInfo()
+        self._position = Vector3D()
+        self._show_execution_stage = DroneShowExecutionStage.UNKNOWN
+        self._velocity = VelocityNED()
 
     def _setup_logging_session(self):
         """Sets up the log blocks that contain the variables we need from the
@@ -550,12 +560,56 @@ class CrazyflieUAV(UAVBase):
         )
         return session
 
+    def _update_error_codes(self) -> None:
+        """Updates the set of error codes based on what we know about the current
+        state of the drone.
+        """
+        self.ensure_error(
+            FlockwaveErrorCode.PREARM_CHECK_IN_PROGRESS,
+            present=(
+                self._preflight_status.in_progress
+                or self._show_execution_stage
+                is DroneShowExecutionStage.WAIT_FOR_PREFLIGHT_CHECKS
+            ),
+        )
+        self.ensure_error(
+            FlockwaveErrorCode.PREARM_CHECK_FAILURE,
+            present=self._preflight_status.failed_conclusively,
+        )
+
+        self.ensure_error(
+            FlockwaveErrorCode.TAKEOFF,
+            present=self._show_execution_stage is DroneShowExecutionStage.TAKEOFF,
+        )
+        self.ensure_error(
+            FlockwaveErrorCode.LANDING,
+            present=self._show_execution_stage is DroneShowExecutionStage.LANDING,
+        )
+        self.ensure_error(
+            FlockwaveErrorCode.LANDED,
+            present=self._show_execution_stage is DroneShowExecutionStage.LANDED,
+        )
+
+        voltage = self._battery.voltage
+        self.ensure_error(FlockwaveErrorCode.BATTERY_LOW_ERROR, present=voltage <= 3.1)
+        self.ensure_error(
+            FlockwaveErrorCode.BATTERY_LOW_WARNING,
+            present=voltage <= 3.3 and voltage > 3.1,
+        )
+
     def _update_preflight_status_from_result_codes(self, codes: List[int]) -> None:
         """Updates the result of the local preflight check report data structure
         from the result codes received in a stauts package.
         """
         for check, code in zip(self._preflight_status.items, codes):
-            check.result = self._preflight_result_map[code & 0x03]
+            code = code & 0x03
+            if code == 3 and check.id == "kalman":
+                # The Kalman filter is a soft failure only; the drone is
+                # constantly attempting to bring the filter back into a
+                # convergent state
+                code = 4
+            check.result = self._preflight_result_map[code]
+
         self._preflight_status.update_summary()
 
     async def _upload_light_program(self, data: bytes) -> None:
@@ -648,6 +702,8 @@ class CrazyflieHandlerTask:
         reconnections either -- it will simply exit in case of a connection
         error.
         """
+        self._uav._reset_status_variables()
+
         async with AsyncExitStack() as stack:
             enter = stack.enter_async_context
 

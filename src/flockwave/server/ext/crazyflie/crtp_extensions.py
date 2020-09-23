@@ -73,6 +73,29 @@ class DroneShowStatusFlag(IntFlag):
     DRONE_SHOW_MODE_ENABLED = 4
 
 
+class DroneShowExecutionStage(IntEnum):
+    """Enum representing the execution stages of the drone show.
+
+    These are compatible with the status variable in the drone show module of
+    the Crazyflie.
+    """
+
+    UNKNOWN = 0
+    IDLE = 1
+    WAIT_FOR_PREFLIGHT_CHECKS = 2
+    WAIT_FOR_START_SIGNAL = 3
+    WAIT_FOR_TAKEOFF_TIME = 4
+    TAKEOFF = 5
+    PERFORMING_SHOW = 6
+    LANDING = 7
+    LANDED = 8
+
+    # Error states follow from here
+    LANDING_LOW_BATTERY = 9
+    EXHAUSTED = 10
+    ERROR = 11
+
+
 @dataclass
 class DroneShowStatus:
     """Data class representing the response to a `DroneShowCommand.STATUS`
@@ -84,6 +107,7 @@ class DroneShowStatus:
     preflight_checks: Tuple[PreflightCheckStatus, ...] = ()
     position: Optional[Tuple[float, float, float]] = None
     light: int = 0
+    show_execution_stage: DroneShowExecutionStage = DroneShowExecutionStage.UNKNOWN
 
     _struct = Struct("<HhhhH")
 
@@ -103,6 +127,16 @@ class DroneShowStatus:
         """Constructs a DroneShowStatus_ object from the raw response to the
         `DroneShowCommand.STATUS` command.
         """
+        version = data[0] >> 4
+        if version != 0:
+            # Unknown version of the drone show status packet
+            return None
+
+        try:
+            stage = DroneShowExecutionStage(data[0] & 0x0F)
+        except Exception:
+            stage = DroneShowExecutionStage.ERROR
+
         checks, x, y, z, light = cls._struct.unpack(data[3:13])
         checks = tuple((checks >> (index * 2)) & 0x03 for index in range(8))
         return cls(
@@ -111,6 +145,7 @@ class DroneShowStatus:
             preflight_checks=checks,
             position=(x / 1000.0, y / 1000.0, z / 1000.0),
             light=light,
+            show_execution_stage=stage,
         )
 
     def has_flag(self, flag: DroneShowStatusFlag) -> bool:

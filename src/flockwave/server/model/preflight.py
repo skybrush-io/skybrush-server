@@ -1,6 +1,6 @@
 from bidict import bidict
 from enum import Enum
-from typing import Optional
+from typing import Optional, Union
 
 from flockwave.server.model.metamagic import ModelMeta
 from flockwave.spec.schema import get_complex_object_schema
@@ -62,6 +62,7 @@ class PreflightCheckInfo(metaclass=ModelMeta):
         mappers = {"result": enum_to_json(PreflightCheckResult)}
 
     def __init__(self):
+        self._in_progress = False
         self.result = PreflightCheckResult.OFF
         self.items = []
         self.update_summary()
@@ -70,20 +71,51 @@ class PreflightCheckInfo(metaclass=ModelMeta):
         self.items.append(PreflightCheckItem(id=id, label=label))
         self.update_summary()
 
-    def _get_result_from_items(self) -> PreflightCheckResult:
+    def _get_result_from_items(self) -> Union[PreflightCheckResult, bool]:
         """Returns a single preflight check result summary based on the results
-        of the individual items.
+        of the individual items, and whether there is at least one check that
+        is still running.
         """
         if not self.items:
-            return PreflightCheckResult.OFF
+            return PreflightCheckResult.OFF, False
 
+        running = any(
+            item.result is PreflightCheckResult.RUNNING for item in self.items
+        )
         result = max(
             _numeric_preflight_check_results.get(item.result, 0) for item in self.items
         )
-        return _numeric_preflight_check_results.inverse[result]
+        return _numeric_preflight_check_results.inverse[result], running
+
+    @property
+    def failed(self) -> bool:
+        """Returns whether at least one preflight check has failed, including
+        "soft" failures that may resolve themselves on their own.
+        """
+        return self.result in (
+            PreflightCheckResult.SOFT_FAILURE,
+            PreflightCheckResult.FAILURE,
+            PreflightCheckResult.ERROR,
+        )
+
+    @property
+    def failed_conclusively(self) -> bool:
+        """Returns whether the preflight checks failed conclusively, i.e. it is
+        unlikely that the problems indicated by the preflight checks would
+        resolve themselves without human intervention.
+        """
+        return self.result in (PreflightCheckResult.FAILURE, PreflightCheckResult.ERROR)
+
+    @property
+    def in_progress(self) -> bool:
+        """Returns whether the preflight checks are currently in progress (i.e.
+        if there is at least one item where the status indicates that it is
+        still in progress).
+        """
+        return self._in_progress
 
     def update_summary(self) -> None:
         """Updates the summary of this preflight check report based on the
         results of the individual preflight check items.
         """
-        self.result = self._get_result_from_items()
+        self.result, self._in_progress = self._get_result_from_items()

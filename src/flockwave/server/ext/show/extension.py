@@ -1,9 +1,13 @@
 from blinker import Signal
 from contextlib import ExitStack
+from functools import partial
+from math import inf
 from trio import CancelScope, fail_after, open_nursery, sleep_forever, TooSlowError
+from trio_util import periodic
 from typing import Any, Dict
 
 from flockwave.ext.base import ExtensionBase
+from flockwave.server.concurrency import cancellable
 from flockwave.server.tasks import wait_for_dict_items, wait_until
 
 from .clock import ShowClock
@@ -19,8 +23,8 @@ class DroneShowExtension(ExtensionBase):
         super().__init__()
 
         self._clock = None
-        self._clock_watcher = None
         self._nursery = None
+        self._tasks = []
 
         self._config = DroneShowConfiguration()
         self._start_signal = Signal(
@@ -44,6 +48,7 @@ class DroneShowExtension(ExtensionBase):
             self._config.update_from_json(message.body.get("configuration", {}))
             return hub.acknowledge(message)
         except Exception as ex:
+            print(repr(ex))
             return hub.acknowledge(message, outcome=False, reason=str(ex))
 
     async def run(self, app, configuration, logger):
@@ -70,9 +75,9 @@ class DroneShowExtension(ExtensionBase):
         """
         self._clock.start_time = self._config.start_time
 
-        if self._clock_watcher is not None:
-            self._clock_watcher.cancel()
-            self._clock_watcher = None
+        for task in self._tasks:
+            task.cancel()
+        del self._tasks[:]
 
         should_listen_to_clock = (
             self._config.authorized_to_start
@@ -82,47 +87,80 @@ class DroneShowExtension(ExtensionBase):
 
         if should_listen_to_clock:
             # TODO(ntamas): what if we don't have a nursery here?
-            self._clock_watcher = CancelScope()
-            self._nursery.start_soon(self._start_show_when_needed, self._clock_watcher)
+            self._tasks.append(CancelScope())
+            self._nursery.start_soon(
+                partial(self._start_show_when_needed, cancel_scope=self._tasks[-1])
+            )
+            self._tasks.append(CancelScope())
+            self._nursery.start_soon(
+                partial(
+                    self._manage_countdown_before_start, cancel_scope=self._tasks[-1]
+                )
+            )
 
-    async def _start_show_when_needed(self, cancel_scope):
-        try:
-            with self._clock_watcher:
-                await wait_until(self._clock, seconds=0, edge_triggered=True)
+    @cancellable
+    async def _start_show_when_needed(self):
+        await wait_until(self._clock, seconds=0, edge_triggered=True)
 
-                self._start_uavs_if_needed()
-                self._start_signal.send(self)
+        self._start_uavs_if_needed()
+        self._start_signal.send(self)
 
-                delay = int(self._clock.seconds * 1000)
-                if delay >= 1:
-                    self.log.warn(f"Started show with a delay of {delay} ms")
-                else:
-                    self.log.info("Started show accurately")
-        finally:
-            self._clock_watcher = None
+        delay = int(self._clock.seconds * 1000)
+        if delay >= 1:
+            self.log.warn(f"Started show with a delay of {delay} ms")
+        else:
+            self.log.info("Started show accurately")
+
+    @cancellable
+    async def _manage_countdown_before_start(self):
+        await wait_until(self._clock, seconds=-11, edge_triggered=False)
+
+        last_seconds = -inf
+        async for _ in periodic(1):
+            seconds = self._clock.seconds
+            if not self._clock.running or last_seconds > seconds:
+                self._notify_uavs_about_countdown_state(cancelled=True)
+            elif seconds > -0.5:
+                break
+            else:
+                self._notify_uavs_about_countdown_state(seconds_left=-seconds)
+                last_seconds = seconds
+
+    def _notify_uavs_about_countdown_state(
+        self, seconds_left: float = 0, cancelled: bool = False
+    ):
+        delay = seconds_left if not cancelled else None
+        uavs_by_drivers = self.app.sort_uavs_by_drivers(self._config.uav_ids)
+        for driver, uavs in uavs_by_drivers.items():
+            results = driver.send_takeoff_countdown_notification(uavs, delay)
+            self._nursery.start_soon(
+                self._process_command_results_in_background,
+                results,
+                "countdown notifications",
+            )
 
     def _start_uavs_if_needed(self):
         uavs_by_drivers = self.app.sort_uavs_by_drivers(self._config.uav_ids)
         for driver, uavs in uavs_by_drivers.items():
             results = driver.send_takeoff_signal(uavs)
             self._nursery.start_soon(
-                self._process_command_results_in_background, results
+                self._process_command_results_in_background, results, "start signals"
             )
 
-    async def _process_command_results_in_background(self, results):
+    async def _process_command_results_in_background(
+        self, results, what: str = "commands"
+    ):
         try:
             with fail_after(5):
                 results = await wait_for_dict_items(results)
         except TooSlowError:
-            self.log.warn(
-                f"Failed to send start signals to {len(results)} UAVs in 5 seconds"
-            )
+            self.log.warn(f"Failed to send {what} to {len(results)} UAVs in 5 seconds")
             return
 
         failed = [key for key, value in results.items() if isinstance(value, Exception)]
         if failed:
             failed = ", ".join([getattr(uav, "id", "-no-id-") for uav in failed])
-            self.log.warn(f"Failed to send start signal to {failed}")
+            self.log.warn(f"Failed to send {what} to {failed}")
 
 
 construct = DroneShowExtension

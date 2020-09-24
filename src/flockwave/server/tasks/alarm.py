@@ -3,12 +3,15 @@ calls a function when the clock reaches a given tick count.
 """
 
 from contextlib import ExitStack
+from flockwave.server.logger import log as base_log
 from flockwave.server.model.clock import Clock
 from typing import Optional
 
 from trio import open_memory_channel, move_on_after, sleep, WouldBlock
 
 __all__ = "wait_until"
+
+log = base_log.getChild("alarm")
 
 
 class _Alarm:
@@ -31,7 +34,10 @@ class _Alarm:
             await self._run(edge_triggered)
 
     def _on_clock_event(self, sender):
-        self._queue_tx.send_nowait("event")
+        try:
+            self._queue_tx.send_nowait("event")
+        except WouldBlock:
+            log.warn("Clock event dropped, this should not have happened")
 
     async def _run(self, edge_triggered: bool):
         clock, seconds = self._clock, self._seconds
@@ -101,7 +107,7 @@ async def wait_until(
         clock: the clock to watch
         seconds: the number of seconds that should appear on the clock when
             this function unblocks
-        ticks: the number of seconds that should appear on the clock when
+        ticks: the number of ticks that should appear on the clock when
             this function unblocks
         edge_triggered: whether the task is "edge triggered" or "level
             triggered"; see the explanation above

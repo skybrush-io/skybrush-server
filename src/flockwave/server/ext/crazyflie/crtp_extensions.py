@@ -95,6 +95,33 @@ class DroneShowExecutionStage(IntEnum):
     EXHAUSTED = 10
     ERROR = 11
 
+    @property
+    def is_likely_airborne(self) -> bool:
+        """Returns whether the given state is an airborne state, i.e. a state
+        where the drone is likely to be airborne.
+        """
+        cls = DroneShowExecutionStage
+        return self in (
+            cls.TAKEOFF,
+            cls.PERFORMING_SHOW,
+            cls.LANDING,
+            cls.LANDING_LOW_BATTERY,
+        )
+
+    @property
+    def is_idle(self) -> bool:
+        """Returns whether the given state is an idle state, i.e. a state
+        where the drone is likely to be on the ground and it is safe to mess
+        around with the show settings.
+        """
+        cls = DroneShowExecutionStage
+        return self in (
+            cls.IDLE,
+            cls.WAIT_FOR_PREFLIGHT_CHECKS,
+            cls.WAIT_FOR_START_SIGNAL,
+            cls.LANDED,
+        )
+
 
 @dataclass
 class DroneShowStatus:

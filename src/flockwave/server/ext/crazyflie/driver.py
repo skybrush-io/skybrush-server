@@ -3,6 +3,7 @@
 from collections import defaultdict
 from contextlib import asynccontextmanager, AsyncExitStack
 from functools import partial
+from math import hypot
 from pathlib import Path
 from trio import open_memory_channel, open_nursery, sleep
 from trio_util import periodic
@@ -18,6 +19,7 @@ from flockwave.gps.vectors import Vector3D, VelocityNED
 from flockwave.server.ext.logger import log as base_log
 from flockwave.server.model.preflight import PreflightCheckInfo, PreflightCheckResult
 from flockwave.server.model.uav import BatteryInfo, UAVBase, UAVDriver, VersionInfo
+from flockwave.server.utils import optional_float
 from flockwave.spec.errors import FlockwaveErrorCode
 from flockwave.spec.ids import make_valid_object_id
 
@@ -35,7 +37,6 @@ from .crtp_extensions import (
     LightProgramLocation,
     LightProgramType,
     LIGHT_PROGRAM_MEMORY_ID,
-    PREFLIGHT_STATUS_LIGHT_EFFECT,
 )
 from .trajectory import encode_trajectory, TrajectoryEncoding, to_poly4d_sequence
 
@@ -131,6 +132,27 @@ class CrazyflieDriver(UAVDriver):
 
         return uav
 
+    async def handle_command_go(
+        self,
+        uav,
+        x: Optional[str] = None,
+        y: Optional[str] = None,
+        z: Optional[str] = None,
+    ):
+        """Command that sends the UAV to a given coordinate."""
+        if x is None and y is None and z is None:
+            raise RuntimeError(
+                "You need to specify the target coordinate in X-Y-Z format"
+            )
+
+        try:
+            x, y, z = optional_float(x), optional_float(y), optional_float(z)
+        except ValueError:
+            raise RuntimeError("Invalid number found in input")
+
+        await uav.go_to(x, y, z)
+        return f"Target set to ({x:.2f}, {y:.2f}, {z:.2f}) m"
+
     async def handle_command_home(self, uav):
         """Command that retrieves the current home position of the UAV."""
         home = await uav.get_home_position()
@@ -173,12 +195,10 @@ class CrazyflieDriver(UAVDriver):
         """Runs a self-test on a component of the UAV."""
         if component == "motor":
             # TODO(ntamas): allow this only when the drone is on the ground!
-            await uav.set_parameter("health.startPropTest", 1)
+            await uav.test_component("motor")
             return "Motor test started"
         elif component == "led":
-            async with uav.set_and_restore_parameter("ring.effect", 8):
-                await sleep(2)
-            await uav.set_parameter("ring.headlightEnable", 0)
+            await uav.test_component("led")
             return "LED test executed"
         else:
             return "Usage: test <led|motor>"
@@ -261,7 +281,7 @@ class CrazyflieUAV(UAVBase):
         """Asks the UAV to emit a visible light signal from its LED ring to
         attract attention.
         """
-        await self.set_parameter("ring.lightSignalTrigger", 1)
+        await self._crazyflie.led_ring.flash()
 
     async def get_home_position(self) -> Optional[Tuple[float, float, float]]:
         """Returns the current home position of the UAV."""
@@ -279,6 +299,51 @@ class CrazyflieUAV(UAVBase):
 
     async def get_version_info(self) -> VersionInfo:
         return {"firmware": await self._crazyflie.platform.get_firmware_version()}
+
+    async def go_to(
+        self,
+        x: Optional[float] = None,
+        y: Optional[float] = None,
+        z: Optional[float] = None,
+        velocity_xy: float = 2,
+        velocity_z: float = 0.5,
+    ) -> None:
+        """Sends the UAV to a given coordinate.
+
+        Parameters:
+            x: the X coordinate of the target; ``None`` means to use the current
+                X coordinate
+            y: the Y coordinate of the target; ``None`` means to use the current
+                Y coordinate
+            z: the Z coordinate of the target; ``None`` means to use the current
+                Z coordinate
+        """
+        current = self.status.position_xyz
+        if current is None and (x is None or y is None or z is None):
+            raise RuntimeError("UAV has no known position yet")
+
+        x = current.x if x is None else x
+        y = current.y if y is None else y
+        z = current.z if z is None else z
+
+        dx, dy, dz = x - current.x, y - current.y, z - current.z
+        travel_time = max(hypot(dx, dy) / velocity_xy, abs(dz) / velocity_z)
+
+        await self._crazyflie.high_level_commander.go_to(
+            x, y, z, yaw=0, duration=travel_time
+        )
+
+    @property
+    def has_uploaded_show(self) -> bool:
+        """Returns whether the UAV has a show that was already uploaded to it
+        at least once.
+        """
+        return self._last_uploaded_show is not None
+
+    @property
+    def is_running_show(self) -> bool:
+        """Returns whether the UAV is currently executing a show."""
+        return not self._show_execution_stage.is_idle
 
     async def land(self, altitude: float = 0.0, velocity: float = 0.5):
         """Initiates a landing to the given altitude (absolute or relative).
@@ -348,6 +413,7 @@ class CrazyflieUAV(UAVBase):
                 self._position.update(
                     x=status.position[0], y=status.position[1], z=status.position[2]
                 )
+                self._show_execution_stage = status.show_execution_stage
                 self._update_preflight_status_from_result_codes(status.preflight_checks)
                 self._update_error_codes()
                 self.update_status(
@@ -439,6 +505,18 @@ class CrazyflieUAV(UAVBase):
         # TODO(ntamas): here we (ab)use the extra features of our firmware
         await self._crazyflie.high_level_commander.takeoff(altitude, duration=-velocity)
 
+    async def test_component(self, component: str) -> None:
+        """Tests a component of the UAV.
+
+        Parameters:
+            component: the component to test; currently we support ``motor`` and
+                ``led``
+        """
+        if component == "motor":
+            await self.set_parameter("health.startPropTest", 1)
+        elif component == "led":
+            await self._crazyflie.led_ring.test()
+
     async def upload_show(self, show, *, remember: bool = True) -> None:
         light_program = get_skybrush_light_program_from_show_specification(show)
         await self._upload_light_program(light_program)
@@ -476,29 +554,30 @@ class CrazyflieUAV(UAVBase):
         finally:
             self._crazyflie = None
 
-    @asynccontextmanager
-    async def use_show_mode(self):
-        """Returns a context manager that turns on "drone show mode" on the
-        Crazyflie when entering the context and turns it off when exiting the
-        context.
+    async def setup_flight_mode(self):
+        """Sets up the appropriate flight mode (high level controller or drone
+        show mode). This function should be called after (re-)establishing
+        connection with a Crazyflie.
+
+        The rule is that we set the Crazyflie into drone show mode if a drone
+        show has been uploaded to it at least once (even if it was with an
+        earlier booting attempt), otherwise we simply turn on the high level
+        commander only.
+
+        Note that the function is _not_ a context manager, i.e. it does not
+        restore the original flight mode when exiting the context. This is
+        intentional -- we don't want to get the Crazyflie out of its current
+        flight mode if we accidentally lose contact with it for a split second
+        only.
         """
+        needs_show_mode = self.has_uploaded_show
+
         await self._crazyflie.param.validate()
-        async with AsyncExitStack() as stack:
-            await stack.enter_async_context(
-                self._crazyflie.param.set_and_restore("commander.enHighLevel", 1, 0)
-            )
-            await stack.enter_async_context(
-                self._crazyflie.param.set_and_restore("show.enabled", 1, 0)
-            )
-            await stack.enter_async_context(
-                self._crazyflie.param.set_and_restore("show.testing", 1, 0)
-            )
-            await stack.enter_async_context(
-                self._crazyflie.param.set_and_restore(
-                    "ring.effect", PREFLIGHT_STATUS_LIGHT_EFFECT
-                )
-            )
-            yield
+        await self._crazyflie.high_level_commander.enable()
+
+        if needs_show_mode:
+            await self._crazyflie.param.set("show.enabled", 1)
+            await self._crazyflie.param.set("show.testing", 1)
 
     @staticmethod
     def _create_empty_preflight_status_report() -> PreflightCheckInfo:
@@ -709,23 +788,27 @@ class CrazyflieHandlerTask:
 
             await enter(self._uav.use(debug=self._debug))
             await enter(self._uav.log_session)
-            await enter(self._uav.use_show_mode())
             await enter(self._uav._command_queue_tx)
+
+            await self._uav.setup_flight_mode()
 
             nursery = await enter(open_nursery())
             nursery.start_soon(self._uav.process_incoming_log_messages)
             nursery.start_soon(self._uav.process_drone_show_status_messages)
             nursery.start_soon(self._uav.process_command_queue)
 
-            """
             try:
-                if self._uav.last_uploaded_show is not None:
+                if self._uav.has_uploaded_show:
                     # UAV was rebooted but we have already uploaded a show to it
-                    # before, so we should upload it again
-                    await self._uav.reupload_last_show()
+                    # before, so we should upload it again if the show framework
+                    # is in the idle state. First we wait two seconds to be sure
+                    # that we receive at least one show status packet from the
+                    # drone
+                    await sleep(2)
+                    if not self._uav.is_running_show:
+                        await self._uav.reupload_last_show()
             except Exception as ex:
                 log.warn(
                     f"Failed to re-upload previously uploaded show to possibly rebooted drone {self._uav.id}"
                 )
                 log.exception(ex)
-            """

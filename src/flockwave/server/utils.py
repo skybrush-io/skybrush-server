@@ -8,7 +8,7 @@ from functools import partial
 from inspect import Parameter, signature
 from itertools import tee
 from operator import mul
-from typing import Any, Callable, Generator, Iterable, Tuple, TypeVar
+from typing import Any, Callable, Generator, Iterable, Optional, Tuple, TypeVar
 
 
 __all__ = (
@@ -22,6 +22,8 @@ __all__ = (
     "keydefaultdict",
     "multiply_by",
     "nop",
+    "optional_float",
+    "optional_int",
     "overridden",
 )
 
@@ -219,6 +221,26 @@ def once(func):
 
     wrapped.called = False
     return wrapped
+
+
+def optional_float(x: Any) -> Optional[float]:
+    """Converts the given value into a float, unless it is `None`, in which
+    case it is returned intact.
+
+    Raises:
+        ValueError: if the given value cannot be converted into a float
+    """
+    return float(x) if x is not None else None
+
+
+def optional_int(x: Any) -> Optional[int]:
+    """Converts the given value into an integer, unless it is `None`, in which
+    case it is returned intact.
+
+    Raises:
+        ValueError: if the given value cannot be converted into an integer
+    """
+    return int(x) if x is not None else None
 
 
 @contextmanager

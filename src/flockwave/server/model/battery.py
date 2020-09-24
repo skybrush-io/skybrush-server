@@ -44,7 +44,7 @@ class BatteryInfo:
         else:
             result = [int(round(self.voltage * 10)), self.percentage]
         if self._charging:
-            while len(result) < 3:
+            while len(result) < 2:
                 result.append(None)
             result.append(True)
         return result

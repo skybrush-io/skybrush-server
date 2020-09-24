@@ -256,7 +256,7 @@ class CrazyflieDriver(UAVDriver):
         if uav.is_in_drone_show_mode:
             return await uav.start_drone_show()
         else:
-            return await uav.takeoff()
+            return await uav.takeoff(altitude=1, relative=True)
 
 
 class CrazyflieUAV(UAVBase):
@@ -369,12 +369,11 @@ class CrazyflieUAV(UAVBase):
                 in meters
             velocity: the desired takeoff velocity, in meters per second
         """
-        # TODO(ntamas): here we (ab)use the extra features of our firmware
         # TODO(ntamas): launch this in a separate background task and return
         # early with the result
         # TODO(ntamas): figure out how much time the landing will take
         # approximately and shut down the motors at the end
-        await self._crazyflie.high_level_commander.land(altitude, duration=-velocity)
+        await self._crazyflie.high_level_commander.land(altitude, velocity=velocity)
 
     @property
     def last_uploaded_show(self):
@@ -549,11 +548,9 @@ class CrazyflieUAV(UAVBase):
             relative: whether the altitude is relative to the current position
             velocity: the desired takeoff velocity, in meters per second
         """
-        if relative:
-            raise NotImplementedError("Not supported by the firmware yet")
-
-        # TODO(ntamas): here we (ab)use the extra features of our firmware
-        await self._crazyflie.high_level_commander.takeoff(altitude, duration=-velocity)
+        await self._crazyflie.high_level_commander.takeoff(
+            altitude, relative=relative, velocity=velocity
+        )
 
     async def test_component(self, component: str) -> None:
         """Tests a component of the UAV.

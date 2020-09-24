@@ -45,7 +45,7 @@ flockwave-logger = "^1.3.0"
 flockwave-parsers = "^1.2.0"
 flockwave-spec = "^0.40.0"
 pyledctrl = "^3.1.0"
-aiocflib = "^0.7.0"
+aiocflib = "^0.8.0"
 appdirs = "^1.4.4"
 
 [tool.poetry.dev-dependencies]

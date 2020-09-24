@@ -36,6 +36,7 @@ class CrazyflieDronesExtension(UAVExtensionBase):
         driver.debug = bool(configuration.get("debug", False))
         driver.id_format = configuration.get("id_format", "{0:02}")
         driver.log = self.log.getChild("driver")
+        driver.use_fake_position = configuration.get("feed_fake_position", False)
 
     async def run(self, app, configuration):
         from aiocflib.crtp.drivers import init_drivers

@@ -65,9 +65,25 @@ class UAVStatusInfo(TimestampMixin, metaclass=ModelMeta):
         self.light = 0  # black
         self.position = GPSCoordinate()
         self.velocity = VelocityNED()
-        self.position_xyz = None
-        self.velocity_xyz = None
+        self.positionXYZ = None
+        self.velocityXYZ = None
         self.battery = BatteryInfo()
+
+    @property
+    def position_xyz(self):
+        return self.positionXYZ
+
+    @position_xyz.setter
+    def position_xyz(self, value):
+        self.positionXYZ = value
+
+    @property
+    def velocity_xyz(self):
+        return self.velocityXYZ
+
+    @velocity_xyz.setter
+    def velocity_xyz(self, value):
+        self.velocityXYZ = value
 
 
 @register("uav")

@@ -57,6 +57,9 @@ class CrazyflieDriver(UAVDriver):
             server, or any other object that has a ``format()`` method
             accepting a single integer as an argument and returning the
             preferred UAV identifier
+        use_fake_position (Optional[Tuple[float, float, float]]): whether to
+            feed a fake position into the positioning system of the
+            connected drones, strictly for testing purposes
     """
 
     def __init__(
@@ -78,6 +81,7 @@ class CrazyflieDriver(UAVDriver):
         self.app = app
         self.debug = False
         self.id_format = id_format
+        self.use_fake_position = None
 
         self._cache_folder = str(cache.resolve()) if cache else None
         self._uav_ids_by_address_space = defaultdict(dict)
@@ -463,7 +467,11 @@ class CrazyflieUAV(UAVBase):
     async def run(self, disposer: Optional[Callable[[], None]] = None):
         """Starts the main message handler task of the UAV."""
         try:
-            await CrazyflieHandlerTask(self, debug=self.driver.debug).run()
+            await CrazyflieHandlerTask(
+                self,
+                debug=self.driver.debug,
+                use_fake_position=self.driver.use_fake_position,
+            ).run()
         finally:
             if disposer:
                 disposer()
@@ -793,16 +801,25 @@ class CrazyflieHandlerTask:
     drone.
     """
 
-    def __init__(self, uav: CrazyflieUAV, debug: bool = False):
+    def __init__(
+        self,
+        uav: CrazyflieUAV,
+        debug: bool = False,
+        use_fake_position: Optional[Tuple[float, float, float]] = None,
+    ):
         """Constructor.
 
         Parameters:
             uav: the Crazyflie UAV to communicate with
             debug: whether to log the communication with the UAV on the console
+            use_fake_position: whether to feed a fake position to the UAV as if
+                it was received from an external positioning system. Strictly
+                for debugging purposes.
         """
         self._command_queue_tx = uav._command_queue_tx
         self._uav = uav
         self._debug = bool(debug)
+        self._use_fake_position = use_fake_position
 
     async def run(self):
         """Executes the task that handles communication with the associated
@@ -852,9 +869,21 @@ class CrazyflieHandlerTask:
                 nursery.start_soon(self._uav.process_incoming_log_messages)
                 nursery.start_soon(self._uav.process_drone_show_status_messages)
                 nursery.start_soon(self._uav.process_command_queue)
+
+                if self._use_fake_position:
+                    nursery.start_soon(self._feed_fake_position)
+
                 await self._reupload_last_show_if_needed()
         finally:
             self._uav.notify_shutdown_or_reboot = None
+
+    async def _feed_fake_position(self) -> None:
+        """Background task that feeds a fake position to the UAV as if it was
+        coming from an external positioning system.
+        """
+        async for _ in periodic(1):
+            x, y, z = self._use_fake_position
+            await self._uav._crazyflie._localization.send_external_position(x, y, z)
 
     async def _reupload_last_show_if_needed(self) -> None:
         try:

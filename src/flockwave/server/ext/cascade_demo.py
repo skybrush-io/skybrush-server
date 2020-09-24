@@ -39,9 +39,7 @@ yaw=auto 30 0
 
 WAYPOINT_GROUND_STR = """motoroff=10"""
 
-TIMELINE_WAYPOINT_STR = (
-    "N{lat:.8f} E{lon:.8f} {agl:.2f} {max_velocity_xy:.2f} {max_velocity_z:.2f} T{time:.6f} 6"
-)
+TIMELINE_WAYPOINT_STR = "N{lat:.8f} E{lon:.8f} {agl:.2f} {max_velocity_xy:.2f} {max_velocity_z:.2f} T{time:.6f} 6"
 
 TRIP_STR = """
 # taking off from station '{last_station}' towards station '{station}'
@@ -189,32 +187,51 @@ class ERPSystemConnectionDemoExtension(ExtensionBase):
             )
 
     def generate_choreography_file_for_trip(
-        self, trip: Trip, velocity_xy: float = 4, velocity_z: float = 1,
-        max_velocity_xy: float = 6, max_velocity_z: float = 2, agl: float = 5
+        self,
+        trip: Trip,
+        velocity_xy: float = 4,
+        velocity_z: float = 1,
+        max_velocity_xy: float = 6,
+        max_velocity_z: float = 2,
+        agl: float = 5,
     ) -> str:
         """Generate a choreography file from a given route between stations."""
         return get_template("mission/choreography.cfg").format(
-            altitude_setpoint=agl, velocity_xy=velocity_xy, velocity_z=velocity_z,
-            max_velocity_xy=max_velocity_xy, max_velocity_z=max_velocity_z
+            altitude_setpoint=agl,
+            velocity_xy=velocity_xy,
+            velocity_z=velocity_z,
+            max_velocity_xy=max_velocity_xy,
+            max_velocity_z=max_velocity_z,
         )
 
     def generate_mission_for_trip(
-        self, trip: Trip, velocity_xy: float = 4, velocity_z: float = 1,
-        max_velocity_xy: float = 6, max_velocity_z: float = 2, agl: float = 5
+        self,
+        trip: Trip,
+        velocity_xy: float = 4,
+        velocity_z: float = 1,
+        max_velocity_xy: float = 6,
+        max_velocity_z: float = 2,
+        agl: float = 5,
     ) -> bytes:
         """Generate a complete mission file as an in-memory .zip buffer
         for the given UAV with the given parameters."""
         # generate individual files to be contained in the zip file
         waypoint_ground_str = WAYPOINT_INIT_STR + WAYPOINT_GROUND_STR
         waypoint_str = self.generate_waypoint_file_for_trip(
-            trip, velocity_xy=velocity_xy, velocity_z=velocity_z,
-            max_velocity_xy=max_velocity_xy, max_velocity_z=max_velocity_z,
-            agl=agl
+            trip,
+            velocity_xy=velocity_xy,
+            velocity_z=velocity_z,
+            max_velocity_xy=max_velocity_xy,
+            max_velocity_z=max_velocity_z,
+            agl=agl,
         )
         choreography_str = self.generate_choreography_file_for_trip(
-            trip, velocity_xy=velocity_xy, velocity_z=velocity_z,
-            max_velocity_xy=max_velocity_xy, max_velocity_z=max_velocity_z,
-            agl=agl
+            trip,
+            velocity_xy=velocity_xy,
+            velocity_z=velocity_z,
+            max_velocity_xy=max_velocity_xy,
+            max_velocity_z=max_velocity_z,
+            agl=agl,
         )
         mission_str = self.generate_mission_file_for_trip(trip)
 
@@ -243,9 +260,13 @@ class ERPSystemConnectionDemoExtension(ExtensionBase):
         )
 
     def generate_waypoint_file_for_trip(
-        self, trip: Trip, velocity_xy: float = 4, velocity_z: float = 1,
-        max_velocity_xy: float = 6, max_velocity_z: float = 2,
-        agl: float = 5
+        self,
+        trip: Trip,
+        velocity_xy: float = 4,
+        velocity_z: float = 1,
+        max_velocity_xy: float = 6,
+        max_velocity_z: float = 2,
+        agl: float = 5,
     ) -> str:
         """Generate a waypoint file from a given route between stations."""
         # TODO TODO: we need to get the info HERE where the uav is at currently,
@@ -324,7 +345,7 @@ class ERPSystemConnectionDemoExtension(ExtensionBase):
         await self._command_queue_tx.send(uav_id)
 
         self.log.info(
-            f"Trip successfully received.", extra={"semantics": "success", "id": uav_id}
+            "Trip successfully received.", extra={"semantics": "success", "id": uav_id}
         )
 
         return hub.acknowledge(message)
@@ -339,7 +360,7 @@ class ERPSystemConnectionDemoExtension(ExtensionBase):
         if trip is None:
             return hub.reject(message, "UAV has no scheduled trip")
 
-        self.log.info(f"Trip cancelled.", extra={"semantics": "failure", "id": uav_id})
+        self.log.info("Trip cancelled.", extra={"semantics": "failure", "id": uav_id})
 
         return hub.acknowledge(message)
 
@@ -371,24 +392,24 @@ class ERPSystemConnectionDemoExtension(ExtensionBase):
         trip = self._trips.get(uav_id)
         if trip is None:
             self.log.warn(
-                f"upload_trip_to_uav() called with no scheduled trip", extra=extra
+                "upload_trip_to_uav() called with no scheduled trip", extra=extra
             )
             return
 
         if trip.status != TripStatus.NEW:
             self.log.warn(
-                f"Trip status is {trip.status!r}, this might be a bug?", extra=extra
+                "Trip status is {trip.status!r}, this might be a bug?", extra=extra
             )
             return
 
         uav = self.app.find_uav_by_id(uav_id)
         if not uav:
             self.log.warn(
-                f"Cannot upload trip to UAV, no such UAV in registry", extra=extra
+                "Cannot upload trip to UAV, no such UAV in registry", extra=extra
             )
             return
 
-        self.log.info(f"Uplading trip...", extra=extra)
+        self.log.info("Uplading trip...", extra=extra)
         trip.status = TripStatus.UPLOADING
         try:
             mission_data = self.generate_mission_for_trip(trip)
@@ -400,7 +421,7 @@ class ERPSystemConnectionDemoExtension(ExtensionBase):
             )
             if uav not in response:
                 self.log.error(
-                    f"Cannot upload trip, UAV driver did not respond to mission upload request.",
+                    "Cannot upload trip, UAV driver did not respond to mission upload request.",
                     extra=extra,
                 )
             else:
@@ -412,19 +433,19 @@ class ERPSystemConnectionDemoExtension(ExtensionBase):
 
         except NotSupportedError:
             self.log.error(
-                f"Cannot upload trip, UAV does not support mission uploads.",
+                "Cannot upload trip, UAV does not support mission uploads.",
                 extra=extra,
             )
             trip.status = TripStatus.ERROR
 
         except Exception:
             self.log.exception(
-                f"Unexpected error while uploading trip to UAV.", extra=extra
+                "Unexpected error while uploading trip to UAV.", extra=extra
             )
             trip.status = TripStatus.ERROR
         else:
             extra["semantics"] = "success"
-            self.log.info(f"Trip uploaded successfully.", extra=extra)
+            self.log.info("Trip uploaded successfully.", extra=extra)
             trip.status = TripStatus.UPLOADED
 
 

@@ -524,6 +524,8 @@ class CrazyflieUAV(UAVBase):
         trajectory = get_skybrush_trajectory_from_show_specification(show)
         await self._upload_trajectory(trajectory)
 
+        await self._enable_show_mode()
+
         self._last_uploaded_show = show if remember else None
 
     @asynccontextmanager
@@ -576,8 +578,7 @@ class CrazyflieUAV(UAVBase):
         await self._crazyflie.high_level_commander.enable()
 
         if needs_show_mode:
-            await self._crazyflie.param.set("show.enabled", 1)
-            await self._crazyflie.param.set("show.testing", 1)
+            await self._enable_show_mode()
 
     @staticmethod
     def _create_empty_preflight_status_report() -> PreflightCheckInfo:
@@ -593,6 +594,11 @@ class CrazyflieUAV(UAVBase):
         report.add_item("trajectory", "Trajectory")
         report.add_item("lights", "Light program")
         return report
+
+    async def _enable_show_mode(self) -> None:
+        """Enables the drone-show mode on the Crazyflie."""
+        await self._crazyflie.param.set("show.enabled", 1)
+        await self._crazyflie.param.set("show.testing", 1)
 
     def _on_battery_state_received(self, message):
         self._battery.voltage = message.items[0]

@@ -232,35 +232,35 @@ class CrazyflieDriver(UAVDriver):
     async def _request_version_info_single(self, uav) -> VersionInfo:
         return await uav.get_version_info()
 
-    async def _send_landing_signal_single(self, uav):
+    async def _send_landing_signal_single(self, uav) -> None:
         if uav.is_in_drone_show_mode:
-            return await uav.stop_drone_show()
+            await uav.stop_drone_show()
         else:
-            return await uav.land()
+            await uav.land()
 
     async def _send_light_or_sound_emission_signal_single(
         self, uav, signals, duration
     ) -> None:
         if "light" in signals:
-            return await uav.emit_light_signal()
+            await uav.emit_light_signal()
 
-    async def _send_reset_signal_single(self, uav, component):
+    async def _send_reset_signal_single(self, uav, component) -> None:
         if not component:
             # Resetting the whole UAV, this is supported
             # TODO(ntamas): log blocks have to be re-configured after reboot
-            return await uav.reboot()
+            await uav.reboot()
         else:
             # No component resets are implemented on this UAV yet
             raise RuntimeError(f"Resetting {component!r} is not supported")
 
-    async def _send_shutdown_signal_single(self, uav):
-        return await uav.shutdown()
+    async def _send_shutdown_signal_single(self, uav) -> None:
+        await uav.shutdown()
 
-    async def _send_takeoff_signal_single(self, uav):
+    async def _send_takeoff_signal_single(self, uav) -> None:
         if uav.is_in_drone_show_mode:
-            return await uav.start_drone_show()
+            await uav.start_drone_show()
         else:
-            return await uav.takeoff(altitude=1, relative=True)
+            await uav.takeoff(altitude=1, relative=True)
 
 
 class CrazyflieUAV(UAVBase):
@@ -306,7 +306,7 @@ class CrazyflieUAV(UAVBase):
         if not x and not y and z <= -10000:
             return None
         else:
-            return x / 1000, y / 1000, z / 1000
+            return x, y, z
 
     async def get_parameter(self, name: str, fetch: bool = False) -> float:
         """Returns the value of a parameter from the Crazyflie."""
@@ -497,13 +497,7 @@ class CrazyflieUAV(UAVBase):
             pos: the home position of the UAV, in the local coordinate system.
                 Units are in meters. `None` means to clear the home position.
         """
-        if pos is None:
-            x, y, z = 0, 0, -10000
-        else:
-            x, y, z = pos
-            x = int(round(x * 1000))
-            y = int(round(y * 1000))
-            z = int(round(z * 1000))
+        x, y, z = (0, 0, -10000) if pos is None else pos
         await self.set_parameter("preflight.homeX", x)
         await self.set_parameter("preflight.homeY", y)
         await self.set_parameter("preflight.homeZ", z)

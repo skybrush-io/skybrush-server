@@ -9,7 +9,13 @@ from typing import Any, Callable, Generic, Iterable, Iterator, TypeVar
 
 from flockwave.server.utils import identity
 
-__all__ = ("AsyncBundler", "aclosing", "cancellable", "Future", "FutureCancelled")
+__all__ = (
+    "AsyncBundler",
+    "aclosing",
+    "cancellable",
+    "Future",
+    "FutureCancelled",
+)
 
 
 T = TypeVar("T")

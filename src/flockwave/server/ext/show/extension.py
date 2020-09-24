@@ -1,10 +1,10 @@
 from blinker import Signal
 from contextlib import ExitStack
-from trio import CancelScope, open_nursery, sleep_forever
+from trio import CancelScope, move_on_after, open_nursery, sleep_forever
 from typing import Any, Dict
 
 from flockwave.ext.base import ExtensionBase
-from flockwave.server.tasks import wait_until
+from flockwave.server.tasks import wait_for_dict_items, wait_until
 
 from .clock import ShowClock
 from .config import DroneShowConfiguration, StartMethod
@@ -97,14 +97,21 @@ class DroneShowExtension(ExtensionBase):
                 if delay >= 1:
                     self.log.warn(f"Started show with a delay of {delay} ms")
                 else:
-                    self.log.info(f"Started show accurately")
+                    self.log.info("Started show accurately")
         finally:
             self._clock_watcher = None
 
     def _start_uavs_if_needed(self):
         uavs_by_drivers = self.app.sort_uavs_by_drivers(self._config.uav_ids)
         for driver, uavs in uavs_by_drivers.items():
-            driver.send_takeoff_signal(uavs)
+            results = driver.send_takeoff_signal(uavs)
+            self._nursery.start_soon(
+                self._process_start_command_results_in_background, results
+            )
+
+    async def _process_start_command_results_in_background(self, results):
+        with move_on_after(5):
+            await wait_for_dict_items(results)
 
 
 construct = DroneShowExtension

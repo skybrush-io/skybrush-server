@@ -1,6 +1,6 @@
 from blinker import Signal
 from contextlib import ExitStack
-from trio import CancelScope, move_on_after, open_nursery, sleep_forever
+from trio import CancelScope, fail_after, open_nursery, sleep_forever, TooSlowError
 from typing import Any, Dict
 
 from flockwave.ext.base import ExtensionBase
@@ -106,12 +106,23 @@ class DroneShowExtension(ExtensionBase):
         for driver, uavs in uavs_by_drivers.items():
             results = driver.send_takeoff_signal(uavs)
             self._nursery.start_soon(
-                self._process_start_command_results_in_background, results
+                self._process_command_results_in_background, results
             )
 
-    async def _process_start_command_results_in_background(self, results):
-        with move_on_after(5):
-            await wait_for_dict_items(results)
+    async def _process_command_results_in_background(self, results):
+        try:
+            with fail_after(5):
+                results = await wait_for_dict_items(results)
+        except TooSlowError:
+            self.log.warn(
+                f"Failed to send start signals to {len(results)} UAVs in 5 seconds"
+            )
+            return
+
+        failed = [key for key, value in results.items() if isinstance(value, Exception)]
+        if failed:
+            failed = ", ".join([getattr(uav, "id", "-no-id-") for uav in failed])
+            self.log.warn(f"Failed to send start signal to {failed}")
 
 
 construct = DroneShowExtension

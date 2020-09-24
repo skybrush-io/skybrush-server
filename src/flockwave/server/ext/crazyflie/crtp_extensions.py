@@ -28,6 +28,9 @@ LIGHT_PROGRAM_MEMORY_ID = 0x18
 #: LED ring effect type index that belongs to our preflight checks
 PREFLIGHT_STATUS_LIGHT_EFFECT = 0x13
 
+#: LED ring effect type index that belongs to preprogrammed drone shows
+DRONE_SHOW_LIGHT_EFFECT = 0x14
+
 
 class DroneShowCommand(IntEnum):
     """Enum representing the possible command codes we can send to the
@@ -95,6 +98,13 @@ class DroneShowExecutionStage(IntEnum):
     EXHAUSTED = 10
     ERROR = 11
 
+    def get_short_explanation(self) -> str:
+        """Returns a short explanation of the execution stage, suitable to be
+        shown in a debug message.
+        """
+        global _execution_stage_explanations
+        return _execution_stage_explanations[self]
+
     @property
     def is_likely_airborne(self) -> bool:
         """Returns whether the given state is an airborne state, i.e. a state
@@ -121,6 +131,26 @@ class DroneShowExecutionStage(IntEnum):
             cls.WAIT_FOR_START_SIGNAL,
             cls.LANDED,
         )
+
+
+_execution_stage_explanations = [
+    "",
+    "",
+    "Waiting for preflight checks",
+    "Ready to start",
+    "Waiting for takeoff time",
+    "Takeoff",
+    "Performing",
+    "Landing",
+    "Landed",
+    "Low battery",
+    "Battery exhausted",
+    "Error",
+    "",
+    "",
+    "",
+    "",
+]
 
 
 @dataclass

@@ -5,6 +5,7 @@ from contextlib import asynccontextmanager, AsyncExitStack
 from functools import partial
 from math import hypot
 from pathlib import Path
+from struct import Struct
 from trio import open_memory_channel, open_nursery, sleep
 from trio_util import periodic
 from typing import Callable, List, Optional, Tuple, Union
@@ -227,6 +228,12 @@ class CrazyflieDriver(UAVDriver):
     async def _request_version_info_single(self, uav) -> VersionInfo:
         return await uav.get_version_info()
 
+    async def _send_landing_signal_single(self, uav):
+        if uav.is_in_drone_show_mode:
+            return await uav.stop_drone_show()
+        else:
+            return await uav.land()
+
     async def _send_light_or_sound_emission_signal_single(
         self, uav, signals, duration
     ) -> None:
@@ -246,7 +253,10 @@ class CrazyflieDriver(UAVDriver):
         return await uav.shutdown()
 
     async def _send_takeoff_signal_single(self, uav):
-        return await uav.takeoff()
+        if uav.is_in_drone_show_mode:
+            return await uav.start_drone_show()
+        else:
+            return await uav.takeoff()
 
 
 class CrazyflieUAV(UAVBase):
@@ -268,6 +278,7 @@ class CrazyflieUAV(UAVBase):
         super().__init__(*args, **kwds)
         self.uri = None
         self.notify_updated = None
+        self.notify_shutdown_or_reboot = None
 
         self._command_queue_tx, self._command_queue_rx = open_memory_channel(0)
 
@@ -334,11 +345,16 @@ class CrazyflieUAV(UAVBase):
         )
 
     @property
-    def has_uploaded_show(self) -> bool:
-        """Returns whether the UAV has a show that was already uploaded to it
-        at least once.
+    def has_previously_uploaded_show(self) -> bool:
+        """Returns whether the UAV knows about a show that was already uploaded
+        to it at least once, possibly during a previous boot.
         """
         return self._last_uploaded_show is not None
+
+    @property
+    def is_in_drone_show_mode(self) -> bool:
+        """Returns whether the UAV is in drone show mode."""
+        return self._status.mode == "show"
 
     @property
     def is_running_show(self) -> bool:
@@ -407,6 +423,9 @@ class CrazyflieUAV(UAVBase):
                 status = None
 
             if status:
+                message = status.show_execution_stage.get_short_explanation().encode(
+                    "utf-8"
+                )
                 self._battery.charging = status.charging
                 self._battery.voltage = status.battery_voltage
                 self._battery.percentage = status.battery_percentage
@@ -421,6 +440,7 @@ class CrazyflieUAV(UAVBase):
                     mode=status.mode,
                     light=status.light,
                     position_xyz=self._position,
+                    debug=message,
                 )
                 self.notify_updated()
 
@@ -432,7 +452,9 @@ class CrazyflieUAV(UAVBase):
 
     async def reboot(self):
         """Reboots the UAV."""
-        return await self._crazyflie.reboot()
+        await self._crazyflie.reboot()
+        if self.notify_shutdown_or_reboot:
+            self.notify_shutdown_or_reboot()
 
     async def reupload_last_show(self) -> None:
         """Uploads the last show that was uploaded to this drone again."""
@@ -486,7 +508,35 @@ class CrazyflieUAV(UAVBase):
 
     async def shutdown(self):
         """Shuts down the UAV."""
-        return await self._crazyflie.shutdown()
+        await self._crazyflie.shutdown()
+        if self.notify_shutdown_or_reboot:
+            self.notify_shutdown_or_reboot()
+
+    async def start_drone_show(self, delay: float = 0):
+        """Instructs the UAV to start the pre-programmed drone show in drone
+        show mode. Assumes that the UAV is already in drone show mode; it will
+        _not_ attempt to switch the mode.
+        """
+        if delay > 0:
+            delay = int(delay * 1000)
+            if delay >= 65536:
+                raise RuntimeError("Maximum allowed delay is 65 seconds")
+            data = Struct("<H").pack(delay)
+        else:
+            data = None
+
+        await self._crazyflie.run_command(
+            port=DRONE_SHOW_PORT, command=DroneShowCommand.START, data=data
+        )
+
+    async def stop_drone_show(self):
+        """Instructs the UAV to stop the pre-programmed drone show in drone
+        show mode. Assumes that the UAV is already in drone show mode; it will
+        _not_ attempt to switch the mode.
+        """
+        await self._crazyflie.run_command(
+            port=DRONE_SHOW_PORT, command=DroneShowCommand.STOP
+        )
 
     async def takeoff(
         self, altitude: float = 1.0, relative: bool = False, velocity: float = 0.5
@@ -572,7 +622,7 @@ class CrazyflieUAV(UAVBase):
         flight mode if we accidentally lose contact with it for a split second
         only.
         """
-        needs_show_mode = self.has_uploaded_show
+        needs_show_mode = self.has_previously_uploaded_show
 
         await self._crazyflie.param.validate()
         await self._crazyflie.high_level_commander.enable()
@@ -630,6 +680,7 @@ class CrazyflieUAV(UAVBase):
         assert self._crazyflie is not None
 
         session = self._crazyflie.log.create_session()
+        session.configure(graceful_cleanup=True)
         session.create_block(
             "pm.vbat", "pm.state", period=1, handler=self._on_battery_state_received,
         )
@@ -707,14 +758,14 @@ class CrazyflieUAV(UAVBase):
         await self._crazyflie.run_command(
             port=DRONE_SHOW_PORT,
             command=DroneShowCommand.DEFINE_LIGHT_PROGRAM,
-            data=[
+            data=Struct("<BBBBII").pack(
                 0,  # light program ID
                 LightProgramLocation.MEM,
                 LightProgramType.SKYBRUSH,
                 0,  # fps, not used
                 addr,  # address in memory
                 len(data),  # length of light program
-            ],
+            ),
         )
 
     async def _upload_trajectory(self, trajectory: TrajectorySpecification) -> None:
@@ -789,32 +840,38 @@ class CrazyflieHandlerTask:
         """
         self._uav._reset_status_variables()
 
-        async with AsyncExitStack() as stack:
-            enter = stack.enter_async_context
+        try:
+            async with AsyncExitStack() as stack:
+                enter = stack.enter_async_context
 
-            await enter(self._uav.use(debug=self._debug))
-            await enter(self._uav.log_session)
-            await enter(self._uav._command_queue_tx)
+                await enter(self._uav.use(debug=self._debug))
+                await enter(self._uav.log_session)
+                await enter(self._uav._command_queue_tx)
 
-            await self._uav.setup_flight_mode()
+                await self._uav.setup_flight_mode()
 
-            nursery = await enter(open_nursery())
-            nursery.start_soon(self._uav.process_incoming_log_messages)
-            nursery.start_soon(self._uav.process_drone_show_status_messages)
-            nursery.start_soon(self._uav.process_command_queue)
+                nursery = await enter(open_nursery())
+                self._uav.notify_shutdown_or_reboot = nursery.cancel_scope.cancel
+                nursery.start_soon(self._uav.process_incoming_log_messages)
+                nursery.start_soon(self._uav.process_drone_show_status_messages)
+                nursery.start_soon(self._uav.process_command_queue)
+                await self._reupload_last_show_if_needed()
+        finally:
+            self._uav.notify_shutdown_or_reboot = None
 
-            try:
-                if self._uav.has_uploaded_show:
-                    # UAV was rebooted but we have already uploaded a show to it
-                    # before, so we should upload it again if the show framework
-                    # is in the idle state. First we wait two seconds to be sure
-                    # that we receive at least one show status packet from the
-                    # drone
-                    await sleep(2)
-                    if not self._uav.is_running_show:
-                        await self._uav.reupload_last_show()
-            except Exception as ex:
-                log.warn(
-                    f"Failed to re-upload previously uploaded show to possibly rebooted drone {self._uav.id}"
-                )
-                log.exception(ex)
+    async def _reupload_last_show_if_needed(self) -> None:
+        try:
+            if self._uav.has_previously_uploaded_show:
+                # UAV was rebooted but we have already uploaded a show to it
+                # before, so we should upload it again if the show framework
+                # is in the idle state. First we wait two seconds to be sure
+                # that we receive at least one show status packet from the
+                # drone
+                await sleep(2)
+                if not self._uav.is_running_show:
+                    await self._uav.reupload_last_show()
+        except Exception as ex:
+            log.warn(
+                f"Failed to re-upload previously uploaded show to possibly rebooted drone {self._uav.id}"
+            )
+            log.exception(ex)

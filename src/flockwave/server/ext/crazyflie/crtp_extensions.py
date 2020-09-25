@@ -74,6 +74,7 @@ class DroneShowStatusFlag(IntFlag):
     BATTERY_CHARGING = 1
     HIGH_LEVEL_COMMANDER_ENABLED = 2
     DRONE_SHOW_MODE_ENABLED = 4
+    AIRBORNE = 8
 
 
 class DroneShowExecutionStage(IntEnum):
@@ -165,8 +166,14 @@ class DroneShowStatus:
     position: Optional[Tuple[float, float, float]] = None
     light: int = 0
     show_execution_stage: DroneShowExecutionStage = DroneShowExecutionStage.UNKNOWN
+    yaw: float = 0.0
 
-    _struct = Struct("<HhhhH")
+    _struct = Struct("<HhhhhH")
+
+    @property
+    def airborne(self) -> bool:
+        """Returns whether the Crazyflie is probably airborne."""
+        return self.flags & DroneShowStatusFlag.AIRBORNE
 
     @property
     def battery_percentage(self) -> int:
@@ -194,7 +201,7 @@ class DroneShowStatus:
         except Exception:
             stage = DroneShowExecutionStage.ERROR
 
-        checks, x, y, z, light = cls._struct.unpack(data[3:13])
+        checks, x, y, z, yaw, light = cls._struct.unpack(data[3:15])
         checks = tuple((checks >> (index * 2)) & 0x03 for index in range(8))
         return cls(
             battery_voltage=data[1] / 10.0,
@@ -203,6 +210,7 @@ class DroneShowStatus:
             position=(x / 1000.0, y / 1000.0, z / 1000.0),
             light=light,
             show_execution_stage=stage,
+            yaw=yaw
         )
 
     def has_flag(self, flag: DroneShowStatusFlag) -> bool:

@@ -50,6 +50,7 @@ EXTENSIONS = {
         "id_format": "CF-{0:02}",
         "connections": ["crazyradio://0/80/2M/E7E7E7E7"],
         "debug": True,
+        "enabled": False,
     },
     "debug": {},
     "dock": {"enabled": False, "listener": "unix:/tmp/flockwaved-dock.sock"},
@@ -83,10 +84,6 @@ EXTENSIONS = {
     },
     "rtk": {
         "presets": {
-            "ephemeris": {
-                "title": "Ephemeris only",
-                "source": "ntrip://ntrip.use-snip.com:2101/RTCM3EPH",  # may also be a list
-            },
             "elte-rtk": {
                 "title": "ELTE RTK",
                 "source": "ntrip://elte5:5etle@geotradegnss.hu/BUDA.RTCM3",
@@ -101,7 +98,7 @@ EXTENSIONS = {
     },
     "show": {},
     "socketio": {},
-    "smpte_timecode": {"connection": "midi:IAC Driver Bus 1"},
+    # "smpte_timecode": {"connection": "midi:IAC Driver Bus 1"},
     "ssdp": {},
     "system_clock": {},
     "tcp": {},

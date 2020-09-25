@@ -5,6 +5,7 @@ from contextlib import asynccontextmanager, AsyncExitStack
 from functools import partial
 from math import hypot
 from pathlib import Path
+from random import random
 from struct import Struct
 from trio import open_memory_channel, open_nursery, sleep
 from trio_util import periodic
@@ -155,7 +156,7 @@ class CrazyflieDriver(UAVDriver):
         except ValueError:
             raise RuntimeError("Invalid number found in input")
 
-        await uav.go_to(x, y, z)
+        x, y, z = await uav.go_to(x, y, z)
         return f"Target set to ({x:.2f}, {y:.2f}, {z:.2f}) m"
 
     async def handle_command_home(self, uav):
@@ -256,9 +257,26 @@ class CrazyflieDriver(UAVDriver):
     async def _send_shutdown_signal_single(self, uav) -> None:
         await uav.shutdown()
 
+    async def _send_takeoff_countdown_notification_single(
+        self, uav, seconds: Optional[float]
+    ):
+        if uav.is_in_drone_show_mode:
+            if seconds is not None:
+                if abs(seconds) < 32:
+                    # TODO(ntamas): we need to compensate for the time spent
+                    # between putting the request in the queue and getting it from
+                    # there
+                    await uav.start_drone_show(delay=seconds)
+                else:
+                    # We don't send a message now because the Crazyflie firmware
+                    # supports notifications +-32000 msec around the start time only
+            else:
+                # TODO(ntamas): cancellation not implemented yet
+                pass
+
     async def _send_takeoff_signal_single(self, uav) -> None:
         if uav.is_in_drone_show_mode:
-            await uav.start_drone_show()
+            await uav.start_drone_show(delay=seconds)
         else:
             await uav.takeoff(altitude=1, relative=True)
 
@@ -344,9 +362,12 @@ class CrazyflieUAV(UAVBase):
         dx, dy, dz = x - current.x, y - current.y, z - current.z
         travel_time = max(hypot(dx, dy) / velocity_xy, abs(dz) / velocity_z)
 
+        # TODO(ntamas): keep current yaw!
         await self._crazyflie.high_level_commander.go_to(
             x, y, z, yaw=0, duration=travel_time
         )
+
+        return x, y, z
 
     @property
     def has_previously_uploaded_show(self) -> bool:
@@ -416,6 +437,7 @@ class CrazyflieUAV(UAVBase):
             period: the number of seconds elapsed between consecutive status
                 requests, in seconds
         """
+        await sleep(random() * 0.5)
         async for _ in periodic(period):
             try:
                 status = await self._crazyflie.run_command(
@@ -444,6 +466,7 @@ class CrazyflieUAV(UAVBase):
                     light=status.light,
                     position_xyz=self._position,
                     debug=message,
+                    heading=status.yaw
                 )
                 self.notify_updated()
 
@@ -520,9 +543,9 @@ class CrazyflieUAV(UAVBase):
         """
         if delay > 0:
             delay = int(delay * 1000)
-            if delay >= 65536:
-                raise RuntimeError("Maximum allowed delay is 65 seconds")
-            data = Struct("<H").pack(delay)
+            if abs(delay) >= 32000:
+                raise RuntimeError("Maximum allowed delay is 32 seconds")
+            data = Struct("<h").pack(delay)
         else:
             data = None
 
@@ -647,7 +670,7 @@ class CrazyflieUAV(UAVBase):
     async def _enable_show_mode(self) -> None:
         """Enables the drone-show mode on the Crazyflie."""
         await self._crazyflie.param.set("show.enabled", 1)
-        await self._crazyflie.param.set("show.testing", 1)
+        # await self._crazyflie.param.set("show.testing", 1)
 
     def _on_battery_state_received(self, message):
         self._battery.voltage = message.items[0]
@@ -657,9 +680,21 @@ class CrazyflieUAV(UAVBase):
         self.notify_updated()
 
     def _on_position_velocity_info_received(self, message):
+        self._position.x, self._position.y, self._position.z = message.items[0:3]
         self._velocity.x, self._velocity.y, self._velocity.z = message.items[3:6]
+
+        self._position.x /= 1000
+        self._position.y /= 1000
+        self._position.z /= 1000
+
+        self._velocity.x /= 1000
+        self._velocity.y /= 1000
+        self._velocity.z /= 1000
+
         self._update_error_codes()
-        self.update_status(position_xyz=self._position, velocity_xyz=self._velocity)
+
+        self.update_status(position_xyz=self._position, velocity_xyz=self._velocity, heading=message.items[6])
+
         self.notify_updated()
 
     def _reset_status_variables(self) -> None:
@@ -680,16 +715,19 @@ class CrazyflieUAV(UAVBase):
 
         session = self._crazyflie.log.create_session()
         session.configure(graceful_cleanup=True)
+        return session
+
         session.create_block(
             "pm.vbat", "pm.state", period=1, handler=self._on_battery_state_received,
         )
         session.create_block(
-            "stateEstimate.x",
-            "stateEstimate.y",
-            "stateEstimate.z",
-            "stateEstimate.vx",
-            "stateEstimate.vy",
-            "stateEstimate.vz",
+            "stateEstimateZ.x",
+            "stateEstimateZ.y",
+            "stateEstimateZ.z",
+            "stateEstimateZ.vx",
+            "stateEstimateZ.vy",
+            "stateEstimateZ.vz",
+            "stateEstimate.yaw",
             period=1,
             handler=self._on_position_velocity_info_received,
         )

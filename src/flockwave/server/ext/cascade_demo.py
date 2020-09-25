@@ -33,13 +33,15 @@ ground_altitude=0
 #origin=
 
 [waypoints]
-yaw=auto 30 0
+# TODO: yawing is not working yet, we realised it during cascade demo,
+# not fixed yet...
+#yaw=auto 30 0
 
 """
 
 WAYPOINT_GROUND_STR = """motoroff=10"""
 
-TIMELINE_WAYPOINT_STR = "N{lat:.8f} E{lon:.8f} {agl:.2f} {max_velocity_xy:.2f} {max_velocity_z:.2f} T{time:.6f} 6"
+TIMELINE_WAYPOINT_STR = "waypoint=N{lat:.8f} E{lon:.8f} {agl:.2f} {max_velocity_xy:.2f} {max_velocity_z:.2f} T{time:.6f} 6"
 
 TRIP_STR = """
 # taking off from station '{last_station}' towards station '{station}'

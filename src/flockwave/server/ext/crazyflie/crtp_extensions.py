@@ -225,6 +225,6 @@ class DroneShowStatus:
         if self.flags & DroneShowStatusFlag.DRONE_SHOW_MODE_ENABLED:
             return "show"
         elif self.flags & DroneShowStatusFlag.HIGH_LEVEL_COMMANDER_ENABLED:
-            return "hcmd"
+            return "cmd"
         else:
             return "----"

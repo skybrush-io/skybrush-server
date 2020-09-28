@@ -50,9 +50,6 @@ async def create_default_schedule_for(
     await sleep(delay)
 
     while True:
-        # TODO(ntamas): get a fresh view of the address space, excluding those
-        # addresses for which we already have a running task
-
         # Do partial scans, making sure that only a given number of addresses
         # are placed in a single partial scan
         targets = []

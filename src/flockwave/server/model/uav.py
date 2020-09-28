@@ -5,7 +5,7 @@ from __future__ import absolute_import
 from abc import ABCMeta, abstractproperty
 from typing import Any, Dict, Iterable, List, Optional, Union
 
-from flockwave.gps.vectors import GPSCoordinate, Vector3D, VelocityNED
+from flockwave.gps.vectors import GPSCoordinate, PositionXYZ, VelocityNED, VelocityXYZ
 from flockwave.server.errors import NotSupportedError
 from flockwave.server.logger import log as base_log
 from flockwave.spec.schema import get_complex_object_schema
@@ -224,9 +224,9 @@ class UAVBase(UAV):
         self,
         *,
         position: Optional[GPSCoordinate] = None,
-        position_xyz: Optional[Vector3D] = None,
+        position_xyz: Optional[PositionXYZ] = None,
         velocity: Optional[VelocityNED] = None,
-        velocity_xyz: Optional[Vector3D] = None,
+        velocity_xyz: Optional[VelocityXYZ] = None,
         heading: Optional[float] = None,
         mode: Optional[str] = None,
         gps: Optional[GPSFix] = None,
@@ -268,7 +268,7 @@ class UAVBase(UAV):
             self._status.position.update_from(position, precision=7)
         if position_xyz is not None:
             if self._status.position_xyz is None:
-                self._status.position_xyz = Vector3D()
+                self._status.position_xyz = PositionXYZ()
             self._status.position_xyz.update_from(position_xyz, precision=3)
         if heading is not None:
             # Heading is rounded to 2 digits; it is unlikely that more
@@ -279,7 +279,7 @@ class UAVBase(UAV):
             self._status.velocity.update_from(velocity, precision=2)
         if velocity_xyz is not None:
             if self._status.velocity_xyz is None:
-                self._status.velocity_xyz = Vector3D()
+                self._status.velocity_xyz = VelocityXYZ()
             self._status.velocity_xyz.update_from(velocity_xyz, precision=2)
         if mode is not None:
             self._status.mode = mode

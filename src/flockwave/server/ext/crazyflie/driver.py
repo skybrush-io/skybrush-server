@@ -16,8 +16,9 @@ from aiocflib.crtp.crtpstack import MemoryType
 from aiocflib.crazyflie.high_level_commander import TrajectoryType
 from aiocflib.crazyflie.log import LogSession
 from aiocflib.crazyflie.mem import write_with_checksum
+from aiocflib.errors import TimeoutError
 
-from flockwave.gps.vectors import Vector3D, VelocityNED
+from flockwave.gps.vectors import PositionXYZ, VelocityXYZ
 from flockwave.server.ext.logger import log as base_log
 from flockwave.server.model.preflight import PreflightCheckInfo, PreflightCheckResult
 from flockwave.server.model.uav import BatteryInfo, UAVBase, UAVDriver, VersionInfo
@@ -270,13 +271,14 @@ class CrazyflieDriver(UAVDriver):
                 else:
                     # We don't send a message now because the Crazyflie firmware
                     # supports notifications +-32000 msec around the start time only
+                    pass
             else:
                 # TODO(ntamas): cancellation not implemented yet
                 pass
 
     async def _send_takeoff_signal_single(self, uav) -> None:
         if uav.is_in_drone_show_mode:
-            await uav.start_drone_show(delay=seconds)
+            await uav.start_drone_show()
         else:
             await uav.takeoff(altitude=1, relative=True)
 
@@ -466,7 +468,7 @@ class CrazyflieUAV(UAVBase):
                     light=status.light,
                     position_xyz=self._position,
                     debug=message,
-                    heading=status.yaw
+                    heading=status.yaw,
                 )
                 self.notify_updated()
 
@@ -670,7 +672,7 @@ class CrazyflieUAV(UAVBase):
     async def _enable_show_mode(self) -> None:
         """Enables the drone-show mode on the Crazyflie."""
         await self._crazyflie.param.set("show.enabled", 1)
-        # await self._crazyflie.param.set("show.testing", 1)
+        await self._crazyflie.param.set("show.testing", 1)
 
     def _on_battery_state_received(self, message):
         self._battery.voltage = message.items[0]
@@ -693,7 +695,11 @@ class CrazyflieUAV(UAVBase):
 
         self._update_error_codes()
 
-        self.update_status(position_xyz=self._position, velocity_xyz=self._velocity, heading=message.items[6])
+        self.update_status(
+            position_xyz=self._position,
+            velocity_xyz=self._velocity,
+            heading=message.items[6],
+        )
 
         self.notify_updated()
 
@@ -703,9 +709,9 @@ class CrazyflieUAV(UAVBase):
         """
         self._preflight_status = self._create_empty_preflight_status_report()
         self._battery = BatteryInfo()
-        self._position = Vector3D()
+        self._position = PositionXYZ()
         self._show_execution_stage = DroneShowExecutionStage.UNKNOWN
-        self._velocity = VelocityNED()
+        self._velocity = VelocityXYZ()
 
     def _setup_logging_session(self):
         """Sets up the log blocks that contain the variables we need from the
@@ -872,9 +878,6 @@ class CrazyflieHandlerTask:
                 # We do not log IOErrors -- the stack trace is too long
                 # and in 99% of the cases it is simply a communication error
                 pass
-
-        # TODO(ntamas): when the task stops, we have to notify the scanner
-        # that it can resume recognizing this drone again
 
     async def _run(self):
         """Implementation of the task itself.

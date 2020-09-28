@@ -178,7 +178,7 @@ class DroneShowStatus:
     @property
     def battery_percentage(self) -> int:
         """Returns the approximate battery charge percentage."""
-        percentage = round(100 * (self.battery_voltage - 3.1) / 1.1)
+        percentage = round(100 * (self.battery_voltage - 3.0) / 1.2)
         return min(max(percentage, 0), 100)
 
     @property
@@ -210,7 +210,7 @@ class DroneShowStatus:
             position=(x / 1000.0, y / 1000.0, z / 1000.0),
             light=light,
             show_execution_stage=stage,
-            yaw=yaw
+            yaw=yaw,
         )
 
     def has_flag(self, flag: DroneShowStatusFlag) -> bool:

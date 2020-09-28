@@ -431,6 +431,14 @@ class CrazyflieUAV(UAVBase):
         async for command, args in self._command_queue_rx:
             print(repr(command), repr(args))
 
+    async def process_console_messages(self) -> None:
+        """Runs a task that processes incoming console messages and forwards
+        them to the logger of the extension.
+        """
+        extra = {"id": self.id}
+        async for message in self._crazyflie.console.messages():
+            log.info(message, extra=extra)
+
     async def process_drone_show_status_messages(self, period: float = 0.5) -> None:
         """Runs a task that requests a drone show related status report from
         the Crazyflie drone repeatedly.
@@ -472,7 +480,7 @@ class CrazyflieUAV(UAVBase):
                 )
                 self.notify_updated()
 
-    async def process_incoming_log_messages(self) -> None:
+    async def process_log_messages(self) -> None:
         """Runs a task that processes incoming log messages and calls the
         appropriate log message handlers.
         """
@@ -901,9 +909,10 @@ class CrazyflieHandlerTask:
 
                 nursery = await enter(open_nursery())
                 self._uav.notify_shutdown_or_reboot = nursery.cancel_scope.cancel
-                nursery.start_soon(self._uav.process_incoming_log_messages)
+                nursery.start_soon(self._uav.process_console_messages)
                 nursery.start_soon(self._uav.process_drone_show_status_messages)
-                nursery.start_soon(self._uav.process_command_queue)
+                nursery.start_soon(self._uav.process_log_messages)
+                # nursery.start_soon(self._uav.process_command_queue)
 
                 if self._use_fake_position:
                     nursery.start_soon(self._feed_fake_position)

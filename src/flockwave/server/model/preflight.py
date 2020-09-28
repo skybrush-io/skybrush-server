@@ -114,6 +114,22 @@ class PreflightCheckInfo(metaclass=ModelMeta):
         """
         return self._in_progress
 
+    @property
+    def passed(self) -> bool:
+        """Returns whether all the preflight checks have passed or are turned
+        off. Preflight checks with warnings are considered to have passed.
+
+        Also returns true if there are no preflight checks configured.
+        """
+        if self.in_progress:
+            return False
+        else:
+            return self.result in (
+                PreflightCheckResult.PASS,
+                PreflightCheckResult.WARNING,
+                PreflightCheckResult.OFF,
+            )
+
     def update_summary(self) -> None:
         """Updates the summary of this preflight check report based on the
         results of the individual preflight check items.

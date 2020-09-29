@@ -977,7 +977,7 @@ class CrazyflieHandlerTask:
                     await self._uav.reupload_last_show()
         except Exception as ex:
             log.warn(
-                f"Failed to re-upload previously uploaded show to possibly rebooted drone",
+                "Failed to re-upload previously uploaded show to possibly rebooted drone",
                 extra={"id": self._uav.id},
             )
             log.exception(ex)

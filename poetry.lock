@@ -4,7 +4,7 @@ description = "asyncio-based API for Crazyflie drones"
 name = "aiocflib"
 optional = false
 python-versions = ">=3.7,<4.0"
-version = "0.8.3"
+version = "0.8.4"
 
 [package.dependencies]
 anyio = ">=2.0.0,<3.0.0"
@@ -1193,8 +1193,8 @@ python-versions = "^3.7"
 
 [metadata.files]
 aiocflib = [
-    {file = "aiocflib-0.8.3-py3-none-any.whl", hash = "md5:089da4b4342b63f206ca6d6ac887794e"},
-    {file = "aiocflib-0.8.3.tar.gz", hash = "md5:1bcb60b0018ce5b9ab610e9c81dd8265"},
+    {file = "aiocflib-0.8.4-py3-none-any.whl", hash = "md5:535eb83750ebe38b2e802298b5e38636"},
+    {file = "aiocflib-0.8.4.tar.gz", hash = "md5:4262f01d968fe751d011c0c6b4e5afb8"},
 ]
 aiofiles = [
     {file = "aiofiles-0.5.0-py3-none-any.whl", hash = "sha256:377fdf7815cc611870c59cbd07b68b180841d2a2b79812d8c218be02448c2acb"},

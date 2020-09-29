@@ -4,7 +4,7 @@ description = "asyncio-based API for Crazyflie drones"
 name = "aiocflib"
 optional = false
 python-versions = ">=3.7,<4.0"
-version = "0.8.2"
+version = "0.8.3"
 
 [package.dependencies]
 anyio = ">=2.0.0,<3.0.0"
@@ -1188,13 +1188,13 @@ docs = ["sphinx", "jaraco.packaging (>=3.2)", "rst.linker (>=1.9)"]
 testing = ["pytest (>=3.5,<3.7.3 || >3.7.3)", "pytest-checkdocs (>=1.2.3)", "pytest-flake8", "pytest-cov", "jaraco.test (>=3.2.0)", "jaraco.itertools", "func-timeout", "pytest-black (>=0.3.7)", "pytest-mypy"]
 
 [metadata]
-content-hash = "c4e2aca47a8e1df8cfa07a2a85a1ef1534abd726a3c2201e645df3d783614b54"
+content-hash = "78d5b1e8648efbea0cec99000f16c91e02f3e2eccf38edda2f38bc4c3f87d6f2"
 python-versions = "^3.7"
 
 [metadata.files]
 aiocflib = [
-    {file = "aiocflib-0.8.2-py3-none-any.whl", hash = "md5:4bef80beea990028975d6143f789d543"},
-    {file = "aiocflib-0.8.2.tar.gz", hash = "md5:c68f20ab40036ab0f78b27a5ba809f28"},
+    {file = "aiocflib-0.8.3-py3-none-any.whl", hash = "md5:089da4b4342b63f206ca6d6ac887794e"},
+    {file = "aiocflib-0.8.3.tar.gz", hash = "md5:1bcb60b0018ce5b9ab610e9c81dd8265"},
 ]
 aiofiles = [
     {file = "aiofiles-0.5.0-py3-none-any.whl", hash = "sha256:377fdf7815cc611870c59cbd07b68b180841d2a2b79812d8c218be02448c2acb"},

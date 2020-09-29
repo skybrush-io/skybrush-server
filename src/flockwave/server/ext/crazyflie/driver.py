@@ -879,7 +879,9 @@ class CrazyflieHandlerTask:
         try:
             await self._run()
         except Exception as ex:
-            log.error(f"Error while handling Crazyflie {self._uav.id}: {str(ex)}")
+            log.error(
+                f"Error while handling Crazyflie: {str(ex)}", extra={"id": self._uav.id}
+            )
             if not isinstance(ex, IOError):
                 log.exception(ex)
             else:
@@ -901,11 +903,24 @@ class CrazyflieHandlerTask:
             async with AsyncExitStack() as stack:
                 enter = stack.enter_async_context
 
-                await enter(self._uav.use(debug=self._debug))
-                await enter(self._uav.log_session)
-                await enter(self._uav._command_queue_tx)
-
-                await self._uav.setup_flight_mode()
+                try:
+                    await enter(self._uav.use(debug=self._debug))
+                    await enter(self._uav.log_session)
+                    await enter(self._uav._command_queue_tx)
+                    await self._uav.setup_flight_mode()
+                except TimeoutError:
+                    log.error(
+                        "Communication timeout while initializing connection",
+                        extra={"id": self._uav.id},
+                    )
+                    return
+                except Exception as ex:
+                    log.error(
+                        f"Error while initializing connection: {str(ex)}",
+                        extra={"id": self._uav.id},
+                    )
+                    log.exception(ex)
+                    return
 
                 nursery = await enter(open_nursery())
                 self._uav.notify_shutdown_or_reboot = nursery.cancel_scope.cancel
@@ -942,6 +957,7 @@ class CrazyflieHandlerTask:
                     await self._uav.reupload_last_show()
         except Exception as ex:
             log.warn(
-                f"Failed to re-upload previously uploaded show to possibly rebooted drone {self._uav.id}"
+                f"Failed to re-upload previously uploaded show to possibly rebooted drone",
+                extra={"id": self._uav.id},
             )
             log.exception(ex)

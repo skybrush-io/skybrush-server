@@ -27,6 +27,7 @@ from flockwave.spec.errors import FlockwaveErrorCode
 from flockwave.spec.ids import make_valid_object_id
 
 from skybrush import (
+    get_home_position_from_show_specification,
     get_skybrush_light_program_from_show_specification,
     get_skybrush_trajectory_from_show_specification,
     TrajectorySpecification,
@@ -197,6 +198,15 @@ class CrazyflieDriver(UAVDriver):
             return f"{name} = {value}"
         except KeyError:
             raise RuntimeError(f"No such parameter: {name}")
+
+    async def handle_command_kalman(self, uav, command: Optional[str] = None) -> None:
+        if command is None:
+            return "Run 'kalman reset' to reset the Kalman filter"
+        elif command == "reset":
+            await uav.set_parameter("kalman.resetEstimation", 1)
+            return "Kalman filter reset successfully"
+        else:
+            raise RuntimeError(f"Unknown command: {command}")
 
     async def handle_command_test(self, uav, component: Optional[str] = None) -> None:
         """Runs a self-test on a component of the UAV."""
@@ -603,8 +613,9 @@ class CrazyflieUAV(UAVBase):
         light_program = get_skybrush_light_program_from_show_specification(show)
         await self._upload_light_program(light_program)
 
+        home = get_home_position_from_show_specification(show)
         trajectory = get_skybrush_trajectory_from_show_specification(show)
-        await self._upload_trajectory(trajectory)
+        await self._upload_trajectory(trajectory, home)
 
         await self._enable_show_mode()
 
@@ -680,7 +691,7 @@ class CrazyflieUAV(UAVBase):
     async def _enable_show_mode(self) -> None:
         """Enables the drone-show mode on the Crazyflie."""
         await self._crazyflie.param.set("show.enabled", 1)
-        await self._crazyflie.param.set("show.testing", 1)
+        # await self._crazyflie.param.set("show.testing", 1)
 
     def _on_battery_state_received(self, message):
         self._battery.voltage = message.items[0]
@@ -819,7 +830,11 @@ class CrazyflieUAV(UAVBase):
             ),
         )
 
-    async def _upload_trajectory(self, trajectory: TrajectorySpecification) -> None:
+    async def _upload_trajectory(
+        self,
+        trajectory: TrajectorySpecification,
+        home: Optional[Tuple[float, float, float]],
+    ) -> None:
         """Uploads the given trajectory data to the Crazyflie drone."""
         try:
             memory = await self._crazyflie.mem.find(MemoryType.TRAJECTORY)
@@ -827,7 +842,7 @@ class CrazyflieUAV(UAVBase):
             raise RuntimeError("Trajectories are not supported on this drone")
 
         # Define the home position and the takeoff time first
-        await self.set_home_position(trajectory.home_position)
+        await self.set_home_position(home or trajectory.home_position)
         await self.set_parameter("show.takeoffTime", trajectory.takeoff_time)
 
         # Encode the trajectory and write it to the Crazyflie memory
@@ -919,7 +934,12 @@ class CrazyflieHandlerTask:
                         f"Error while initializing connection: {str(ex)}",
                         extra={"id": self._uav.id},
                     )
-                    log.exception(ex)
+                    if not isinstance(ex, IOError):
+                        log.exception(ex)
+                    else:
+                        # We do not log IOErrors -- the stack trace is too long
+                        # and in 99% of the cases it is simply a communication error
+                        pass
                     return
 
                 nursery = await enter(open_nursery())

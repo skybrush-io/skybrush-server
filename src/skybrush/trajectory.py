@@ -3,7 +3,7 @@ Skybrush-related trajectories, until we find a better place for them.
 """
 
 from dataclasses import dataclass
-from typing import Dict, Generator, Tuple
+from typing import Dict, Generator, Optional, Tuple
 
 __all__ = ("get_skybrush_trajectory_from_show_specification", "TrajectorySpecification")
 
@@ -60,6 +60,9 @@ class TrajectorySpecification:
         """Returns the home position of the drone within the show. Units are
         in meters.
         """
+        # TODO(ntamas): I think the 'home' is not here by default but one level
+        # higher in the original JSON structure. I think it's time we created a
+        # formal specification and stick to it. :-/
         home = self._data.get("home")
         if not home:
             points = self._data.get("points")
@@ -114,3 +117,17 @@ def get_skybrush_trajectory_from_show_specification(
     specification object.
     """
     return TrajectorySpecification(show["trajectory"])
+
+
+def get_home_position_from_show_specification(
+    show: Dict,
+) -> Optional[Tuple[float, float, float]]:
+    """Returns the home position of the drone from the given show specification
+    object. Units are in meters.
+    """
+    home = show.get("home")
+    if home and len(home) == 3:
+        home = [float(x) for x in home]
+        return home
+    else:
+        return None

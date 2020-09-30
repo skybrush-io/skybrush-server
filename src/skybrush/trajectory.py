@@ -75,6 +75,25 @@ class TrajectorySpecification:
             return 0.0, 0.0, 0.0
 
     @property
+    def landing_height(self) -> float:
+        """Returns the height of the last point of the show, in meters.
+
+        TODO(ntamas): this is correct only as long as the trajectory is
+        pre-processed when we receive it and the last segment is cut. Fix this
+        when we finally migrate to sending the entire trajectory from the client
+        to the server.
+        """
+        height = self._data.get("landingHeight")
+        if height is None:
+            points = self._data.get("points")
+            if points:
+                _, last_pos, _ = points[-1]
+                height = float(last_pos[2])
+            else:
+                height = 0.0
+        return height
+
+    @property
     def takeoff_time(self) -> float:
         """Returns the takeoff time of the drone within the show, in seconds."""
         return float(self._data.get("takeoffTime", 0.0))

@@ -845,6 +845,9 @@ class CrazyflieUAV(UAVBase):
         await self.set_home_position(home or trajectory.home_position)
         await self.set_parameter("show.takeoffTime", trajectory.takeoff_time)
 
+        # Set the landing height
+        await self.set_parameter("show.landingHeight", trajectory.landing_height)
+
         # Encode the trajectory and write it to the Crazyflie memory
         data = encode_trajectory(
             to_poly4d_sequence(trajectory), encoding=TrajectoryEncoding.COMPRESSED

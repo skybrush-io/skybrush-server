@@ -35,7 +35,7 @@ class _MAVLinkMessageSpecificationFactory:
         func = self._cache.get(name)
         if not func:
             self._cache[name] = func = lambda **kwds: (name, kwds)
-        return self._cache[name]
+        return func
 
 
 spec = _MAVLinkMessageSpecificationFactory()

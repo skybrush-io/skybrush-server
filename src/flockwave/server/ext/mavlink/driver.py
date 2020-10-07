@@ -8,7 +8,7 @@ from functools import partial
 from math import inf
 from time import monotonic
 from trio import move_on_after, sleep
-from typing import Optional
+from typing import List, Optional
 
 from flockwave.gps.vectors import GPSCoordinate, VelocityNED
 
@@ -32,6 +32,7 @@ from .enums import (
     MAVSysStatusSensor,
     PositionTargetTypemask,
 )
+from .packets import DroneShowStatus
 from .types import MAVLinkMessage, spec
 from .utils import mavlink_version_number_to_semver
 
@@ -44,6 +45,9 @@ SEC_TO_USEC = 1000000
 #: Magic number to force an arming or disarming operation even if it is unsafe
 #: to do so
 FORCE_MAGIC = 21196
+
+#: Helper constant used when we try to send an empty byte array via MAVLink
+_EMPTY = b"\x00" * 256
 
 #: "Not a number" constant, used in some MAVLink messages to indicate a default
 #: value
@@ -237,6 +241,17 @@ class MAVLinkDriver(UAVDriver):
         if not success:
             raise RuntimeError("Landing command failed")
 
+    async def _send_light_or_sound_emission_signal_single(
+        self, uav, signals: List[str], duration: int
+    ) -> None:
+        if "light" in signals:
+            # The Skybrush firmware uses a "secret" LED instance / pattern
+            # combination (42/42) to make the LED emit a flash pattern
+            message = spec.led_control(
+                instance=42, pattern=42, custom_len=0, custom_bytes=_EMPTY
+            )
+            await self.send_packet(message, uav)
+
     async def _send_motor_start_stop_signal_single(
         self, uav, start: bool, force: bool = False
     ) -> None:
@@ -312,8 +327,7 @@ class MAVLinkMessageRecord:
 
 
 class MAVLinkUAV(UAVBase):
-    """Subclass for UAVs created by the driver for MAVLink-based drones.
-    """
+    """Subclass for UAVs created by the driver for MAVLink-based drones."""
 
     def __init__(self, *args, **kwds):
         super().__init__(*args, **kwds)
@@ -360,6 +374,14 @@ class MAVLinkUAV(UAVBase):
             # The other side has to know that we have switched; we do it by
             # sending it a REQUEST_AUTOPILOT_CAPABILITIES message again
             self.driver.run_in_background(self._request_autopilot_capabilities)
+
+    def handle_message_drone_show_status(self, message: MAVLinkMessage):
+        """Handles an incoming drone show specific status message targeted at
+        this UAV.
+        """
+        data = DroneShowStatus.from_mavlink_message(message)
+        self.update_status(light=data.light)
+        self.notify_updated()
 
     def handle_message_heartbeat(self, message: MAVLinkMessage):
         """Handles an incoming MAVLink HEARTBEAT message targeted at this UAV."""
@@ -482,7 +504,7 @@ class MAVLinkUAV(UAVBase):
         # We give ourselves 5 seconds to configure everything
         with move_on_after(5):
             # TODO(ntamas): this is unsafe; there are no confirmations for
-            # REQUEST_DAYA_STREAM commands so we never know if we succeeded or
+            # REQUEST_DATA_STREAM commands so we never know if we succeeded or
             # not
             await self.driver.send_packet(
                 spec.request_data_stream(

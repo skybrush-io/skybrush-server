@@ -10,6 +10,7 @@ from flockwave.channels import MessageChannel
 from flockwave.connections import Connection, StreamConnectionBase
 from flockwave.connections.socket import SubnetBindingUDPSocketConnection
 from flockwave.logger import Logger
+from flockwave.networking import format_socket_address
 
 from flockwave.server.comm import CommunicationManager
 
@@ -48,7 +49,10 @@ def get_mavlink_factory(dialect: Union[str, Callable]):
 
 def create_communication_manager() -> CommunicationManager[Any, Any]:
     """Creates a communication manager instance for the extension."""
-    return CommunicationManager(channel_factory=create_mavlink_message_channel)
+    return CommunicationManager(
+        channel_factory=create_mavlink_message_channel,
+        format_address=format_mavlink_channel_address,
+    )
 
 
 def create_mavlink_message(link, _type: str, *args, **kwds) -> MAVLinkMessage:
@@ -231,3 +235,13 @@ def _notify_mavlink_packet_sent(mavlink, packet: bytes) -> None:
     mavlink.seq = (mavlink.seq + 1) % 256
     mavlink.total_packets_sent += 1
     mavlink.total_bytes_sent += len(packet)
+
+
+def format_mavlink_channel_address(address: Any) -> str:
+    """Returns a formatted representation of the address of a MAVLink message
+    channel.
+    """
+    try:
+        return format_socket_address(address)
+    except ValueError:
+        return str(address)

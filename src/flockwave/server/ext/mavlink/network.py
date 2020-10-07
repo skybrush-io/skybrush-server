@@ -26,6 +26,7 @@ from flockwave.server.utils import nop, overridden
 from .comm import create_communication_manager, MAVLinkMessage
 from .driver import MAVLinkUAV
 from .enums import MAVAutopilot, MAVComponent, MAVMessageType, MAVState, MAVType
+from .packets import DroneShowStatus
 from .types import MAVLinkMessageSpecification, MAVLinkNetworkSpecification
 from .utils import log_level_from_severity, log_id_from_message
 
@@ -339,6 +340,7 @@ class MAVLinkNetwork:
             "AUTOPILOT_VERSION": self._handle_message_autopilot_version,
             "BAD_DATA": nop,
             "COMMAND_ACK": nop,
+            "DATA16": self._handle_message_data16,
             "GLOBAL_POSITION_INT": self._handle_message_global_position_int,
             "GPS_RAW_INT": self._handle_message_gps_raw_int,
             "HEARTBEAT": self._handle_message_heartbeat,
@@ -347,7 +349,7 @@ class MAVLinkNetwork:
             "MEMINFO": nop,
             "MISSION_CURRENT": nop,  # maybe later?
             "NAV_CONTROLLER_OUTPUT": nop,
-            "PARAM_VALUE": self._handle_message_param_value,
+            "PARAM_VALUE": nop,
             "POSITION_TARGET_GLOBAL_INT": nop,
             "POWER_STATUS": nop,
             "STATUSTEXT": self._handle_message_statustext,
@@ -397,6 +399,14 @@ class MAVLinkNetwork:
         if uav:
             uav.handle_message_autopilot_version(message)
 
+    def _handle_message_data16(
+        self, message: MAVLinkMessage, *, connection_id: str, address: Any
+    ):
+        if message.type == DroneShowStatus.TYPE:
+            uav = self._find_uav_from_message(message, address)
+            if uav:
+                uav.handle_message_drone_show_status(message)
+
     def _handle_message_global_position_int(
         self, message: MAVLinkMessage, *, connection_id: str, address: Any
     ):
@@ -424,15 +434,6 @@ class MAVLinkNetwork:
         if uav:
             uav.handle_message_heartbeat(message)
             self.driver.run_in_background(self.send_heartbeat, uav)
-
-    def _handle_message_param_value(
-        self, message: MAVLinkMessage, *, connection_id: str, address: Any
-    ):
-        """Handles an incoming MAVLink PARAM_VALUE message."""
-        self.log.info(
-            f"Parameter value changed: {message.param_id!r} = {message.param_value}",
-            extra=self._log_extra_from_message(message),
-        )
 
     def _handle_message_statustext(
         self, message: MAVLinkMessage, *, connection_id: str, address: Any

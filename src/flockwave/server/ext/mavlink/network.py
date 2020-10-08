@@ -124,6 +124,15 @@ class MAVLinkNetwork:
         """
         type_str = type if isinstance(type, str) else MAVMessageType(type).name
 
+        # Map values of type 'bytes' to 'str' in the params dict because
+        # pymavlink never returns 'bytes'
+        for name, value in params.items():
+            if isinstance(value, bytes):
+                try:
+                    params[name] = value.decode("utf-8")
+                except ValueError:
+                    pass
+
         future = Future()
         item = (params, future)
         matchers = self._matchers[type_str]
@@ -373,8 +382,12 @@ class MAVLinkNetwork:
 
             # Resolve all futures that are waiting for this message
             for params, future in self._matchers[type]:
-                # TODO(ntamas): match params
-                future.set_result(message)
+                matched = all(
+                    getattr(message, param_name, None) == param_value
+                    for param_name, param_value in params.items()
+                )
+                if matched:
+                    future.set_result(message)
 
             # Call the message handler if we have one
             handler = handlers.get(type)

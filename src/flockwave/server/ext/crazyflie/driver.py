@@ -9,7 +9,7 @@ from random import random
 from struct import Struct
 from trio import open_memory_channel, open_nursery, sleep
 from trio_util import periodic
-from typing import Callable, List, Optional, Tuple, Union
+from typing import Callable, List, Optional, Tuple
 
 from aiocflib.crazyflie import Crazyflie
 from aiocflib.crtp.crtpstack import MemoryType
@@ -22,6 +22,7 @@ from flockwave.gps.vectors import PositionXYZ, VelocityXYZ
 from flockwave.server.ext.logger import log as base_log
 from flockwave.server.model.preflight import PreflightCheckInfo, PreflightCheckResult
 from flockwave.server.model.uav import BatteryInfo, UAVBase, UAVDriver, VersionInfo
+from flockwave.server.model.parameters import create_parameter_command_handler
 from flockwave.server.utils import optional_float
 from flockwave.spec.errors import FlockwaveErrorCode
 from flockwave.spec.ids import make_valid_object_id
@@ -170,34 +171,7 @@ class CrazyflieDriver(UAVDriver):
             x, y, z = home
             return f"Home: [{x:.2f}, {y:.2f}, {z:.2f}] m"
 
-    async def handle_command_param(
-        self, uav, name: Optional[str] = None, value: Optional[Union[str, float]] = None
-    ):
-        """Command that retrieves or sets the value of a parameter on the UAV."""
-        if not name:
-            raise RuntimeError("Missing parameter name")
-
-        name = str(name)
-        if "=" in name and value is None:
-            name, value = name.split("=", 1)
-
-        if value is not None:
-            try:
-                value = float(value)
-            except ValueError:
-                raise RuntimeError(f"Invalid parameter value: {value}")
-            if value.is_integer():
-                value = int(value)
-            try:
-                await uav.set_parameter(name, value)
-            except KeyError:
-                raise RuntimeError(f"No such parameter: {name}")
-
-        try:
-            value = await uav.get_parameter(name, fetch=True)
-            return f"{name} = {value}"
-        except KeyError:
-            raise RuntimeError(f"No such parameter: {name}")
+    handle_command_param = create_parameter_command_handler()
 
     async def handle_command_kalman(self, uav, command: Optional[str] = None) -> None:
         if command is None:
@@ -743,7 +717,10 @@ class CrazyflieUAV(UAVBase):
         return session
 
         session.create_block(
-            "pm.vbat", "pm.state", period=1, handler=self._on_battery_state_received,
+            "pm.vbat",
+            "pm.state",
+            period=1,
+            handler=self._on_battery_state_received,
         )
         session.create_block(
             "stateEstimateZ.x",

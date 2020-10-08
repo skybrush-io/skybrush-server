@@ -25,6 +25,7 @@ __all__ = (
     "optional_float",
     "optional_int",
     "overridden",
+    "to_uppercase_string",
 )
 
 
@@ -287,3 +288,10 @@ def overridden(obj: Any, **kwds):
                     setattr(obj, name, originals[name])
                 else:
                     delattr(obj, name)
+
+
+def to_uppercase_string(value: Any) -> str:
+    """Converts the given value into a string and casts the string into
+    uppercase.
+    """
+    return str(value).upper()

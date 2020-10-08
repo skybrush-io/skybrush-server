@@ -15,7 +15,9 @@ from flockwave.gps.vectors import GPSCoordinate, VelocityNED
 from flockwave.server.errors import NotSupportedError
 from flockwave.server.model.battery import BatteryInfo
 from flockwave.server.model.gps import GPSFix
+from flockwave.server.model.parameters import create_parameter_command_handler
 from flockwave.server.model.uav import VersionInfo, UAVBase, UAVDriver
+from flockwave.server.utils import to_uppercase_string
 from flockwave.spec.errors import FlockwaveErrorCode
 
 from .autopilots import Autopilot, UnknownAutopilot
@@ -102,6 +104,21 @@ class MAVLinkDriver(UAVDriver):
         can be used in MAVLink messages.
         """
         return int(monotonic() * 1000)
+
+    handle_command_param = create_parameter_command_handler(
+        name_validator=to_uppercase_string
+    )
+
+    async def handle_command___show_upload(self, uav: "MAVLinkUAV", *, show):
+        """Handles a drone show upload request for the given UAV.
+
+        This is a temporary solution until we figure out something that is
+        more sustainable in the long run.
+
+        Parameters:
+            show: the show data
+        """
+        raise NotImplementedError
 
     async def send_command_long(
         self,
@@ -358,6 +375,39 @@ class MAVLinkUAV(UAVBase):
 
         self._network_id = network_id
         self._system_id = system_id
+
+    async def get_parameter(self, name: str, fetch: bool = False) -> float:
+        """Returns the value of a parameter from the UAV."""
+        response = await self._get_parameter(name)
+        return response.param_value
+
+    async def _get_parameter(self, name: str) -> MAVLinkMessage:
+        """Retrieves the value of a parameter from the UAV and returns a
+        MAVLink message encapsulating the name, index, value and type of
+        the parameter.
+        """
+        param_id = name.encode("utf-8")[:16]
+        return await self.driver.send_packet(
+            spec.param_request_read(param_id=param_id, param_index=-1),
+            target=self,
+            wait_for_response=spec.param_value(param_id=param_id),
+        )
+
+    async def set_parameter(self, name: str, value: float) -> None:
+        """Sets the value of a parameter on the UAV."""
+        # We need to retrieve the current value of the parameter first because
+        # we need its type
+        param_id = name.encode("utf-8")[:16]
+        response = await self._get_parameter(name)
+        await self.driver.send_packet(
+            spec.param_set(
+                param_id=param_id,
+                param_value=value,
+                param_type=response.param_type,
+            ),
+            target=self,
+            wait_for_response=spec.param_value(param_id=param_id),
+        )
 
     def handle_message_autopilot_version(self, message: MAVLinkMessage):
         """Handles an incoming MAVLink AUTOPILOT_VERSION message targeted at

@@ -220,10 +220,10 @@ def _create_datagram_based_mavlink_message_channel(
 
     channel = MessageChannel(connection, parser=parser, encoder=encoder)
 
-    # TODO(ntamas): HACK HACK HACK; SubnetBindingUDPSocketConnection should have
-    # a broadcast_address property
     if isinstance(connection, SubnetBindingUDPSocketConnection):
-        channel.broadcast_address = connection._network.broadcast_address
+        channel.broadcast_address = connection.broadcast_address
+        if not channel.broadcast_address:
+            raise RuntimeError("no broadcast address for SubnetBindingUDPSocketConnection")
     else:
         channel.broadcast_address = getattr(connection, "broadcast_address", None)
 

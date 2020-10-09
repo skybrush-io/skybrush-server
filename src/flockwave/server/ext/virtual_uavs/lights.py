@@ -113,11 +113,11 @@ class DefaultLightController(ModularLightController):
         self._light_program_player = None
         self._light_program_start_time = None
 
-    def load_light_program(self, light_program: dict) -> None:
+    def load_light_program(self, light_program: bytes) -> None:
         """Loads a light program that will be played when `play_light_program()`
         is called.
         """
-        self._light_program_player = Player.from_json(light_program)
+        self._light_program_player = Player.from_bytes(light_program)
 
     @property
     def override(self) -> Optional[Color]:

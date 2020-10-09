@@ -10,7 +10,7 @@ from typing import Iterable, Tuple
 from zipfile import ZipFile, ZIP_DEFLATED
 
 from flockwave.gps.vectors import FlatEarthToGPSCoordinateTransformation
-from skybrush import get_skybrush_light_program_from_show_specification
+from skybrush import get_light_program_from_show_specification
 
 __all__ = ("get_template", "gps_coordinate_to_string")
 
@@ -235,7 +235,7 @@ def generate_mission_file_from_show_specification(show) -> bytes:
     choreography_str = get_template("show/choreography.cfg").format(**params)
 
     # parse lights
-    light_data = get_skybrush_light_program_from_show_specification(show)
+    light_data = get_light_program_from_show_specification(show)
 
     # create mission.zip
     # create the zipfile and write content to it

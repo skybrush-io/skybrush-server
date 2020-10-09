@@ -2,7 +2,7 @@
 
 from typing import Type
 
-from .enums import MAVAutopilot
+from .enums import MAVAutopilot, MAVProtocolCapability
 from .types import MAVLinkMessage
 
 
@@ -10,6 +10,9 @@ class Autopilot:
     """Interface specification and generic entry point for autopilot objects."""
 
     name = "Abstract autopilot"
+
+    def __init__(self, base=None) -> None:
+        self.capabilities = int(getattr(base, "capabilities", 0))
 
     @staticmethod
     def from_autopilot_type(type: int) -> Type["Autopilot"]:
@@ -55,7 +58,16 @@ class Autopilot:
         This method is called if the "custom mode" bit is set in the base mode
         of the heartbeat.
         """
-        return "custom"
+        return f"mode {custom_mode}"
+
+    def refine_with_capabilities(self, capabilities: int):
+        """Refines the autopilot class with further information from the
+        capabilities bitfield of the MAVLink "autopilot capabilities" message,
+        returning a new autopilot instance if the autopilot type can be narrowed
+        further by looking at the capabilities.
+        """
+        self.capabilities = capabilities
+        return self
 
 
 class UnknownAutopilot(Autopilot):
@@ -103,7 +115,47 @@ class ArduPilot(Autopilot):
         This method is called if the "custom mode" bit is set in the base mode
         of the heartbeat.
         """
-        return cls._custom_modes.get(custom_mode, "custom")
+        return cls._custom_modes.get(custom_mode, f"mode {custom_mode}")
+
+    def refine_with_capabilities(self, capabilities: int):
+        result = super().refine_with_capabilities(capabilities)
+
+        if isinstance(result, self.__class__) and not isinstance(
+            result, ArduPilotWithSkybrush
+        ):
+            mask = ArduPilotWithSkybrush.CAPABILITY_MASK
+            if (capabilities & mask) == mask:
+                result = ArduPilotWithSkybrush(self)
+
+        return result
+
+
+def extend_custom_modes(super, _new_modes, **kwds):
+    """Helper function to extend the custom modes of an Autopilot_ subclass
+    with new modes.
+    """
+    result = dict(super._custom_modes)
+    result.update(_new_modes)
+    result.update(**kwds)
+    return result
+
+
+class ArduPilotWithSkybrush(ArduPilot):
+    """Class representing the ArduCopter firmware with Skybrush-specific
+    extensions to support drone shows.
+    """
+
+    name = "ArduPilot + Skybrush"
+    _custom_modes = extend_custom_modes(ArduPilot, {127: "drone show"})
+
+    CAPABILITY_MASK = (
+        MAVProtocolCapability.PARAM_FLOAT
+        | MAVProtocolCapability.FTP
+        | MAVProtocolCapability.SET_POSITION_TARGET_GLOBAL_INT
+        | MAVProtocolCapability.SET_POSITION_TARGET_LOCAL_NED
+        | MAVProtocolCapability.MAVLINK2
+        | MAVProtocolCapability.DRONE_SHOW_MODE
+    )
 
 
 _autopilot_registry = {MAVAutopilot.ARDUPILOTMEGA: ArduPilot}

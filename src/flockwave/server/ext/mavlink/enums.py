@@ -46,6 +46,7 @@ class MAVCommand(IntEnum):
     SET_MESSAGE_INTERVAL = 511
     REQUEST_PROTOCOL_VERSION = 519
     REQUEST_AUTOPILOT_CAPABILITIES = 520
+    REQUEST_CAMERA_INFORMATION = 521
 
 
 class MAVComponent(IntEnum):
@@ -100,6 +101,8 @@ class MAVMessageType(IntEnum):
     HEARTBEAT = 0
     SYS_STATUS = 1
     SYSTEM_TIME = 2
+    GPS_RAW_INT = 24
+    GLOBAL_POSITION_INT = 33
     REQUEST_DATA_STREAM = 66
     DATA_STREAM = 67
     COMMAND_INT = 75
@@ -146,6 +149,9 @@ class MAVProtocolCapability(IntFlag):
     MISSION_FENCE = 0x4000
     MISSION_RALLY = 0x8000
     FLIGHT_INFORMATION = 0x10000
+
+    # Skybrush-specific extension
+    DRONE_SHOW_MODE = 0x4000000
 
 
 class MAVResult(IntEnum):

@@ -16,14 +16,18 @@ from flockwave.server.concurrency import aclosing
 from flockwave.server.errors import NotSupportedError
 from flockwave.server.model.battery import BatteryInfo
 from flockwave.server.model.gps import GPSFix
-from flockwave.server.model.parameters import create_parameter_command_handler
+from flockwave.server.model.commands import (
+    create_parameter_command_handler,
+    create_version_command_handler,
+)
 from flockwave.server.model.uav import VersionInfo, UAVBase, UAVDriver
 from flockwave.server.utils import to_uppercase_string
 from flockwave.spec.errors import FlockwaveErrorCode
 
 from skybrush import (
-    get_skybrush_light_program_from_show_specification,
-    get_skybrush_trajectory_from_show_specification,
+    get_coordinate_system_from_show_specification,
+    get_light_program_from_show_specification,
+    get_trajectory_from_show_specification,
 )
 from skybrush.formats import SkybrushBinaryShowFile
 
@@ -116,6 +120,7 @@ class MAVLinkDriver(UAVDriver):
     handle_command_param = create_parameter_command_handler(
         name_validator=to_uppercase_string
     )
+    handle_command_version = create_version_command_handler()
 
     async def handle_command___show_upload(self, uav: "MAVLinkUAV", *, show):
         """Handles a drone show upload request for the given UAV.
@@ -188,22 +193,7 @@ class MAVLinkDriver(UAVDriver):
         return result == MAVResult.ACCEPTED
 
     def _request_version_info_single(self, uav) -> VersionInfo:
-        version_info = uav.get_last_message(MAVMessageType.AUTOPILOT_VERSION)
-        result = {}
-
-        for version in ("flight", "middleware", "os"):
-            if getattr(version_info, f"{version}_sw_version", 0) > 0:
-                result[f"{version}_sw"] = mavlink_version_number_to_semver(
-                    getattr(version_info, f"{version}_sw_version", 0),
-                    getattr(version_info, f"{version}_custom_version", None),
-                )
-
-        if version_info.board_version > 0:
-            result["board"] = mavlink_version_number_to_semver(
-                version_info.board_version
-            )
-
-        return result
+        return uav.get_version_info()
 
     async def _send_fly_to_target_signal_single(self, uav, target) -> None:
         type_mask = (
@@ -357,7 +347,7 @@ class MAVLinkUAV(UAVBase):
     def __init__(self, *args, **kwds):
         super().__init__(*args, **kwds)
 
-        self._autopilot = UnknownAutopilot
+        self._autopilot = UnknownAutopilot()
         self._battery = BatteryInfo()
         self._gps_fix = GPSFix()
         self._is_connected = False
@@ -401,7 +391,12 @@ class MAVLinkUAV(UAVBase):
         return record.message if record else None
 
     async def get_parameter(self, name: str, fetch: bool = False) -> float:
-        """Returns the value of a parameter from the UAV."""
+        """Returns the value of a parameter from the UAV.
+
+        Due to the nature of the MAVLink protocol, we will not be able to
+        detect if a parameter does not exist as there will be no reply from
+        the drone -- which is indistinguishable from a lost packet.
+        """
         response = await self._get_parameter(name)
         return response.param_value
 
@@ -416,6 +411,27 @@ class MAVLinkUAV(UAVBase):
             target=self,
             wait_for_response=spec.param_value(param_id=param_id),
         )
+
+    def get_version_info(self) -> VersionInfo:
+        """Returns a dictionary mapping component names of this UAV to the
+        corresponding version numbers.
+        """
+        version_info = self.get_last_message(MAVMessageType.AUTOPILOT_VERSION)
+        result = {}
+
+        for version in ("flight", "middleware", "os"):
+            if getattr(version_info, f"{version}_sw_version", 0) > 0:
+                result[f"{version}_sw"] = mavlink_version_number_to_semver(
+                    getattr(version_info, f"{version}_sw_version", 0),
+                    getattr(version_info, f"{version}_custom_version", None),
+                )
+
+        if version_info.board_version > 0:
+            result["board"] = mavlink_version_number_to_semver(
+                version_info.board_version
+            )
+
+        return result
 
     async def set_parameter(self, name: str, value: float) -> None:
         """Sets the value of a parameter on the UAV."""
@@ -437,6 +453,8 @@ class MAVLinkUAV(UAVBase):
         """Handles an incoming MAVLink AUTOPILOT_VERSION message targeted at
         this UAV.
         """
+        self._autopilot = self._autopilot.refine_with_capabilities(message.capabilities)
+
         self._store_message(message)
 
         if self._mavlink_version < 2 and (
@@ -454,7 +472,9 @@ class MAVLinkUAV(UAVBase):
         this UAV.
         """
         data = DroneShowStatus.from_mavlink_message(message)
-        self.update_status(light=data.light)
+        self._gps_fix.num_satellites = data.num_satellites
+        self._gps_fix.type = data.gps_fix
+        self.update_status(light=data.light, gps=self._gps_fix)
         self.notify_updated()
 
     def handle_message_heartbeat(self, message: MAVLinkMessage):
@@ -467,7 +487,8 @@ class MAVLinkUAV(UAVBase):
         self._store_message(message)
 
         if not self._is_connected:
-            self._autopilot = Autopilot.from_heartbeat(message)
+            autopilot_cls = Autopilot.from_heartbeat(message)
+            self._autopilot = autopilot_cls()
             self.notify_reconnection()
 
         self._update_errors_from_sys_status_and_heartbeat()
@@ -574,8 +595,12 @@ class MAVLinkUAV(UAVBase):
             self._handle_reboot()
 
     async def upload_show(self, show) -> None:
-        light_program = get_skybrush_light_program_from_show_specification(show)
-        trajectory = get_skybrush_trajectory_from_show_specification(show)
+        coordinate_system = get_coordinate_system_from_show_specification(show)
+        if coordinate_system.type != "nwu":
+            raise RuntimeError("Only NWU coordinate systems are supported")
+
+        light_program = get_light_program_from_show_specification(show)
+        trajectory = get_trajectory_from_show_specification(show)
 
         async with SkybrushBinaryShowFile.create_in_memory() as show_file:
             await show_file.add_trajectory(trajectory)
@@ -585,41 +610,76 @@ class MAVLinkUAV(UAVBase):
         async with aclosing(MAVFTP(self)) as ftp:
             await ftp.put(data, "/show.skyb")
 
+        await self.set_parameter(
+            "SHOW_ORIGIN_LAT", int(coordinate_system.origin.lat * 1e7)
+        )
+        await self.set_parameter(
+            "SHOW_ORIGIN_LNG", int(coordinate_system.origin.lon * 1e7)
+        )
+        await self.set_parameter("SHOW_ORIENTATION", coordinate_system.orientation)
+
     async def _configure_data_streams(self) -> None:
         """Configures the data streams that we want to receive from the UAV."""
         # We give ourselves 5 seconds to configure everything
         with move_on_after(5):
-            # TODO(ntamas): this is unsafe; there are no confirmations for
-            # REQUEST_DATA_STREAM commands so we never know if we succeeded or
-            # not
-            await self.driver.send_packet(
-                spec.request_data_stream(
-                    req_stream_id=0, req_message_rate=0, start_stop=0
-                ),
-                target=self,
+            try:
+                await self._configure_data_streams_with_fine_grained_commands()
+            except NotSupportedError:
+                await self._configure_data_streams_with_legacy_commands()
+
+        # TODO(ntamas): keep on trying to configure stuff in the background if
+        # we fail
+
+    async def _configure_data_streams_with_fine_grained_commands(self) -> None:
+        """Configures the intervals of the messages that we want to receive from
+        the UAV using the newer `SET_MESSAGE_INTERVAL` MAVLink command.
+        """
+        stream_rates = [
+            (MAVMessageType.SYS_STATUS, 1),
+            (MAVMessageType.GPS_RAW_INT, 1),
+            (MAVMessageType.GLOBAL_POSITION_INT, 2),
+        ]
+
+        for message_id, interval_hz in stream_rates:
+            await self.driver.send_command_long(
+                self,
+                MAVCommand.SET_MESSAGE_INTERVAL,
+                param1=message_id,
+                param2=1000000 / interval_hz,
             )
 
-            # EXTENDED_STATUS: we need SYS_STATUS from it for the general status
-            # flags and GPS_RAW_INT for the GPS fix info.
-            # We might also need MISSION_CURRENT.
-            await self.driver.send_packet(
-                spec.request_data_stream(
-                    req_stream_id=MAVDataStream.EXTENDED_STATUS,
-                    req_message_rate=1,
-                    start_stop=1,
-                ),
-                target=self,
-            )
+    async def _configure_data_streams_with_legacy_commands(self) -> None:
+        """Configures the data streams that we want to receive from the UAV
+        using the deprecated `REQUEST_DATA_STREAM` MAVLink command.
+        """
+        # TODO(ntamas): this is unsafe; there are no confirmations for
+        # REQUEST_DATA_STREAM commands so we never know if we succeeded or
+        # not
+        await self.driver.send_packet(
+            spec.request_data_stream(req_stream_id=0, req_message_rate=0, start_stop=0),
+            target=self,
+        )
 
-            # POSITION: we need GLOBAL_POSITION_INT for position and velocity
-            await self.driver.send_packet(
-                spec.request_data_stream(
-                    req_stream_id=MAVDataStream.POSITION,
-                    req_message_rate=2,
-                    start_stop=1,
-                ),
-                target=self,
-            )
+        # EXTENDED_STATUS: we need SYS_STATUS from it for the general status
+        # flags and GPS_RAW_INT for the GPS fix info.
+        await self.driver.send_packet(
+            spec.request_data_stream(
+                req_stream_id=MAVDataStream.EXTENDED_STATUS,
+                req_message_rate=1,
+                start_stop=1,
+            ),
+            target=self,
+        )
+
+        # POSITION: we need GLOBAL_POSITION_INT for position and velocity
+        await self.driver.send_packet(
+            spec.request_data_stream(
+                req_stream_id=MAVDataStream.POSITION,
+                req_message_rate=2,
+                start_stop=1,
+            ),
+            target=self,
+        )
 
     def _handle_reboot(self) -> None:
         """Handles a reboot event on the autopilot and attempts to re-initialize
@@ -685,6 +745,10 @@ class MAVLinkUAV(UAVBase):
             ^ 0xFFFFFFFF
         )
 
+        are_motor_outputs_disabled = (
+            sensor_mask & MAVSysStatusSensor.MOTOR_OUTPUTS
+            != MAVSysStatusSensor.MOTOR_OUTPUTS
+        ) or (not_healthy_sensors & MAVSysStatusSensor.MOTOR_OUTPUTS)
         has_gyro_error = not_healthy_sensors & (
             MAVSysStatusSensor.GYRO_3D | MAVSysStatusSensor.GYRO2_3D
         )
@@ -708,16 +772,19 @@ class MAVLinkUAV(UAVBase):
         has_logging_error = not_healthy_sensors & MAVSysStatusSensor.LOGGING
 
         errors = {
-            FlockwaveErrorCode.AUTOPILOT_INIT_FAILED: heartbeat.system_status
-            == MAVState.UNINIT,
-            FlockwaveErrorCode.AUTOPILOT_INITIALIZING: heartbeat.system_status
-            == MAVState.BOOT,
-            FlockwaveErrorCode.UNSPECIFIED_ERROR: heartbeat.system_status
-            == MAVState.CRITICAL
-            and not not_healthy_sensors,
-            FlockwaveErrorCode.UNSPECIFIED_CRITICAL_ERROR: heartbeat.system_status
-            == MAVState.EMERGENCY
-            and not not_healthy_sensors,
+            FlockwaveErrorCode.AUTOPILOT_INIT_FAILED: (
+                heartbeat.system_status == MAVState.UNINIT
+            ),
+            FlockwaveErrorCode.AUTOPILOT_INITIALIZING: (
+                heartbeat.system_status == MAVState.BOOT
+            ),
+            FlockwaveErrorCode.UNSPECIFIED_ERROR: (
+                heartbeat.system_status == MAVState.CRITICAL and not not_healthy_sensors
+            ),
+            FlockwaveErrorCode.UNSPECIFIED_CRITICAL_ERROR: (
+                heartbeat.system_status == MAVState.EMERGENCY
+                and not not_healthy_sensors
+            ),
             FlockwaveErrorCode.MAGNETIC_ERROR: has_mag_error,
             FlockwaveErrorCode.GYROSCOPE_ERROR: has_gyro_error,
             FlockwaveErrorCode.ACCELEROMETER_ERROR: has_accel_error,
@@ -728,6 +795,7 @@ class MAVLinkUAV(UAVBase):
             FlockwaveErrorCode.RC_SIGNAL_LOST_WARNING: has_rc_error,
             FlockwaveErrorCode.BATTERY_CRITICAL: has_battery_error,
             FlockwaveErrorCode.LOGGING_DEACTIVATED: has_logging_error,
+            FlockwaveErrorCode.DISARMED: are_motor_outputs_disabled,
             # valid in our patched ArduCopter only, the stock ArduCopter
             # does not use this flag
             FlockwaveErrorCode.PREARM_CHECK_IN_PROGRESS: heartbeat.system_status

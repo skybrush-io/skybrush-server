@@ -23,6 +23,11 @@ from flockwave.server.model.uav import VersionInfo, UAVBase, UAVDriver
 from flockwave.server.utils import color_to_rgb565
 from flockwave.spec.errors import FlockwaveErrorCode
 
+from skybrush import (
+    get_coordinate_system_from_show_specification,
+    get_light_program_from_show_specification,
+)
+
 from .battery import VirtualBattery
 from .lights import DefaultLightController
 from .trajectory import TrajectoryPlayer
@@ -544,16 +549,14 @@ class VirtualUAV(UAVBase):
         if self.state is not VirtualUAVState.LANDED:
             raise RuntimeError("Cannot upload a show while the drone is airborne")
 
-        coordinate_system = show.get("coordinateSystem")
-        try:
-            trans = FlatEarthToGPSCoordinateTransformation.from_json(coordinate_system)
-        except Exception:
-            raise RuntimeError("Invalid or missing coordinate system specification")
-
-        self._trajectory_transformation = trans
+        self._trajectory_transformation = get_coordinate_system_from_show_specification(
+            show
+        )
         self._trajectory = show.get("trajectory", None)
 
-        self._light_controller.load_light_program(show.get("lights", None))
+        self._light_controller.load_light_program(
+            get_light_program_from_show_specification(show)
+        )
 
         self.update_status(mode="mission" if self.has_trajectory else "stab")
 

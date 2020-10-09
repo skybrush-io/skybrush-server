@@ -20,17 +20,20 @@ from aiocflib.errors import TimeoutError
 
 from flockwave.gps.vectors import PositionXYZ, VelocityXYZ
 from flockwave.server.ext.logger import log as base_log
+from flockwave.server.model.commands import (
+    create_parameter_command_handler,
+    create_version_command_handler,
+)
 from flockwave.server.model.preflight import PreflightCheckInfo, PreflightCheckResult
 from flockwave.server.model.uav import BatteryInfo, UAVBase, UAVDriver, VersionInfo
-from flockwave.server.model.parameters import create_parameter_command_handler
 from flockwave.server.utils import optional_float
 from flockwave.spec.errors import FlockwaveErrorCode
 from flockwave.spec.ids import make_valid_object_id
 
 from skybrush import (
     get_home_position_from_show_specification,
-    get_skybrush_light_program_from_show_specification,
-    get_skybrush_trajectory_from_show_specification,
+    get_light_program_from_show_specification,
+    get_trajectory_from_show_specification,
     TrajectorySpecification,
 )
 
@@ -171,8 +174,6 @@ class CrazyflieDriver(UAVDriver):
             x, y, z = home
             return f"Home: [{x:.2f}, {y:.2f}, {z:.2f}] m"
 
-    handle_command_param = create_parameter_command_handler()
-
     async def handle_command_kalman(self, uav, command: Optional[str] = None) -> None:
         if command is None:
             return "Run 'kalman reset' to reset the Kalman filter"
@@ -199,8 +200,6 @@ class CrazyflieDriver(UAVDriver):
         await uav.stop()
         return "Motor stop signal sent"
 
-    handle_command_motoroff = handle_command_stop
-
     async def handle_command___show_upload(self, uav: "CrazyflieUAV", *, show):
         """Handles a drone show upload request for the given UAV.
 
@@ -211,6 +210,10 @@ class CrazyflieDriver(UAVDriver):
             show: the show data
         """
         await uav.upload_show(show, remember=True)
+
+    handle_command_motoroff = handle_command_stop
+    handle_command_param = create_parameter_command_handler()
+    handle_command_version = create_version_command_handler()
 
     def _request_preflight_report_single(self, uav) -> PreflightCheckInfo:
         return uav.preflight_status
@@ -585,12 +588,12 @@ class CrazyflieUAV(UAVBase):
 
     async def upload_show(self, show, *, remember: bool = True) -> None:
         home = get_home_position_from_show_specification(show)
-        trajectory = get_skybrush_trajectory_from_show_specification(show)
+        trajectory = get_trajectory_from_show_specification(show)
         scale = trajectory.propose_scaling_factor()
         if scale > 1:
             raise RuntimeError("Trajectory covers too large an area for a Crazyflie")
 
-        light_program = get_skybrush_light_program_from_show_specification(show)
+        light_program = get_light_program_from_show_specification(show)
         await self._upload_light_program(light_program)
 
         await self._upload_trajectory(trajectory, home)

@@ -362,8 +362,10 @@ class MAVLinkNetwork:
             "DATA16": self._handle_message_data16,
             "FILE_TRANSFER_PROTOCOL": nop,
             "GLOBAL_POSITION_INT": self._handle_message_global_position_int,
+            "GPS_GLOBAL_ORIGIN": nop,
             "GPS_RAW_INT": self._handle_message_gps_raw_int,
             "HEARTBEAT": self._handle_message_heartbeat,
+            "HOME_POSITION": nop,
             "HWSTATUS": nop,
             "LOCAL_POSITION_NED": nop,  # maybe later?
             "MEMINFO": nop,

@@ -6,9 +6,16 @@ from dataclasses import dataclass
 from math import ceil
 from typing import Dict, Generator, Optional, Tuple
 
+from flockwave.gps.vectors import FlatEarthToGPSCoordinateTransformation
+
 from .utils import BoundingBoxCalculator, Point
 
-__all__ = ("get_skybrush_trajectory_from_show_specification", "TrajectorySpecification")
+__all__ = (
+    "get_coordinate_system_from_show_specification",
+    "get_home_position_from_show_specification",
+    "get_trajectory_from_show_specification",
+    "TrajectorySpecification",
+)
 
 
 @dataclass
@@ -171,13 +178,26 @@ class TrajectorySpecification:
             start = point
 
 
-def get_skybrush_trajectory_from_show_specification(
+def get_trajectory_from_show_specification(
     show: Dict,
 ) -> TrajectorySpecification:
     """Returns the raw Skybrush trajectory object from the given show
     specification object.
     """
     return TrajectorySpecification(show["trajectory"])
+
+
+def get_coordinate_system_from_show_specification(
+    show: Dict,
+) -> FlatEarthToGPSCoordinateTransformation:
+    """Returns the coordinate system of the show from the given show
+    specification.
+    """
+    coordinate_system = show.get("coordinateSystem")
+    try:
+        return FlatEarthToGPSCoordinateTransformation.from_json(coordinate_system)
+    except Exception:
+        raise RuntimeError("Invalid or missing coordinate system specification")
 
 
 def get_home_position_from_show_specification(

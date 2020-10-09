@@ -47,6 +47,7 @@ flockwave-spec = "^0.40.0"
 pyledctrl = "^3.1.0"
 aiocflib = "^0.8.4"
 appdirs = "^1.4.4"
+crcmod = "^1.7"
 
 [tool.poetry.dev-dependencies]
 pytest = "^5.4.3"

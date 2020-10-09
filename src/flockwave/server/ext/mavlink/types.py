@@ -1,7 +1,8 @@
 """Types commonly used throughout the MAVLink module."""
 
 from dataclasses import dataclass, field
-from typing import Any, Dict, Optional, Tuple
+from functools import partial
+from typing import Any, Callable, Dict, Optional, Tuple, Union
 
 __all__ = (
     "MAVLinkMessage",
@@ -15,6 +16,15 @@ __all__ = (
 #: we cannot refer to an exact Python class here because that depends on the
 #: dialoect that we will be parsing
 MAVLinkMessage = Any
+
+#: Type specification for MAVLink message matchers. A message matcher is either
+#: `None` (meaning to match all messages), a dictionary containing the required
+#: field name-value pairs in a message that we need to consider the message to
+#: be a match, or a callable that takes a MAVLinkMessage and returns `True` if
+#: the message is a match
+MAVLinkMessageMatcher = Optional[
+    Union[Dict[str, Any], Callable[[MAVLinkMessage], bool]]
+]
 
 #:
 MAVLinkMessageSpecification = Tuple[str, Dict[str, Any]]
@@ -34,8 +44,21 @@ class _MAVLinkMessageSpecificationFactory:
         name = name.upper()
         func = self._cache.get(name)
         if not func:
-            self._cache[name] = func = lambda **kwds: (name, kwds)
+            self._cache[name] = func = partial(self._match, name)
         return func
+
+    @staticmethod
+    def _match(name, *args, **kwds):
+        if args:
+            if kwds:
+                raise RuntimeError(
+                    "mixing function matchers with keyword arguments not supported"
+                )
+            if len(args) > 1:
+                raise RuntimeError("only one matcher function is supported")
+            return (name, args[0])
+        else:
+            return (name, kwds)
 
 
 spec = _MAVLinkMessageSpecificationFactory()

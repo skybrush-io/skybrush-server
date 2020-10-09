@@ -584,11 +584,15 @@ class CrazyflieUAV(UAVBase):
             await self._crazyflie.led_ring.test()
 
     async def upload_show(self, show, *, remember: bool = True) -> None:
+        home = get_home_position_from_show_specification(show)
+        trajectory = get_skybrush_trajectory_from_show_specification(show)
+        scale = trajectory.propose_scaling_factor()
+        if scale > 1:
+            raise RuntimeError("Trajectory covers too large an area for a Crazyflie")
+
         light_program = get_skybrush_light_program_from_show_specification(show)
         await self._upload_light_program(light_program)
 
-        home = get_home_position_from_show_specification(show)
-        trajectory = get_skybrush_trajectory_from_show_specification(show)
         await self._upload_trajectory(trajectory, home)
 
         await self._enable_show_mode()

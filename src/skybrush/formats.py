@@ -3,9 +3,13 @@
 from enum import IntEnum
 from functools import partial
 from io import BytesIO, SEEK_END
+from math import floor
 from struct import Struct
 from trio import wrap_file
-from typing import AsyncIterable, Awaitable, Callable, IO, Optional, Union
+from typing import AsyncIterable, Awaitable, Callable, IO, List, Optional, Tuple, Union
+
+from .trajectory import TrajectorySegment, TrajectorySpecification
+from .utils import Point
 
 __all__ = ("SkybrushBinaryShowFile",)
 
@@ -182,6 +186,45 @@ class SkybrushBinaryShowFile:
 
         return await self.add_block(SkybrushBinaryFormatBlockType.COMMENT, comment)
 
+    async def add_light_program(self, data: bytes) -> None:
+        """Adds a new light program block to the end of the Skybrush file
+        with the given light program.
+
+        Parameters:
+            data: the light program, encoded in Skybrush format
+        """
+        return await self.add_block(SkybrushBinaryFormatBlockType.LIGHT_PROGRAM, data)
+
+    async def add_trajectory(self, trajectory: TrajectorySpecification) -> None:
+        """Adds a new trajectory block to the end of the Skybrush file
+        with the given trajeectory.
+
+        Parameters:
+            trajectory: the trajectory to add
+        """
+        scaling_factor = trajectory.propose_scaling_factor()
+        if scaling_factor >= 128:
+            raise RuntimeError(
+                "Trajectory covers too large an area for a Skybrush binary show file"
+            )
+
+        chunks = [bytes([scaling_factor])]  # MSB means whether to use yaw, but we won't
+        encoder = SegmentEncoder(scaling_factor)
+
+        first = True
+        for segment in trajectory.segments():
+            if first:
+                # Encode the start point of the trajectory
+                chunks.append(encoder.encode_point(segment.start))
+                first = False
+            else:
+                # Encode the segment without its start point
+                chunks.append(encoder.encode_segment(segment))
+
+        return await self.add_block(
+            SkybrushBinaryFormatBlockType.TRAJECTORY, b"".join(chunks)
+        )
+
     async def blocks(
         self, rewind: Optional[bool] = None
     ) -> AsyncIterable[SkybrushBinaryFileBlock]:
@@ -245,3 +288,94 @@ class SkybrushBinaryShowFile:
     def version(self) -> int:
         """Returns the version number of the file."""
         return self._version
+
+
+class SegmentEncoder:
+    """Encoder class for trajectory segments in the Skybrush binary show file
+    format.
+    """
+
+    _point_struct = Struct("<hhhh")
+    _header_struct = Struct("<BH")
+
+    def __init__(self, scale: float = 1):
+        """Constructor.
+
+        Parameters:
+            scale: the scaling factor of the trajectory block; the real
+                coordinates are multiplied by 1000 and then divided by this
+                factor before rounding them to an integer that is then stored
+                in the file. The scaling factor does not apply to the yaw;
+                yaw angles are always encoded in 1/10th of degrees.
+        """
+        self._scale = 1000 / scale
+
+    def encode_point(self, point: Point, yaw: float = 0.0) -> bytes:
+        """Encodes the X, Y and Z coordinates of a point, followed by the given
+        yaw coordinate.
+        """
+        x, y, z = self._scale_point(point)
+        yaw = self._scale_yaw(yaw)
+        return self._point_struct.pack(x, y, z, yaw)
+
+    def encode_segment(self, segment: TrajectorySegment) -> bytes:
+        """Encodes the control points and the end point of the given segment."""
+        if not segment.has_control_points:
+            # This is easier
+            pass
+
+        duration = floor(segment.duration * 1000)
+        if duration < 0 or duration > 65535:
+            raise RuntimeError(
+                f"trajectory segment too long, got {duration} msec, max is 65535"
+            )
+
+        xs, ys, zs = zip(*(self._scale_point(point) for point in segment.points))
+        x_format, xs = self._encode_coordinate_series(xs)
+        y_format, ys = self._encode_coordinate_series(ys)
+        z_format, zs = self._encode_coordinate_series(zs)
+
+        header = self._header_struct.pack(
+            x_format | (y_format << 2) | (z_format << 4), duration
+        )
+
+        parts = [header]
+        parts.extend(xs)
+        parts.extend(ys)
+        parts.extend(zs)
+
+        return b"".join(parts)
+
+    def _encode_coordinate_series(self, xs: Tuple[float]) -> Tuple[int, List[bytes]]:
+        first, *xs = xs
+        if all(x == first for x in xs):
+            # segment is constant, this is easy
+            return 0, b""
+
+        coords = [x.to_bytes(2, byteorder="little", signed=True) for x in xs]
+        if len(xs) == 1:
+            # segment is linear
+            return 1, coords
+
+        if len(xs) == 3:
+            # segment is a cubic Bezier curve
+            return 2, coords
+
+        if len(xs) == 7:
+            # segment is a 7D polynomial curve
+            return 2, coords
+
+        # TODO(ntamas): convert quadratic Bezier curves to cubic Bezier
+        # curves, convert 4-5-6D curves to 7D ones
+        raise NotImplementedError(f"{len(xs)}D curves not implemented yet")
+
+    def _scale_point(self, point: Point) -> Tuple[int, int, int]:
+        return (
+            round(point[0] * self._scale),
+            round(point[1] * self._scale),
+            round(point[2] * self._scale),
+        )
+
+    def _scale_yaw(self, yaw: float) -> int:
+        yaw = round((yaw % 360) * 10)
+        return yaw - 3600 if yaw >= 3600 else yaw

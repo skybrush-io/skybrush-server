@@ -76,15 +76,20 @@ class Poly4D:
         formats = []
         parts = []
 
-        all_polys = (self.xs, self.ys, self.zs, self.yaws)
+        all_polys_and_scales = (
+            (self.xs, 1000),  # scaling factor: 1m = 1000 units
+            (self.ys, 1000),
+            (self.zs, 1000),
+            (self.yaws, 10),  # scaling factor: 1 degree = 10 units
+        )
 
-        for poly in all_polys:
+        for poly, scale in all_polys_and_scales:
             # Rescale the argument of the parametric curve to the [0; 1] range
             if self.duration != 1:
                 poly = [x * (self.duration ** i) for i, x in enumerate(poly)]
 
             # Encode polynomial coefficients in Bernstein form
-            format, data = self._encode_polynomial_compressed(poly)
+            format, data = self._encode_polynomial_compressed(poly, scale)
 
             # Store the data
             formats.append(format)
@@ -103,7 +108,7 @@ class Poly4D:
             parts.insert(
                 0,
                 self._short_coords_struct.pack(
-                    *[round(poly[0] * 1000) for poly in all_polys]
+                    *[round(poly[0] * scale) for poly, scale in all_polys_and_scales]
                 ),
             )
 
@@ -111,7 +116,7 @@ class Poly4D:
 
     @classmethod
     def _encode_polynomial_compressed(
-        cls, coeffs: Sequence[float], eps: float = 1e-7
+        cls, coeffs: Sequence[float], eps: float = 1e-7, scale: int = 1000
     ) -> Tuple[int, bytes]:
         """Encodes the coefficients of the given polynomial into the compressed
         byte-level representation of the Crazyflie, retuning the chosen
@@ -127,6 +132,8 @@ class Poly4D:
         Parameters:
             coeffs: raw coefficients of the polynomial to encode
             eps: threshold below which a coefficient is treated as zero
+            scale: scaling factor to use when encoding the coordinates of
+                the control points in Bernstein form as integers
 
         Returns:
             a tuple consisting of the chosen compression scheme (0 = constant,
@@ -152,9 +159,8 @@ class Poly4D:
                 "are not supported"
             )
 
-        # TODO(ntamas): fix this for yaw, the factor is not 1000 there!
         data = b"".join(
-            cls._short_coord_struct.pack(int(round(coeff * 1000)))
+            cls._short_coord_struct.pack(int(round(coeff * scale)))
             for coeff in coeffs[1:]
         )
         return format, data

@@ -3,13 +3,12 @@ Skybrush-related trajectories, until we find a better place for them.
 """
 
 from dataclasses import dataclass
+from math import ceil
 from typing import Dict, Generator, Optional, Tuple
 
+from .utils import BoundingBoxCalculator, Point
+
 __all__ = ("get_skybrush_trajectory_from_show_specification", "TrajectorySpecification")
-
-
-#: Type specification for a single point in a trajectory
-Point = Tuple[float, float, float]
 
 
 @dataclass
@@ -56,7 +55,30 @@ class TrajectorySpecification:
             raise RuntimeError("only version 1 trajectories are supported")
 
     @property
-    def home_position(self) -> Tuple[float, float, float]:
+    def bounding_box(self) -> Tuple[Point, Point]:
+        """Returns the coordinates of the opposite corners of the axis-aligned
+        bounding box of the trajectory.
+
+        The first point will contain the minimum coordinates, the second will
+        contain the maximum coordinates.
+
+        Raises an exception if the trajectory has no points.
+        """
+        points = self._data.get("points", [])
+        bbox = BoundingBoxCalculator()
+        for _, point, control_points in points:
+            bbox.add(point)
+            for control_point in control_points:
+                bbox.add(control_point)
+        return bbox.get_corners()
+
+    @property
+    def is_empty(self) -> bool:
+        """Returns whether the trajectory is empty (i.e. has no points)."""
+        return not bool(self._data.get("points"))
+
+    @property
+    def home_position(self) -> Point:
         """Returns the home position of the drone within the show. Units are
         in meters.
         """
@@ -97,6 +119,26 @@ class TrajectorySpecification:
     def takeoff_time(self) -> float:
         """Returns the takeoff time of the drone within the show, in seconds."""
         return float(self._data.get("takeoffTime", 0.0))
+
+    def propose_scaling_factor(self) -> float:
+        """Proposes a scaling factor to use in a Skybrush binary show file when
+        storing the trajectory.
+        """
+        if self.is_empty:
+            return 1.0
+
+        mins, maxs = self.bounding_box
+
+        coords = []
+        coords.extend(abs(x) for x in mins)
+        coords.extend(abs(x) for x in maxs)
+        extremum = ceil(max(coords) * 1000)
+
+        # With scale=1, we can fit values from 0 to 32767 into the binary show
+        # file, so we basically need to divide (extremum+1) by 32768 and round
+        # up. This gives us scale = 1 for extrema in [0; 32767],
+        # scale = 2 for extrema in [32768; 65535] and so on.
+        return ceil((extremum + 1) / 32768)
 
     def segments(self) -> Generator[TrajectorySegment, None, None]:
         points = self._data.get("points")

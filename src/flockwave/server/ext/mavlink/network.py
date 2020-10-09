@@ -15,7 +15,7 @@ from contextlib import contextmanager, ExitStack
 from time import time_ns
 from trio.abc import ReceiveChannel
 from trio_util import periodic
-from typing import Any, Callable, Dict, Optional, Union
+from typing import Any, Callable, Optional, Tuple, Union
 
 from flockwave.connections import Connection, create_connection
 from flockwave.server.comm import CommunicationManager
@@ -27,7 +27,11 @@ from .comm import create_communication_manager, MAVLinkMessage
 from .driver import MAVLinkUAV
 from .enums import MAVAutopilot, MAVComponent, MAVMessageType, MAVState, MAVType
 from .packets import DroneShowStatus
-from .types import MAVLinkMessageSpecification, MAVLinkNetworkSpecification
+from .types import (
+    MAVLinkMessageMatcher,
+    MAVLinkMessageSpecification,
+    MAVLinkNetworkSpecification,
+)
 from .utils import log_level_from_severity, log_id_from_message
 
 __all__ = ("MAVLinkNetwork",)
@@ -107,7 +111,7 @@ class MAVLinkNetwork:
     def expect_packet(
         self,
         type: Union[int, str, MAVMessageType],
-        params: Optional[Dict[str, Any]] = None,
+        params: MAVLinkMessageMatcher = None,
     ) -> Future[MAVLinkMessage]:
         """Sets up a handler that waits for a MAVLink packet of a given type,
         optionally matching its content with the given parameter values based
@@ -116,7 +120,9 @@ class MAVLinkNetwork:
         Parameters:
             type: the type of the MAVLink message to wait for
             params: dictionary mapping parameter names to the values that we
-                expect to see in the matched packet
+                expect to see in the matched packet, or a callable that
+                receives a MAVLinkMessage and returns `True` if it matches the
+                packet we are looking for
 
         Returns:
             a Future that resolves to the next MAVLink message that matches the
@@ -126,12 +132,13 @@ class MAVLinkNetwork:
 
         # Map values of type 'bytes' to 'str' in the params dict because
         # pymavlink never returns 'bytes'
-        for name, value in params.items():
-            if isinstance(value, bytes):
-                try:
-                    params[name] = value.decode("utf-8")
-                except ValueError:
-                    pass
+        if not callable(params):
+            for name, value in params.items():
+                if isinstance(value, bytes):
+                    try:
+                        params[name] = value.decode("utf-8")
+                    except ValueError:
+                        pass
 
         future = Future()
         item = (params, future)
@@ -252,7 +259,7 @@ class MAVLinkNetwork:
         self,
         spec: MAVLinkMessageSpecification,
         target: UAV,
-        wait_for_response: Optional[MAVLinkMessageSpecification] = None,
+        wait_for_response: Optional[Tuple[str, MAVLinkMessageMatcher]] = None,
     ) -> Optional[MAVLinkMessage]:
         """Sends a message to the given UAV and optionally waits for a matching
         response.
@@ -262,12 +269,15 @@ class MAVLinkNetwork:
         Parameters:
             spec: the specification of the MAVLink message to send
             target: the UAV to send the message to
-            wait_for_response: when not `None`, specifies a MAVLink message to
-                wait for as a response. The message specification will be
-                matched with all incoming MAVLink messages that have the same
-                type as the type in the specification; all parameters of the
-                incoming message must be equal to the template specified in
-                this argument to accept it as a response.
+            wait_for_response: when not `None`, specifies a MAVLink message
+                type to wait for as a response, and an additional message
+                matcher that examines the message further to decide whether this
+                is really the response we are interested in. The matcher may be
+                `None` to match all messages of the given type, a dictionary
+                mapping MAVLink field names to expected values, or a callable
+                that gets called with the retrieved MAVLink message of the
+                given type and must return `True` if and only if the message
+                matches our expectations.
         """
         spec[1].update(
             target_system=target.system_id,
@@ -350,6 +360,7 @@ class MAVLinkNetwork:
             "BAD_DATA": nop,
             "COMMAND_ACK": nop,
             "DATA16": self._handle_message_data16,
+            "FILE_TRANSFER_PROTOCOL": nop,
             "GLOBAL_POSITION_INT": self._handle_message_global_position_int,
             "GPS_RAW_INT": self._handle_message_gps_raw_int,
             "HEARTBEAT": self._handle_message_heartbeat,
@@ -382,10 +393,15 @@ class MAVLinkNetwork:
 
             # Resolve all futures that are waiting for this message
             for params, future in self._matchers[type]:
-                matched = all(
-                    getattr(message, param_name, None) == param_value
-                    for param_name, param_value in params.items()
-                )
+                if callable(params):
+                    matched = params(message)
+                elif params is None:
+                    matched = True
+                else:
+                    matched = all(
+                        getattr(message, param_name, None) == param_value
+                        for param_name, param_value in params.items()
+                    )
                 if matched:
                     future.set_result(message)
 

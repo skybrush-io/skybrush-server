@@ -12,6 +12,7 @@ from typing import List, Optional
 
 from flockwave.gps.vectors import GPSCoordinate, VelocityNED
 
+from flockwave.server.concurrency import aclosing
 from flockwave.server.errors import NotSupportedError
 from flockwave.server.model.battery import BatteryInfo
 from flockwave.server.model.gps import GPSFix
@@ -19,6 +20,12 @@ from flockwave.server.model.parameters import create_parameter_command_handler
 from flockwave.server.model.uav import VersionInfo, UAVBase, UAVDriver
 from flockwave.server.utils import to_uppercase_string
 from flockwave.spec.errors import FlockwaveErrorCode
+
+from skybrush import (
+    get_skybrush_light_program_from_show_specification,
+    get_skybrush_trajectory_from_show_specification,
+)
+from skybrush.formats import SkybrushBinaryShowFile
 
 from .autopilots import Autopilot, UnknownAutopilot
 from .enums import (
@@ -34,6 +41,7 @@ from .enums import (
     MAVSysStatusSensor,
     PositionTargetTypemask,
 )
+from .ftp import MAVFTP
 from .packets import DroneShowStatus
 from .types import MAVLinkMessage, spec
 from .utils import mavlink_version_number_to_semver
@@ -118,7 +126,7 @@ class MAVLinkDriver(UAVDriver):
         Parameters:
             show: the show data
         """
-        raise NotImplementedError
+        await uav.upload_show(show)
 
     async def send_command_long(
         self,
@@ -376,6 +384,22 @@ class MAVLinkUAV(UAVBase):
         self._network_id = network_id
         self._system_id = system_id
 
+    def get_age_of_message(self, type: int, now: Optional[float] = None) -> float:
+        """Returns the number of seconds elapsed since we have last seen a
+        message of the given type.
+        """
+        record = self._last_messages.get(int(type))
+        if now is None:
+            now = monotonic()
+        return record.timestamp - now if record else inf
+
+    def get_last_message(self, type: int) -> Optional[MAVLinkMessage]:
+        """Returns the last MAVLink message that was observed with the given
+        type or `None` if we have not observed such a message yet.
+        """
+        record = self._last_messages.get(int(type))
+        return record.message if record else None
+
     async def get_parameter(self, name: str, fetch: bool = False) -> float:
         """Returns the value of a parameter from the UAV."""
         response = await self._get_parameter(name)
@@ -549,6 +573,18 @@ class MAVLinkUAV(UAVBase):
         if self._was_probably_rebooted_after_reconnection():
             self._handle_reboot()
 
+    async def upload_show(self, show) -> None:
+        light_program = get_skybrush_light_program_from_show_specification(show)
+        trajectory = get_skybrush_trajectory_from_show_specification(show)
+
+        async with SkybrushBinaryShowFile.create_in_memory() as show_file:
+            await show_file.add_trajectory(trajectory)
+            await show_file.add_light_program(light_program)
+            data = show_file.get_contents()
+
+        async with aclosing(MAVFTP(self)) as ftp:
+            await ftp.put(data, "/show.skyb")
+
     async def _configure_data_streams(self) -> None:
         """Configures the data streams that we want to receive from the UAV."""
         # We give ourselves 5 seconds to configure everything
@@ -595,22 +631,6 @@ class MAVLinkUAV(UAVBase):
 
         self.driver.run_in_background(self._configure_data_streams)
         self.driver.run_in_background(self._request_autopilot_capabilities)
-
-    def get_age_of_message(self, type: int, now: Optional[float] = None) -> float:
-        """Returns the number of seconds elapsed since we have last seen a
-        message of the given type.
-        """
-        record = self._last_messages.get(int(type))
-        if now is None:
-            now = monotonic()
-        return record.timestamp - now if record else inf
-
-    def get_last_message(self, type: int) -> Optional[MAVLinkMessage]:
-        """Returns the last MAVLink message that was observed with the given
-        type or `None` if we have not observed such a message yet.
-        """
-        record = self._last_messages.get(int(type))
-        return record.message if record else None
 
     async def _request_autopilot_capabilities(self) -> None:
         """Retrieves the capabilities of the autopilot via MAVLink."""

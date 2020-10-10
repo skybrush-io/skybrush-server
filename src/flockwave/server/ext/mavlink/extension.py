@@ -91,6 +91,7 @@ class MAVLinkDronesExtension(UAVExtensionBase):
                     app.object_registry.remove(uav)
 
     def _get_network_specifications_from_configuration(self, configuration):
+        # Construct the network specifications first
         if "networks" in configuration:
             if "connections" in configuration:
                 self.log.warn(
@@ -101,6 +102,20 @@ class MAVLinkDronesExtension(UAVExtensionBase):
         else:
             network_specs = {"": {"connections": configuration.get("connections", ())}}
 
+        # Determine the default ID format from the configuration
+        default_id_format = configuration.get("id_format", None)
+        if not default_id_format:
+            # Add the network ID in front of the system ID if we have multiple
+            # networks, otherwise just use the system ID
+            default_id_format = "{1}:{0}" if len(network_specs) > 1 else "{0}"
+
+        # Apply the default ID format for networks that do not specify an
+        # ID format on their own
+        for value in network_specs.values():
+            if "id_format" not in value:
+                value["id_format"] = default_id_format
+
+        # Return the network specifications
         return {
             key: MAVLinkNetworkSpecification.from_json(value, id=key)
             for key, value in network_specs.items()

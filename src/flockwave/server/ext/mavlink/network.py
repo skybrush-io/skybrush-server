@@ -75,7 +75,7 @@ class MAVLinkNetwork:
         id: str,
         *,
         system_id: int = 255,
-        id_formatter: Callable[[int, str], str] = "{1}{0}".format,
+        id_formatter: Callable[[int, str], str] = "{0}".format,
     ):
         """Constructor.
 

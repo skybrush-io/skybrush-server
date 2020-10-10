@@ -541,8 +541,14 @@ class MAVLinkUAV(UAVBase):
         self._update_errors_from_sys_status_and_heartbeat()
 
         # Update battery status
-        self._battery.voltage = message.voltage_battery / 1000
-        self._battery.percentage = message.battery_remaining
+        if message.voltage_battery < 65535:
+            self._battery.voltage = message.voltage_battery / 1000
+        else:
+            self._battery.voltage = 0.0
+        if message.battery_remaining == -1:
+            self._battery.percentage = None
+        else:
+            self._battery.percentage = message.battery_remaining
         self.update_status(battery=self._battery)
 
         self.notify_updated()
@@ -626,7 +632,6 @@ class MAVLinkUAV(UAVBase):
                 await self._configure_data_streams_with_fine_grained_commands()
             except NotSupportedError:
                 await self._configure_data_streams_with_legacy_commands()
-
         # TODO(ntamas): keep on trying to configure stuff in the background if
         # we fail
 

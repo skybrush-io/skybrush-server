@@ -40,7 +40,7 @@ def create_wireless_connection_configuration_for_subnet(
         port: the port to listen on for incoming broadcast messages
     """
     return {
-        "broadcast": f"udp-broadcast:{subnet}?port={port}",
+        "broadcast": f"udp-broadcast-in:{subnet}?port={port}",
         "unicast": f"udp-subnet:{subnet}?allow_broadcast=1",
     }
 

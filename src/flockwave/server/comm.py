@@ -71,7 +71,7 @@ class CommunicationManager(Generic[PacketType, AddressType]):
 
         @property
         def is_open(self) -> bool:
-            """Returns whehther the communication channel represented by this
+            """Returns whether the communication channel represented by this
             entry is up and running.
             """
             return self.channel is not None

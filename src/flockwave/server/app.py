@@ -1,32 +1,21 @@
 """Application object for the Skybrush server."""
 
 from appdirs import AppDirs
-from blinker import Signal
 from collections import defaultdict
-from functools import partial
 from inspect import isawaitable
 from time import time
 from trio import (
     BrokenResourceError,
-    CancelScope,
-    MultiError,
     move_on_after,
-    open_memory_channel,
-    open_nursery,
 )
-from typing import Callable, Dict, List, Optional
+from typing import Dict, List, Optional
 
-from flockwave.connections import (
-    ConnectionSupervisor,
-    ConnectionTask,
-    SupervisionPolicy,
-)
-from flockwave.ext.manager import ExtensionAPIProxy, ExtensionManager
+from flockwave.app_framework import DaemonApp
+from flockwave.app_framework.configurator import Configuration
 from flockwave.gps.vectors import GPSCoordinate
 from flockwave.server.utils import divide_by
 
 from .commands import CommandExecutionManager
-from .configurator import AppConfigurator
 from .errors import NotSupportedError
 from .logger import log
 from .message_hub import (
@@ -57,7 +46,7 @@ __all__ = ("app",)
 PACKAGE_NAME = __name__.rpartition(".")[0]
 
 
-class SkybrushServer:
+class SkybrushServer(DaemonApp):
     """Main application object for the Flockwave server.
 
     Attributes:
@@ -71,16 +60,10 @@ class SkybrushServer:
             manages the asynchronous execution of commands on remote UAVs
             (i.e. commands that cannot be executed immediately in a
             synchronous manner)
-        config (dict): dictionary holding the configuration options of the
-            application
-        debug (bool): boolean flag to denote whether the application is in
-            debugging mode
         device_tree (DeviceTree): a tree-like data structure that contains
             a first-level node for every UAV and then contains additional
             nodes in each UAV subtree for the devices and channels of the
             UAV
-        extension_manager (ExtensionManager): object that manages the
-            loading and unloading of server extensions
         message_hub (MessageHub): central messaging hub via which one can
             send Flockwave messages
         object_registry (ObjectRegistry): central registry for the objects
@@ -89,130 +72,8 @@ class SkybrushServer:
             of UAVs live. By default, the world is empty but extensions may
             extend it with objects.
 
-    Private attributes:
-        _starting (Signal): signal that is emitted when the server has finished
-            parsing the configuration and loading the extensions, and is about
-            to enter the main loop. This signal can be used by extensions to
-            hook into the startup process.
-        _stopping (Signal): signal that is emitted when the server is about to
-            shut down its main loop. This signal can be used by extensions to
-            hook into the shutdown process.
+    See also the attributed inherited from DaemonApp_.
     """
-
-    _starting = Signal()
-    _stopping = Signal()
-
-    def __init__(self):
-        self.config = {}
-        self.debug = False
-
-        self._create_components()
-
-    def _create_components(self):
-        """Creates all the components and registries of the server.
-
-        This function is called by the constructor once at construction time.
-        You should not need to call it later.
-
-        The configuration of the server is not loaded yet when this function is
-        executed. Avoid querying the configuration of the server here because
-        the settings will not be up-to-date yet. Use `prepare()` for any
-        preparations that depend on the configuration.
-        """
-        # Placeholder for a nursery that parents all tasks in the server.
-        # This will be set to a real nursery when the server starts
-        self._nursery = None
-
-        # Create a Trio task queue that will be used by other components of the
-        # application to schedule background tasks to be executed in the main
-        # Trio nursery.
-        # TODO(ntamas): not sure if this is going to be needed in the end; we
-        # might just as well remove it
-        self._task_queue = open_memory_channel(32)
-
-        # Create an object that can be used to get hold of commonly used
-        # directories within the app
-        self.dirs = AppDirs("Skybrush Server", "CollMot Robotics")
-
-        # Create an object to hold information about all the registered
-        # communication channel types that the server can handle
-        self.channel_type_registry = ChannelTypeRegistry()
-
-        # Create an object to hold information about all the connected
-        # clients that the server can talk to
-        self.client_registry = ClientRegistry()
-        self.client_registry.channel_type_registry = self.channel_type_registry
-        self.client_registry.count_changed.connect(
-            self._on_client_count_changed, sender=self.client_registry
-        )
-
-        # Create an object that keeps track of commands being executed
-        # asynchronously on remote UAVs
-        self.command_execution_manager = CommandExecutionManager()
-        self.command_execution_manager.expired.connect(
-            self._on_command_execution_timeout, sender=self.command_execution_manager
-        )
-        self.command_execution_manager.finished.connect(
-            self._on_command_execution_finished, sender=self.command_execution_manager
-        )
-
-        # Creates an object whose responsibility is to restart connections
-        # that closed unexpectedly
-        self.connection_supervisor = ConnectionSupervisor()
-
-        # Creates an object to hold information about all the connections
-        # to external data sources that the server manages
-        self.connection_registry = ConnectionRegistry()
-        self.connection_registry.connection_state_changed.connect(
-            self._on_connection_state_changed, sender=self.connection_registry
-        )
-        self.connection_registry.added.connect(
-            self._on_connection_added, sender=self.connection_registry
-        )
-        self.connection_registry.removed.connect(
-            self._on_connection_removed, sender=self.connection_registry
-        )
-
-        # Create the extension manager of the application
-        self.extension_manager = ExtensionManager(PACKAGE_NAME + ".ext")
-
-        # Create a message hub that will handle incoming and outgoing
-        # messages
-        self.message_hub = MessageHub()
-        self.message_hub.channel_type_registry = self.channel_type_registry
-        self.message_hub.client_registry = self.client_registry
-
-        # Create an object that manages rate-limiting for specific types of
-        # messages
-        self.rate_limiters = RateLimiters(dispatcher=self.message_hub.send_message)
-        self.rate_limiters.register(
-            "CONN-INF",
-            ConnectionStatusMessageRateLimiter(self.create_CONN_INF_message_for),
-        )
-        self.rate_limiters.register(
-            "UAV-INF", GenericRateLimiter(self.create_UAV_INF_message_for)
-        )
-
-        # Create an object to hold information about all the objects that
-        # the server knows about
-        self.object_registry = ObjectRegistry()
-        self.object_registry.removed.connect(
-            self._on_object_removed, sender=self.object_registry
-        )
-
-        # Create the global world object
-        self.world = World()
-
-        # Create a global device tree and ensure that new UAVs are
-        # registered in it
-        self.device_tree = DeviceTree()
-        self.device_tree.object_registry = self.object_registry
-
-        # Create an object to manage the associations between clients and
-        # the device tree paths that the clients are subscribed to
-        self.device_tree_subscriptions = DeviceTreeSubscriptionManager(self.device_tree)
-        self.device_tree_subscriptions.client_registry = self.client_registry
-        self.device_tree_subscriptions.message_hub = self.message_hub
 
     def create_CONN_INF_message_for(self, connection_ids, in_response_to=None):
         """Creates a CONN-INF message that contains information regarding
@@ -629,90 +490,10 @@ class SkybrushServer:
             failure_reason="No such UAV",
         )
 
-    def import_api(self, extension_name: str) -> ExtensionAPIProxy:
-        """Imports the API exposed by an extension.
-
-        Extensions *may* have a dictionary named ``exports`` that allows the
-        extension to export some of its variables, functions or methods.
-        Other extensions may access the exported members of an extension by
-        calling the `import_api`_ method of the application.
-
-        This function supports "lazy imports", i.e. one may import the API
-        of an extension before loading the extension. When the extension
-        is not loaded, the returned API object will have a single property
-        named ``loaded`` that is set to ``False``. When the extension is
-        loaded, the returned API object will set ``loaded`` to ``True``.
-        Attribute retrievals on the returned API object are forwarded to the
-        API of the extension.
-
-        Parameters:
-            extension_name: the name of the extension whose API is to
-                be imported
-
-        Returns:
-            ExtensionAPIProxy: a proxy object to the API of the extension
-                that forwards attribute retrievals to the API, except for
-                the property named ``loaded``, which returns whether the
-                extension is loaded or not.
-
-        Raises:
-            KeyError: if the extension with the given name does not exist
-        """
-        return self.extension_manager.import_api(extension_name)
-
     @property
     def num_clients(self):
         """The number of clients connected to the server."""
         return self.client_registry.num_entries
-
-    def prepare(self, config: Optional[str], debug: bool = False) -> Optional[int]:
-        """Hook function that contains preparation steps that should be
-        performed by the server before it starts serving requests.
-
-        Parameters:
-            config: name of the configuration file to load
-            debug: whether to force the app into debug mode
-
-        Returns:
-            error code to terminate the app with if the preparation was not
-            successful; ``None`` if the preparation was successful
-        """
-        configurator = AppConfigurator(
-            self.config,
-            environment_variable="SKYBRUSH_SETTINGS",
-            default_filename="skybrush.cfg",
-            log=log,
-            package_name=PACKAGE_NAME,
-        )
-        if not configurator.configure(config):
-            return 1
-
-        if debug or self.config.get("DEBUG"):
-            self.debug = True
-
-        # Process the configuration options
-        cfg = self.config.get("COMMAND_EXECUTION_MANAGER", {})
-        self.command_execution_manager.timeout = cfg.get("timeout", 30)
-
-    def register_startup_hook(self, func: Callable[[object], None]):
-        """Registers a function that will be called when the application is
-        starting up.
-
-        Parameters:
-            func: the function to call. It will be called with the application
-                instance as its only argument.
-        """
-        self._starting.connect(func, sender=self)
-
-    def register_shutdown_hook(self, func: Callable[[object], None]):
-        """Registers a function that will be called when the application is
-        shutting down.
-
-        Parameters:
-            func: the function to call. It will be called with the application
-                instance as its only argument.
-        """
-        self._stopping.connect(func, sender=self)
 
     def request_to_send_UAV_INF_message_for(self, uav_ids):
         """Requests the application to send an UAV-INF message that contains
@@ -726,58 +507,10 @@ class SkybrushServer:
         self.rate_limiters.request_to_send("UAV-INF", uav_ids)
 
     async def run(self) -> None:
-        # Helper function to ignore KeyboardInterrupt exceptions even if
-        # they are wrapped in a Trio MultiError
-        def ignore_keyboard_interrupt(exc):
-            return None if isinstance(exc, KeyboardInterrupt) else exc
-
-        # Load the configuration
-        extension_config = self.config.get("EXTENSIONS", {})
-
-        # Force-load the ext_manager extension
-        extension_config["ext_manager"] = {}
-
-        try:
-            with MultiError.catch(ignore_keyboard_interrupt):
-                self._starting.send(self)
-                async with open_nursery() as nursery:
-                    self._nursery = nursery
-
-                    await nursery.start(
-                        partial(
-                            self.extension_manager.run,
-                            configuration=extension_config,
-                            app=self,
-                        )
-                    )
-
-                    nursery.start_soon(self.connection_supervisor.run)
-                    nursery.start_soon(self.command_execution_manager.run)
-                    nursery.start_soon(self.message_hub.run)
-                    nursery.start_soon(self.rate_limiters.run)
-
-                    async for func, args, scope in self._task_queue[1]:
-                        if scope is not None:
-                            func = partial(func, cancel_scope=scope)
-                        nursery.start_soon(func, *args)
-
-        finally:
-            self._nursery = None
-            await self.teardown()
-
-    def request_shutdown(self):
-        """Requests tha application to shut down in a clean way.
-
-        Has no effect if the main nursery of the app is not running.
-        """
-        if self._nursery:
-            self._nursery.cancel_scope.cancel()
-
-    def run_in_background(self, func, *args, cancellable=False):
-        """Runs the given function as a background task in the application."""
-        scope = CancelScope() if cancellable or hasattr(func, "_cancellable") else None
-        self._task_queue[0].send_nowait((func, args, scope))
-        return scope
+        self.run_in_background(self.command_execution_manager.run)
+        self.run_in_background(self.message_hub.run)
+        self.run_in_background(self.rate_limiters.run)
+        return await super().run()
 
     def sort_uavs_by_drivers(
         self, uav_ids: List[str], response: Optional[FlockwaveResponse] = None
@@ -800,47 +533,83 @@ class SkybrushServer:
                 result[uav.driver].append(uav)
         return result
 
-    async def supervise(
-        self,
-        connection,
-        *,
-        task: Optional[ConnectionTask] = None,
-        policy: Optional[SupervisionPolicy] = None
-    ):
-        """Shorthand to `self.connection_supervisor.supervise()`. See the
-        details there.
-        """
-        await self.connection_supervisor.supervise(connection, task=task, policy=policy)
+    def _create_components(self):
+        # Create an object that can be used to get hold of commonly used
+        # directories within the app
+        self.dirs = AppDirs("Skybrush Server", "CollMot Robotics")
 
-    async def teardown(self):
-        """Called when the application is about to shut down. Calls all
-        registered shutdown hooks and performs additional cleanup if needed.
-        """
-        self._stopping.send(self)
-        await self.extension_manager.teardown()
+        # Create an object to hold information about all the registered
+        # communication channel types that the server can handle
+        self.channel_type_registry = ChannelTypeRegistry()
 
-    def unregister_startup_hook(self, func: Callable[[object], None]):
-        """Unregisters a function that would have been called when the
-        application is starting up.
+        # Create an object to hold information about all the connected
+        # clients that the server can talk to
+        self.client_registry = ClientRegistry()
+        self.client_registry.channel_type_registry = self.channel_type_registry
+        self.client_registry.count_changed.connect(
+            self._on_client_count_changed, sender=self.client_registry
+        )
 
-        Parameters:
-            func: the function to unregister.
-        """
-        self._starting.disconnect(func, sender=self)
+        # Create an object that keeps track of commands being executed
+        # asynchronously on remote UAVs
+        self.command_execution_manager = CommandExecutionManager()
+        self.command_execution_manager.expired.connect(
+            self._on_command_execution_timeout, sender=self.command_execution_manager
+        )
+        self.command_execution_manager.finished.connect(
+            self._on_command_execution_finished, sender=self.command_execution_manager
+        )
 
-    def unregister_shutdown_hook(self, func: Callable[[object], None]):
-        """Unregisters a function that would have been called when the
-        application is shutting down.
+        # Creates an object to hold information about all the connections
+        # to external data sources that the server manages
+        self.connection_registry = ConnectionRegistry()
+        self.connection_registry.connection_state_changed.connect(
+            self._on_connection_state_changed, sender=self.connection_registry
+        )
+        self.connection_registry.added.connect(
+            self._on_connection_added, sender=self.connection_registry
+        )
+        self.connection_registry.removed.connect(
+            self._on_connection_removed, sender=self.connection_registry
+        )
 
-        Parameters:
-            func: the function to unregister.
-        """
-        self._stopping.disconnect(func, sender=self)
+        # Create a message hub that will handle incoming and outgoing
+        # messages
+        self.message_hub = MessageHub()
+        self.message_hub.channel_type_registry = self.channel_type_registry
+        self.message_hub.client_registry = self.client_registry
 
-    @property
-    def version(self) -> str:
-        """The version number of the server application."""
-        return server_version
+        # Create an object that manages rate-limiting for specific types of
+        # messages
+        self.rate_limiters = RateLimiters(dispatcher=self.message_hub.send_message)
+        self.rate_limiters.register(
+            "CONN-INF",
+            ConnectionStatusMessageRateLimiter(self.create_CONN_INF_message_for),
+        )
+        self.rate_limiters.register(
+            "UAV-INF", GenericRateLimiter(self.create_UAV_INF_message_for)
+        )
+
+        # Create an object to hold information about all the objects that
+        # the server knows about
+        self.object_registry = ObjectRegistry()
+        self.object_registry.removed.connect(
+            self._on_object_removed, sender=self.object_registry
+        )
+
+        # Create the global world object
+        self.world = World()
+
+        # Create a global device tree and ensure that new UAVs are
+        # registered in it
+        self.device_tree = DeviceTree()
+        self.device_tree.object_registry = self.object_registry
+
+        # Create an object to manage the associations between clients and
+        # the device tree paths that the clients are subscribed to
+        self.device_tree_subscriptions = DeviceTreeSubscriptionManager(self.device_tree)
+        self.device_tree_subscriptions.client_registry = self.client_registry
+        self.device_tree_subscriptions.message_hub = self.message_hub
 
     def _find_command_receipt_by_id(self, receipt_id, response=None):
         """Finds the asynchronous command execution receipt with the given
@@ -1032,10 +801,19 @@ class SkybrushServer:
             # App is probably shutting down, this is OK.
             pass
 
+    def _process_configuration(self, config: Configuration) -> Optional[int]:
+        # Process the configuration options
+        cfg = config.get("COMMAND_EXECUTION_MANAGER", {})
+        self.command_execution_manager.timeout = cfg.get("timeout", 30)
+
+        # Force-load the ext_manager extension
+        cfg = config.setdefault("EXTENSIONS", {})
+        cfg["ext_manager"] = {}
+
 
 ############################################################################
 
-app = SkybrushServer()
+app = SkybrushServer("skybrush", PACKAGE_NAME)
 
 # ######################################################################## #
 

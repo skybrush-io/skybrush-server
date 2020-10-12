@@ -29,6 +29,14 @@ python-versions = "*"
 version = "0.5.0"
 
 [[package]]
+category = "dev"
+description = "Python graph (network) package"
+name = "altgraph"
+optional = false
+python-versions = "*"
+version = "0.17"
+
+[[package]]
 category = "main"
 description = "High level compatibility layer for multiple asynchronous event loop implementations"
 name = "anyio"
@@ -606,6 +614,18 @@ htmlsoup = ["beautifulsoup4"]
 source = ["Cython (>=0.29.7)"]
 
 [[package]]
+category = "dev"
+description = "Mach-O header analysis and editing"
+marker = "sys_platform == \"darwin\""
+name = "macholib"
+optional = false
+python-versions = "*"
+version = "1.14"
+
+[package.dependencies]
+altgraph = ">=0.15"
+
+[[package]]
 category = "main"
 description = "Safely add untrusted strings to HTML/XML markup."
 name = "markupsafe"
@@ -747,6 +767,18 @@ version = "0.8.0"
 
 [[package]]
 category = "dev"
+description = "Python PE parsing module"
+marker = "sys_platform == \"win32\""
+name = "pefile"
+optional = false
+python-versions = "*"
+version = "2019.4.18"
+
+[package.dependencies]
+future = "*"
+
+[[package]]
+category = "dev"
 description = "plugin and hook calling mechanisms for python"
 name = "pluggy"
 optional = false
@@ -784,6 +816,38 @@ name = "pycparser"
 optional = false
 python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
 version = "2.20"
+
+[[package]]
+category = "dev"
+description = "PyInstaller bundles a Python application and all its dependencies into a single package."
+name = "pyinstaller"
+optional = false
+python-versions = "*"
+version = "4.0"
+
+[package.dependencies]
+altgraph = "*"
+macholib = ">=1.8"
+pefile = ">=2017.8.1"
+pyinstaller-hooks-contrib = ">=2020.6"
+pywin32-ctypes = ">=0.2.0"
+setuptools = "*"
+
+[package.dependencies.tinyaes]
+optional = true
+version = ">=1.0.0"
+
+[package.extras]
+encryption = ["tinyaes (>=1.0.0)"]
+hook_testing = ["pytest (>=2.7.3)", "execnet (>=1.5.0)", "psutil"]
+
+[[package]]
+category = "dev"
+description = "Community maintained hooks for PyInstaller"
+name = "pyinstaller-hooks-contrib"
+optional = false
+python-versions = "*"
+version = "2020.9"
 
 [[package]]
 category = "main"
@@ -954,6 +1018,15 @@ python-versions = "*"
 version = "1.1.0"
 
 [[package]]
+category = "dev"
+description = ""
+marker = "sys_platform == \"win32\""
+name = "pywin32-ctypes"
+optional = false
+python-versions = "*"
+version = "0.2.0"
+
+[[package]]
 category = "main"
 description = "A Python ASGI web microframework with the same API as Flask"
 name = "quart"
@@ -1059,6 +1132,14 @@ name = "sortedcontainers"
 optional = false
 python-versions = "*"
 version = "2.2.2"
+
+[[package]]
+category = "dev"
+description = "tiny-AES-c wrapper in Cython"
+name = "tinyaes"
+optional = false
+python-versions = "*"
+version = "1.0.1"
 
 [[package]]
 category = "main"
@@ -1212,7 +1293,7 @@ docs = ["sphinx", "jaraco.packaging (>=3.2)", "rst.linker (>=1.9)"]
 testing = ["pytest (>=3.5,<3.7.3 || >3.7.3)", "pytest-checkdocs (>=1.2.3)", "pytest-flake8", "pytest-cov", "jaraco.test (>=3.2.0)", "jaraco.itertools", "func-timeout", "pytest-black (>=0.3.7)", "pytest-mypy"]
 
 [metadata]
-content-hash = "3511444bbb975372076f5fb794cf0408d9a9e215c9c30099b77acc30fe86ce9b"
+content-hash = "3d9da436a0c9bdd918fe26c3e08f5f31abc6133b9562265504e36efe0c347835"
 python-versions = "^3.7"
 
 [metadata.files]
@@ -1223,6 +1304,10 @@ aiocflib = [
 aiofiles = [
     {file = "aiofiles-0.5.0-py3-none-any.whl", hash = "sha256:377fdf7815cc611870c59cbd07b68b180841d2a2b79812d8c218be02448c2acb"},
     {file = "aiofiles-0.5.0.tar.gz", hash = "sha256:98e6bcfd1b50f97db4980e182ddd509b7cc35909e903a8fe50d8849e02d815af"},
+]
+altgraph = [
+    {file = "altgraph-0.17-py2.py3-none-any.whl", hash = "sha256:c623e5f3408ca61d4016f23a681b9adb100802ca3e3da5e718915a9e4052cebe"},
+    {file = "altgraph-0.17.tar.gz", hash = "sha256:1f05a47122542f97028caf78775a095fbe6a2699b5089de8477eb583167d69aa"},
 ]
 anyio = [
     {file = "anyio-2.0.2-py3-none-any.whl", hash = "sha256:01cce0087b8fd8b6b7e629dc11505dcde02f916ce903332892cb2ae9817b597d"},
@@ -1474,6 +1559,10 @@ lxml = [
     {file = "lxml-4.5.2-cp38-cp38-win_amd64.whl", hash = "sha256:f161af26f596131b63b236372e4ce40f3167c1b5b5d459b29d2514bd8c9dc9ee"},
     {file = "lxml-4.5.2.tar.gz", hash = "sha256:cdc13a1682b2a6241080745b1953719e7fe0850b40a5c71ca574f090a1391df6"},
 ]
+macholib = [
+    {file = "macholib-1.14-py2.py3-none-any.whl", hash = "sha256:c500f02867515e6c60a27875b408920d18332ddf96b4035ef03beddd782d4281"},
+    {file = "macholib-1.14.tar.gz", hash = "sha256:0c436bc847e7b1d9bda0560351bf76d7caf930fb585a828d13608839ef42c432"},
+]
 markupsafe = [
     {file = "MarkupSafe-1.1.1-cp27-cp27m-macosx_10_6_intel.whl", hash = "sha256:09027a7803a62ca78792ad89403b1b7a73a01c8cb65909cd876f7fcebd79b161"},
     {file = "MarkupSafe-1.1.1-cp27-cp27m-manylinux1_i686.whl", hash = "sha256:e249096428b3ae81b08327a63a485ad0878de3fb939049038579ac0ef61e17e7"},
@@ -1607,6 +1696,9 @@ pathspec = [
     {file = "pathspec-0.8.0-py2.py3-none-any.whl", hash = "sha256:7d91249d21749788d07a2d0f94147accd8f845507400749ea19c1ec9054a12b0"},
     {file = "pathspec-0.8.0.tar.gz", hash = "sha256:da45173eb3a6f2a5a487efba21f050af2b41948be6ab52b6a1e3ff22bb8b7061"},
 ]
+pefile = [
+    {file = "pefile-2019.4.18.tar.gz", hash = "sha256:a5d6e8305c6b210849b47a6174ddf9c452b2888340b8177874b862ba6c207645"},
+]
 pluggy = [
     {file = "pluggy-0.13.1-py2.py3-none-any.whl", hash = "sha256:966c145cd83c96502c3c3868f50408687b38434af77734af1e9ca461a4081d2d"},
     {file = "pluggy-0.13.1.tar.gz", hash = "sha256:15b2acde666561e1298d71b523007ed7364de07029219b604cf808bfa1c765b0"},
@@ -1622,6 +1714,13 @@ py = [
 pycparser = [
     {file = "pycparser-2.20-py2.py3-none-any.whl", hash = "sha256:7582ad22678f0fcd81102833f60ef8d0e57288b6b5fb00323d101be910e35705"},
     {file = "pycparser-2.20.tar.gz", hash = "sha256:2d475327684562c3a96cc71adf7dc8c4f0565175cf86b6d7a404ff4c771f15f0"},
+]
+pyinstaller = [
+    {file = "pyinstaller-4.0.tar.gz", hash = "sha256:970beb07115761d5e4ec317c1351b712fd90ae7f23994db914c633281f99bab0"},
+]
+pyinstaller-hooks-contrib = [
+    {file = "pyinstaller-hooks-contrib-2020.9.tar.gz", hash = "sha256:a5fd45a920012802e3f2089e1d3501ef2f49265dfea8fc46c3310f18e3326c91"},
+    {file = "pyinstaller_hooks_contrib-2020.9-py2.py3-none-any.whl", hash = "sha256:c382f3ac1a42b45cfecd581475c36db77da90e479b2f5bcb6d840d21fa545114"},
 ]
 pyjwt = [
     {file = "PyJWT-1.7.1-py2.py3-none-any.whl", hash = "sha256:5c6eca3c2940464d106b99ba83b00c6add741c9becaec087fb7ccdefea71350e"},
@@ -1699,6 +1798,10 @@ python-rtmidi = [
 pyusb = [
     {file = "pyusb-1.1.0.tar.gz", hash = "sha256:d69ed64bff0e2102da11b3f49567256867853b861178689671a163d30865c298"},
 ]
+pywin32-ctypes = [
+    {file = "pywin32-ctypes-0.2.0.tar.gz", hash = "sha256:24ffc3b341d457d48e8922352130cf2644024a4ff09762a2261fd34c36ee5942"},
+    {file = "pywin32_ctypes-0.2.0-py2.py3-none-any.whl", hash = "sha256:9dc2d991b3479cc2df15930958b674a48a227d5361d413827a4cfd0b5876fc98"},
+]
 quart = [
     {file = "Quart-0.12.0-py3-none-any.whl", hash = "sha256:f706e6eff0ef756b88d9965359f7445c9c2773551dca822deb8c018c58c00902"},
     {file = "Quart-0.12.0.tar.gz", hash = "sha256:99a65bc90d0e1260c9cc9a7dd0b8523eb6cd9f4ec146e771e98a55ee180ae6c2"},
@@ -1755,6 +1858,21 @@ sniffio = [
 sortedcontainers = [
     {file = "sortedcontainers-2.2.2-py2.py3-none-any.whl", hash = "sha256:c633ebde8580f241f274c1f8994a665c0e54a17724fecd0cae2f079e09c36d3f"},
     {file = "sortedcontainers-2.2.2.tar.gz", hash = "sha256:4e73a757831fc3ca4de2859c422564239a31d8213d09a2a666e375807034d2ba"},
+]
+tinyaes = [
+    {file = "tinyaes-1.0.1-cp27-cp27m-macosx_10_14_x86_64.whl", hash = "sha256:5478b9f2d9ff5f25f9006c36ec596dc728dc0d0114e24e3b9055ab6526f12330"},
+    {file = "tinyaes-1.0.1-cp27-cp27m-manylinux1_x86_64.whl", hash = "sha256:4fe33f5c375d2d03510a5e484e664a93f3ee765c0a91c6e6ceab6977a12444fa"},
+    {file = "tinyaes-1.0.1-cp27-cp27mu-manylinux1_x86_64.whl", hash = "sha256:1e63be63c5ddd6dbdfbd046b63e44b1638e4088fce95656d7b07675b5bcb7e25"},
+    {file = "tinyaes-1.0.1-cp36-cp36m-macosx_10_14_x86_64.whl", hash = "sha256:b8e85cf4ae705037b8214f09290531b635f3b57f1cc76e90ff73c503e704f24d"},
+    {file = "tinyaes-1.0.1-cp36-cp36m-manylinux1_x86_64.whl", hash = "sha256:a5ecf7ee92a22f79cf44a9fbe8e2fd0c586b027e9bdf0252620e6aeb0d05e147"},
+    {file = "tinyaes-1.0.1-cp36-cp36m-win_amd64.whl", hash = "sha256:5932a102f53c50c89e985b49f0c139e9ef576a557635e7495178c52fec5b3be6"},
+    {file = "tinyaes-1.0.1-cp37-cp37m-macosx_10_14_x86_64.whl", hash = "sha256:2dff75c1c743bf1ad6ee3d15c7b264c553a8446d6ba3a7f92f4e6ffe48ee4dc3"},
+    {file = "tinyaes-1.0.1-cp37-cp37m-manylinux1_x86_64.whl", hash = "sha256:1c4d9280b90a32ea91a5c7d34f25c374da427a64ff27ad11dbb81425018c5925"},
+    {file = "tinyaes-1.0.1-cp37-cp37m-win_amd64.whl", hash = "sha256:94d11f802d3c15f1d5af90346b69236a85830fde324239981af2585f564807a6"},
+    {file = "tinyaes-1.0.1-cp38-cp38-macosx_10_14_x86_64.whl", hash = "sha256:6a989249e3c23a4224554ef0883a5dddc97eb5ea1746b6aec11ac84b79b82ff1"},
+    {file = "tinyaes-1.0.1-cp38-cp38-manylinux1_x86_64.whl", hash = "sha256:e166e0ab53551ca10bcf8ce5d3ea4b8583d5070458691f07c4633d865ef922d9"},
+    {file = "tinyaes-1.0.1-cp38-cp38-win_amd64.whl", hash = "sha256:ace73cfa1185639c0dba056c40da65e09ba6fbe4641fa3969b37b38a55318445"},
+    {file = "tinyaes-1.0.1.tar.gz", hash = "sha256:874931ca374435949da538082672680707d06dadd067f1523fd5549a921af789"},
 ]
 tinyrpc = [
     {file = "tinyrpc-1.0.4.tar.gz", hash = "sha256:4b41fab967fb1c978f573bf0d609a3b12cc3b6ed62bd3108f43f575563746396"},

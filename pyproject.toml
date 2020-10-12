@@ -56,6 +56,7 @@ pytest = "^5.4.3"
 pytest-trio = "^0.6.0"
 click-man = "^0.4.1"
 black = {version = "^20.8b1", allow-prereleases = true}
+pyinstaller = {version = "^4.0", extras = ["encryption"]}
 
 [tool.poetry.scripts]
 skybrushd = "flockwave.server.launcher:start"

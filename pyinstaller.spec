@@ -5,16 +5,12 @@ import sys
 
 block_cipher = None
 single_file = True
+name = "skybrushd"
 
 ###########################################################################
 
 # Prevent TkInter to be included in the bundle, step 1
 sys.modules["FixTk"] = None
-
-# Fix for my local dev machine with a convoluted symlink structure (ntamas)
-root_dir = os.getcwd()
-if root_dir.startswith("/Volumes/Macintosh HD/ntamas"):
-    root_dir = root_dir.replace("/Volumes/Macintosh HD", "/Users")
 
 # Extra modules to import
 extra_modules = set([
@@ -24,14 +20,12 @@ extra_modules = set([
 # Modules to exclude
 exclude_modules = [
     # No Tcl/Tk
-    "FixTk", "tcl", "tk", "_tkinter", "tkinter", "Tkinter",
-    # Prevent a Jinja2 module from being imported in Python <3.6 where it
-    # would be unsupported
-    "jinja2.asyncsupport"
+    "FixTk", "tcl", "tk", "_tkinter", "tkinter", "Tkinter"
 ]
 
 # Parse default configuration
-config_file = os.path.join(root_dir, "flockwave", "server", "config.py")
+root_dir = Path.cwd()
+config_file = str(root_dir / "flockwave" / "server" / "config.py")
 config = {}
 exec(
     compile(
@@ -65,17 +59,13 @@ for ext_name in config["EXTENSIONS"]:
 
 # Now comes the PyInstaller dance
 a = Analysis(
-    [os.path.join(root_dir, "bin", "skybrushd")],
-    pathex=[root_dir],
+    [str(root_dir / "bin" / name)],
+    pathex=[str(root_dir / "src")],
     binaries=[],
     datas=[],
     hiddenimports=sorted(extra_modules),
-    hookspath=[
-        os.path.join(root_dir, "etc", "deployment")
-    ],
-    runtime_hooks=[
-        os.path.join(root_dir, "etc", "deployment", "runtime_hook.py")
-    ],
+    hookspath=[root_dir / "etc" / "deployment"],
+    runtime_hooks=[root_dir / "etc" / "deployment" / "runtime_hook.py"],
     excludes=exclude_modules,
     win_no_prefer_redirects=False,
     win_private_assemblies=False,
@@ -90,7 +80,7 @@ if single_file:
         a.binaries,
         a.zipfiles,
         a.datas,
-        name="skybrushd",
+        name=name,
         debug=False,
         strip=False,
         upx=True,
@@ -102,7 +92,7 @@ else:
         pyz,
         a.scripts,
         exclude_binaries=True,
-        name="skybrushd",
+        name=name,
         debug=False,
         strip=False,
         upx=True,
@@ -115,5 +105,5 @@ else:
         a.datas,
         strip=False,
         upx=True,
-        name="skybrushd"
+        name=name
     )

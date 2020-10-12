@@ -1,13 +1,31 @@
 # -*- mode: python -*-
 
+from pathlib import Path
+
+from PyInstaller import __version__ as pyinstaller_version
+from PyInstaller.archive.pyz_crypto import PyiBlockCipher
+
 import os
 import sys
 
-block_cipher = None
+key = os.environ.get("PYINSTALLER_KEY")
 single_file = True
 name = "skybrushd"
 
 ###########################################################################
+
+# Make sure we have an encryption key if we are using PyInstaller 4.x or later.
+# Encryption is broken in PyInstaller 3.6
+if pyinstaller_version >= "4.0":
+    if not key:
+        import secrets
+        key = secrets.token_urlsafe(24)
+else:
+    if key:
+        raise RuntimeError("encryption not supported with PyInstaller <4.0")
+
+# Create the encryption cipher
+cipher = PyiBlockCipher(key) if key else None
 
 # Prevent TkInter to be included in the bundle, step 1
 sys.modules["FixTk"] = None
@@ -69,9 +87,9 @@ a = Analysis(
     excludes=exclude_modules,
     win_no_prefer_redirects=False,
     win_private_assemblies=False,
-    cipher=block_cipher
+    cipher=cipher
 )
-pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
+pyz = PYZ(a.pure, a.zipped_data, cipher=cipher)
 
 if single_file:
     exe = EXE(

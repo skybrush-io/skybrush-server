@@ -14,7 +14,7 @@ rm -f requirements*.txt
 # Generate requirements.txt from pipenv. Caveats:
 # - we cannot call the file requirements.txt because the Docker container would
 #   attempt to install them first before we get the chance to upgrade to pip 10
-poetry export -f requirements.txt -o requirements-main.txt
+poetry export -f requirements.txt -o requirements-main.txt --without-hashes
 
 if [ x$1 = xlinux ]; then
     GENERATE_LINUX=1
@@ -36,6 +36,6 @@ fi
 if [ x$GENERATE_WINDOWS = x1 ]; then
     rm -rf dist/windows
     docker run --rm -v "$(pwd):/src/" cdrx/pyinstaller-windows:Python3 \
-        "rm -rf /tmp/.wine-0 && pip install -r requirements-main.txt && pyinstaller --clean -y --dist ./dist/windows --workpath /tmp pyinstaller.spec && chown -R --reference=. ./dist/windows"
+        "rm -rf /tmp/.wine-0 && pip install pypiwin32 && pip install -r requirements-main.txt && pyinstaller --clean -y --dist ./dist/windows --workpath /tmp pyinstaller.spec && chown -R --reference=. ./dist/windows"
 fi
 

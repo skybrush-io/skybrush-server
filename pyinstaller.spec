@@ -43,7 +43,7 @@ exclude_modules = [
 
 # Parse default configuration
 root_dir = Path.cwd()
-config_file = str(root_dir / "flockwave" / "server" / "config.py")
+config_file = str(root_dir / "src" / "flockwave" / "server" / "config.py")
 config = {}
 exec(
     compile(
@@ -77,7 +77,7 @@ for ext_name in config["EXTENSIONS"]:
 
 # Now comes the PyInstaller dance
 a = Analysis(
-    [str(root_dir / "bin" / name)],
+    [str(root_dir / "src" / "flockwave" / "server" / "__main__.py")],
     pathex=[str(root_dir / "src")],
     binaries=[],
     datas=[],

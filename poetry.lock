@@ -263,7 +263,7 @@ description = "Generic app framework for CLI based apps in the Skybrush suite"
 name = "flockwave-app-framework"
 optional = false
 python-versions = ">=3.7,<4.0"
-version = "0.1.0"
+version = "0.2.0"
 
 [package.dependencies]
 trio = ">=0.17.0,<0.18.0"
@@ -286,7 +286,7 @@ description = "Connection objects for various data sources"
 name = "flockwave-conn"
 optional = false
 python-versions = ">=3.7,<4.0"
-version = "2.1.2"
+version = "2.1.5"
 
 [package.dependencies]
 blinker = ">=1.4,<2.0"
@@ -307,8 +307,14 @@ version = ">=3.4,<4.0"
 optional = true
 version = ">=1.4.1,<2.0.0"
 
+[package.dependencies.tinyrpc]
+extras = ["msgpack"]
+optional = true
+version = ">=1.0.4,<2.0.0"
+
 [package.extras]
 midi = ["mido (>=1.2.9,<2.0.0)", "python-rtmidi (>=1.4.1,<2.0.0)"]
+rpc = ["tinyrpc (>=1.0.4,<2.0.0)"]
 serial = ["pyserial (>=3.4,<4.0)"]
 
 [package.source]
@@ -1065,10 +1071,6 @@ version = "1.0.4"
 [package.dependencies]
 six = "*"
 
-[package.dependencies.msgpack]
-optional = true
-version = "*"
-
 [package.extras]
 gevent = ["gevent"]
 httpclient = ["gevent-websocket", "requests", "websocket-client"]
@@ -1210,7 +1212,7 @@ docs = ["sphinx", "jaraco.packaging (>=3.2)", "rst.linker (>=1.9)"]
 testing = ["pytest (>=3.5,<3.7.3 || >3.7.3)", "pytest-checkdocs (>=1.2.3)", "pytest-flake8", "pytest-cov", "jaraco.test (>=3.2.0)", "jaraco.itertools", "func-timeout", "pytest-black (>=0.3.7)", "pytest-mypy"]
 
 [metadata]
-content-hash = "98acd024d25567684854e37dce9393d2ec9d57f23ab5dc062d1051b5ac8a2aef"
+content-hash = "3511444bbb975372076f5fb794cf0408d9a9e215c9c30099b77acc30fe86ce9b"
 python-versions = "^3.7"
 
 [metadata.files]
@@ -1358,12 +1360,12 @@ cryptography = [
     {file = "cryptography-3.1.1.tar.gz", hash = "sha256:9d9fc6a16357965d282dd4ab6531013935425d0dc4950df2e0cf2a1b1ac1017d"},
 ]
 flockwave-app-framework = [
-    {file = "flockwave-app-framework-0.1.0.tar.gz", hash = "md5:c1b8590b1adcc3710330e06ab3211c9e"},
-    {file = "flockwave_app_framework-0.1.0-py3-none-any.whl", hash = "md5:5cec6be7c3ef09d8879bfe5b9bf6c3b2"},
+    {file = "flockwave-app-framework-0.2.0.tar.gz", hash = "md5:bf283c5a787826b90b8d6592f82296fe"},
+    {file = "flockwave_app_framework-0.2.0-py3-none-any.whl", hash = "md5:fd081e181fab1c12cb3417730dc32229"},
 ]
 flockwave-conn = [
-    {file = "flockwave-conn-2.1.2.tar.gz", hash = "md5:2532cccf4e628e3250f58dd2ff42bfa8"},
-    {file = "flockwave_conn-2.1.2-py3-none-any.whl", hash = "md5:8bb5b3e4b55788815a959dc967e2260f"},
+    {file = "flockwave-conn-2.1.5.tar.gz", hash = "md5:8f7050c0d8bbda69e7dfe60ecfce9ff7"},
+    {file = "flockwave_conn-2.1.5-py3-none-any.whl", hash = "md5:41f0eb995be68f600ccb8be1935a204e"},
 ]
 flockwave-ext = [
     {file = "flockwave-ext-1.4.1.tar.gz", hash = "md5:9117bb199fb10fb5f22f0798426ad2da"},

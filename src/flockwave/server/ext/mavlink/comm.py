@@ -20,13 +20,20 @@ from .types import MAVLinkMessage, MAVLinkMessageSpecification
 __all__ = ("create_communication_manager",)
 
 
-def get_mavlink_factory(dialect: Union[str, Callable]):
+def get_mavlink_factory(
+    dialect: Union[str, Callable] = "ardupilotmega",
+    *,
+    system_id: int = 255,
+    component_id: int = MAVComponent.MISSIONPLANNER,
+):
     """Constructs a function that can be called with no arguments and that will
     construct a new MAVLink parser.
 
     Parameters:
         dialect: the name of the MAVLink dialect that will be used by the
             parser. When it is a callable, it is returned intact.
+        system_id: the source MAVLink system ID
+        component_id: the source MAVLink component ID
     """
     if callable(dialect):
         return dialect
@@ -37,9 +44,7 @@ def get_mavlink_factory(dialect: Union[str, Callable]):
         # Use robust parsing so we don't freak out if we see some noise on the
         # line
         # TODO(ntamas): initialize system ID properly from config
-        link = module.MAVLink(
-            None, srcSystem=255, srcComponent=MAVComponent.MISSIONPLANNER
-        )
+        link = module.MAVLink(None, srcSystem=system_id, srcComponent=component_id)
         link.robust_parsing = True
         return link
 
@@ -94,21 +99,20 @@ def create_mavlink_message_channel(
         connection: the connection to read data from and write data to
         log: the logger on which any error messages and warnings should be logged
     """
+    mavlink_factory = get_mavlink_factory(dialect)
+
     if isinstance(connection, StreamConnectionBase):
         return _create_stream_based_mavlink_message_channel(
-            connection, log, dialect=dialect
+            connection, log, mavlink_factory=mavlink_factory
         )
     else:
         return _create_datagram_based_mavlink_message_channel(
-            connection, log, dialect=dialect
+            connection, log, mavlink_factory=mavlink_factory
         )
 
 
 def _create_stream_based_mavlink_message_channel(
-    connection: Connection,
-    log: Logger,
-    *,
-    dialect: Union[str, Callable] = "ardupilotmega",
+    connection: Connection, log: Logger, *, mavlink_factory: Callable
 ) -> MessageChannel[Tuple[MAVLinkMessage, str]]:
     """Creates a bidirectional Trio-style channel that reads data from and
     writes data to the given stream-based connection, and does the parsing
@@ -129,7 +133,6 @@ def _create_stream_based_mavlink_message_channel(
         connection: the connection to read data from and write data to
         log: the logger on which any error messages and warnings should be logged
     """
-    mavlink_factory = get_mavlink_factory(dialect)
     mavlink = mavlink_factory()
 
     def parser(data: bytes) -> List[Tuple[MAVLinkMessage, Any]]:
@@ -160,10 +163,7 @@ def _create_stream_based_mavlink_message_channel(
 
 
 def _create_datagram_based_mavlink_message_channel(
-    connection: Connection,
-    log: Logger,
-    *,
-    dialect: Union[str, Callable] = "ardupilotmega",
+    connection: Connection, log: Logger, *, mavlink_factory: Callable
 ) -> MessageChannel[Tuple[MAVLinkMessage, str]]:
     """Creates a bidirectional Trio-style channel that reads data from and
     writes data to the given datagram-based connection, and does the parsing
@@ -179,8 +179,6 @@ def _create_datagram_based_mavlink_message_channel(
         connection: the connection to read data from and write data to
         log: the logger on which any error messages and warnings should be logged
     """
-    mavlink_factory = get_mavlink_factory(dialect)
-
     # We will need one MAVLink object per _address_ that we are talking to
     # because each address needs a unique sequence number counter.
     #

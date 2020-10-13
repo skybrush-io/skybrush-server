@@ -11,9 +11,9 @@ __all__ = (
 
 
 _severity_to_log_level = [
-    CRITICAL,
-    CRITICAL,
-    CRITICAL,
+    ERROR,
+    ERROR,
+    ERROR,
     ERROR,
     WARNING,
     INFO,
@@ -40,7 +40,7 @@ def log_level_from_severity(severity: int) -> int:
     compatible Python log level.
     """
     if severity <= 0:
-        return CRITICAL
+        return ERROR
     elif severity >= 8:
         return DEBUG
     else:

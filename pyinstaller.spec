@@ -1,5 +1,6 @@
 # -*- mode: python -*-
 
+from importlib import import_module
 from pathlib import Path
 
 from PyInstaller import __version__ as pyinstaller_version
@@ -57,6 +58,7 @@ exec(
 def extension_module(name):
     return "flockwave.server.ext.{0}".format(name)
 
+extra_modules.add(extension_module("ext_manager"))  # this is implicitly loaded
 extra_modules.update(
     extension_module(ext_name)
     for ext_name in config["EXTENSIONS"]
@@ -64,13 +66,36 @@ extra_modules.update(
 )
 
 # Prepare the dependency table
-dependencies = {
-    "system_clock": [extension_module("clocks")]
-}
+dependencies = {}
 if sys.platform.lower().startswith("linux"):
     dependencies["smpte_timecode"] = ["mido.backends.rtmidi"]
 
-# Add some extension-dependent dependencies
+# Add the extensions listed in the config, plus any of the extensions that
+# they depend on
+changed = True
+while changed:
+    changed = False
+    print(repr(extra_modules))
+    for module_name in sorted(extra_modules):
+        if module_name.startswith("flockwave.server.ext."):
+            try:
+                imported_module = import_module(module_name)
+                if hasattr(imported_module, "get_dependencies"):
+                    deps = imported_module.get_dependencies()
+                elif hasattr(imported_module, "dependencies"):
+                    deps = imported_module.dependencies
+                else:
+                    deps = ()
+            except ImportError:
+                deps = ()
+            if deps:
+                deps = set(extension_module(dep) for dep in deps)
+                new_deps = deps - extra_modules
+                if new_deps:
+                    extra_modules.update(new_deps)
+                    changed = True
+
+# Add some extra extension-dependent dependencies
 for ext_name in config["EXTENSIONS"]:
     if ext_name in dependencies:
         extra_modules.update(dependencies[ext_name])

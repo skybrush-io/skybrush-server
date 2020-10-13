@@ -6,12 +6,12 @@
 SCRIPT_ROOT=`dirname $0`
 REPO_ROOT="${SCRIPT_ROOT}/../.."
 
-cd ${REPO_ROOT}
+cd "${REPO_ROOT}"
 
-# Remove all requirements.txt files, we don't use them, only pipenv
+# Remove all requirements.txt files, we don't use them, only poetry
 rm -f requirements*.txt
 
-# Generate requirements.txt from pipenv. Caveats:
+# Generate requirements.txt from poetry. Caveats:
 # - we cannot call the file requirements.txt because the Docker container would
 #   attempt to install them first before we get the chance to upgrade to pip 10
 poetry export -f requirements.txt -o requirements-main.txt --without-hashes --with-credentials

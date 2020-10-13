@@ -1,10 +1,5 @@
 # syntax = docker/dockerfile:1.0-experimental
-FROM python:3.7-slim AS builder
-
-# Specify the argument that we use to pass in the personal access token used to
-# check out stuff from our private git server
-ARG GIT_ACCESS_TOKEN_USERNAME="nothing"
-ARG GIT_ACCESS_TOKEN_PASSWORD="nothin"
+FROM python:3.8-slim AS builder
 
 # Update all the things
 RUN apt-get update && apt-get -y upgrade
@@ -20,28 +15,23 @@ WORKDIR /app
 
 # Copy the requirements file first so we don't need to rebuild the image from
 # scratch if the requirements don't change
-COPY requirements.txt ./
+COPY requirements-main.txt ./
 
 # Create a virtual environment
 RUN python -m venv .venv
 
-# Create netrc file for credentials
-RUN printf "machine git.collmot.com\n\
-    login ${GIT_ACCESS_TOKEN_USERNAME}\n\
-	password ${GIT_ACCESS_TOKEN_PASSWORD}\n" \
-	>> /root/.netrc
-RUN chmod 600 /root/.netrc
-
 # Remove rtmidi-related dependencies from the requirements; we don't need MIDI
 # stuff in the container
-RUN sed -i -e 's/midi,//' requirements.txt
+RUN sed -i -e 's/^python-rtmidi.*//' requirements-main.txt
 
 # Run the build script
 ENV PIP_NO_CACHE_DIR=1
-RUN .venv/bin/pip install -r requirements.txt
+RUN .venv/bin/pip install wheel
+RUN .venv/bin/pip install -r requirements-main.txt
 
 # Now we can copy the application itself
 COPY src/flockwave ./src/flockwave/
+COPY src/skybrush ./src/skybrush/
 COPY bin ./bin/
 
 # Clean up __pycache__ files
@@ -49,7 +39,7 @@ RUN find . | grep -E "(__pycache__|\.pyc$)" | xargs rm -rf
 
 # Start the second stage where we don't add the stuff that we only need for
 # compiling things
-FROM python:3.7-slim
+FROM python:3.8-slim
 
 # Add tini as an init system
 ENV TINI_VERSION v0.19.0

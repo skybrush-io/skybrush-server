@@ -259,7 +259,7 @@ class CommunicationManager(Generic[PacketType, AddressType]):
         address = None
 
         try:
-            address = getattr(connection, "address")
+            address = getattr(connection, "address", None)
             address = self.format_address(address) if address else None
 
             entry.channel = self.channel_factory(connection, self.log)

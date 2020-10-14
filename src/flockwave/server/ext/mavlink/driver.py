@@ -20,6 +20,7 @@ from flockwave.server.model.commands import (
     create_parameter_command_handler,
     create_version_command_handler,
 )
+from flockwave.server.model.preflight import PreflightCheckInfo, PreflightCheckResult
 from flockwave.server.model.uav import VersionInfo, UAVBase, UAVDriver
 from flockwave.server.utils import to_uppercase_string
 from flockwave.spec.errors import FlockwaveErrorCode
@@ -192,6 +193,9 @@ class MAVLinkDriver(UAVDriver):
 
         return result == MAVResult.ACCEPTED
 
+    def _request_preflight_report_single(self, uav) -> PreflightCheckInfo:
+        return uav.preflight_status
+
     def _request_version_info_single(self, uav) -> VersionInfo:
         return uav.get_version_info()
 
@@ -354,6 +358,7 @@ class MAVLinkUAV(UAVBase):
         self._last_messages = defaultdict(MAVLinkMessageRecord)
         self._mavlink_version = 1
         self._network_id = None
+        self._preflight_status = PreflightCheckInfo()
         self._position = GPSCoordinate()
         self._velocity = VelocityNED()
         self._system_id = None
@@ -590,6 +595,11 @@ class MAVLinkUAV(UAVBase):
         self._is_connected = False
         # TODO(ntamas): trigger a warning flag in the UAV?
 
+    def notify_prearm_failure(self, message: str) -> None:
+        """Notifies the UAV state object that a prearm check has failed."""
+        self._preflight_status.message = message
+        self._preflight_status.result = PreflightCheckResult.FAILURE
+
     def notify_reconnection(self) -> None:
         """Notifies the UAV state object that it has been reconnected to the
         network.
@@ -599,6 +609,10 @@ class MAVLinkUAV(UAVBase):
 
         if self._was_probably_rebooted_after_reconnection():
             self._handle_reboot()
+
+    @property
+    def preflight_status(self) -> PreflightCheckInfo:
+        return self._preflight_status
 
     async def upload_show(self, show) -> None:
         coordinate_system = get_coordinate_system_from_show_specification(show)
@@ -812,6 +826,12 @@ class MAVLinkUAV(UAVBase):
                 and heartbeat.system_status == MAVState.STANDBY
             ),
         }
+
+        # Clear the collected prearm failure messages if the heartbeat shows
+        # that we are not calibrating any more
+        if heartbeat.system_status != MAVState.CALIBRATING:
+            self._preflight_status.message = "Passed"
+            self._preflight_status.result = PreflightCheckResult.PASS
 
         # Update the error flags as needed
         self.ensure_errors(errors)

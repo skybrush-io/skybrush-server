@@ -46,10 +46,15 @@ class PreflightCheckItem(metaclass=ModelMeta):
         schema = get_complex_object_schema("preflightCheckItem")
         mappers = {"result": enum_to_json(PreflightCheckResult)}
 
-    def __init__(self, id: str, label: Optional[str] = None):
+    def __init__(
+        self,
+        id: str,
+        label: Optional[str] = None,
+        result: PreflightCheckResult = PreflightCheckResult.OFF,
+    ):
         self.id = id
         self.label = label
-        self.result = PreflightCheckResult.OFF
+        self.result = result
 
 
 class PreflightCheckInfo(metaclass=ModelMeta):
@@ -67,8 +72,13 @@ class PreflightCheckInfo(metaclass=ModelMeta):
         self.items = []
         self.update_summary()
 
-    def add_item(self, id: str, label: Optional[str] = None) -> None:
-        self.items.append(PreflightCheckItem(id=id, label=label))
+    def add_item(
+        self,
+        id: str,
+        label: Optional[str] = None,
+        result: PreflightCheckResult = PreflightCheckResult.OFF,
+    ) -> None:
+        self.items.append(PreflightCheckItem(id=id, label=label, result=result))
         self.update_summary()
 
     def _get_result_from_items(self) -> Union[PreflightCheckResult, bool]:
@@ -86,6 +96,11 @@ class PreflightCheckInfo(metaclass=ModelMeta):
             _numeric_preflight_check_results.get(item.result, 0) for item in self.items
         )
         return _numeric_preflight_check_results.inverse[result], running
+
+    def clear(self) -> None:
+        """Clears the preflight check items."""
+        del self.items[:]
+        self.update_summary()
 
     @property
     def failed(self) -> bool:
@@ -105,6 +120,11 @@ class PreflightCheckInfo(metaclass=ModelMeta):
         resolve themselves without human intervention.
         """
         return self.result in (PreflightCheckResult.FAILURE, PreflightCheckResult.ERROR)
+
+    @property
+    def has_items(self) -> bool:
+        """Returns whether the prelight check object has at least one item."""
+        return bool(self.items)
 
     @property
     def in_progress(self) -> bool:
@@ -129,6 +149,25 @@ class PreflightCheckInfo(metaclass=ModelMeta):
                 PreflightCheckResult.WARNING,
                 PreflightCheckResult.OFF,
             )
+
+    def set_result(
+        self, id: str, result: PreflightCheckResult, label: Optional[str] = None
+    ) -> None:
+        """Updates the result of a single preflight check in this preflight
+        check report.
+        """
+        changed = False
+
+        for item in self.items:
+            if item.id == id:
+                if item.result != result:
+                    item.result = result
+                    changed = True
+                item.label = label or None
+                break
+
+        if changed:
+            self.update_summary()
 
     def update_summary(self) -> None:
         """Updates the summary of this preflight check report based on the

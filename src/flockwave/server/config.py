@@ -28,7 +28,10 @@ COMMAND_EXECUTION_MANAGER = {"timeout": 30}
 # Declare the list of extensions to load
 EXTENSIONS = {
     "auth": {},
-    "auth_basic": {"passwords": {"user@domain.xyz": "password"}},
+    "auth_basic": {
+        "enabled": False,
+        "passwords": {"user@domain.xyz": "password"}
+    },
     "cascade_demo": {
         "enabled": False,
         # Farkashegy
@@ -78,6 +81,7 @@ EXTENSIONS = {
         "connections": ["udp-broadcast://:14550"],
     },
     "radiation": {
+        "enabled": False,
         "sources": [{"lat": 47.473703, "lon": 19.061739, "intensity": 50000}],
         "background_intensity": 10,
     },

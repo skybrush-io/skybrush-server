@@ -146,7 +146,7 @@ class ArduPilotWithSkybrush(ArduPilot):
     """
 
     name = "ArduPilot + Skybrush"
-    _custom_modes = extend_custom_modes(ArduPilot, {127: "drone show"})
+    _custom_modes = extend_custom_modes(ArduPilot, {127: "show"})
 
     CAPABILITY_MASK = (
         MAVProtocolCapability.PARAM_FLOAT

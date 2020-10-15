@@ -17,7 +17,7 @@ from trio.abc import ReceiveChannel
 from trio_util import periodic
 from typing import Any, Callable, Optional, Tuple, Union
 
-from flockwave.connections import Connection, create_connection
+from flockwave.connections import Connection, create_connection, ListenerConnection
 from flockwave.server.comm import CommunicationManager
 from flockwave.server.concurrency import Future
 from flockwave.server.model import ConnectionPurpose, UAV
@@ -181,12 +181,19 @@ class MAVLinkNetwork:
         with ExitStack() as stack:
             for index, connection in enumerate(self._connections):
                 full_id = id_format.format(self.id, index)
+                description = (
+                    "MAVLink listener"
+                    if isinstance(connection, ListenerConnection)
+                    else "MAVLink connection"
+                )
+                if full_id:
+                    description += f" ({full_id})"
+
                 stack.enter_context(
                     use_connection(
                         connection,
                         f"MAVLink: {full_id}" if full_id else "MAVLink",
-                        description="Upstream MAVLink connection"
-                        + (f" ({full_id})" if full_id else ""),
+                        description=description,
                         purpose=ConnectionPurpose.uavRadioLink,
                     )
                 )

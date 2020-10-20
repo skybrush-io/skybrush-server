@@ -1,12 +1,16 @@
 """Implementations of autopilot-specific functionality."""
 
+from abc import ABCMeta, abstractmethod
 from typing import Type
 
+from flockwave.server.model.geofence import GeofenceAction, GeofenceStatus
+
 from .enums import MAVAutopilot, MAVProtocolCapability
+from .geofence import GeofenceManager
 from .types import MAVLinkMessage
 
 
-class Autopilot:
+class Autopilot(metaclass=ABCMeta):
     """Interface specification and generic entry point for autopilot objects."""
 
     name = "Abstract autopilot"
@@ -60,6 +64,24 @@ class Autopilot:
         """
         return f"mode {custom_mode}"
 
+    @abstractmethod
+    async def get_geofence_status(self, uav) -> GeofenceStatus:
+        """Retrieves a full geofence status object from the drone.
+
+        Parameters:
+            uav: the MAVLinkUAV object
+
+        Returns:
+            a full geofence status object
+
+        Raises:
+            NotImplementedError: if we have not implemented support for retrieving
+                the geofence status from the autopilot (but it supports
+                geofences)
+            NotSupportedError: if the autopilot does not support geofences at all
+        """
+        raise NotImplementedError
+
     def refine_with_capabilities(self, capabilities: int):
         """Refines the autopilot class with further information from the
         capabilities bitfield of the MAVLink "autopilot capabilities" message,
@@ -74,6 +96,9 @@ class UnknownAutopilot(Autopilot):
     """Class representing an autopilot that we do not know."""
 
     name = "Unknown autopilot"
+
+    async def get_geofence_status(self, uav) -> GeofenceStatus:
+        raise NotImplementedError
 
 
 class ArduPilot(Autopilot):
@@ -107,6 +132,14 @@ class ArduPilot(Autopilot):
         26: "heli autorotate",
     }
 
+    _geofence_actions = {
+        0: (GeofenceAction.REPORT,),
+        1: (GeofenceAction.RETURN, GeofenceAction.LAND),
+        2: (GeofenceAction.LAND,),
+        3: (GeofenceAction.SMART_RETURN, GeofenceAction.RETURN, GeofenceAction.LAND),
+        4: (GeofenceAction.STOP, GeofenceAction.LAND),
+    }
+
     @classmethod
     def describe_custom_mode(cls, base_mode: int, custom_mode: int) -> str:
         """Returns the description of the current custom mode that the autopilot
@@ -116,6 +149,31 @@ class ArduPilot(Autopilot):
         of the heartbeat.
         """
         return cls._custom_modes.get(custom_mode, f"mode {custom_mode}")
+
+    async def get_geofence_status(self, uav) -> GeofenceStatus:
+        status = GeofenceStatus()
+
+        # Generic stuff comes here
+        manager = GeofenceManager.for_uav(uav)
+        await manager.get_geofence_areas_and_rally_points(status)
+
+        # ArduCopter-specific parameters are used to extend the status
+        value = await uav.get_parameter("FENCE_ENABLE")
+        status.enabled = bool(value)
+
+        value = await uav.get_parameter("FENCE_ALT_MIN")
+        status.min_altitude = float(value)
+
+        value = await uav.get_parameter("FENCE_ALT_MAX")
+        status.max_altitude = float(value)
+
+        value = await uav.get_parameter("FENCE_RADIUS")
+        status.max_distance = float(value)
+
+        value = await uav.get_parameter("FENCE_ACTION")
+        status.actions = list(self._geofence_actions.get(value, ()))
+
+        return status
 
     def refine_with_capabilities(self, capabilities: int):
         result = super().refine_with_capabilities(capabilities)

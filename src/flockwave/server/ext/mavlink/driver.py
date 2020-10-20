@@ -15,6 +15,7 @@ from flockwave.gps.vectors import GPSCoordinate, VelocityNED
 from flockwave.server.concurrency import aclosing
 from flockwave.server.errors import NotSupportedError
 from flockwave.server.model.battery import BatteryInfo
+from flockwave.server.model.geofence import GeofenceStatus
 from flockwave.server.model.gps import GPSFix
 from flockwave.server.model.commands import (
     create_parameter_command_handler,
@@ -391,6 +392,10 @@ class MAVLinkUAV(UAVBase):
             now = monotonic()
         return record.timestamp - now if record else inf
 
+    async def get_geofence_status(self) -> GeofenceStatus:
+        """Returns the status of the geofence of the UAV."""
+        return await self._autopilot.get_geofence_status(self)
+
     def get_last_message(self, type: int) -> Optional[MAVLinkMessage]:
         """Returns the last MAVLink message that was observed with the given
         type or `None` if we have not observed such a message yet.
@@ -649,12 +654,6 @@ class MAVLinkUAV(UAVBase):
                 await self._configure_data_streams_with_fine_grained_commands()
             except NotSupportedError:
                 await self._configure_data_streams_with_legacy_commands()
-
-        from .geofence import GeofenceManager
-
-        geofence = GeofenceManager.for_uav(self)
-        status = await geofence.get_geofence_areas_and_rally_points()
-        print(repr(status))
 
         # TODO(ntamas): keep on trying to configure stuff in the background if
         # we fail

@@ -22,22 +22,9 @@ from .types import (
 from .utils import mavlink_nav_command_to_gps_coordinate
 
 __all__ = (
-    "GeofenceAction",
     "GeofenceManager",
     "GeofenceType",
 )
-
-
-class GeofenceAction(IntEnum):
-    """MAVLink-specific actions that the drone can take when hitting the
-    geofence.
-    """
-
-    REPORT_ONLY = 0
-    RTL_OR_LAND = 1
-    ALWAYS_LAND = 2
-    SMART_RTL_RTL_OR_LAND = 3
-    BRAKE_OR_LAND = 4
 
 
 class GeofenceType(IntFlag):

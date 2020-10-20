@@ -1,8 +1,8 @@
 """Geofence-related data structures and functions for the server."""
 
 from dataclasses import dataclass, field
-from enum import IntEnum
-from typing import List, Optional
+from enum import Enum
+from typing import Iterable, List, Optional
 
 from flockwave.gps.vectors import GPSCoordinate
 
@@ -12,6 +12,8 @@ __all__ = (
     "GeofencePoint",
     "GeofencePolygon",
     "GeofenceStatus",
+    "format_geofence_action",
+    "format_geofence_actions",
 )
 
 
@@ -38,19 +40,29 @@ class GeofencePolygon:
     is_inclusion: bool = True
 
 
-class GeofenceAction(IntEnum):
+class GeofenceAction(Enum):
     """Actions that a UAV can take when hitting the geofence."""
 
-    REPORT_ONLY = 0
-    RTH_OR_LAND = 1
-    ALWAYS_LAND = 2
-    SMART_RTH_RTH_OR_LAND = 3
-    BRAKE_OR_LAND = 4
+    #: Report the geofence violation but do nothing
+    REPORT = "report"
 
-    @staticmethod
-    def format(action):
-        """Formats the geofence action as a human-readable string."""
-        return format_fence_action(action)
+    #: Attempt to return to the launch site with smart collision avoidance
+    SMART_RETURN = "smartReturn"
+
+    #: Attempt to return to the launch site without collision avoidance
+    RETURN = "return"
+
+    #: Attempt to land in-place with collision avoidance
+    SMART_LAND = "smartLand"
+
+    #: Attempt to land in-place without collision avoidance
+    LAND = "land"
+
+    #: Stop and hover in-place
+    STOP = "stop"
+
+    #: Shut down immediately
+    HALT = "halt"
 
 
 @dataclass
@@ -62,8 +74,9 @@ class GeofenceStatus:
     #: Whether the geofence is enabled globally
     enabled: bool = False
 
-    #: Action to take when the geofence is breached
-    action: GeofenceAction = GeofenceAction.REPORT_ONLY
+    #: Actions to take when the geofence is breached, in the order the UAV
+    #: will try them
+    actions: List[GeofenceAction] = field(default_factory=list)
 
     #: Minimum altitude that the drone must maintain; `None` means no
     #: minimum altitude requirement
@@ -95,19 +108,41 @@ class GeofenceStatus:
         """Clears the configured rally points of the geofence."""
         self.rally_points.clear()
 
+    @property
+    def formatted_actions(self) -> str:
+        """Returns a human-readable, formatted representation of the geofence
+        actions in this object.
+        """
+        return format_geofence_actions(self.actions or ())
 
-_geofence_action_names = {
-    0: "report only",
-    1: "RTH or land",
-    2: "always land",
-    3: "smart RTH, RTH or land",
-    4: "brake or land",
+
+_geofence_action_descriptions = {
+    GeofenceAction.REPORT.value: "report",
+    GeofenceAction.SMART_RETURN: "smart return",
+    GeofenceAction.RETURN: "return",
+    GeofenceAction.SMART_LAND: "smart land",
+    GeofenceAction.LAND: "land",
+    GeofenceAction.STOP: "stop",
+    GeofenceAction.HALT: "shut down",
 }
 
 
-def format_fence_action(code: int) -> str:
+def format_geofence_action(action: GeofenceAction) -> str:
     """Formats the name of the given geofence action."""
     try:
-        return _geofence_action_names[code]
+        return _geofence_action_descriptions.get(GeofenceAction(action))
     except Exception:
-        return f"unknown action {code!r}"
+        return f"unknown action {action!r}"
+
+
+def format_geofence_actions(actions: Iterable[GeofenceAction]) -> str:
+    """Formats the name of multiple geofence actions."""
+    names = [format_geofence_action(action) for action in actions]
+    if not names:
+        return "ignore"
+    elif len(names) == 1:
+        return names[0]
+    elif len(names) == 2:
+        return " or ".join(names)
+    else:
+        return ", ".join(names[:-1]) + " or " + names[-1]

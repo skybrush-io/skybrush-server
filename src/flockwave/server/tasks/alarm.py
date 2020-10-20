@@ -5,6 +5,7 @@ calls a function when the clock reaches a given tick count.
 from contextlib import ExitStack
 from flockwave.server.logger import log as base_log
 from flockwave.server.model.clock import Clock
+from flockwave.server.utils import clamp
 from typing import Optional
 
 from trio import open_memory_channel, move_on_after, sleep, WouldBlock
@@ -69,7 +70,7 @@ class _Alarm:
                 #
                 # Also, we re-check the time once every minute in case the user
                 # adjusted the clock of the computer.
-                to_wait = min(max(seconds_left - 0.1, 0), 60)
+                to_wait = clamp(seconds_left - 0.1, 0, 60)
                 if to_wait > 0:
                     # Ordinary wait
                     message = None

@@ -15,7 +15,7 @@ from flockwave.gps.vectors import GPSCoordinate, VelocityNED
 from flockwave.server.concurrency import aclosing
 from flockwave.server.errors import NotSupportedError
 from flockwave.server.model.battery import BatteryInfo
-from flockwave.server.model.geofence import GeofenceStatus
+from flockwave.server.model.geofence import GeofenceConfigurationRequest, GeofenceStatus
 from flockwave.server.model.gps import GPSFix
 from flockwave.server.model.commands import (
     create_parameter_command_handler,
@@ -28,6 +28,7 @@ from flockwave.spec.errors import FlockwaveErrorCode
 
 from skybrush import (
     get_coordinate_system_from_show_specification,
+    get_geofence_configuration_from_show_specification,
     get_light_program_from_show_specification,
     get_trajectory_from_show_specification,
 )
@@ -383,6 +384,12 @@ class MAVLinkUAV(UAVBase):
         self._network_id = network_id
         self._system_id = system_id
 
+    async def configure_geofence(
+        self, configuration: GeofenceConfigurationRequest
+    ) -> None:
+        """Configures the geofence on the UAV."""
+        return await self._autopilot.configure_geofence(self, configuration)
+
     def get_age_of_message(self, type: int, now: Optional[float] = None) -> float:
         """Returns the number of seconds elapsed since we have last seen a
         message of the given type.
@@ -629,15 +636,18 @@ class MAVLinkUAV(UAVBase):
 
         light_program = get_light_program_from_show_specification(show)
         trajectory = get_trajectory_from_show_specification(show)
+        geofence = get_geofence_configuration_from_show_specification(show)
 
         async with SkybrushBinaryShowFile.create_in_memory() as show_file:
             await show_file.add_trajectory(trajectory)
             await show_file.add_light_program(light_program)
             data = show_file.get_contents()
 
+        # Upload show file
         async with aclosing(MAVFTP.for_uav(self)) as ftp:
             await ftp.put(data, "/show.skyb")
 
+        # Configure show origin and orientation
         await self.set_parameter(
             "SHOW_ORIGIN_LAT", int(coordinate_system.origin.lat * 1e7)
         )
@@ -645,6 +655,9 @@ class MAVLinkUAV(UAVBase):
             "SHOW_ORIGIN_LNG", int(coordinate_system.origin.lon * 1e7)
         )
         await self.set_parameter("SHOW_ORIENTATION", coordinate_system.orientation)
+
+        # Configure and enable geofence
+        await self.configure_geofence(geofence)
 
     async def _configure_data_streams(self) -> None:
         """Configures the data streams that we want to receive from the UAV."""

@@ -45,6 +45,13 @@ def get_template(name: str, *, encoding: str = "utf-8", errors: str = "strict") 
     return read_text(package, name, encoding=encoding, errors=errors)
 
 
+# TODO(ntamas): move these to src/skybrush somewhere:
+#
+# - get_all_points_from_trajectory(),
+# - get_maximum_altitude_with_safety_margin()
+# - get_maximum_distance_with_safety_margin()
+
+
 def get_all_points_from_trajectory(trajectory: Trajectory) -> Iterable[XYZ]:
     """Given a trajectory, returns an iterable that will iterate over all the
     points of the trajectory.
@@ -197,6 +204,9 @@ def generate_mission_file_from_show_specification(show) -> bytes:
     # derive the properties of the geofence
     max_altitude = get_maximum_altitude_with_safety_margin(points)
     max_distance = get_maximum_distance_with_safety_margin(points)
+
+    # TODO(ntamas): respect geofence settings from the show specification if it
+    # has one; use get_geofence_configuration_from_show_specification()
 
     # create waypoint file template
     waypoint_str = get_template("waypoints.cfg").format(

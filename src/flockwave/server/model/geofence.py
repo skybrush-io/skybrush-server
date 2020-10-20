@@ -9,6 +9,7 @@ from flockwave.gps.vectors import GPSCoordinate
 __all__ = (
     "GeofenceAction",
     "GeofenceCircle",
+    "GeofenceConfigurationRequest",
     "GeofencePoint",
     "GeofencePolygon",
     "GeofenceStatus",
@@ -114,6 +115,43 @@ class GeofenceStatus:
         actions in this object.
         """
         return format_geofence_actions(self.actions or ())
+
+
+@dataclass
+class GeofenceConfigurationRequest:
+    """Object representing a geofence configuration object that can be enforced
+    on a drone.
+
+    This is admittedly minimal for the time being. We can update it as we
+    implement support for more complex geofences. Things that are missing:
+
+    - circular geofences
+
+    - rally points
+
+    - configurable geofence actions
+
+    - selectively turning on/off certain geofence types
+    """
+
+    #: Whether the geofence should be enabled; `None` means not to change it
+    enabled: Optional[bool] = None
+
+    #: Minimum altitude that the drone must maintain; `None` means not to
+    #: change the minimum altitude requirement
+    min_altitude: Optional[float] = None
+
+    #: Maximum altitude that the drone is allowed to fly to; `None` means not
+    #: to change the maximum altitude limit
+    max_altitude: Optional[float] = None
+
+    #: Maximum distance that the drone is allowed to fly from its home
+    #: position; `None` means not to change the distance limit
+    max_distance: Optional[float] = None
+
+    #: Inclusion and exclusion polygons in the geofence; `None` means not to
+    #: update the polygons
+    polygons: Optional[List[GeofencePolygon]] = None
 
 
 _geofence_action_descriptions = {

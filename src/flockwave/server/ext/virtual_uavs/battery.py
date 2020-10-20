@@ -4,6 +4,7 @@ from random import random
 from typing import Optional
 
 from flockwave.server.model.battery import BatteryInfo
+from flockwave.server.utils import clamp
 
 __all__ = ("VirtualBattery",)
 
@@ -46,7 +47,7 @@ class VirtualBattery:
         self._peak_discharge_rate = self._range / discharge_time
 
         if initial_charge is not None:
-            initial_charge = min(max(initial_charge, 0), 1)
+            initial_charge = clamp(initial_charge, 0.0, 1.0)
         else:
             initial_charge = random() * 0.03 + 0.97
 
@@ -76,7 +77,7 @@ class VirtualBattery:
 
     @percentage.setter
     def percentage(self, value):
-        value = max(min(value, 100), 0)
+        value = clamp(value, 0, 100)
 
         value = self._min + value / 100 * self._range
         percentage = (value - self._min) / self._range * 100

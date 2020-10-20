@@ -9,6 +9,8 @@ from typing import Optional, Tuple
 
 from aiocflib.crtp.crtpstack import CRTPPort
 
+from flockwave.server.utils import clamp
+
 __all__ = (
     "DRONE_SHOW_PORT",
     "LIGHT_PROGRAM_MEMORY_ID",
@@ -179,7 +181,7 @@ class DroneShowStatus:
     def battery_percentage(self) -> int:
         """Returns the approximate battery charge percentage."""
         percentage = round(100 * (self.battery_voltage - 3.0) / 1.2)
-        return min(max(percentage, 0), 100)
+        return clamp(percentage, 0, 100)
 
     @property
     def charging(self) -> bool:

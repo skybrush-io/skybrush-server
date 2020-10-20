@@ -1,6 +1,6 @@
 """Geofence-related data structures and functions for the MAVLink protocol."""
 
-from enum import IntEnum, IntFlag
+from enum import IntFlag
 from functools import partial
 from trio import fail_after, TooSlowError
 from typing import Optional
@@ -8,7 +8,6 @@ from typing import Optional
 from flockwave.server.model.geofence import (
     GeofenceCircle,
     GeofencePolygon,
-    GeofenceAction as OurGeofenceAction,
     GeofenceStatus,
 )
 

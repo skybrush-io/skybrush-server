@@ -13,6 +13,7 @@ from typing import Any, Callable, Generator, Iterable, Optional, Tuple, TypeVar
 
 __all__ = (
     "bind",
+    "clamp",
     "color_to_rgb565",
     "consecutive_pairs",
     "datetime_to_unix_timestamp",
@@ -60,6 +61,13 @@ def bind(func, args=None, kwds=None, *, partial=False):
         return partial(func, *args)
     else:
         return partial(func, *args, **kwds)
+
+
+def clamp(value: float, lo: float, hi: float) -> float:
+    """Clamps the given value between a minimum and a maximum allowed value
+    (both inclusive).
+    """
+    return max(min(value, hi), lo)
 
 
 def color_to_rgb565(color: Color) -> int:

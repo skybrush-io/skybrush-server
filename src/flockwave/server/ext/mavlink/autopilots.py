@@ -3,7 +3,13 @@
 from abc import ABCMeta, abstractmethod
 from typing import Type
 
-from flockwave.server.model.geofence import GeofenceAction, GeofenceStatus
+from flockwave.server.errors import NotSupportedError
+from flockwave.server.model.geofence import (
+    GeofenceAction,
+    GeofenceConfigurationRequest,
+    GeofenceStatus,
+)
+from flockwave.server.utils import clamp
 
 from .enums import MAVAutopilot, MAVProtocolCapability
 from .geofence import GeofenceManager
@@ -65,6 +71,22 @@ class Autopilot(metaclass=ABCMeta):
         return f"mode {custom_mode}"
 
     @abstractmethod
+    async def configure_geofence(
+        self, uav, configuration: GeofenceConfigurationRequest
+    ) -> None:
+        """Updates the geofence configuration on the autopilot to match the
+        given configuration object.
+
+        Raises:
+            NotImplementedError: if we have not implemented support for updating
+                the geofence configuration on the autopilot (but it supports
+                geofences)
+            NotSupportedError: if the autopilot does not support updating the
+                geofence
+        """
+        raise NotImplementedError
+
+    @abstractmethod
     async def get_geofence_status(self, uav) -> GeofenceStatus:
         """Retrieves a full geofence status object from the drone.
 
@@ -97,8 +119,13 @@ class UnknownAutopilot(Autopilot):
 
     name = "Unknown autopilot"
 
+    async def configure_geofence(
+        self, uav, configuration: GeofenceConfigurationRequest
+    ) -> None:
+        raise NotSupportedError
+
     async def get_geofence_status(self, uav) -> GeofenceStatus:
-        raise NotImplementedError
+        raise NotSupportedError
 
 
 class ArduPilot(Autopilot):
@@ -149,6 +176,35 @@ class ArduPilot(Autopilot):
         of the heartbeat.
         """
         return cls._custom_modes.get(custom_mode, f"mode {custom_mode}")
+
+    async def configure_geofence(
+        self, uav, configuration: GeofenceConfigurationRequest
+    ) -> None:
+        print(repr(configuration))
+
+        if configuration.min_altitude is not None:
+            # Update the minimum altitude limit; note that ArduCopter supports
+            # only the [-100; 100] range.
+            min_altitude = float(clamp(configuration.min_altitude, -100, 100))
+            await uav.set_parameter("FENCE_ALT_MIN", min_altitude)
+
+        if configuration.max_altitude is not None:
+            # Update the maximum altitude limit; note that ArduCopter supports
+            # only the [10; 1000] range.
+            max_altitude = float(clamp(configuration.max_altitude, 10, 1000))
+            await uav.set_parameter("FENCE_ALT_MAX", max_altitude)
+
+        if configuration.max_distance is not None:
+            # Update the maximum distance; note that ArduCopter supports only
+            # the [30; 10000] range.
+            max_altitude = float(clamp(configuration.max_distance, 30, 10000))
+            await uav.set_parameter("FENCE_RADIUS", max_altitude)
+
+        if configuration.enabled is not None:
+            # Update whether the fence is enabled or disabled
+            await uav.set_parameter("FENCE_ENABLE", int(bool(configuration.enabled)))
+
+        # TODO(ntamas): update polygons
 
     async def get_geofence_status(self, uav) -> GeofenceStatus:
         status = GeofenceStatus()

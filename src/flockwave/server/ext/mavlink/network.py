@@ -112,6 +112,7 @@ class MAVLinkNetwork:
         self,
         type: Union[int, str, MAVMessageType],
         params: MAVLinkMessageMatcher = None,
+        system_id: Optional[int] = None,
     ) -> Future[MAVLinkMessage]:
         """Sets up a handler that waits for a MAVLink packet of a given type,
         optionally matching its content with the given parameter values based
@@ -123,6 +124,8 @@ class MAVLinkNetwork:
                 expect to see in the matched packet, or a callable that
                 receives a MAVLinkMessage and returns `True` if it matches the
                 packet we are looking for
+            system_id: the system ID of the sender of the message; `None` means
+                any system ID
 
         Returns:
             a Future that resolves to the next MAVLink message that matches the
@@ -141,7 +144,7 @@ class MAVLinkNetwork:
                         pass
 
         future = Future()
-        item = (params, future)
+        item = (system_id, params, future)
         matchers = self._matchers[type_str]
 
         matchers.append(item)
@@ -235,7 +238,7 @@ class MAVLinkNetwork:
                 )
             finally:
                 for matcher in matchers.values():
-                    for _, future in matcher:
+                    for _, _, future in matcher:
                         future.cancel()
 
     async def broadcast_packet(self, spec: MAVLinkMessageSpecification) -> None:
@@ -284,7 +287,9 @@ class MAVLinkNetwork:
                 mapping MAVLink field names to expected values, or a callable
                 that gets called with the retrieved MAVLink message of the
                 given type and must return `True` if and only if the message
-                matches our expectations.
+                matches our expectations. The source system of the MAVLink
+                reply must also be equal to the system ID of the UAV where
+                the original message was sent.
         """
         spec[1].update(
             target_system=target.system_id,
@@ -300,7 +305,9 @@ class MAVLinkNetwork:
 
         if wait_for_response:
             response_type, response_fields = wait_for_response
-            with self.expect_packet(response_type, response_fields) as future:
+            with self.expect_packet(
+                response_type, response_fields, system_id=target.system_id
+            ) as future:
                 # TODO(ntamas): in theory, we could be getting a matching packet
                 # _before_ we sent ours. Sort this out if it causes problems.
                 await self.manager.send_packet(spec, destination)
@@ -376,6 +383,8 @@ class MAVLinkNetwork:
             "HWSTATUS": nop,
             "LOCAL_POSITION_NED": nop,  # maybe later?
             "MEMINFO": nop,
+            "MISSION_COUNT": nop,  # used for mission and geofence download / upload
+            "MISSION_ITEM_INT": nop,  # used for mission and geofence download / upload
             "MISSION_CURRENT": nop,  # maybe later?
             "NAV_CONTROLLER_OUTPUT": nop,
             "PARAM_VALUE": nop,
@@ -401,8 +410,10 @@ class MAVLinkNetwork:
             type = message.get_type()
 
             # Resolve all futures that are waiting for this message
-            for params, future in self._matchers[type]:
-                if callable(params):
+            for system_id, params, future in self._matchers[type]:
+                if system_id is not None and message.get_srcSystem() != system_id:
+                    matched = False
+                elif callable(params):
                     matched = params(message)
                 elif params is None:
                     matched = True

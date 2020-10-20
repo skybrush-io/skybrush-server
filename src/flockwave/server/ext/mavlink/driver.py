@@ -132,6 +132,9 @@ class MAVLinkDriver(UAVDriver):
         Parameters:
             show: the show data
         """
+        import pprint
+
+        pprint.pprint(show)
         await uav.upload_show(show)
 
     async def send_command_long(
@@ -627,7 +630,7 @@ class MAVLinkUAV(UAVBase):
             await show_file.add_light_program(light_program)
             data = show_file.get_contents()
 
-        async with aclosing(MAVFTP(self)) as ftp:
+        async with aclosing(MAVFTP.for_uav(self)) as ftp:
             await ftp.put(data, "/show.skyb")
 
         await self.set_parameter(
@@ -646,6 +649,13 @@ class MAVLinkUAV(UAVBase):
                 await self._configure_data_streams_with_fine_grained_commands()
             except NotSupportedError:
                 await self._configure_data_streams_with_legacy_commands()
+
+        from .geofence import GeofenceManager
+
+        geofence = GeofenceManager.for_uav(self)
+        status = await geofence.get_geofence_areas_and_rally_points()
+        print(repr(status))
+
         # TODO(ntamas): keep on trying to configure stuff in the background if
         # we fail
 

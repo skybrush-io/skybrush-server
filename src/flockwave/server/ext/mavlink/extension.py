@@ -149,7 +149,9 @@ class MAVLinkDronesExtension(UAVExtensionBase):
                 matched with all incoming MAVLink messages that have the same
                 type as the type in the specification; all parameters of the
                 incoming message must be equal to the template specified in
-                this argument to accept it as a response.
+                this argument to accept it as a response. The source system of
+                the MAVLink message must also be equal to the system ID of the
+                UAV where this message was sent.
         """
         network_id = target.network_id
         if not self._networks:

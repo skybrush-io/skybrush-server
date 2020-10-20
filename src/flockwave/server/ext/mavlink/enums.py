@@ -48,6 +48,13 @@ class MAVCommand(IntEnum):
     REQUEST_AUTOPILOT_CAPABILITIES = 520
     REQUEST_CAMERA_INFORMATION = 521
 
+    NAV_FENCE_RETURN_POINT = 5000
+    NAV_FENCE_POLYGON_VERTEX_INCLUSION = 5001
+    NAV_FENCE_POLYGON_VERTEX_EXCLUSION = 5002
+    NAV_FENCE_CIRCLE_INCLUSION = 5003
+    NAV_FENCE_CIRCLE_EXCLUSION = 5004
+    NAV_RALLY_POINT = 5100
+
 
 class MAVComponent(IntEnum):
     """Replica of the `MAV_COMPONENT` enum of the MAVLink protocol, using proper
@@ -112,6 +119,17 @@ class MAVMessageType(IntEnum):
     AUTOPILOT_VERSION = 148
 
 
+class MAVMissionType(IntEnum):
+    """Replica of the `MAV_MISSION_TYPE` enum of the MAVLink protocol, using
+    proper Python enums.
+    """
+
+    MISSION = 0
+    FENCE = 1
+    RALLY = 2
+    ALL = 255
+
+
 class MAVModeFlag(IntFlag):
     """Replica of the `MAV_MODE_FLAG` enum of the MAVLink protocol, using
     proper Python enums.
@@ -134,7 +152,7 @@ class MAVProtocolCapability(IntFlag):
 
     MISSION_FLOAT = 0x01
     PARAM_FLOAT = 0x02
-    MISSION_INT = 0x04
+    # MISSION_INT = 0x04    # deprecated (2020-06)
     COMMAND_INT = 0x08
     PARAM_UNION = 0x10
     FTP = 0x20

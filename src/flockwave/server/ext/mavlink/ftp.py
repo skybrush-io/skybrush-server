@@ -384,7 +384,13 @@ class MAVFTPSession:
 class MAVFTP:
     """A single MAVFTP connection to a PixHawk over a MAVLink connection."""
 
-    def __init__(self, uav):
+    @classmethod
+    def for_uav(cls, uav):
+        """Constructs a MAVFTP connection object to the given UAV."""
+        sender = partial(uav.driver.send_packet, target=uav)
+        return cls(sender)
+
+    def __init__(self, sender: Callable):
         """Constructor."""
         self._closed = False
         self._closing = False
@@ -392,7 +398,7 @@ class MAVFTP:
         self._path = PurePosixPath("/")
         self._seq = islice(cycle(range(65536)), randint(0, 65535), None)
         self._sessions = {}
-        self._uav = uav
+        self._sender = sender
 
     async def aclose(self) -> None:
         """Closes the MAVFTP connection and instructs the PixHawk to close
@@ -590,22 +596,30 @@ class MAVFTP:
         """Sends a raw FTP message over the connection and waits for the response
         from the PixHawk.
 
+        Parameters:
+            message: the MAVFTP message to send
+            expected_reply: message matcher that matches messages that we expect
+                from the connection as a reply to the original message
+            timeout: maximum number of seconds to wait before attempting to
+                re-send the message
+            retries: maximum number of retries before giving up
+
         Returns:
-            the FTP message sent by the PixHawk in response
+            the FTP message sent by the UAV in response
 
         Raises:
-            TooSlowError: if the PixHawk failed to respond either with an ACK or a
+            TooSlowError: if the UAV failed to respond either with an ACK or a
                 NAK in time.
         """
         message = message.encode(next(self._seq)).ljust(251, b"\x00")
         expected_seq_no = next(self._seq)
+        sender = self._sender
 
         while True:
             try:
                 with fail_after(timeout):
-                    reply = await self._uav.driver.send_packet(
+                    reply = await sender(
                         spec.file_transfer_protocol(target_network=0, payload=message),
-                        target=self._uav,
                         wait_for_response=spec.file_transfer_protocol(
                             partial(MAVFTPMessage.matches_sequence_no, expected_seq_no)
                         ),

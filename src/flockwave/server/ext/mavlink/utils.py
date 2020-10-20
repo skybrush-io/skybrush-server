@@ -1,11 +1,15 @@
-from logging import CRITICAL, ERROR, WARNING, INFO, DEBUG
+from logging import ERROR, WARNING, INFO, DEBUG
 from typing import Optional, List
 
+from flockwave.gps.vectors import GPSCoordinate
+
+from .enums import MAVFrame
 from .types import MAVLinkMessage
 
 __all__ = (
     "log_id_from_message",
     "log_level_from_severity",
+    "mavlink_nav_command_to_gps_coordinate",
     "mavlink_version_number_to_semver",
 )
 
@@ -45,6 +49,26 @@ def log_level_from_severity(severity: int) -> int:
         return DEBUG
     else:
         return _severity_to_log_level[severity]
+
+
+def mavlink_nav_command_to_gps_coordinate(message: MAVLinkMessage) -> GPSCoordinate:
+    """Creates a GPSCoordinate object from the parameters of a MAVLink
+    `MAV_CMD_NAV_...` command typically used in mission descriptions.
+
+    Parameters:
+        message: the MAVLink message with fields named `x`, `y` and `z`. It is
+            assumed (and not checked) that the message is a MAVLink command
+            of type `MAV_CMD_NAV_...`.
+    """
+    if message.frame in (MAVFrame.GLOBAL, MAVFrame.GLOBAL_INT):
+        return GPSCoordinate(lat=message.x / 1e7, lon=message.y / 1e7, amsl=message.z)
+    elif message.frame in (
+        MAVFrame.GLOBAL_RELATIVE_ALT,
+        MAVFrame.GLOBAL_RELATIVE_ALT_INT,
+    ):
+        return GPSCoordinate(lat=message.x / 1e7, lon=message.y / 1e7, agl=message.z)
+    else:
+        raise ValueError(f"unknown coordinate frame: {message.frame}")
 
 
 def mavlink_version_number_to_semver(

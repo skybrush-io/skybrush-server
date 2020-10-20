@@ -1,9 +1,9 @@
 """Geofence-related data structures and functions for the MAVLink protocol."""
 
 from enum import IntFlag
-from functools import partial
+from functools import partial, singledispatch
 from trio import fail_after, TooSlowError
-from typing import Optional
+from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
 
 from flockwave.server.model.geofence import (
     GeofenceCircle,
@@ -11,7 +11,7 @@ from flockwave.server.model.geofence import (
     GeofenceStatus,
 )
 
-from .enums import MAVCommand, MAVMissionType
+from .enums import MAVCommand, MAVFrame, MAVMissionResult, MAVMissionType
 from .types import (
     MAVLinkMessage,
     MAVLinkMessageSpecification,
@@ -78,6 +78,7 @@ class GeofenceManager:
         # Retrieve geofence polygons and circles
         mission_type = MAVMissionType.FENCE
         reply = await self._send_and_wait(
+            mission_type,
             spec.mission_request_list(mission_type=mission_type),
             spec.mission_count(mission_type=mission_type),
         )
@@ -96,8 +97,10 @@ class GeofenceManager:
         current_polygon = None  # Status of current polygon
         for index in range(reply.count):
             reply = await self._send_and_wait(
+                mission_type,
                 spec.mission_request_int(seq=index, mission_type=mission_type),
                 spec.mission_item_int(seq=index, mission_type=mission_type),
+                timeout=0.25,
             )
 
             if reply.command in (
@@ -138,6 +141,9 @@ class GeofenceManager:
         # Make sure that the last polygon is also added
         add_polygon_to_result(current_polygon)
 
+        # Send final acknowledgment
+        await self._send_final_ack(mission_type)
+
         # Return the assembled status
         return status
 
@@ -163,6 +169,7 @@ class GeofenceManager:
         # Retrieve geofence rally points
         mission_type = MAVMissionType.RALLY
         reply = await self._send_and_wait(
+            mission_type,
             spec.mission_request_list(mission_type=mission_type),
             spec.mission_count(mission_type=mission_type),
         )
@@ -170,12 +177,17 @@ class GeofenceManager:
         # Iterate over the mission items
         for index in range(reply.count):
             reply = await self._send_and_wait(
+                mission_type,
                 spec.mission_request_int(seq=index, mission_type=mission_type),
                 spec.mission_item_int(seq=index, mission_type=mission_type),
+                timeout=0.25,
             )
 
             if reply.command == MAVCommand.NAV_RALLY_POINT:
                 status.rally_points.append(mavlink_nav_command_to_gps_coordinate(reply))
+
+        # Send final acknowledgment
+        await self._send_final_ack(mission_type)
 
         # Return the assembled status
         return status
@@ -197,8 +209,66 @@ class GeofenceManager:
         await self.get_geofence_rally_points(status)
         return status
 
+    async def set_geofence_areas(
+        self,
+        areas: Optional[Iterable[Union[GeofenceCircle, GeofencePolygon]]] = None,
+    ) -> None:
+        """Uploads the given geofence polygons and circles to the MAVLink
+        connection.
+
+        Parameters:
+            areas: the polygons and circles to upload
+        """
+        items = []
+        for area in areas:
+            items.extend(_convert_area_to_mission_items(area))
+        if not items:
+            return
+
+        num_items = len(items)
+        mission_type = MAVMissionType.FENCE
+
+        for index in range(-1, num_items):
+            if index < 0:
+                # We need to let the drone know how many items there will be
+                message = spec.mission_count(count=num_items, mission_type=mission_type)
+            else:
+                # We need to send the item with the given index to the drone
+                command, kwds = items[index]
+                params = dict(
+                    seq=index,
+                    command=command,
+                    mission_type=mission_type,
+                    param1=0,
+                    param2=0,
+                    param3=0,
+                    param4=0,
+                    x=0,
+                    y=0,
+                    z=0,
+                    frame=MAVFrame.GLOBAL,
+                    current=0,
+                    autocontinue=0,
+                )
+                params.update(kwds)
+                message = spec.mission_item_int(**params)
+
+            if index + 1 < num_items:
+                # Drone must respond with requesting the next item
+                # TODO(ntamas): we could also receive MISSION_REQUEST_INT here,
+                # we need to handle both!
+                expected_reply = spec.mission_request(
+                    seq=index + 1, mission_type=mission_type
+                )
+            else:
+                # Drone must respond by acknowledging the transfer
+                expected_reply = spec.mission_ack(mission_type=mission_type)
+
+            await self._send_and_wait(mission_type, message, expected_reply)
+
     async def _send_and_wait(
         self,
+        mission_type: MAVMissionType,
         message: MAVLinkMessageSpecification,
         expected_reply: MAVLinkMessageMatcher,
         *,
@@ -210,6 +280,7 @@ class GeofenceManager:
         as needed a given number of times before timing out.
 
         Parameters:
+            mission_type: type of the mission we are dealing with
             message: specification of the message to send
             expected_reply: message matcher that matches messages that we expect
                 from the connection as a reply to the original message
@@ -223,13 +294,97 @@ class GeofenceManager:
         Raises:
             TooSlowError: if the UAV failed to respond in time
         """
+        # For each mission-related message that we send, we could receive either
+        # the expected response or a MISSION_ACK with an error code.
+        if expected_reply[0] == "MISSION_ACK":
+            replies = {"ack": expected_reply}
+        else:
+            replies = {
+                "response": expected_reply,
+                "ack": spec.mission_ack(mission_type=mission_type),
+            }
+
+        # TODO(ntamas): we could also receive a MISSION_ACK and not a
+        # MISSION_ITEM_INT; handle that as well. The type of the ACK will
+        # be one of the values from MAVMissionResult
         while True:
             try:
                 with fail_after(timeout):
-                    return await self._sender(message, wait_for_response=expected_reply)
+                    key, response = await self._sender(message, wait_for_one_of=replies)
+
+                    if key == "response":
+                        # Got the response that we expected
+                        return response
+                    else:
+                        # Got an ACK. Check whether it has an error code.
+                        if response.type == MAVMissionResult.ACCEPTED:
+                            return response
+                        else:
+                            raise RuntimeError(
+                                f"MAVLink mission operation returned {response.type}"
+                            )
+
             except TooSlowError:
                 if retries > 0:
                     retries -= 1
                     continue
                 else:
                     raise
+
+    async def _send_final_ack(self, mission_type: int) -> None:
+        """Sends the final acknowledgment at the end of a mission download
+        transaction.
+        """
+        try:
+            await self._sender(spec.mission_ack(mission_type=mission_type))
+        except Exception as ex:
+            # doesn't matter, we got what we needed
+            print(repr(ex))
+
+
+@singledispatch
+def _convert_area_to_mission_items(area: Any) -> List[Tuple[int, Dict]]:
+    raise ValueError(f"Unknown geofence area type: {type(area)!r}")
+
+
+@_convert_area_to_mission_items.register
+def _(area: GeofenceCircle) -> List[Tuple[int, Dict]]:
+    return [
+        (
+            (
+                MAVCommand.NAV_FENCE_CIRCLE_INCLUSION
+                if area.is_inclusion
+                else MAVCommand.NAV_FENCE_CIRCLE_EXCLUSION
+            ),
+            {
+                "param1": area.radius,
+                "x": int(area.center.lat * 1e7),
+                "y": int(area.center.lon * 1e7),
+            },
+        )
+    ]
+
+
+@_convert_area_to_mission_items.register
+def _(area: GeofencePolygon) -> List[Tuple[int, Dict]]:
+    points = list(area.points)
+    if points and points[0] == points[-1]:
+        points.pop()
+
+    num_points = len(points)
+
+    return [
+        (
+            (
+                MAVCommand.NAV_FENCE_POLYGON_VERTEX_INCLUSION
+                if area.is_inclusion
+                else MAVCommand.NAV_FENCE_POLYGON_VERTEX_EXCLUSION
+            ),
+            {
+                "param1": num_points,
+                "x": int(point.lat * 1e7),
+                "y": int(point.lon * 1e7),
+            },
+        )
+        for point in points
+    ]

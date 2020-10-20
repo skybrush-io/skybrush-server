@@ -5,7 +5,13 @@ remote UAVs.
 from blinker import Signal
 from inspect import isawaitable
 from time import time
-from trio import CancelScope, current_time, open_memory_channel, open_nursery
+from trio import (
+    CancelScope,
+    current_time,
+    open_memory_channel,
+    open_nursery,
+    TooSlowError,
+)
 from trio_util import periodic
 from typing import Any
 
@@ -272,6 +278,9 @@ class CommandExecutionManager(RegistryBase):
                 result = await awaitable
         except RuntimeError as ex:
             # this is okay, samurai principle
+            result = ex
+        except TooSlowError as ex:
+            # this is okay as well
             result = ex
         except Exception as ex:
             # this might not be okay, let's log it

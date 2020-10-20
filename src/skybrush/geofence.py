@@ -4,8 +4,17 @@ Skybrush-related geofence specifications, until we find a better place for them.
 
 from typing import Dict
 
-from flockwave.server.model.geofence import GeofenceConfigurationRequest
+from flockwave.gps.vectors import (
+    FlatEarthCoordinate,
+    FlatEarthToGPSCoordinateTransformation,
+)
+from flockwave.server.model.geofence import (
+    GeofenceConfigurationRequest,
+    GeofencePolygon,
+)
 from flockwave.server.utils import optional_float
+
+from .trajectory import get_coordinate_system_from_show_specification
 
 __all__ = ("get_geofence_configuration_from_show_specification",)
 
@@ -37,6 +46,44 @@ def get_geofence_configuration_from_show_specification(
     if result.min_altitude is None:
         result.min_altitude = -10
 
-    # TODO(ntamas): parse polygons!
+    # Parse polygons and rally points
+    polygons = geofence.get("polygons", ())
+    rally_points = geofence.get("rally_points", ())
+
+    if polygons or rally_points:
+        coordinate_system = get_coordinate_system_from_show_specification(show)
+    else:
+        coordinate_system = None
+
+    if polygons:
+        result.polygons = [
+            _parse_polygon(polygon, coordinate_system) for polygon in polygons
+        ]
+
+    # TODO(ntamas): parse rally points
 
     return result
+
+
+def _parse_polygon(
+    polygon: Dict, coordinate_system: FlatEarthToGPSCoordinateTransformation
+) -> GeofencePolygon:
+    """Parses a polygon from the geofence specification using the given
+    local-to-global coordinate system and returns the parsed polygon.
+
+    Parameters:
+        polygon: the polygon specification to parse
+        coordinate_system: the local-to-global coordinate system
+    """
+    is_inclusion = bool(polygon.get("isInclusion", False))
+    points = polygon.get("points", ())
+
+    if points and points[0] == points[-1]:
+        points.pop()
+
+    points = [
+        coordinate_system.to_gps(FlatEarthCoordinate(point[0], point[1], 0))
+        for point in points
+    ]
+
+    return GeofencePolygon(points, is_inclusion=is_inclusion)

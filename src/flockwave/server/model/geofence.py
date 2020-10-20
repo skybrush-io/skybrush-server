@@ -127,8 +127,6 @@ class GeofenceConfigurationRequest:
 
     - circular geofences
 
-    - rally points
-
     - configurable geofence actions
 
     - selectively turning on/off certain geofence types
@@ -152,6 +150,10 @@ class GeofenceConfigurationRequest:
     #: Inclusion and exclusion polygons in the geofence; `None` means not to
     #: update the polygons
     polygons: Optional[List[GeofencePolygon]] = None
+
+    #: Rally points in the geofence; `None` means not to update the rally
+    #: points
+    rally_points: List[GeofencePoint] = field(default_factory=list)
 
 
 _geofence_action_descriptions = {

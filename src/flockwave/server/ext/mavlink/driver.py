@@ -134,9 +134,6 @@ class MAVLinkDriver(UAVDriver):
         Parameters:
             show: the show data
         """
-        import pprint
-
-        pprint.pprint(show)
         await uav.upload_show(show)
 
     async def send_command_long(

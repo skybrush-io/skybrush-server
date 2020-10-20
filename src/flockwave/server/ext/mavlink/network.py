@@ -15,11 +15,11 @@ from contextlib import contextmanager, ExitStack
 from time import time_ns
 from trio.abc import ReceiveChannel
 from trio_util import periodic
-from typing import Any, Callable, Optional, Tuple, Union
+from typing import Any, Callable, Optional, Sequence, Tuple, Union
 
 from flockwave.connections import Connection, create_connection, ListenerConnection
 from flockwave.server.comm import CommunicationManager
-from flockwave.server.concurrency import Future
+from flockwave.server.concurrency import Future, race
 from flockwave.server.model import ConnectionPurpose, UAV
 from flockwave.server.utils import nop, overridden
 
@@ -270,6 +270,7 @@ class MAVLinkNetwork:
         spec: MAVLinkMessageSpecification,
         target: UAV,
         wait_for_response: Optional[Tuple[str, MAVLinkMessageMatcher]] = None,
+        wait_for_one_of: Optional[Sequence[Tuple[str, MAVLinkMessageMatcher]]] = None,
     ) -> Optional[MAVLinkMessage]:
         """Sends a message to the given UAV and optionally waits for a matching
         response.
@@ -312,6 +313,25 @@ class MAVLinkNetwork:
                 # _before_ we sent ours. Sort this out if it causes problems.
                 await self.manager.send_packet(spec, destination)
                 return await future.wait()
+
+        elif wait_for_one_of:
+            tasks = {}
+
+            with ExitStack() as stack:
+                # Prepare futures for every single message type that we expect,
+                # and then send the message itself
+                for key, (response_type, response_fields) in wait_for_one_of.items():
+                    future = stack.enter_context(
+                        self.expect_packet(
+                            response_type, response_fields, system_id=target.system_id
+                        )
+                    )
+                    tasks[key] = future.wait
+
+                # Now send the message and wait for _any_ of the futures to
+                # succeed
+                await self.manager.send_packet(spec, destination)
+                return await race(tasks)
         else:
             await self.manager.send_packet(spec, destination)
 
@@ -383,9 +403,11 @@ class MAVLinkNetwork:
             "HWSTATUS": nop,
             "LOCAL_POSITION_NED": nop,  # maybe later?
             "MEMINFO": nop,
+            "MISSION_ACK": nop,  # used for mission and geofence download / upload
             "MISSION_COUNT": nop,  # used for mission and geofence download / upload
-            "MISSION_ITEM_INT": nop,  # used for mission and geofence download / upload
             "MISSION_CURRENT": nop,  # maybe later?
+            "MISSION_ITEM_INT": nop,  # used for mission and geofence download / upload
+            "MISSION_REQUEST": nop,  # used for mission and geofence download / upload
             "NAV_CONTROLLER_OUTPUT": nop,
             "PARAM_VALUE": nop,
             "POSITION_TARGET_GLOBAL_INT": nop,

@@ -180,8 +180,6 @@ class ArduPilot(Autopilot):
     async def configure_geofence(
         self, uav, configuration: GeofenceConfigurationRequest
     ) -> None:
-        print(repr(configuration))
-
         if configuration.min_altitude is not None:
             # Update the minimum altitude limit; note that ArduCopter supports
             # only the [-100; 100] range.
@@ -204,7 +202,14 @@ class ArduPilot(Autopilot):
             # Update whether the fence is enabled or disabled
             await uav.set_parameter("FENCE_ENABLE", int(bool(configuration.enabled)))
 
-        # TODO(ntamas): update polygons
+        if configuration.polygons is not None:
+            # Generic stuff comes here
+            manager = GeofenceManager.for_uav(uav)
+            await manager.set_geofence_areas(configuration.polygons)
+
+        if configuration.rally_points is not None:
+            # TODO(ntamas): update rally points
+            pass
 
     async def get_geofence_status(self, uav) -> GeofenceStatus:
         status = GeofenceStatus()

@@ -3,9 +3,9 @@
 from collections.abc import Mapping
 from functools import partial, wraps
 from inspect import iscoroutine, iscoroutinefunction
-from trio import Cancelled, Event, WouldBlock, sleep
+from trio import Cancelled, Event, WouldBlock, open_nursery, sleep
 from trio_util import MailboxRepeatedEvent
-from typing import Any, Callable, Generic, Iterable, Iterator, TypeVar
+from typing import Any, Callable, Dict, Generic, Iterable, Iterator, TypeVar
 
 from flockwave.server.utils import identity
 
@@ -15,6 +15,7 @@ __all__ = (
     "cancellable",
     "Future",
     "FutureCancelled",
+    "race",
 )
 
 
@@ -380,3 +381,32 @@ class FutureMap(Mapping, Generic[T]):
 
         self._futures[id] = future = self._factory()
         return self.Context(future, partial(self._dispose_future, id, future))
+
+
+async def race(funcs: Dict[str, Callable[[], Any]]):
+    """Run multiple async functions concurrently and wait for at least one of
+    them to complete. Return the key corresponding to the function and the
+    result of the function as well.
+    """
+    holder = []
+
+    async with open_nursery() as nursery:
+        cancel = nursery.cancel_scope.cancel
+        for key, func in funcs.items():
+            set_result = partial(_cancel_and_set_result, cancel, holder, key)
+            nursery.start_soon(_wait_and_call, func, set_result)
+
+    return holder[0]
+
+
+def _cancel_and_set_result(cancel, holder, key, value):
+    holder.append((key, value))
+    cancel()
+
+
+async def _wait_and_call(f1, f2) -> None:
+    """Call an async function f1() and wait for its result. Call synchronous
+    function `f2()` with the result of `f1()` when `f1()` returns.
+    """
+    result = await f1()
+    f2(result)

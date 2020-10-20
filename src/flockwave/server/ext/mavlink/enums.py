@@ -119,6 +119,29 @@ class MAVMessageType(IntEnum):
     AUTOPILOT_VERSION = 148
 
 
+class MAVMissionResult(IntEnum):
+    """Replica of the `MAV_MISSION_RESULT` enum of the MAVLink protocol, using
+    proper Python enums.
+    """
+
+    ACCEPTED = 0
+    ERROR = 1
+    UNSUPPORTED_FRAME = 2
+    UNSUPPORTED = 3
+    NO_SPACE = 4
+    INVALID = 5
+    INVALID_PARAM1 = 6
+    INVALID_PARAM2 = 7
+    INVALID_PARAM3 = 8
+    INVALID_PARAM4 = 9
+    INVALID_PARAM5_X = 10
+    INVALID_PARAM6_Y = 11
+    INVALID_PARAM7 = 12
+    INVALID_SEQUENCE = 13
+    DENIED = 14
+    OPERATION_CANCELLED = 15
+
+
 class MAVMissionType(IntEnum):
     """Replica of the `MAV_MISSION_TYPE` enum of the MAVLink protocol, using
     proper Python enums.

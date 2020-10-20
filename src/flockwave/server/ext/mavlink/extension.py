@@ -5,7 +5,7 @@ MAVLink protocol.
 from __future__ import absolute_import
 
 from functools import partial
-from typing import Optional
+from typing import Optional, Sequence, Tuple
 
 from flockwave.server.ext.base import UAVExtensionBase
 from flockwave.server.model.uav import UAV
@@ -16,6 +16,7 @@ from .network import MAVLinkNetwork
 from .tasks import check_uavs_alive
 from .types import (
     MAVLinkMessage,
+    MAVLinkMessageMatcher,
     MAVLinkMessageSpecification,
     MAVLinkNetworkSpecification,
 )
@@ -137,6 +138,7 @@ class MAVLinkDronesExtension(UAVExtensionBase):
         spec: MAVLinkMessageSpecification,
         target: UAV,
         wait_for_response: Optional[MAVLinkMessageSpecification] = None,
+        wait_for_one_of: Optional[Sequence[Tuple[str, MAVLinkMessageMatcher]]] = None,
     ) -> Optional[MAVLinkMessage]:
         """Sends a message to the given UAV and optionally waits for a matching
         response.
@@ -152,13 +154,16 @@ class MAVLinkDronesExtension(UAVExtensionBase):
                 this argument to accept it as a response. The source system of
                 the MAVLink message must also be equal to the system ID of the
                 UAV where this message was sent.
+            wait_for_one_of:
         """
         network_id = target.network_id
         if not self._networks:
             raise RuntimeError("Cannot send packet; extension is not running")
 
         network = self._networks[network_id]
-        return await network.send_packet(spec, target, wait_for_response)
+        return await network.send_packet(
+            spec, target, wait_for_response, wait_for_one_of
+        )
 
 
 construct = MAVLinkDronesExtension

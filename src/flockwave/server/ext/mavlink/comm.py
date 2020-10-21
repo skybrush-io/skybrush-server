@@ -148,7 +148,7 @@ def _create_stream_based_mavlink_message_channel(
         spec, _ = spec_and_address
 
         type, kwds = spec
-        mavlink_version = kwds.pop("_mavlink_version", 1)
+        mavlink_version = kwds.pop("_mavlink_version", 2)
 
         message = create_mavlink_message(mavlink, type, **kwds)
         result = message.pack(mavlink, force_mavlink1=mavlink_version < 2)
@@ -159,6 +159,7 @@ def _create_stream_based_mavlink_message_channel(
 
     channel = MessageChannel(connection, parser=parser, encoder=encoder)
     channel.broadcast_address = ""
+
     return channel
 
 
@@ -205,8 +206,9 @@ def _create_datagram_based_mavlink_message_channel(
         spec, address = spec_and_address
 
         type, kwds = spec
+
         mavlink = mavlink_by_address[address]
-        mavlink_version = kwds.pop("_mavlink_version", 1)
+        mavlink_version = kwds.pop("_mavlink_version", 2)
 
         message = create_mavlink_message(mavlink, type, **kwds)
         result = message.pack(mavlink, force_mavlink1=mavlink_version < 2)

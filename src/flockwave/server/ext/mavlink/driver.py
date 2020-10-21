@@ -474,15 +474,19 @@ class MAVLinkUAV(UAVBase):
 
         self._store_message(message)
 
-        if self._mavlink_version < 2 and (
-            message.capabilities & MAVProtocolCapability.MAVLINK2
-        ):
-            # Autopilot supports MAVLink 2 so switch to it
-            self._mavlink_version = 2
+        if self._mavlink_version < 2:
+            if message.capabilities & MAVProtocolCapability.MAVLINK2:
+                # Autopilot supports MAVLink 2 so switch to it
+                self._mavlink_version = 2
 
-            # The other side has to know that we have switched; we do it by
-            # sending it a REQUEST_AUTOPILOT_CAPABILITIES message again
-            self.driver.run_in_background(self._request_autopilot_capabilities)
+                # The other side has to know that we have switched; we do it by
+                # sending it a REQUEST_AUTOPILOT_CAPABILITIES message again
+                self.driver.run_in_background(self._request_autopilot_capabilities)
+            else:
+                # MAVLink 2 not supported by the drone. We do not support MAVLink 1
+                # as most of the messages we use are MAVLink 2 only, so indicate
+                # a protocol error at this point and bail out.
+                self.ensure_error(FlockwaveErrorCode.AUTOPILOT_PROTOCOL_ERROR)
 
     def handle_message_drone_show_status(self, message: MAVLinkMessage):
         """Handles an incoming drone show specific status message targeted at

@@ -123,7 +123,7 @@ class CommunicationManager(Generic[PacketType, AddressType]):
 
     async def broadcast_packet(self, packet: PacketType, allow_failure: bool = False):
         """Requests the communication manager to broadcast the given message
-        packet to all connections.
+        packet to all destinations.
 
         Blocks until the packet is enqueued in the outbound queue, allowing
         other tasks to run.
@@ -139,6 +139,30 @@ class CommunicationManager(Generic[PacketType, AddressType]):
                 return
 
         await queue.send((packet, BROADCAST))
+
+    def enqueue_broadcast_packet(self, packet: PacketType, allow_failure: bool = False):
+        """Requests the communication manager to broadcast the given message
+        packet to all destinations and return immediately.
+
+        The packet may be dropped if the outbound queue is currently full.
+
+        Parameters:
+            packet: the packet to send
+        """
+        queue = self._outbound_tx_queue
+        if not queue:
+            if not allow_failure:
+                raise RuntimeError("Outbound message queue is closed")
+            else:
+                return
+
+        try:
+            queue.send_nowait((packet, BROADCAST))
+        except WouldBlock:
+            if self.log:
+                self.log.warn(
+                    "Dropping outbound broadcast packet; outbound message queue is full"
+                )
 
     def enqueue_packet(self, packet: PacketType, destination: Tuple[str, AddressType]):
         """Requests the communication manager to send the given message packet

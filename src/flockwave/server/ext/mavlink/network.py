@@ -27,6 +27,7 @@ from .comm import create_communication_manager, MAVLinkMessage
 from .driver import MAVLinkUAV
 from .enums import MAVAutopilot, MAVComponent, MAVMessageType, MAVState, MAVType
 from .packets import DroneShowStatus
+from .rtk import RTKCorrectionPacketEncoder
 from .types import (
     MAVLinkMessageMatcher,
     MAVLinkMessageSpecification,
@@ -99,6 +100,8 @@ class MAVLinkNetwork:
         self._uavs = {}
         self._uav_addresses = {}
 
+        self._rtk_correction_packet_encoder = RTKCorrectionPacketEncoder()
+
     def add_connection(self, connection: Connection):
         """Adds the given connection object to this network.
 
@@ -158,7 +161,9 @@ class MAVLinkNetwork:
         """The unique identifier of this MAVLink network."""
         return self._id
 
-    async def run(self, *, driver, log, register_uav, supervisor, use_connection):
+    async def run(
+        self, *, driver, log, register_uav, rtk_signal, supervisor, use_connection
+    ):
         """Starts the network manager.
 
         Parameters:
@@ -166,6 +171,9 @@ class MAVLinkNetwork:
             log: a logging object where the network manager can log messages
             register_uav: a callable that can be called with a single UAV_
                 object as an argument to get it registered in the application
+            rtk_signal: a signal that gets triggered whenever a new RTK
+                correction packet has to be broadcast to the UAVs in this
+                network
             supervisor: the application supervisor that can be used to re-open
                 connections if they get closed
             use_connection: context manager that must be entered when the
@@ -227,6 +235,9 @@ class MAVLinkNetwork:
                     _matchers=matchers,
                 )
             )
+
+            # Register a callback for RTK correction packets
+            stack.enter_context(rtk_signal.connected_to(self._on_rtk_correction_packet))
 
             # Start the communication manager
             try:
@@ -542,3 +553,17 @@ class MAVLinkNetwork:
 
     def _log_extra_from_message(self, message: MAVLinkMessage):
         return {"id": log_id_from_message(message, self.id)}
+
+    def _on_rtk_correction_packet(self, sender, packet: bytes):
+        """Handles an RTK correction packet that the server wishes to forward
+        to the drones in this network.
+
+        Parameters:
+            packet: the raw RTK correction packet to forward to the drones in
+                this network
+        """
+        if not self.manager:
+            return
+
+        for message in self._rtk_correction_packet_encoder.encode(packet):
+            self.manager.enqueue_broadcast_packet(message, allow_failure=True)

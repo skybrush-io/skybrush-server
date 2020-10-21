@@ -69,6 +69,7 @@ class MAVLinkDronesExtension(UAVExtensionBase):
             "driver": self._driver,
             "log": self.log,
             "register_uav": self._register_uav,
+            "rtk_signal": app.import_api("signals").get("rtk:packet"),
             "supervisor": app.supervise,
             "use_connection": app.connection_registry.use,
         }
@@ -167,4 +168,4 @@ class MAVLinkDronesExtension(UAVExtensionBase):
 
 
 construct = MAVLinkDronesExtension
-dependencies = ()
+dependencies = ("signals",)

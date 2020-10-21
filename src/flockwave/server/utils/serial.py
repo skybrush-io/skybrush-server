@@ -8,16 +8,22 @@ __all__ = ("describe_serial_port", "list_serial_ports")
 SerialPortDescriptor = Any
 
 
-def describe_serial_port(port: SerialPortDescriptor) -> str:
+def describe_serial_port(
+    port: SerialPortDescriptor, use_hardware_id: bool = False
+) -> str:
     """Returns a human-readable description for the given serial port that
     should be specific enough for a user to identify the port.
 
     Parameters:
         port: the port to describe; must be one of the objects returned from
             `list_serial_ports()`
+        use_hardware_id: whether to use the `hwid` attribute provided by the
+            serial port driver
     """
     description = port.description if port.description != "n/a" else ""
-    hwid = port.hwid if port.hwid != "n/a" else ""
+    hwid = (
+        port.hwid if use_hardware_id and getattr(port, "hwid", "n/a") != "n/a" else ""
+    )
 
     label = description or port.name or port.device
     if hwid:

@@ -14,6 +14,9 @@ from flockwave.server.model import ConnectionPurpose
 from flockwave.server.model.messages import FlockwaveMessage
 from flockwave.server.registries import find_in_registry
 from flockwave.server.utils import overridden
+from flockwave.server.utils.serial import (
+    list_serial_ports,
+)
 
 from ..base import ExtensionBase
 
@@ -33,6 +36,7 @@ class RTKExtension(ExtensionBase):
 
         self._command_queue = None
         self._current_preset = None
+        self._dynamic_serial_port_configurations = []
         self._presets = []
         self._registry = None
         self._statistics = RTKStatistics()
@@ -46,10 +50,40 @@ class RTKExtension(ExtensionBase):
             try:
                 self._presets.append(RTKConfigurationPreset.from_json(spec, id=id))
             except Exception:
-                self.log.exception(f"Ignoring invalid RTK configuration {id!r}")
+                self.log.error(f"Ignoring invalid RTK configuration {id!r}")
+
+        self._dynamic_serial_port_configurations = []
+        serial_port_specs = configuration.get("add_serial_ports")
+        if serial_port_specs is not None:
+            if serial_port_specs is True:
+                serial_port_specs = [115200]  # standard baud rate for 433 MHz radios
+            elif serial_port_specs is False:
+                serial_port_specs = []
+
+            if isinstance(serial_port_specs, int):
+                # we assume it is a single baud rate
+                serial_port_specs = [serial_port_specs]
+
+            try:
+                serial_port_specs = iter(serial_port_specs)
+            except Exception:
+                self.log.error(
+                    f"Ignoring invalid serial port configuration {serial_port_specs!r}"
+                )
+                serial_port_specs = None
+
+            for index, spec in enumerate(serial_port_specs):
+                if isinstance(spec, int):
+                    spec = {"baud": spec}
+                if isinstance(spec, dict):
+                    self._dynamic_serial_port_configurations.append(spec)
+                else:
+                    self.log.error(
+                        f"Ignoring invalid serial port configuration at index #{index}"
+                    )
 
     @property
-    def current_preset(self) -> RTKConfigurationPreset:
+    def current_preset(self) -> Optional[RTKConfigurationPreset]:
         """Returns the currently selected RTK configuration preset that is used
         for broadcasting RTK corrections to connected UAVs.
         """
@@ -68,8 +102,8 @@ class RTKExtension(ExtensionBase):
                 the failure can be registered
 
         Returns:
-            Optional[Clock]: the clock with the given ID or ``None`` if there
-                is no such clock
+            Optional[RTKConfigurationPreset]: the RTK preset with the given ID
+                or ``None`` if there is no such RTK preset
         """
         return find_in_registry(
             self._registry,
@@ -111,7 +145,7 @@ class RTKExtension(ExtensionBase):
                 if desired_preset is None:
                     return hub.reject(message, reason="No such RTK preset")
 
-            self.app.run_in_background(self._request_preset_switch, desired_preset)
+            self._request_preset_switch_later(desired_preset)
 
             return hub.acknowledge(message)
         else:
@@ -126,6 +160,8 @@ class RTKExtension(ExtensionBase):
         return self._statistics.json
 
     async def run(self, app, configuration, logger):
+        hotplug_event = app.import_api("signals").get("hotplug:event")
+
         with ExitStack() as stack:
             tx_queue, rx_queue = open_memory_channel(0)
 
@@ -138,9 +174,12 @@ class RTKExtension(ExtensionBase):
                     _tx_queue=tx_queue,
                 )
             )
+            stack.enter_context(hotplug_event.connected_to(self._on_hotplug_event))
 
             for preset in self._presets:
                 self._registry.add(preset)
+
+            self._update_dynamic_presets(first=True)
 
             stack.enter_context(
                 app.message_hub.use_message_handlers(
@@ -158,12 +197,22 @@ class RTKExtension(ExtensionBase):
                     if message == "set_preset":
                         await self._perform_preset_switch(args)
 
-    async def _request_preset_switch(self, value: RTKConfigurationPreset) -> None:
+    async def _request_preset_switch(
+        self, value: Optional[RTKConfigurationPreset]
+    ) -> None:
         """Requests the extension to switch to a new RTK preset."""
         if not self._tx_queue:
             self.log.warning("Cannot set RTK preset when the extension is not running")
         else:
             await self._tx_queue.send(("set_preset", value))
+
+    def _request_preset_switch_later(
+        self, value: Optional[RTKConfigurationPreset]
+    ) -> None:
+        """Requests the extension to switch to a new RTK preset as soon as
+        possible (but not immediately).
+        """
+        self.app.run_in_background(self._request_preset_switch, value)
 
     async def _perform_preset_switch(self, value: RTKConfigurationPreset) -> None:
         """Performs the switch from an RTK configuration preset to another,
@@ -241,6 +290,75 @@ class RTKExtension(ExtensionBase):
                     encoded = encoder(packet)
                     signal.send(packet=encoded)
 
+    def _on_hotplug_event(self, sender, event) -> None:
+        """Handler called for hotplug events. Used to trigger the regeneration
+        of the presets generated dynamically from serial ports.
+        """
+        self._update_dynamic_presets()
+
+    def _update_dynamic_presets(self, first: bool = False) -> None:
+        """Enumerates all the serial ports on the computer and creates a list of
+        dynamic presets, one or more for each serial port.
+
+        Parameters:
+            first: whether the list of dynamic presets is being updated for the
+                first time during the initialization of the extension
+        """
+        if not self._dynamic_serial_port_configurations:
+            return
+
+        to_add = []
+        seen = set()
+
+        # List the serial ports, create presets for the new ones, remember the
+        # ones for which we have already created a preset
+        has_multiple_configurations = len(self._dynamic_serial_port_configurations) > 1
+        for port in list_serial_ports():
+            for index, spec in enumerate(self._dynamic_serial_port_configurations):
+                preset_id = self._get_dynamic_preset_id_for_serial_port(port, index)
+                if self.find_preset_by_id(preset_id):
+                    # This preset exists already, nothing to do
+                    seen.add(preset_id)
+                else:
+                    preset = RTKConfigurationPreset.from_serial_port(
+                        port,
+                        spec,
+                        id=preset_id,
+                        use_configuration_in_title=has_multiple_configurations,
+                    )
+                    preset.dynamic = True
+                    to_add.append(preset)
+
+        to_remove = [
+            existing_preset
+            for existing_preset in self._registry
+            if existing_preset.dynamic and existing_preset.id not in seen
+        ]
+
+        for preset in to_remove:
+            self._registry.remove(preset)
+            self.log.info(
+                f"Removing RTK preset {preset.title!r} because the device was unplugged"
+            )
+
+        for preset in to_add:
+            self._registry.add(preset)
+            if not first:
+                self.log.info(f"Added new RTK preset {preset.title!r} for serial port")
+
+        current_preset = self.current_preset
+        if current_preset and current_preset.id not in self._registry:
+            self._request_preset_switch_later(None)
+
+    @staticmethod
+    def _get_dynamic_preset_id_for_serial_port(port, index: int = 0) -> str:
+        from flockwave.spec.ids import make_valid_object_id
+
+        return make_valid_object_id(f"{port.device}/{index}")
+
 
 construct = RTKExtension
 dependencies = ("ntrip", "signals")
+optional_dependencies = {
+    "hotplug": "detects when new USB devices are plugged in and updates the RTK sources automatically"
+}

@@ -134,6 +134,13 @@ class RegistryBase(Generic[T], Registry[T]):
         """Returns the number of entries in the registry."""
         return len(self._entries)
 
+    def __iter__(self):
+        """Iterates over the entries in the registry in the same order as the
+        IDs returned by the `ids` property.
+        """
+        for id in self.ids:
+            yield self._entries[id]
+
 
 def find_in_registry(
     registry: Registry[T],

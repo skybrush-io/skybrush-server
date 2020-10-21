@@ -86,6 +86,10 @@ while changed:
                     deps = imported_module.dependencies
                 else:
                     deps = ()
+                if hasattr(imported_module, "get_optional_dependencies"):
+                    deps.update(imported_module.get_optional_dependencies().values())
+                elif hasattr(imported_module, "optional_dependencies"):
+                    deps.update(optional_dependencies.values())
             except ImportError:
                 deps = ()
             if deps:

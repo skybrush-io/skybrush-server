@@ -28,10 +28,7 @@ COMMAND_EXECUTION_MANAGER = {"timeout": 30}
 # Declare the list of extensions to load
 EXTENSIONS = {
     "auth": {},
-    "auth_basic": {
-        "enabled": False,
-        "passwords": {"user@domain.xyz": "password"}
-    },
+    "auth_basic": {"enabled": False, "passwords": {"user@domain.xyz": "password"}},
     "cascade_demo": {
         "enabled": False,
         # Farkashegy
@@ -71,6 +68,7 @@ EXTENSIONS = {
         "enabled": False,
         "id_format": "BEACON:{0}",
     },
+    "hotplug": {},
     "http": {},
     "http_server": {},
     "mavlink": {
@@ -97,7 +95,8 @@ EXTENSIONS = {
                 "source": "tcp://192.168.47.1:8010",
                 "format": "rtcm3",  # can be rtcm2, rtcm3 or auto
             },
-        }
+        },
+        "add_serial_ports": True,
     },
     "show": {},
     "socketio": {},

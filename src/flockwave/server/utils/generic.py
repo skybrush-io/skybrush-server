@@ -1,4 +1,4 @@
-"""Utility functions that do not fit elsewhere."""
+"""Generic utility functions that do not fit elsewhere."""
 
 from collections import defaultdict
 from colour import Color
@@ -16,13 +16,16 @@ __all__ = (
     "clamp",
     "color_to_rgb565",
     "consecutive_pairs",
+    "constant",
     "datetime_to_unix_timestamp",
+    "divide_by",
     "identity",
     "is_timezone_aware",
     "itersubclasses",
     "keydefaultdict",
     "multiply_by",
     "nop",
+    "once",
     "optional_float",
     "optional_int",
     "overridden",

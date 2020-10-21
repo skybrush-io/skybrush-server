@@ -1,10 +1,15 @@
 from dataclasses import dataclass, field
-from typing import Any, Callable, Iterable, List, Optional
+from urllib.parse import urlencode
+from typing import Any, Callable, Dict, Iterable, List, Optional
 
 from flockwave.channels.types import Encoder, Parser
 from flockwave.gps.rtcm import create_rtcm_encoder, create_rtcm_parser
 from flockwave.gps.rtcm.packets import RTCMPacket, RTCMV2Packet, RTCMV3Packet
 from flockwave.server.utils import constant
+from flockwave.server.utils.serial import (
+    describe_serial_port,
+    describe_serial_port_configuration,
+)
 
 __all__ = ("RTKConfigurationPreset",)
 
@@ -22,12 +27,27 @@ class RTKConfigurationPreset:
     every received packet.
     """
 
+    #: The unique ID of the preset
     id: str
+
+    #: A human-readable title of the preset
     title: Optional[str] = None
+
+    #: Format of the RTCM messages arriving in this configuration
     format: str = "auto"
+
+    #: List of source connections where this preset collects messages from
     sources: List[str] = field(default_factory=list)
-    init: Optional[str] = None
+
+    #: Optional data to send on the connection before starting to read the
+    #: RTCM messages. Can be used for source-specific initialization.
+    init: Optional[bytes] = None
+
+    #: List of filters that the messages from the sources must pass through
     filter: Optional[RTKPacketFilter] = None
+
+    #: Whether this preset was generated dynamically at runtime
+    dynamic: bool = False
 
     @classmethod
     def from_json(cls, spec, *, id: Optional[str] = None):
@@ -67,6 +87,50 @@ class RTKConfigurationPreset:
 
         if "filter" in spec:
             result.filter = create_filter_function(**spec["filter"])
+
+        return result
+
+    @classmethod
+    def from_serial_port(
+        cls,
+        port,
+        configuration: Dict[str, Any],
+        *,
+        id: Optional[str] = None,
+        use_configuration_in_title: bool = True,
+    ):
+        """Creates an RTK configuration preset object from a serial port
+        descriptor and a configuration dictionary for the serial port with
+        things like baud rate and the number of stop bits.
+
+        Parameters:
+            port: the serial port descriptor from the `list_serial_ports()`
+                method
+            configuration: dictionary providing additional key-value pairs
+                that will be passed on to the constructor of a
+                SerialPortConnection when the port is opened
+            id: the ID of the preset
+            use_configuration_in_title: whether to include information
+                gathered from the configuration in the title of the newly
+                created preset
+        """
+        label = describe_serial_port(port)
+        spec = (
+            describe_serial_port_configuration(configuration, only=("baud", "stopbits"))
+            if use_configuration_in_title
+            else None
+        )
+        title = f"{label} ({spec})" if spec else label
+
+        result = cls(id=id, title=title)
+        result.format = "auto"
+
+        source = f"serial:{port.device}"
+        if configuration:
+            args = urlencode(configuration)
+            source = f"{source}?{args}"
+
+        result.add_source(source)
 
         return result
 

@@ -53,7 +53,7 @@ class MAVLinkDronesExtension(UAVExtensionBase):
                 extension
         """
         driver.create_device_tree_mutator = self.create_device_tree_mutation_context
-        driver.log = self.log.getChild("driver")
+        driver.log = self.log
         driver.run_in_background = self.run_in_background
         driver.send_packet = self._send_packet
 

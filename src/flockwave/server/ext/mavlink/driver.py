@@ -394,7 +394,7 @@ class MAVLinkUAV(UAVBase):
         record = self._last_messages.get(int(type))
         if now is None:
             now = monotonic()
-        return record.timestamp - now if record else inf
+        return now - record.timestamp if record else inf
 
     async def get_geofence_status(self) -> GeofenceStatus:
         """Returns the status of the geofence of the UAV."""
@@ -611,6 +611,10 @@ class MAVLinkUAV(UAVBase):
         self._is_connected = False
         # TODO(ntamas): trigger a warning flag in the UAV?
 
+        # Revert to MAVLink version 1 in case the UAV was somehow reset and it
+        # does not "understand" MAVLink v2 in its new configuration
+        self._mavlink_version = 1
+
     def notify_prearm_failure(self, message: str) -> None:
         """Notifies the UAV state object that a prearm check has failed."""
         self._preflight_status.message = message
@@ -662,15 +666,23 @@ class MAVLinkUAV(UAVBase):
 
     async def _configure_data_streams(self) -> None:
         """Configures the data streams that we want to receive from the UAV."""
+        success = False
+
         # We give ourselves 5 seconds to configure everything
         with move_on_after(5):
             try:
                 await self._configure_data_streams_with_fine_grained_commands()
+                success = True
             except NotSupportedError:
                 await self._configure_data_streams_with_legacy_commands()
+                success = True
 
         # TODO(ntamas): keep on trying to configure stuff in the background if
         # we fail
+        if not success:
+            self.driver.log.warn(
+                "Failed to configure data stream rates", extra={"id": self.id}
+            )
 
     async def _configure_data_streams_with_fine_grained_commands(self) -> None:
         """Configures the intervals of the messages that we want to receive from
@@ -727,10 +739,6 @@ class MAVLinkUAV(UAVBase):
         """Handles a reboot event on the autopilot and attempts to re-initialize
         the data streams.
         """
-        # Revert to MAVLink version 1 in case the UAV was somehow reset and it
-        # does not "understand" MAVLink v2 in its new configuration
-        self._mavlink_version = 1
-
         self.driver.run_in_background(self._configure_data_streams)
         self.driver.run_in_background(self._request_autopilot_capabilities)
 

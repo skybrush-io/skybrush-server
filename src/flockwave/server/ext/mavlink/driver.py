@@ -639,8 +639,8 @@ class MAVLinkUAV(UAVBase):
         self._velocity.y = message.vy / 100
         self._velocity.z = message.vz / 100
 
-        if abs(message.hdg) <= 3600:
-            heading = message.hdg / 10
+        if abs(message.hdg) <= 36000:
+            heading = message.hdg / 100
         else:
             heading = 0
 

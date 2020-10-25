@@ -160,7 +160,6 @@ class MAVLinkDronesExtension(UAVExtensionBase):
                 this argument to accept it as a response. The source system of
                 the MAVLink message must also be equal to the system ID of the
                 UAV where this message was sent.
-            wait_for_one_of:
         """
         network_id = target.network_id
         if not self._networks:

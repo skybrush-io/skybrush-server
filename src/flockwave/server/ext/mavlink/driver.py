@@ -50,7 +50,10 @@ from .enums import (
 )
 from .ftp import MAVFTP
 from .packets import DroneShowStatus
-from .types import MAVLinkMessage, spec
+from .types import (
+    MAVLinkMessage,
+    spec,
+)
 from .utils import mavlink_version_number_to_semver
 
 __all__ = ("MAVLinkDriver",)
@@ -218,12 +221,74 @@ class MAVLinkDriver(UAVDriver):
                 confirmation = 1
 
         if result is None:
-            raise TooSlowError
+            raise TooSlowError(f"no response received for command {command_id} in time")
 
         if result == MAVResult.UNSUPPORTED:
             raise NotSupportedError
 
         return result == MAVResult.ACCEPTED
+
+    async def send_packet_with_retries(
+        self,
+        spec,
+        target,
+        *,
+        wait_for_response=None,
+        wait_for_one_of=None,
+        timeout: Optional[float] = None,
+        retries: Optional[int] = None,
+    ) -> MAVLinkMessage:
+        """Sends a packet to the given target UAV, waiting for a matching reply
+        packet and re-sending the packet a given number of times when no
+        response arrives in time.
+
+        Parameters:
+            spec: the specification of the MAVLink message to send
+            target: the UAV to send the message to
+            wait_for_response: when not `None`, specifies a MAVLink message to
+                wait for as a response. The message specification will be
+                matched with all incoming MAVLink messages that have the same
+                type as the type in the specification; all parameters of the
+                incoming message must be equal to the template specified in
+                this argument to accept it as a response. The source system of
+                the MAVLink message must also be equal to the system ID of the
+                UAV where this message was sent.
+            timeout: timeout in seconds; `None` means to use the default
+                timeout for the driver. Retries will be attempted if no response
+                arrives to the packet within the given time interval
+            retries: maximum number of retries for the packet (not counting the
+                initial attempt); `None` means to use the default retry count
+                for the driver.
+        """
+        if timeout is None or timeout <= 0:
+            timeout = self._default_timeout
+        if retries is None or retries < 0:
+            retries = self._default_retries
+
+        if not wait_for_response and not wait_for_one_of:
+            raise RuntimeError(
+                "'wait_for_response' and 'wait_for_one_of' must be provided"
+            )
+
+        response = None
+
+        while retries >= 0:
+            try:
+                with fail_after(timeout):
+                    response = await self.send_packet(
+                        spec,
+                        target,
+                        wait_for_response=wait_for_response,
+                        wait_for_one_of=wait_for_one_of,
+                    )
+                    break
+            except TooSlowError:
+                retries -= 1
+
+        if response is None:
+            raise TooSlowError("no response received for the outbound packet in time")
+
+        return response
 
     def _request_preflight_report_single(self, uav) -> PreflightCheckInfo:
         return uav.preflight_status
@@ -285,7 +350,7 @@ class MAVLinkDriver(UAVDriver):
             # note that we don't check the altitude in the response because the
             # position target feedback could come in AMSL or AGL
         )
-        await self.send_packet(message, uav, wait_for_response=response)
+        await self.send_packet_with_retries(message, uav, wait_for_response=response)
 
     async def _send_landing_signal_single(self, uav) -> None:
         success = await self.send_command_long(uav, MAVCommand.NAV_LAND)
@@ -453,10 +518,11 @@ class MAVLinkUAV(UAVBase):
         the parameter.
         """
         param_id = name.encode("utf-8")[:16]
-        return await self.driver.send_packet(
+        return await self.driver.send_packet_with_retries(
             spec.param_request_read(param_id=param_id, param_index=-1),
             target=self,
             wait_for_response=spec.param_value(param_id=param_id),
+            timeout=0.7,
         )
 
     def get_version_info(self) -> VersionInfo:
@@ -486,7 +552,7 @@ class MAVLinkUAV(UAVBase):
         # we need its type
         param_id = name.encode("utf-8")[:16]
         response = await self._get_parameter(name)
-        await self.driver.send_packet(
+        await self.driver.send_packet_with_retries(
             spec.param_set(
                 param_id=param_id,
                 param_value=value,
@@ -494,6 +560,7 @@ class MAVLinkUAV(UAVBase):
             ),
             target=self,
             wait_for_response=spec.param_value(param_id=param_id),
+            timeout=0.7,
         )
 
     def handle_message_autopilot_version(self, message: MAVLinkMessage):

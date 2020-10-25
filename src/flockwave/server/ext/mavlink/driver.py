@@ -279,7 +279,6 @@ class MAVLinkDriver(UAVDriver):
         while retries >= 0:
             try:
                 with fail_after(timeout):
-                    print("Sending", spec)
                     response = await self.send_packet(
                         spec,
                         target,

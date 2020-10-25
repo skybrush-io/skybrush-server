@@ -650,7 +650,7 @@ class MAVLinkUAV(UAVBase):
 
         # Upload show file
         async with aclosing(MAVFTP.for_uav(self)) as ftp:
-            await ftp.put(data, "/show.skyb")
+            await ftp.put(data, "/collmot/show.skyb")
 
         # Configure show origin and orientation
         await self.set_parameter(

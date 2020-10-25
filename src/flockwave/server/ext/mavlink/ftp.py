@@ -589,8 +589,8 @@ class MAVFTP:
         self,
         message: MAVFTPMessage,
         *,
-        timeout: float = 1,
-        retries: int = 10,
+        timeout: float = 0.1,
+        retries: int = 600,
         allow_nak: bool = False,
     ) -> MAVFTPMessage:
         """Sends a raw FTP message over the connection and waits for the response

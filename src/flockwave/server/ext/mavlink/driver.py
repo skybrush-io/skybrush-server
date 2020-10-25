@@ -105,7 +105,7 @@ class MAVLinkDriver(UAVDriver):
         self.send_packet = None
 
         self._default_timeout = 2
-        self._default_retries = 3
+        self._default_retries = 5
 
     def create_uav(self, id: str) -> "MAVLinkUAV":
         """Creates a new UAV that is to be managed by this driver.
@@ -140,7 +140,11 @@ class MAVLinkDriver(UAVDriver):
         Parameters:
             show: the show data
         """
-        await uav.upload_show(show)
+        try:
+            await uav.upload_show(show)
+        except Exception:
+            self.log.exception("AAAA")
+            raise
 
     async def send_command_long(
         self,
@@ -275,6 +279,7 @@ class MAVLinkDriver(UAVDriver):
         while retries >= 0:
             try:
                 with fail_after(timeout):
+                    print("Sending", spec)
                     response = await self.send_packet(
                         spec,
                         target,

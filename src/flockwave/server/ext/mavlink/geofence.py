@@ -5,6 +5,7 @@ from functools import partial, singledispatch
 from trio import fail_after, TooSlowError
 from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
 
+from flockwave.logger import Logger
 from flockwave.server.model.geofence import (
     GeofenceCircle,
     GeofencePolygon,
@@ -45,16 +46,19 @@ class GeofenceManager:
     def for_uav(cls, uav):
         """Constructs a MAVFTP connection object to the given UAV."""
         sender = partial(uav.driver.send_packet, target=uav)
-        return cls(sender)
+        log = uav.driver.log
+        return cls(sender, log=log)
 
-    def __init__(self, sender):
+    def __init__(self, sender, log: Optional[Logger] = None):
         """Constructor.
 
         Parameters:
             sender: a function that can be called to send a MAVLink message and
                 wait for an appropriate reply
+            log: optional logger to use for logging messages
         """
         self._sender = sender
+        self._log = log
 
     async def get_geofence_areas(
         self, status: Optional[GeofenceStatus] = None
@@ -218,6 +222,9 @@ class GeofenceManager:
 
         Parameters:
             areas: the polygons and circles to upload
+
+        Raises:
+            TooSlowError: if the UAV failed to respond in time
         """
         items = []
         for area in areas:
@@ -228,10 +235,12 @@ class GeofenceManager:
         num_items = len(items)
         mission_type = MAVMissionType.FENCE
 
-        for index in range(-1, num_items):
-            if index < 0:
+        index, finished = None, False
+        while not finished:
+            if index is None:
                 # We need to let the drone know how many items there will be
                 message = spec.mission_count(count=num_items, mission_type=mission_type)
+                should_resend = True
             else:
                 # We need to send the item with the given index to the drone
                 command, kwds = items[index]
@@ -252,19 +261,40 @@ class GeofenceManager:
                 )
                 params.update(kwds)
                 message = spec.mission_item_int(**params)
+                should_resend = False
 
-            if index + 1 < num_items:
-                # Drone must respond with requesting the next item
-                # TODO(ntamas): we could also receive MISSION_REQUEST_INT here,
-                # we need to handle both!
-                expected_reply = spec.mission_request(
-                    seq=index + 1, mission_type=mission_type
-                )
+            # Drone must respond with requesting the next item (or asking
+            # to repeat the current one), or by sending an ACK or NAK. We should
+            # _not_ attempt to re-send geofence items; it is the responsiblity
+            # of the drone to request them again if they got lost.
+            #
+            # TODO(ntamas): we could also receive MISSION_REQUEST_INT here,
+            # we need to handle both!
+            expected_reply = spec.mission_request(mission_type=mission_type)
+
+            # We have different policies for the initial message that
+            # initiates the upload and the subsequent messages that are
+            # responding to the requests from the drone.
+            #
+            # For the initial message, we attempt to re-send it in case it
+            # got lost. For subsequent messages, we never re-send it (it is
+            # the responsibility of the drone to request them again if our
+            # reply got lost), but we assume that the upload timed out if
+            # we haven't received an ACK or the next request from the drone
+            # in five seconds.
+            reply = await self._send_and_wait(
+                mission_type,
+                message,
+                expected_reply,
+                timeout=1.5 if should_resend else 5,
+                retries=5 if should_resend else 0,
+            )
+            if reply is None:
+                # Final ACK received
+                finished = True
             else:
-                # Drone must respond by acknowledging the transfer
-                expected_reply = spec.mission_ack(mission_type=mission_type)
-
-            await self._send_and_wait(mission_type, message, expected_reply)
+                # Drone requested another item
+                index = reply.seq
 
     async def _send_and_wait(
         self,
@@ -304,9 +334,6 @@ class GeofenceManager:
                 "ack": spec.mission_ack(mission_type=mission_type),
             }
 
-        # TODO(ntamas): we could also receive a MISSION_ACK and not a
-        # MISSION_ITEM_INT; handle that as well. The type of the ACK will
-        # be one of the values from MAVMissionResult
         while True:
             try:
                 with fail_after(timeout):
@@ -318,10 +345,10 @@ class GeofenceManager:
                     else:
                         # Got an ACK. Check whether it has an error code.
                         if response.type == MAVMissionResult.ACCEPTED:
-                            return response
+                            return None
                         else:
                             raise RuntimeError(
-                                f"MAVLink mission operation returned {response.type}"
+                                f"MAVLink mission operation returned code {response.type}"
                             )
 
             except TooSlowError:
@@ -329,7 +356,7 @@ class GeofenceManager:
                     retries -= 1
                     continue
                 else:
-                    raise
+                    raise TooSlowError("MAVLink mission operation timed out")
 
     async def _send_final_ack(self, mission_type: int) -> None:
         """Sends the final acknowledgment at the end of a mission download

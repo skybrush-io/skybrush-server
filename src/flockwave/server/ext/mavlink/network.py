@@ -62,7 +62,10 @@ class MAVLinkNetwork:
         a configuration file.
         """
         result = cls(
-            spec.id, system_id=spec.system_id, id_formatter=spec.id_format.format
+            spec.id,
+            system_id=spec.system_id,
+            id_formatter=spec.id_format.format,
+            packet_loss=spec.packet_loss,
         )
 
         for index, connection_spec in enumerate(spec.connections):
@@ -77,6 +80,7 @@ class MAVLinkNetwork:
         *,
         system_id: int = 255,
         id_formatter: Callable[[int, str], str] = "{0}".format,
+        packet_loss: float = 0,
     ):
         """Constructor.
 
@@ -90,10 +94,13 @@ class MAVLinkNetwork:
             id_formatter: function that can be called with a MAVLink system ID
                 and the network ID, and that must return a string that will be
                 used for the drone with the given system ID on the network
+            packet_loss: when larger than zero, simulates packet loss on the
+                network by randomly dropping received and sent MAVLink messages
         """
         self._id = id
         self._id_formatter = id_formatter
         self._matchers = None
+        self._packet_loss = max(float(packet_loss), 0.0)
         self._system_id = 255
 
         self._connections = []
@@ -210,7 +217,14 @@ class MAVLinkNetwork:
                 )
 
             # Create the communication manager
-            manager = create_communication_manager()
+            manager = create_communication_manager(packet_loss=self._packet_loss)
+
+            # Warn the user about the simulated packet loss setting
+            if self._packet_loss > 0:
+                percentage = round(min(1, self._packet_loss) * 100)
+                log.warn(
+                    f"Simulating {percentage}% packet loss on MAVLink network {self._id}"
+                )
 
             # Register the links with the communication manager. The order is
             # important here; the ones coming first will primarily be used for

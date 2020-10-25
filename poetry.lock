@@ -253,6 +253,14 @@ test = ["nose"]
 
 [[package]]
 category = "main"
+description = "The classic ``compose``, with all the Pythonic features."
+name = "compose"
+optional = false
+python-versions = "*"
+version = "1.1.1"
+
+[[package]]
+category = "main"
 description = "CRC Generator"
 name = "crcmod"
 optional = false
@@ -834,7 +842,6 @@ version = "6.4.4"
 [[package]]
 category = "main"
 description = "C parser in Python"
-marker = "os_name == \"nt\" and implementation_name != \"pypy\""
 name = "pycparser"
 optional = false
 python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
@@ -1328,7 +1335,7 @@ docs = ["sphinx", "jaraco.packaging (>=3.2)", "rst.linker (>=1.9)"]
 testing = ["pytest (>=3.5,<3.7.3 || >3.7.3)", "pytest-checkdocs (>=1.2.3)", "pytest-flake8", "pytest-cov", "jaraco.test (>=3.2.0)", "jaraco.itertools", "func-timeout", "pytest-black (>=0.3.7)", "pytest-mypy"]
 
 [metadata]
-content-hash = "198ffae570ad88919f1fc715bfd6ccaba02407fe5719df203f5a3ac057c83480"
+content-hash = "ef07ba4c5e3156973d90c6f69cf376b4bbce5c3ecb52a3e166a372c2ab5174a6"
 python-versions = "^3.7"
 
 [metadata.files]
@@ -1451,6 +1458,10 @@ colorlog = [
 colour = [
     {file = "colour-0.1.5-py2.py3-none-any.whl", hash = "sha256:33f6db9d564fadc16e59921a56999b79571160ce09916303d35346dddc17978c"},
     {file = "colour-0.1.5.tar.gz", hash = "sha256:af20120fefd2afede8b001fbef2ea9da70ad7d49fafdb6489025dae8745c3aee"},
+]
+compose = [
+    {file = "compose-1.1.1-py2.py3-none-any.whl", hash = "sha256:1d362f5bae5098dfe419a1c4f9a481e5c49b89e70da20a2b02aea8d18a825467"},
+    {file = "compose-1.1.1.tar.gz", hash = "sha256:3710b652cc9fccc36102f4eeccd1c4ff6bc9559b1c405e7884cb2de20e82003a"},
 ]
 crcmod = [
     {file = "crcmod-1.7.tar.gz", hash = "sha256:dc7051a0db5f2bd48665a990d3ec1cc305a466a77358ca4492826f41f283601e"},

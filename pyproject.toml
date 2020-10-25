@@ -52,6 +52,7 @@ flockwave-app-framework = {version = "^0.2.0", extras = ["daemon"]}
 msgpack = "^1.0.0"
 aio-usb-hotplug = "^2.0.0"
 pyserial = "^3.4"
+compose = "^1.1.1"
 
 [tool.poetry.dev-dependencies]
 pytest = "^5.4.3"

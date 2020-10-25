@@ -3,10 +3,12 @@ UAV and the ground station via some communication link.
 """
 
 from collections import defaultdict
+from compose import compose
+from functools import partial
 from importlib import import_module
 from typing import Any, Callable, List, Union, Tuple
 
-from flockwave.channels import MessageChannel
+from flockwave.channels import MessageChannel, create_lossy_channel
 from flockwave.connections import Connection, StreamConnectionBase
 from flockwave.logger import Logger
 from flockwave.networking import format_socket_address
@@ -51,10 +53,24 @@ def get_mavlink_factory(
     return factory
 
 
-def create_communication_manager() -> CommunicationManager[Any, Any]:
-    """Creates a communication manager instance for the extension."""
+def create_communication_manager(
+    packet_loss: float = 0,
+) -> CommunicationManager[Any, Any]:
+    """Creates a communication manager instance for the extension.
+
+    Parameters:
+        packet_loss: simulated packet loss probability; zero means normal
+            behaviour
+    """
+    channel_factory = create_mavlink_message_channel
+
+    if packet_loss > 0:
+        channel_factory = compose(
+            partial(create_lossy_channel, loss_probability=packet_loss), channel_factory
+        )
+
     return CommunicationManager(
-        channel_factory=create_mavlink_message_channel,
+        channel_factory=channel_factory,
         format_address=format_mavlink_channel_address,
     )
 

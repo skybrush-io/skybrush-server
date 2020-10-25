@@ -111,11 +111,16 @@ class MAVLinkDronesExtension(UAVExtensionBase):
             # networks, otherwise just use the system ID
             default_id_format = "{1}:{0}" if len(network_specs) > 1 else "{0}"
 
+        # Determine the default simulated packet loss rate from the configuration
+        default_packet_Loss = configuration.get("packet_loss", None)
+
         # Apply the default ID format for networks that do not specify an
         # ID format on their own
         for value in network_specs.values():
             if "id_format" not in value:
                 value["id_format"] = default_id_format
+            if default_packet_Loss is not None and "packet_loss" not in value:
+                value["packet_loss"] = default_packet_Loss
 
         # Return the network specifications
         return {

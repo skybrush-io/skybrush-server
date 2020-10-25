@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from functools import partial
 from math import inf
 from time import monotonic
-from trio import move_on_after, sleep
+from trio import fail_after, move_on_after, sleep, TooSlowError
 from typing import List, Optional
 
 from flockwave.gps.vectors import GPSCoordinate, VelocityNED
@@ -101,6 +101,9 @@ class MAVLinkDriver(UAVDriver):
         self.run_in_background = None
         self.send_packet = None
 
+        self._default_timeout = 2
+        self._default_retries = 3
+
     def create_uav(self, id: str) -> "MAVLinkUAV":
         """Creates a new UAV that is to be managed by this driver.
 
@@ -148,7 +151,8 @@ class MAVLinkDriver(UAVDriver):
         param6: float = 0,
         param7: float = 0,
         *,
-        confirmation: int = 0,
+        timeout: Optional[float] = None,
+        retries: Optional[int] = None,
     ) -> bool:
         """Sends a MAVLink command to a given UAV and waits for an acknowlegment.
 
@@ -161,34 +165,60 @@ class MAVLinkDriver(UAVDriver):
             param5: the fifth parameter of the command
             param6: the sixth parameter of the command
             param7: the seventh parameter of the command
-            confirmation: confirmation count for commands that require a
-                confirmation
+            timeout: command timeout in seconds; `None` means to use the default
+                timeout for the driver. Retries will be attempted if no response
+                arrives to the command within the given time interval
+            retries: maximum number of retries for the command (not counting the
+                initial attempt); `None` means to use the default retry count
+                for the driver.
 
         Returns:
             whether the command was executed successfully
 
         Raises:
+            TooSlowError: if the UAV failed to respond in time, even after
+                re-sending the command as needed
             NotSupportedError: if the command is not supported by the UAV
         """
-        response = await self.send_packet(
-            (
-                "COMMAND_LONG",
-                {
-                    "command": command_id,
-                    "param1": param1,
-                    "param2": param2,
-                    "param3": param3,
-                    "param4": param4,
-                    "param5": param5,
-                    "param6": param6,
-                    "param7": param7,
-                    "confirmation": confirmation,
-                },
-            ),
-            target,
-            wait_for_response=("COMMAND_ACK", {"command": command_id}),
-        )
-        result = response.result
+        # TODO(ntamas): use confirmation when attempt > 1
+
+        if timeout is None or timeout <= 0:
+            timeout = self._default_timeout
+        if retries is None or retries < 0:
+            retries = self._default_retries
+
+        confirmation = 0
+        result = None
+
+        while retries >= 0:
+            try:
+                with fail_after(timeout):
+                    response = await self.send_packet(
+                        (
+                            "COMMAND_LONG",
+                            {
+                                "command": command_id,
+                                "param1": param1,
+                                "param2": param2,
+                                "param3": param3,
+                                "param4": param4,
+                                "param5": param5,
+                                "param6": param6,
+                                "param7": param7,
+                                "confirmation": confirmation,
+                            },
+                        ),
+                        target,
+                        wait_for_response=("COMMAND_ACK", {"command": command_id}),
+                    )
+                    result = response.result
+                    break
+            except TooSlowError:
+                retries -= 1
+                confirmation = 1
+
+        if result is None:
+            raise TooSlowError
 
         if result == MAVResult.UNSUPPORTED:
             raise NotSupportedError
@@ -668,14 +698,18 @@ class MAVLinkUAV(UAVBase):
         """Configures the data streams that we want to receive from the UAV."""
         success = False
 
-        # We give ourselves 5 seconds to configure everything
-        with move_on_after(5):
+        # We give ourselves 60 seconds to configure everything. Most of the
+        # internal functions time out on their own anyway
+        with move_on_after(60):
             try:
                 await self._configure_data_streams_with_fine_grained_commands()
                 success = True
             except NotSupportedError:
                 await self._configure_data_streams_with_legacy_commands()
                 success = True
+            except TooSlowError:
+                # attempt timed out, even after retries, so we just give up
+                pass
 
         # TODO(ntamas): keep on trying to configure stuff in the background if
         # we fail

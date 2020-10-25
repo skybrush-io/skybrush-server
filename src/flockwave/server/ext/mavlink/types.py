@@ -91,6 +91,11 @@ class MAVLinkNetworkSpecification:
     #: `create_connection()` function.
     connections: Dict[str, Any] = field(default_factory=dict)
 
+    #: Whether to simulate packet loss in this network by randomly dropping
+    #: received and sent messages. Zero means the normal behaviour, otherwise
+    #: it is interpreted as the probability of a lost MAVLink message.
+    packet_loss: float = 0
+
     @classmethod
     def from_json(cls, obj, id: Optional[str] = None) -> "MAVLinkNetworkSpecification":
         """Constructs a MAVLink network specification from its JSON
@@ -107,6 +112,9 @@ class MAVLinkNetworkSpecification:
         if "connections" in obj:
             result.connections = obj["connections"]
 
+        if "packet_loss" in obj:
+            result.packet_loss = float(obj["packet_loss"])
+
         return result
 
     @property
@@ -117,4 +125,5 @@ class MAVLinkNetworkSpecification:
             "id_format": self.id_format,
             "system_id": self.system_id,
             "connections": self.connections,
+            "packet_loss": self.packet_loss,
         }

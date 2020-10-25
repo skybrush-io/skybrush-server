@@ -356,7 +356,7 @@ class GeofenceManager:
                     retries -= 1
                     continue
                 else:
-                    raise TooSlowError("MAVLink mission operation timed out")
+                    raise TooSlowError("MAVLink mission operation timed out") from None
 
     async def _send_final_ack(self, mission_type: int) -> None:
         """Sends the final acknowledgment at the end of a mission download

@@ -170,7 +170,7 @@ class DroneShowStatus:
         """Returns a short status message string that can be used for reporting
         the status of the drone show subsystem on the UI.
         """
-        if self.stage.probably_airborne:
+        if self.stage.probably_airborne or self.elapsed_time >= -30:
             clock = format_elapsed_time(self.elapsed_time)
         else:
             clock = format_gps_time_of_week(self.start_time)
@@ -199,7 +199,10 @@ class DroneShowStatus:
             return "Origin not set"
         elif not flags & DroneShowStatusFlag.HAS_ORIENTATION:
             return "Orientation not set"
-        elif not flags & DroneShowStatusFlag.HAS_START_TIME:
+        elif (
+            not flags & DroneShowStatusFlag.HAS_START_TIME
+            and stage != DroneShowExecutionStage.LANDED
+        ):
             return "Start time not set"
         elif not flags & DroneShowStatusFlag.HAS_GEOFENCE:
             return "Geofence not set"

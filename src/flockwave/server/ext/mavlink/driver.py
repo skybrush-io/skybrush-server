@@ -597,7 +597,10 @@ class MAVLinkUAV(UAVBase):
         data = DroneShowStatus.from_mavlink_message(message)
         self._gps_fix.num_satellites = data.num_satellites
         self._gps_fix.type = data.gps_fix
-        self.update_status(light=data.light, gps=self._gps_fix)
+
+        debug = data.message.encode("utf-8")
+
+        self.update_status(light=data.light, gps=self._gps_fix, debug=debug)
         self.notify_updated()
 
     def handle_message_heartbeat(self, message: MAVLinkMessage):
@@ -677,7 +680,7 @@ class MAVLinkUAV(UAVBase):
         self.notify_updated()
 
     def handle_message_system_time(self, message: MAVLinkMessage):
-        """Handles an incoming MAVLink HEARTBEAT message targeted at this UAV."""
+        """Handles an incoming MAVLink SYSTEM_TIME message targeted at this UAV."""
         previous_message = self._get_previous_copy_of_message(message)
         if previous_message:
             # TODO(ntamas): compare the time since boot with the previous
@@ -738,7 +741,6 @@ class MAVLinkUAV(UAVBase):
 
     async def set_custom_mode(self, mode: int) -> None:
         """Attempts to set the UAV in the given custom mode."""
-        print("Trying to set custom flight mode to", mode)
         await self.driver.send_command_long(
             self,
             MAVCommand.DO_SET_MODE,

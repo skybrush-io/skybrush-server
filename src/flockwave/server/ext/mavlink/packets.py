@@ -120,7 +120,7 @@ class DroneShowStatus:
     TYPE = 0x5B
 
     #: Structure of Skybrush-specific DATA16 show status packets
-    _struct = Struct("<iHBBBh")
+    _struct = Struct("<iHBBBxh")
 
     @classmethod
     def from_bytes(cls, data: bytes):
@@ -128,11 +128,11 @@ class DroneShowStatus:
         DATA16 packet that has already been truncated to the desired length of
         the packet.
         """
-        if len(data) < 11:
-            data = data.ljust(11, b"\x00")
+        if len(data) < 12:
+            data = data.ljust(12, b"\x00")
 
         start_time, light, flags, stage, gps_health, elapsed_time = cls._struct.unpack(
-            data[:11]
+            data[:12]
         )
 
         try:

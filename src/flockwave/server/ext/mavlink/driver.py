@@ -101,6 +101,7 @@ class MAVLinkDriver(UAVDriver):
 
         self.create_device_tree_mutator = None
         self.log = None
+        self.mandatory_custom_mode = None
         self.run_in_background = None
         self.send_packet = None
 
@@ -735,6 +736,16 @@ class MAVLinkUAV(UAVBase):
     def preflight_status(self) -> PreflightCheckInfo:
         return self._preflight_status
 
+    async def set_custom_mode(self, mode: int) -> None:
+        """Attempts to set the UAV in the given custom mode."""
+        print("Trying to set custom flight mode to", mode)
+        await self.driver.send_command_long(
+            self,
+            MAVCommand.DO_SET_MODE,
+            param1=MAVModeFlag.CUSTOM_MODE_ENABLED,
+            param2=mode,
+        )
+
     async def upload_show(self, show) -> None:
         coordinate_system = get_coordinate_system_from_show_specification(show)
         if coordinate_system.type != "nwu":
@@ -846,6 +857,11 @@ class MAVLinkUAV(UAVBase):
         """
         self.driver.run_in_background(self._configure_data_streams)
         self.driver.run_in_background(self._request_autopilot_capabilities)
+
+        if self.driver.mandatory_custom_mode is not None:
+            self.driver.run_in_background(
+                self.set_custom_mode, self.driver.mandatory_custom_mode
+            )
 
     async def _request_autopilot_capabilities(self) -> None:
         """Retrieves the capabilities of the autopilot via MAVLink."""

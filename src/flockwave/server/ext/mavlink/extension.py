@@ -9,7 +9,7 @@ from typing import Optional, Sequence, Tuple
 
 from flockwave.server.ext.base import UAVExtensionBase
 from flockwave.server.model.uav import UAV
-from flockwave.server.utils import overridden
+from flockwave.server.utils import optional_int, overridden
 
 from .driver import MAVLinkDriver
 from .network import MAVLinkNetwork
@@ -32,6 +32,7 @@ class MAVLinkDronesExtension(UAVExtensionBase):
 
     def __init__(self):
         super(MAVLinkDronesExtension, self).__init__()
+
         self._driver = None
         self._networks = None
         self._uavs = None
@@ -54,6 +55,7 @@ class MAVLinkDronesExtension(UAVExtensionBase):
         """
         driver.create_device_tree_mutator = self.create_device_tree_mutation_context
         driver.log = self.log
+        driver.mandatory_custom_mode = optional_int(configuration.get("custom_mode"))
         driver.run_in_background = self.run_in_background
         driver.send_packet = self._send_packet
 
@@ -111,16 +113,20 @@ class MAVLinkDronesExtension(UAVExtensionBase):
             # networks, otherwise just use the system ID
             default_id_format = "{1}:{0}" if len(network_specs) > 1 else "{0}"
 
-        # Determine the default simulated packet loss rate from the configuration
-        default_packet_Loss = configuration.get("packet_loss", None)
+        # Create the object holding the defaults for the individual network
+        # configurations
+        MISSING = object()
+        network_spec_defaults = {
+            "id_format": default_id_format,
+            "packet_loss": configuration.get("packet_loss", MISSING),
+        }
 
         # Apply the default ID format for networks that do not specify an
         # ID format on their own
-        for value in network_specs.values():
-            if "id_format" not in value:
-                value["id_format"] = default_id_format
-            if default_packet_Loss is not None and "packet_loss" not in value:
-                value["packet_loss"] = default_packet_Loss
+        for spec in network_specs.values():
+            for key, value in network_spec_defaults.items():
+                if key not in spec and value is not MISSING:
+                    spec[key] = value
 
         # Return the network specifications
         return {

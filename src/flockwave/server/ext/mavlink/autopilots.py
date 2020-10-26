@@ -87,6 +87,18 @@ class Autopilot(metaclass=ABCMeta):
         raise NotImplementedError
 
     @abstractmethod
+    def get_custom_flight_mode_number(self, mode: str) -> int:
+        """Returns the numeric flight mode corresponding to the given mode
+        description as a string.
+
+        Raises:
+            NotImplementedError: if we have not implemented the conversion from
+                a mode string to a custom flight mode number
+            ValueError: if the flight mode is not known to the autopilot
+        """
+        raise NotImplementedError
+
+    @abstractmethod
     async def get_geofence_status(self, uav) -> GeofenceStatus:
         """Retrieves a full geofence status object from the drone.
 
@@ -124,6 +136,9 @@ class UnknownAutopilot(Autopilot):
     ) -> None:
         raise NotSupportedError
 
+    def get_custom_flight_mode_number(self, mode: str) -> int:
+        raise NotSupportedError
+
     async def get_geofence_status(self, uav) -> GeofenceStatus:
         raise NotSupportedError
 
@@ -132,31 +147,34 @@ class ArduPilot(Autopilot):
     """Class representing the ArduPilot autopilot firmware."""
 
     name = "ArduPilot"
+
+    #: Custom mode dictionary, containing the primary name and the aliases for
+    #: each known flight mode
     _custom_modes = {
-        0: "stabilize",
-        1: "acro",
-        2: "alt hold",
-        3: "auto",
-        4: "guided",
-        5: "loiter",
-        6: "rth",
-        7: "circle",
-        9: "land",
-        11: "drift",
-        13: "sport",
-        14: "flip",
-        15: "tune",
-        16: "pos hold",
-        17: "brake",
-        18: "throw",
-        19: "avoid ADSB",
-        20: "guided no GPS",
-        21: "smart RTH",
-        22: "flow hold",
-        23: "follow",
-        24: "zigzag",
-        25: "system ID",
-        26: "heli autorotate",
+        0: ("stabilize", "stab"),
+        1: ("acro",),
+        2: ("alt hold",),
+        3: ("auto",),
+        4: ("guided",),
+        5: ("loiter",),
+        6: ("rth",),
+        7: ("circle",),
+        9: ("land",),
+        11: ("drift",),
+        13: ("sport",),
+        14: ("flip",),
+        15: ("tune",),
+        16: ("pos hold",),
+        17: ("brake",),
+        18: ("throw",),
+        19: ("avoid ADSB", "avoid"),
+        20: ("guided no GPS",),
+        21: ("smart RTH",),
+        22: ("flow hold",),
+        23: ("follow",),
+        24: ("zigzag",),
+        25: ("system ID",),
+        26: ("heli autorotate", "autorotate"),
     }
 
     _geofence_actions = {
@@ -175,7 +193,8 @@ class ArduPilot(Autopilot):
         This method is called if the "custom mode" bit is set in the base mode
         of the heartbeat.
         """
-        return cls._custom_modes.get(custom_mode, f"mode {custom_mode}")
+        mode_attrs = cls._custom_modes.get(custom_mode)
+        return mode_attrs[0] if mode_attrs else f"mode {custom_mode}"
 
     async def configure_geofence(
         self, uav, configuration: GeofenceConfigurationRequest
@@ -210,6 +229,16 @@ class ArduPilot(Autopilot):
         if configuration.rally_points is not None:
             # TODO(ntamas): update rally points
             pass
+
+    def get_custom_flight_mode_number(self, mode: str) -> int:
+        mode = mode.lower().replace(" ", "")
+        for number, names in self._custom_modes.items():
+            for name in names:
+                name = name.lower().replace(" ", "")
+                if name == mode:
+                    return number
+
+        raise ValueError(f"unknown flight mode: {mode!r}")
 
     async def get_geofence_status(self, uav) -> GeofenceStatus:
         status = GeofenceStatus()
@@ -265,7 +294,7 @@ class ArduPilotWithSkybrush(ArduPilot):
     """
 
     name = "ArduPilot + Skybrush"
-    _custom_modes = extend_custom_modes(ArduPilot, {127: "show"})
+    _custom_modes = extend_custom_modes(ArduPilot, {127: ("show",)})
 
     CAPABILITY_MASK = (
         MAVProtocolCapability.PARAM_FLOAT

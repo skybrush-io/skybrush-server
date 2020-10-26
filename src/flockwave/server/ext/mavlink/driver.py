@@ -8,7 +8,7 @@ from functools import partial
 from math import inf
 from time import monotonic
 from trio import fail_after, move_on_after, sleep, TooSlowError
-from typing import List, Optional
+from typing import List, Optional, Union
 
 from flockwave.gps.vectors import GPSCoordinate, VelocityNED
 
@@ -131,6 +131,18 @@ class MAVLinkDriver(UAVDriver):
         name_validator=to_uppercase_string
     )
     handle_command_version = create_version_command_handler()
+
+    async def handle_command_mode(self, uav: "MAVLinkUAV", mode: Optional[str] = None):
+        """Returns or sets the (custom) flight mode of the UAV.
+
+        Parameters:
+            mode: the name of the mode to set
+        """
+        if mode is None:
+            return getattr(uav.status, "mode", "unknown mode")
+        else:
+            await uav.set_custom_mode(mode)
+            return f"Mode changed to {mode!r}"
 
     async def handle_command___show_upload(self, uav: "MAVLinkUAV", *, show):
         """Handles a drone show upload request for the given UAV.
@@ -739,13 +751,25 @@ class MAVLinkUAV(UAVBase):
     def preflight_status(self) -> PreflightCheckInfo:
         return self._preflight_status
 
-    async def set_custom_mode(self, mode: int) -> None:
+    async def set_custom_mode(self, mode: Union[int, str]) -> None:
         """Attempts to set the UAV in the given custom mode."""
+        if isinstance(mode, str):
+            try:
+                mode = int(mode)
+            except ValueError:
+                pass
+
+        if isinstance(mode, str):
+            try:
+                mode = self._autopilot.get_custom_flight_mode_number(mode)
+            except ValueError:
+                raise ValueError(f"Unknown flight mode: {mode!r}")
+
         await self.driver.send_command_long(
             self,
             MAVCommand.DO_SET_MODE,
-            param1=MAVModeFlag.CUSTOM_MODE_ENABLED,
-            param2=mode,
+            param1=float(MAVModeFlag.CUSTOM_MODE_ENABLED),
+            param2=float(mode),
         )
 
     async def upload_show(self, show) -> None:

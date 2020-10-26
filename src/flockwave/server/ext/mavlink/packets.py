@@ -58,7 +58,7 @@ _stage_descriptions = {
     3: "Taking off",
     4: "Performing show",
     5: "Return to launch",
-    6: "Loitering",
+    6: "Position hold",
     7: "Landing",
     8: "Landed",
     9: "Error",
@@ -98,7 +98,9 @@ class DroneShowExecutionStage(IntEnum):
     def description(self) -> str:
         """Returns a human-readable description of the stage."""
         description = _stage_descriptions.get(self)
-        description = description or "Unknown stage {self}"
+        description = (
+            description if description is not None else f"Unknown stage {self}"
+        )
         return description
 
 

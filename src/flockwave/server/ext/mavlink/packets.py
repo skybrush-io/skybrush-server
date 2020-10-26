@@ -12,6 +12,21 @@ from .types import MAVLinkMessage
 __all__ = ("DroneShowStatus",)
 
 
+def format_elapsed_time(value: int) -> str:
+    """Formats an elapsed time value in seconds into hour-minute-seconds
+    format.
+    """
+    if value < 0:
+        sign = "-"
+        value = -value
+    else:
+        sign = " "
+
+    minutes, seconds = divmod(value, 60)
+    hours, minutes = divmod(minutes, 60)
+    return f"{sign}{hours:02}:{minutes:02}:{seconds:02}"
+
+
 @lru_cache(maxsize=128)
 def format_gps_time_of_week(value: int) -> str:
     # TODO(ntamas): the cache should be invalidated every week, but at the
@@ -20,10 +35,10 @@ def format_gps_time_of_week(value: int) -> str:
     # If we really need to, we can call format_gps_time_of_week.cache_clear()
     # regularly.
     if value < 0:
-        return "--:--:--"
+        return "---:--:--"
     else:
         dt = gps_time_of_week_to_utc(value)
-        return dt.strftime("%H:%M:%S")
+        return dt.strftime("@%H:%M:%S")
 
 
 class DroneShowStatusFlag(IntFlag):
@@ -39,7 +54,7 @@ class DroneShowStatusFlag(IntFlag):
 _stage_descriptions = {
     0: "",
     1: "Initializing...",
-    2: "Waiting for start time",
+    2: "Ready to start",
     3: "Taking off",
     4: "Performing show",
     5: "Return to launch",
@@ -92,6 +107,7 @@ class DroneShowStatus:
     """Data class representing a Skybrush-specific drone show status object."""
 
     start_time: int = 0
+    elapsed_time: int = 0
     flags: DroneShowStatusFlag = 0
     stage: DroneShowExecutionStage = DroneShowExecutionStage.OFF
     light: int = 0
@@ -102,7 +118,7 @@ class DroneShowStatus:
     TYPE = 0x5B
 
     #: Structure of Skybrush-specific DATA16 show status packets
-    _struct = Struct("<iHBBB")
+    _struct = Struct("<iHBBBh")
 
     @classmethod
     def from_bytes(cls, data: bytes):
@@ -110,7 +126,12 @@ class DroneShowStatus:
         DATA16 packet that has already been truncated to the desired length of
         the packet.
         """
-        start_time, light, flags, stage, gps_health = cls._struct.unpack(data[:9])
+        if len(data) < 11:
+            data = data.ljust(11, b"\x00")
+
+        start_time, light, flags, stage, gps_health, elapsed_time = cls._struct.unpack(
+            data[:11]
+        )
 
         try:
             stage = DroneShowExecutionStage(stage)
@@ -119,6 +140,7 @@ class DroneShowStatus:
 
         return cls(
             start_time=start_time,
+            elapsed_time=elapsed_time,
             light=light,
             flags=flags,
             stage=stage,
@@ -146,9 +168,12 @@ class DroneShowStatus:
         """Returns a short status message string that can be used for reporting
         the status of the drone show subsystem on the UI.
         """
-        start_time = format_gps_time_of_week(self.start_time)
+        if self.stage.probably_airborne:
+            clock = format_elapsed_time(self.elapsed_time)
+        else:
+            clock = format_gps_time_of_week(self.start_time)
         message = self._format_message_from_stage_and_flags(self.stage, self.flags)
-        return f"[{start_time}] {message}"
+        return f"[{clock}] {message}"
 
     @staticmethod
     def _format_message_from_stage_and_flags(

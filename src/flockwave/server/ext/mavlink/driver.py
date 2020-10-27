@@ -604,10 +604,7 @@ class MAVLinkUAV(UAVBase):
         """Handles an incoming MAVLink AUTOPILOT_VERSION message targeted at
         this UAV.
         """
-        print("Refining", message.capabilities)
-        print(repr(self._autopilot))
         self._autopilot = self._autopilot.refine_with_capabilities(message.capabilities)
-        print("became", repr(self._autopilot))
 
         self._store_message(message)
 

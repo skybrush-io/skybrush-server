@@ -12,7 +12,7 @@ from typing import List, Optional, Union
 
 from flockwave.gps.vectors import GPSCoordinate, VelocityNED
 
-from flockwave.server.concurrency import aclosing
+from flockwave.server.concurrency import aclosing, delayed
 from flockwave.server.errors import NotSupportedError
 from flockwave.server.model.battery import BatteryInfo
 from flockwave.server.model.geofence import GeofenceConfigurationRequest, GeofenceStatus
@@ -143,6 +143,24 @@ class MAVLinkDriver(UAVDriver):
         else:
             await uav.set_custom_mode(mode)
             return f"Mode changed to {mode!r}"
+
+    async def handle_command_show(
+        self, uav: "MAVLinkUAV", command: Optional[str] = None
+    ):
+        """Allows the user to remove the current show file.
+
+        Parameters:
+            command: must be 'remove' to remove the current show
+        """
+        if command is None:
+            raise RuntimeError(
+                "Missing subcommand; add 'remove' to remove the current show."
+            )
+        elif command == "remove":
+            await uav.remove_show()
+            return "Show removed."
+        else:
+            raise RuntimeError(f"Unknown subcommand: {command!r}")
 
     async def handle_command___show_upload(self, uav: "MAVLinkUAV", *, show):
         """Handles a drone show upload request for the given UAV.
@@ -467,9 +485,11 @@ class MAVLinkUAV(UAVBase):
 
         self._autopilot = UnknownAutopilot()
         self._battery = BatteryInfo()
+        self._first_connection = True
         self._gps_fix = GPSFix()
         self._is_connected = False
         self._last_messages = defaultdict(MAVLinkMessageRecord)
+        self._last_time_since_boot_msec = None
         self._mavlink_version = 1
         self._network_id = None
         self._preflight_status = PreflightCheckInfo()
@@ -584,7 +604,10 @@ class MAVLinkUAV(UAVBase):
         """Handles an incoming MAVLink AUTOPILOT_VERSION message targeted at
         this UAV.
         """
+        print("Refining", message.capabilities)
+        print(repr(self._autopilot))
         self._autopilot = self._autopilot.refine_with_capabilities(message.capabilities)
+        print("became", repr(self._autopilot))
 
         self._store_message(message)
 
@@ -625,8 +648,12 @@ class MAVLinkUAV(UAVBase):
         self._store_message(message)
 
         if not self._is_connected:
-            autopilot_cls = Autopilot.from_heartbeat(message)
-            self._autopilot = autopilot_cls()
+            # We assume that the autopilot type stays the same even if we lost
+            # contact with the drone or if it was rebooted
+            if isinstance(self._autopilot, UnknownAutopilot):
+                autopilot_cls = Autopilot.from_heartbeat(message)
+                self._autopilot = autopilot_cls()
+
             self.notify_reconnection()
 
         self._update_errors_from_sys_status_and_heartbeat()
@@ -745,11 +772,27 @@ class MAVLinkUAV(UAVBase):
         # TODO(ntamas): clear a warning flag in the UAV?
 
         if self._was_probably_rebooted_after_reconnection():
+            if not self._first_connection:
+                self.driver.log.warn(
+                    f"UAV {self.id} might have been rebooted; reconfiguring"
+                )
+
+            self._first_connection = False
             self._handle_reboot()
 
     @property
     def preflight_status(self) -> PreflightCheckInfo:
         return self._preflight_status
+
+    async def reload_show(self) -> None:
+        """Asks the UAV to reload the current drone show file."""
+        # param1 = 0 if we want to reload the show file
+        await self.driver.send_command_long(self, MAVCommand.USER_1, 0)
+
+    async def remove_show(self) -> None:
+        """Asks the UAV to remove the current drone show file."""
+        # param1 = 1 if we want to clear the show file
+        await self.driver.send_command_long(self, MAVCommand.USER_1, 1)
 
     async def set_custom_mode(self, mode: Union[int, str]) -> None:
         """Attempts to set the UAV in the given custom mode."""
@@ -760,10 +803,9 @@ class MAVLinkUAV(UAVBase):
                 pass
 
         if isinstance(mode, str):
-            try:
-                mode = self._autopilot.get_custom_flight_mode_number(mode)
-            except ValueError:
-                raise ValueError(f"Unknown flight mode: {mode!r}")
+            mode = self._autopilot.get_custom_flight_mode_number(mode)
+
+        await sleep(3)
 
         await self.driver.send_command_long(
             self,
@@ -789,6 +831,9 @@ class MAVLinkUAV(UAVBase):
         # Upload show file
         async with aclosing(MAVFTP.for_uav(self)) as ftp:
             await ftp.put(data, "/collmot/show.skyb")
+
+        # Ask drone to reload show file
+        await self.reload_show()
 
         # Configure show origin and orientation
         await self.set_parameter(
@@ -885,8 +930,10 @@ class MAVLinkUAV(UAVBase):
         self.driver.run_in_background(self._request_autopilot_capabilities)
 
         if self.driver.mandatory_custom_mode is not None:
+            # Don't set the mode immediately because the drone might now
+            # respond right after bootup
             self.driver.run_in_background(
-                self.set_custom_mode, self.driver.mandatory_custom_mode
+                delayed(2, self.set_custom_mode), self.driver.mandatory_custom_mode
             )
 
     async def _request_autopilot_capabilities(self) -> None:
@@ -894,6 +941,10 @@ class MAVLinkUAV(UAVBase):
         await self.driver.send_command_long(
             self, MAVCommand.REQUEST_AUTOPILOT_CAPABILITIES, param1=1
         )
+        # TODO(ntamas): at this point, we only received an acknowledgment from
+        # the drone that it _will_ send the AUTOPILOT_VERSION packet -- we
+        # don't know whether it really will. We need to wait for it and resend
+        # the previous command if it got lost.
 
     def _get_previous_copy_of_message(
         self, message: MAVLinkMessage

@@ -92,6 +92,7 @@ def delayed(seconds: float, fn=None, *, ensure_async=False):
             return fn
 
         decorated = decorated()
+
     elif ensure_async:
 
         async def decorated(*args, **kwds):

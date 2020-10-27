@@ -56,6 +56,22 @@ class MAVCommand(IntEnum):
     NAV_FENCE_CIRCLE_EXCLUSION = 5004
     NAV_RALLY_POINT = 5100
 
+    WAYPOINT_USER_1 = 31000
+    WAYPOINT_USER_2 = 31001
+    WAYPOINT_USER_3 = 31002
+    WAYPOINT_USER_4 = 31003
+    WAYPOINT_USER_5 = 31004
+    SPATIAL_USER_1 = 31005
+    SPATIAL_USER_2 = 31006
+    SPATIAL_USER_3 = 31007
+    SPATIAL_USER_4 = 31008
+    SPATIAL_USER_5 = 31009
+    USER_1 = 31010
+    USER_2 = 31011
+    USER_3 = 31012
+    USER_4 = 31013
+    USER_5 = 31014
+
 
 class MAVComponent(IntEnum):
     """Replica of the `MAV_COMPONENT` enum of the MAVLink protocol, using proper

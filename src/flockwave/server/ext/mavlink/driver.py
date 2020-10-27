@@ -50,10 +50,7 @@ from .enums import (
 )
 from .ftp import MAVFTP
 from .packets import DroneShowStatus
-from .types import (
-    MAVLinkMessage,
-    spec,
-)
+from .types import MAVLinkMessage, spec
 from .utils import mavlink_version_number_to_semver
 
 __all__ = ("MAVLinkDriver",)
@@ -547,7 +544,9 @@ class MAVLinkUAV(UAVBase):
         the drone -- which is indistinguishable from a lost packet.
         """
         response = await self._get_parameter(name)
-        return response.param_value
+        return self._autopilot.decode_param_from_wire_representation(
+            response.param_value, response.param_type
+        )
 
     async def _get_parameter(self, name: str) -> MAVLinkMessage:
         """Retrieves the value of a parameter from the UAV and returns a
@@ -589,11 +588,15 @@ class MAVLinkUAV(UAVBase):
         # we need its type
         param_id = name.encode("utf-8")[:16]
         response = await self._get_parameter(name)
+        param_type = response.param_type
+        encoded_value = self._autopilot.encode_param_to_wire_representation(
+            value, param_type
+        )
         await self.driver.send_packet_with_retries(
             spec.param_set(
                 param_id=param_id,
-                param_value=value,
-                param_type=response.param_type,
+                param_value=encoded_value,
+                param_type=param_type,
             ),
             target=self,
             wait_for_response=spec.param_value(param_id=param_id),
@@ -833,6 +836,9 @@ class MAVLinkUAV(UAVBase):
         await self.reload_show()
 
         # Configure show origin and orientation
+        # TODO(ntamas): this is not entirely accurate due to the back-and-forth
+        # conversion happening between floats and ints; sometimes the 7th
+        # decimal digit is off by one.
         await self.set_parameter(
             "SHOW_ORIGIN_LAT", int(coordinate_system.origin.lat * 1e7)
         )

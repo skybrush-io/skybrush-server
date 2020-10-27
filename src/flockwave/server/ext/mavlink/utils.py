@@ -1,12 +1,14 @@
 from logging import ERROR, WARNING, INFO, DEBUG
-from typing import Optional, List
+from typing import Optional, List, Union
 
 from flockwave.gps.vectors import GPSCoordinate
 
-from .enums import MAVFrame
+from .enums import MAVFrame, MAVParamType
 from .types import MAVLinkMessage
 
 __all__ = (
+    "decode_param_from_wire_representation",
+    "encode_param_to_wire_representation",
     "log_id_from_message",
     "log_level_from_severity",
     "mavlink_nav_command_to_gps_coordinate",
@@ -24,6 +26,40 @@ _severity_to_log_level = [
     INFO,
     DEBUG,
 ]
+
+
+def decode_param_from_wire_representation(
+    value, type: MAVParamType
+) -> Union[int, float]:
+    """Decodes the given value when it is interpreted as a given MAVLink type,
+    received from a MAVLink parameter retrieval command.
+
+    This is a quirk of the MAVLink parameter protocol where the official,
+    over-the-wire type of each parameter is a float, but sometimes we want to
+    transfer, say 32-bit integers. In this case, the 32-bit integer
+    representation is _reinterpreted_ as a float, and the resulting float value
+    is sent over the wire; the other side will then _reinterpret_ it again as
+    a 32-bit integer.
+
+    See `MAVParamType.decode_float()` for more details and an example.
+    """
+    return MAVParamType(type).decode_float(value)
+
+
+def encode_param_to_wire_representation(value, type: MAVParamType) -> float:
+    """Encodes the given value as a given MAVLink type, ready to be transferred
+    to the remote end encoded as a float.
+
+    This is a quirk of the MAVLink parameter protocol where the official,
+    over-the-wire type of each parameter is a float, but sometimes we want to
+    transfer, say 32-bit integers. In this case, the 32-bit integer
+    representation is _reinterpreted_ as a float, and the resulting float value
+    is sent over the wire; the other side will then _reinterpret_ it again as
+    a 32-bit integer.
+
+    See `MAVParamType.as_float()` for more details and an example.
+    """
+    return MAVParamType(type).as_float(value)
 
 
 def log_id_from_message(

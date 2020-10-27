@@ -1,5 +1,7 @@
 from enum import IntEnum, IntFlag
 from flockwave.server.model.gps import GPSFixType as OurGPSFixType
+from struct import Struct
+from typing import Union
 
 __all__ = ("MAVComponent",)
 
@@ -183,6 +185,84 @@ class MAVModeFlag(IntFlag):
     HIL_ENABLED = 0x20
     MANUAL_INPUT_ENABLED = 0x40
     SAFETY_ARMED = 0x80
+
+
+_mav_param_type_structs = [
+    Struct(spec) if spec else None
+    for spec in (
+        None,
+        ">xxxB",
+        ">xxxb",
+        ">xxH",
+        ">xxh",
+        ">I",
+        ">i",
+        ">Q",
+        ">q",
+        ">f",
+        ">d",
+    )
+]
+
+
+class MAVParamType(IntEnum):
+    """Replica of the `MAV_PARAM_TYPE` enum of the MAVLink protocol, using
+    proper Python enums.
+    """
+
+    UINT8 = 1
+    INT8 = 2
+    UINT16 = 3
+    INT16 = 4
+    UINT32 = 5
+    INT32 = 6
+    UINT64 = 7
+    INT64 = 8
+    REAL32 = 9
+    REAL64 = 10
+
+    def as_float(self, value) -> float:
+        """Encodes the given value as this MAVLink parameter type, ready to be
+        transferred to the remote end encoded as a float.
+
+        This is a quirk of the MAVLink parameter protocol where the official,
+        over-the-wire type of each parameter is a float, but sometimes we want to
+        transfer, say 32-bit integers. In this case, the 32-bit integer
+        representation is _reinterpreted_ as a float, and the resulting float value
+        is sent over the wire; the other side will then _reinterpret_ it again as
+        a 32-bit integer.
+
+        For example, when we want to transfer 474832328 as an integer, this cannot
+        be represented accurately as a single-precision float (the nearest float
+        that can be represented is 474832320 = 1.768888235092163 x 2^28).
+        Therefore, we take the bitwise representation of 474832328 (i.e.
+        0x1c4d5dc8), and treat it as a float directly instead (think about casting
+        an `int32_t*` to a `float*` directly in C). This gives us
+        6.795001965406856...e-22, whose bitwise representation is identical to
+        0x1c4d5dc8.
+        """
+        if self is MAVParamType.REAL32:
+            return float(value)
+        elif self is MAVParamType.REAL64:
+            return float(value)
+        else:
+            encoded = _mav_param_type_structs[self].pack(value)
+            return _mav_param_type_structs[MAVParamType.REAL32].unpack(encoded)[0]
+
+    def decode_float(self, value: float) -> Union[int, float]:
+        """Decodes the given value by interpreting it as this MAVLink parameter
+        type.
+
+        This function is the opposite of `encode_float()`; see its documentation
+        for more details.
+        """
+        if self is MAVParamType.REAL32:
+            return float(value)
+        elif self is MAVParamType.REAL64:
+            return float(value)
+        else:
+            encoded = _mav_param_type_structs[MAVParamType.REAL32].pack(value)
+            return _mav_param_type_structs[self].unpack(encoded)[0]
 
 
 class MAVProtocolCapability(IntFlag):

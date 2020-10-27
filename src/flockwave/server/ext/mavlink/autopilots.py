@@ -1,7 +1,7 @@
 """Implementations of autopilot-specific functionality."""
 
 from abc import ABCMeta, abstractmethod
-from typing import Type
+from typing import Type, Union
 
 from flockwave.server.errors import NotSupportedError
 from flockwave.server.model.geofence import (
@@ -11,9 +11,13 @@ from flockwave.server.model.geofence import (
 )
 from flockwave.server.utils import clamp
 
-from .enums import MAVAutopilot, MAVProtocolCapability
+from .enums import MAVAutopilot, MAVParamType, MAVProtocolCapability
 from .geofence import GeofenceManager
 from .types import MAVLinkMessage
+from .utils import (
+    decode_param_from_wire_representation,
+    encode_param_to_wire_representation,
+)
 
 
 class Autopilot(metaclass=ABCMeta):
@@ -85,6 +89,22 @@ class Autopilot(metaclass=ABCMeta):
                 geofence
         """
         raise NotImplementedError
+
+    def decode_param_from_wire_representation(
+        self, value: Union[int, float], type: MAVParamType
+    ) -> float:
+        """Decodes the given MAVLink parameter value returned from a MAVLink
+        PARAM_VALUE message into its "real" value as a float.
+        """
+        return decode_param_from_wire_representation(value, type)
+
+    def encode_param_to_wire_representation(
+        self, value: Union[int, float], type: MAVParamType
+    ) -> float:
+        """Encodes the given MAVLink parameter value as a float suitable to be
+        transmitted over the wire in a MAVLink PARAM_SET command.
+        """
+        return encode_param_to_wire_representation(value, type)
 
     @abstractmethod
     def get_custom_flight_mode_number(self, mode: str) -> int:
@@ -229,6 +249,26 @@ class ArduPilot(Autopilot):
         if configuration.rally_points is not None:
             # TODO(ntamas): update rally points
             pass
+
+    def decode_param_from_wire_representation(
+        self, value: Union[int, float], type: MAVParamType
+    ) -> float:
+        # ArduCopter does not implement the MAVLink specification correctly and
+        # requires all parameter values to be sent as floats, no matter what
+        # their type is. See this link from Gitter:
+        #
+        # https://gitter.im/ArduPilot/pymavlink?at=5bfb975587c4b86bcc1af3ee
+        return float(value)
+
+    def encode_param_to_wire_representation(
+        self, value: Union[int, float], type: MAVParamType
+    ) -> float:
+        # ArduCopter does not implement the MAVLink specification correctly and
+        # requires all parameter values to be sent as floats, no matter what
+        # their type is. See this link from Gitter:
+        #
+        # https://gitter.im/ArduPilot/pymavlink?at=5bfb975587c4b86bcc1af3ee
+        return float(value)
 
     def get_custom_flight_mode_number(self, mode: str) -> int:
         mode = mode.lower().replace(" ", "")

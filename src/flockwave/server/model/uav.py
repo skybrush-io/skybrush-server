@@ -360,7 +360,9 @@ class UAVDriver(metaclass=ABCMeta):
                 awaitables)
         """
         return self._send_signal(
-            uavs, "preflight report request", self._request_preflight_report_single,
+            uavs,
+            "preflight report request",
+            self._request_preflight_report_single,
         )
 
     def request_version_info(self, uavs) -> Dict[str, VersionInfo]:
@@ -568,6 +570,8 @@ class UAVDriver(metaclass=ABCMeta):
             uavs,
             "motor start signal" if start else "motor stop signal",
             self._send_motor_start_stop_signal_single,
+            start=start,
+            force=force,
         )
 
     def send_reset_signal(self, uavs, *, component: Optional[str] = None):

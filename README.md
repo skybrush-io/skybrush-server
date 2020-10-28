@@ -30,7 +30,7 @@ You can build a Docker container on Linux with the following command line:
 
 ```sh
 $ docker build -t docker.collmot.com/skybrush-server:latest \
-    -f etc/docker/amd64/Dockerfile \
+    -f etc/deployment/docker/amd64/Dockerfile \
     --build-arg GIT_ACCESS_TOKEN_USERNAME=username \
 	--build-arg GIT_ACCESS_TOKEN_PASSWORD=password .
 ```

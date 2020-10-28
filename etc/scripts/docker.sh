@@ -18,7 +18,7 @@ poetry export -f requirements.txt -o requirements-main.txt --without-hashes --wi
 trap "rm -f requirements-main.txt" EXIT
 
 # Build the Docker image
-DOCKER_BUILDKIT=1 docker build -t docker.collmot.com/skybrush-server:latest -f etc/docker/amd64/Dockerfile .
+DOCKER_BUILDKIT=1 docker build -t docker.collmot.com/skybrush-server:latest -f etc/deployment/docker/amd64/Dockerfile .
 echo "Successfully built Docker image."
 
 # If we are at an exact tag, also tag the image

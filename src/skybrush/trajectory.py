@@ -161,7 +161,11 @@ class TrajectorySpecification:
                 if control:
                     raise ValueError("first keyframe must have no control points")
             else:
-                dt = t - prev_t
+                # We have to be careful and round dt to three digits (i.e.
+                # milliseconds, otherwise floating-point errors will slowly
+                # accumulate. For instance, if every segment is 0.2 sec, we might
+                # drift by ~160 msec over a minute or so)
+                dt = round(t - prev_t, 3)
                 if dt < 0:
                     raise ValueError(f"time should not move backwards at t = {t}")
                 elif dt == 0:
@@ -170,6 +174,7 @@ class TrajectorySpecification:
                     raise ValueError(
                         f"segment too long: {dt} seconds, allowed max is 65.5"
                     )
+
                 yield TrajectorySegment(
                     t=prev_t, duration=dt, points=(start, *control, point)
                 )

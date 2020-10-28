@@ -4,6 +4,7 @@ MAVLink protocol.
 
 from __future__ import absolute_import
 
+from contextlib import ExitStack
 from functools import partial
 from typing import Optional, Sequence, Tuple
 
@@ -71,16 +72,32 @@ class MAVLinkDronesExtension(UAVExtensionBase):
             "driver": self._driver,
             "log": self.log,
             "register_uav": self._register_uav,
-            "rtk_signal": app.import_api("signals").get("rtk:packet"),
             "supervisor": app.supervise,
             "use_connection": app.connection_registry.use,
         }
+
+        # Get a handle to the signals that we will need
+        signals = app.import_api("signals")
+        rtk_signal = signals.get("rtk:packet")
+        show_start_method_changed_signal = signals.get("show:config_updated")
 
         # Create self._uavs only here and not in the constructor; this is to
         # ensure that we cannot accidentally register a UAV when the extension
         # is not running yet
         uavs = []
-        with overridden(self, _uavs=uavs, _networks=networks):
+
+        # Create a cleanup context and run the extension
+        with ExitStack() as stack:
+            stack.enter_context(overridden(self, _uavs=uavs, _networks=networks))
+
+            # Connect the signals to our signal handlers
+            stack.enter_context(rtk_signal.connected_to(self._on_rtk_correction_packet))
+            stack.enter_context(
+                show_start_method_changed_signal.connected_to(
+                    self._on_start_method_changed
+                )
+            )
+
             try:
                 async with self.use_nursery() as nursery:
                     # Create one task for each network
@@ -104,7 +121,9 @@ class MAVLinkDronesExtension(UAVExtensionBase):
                 )
             network_specs = configuration["networks"]
         else:
-            network_specs = {"": {"connections": configuration.get("connections", ())}}
+            network_specs = {
+                "default": {"connections": configuration.get("connections", ())}
+            }
 
         # Determine the default ID format from the configuration
         default_id_format = configuration.get("id_format", None)
@@ -133,6 +152,44 @@ class MAVLinkDronesExtension(UAVExtensionBase):
             key: MAVLinkNetworkSpecification.from_json(value, id=key)
             for key, value in network_specs.items()
         }
+
+    def _on_rtk_correction_packet(self, sender, packet: bytes):
+        """Handles an RTK correction packet that the server wishes to forward
+        to the drones in this network.
+
+        Parameters:
+            packet: the raw RTK correction packet to forward to the drones in
+                this network
+        """
+        if not self._networks:
+            return
+
+        for name, network in self._networks.items():
+            try:
+                network.enqueue_rtk_correction_packet(packet)
+            except Exception:
+                self.log.warn(
+                    f"Failed to enqueue RTK correction packet to network {name!r}"
+                )
+
+    def _on_start_method_changed(self, sender, config) -> None:
+        """Handler that is called when the user changes the start time or start
+        method of the drones in the `show` extension.
+        """
+        if not self._networks:
+            return
+
+        # Make a copy of the configuration in case someone else who comes after
+        # us in the handler chain messes with it
+        config = config.clone()
+
+        for name, network in self._networks.items():
+            try:
+                network.notify_start_method_changed(config)
+            except Exception:
+                self.log.warn(
+                    f"Failed to update start configuration of drones in network {name!r}"
+                )
 
     def _register_uav(self, uav: UAV) -> None:
         """Registers a new UAV object in the object registry of the application

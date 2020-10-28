@@ -26,6 +26,12 @@ class DroneShowConfiguration:
         self.start_method = StartMethod.RC  # type: StartMethod
         self.uav_ids = []  # type: List[Optional[str]]
 
+    def clone(self):
+        """Makes an exact shallow copy of the configuration object."""
+        result = self.__class__()
+        result.update_from_json(self.json)
+        return result
+
     @property
     def json(self):
         """Returns the JSON representation of the configuration object."""

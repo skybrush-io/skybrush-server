@@ -3,7 +3,6 @@ from functools import partial
 from math import inf
 from trio import CancelScope, fail_after, open_nursery, sleep_forever, TooSlowError
 from trio_util import periodic
-from typing import Any, Dict
 
 from flockwave.ext.base import ExtensionBase
 from flockwave.server.concurrency import cancellable
@@ -16,7 +15,13 @@ __all__ = ("construct", "dependencies")
 
 
 class DroneShowExtension(ExtensionBase):
-    """Extension that prepares the server to be able to manage drone shows."""
+    """Extension that prepares the server to be able to manage drone shows.
+
+    The extension provides two signals via the `signals` extension; `show:start`
+    is emitted when the show starts, and `show:config_updated` is emitted when
+    the configuration of the show startup changes. The latter receives a
+    keyword argument named `config` that contains the new configuration.
+    """
 
     def __init__(self):
         super().__init__()
@@ -86,6 +91,9 @@ class DroneShowExtension(ExtensionBase):
                     self._manage_countdown_before_start, cancel_scope=self._tasks[-1]
                 )
             )
+
+        updated_signal = self.app.import_api("signals").get("show:config_updated")
+        updated_signal.send(self, config=self._config.clone())
 
     @cancellable
     async def _start_show_when_needed(self):

@@ -4,7 +4,8 @@ version = "0.7.1"
 description = "Skybrush server component"
 authors = ["Tamas Nepusz <tamas@collmot.com>", "Gabor Vasarhelyi <vasarhelyi@collmot.com>"]
 packages = [
-    { include = "flockwave", from = "src" }
+    { include = "flockwave", from = "src" },
+    { include = "skybrush", from = "src" }
 ]
 
 [[tool.poetry.source]]

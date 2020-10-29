@@ -36,6 +36,7 @@ class MAVLinkDronesExtension(UAVExtensionBase):
 
         self._driver = None
         self._networks = None
+        self._start_method = None
         self._uavs = None
 
     def _create_driver(self):
@@ -98,6 +99,11 @@ class MAVLinkDronesExtension(UAVExtensionBase):
                 )
             )
 
+            # Get the current start configuration for the drones in this network.
+            # Note that this can be called only if self._networks has been set
+            # up so we cannot do it outside the exit stack
+            self._update_start_method_in_networks(app=app)
+
             try:
                 async with self.use_nursery() as nursery:
                     # Create one task for each network
@@ -122,7 +128,7 @@ class MAVLinkDronesExtension(UAVExtensionBase):
             network_specs = configuration["networks"]
         else:
             network_specs = {
-                "default": {"connections": configuration.get("connections", ())}
+                "mav": {"connections": configuration.get("connections", ())}
             }
 
         # Determine the default ID format from the configuration
@@ -183,13 +189,8 @@ class MAVLinkDronesExtension(UAVExtensionBase):
         # us in the handler chain messes with it
         config = config.clone()
 
-        for name, network in self._networks.items():
-            try:
-                network.notify_start_method_changed(config)
-            except Exception:
-                self.log.warn(
-                    f"Failed to update start configuration of drones in network {name!r}"
-                )
+        # Send the configuration to all the networks
+        self._update_start_method_in_networks(config)
 
     def _register_uav(self, uav: UAV) -> None:
         """Registers a new UAV object in the object registry of the application
@@ -233,6 +234,28 @@ class MAVLinkDronesExtension(UAVExtensionBase):
             spec, target, wait_for_response, wait_for_one_of
         )
 
+    def _update_start_method_in_networks(self, config=None, app=None) -> None:
+        """Updates the start method of the drones managed by this extension,
+        based on the given configuration object from the `show` extension. If
+        the configuration object is `None`, retrieves it from the `show`
+        extension itself.
+        """
+        if config is None:
+            if app is None:
+                raise RuntimeError(
+                    "'app' kwarg must be provided if 'config' is missing"
+                )
+
+            config = app.import_api("show").get_configuration()
+
+        for name, network in self._networks.items():
+            try:
+                network.notify_scheduled_takeoff_config_changed(config)
+            except Exception:
+                self.log.warn(
+                    f"Failed to update start configuration of drones in network {name!r}"
+                )
+
 
 construct = MAVLinkDronesExtension
-dependencies = ("signals",)
+dependencies = ("show", "signals")

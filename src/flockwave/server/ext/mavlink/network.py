@@ -15,7 +15,7 @@ from contextlib import contextmanager, ExitStack
 from time import time_ns
 from trio.abc import ReceiveChannel
 from trio_util import periodic
-from typing import Any, Callable, Optional, Sequence, Tuple, Union
+from typing import Any, Callable, Iterator, Optional, Sequence, Tuple, Union
 
 from flockwave.connections import Connection, create_connection, ListenerConnection
 from flockwave.server.comm import CommunicationManager
@@ -28,6 +28,7 @@ from .driver import MAVLinkUAV
 from .enums import MAVAutopilot, MAVComponent, MAVMessageType, MAVState, MAVType
 from .packets import DroneShowStatus
 from .rtk import RTKCorrectionPacketEncoder
+from .takeoff import ScheduledTakeoffManager
 from .types import (
     MAVLinkMessageMatcher,
     MAVLinkMessageSpecification,
@@ -101,6 +102,7 @@ class MAVLinkNetwork:
         self._id_formatter = id_formatter
         self._matchers = None
         self._packet_loss = max(float(packet_loss), 0.0)
+        self._scheduled_takeoff_manager = ScheduledTakeoffManager(self)
         self._system_id = 255
 
         self._connections = []
@@ -218,7 +220,7 @@ class MAVLinkNetwork:
             if self._packet_loss > 0:
                 percentage = round(min(1, self._packet_loss) * 100)
                 log.warn(
-                    f"Simulating {percentage}% packet loss on MAVLink network {self._id}"
+                    f"Simulating {percentage}% packet loss on MAVLink network {self._id!r}"
                 )
 
             # Register the links with the communication manager. The order is
@@ -244,6 +246,12 @@ class MAVLinkNetwork:
                     _matchers=matchers,
                 )
             )
+
+            # Start a background task that checks the configured start times on
+            # the drones at regular intervals
+            # TODO(ntamas): the task is not cancelled if the network goes down,
+            # this can be a problem
+            self.driver.run_in_background(self._scheduled_takeoff_manager.run)
 
             # Start the communication manager
             try:
@@ -280,12 +288,12 @@ class MAVLinkNetwork:
         for message in self._rtk_correction_packet_encoder.encode(packet):
             self.manager.enqueue_broadcast_packet(message, allow_failure=True)
 
-    def notify_start_method_changed(self, config):
+    def notify_scheduled_takeoff_config_changed(self, config):
         """Notifies the network that the automatic start configuration of the
         drones has changed in the system. The network will then update the
         start configuration of each drone.
         """
-        pass
+        self._scheduled_takeoff_manager.notify_config_changed(config)
 
     async def send_heartbeat(self, target: UAV) -> Optional[MAVLinkMessage]:
         """Sends a heartbeat targeted to the given UAV.
@@ -372,6 +380,14 @@ class MAVLinkNetwork:
                 return await race(tasks)
         else:
             await self.manager.send_packet(spec, destination)
+
+    def uavs(self) -> Iterator[MAVLinkUAV]:
+        """Returns an iterator that iterates over the UAVs in this network.
+
+        Make sure that you do not add new UAVs or remove existing ones while the
+        iteration takes place.
+        """
+        return self._uavs.values() if self._uavs else iter([])
 
     def _create_uav(self, system_id: str) -> MAVLinkUAV:
         """Creates a new UAV with the given system ID in this network and

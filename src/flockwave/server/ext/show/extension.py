@@ -3,6 +3,7 @@ from functools import partial
 from math import inf
 from trio import CancelScope, fail_after, open_nursery, sleep_forever, TooSlowError
 from trio_util import periodic
+from typing import Any, Dict
 
 from flockwave.ext.base import ExtensionBase
 from flockwave.server.concurrency import cancellable
@@ -31,6 +32,9 @@ class DroneShowExtension(ExtensionBase):
         self._tasks = []
 
         self._config = DroneShowConfiguration()
+
+    def exports(self) -> Dict[str, Any]:
+        return {"get_configuration": self._get_configuration}
 
     def handle_SHOW_CFG(self, message, sender, hub):
         return hub.create_response_or_notification(
@@ -62,6 +66,10 @@ class DroneShowExtension(ExtensionBase):
                 stack.enter_context(app.import_api("clocks").use_clock(self._clock))
                 stack.enter_context(app.message_hub.use_message_handlers(handlers))
                 await sleep_forever()
+
+    def _get_configuration(self) -> DroneShowConfiguration:
+        """Returns a copy of the current drone show configuration."""
+        return self._config.clone()
 
     def _on_config_updated(self, sender):
         """Handler that is called when the configuration of the extension was

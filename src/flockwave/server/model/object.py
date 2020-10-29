@@ -4,7 +4,7 @@ server.
 
 from abc import ABCMeta, abstractproperty
 from contextlib import contextmanager
-from typing import Any, Callable, Optional
+from typing import Any, Callable, Optional, TYPE_CHECKING
 
 from flockwave.server.logger import log as base_log
 
@@ -14,8 +14,7 @@ __all__ = ("ModelObject", "register", "registered", "unregister")
 
 _type_registry = {}
 
-MYPY = False
-if MYPY:
+if TYPE_CHECKING:
     from .devices import ObjectNode
 
 

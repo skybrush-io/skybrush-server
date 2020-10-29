@@ -1,6 +1,6 @@
 """Implementations of autopilot-specific functionality."""
 
-from abc import ABCMeta, abstractmethod
+from abc import ABCMeta, abstractmethod, abstractproperty
 from typing import Type, Union
 
 from flockwave.server.errors import NotSupportedError
@@ -145,6 +145,11 @@ class Autopilot(metaclass=ABCMeta):
         self.capabilities = capabilities
         return self
 
+    @abstractproperty
+    def supports_scheduled_takeoff(self):
+        """Returns whether the autopilot supports scheduled takeoffs."""
+        raise NotImplementedError
+
 
 class UnknownAutopilot(Autopilot):
     """Class representing an autopilot that we do not know."""
@@ -161,6 +166,10 @@ class UnknownAutopilot(Autopilot):
 
     async def get_geofence_status(self, uav) -> GeofenceStatus:
         raise NotSupportedError
+
+    @property
+    def supports_scheduled_takeoff(self):
+        return False
 
 
 class ArduPilot(Autopilot):
@@ -317,6 +326,10 @@ class ArduPilot(Autopilot):
 
         return result
 
+    @property
+    def supports_scheduled_takeoff(self):
+        return False
+
 
 def extend_custom_modes(super, _new_modes, **kwds):
     """Helper function to extend the custom modes of an Autopilot_ subclass
@@ -344,6 +357,10 @@ class ArduPilotWithSkybrush(ArduPilot):
         | MAVProtocolCapability.MAVLINK2
         | MAVProtocolCapability.DRONE_SHOW_MODE
     )
+
+    @ArduPilot.supports_scheduled_takeoff.getter
+    def supports_scheduled_takeoff(self):
+        return True
 
 
 _autopilot_registry = {MAVAutopilot.ARDUPILOTMEGA: ArduPilot}

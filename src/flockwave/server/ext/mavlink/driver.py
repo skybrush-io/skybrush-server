@@ -4,12 +4,14 @@ from __future__ import division
 
 from collections import defaultdict
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from functools import partial
 from math import inf
 from time import monotonic
 from trio import fail_after, move_on_after, sleep, TooSlowError
 from typing import List, Optional, Union
 
+from flockwave.gps.time import datetime_to_gps_time_of_week, gps_time_of_week_to_utc
 from flockwave.gps.vectors import GPSCoordinate, VelocityNED
 
 from flockwave.server.concurrency import aclosing, delayed
@@ -171,6 +173,9 @@ class MAVLinkDriver(UAVDriver):
         try:
             await uav.upload_show(show)
         except TooSlowError as ex:
+            self.log.error(str(ex))
+            raise
+        except Exception as ex:
             self.log.error(str(ex))
             raise
 
@@ -485,12 +490,15 @@ class MAVLinkUAV(UAVBase):
         self._first_connection = True
         self._gps_fix = GPSFix()
         self._is_connected = False
+        self._is_scheduled_takeoff_authorized = False
         self._last_messages = defaultdict(MAVLinkMessageRecord)
         self._last_time_since_boot_msec = None
         self._mavlink_version = 1
         self._network_id = None
         self._preflight_status = PreflightCheckInfo()
         self._position = GPSCoordinate()
+        self._scheduled_takeoff_time = None
+        self._scheduled_takeoff_time_gps_time_of_week = None
         self._velocity = VelocityNED()
         self._system_id = None
 
@@ -509,6 +517,10 @@ class MAVLinkUAV(UAVBase):
 
         self._network_id = network_id
         self._system_id = system_id
+
+    async def clear_scheduled_takeoff_time(self) -> None:
+        """Clears the scheduled takeoff time of the UAV."""
+        await self.set_scheduled_takeoff_time(None)
 
     async def configure_geofence(
         self, configuration: GeofenceConfigurationRequest
@@ -582,6 +594,28 @@ class MAVLinkUAV(UAVBase):
 
         return result
 
+    @property
+    def is_scheduled_takeoff_authorized(self) -> bool:
+        """Returns whether the scheduled takeoff of the UAV is authorized
+        according to the status packets we received from the UAV.
+        """
+        return self._is_scheduled_takeoff_authorized
+
+    @property
+    def scheduled_takeoff_time(self) -> Optional[int]:
+        """Returns the scheduled takeoff time of the UAV as a UNIX timestamp
+        in seconds, truncated to an integer, or `None` if the UAV is not
+        scheduled for an automatic takeoff.
+        """
+        return self._scheduled_takeoff_time
+
+    @property
+    def scheduled_takeoff_time_gps_time_of_week(self) -> Optional[int]:
+        """Returns the scheduled takeoff time of the UAV as a GPS time of week
+        value, or `None` if the UAV is not scheduled for an automatic takeoff.
+        """
+        return self._scheduled_takeoff_time_gps_time_of_week
+
     async def set_parameter(self, name: str, value: float) -> None:
         """Sets the value of a parameter on the UAV."""
         # We need to retrieve the current value of the parameter first because
@@ -630,8 +664,21 @@ class MAVLinkUAV(UAVBase):
         this UAV.
         """
         data = DroneShowStatus.from_mavlink_message(message)
+
         self._gps_fix.num_satellites = data.num_satellites
         self._gps_fix.type = data.gps_fix
+
+        gps_start_time = data.start_time if data.start_time >= 0 else None
+        if gps_start_time != self._scheduled_takeoff_time_gps_time_of_week:
+            self._scheduled_takeoff_time_gps_time_of_week = gps_start_time
+            if gps_start_time is None:
+                self._scheduled_takeoff_time = None
+            else:
+                self._scheduled_takeoff_time = int(
+                    gps_time_of_week_to_utc(gps_start_time).timestamp()
+                )
+
+        self._is_scheduled_takeoff_authorized = False
 
         debug = data.message.encode("utf-8")
 
@@ -813,6 +860,29 @@ class MAVLinkUAV(UAVBase):
             param1=float(MAVModeFlag.CUSTOM_MODE_ENABLED),
             param2=float(mode),
         )
+
+    @property
+    def supports_scheduled_takeoff(self) -> bool:
+        """Returns whether the UAV supports scheduled takeoffs."""
+        return self._autopilot and self._autopilot.supports_scheduled_takeoff
+
+    async def set_scheduled_takeoff_time(self, seconds: Optional[int]) -> None:
+        """Sets the scheduled takeoff time of the UAV to the given timestamp in
+        seconds. Only integer seconds are supported. Setting the takeoff time
+        to `None` or a negative number will clear the takeoff time.
+        """
+        # The UAV needs GPS time of week so we convert it first. Note that we
+        # convert the UNIX timestamp to a datetime first because UNIX timestamps
+        # do not have leap seconds (every day is 86400 seconds in UNIX time) so
+        # they are inherently ambiguous
+
+        if seconds is None or seconds < 0:
+            gps_time_of_week = -1
+        else:
+            dt = datetime.fromtimestamp(int(seconds), tz=timezone.utc)
+            _, gps_time_of_week = datetime_to_gps_time_of_week(dt)
+
+        await self.set_parameter("SHOW_START_TIME", gps_time_of_week)
 
     async def upload_show(self, show) -> None:
         coordinate_system = get_coordinate_system_from_show_specification(show)

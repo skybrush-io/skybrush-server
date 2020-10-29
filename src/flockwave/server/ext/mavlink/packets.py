@@ -108,12 +108,25 @@ class DroneShowExecutionStage(IntEnum):
 class DroneShowStatus:
     """Data class representing a Skybrush-specific drone show status object."""
 
-    start_time: int = 0
+    #: Scheduled start time of the drone show, in GPS seconds of week, negative
+    #: if not set
+    start_time: int = -1
+
+    #: Number of seconds elapsed in the drone show
     elapsed_time: int = 0
+
     flags: DroneShowStatusFlag = 0
+
+    #: Stage of the drone show execution
     stage: DroneShowExecutionStage = DroneShowExecutionStage.OFF
+
+    #: Current color of the RGB light, in RGB565 encoding
     light: int = 0
+
+    #: Current GPS fix
     gps_fix: GPSFixType = OurGPSFixType.NO_GPS
+
+    #: Number of satellites seen
     num_satellites: int = 0
 
     #: Identifier of Skybrush-specific DATA16 show status packets
@@ -164,6 +177,13 @@ class DroneShowStatus:
             )
 
         return cls.from_bytes(bytes(message.data[: message.len]))
+
+    @property
+    def has_start_time(self) -> bool:
+        """Returns whether there is a valid start time in the drone show status
+        message.
+        """
+        return self.start_time >= 0
 
     @property
     def message(self) -> str:

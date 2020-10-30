@@ -5,8 +5,8 @@ from trio import CancelScope, fail_after, open_nursery, sleep_forever, TooSlowEr
 from trio_util import periodic
 from typing import Any, Dict
 
+from flockwave.concurrency import cancellable
 from flockwave.ext.base import ExtensionBase
-from flockwave.server.concurrency import cancellable
 from flockwave.server.tasks import wait_for_dict_items, wait_until
 
 from .clock import ShowClock

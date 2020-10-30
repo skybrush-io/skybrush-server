@@ -136,6 +136,13 @@ class Autopilot(metaclass=ABCMeta):
         """
         raise NotImplementedError
 
+    @abstractproperty
+    def is_battery_percentage_reliable(self) -> bool:
+        """Returns whether the autopilot provides reliable battery capacity
+        percentages.
+        """
+        raise NotImplementedError
+
     def refine_with_capabilities(self, capabilities: int):
         """Refines the autopilot class with further information from the
         capabilities bitfield of the MAVLink "autopilot capabilities" message,
@@ -146,7 +153,7 @@ class Autopilot(metaclass=ABCMeta):
         return self
 
     @abstractproperty
-    def supports_scheduled_takeoff(self):
+    def supports_scheduled_takeoff(self) -> bool:
         """Returns whether the autopilot supports scheduled takeoffs."""
         raise NotImplementedError
 
@@ -166,6 +173,11 @@ class UnknownAutopilot(Autopilot):
 
     async def get_geofence_status(self, uav) -> GeofenceStatus:
         raise NotSupportedError
+
+    @property
+    def is_battery_percentage_reliable(self) -> bool:
+        # Let's be optimistic :)
+        return True
 
     @property
     def supports_scheduled_takeoff(self):
@@ -325,6 +337,13 @@ class ArduPilot(Autopilot):
                 result = ArduPilotWithSkybrush(self)
 
         return result
+
+    @property
+    def is_battery_percentage_reliable(self) -> bool:
+        # The battery percentage estimate of the stock ArduPilot is broken;
+        # it is based on discharged current only so it always reports a
+        # newly inserted battery as fully charged
+        return False
 
     @property
     def supports_scheduled_takeoff(self):

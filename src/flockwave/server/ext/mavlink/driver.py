@@ -759,8 +759,10 @@ class MAVLinkUAV(UAVBase):
             self._battery.voltage = 0.0
         if message.battery_remaining == -1:
             self._battery.percentage = None
-        else:
+        elif self._autopilot.is_battery_percentage_reliable:
             self._battery.percentage = message.battery_remaining
+        else:
+            self._battery.percentage = None
         self.update_status(battery=self._battery)
 
         self.notify_updated()

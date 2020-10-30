@@ -18,8 +18,9 @@ from trio_util import periodic
 from typing import Any, Callable, Iterator, Optional, Sequence, Tuple, Union
 
 from flockwave.connections import Connection, create_connection, ListenerConnection
+from flockwave.concurrency import Future
 from flockwave.server.comm import CommunicationManager
-from flockwave.server.concurrency import Future, race
+from flockwave.server.concurrency import race
 from flockwave.server.model import ConnectionPurpose, UAV
 from flockwave.server.utils import nop, overridden
 
@@ -487,6 +488,13 @@ class MAVLinkNetwork:
 
             # Resolve all futures that are waiting for this message
             for system_id, params, future in self._matchers[type]:
+                if future.done():
+                    # This may happen if we get multiple matching messages in
+                    # quick succession before the task waiting for the result
+                    # gets a chance of responding to them; in this case, we
+                    # have to ignore the message, otherwise we would be resolving
+                    # the future twice
+                    continue
                 if system_id is not None and message.get_srcSystem() != system_id:
                     matched = False
                 elif callable(params):

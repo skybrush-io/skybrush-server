@@ -38,7 +38,7 @@ scp = "^0.13.2"
 hypercorn = {extras = ["trio"], version = "^0.10.1"}
 tinyrpc = {version = ">=1.0.4", extras = ["msgpack"]}
 passlib = {extras = ["bcrypt"], version = "^1.7.2"}
-flockwave-conn = {extras = ["midi", "rpc", "serial"], version = "^2.3.0"}
+flockwave-conn = {extras = ["midi", "rpc", "serial"], version = "^2.3.1"}
 flockwave-ext = "^1.4.0"
 flockwave-flockctrl = "^0.13.0"
 flockwave-gps = {extras = ["ntrip"], version = "^1.0.0"}

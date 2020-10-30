@@ -315,7 +315,7 @@ description = "Connection objects for various data sources"
 name = "flockwave-conn"
 optional = false
 python-versions = ">=3.7,<4.0"
-version = "2.3.0"
+version = "2.3.1"
 
 [package.dependencies]
 blinker = ">=1.4,<2.0"
@@ -1337,7 +1337,7 @@ docs = ["sphinx", "jaraco.packaging (>=3.2)", "rst.linker (>=1.9)"]
 testing = ["pytest (>=3.5,<3.7.3 || >3.7.3)", "pytest-checkdocs (>=1.2.3)", "pytest-flake8", "pytest-cov", "jaraco.test (>=3.2.0)", "jaraco.itertools", "func-timeout", "pytest-black (>=0.3.7)", "pytest-mypy"]
 
 [metadata]
-content-hash = "a9348f251dc01420ce4ac0086461a82a3f86e7ea837637de75503673194ac5c2"
+content-hash = "d7937c581264eb4fce68963c179dee371add154b8ae5dee7f570b3ebcd281b43"
 python-versions = "^3.7"
 
 [metadata.files]
@@ -1500,8 +1500,8 @@ flockwave-app-framework = [
     {file = "flockwave_app_framework-0.2.0-py3-none-any.whl", hash = "md5:fd081e181fab1c12cb3417730dc32229"},
 ]
 flockwave-conn = [
-    {file = "flockwave-conn-2.3.0.tar.gz", hash = "md5:b11725c45089a4b1acbbdfcf45e6934b"},
-    {file = "flockwave_conn-2.3.0-py3-none-any.whl", hash = "md5:fa90a8125858c5d5cb38f324b2133964"},
+    {file = "flockwave-conn-2.3.1.tar.gz", hash = "md5:db5feae2e9d8f443bc3d13a37a0ef8a3"},
+    {file = "flockwave_conn-2.3.1-py3-none-any.whl", hash = "md5:ddbbf3ec69b1b4d1209a971de599f55e"},
 ]
 flockwave-ext = [
     {file = "flockwave-ext-1.4.1.tar.gz", hash = "md5:9117bb199fb10fb5f22f0798426ad2da"},

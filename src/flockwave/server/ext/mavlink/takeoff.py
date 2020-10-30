@@ -197,12 +197,16 @@ class ScheduledTakeoffManager:
         of the takeoff authorization flag on the given UAV by examining the
         state of the UAV and the drone show configuration.
         """
+        desired_auth_flag = config.authorized_to_start
+
         if config.start_method == StartMethod.AUTO:
             if config.start_time is not None:
+                # User configured a start time so we want to set that
                 desired_takeoff_time = int(config.start_time)
             else:
+                # User did not configure a start time so we want to clear what
+                # there is on the drone
                 desired_takeoff_time = None
-            desired_auth_flag = config.authorized_to_start
 
         elif config.start_method == StartMethod.RC:
             if config.authorized_to_start:
@@ -214,8 +218,6 @@ class ScheduledTakeoffManager:
                 # User did not authorize the start yet so the start time must
                 # be cleared
                 desired_takeoff_time = None
-
-            desired_auth_flag = config.authorized_to_start
 
         return desired_takeoff_time, desired_auth_flag
 

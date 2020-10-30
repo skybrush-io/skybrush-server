@@ -104,7 +104,7 @@ class MAVLinkNetworkSpecification:
         result = cls(id=id if id is not None else obj["id"])
 
         if "system_id" in obj:
-            result.system_id = obj["system_id"]
+            result.system_id = int(obj["system_id"])
 
         if "id_format" in obj:
             result.id_format = obj["id_format"]

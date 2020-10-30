@@ -104,7 +104,7 @@ class MAVLinkNetwork:
         self._matchers = None
         self._packet_loss = max(float(packet_loss), 0.0)
         self._scheduled_takeoff_manager = ScheduledTakeoffManager(self)
-        self._system_id = 255
+        self._system_id = max(min(int(system_id), 255), 1)
 
         self._connections = []
         self._uavs = {}
@@ -215,7 +215,9 @@ class MAVLinkNetwork:
                 )
 
             # Create the communication manager
-            manager = create_communication_manager(packet_loss=self._packet_loss)
+            manager = create_communication_manager(
+                packet_loss=self._packet_loss, system_id=self._system_id
+            )
 
             # Warn the user about the simulated packet loss setting
             if self._packet_loss > 0:

@@ -24,7 +24,6 @@ __all__ = ("create_communication_manager",)
 
 def get_mavlink_factory(
     dialect: Union[str, Callable] = "ardupilotmega",
-    *,
     system_id: int = 255,
     component_id: int = MAVComponent.MISSIONPLANNER,
 ):
@@ -45,7 +44,6 @@ def get_mavlink_factory(
     def factory():
         # Use robust parsing so we don't freak out if we see some noise on the
         # line
-        # TODO(ntamas): initialize system ID properly from config
         link = module.MAVLink(None, srcSystem=system_id, srcComponent=component_id)
         link.robust_parsing = True
         return link
@@ -54,15 +52,17 @@ def get_mavlink_factory(
 
 
 def create_communication_manager(
-    packet_loss: float = 0,
+    packet_loss: float = 0, system_id: int = 255
 ) -> CommunicationManager[Any, Any]:
     """Creates a communication manager instance for the extension.
 
     Parameters:
         packet_loss: simulated packet loss probability; zero means normal
             behaviour
+        system_id: the system ID to use in MAVLink messages sent by this
+            communication manager
     """
-    channel_factory = create_mavlink_message_channel
+    channel_factory = partial(create_mavlink_message_channel, system_id=system_id)
 
     if packet_loss > 0:
         channel_factory = compose(
@@ -103,6 +103,7 @@ def create_mavlink_message_channel(
     log: Logger,
     *,
     dialect: Union[str, Callable] = "ardupilotmega",
+    system_id: int = 255,
 ) -> MessageChannel[Tuple[MAVLinkMessage, str]]:
     """Creates a bidirectional Trio-style channel that reads data from and
     writes data to the given connection, and does the parsing of MAVLink
@@ -115,7 +116,7 @@ def create_mavlink_message_channel(
         connection: the connection to read data from and write data to
         log: the logger on which any error messages and warnings should be logged
     """
-    mavlink_factory = get_mavlink_factory(dialect)
+    mavlink_factory = get_mavlink_factory(dialect, system_id)
 
     if isinstance(connection, StreamConnectionBase):
         return _create_stream_based_mavlink_message_channel(

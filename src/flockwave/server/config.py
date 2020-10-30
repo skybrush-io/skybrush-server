@@ -78,6 +78,7 @@ EXTENSIONS = {
         # "connections": ["udp://localhost:14550"],
         "connections": ["udp://:14550?broadcast_port=14555"],
         "custom_mode": None,
+        "system_id": 255,
     },
     "radiation": {
         "enabled": False,

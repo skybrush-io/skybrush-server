@@ -211,7 +211,16 @@ class ScheduledTakeoffManager:
             # that it was set from the RC by the user and we shouldn't override
             # it at all.
 
-            desired_takeoff_time = None
+            if config.authorized_to_start:
+                # User authorized the start so we don't mess around with the
+                # takeoff time, it is the responsibility of the person holding
+                # the RC to set the takeoff time
+                desired_takeoff_time = uav.scheduled_takeoff_time
+            else:
+                # User did not authorize the start yet so the start time must
+                # be cleared
+                desired_takeoff_time = None
+
             desired_auth_flag = config.authorized_to_start
 
         return desired_takeoff_time, desired_auth_flag

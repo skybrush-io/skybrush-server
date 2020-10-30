@@ -184,12 +184,11 @@ class ScheduledTakeoffManager:
     # If the swarm is configured to start with the RC
     # ===============================================
     #
-    # We clear any start time that was configured on any of the drones in
-    # the swarm, except if the start time is in the near future (next 20
-    # seconds) or the near past (previous 20 seconds), in which case we
-    # assume that it was set by flicking the RC switch so we need to keep it.
-    # We also check whether the start has been authorized and update the
-    # "authorized" flag on the swarm accordingly.
+    # First we check whether the start has been authorized and update the
+    # "authorized" flag on the swarm accordingly. If the start has been
+    # authorized, we never mess around with the scheduled start time of the
+    # drone. If the start has not been authorized, we clear the scheduled
+    # start time of the drone.
 
     def _get_desired_takeoff_time_and_auth_flag_for(
         self, uav, config: DroneShowConfiguration
@@ -206,11 +205,6 @@ class ScheduledTakeoffManager:
             desired_auth_flag = config.authorized_to_start
 
         elif config.start_method == StartMethod.RC:
-            # TODO(ntamas): don't mess around with any of the settings if the
-            # current start time of the UAV is within +- 20 seconds; we assume
-            # that it was set from the RC by the user and we shouldn't override
-            # it at all.
-
             if config.authorized_to_start:
                 # User authorized the start so we don't mess around with the
                 # takeoff time, it is the responsibility of the person holding

@@ -4,6 +4,7 @@ from trio import (
     current_time,
     open_memory_channel,
     open_nursery,
+    sleep,
     WouldBlock,
 )
 from trio.lowlevel import ParkingLot
@@ -54,11 +55,21 @@ class ScheduledTakeoffManager:
         """Background task that checks the scheduled start times on the UAVs
         of this network regularly and updates them as needed.
         """
+        log = self._network.log
+        while True:
+            try:
+                await self._run(log)
+            except Exception:
+                if log:
+                    log.exception(
+                        "Scheduled takeoff manager stopped unexpectedly, restarting..."
+                    )
+                await sleep(0.5)
+
+    async def _run(self, log) -> None:
         async with open_nursery() as nursery:
             queue_tx, queue_rx = open_memory_channel(1024)
             nursery.start_soon(self._process_uavs_scheduled_for_updates, queue_rx)
-
-            log = self._network.log
 
             async with queue_tx:
                 async for _ in periodic(1):
@@ -177,6 +188,8 @@ class ScheduledTakeoffManager:
     # the swarm, except if the start time is in the near future (next 20
     # seconds) or the near past (previous 20 seconds), in which case we
     # assume that it was set by flicking the RC switch so we need to keep it.
+    # We also check whether the start has been authorized and update the
+    # "authorized" flag on the swarm accordingly.
 
     def _get_desired_takeoff_time_and_auth_flag_for(
         self, uav, config: DroneShowConfiguration
@@ -199,7 +212,7 @@ class ScheduledTakeoffManager:
             # it at all.
 
             desired_takeoff_time = None
-            desired_auth_flag = False
+            desired_auth_flag = config.authorized_to_start
 
         return desired_takeoff_time, desired_auth_flag
 

@@ -49,6 +49,7 @@ class DroneShowStatusFlag(IntFlag):
     HAS_ORIGIN = 1 << 5
     HAS_ORIENTATION = 1 << 4
     HAS_GEOFENCE = 1 << 3
+    HAS_AUTHORIZATION_TO_START = 1 << 2
 
 
 _stage_descriptions = {
@@ -115,6 +116,7 @@ class DroneShowStatus:
     #: Number of seconds elapsed in the drone show
     elapsed_time: int = 0
 
+    #: Various status flags
     flags: DroneShowStatusFlag = 0
 
     #: Stage of the drone show execution
@@ -186,6 +188,13 @@ class DroneShowStatus:
         return self.start_time >= 0
 
     @property
+    def has_takeoff_authorization(self) -> bool:
+        """Returns whether the takeoff authorization flag is set in the drone
+        show status message.
+        """
+        return self.flags & DroneShowStatusFlag.HAS_AUTHORIZATION_TO_START
+
+    @property
     def message(self) -> str:
         """Returns a short status message string that can be used for reporting
         the status of the drone show subsystem on the UI.
@@ -224,6 +233,11 @@ class DroneShowStatus:
             and stage != DroneShowExecutionStage.LANDED
         ):
             return "Start time not set"
+        elif (
+            not flags & DroneShowStatusFlag.HAS_AUTHORIZATION_TO_START
+            and stage != DroneShowExecutionStage.LANDED
+        ):
+            return "Not authorized to start"
         elif not flags & DroneShowStatusFlag.HAS_GEOFENCE:
             return "Geofence not set"
 

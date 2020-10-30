@@ -209,7 +209,11 @@ class ScheduledTakeoffManager:
             desired_auth_flag,
         ) = self._get_desired_takeoff_time_and_auth_flag_for(uav, self._config)
 
-        await uav.set_scheduled_takeoff_time(seconds=desired_takeoff_time)
+        if desired_takeoff_time != uav.scheduled_takeoff_time:
+            await uav.set_scheduled_takeoff_time(seconds=desired_takeoff_time)
+
+        if desired_auth_flag != uav.is_scheduled_takeoff_authorized:
+            await uav.set_authorization_to_takeoff(desired_auth_flag)
 
         log = self._network.log
         if log:

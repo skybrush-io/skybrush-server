@@ -678,7 +678,7 @@ class MAVLinkUAV(UAVBase):
                     gps_time_of_week_to_utc(gps_start_time).timestamp()
                 )
 
-        self._is_scheduled_takeoff_authorized = False
+        self._is_scheduled_takeoff_authorized = data.has_takeoff_authorization
 
         debug = data.message.encode("utf-8")
 
@@ -865,6 +865,12 @@ class MAVLinkUAV(UAVBase):
     def supports_scheduled_takeoff(self) -> bool:
         """Returns whether the UAV supports scheduled takeoffs."""
         return self._autopilot and self._autopilot.supports_scheduled_takeoff
+
+    async def set_authorization_to_takeoff(self, value: bool = True) -> None:
+        """Sets or clears whether the UAV has authorization to perform an
+        automatic takeoff.
+        """
+        await self.set_parameter("SHOW_START_AUTH", 1 if value else 0)
 
     async def set_scheduled_takeoff_time(self, seconds: Optional[int]) -> None:
         """Sets the scheduled takeoff time of the UAV to the given timestamp in

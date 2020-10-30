@@ -192,7 +192,7 @@ class DroneShowStatus:
         """Returns whether the takeoff authorization flag is set in the drone
         show status message.
         """
-        return self.flags & DroneShowStatusFlag.HAS_AUTHORIZATION_TO_START
+        return bool(self.flags & DroneShowStatusFlag.HAS_AUTHORIZATION_TO_START)
 
     @property
     def message(self) -> str:

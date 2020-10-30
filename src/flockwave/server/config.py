@@ -76,7 +76,7 @@ EXTENSIONS = {
         "id_format": "{0:02}",
         # "connections": ["tcp://localhost:5760"],
         # "connections": ["udp://localhost:14550"],
-        "connections": ["udp-broadcast://:14550"],
+        "connections": ["udp://:14550?broadcast_port=14555"],
         "custom_mode": None,
     },
     "radiation": {

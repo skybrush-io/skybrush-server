@@ -493,7 +493,6 @@ class MAVLinkUAV(UAVBase):
         self._is_scheduled_takeoff_authorized = False
         self._last_messages = defaultdict(MAVLinkMessageRecord)
         self._last_time_since_boot_msec = None
-        self._mavlink_version = 1
         self._network_id = None
         self._preflight_status = PreflightCheckInfo()
         self._position = GPSCoordinate()
@@ -503,6 +502,8 @@ class MAVLinkUAV(UAVBase):
         self._system_id = None
 
         self.notify_updated = None
+
+        self._reset_mavlink_version()
 
     def assign_to_network_and_system_id(self, network_id: str, system_id: int) -> None:
         """Assigns the UAV to the MAVLink network with the given network ID.
@@ -804,9 +805,19 @@ class MAVLinkUAV(UAVBase):
         self._is_connected = False
         # TODO(ntamas): trigger a warning flag in the UAV?
 
-        # Revert to MAVLink version 1 in case the UAV was somehow reset and it
-        # does not "understand" MAVLink v2 in its new configuration
-        self._mavlink_version = 1
+        # Revert to the lowest MAVLink version that we support in case the UAV
+        # was somehow reset and it does not "understand" MAVLink v2 in its new
+        # configuration
+        self._reset_mavlink_version()
+
+    def _reset_mavlink_version(self) -> None:
+        """Resets the MAVLink protocol version used by messages sent to this
+        UAV to the default value.
+
+        Currently we assume that all the drones we are trying to talk to
+        support MAVLink 2, so we always reset to MAVLink 2.
+        """
+        self._mavlink_version = 2
 
     def notify_prearm_failure(self, message: str) -> None:
         """Notifies the UAV state object that a prearm check has failed."""

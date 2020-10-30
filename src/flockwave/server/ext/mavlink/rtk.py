@@ -19,10 +19,19 @@ class RTKCorrectionPacketEncoder:
         self._seq_no = cycle(range(32))
 
     def encode(self, packet: bytes) -> Iterable[MAVLinkMessageSpecification]:
-        if len(packet) > 180:
+        MAX_FRAGMENT_SIZE = 180
+
+        if len(packet) > MAX_FRAGMENT_SIZE:
             # fragmented packet
-            slices = [packet[i : (i + 180)] for i in range(0, len(packet), 180)]
-            slices[-1] = slices[-1].ljust(180, b"\x00")
+            slices = [
+                packet[i : (i + MAX_FRAGMENT_SIZE)]
+                for i in range(0, len(packet), MAX_FRAGMENT_SIZE)
+            ]
+
+            if len(slices[-1]) == MAX_FRAGMENT_SIZE:
+                # if the last fragment is full, we need to add an extra empty
+                # one according to the protocol
+                slices.append(b"")
 
             if len(slices) > 4:
                 if self._log:

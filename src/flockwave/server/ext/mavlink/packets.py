@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from datetime import timezone
 from enum import IntEnum, IntFlag
 from functools import lru_cache
 from struct import Struct
@@ -38,7 +39,8 @@ def format_gps_time_of_week(value: int) -> str:
         return "---:--:--"
     else:
         dt = gps_time_of_week_to_utc(value)
-        return dt.strftime("@%H:%M:%S")
+        assert dt.tzinfo is timezone.utc
+        return dt.astimezone(tz=None).strftime("@%H:%M:%S")
 
 
 class DroneShowStatusFlag(IntFlag):

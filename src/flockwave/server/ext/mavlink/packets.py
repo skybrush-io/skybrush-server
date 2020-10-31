@@ -205,16 +205,16 @@ class DroneShowStatus:
             clock = format_elapsed_time(self.elapsed_time)
         else:
             clock = format_gps_time_of_week(self.start_time)
-        message = self._format_message_from_stage_and_flags(self.stage, self.flags)
+        message = self._format_message()
         return f"[{clock}] {message}"
 
-    @staticmethod
-    def _format_message_from_stage_and_flags(
-        stage: DroneShowExecutionStage, flags: DroneShowStatusFlag
-    ) -> str:
+    def _format_message(self) -> str:
         """Formats a status message from the execution stage and flags found in
-        a drone show status packet.
+        the drone show status packet.
         """
+        flags = self.flags
+        stage = self.stage
+
         if not flags & DroneShowStatusFlag.HAS_SHOW_FILE:
             return "No show data"
 
@@ -236,6 +236,11 @@ class DroneShowStatus:
         ):
             if flags & DroneShowStatusFlag.HAS_AUTHORIZATION_TO_START:
                 return "Authorized without start time"
+            elif self.gps_fix <= GPSFixType.FIX_3D:
+                # This is needed here to explain why the start time might not
+                # have been set yet; interpreting the SHOW_START_TIME parameter
+                # needs GPS fix
+                return "No 3D GPS fix yet"
             else:
                 return "Start time not set"
         elif (
@@ -245,6 +250,8 @@ class DroneShowStatus:
             return "Not authorized to start"
         elif not flags & DroneShowStatusFlag.HAS_GEOFENCE:
             return "Geofence not set"
+        elif self.gps_fix <= GPSFixType.FIX_3D:
+            return "No 3D GPS fix yet"
 
         # We are on the ground but there's nothing important to report from the
         # flags so just show the description of the stage

@@ -234,7 +234,10 @@ class DroneShowStatus:
             not flags & DroneShowStatusFlag.HAS_START_TIME
             and stage != DroneShowExecutionStage.LANDED
         ):
-            return "Start time not set"
+            if flags & DroneShowStatusFlag.HAS_AUTHORIZATION_TO_START:
+                return "Authorized without start time"
+            else:
+                return "Start time not set"
         elif (
             not flags & DroneShowStatusFlag.HAS_AUTHORIZATION_TO_START
             and stage != DroneShowExecutionStage.LANDED

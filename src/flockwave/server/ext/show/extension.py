@@ -149,7 +149,7 @@ class DroneShowExtension(ExtensionBase):
     def _start_uavs_if_needed(self):
         uavs_by_drivers = self.app.sort_uavs_by_drivers(self._config.uav_ids)
         for driver, uavs in uavs_by_drivers.items():
-            results = driver.send_takeoff_signal(uavs)
+            results = driver.send_takeoff_signal(uavs, scheduled=True)
             self._nursery.start_soon(
                 self._process_command_results_in_background, results, "start signals"
             )

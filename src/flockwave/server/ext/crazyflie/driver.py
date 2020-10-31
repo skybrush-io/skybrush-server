@@ -263,7 +263,9 @@ class CrazyflieDriver(UAVDriver):
                 # TODO(ntamas): cancellation not implemented yet
                 pass
 
-    async def _send_takeoff_signal_single(self, uav) -> None:
+    async def _send_takeoff_signal_single(
+        self, uav, *, scheduled: bool = False
+    ) -> None:
         if uav.is_in_drone_show_mode:
             await uav.start_drone_show()
         else:

@@ -222,7 +222,7 @@ class FlockCtrlDriver(UAVDriver):
             duration=BURST_DURATION,
         )
 
-    def send_takeoff_signal(self, uavs):
+    def send_takeoff_signal(self, uavs, *, scheduled: bool = False):
         self._bursted_message_manager.schedule_burst(
             MultiTargetCommand.TAKEOFF,
             uav_ids=self._uavs_to_ids(uavs),

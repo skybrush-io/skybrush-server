@@ -441,7 +441,13 @@ class MAVLinkDriver(UAVDriver):
         ):
             raise RuntimeError("Failed to send shutdown command to autopilot")
 
-    async def _send_takeoff_signal_single(self, uav) -> None:
+    async def _send_takeoff_signal_single(
+        self, uav, *, scheduled: bool = False
+    ) -> None:
+        if scheduled:
+            # Ignore this; scheduled takeoffs are managed by the ScheduledTakeoffManager
+            return
+
         await self._send_motor_start_stop_signal_single(uav, start=True)
 
         # Wait a bit to give the autopilot some time to start the motors, just

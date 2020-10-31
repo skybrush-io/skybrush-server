@@ -662,7 +662,9 @@ class UAVDriver(metaclass=ABCMeta):
             delay,
         )
 
-    def send_takeoff_signal(self, uavs):
+    def send_takeoff_signal(
+        self, uavs: List[UAV], *, scheduled: bool = False
+    ) -> Dict[UAV, object]:
         """Asks the driver to send a takeoff signal to the given UAVs, each
         of which are assumed to be managed by this driver.
 
@@ -670,16 +672,20 @@ class UAVDriver(metaclass=ABCMeta):
         a driver; override ``_send_takeoff_signal_single()`` instead.
 
         Parameters:
-            uavs (List[UAV]): the UAVs to address with this request.
+            uavs: the UAVs to address with this request
+            scheduled: whether the takeoff signal was scheduled earlier and is
+                now issued autonomously by the server
 
         Returns:
-            Dict[UAV,object]: dict mapping UAVs to the corresponding results
-                (which may also be errors or awaitables; it is the
-                responsibility of the caller to evaluate errors and wait for
-                awaitables)
+            dict mapping UAVs to the corresponding results (which may also be
+            errors or awaitables; it is the responsibility of the caller to
+            evaluate errors and wait for awaitables)
         """
         return self._send_signal(
-            uavs, "takeoff signal", self._send_takeoff_signal_single
+            uavs,
+            "takeoff signal",
+            self._send_takeoff_signal_single,
+            scheduled=scheduled,
         )
 
     def validate_command(self, command: str, args, kwds) -> Optional[str]:

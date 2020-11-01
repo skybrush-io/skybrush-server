@@ -856,10 +856,6 @@ class MAVLinkUAV(UAVBase):
 
         # TODO(ntamas): trigger a warning flag in the UAV?
 
-        # Forget the last AUTOPILOT_VERSION message so we know we have to request
-        # it again when we reconnect
-        del self._last_messages[MAVMessageType.AUTOPILOT_VERSION]
-
         # Revert to the lowest MAVLink version that we support in case the UAV
         # was somehow reset and it does not "understand" MAVLink v2 in its new
         # configuration

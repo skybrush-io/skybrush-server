@@ -14,7 +14,7 @@ from typing import List, Optional, Union
 from flockwave.gps.time import datetime_to_gps_time_of_week, gps_time_of_week_to_utc
 from flockwave.gps.vectors import GPSCoordinate, VelocityNED
 
-from flockwave.server.concurrency import aclosing, delayed
+from flockwave.server.concurrency import aclosing
 from flockwave.server.errors import NotSupportedError
 from flockwave.server.model.battery import BatteryInfo
 from flockwave.server.model.geofence import GeofenceConfigurationRequest, GeofenceStatus
@@ -53,7 +53,7 @@ from .enums import (
 from .ftp import MAVFTP
 from .packets import DroneShowStatus
 from .types import MAVLinkMessage, spec
-from .utils import mavlink_version_number_to_semver
+from .utils import log_id_for_uav, mavlink_version_number_to_semver
 
 __all__ = ("MAVLinkDriver",)
 
@@ -1011,7 +1011,8 @@ class MAVLinkUAV(UAVBase):
         # we fail
         if not success:
             self.driver.log.warn(
-                "Failed to configure data stream rates", extra={"id": self.id}
+                "Failed to configure data stream rates",
+                extra={"id": log_id_for_uav(self)},
             )
 
     async def _configure_data_streams_with_fine_grained_commands(self) -> None:
@@ -1065,6 +1066,24 @@ class MAVLinkUAV(UAVBase):
             target=self,
         )
 
+    async def _configure_mandatory_custom_mode(self) -> None:
+        """Sets the drone to its mandatory custom mode after connection; used
+        only for local experimentation with the SITL simulator where it is
+        convenient to set up a custom mode in advance without an RC.
+        """
+        await sleep(2)
+        try:
+            await self.set_custom_mode(self.driver.mandatory_custom_mode)
+        except TooSlowError:
+            self.driver.log.warn(
+                "Failed to configure custom mode; no response in time",
+                extra={"id": log_id_for_uav(self)},
+            )
+        except Exception:
+            self.driver.log.exception(
+                "Failed to configure custom mode", extra={"id": log_id_for_uav(self)}
+            )
+
     def _handle_reboot(self) -> None:
         """Handles a reboot event on the autopilot and attempts to re-initialize
         the data streams.
@@ -1078,9 +1097,7 @@ class MAVLinkUAV(UAVBase):
         if self.driver.mandatory_custom_mode is not None:
             # Don't set the mode immediately because the drone might now
             # respond right after bootup
-            self.driver.run_in_background(
-                delayed(2, self.set_custom_mode), self.driver.mandatory_custom_mode
-            )
+            self.driver.run_in_background(self._configure_mandatory_custom_mode)
 
     async def _request_autopilot_capabilities(self) -> None:
         """Sends a request to the autopilot to send its capabilities via MAVLink

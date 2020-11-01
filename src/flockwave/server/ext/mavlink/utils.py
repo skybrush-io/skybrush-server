@@ -9,6 +9,7 @@ from .types import MAVLinkMessage
 __all__ = (
     "decode_param_from_wire_representation",
     "encode_param_to_wire_representation",
+    "log_id_for_uav",
     "log_id_from_message",
     "log_level_from_severity",
     "mavlink_nav_command_to_gps_coordinate",
@@ -73,6 +74,18 @@ def log_id_from_message(
         return f"{network_id}/{system_id:02x}:{component_id:02x}"
     else:
         return f"{system_id:02x}:{component_id:02x}"
+
+
+def log_id_for_uav(uav) -> str:
+    """Returns an identifier for a single UAV that is suitable for displaying in
+    the logging output, based on the network and system ID of the UAV.
+    """
+    network_id = getattr(uav, "network_id")
+    system_id = getattr(uav, "system_id")
+    if network_id:
+        return f"{network_id}/{system_id:02x}"
+    else:
+        return f"{system_id:02x}"
 
 
 def log_level_from_severity(severity: int) -> int:

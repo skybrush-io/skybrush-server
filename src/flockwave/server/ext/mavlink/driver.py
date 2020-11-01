@@ -491,21 +491,59 @@ class MAVLinkUAV(UAVBase):
     def __init__(self, *args, **kwds):
         super().__init__(*args, **kwds)
 
+        #: Model of the autopilot used by this drone
         self._autopilot = UnknownAutopilot()
+
+        #: Battery status of the drone
         self._battery = BatteryInfo()
+
+        #: Stores whether we are connecting to the drone for the first time;
+        #: used to prevent a "probably rebooted warning" for the first connection
         self._first_connection = True
+
+        #: Current GPS fix status of the drone
         self._gps_fix = GPSFix()
+
+        #: Stores whether we are currently connected to the drone (i.e. received
+        #: a heartbeat recently)
         self._is_connected = False
+
+        #: Stores whether the drone is authorized to perform a scheduled takeoff
         self._is_scheduled_takeoff_authorized = False
+
+        #: Stores a mapping of each MAVLink message type received from the drone
+        #: to the most recent copy of the message of that type. Some of these
+        #: records may be cleared when we don't detect a heartbeat from the
+        #: drone any more
         self._last_messages = defaultdict(MAVLinkMessageRecord)
+
+        #: Stores the last "time since boot" timestamp received from the drone
+        #: in any of the messages where we observe this timestamp
         self._last_time_since_boot_msec = None
+
+        #: Stores the MAVLink network ID of the drone (not part of the MAVLink
+        #: messages; used by us to track which MAVLink network of ours the
+        #: drone belongs to)
         self._network_id = None
+
+        #: Status of the preflight checks on the drone
         self._preflight_status = PreflightCheckInfo()
+
+        #: Current global position of the drone
         self._position = GPSCoordinate()
+
+        #: Scheduled takeoff time of the drone, as a UNIX timestamp, in seconds
         self._scheduled_takeoff_time = None
+
+        #: Scheduled takeoff time of the drone, as a GPS time-of-week timestamp,
+        #: in seconds
         self._scheduled_takeoff_time_gps_time_of_week = None
-        self._velocity = VelocityNED()
+
+        #: MAVLink system ID of the drone
         self._system_id = None
+
+        #: Current velocity of the drone in NED coordinate system, m/sec
+        self._velocity = VelocityNED()
 
         self.notify_updated = None
 
@@ -699,6 +737,7 @@ class MAVLinkUAV(UAVBase):
             # 2 as well
             self._mavlink_version = 2
 
+        # Store a copy of the heartbeat
         self._store_message(message)
 
         if not self._is_connected:
@@ -710,8 +749,13 @@ class MAVLinkUAV(UAVBase):
 
             self.notify_reconnection()
 
-        self._update_errors_from_sys_status_and_heartbeat()
+        # Do we already have basic information about the autopilot capabilities?
+        # If we don't, ask for them.
+        if not self.get_last_message(MAVMessageType.AUTOPILOT_VERSION):
+            self.driver.run_in_background(self._request_autopilot_capabilities)
 
+        # Update error codes and basic status info
+        self._update_errors_from_sys_status_and_heartbeat()
         self.update_status(
             mode=self._autopilot.describe_mode(message.base_mode, message.custom_mode)
         )
@@ -809,7 +853,12 @@ class MAVLinkUAV(UAVBase):
         disconnected from the network.
         """
         self._is_connected = False
+
         # TODO(ntamas): trigger a warning flag in the UAV?
+
+        # Forget the last AUTOPILOT_VERSION message so we know we have to request
+        # it again when we reconnect
+        del self._last_messages[MAVMessageType.AUTOPILOT_VERSION]
 
         # Revert to the lowest MAVLink version that we support in case the UAV
         # was somehow reset and it does not "understand" MAVLink v2 in its new
@@ -1025,7 +1074,10 @@ class MAVLinkUAV(UAVBase):
         the data streams.
         """
         self.driver.run_in_background(self._configure_data_streams)
-        self.driver.run_in_background(self._request_autopilot_capabilities)
+
+        # No need to request the autopilot capabilities here; we do it after
+        # every heartbeat if we don't have them yet. See the comment in
+        # `self._request_autopilot_capabilities()` for an explanation.
 
         if self.driver.mandatory_custom_mode is not None:
             # Don't set the mode immediately because the drone might now
@@ -1035,14 +1087,19 @@ class MAVLinkUAV(UAVBase):
             )
 
     async def _request_autopilot_capabilities(self) -> None:
-        """Retrieves the capabilities of the autopilot via MAVLink."""
+        """Sends a request to the autopilot to send its capabilities via MAVLink
+        in a separate packet.
+        """
         await self.driver.send_command_long(
             self, MAVCommand.REQUEST_AUTOPILOT_CAPABILITIES, param1=1
         )
-        # TODO(ntamas): at this point, we only received an acknowledgment from
-        # the drone that it _will_ send the AUTOPILOT_VERSION packet -- we
-        # don't know whether it really will. We need to wait for it and resend
-        # the previous command if it got lost.
+
+        # At this point, we only received an acknowledgment from the drone that
+        # it _will_ send the AUTOPILOT_VERSION packet -- we don't know whether
+        # it really will and even if it does, it might get lost in transit.
+        # Therefore, we check whether we already have an AUTOPILOT_VERSION
+        # packet in our stash after receiving a heartbeat, and if we don't, we
+        # ask the drone to send one by calling this function.
 
     def _get_previous_copy_of_message(
         self, message: MAVLinkMessage

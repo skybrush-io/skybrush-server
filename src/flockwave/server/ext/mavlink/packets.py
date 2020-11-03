@@ -236,7 +236,7 @@ class DroneShowStatus:
         ):
             if flags & DroneShowStatusFlag.HAS_AUTHORIZATION_TO_START:
                 return "Authorized without start time"
-            elif self.gps_fix <= GPSFixType.FIX_3D:
+            elif self.gps_fix < OurGPSFixType.FIX_3D:
                 # This is needed here to explain why the start time might not
                 # have been set yet; interpreting the SHOW_START_TIME parameter
                 # needs GPS fix
@@ -250,7 +250,7 @@ class DroneShowStatus:
             return "Not authorized to start"
         elif not flags & DroneShowStatusFlag.HAS_GEOFENCE:
             return "Geofence not set"
-        elif self.gps_fix <= GPSFixType.FIX_3D:
+        elif self.gps_fix < OurGPSFixType.FIX_3D:
             return "No 3D GPS fix yet"
 
         # We are on the ground but there's nothing important to report from the

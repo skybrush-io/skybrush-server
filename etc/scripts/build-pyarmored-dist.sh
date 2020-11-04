@@ -23,7 +23,7 @@ rm -rf dist/"${PROJECT_NAME}"*.tar.gz
 poetry build -f sdist
 
 # Generate requirements.txt from poetry
-poetry export -f requirements.txt --without-hashes --with-credentials >requirements.txt
+poetry export -f requirements.txt -o requirements.txt --without-hashes --with-credentials
 ls dist/${PROJECT_NAME}*.tar.gz >>requirements.txt
 trap "rm -f requirements.txt" EXIT
 

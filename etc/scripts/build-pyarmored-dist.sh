@@ -10,6 +10,8 @@ OBFUSCATED_PACKAGES="aiocflib flockwave skybrush"
 
 ###############################################################################
 
+set -e
+
 SCRIPT_ROOT=`dirname $0`
 REPO_ROOT="${SCRIPT_ROOT}/../.."
 
@@ -36,7 +38,7 @@ rm -rf "${OUTPUT_DIR}"
 mkdir -p "${OUTPUT_DIR}/bin"
 mkdir -p "${OUTPUT_DIR}/doc"
 mkdir -p "${OUTPUT_DIR}/lib"
-.venv/bin/pip install -U pip wheel
+.venv/bin/pip install -U pip wheel pyarmor
 .venv/bin/pip install -r requirements.txt -t "${OUTPUT_DIR}/lib"
 
 # Remove executables of dependencies; they are not needed
@@ -46,12 +48,12 @@ rm -rf "${OUTPUT_DIR}/lib/bin"
 rm -rf "${OUTPUT_DIR}/lib-obfuscated"
 for PACKAGE in ${OBFUSCATED_PACKAGES}; do
   mkdir -p "${OUTPUT_DIR}/lib-obfuscated/${PACKAGE}"
-  poetry run pyarmor obfuscate -n --advanced 2 --recursive --output "${OUTPUT_DIR}/lib-obfuscated/${PACKAGE}" "${OUTPUT_DIR}/lib/${PACKAGE}/__init__.py"
+  .venv/bin/pyarmor obfuscate -n --advanced 2 --recursive --output "${OUTPUT_DIR}/lib-obfuscated/${PACKAGE}" "${OUTPUT_DIR}/lib/${PACKAGE}/__init__.py"
 done
 
 # Obfuscate the launcher script as well
 cp "src/flockwave/server/__main__.py" "${OUTPUT_DIR}/skybrushd.py"
-poetry run pyarmor obfuscate --advanced 2 --exact --output "${OUTPUT_DIR}/lib-obfuscated" "${OUTPUT_DIR}/skybrushd.py"
+.venv/bin/pyarmor obfuscate --advanced 2 --exact --output "${OUTPUT_DIR}/lib-obfuscated" "${OUTPUT_DIR}/skybrushd.py"
 rm "${OUTPUT_DIR}/skybrushd.py"
 
 # Move the obfuscated scripts back to lib/ to overwrite the originals
@@ -63,6 +65,15 @@ rm "${OUTPUT_DIR}/skybrushd.py"
 )
 mv "${OUTPUT_DIR}"/lib-obfuscated/pytransform* "${OUTPUT_DIR}"/lib/
 rm -rf "${OUTPUT_DIR}/lib-obfuscated"
+
+# Raspberry Pi distributions need an extra symlink for pytransform.so
+if [ -f "${OUTPUT_DIR}/lib/pytransform.cpython-37m-arm-linux-gnu.so" ]; then
+  (
+    cd "${OUTPUT_DIR}/lib";
+    rm -f pytransform.cpython-37m-arm-linux-gnueabihf.so;
+    ln -s pytransform.cpython-37m-arm-linux-gnu.so pytransform.cpython-37m-arm-linux-gnueabihf.so
+  )
+fi
 
 # Create a launcher script
 cp etc/deployment/pyarmor/skybrushd "${OUTPUT_DIR}/bin"
@@ -78,7 +89,7 @@ done
 # Validate that all files are obfuscated that need to be
 NOT_OBFUSCATED_FILES=$(
   cd "${OUTPUT_DIR}/lib";
-  grep -riL pyarmor ${OBFUSCATED_PACKAGES} | grep "\.py$" 
+  grep -riL pyarmor ${OBFUSCATED_PACKAGES} | grep "\.py$"  || true
 )
 NOT_OBFUSCATED_COUNT=$(echo "$NOT_OBFUSCATED_FILES" | grep -v -e '^[[:space:]]*$' | wc -l | sed -e 's/^ *//g')
 if [ $NOT_OBFUSCATED_COUNT -gt 0 ]; then

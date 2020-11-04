@@ -3,7 +3,6 @@
 # Builds a single-dir distribution obfuscated with PyArmor, suitable for
 # a standalone installation.
 
-PROJECT_NAME="flockwave-server"
 OUTPUT_DIR="./dist/pyarmor"
 TMP_DIR="./tmp"
 OBFUSCATED_PACKAGES="aiocflib flockwave skybrush"
@@ -16,6 +15,10 @@ SCRIPT_ROOT=`dirname $0`
 REPO_ROOT="${SCRIPT_ROOT}/../.."
 
 cd "${REPO_ROOT}"
+
+# Extract the name of the project and the version number from pyproject.toml
+PROJECT_NAME=`cat pyproject.toml|grep ^name|head -1|cut -d '"' -f 2`
+VERSION=`cat pyproject.toml|grep ^version|head -1|cut -d '"' -f 2`
 
 # Remove all requirements.txt files, we don't use them, only poetry
 rm -f requirements*.txt
@@ -40,6 +43,11 @@ mkdir -p "${OUTPUT_DIR}/doc"
 mkdir -p "${OUTPUT_DIR}/lib"
 .venv/bin/pip install -U pip wheel pyarmor
 .venv/bin/pip install -r requirements.txt -t "${OUTPUT_DIR}/lib"
+
+# lxml is huge and we don't need it; pymavlink brings it in mistakenly as a
+# dependency
+rm -rf "${OUTPUT_DIR}/lib/lxml"
+rm -rf "${OUTPUT_DIR}/lib/lxml*.dist-info"
 
 # Remove executables of dependencies; they are not needed
 rm -rf "${OUTPUT_DIR}/lib/bin"
@@ -100,8 +108,16 @@ if [ $NOT_OBFUSCATED_COUNT -gt 0 ]; then
   exit 1
 fi
 
+# Create a tarball
+TARBALL_STEM="${PROJECT_NAME}-${VERSION}"
+rm -rf "${TMP_DIR}/${TARBALL_STEM}"
+mkdir -p "${TMP_DIR}/${TARBALL_STEM}"
+mv "${OUTPUT_DIR}"/* "${TMP_DIR}/${TARBALL_STEM}"
+tar -C "${TMP_DIR}" --exclude "__pycache__" -cvvzf "${OUTPUT_DIR}/${TARBALL_STEM}.tar.gz" "${TARBALL_STEM}/"
+rm -rf "${TMP_DIR}/${TARBALL_STEM}"
+
 echo ""
 echo "------------------------------------------------------------------------"
 echo ""
-echo "Obfuscated bundle created successfully in ${OUTPUT_DIR}"
+echo "Obfuscated bundle created successfully in ${OUTPUT_DIR}/${TARBALL_STEM}.tar.gz"
 

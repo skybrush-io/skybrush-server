@@ -1,7 +1,7 @@
 #!/bin/bash
 #
 # Builds single-file distributions of the Flockwave server for Windows
-# and Linux (64-bit) using Docker.
+# and Linux (amd64) using Docker.
 
 SCRIPT_ROOT=`dirname $0`
 REPO_ROOT="${SCRIPT_ROOT}/../.."

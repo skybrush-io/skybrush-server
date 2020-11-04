@@ -27,6 +27,11 @@ poetry export -f requirements.txt --without-hashes --with-credentials >requireme
 ls dist/${PROJECT_NAME}*.tar.gz >>requirements.txt
 trap "rm -f requirements.txt" EXIT
 
+# Create virtual environment if it doesn't exist yet
+if [ ! -d .venv ]; then
+  python3 -m venv .venv
+fi
+
 rm -rf "${OUTPUT_DIR}"
 mkdir -p "${OUTPUT_DIR}/bin"
 mkdir -p "${OUTPUT_DIR}/doc"

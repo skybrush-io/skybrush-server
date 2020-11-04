@@ -51,7 +51,7 @@ appdirs = "^1.4.4"
 crcmod = "^1.7"
 flockwave-app-framework = {version = "^0.2.0", extras = ["daemon"]}
 msgpack = "^1.0.0"
-aio-usb-hotplug = "^2.0.0"
+aio-usb-hotplug = "^2.0.1"
 pyserial = "^3.4"
 compose = "^1.1.1"
 

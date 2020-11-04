@@ -4,12 +4,17 @@ description = "Asynchronous generators yielding detected hotplug events on the U
 name = "aio-usb-hotplug"
 optional = false
 python-versions = ">=3.7,<4.0"
-version = "2.0.0"
+version = "2.0.1"
 
 [package.dependencies]
 anyio = ">=2.0.2,<3.0.0"
 pyudev = ">=0.22.0,<0.23.0"
 pyusb = ">=1.1.0,<2.0.0"
+
+[package.source]
+reference = "collmot"
+type = "legacy"
+url = "https://pypi.collmot.com/simple"
 
 [[package]]
 category = "main"
@@ -1043,7 +1048,7 @@ version = "1.4.6"
 [[package]]
 category = "main"
 description = "A libudev binding"
-marker = "sys_platform == \"Linux\""
+marker = "sys_platform == \"linux\""
 name = "pyudev"
 optional = false
 python-versions = "*"
@@ -1337,13 +1342,13 @@ docs = ["sphinx", "jaraco.packaging (>=3.2)", "rst.linker (>=1.9)"]
 testing = ["pytest (>=3.5,<3.7.3 || >3.7.3)", "pytest-checkdocs (>=1.2.3)", "pytest-flake8", "pytest-cov", "jaraco.test (>=3.2.0)", "jaraco.itertools", "func-timeout", "pytest-black (>=0.3.7)", "pytest-mypy"]
 
 [metadata]
-content-hash = "d7937c581264eb4fce68963c179dee371add154b8ae5dee7f570b3ebcd281b43"
+content-hash = "950b842f93cc02c3eedee4972522c5eae7c9c6e613fe53d4e1e33c28f5580492"
 python-versions = "^3.7"
 
 [metadata.files]
 aio-usb-hotplug = [
-    {file = "aio-usb-hotplug-2.0.0.tar.gz", hash = "sha256:b44015365a38d439f9121c17f91ea73e52b55dac4e77848f4061e459a029c74e"},
-    {file = "aio_usb_hotplug-2.0.0-py3-none-any.whl", hash = "sha256:b8b22efc248a5e96328f57b0aac9f754a02495c0f0617438f94e92ee42cf385d"},
+    {file = "aio-usb-hotplug-2.0.1.tar.gz", hash = "md5:912f434ad05cb45a548a71ac940e9dec"},
+    {file = "aio_usb_hotplug-2.0.1-py3-none-any.whl", hash = "md5:ebb0ee5bc37ccf3ef3c3b8e80d651ab6"},
 ]
 aiocflib = [
     {file = "aiocflib-0.8.4-py3-none-any.whl", hash = "md5:535eb83750ebe38b2e802298b5e38636"},

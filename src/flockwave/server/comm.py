@@ -192,7 +192,7 @@ class CommunicationManager(Generic[PacketType, AddressType]):
         running.
         """
         entries = self._entries_by_name.get(name)
-        return any(entry.is_open for entry in entries)
+        return any(entry.is_open for entry in entries) if entries else False
 
     def open_channels(self) -> Iterator[MessageChannel]:
         """Returns an iterator that iterates over the list of open message
@@ -368,7 +368,7 @@ class CommunicationManager(Generic[PacketType, AddressType]):
                             f"Error while sending message on channel {name}[{index}]"
                         )
 
-        if not sent:
+        if not sent and address is not BROADCAST:
             if entries:
                 self.log.error(
                     f"Dropping outbound message, all channels broken for: {name!r}"

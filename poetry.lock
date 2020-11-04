@@ -919,7 +919,7 @@ description = "Python MAVLink code"
 name = "pymavlink"
 optional = false
 python-versions = "*"
-version = "2.4.11"
+version = "2.4.12"
 
 [package.dependencies]
 future = "*"
@@ -1209,8 +1209,8 @@ category = "main"
 description = "Python Library for Tom's Obvious, Minimal Language"
 name = "toml"
 optional = false
-python-versions = "*"
-version = "0.10.1"
+python-versions = ">=2.6, !=3.0.*, !=3.1.*, !=3.2.*"
+version = "0.10.2"
 
 [[package]]
 category = "main"
@@ -1795,7 +1795,7 @@ pyledctrl = [
     {file = "pyledctrl-3.1.1.tar.gz", hash = "md5:ee551ae91efebd9c19dd31ca55d081e7"},
 ]
 pymavlink = [
-    {file = "pymavlink-2.4.11.tar.gz", hash = "sha256:0b1265b169f809c6ca94911ad2d7649b8e087a7cc573a0a6ea62ade9bea7ca5c"},
+    {file = "pymavlink-2.4.12.tar.gz", hash = "sha256:2954bb071ff67fc5ab29ed2dabe3b5355c4063fb8b014477d9bfbceb87358bc6"},
 ]
 pynacl = [
     {file = "PyNaCl-1.4.0-cp27-cp27m-macosx_10_10_x86_64.whl", hash = "sha256:ea6841bc3a76fa4942ce00f3bda7d436fda21e2d91602b9e21b7ca9ecab8f3ff"},
@@ -1945,8 +1945,8 @@ tinyrpc = [
     {file = "tinyrpc-1.0.4.tar.gz", hash = "sha256:4b41fab967fb1c978f573bf0d609a3b12cc3b6ed62bd3108f43f575563746396"},
 ]
 toml = [
-    {file = "toml-0.10.1-py2.py3-none-any.whl", hash = "sha256:bda89d5935c2eac546d648028b9901107a595863cb36bae0c73ac804a9b4ce88"},
-    {file = "toml-0.10.1.tar.gz", hash = "sha256:926b612be1e5ce0634a2ca03470f95169cf16f939018233a670519cb4ac58b0f"},
+    {file = "toml-0.10.2-py2.py3-none-any.whl", hash = "sha256:806143ae5bfb6a3c6e736a764057db0e6a0e05e338b5630894a5f779cabb4f9b"},
+    {file = "toml-0.10.2.tar.gz", hash = "sha256:b3bda1d108d5dd99f4a20d24d9c348e91c4db7ab1b749200bded2f839ccbe68f"},
 ]
 tqdm = [
     {file = "tqdm-4.51.0-py2.py3-none-any.whl", hash = "sha256:9ad44aaf0fc3697c06f6e05c7cf025dd66bc7bcb7613c66d85f4464c47ac8fad"},

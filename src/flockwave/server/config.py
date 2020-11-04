@@ -46,6 +46,7 @@ EXTENSIONS = {
         },
         "routes": {"A->B": [], "A->C": ["b", "c"], "B->C": ["a"]},
     },
+    "console_status": {},
     "crazyflie": {
         "id_format": "{0:02}",
         "connections": ["crazyradio://0/80/2M/E7E7E7E7"],

@@ -52,8 +52,8 @@ EXTENSIONS = {
         "connections": ["crazyradio://0/80/2M/E7E7E7E7"],
         "enabled": False,
     },
-    "debug": {},
-    "dock": {"enabled": False, "listener": "unix:/tmp/flockwaved-dock.sock"},
+    "debug": {"enabled": False},
+    "dock": {"enabled": False, "listener": "unix:/tmp/skybrushd-dock.sock"},
     "flockctrl": {
         "id_format": "{0:02}",
         "connections": {

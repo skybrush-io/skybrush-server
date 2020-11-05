@@ -27,7 +27,7 @@ import trio.socket
 
 from flockwave.networking import create_socket
 from flockwave.server.utils import overridden
-from flockwave.server.version import __version__ as flockwave_version
+from flockwave.server.version import __version__ as skybrush_version
 
 USN = "flockwave"
 UPNP_DEVICE_ID = "urn:collmot-com:device:{0}:1".format(USN)
@@ -42,13 +42,13 @@ log = None
 _RESPONSE_HEADERS = {
     "DATE": lambda: format_date_time(mktime(datetime.now().timetuple())),
     "EXT": "",
-    "SERVER": "{0} UPnP/1.1 Flockwave/{1}".format(
+    "SERVER": "{0} UPnP/1.1 Skybrush/{1}".format(
         {
             "Linux": "{0}/{2}".format(*platform.uname()),
             "Darwin": "{0}/{2}".format(*platform.uname()),
             "Windows": "{0}/{3}".format(*platform.uname()),
         }.get(platform.system(), platform.system() or "Unknown"),
-        flockwave_version,
+        skybrush_version,
     ),
     "LABEL.COLLMOT.COM": lambda: label,
 }
@@ -111,13 +111,17 @@ class Sockets(object):
             self.receiver = None
 
 
-def get_service_uri(channel_id, address=None):
+def get_service_uri(channel_id: str, address=None):
     """Returns the location URI of the UPnP service that belongs to the given
     registered Flockwave communication channel.
 
     Parameters:
-        channel_id (str): the ID of the Flockwave channel from the channel type
+        channel_id: the ID of the Flockwave channel from the channel type
             registry
+        address: the address of the device requesting the location URI. This
+            will be used if the server is listening on multiple interfaces;
+            the server tries to ensure that the address returned from this
+            function is in the same subnet as the address of the requestor
 
     Returns:
         Optional[str]: the URI of the channel, if known, ``None`` otherwise
@@ -271,7 +275,7 @@ async def run(app, configuration, logger):
     multicast_group = configuration.get("multicast_group", "239.255.255.250")
     port = configuration.get("port", 1900)
     label = getenv(
-        "FLOCKWAVE_SSDP_LABEL",
+        "SKYBRUSH_SSDP_LABEL",
         configuration.get("label", app.config.get("SERVER_NAME")),
     )
 

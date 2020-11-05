@@ -12,7 +12,7 @@ locally, create a configuration file containing this:
 
 import platform
 
-ON_MAC = platform.system().lower() == "darwin"
+on_mac = platform.system().lower() == "darwin"
 
 # Label that is used to identify the server in SSDP discovery requests
 SERVER_NAME = "Skybrush server"
@@ -127,5 +127,5 @@ EXTENSIONS = {
 # after a while if there is no MIDI device:
 #
 # MidiInCore::initialize: error creating OS-X MIDI client object (-50)
-if ON_MAC:
+if on_mac:
     EXTENSIONS.pop("smpte_timecode", None)

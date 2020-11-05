@@ -10,7 +10,7 @@ from trio import (
 from typing import Dict, List, Optional
 
 from flockwave.app_framework import DaemonApp
-from flockwave.app_framework.configurator import Configuration
+from flockwave.app_framework.configurator import AppConfigurator, Configuration
 from flockwave.gps.vectors import GPSCoordinate
 from flockwave.server.utils import divide_by, get_current_unix_timestamp_msec
 
@@ -808,6 +808,10 @@ class SkybrushServer(DaemonApp):
         # Force-load the ext_manager extension
         cfg = config.setdefault("EXTENSIONS", {})
         cfg["ext_manager"] = {}
+
+    def _setup_app_configurator(self, configurator: AppConfigurator) -> None:
+        configurator.key_filter = str.isupper
+        configurator.merge_keys = ["EXTENSIONS"]
 
 
 ############################################################################

@@ -1,0 +1,9 @@
+{
+  "APPS": [
+    {
+      "name": "Skybrush server",
+      "command": ["/opt/skybrush/server/bin/skybrushd", "-c", "/boot/collmot/skybrush.cfg"]
+    }
+  ]
+}
+

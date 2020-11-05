@@ -59,13 +59,8 @@ if [ ! -d ${HOME}/.poetry ]; then
   echo ""
   echo "$ curl -sSL https://raw.githubusercontent.com/python-poetry/poetry/master/get-poetry.py | python3 -"
   echo ""
-  echo "After installation, log out, log in again and then set your username and"
-  echo "password to the CollMot private repository with:"
-  echo ""
-  echo "poetry config http-basic.collmot <your-username>"
-  echo ""
   echo "To allow this script to run in unsupervised mode, you should use an"
-  echo "unencrypted keyring (unless you use a GUI on the RPi, which you shouldn't."
+  echo "unencrypted keyring (unless you use a GUI on the RPi, which you shouldn't)."
   echo ""
   echo "Create or edit ~/.local/share/python_keyring/keyringrc.cfg so that it has"
   echo "the following contents _before_ setting up the credentials:"
@@ -73,7 +68,12 @@ if [ ! -d ${HOME}/.poetry ]; then
   echo "[backend]"
   echo "default-keyring=keyrings.alt.file.PlaintextKeyring"
   echo ""
-  echo "You might also need to install python-keyring.alt"
+  echo "You might also need to install python-keyrings.alt"
+  echo ""
+  echo "After installation, log out, log in again and then set your username and"
+  echo "password to the CollMot private repository with:"
+  echo ""
+  echo "poetry config http-basic.collmot <your-username>"
   exit 1
 fi
 
@@ -94,8 +94,26 @@ fi
 
 cd skybrush-server
 git pull
+# etc/scripts/build-pyarmored-dist.sh
+cd ..
 
-etc/scripts/build-pyarmored-dist.sh
+if [ ! -d skybrush-console-frontend ]; then
+    git clone git@git.collmot.com:collmot/skybrush-console-frontend.git
+fi
+
+cd skybrush-console-frontend
+git pull
+# etc/scripts/build-pyarmored-dist.sh
+cd ..
+
+rm -rf staging
+mkdir -p staging/opt/skybrush/server
+tar -C staging/opt/skybrush/server --strip-components=1 -xvvzf skybrush-server/dist/pyarmor/*.tar.gz
+mkdir -p staging/opt/skybrush/frontend
+tar -C staging/opt/skybrush/frontend --strip-components=1 -xvvzf skybrush-console-frontend/dist/pyarmor/*.tar.gz
+mkdir -p staging/opt/skybrush/config
+tar -C staging -cvvzf skybrush-server-rpi-dist.tar.gz opt
+rm -rf staging
 
 # rm -rf "${WORK_DIR}"
 

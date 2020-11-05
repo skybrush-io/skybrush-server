@@ -886,7 +886,7 @@ def handle_SYS_TIME(message, sender, hub):
 
 @app.message_hub.on("SYS-TIMESYNC")
 def handle_SYS_TIMESYNC(message, sender, hub):
-    timestamps = list(message.get("timestamps", ()))
+    timestamps = list(message.body.get("timestamps", ()))
     timestamps.append(get_current_unix_timestamp_msec())
     return {"timestamps": timestamps}
 

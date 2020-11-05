@@ -3,6 +3,10 @@
 # Script that builds and deploys the Skybrush Server along with a console
 # frontend straight to a Raspberry Pi
 
+OUTPUT_FILE="skybrush-server-rpi-dist.tar.gz"
+
+###############################################################################
+
 set -e
 
 if [ -f /proc/cpuinfo ]; then
@@ -31,10 +35,8 @@ if [ $RUNNING_ON_RPI -lt 1 ]; then
 
   ssh "$TARGET" /bin/bash <<EOF
 chmod +x ./deploy-to-rpi.sh
+./deploy-to-rpi.sh
 EOF
-
-  echo "Script was copied to $TARGET:$0"
-  echo "Now log in and execute it."
 
   exit
 fi
@@ -94,7 +96,7 @@ fi
 
 cd skybrush-server
 git pull
-# etc/scripts/build-pyarmored-dist.sh
+etc/scripts/build-pyarmored-dist.sh
 cd ..
 
 if [ ! -d skybrush-console-frontend ]; then
@@ -103,7 +105,7 @@ fi
 
 cd skybrush-console-frontend
 git pull
-# etc/scripts/build-pyarmored-dist.sh
+etc/scripts/build-pyarmored-dist.sh
 cd ..
 
 rm -rf staging
@@ -112,8 +114,25 @@ tar -C staging/opt/skybrush/server --strip-components=1 -xvvzf skybrush-server/d
 mkdir -p staging/opt/skybrush/frontend
 tar -C staging/opt/skybrush/frontend --strip-components=1 -xvvzf skybrush-console-frontend/dist/pyarmor/*.tar.gz
 mkdir -p staging/opt/skybrush/config
-tar -C staging -cvvzf skybrush-server-rpi-dist.tar.gz opt
+cp skybrush-server/etc/deployment/rpi/skybrush-console-frontend.json staging/opt/skybrush/config/frontend.json
+mkdir -p staging/boot/collmot
+echo '{}' >staging/boot/collmot/skybrush.json
+mkdir -p staging/etc/systemd/system/getty@tty1.service.d
+cp skybrush-server/etc/deployment/rpi/tty1-override.conf staging/etc/systemd/system/getty@tty1.service.d/10-skybrush.conf
+tar -C staging --owner=0 --group=0 -cvvzf "${OUTPUT_FILE}" boot etc opt
 rm -rf staging
 
 # rm -rf "${WORK_DIR}"
+
+echo ""
+echo "------------------------------------------------------------------------"
+echo ""
+echo "Obfuscated bundle created successfully in ${WORK_DIR}/${OUTPUT_FILE}"
+echo ""
+echo "To install it, type the following commands as root:"
+echo ""
+echo "rm -rf /opt/skybrush"
+echo "tar -C / -xvvzf ${WORK_DIR}/${OUTPUT_FILE}"
+echo ""
+echo "After that you should reboot the RPi."
 

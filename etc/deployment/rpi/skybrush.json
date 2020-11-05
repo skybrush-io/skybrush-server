@@ -1,0 +1,14 @@
+{
+  "EXTENSIONS": {
+    "http_server": {
+      "host": ""
+    },
+    "ssdp": {
+      "label": "Skybrush RPi server"
+    },
+    "mavlink": {
+      "enabled": true
+    }
+  }
+}
+

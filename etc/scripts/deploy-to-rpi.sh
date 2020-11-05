@@ -116,7 +116,7 @@ tar -C staging/opt/skybrush/frontend --strip-components=1 -xvvzf skybrush-consol
 mkdir -p staging/opt/skybrush/config
 cp skybrush-server/etc/deployment/rpi/skybrush-console-frontend.json staging/opt/skybrush/config/frontend.json
 mkdir -p staging/boot/collmot
-echo '{}' >staging/boot/collmot/skybrush.json
+cp skybrush-server/etc/deployment/rpi/skybrush.json staging/boot/collmot/skybrush.json
 mkdir -p staging/etc/systemd/system/getty@tty1.service.d
 cp skybrush-server/etc/deployment/rpi/tty1-override.conf staging/etc/systemd/system/getty@tty1.service.d/10-skybrush.conf
 tar -C staging --owner=0 --group=0 -cvvzf "${OUTPUT_FILE}" boot etc opt

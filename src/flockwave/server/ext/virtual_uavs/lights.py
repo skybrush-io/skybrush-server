@@ -4,7 +4,7 @@ on the UAVs.
 
 from abc import abstractmethod
 from colour import Color
-from time import time
+from time import monotonic
 from typing import Callable, Iterable, List, Optional, Union
 
 from pyledctrl.player import Player
@@ -135,7 +135,7 @@ class DefaultLightController(ModularLightController):
         This function is a no-op if there is no light program loaded.
         """
         if self._light_program_player is not None:
-            self._light_program_start_time = time()
+            self._light_program_start_time = monotonic()
 
     def stop_light_program(self) -> None:
         """Stops playing the current light program.
@@ -161,7 +161,7 @@ class DefaultLightController(ModularLightController):
         Parameters:
             duration: duration of the light signal in seconds
         """
-        self._where_are_you_start_time = time()
+        self._where_are_you_start_time = monotonic()
         self._where_are_you_duration_ms = duration * 1000
 
     def _error_module(self, timestamp: float, color: Color) -> Color:

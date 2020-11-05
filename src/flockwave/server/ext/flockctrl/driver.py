@@ -26,7 +26,7 @@ from flockwave.server.model.gps import GPSFixType
 from flockwave.server.model.uav import UAVBase, UAVDriver, VersionInfo
 from flockwave.server.utils import color_to_rgb565, nop
 from flockwave.spec.ids import make_valid_object_id
-from time import time
+from time import monotonic
 from trio import CapacityLimiter, to_thread
 from typing import Optional, List, Tuple
 from zlib import decompress
@@ -166,7 +166,7 @@ class FlockCtrlDriver(UAVDriver):
         except AddressConflictError as ex:
             uav_id = ex.uav.id if ex.uav else None
             deadline = self._disable_warnings_until.get(uav_id, 0)
-            now = time()
+            now = monotonic()
             if now >= deadline:
                 self.log.warn(
                     "Dropped packet from invalid source: "

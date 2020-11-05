@@ -4,7 +4,7 @@ from colour import Color
 from enum import Enum
 from math import atan2, cos, hypot, sin
 from random import random, choice
-from time import time
+from time import monotonic
 from trio import CancelScope, sleep
 from trio_util import periodic
 from typing import Callable, Optional
@@ -375,7 +375,7 @@ class VirtualUAV(UAVBase):
         mission (trajectory) or `None` if no mission is running yet.
         """
         return (
-            time() - self._mission_started_at
+            monotonic() - self._mission_started_at
             if self._mission_started_at is not None
             else None
         )
@@ -791,7 +791,7 @@ class VirtualUAV(UAVBase):
             "velocity": self._velocity_ned,
             "errors": self.errors,
             "battery": self.battery.status,
-            "light": color_to_rgb565(self._light_controller.evaluate(time())),
+            "light": color_to_rgb565(self._light_controller.evaluate(monotonic())),
         }
         self.update_status(**updates)
 
@@ -848,7 +848,7 @@ class VirtualUAV(UAVBase):
         if not self.armed:
             return
 
-        self._mission_started_at = time()
+        self._mission_started_at = monotonic()
 
         if self._target_xyz is None:
             self._target_xyz = self._position_xyz.copy()

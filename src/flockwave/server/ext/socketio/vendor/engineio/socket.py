@@ -16,7 +16,7 @@ class Socket(object):
         self.server = server
         self.sid = sid
         self.queue = self.server.create_queue()
-        self.last_ping = time.time()
+        self.last_ping = time.monotonic()
         self.connected = False
         self.upgrading = False
         self.upgraded = False
@@ -51,7 +51,7 @@ class Socket(object):
             pkt.data if not isinstance(pkt.data, bytes) else "<binary>",
         )
         if pkt.packet_type == packet.PING:
-            self.last_ping = time.time()
+            self.last_ping = time.monotonic()
             await self.send(packet.Packet(packet.PONG, pkt.data))
         elif pkt.packet_type == packet.MESSAGE:
             await self.server._trigger_event(
@@ -71,7 +71,7 @@ class Socket(object):
         """
         if self.closed:
             raise exceptions.SocketIsClosedError()
-        if time.time() - self.last_ping > self.server.ping_interval + 5:
+        if time.monotonic() - self.last_ping > self.server.ping_interval + 5:
             self.server.logger.info("%s: Client is gone, closing socket", self.sid)
             # Passing abort=False here will cause close() to write a
             # CLOSE packet. This has the effect of updating half-open sockets

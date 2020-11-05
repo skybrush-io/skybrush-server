@@ -3,7 +3,6 @@
 from appdirs import AppDirs
 from collections import defaultdict
 from inspect import isawaitable
-from time import time
 from trio import (
     BrokenResourceError,
     move_on_after,
@@ -13,7 +12,7 @@ from typing import Dict, List, Optional
 from flockwave.app_framework import DaemonApp
 from flockwave.app_framework.configurator import Configuration
 from flockwave.gps.vectors import GPSCoordinate
-from flockwave.server.utils import divide_by
+from flockwave.server.utils import divide_by, get_current_unix_timestamp_msec
 
 from .commands import CommandExecutionManager
 from .errors import NotSupportedError
@@ -882,7 +881,14 @@ def handle_SYS_PING(message, sender, hub):
 
 @app.message_hub.on("SYS-TIME")
 def handle_SYS_TIME(message, sender, hub):
-    return {"timestamp": int(round(time() * 1000))}
+    return {"timestamp": get_current_unix_timestamp_msec()}
+
+
+@app.message_hub.on("SYS-TIMESYNC")
+def handle_SYS_TIMESYNC(message, sender, hub):
+    timestamps = list(message.get("timestamps", ()))
+    timestamps.append(get_current_unix_timestamp_msec())
+    return {"timestamps": timestamps}
 
 
 @app.message_hub.on("SYS-VER")

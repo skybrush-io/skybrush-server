@@ -1,9 +1,9 @@
 """Mixin classes for other model objects."""
 
 from datetime import datetime
-from flockwave.server.utils import is_timezone_aware
-from time import time
 from typing import Optional, Union
+
+from flockwave.server.utils import get_current_unix_timestamp_msec, is_timezone_aware
 
 __all__ = ("TimestampMixin",)
 
@@ -34,7 +34,7 @@ class TimestampMixin:
             to use the current date and time.
         """
         if timestamp is None:
-            timestamp = int(round(time() * 1000))
+            timestamp = get_current_unix_timestamp_msec()
         elif isinstance(timestamp, datetime):
             assert is_timezone_aware(timestamp), "Timestamp must be timezone-aware"
             timestamp = int(round(timestamp.timestamp() * 1000))

@@ -13,6 +13,7 @@ set -e
 
 SCRIPT_ROOT=`dirname $0`
 REPO_ROOT="${SCRIPT_ROOT}/../.."
+PYARMOR_ARGS="--with-license outer --advanced 2"
 
 cd "${REPO_ROOT}"
 
@@ -56,12 +57,12 @@ rm -rf "${OUTPUT_DIR}/lib/bin"
 rm -rf "${OUTPUT_DIR}/lib-obfuscated"
 for PACKAGE in ${OBFUSCATED_PACKAGES}; do
   mkdir -p "${OUTPUT_DIR}/lib-obfuscated/${PACKAGE}"
-  .venv/bin/pyarmor obfuscate -n --advanced 2 --recursive --output "${OUTPUT_DIR}/lib-obfuscated/${PACKAGE}" "${OUTPUT_DIR}/lib/${PACKAGE}/__init__.py"
+  .venv/bin/pyarmor obfuscate $PYARMOR_ARGS --no-runtime --recursive --output "${OUTPUT_DIR}/lib-obfuscated/${PACKAGE}" "${OUTPUT_DIR}/lib/${PACKAGE}/__init__.py"
 done
 
 # Obfuscate the launcher script as well
 cp "src/flockwave/server/__main__.py" "${OUTPUT_DIR}/skybrushd.py"
-.venv/bin/pyarmor obfuscate --advanced 2 --exact --output "${OUTPUT_DIR}/lib-obfuscated" "${OUTPUT_DIR}/skybrushd.py"
+.venv/bin/pyarmor obfuscate $PYARMOR_ARGS --exact --output "${OUTPUT_DIR}/lib-obfuscated" "${OUTPUT_DIR}/skybrushd.py"
 rm "${OUTPUT_DIR}/skybrushd.py"
 
 # Move the obfuscated scripts back to lib/ to overwrite the originals

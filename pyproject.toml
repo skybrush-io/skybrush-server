@@ -44,7 +44,7 @@ flockwave-flockctrl = "^0.13.0"
 flockwave-gps = {extras = ["ntrip"], version = "^1.0.0"}
 flockwave-logger = "^1.3.0"
 flockwave-parsers = "^1.2.0"
-flockwave-spec = "^0.41.1"
+flockwave-spec = "^0.42.0"
 pyledctrl = "^3.1.0"
 aiocflib = "^0.8.4"
 appdirs = "^1.4.4"

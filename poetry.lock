@@ -317,7 +317,7 @@ reference = "collmot"
 
 [[package]]
 name = "colorlog"
-version = "4.4.0"
+version = "4.5.0"
 description = "Log formatting with colors!"
 category = "main"
 optional = false
@@ -537,7 +537,7 @@ reference = "collmot"
 
 [[package]]
 name = "flockwave-spec"
-version = "0.41.1"
+version = "0.42.0"
 description = "JSON-Schema specification of the Flockwave protocol"
 category = "main"
 optional = false
@@ -1777,7 +1777,7 @@ reference = "collmot"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7"
-content-hash = "d32248b8f53da3534676a1389e68a54215c643ae38024fa2d7901302f4d37d74"
+content-hash = "0fb1f03410e1b4aa2b42c66e0e1bb82ae20e01d2eb2b5fed26a1e779355a99d2"
 
 [metadata.files]
 aio-usb-hotplug = [
@@ -1893,8 +1893,8 @@ colorama = [
     {file = "colorama-0.4.4.tar.gz", hash = "sha256:5941b2b48a20143d2267e95b1c2a7603ce057ee39fd88e7329b0c292aa16869b"},
 ]
 colorlog = [
-    {file = "colorlog-4.4.0-py2.py3-none-any.whl", hash = "sha256:f14f30f58e2ce6ef40b0088307cac7efb9ecff5605fa2267a2d29955f26aff23"},
-    {file = "colorlog-4.4.0.tar.gz", hash = "sha256:0272c537469ab1e63b9915535874d15b671963c9325db0c4891a2aeff97ce3d1"},
+    {file = "colorlog-4.5.0-py2.py3-none-any.whl", hash = "sha256:677d39a84c4ca37c87532729c143c6a35cb558a1225b9544713fe42a04102ad2"},
+    {file = "colorlog-4.5.0.tar.gz", hash = "sha256:72d25293d6d191e5adc851879240ad33a1ce131a7b36b37f940e505681007e65"},
 ]
 colour = [
     {file = "colour-0.1.5-py2.py3-none-any.whl", hash = "sha256:33f6db9d564fadc16e59921a56999b79571160ce09916303d35346dddc17978c"},
@@ -1960,8 +1960,8 @@ flockwave-parsers = [
     {file = "flockwave_parsers-1.2.0-py3-none-any.whl", hash = "md5:4f53aadf684d06c79998b332ec2dcaa0"},
 ]
 flockwave-spec = [
-    {file = "flockwave-spec-0.41.1.tar.gz", hash = "md5:01e1a473bcfcdfa8e90e3c90cf498a13"},
-    {file = "flockwave_spec-0.41.1-py3-none-any.whl", hash = "md5:8299d326170f03eb2132b9bee84a5810"},
+    {file = "flockwave-spec-0.42.0.tar.gz", hash = "md5:8d1f2dd63b032bd561d836a5b3619e55"},
+    {file = "flockwave_spec-0.42.0-py3-none-any.whl", hash = "md5:743bbbbdf20e912ba921dfc8bd59b991"},
 ]
 future = [
     {file = "future-0.18.2.tar.gz", hash = "sha256:b1bead90b70cf6ec3f0710ae53a525360fa360d306a86583adc6bf83a4db537d"},

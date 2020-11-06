@@ -12,7 +12,12 @@ from typing import Dict, List, Optional
 from flockwave.app_framework import DaemonApp
 from flockwave.app_framework.configurator import AppConfigurator, Configuration
 from flockwave.gps.vectors import GPSCoordinate
-from flockwave.server.utils import divide_by, get_current_unix_timestamp_msec
+from flockwave.server.utils import divide_by
+from flockwave.server.utils.system_time import (
+    can_set_system_time,
+    get_system_time_msec,
+    set_system_time_msec,
+)
 
 from .commands import CommandExecutionManager
 from .errors import NotSupportedError
@@ -885,14 +890,22 @@ def handle_SYS_PING(message, sender, hub):
 
 @app.message_hub.on("SYS-TIME")
 def handle_SYS_TIME(message, sender, hub):
-    return {"timestamp": get_current_unix_timestamp_msec()}
+    adjustment = message.body.get("adjustment")
+    if adjustment is not None:
+        adjustment = float(adjustment)
+        if not can_set_system_time():
+            return hub.acknowledge(message, outcome=False, reason="Permission denied")
 
+        if adjustment != 0:
+            # This branch is required so the client can test whether time
+            # adjustments are supported by sending an adjustment with zero delta
+            adjusted_time_msec = get_system_time_msec() + adjustment
+            try:
+                set_system_time_msec(adjusted_time_msec)
+            except Exception as ex:
+                return hub.acknowledge(message, outcome=False, reason=str(ex))
 
-@app.message_hub.on("SYS-TIMESYNC")
-def handle_SYS_TIMESYNC(message, sender, hub):
-    timestamps = list(message.body.get("timestamps", ()))
-    timestamps.append(get_current_unix_timestamp_msec())
-    return {"timestamps": timestamps}
+    return {"timestamp": get_system_time_msec()}
 
 
 @app.message_hub.on("SYS-VER")

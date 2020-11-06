@@ -8,7 +8,6 @@ from functools import partial
 from inspect import Parameter, signature
 from itertools import tee
 from operator import mul
-from time import time
 from typing import Any, Callable, Generator, Iterable, Optional, Tuple, TypeVar
 
 
@@ -20,7 +19,6 @@ __all__ = (
     "constant",
     "datetime_to_unix_timestamp",
     "divide_by",
-    "get_current_unix_timestamp_msec",
     "identity",
     "is_timezone_aware",
     "itersubclasses",
@@ -155,11 +153,6 @@ def divide_by(value: float) -> Callable[[float], float]:
     with the given value.
     """
     return partial(mul, 1.0 / value)
-
-
-def get_current_unix_timestamp_msec() -> int:
-    """Returns the current UNIX timestamp in milliseconds as an integer."""
-    return int(round(time() * 1000))
 
 
 def identity(obj: Any) -> Any:

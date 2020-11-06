@@ -8,7 +8,6 @@ from .generic import (
     constant,
     datetime_to_unix_timestamp,
     divide_by,
-    get_current_unix_timestamp_msec,
     identity,
     is_timezone_aware,
     itersubclasses,
@@ -21,6 +20,7 @@ from .generic import (
     overridden,
     to_uppercase_string,
 )
+from .system_time import get_current_unix_timestamp_msec
 
 __all__ = (
     "bind",

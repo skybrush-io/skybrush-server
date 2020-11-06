@@ -3,6 +3,9 @@
     "http_server": {
       "host": ""
     },
+    "rtk": {
+      "add_serial_ports": [9600, 57600]
+    },
     "ssdp": {
       "label": "Skybrush RPi server"
     },
@@ -11,4 +14,3 @@
     }
   }
 }
-

@@ -252,7 +252,9 @@ class RTKExtension(ExtensionBase):
                             self.app.connection_registry.use(
                                 connection,
                                 self._id_format.format(preset.id),
-                                preset.title,
+                                f"RTK corrections ({preset.title})"
+                                if preset.title
+                                else "RTK corrections",
                                 ConnectionPurpose.dgps,
                             )
                         )

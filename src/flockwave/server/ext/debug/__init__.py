@@ -1,5 +1,5 @@
-"""Flockwave server extension that adds debugging tools and a test page to
-the Flockwave server.
+"""Skybrush server extension that adds debugging tools and a test page to
+the Skybrush server.
 """
 
 from .extension import dependencies, load, index

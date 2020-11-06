@@ -91,7 +91,7 @@ def _convert_client_id(client_id: str) -> str:
 
 
 def handle_connection(client_id, environ):
-    """Handler called when a client connects to the Flockwave server socket."""
+    """Handler called when a client connects to the Skybrush server socket."""
     client = app.client_registry.add(_convert_client_id(client_id), "sio")
     client.user = environ.get("REMOTE_USER")
 

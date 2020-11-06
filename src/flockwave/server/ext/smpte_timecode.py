@@ -1,4 +1,4 @@
-"""Flockwave server extension that adds support for reading SMPTE timecodes
+"""Skybrush server extension that adds support for reading SMPTE timecodes
 from a MIDI connection.
 
 Support for other connection types (e.g., TCP/IP) may be added later.

@@ -11,7 +11,7 @@ __all__ = ("User",)
 
 @attr.s(frozen=True)
 class User:
-    """A single user connected to the Flockwave server via a client
+    """A single user connected to the Skybrush server via a client
     connection.
 
     Attributes:

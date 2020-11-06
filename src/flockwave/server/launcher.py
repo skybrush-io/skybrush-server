@@ -1,4 +1,4 @@
-"""Command line launcher for the Flockwave server."""
+"""Command line launcher for the Skybrush server."""
 
 import click
 import dotenv

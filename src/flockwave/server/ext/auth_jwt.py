@@ -1,4 +1,4 @@
-"""Extension that implements JWT token based authentication for the Flockwave
+"""Extension that implements JWT token based authentication for the Skybrush
 server.
 """
 

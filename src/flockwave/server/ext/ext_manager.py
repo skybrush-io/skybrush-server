@@ -2,7 +2,7 @@
 to load, unload and reconfigure extensions while the server is running.
 
 This extension is special in the sense that it provides a mandatory part of
-the Flockwave server protocol. Therefore, this extension is loaded even if it
+the Skybrush server protocol. Therefore, this extension is loaded even if it
 is not mentioned explicitly in the server configuration, and it cannot be
 unloaded by the user.
 """

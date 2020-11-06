@@ -1,8 +1,8 @@
-"""Extension that allows the Flockwave server to be discoverable on the
+"""Extension that allows the Skybrush server to be discoverable on the
 local network with UPnP/SSDP.
 
-The Flockwave server will be represented as a single root device on the
-network. The device has no UUID because there might be multiple Flockwave
+The Skybrush server will be represented as a single root device on the
+network. The device has no UUID because there might be multiple Skybrush
 server instances running on the same machine and it is unclear how the UUID
 should be generated in such cases. However, the server will respond to UPnP
 M-SEARCH requests for root devices, and for searches for

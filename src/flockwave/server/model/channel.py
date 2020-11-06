@@ -17,7 +17,7 @@ __all__ = ("CommunicationChannel",)
 class CommunicationChannel(metaclass=ABCMeta):
     """Base model object representing a communication channel between the
     server and a client. Concrete implementations of this class are to be
-    found in the appropriate Flockwave server extensions (e.g., the
+    found in the appropriate Skybrush server extensions (e.g., the
     ``socketio`` extension for Socket.IO channels).
     """
 

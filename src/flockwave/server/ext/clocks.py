@@ -1,5 +1,5 @@
 """Extension that provides a clock registry to the app and adds support
-for the ``CLK-...`` commands defined in the Flockwave protocol.
+for the ``CLK-...`` commands defined in the Skybrush protocol.
 """
 
 from trio import sleep_forever

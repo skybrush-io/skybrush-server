@@ -20,7 +20,7 @@ if TYPE_CHECKING:
 
 class ModelObject(metaclass=ABCMeta):
     """Abstract object that defines the interface of generic objects tracked
-    by the Flockwave server.
+    by the Skybrush server.
     """
 
     @staticmethod

@@ -1,4 +1,4 @@
-"""Flockwave server extension that adds support for drone flocks using the
+"""Skybrush server extension that adds support for drone flocks using the
 ``flockctrl`` protocol.
 """
 

@@ -1,4 +1,4 @@
-"""Extension that extends the Flockwave server with support for incoming
+"""Extension that extends the Skybrush server with support for incoming
 messages on a Socket.IO connection.
 """
 

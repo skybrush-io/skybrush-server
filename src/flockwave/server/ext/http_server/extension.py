@@ -1,4 +1,4 @@
-"""Extension that extends the Flockwave server with an HTTP server listening
+"""Extension that extends the Skybrush server with an HTTP server listening
 on a specific port.
 
 This server can then be used by other extensions to implement HTTP-specific

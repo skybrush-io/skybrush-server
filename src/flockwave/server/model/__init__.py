@@ -1,4 +1,4 @@
-"""Model-related classes for the Flockwave server."""
+"""Model-related classes for the Skybrush server."""
 
 from __future__ import absolute_import
 

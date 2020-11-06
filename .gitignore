@@ -8,6 +8,7 @@
 .eggs/
 build/
 dist/
+licenses/
 tmp/
 .venv/
 .vscode/

@@ -134,5 +134,6 @@ echo ""
 echo "rm -rf /opt/skybrush"
 echo "tar -C / -xvvzf ${WORK_DIR}/${OUTPUT_FILE}"
 echo ""
-echo "After that you should reboot the RPi."
+echo "After that you should reboot the RPi. Also, don't forget to add a license"
+echo "file to the RPi in /boot/collmot/skybrushd.cml"
 

@@ -4,6 +4,7 @@
 # frontend straight to a Raspberry Pi
 
 OUTPUT_FILE="skybrush-server-rpi-dist.tar.gz"
+DEBUG=0
 
 ###############################################################################
 
@@ -36,6 +37,7 @@ if [ $RUNNING_ON_RPI -lt 1 ]; then
   ssh "$TARGET" /bin/bash <<EOF
 chmod +x ./deploy-to-rpi.sh
 ./deploy-to-rpi.sh
+rm ./deploy-to-rpi.sh
 EOF
 
   exit
@@ -47,6 +49,10 @@ fi
 
 # Read the bash profile
 source ${HOME}/.profile
+
+# Find out what the current directory is; we will return there are the end of
+# the script
+CWD=`pwd`
 
 # Check whether we have set up PyArmor already
 if [ ! -d ${HOME}/.pyarmor ]; then
@@ -79,8 +85,12 @@ if [ ! -d ${HOME}/.poetry ]; then
   exit 1
 fi
 
-# WORK_DIR=$(mktemp -d -t build-XXXXXXXXXX --tmpdir=.)
-WORK_DIR=work
+if [ $DEBUG -lt 1 ]; then
+  WORK_DIR=$(mktemp -d -t build-XXXXXXXXXX --tmpdir=.)
+else
+  WORK_DIR=work
+fi
+
 POETRY=${HOME}/.poetry/bin/poetry
 
 echo "Work directory: ${WORK_DIR}"
@@ -122,12 +132,17 @@ cp skybrush-server/etc/deployment/rpi/tty1-override.conf staging/etc/systemd/sys
 tar -C staging --owner=0 --group=0 -cvvzf "${OUTPUT_FILE}" boot etc opt
 rm -rf staging
 
-# rm -rf "${WORK_DIR}"
+mv "${OUTPUT_FILE}" "${CWD}"
+cd "${CWD}"
+
+if [ $DEBUG -lt 1 ]; then
+  rm -rf "${WORK_DIR}"
+fi
 
 echo ""
 echo "------------------------------------------------------------------------"
 echo ""
-echo "Obfuscated bundle created successfully in ${WORK_DIR}/${OUTPUT_FILE}"
+echo "Obfuscated bundle created successfully in ${OUTPUT_FILE}"
 echo ""
 echo "To install it, type the following commands as root:"
 echo ""

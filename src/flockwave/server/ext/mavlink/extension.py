@@ -26,6 +26,15 @@ from .types import (
 __all__ = ("construct", "dependencies")
 
 
+#: Dictionary that resolves common connection preset aliases used in
+#: the configuration file
+CONNECTION_PRESETS = {
+    "default": "udp://:14550?broadcast_port=14555",
+    "apm-sitl": "tcp://localhost:5760",
+    "px4-sitl": "tcp://localhost:4560",
+}
+
+
 class MAVLinkDronesExtension(UAVExtensionBase):
     """Extension that adds support for drone flocks using the MAVLink
     protocol.
@@ -153,6 +162,14 @@ class MAVLinkDronesExtension(UAVExtensionBase):
             for key, value in network_spec_defaults.items():
                 if key not in spec and value is not MISSING:
                     spec[key] = value
+
+            # Resolve common connection aliases
+            if "connections" in spec:
+                spec["connections"] = [
+                    CONNECTION_PRESETS.get(value, value)
+                    for value in spec["connections"]
+                ]
+            print(repr(spec))
 
         # Return the network specifications
         return {

@@ -578,6 +578,7 @@ class MAVLinkNetwork:
         """Handles an incoming MAVLink STATUSTEXT message and forwards it to the
         log console.
         """
+        # TODO(ntamas): for PX4, the messages start with "Preflight Fail"
         if message.text and message.text.startswith("PreArm: "):
             uav = self._find_uav_from_message(message, address)
             uav.notify_prearm_failure(message.text[8:])

@@ -76,9 +76,11 @@ EXTENSIONS = {
     "mavlink": {
         "enabled": False,
         "id_format": "{0:02}",
-        # "connections": ["tcp://localhost:5760"],
-        # "connections": ["udp://localhost:14550"],
-        "connections": ["udp://:14550?broadcast_port=14555"],
+        # "connections": ["apm-sitl"],   # for ArduPilot SITL simulator
+        # "connections": ["px4-sitl"],   # for PX4 SITL simulator
+        "connections": [
+            "default"
+        ],  # default setup; listens for heartbeats on UDP port 14555, sends broadcasts to UDP port 14550
         "custom_mode": None,
         "system_id": 255,
     },

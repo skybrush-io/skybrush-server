@@ -31,7 +31,6 @@ __all__ = ("construct", "dependencies")
 CONNECTION_PRESETS = {
     "default": "udp://:14550?broadcast_port=14555",
     "apm-sitl": "tcp://localhost:5760",
-    "px4-sitl": "tcp://localhost:4560",
 }
 
 

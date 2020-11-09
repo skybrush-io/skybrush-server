@@ -77,7 +77,6 @@ EXTENSIONS = {
         "enabled": False,
         "id_format": "{0:02}",
         # "connections": ["apm-sitl"],   # for ArduPilot SITL simulator
-        # "connections": ["px4-sitl"],   # for PX4 SITL simulator
         "connections": [
             "default"
         ],  # default setup; listens for heartbeats on UDP port 14555, sends broadcasts to UDP port 14550

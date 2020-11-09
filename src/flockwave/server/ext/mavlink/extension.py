@@ -169,7 +169,6 @@ class MAVLinkDronesExtension(UAVExtensionBase):
                     CONNECTION_PRESETS.get(value, value)
                     for value in spec["connections"]
                 ]
-            print(repr(spec))
 
         # Return the network specifications
         return {

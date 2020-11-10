@@ -38,11 +38,10 @@ def start(config, debug, quiet, log_style):
         style=log_style,
     )
 
-    # Also silence Engine.IO and Socket.IO when not in debug mode
-    if not debug:
-        for logger_name in ("engineio", "socketio"):
-            log_handler = logging.getLogger(logger_name)
-            log_handler.setLevel(logging.ERROR)
+    # Silence Engine.IO and Socket.IO debug messages
+    for logger_name in ("engineio", "socketio"):
+        log_handler = logging.getLogger(logger_name)
+        log_handler.setLevel(logging.ERROR)
 
     # Load environment variables from .env
     dotenv.load_dotenv(verbose=debug)

@@ -11,7 +11,13 @@ from flockwave.server.model.geofence import (
 )
 from flockwave.server.utils import clamp
 
-from .enums import MAVAutopilot, MAVParamType, MAVProtocolCapability
+from .enums import (
+    MAVAutopilot,
+    MAVParamType,
+    MAVProtocolCapability,
+    MAVState,
+    MAVSysStatusSensor,
+)
 from .geofence import GeofenceManager
 from .types import MAVLinkMessage
 from .utils import (
@@ -73,6 +79,16 @@ class Autopilot(metaclass=ABCMeta):
         of the heartbeat.
         """
         return f"mode {custom_mode}"
+
+    @abstractmethod
+    def are_motor_outputs_disabled(
+        self, heartbeat: MAVLinkMessage, sys_status: MAVLinkMessage
+    ) -> bool:
+        """Decides whether the motor outputs of a UAV with this autopilot are
+        disabled, given the MAVLink HEARTBEAT and SYS_STATUS messages where this
+        information is conveyed for _some_ autopilots.
+        """
+        raise NotImplementedError
 
     @abstractmethod
     async def configure_geofence(
@@ -143,6 +159,16 @@ class Autopilot(metaclass=ABCMeta):
         """
         raise NotImplementedError
 
+    @abstractmethod
+    def is_prearm_check_in_progress(
+        self, heartbeat: MAVLinkMessage, sys_status: MAVLinkMessage
+    ) -> bool:
+        """Decides whether the prearm check is still in progress on the UAV,
+        assuming that this information is reported either in the heartbeat or
+        the SYS_STATUS message.
+        """
+        raise NotImplementedError
+
     def refine_with_capabilities(self, capabilities: int):
         """Refines the autopilot class with further information from the
         capabilities bitfield of the MAVLink "autopilot capabilities" message,
@@ -168,6 +194,11 @@ class UnknownAutopilot(Autopilot):
     ) -> None:
         raise NotSupportedError
 
+    def are_motor_outputs_disabled(
+        self, heartbeat: MAVLinkMessage, sys_status: MAVLinkMessage
+    ) -> bool:
+        return False
+
     def get_custom_flight_mode_number(self, mode: str) -> int:
         raise NotSupportedError
 
@@ -178,6 +209,105 @@ class UnknownAutopilot(Autopilot):
     def is_battery_percentage_reliable(self) -> bool:
         # Let's be optimistic :)
         return True
+
+    def is_prearm_check_in_progress(
+        self, heartbeat: MAVLinkMessage, sys_status: MAVLinkMessage
+    ) -> bool:
+        return False
+
+    @property
+    def supports_scheduled_takeoff(self):
+        return False
+
+
+class PX4(Autopilot):
+    """Class representing the PX4 autopilot firmware."""
+
+    name = "PX4"
+
+    #: Custom mode dictionary, containing the primary name and the aliases for
+    #: each known main flight mode
+    _main_modes = {
+        1: ("manual",),
+        2: ("alt hold",),
+        3: ("pos hold",),
+        4: ("auto",),
+        5: ("acro",),
+        6: ("guided", "offboard"),
+        7: ("stabilize", "stab"),
+        8: ("rattitude",),
+        9: ("simple",),
+    }
+
+    #: Custom mode dictionary, containing the primary name and the aliases for
+    #: each known submode of the "auto" flight mode
+    _auto_submodes = {5: ("rth",), 6: ("land",), 8: ("follow",)}
+
+    @classmethod
+    def describe_custom_mode(cls, base_mode: int, custom_mode: int) -> str:
+        main_mode = (custom_mode & 0x00FF0000) >> 16
+        submode = (custom_mode & 0xFF000000) >> 24
+        main_mode_name = cls._main_modes.get(main_mode)
+
+        if main_mode_name:
+            main_mode_name = main_mode_name[0]
+
+            if main_mode == 3:
+                # "pos hold" has a "circle" submode
+                if submode == 1:
+                    return "circle"
+
+            elif main_mode == 4:
+                # ready (1), takeoff, loiter, mission, RTL, land, unused, follow,
+                # precland
+                submode_name = cls._auto_submodes.get(submode)
+                if submode_name:
+                    return submode_name[0]
+
+            return main_mode_name
+
+        else:
+            submode = (custom_mode & 0xFF000000) >> 24
+            return f"{main_mode:02X}{submode:02X}"
+
+    def are_motor_outputs_disabled(
+        self, heartbeat: MAVLinkMessage, sys_status: MAVLinkMessage
+    ) -> bool:
+        # It seems like PX4 is not reporting the status of the safety switch
+        # anywhere
+        return False
+
+    async def configure_geofence(
+        self, uav, configuration: GeofenceConfigurationRequest
+    ) -> None:
+        raise NotImplementedError
+
+    def get_custom_flight_mode_number(self, mode: str) -> int:
+        raise NotSupportedError
+
+    async def get_geofence_status(self, uav) -> GeofenceStatus:
+        raise NotImplementedError
+
+    @property
+    def is_battery_percentage_reliable(self) -> bool:
+        """Returns whether the autopilot provides reliable battery capacity
+        percentages.
+        """
+        # TODO(ntamas): PX4 is actually much better at it than ArduPilot;
+        # switch this to True once the user can configure on the UI whether
+        # he wants to see percentages or voltages
+        return False
+
+    def is_prearm_check_in_progress(
+        self, heartbeat: MAVLinkMessage, sys_status: MAVLinkMessage
+    ) -> bool:
+        mask = MAVSysStatusSensor.PREARM_CHECK
+        if (
+            sys_status.onboard_control_sensors_present
+            & sys_status.onboard_control_sensors_enabled
+            & mask
+        ):
+            return not bool(sys_status.onboard_control_sensors_health & mask)
 
     @property
     def supports_scheduled_takeoff(self):
@@ -236,6 +366,25 @@ class ArduPilot(Autopilot):
         """
         mode_attrs = cls._custom_modes.get(custom_mode)
         return mode_attrs[0] if mode_attrs else f"mode {custom_mode}"
+
+    def are_motor_outputs_disabled(
+        self, heartbeat: MAVLinkMessage, sys_status: MAVLinkMessage
+    ) -> bool:
+        # ArduPilot uses the MOTOR_OUTPUTS "sensor" to indicate whether the
+        # motor outputs are disabled. More precisely, it always has
+        # MOTOR_OUTPUTS in the "present" and "health" field and the "enabled"
+        # field specifies whether the motor outputs are enabled
+        if (
+            sys_status.onboard_control_sensors_health & MAVSysStatusSensor.MOTOR_OUTPUTS
+            and sys_status.onboard_control_sensors_present
+            & MAVSysStatusSensor.MOTOR_OUTPUTS
+        ):
+            return not bool(
+                sys_status.onboard_control_sensors_enabled
+                & MAVSysStatusSensor.MOTOR_OUTPUTS
+            )
+        else:
+            return False
 
     async def configure_geofence(
         self, uav, configuration: GeofenceConfigurationRequest
@@ -326,6 +475,12 @@ class ArduPilot(Autopilot):
 
         return status
 
+    def is_prearm_check_in_progress(
+        self, heartbeat: MAVLinkMessage, sys_status: MAVLinkMessage
+    ) -> bool:
+        # Information not reported by ArduPilot by default
+        return False
+
     def refine_with_capabilities(self, capabilities: int):
         result = super().refine_with_capabilities(capabilities)
 
@@ -377,9 +532,16 @@ class ArduPilotWithSkybrush(ArduPilot):
         | MAVProtocolCapability.DRONE_SHOW_MODE
     )
 
+    def is_prearm_check_in_progress(
+        self, heartbeat: MAVLinkMessage, sys_status: MAVLinkMessage
+    ) -> bool:
+        # Our patched firmware (ab)uses the CALIBRATING state in the heartbeat
+        # for this
+        return heartbeat.system_status == MAVState.CALIBRATING
+
     @ArduPilot.supports_scheduled_takeoff.getter
     def supports_scheduled_takeoff(self):
         return True
 
 
-_autopilot_registry = {MAVAutopilot.ARDUPILOTMEGA: ArduPilot}
+_autopilot_registry = {MAVAutopilot.ARDUPILOTMEGA: ArduPilot, MAVAutopilot.PX4: PX4}

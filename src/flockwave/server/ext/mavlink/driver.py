@@ -914,7 +914,10 @@ class MAVLinkUAV(UAVBase):
                 pass
 
         if isinstance(mode, str):
-            mode = self._autopilot.get_custom_flight_mode_number(mode)
+            try:
+                mode = self._autopilot.get_custom_flight_mode_number(mode)
+            except NotSupportedError:
+                raise ValueError("setting flight modes by name is not supported")
 
         await sleep(3)
 
@@ -1161,10 +1164,6 @@ class MAVLinkUAV(UAVBase):
             ^ 0xFFFFFFFF
         )
 
-        are_motor_outputs_disabled = (
-            sensor_mask & MAVSysStatusSensor.MOTOR_OUTPUTS
-            != MAVSysStatusSensor.MOTOR_OUTPUTS
-        ) or (not_healthy_sensors & MAVSysStatusSensor.MOTOR_OUTPUTS)
         has_gyro_error = not_healthy_sensors & (
             MAVSysStatusSensor.GYRO_3D | MAVSysStatusSensor.GYRO2_3D
         )
@@ -1186,6 +1185,13 @@ class MAVLinkUAV(UAVBase):
         has_rc_error = not_healthy_sensors & MAVSysStatusSensor.RC_RECEIVER
         has_battery_error = not_healthy_sensors & MAVSysStatusSensor.BATTERY
         has_logging_error = not_healthy_sensors & MAVSysStatusSensor.LOGGING
+
+        are_motor_outputs_disabled = self._autopilot.are_motor_outputs_disabled(
+            heartbeat, sys_status
+        )
+        is_prearm_check_in_progress = self._autopilot.is_prearm_check_in_progress(
+            heartbeat, sys_status
+        )
 
         errors = {
             FlockwaveErrorCode.AUTOPILOT_INIT_FAILED: (
@@ -1212,10 +1218,7 @@ class MAVLinkUAV(UAVBase):
             FlockwaveErrorCode.BATTERY_CRITICAL: has_battery_error,
             FlockwaveErrorCode.LOGGING_DEACTIVATED: has_logging_error,
             FlockwaveErrorCode.DISARMED: are_motor_outputs_disabled,
-            # valid in our patched ArduCopter only, the stock ArduCopter
-            # does not use this flag
-            FlockwaveErrorCode.PREARM_CHECK_IN_PROGRESS: heartbeat.system_status
-            == MAVState.CALIBRATING,
+            FlockwaveErrorCode.PREARM_CHECK_IN_PROGRESS: is_prearm_check_in_progress,
             # If the motors are running but we are not in the air yet; we use an
             # informational flag to let the user know
             FlockwaveErrorCode.MOTORS_RUNNING_WHILE_ON_GROUND: (
@@ -1224,9 +1227,10 @@ class MAVLinkUAV(UAVBase):
             ),
         }
 
-        # Clear the collected prearm failure messages if the heartbeat shows
-        # that we are not calibrating any more
-        if heartbeat.system_status != MAVState.CALIBRATING:
+        # Clear the collected prearm failure messages if the heartbeat and/or
+        # the system status shows that we are not in the prearm check phase any
+        # more
+        if not is_prearm_check_in_progress:
             self._preflight_status.message = "Passed"
             self._preflight_status.result = PreflightCheckResult.PASS
 

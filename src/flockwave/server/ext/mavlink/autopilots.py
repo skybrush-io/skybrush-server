@@ -268,6 +268,7 @@ class PX4(Autopilot):
         5: ("rth",),
         6: ("land",),
         8: ("follow",),
+        9: ("precland",),
     }
 
     #: Mapping from mode names to the corresponding basemode / mode / submode

@@ -919,8 +919,6 @@ class MAVLinkUAV(UAVBase):
             except NotSupportedError:
                 raise ValueError("setting flight modes by name is not supported")
 
-        await sleep(3)
-
         await self.driver.send_command_long(
             self,
             MAVCommand.DO_SET_MODE,

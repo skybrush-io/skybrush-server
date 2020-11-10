@@ -140,7 +140,7 @@ class MAVLinkDriver(UAVDriver):
         if mode is None:
             return getattr(uav.status, "mode", "unknown mode")
         else:
-            await uav.set_custom_mode(mode)
+            await uav.set_mode(mode)
             return f"Mode changed to {mode!r}"
 
     async def handle_command_show(
@@ -905,7 +905,7 @@ class MAVLinkUAV(UAVBase):
         # param1 = 1 if we want to clear the show file
         await self.driver.send_command_long(self, MAVCommand.USER_1, 1)
 
-    async def set_custom_mode(self, mode: Union[int, str]) -> None:
+    async def set_mode(self, mode: Union[int, str]) -> None:
         """Attempts to set the UAV in the given custom mode."""
         if isinstance(mode, str):
             try:
@@ -913,17 +913,21 @@ class MAVLinkUAV(UAVBase):
             except ValueError:
                 pass
 
+        if isinstance(mode, int):
+            base_mode, submode = MAVModeFlag.CUSTOM_MODE_ENABLED, 0
+
         if isinstance(mode, str):
             try:
-                mode = self._autopilot.get_custom_flight_mode_number(mode)
+                base_mode, mode, submode = self._autopilot.get_flight_mode_numbers(mode)
             except NotSupportedError:
                 raise ValueError("setting flight modes by name is not supported")
 
         await self.driver.send_command_long(
             self,
             MAVCommand.DO_SET_MODE,
-            param1=float(MAVModeFlag.CUSTOM_MODE_ENABLED),
+            param1=float(base_mode),
             param2=float(mode),
+            param3=float(submode),
         )
 
     @property
@@ -1074,7 +1078,7 @@ class MAVLinkUAV(UAVBase):
         """
         await sleep(2)
         try:
-            await self.set_custom_mode(self.driver.mandatory_custom_mode)
+            await self.set_mode(self.driver.mandatory_custom_mode)
         except TooSlowError:
             self.driver.log.warn(
                 "Failed to configure custom mode; no response in time",

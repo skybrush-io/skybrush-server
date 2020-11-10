@@ -13,13 +13,14 @@ from flockwave.server.utils import clamp
 
 from .enums import (
     MAVAutopilot,
+    MAVModeFlag,
     MAVParamType,
     MAVProtocolCapability,
     MAVState,
     MAVSysStatusSensor,
 )
 from .geofence import GeofenceManager
-from .types import MAVLinkMessage
+from .types import MAVLinkFlightModeNumbers, MAVLinkMessage
 from .utils import (
     decode_param_from_wire_representation,
     encode_param_to_wire_representation,
@@ -123,13 +124,13 @@ class Autopilot(metaclass=ABCMeta):
         return encode_param_to_wire_representation(value, type)
 
     @abstractmethod
-    def get_custom_flight_mode_number(self, mode: str) -> int:
-        """Returns the numeric flight mode corresponding to the given mode
-        description as a string.
+    def get_flight_mode_numbers(self, mode: str) -> MAVLinkFlightModeNumbers:
+        """Returns the numeric flight modes (mode, custom mode, custom submode)
+        corresponding to the given mode description as a string.
 
         Raises:
             NotImplementedError: if we have not implemented the conversion from
-                a mode string to a custom flight mode number
+                a mode string to a flight mode number set
             ValueError: if the flight mode is not known to the autopilot
         """
         raise NotImplementedError
@@ -169,6 +170,22 @@ class Autopilot(metaclass=ABCMeta):
         """
         raise NotImplementedError
 
+    def is_prearm_error_message(self, text: str) -> bool:
+        """Returns whether the given text from a MAVLink STATUSTEXT message
+        indicates a prearm check error.
+        """
+        raise NotImplementedError
+
+    def process_prearm_error_message(self, text: str) -> str:
+        """Preprocesses a prearm error from a MAVLInk STATUSTEXT message,
+        identified earlier with `is_prearm_error_message()`, before it is fed
+        into the preflight check subsystem in the server. May be used to strip
+        unneeded prefixes from the message.
+
+        The default implementation returns the message as is.
+        """
+        return text
+
     def refine_with_capabilities(self, capabilities: int):
         """Refines the autopilot class with further information from the
         capabilities bitfield of the MAVLink "autopilot capabilities" message,
@@ -199,7 +216,7 @@ class UnknownAutopilot(Autopilot):
     ) -> bool:
         return False
 
-    def get_custom_flight_mode_number(self, mode: str) -> int:
+    def get_flight_mode_numbers(self, mode: str) -> MAVLinkFlightModeNumbers:
         raise NotSupportedError
 
     async def get_geofence_status(self, uav) -> GeofenceStatus:
@@ -209,6 +226,9 @@ class UnknownAutopilot(Autopilot):
     def is_battery_percentage_reliable(self) -> bool:
         # Let's be optimistic :)
         return True
+
+    def is_prearm_error_message(self, text: str) -> bool:
+        return False
 
     def is_prearm_check_in_progress(
         self, heartbeat: MAVLinkMessage, sys_status: MAVLinkMessage
@@ -241,7 +261,37 @@ class PX4(Autopilot):
 
     #: Custom mode dictionary, containing the primary name and the aliases for
     #: each known submode of the "auto" flight mode
-    _auto_submodes = {5: ("rth",), 6: ("land",), 8: ("follow",)}
+    _auto_submodes = {
+        2: ("takeoff",),
+        3: ("loiter",),
+        4: ("mission",),
+        5: ("rth",),
+        6: ("land",),
+        8: ("follow",),
+    }
+
+    #: Mapping from mode names to the corresponding basemode / mode / submode
+    #: triplets
+    _mode_names_to_numbers = {
+        "manual": (MAVModeFlag.CUSTOM_MODE_ENABLED, 1, 0),
+        "althold": (MAVModeFlag.CUSTOM_MODE_ENABLED, 2, 0),
+        "poshold": (MAVModeFlag.CUSTOM_MODE_ENABLED, 3, 0),
+        "auto": (MAVModeFlag.CUSTOM_MODE_ENABLED, 4, 0),
+        "takeoff": (MAVModeFlag.CUSTOM_MODE_ENABLED, 4, 2),
+        "loiter": (MAVModeFlag.CUSTOM_MODE_ENABLED, 4, 3),
+        "mission": (MAVModeFlag.CUSTOM_MODE_ENABLED, 4, 4),
+        "rth": (MAVModeFlag.CUSTOM_MODE_ENABLED, 4, 5),
+        "rtl": (MAVModeFlag.CUSTOM_MODE_ENABLED, 4, 5),
+        "land": (MAVModeFlag.CUSTOM_MODE_ENABLED, 4, 6),
+        "follow": (MAVModeFlag.CUSTOM_MODE_ENABLED, 4, 8),
+        "precland": (MAVModeFlag.CUSTOM_MODE_ENABLED, 4, 9),
+        "acro": (MAVModeFlag.CUSTOM_MODE_ENABLED, 5, 0),
+        "guided": (MAVModeFlag.CUSTOM_MODE_ENABLED, 6, 0),
+        "offboard": (MAVModeFlag.CUSTOM_MODE_ENABLED, 6, 0),
+        "stab": (MAVModeFlag.CUSTOM_MODE_ENABLED, 7, 0),
+        "stabilize": (MAVModeFlag.CUSTOM_MODE_ENABLED, 7, 0),
+        "rattitude": (MAVModeFlag.CUSTOM_MODE_ENABLED, 8, 0),
+    }
 
     @classmethod
     def describe_custom_mode(cls, base_mode: int, custom_mode: int) -> str:
@@ -282,8 +332,13 @@ class PX4(Autopilot):
     ) -> None:
         raise NotImplementedError
 
-    def get_custom_flight_mode_number(self, mode: str) -> int:
-        raise NotSupportedError
+    def get_flight_mode_numbers(self, mode: str) -> MAVLinkFlightModeNumbers:
+        mode = mode.lower().replace(" ", "")
+        numbers = self._mode_names_to_numbers.get(mode)
+        if numbers is None:
+            raise ValueError(f"unknown flight mode: {mode!r}")
+
+        return numbers
 
     async def get_geofence_status(self, uav) -> GeofenceStatus:
         raise NotImplementedError
@@ -308,6 +363,13 @@ class PX4(Autopilot):
             & mask
         ):
             return not bool(sys_status.onboard_control_sensors_health & mask)
+
+    def is_prearm_error_message(self, text: str) -> bool:
+        return text.startswith("Preflight ")
+
+    def process_prearm_error_message(self, text: str) -> str:
+        prefix, sep, suffix = text.partition(":")
+        return suffix.strip() if sep else text
 
     @property
     def supports_scheduled_takeoff(self):
@@ -440,13 +502,13 @@ class ArduPilot(Autopilot):
         # https://gitter.im/ArduPilot/pymavlink?at=5bfb975587c4b86bcc1af3ee
         return float(value)
 
-    def get_custom_flight_mode_number(self, mode: str) -> int:
+    def get_flight_mode_numbers(self, mode: str) -> MAVLinkFlightModeNumbers:
         mode = mode.lower().replace(" ", "")
         for number, names in self._custom_modes.items():
             for name in names:
                 name = name.lower().replace(" ", "")
                 if name == mode:
-                    return number
+                    return (MAVModeFlag.CUSTOM_MODE_ENABLED, number, 0)
 
         raise ValueError(f"unknown flight mode: {mode!r}")
 
@@ -480,6 +542,12 @@ class ArduPilot(Autopilot):
     ) -> bool:
         # Information not reported by ArduPilot by default
         return False
+
+    def is_prearm_error_message(self, text: str) -> bool:
+        return text.startswith("PreArm: ")
+
+    def process_prearm_error_message(self, text: str) -> str:
+        return text[8:]
 
     def refine_with_capabilities(self, capabilities: int):
         result = super().refine_with_capabilities(capabilities)

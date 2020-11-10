@@ -5,11 +5,17 @@ from functools import partial
 from typing import Any, Callable, Dict, Optional, Tuple, Union
 
 __all__ = (
+    "MAVLinkFlightModeNumbers",
     "MAVLinkMessage",
     "MAVLinkMessageSpecification",
     "MAVLinkNetworkSpecification",
     "spec",
 )
+
+
+#: Type specification for a (base mode, main mode, submode) flight mode triplet
+#: used in MAVLink
+MAVLinkFlightModeNumbers = Tuple[int, int, int]
 
 
 #: Type specification for messages parsed by the MAVLink parser. Unfortunately

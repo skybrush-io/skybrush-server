@@ -123,10 +123,17 @@ mkdir -p staging/opt/skybrush/server
 tar -C staging/opt/skybrush/server --strip-components=1 -xvvzf skybrush-server/dist/pyarmor/*.tar.gz
 mkdir -p staging/opt/skybrush/frontend
 tar -C staging/opt/skybrush/frontend --strip-components=1 -xvvzf skybrush-console-frontend/dist/pyarmor/*.tar.gz
+mkdir -p staging/opt/skybrush/boot
+cp skybrush-server/etc/deployment/rpi/run-tasks-at-boot staging/opt/skybrush/boot/run-tasks-at-boot
+chmod a+x staging/opt/skybrush/boot/run-tasks-at-boot
 mkdir -p staging/opt/skybrush/config
 cp skybrush-server/etc/deployment/rpi/skybrush-console-frontend.json staging/opt/skybrush/config/frontend.json
 mkdir -p staging/boot/collmot
 cp skybrush-server/etc/deployment/rpi/skybrush.json staging/boot/collmot/skybrush.json
+cp skybrush-server/etc/deployment/rpi/network.cfg staging/boot/collmot/network.cfg
+mkdir -p staging/etc/systemd/system/network.target.wants
+cp skybrush-server/etc/deployment/rpi/collmot-init.service staging/etc/systemd/system/collmot-init.service
+ln /etc/systemd/system/collmot-init.service staging/etc/systemd/system/network.target.wants/collmot-init.service
 mkdir -p staging/etc/systemd/system/getty@tty1.service.d
 cp skybrush-server/etc/deployment/rpi/tty1-override.conf staging/etc/systemd/system/getty@tty1.service.d/10-skybrush.conf
 tar -C staging --owner=0 --group=0 -cvvzf "${OUTPUT_FILE}" boot etc opt

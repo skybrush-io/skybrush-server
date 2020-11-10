@@ -1,0 +1,64 @@
+#!/bin/bash
+
+set -e
+
+BOOT_DIR=/boot
+CONFIG_FILE=$BOOT_DIR/collmot/network.cfg
+
+if [ ! -f $CONFIG_FILE ]; then
+    exit 0
+fi
+
+# If we have a saved hash of the configuration, compare it with the current one
+if [ -f ${CONFIG_FILE}.md5 ]; then
+    md5sum --status --strict -c ${CONFIG_FILE}.md5 && exit 0
+fi
+
+# Calculate MD5 hash of collmot.cfg
+md5sum $CONFIG_FILE >${CONFIG_FILE}.md5
+
+# Read configuration file from boot partition
+source $CONFIG_FILE
+
+# Remove custom network configuration section from /etc/dhcpcd.conf
+cp /etc/dhcpcd.conf /tmp/dhcpcd.conf.new
+sed -i -e '/^# Start of CollMot/,/^# End of CollMot/d' /tmp/dhcpcd.conf.new
+
+# Iterate over network interfaces to be configured
+echo "# Start of CollMot-specific section, do not modify" >>/tmp/dhcpcd.conf.new
+for IFACE in eth0; do
+  IFACE_UPPER=`echo $IFACE | tr '[:lower:]' '[:upper:]'`
+  ADDRESS_VAR=ADDRESS_${IFACE_UPPER}
+  ADDRESS="${!ADDRESS_VAR}"
+  
+  if [ "x$ADDRESS" = x ]; then
+    # Configure for DHCP; no extra lines needed
+    true
+  else
+    GATEWAY_VAR=GATEWAY_${IFACE_UPPER}
+    GATEWAY="${!GATEWAY_VAR}"
+
+    DNS_VAR=DNS_${IFACE_UPPER}
+    DNS="${!DNS_VAR}"
+
+    # Configure for static IP
+    cat >>/tmp/dhcpcd.conf.new <<EOF
+interface ${IFACE}
+static ip_address=${ADDRESS}
+EOF
+
+    if [ "x${GATEWAY}" != x ]; then
+      echo "static routers=${GATEWAY}" >>/tmp/dhcpcd.conf.new
+    fi
+
+    if [ "x${DNS}" != x ]; then
+      echo "static domain_name_servers=${DNS}" >>/tmp/dhcpcd.conf.new
+    fi
+  fi
+done
+echo "# End of CollMot-specific section" >>/tmp/dhcpcd.conf.new
+mv /tmp/dhcpcd.conf.new /etc/dhcpcd.conf
+
+# Sync all changes to the filesystem
+sync
+

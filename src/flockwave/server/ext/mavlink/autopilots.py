@@ -196,6 +196,13 @@ class Autopilot(metaclass=ABCMeta):
         return self
 
     @abstractproperty
+    def supports_local_frame(self) -> bool:
+        """Returns whether the autopilot understands MAVLink commands sent in
+        a local coordinate frame.
+        """
+        raise NotImplementedError
+
+    @abstractproperty
     def supports_scheduled_takeoff(self) -> bool:
         """Returns whether the autopilot supports scheduled takeoffs."""
         raise NotImplementedError
@@ -233,6 +240,11 @@ class UnknownAutopilot(Autopilot):
     def is_prearm_check_in_progress(
         self, heartbeat: MAVLinkMessage, sys_status: MAVLinkMessage
     ) -> bool:
+        return False
+
+    @property
+    def supports_local_frame(self) -> bool:
+        # Let's be pessimistic :(
         return False
 
     @property
@@ -371,6 +383,11 @@ class PX4(Autopilot):
     def process_prearm_error_message(self, text: str) -> str:
         prefix, sep, suffix = text.partition(":")
         return suffix.strip() if sep else text
+
+    @property
+    def supports_local_frame(self) -> bool:
+        # https://github.com/PX4/PX4-Autopilot/issues/10246
+        return False
 
     @property
     def supports_scheduled_takeoff(self):
@@ -568,6 +585,10 @@ class ArduPilot(Autopilot):
         # it is based on discharged current only so it always reports a
         # newly inserted battery as fully charged
         return False
+
+    @property
+    def supports_local_frame(self) -> bool:
+        return True
 
     @property
     def supports_scheduled_takeoff(self):

@@ -120,7 +120,7 @@ class MAVLinkDriver(UAVDriver):
         uav.notify_updated = partial(self.app.request_to_send_UAV_INF_message_for, [id])
         return uav
 
-    def get_time_boot_ms() -> int:
+    def get_time_boot_ms(self) -> int:
         """Returns a monotonic "time since boot" timestamp in milliseconds that
         can be used in MAVLink messages.
         """
@@ -179,6 +179,91 @@ class MAVLinkDriver(UAVDriver):
             self.log.error(str(ex))
             raise
 
+    async def send_command_int(
+        self,
+        target: "MAVLinkUAV",
+        command_id: int,
+        param1: float = 0,
+        param2: float = 0,
+        param3: float = 0,
+        param4: float = 0,
+        x: int = 0,
+        y: int = 0,
+        z: float = 0,
+        *,
+        frame: MAVFrame = MAVFrame.GLOBAL,
+        timeout: Optional[float] = None,
+        retries: Optional[int] = None,
+    ) -> bool:
+        """Sends a MAVLink command to a given UAV and waits for an acknowlegment.
+        Parameters 5 and 6 are integers; everything else is a float.
+
+        Parameters:
+            target: the UAV to send the command to
+            param1: the first parameter of the command
+            param2: the second parameter of the command
+            param3: the third parameter of the command
+            param4: the fourth parameter of the command
+            x: the fifth parameter of the command
+            y: the sixth parameter of the command
+            z: the seventh parameter of the command
+            frame: the reference frame of the coordinates transmitted in the command
+            timeout: command timeout in seconds; `None` means to use the default
+                timeout for the driver. Retries will be attempted if no response
+                arrives to the command within the given time interval
+            retries: maximum number of retries for the command (not counting the
+                initial attempt); `None` means to use the default retry count
+                for the driver.
+
+        Returns:
+            whether the command was executed successfully
+
+        Raises:
+            TooSlowError: if the UAV failed to respond in time, even after
+                re-sending the command as needed
+            NotSupportedError: if the command is not supported by the UAV
+        """
+        if timeout is None or timeout <= 0:
+            timeout = self._default_timeout
+        if retries is None or retries < 0:
+            retries = self._default_retries
+
+        result = None
+
+        while retries >= 0:
+            try:
+                with fail_after(timeout):
+                    message = spec.command_int(
+                        frame=frame,
+                        command=command_id,
+                        current=0,
+                        autocontinue=0,
+                        param1=param1,
+                        param2=param2,
+                        param3=param3,
+                        param4=param4,
+                        x=x,
+                        y=y,
+                        z=z,
+                    )
+                    response = await self.send_packet(
+                        message,
+                        target,
+                        wait_for_response=("COMMAND_ACK", {"command": command_id}),
+                    )
+                    result = response.result
+                    break
+            except TooSlowError:
+                retries -= 1
+
+        if result is None:
+            raise TooSlowError(f"no response received for command {command_id} in time")
+
+        if result == MAVResult.UNSUPPORTED:
+            raise NotSupportedError
+
+        return result == MAVResult.ACCEPTED
+
     async def send_command_long(
         self,
         target: "MAVLinkUAV",
@@ -220,8 +305,6 @@ class MAVLinkDriver(UAVDriver):
                 re-sending the command as needed
             NotSupportedError: if the command is not supported by the UAV
         """
-        # TODO(ntamas): use confirmation when attempt > 1
-
         if timeout is None or timeout <= 0:
             timeout = self._default_timeout
         if retries is None or retries < 0:
@@ -233,21 +316,19 @@ class MAVLinkDriver(UAVDriver):
         while retries >= 0:
             try:
                 with fail_after(timeout):
+                    message = spec.command_long(
+                        command=command_id,
+                        param1=param1,
+                        param2=param2,
+                        param3=param3,
+                        param4=param4,
+                        param5=param5,
+                        param6=param6,
+                        param7=param7,
+                        confirmation=confirmation,
+                    )
                     response = await self.send_packet(
-                        (
-                            "COMMAND_LONG",
-                            {
-                                "command": command_id,
-                                "param1": param1,
-                                "param2": param2,
-                                "param3": param3,
-                                "param4": param4,
-                                "param5": param5,
-                                "param6": param6,
-                                "param7": param7,
-                                "confirmation": confirmation,
-                            },
-                        ),
+                        message,
                         target,
                         wait_for_response=("COMMAND_ACK", {"command": command_id}),
                     )
@@ -334,6 +415,10 @@ class MAVLinkDriver(UAVDriver):
         return uav.get_version_info()
 
     async def _send_fly_to_target_signal_single(self, uav, target) -> None:
+        # TODO(ntamas): this does not work in PX4; an alternative implementation
+        # with DO_REPOSITION is provided in _send_fly_to_target_signal_single_px4()
+        # but it needs AGL
+
         type_mask = (
             PositionTargetTypemask.VX_IGNORE
             | PositionTargetTypemask.VY_IGNORE
@@ -388,6 +473,37 @@ class MAVLinkDriver(UAVDriver):
             # position target feedback could come in AMSL or AGL
         )
         await self.send_packet_with_retries(message, uav, wait_for_response=response)
+
+    async def _send_fly_to_target_signal_single_px4(self, uav, target) -> None:
+        if target.amsl is None:
+            # No AMSL, we are navigating above ground level
+            frame = MAVFrame.GLOBAL_RELATIVE_ALT_INT
+            if target.agl is None:
+                altitude = nan
+            else:
+                # TODO(ntamas): this won't work, PX4 accepts AMSL only!
+                altitude = target.agl
+        else:
+            # AMSL specified, we are flying to a given AMSL
+            frame = MAVFrame.GLOBAL_INT
+            altitude = target.amsl
+
+        lat, lon = int(target.lat * 1e7), int(target.lon * 1e7)
+
+        success = await self.send_command_int(
+            uav,
+            MAVCommand.DO_REPOSITION,
+            frame=frame,
+            param1=-1,  # speed (default)
+            param2=0,  # flags
+            param3=0,  # reserved
+            param4=nan,  # yaw mode
+            x=lat,  # latitude
+            y=lon,  # longitude
+            z=altitude,  # altitud
+        )
+        if not success:
+            raise RuntimeError("Fly to waypoint command failed")
 
     async def _send_landing_signal_single(self, uav) -> None:
         success = await self.send_command_long(uav, MAVCommand.NAV_LAND)
@@ -454,15 +570,8 @@ class MAVLinkDriver(UAVDriver):
         # in case. Not sure whether this is needed.
         await sleep(0.1)
 
-        if not await self.send_command_long(
-            uav,
-            MAVCommand.NAV_TAKEOFF,
-            param4=nan,  # yaw should stay the same
-            param5=nan,  # takeoff to current latitude (needed by PX4)
-            param6=nan,  # takeoff to current longitude (needed by PX4)
-            param7=float(5),  # takeoff to 5m
-        ):
-            raise RuntimeError("Failed to send takeoff command")
+        # Send the takeoff command
+        await uav.takeoff_to_relative_altitude(2.5)
 
 
 @dataclass
@@ -960,6 +1069,50 @@ class MAVLinkUAV(UAVBase):
             _, gps_time_of_week = datetime_to_gps_time_of_week(dt)
 
         await self.set_parameter("SHOW_START_TIME", gps_time_of_week)
+
+    async def takeoff_to_relative_altitude(self, altitude: float = 2.5) -> None:
+        """Instructs the UAV to take off to a relative altitude above its
+        current position.
+
+        Parameters:
+            altitude: the relative altitude above the current position of the
+                UAV where we should take off to
+
+        Raises:
+            RuntimeError: if the command cannot be sent to the UAV or if it does
+                not acknowledge the takeoff command
+        """
+        # Okay, so the NAV_TAKEOFF command sucks big time. ArduCopter interprets
+        # the last argument as relative altitude above the ground, which totally
+        # makes sense. PX4 interprets it as _absolute_ AMSL instead, and treats
+        # NaN as "just pick a sensible takeoff altitude". Furthermore, ArduCopter
+        # ignores the latitude and longitude while PX4 insists them to be NaN
+        # (otherwise they are treated as coordinates to take off to). This stems
+        # from the fact that MAV reference frames are not supported in PX4:
+        #
+        # https://github.com/PX4/PX4-Autopilot/issues/10246
+        #
+        # The lowest common denominator is to send NaN as the latitude and
+        # longitude, and make the takeoff altitude dependent on whether the
+        # autopilot supports the local reference frame
+        if not self._autopilot.supports_local_frame:
+            pos = self.status.position
+            if pos is not None and pos.amsl is not None:
+                altitude += pos.amsl
+            else:
+                # Hopefully the autopilot interprets NaN as "pick a sensible
+                # takeoff altitude
+                altitude = nan
+
+        if not await self.driver.send_command_long(
+            self,
+            MAVCommand.NAV_TAKEOFF,
+            param4=nan,  # yaw should stay the same
+            param5=nan,  # takeoff to current latitude (needed by PX4)
+            param6=nan,  # takeoff to current longitude (needed by PX4)
+            param7=altitude,  # takeoff altitude
+        ):
+            raise RuntimeError("Failed to send takeoff command")
 
     async def upload_show(self, show) -> None:
         coordinate_system = get_coordinate_system_from_show_specification(show)

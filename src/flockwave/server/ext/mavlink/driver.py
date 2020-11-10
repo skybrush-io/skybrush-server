@@ -458,7 +458,9 @@ class MAVLinkDriver(UAVDriver):
             uav,
             MAVCommand.NAV_TAKEOFF,
             param4=nan,  # yaw should stay the same
-            param7=5,  # takeoff to 5m
+            param5=nan,  # takeoff to current latitude (needed by PX4)
+            param6=nan,  # takeoff to current longitude (needed by PX4)
+            param7=float(5),  # takeoff to 5m
         ):
             raise RuntimeError("Failed to send takeoff command")
 

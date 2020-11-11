@@ -725,6 +725,12 @@ class MAVLinkUAV(UAVBase):
             yaw=0,
             yaw_rate=0,
         )
+
+        # There is usually no confirmation for the guided mode command, unless
+        # the drone streams us the POSITION_TARGET_GLOBAL_INT message, which it
+        # does not necessarily do. So, we send the packet five times, with
+        # 200 msec between attempts, and wait for a matching POSITION_TARGET_GLOBAL_INT
+        # message, but we don't freak out if we don't get any response.
         response = spec.position_target_global_int(
             # position
             lat_int=lat,
@@ -732,9 +738,13 @@ class MAVLinkUAV(UAVBase):
             # note that we don't check the altitude in the response because the
             # position target feedback could come in AMSL or AGL
         )
-        await self.driver.send_packet_with_retries(
-            message, self, wait_for_response=response
-        )
+        try:
+            await self.driver.send_packet_with_retries(
+                message, self, wait_for_response=response, timeout=0.2, retries=4
+            )
+        except TooSlowError:
+            # Maybe it's okay anyway, see comment above
+            pass
 
     async def _fly_to_with_repositioning(self, target: GPSCoordinate) -> None:
         """Implementation of `fly_to()` using a MAVLink DO_REPOSITION command

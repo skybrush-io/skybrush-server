@@ -568,7 +568,7 @@ class MAVLinkNetwork:
         uav = self._find_uav_from_message(message, address)
         if uav:
             uav.handle_message_heartbeat(message)
-            # TODO(ntamas): if the UAV requires regular heartbeat packets to be
+            # TODO(ntamas): if the UAV requires regular unicast heartbeat packets to be
             # sent from the GCS, uncomment this
             # self.driver.run_in_background(self.send_heartbeat, uav)
 
@@ -578,10 +578,10 @@ class MAVLinkNetwork:
         """Handles an incoming MAVLink STATUSTEXT message and forwards it to the
         log console.
         """
-        # TODO(ntamas): for PX4, the messages start with "Preflight Fail"
-        if message.text and message.text.startswith("PreArm: "):
-            uav = self._find_uav_from_message(message, address)
-            uav.notify_prearm_failure(message.text[8:])
+        text = message.text
+        uav = self._find_uav_from_message(message, address)
+        if uav and text and uav._autopilot.is_prearm_error_message(text):
+            uav.notify_prearm_failure(uav._autopilot.process_prearm_error_message(text))
         else:
             self.log.log(
                 log_level_from_severity(message.severity),
@@ -606,6 +606,12 @@ class MAVLinkNetwork:
         else:
             # Timesync request, ignore it.
             pass
+
+    def _log_message(
+        self, message: MAVLinkMessage, *, connection_id: str, address: Any
+    ):
+        """Logs an incoming MAVLink message for debugging purposes."""
+        self.log.debug(str(message))
 
     def _log_extra_from_message(self, message: MAVLinkMessage):
         return {"id": log_id_from_message(message, self.id)}

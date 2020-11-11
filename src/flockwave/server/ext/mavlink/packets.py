@@ -241,13 +241,20 @@ class DroneShowStatus:
                 # have been set yet; interpreting the SHOW_START_TIME parameter
                 # needs GPS fix
                 return "No 3D GPS fix yet"
+            elif stage is DroneShowExecutionStage.OFF:
+                # We are not even in show mode so the start time info is not relevant
+                return ""
             else:
                 return "Start time not set"
         elif (
             not flags & DroneShowStatusFlag.HAS_AUTHORIZATION_TO_START
             and stage != DroneShowExecutionStage.LANDED
         ):
-            return "Not authorized to start"
+            if stage is DroneShowExecutionStage.OFF:
+                # We are not even in show mode so the lack of authorization is not relevant
+                return ""
+            else:
+                return "Not authorized to start"
         elif not flags & DroneShowStatusFlag.HAS_GEOFENCE:
             return "Geofence not set"
         elif self.gps_fix < OurGPSFixType.FIX_3D:

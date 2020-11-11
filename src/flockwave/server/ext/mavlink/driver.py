@@ -414,96 +414,10 @@ class MAVLinkDriver(UAVDriver):
     def _request_version_info_single(self, uav) -> VersionInfo:
         return uav.get_version_info()
 
-    async def _send_fly_to_target_signal_single(self, uav, target) -> None:
-        # TODO(ntamas): this does not work in PX4; an alternative implementation
-        # with DO_REPOSITION is provided in _send_fly_to_target_signal_single_px4()
-        # but it needs AGL
-
-        type_mask = (
-            PositionTargetTypemask.VX_IGNORE
-            | PositionTargetTypemask.VY_IGNORE
-            | PositionTargetTypemask.VZ_IGNORE
-            | PositionTargetTypemask.AX_IGNORE
-            | PositionTargetTypemask.AY_IGNORE
-            | PositionTargetTypemask.AZ_IGNORE
-            | PositionTargetTypemask.YAW_IGNORE
-            | PositionTargetTypemask.YAW_RATE_IGNORE
-        )
-
-        if target.amsl is None:
-            frame = MAVFrame.GLOBAL_RELATIVE_ALT_INT
-            if target.agl is None:
-                # We cannot simply set Z_IGNORE in the type mask because that
-                # does not work with ArduCopter (it would ignore the whole
-                # position).
-                altitude = uav.status.position.agl
-            else:
-                altitude = target.agl
-        else:
-            frame = MAVFrame.GLOBAL_RELATIVE_ALT_INT
-            altitude = target.amsl
-
-        lat, lon = int(target.lat * 1e7), int(target.lon * 1e7)
-
-        message = spec.set_position_target_global_int(
-            time_boot_ms=self.get_time_boot_ms(),
-            coordinate_frame=frame,
-            type_mask=type_mask,
-            # position
-            lat_int=lat,
-            lon_int=lon,
-            alt=altitude,
-            # velocity
-            vx=0,
-            vy=0,
-            vz=0,
-            # acceleration or force
-            afx=0,
-            afy=0,
-            afz=0,
-            # yaw
-            yaw=0,
-            yaw_rate=0,
-        )
-        response = spec.position_target_global_int(
-            # position
-            lat_int=lat,
-            lon_int=lon,
-            # note that we don't check the altitude in the response because the
-            # position target feedback could come in AMSL or AGL
-        )
-        await self.send_packet_with_retries(message, uav, wait_for_response=response)
-
-    async def _send_fly_to_target_signal_single_px4(self, uav, target) -> None:
-        if target.amsl is None:
-            # No AMSL, we are navigating above ground level
-            frame = MAVFrame.GLOBAL_RELATIVE_ALT_INT
-            if target.agl is None:
-                altitude = nan
-            else:
-                # TODO(ntamas): this won't work, PX4 accepts AMSL only!
-                altitude = target.agl
-        else:
-            # AMSL specified, we are flying to a given AMSL
-            frame = MAVFrame.GLOBAL_INT
-            altitude = target.amsl
-
-        lat, lon = int(target.lat * 1e7), int(target.lon * 1e7)
-
-        success = await self.send_command_int(
-            uav,
-            MAVCommand.DO_REPOSITION,
-            frame=frame,
-            param1=-1,  # speed (default)
-            param2=0,  # flags
-            param3=0,  # reserved
-            param4=nan,  # yaw mode
-            x=lat,  # latitude
-            y=lon,  # longitude
-            z=altitude,  # altitud
-        )
-        if not success:
-            raise RuntimeError("Fly to waypoint command failed")
+    async def _send_fly_to_target_signal_single(
+        self, uav, target: GPSCoordinate
+    ) -> None:
+        await uav.fly_to(target)
 
     async def _send_landing_signal_single(self, uav) -> None:
         success = await self.send_command_long(uav, MAVCommand.NAV_LAND)
@@ -749,6 +663,109 @@ class MAVLinkUAV(UAVBase):
             )
 
         return result
+
+    async def fly_to(self, target: GPSCoordinate) -> None:
+        """Sends a command to the UAV to reposition it to the given coordinate,
+        where the altitude may be specified in AMSL or AGL.
+        """
+        if self._autopilot.supports_repositioning:
+            # Implementation of fly_to() with the MAVLink DO_REPOSITION command
+            await self._fly_to_with_repositioning(target)
+        else:
+            # Implementation of fly_to() with a guided mode command
+            await self._fly_to_in_guided_mode(target)
+
+    async def _fly_to_in_guided_mode(self, target: GPSCoordinate) -> None:
+        """Implementation of `fly_to()` using a MAVLink
+        SET_POSITION_TARGET_GLOBAL_INT guided mode message.
+        """
+        type_mask = (
+            PositionTargetTypemask.VX_IGNORE
+            | PositionTargetTypemask.VY_IGNORE
+            | PositionTargetTypemask.VZ_IGNORE
+            | PositionTargetTypemask.AX_IGNORE
+            | PositionTargetTypemask.AY_IGNORE
+            | PositionTargetTypemask.AZ_IGNORE
+            | PositionTargetTypemask.YAW_IGNORE
+            | PositionTargetTypemask.YAW_RATE_IGNORE
+        )
+
+        if target.amsl is None:
+            frame = MAVFrame.GLOBAL_RELATIVE_ALT_INT
+            if target.agl is None:
+                # We cannot simply set Z_IGNORE in the type mask because that
+                # does not work with ArduCopter (it would ignore the whole
+                # position).
+                altitude = self.status.position.agl
+            else:
+                altitude = target.agl
+        else:
+            frame = MAVFrame.GLOBAL_INT
+            altitude = target.amsl
+
+        lat, lon = int(target.lat * 1e7), int(target.lon * 1e7)
+
+        message = spec.set_position_target_global_int(
+            time_boot_ms=self.driver.get_time_boot_ms(),
+            coordinate_frame=frame,
+            type_mask=type_mask,
+            # position
+            lat_int=lat,
+            lon_int=lon,
+            alt=altitude,
+            # velocity
+            vx=0,
+            vy=0,
+            vz=0,
+            # acceleration or force
+            afx=0,
+            afy=0,
+            afz=0,
+            # yaw
+            yaw=0,
+            yaw_rate=0,
+        )
+        response = spec.position_target_global_int(
+            # position
+            lat_int=lat,
+            lon_int=lon,
+            # note that we don't check the altitude in the response because the
+            # position target feedback could come in AMSL or AGL
+        )
+        await self.driver.send_packet_with_retries(
+            message, self, wait_for_response=response
+        )
+
+    async def _fly_to_with_repositioning(self, target: GPSCoordinate) -> None:
+        """Implementation of `fly_to()` using a MAVLink DO_REPOSITION command
+        with proper confirmation.
+        """
+        # PX4 supports AMSL only so we always convert to AMSL; NaN means to
+        # hold the current altitude
+        if target.amsl is not None:
+            altitude = target.amsl
+        else:
+            altitude = (
+                self.convert_agl_to_amsl(target.agl) if target.agl is not None else nan
+            )
+
+        lat, lon = int(target.lat * 1e7), int(target.lon * 1e7)
+
+        success = await self.driver.send_command_int(
+            self,
+            MAVCommand.DO_REPOSITION,
+            frame=MAVFrame.GLOBAL_INT,
+            param1=-1,  # speed (default)
+            param2=0,  # flags
+            param3=0,  # reserved
+            param4=nan,  # yaw mode
+            x=lat,  # latitude
+            y=lon,  # longitude
+            z=altitude,  # altitud
+        )
+
+        if not success:
+            raise RuntimeError("Fly to waypoint command failed")
 
     @property
     def is_scheduled_takeoff_authorized(self) -> bool:
@@ -1096,12 +1113,11 @@ class MAVLinkUAV(UAVBase):
         # longitude, and make the takeoff altitude dependent on whether the
         # autopilot supports the local reference frame
         if not self._autopilot.supports_local_frame:
-            pos = self.status.position
-            if pos is not None and pos.amsl is not None:
-                altitude += pos.amsl
-            else:
-                # Hopefully the autopilot interprets NaN as "pick a sensible
-                # takeoff altitude
+            try:
+                # We assume that we are at zero meters AGL
+                altitude = self.convert_agl_to_amsl(altitude, current_agl=0)
+            except RuntimeError:
+                # No position yet, just send NaN and hope for the best
                 altitude = nan
 
         if not await self.driver.send_command_long(

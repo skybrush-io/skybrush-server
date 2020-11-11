@@ -186,6 +186,43 @@ class UAVBase(UAV):
         """Clears the error codes of the UAV."""
         return self.update_status(errors=())
 
+    def convert_agl_to_amsl(
+        self, altitude: float, *, current_agl: Optional[float] = None
+    ) -> float:
+        """Converts an altitude given as altitude above ground level to altitude
+        above mean sea level.
+
+        This function requires the drone to know its current AGL and AMSL so it
+        can calculate an offset between them. Alternatively, if the `current_agl`
+        argument is not `None`, the given value is used as the current AGL.
+
+        Returns:
+            the given AGL altitude converted to AMSL
+
+        Raises:
+            RuntimeError: if the position of the UAV is not known yet
+        """
+        if self._status is None:
+            raise RuntimeError("UAV status not known yet")
+
+        # TODO(ntamas): maybe we should use the position only if it has been
+        # updated recently. Or maybe not.
+
+        pos = self._status.position
+        if pos is None:
+            raise RuntimeError(
+                "Cannot convert AGL to AMSL, current position not known yet"
+            )
+
+        if pos.amsl is None:
+            raise RuntimeError("Cannot convert AGL to AMSL, current AMSL not known yet")
+
+        agl = current_agl if current_agl is not None else pos.agl
+        if agl is None:
+            raise RuntimeError("Cannot convert AGL to AMSL, current AGL not known yet")
+
+        return altitude - agl + pos.amsl
+
     def ensure_error(self, code: int, present: bool = True) -> None:
         """Ensures that the given error code is present (or not present) in the
         error code list.

@@ -248,6 +248,10 @@ class UnknownAutopilot(Autopilot):
         return False
 
     @property
+    def supports_repositioning(self) -> bool:
+        return False
+
+    @property
     def supports_scheduled_takeoff(self):
         return False
 
@@ -388,6 +392,10 @@ class PX4(Autopilot):
     def supports_local_frame(self) -> bool:
         # https://github.com/PX4/PX4-Autopilot/issues/10246
         return False
+
+    @property
+    def supports_repositioning(self) -> bool:
+        return True
 
     @property
     def supports_scheduled_takeoff(self):
@@ -589,6 +597,10 @@ class ArduPilot(Autopilot):
     @property
     def supports_local_frame(self) -> bool:
         return True
+
+    @property
+    def supports_repositioning(self) -> bool:
+        return False
 
     @property
     def supports_scheduled_takeoff(self):

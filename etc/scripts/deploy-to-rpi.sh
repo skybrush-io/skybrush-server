@@ -136,6 +136,7 @@ cp skybrush-server/etc/deployment/rpi/collmot-init.service staging/etc/systemd/s
 ln /etc/systemd/system/collmot-init.service staging/etc/systemd/system/network.target.wants/collmot-init.service
 mkdir -p staging/etc/systemd/system/getty@tty1.service.d
 cp skybrush-server/etc/deployment/rpi/tty1-override.conf staging/etc/systemd/system/getty@tty1.service.d/10-skybrush.conf
+cp skybrush-server/etc/deployment/rpi/ufw.conf staging/etc/ufw/applications.d/skybrush-server
 tar -C staging --owner=0 --group=0 -cvvzf "${OUTPUT_FILE}" boot etc opt
 rm -rf staging
 

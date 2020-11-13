@@ -1,3 +1,4 @@
+from binascii import hexlify
 from logging import ERROR, WARNING, INFO, DEBUG
 from typing import Optional, List, Union
 
@@ -129,7 +130,8 @@ def mavlink_version_number_to_semver(
     Parameters:
         number: the numeric representation of the version number
         custom: the MAVLink representation of the "custom" component of the
-            version number, if known
+            version number, if known; typically the first few bytes of a
+            VCS hash
     """
     major = (number >> 24) & 0xFF
     minor = (number >> 16) & 0xFF
@@ -150,6 +152,6 @@ def mavlink_version_number_to_semver(
         version.append(f"-rc.{prerelease - 192}")
 
     if custom and not official:
-        version.append("+" + bytes(custom).rstrip(b"\x00").decode("utf-8", "replace"))
+        version.append("+" + hexlify(bytes(custom).rstrip(b"\x00")).decode("utf-8"))
 
     return "".join(version)

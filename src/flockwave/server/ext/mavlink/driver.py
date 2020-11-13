@@ -36,7 +36,7 @@ from skybrush import (
 )
 from skybrush.formats import SkybrushBinaryShowFile
 
-from .autopilots import Autopilot, UnknownAutopilot
+from .autopilots import ArduPilot, Autopilot, UnknownAutopilot
 from .enums import (
     GPSFixType,
     MAVCommand,
@@ -1121,7 +1121,9 @@ class MAVLinkUAV(UAVBase):
         #
         # The lowest common denominator is to send NaN as the latitude and
         # longitude, and make the takeoff altitude dependent on whether the
-        # autopilot supports the local reference frame
+        # autopilot supports the local reference frame. However, the ArduCopter
+        # SITL simulator blows up when we do so -- so for ArduCopter, we send
+        # zeros instead.
         if not self._autopilot.supports_local_frame:
             try:
                 # We assume that we are at zero meters AGL
@@ -1130,12 +1132,17 @@ class MAVLinkUAV(UAVBase):
                 # No position yet, just send NaN and hope for the best
                 altitude = nan
 
+        # set takeoff coordinate. PX4 needs NaN / NaN, ArduPilot needs 0 / 0
+        lat, lon = nan, nan
+        if isinstance(self._autopilot, ArduPilot):
+            lat, lon = 0, 0
+
         if not await self.driver.send_command_long(
             self,
             MAVCommand.NAV_TAKEOFF,
             param4=nan,  # yaw should stay the same
-            param5=nan,  # takeoff to current latitude (needed by PX4)
-            param6=nan,  # takeoff to current longitude (needed by PX4)
+            param5=lat,  # latitude
+            param6=lon,  # longitude
             param7=altitude,  # takeoff altitude
         ):
             raise RuntimeError("Failed to send takeoff command")

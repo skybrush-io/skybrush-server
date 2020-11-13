@@ -466,7 +466,13 @@ class VirtualUAV(UAVBase):
             self._target_xyz = None
         else:
             # Calculate the real altitude component of the target
-            new_altitude = self._position_xyz.z if value.agl is None else value.agl
+            if value.agl is None:
+                if value.amsl is None or self._home_amsl is None:
+                    new_altitude = self._position_xyz.z
+                else:
+                    new_altitude = value.amsl - self._home_amsl
+            else:
+                new_altitude = value.agl
 
             # Update the target and its XYZ representation
             self._target.update(agl=new_altitude)

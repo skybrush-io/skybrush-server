@@ -10,7 +10,6 @@ from contextlib import ExitStack
 from json import dumps
 from trio import open_memory_channel, WouldBlock
 from trio.abc import ReceiveChannel, SendChannel
-from trio.lowlevel import FdStream
 from typing import Any, List, Optional, Tuple
 
 from flockwave.connections import ConnectionState
@@ -49,6 +48,9 @@ class ConsoleStatusExtension(ExtensionBase):
         if platform.system() == "Windows":
             log.warn("Extension not supported on this platform")
             return
+
+        # Lazy import -- FdStream not available on Windows
+        from trio.lowlevel import FdStream
 
         with ExitStack() as stack:
             connection_registry = app.connection_registry

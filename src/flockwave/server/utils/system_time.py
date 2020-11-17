@@ -1,8 +1,12 @@
 """Utility functions related to getting or adjusting the system time."""
 
-from os import geteuid
 from platform import system
-from time import CLOCK_REALTIME, clock_settime, time
+from time import time
+
+try:
+    from time import CLOCK_REALTIME, clock_settime
+except ImportError:
+    clock_settime = CLOCK_REALTIME = None
 
 from flockwave.server.errors import NotSupportedError
 
@@ -18,6 +22,8 @@ def can_set_system_time() -> bool:
     """Returns whether the current user is allowed to modify the system time."""
     if system() in ("Darwin", "Linux"):
         # Only root can modify the system time
+        from os import geteuid
+
         return geteuid() == 0
     else:
         # TODO(ntamas): implement this for Windows -- will need PyWin32
@@ -46,7 +52,7 @@ def set_system_time_msec(timestamp: float) -> None:
         raise PermissionError("Cannot modify system time; permission denied")
 
     try:
-        if system() in ("Linux", "Darwin"):
+        if clock_settime is not None:
             clock_settime(CLOCK_REALTIME, timestamp / 1000)
         else:
             raise NotSupportedError("Not supported on this platform")

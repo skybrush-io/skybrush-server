@@ -445,6 +445,9 @@ class CrazyflieUAV(UAVBase):
                 status = DroneShowStatus.from_bytes(status)
             except TimeoutError:
                 status = None
+            except Exception:
+                log.warn("Malformed drone show status packet received, ignoring")
+                status = None
 
             if status:
                 message = status.show_execution_stage.get_short_explanation().encode(

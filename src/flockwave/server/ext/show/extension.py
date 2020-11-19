@@ -81,13 +81,7 @@ class DroneShowExtension(ExtensionBase):
             task.cancel()
         del self._tasks[:]
 
-        should_listen_to_clock = (
-            self._config.authorized_to_start
-            and self._clock.start_time is not None
-            and self._config.start_method is StartMethod.AUTO
-        )
-
-        if should_listen_to_clock:
+        if self._should_run_countdown:
             # TODO(ntamas): what if we don't have a nursery here?
             self._tasks.append(CancelScope())
             self._nursery.start_soon(
@@ -102,6 +96,17 @@ class DroneShowExtension(ExtensionBase):
 
         updated_signal = self.app.import_api("signals").get("show:config_updated")
         updated_signal.send(self, config=self._config.clone())
+
+    @property
+    def _should_run_countdown(self) -> bool:
+        """Returns whether the extension should run the clock countdown, given
+        its current configuration.
+        """
+        return (
+            self._config.authorized_to_start
+            and self._clock.start_time is not None
+            and self._config.start_method is StartMethod.AUTO
+        )
 
     @cancellable
     async def _start_show_when_needed(self):
@@ -123,15 +128,23 @@ class DroneShowExtension(ExtensionBase):
         await wait_until(self._clock, seconds=-11, edge_triggered=False)
 
         last_seconds = -inf
-        async for _ in periodic(1):
-            seconds = self._clock.seconds
-            if not self._clock.running or last_seconds > seconds:
+        try:
+            async for _ in periodic(1):
+                seconds = self._clock.seconds
+                if not self._should_run_countdown:
+                    break
+                elif last_seconds > seconds:
+                    self._notify_uavs_about_countdown_state(cancelled=True)
+                elif seconds > -0.5:
+                    break
+                else:
+                    self._notify_uavs_about_countdown_state(seconds_left=-seconds)
+                    last_seconds = seconds
+        finally:
+            # Cancel any countdowns that we may have started if the clock was
+            # stopped or the authorization was revoked
+            if not self._should_run_countdown:
                 self._notify_uavs_about_countdown_state(cancelled=True)
-            elif seconds > -0.5:
-                break
-            else:
-                self._notify_uavs_about_countdown_state(seconds_left=-seconds)
-                last_seconds = seconds
 
     def _notify_uavs_about_countdown_state(
         self, seconds_left: float = 0, cancelled: bool = False

@@ -685,6 +685,8 @@ class UAVDriver(metaclass=ABCMeta):
 
         Parameters:
             uavs (List[UAV]): the UAVs to address with this request.
+            delay: the number of seconds left until takeoff, or `None` if the
+                takeoff was cancelled
 
         Returns:
             Dict[UAV,object]: dict mapping UAVs to the corresponding results

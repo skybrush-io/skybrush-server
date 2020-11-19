@@ -259,8 +259,7 @@ class CrazyflieDriver(UAVDriver):
                     # supports notifications +-32000 msec around the start time only
                     pass
             else:
-                # TODO(ntamas): cancellation not implemented yet
-                pass
+                await uav.stop_drone_show()
 
     async def _send_takeoff_signal_single(
         self, uav, *, scheduled: bool = False

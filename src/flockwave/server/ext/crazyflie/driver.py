@@ -44,7 +44,6 @@ from .crtp_extensions import (
     DroneShowStatus,
     LightProgramLocation,
     LightProgramType,
-    LIGHT_PROGRAM_MEMORY_ID,
 )
 from .trajectory import encode_trajectory, TrajectoryEncoding, to_poly4d_sequence
 
@@ -450,9 +449,11 @@ class CrazyflieUAV(UAVBase):
                 status = None
 
             if status:
-                message = status.show_execution_stage.get_short_explanation().encode(
-                    "utf-8"
-                )
+                message = status.show_execution_stage.get_short_explanation()
+                if status.testing:
+                    message = f"(test) {message}"
+                message = message.encode("utf-8")
+
                 self._battery.charging = status.charging
                 self._battery.voltage = status.battery_voltage
                 self._battery.percentage = status.battery_percentage
@@ -802,7 +803,7 @@ class CrazyflieUAV(UAVBase):
     async def _upload_light_program(self, data: bytes) -> None:
         """Uploads the given light program to the Crazyflie drone."""
         try:
-            memory = await self._crazyflie.mem.find(LIGHT_PROGRAM_MEMORY_ID)
+            memory = await self._crazyflie.mem.find(MemoryType.APP)
         except ValueError:
             raise RuntimeError("Light programs are not supported on this drone")
         addr = await write_with_checksum(memory, 0, data, only_if_changed=True)
@@ -952,7 +953,7 @@ class CrazyflieHandlerTask:
         """Background task that feeds a fake position to the UAV as if it was
         coming from an external positioning system.
         """
-        async for _ in periodic(1):
+        async for _ in periodic(0.2):
             x, y, z = self._use_fake_position
             await self._uav._crazyflie._localization.send_external_position(x, y, z)
 

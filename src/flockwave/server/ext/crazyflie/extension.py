@@ -38,6 +38,9 @@ class CrazyflieDronesExtension(UAVExtensionBase):
         driver.log = self.log.getChild("driver")
         driver.use_fake_position = configuration.get("feed_fake_position", False)
 
+        if driver.use_fake_position is True:
+            driver.use_fake_position = (0, 0, 0)
+
     async def run(self, app, configuration):
         from aiocflib.crtp.drivers import init_drivers
         from aiocflib.crtp.drivers.radio import SharedCrazyradio

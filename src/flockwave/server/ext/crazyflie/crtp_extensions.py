@@ -13,8 +13,6 @@ from flockwave.server.utils import clamp
 
 __all__ = (
     "DRONE_SHOW_PORT",
-    "LIGHT_PROGRAM_MEMORY_ID",
-    "PREFLIGHT_STATUS_LIGHT_EFFECT",
     "DroneShowCommand",
     "DroneShowStatus",
 )
@@ -23,15 +21,6 @@ __all__ = (
 #: Constant representing the CRTP port where we can access droneshow-related
 #: services on the Crazyflie if it is running our patched firmware
 DRONE_SHOW_PORT = CRTPPort.UNUSED_1
-
-#: ID of the memory on the Crazyflie that can be used to store light programs
-LIGHT_PROGRAM_MEMORY_ID = 0x18
-
-#: LED ring effect type index that belongs to our preflight checks
-PREFLIGHT_STATUS_LIGHT_EFFECT = 0x13
-
-#: LED ring effect type index that belongs to preprogrammed drone shows
-DRONE_SHOW_LIGHT_EFFECT = 0x14
 
 
 class DroneShowCommand(IntEnum):
@@ -77,6 +66,7 @@ class DroneShowStatusFlag(IntFlag):
     HIGH_LEVEL_COMMANDER_ENABLED = 2
     DRONE_SHOW_MODE_ENABLED = 4
     AIRBORNE = 8
+    TESTING_MODE = 16
 
 
 class DroneShowExecutionStage(IntEnum):
@@ -230,3 +220,8 @@ class DroneShowStatus:
             return "cmd"
         else:
             return "----"
+
+    @property
+    def testing(self) -> bool:
+        """Returns whether the drone is in testing mode is charging."""
+        return self.flags & DroneShowStatusFlag.TESTING_MODE

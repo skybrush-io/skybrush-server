@@ -217,9 +217,9 @@ class SkybrushBinaryShowFile:
                 # Encode the start point of the trajectory
                 chunks.append(encoder.encode_point(segment.start))
                 first = False
-            else:
-                # Encode the segment without its start point
-                chunks.append(encoder.encode_segment(segment))
+
+            # Encode the segment without its start point
+            chunks.append(encoder.encode_segment(segment))
 
         return await self.add_block(
             SkybrushBinaryFormatBlockType.TRAJECTORY, b"".join(chunks)

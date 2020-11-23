@@ -5,6 +5,7 @@ from trio import (
     open_memory_channel,
     open_nursery,
     sleep,
+    TooSlowError,
     WouldBlock,
 )
 from trio.lowlevel import ParkingLot
@@ -151,6 +152,12 @@ class ScheduledTakeoffManager:
         try:
             async with self._limiter:
                 await self._update_start_time_on_uav_inner(uav)
+        except TooSlowError:
+            log = self._network.log
+            if log:
+                log.warn(
+                    f"UAV {uav.id} did not respond to a start time configuration request"
+                )
         except Exception:
             log = self._network.log
             if log:

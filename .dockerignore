@@ -1,4 +1,3 @@
-.python-ersion
 .tags
 .git
 .venv/
@@ -9,5 +8,5 @@
 build/
 dist/
 tmp/
-*/__pycache__/*
+__pycache__
 Pipfile*

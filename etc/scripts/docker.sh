@@ -1,6 +1,8 @@
 #!/bin/bash
 #
-# Builds the skybrush-server Docker image.
+# Builds the ${IMAGE_NAME} Docker image.
+
+IMAGE_NAME=skybrush-server
 
 SCRIPT_ROOT=`dirname $0`
 REPO_ROOT="${SCRIPT_ROOT}/../.."
@@ -18,12 +20,12 @@ poetry export -f requirements.txt -o requirements-main.txt --without-hashes --wi
 trap "rm -f requirements-main.txt" EXIT
 
 # Build the Docker image
-DOCKER_BUILDKIT=1 docker build -t docker.collmot.com/skybrush-server:latest -f etc/deployment/docker/amd64/Dockerfile .
+DOCKER_BUILDKIT=1 docker build -t docker.collmot.com/${IMAGE_NAME}:latest -f etc/deployment/docker/amd64/Dockerfile .
 echo "Successfully built Docker image."
 
 # If we are at an exact tag, also tag the image
 GIT_TAG=`git describe --exact-match --tags 2>/dev/null || echo ""`
 if [ "x$GIT_TAG" != x ]; then
-    docker tag docker.collmot.com/skybrush-server:latest docker.collmot.com/skybrush-server:${GIT_TAG}
+    docker tag docker.collmot.com/${IMAGE_NAME}:latest docker.collmot.com/${IMAGE_NAME}:${GIT_TAG}
     echo "Image tagged as $GIT_TAG."
 fi

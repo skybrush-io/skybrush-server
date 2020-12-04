@@ -38,10 +38,13 @@ if [ ! -d .venv ]; then
   python3 -m venv .venv
 fi
 
+# Create build folder
 rm -rf "${OUTPUT_DIR}"
 mkdir -p "${OUTPUT_DIR}/bin"
 mkdir -p "${OUTPUT_DIR}/doc"
 mkdir -p "${OUTPUT_DIR}/lib"
+
+# Install dependencies
 .venv/bin/pip install -U pip wheel pyarmor
 .venv/bin/pip install -r requirements.txt -t "${OUTPUT_DIR}/lib"
 

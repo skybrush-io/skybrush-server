@@ -4,14 +4,14 @@
 # frontend straight to a Raspberry Pi
 
 OUTPUT_FILE="skybrush-server-rpi-dist.tar.gz"
-DEBUG=0
+DEBUG=1
 
 ###############################################################################
 
 set -e
 
 if [ -f /proc/cpuinfo ]; then
-  RUNNING_ON_RPI=`grep Hardware /proc/cpuinfo | grep -c BCM`
+  RUNNING_ON_RPI=`grep Hardware /proc/cpuinfo | grep -E -c 'BCM|Versatile'`
 else
   RUNNING_ON_RPI=0
 fi
@@ -19,10 +19,23 @@ fi
 export LANG=C LC_ALL=C
 
 if [ $RUNNING_ON_RPI -lt 1 ]; then
+  PORT=22
+  while getopts "p:" OPTION; do
+    case $OPTION in
+    p)
+      PORT=$OPTARG
+	  ;;
+    *)
+      exit 1
+      ;;
+    esac
+  done
+  shift $((OPTIND-1))
+
   # We are not on the Raspberry Pi yet so just copy ourselves to the RPi
   TARGET="$1"
   if [ "x$TARGET" = x ]; then
-    echo "Usage: $0 USERNAME@IP"
+    echo "Usage: $0 [-p PORT] USERNAME@IP"
     echo ""
     echo "where USERNAME@IP is the username and IP address of the Raspberry Pi."
     echo "We assume that public key authentication is already set up; if it is"
@@ -30,11 +43,9 @@ if [ $RUNNING_ON_RPI -lt 1 ]; then
     exit 1
   fi
 
-  set -x
-  scp -q "$0" "$TARGET":.
-  set +x
-
-  ssh "$TARGET" /bin/bash <<EOF
+  scp -P "$PORT" -q "$0" "$TARGET":.
+  ssh -o ForwardAgent=yes "$TARGET" -p "$PORT" /bin/bash <<EOF
+set -e
 chmod +x ./deploy-to-rpi.sh
 ./deploy-to-rpi.sh
 rm ./deploy-to-rpi.sh
@@ -101,6 +112,7 @@ fi
 cd "${WORK_DIR}"
 
 if [ ! -d skybrush-server ]; then
+    ssh-keyscan -H git.collmot.com >~/.ssh/known_hosts
     git clone git@git.collmot.com:collmot/flockwave-server.git skybrush-server
 fi
 
@@ -110,7 +122,7 @@ etc/scripts/build-pyarmored-dist.sh
 cd ..
 
 if [ ! -d skybrush-console-frontend ]; then
-    git clone git@git.collmot.com:collmot/skybrush-console-frontend.git
+    git clone git@git.collmot.com:skybrush/console-frontend.git skybrush-console-frontend
 fi
 
 cd skybrush-console-frontend
@@ -156,7 +168,7 @@ echo ""
 echo "To install it, type the following commands as root:"
 echo ""
 echo "rm -rf /opt/skybrush"
-echo "tar -C / -xvvzf ${WORK_DIR}/${OUTPUT_FILE}"
+echo "tar -C / -xvvzf ${CWD}/${OUTPUT_FILE}"
 echo ""
 echo "After that you should reboot the RPi. Also, don't forget to add a license"
 echo "file to the RPi in /boot/collmot/skybrushd.cml"

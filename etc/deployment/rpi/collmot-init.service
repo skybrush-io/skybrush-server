@@ -1,7 +1,7 @@
 [Unit]
 Description=CollMot-specific initialization tasks
 After=local-fs.target
-Before=dhcpcd.service
+Before=raspberrypi-net-mods.service
 
 [Service]
 ExecStart=/opt/skybrush/boot/run-tasks-at-boot

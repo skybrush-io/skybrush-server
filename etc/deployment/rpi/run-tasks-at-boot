@@ -59,6 +59,20 @@ done
 echo "# End of CollMot-specific section" >>/tmp/dhcpcd.conf.new
 mv /tmp/dhcpcd.conf.new /etc/dhcpcd.conf
 
+# Configure wireless interface if needed
+if [ "x$WIRELESS_AP_NAME" != x ]; then
+    cat >/boot/wpa_supplicant.conf <<EOF
+ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev
+update_config=1
+country=US
+
+network={
+ ssid="${WIRELESS_AP_NAME}"
+ psk="${WIRELESS_PASSWORD}"
+}
+EOF
+fi
+
 # Sync all changes to the filesystem
 sync
 

@@ -215,7 +215,10 @@ class RTKStatistics:
                 continue
 
             if hasattr(cnr, "__iter__"):
-                # multiple CNRs (e.g., for L1 and L2 channels), take the average
-                cnr = sum(cnr) / len(cnr)
+                # multiple CNRs (e.g., for L1 and L2 channels), take the maximum,
+                # which is typically the L1 channel that we are interested in
+                # anyway -- plus it's consistent with how the MSM packet CNR
+                # is calculated
+                cnr = max(cnr)
 
             self._satellite_cnrs[id] = cnr

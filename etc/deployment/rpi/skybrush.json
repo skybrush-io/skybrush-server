@@ -1,5 +1,6 @@
 {
   "EXTENSIONS": {
+    "frontend": {},
     "http_server": {
       "host": ""
     },

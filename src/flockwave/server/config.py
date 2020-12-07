@@ -64,6 +64,7 @@ EXTENSIONS = {
         },
         "enabled": False,
     },
+    "frontend": {},
     "gps": {
         # "connection": "/dev/cu.usbmodem1411",
         "connection": "gpsd",

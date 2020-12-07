@@ -319,10 +319,10 @@ class RTKExtension(ExtensionBase):
         if not self._dynamic_serial_port_filters:
             return True
 
+        device = str(getattr(port, "device", "") or "")
         label = describe_serial_port(port)
         for pattern in self._dynamic_serial_port_filters:
-            print("Testing", pattern, "against", label)
-            if fnmatch(label, pattern):
+            if fnmatch(device, pattern) or fnmatch(label, pattern):
                 return False
 
         return True

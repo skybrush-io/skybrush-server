@@ -482,13 +482,14 @@ reference = "collmot"
 
 [[package]]
 name = "flockwave-gps"
-version = "1.0.0"
+version = "1.1.0"
 description = "GPS and geography related routines and classes"
 category = "main"
 optional = false
 python-versions = ">=3.7,<4.0"
 
 [package.dependencies]
+bitstring = ">=3.1.7,<4.0.0"
 trio = {version = ">=0.15", optional = true, markers = "extra == \"ntrip\""}
 
 [package.extras]
@@ -1774,7 +1775,7 @@ reference = "collmot"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7"
-content-hash = "cd902cdc90f4f0b5410ce7302156b97cad11a3792624ee80ebad036f6d64c007"
+content-hash = "957700fbb05c57bcd228e0d261017610265e0687a6e44751c6b92120960b7e3b"
 
 [metadata.files]
 aio-usb-hotplug = [
@@ -1945,8 +1946,8 @@ flockwave-flockctrl = [
     {file = "flockwave_flockctrl-0.13.0-py3-none-any.whl", hash = "md5:766b354b73406128521ca1602d172ae4"},
 ]
 flockwave-gps = [
-    {file = "flockwave-gps-1.0.0.tar.gz", hash = "md5:acb3d40c84916eaf9641da99ef014bde"},
-    {file = "flockwave_gps-1.0.0-py3-none-any.whl", hash = "md5:2cd3985b0d59fe3005b9775b070e92cf"},
+    {file = "flockwave-gps-1.1.0.tar.gz", hash = "md5:a05bfc810238b8a739f1d9deccaf161a"},
+    {file = "flockwave_gps-1.1.0-py3-none-any.whl", hash = "md5:4bd81c9d3310341aaa5376701a8835e6"},
 ]
 flockwave-logger = [
     {file = "flockwave-logger-1.5.0.tar.gz", hash = "md5:75b041e8089831eb15fbed676ef0524d"},

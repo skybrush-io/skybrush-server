@@ -3,6 +3,7 @@ and forwards the corrections to the UAVs managed by the server.
 """
 
 from contextlib import ExitStack
+from fnmatch import fnmatch
 from functools import partial
 from trio import open_memory_channel, open_nursery, sleep_forever
 from typing import Optional
@@ -15,6 +16,7 @@ from flockwave.server.model.messages import FlockwaveMessage
 from flockwave.server.registries import find_in_registry
 from flockwave.server.utils import overridden
 from flockwave.server.utils.serial import (
+    describe_serial_port,
     list_serial_ports,
 )
 
@@ -37,6 +39,7 @@ class RTKExtension(ExtensionBase):
         self._command_queue = None
         self._current_preset = None
         self._dynamic_serial_port_configurations = []
+        self._dynamic_serial_port_filters = []
         self._presets = []
         self._registry = None
         self._statistics = RTKStatistics()
@@ -81,6 +84,17 @@ class RTKExtension(ExtensionBase):
                     self.log.error(
                         f"Ignoring invalid serial port configuration at index #{index}"
                     )
+
+        serial_port_filters = configuration.get("exclude_serial_ports")
+        if isinstance(serial_port_filters, str):
+            serial_port_filters = [serial_port_filters]
+
+        if hasattr(serial_port_filters, "__iter__"):
+            self._dynamic_serial_port_filters = [
+                str(filter) for filter in serial_port_filters
+            ]
+        else:
+            self._dynamic_serial_port_filters = []
 
     @property
     def current_preset(self) -> Optional[RTKConfigurationPreset]:
@@ -298,6 +312,21 @@ class RTKExtension(ExtensionBase):
         """
         self._update_dynamic_presets()
 
+    def _should_use_serial_port_as_dynamic_preset(self, port) -> bool:
+        """Returns whether the given serial port should appear as a dynamic
+        preset in the list of RTK sources offered by the extension.
+        """
+        if not self._dynamic_serial_port_filters:
+            return True
+
+        label = describe_serial_port(port)
+        for pattern in self._dynamic_serial_port_filters:
+            print("Testing", pattern, "against", label)
+            if fnmatch(label, pattern):
+                return False
+
+        return True
+
     def _update_dynamic_presets(self, first: bool = False) -> None:
         """Enumerates all the serial ports on the computer and creates a list of
         dynamic presets, one or more for each serial port.
@@ -316,6 +345,9 @@ class RTKExtension(ExtensionBase):
         # ones for which we have already created a preset
         has_multiple_configurations = len(self._dynamic_serial_port_configurations) > 1
         for port in list_serial_ports():
+            if not self._should_use_serial_port_as_dynamic_preset(port):
+                continue
+
             for index, spec in enumerate(self._dynamic_serial_port_configurations):
                 preset_id = self._get_dynamic_preset_id_for_serial_port(port, index)
                 if self.find_preset_by_id(preset_id):

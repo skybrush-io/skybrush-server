@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass, field
 from functools import partial
-from typing import Any, Callable, Dict, Optional, Tuple, Union
+from typing import Any, Callable, Dict, Optional, Set, Tuple, Union
 
 __all__ = (
     "MAVLinkFlightModeNumbers",
@@ -97,6 +97,12 @@ class MAVLinkNetworkSpecification:
     #: `create_connection()` function.
     connections: Dict[str, Any] = field(default_factory=dict)
 
+    #: Specifies where to send the contents of MAVLink status text messages
+    #: originating from this network. This property must be a set containing
+    #: 'server' to forward the messages to the server log and/or 'client' to
+    #: forward the messages to the connected clients in SYS-MSG messages.
+    statustext_targets: Set[str] = field(default_factory=set)
+
     #: Whether to simulate packet loss in this network by randomly dropping
     #: received and sent messages. Zero means the normal behaviour, otherwise
     #: it is interpreted as the probability of a lost MAVLink message.
@@ -121,6 +127,12 @@ class MAVLinkNetworkSpecification:
         if "packet_loss" in obj:
             result.packet_loss = float(obj["packet_loss"])
 
+        if "statustext_targets" in obj:
+            if isinstance("statustext_targets", list):
+                result.statustext_targets = set(
+                    str(x) for x in obj["statustext_targets"]
+                )
+
         return result
 
     @property
@@ -132,4 +144,5 @@ class MAVLinkNetworkSpecification:
             "system_id": self.system_id,
             "connections": self.connections,
             "packet_loss": self.packet_loss,
+            "statustext_targets": sorted(self.statustext_targets),
         }

@@ -118,6 +118,9 @@ class MAVLinkDriver(UAVDriver):
         """
         uav = MAVLinkUAV(id, driver=self)
         uav.notify_updated = partial(self.app.request_to_send_UAV_INF_message_for, [id])
+        uav.send_log_message_to_gcs = partial(
+            self.app.request_to_send_SYS_MSG_message, sender=self.id
+        )
         return uav
 
     def get_time_boot_ms(self) -> int:
@@ -571,6 +574,7 @@ class MAVLinkUAV(UAVBase):
         self._velocity = VelocityNED()
 
         self.notify_updated = None
+        self.send_log_message_to_gcs = None
 
         self._reset_mavlink_version()
 

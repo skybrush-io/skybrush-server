@@ -106,6 +106,9 @@ class CrazyflieDriver(UAVDriver):
         uav.notify_updated = partial(
             self.app.request_to_send_UAV_INF_message_for, [formatted_id]
         )
+        uav.send_log_message_to_gcs = partial(
+            self.app.request_to_send_SYS_MSG_message, sender=self.id
+        )
         return uav
 
     @property
@@ -290,6 +293,7 @@ class CrazyflieUAV(UAVBase):
         self.uri = None
         self.notify_updated = None
         self.notify_shutdown_or_reboot = None
+        self.send_log_message_to_gcs = None
 
         self._command_queue_tx, self._command_queue_rx = open_memory_channel(0)
 
@@ -425,6 +429,7 @@ class CrazyflieUAV(UAVBase):
         extra = {"id": self.id}
         async for message in self._crazyflie.console.messages():
             log.info(message, extra=extra)
+            self.send_log_message_to_gcs(message)
 
     async def process_drone_show_status_messages(self, period: float = 0.5) -> None:
         """Runs a task that requests a drone show related status report from

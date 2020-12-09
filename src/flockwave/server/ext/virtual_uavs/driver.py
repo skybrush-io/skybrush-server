@@ -78,7 +78,9 @@ class VirtualUAVDriver(UAVDriver):
         Returns:
             VirtualUAV: an appropriate virtual UAV object
         """
-        uav = VirtualUAV(id, driver=self, use_battery_percentage=self.use_battery_percentages)
+        uav = VirtualUAV(
+            id, driver=self, use_battery_percentage=self.use_battery_percentages
+        )
         uav.boots_armed = bool(self.uavs_armed_after_boot)
         uav.takeoff_altitude = 3
         uav.home = home.copy()
@@ -131,6 +133,13 @@ class VirtualUAVDriver(UAVDriver):
             return "Disarmed"
         else:
             return "Failed to disarm"
+
+    def handle_command_echo(self, uav, message):
+        """Echoes a message back to the client using a SYS-MSG message and as
+        normal response as well.
+        """
+        uav.send_log_message_to_gcs(message)
+        return message
 
     def handle_command_error(self, uav, value=0):
         """Sets or clears the error code of the virtual drone."""
@@ -414,6 +423,10 @@ class VirtualUAV(UAVBase):
     def motors_running(self) -> bool:
         """Returns whether motors of the drone are running."""
         return self._motors_running
+
+    def send_log_message_to_gcs(self, *args, **kwds):
+        kwds["sender"] = self.id
+        return self.driver.app.request_to_send_SYS_MSG_message(*args, **kwds)
 
     @property
     def state(self):

@@ -3,6 +3,7 @@ from logging import ERROR, WARNING, INFO, DEBUG
 from typing import Optional, List, Union
 
 from flockwave.gps.vectors import GPSCoordinate
+from flockwave.model.log import Severity
 
 from .enums import MAVFrame, MAVParamType
 from .types import MAVLinkMessage
@@ -12,21 +13,32 @@ __all__ = (
     "encode_param_to_wire_representation",
     "log_id_for_uav",
     "log_id_from_message",
-    "log_level_from_severity",
     "mavlink_nav_command_to_gps_coordinate",
     "mavlink_version_number_to_semver",
+    "python_log_level_from_mavlink_severity",
 )
 
 
-_severity_to_log_level = [
+_mavlink_severity_to_python_log_level = [
     ERROR,
     ERROR,
     ERROR,
     ERROR,
     WARNING,
-    INFO,
+    WARNING,
     INFO,
     DEBUG,
+]
+
+_mavlink_severity_to_flockwave_severity = [
+    Severity.CRITICAL,  # MAV_SEVERITY_EMERGENCY
+    Severity.ERROR,  # MAV_SEVERITY_ALERT: "Indicates error in non-critical systems"
+    Severity.CRITICAL,  # MAV_SEVERITY_CRITICAL: "Indicates failure in a primary system."
+    Severity.ERROR,  # MAV_SEVERITY_ERROR
+    Severity.WARNING,  # MAV_SEVERITY_WARNING: "An unusual event has occurred, though not an error condition. This should be investigated for the root cause."
+    Severity.WARNING,  # MAV_SEVERITY_NOTICE
+    Severity.INFO,  # MAV_SEVERITY_INFO
+    Severity.DEBUG,  # MAV_SEVERITY_DEBUG
 ]
 
 
@@ -64,6 +76,18 @@ def encode_param_to_wire_representation(value, type: MAVParamType) -> float:
     return MAVParamType(type).as_float(value)
 
 
+def flockwave_severity_from_mavlink_severity(severity: int) -> Severity:
+    """Returns the Flockwave log message severity level corresponding to the
+    given MAVLink severity level.
+    """
+    if severity <= 0:
+        return Severity.CRITICAL
+    elif severity >= 8:
+        return Severity.DEBUG
+    else:
+        return _mavlink_severity_to_flockwave_severity[severity]
+
+
 def log_id_from_message(
     message: MAVLinkMessage, network_id: Optional[str] = None
 ) -> str:
@@ -87,18 +111,6 @@ def log_id_for_uav(uav) -> str:
         return f"{network_id}/{system_id:02x}"
     else:
         return f"{system_id:02x}"
-
-
-def log_level_from_severity(severity: int) -> int:
-    """Converts a MAVLink STATUSTEXT message severity (MAVSeverity) into a
-    compatible Python log level.
-    """
-    if severity <= 0:
-        return ERROR
-    elif severity >= 8:
-        return DEBUG
-    else:
-        return _severity_to_log_level[severity]
 
 
 def mavlink_nav_command_to_gps_coordinate(message: MAVLinkMessage) -> GPSCoordinate:
@@ -155,3 +167,15 @@ def mavlink_version_number_to_semver(
         version.append("+" + hexlify(bytes(custom).rstrip(b"\x00")).decode("utf-8"))
 
     return "".join(version)
+
+
+def python_log_level_from_mavlink_severity(severity: int) -> int:
+    """Converts a MAVLink STATUSTEXT message severity (MAVSeverity) into a
+    compatible Python log level.
+    """
+    if severity <= 0:
+        return ERROR
+    elif severity >= 8:
+        return DEBUG
+    else:
+        return _mavlink_severity_to_python_log_level[severity]

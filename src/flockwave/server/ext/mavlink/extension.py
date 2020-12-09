@@ -152,6 +152,9 @@ class MAVLinkDronesExtension(UAVExtensionBase):
         network_spec_defaults = {
             "id_format": default_id_format,
             "packet_loss": configuration.get("packet_loss", MISSING),
+            "statustext_targets": configuration.get(
+                "statustext_targets", frozenset({"client", "server"})
+            ),
             "system_id": configuration.get("system_id", 255),
         }
 

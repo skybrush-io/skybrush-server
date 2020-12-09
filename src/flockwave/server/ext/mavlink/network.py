@@ -15,7 +15,7 @@ from contextlib import contextmanager, ExitStack
 from time import time_ns
 from trio.abc import ReceiveChannel
 from trio_util import periodic
-from typing import Any, Callable, Iterator, Optional, Sequence, Tuple, Union
+from typing import Any, Callable, FrozenSet, Iterator, Optional, Sequence, Tuple, Union
 
 from flockwave.connections import Connection, create_connection, ListenerConnection
 from flockwave.concurrency import Future
@@ -35,7 +35,11 @@ from .types import (
     MAVLinkMessageSpecification,
     MAVLinkNetworkSpecification,
 )
-from .utils import log_level_from_severity, log_id_from_message
+from .utils import (
+    flockwave_severity_from_mavlink_severity,
+    python_log_level_from_mavlink_severity,
+    log_id_from_message,
+)
 
 __all__ = ("MAVLinkNetwork",)
 
@@ -68,6 +72,7 @@ class MAVLinkNetwork:
             system_id=spec.system_id,
             id_formatter=spec.id_format.format,
             packet_loss=spec.packet_loss,
+            statustext_targets=spec.statustext_targets,
         )
 
         for index, connection_spec in enumerate(spec.connections):
@@ -83,6 +88,7 @@ class MAVLinkNetwork:
         system_id: int = 255,
         id_formatter: Callable[[int, str], str] = "{0}".format,
         packet_loss: float = 0,
+        statustext_targets: FrozenSet[str],
     ):
         """Constructor.
 
@@ -98,12 +104,19 @@ class MAVLinkNetwork:
                 used for the drone with the given system ID on the network
             packet_loss: when larger than zero, simulates packet loss on the
                 network by randomly dropping received and sent MAVLink messages
+            statustext_targets: specifies where to forward MAVLink status text
+                messages. When the set contains the string `"server"`, the
+                status messages will be sent to the server log. When the
+                set contains the string `"client"`, they will be sent to the
+                connected clients in SYS-MSG messages. The two options are not
+                mutually exclusive; both can be configured at the same time.
         """
         self._id = id
         self._id_formatter = id_formatter
         self._matchers = None
         self._packet_loss = max(float(packet_loss), 0.0)
         self._scheduled_takeoff_manager = ScheduledTakeoffManager(self)
+        self._statustext_targets = frozenset(statustext_targets)
         self._system_id = max(min(int(system_id), 255), 1)
 
         self._connections = []
@@ -576,18 +589,28 @@ class MAVLinkNetwork:
         self, message: MAVLinkMessage, *, connection_id: str, address: Any
     ):
         """Handles an incoming MAVLink STATUSTEXT message and forwards it to the
-        log console.
+        log console or to the GCS, depending on how the network is set up.
         """
         text = message.text
         uav = self._find_uav_from_message(message, address)
         if uav and text and uav._autopilot.is_prearm_error_message(text):
             uav.notify_prearm_failure(uav._autopilot.process_prearm_error_message(text))
-        else:
-            self.log.log(
-                log_level_from_severity(message.severity),
-                message.text,
-                extra=self._log_extra_from_message(message),
-            )
+
+        for target in self._statustext_targets:
+            if target == "server":
+                self.log.log(
+                    python_log_level_from_mavlink_severity(message.severity),
+                    message.text,
+                    extra=self._log_extra_from_message(message),
+                )
+            elif target == "client":
+                if uav:
+                    uav.send_log_message_to_gcs(
+                        message.text,
+                        severity=flockwave_severity_from_mavlink_severity(
+                            message.severity
+                        ),
+                    )
 
     def _handle_message_sys_status(
         self, message: MAVLinkMessage, *, connection_id: str, address: Any

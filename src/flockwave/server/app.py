@@ -7,7 +7,7 @@ from trio import (
     BrokenResourceError,
     move_on_after,
 )
-from typing import Dict, List, Optional
+from typing import Dict, Iterable, List, Optional
 
 from flockwave.app_framework import DaemonApp
 from flockwave.app_framework.configurator import AppConfigurator, Configuration
@@ -23,6 +23,7 @@ from .commands import CommandExecutionManager
 from .errors import NotSupportedError
 from .logger import log
 from .message_hub import (
+    BatchMessageRateLimiter,
     ConnectionStatusMessageRateLimiter,
     UAVMessageRateLimiter,
     MessageHub,
@@ -31,6 +32,7 @@ from .message_hub import (
 from .model.client import Client
 from .model.devices import DeviceTree, DeviceTreeSubscriptionManager
 from .model.errors import ClientNotSubscribedError, NoSuchPathError
+from .model.log import LogMessage, Severity
 from .model.messages import FlockwaveMessage, FlockwaveResponse
 from .model.object import ModelObject
 from .model.uav import is_uav, UAV, UAVDriver
@@ -264,6 +266,28 @@ class SkybrushServer(DaemonApp):
                 response.add_success(path)
 
         return response
+
+    def create_SYS_MSG_message_from(self, messages: Iterable[LogMessage]):
+        """Creates a SYS-MSG message containing the given list of log messages.
+
+        Typically, you should not use this method (unless you know what you are
+        doing) because allows one to bypass the built-in rate limiting for
+        SYS-MSG messages. If you only want to broadcast SYS-MSG messages to all
+        interested parties, use ``request_to_send_SYS_MSG_message()``
+        instead, which will send the notification immediately if the rate
+        limiting constraints allow, but it may also wait a bit if the
+        SYS-MSG messages are sent too frequently.
+
+        Parameters:
+            messages: iterable of log messages to put in the generated SYS-MSG
+                message
+
+        Returns:
+            FlockwaveMessage: the SYS-MSG message with the given log
+                messages
+        """
+        body = {"items": list(messages), "type": "SYS-MSG"}
+        return self.message_hub.create_response_or_notification(body=body)
 
     def create_UAV_INF_message_for(self, uav_ids, in_response_to=None):
         """Creates an UAV-INF message that contains information regarding
@@ -499,6 +523,36 @@ class SkybrushServer(DaemonApp):
         """The number of clients connected to the server."""
         return self.client_registry.num_entries
 
+    def request_to_send_SYS_MSG_message(
+        self,
+        message: str,
+        *,
+        severity: Severity = Severity.INFO,
+        sender: Optional[str] = None,
+        timestamp: Optional[int] = None
+    ):
+        """Requests the application to send a SYS-MSG message to the connected
+        clients with the given message body, severity, sender ID and timestamp.
+        The application may send the message immediately or opt to delay it a
+        bit in order to ensure that SYS-MSG notifications are not emitted too
+        frequently.
+
+        Parameters:
+            message: the body of the message
+            severity: the severity level of the message
+            sender: the ID of the object that the message originates from if
+                the server is relaying messages from an object that it manages
+                (e.g. an UAV), or `None` if the server sends the message on its
+                own
+            timestamp: the timestamp of the message; `None` means that the
+                timestamp is not relevant and it will be omitted from the
+                generated message
+        """
+        message = LogMessage(
+            message=message, severity=severity, sender=sender, timestamp=timestamp
+        )
+        self.rate_limiters.request_to_send("SYS-MSG", message)
+
     def request_to_send_UAV_INF_message_for(self, uav_ids):
         """Requests the application to send an UAV-INF message that contains
         information regarding the UAVs with the given IDs. The application
@@ -589,6 +643,9 @@ class SkybrushServer(DaemonApp):
         self.rate_limiters.register(
             "CONN-INF",
             ConnectionStatusMessageRateLimiter(self.create_CONN_INF_message_for),
+        )
+        self.rate_limiters.register(
+            "SYS-MSG", BatchMessageRateLimiter(self.create_SYS_MSG_message_from)
         )
         self.rate_limiters.register(
             "UAV-INF", UAVMessageRateLimiter(self.create_UAV_INF_message_for)

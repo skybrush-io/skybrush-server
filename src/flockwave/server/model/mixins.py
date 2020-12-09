@@ -26,7 +26,7 @@ class TimestampMixin:
         """
         self.update_timestamp(timestamp)
 
-    def update_timestamp(self, timestamp: Optional[TimestampLike] = None):
+    def update_timestamp(self, timestamp: Optional[TimestampLike] = None) -> int:
         """Updates the timestamp of the object.
 
         Parameters:

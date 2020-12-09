@@ -26,9 +26,11 @@ from typing import (
     Callable,
     Dict,
     Generator,
+    Generic,
     Iterable,
     Optional,
     Tuple,
+    TypeVar,
     Union,
 )
 
@@ -56,6 +58,8 @@ log = base_log.getChild("message_hub")
 
 
 MessageHandler = Callable[[FlockwaveMessage, Client, "MessageHub"], FlockwaveMessage]
+
+T = TypeVar("T")
 
 
 class MessageValidationError(RuntimeError):
@@ -397,7 +401,7 @@ class MessageHub:
             return True
 
         type = message.body.get("type") if hasattr(message, "body") else "NO-TYPE"
-        if type not in ("RTK-STAT", "X-RTK-STAT"):
+        if type not in ("RTK-STAT", "UAV-PREFLT", "X-RTK-STAT"):
             log.info(
                 "Received {0.body[type]} message".format(message),
                 extra={"id": message.id, "semantics": "request"},
@@ -786,13 +790,13 @@ class MessageHub:
         type = message.body.get("type") if hasattr(message, "body") else "NO-TYPE"
 
         if to is None:
-            if type not in ("CONN-INF", "UAV-INF", "DEV-INF"):
+            if type not in ("CONN-INF", "UAV-INF", "DEV-INF", "SYS-MSG"):
                 log.info(
                     f"Broadcasting {type} notification",
                     extra={"id": message.id, "semantics": "notification"},
                 )
         elif in_response_to is not None:
-            if type not in ("RTK-STAT", "X-RTK-STAT"):
+            if type not in ("RTK-STAT", "X-RTK-STAT", "UAV-PREFLT"):
                 log.info(
                     f"Sending {type} response",
                     extra={"id": in_response_to.id, "semantics": "response_success"},
@@ -906,11 +910,42 @@ class RateLimiter(metaclass=ABCMeta):
         raise NotImplementedError
 
     @abstractmethod
-    async def run(self, dispatcher) -> None:
+    async def run(self, dispatcher, nursery) -> None:
         """Runs the task handling the messages emitted from this rate
         limiter.
         """
         raise NotImplementedError
+
+
+@dataclass
+class BatchMessageRateLimiter(RateLimiter, Generic[T]):
+    """Rate limiter that collects incoming message dispatch requests in a list
+    and releases multiple messages at once in a single message, ensuring a
+    minimum delay between consecutive message dispatches.
+
+    The rate limiter requires a factory function that takes a list of requests
+    and produces a single FlockwaveMessage_ to send.
+    """
+
+    factory: Callable[[Iterable[T]], FlockwaveMessage]
+    name: Optional[str] = None
+    delay: float = 0.1
+
+    bundler: AsyncBundler = field(default_factory=AsyncBundler)
+
+    def add_request(self, request: T) -> None:
+        self.bundler.add(request)
+
+    async def run(self, dispatcher, nursery):
+        self.bundler.clear()
+        async for bundle in self.bundler:
+            try:
+                await dispatcher(self.factory(bundle))
+            except Exception:
+                log.exception(
+                    f"Error while dispatching messages from {self.name} factory"
+                )
+            await sleep(self.delay)
 
 
 @dataclass

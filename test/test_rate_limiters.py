@@ -1,7 +1,7 @@
 from pytest_trio import trio_fixture
 from trio import sleep
 
-from flockwave.server.message_hub import GenericRateLimiter
+from flockwave.server.message_hub import UAVMessageRateLimiter
 
 
 @trio_fixture
@@ -23,10 +23,10 @@ def create_message(uav_ids):
     return tuple(uav_ids)
 
 
-class TestGenericRateLimiter:
+class TestUAVMessageRateLimiter:
     async def test_yields_nothing_by_default(self, create_rate_limiter, autojump_clock):
         _, result = create_rate_limiter(
-            GenericRateLimiter, name="Test", factory=create_message, delay=0.1
+            UAVMessageRateLimiter, name="Test", factory=create_message, delay=0.1
         )
         assert result == []
 
@@ -34,7 +34,7 @@ class TestGenericRateLimiter:
         self, create_rate_limiter, autojump_clock
     ):
         rate_limiter, result = create_rate_limiter(
-            GenericRateLimiter, name="Test", factory=create_message, delay=0.1
+            UAVMessageRateLimiter, name="Test", factory=create_message, delay=0.1
         )
         await sleep(0.1)  # let the nursery start the rate limiter
         rate_limiter.add_request((1, 2))
@@ -48,7 +48,7 @@ class TestGenericRateLimiter:
         self, create_rate_limiter, autojump_clock
     ):
         rate_limiter, result = create_rate_limiter(
-            GenericRateLimiter, name="Test", factory=create_message, delay=0.1
+            UAVMessageRateLimiter, name="Test", factory=create_message, delay=0.1
         )
 
         await sleep(0.1)  # let the nursery start the rate limiter

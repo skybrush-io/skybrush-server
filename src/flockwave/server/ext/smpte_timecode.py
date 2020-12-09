@@ -6,11 +6,11 @@ Support for other connection types (e.g., TCP/IP) may be added later.
 
 from __future__ import division
 
-import attr
-
 from contextlib import contextmanager, ExitStack
+from dataclasses import dataclass
 from time import time
 from trio import move_on_after
+from typing import Optional
 
 from .base import ExtensionBase
 
@@ -21,7 +21,7 @@ from flockwave.connections import create_connection
 from flockwave.connections.midi import MIDIPortConnection
 
 
-@attr.s
+@dataclass
 class SMPTETimecode:
     """Class representing a single SMPTE timecode.
 
@@ -34,12 +34,12 @@ class SMPTETimecode:
         drop (bool): whether this is a drop-frame timecode
     """
 
-    hour: int = attr.ib(default=0)
-    minute: int = attr.ib(default=0)
-    second: int = attr.ib(default=0)
-    frame: int = attr.ib(default=0)
-    frames_per_second: int = attr.ib(default=25)
-    drop: bool = attr.ib(default=False)
+    hour: int = 0
+    minute: int = 0
+    second: int = 0
+    frame: int = 0
+    frames_per_second: int = 25
+    drop: bool = False
 
     @property
     def total_frames(self):
@@ -292,11 +292,11 @@ class InboundMessageParser:
             messages from.
     """
 
-    @attr.s
+    @dataclass
     class Message:
-        timecode = attr.ib(default=None)
-        local_timestamp = attr.ib(default=None)
-        running = attr.ib(default=False)
+        timecode: Optional[SMPTETimecode] = None
+        local_timestamp: Optional[int] = None
+        running: bool = False
 
     def __init__(self, port):
         """Constructor.

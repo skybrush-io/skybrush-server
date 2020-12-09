@@ -1,26 +1,25 @@
 """Simple routing middleware for the HTTP server extension."""
 
-import attr
-
 from bisect import insort_left
+from dataclasses import dataclass
 from functools import partial, total_ordering
-from typing import Callable, Iterable, Optional, Set
+from typing import Any, Callable, FrozenSet, Iterable, Optional
 
 
 __all__ = ("RoutingMiddleware",)
 
 
-@attr.s(cmp=False)
+@dataclass(order=False)
 @total_ordering
-class Route(object):
+class Route:
     """Data class holding the details of a single route in the routing
     middleware.
     """
 
-    app = attr.ib()
-    scopes: Optional[Set[str]] = attr.ib(converter=frozenset, default=None)
-    path: Optional[str] = attr.ib(default=None)
-    priority: int = attr.ib(default=0)
+    app: Any
+    scopes: Optional[FrozenSet[str]] = None
+    path: Optional[str] = None
+    priority: int = 0
 
     async def handle(self, scope, receive, send):
         return await self.app(scope, receive, send)
@@ -58,7 +57,7 @@ class RoutingMiddleware(object):
 
     def __init__(self):
         """Constructor."""
-        self._routes = [Route(handle_lifespan_scope, scopes=("lifespan",))]
+        self._routes = [Route(handle_lifespan_scope, scopes=frozenset({"lifespan"}))]
 
     async def __call__(self, scope, receive, send):
         """Entry point for incoming requests according to the ASGI
@@ -96,7 +95,7 @@ class RoutingMiddleware(object):
         if path is not None and not path.endswith("/"):
             path = path + "/"
 
-        route = Route(app, scopes=scopes, path=path, priority=priority)
+        route = Route(app, scopes=frozenset(scopes), path=path, priority=priority)
         insort_left(self._routes, route)
 
         return partial(self._remove, route)

@@ -2,8 +2,7 @@
 
 from __future__ import absolute_import
 
-import attr
-
+from dataclasses import dataclass
 from trio import Event
 from typing import Optional, Union
 
@@ -17,7 +16,7 @@ __all__ = ("Client",)
 log = base_log.getChild("model.clients")  # plural to match registry.clients
 
 
-@attr.s(eq=False)
+@dataclass(eq=False)
 class Client:
     """A single client connected to the Flockwave server.
 
@@ -28,9 +27,9 @@ class Client:
             authenticated to an unauthenticated state
     """
 
-    _id: str = attr.ib()
-    _channel: CommunicationChannel = attr.ib()
-    _user: User = attr.ib(default=None)
+    _id: str
+    _channel: CommunicationChannel
+    _user: User = None
 
     @property
     def channel(self) -> CommunicationChannel:

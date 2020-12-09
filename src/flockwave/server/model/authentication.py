@@ -1,6 +1,5 @@
-import attr
-
 from abc import ABCMeta, abstractmethod, abstractproperty
+from dataclasses import dataclass
 from enum import Enum
 from typing import Optional
 
@@ -13,24 +12,24 @@ class AuthenticationResultType(Enum):
     CHALLENGE = "challenge"
 
 
-@attr.s
+@dataclass
 class AuthenticationResult:
-    type: AuthenticationResultType = attr.ib(converter=AuthenticationResultType)
-    data: Optional[str] = attr.ib(default=None)
-    reason: Optional[str] = attr.ib(default=None)
-    user: Optional[str] = attr.ib(default=None)
+    type: AuthenticationResultType
+    data: Optional[str] = None
+    reason: Optional[str] = None
+    user: Optional[str] = None
 
     @classmethod
     def challenge(cls, data):
-        return cls(type="challenge", data=data)
+        return cls(type=AuthenticationResultType.CHALLENGE, data=data)
 
     @classmethod
     def success(cls, user):
-        return cls(type="success", user=user)
+        return cls(type=AuthenticationResultType.SUCCESS, user=user)
 
     @classmethod
     def failure(cls, reason=None):
-        return cls(type="failure", reason=reason)
+        return cls(type=AuthenticationResultType.FAILURE, reason=reason)
 
     @property
     def json(self):

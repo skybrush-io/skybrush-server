@@ -24,7 +24,7 @@ from .errors import NotSupportedError
 from .logger import log
 from .message_hub import (
     ConnectionStatusMessageRateLimiter,
-    GenericRateLimiter,
+    UAVMessageRateLimiter,
     MessageHub,
     RateLimiters,
 )
@@ -591,7 +591,7 @@ class SkybrushServer(DaemonApp):
             ConnectionStatusMessageRateLimiter(self.create_CONN_INF_message_for),
         )
         self.rate_limiters.register(
-            "UAV-INF", GenericRateLimiter(self.create_UAV_INF_message_for)
+            "UAV-INF", UAVMessageRateLimiter(self.create_UAV_INF_message_for)
         )
 
         # Create an object to hold information about all the objects that

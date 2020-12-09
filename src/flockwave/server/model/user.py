@@ -2,14 +2,13 @@
 via a client connection.
 """
 
+from dataclasses import dataclass
 from flockwave.spec.ids import parse_user
-
-import attr
 
 __all__ = ("User",)
 
 
-@attr.s(frozen=True)
+@dataclass(frozen=True)
 class User:
     """A single user connected to the Skybrush server via a client
     connection.
@@ -23,8 +22,8 @@ class User:
             domains.
     """
 
-    name: str = attr.ib()
-    domain: str = attr.ib(default="")
+    name: str
+    domain: str = ""
 
     @classmethod
     def from_string(cls, value):

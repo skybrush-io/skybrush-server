@@ -1775,7 +1775,7 @@ reference = "collmot"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7"
-content-hash = "957700fbb05c57bcd228e0d261017610265e0687a6e44751c6b92120960b7e3b"
+content-hash = "14ad1c588a93a5092127418243e6b888b7161fb47d17627d9b24a2db3323c9d8"
 
 [metadata.files]
 aio-usb-hotplug = [

@@ -2,11 +2,10 @@
 
 from __future__ import absolute_import
 
-import attr
-
 from abc import ABCMeta, abstractmethod
 from collections import defaultdict
 from contextlib import contextmanager, ExitStack
+from dataclasses import dataclass, field
 from functools import partial
 from inspect import isawaitable
 from itertools import chain
@@ -48,7 +47,7 @@ from .registries import ClientRegistry
 
 __all__ = (
     "ConnectionStatusMessageRateLimiter",
-    "GenericRateLimiter",
+    "UAVMessageRateLimiter",
     "MessageHub",
     "RateLimiters",
 )
@@ -67,26 +66,26 @@ class MessageValidationError(RuntimeError):
     pass
 
 
-@attr.s
+@dataclass
 class Request:
     """Single message sending request in the queue of the message hub."""
 
     #: The message to send
-    message: FlockwaveMessage = attr.ib()
+    message: FlockwaveMessage
 
     #: The client that will receive the message; `None` means that it is a
     #: broadcast
-    to: Optional[Union[str, Client]] = attr.ib(default=None)
+    to: Optional[Union[str, Client]] = None
 
     #: Another, optional message that this message responds to
-    in_response_to: Optional[FlockwaveMessage] = attr.ib(default=None)
+    in_response_to: Optional[FlockwaveMessage] = None
 
     #: Whether the request has been fulfilled
-    fulfilled: bool = attr.ib(default=False)
+    fulfilled: bool = False
 
     #: Event that will be dispatched when the request is processed by the
     #: outbound queue of the message hub. Constructed lazily.
-    event: Optional[Event] = attr.ib(default=None)
+    event: Optional[Event] = None
 
     def notify_sent(self):
         """Marks the request as fulfilled."""
@@ -914,8 +913,8 @@ class RateLimiter(metaclass=ABCMeta):
         raise NotImplementedError
 
 
-@attr.s
-class GenericRateLimiter(RateLimiter):
+@dataclass
+class UAVMessageRateLimiter(RateLimiter):
     """Generic rate limiter that is useful for most types of UAV-related
     messages that we want to rate-limit.
 
@@ -933,11 +932,11 @@ class GenericRateLimiter(RateLimiter):
     and produces a single FlockwaveMessage_ to send.
     """
 
-    factory: Callable[[Iterable[str]], FlockwaveMessage] = attr.ib()
-    name: Optional[str] = attr.ib(default=None)
-    delay: float = attr.ib(default=0.1)
+    factory: Callable[[Iterable[str]], FlockwaveMessage]
+    name: Optional[str] = None
+    delay: float = 0.1
 
-    bundler: AsyncBundler = AsyncBundler()
+    bundler: AsyncBundler = field(default_factory=AsyncBundler)
 
     def add_request(self, uav_ids: Iterable[str]) -> None:
         """Requests that the task handling the messages for this factory
@@ -975,11 +974,11 @@ class ConnectionStatusMessageRateLimiter(RateLimiter):
     message with the new stable state will be sent.
     """
 
-    @attr.s
+    @dataclass
     class Entry:
-        last_stable_state: ConnectionState = attr.ib()
-        last_stable_state_timestamp: float = attr.ib(factory=monotonic)
-        settled: Event = attr.ib(factory=Event)
+        last_stable_state: ConnectionState
+        last_stable_state_timestamp: float = field(default_factory=monotonic)
+        settled: Event = field(default_factory=Event)
 
         @property
         def is_last_stable_state_fresh(self) -> bool:
@@ -1097,7 +1096,7 @@ class RateLimiters:
     period of time before sending a message to see whether the transition
     settles or not.
 
-    Rate limiters must satisfy the RateLimiter_ interface. A GenericRateLimiter_
+    Rate limiters must satisfy the RateLimiter_ interface. A UAVMessageRateLimiter_
     is provided for the most common use-case where UAV IDs are collected and
     sent in a single batch with a minimum prescribed delay between batches.
     """

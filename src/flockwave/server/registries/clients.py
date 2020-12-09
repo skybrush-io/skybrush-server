@@ -73,7 +73,7 @@ class ClientRegistry(RegistryBase):
             return self[client_id]
 
         channel = self.channel_type_registry.create_channel_for(channel_type)
-        client = Client(id=client_id, channel=channel)
+        client = Client(_id=client_id, _channel=channel)
         channel.bind_to(client)
 
         self._entries[client_id] = client

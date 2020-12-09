@@ -66,6 +66,7 @@ class VirtualUAVDriver(UAVDriver):
     def __init__(self, *args, **kwds):
         super().__init__(*args, **kwds)
         self.uavs_armed_after_boot = False
+        self.use_battery_percentages = False
 
     def create_uav(self, id, home: GPSCoordinate, heading: float = 0):
         """Creates a new UAV that is to be managed by this driver.
@@ -77,7 +78,7 @@ class VirtualUAVDriver(UAVDriver):
         Returns:
             VirtualUAV: an appropriate virtual UAV object
         """
-        uav = VirtualUAV(id, driver=self)
+        uav = VirtualUAV(id, driver=self, use_battery_percentage=self.use_battery_percentages)
         uav.boots_armed = bool(self.uavs_armed_after_boot)
         uav.takeoff_altitude = 3
         uav.home = home.copy()
@@ -103,7 +104,11 @@ class VirtualUAVDriver(UAVDriver):
         """Command that sets the battery voltage to a given value."""
         if hasattr(value, "endswith") and value.endswith("%"):
             uav.battery.percentage = float(value[:-1])
-            return f"Battery percentage set to {uav.battery.percentage:.2f}%"
+            if uav.battery.percentage is not None:
+                return f"Battery percentage set to {uav.battery.percentage:.2f}%"
+            else:
+                # This may happen if the UAV is configured not to report percentages
+                return f"Voltage set to {uav.battery.voltage:.2f}V"
         else:
             uav.battery.voltage = float(value)
             return f"Voltage set to {uav.battery.voltage:.2f}V"
@@ -276,9 +281,13 @@ class VirtualUAV(UAVBase):
             coordinate that the UAV will reach; this is the coordinate of
             the center of the circle that the UAV will traverse when it
             reaches its destination.
+        use_battery_percentage (bool): whether the virtual battery of the UAV
+            reports percentages (True) or only voltages (False)
     """
 
-    def __init__(self, *args, **kwds):
+    def __init__(self, *args, use_battery_percentage, **kwds):
+        self.use_battery_percentage = use_battery_percentage
+
         super().__init__(*args, **kwds)
 
         self._armed = True  # will be disarmed when booting if needed
@@ -863,7 +872,7 @@ class VirtualUAV(UAVBase):
         self.state = VirtualUAVState.TAKEOFF
 
     def _initialize_device_tree_node(self, node):
-        self.battery = VirtualBattery()
+        self.battery = VirtualBattery(report_percentage=self.use_battery_percentage)
         self.battery.register_in_device_tree(node)
 
         device = node.add_device("thermometer")

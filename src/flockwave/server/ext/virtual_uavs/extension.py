@@ -104,6 +104,7 @@ class VirtualUAVProviderExtension(UAVExtensionBase):
     def configure_driver(self, driver, configuration):
         # Set whether the virtual drones should be armed after boot
         driver.uavs_armed_after_boot = bool(configuration.get("arm_after_boot"))
+        driver.use_battery_percentages = bool(configuration.get("use_battery_percentages", True))
 
     @property
     def delay(self):

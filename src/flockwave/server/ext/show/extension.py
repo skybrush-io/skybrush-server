@@ -46,7 +46,6 @@ class DroneShowExtension(ExtensionBase):
             self._config.update_from_json(message.body.get("configuration", {}))
             return hub.acknowledge(message)
         except Exception as ex:
-            print(repr(ex))
             return hub.acknowledge(message, outcome=False, reason=str(ex))
 
     async def run(self, app, configuration, logger):

@@ -119,7 +119,7 @@ class MAVLinkDriver(UAVDriver):
         uav = MAVLinkUAV(id, driver=self)
         uav.notify_updated = partial(self.app.request_to_send_UAV_INF_message_for, [id])
         uav.send_log_message_to_gcs = partial(
-            self.app.request_to_send_SYS_MSG_message, sender=self.id
+            self.app.request_to_send_SYS_MSG_message, sender=id
         )
         return uav
 

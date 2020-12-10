@@ -3,7 +3,7 @@ from logging import ERROR, WARNING, INFO, DEBUG
 from typing import Optional, List, Union
 
 from flockwave.gps.vectors import GPSCoordinate
-from flockwave.model.log import Severity
+from flockwave.server.model.log import Severity
 
 from .enums import MAVFrame, MAVParamType
 from .types import MAVLinkMessage

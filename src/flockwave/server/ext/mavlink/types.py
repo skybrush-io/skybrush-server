@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass, field
 from functools import partial
-from typing import Any, Callable, Dict, Optional, Set, Tuple, Union
+from typing import Any, Callable, Dict, FrozenSet, Optional, Tuple, Union
 
 __all__ = (
     "MAVLinkFlightModeNumbers",
@@ -101,7 +101,7 @@ class MAVLinkNetworkSpecification:
     #: originating from this network. This property must be a set containing
     #: 'server' to forward the messages to the server log and/or 'client' to
     #: forward the messages to the connected clients in SYS-MSG messages.
-    statustext_targets: Set[str] = field(default_factory=set)
+    statustext_targets: FrozenSet[str] = field(default_factory=frozenset)
 
     #: Whether to simulate packet loss in this network by randomly dropping
     #: received and sent messages. Zero means the normal behaviour, otherwise
@@ -128,8 +128,8 @@ class MAVLinkNetworkSpecification:
             result.packet_loss = float(obj["packet_loss"])
 
         if "statustext_targets" in obj:
-            if isinstance("statustext_targets", list):
-                result.statustext_targets = set(
+            if hasattr("statustext_targets", "__iter__"):
+                result.statustext_targets = frozenset(
                     str(x) for x in obj["statustext_targets"]
                 )
 

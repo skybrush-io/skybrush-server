@@ -88,7 +88,7 @@ class MAVLinkNetwork:
         system_id: int = 255,
         id_formatter: Callable[[int, str], str] = "{0}".format,
         packet_loss: float = 0,
-        statustext_targets: FrozenSet[str],
+        statustext_targets: FrozenSet[str] = None,
     ):
         """Constructor.
 
@@ -116,7 +116,9 @@ class MAVLinkNetwork:
         self._matchers = None
         self._packet_loss = max(float(packet_loss), 0.0)
         self._scheduled_takeoff_manager = ScheduledTakeoffManager(self)
-        self._statustext_targets = frozenset(statustext_targets)
+        self._statustext_targets = (
+            frozenset(statustext_targets) if statustext_targets else frozenset()
+        )
         self._system_id = max(min(int(system_id), 255), 1)
 
         self._connections = []
@@ -592,21 +594,24 @@ class MAVLinkNetwork:
         log console or to the GCS, depending on how the network is set up.
         """
         text = message.text
+        if not text:
+            return
+
         uav = self._find_uav_from_message(message, address)
-        if uav and text and uav._autopilot.is_prearm_error_message(text):
+        if uav and uav._autopilot.is_prearm_error_message(text):
             uav.notify_prearm_failure(uav._autopilot.process_prearm_error_message(text))
 
         for target in self._statustext_targets:
             if target == "server":
                 self.log.log(
                     python_log_level_from_mavlink_severity(message.severity),
-                    message.text,
+                    text,
                     extra=self._log_extra_from_message(message),
                 )
             elif target == "client":
                 if uav:
                     uav.send_log_message_to_gcs(
-                        message.text,
+                        text,
                         severity=flockwave_severity_from_mavlink_severity(
                             message.severity
                         ),

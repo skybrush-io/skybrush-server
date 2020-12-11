@@ -5,11 +5,13 @@ and forwards the corrections to the UAVs managed by the server.
 from contextlib import ExitStack
 from fnmatch import fnmatch
 from functools import partial
-from trio import open_memory_channel, open_nursery, sleep_forever
+from trio import CancelScope, open_memory_channel, open_nursery, sleep
+from trio_util import AsyncBool
 from typing import Optional
 
 from flockwave.channels import ParserChannel
 from flockwave.connections import Connection, create_connection
+from flockwave.gps.ubx.rtk_config import UBXRTKBaseConfigurator
 from flockwave.server.message_hub import MessageHub
 from flockwave.server.model import ConnectionPurpose
 from flockwave.server.model.messages import FlockwaveMessage
@@ -25,6 +27,7 @@ from ..base import ExtensionBase
 from .preset import RTKConfigurationPreset
 from .registry import RTKPresetRegistry
 from .statistics import RTKStatistics
+from .survey import SurveyInSettings
 
 
 class RTKExtension(ExtensionBase):
@@ -36,14 +39,17 @@ class RTKExtension(ExtensionBase):
         """Constructor."""
         super().__init__()
 
-        self._command_queue = None
         self._current_preset = None
         self._dynamic_serial_port_configurations = []
         self._dynamic_serial_port_filters = []
         self._presets = []
         self._registry = None
-        self._statistics = RTKStatistics()
+        self._running_tasks = {}
         self._rtk_preset_task_cancel_scope = None
+        self._rtk_survey_in_trigger = None
+        self._statistics = RTKStatistics()
+        self._survey_in_settings = SurveyInSettings()
+        self._tx_queue = None
 
     def configure(self, configuration):
         """Loads the extension."""
@@ -169,6 +175,39 @@ class RTKExtension(ExtensionBase):
                 in_response_to=message,
             )
 
+    def handle_RTK_SURVEY(self, message: FlockwaveMessage, sender, hub: MessageHub):
+        """Handles an incoming RTK-SURVEY message."""
+        if "settings" not in message.body:
+            # Querying the current RTK survey-in settings
+            return hub.create_response_or_notification(
+                body={"settings": self.survey_in_settings},
+                in_response_to=message,
+            )
+        else:
+            # Updating the RTK survey-in settings and starting a new survey-in
+            settings = message.body["settings"]
+            error = None
+            if isinstance(settings, dict):
+                accuracy = settings.get("accuracy")
+                if accuracy is not None:
+                    if not isinstance(accuracy, (float, int)) or accuracy <= 0:
+                        error = "Invalid accuracy"
+                    else:
+                        self.survey_in_settings.accuracy = accuracy
+
+                duration = settings.get("duration")
+                if duration is not None:
+                    if not isinstance(duration, (float, int)) or duration <= 0:
+                        error = "Invalid duration"
+                    else:
+                        self.survey_in_settings.duration = duration
+
+            else:
+                error = "Settings object missing or invalid"
+
+            self._request_survey_in_later()
+            return hub.acknowledge(message, outcome=error is None, reason=error)
+
     def handle_RTK_STAT(self, message: FlockwaveMessage, sender, hub: MessageHub):
         """Handles an incoming RTK-STAT message."""
         return self._statistics.json
@@ -185,6 +224,7 @@ class RTKExtension(ExtensionBase):
                     _current_preset=None,
                     _registry=RTKPresetRegistry(),
                     _rtk_preset_task_cancel_scope=None,
+                    _rtk_survey_in_trigger=AsyncBool(False),
                     _tx_queue=tx_queue,
                 )
             )
@@ -202,6 +242,7 @@ class RTKExtension(ExtensionBase):
                         "X-RTK-LIST": self.handle_RTK_LIST,
                         "X-RTK-STAT": self.handle_RTK_STAT,
                         "X-RTK-SOURCE": self.handle_RTK_SOURCE,
+                        "X-RTK-SURVEY": self.handle_RTK_SURVEY,
                     }
                 )
             )
@@ -210,6 +251,11 @@ class RTKExtension(ExtensionBase):
                 async for message, args in rx_queue:
                     if message == "set_preset":
                         await self._perform_preset_switch(args)
+
+    @property
+    def survey_in_settings(self) -> SurveyInSettings:
+        """Returns the current survey-in settings of the RTK extension."""
+        return self._survey_in_settings
 
     async def _request_preset_switch(
         self, value: Optional[RTKConfigurationPreset]
@@ -227,6 +273,21 @@ class RTKExtension(ExtensionBase):
         possible (but not immediately).
         """
         self.app.run_in_background(self._request_preset_switch, value)
+
+    async def _request_survey_in(self) -> None:
+        """Requests the extension to start a new survey-in process on the
+        current RTK connection.
+        """
+        if not self._rtk_survey_in_trigger:
+            self.log.warning("Cannot set RTK preset when the extension is not running")
+        else:
+            self._rtk_survey_in_trigger.value = True
+
+    def _request_survey_in_later(self) -> None:
+        """Requests the extension to start a survey-in process on the current
+        RTK connection as soon as possible (but not immediately).
+        """
+        self.app.run_in_background(self._request_survey_in)
 
     async def _perform_preset_switch(self, value: RTKConfigurationPreset) -> None:
         """Performs the switch from an RTK configuration preset to another,
@@ -247,6 +308,40 @@ class RTKExtension(ExtensionBase):
                 self._run_connections_for_preset, value
             )
 
+    async def _run_survey_in(self, preset, connection, *, task_status) -> None:
+        with CancelScope() as scope:
+            task_status.started(scope)
+
+            duration = self._survey_in_settings.duration
+            accuracy = self._survey_in_settings.accuracy
+            accuracy_cm = int(accuracy * 100)
+
+            configurator = UBXRTKBaseConfigurator(duration=duration, accuracy=accuracy)
+
+            self.log.info(
+                f"Starting survey-in for {preset.title!r} for at least {duration} "
+                f"seconds, desired accuracy is {accuracy_cm} cm",
+            )
+
+            success = False
+            try:
+                await connection.wait_until_connected()
+                await configurator.run(connection.write, sleep)
+                success = True
+            except Exception:
+                self.log.exception(
+                    f"Unexpected exception while setting up survey-in for "
+                    f"{preset.title!r}"
+                )
+            finally:
+                if success:
+                    self.log.info(
+                        f"Started survey-in for {preset.title!r}",
+                        extra={"semantics": "success"},
+                    )
+                else:
+                    self.log.error(f"Failed to start survey-in for {preset.title!r}")
+
     async def _run_connections_for_preset(
         self, preset: RTKConfigurationPreset, *, task_status
     ) -> None:
@@ -257,11 +352,15 @@ class RTKExtension(ExtensionBase):
             stack.enter_context(self._statistics.use())
 
             async with open_nursery() as nursery:
+                self._rtk_survey_in_trigger.value = preset.survey_in
+
                 task_status.started(nursery.cancel_scope)
 
+                connections = []
                 for source in preset.sources:
                     try:
                         connection = create_connection(source)
+                        connections.append(connection)
                         stack.enter_context(
                             self.app.connection_registry.use(
                                 connection,
@@ -287,7 +386,26 @@ class RTKExtension(ExtensionBase):
                             "Unexpected error while creating RTK connection"
                         )
 
-                await sleep_forever()
+                survey_in_task = None
+                while True:
+                    await self._rtk_survey_in_trigger.wait_value(True)
+                    self._rtk_survey_in_trigger.value = False
+
+                    # Cancel the previous survey-in attempt (if any), and then
+                    # start a new, cancellable survey-in procedure
+                    if survey_in_task is not None:
+                        survey_in_task.cancel()
+                        # Give some time for the previous task to end
+                        await sleep(0.1)
+
+                    # Currently we always target the first connection with
+                    # the messages that attempt to start the survey-in.
+                    # This might change later. Also, survey-in is supported only
+                    # for U-blox receivers and autodetected connections at the moment.
+                    if preset.format in ("auto", "ubx") and connections:
+                        survey_in_task = await nursery.start(
+                            self._run_survey_in, preset, connections[0]
+                        )
 
     async def _run_single_connection_for_preset(
         self, connection: Connection, *, preset: RTKConfigurationPreset
@@ -301,7 +419,6 @@ class RTKExtension(ExtensionBase):
 
         async with channel:
             async for packet in channel:
-                self._statistics.notify(packet)
                 if preset.accepts(packet):
                     encoded = encoder(packet)
                     signal.send(packet=encoded)

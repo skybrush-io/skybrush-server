@@ -6,6 +6,7 @@ message.
 from collections import defaultdict, deque
 from contextlib import contextmanager
 from dataclasses import dataclass, field
+from enum import IntFlag
 from trio import current_time
 from typing import Deque, Iterable, Optional, Tuple
 
@@ -17,7 +18,10 @@ from flockwave.gps.rtcm.packets import (
     RTCMV3AntennaDescriptorPacket,
     RTCMV3ExtendedAntennaDescriptorPacket,
 )
+from flockwave.gps.ubx.packet import UBXClass, UBXPacket
 from flockwave.gps.vectors import ECEFToGPSCoordinateTransformation, GPSCoordinate
+
+from .types import GPSPacket
 
 __all__ = ("RTKStatistics",)
 
@@ -35,8 +39,8 @@ class AntennaInformation:
     position: Optional[GPSCoordinate] = None
 
     @staticmethod
-    def is_antenna_related_packet(packet: RTCMPacket) -> bool:
-        """Returns whether the given RTCM packet conveys information that
+    def is_antenna_related_packet(packet: GPSPacket) -> bool:
+        """Returns whether the given GPS packet conveys information that
         relates to the antenna itself.
         """
         return isinstance(
@@ -66,7 +70,7 @@ class AntennaInformation:
             "position": self.position,
         }
 
-    def notify(self, packet: RTCMPacket) -> None:
+    def notify(self, packet: RTCMV3Packet) -> None:
         """Notifies the statistics object about the arrival of a new packet."""
         station_id = getattr(packet, "station_id", None)
         if station_id is not None:
@@ -115,7 +119,7 @@ class MessageObservations:
         """
         self._flush_old_observations()
         return [
-            self.age_of_last_observation * 1000,
+            int(self.age_of_last_observation * 1000),
             self._total_bytes * 8 / 10,  # bits per second, we keep 10 seconds
         ]
 
@@ -136,6 +140,80 @@ class MessageObservations:
                 break
 
 
+class SurveyInStatusFlag(IntFlag):
+    """Status flags for a survey-in status object."""
+
+    #: Indicates that the survey-in status is unknown
+    UNKNOWN = 0
+
+    #: Indicates that the survey-in status is supported on the GPS receiver
+    SUPPORTED = 1
+
+    #: Indicates that the GPS receiver is surveying its own position
+    ACTIVE = 2
+
+    #: Indicates that the GPS receiver has a valid estimate of its own position
+    VALID = 4
+
+
+@dataclass
+class SurveyInStatus:
+    """Object that stores the status of the current survey-in procedure."""
+
+    #: Stores the estimated accuracy of the surveyed position, in meters; valid
+    #: only if the "known" flag is set
+    accuracy: float = 0.0
+
+    #: Status flags
+    flags: SurveyInStatusFlag = SurveyInStatusFlag.UNKNOWN
+
+    @staticmethod
+    def is_survey_in_related_packet(packet: GPSPacket) -> bool:
+        """Returns whether the given GPS packet conveys information that
+        relates to the survey-in procedure.
+        """
+        return (
+            isinstance(packet, UBXPacket)
+            and packet.class_id == UBXClass.NAV
+            and packet.subclass_id == 0x3B
+        )
+
+    @property
+    def active(self) -> bool:
+        """Returns whether the survey is in progress."""
+        return self.flags & SurveyInStatusFlag.ACTIVE
+
+    @property
+    def json(self):
+        """Returns the JSON representation of the survey-in status object."""
+        return {"accuracy": self.accuracy, "flags": self.flags}
+
+    @property
+    def supported(self) -> bool:
+        """Returns whether the survey-in procedure is supported."""
+        return self.flags & SurveyInStatusFlag.SUPPORTED
+
+    @property
+    def valid(self) -> bool:
+        """Returns whether the surveyed coordinate is valid."""
+        return self.flags & SurveyInStatusFlag.VALID
+
+    def clear(self) -> None:
+        """Clears the contents of the survey info object."""
+        self.flags = 0
+        self.accuracy = 0.0
+
+    def notify(self, packet: UBXPacket) -> None:
+        """Notifies the survey-in object about the arrival of a new packet."""
+        # We have a UBX NAV-SVIN packet so get the survey status from there
+        self.accuracy = int.from_bytes(packet.payload[28:32], "little") / 10000.0
+        self.flags = SurveyInStatusFlag.SUPPORTED
+        if packet.payload[36]:
+            self.flags |= SurveyInStatusFlag.VALID
+        if packet.payload[37]:
+            self.flags |= SurveyInStatusFlag.ACTIVE
+
+
 class RTKStatistics:
     """Object that collects basic statistics about the contents of the current
     RTK stream so we can show them to the user in the response of an RTK-STAT
@@ -147,6 +225,7 @@ class RTKStatistics:
         self._message_observations = defaultdict(MessageObservations)
         self._satellite_cnrs = {}
         self._antenna_information = AntennaInformation()
+        self._survey_in_status = SurveyInStatus()
         self.clear()
 
     def clear(self) -> None:
@@ -154,6 +233,7 @@ class RTKStatistics:
         self._antenna_information.clear()
         self._message_observations.clear()
         self._satellite_cnrs.clear()
+        self._survey_in_status.clear()
 
     @property
     def json(self):
@@ -164,18 +244,23 @@ class RTKStatistics:
             "antenna": self._antenna_information,
             "messages": self._message_observations,
             "cnr": self._satellite_cnrs,
+            "surveyIn": self._survey_in_status,
         }
 
-    def notify(self, packet: RTCMPacket) -> None:
+    def notify(self, packet: GPSPacket) -> None:
         """Notifies the statistics object about the arrival of a new packet."""
-        type = self._get_packet_type(packet)
-        self._message_observations[type].add(packet, current_time())
+        if isinstance(packet, (RTCMV2Packet, RTCMV3Packet)):
+            type = self._get_rtcm_packet_type(packet)
+            self._message_observations[type].add(packet, current_time())
 
         if hasattr(packet, "satellites"):
             self._update_satellite_status(packet.satellites)
 
         if AntennaInformation.is_antenna_related_packet(packet):
             self._antenna_information.notify(packet)
+
+        if SurveyInStatus.is_survey_in_related_packet(packet):
+            self._survey_in_status.notify(packet)
 
     @contextmanager
     def use(self):
@@ -188,7 +273,7 @@ class RTKStatistics:
         finally:
             self.clear()
 
-    def _get_packet_type(self, packet: RTCMPacket) -> str:
+    def _get_rtcm_packet_type(self, packet: RTCMPacket) -> str:
         """Returns a short description of the type of the packet. The
         description starts with ``rtcm2`` or ``rtcm3``, followed by a slash
         and the numeric packet type.

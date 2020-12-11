@@ -135,7 +135,7 @@ class RTKExtension(ExtensionBase):
             body=body, in_response_to=message
         )
 
-        for preset_id in message.body["ids"]:
+        for preset_id in message.body.get("ids", ()):
             entry = self.find_preset_by_id(preset_id, response)
             if entry:
                 presets[preset_id] = entry.json

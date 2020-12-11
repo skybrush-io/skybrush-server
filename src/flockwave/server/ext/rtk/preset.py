@@ -3,21 +3,25 @@ from urllib.parse import urlencode
 from typing import Any, Callable, Dict, Iterable, List, Optional
 
 from flockwave.channels.types import Encoder, Parser
-from flockwave.gps.rtcm import create_rtcm_encoder, create_rtcm_parser
+from flockwave.gps.parser import create_gps_parser
+from flockwave.gps.rtcm import create_rtcm_encoder
 from flockwave.gps.rtcm.packets import RTCMPacket, RTCMV2Packet, RTCMV3Packet
-from flockwave.server.utils import constant
 from flockwave.server.utils.serial import (
     describe_serial_port,
     describe_serial_port_configuration,
 )
 
+from .types import GPSPacket
+
 __all__ = ("RTKConfigurationPreset",)
 
-#: Type specification for an RTK packet filter function
-RTKPacketFilter = Callable[[RTCMPacket], bool]
+#: Type specification for a GPS packet filter function
+GPSPacketFilter = Callable[[GPSPacket], bool]
 
-#: Allowed packet formats in RTK streams
-ALLOWED_FORMATS = set("auto rtcm2 rtcm3".split())
+#: Allowed packet formats in RTK streams. "auto" attempts to parse RTCM3, UBX
+#: and NMEA messages. "ubx" attempts to parse RTCM3 and UBX messages.
+#: "rtcm3" is RTCM3-only, and "rtcm2" is RTCM2-only.
+ALLOWED_FORMATS = set("auto rtcm2 rtcm3 ubx".split())
 
 
 @dataclass
@@ -33,7 +37,7 @@ class RTKConfigurationPreset:
     #: A human-readable title of the preset
     title: Optional[str] = None
 
-    #: Format of the RTCM messages arriving in this configuration
+    #: Format of the GPS messages arriving in this configuration
     format: str = "auto"
 
     #: List of source connections where this preset collects messages from
@@ -44,7 +48,7 @@ class RTKConfigurationPreset:
     init: Optional[bytes] = None
 
     #: List of filters that the messages from the sources must pass through
-    filter: Optional[RTKPacketFilter] = None
+    filter: Optional[GPSPacketFilter] = None
 
     #: Whether this preset was generated dynamically at runtime
     dynamic: bool = False
@@ -143,19 +147,29 @@ class RTKConfigurationPreset:
         """
         self.sources.append(source)
 
-    def accepts(self, packet: RTCMPacket) -> bool:
-        """Returns whether the given RTCM packet would be accepted by the filters
+    def accepts(self, packet: GPSPacket) -> bool:
+        """Returns whether the given GPS packet would be accepted by the filters
         specified in this preset.
         """
         return self.filter is None or self.filter(packet)
 
     def create_encoder(self) -> Encoder[RTCMPacket, bytes]:
         """Creates an RTCM message encoder for this preset."""
-        return create_rtcm_encoder("rtcm3" if self.format == "auto" else self.format)
+        return create_rtcm_encoder("rtcm2" if self.format == "rtcm2" else "rtcm3")
 
-    def create_parser(self) -> Parser[bytes, RTCMPacket]:
-        """Creates an RTCM message parser for this preset."""
-        return create_rtcm_parser(self.format)
+    def create_parser(self) -> Parser[bytes, GPSPacket]:
+        """Creates a GPS message parser for this preset."""
+        if self.format == "auto":
+            formats = ["rtcm3", "ubx", "nmea"]
+        elif self.format == "ubx":
+            formats = ["rtcm3", "ubx"]
+        elif self.format == "rtcm3":
+            formats = ["rtcm3"]
+        elif self.format == "rtcm2":
+            formats = ["rtcm2"]
+        else:
+            raise ValueError(f"unknown format: {self.format}")
+        return create_gps_parser(formats)
 
     @property
     def json(self) -> Any:
@@ -166,12 +180,18 @@ class RTKConfigurationPreset:
         return {"title": self.title, "format": self.format, "sources": self.sources}
 
 
+def _is_rtcm_packet(packet: GPSPacket) -> bool:
+    return isinstance(packet, RTCMPacket)
+
+
 def create_filter_function(
     accept: Optional[Iterable[str]] = None, reject: Optional[Iterable[str]] = None
-) -> Callable[[RTCMPacket], bool]:
-    """Creates a filtering function that takes RTCM packets and returns whether
+) -> Callable[[GPSPacket], bool]:
+    """Creates a filtering function that takes GPS packets and returns whether
     the filter would accept the packet, based on a list of acceptable RTCM
     packet identifiers and a list of rejected RTCM packet identifiers.
+
+    Non-RTCM packets are always rejected at the moment.
 
     Each RTCM packet identifier consists of a prefix (``rtcm2/`` or ``rtcm3/``)
     and a numeric RTCM packet ID (e.g., ``rtcm3/1020`` identifies RTCMv3 packets
@@ -204,7 +224,7 @@ def create_filter_function(
         return result
 
     if accept is None and reject is None:
-        return constant(True)
+        return _is_rtcm_packet
 
     accept = _process_rtcm_packet_id_list(accept)
     reject = _process_rtcm_packet_id_list(reject)

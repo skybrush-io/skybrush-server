@@ -140,16 +140,16 @@ class MessageObservations:
                 break
 
 
-class SurveyInStatusFlag(IntFlag):
-    """Status flags for a survey-in status object."""
+class SurveyStatusFlag(IntFlag):
+    """Status flags for a survey status object."""
 
-    #: Indicates that the survey-in status is unknown
+    #: Indicates that the survey status is unknown
     UNKNOWN = 0
 
-    #: Indicates that the survey-in status is supported on the GPS receiver
+    #: Indicates that the survey status is supported on the GPS receiver
     SUPPORTED = 1
 
-    #: Indicates that the GPS receiver is surveying its own position
+    #: Indicates that the GPS receiver is Surveyg its own position
     ACTIVE = 2
 
     #: Indicates that the GPS receiver has a valid estimate of its own position
@@ -157,20 +157,20 @@ class SurveyInStatusFlag(IntFlag):
 
 
 @dataclass
-class SurveyInStatus:
-    """Object that stores the status of the current survey-in procedure."""
+class SurveyStatus:
+    """Object that stores the status of the current survey procedure."""
 
     #: Stores the estimated accuracy of the surveyed position, in meters; valid
     #: only if the "known" flag is set
     accuracy: float = 0.0
 
     #: Status flags
-    flags: SurveyInStatusFlag = SurveyInStatusFlag.UNKNOWN
+    flags: SurveyStatusFlag = SurveyStatusFlag.UNKNOWN
 
     @staticmethod
-    def is_survey_in_related_packet(packet: GPSPacket) -> bool:
+    def is_survey_related_packet(packet: GPSPacket) -> bool:
         """Returns whether the given GPS packet conveys information that
-        relates to the survey-in procedure.
+        relates to the survey procedure.
         """
         return (
             isinstance(packet, UBXPacket)
@@ -181,22 +181,22 @@ class SurveyInStatus:
     @property
     def active(self) -> bool:
         """Returns whether the survey is in progress."""
-        return self.flags & SurveyInStatusFlag.ACTIVE
+        return self.flags & SurveyStatusFlag.ACTIVE
 
     @property
     def json(self):
-        """Returns the JSON representation of the survey-in status object."""
+        """Returns the JSON representation of the survey status object."""
         return {"accuracy": self.accuracy, "flags": self.flags}
 
     @property
     def supported(self) -> bool:
-        """Returns whether the survey-in procedure is supported."""
-        return self.flags & SurveyInStatusFlag.SUPPORTED
+        """Returns whether the survey procedure is supported."""
+        return self.flags & SurveyStatusFlag.SUPPORTED
 
     @property
     def valid(self) -> bool:
         """Returns whether the surveyed coordinate is valid."""
-        return self.flags & SurveyInStatusFlag.VALID
+        return self.flags & SurveyStatusFlag.VALID
 
     def clear(self) -> None:
         """Clears the contents of the survey info object."""
@@ -204,14 +204,14 @@ class SurveyInStatus:
         self.accuracy = 0.0
 
     def notify(self, packet: UBXPacket) -> None:
-        """Notifies the survey-in object about the arrival of a new packet."""
+        """Notifies the survey object about the arrival of a new packet."""
         # We have a UBX NAV-SVIN packet so get the survey status from there
         self.accuracy = int.from_bytes(packet.payload[28:32], "little") / 10000.0
-        self.flags = SurveyInStatusFlag.SUPPORTED
+        self.flags = SurveyStatusFlag.SUPPORTED
         if packet.payload[36]:
-            self.flags |= SurveyInStatusFlag.VALID
+            self.flags |= SurveyStatusFlag.VALID
         if packet.payload[37]:
-            self.flags |= SurveyInStatusFlag.ACTIVE
+            self.flags |= SurveyStatusFlag.ACTIVE
 
 
 class RTKStatistics:
@@ -225,7 +225,7 @@ class RTKStatistics:
         self._message_observations = defaultdict(MessageObservations)
         self._satellite_cnrs = {}
         self._antenna_information = AntennaInformation()
-        self._survey_in_status = SurveyInStatus()
+        self._survey_status = SurveyStatus()
         self.clear()
 
     def clear(self) -> None:
@@ -233,7 +233,7 @@ class RTKStatistics:
         self._antenna_information.clear()
         self._message_observations.clear()
         self._satellite_cnrs.clear()
-        self._survey_in_status.clear()
+        self._survey_status.clear()
 
     @property
     def json(self):
@@ -244,7 +244,7 @@ class RTKStatistics:
             "antenna": self._antenna_information,
             "messages": self._message_observations,
             "cnr": self._satellite_cnrs,
-            "surveyIn": self._survey_in_status,
+            "survey": self._survey_status,
         }
 
     def notify(self, packet: GPSPacket) -> None:
@@ -259,8 +259,8 @@ class RTKStatistics:
         if AntennaInformation.is_antenna_related_packet(packet):
             self._antenna_information.notify(packet)
 
-        if SurveyInStatus.is_survey_in_related_packet(packet):
-            self._survey_in_status.notify(packet)
+        if SurveyStatus.is_survey_related_packet(packet):
+            self._survey_status.notify(packet)
 
     @contextmanager
     def use(self):

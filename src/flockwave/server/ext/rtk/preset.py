@@ -53,9 +53,9 @@ class RTKConfigurationPreset:
     #: Whether this preset was generated dynamically at runtime
     dynamic: bool = False
 
-    #: Whether switching to this preset will automatically start a survey-in
-    #: attempt on the remote device (if the device supports survey-in).
-    survey_in: bool = False
+    #: Whether switching to this preset will automatically start a survey
+    #: attempt on the remote device (if the device supports survey).
+    auto_survey: bool = False
 
     @classmethod
     def from_json(cls, spec, *, id: Optional[str] = None):
@@ -94,7 +94,7 @@ class RTKConfigurationPreset:
             result.init = init if isinstance(init, bytes) else str(init).encode("utf-8")
 
         result.filter = create_filter_function(**spec.get("filter", {}))
-        result.survey_in = bool(spec.get("survey_in"))
+        result.auto_survey = bool(spec.get("auto_survey"))
 
         return result
 
@@ -132,7 +132,7 @@ class RTKConfigurationPreset:
 
         result = cls(id=id, title=title)
         result.format = "auto"
-        result.survey_in = True
+        result.auto_survey = True
 
         source = f"serial:{port.device}"
         if configuration:
@@ -189,7 +189,7 @@ class RTKConfigurationPreset:
 
 
 def _is_rtcm_packet(packet: GPSPacket) -> bool:
-    return isinstance(packet, RTCMPacket)
+    return isinstance(packet, (RTCMV2Packet, RTCMV3Packet))
 
 
 def create_filter_function(

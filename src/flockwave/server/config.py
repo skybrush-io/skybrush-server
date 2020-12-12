@@ -80,7 +80,7 @@ EXTENSIONS = {
         # "connections": ["apm-sitl"],   # for ArduPilot SITL simulator
         "connections": [
             "default"
-        ],  # default setup; listens for heartbeats on UDP port 14555, sends broadcasts to UDP port 14550
+        ],  # default setup; listens for heartbeats on UDP port 14550, sends broadcasts to UDP port 14555
         "custom_mode": None,
         "system_id": 255,
     },

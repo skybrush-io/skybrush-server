@@ -48,6 +48,8 @@ from .enums import (
     MAVResult,
     MAVState,
     MAVSysStatusSensor,
+    MotorTestOrder,
+    MotorTestThrottleType,
     PositionTargetTypemask,
 )
 from .ftp import MAVFTP
@@ -181,6 +183,17 @@ class MAVLinkDriver(UAVDriver):
         except Exception as ex:
             self.log.error(str(ex))
             raise
+
+    async def handle_command_test(self, uav, component: Optional[str] = None) -> None:
+        """Runs a self-test on a component of the UAV."""
+        if component == "motor":
+            await uav.test_component("motor")
+            return "Motor test executed"
+        elif component == "led":
+            await uav.test_component("led")
+            return "LED test executed"
+        else:
+            return "Usage: test <led|motor>"
 
     async def send_command_int(
         self,
@@ -433,10 +446,7 @@ class MAVLinkDriver(UAVDriver):
         if "light" in signals:
             # The Skybrush firmware uses a "secret" LED instance / pattern
             # combination (42/42) to make the LED emit a flash pattern
-            message = spec.led_control(
-                instance=42, pattern=42, custom_len=0, custom_bytes=_EMPTY
-            )
-            await self.send_packet(message, uav)
+            await uav.test_component("led")
 
     async def _send_motor_start_stop_signal_single(
         self, uav, start: bool, force: bool = False
@@ -823,6 +833,35 @@ class MAVLinkUAV(UAVBase):
             wait_for_response=spec.param_value(param_id=param_id),
             timeout=0.7,
         )
+
+    async def test_component(self, component: str) -> None:
+        """Tests a component of the UAV.
+
+        Parameters:
+            component: the component to test; currently we support ``motor`` and
+                ``led``
+        """
+        if component == "motor":
+            # Older versions of ArduCopter did not support the motor count
+            # parameter so let's just test all the motors one by one
+            # TODO(ntamas): add support for hexacopters, octocopters etc
+            for i in range(4):
+                await self.driver.send_command_long(
+                    self,
+                    MAVCommand.DO_MOTOR_TEST,
+                    i + 1,  # motor instance number
+                    MotorTestThrottleType.PERCENT,
+                    10,  # 10%
+                    2,  # timeout: 2 seconds
+                    0,  # 1 motor only
+                    MotorTestOrder.DEFAULT,
+                )
+                await sleep(3)
+        elif component == "led":
+            message = spec.led_control(
+                instance=42, pattern=42, custom_len=0, custom_bytes=_EMPTY
+            )
+            await self.driver.send_packet(message, self)
 
     def handle_message_autopilot_version(self, message: MAVLinkMessage):
         """Handles an incoming MAVLink AUTOPILOT_VERSION message targeted at

@@ -45,6 +45,7 @@ class MAVCommand(IntEnum):
     NAV_TAKEOFF = 22
     DO_SET_MODE = 176
     DO_REPOSITION = 192
+    DO_MOTOR_TEST = 209
     PREFLIGHT_REBOOT_SHUTDOWN = 246
     COMPONENT_ARM_DISARM = 400
     SET_MESSAGE_INTERVAL = 511
@@ -433,3 +434,24 @@ class PositionTargetTypemask(IntFlag):
     FORCE_SET = 0x200
     YAW_IGNORE = 0x400
     YAW_RATE_IGNORE = 0x800
+
+
+class MotorTestOrder(IntEnum):
+    """Replica of the `MOTOR_TEST_ORDER` enum of the MAVLink protocol,
+    using proper Python enums.
+    """
+
+    DEFAULT = 0
+    SEQUENCE = 1
+    BOARD = 2
+
+
+class MotorTestThrottleType(IntEnum):
+    """Replica of the `MOTOR_TEST_THROTTLE_TYPE` enum of the MAVLink protocol,
+    using proper Python enums.
+    """
+
+    PERCENT = 0
+    PWM = 1
+    PILOT = 2
+    CAL = 3

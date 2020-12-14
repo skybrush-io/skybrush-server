@@ -13,12 +13,14 @@ multiple independent MAVLink-based drone swarms.
 from collections import defaultdict
 from contextlib import contextmanager, ExitStack
 from time import time_ns
+from trio import move_on_after, to_thread
 from trio.abc import ReceiveChannel
 from trio_util import periodic
 from typing import Any, Callable, FrozenSet, Iterator, Optional, Sequence, Tuple, Union
 
 from flockwave.connections import Connection, create_connection, ListenerConnection
 from flockwave.concurrency import Future
+from flockwave.networking import find_interfaces_with_address
 from flockwave.server.comm import CommunicationManager
 from flockwave.server.concurrency import race
 from flockwave.server.model import ConnectionPurpose, UAV
@@ -491,6 +493,14 @@ class MAVLinkNetwork:
 
         autopilot_component_id = MAVComponent.AUTOPILOT1
 
+        # Many third-party MAVLink-based drones do not respond to broadcast
+        # messages sent to them with an IP address of 255.255.255.255 as they
+        # listen to the subnet-specific broadcast address only (e.g., 192.168.0.255).
+        # Therefore, we need to re-bind the broadcast address of the channel
+        # as soon as we have received the first packet from it, based on the
+        # address of that packet and the netmasks of the network interfaces
+        broadcast_address_updated = False
+
         async for connection_id, (message, address) in channel:
             if message.get_srcComponent() != autopilot_component_id:
                 # We do not handle messages from any other component but an
@@ -499,6 +509,13 @@ class MAVLinkNetwork:
 
             # Uncomment this for debugging
             # self.log.info(repr(message))
+
+            # Update the broadcast address to a subnet-specific one if needed
+            if not broadcast_address_updated:
+                await self._update_broadcast_address_of_channel_to_subnet(
+                    channel, address
+                )
+                broadcast_address_updated = True
 
             # Get the message type
             type = message.get_type()
@@ -643,3 +660,28 @@ class MAVLinkNetwork:
 
     def _log_extra_from_message(self, message: MAVLinkMessage):
         return {"id": log_id_from_message(message, self.id)}
+
+    async def _update_broadcast_address_of_channel_to_subnet(
+        self, channel: ReceiveChannel, address: Tuple[str, int], timeout: float = 1
+    ) -> None:
+        """Updates the broadcast address of the given message channel to the
+        subnet-specific broadcast address of the network interface that received
+        a packet from the given address.
+        """
+        if isinstance(address, tuple):
+            # We need the hostname only
+            address = address[0]
+
+        subnet = None
+        with move_on_after(timeout):
+            subnets = await to_thread.run_sync(find_interfaces_with_address, address)
+
+        if subnets:
+            interface, subnet = subnets[0]
+            channel.broadcast_address = subnet.broadcast_address
+            self.log.info(
+                f"Broadcast address updated to {channel.broadcast_address} "
+                f"({interface})",
+            )
+        else:
+            self.log.warn("Failed to update broadcast address to a subnet-specific one")

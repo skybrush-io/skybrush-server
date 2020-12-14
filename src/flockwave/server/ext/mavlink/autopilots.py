@@ -262,15 +262,16 @@ class PX4(Autopilot):
     name = "PX4"
 
     #: Custom mode dictionary, containing the primary name and the aliases for
-    #: each known main flight mode
+    #: each known main flight mode. The primary name should be from one of the
+    #: constants in the FlightMode enum of the Flockwave spec
     _main_modes = {
         1: ("manual",),
-        2: ("alt hold",),
-        3: ("pos hold",),
+        2: ("alt", "alt hold"),
+        3: ("pos", "pos hold"),
         4: ("auto",),
         5: ("acro",),
         6: ("guided", "offboard"),
-        7: ("stabilize", "stab"),
+        7: ("stab", "stabilize"),
         8: ("rattitude",),
         9: ("simple",),
     }
@@ -410,9 +411,12 @@ class ArduPilot(Autopilot):
     #: Custom mode dictionary, containing the primary name and the aliases for
     #: each known flight mode
     _custom_modes = {
-        0: ("stabilize", "stab"),
+        0: ("stab", "stabilize"),
         1: ("acro",),
-        2: ("alt hold",),
+        2: (
+            "alt",
+            "alt hold",
+        ),
         3: ("auto",),
         4: ("guided",),
         5: ("loiter",),
@@ -423,13 +427,19 @@ class ArduPilot(Autopilot):
         13: ("sport",),
         14: ("flip",),
         15: ("tune",),
-        16: ("pos hold",),
+        16: (
+            "pos",
+            "pos hold",
+        ),
         17: ("brake",),
         18: ("throw",),
         19: ("avoid ADSB", "avoid"),
         20: ("guided no GPS",),
         21: ("smart RTH",),
-        22: ("flow hold",),
+        22: (
+            "flow",
+            "flow hold",
+        ),
         23: ("follow",),
         24: ("zigzag",),
         25: ("system ID",),

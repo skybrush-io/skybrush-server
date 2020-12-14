@@ -513,7 +513,7 @@ class MAVLinkNetwork:
             # Update the broadcast address to a subnet-specific one if needed
             if not broadcast_address_updated:
                 await self._update_broadcast_address_of_channel_to_subnet(
-                    channel, address
+                    connection_id, address
                 )
                 broadcast_address_updated = True
 
@@ -662,26 +662,35 @@ class MAVLinkNetwork:
         return {"id": log_id_from_message(message, self.id)}
 
     async def _update_broadcast_address_of_channel_to_subnet(
-        self, channel: ReceiveChannel, address: Tuple[str, int], timeout: float = 1
+        self, connection_id: str, address: Tuple[str, int], timeout: float = 1
     ) -> None:
-        """Updates the broadcast address of the given message channel to the
+        """Updates the broadcast address of the connection with the given ID to the
         subnet-specific broadcast address of the network interface that received
         a packet from the given address.
         """
-        if isinstance(address, tuple):
-            # We need the hostname only
-            address = address[0]
+        address, port = address
 
         subnet = None
         with move_on_after(timeout):
             subnets = await to_thread.run_sync(find_interfaces_with_address, address)
 
+        success = False
         if subnets:
             interface, subnet = subnets[0]
-            channel.broadcast_address = subnet.broadcast_address
-            self.log.info(
-                f"Broadcast address updated to {channel.broadcast_address} "
-                f"({interface})",
-            )
-        else:
+            # HACK HACK HACK this is an ugly temporary fix; we are reaching into
+            # the internals of self.manager, which we shouldn't do
+            for entries in self.manager._entries_by_name.values():
+                for entry in entries:
+                    if entry.channel and entry.name == connection_id:
+                        entry.channel.broadcast_address = (
+                            str(subnet.broadcast_address),
+                            port,
+                        )
+                        self.log.info(
+                            f"Broadcast address updated to {subnet.broadcast_address} "
+                            f"({interface})",
+                        )
+                        success = True
+
+        if not success:
             self.log.warn("Failed to update broadcast address to a subnet-specific one")

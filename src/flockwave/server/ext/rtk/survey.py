@@ -14,7 +14,7 @@ class SurveySettings:
     duration: float = 60
 
     #: Desired accuracy of the survey, in meters
-    accuracy: float = 0.02
+    accuracy: float = 1
 
     @property
     def json(self):

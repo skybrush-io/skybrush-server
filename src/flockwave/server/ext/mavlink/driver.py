@@ -851,7 +851,7 @@ class MAVLinkUAV(UAVBase):
                     MAVCommand.DO_MOTOR_TEST,
                     i + 1,  # motor instance number
                     MotorTestThrottleType.PERCENT,
-                    10,  # 10%
+                    15,  # 15%
                     2,  # timeout: 2 seconds
                     0,  # 1 motor only
                     MotorTestOrder.DEFAULT,

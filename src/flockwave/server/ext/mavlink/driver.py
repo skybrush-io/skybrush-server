@@ -136,6 +136,22 @@ class MAVLinkDriver(UAVDriver):
     )
     handle_command_version = create_version_command_handler()
 
+    async def handle_command_calib(self, uav, component: Optional[str] = None) -> None:
+        """Calibrates a component of the UAV."""
+        if component == "baro":
+            await uav.calibrate_component("baro")
+            return "Ground pressure calibrated"
+        elif component == "gyro":
+            await uav.calibrate_component("gyro")
+            return "Gyroscope calibrated"
+        elif component == "level":
+            await uav.calibrate_component("level")
+            return "Level calibration executed"
+        elif not component:
+            return "Usage: test <led|motor>"
+        else:
+            raise NotSupportedError
+
     async def handle_command_mode(self, uav: "MAVLinkUAV", mode: Optional[str] = None):
         """Returns or sets the (custom) flight mode of the UAV.
 
@@ -192,8 +208,10 @@ class MAVLinkDriver(UAVDriver):
         elif component == "led":
             await uav.test_component("led")
             return "LED test executed"
-        else:
+        elif not component:
             return "Usage: test <led|motor>"
+        else:
+            raise NotSupportedError
 
     async def send_command_int(
         self,
@@ -602,6 +620,27 @@ class MAVLinkUAV(UAVBase):
         self._network_id = network_id
         self._system_id = system_id
 
+    async def calibrate_component(self, component: str) -> None:
+        """Calibrates a component of the UAV.
+
+        Parameters:
+            component: the component to calibrate; currently we support
+                ``baro``, ``level`` or ``gyro``.
+        """
+        params = [0] * 7
+        if component == "baro":
+            params[2] = 1
+        elif component == "gyro":
+            params[1] = 1
+        elif component == "level":
+            params[4] = 2
+        else:
+            raise NotSupportedError
+
+        await self.driver.send_command_long(
+            self, MAVCommand.PREFLIGHT_CALIBRATION, *params
+        )
+
     async def clear_scheduled_takeoff_time(self) -> None:
         """Clears the scheduled takeoff time of the UAV."""
         await self.set_scheduled_takeoff_time(None)
@@ -862,6 +901,8 @@ class MAVLinkUAV(UAVBase):
                 instance=42, pattern=42, custom_len=0, custom_bytes=_EMPTY
             )
             await self.driver.send_packet(message, self)
+        else:
+            raise NotSupportedError
 
     def handle_message_autopilot_version(self, message: MAVLinkMessage):
         """Handles an incoming MAVLink AUTOPILOT_VERSION message targeted at

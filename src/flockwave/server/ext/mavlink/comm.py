@@ -198,13 +198,13 @@ def _create_datagram_based_mavlink_message_channel(
         log: the logger on which any error messages and warnings should be logged
     """
     # We will need one MAVLink object per _address_ that we are talking to
-    # because each address needs a unique sequence number counter.
+    # for two reasons:
     #
-    # Should this become a performance bottleneck: maybe we can do away with
-    # one MAVLink parser and a separate dict that keeps track of the sequence
-    # numbers? This could be tricky because the MAVLink checksum depends on the
-    # sequence number so we need to feed the _current_ sequence number into the
-    # MAVLink object _before_ calling pack().
+    # 1) each address needs a unique sequence number counter
+    # 2) each UAV may send MAVLink messages in a way that the MAVLink message
+    #    boundaries do not align with the packet boundaries of the transport
+    #    medium (e.g., UDP packets). Therefore, we need to keep track of partially
+    #    parsed MAVLink messages between datagrams.
     mavlink_by_address = defaultdict(mavlink_factory)
 
     # Connection is a datagram-based connection so we will be receiving

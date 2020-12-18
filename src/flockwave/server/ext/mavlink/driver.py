@@ -9,7 +9,7 @@ from functools import partial
 from math import inf
 from time import monotonic
 from trio import fail_after, move_on_after, sleep, TooSlowError
-from typing import List, Optional, Union
+from typing import List, Optional, Tuple, Union
 
 from flockwave.gps.time import datetime_to_gps_time_of_week, gps_time_of_week_to_utc
 from flockwave.gps.vectors import GPSCoordinate, VelocityNED
@@ -464,7 +464,7 @@ class MAVLinkDriver(UAVDriver):
         if "light" in signals:
             # The Skybrush firmware uses a "secret" LED instance / pattern
             # combination (42/42) to make the LED emit a flash pattern
-            await uav.test_component("led")
+            await uav.test_component("led_flash")
 
     async def _send_motor_start_stop_signal_single(
         self, uav, start: bool, force: bool = False
@@ -717,6 +717,13 @@ class MAVLinkUAV(UAVBase):
 
         return result
 
+    async def flash_led(self) -> None:
+        """Flashes the LED of the drone."""
+        message = spec.led_control(
+            instance=42, pattern=42, custom_len=0, custom_bytes=_EMPTY
+        )
+        await self.driver.send_packet(message, self)
+
     async def fly_to(self, target: GPSCoordinate) -> None:
         """Sends a command to the UAV to reposition it to the given coordinate,
         where the altitude may be specified in AMSL or AGL.
@@ -897,10 +904,21 @@ class MAVLinkUAV(UAVBase):
                 )
                 await sleep(3)
         elif component == "led":
-            message = spec.led_control(
-                instance=42, pattern=42, custom_len=0, custom_bytes=_EMPTY
-            )
-            await self.driver.send_packet(message, self)
+            color_sequence = [
+                (255, 0, 0),
+                (0, 255, 0),
+                (0, 0, 255),
+                (255, 255, 0),
+                (0, 255, 255),
+                (255, 0, 255),
+                (255, 255, 255),
+            ]
+            for index, color in enumerate(color_sequence):
+                if index > 0:
+                    await sleep(1)
+                await self.set_led_color(color)
+        elif component == "led_flash":
+            await self.flash_led()
         else:
             raise NotSupportedError
 
@@ -1180,6 +1198,22 @@ class MAVLinkUAV(UAVBase):
             _, gps_time_of_week = datetime_to_gps_time_of_week(dt)
 
         await self.set_parameter("SHOW_START_TIME", gps_time_of_week)
+
+    async def set_led_color(self, color: Tuple[int, int, int]) -> None:
+        """Sets the color of the drone LED to a specific RGB color.
+
+        Color componentss are expressed in the range [0; 255].
+        """
+        if len(color) != 3 or any(not isinstance(x, (int, float)) for x in color):
+            raise RuntimeError("Invalid color")
+
+        message = spec.led_control(
+            instance=42,
+            pattern=42,
+            custom_len=3,
+            custom_bytes=bytes([max(0, min(255, int(x))) for x in color] + [0] * 21),
+        )
+        await self.driver.send_packet(message, self)
 
     async def takeoff_to_relative_altitude(self, altitude: float = 2.5) -> None:
         """Instructs the UAV to take off to a relative altitude above its

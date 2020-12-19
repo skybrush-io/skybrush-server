@@ -668,7 +668,11 @@ class MAVLinkNetwork:
         subnet-specific broadcast address of the network interface that received
         a packet from the given address.
         """
-        address, port = address
+        if isinstance(address, tuple):
+            address, port = address
+        else:
+            # Not a wireless network
+            return
 
         subnet = None
         with move_on_after(timeout):

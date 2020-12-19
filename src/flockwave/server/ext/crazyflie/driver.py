@@ -19,6 +19,7 @@ from aiocflib.crazyflie.mem import write_with_checksum
 from aiocflib.errors import TimeoutError
 
 from flockwave.gps.vectors import PositionXYZ, VelocityXYZ
+from flockwave.server.errors import NotSupportedError
 from flockwave.server.ext.logger import log as base_log
 from flockwave.server.model.commands import (
     create_parameter_command_handler,
@@ -107,7 +108,7 @@ class CrazyflieDriver(UAVDriver):
             self.app.request_to_send_UAV_INF_message_for, [formatted_id]
         )
         uav.send_log_message_to_gcs = partial(
-            self.app.request_to_send_SYS_MSG_message, sender=self.id
+            self.app.request_to_send_SYS_MSG_message, sender=uav.id
         )
         return uav
 
@@ -595,6 +596,8 @@ class CrazyflieUAV(UAVBase):
             await self.set_parameter("health.startPropTest", 1)
         elif component == "led":
             await self._crazyflie.led_ring.test()
+        else:
+            raise NotSupportedError
 
     async def upload_show(self, show, *, remember: bool = True) -> None:
         home = get_home_position_from_show_specification(show)

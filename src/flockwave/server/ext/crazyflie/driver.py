@@ -89,6 +89,7 @@ class CrazyflieDriver(UAVDriver):
         self.debug = False
         self.id_format = id_format
         self.use_fake_position = None
+        self.use_test_mode = False
 
         self._cache_folder = str(cache.resolve()) if cache else None
         self._uav_ids_by_address_space = defaultdict(dict)
@@ -685,7 +686,8 @@ class CrazyflieUAV(UAVBase):
     async def _enable_show_mode(self) -> None:
         """Enables the drone-show mode on the Crazyflie."""
         await self._crazyflie.param.set("show.enabled", 1)
-        # await self._crazyflie.param.set("show.testing", 1)
+        if self.driver.use_test_mode:
+            await self._crazyflie.param.set("show.testing", 1)
 
     def _on_battery_state_received(self, message):
         self._battery.voltage = message.items[0]

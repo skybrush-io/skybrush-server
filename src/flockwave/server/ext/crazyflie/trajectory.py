@@ -116,7 +116,7 @@ class Poly4D:
 
     @classmethod
     def _encode_polynomial_compressed(
-        cls, coeffs: Sequence[float], eps: float = 1e-7, scale: int = 1000
+        cls, coeffs: Sequence[float], scale: int = 1000, *, eps: float = 1e-7
     ) -> Tuple[int, bytes]:
         """Encodes the coefficients of the given polynomial into the compressed
         byte-level representation of the Crazyflie, retuning the chosen

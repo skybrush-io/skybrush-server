@@ -1,6 +1,6 @@
 [[package]]
 name = "aio-usb-hotplug"
-version = "2.0.2"
+version = "3.0.0"
 description = "Asynchronous generators yielding detected hotplug events on the USB buses"
 category = "main"
 optional = false
@@ -1127,7 +1127,7 @@ reference = "collmot"
 
 [[package]]
 name = "pyinstaller-hooks-contrib"
-version = "2020.10"
+version = "2020.11"
 description = "Community maintained hooks for PyInstaller"
 category = "dev"
 optional = false
@@ -1777,12 +1777,12 @@ reference = "collmot"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7"
-content-hash = "abf0f8ee1798bb25dd7157ce7383dc4efd257e5bf036920a554514c8ae7a06bb"
+content-hash = "b6449a786e4298d44bc20580eb4f19d39805d126090a7215a41cb576554fb17a"
 
 [metadata.files]
 aio-usb-hotplug = [
-    {file = "aio-usb-hotplug-2.0.2.tar.gz", hash = "sha256:07fa89db2b88bf9d346c8141d68c4554338e2bee51a93c5b17f26249fe8bf7f8"},
-    {file = "aio_usb_hotplug-2.0.2-py3-none-any.whl", hash = "sha256:64fbc13523da25eaff789321c410ab9bafe32e766070e08e2d84e2b575652642"},
+    {file = "aio-usb-hotplug-3.0.0.tar.gz", hash = "sha256:c08878d5ba88227ac281b1b238bc5d592bab9608c15a97734e5ac773b6d610ed"},
+    {file = "aio_usb_hotplug-3.0.0-py3-none-any.whl", hash = "sha256:e22e166e616a624846a8d1b59df9e37ce1e6bd425c33a7a1329fbbce7f08492a"},
 ]
 aiocflib = [
     {file = "aiocflib-0.9.1-py3-none-any.whl", hash = "md5:6f5e2a19f8b1a44a4bf7c83488daca78"},
@@ -2222,8 +2222,8 @@ pyinstaller = [
     {file = "pyinstaller-4.1.tar.gz", hash = "sha256:954ae81de9a4bc096ff02433b3e245b9272fe53f27cac319e71fe7540952bd3d"},
 ]
 pyinstaller-hooks-contrib = [
-    {file = "pyinstaller-hooks-contrib-2020.10.tar.gz", hash = "sha256:bf4543a16c9c6e9dd2d70ea3fee78b81d3357a68f706df471d990213892259d9"},
-    {file = "pyinstaller_hooks_contrib-2020.10-py2.py3-none-any.whl", hash = "sha256:dd752c88c1c7bb6920f7de248c12d4411c0463877e5e64afdc4f7e93dff9fc94"},
+    {file = "pyinstaller-hooks-contrib-2020.11.tar.gz", hash = "sha256:fc3290a2ca337d1d58c579c223201360bfe74caed6454eaf5a2550b77dbda45c"},
+    {file = "pyinstaller_hooks_contrib-2020.11-py2.py3-none-any.whl", hash = "sha256:fa8280b79d8a2b267a2e43ff44f73b3e4a68fc8d205b8d34e8e06c960f7c2fcf"},
 ]
 pyjwt = [
     {file = "PyJWT-1.7.1-py2.py3-none-any.whl", hash = "sha256:5c6eca3c2940464d106b99ba83b00c6add741c9becaec087fb7ccdefea71350e"},

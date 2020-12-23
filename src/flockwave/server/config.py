@@ -82,7 +82,7 @@ EXTENSIONS = {
             "default"
         ],  # default setup; listens for heartbeats on UDP port 14550, sends broadcasts to UDP port 14555
         "custom_mode": None,
-        "system_id": 255,
+        "system_id": 254,
     },
     "radiation": {
         "enabled": False,

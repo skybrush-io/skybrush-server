@@ -17,6 +17,10 @@ rm -f requirements*.txt
 poetry export -f requirements.txt -o requirements-main.txt --without-hashes --with-credentials
 trap "rm -f requirements-main.txt" EXIT
 
+rm -rf dist/*.whl
+poetry build
+ls dist/*.whl >>requirements-main.txt
+
 if [ x$1 = xlinux ]; then
     GENERATE_LINUX=1
 elif [ x$1 = xwin -o x$1 = xwindows ]; then

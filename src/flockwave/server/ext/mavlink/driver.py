@@ -14,7 +14,7 @@ from typing import List, Optional, Tuple, Union
 from flockwave.gps.time import datetime_to_gps_time_of_week, gps_time_of_week_to_utc
 from flockwave.gps.vectors import GPSCoordinate, VelocityNED
 
-from flockwave.server.concurrency import aclosing
+from flockwave.server.concurrency import aclosing, delayed
 from flockwave.server.errors import NotSupportedError
 from flockwave.server.model.battery import BatteryInfo
 from flockwave.server.model.geofence import GeofenceConfigurationRequest, GeofenceStatus
@@ -487,6 +487,8 @@ class MAVLinkDriver(UAVDriver):
             )
             if not success:
                 raise RuntimeError("Reset command failed")
+            else:
+                uav.notify_rebooted_by_us()
         else:
             # No component resets are implemented on this UAV yet
             raise RuntimeError(f"Resetting {component!r} is not supported")
@@ -553,6 +555,10 @@ class MAVLinkUAV(UAVBase):
         #: Battery status of the drone
         self._battery = BatteryInfo()
 
+        #: Stores whether we are currently configuring the data stream rates
+        #: for the drone. Used to avoid multiple parallel configuration attempts.
+        self._configuring_data_streams = False
+
         #: Stores whether we are connecting to the drone for the first time;
         #: used to prevent a "probably rebooted warning" for the first connection
         self._first_connection = True
@@ -567,15 +573,15 @@ class MAVLinkUAV(UAVBase):
         #: Stores whether the drone is authorized to perform a scheduled takeoff
         self._is_scheduled_takeoff_authorized = False
 
+        #: Stores the time when we attempted to schedule a request to configure
+        #: the data streams for the last time
+        self._last_data_stream_configuration_attempted_at = None
+
         #: Stores a mapping of each MAVLink message type received from the drone
         #: to the most recent copy of the message of that type. Some of these
         #: records may be cleared when we don't detect a heartbeat from the
         #: drone any more
         self._last_messages = defaultdict(MAVLinkMessageRecord)
-
-        #: Stores the last "time since boot" timestamp received from the drone
-        #: in any of the messages where we observe this timestamp
-        self._last_time_since_boot_msec = None
 
         #: Stores the MAVLink network ID of the drone (not part of the MAVLink
         #: messages; used by us to track which MAVLink network of ours the
@@ -977,6 +983,9 @@ class MAVLinkUAV(UAVBase):
             # 2 as well
             self._mavlink_version = 2
 
+        # Get the age of the _last_ heartbeat, will be used later
+        age_of_last_heartbeat = self.get_age_of_message(MAVMessageType.HEARTBEAT)
+
         # Store a copy of the heartbeat
         self._store_message(message)
 
@@ -993,6 +1002,15 @@ class MAVLinkUAV(UAVBase):
         # If we don't, ask for them.
         if not self.get_last_message(MAVMessageType.AUTOPILOT_VERSION):
             self.driver.run_in_background(self._request_autopilot_capabilities)
+
+        # If we haven't received a SYS_STATUS message for a while but we keep
+        # on receiving heartbeats, chances are that the data streams are not
+        # configured correctly so we configure them.
+        if (
+            age_of_last_heartbeat < 2
+            and self.get_age_of_message(MAVMessageType.SYS_STATUS) > 5
+        ):
+            self._configure_data_streams_soon()
 
         # Update error codes and basic status info
         self._update_errors_from_sys_status_and_heartbeat()
@@ -1094,12 +1112,19 @@ class MAVLinkUAV(UAVBase):
         """
         self._is_connected = False
 
-        # TODO(ntamas): trigger a warning flag in the UAV?
-
         # Revert to the lowest MAVLink version that we support in case the UAV
         # was somehow reset and it does not "understand" MAVLink v2 in its new
         # configuration
         self._reset_mavlink_version()
+
+    def notify_rebooted_by_us(self) -> None:
+        """Notifies the UAV state object that we have rebooted the UAV ourselves
+        and we should configure its data streams again soon once we re-establish
+        connection.
+        """
+        self.driver.run_in_background(
+            delayed(1, self.notify_disconnection, ensure_async=True)
+        )
 
     def _reset_mavlink_version(self) -> None:
         """Resets the MAVLink protocol version used by messages sent to this
@@ -1301,6 +1326,23 @@ class MAVLinkUAV(UAVBase):
         # Configure and enable geofence
         await self.configure_geofence(geofence)
 
+    def _configure_data_streams_soon(self, force: bool = False) -> None:
+        """Schedules a call to configure the data streams that we want to receive
+        from the UAV, as soon as possible.
+
+        Parameters:
+            force: when `False` and a configuration request has been scheduled
+                recently, the call will be ignored. When `True`, repeated attempts
+                to configure the data streams will all be processed.
+        """
+        if not force and self._last_data_stream_configuration_attempted_at:
+            now = monotonic()
+            if now - self._last_data_stream_configuration_attempted_at < 5:
+                return
+
+        self.driver.run_in_background(self._configure_data_streams)
+        self._last_data_stream_configuration_attempted_at = monotonic()
+
     async def _configure_data_streams(self) -> None:
         """Configures the data streams that we want to receive from the UAV."""
         success = False
@@ -1308,6 +1350,7 @@ class MAVLinkUAV(UAVBase):
         # We give ourselves 60 seconds to configure everything. Most of the
         # internal functions time out on their own anyway
         with move_on_after(60):
+            self._configuring_data_streams = True
             try:
                 await self._configure_data_streams_with_fine_grained_commands()
                 success = True
@@ -1317,9 +1360,12 @@ class MAVLinkUAV(UAVBase):
             except TooSlowError:
                 # attempt timed out, even after retries, so we just give up
                 pass
+            finally:
+                self._configuring_data_streams = False
 
-        # TODO(ntamas): keep on trying to configure stuff in the background if
-        # we fail
+        # In case of a failure, we only print a warning here. Soon the GCS will
+        # realize again that it is not receiving status updates from the drone
+        # and will attempt to configure again.
         if not success:
             self.driver.log.warn(
                 "Failed to configure data stream rates",
@@ -1399,7 +1445,7 @@ class MAVLinkUAV(UAVBase):
         """Handles a reboot event on the autopilot and attempts to re-initialize
         the data streams.
         """
-        self.driver.run_in_background(self._configure_data_streams)
+        self._configure_data_streams_soon(force=True)
 
         # No need to request the autopilot capabilities here; we do it after
         # every heartbeat if we don't have them yet. See the comment in

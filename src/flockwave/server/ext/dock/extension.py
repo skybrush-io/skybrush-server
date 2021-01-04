@@ -31,7 +31,6 @@ def create_rpc_message_channel(stream: Stream) -> MessageChannel[RPCMessage]:
 
     Parameters:
         stream: the stream to read data from
-        log: the logger on which any error messages and warnings should be logged
     """
     connection = StreamWrapperConnection(stream)
     return MessageChannel.for_rpc_protocol(MSGPACKRPCProtocol(), connection)

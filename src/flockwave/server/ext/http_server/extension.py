@@ -9,7 +9,7 @@ Socket.IO-based channel.
 from contextlib import contextmanager
 from dataclasses import dataclass
 from flockwave.networking import format_socket_address
-from heapq import heappush
+from heapq import heapify, heappush
 from hypercorn.config import Config as HyperConfig
 from hypercorn.trio import serve
 from quart import Blueprint, abort, redirect, request, url_for
@@ -38,6 +38,10 @@ class ProposedIndexPage:
     priority: int = 0
     route: str = "/"
 
+
+#: Type specification for disposer functions returned by some of the functions
+#: in this module
+Disposer = Callable[[], None]
 
 ############################################################################
 
@@ -68,13 +72,13 @@ def create_app():
     return router
 
 
-def get_index_url():
+def get_index_url() -> Optional[str]:
     """Get the index URL with the highest priority that was proposed by
     other extensions.
 
     Returns:
-        Optional[str]: the URL of the best proposed index page or
-            ``None`` if no index page has been proposed
+        the URL of the best proposed index page or ``None`` if no index page has
+        been proposed
     """
     global proposed_index_pages
     if proposed_index_pages:
@@ -85,7 +89,7 @@ def get_index_url():
 
 def mount(
     app, *, path: str, scopes: Optional[Iterable[str]] = None, priority: int = 0
-) -> Optional[Callable[[], None]]:
+) -> Optional[Disposer]:
     """Mounts the given ASGI web application or Quart blueprint at the
     given path.
 
@@ -136,7 +140,7 @@ def mounted(
             remover()
 
 
-def propose_index_page(route, priority=0):
+def propose_index_page(route: str, priority: int = 0) -> Disposer:
     """Proposes the given route as a potential index page for the
     Skybrush server. This method can be called from the ``load()``
     functions of extensions when they want to propose one of their own
@@ -144,13 +148,46 @@ def propose_index_page(route, priority=0):
     the highest priority when all the extensions have been loaded.
 
     Parameters:
-        route (str): name of a route to propose as the index
-            page, in the form of ``blueprint.route``
-            (e.g., ``debug.index``)
-        priority (Optional[int]): the priority of the proposed route.
+        route: name of a route to propose as the index page, in the form of
+            ``blueprint.route`` (e.g., ``debug.index``)
+        priority: the priority of the proposed route.
+
+    Returns:
+        a function that can be called with no arguments to reovke the proposed
+        index page
     """
     global proposed_index_pages
-    heappush(proposed_index_pages, ProposedIndexPage(priority=-priority, route=route))
+
+    page = ProposedIndexPage(priority=-priority, route=route)
+
+    def disposer():
+        index = proposed_index_pages.index(page)
+        if index >= 0:
+            proposed_index_pages[index] = proposed_index_pages[-1]
+            proposed_index_pages.pop()
+            heapify(proposed_index_pages)
+
+    heappush(proposed_index_pages, page)
+
+    return disposer
+
+
+@contextmanager
+def proposed_index_page(route: str, priority: int = 0):
+    """Context manager that adds the given route as a potential index page for
+    the Skybrush server as long as the execution is within the context, and
+    revokes it when the context is exited.
+
+    Parameters:
+        route: name of a route to propose as the index page, in the form of
+            ``blueprint.route`` (e.g., ``debug.index``)
+        priority: the priority of the proposed route.
+    """
+    disposer = propose_index_page(route, priority)
+    try:
+        yield
+    finally:
+        disposer()
 
 
 ############################################################################
@@ -241,4 +278,5 @@ exports = {
     "mount": mount,
     "mounted": mounted,
     "propose_index_page": propose_index_page,
+    "proposed_index_page": proposed_index_page,
 }

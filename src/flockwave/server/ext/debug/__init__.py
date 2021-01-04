@@ -2,6 +2,6 @@
 the Skybrush server.
 """
 
-from .extension import dependencies, load, index
+from .extension import dependencies, run, index
 
-__all__ = ("dependencies", "load", "index")
+__all__ = ("dependencies", "run", "index")

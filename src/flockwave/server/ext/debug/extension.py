@@ -4,11 +4,20 @@ the Skybrush server.
 
 import threading
 
+from contextlib import ExitStack
+from functools import partial
+from math import inf
 from operator import attrgetter
 from quart import Blueprint, render_template
+from trio import BrokenResourceError, open_memory_channel, open_nursery, serve_tcp
+from trio.abc import ReceiveChannel, Stream
 from trio.lowlevel import current_root_task
+from typing import Callable
 
-__all__ = ("load", "index")
+from flockwave.networking import format_socket_address
+from flockwave.server.utils import overridden
+
+__all__ = ("index", "run")
 
 
 blueprint = Blueprint(
@@ -19,12 +28,135 @@ blueprint = Blueprint(
     static_url_path="/static",
 )
 
+connected_client_queue = None
+log = None
 
-def load(app, configuration):
-    """Loads the extension."""
+
+async def run(app, configuration, logger):
+    """Runs the extension."""
     http_server = app.import_api("http_server")
-    http_server.mount(blueprint, path=configuration.get("route", "/debug"))
-    http_server.propose_index_page("debug.index", priority=-100)
+    path = configuration.get("route", "/debug")
+    host = configuration.get("host", "localhost")
+    port = configuration.get("port")
+
+    with ExitStack() as stack:
+        stack.enter_context(overridden(globals(), log=logger))
+        stack.enter_context(http_server.mounted(blueprint, path=path))
+        stack.enter_context(
+            http_server.proposed_index_page("debug.index", priority=-100)
+        )
+
+        if port is not None:
+            debug_request_signal = app.import_api("signals").get("debug:request")
+            debug_response_signal = app.import_api("signals").get("debug:response")
+
+            stack.enter_context(
+                debug_response_signal.connected_to(handle_debug_response)
+            )
+
+            await run_debug_port(host, port, on_message=debug_request_signal.send)
+
+
+#############################################################################
+# Functions related to handling the dedicated debug port
+
+
+async def run_debug_port(
+    host: str, port: int, on_message: Callable[[bytes], None]
+) -> None:
+    """Opens a TCP port that can be used during debugging to inject arbitrary
+    data into data streams provided by other extensions if they support this
+    debugging interface.
+
+    Currently this is developed on an ad-hoc basis as we need it. Do not use
+    this feature in production.
+
+    Parameters:
+        host: the hostname or IP address where the port should be opened
+        port: the port number
+        on_message: the function to call when an incoming data chunk is received
+    """
+    address = host, port
+    log.info(f"Starting debug listener on {format_socket_address(address)}...")
+    try:
+        await serve_tcp(
+            partial(handle_debug_connection_safely, on_message=on_message),
+            port,
+            host=host,
+        )
+    finally:
+        log.info("Debug listener closed.")
+
+
+async def handle_debug_connection_safely(
+    stream: Stream, *, on_message: Callable[[bytes], None]
+) -> None:
+    """Handles a single debug connection, catching all exceptions so they
+    don't propagate out and crash the extension.
+    """
+    try:
+        await handle_debug_connection_outbound(stream, on_message=on_message)
+    except BrokenResourceError:
+        # THis is OK.
+        pass
+    except Exception:
+        log.exception("Unexpected exception caught while handling debug connection")
+
+
+async def handle_debug_connection_outbound(
+    stream: Stream, *, on_message: Callable[[bytes], None]
+) -> None:
+    if connected_client_queue is not None:
+        await stream.aclose()
+        return
+
+    # Using an infinite queue that can be used to send data to the connected
+    # client. We don't know in advance how much debug data we can expect, but
+    # sometimes it's a lot and we don't have a way to communicate backpressure
+    # via signals so it's better to use an unbounded queue. It is not to be used
+    # in production anyway.
+    tx_queue, rx_queue = open_memory_channel(inf)
+
+    with overridden(globals(), connected_client_queue=tx_queue):
+        async with open_nursery() as nursery:
+            nursery.start_soon(handle_debug_connection_inbound, stream, rx_queue)
+            while True:
+                data = await stream.receive_some()
+                if not data:
+                    # Connection closed
+                    break
+
+                try:
+                    on_message(data)
+                except Exception:
+                    log.exception(
+                        "Unexpected exception while executing debug message handler"
+                    )
+
+
+async def handle_debug_connection_inbound(
+    stream: Stream, queue: ReceiveChannel
+) -> None:
+    """Handles inbound messages sent from other components in the server that
+    should be dispatched to the currently connected client of the debug port.
+    """
+    async for data in queue:
+        await stream.send_all(data)
+
+
+def handle_debug_response(data: bytes) -> None:
+    """Handler that is called when another part of the server wishes to send
+    a message to the client currently connected to the debug port.
+    """
+    if connected_client_queue is None:
+        # No client connected, dropping debug message silently.
+        return
+
+    connected_client_queue.send_nowait(data)
+
+
+#############################################################################
+# Functions related to handling the dedicated debug port
 
 
 @blueprint.route("/")
@@ -60,4 +192,4 @@ async def list_tasks():
     return await render_template("tasks.html", tasks=tasks)
 
 
-dependencies = ("http_server",)
+dependencies = ("http_server", "signals")

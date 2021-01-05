@@ -134,9 +134,16 @@ class CommunicationManager(Generic[PacketType, AddressType]):
         self._aliases[alias] = target
         return partial(self.remove_alias, alias)
 
-    async def broadcast_packet(self, packet: PacketType, allow_failure: bool = False):
+    async def broadcast_packet(
+        self,
+        packet: PacketType,
+        *,
+        destination: Optional[str] = None,
+        allow_failure: bool = False,
+    ) -> None:
         """Requests the communication manager to broadcast the given message
-        packet to all destinations.
+        packet to all destinations, or to the broadcast address of a single
+        destination.
 
         Blocks until the packet is enqueued in the outbound queue, allowing
         other tasks to run.
@@ -151,9 +158,17 @@ class CommunicationManager(Generic[PacketType, AddressType]):
             else:
                 return
 
-        await queue.send((packet, BROADCAST))
+        address = BROADCAST if destination is None else (destination, BROADCAST)
 
-    def enqueue_broadcast_packet(self, packet: PacketType, allow_failure: bool = False):
+        await queue.send((packet, address))
+
+    def enqueue_broadcast_packet(
+        self,
+        packet: PacketType,
+        *,
+        destination: Optional[str] = None,
+        allow_failure: bool = False,
+    ) -> None:
         """Requests the communication manager to broadcast the given message
         packet to all destinations and return immediately.
 
@@ -169,8 +184,10 @@ class CommunicationManager(Generic[PacketType, AddressType]):
             else:
                 return
 
+        address = BROADCAST if destination is None else (destination, BROADCAST)
+
         try:
-            queue.send_nowait((packet, BROADCAST))
+            queue.send_nowait((packet, address))
         except WouldBlock:
             if self.log:
                 self.log.warn(

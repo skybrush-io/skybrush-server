@@ -468,7 +468,9 @@ class MAVLinkNetwork:
         network.
         """
         async for _ in periodic(1):
-            await manager.broadcast_packet(HEARTBEAT_SPEC, allow_failure=True)
+            await manager.broadcast_packet(
+                HEARTBEAT_SPEC, destination=PRIMARY_CHANNEL, allow_failure=True
+            )
 
     async def _handle_inbound_messages(self, channel: ReceiveChannel):
         """Handles inbound MAVLink messages from all the communication links

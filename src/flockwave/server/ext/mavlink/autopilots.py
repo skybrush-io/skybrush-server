@@ -19,6 +19,7 @@ from .enums import (
     MAVState,
     MAVSysStatusSensor,
 )
+from .errors import UnknownFlightModeError
 from .geofence import GeofenceManager
 from .types import MAVLinkFlightModeNumbers, MAVLinkMessage
 from .utils import (
@@ -131,7 +132,7 @@ class Autopilot(metaclass=ABCMeta):
         Raises:
             NotImplementedError: if we have not implemented the conversion from
                 a mode string to a flight mode number set
-            ValueError: if the flight mode is not known to the autopilot
+            UnknownFlightModeError: if the flight mode is not known to the autopilot
         """
         raise NotImplementedError
 
@@ -354,7 +355,7 @@ class PX4(Autopilot):
         mode = mode.lower().replace(" ", "")
         numbers = self._mode_names_to_numbers.get(mode)
         if numbers is None:
-            raise ValueError(f"unknown flight mode: {mode!r}")
+            raise UnknownFlightModeError(mode)
 
         return numbers
 
@@ -546,7 +547,7 @@ class ArduPilot(Autopilot):
                 if name == mode:
                     return (MAVModeFlag.CUSTOM_MODE_ENABLED, number, 0)
 
-        raise ValueError(f"unknown flight mode: {mode!r}")
+        raise UnknownFlightModeError(mode)
 
     async def get_geofence_status(self, uav) -> GeofenceStatus:
         status = GeofenceStatus()

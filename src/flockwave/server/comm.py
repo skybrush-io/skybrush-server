@@ -4,15 +4,18 @@ link (e.g., standard 802.11 wifi).
 """
 
 from collections import defaultdict
+from contextlib import contextmanager
 from dataclasses import dataclass
 from functools import partial
 from logging import Logger
-from trio import open_memory_channel, WouldBlock
+from trio import BrokenResourceError, open_memory_channel, WouldBlock
 from trio_util import wait_all
 from typing import Callable, Generator, Generic, Iterator, Optional, Tuple, TypeVar
 
 from flockwave.channels import MessageChannel
 from flockwave.connections import Connection
+
+from .types import Disposer
 
 
 __all__ = ("BROADCAST", "CommunicationManager")
@@ -92,6 +95,7 @@ class CommunicationManager(Generic[PacketType, AddressType]):
         self.channel_factory = channel_factory
         self.format_address = format_address
 
+        self._aliases = {}
         self._entries_by_name = defaultdict(list)
         self._running = False
         self._outbound_tx_queue = None
@@ -120,6 +124,15 @@ class CommunicationManager(Generic[PacketType, AddressType]):
 
         entry = self.Entry(connection, name=name, can_send=bool(can_send))
         self._entries_by_name[name].append(entry)
+
+    def add_alias(self, alias: str, *, target: str) -> Disposer:
+        """Adds the given alias to the connection names recognized by the
+        communication manager. Can be used to decide where certain messages
+        should be routed to by dynamically assigning the alias to one of the
+        "real" connection names.
+        """
+        self._aliases[alias] = target
+        return partial(self.remove_alias, alias)
 
     async def broadcast_packet(self, packet: PacketType, allow_failure: bool = False):
         """Requests the communication manager to broadcast the given message
@@ -235,6 +248,12 @@ class CommunicationManager(Generic[PacketType, AddressType]):
             self.log = None
             self._running = False
 
+    def remove_alias(self, alias: str) -> None:
+        """Removes the given alias from the connection aliases recognized by
+        the communication manager.
+        """
+        del self._aliases[alias]
+
     async def send_packet(
         self, packet: PacketType, destination: Tuple[str, AddressType]
     ):
@@ -254,6 +273,17 @@ class CommunicationManager(Generic[PacketType, AddressType]):
             raise RuntimeError("Outbound message queue is closed")
 
         await queue.send((packet, destination))
+
+    @contextmanager
+    def with_alias(self, alias: str, *, target: str):
+        """Context manager that registers an alias when entering the context and
+        unregisters it when exiting the context.
+        """
+        disposer = self.add_alias(alias, target=target)
+        try:
+            yield
+        finally:
+            disposer()
 
     def _iter_entries(self) -> Generator["Entry", None, None]:
         for _, entries in self._entries_by_name.items():
@@ -282,6 +312,8 @@ class CommunicationManager(Generic[PacketType, AddressType]):
         channel_created = False
         address = None
 
+        log_extra = {"id": entry.name or ""}
+
         try:
             address = getattr(connection, "address", None)
             address = self.format_address(address) if address else None
@@ -290,21 +322,37 @@ class CommunicationManager(Generic[PacketType, AddressType]):
 
             channel_created = True
             if address:
-                self.log.info(f"Connection at {address} up and running.")
+                self.log.info(
+                    f"Connection at {address} up and running.", extra=log_extra
+                )
+            else:
+                self.log.info("Connection up and running.", extra=log_extra)
 
             async for message in entry.channel:
                 await queue.send((entry.name, message))
 
         except Exception as ex:
             has_error = True
-            self.log.exception(ex)
-            if address and channel_created:
-                self.log.warn(f"Connection at {address} down, trying to reopen.")
+
+            if not isinstance(ex, BrokenResourceError):
+                self.log.exception(ex)
+
+            if channel_created:
+                if address:
+                    self.log.warn(
+                        f"Connection at {address} down, trying to reopen.",
+                        extra=log_extra,
+                    )
+                else:
+                    self.log.warn("Connection down, trying to reopen.", extra=log_extra)
 
         finally:
             entry.channel = None
-            if address and channel_created and not has_error:
-                self.log.info(f"Connection at {address} closed.")
+            if channel_created and not has_error:
+                if address:
+                    self.log.info(f"Connection at {address} closed.", extra=log_extra)
+                else:
+                    self.log.info("Connection closed.", extra=log_extra)
 
     async def _run_outbound_links(self):
         # ephemeris RTK streams send messages in bursts so it's better to have
@@ -341,7 +389,13 @@ class CommunicationManager(Generic[PacketType, AddressType]):
 
     async def _send_message_to_single_destination(self, message, destination):
         name, address = destination
+
         entries = self._entries_by_name.get(name)
+        if not entries:
+            # try with an alias
+            name = self._aliases.get(name)
+            entries = self._entries_by_name.get(name)
+
         sent = False
 
         if entries:
@@ -370,11 +424,11 @@ class CommunicationManager(Generic[PacketType, AddressType]):
 
         if not sent and address is not BROADCAST:
             if entries:
-                self.log.error(
+                self.log.warn(
                     f"Dropping outbound message, all channels broken for: {name!r}"
                 )
             else:
-                self.log.error(f"Dropping outbound message, no such channel: {name!r}")
+                self.log.warn(f"Dropping outbound message, no such channel: {name!r}")
 
 
 CommunicationManager.BROADCAST = BROADCAST

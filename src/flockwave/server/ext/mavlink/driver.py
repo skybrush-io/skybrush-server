@@ -1460,9 +1460,15 @@ class MAVLinkUAV(UAVBase):
         """Sends a request to the autopilot to send its capabilities via MAVLink
         in a separate packet.
         """
-        await self.driver.send_command_long(
-            self, MAVCommand.REQUEST_AUTOPILOT_CAPABILITIES, param1=1
-        )
+        try:
+            await self.driver.send_command_long(
+                self, MAVCommand.REQUEST_AUTOPILOT_CAPABILITIES, param1=1
+            )
+        except TooSlowError:
+            self.driver.log.warn(
+                "Failed to request autopilot capabilities; no confirmation received in time",
+                extra={"id": log_id_for_uav(self)},
+            )
 
         # At this point, we only received an acknowledgment from the drone that
         # it _will_ send the AUTOPILOT_VERSION packet -- we don't know whether

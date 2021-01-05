@@ -45,7 +45,10 @@ from .utils import (
 
 __all__ = ("MAVLinkNetwork",)
 
-DEFAULT_NAME = ""
+#: Constant to denote packets that we wish to send on the primary channel of the
+#: network (typically wifi). This will be added as an alias to the first
+#: connection in each network.
+PRIMARY_CHANNEL = "_primary"
 
 #: MAVLink message specification for heartbeat messages that we are sending
 #: to connected UAVs to keep them sending telemetry data
@@ -210,22 +213,27 @@ class MAVLinkNetwork:
         else:
             id_format = "{0}"
 
+        # Create names for the communication links
+        connection_names = [
+            id_format.format(self.id, index)
+            for index, connection in enumerate(self._connections)
+        ]
+
         # Register the communication links
         with ExitStack() as stack:
-            for index, connection in enumerate(self._connections):
-                full_id = id_format.format(self.id, index)
+            for connection, name in zip(self._connections, connection_names):
                 description = (
                     "MAVLink listener"
                     if isinstance(connection, ListenerConnection)
                     else "MAVLink connection"
                 )
-                if full_id:
-                    description += f" ({full_id})"
+                if name:
+                    description += f" ({name})"
 
                 stack.enter_context(
                     use_connection(
                         connection,
-                        f"MAVLink: {full_id}" if full_id else "MAVLink",
+                        f"MAVLink: {name}" if name else "MAVLink",
                         description=description,
                         purpose=ConnectionPurpose.uavRadioLink,
                     )
@@ -247,8 +255,14 @@ class MAVLinkNetwork:
             # important here; the ones coming first will primarily be used for
             # sending, falling back to later ones if sending on the first one
             # fails
-            for index, connection in enumerate(self._connections):
-                manager.add(connection, name=DEFAULT_NAME)
+            for connection, name in zip(self._connections, connection_names):
+                manager.add(connection, name=name)
+
+            # Register the first connection as the primary
+            if self._connections:
+                stack.enter_context(
+                    manager.with_alias(PRIMARY_CHANNEL, target=connection_names[0])
+                )
 
             # Set up a dictionary that will map from MAVLink message types that
             # we are waiting for to lists of corresponding (predicate, future)
@@ -328,7 +342,7 @@ class MAVLinkNetwork:
         if address is None:
             raise RuntimeError("UAV has no address in this network")
 
-        destination = (DEFAULT_NAME, address)
+        destination = (PRIMARY_CHANNEL, address)
         await self.manager.send_packet(spec, destination)
 
     async def send_packet(
@@ -368,7 +382,7 @@ class MAVLinkNetwork:
         if address is None:
             raise RuntimeError("UAV has no address in this network")
 
-        destination = (DEFAULT_NAME, address)
+        destination = (PRIMARY_CHANNEL, address)
 
         if wait_for_response:
             response_type, response_fields = wait_for_response
@@ -489,6 +503,7 @@ class MAVLinkNetwork:
             "STATUSTEXT": self._handle_message_statustext,
             "SYS_STATUS": self._handle_message_sys_status,
             "TIMESYNC": self._handle_message_timesync,
+            "V2_EXTENSION": self._handle_message_v2_extension,
         }
 
         autopilot_component_id = MAVComponent.AUTOPILOT1
@@ -651,6 +666,21 @@ class MAVLinkNetwork:
         else:
             # Timesync request, ignore it.
             pass
+
+    def _handle_message_v2_extension(
+        self, message: MAVLinkMessage, *, connection_id: str, address: Any
+    ):
+        """Handles an incoming MAVLink V2_EXTENSION message, currently used to
+        carry debug information injected dynamically by a Skybrush MAVLink
+        proxy. Not used in production.
+        """
+        if message.message_type != 42424:
+            # Not for us
+            return
+
+        length = message.payload[0]
+        payload = message.payload[1 : (length + 1)]
+        self.log.info(repr(payload))
 
     def _log_message(
         self, message: MAVLinkMessage, *, connection_id: str, address: Any

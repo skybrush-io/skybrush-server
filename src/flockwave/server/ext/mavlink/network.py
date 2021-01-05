@@ -16,7 +16,17 @@ from time import time_ns
 from trio import move_on_after, to_thread
 from trio.abc import ReceiveChannel
 from trio_util import periodic
-from typing import Any, Callable, FrozenSet, Iterator, Optional, Sequence, Tuple, Union
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    FrozenSet,
+    Iterator,
+    Optional,
+    Sequence,
+    Tuple,
+    Union,
+)
 
 from flockwave.connections import Connection, create_connection, ListenerConnection
 from flockwave.concurrency import Future
@@ -50,6 +60,9 @@ __all__ = ("MAVLinkNetwork",)
 #: connection in each network.
 PRIMARY_CHANNEL = "_primary"
 
+#: Alias of the channel that should be used for sending RTK connections
+RTK_CHANNEL = "_rtk"
+
 #: MAVLink message specification for heartbeat messages that we are sending
 #: to connected UAVs to keep them sending telemetry data
 HEARTBEAT_SPEC = (
@@ -78,6 +91,7 @@ class MAVLinkNetwork:
             id_formatter=spec.id_format.format,
             packet_loss=spec.packet_loss,
             statustext_targets=spec.statustext_targets,
+            routing=spec.routing,
         )
 
         for index, connection_spec in enumerate(spec.connections):
@@ -94,6 +108,7 @@ class MAVLinkNetwork:
         id_formatter: Callable[[int, str], str] = "{0}".format,
         packet_loss: float = 0,
         statustext_targets: FrozenSet[str] = None,
+        routing: Optional[Dict[str, int]] = None,
     ):
         """Constructor.
 
@@ -115,11 +130,18 @@ class MAVLinkNetwork:
                 set contains the string `"client"`, they will be sent to the
                 connected clients in SYS-MSG messages. The two options are not
                 mutually exclusive; both can be configured at the same time.
+            routing: dictionary that specifies which link should be used for
+                certain types of packets. The keys of the dictionary are the
+                packet types; the values are the indices of the connections to
+                use for sending that particular packet type. Not including a
+                particular packet type in the dictionary will let the system
+                choose the link on its own.
         """
         self._id = id
         self._id_formatter = id_formatter
         self._matchers = None
         self._packet_loss = max(float(packet_loss), 0.0)
+        self._routing = dict(routing) or {}
         self._scheduled_takeoff_manager = ScheduledTakeoffManager(self)
         self._statustext_targets = (
             frozenset(statustext_targets) if statustext_targets else frozenset()
@@ -258,11 +280,8 @@ class MAVLinkNetwork:
             for connection, name in zip(self._connections, connection_names):
                 manager.add(connection, name=name)
 
-            # Register the first connection as the primary
-            if self._connections:
-                stack.enter_context(
-                    manager.with_alias(PRIMARY_CHANNEL, target=connection_names[0])
-                )
+            # Register the connection aliases
+            self._register_connection_aliases(manager, connection_names, stack)
 
             # Set up a dictionary that will map from MAVLink message types that
             # we are waiting for to lists of corresponding (predicate, future)
@@ -320,7 +339,9 @@ class MAVLinkNetwork:
             return
 
         for message in self._rtk_correction_packet_encoder.encode(packet):
-            self.manager.enqueue_broadcast_packet(message, allow_failure=True)
+            self.manager.enqueue_broadcast_packet(
+                message, destination=RTK_CHANNEL, allow_failure=True
+            )
 
     def notify_scheduled_takeoff_config_changed(self, config):
         """Notifies the network that the automatic start configuration of the
@@ -692,6 +713,38 @@ class MAVLinkNetwork:
 
     def _log_extra_from_message(self, message: MAVLinkMessage):
         return {"id": log_id_from_message(message, self.id)}
+
+    def _register_connection_aliases(
+        self,
+        manager: CommunicationManager,
+        connection_names: Sequence[str],
+        stack: ExitStack,
+    ) -> None:
+        """Registers some connection aliases in the given communication manager
+        object so we can simply send RTK packets to an `RTK_CHANNEL` alias and
+        ensure that it ends up at the correct connection.
+
+        This method is called automatically from the main task of this network
+        during initialization; no need to call it manually.
+        """
+        if not self._connections:
+            return
+
+        def register_by_index(alias: str, index: Optional[int]) -> None:
+            if index is None or index < 0 or index >= len(connection_names):
+                # No such channel, just fall back to the primary one
+                index = 0
+
+            print(f"Registering {alias} --> {connection_names[index]}")
+            stack.enter_context(
+                manager.with_alias(alias, target=connection_names[index])
+            )
+
+        # Register the first connection as the primary
+        register_by_index(PRIMARY_CHANNEL, 0)
+
+        # Register the RTK channel according to the routing setup
+        register_by_index(RTK_CHANNEL, self._routing.get("rtk"))
 
     async def _update_broadcast_address_of_channel_to_subnet(
         self, connection_id: str, address: Tuple[str, int], timeout: float = 1

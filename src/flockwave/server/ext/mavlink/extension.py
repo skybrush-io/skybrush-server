@@ -33,6 +33,9 @@ CONNECTION_PRESETS = {
     "apm-sitl": "tcp://localhost:5760",
 }
 
+#: Default routing configuration for networks
+DEFAULT_ROUTING = {"rtk": 0}
+
 
 class MAVLinkDronesExtension(UAVExtensionBase):
     """Extension that adds support for drone flocks using the MAVLink
@@ -152,6 +155,7 @@ class MAVLinkDronesExtension(UAVExtensionBase):
         network_spec_defaults = {
             "id_format": default_id_format,
             "packet_loss": configuration.get("packet_loss", MISSING),
+            "routing": configuration.get("routing", DEFAULT_ROUTING),
             "statustext_targets": configuration.get(
                 "statustext_targets", frozenset({"client", "server"})
             ),
@@ -160,9 +164,17 @@ class MAVLinkDronesExtension(UAVExtensionBase):
 
         # Apply the default ID format for networks that do not specify an
         # ID format on their own
+
         for spec in network_specs.values():
             for key, value in network_spec_defaults.items():
                 if key not in spec and value is not MISSING:
+                    # Clone value if it is mutable as we don't want to have
+                    # any cross-play between different networks if they start
+                    # modifying their configuration
+                    if isinstance(value, list):
+                        value = list(value)
+                    elif isinstance(value, dict):
+                        value = dict(value)
                     spec[key] = value
 
             # Resolve common connection aliases

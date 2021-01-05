@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass, field
 from functools import partial
-from typing import Any, Callable, Dict, FrozenSet, Optional, Tuple, Union
+from typing import Any, Callable, Dict, FrozenSet, List, Optional, Tuple, Union
 
 __all__ = (
     "MAVLinkFlightModeNumbers",
@@ -93,9 +93,13 @@ class MAVLinkNetworkSpecification:
     #: In most cases, one link is the primary one and the rest are used as
     #: "backups".
     #:
-    #: The dictionary may contain any values that are accepted by th
+    #: The list may contain any values that are accepted by the
     #: `create_connection()` function.
-    connections: Dict[str, Any] = field(default_factory=dict)
+    connections: List[str] = field(default_factory=list)
+
+    #: Specifies where certain types of packets should be routed if the
+    #: network has multiple connections
+    routing: Dict[str, int] = field(default_factory=dict)
 
     #: Specifies where to send the contents of MAVLink status text messages
     #: originating from this network. This property must be a set containing
@@ -126,6 +130,10 @@ class MAVLinkNetworkSpecification:
 
         if "packet_loss" in obj:
             result.packet_loss = float(obj["packet_loss"])
+
+        if "routing" in obj and isinstance(obj["routing"], dict):
+            result.routing.clear()
+            result.routing.update(obj["routing"])
 
         if "statustext_targets" in obj:
             if hasattr("statustext_targets", "__iter__"):

@@ -390,6 +390,71 @@ class MAVLinkDriver(UAVDriver):
 
         return result == MAVResult.ACCEPTED
 
+    async def send_command_long_without_ack(
+        self,
+        target: "MAVLinkUAV",
+        command_id: int,
+        param1: float = 0,
+        param2: float = 0,
+        param3: float = 0,
+        param4: float = 0,
+        param5: float = 0,
+        param6: float = 0,
+        param7: float = 0,
+        *,
+        timeout: Optional[float] = None,
+    ) -> None:
+        """Sends a MAVLink command to a given UAV, without waiting for an
+        acknowledgment.
+
+        This function may be useful in one-way radio links where the UAV has
+        no way to respond.
+
+        Parameters:
+            target: the UAV to send the command to
+            param1: the first parameter of the command
+            param2: the second parameter of the command
+            param3: the third parameter of the command
+            param4: the fourth parameter of the command
+            param5: the fifth parameter of the command
+            param6: the sixth parameter of the command
+            param7: the seventh parameter of the command
+            timeout: timeout in seconds for _sending_ the command; `None` means
+                to use the default timeout for the driver
+
+        Raises:
+            TooSlowError: if the link to the UAV failed to send the command in
+                time, even after
+                re-sending the command as needed
+            NotSupportedError: if the command is not supported by the UAV (i.e.
+                we received a response with `MAV_RESULT_UNSUPPORTED`)
+        """
+        if timeout is None or timeout <= 0:
+            timeout = self._default_timeout
+
+        sent = False
+
+        try:
+            with fail_after(timeout):
+                message = spec.command_long(
+                    command=command_id,
+                    param1=param1,
+                    param2=param2,
+                    param3=param3,
+                    param4=param4,
+                    param5=param5,
+                    param6=param6,
+                    param7=param7,
+                    confirmation=0,
+                )
+                await self.send_packet(message, target)
+                sent = True
+        except TooSlowError:
+            pass
+
+        if not sent:
+            raise TooSlowError(f"failed to send command {command_id} in time")
+
     async def send_packet_with_retries(
         self,
         spec,

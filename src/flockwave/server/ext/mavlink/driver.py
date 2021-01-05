@@ -250,12 +250,17 @@ class MAVLinkDriver(UAVDriver):
                 for the driver.
 
         Returns:
-            whether the command was executed successfully
+            True if the command was sent successfully and a positive acknowledgment
+            (`MAV_RESULT_ACCEPTED`) was received in time, False if the command
+            was sent successfully and the response was not `MAV_RESULT_ACCEPTED`
+            and not `MAV_RESULT_UNSUPPORTED`. An exception will be thrown if no
+            acknowledgment is received in time (even after resending).
 
         Raises:
             TooSlowError: if the UAV failed to respond in time, even after
                 re-sending the command as needed
-            NotSupportedError: if the command is not supported by the UAV
+            NotSupportedError: if the command is not supported by the UAV (i.e.
+                we received a response with `MAV_RESULT_UNSUPPORTED`)
         """
         if timeout is None or timeout <= 0:
             timeout = self._default_timeout
@@ -332,12 +337,17 @@ class MAVLinkDriver(UAVDriver):
                 for the driver.
 
         Returns:
-            whether the command was executed successfully
+            True if the command was sent successfully and a positive acknowledgment
+            (`MAV_RESULT_ACCEPTED`) was received in time, False if the command
+            was sent successfully and the response was not `MAV_RESULT_ACCEPTED`
+            and not `MAV_RESULT_UNSUPPORTED`. An exception will be thrown if no
+            acknowledgment is received in time (even after resending).
 
         Raises:
             TooSlowError: if the UAV failed to respond in time, even after
                 re-sending the command as needed
-            NotSupportedError: if the command is not supported by the UAV
+            NotSupportedError: if the command is not supported by the UAV (i.e.
+                we received a response with `MAV_RESULT_UNSUPPORTED`)
         """
         if timeout is None or timeout <= 0:
             timeout = self._default_timeout

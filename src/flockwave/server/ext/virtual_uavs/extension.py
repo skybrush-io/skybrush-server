@@ -61,7 +61,7 @@ class VirtualUAVProviderExtension(UAVExtensionBase):
         # Set the status updater thread frequency
         self.delay = configuration.get("delay", 1)
 
-        # Get the center of the circle
+        # Get the center of the home positions
         if "origin" not in configuration and "center" in configuration:
             self.log.warn("'center' is deprecated; use 'origin' instead")
             configuration["origin"] = configuration.pop("center")
@@ -87,16 +87,25 @@ class VirtualUAVProviderExtension(UAVExtensionBase):
 
         # add stochasticity to positions and headings if needed
         if configuration.get("add_noise", False):
+            # define noise levels here
+            position_noise = 0.2
+            heading_noise = 3
+            # add noise to positions
             home_positions = [
                 FlatEarthCoordinate(
-                    x=p.x + uniform(-2e-6, 2e-6),
-                    y=p.y + uniform(-2e-6, 2e-6),
-                    amsl=p.amsl + uniform(-0.2, 0.2),
-                    agl=0,
+                    x=p.x + uniform(-position_noise, position_noise),
+                    y=p.y + uniform(-position_noise, position_noise),
+                    # TODO: add amsl noise if we can be sure that amsl is not None
+                    amsl=p.amsl,  # + uniform(-position_noise, position_noise),
+                    agl=p.agl,
                 )
                 for p in home_positions
             ]
-            headings = [trans.orientation + uniform(-3, 3) for p in home_positions]
+            # add noise to headings
+            headings = [
+                (trans.orientation + uniform(-heading_noise, heading_noise)) % 360
+                for p in home_positions
+            ]
         else:
             headings = [trans.orientation] * len(home_positions)
 

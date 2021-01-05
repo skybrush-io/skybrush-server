@@ -401,7 +401,7 @@ class MessageHub:
             return True
 
         type = message.body.get("type") if hasattr(message, "body") else "NO-TYPE"
-        if type not in ("RTK-STAT", "UAV-PREFLT", "X-RTK-STAT"):
+        if type not in ("RTK-STAT", "UAV-PREFLT", "X-DBG-RESP", "X-RTK-STAT"):
             log.info(
                 "Received {0.body[type]} message".format(message),
                 extra={"id": message.id, "semantics": "request"},
@@ -790,7 +790,7 @@ class MessageHub:
         type = message.body.get("type") if hasattr(message, "body") else "NO-TYPE"
 
         if to is None:
-            if type not in ("CONN-INF", "UAV-INF", "DEV-INF", "SYS-MSG"):
+            if type not in ("CONN-INF", "UAV-INF", "DEV-INF", "SYS-MSG", "X-DBG-REQ"):
                 log.info(
                     f"Broadcasting {type} notification",
                     extra={"id": message.id, "semantics": "notification"},

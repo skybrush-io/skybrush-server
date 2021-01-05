@@ -4,6 +4,7 @@ the Skybrush server.
 
 import threading
 
+from base64 import b64decode, b64encode
 from contextlib import ExitStack
 from functools import partial
 from math import inf
@@ -47,14 +48,45 @@ async def run(app, configuration, logger):
         )
 
         if port is not None:
-            debug_request_signal = app.import_api("signals").get("debug:request")
-            debug_response_signal = app.import_api("signals").get("debug:response")
+            on_message = setup_debugging_server(app, stack, debug_clients=True)
+            await run_debug_port(host, port, on_message=on_message)
 
-            stack.enter_context(
-                debug_response_signal.connected_to(handle_debug_response)
+
+def setup_debugging_server(app, stack, debug_clients: bool = False):
+    debug_request_signal = app.import_api("signals").get("debug:request")
+    debug_response_signal = app.import_api("signals").get("debug:response")
+
+    def send_debug_message_to_client(data: bytes) -> None:
+        data = b64encode(bytes(b ^ 0x55 for b in data)).decode("ascii")
+        msg = app.message_hub.create_notification({"type": "X-DBG-REQ", "data": data})
+        app.message_hub.enqueue_message(msg)
+
+    def handle_debug_response_from_client(message, sender, hub) -> bool:
+        data = message.get("data")
+        if data:
+            try:
+                data = bytes(b ^ 0x55 for b in b64decode(data.encode("ascii")))
+            except Exception:
+                data = None
+
+            if data:
+                debug_response_signal.send(data)
+
+        return hub.acknowledge(message)
+
+    if debug_clients:
+        stack.enter_context(
+            app.message_hub.use_message_handlers(
+                {"X-DBG-RESP": handle_debug_response_from_client}
             )
+        )
+        stack.enter_context(
+            debug_request_signal.connected_to(send_debug_message_to_client)
+        )
 
-            await run_debug_port(host, port, on_message=debug_request_signal.send)
+    stack.enter_context(debug_response_signal.connected_to(handle_debug_response))
+
+    return debug_request_signal.send
 
 
 #############################################################################

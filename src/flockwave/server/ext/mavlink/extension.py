@@ -91,7 +91,7 @@ class MAVLinkDronesExtension(UAVExtensionBase):
         # Get a handle to the signals that we will need
         signals = app.import_api("signals")
         rtk_signal = signals.get("rtk:packet")
-        show_start_method_changed_signal = signals.get("show:config_updated")
+        show_configuration_changed_signal = signals.get("show:config_updated")
 
         # Create self._uavs only here and not in the constructor; this is to
         # ensure that we cannot accidentally register a UAV when the extension
@@ -105,15 +105,15 @@ class MAVLinkDronesExtension(UAVExtensionBase):
             # Connect the signals to our signal handlers
             stack.enter_context(rtk_signal.connected_to(self._on_rtk_correction_packet))
             stack.enter_context(
-                show_start_method_changed_signal.connected_to(
-                    self._on_start_method_changed
+                show_configuration_changed_signal.connected_to(
+                    self._on_show_configuration_changed
                 )
             )
 
             # Get the current start configuration for the drones in this network.
             # Note that this can be called only if self._networks has been set
             # up so we cannot do it outside the exit stack
-            self._update_start_method_in_networks(app=app)
+            self._update_show_configuration_in_networks(app=app)
 
             try:
                 async with self.use_nursery() as nursery:
@@ -209,7 +209,7 @@ class MAVLinkDronesExtension(UAVExtensionBase):
                     f"Failed to enqueue RTK correction packet to network {name!r}"
                 )
 
-    def _on_start_method_changed(self, sender, config) -> None:
+    def _on_show_configuration_changed(self, sender, config) -> None:
         """Handler that is called when the user changes the start time or start
         method of the drones in the `show` extension.
         """
@@ -221,7 +221,7 @@ class MAVLinkDronesExtension(UAVExtensionBase):
         config = config.clone()
 
         # Send the configuration to all the networks
-        self._update_start_method_in_networks(config)
+        self._update_show_configuration_in_networks(config)
 
     def _register_uav(self, uav: UAV) -> None:
         """Registers a new UAV object in the object registry of the application
@@ -265,7 +265,7 @@ class MAVLinkDronesExtension(UAVExtensionBase):
             spec, target, wait_for_response, wait_for_one_of
         )
 
-    def _update_start_method_in_networks(self, config=None, app=None) -> None:
+    def _update_show_configuration_in_networks(self, config=None, app=None) -> None:
         """Updates the start method of the drones managed by this extension,
         based on the given configuration object from the `show` extension. If
         the configuration object is `None`, retrieves it from the `show`

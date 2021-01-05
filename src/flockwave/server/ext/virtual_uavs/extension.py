@@ -1,6 +1,7 @@
 from __future__ import absolute_import, division
 
 from functools import partial
+from random import uniform
 from trio import open_nursery, sleep
 from typing import Callable
 
@@ -76,7 +77,7 @@ class VirtualUAVProviderExtension(UAVExtensionBase):
         }
         trans = FlatEarthToGPSCoordinateTransformation.from_json(coordinate_system)
 
-        # Place the given number of drones on a circle
+        # Place the given number of drones
         home_positions = [
             FlatEarthCoordinate(x=vec.x, y=vec.y, amsl=origin_amsl, agl=0)
             for vec in place_drones(
@@ -84,15 +85,28 @@ class VirtualUAVProviderExtension(UAVExtensionBase):
             )
         ]
 
+        # add stochasticity to positions and headings if needed
+        if configuration.get("add_noise", False):
+            home_positions = [
+                FlatEarthCoordinate(
+                    x=p.x + uniform(-2e-6, 2e-6),
+                    y=p.y + uniform(-2e-6, 2e-6),
+                    amsl=p.amsl + uniform(-0.2, 0.2),
+                    agl=0,
+                )
+                for p in home_positions
+            ]
+            headings = [trans.orientation + uniform(-3, 3) for p in home_positions]
+        else:
+            headings = [trans.orientation] * len(home_positions)
+
         # Generate IDs for the UAVs and then create them
         self.uav_ids = [
             make_valid_object_id(id_format.format(index)) for index in range(count)
         ]
         self.uavs = [
-            self._driver.create_uav(
-                id, home=trans.to_gps(home), heading=trans.orientation
-            )
-            for id, home in zip(self.uav_ids, home_positions)
+            self._driver.create_uav(id, home=trans.to_gps(home), heading=heading)
+            for id, home, heading in zip(self.uav_ids, home_positions, headings)
         ]
 
         # Get hold of the 'radiation' extension and associate it to all our
@@ -104,7 +118,9 @@ class VirtualUAVProviderExtension(UAVExtensionBase):
     def configure_driver(self, driver, configuration):
         # Set whether the virtual drones should be armed after boot
         driver.uavs_armed_after_boot = bool(configuration.get("arm_after_boot"))
-        driver.use_battery_percentages = bool(configuration.get("use_battery_percentages", True))
+        driver.use_battery_percentages = bool(
+            configuration.get("use_battery_percentages", True)
+        )
 
     @property
     def delay(self):

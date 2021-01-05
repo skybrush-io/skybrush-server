@@ -45,6 +45,7 @@ WORKER_CONFIG = {
         "system_clock": {},
         "virtual_uavs": {
             "arm_after_boot": True,
+            "add_noise": False,
             "count": 5,
             "delay": 0.2,
             "enabled": False,

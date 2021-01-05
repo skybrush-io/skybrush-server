@@ -281,7 +281,7 @@ class MAVLinkNetwork:
                 manager.add(connection, name=name)
 
             # Register the connection aliases
-            self._register_connection_aliases(manager, connection_names, stack)
+            self._register_connection_aliases(manager, connection_names, stack, log=log)
 
             # Set up a dictionary that will map from MAVLink message types that
             # we are waiting for to lists of corresponding (predicate, future)
@@ -719,6 +719,7 @@ class MAVLinkNetwork:
         manager: CommunicationManager,
         connection_names: Sequence[str],
         stack: ExitStack,
+        log,
     ) -> None:
         """Registers some connection aliases in the given communication manager
         object so we can simply send RTK packets to an `RTK_CHANNEL` alias and
@@ -730,21 +731,25 @@ class MAVLinkNetwork:
         if not self._connections:
             return
 
-        def register_by_index(alias: str, index: Optional[int]) -> None:
+        def register_by_index(alias: str, index: Optional[int]) -> str:
             if index is None or index < 0 or index >= len(connection_names):
                 # No such channel, just fall back to the primary one
                 index = 0
 
-            print(f"Registering {alias} --> {connection_names[index]}")
-            stack.enter_context(
-                manager.with_alias(alias, target=connection_names[index])
-            )
+            target = connection_names[index]
+            stack.enter_context(manager.with_alias(alias, target=target))
+
+            return target
+
+        extra = {"id": self.id}
 
         # Register the first connection as the primary
-        register_by_index(PRIMARY_CHANNEL, 0)
+        channel = register_by_index(PRIMARY_CHANNEL, 0)
+        log.info(f"Routing primary traffic to {channel}", extra=extra)
 
         # Register the RTK channel according to the routing setup
-        register_by_index(RTK_CHANNEL, self._routing.get("rtk"))
+        channel = register_by_index(RTK_CHANNEL, self._routing.get("rtk"))
+        log.info(f"Routing RTK corrections to {channel}", extra=extra)
 
     async def _update_broadcast_address_of_channel_to_subnet(
         self, connection_id: str, address: Tuple[str, int], timeout: float = 1

@@ -569,7 +569,9 @@ class MAVLinkDriver(UAVDriver):
             raise RuntimeError(f"Resetting {component!r} is not supported")
 
     async def _send_return_to_home_signal_single(self, uav) -> None:
-        return await self.send_command_long(uav, MAVCommand.NAV_RETURN_TO_LAUNCH)
+        success = await self.send_command_long(uav, MAVCommand.NAV_RETURN_TO_LAUNCH)
+        if not success:
+            raise RuntimeError("Return to home command failed")
 
     async def _send_shutdown_signal_single(self, uav) -> None:
         await self._send_motor_start_stop_signal_single(uav, start=False, force=True)
@@ -707,6 +709,9 @@ class MAVLinkUAV(UAVBase):
         Parameters:
             component: the component to calibrate; currently we support
                 ``baro``, ``level`` or ``gyro``.
+
+        Raises:
+            RuntimeError: if the UAV rejected to calibrate the component
         """
         params = [0] * 7
         if component == "baro":
@@ -718,9 +723,12 @@ class MAVLinkUAV(UAVBase):
         else:
             raise NotSupportedError
 
-        await self.driver.send_command_long(
+        success = await self.driver.send_command_long(
             self, MAVCommand.PREFLIGHT_CALIBRATION, *params
         )
+
+        if not success:
+            raise RuntimeError(f"Failed to calibrate component: {component!r}")
 
     async def clear_scheduled_takeoff_time(self) -> None:
         """Clears the scheduled takeoff time of the UAV."""
@@ -1238,12 +1246,16 @@ class MAVLinkUAV(UAVBase):
     async def reload_show(self) -> None:
         """Asks the UAV to reload the current drone show file."""
         # param1 = 0 if we want to reload the show file
-        await self.driver.send_command_long(self, MAVCommand.USER_1, 0)
+        success = await self.driver.send_command_long(self, MAVCommand.USER_1, 0)
+        if not success:
+            raise RuntimeError("Failed to reload show file")
 
     async def remove_show(self) -> None:
         """Asks the UAV to remove the current drone show file."""
         # param1 = 1 if we want to clear the show file
-        await self.driver.send_command_long(self, MAVCommand.USER_1, 1)
+        success = await self.driver.send_command_long(self, MAVCommand.USER_1, 1)
+        if not success:
+            raise RuntimeError("Failed to remove show file")
 
     async def set_mode(self, mode: Union[int, str]) -> None:
         """Attempts to set the UAV in the given custom mode."""
@@ -1262,13 +1274,16 @@ class MAVLinkUAV(UAVBase):
             except NotSupportedError:
                 raise ValueError("setting flight modes by name is not supported")
 
-        await self.driver.send_command_long(
+        success = await self.driver.send_command_long(
             self,
             MAVCommand.DO_SET_MODE,
             param1=float(base_mode),
             param2=float(mode),
             param3=float(submode),
         )
+
+        if not success:
+            raise RuntimeError(f"UAV rejected flight mode {mode}")
 
     @property
     def supports_scheduled_takeoff(self) -> bool:
@@ -1458,12 +1473,18 @@ class MAVLinkUAV(UAVBase):
         ]
 
         for message_id, interval_hz in stream_rates:
-            await self.driver.send_command_long(
+            success = await self.driver.send_command_long(
                 self,
                 MAVCommand.SET_MESSAGE_INTERVAL,
                 param1=message_id,
                 param2=1000000 / interval_hz,
             )
+
+            if not success:
+                self.driver.log.warn(
+                    f"Failed to configure data stream rate for message {message_id}",
+                    extra={"id": log_id_for_uav(self)},
+                )
 
     async def _configure_data_streams_with_legacy_commands(self) -> None:
         """Configures the data streams that we want to receive from the UAV
@@ -1536,12 +1557,19 @@ class MAVLinkUAV(UAVBase):
         in a separate packet.
         """
         try:
-            await self.driver.send_command_long(
+            success = await self.driver.send_command_long(
                 self, MAVCommand.REQUEST_AUTOPILOT_CAPABILITIES, param1=1
             )
         except TooSlowError:
             self.driver.log.warn(
                 "Failed to request autopilot capabilities; no confirmation received in time",
+                extra={"id": log_id_for_uav(self)},
+            )
+            return
+
+        if not success:
+            self.driver.log.warn(
+                "UAV rejected to send autopilot capabilities",
                 extra={"id": log_id_for_uav(self)},
             )
 

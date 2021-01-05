@@ -8,16 +8,18 @@ Socket.IO-based channel.
 
 from contextlib import contextmanager
 from dataclasses import dataclass
-from flockwave.networking import format_socket_address
 from heapq import heapify, heappush
 from hypercorn.config import Config as HyperConfig
 from hypercorn.trio import serve
 from quart import Blueprint, abort, redirect, request, url_for
 from quart_trio import QuartTrio
 from trio import current_time, sleep
-from typing import Callable, Iterable, Optional
+from typing import Iterable, Optional
 
 import logging
+
+from flockwave.networking import format_socket_address
+from flockwave.server.types import Disposer
 
 from .routing import RoutingMiddleware
 
@@ -38,10 +40,6 @@ class ProposedIndexPage:
     priority: int = 0
     route: str = "/"
 
-
-#: Type specification for disposer functions returned by some of the functions
-#: in this module
-Disposer = Callable[[], None]
 
 ############################################################################
 

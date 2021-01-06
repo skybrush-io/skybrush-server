@@ -10,7 +10,14 @@ from functools import partial
 from math import inf
 from operator import attrgetter
 from quart import Blueprint, render_template
-from trio import BrokenResourceError, open_memory_channel, open_nursery, serve_tcp
+from trio import (
+    BrokenResourceError,
+    fail_after,
+    open_memory_channel,
+    open_nursery,
+    serve_tcp,
+    TooSlowError,
+)
 from trio.abc import ReceiveChannel, Stream
 from trio.lowlevel import current_root_task
 from typing import Callable
@@ -56,10 +63,29 @@ def setup_debugging_server(app, stack, debug_clients: bool = False):
     debug_request_signal = app.import_api("signals").get("debug:request")
     debug_response_signal = app.import_api("signals").get("debug:response")
 
+    # Buffer in which we assemble debug messages to send to the client. It is
+    # assumed that debug messages are terminated by \n, optionally preceded by
+    # \r
+    buffer = []
+
     def send_debug_message_to_client(data: bytes) -> None:
-        data = b64encode(bytes(b ^ 0x55 for b in data)).decode("ascii")
-        msg = app.message_hub.create_notification({"type": "X-DBG-REQ", "data": data})
-        app.message_hub.enqueue_message(msg)
+        nonlocal buffer
+
+        while data:
+            pre, sep, data = data.partition(b"\n")
+            if pre:
+                buffer.append(pre)
+
+            if sep and buffer:
+                # We have assembled a full message so we must send it
+                merged = b"".join(buffer).rstrip(b"\r")
+                if merged:
+                    encoded = b64encode(bytes(b ^ 0x55 for b in merged)).decode("ascii")
+                    buffer.clear()
+                    msg = app.message_hub.create_notification(
+                        {"type": "X-DBG-REQ", "data": encoded}
+                    )
+                    app.message_hub.enqueue_message(msg)
 
     def handle_debug_response_from_client(message, sender, hub) -> bool:
         data = message.get("data")
@@ -139,6 +165,7 @@ async def handle_debug_connection_outbound(
     stream: Stream, *, on_message: Callable[[bytes], None]
 ) -> None:
     if connected_client_queue is not None:
+        # one connection only
         await stream.aclose()
         return
 
@@ -149,21 +176,33 @@ async def handle_debug_connection_outbound(
     # in production anyway.
     tx_queue, rx_queue = open_memory_channel(inf)
 
-    with overridden(globals(), connected_client_queue=tx_queue):
-        async with open_nursery() as nursery:
-            nursery.start_soon(handle_debug_connection_inbound, stream, rx_queue)
-            while True:
-                data = await stream.receive_some()
-                if not data:
-                    # Connection closed
-                    break
+    async with tx_queue:
+        with overridden(globals(), connected_client_queue=tx_queue):
+            async with open_nursery() as nursery:
+                nursery.start_soon(handle_debug_connection_inbound, stream, rx_queue)
 
-                try:
-                    on_message(data)
-                except Exception:
-                    log.exception(
-                        "Unexpected exception while executing debug message handler"
-                    )
+                while True:
+                    try:
+                        with fail_after(30):
+                            data = await stream.receive_some()
+                            if not data:
+                                # Connection closed
+                                break
+                    except TooSlowError:
+                        # no data from client in 30 seconds, send a keepalive packet
+                        print("Trying to send keepalive")
+                        handle_debug_response(b".\r\n")
+                        data = None
+
+                    if data:
+                        try:
+                            on_message(data)
+                        except Exception:
+                            log.exception(
+                                "Unexpected exception while executing debug message handler"
+                            )
+
+                nursery.cancel_scope.cancel()
 
 
 async def handle_debug_connection_inbound(

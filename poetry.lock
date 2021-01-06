@@ -416,7 +416,7 @@ reference = "collmot"
 
 [[package]]
 name = "flockwave-conn"
-version = "2.4.0"
+version = "2.5.0"
 description = "Connection objects for various data sources"
 category = "main"
 optional = false
@@ -663,7 +663,7 @@ reference = "collmot"
 
 [[package]]
 name = "idna"
-version = "3.0"
+version = "3.1"
 description = "Internationalized Domain Names in Applications (IDNA)"
 category = "main"
 optional = false
@@ -1744,7 +1744,7 @@ reference = "collmot"
 
 [[package]]
 name = "zeroconf"
-version = "0.28.7"
+version = "0.28.8"
 description = "Pure Python Multicast DNS Service Discovery Library (Bonjour/Avahi compatible)"
 category = "main"
 optional = false
@@ -1778,7 +1778,7 @@ reference = "collmot"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7"
-content-hash = "86b91191ea142833131c80e0dd91f6e37321d93359b703167eb91313d76c423e"
+content-hash = "5144311b89cfdccd8db9672ded1d86f21bf1ed34b41c213f9f3789f9c74392b6"
 
 [metadata.files]
 aio-usb-hotplug = [
@@ -1929,8 +1929,8 @@ flockwave-app-framework = [
     {file = "flockwave_app_framework-0.4.1-py3-none-any.whl", hash = "md5:a6edd30f08f90aefce4528fc652cd1db"},
 ]
 flockwave-conn = [
-    {file = "flockwave-conn-2.4.0.tar.gz", hash = "md5:e75deba3c7a957d6f8e5fdd995d38251"},
-    {file = "flockwave_conn-2.4.0-py3-none-any.whl", hash = "md5:5a447852257421d289e9b8dc051c5f82"},
+    {file = "flockwave-conn-2.5.0.tar.gz", hash = "md5:45cc331c1467e6a3f340478558ad1a93"},
+    {file = "flockwave_conn-2.5.0-py3-none-any.whl", hash = "md5:bd7716e9204f10f309e1def03ff87e55"},
 ]
 flockwave-ext = [
     {file = "flockwave-ext-1.4.1.tar.gz", hash = "md5:9117bb199fb10fb5f22f0798426ad2da"},
@@ -1983,8 +1983,8 @@ hyperframe = [
     {file = "hyperframe-6.0.0.tar.gz", hash = "sha256:742d2a4bc3152a340a49d59f32e33ec420aa8e7054c1444ef5c7efff255842f1"},
 ]
 idna = [
-    {file = "idna-3.0-py2.py3-none-any.whl", hash = "sha256:320229aadbdfc597bc28876748cc0c9d04d476e0fe6caacaaddea146365d9f63"},
-    {file = "idna-3.0.tar.gz", hash = "sha256:c9a26e10e5558412384fac891eefb41957831d31be55f1e2c98ed97a70abb969"},
+    {file = "idna-3.1-py3-none-any.whl", hash = "sha256:5205d03e7bcbb919cc9c19885f9920d622ca52448306f2377daede5cf3faac16"},
+    {file = "idna-3.1.tar.gz", hash = "sha256:c5b02147e01ea9920e6b0a3f1f7bb833612d507592c837a6c49552768f4054e1"},
 ]
 ifaddr = [
     {file = "ifaddr-0.1.7-py2.py3-none-any.whl", hash = "sha256:d1f603952f0a71c9ab4e705754511e4e03b02565bc4cec7188ad6415ff534cd3"},
@@ -2469,8 +2469,8 @@ wsproto = [
     {file = "wsproto-1.0.0.tar.gz", hash = "sha256:868776f8456997ad0d9720f7322b746bbe9193751b5b290b7f924659377c8c38"},
 ]
 zeroconf = [
-    {file = "zeroconf-0.28.7-py3-none-any.whl", hash = "sha256:9872b779cf290b6d623d3cb1024d5c88fd9b7c4b2dd35ce54397cf8887632ad1"},
-    {file = "zeroconf-0.28.7.tar.gz", hash = "sha256:f6effbe36b2b65bdc4c282d3d44a3dbf6f18ac5903a50a2a21928dd7e0a68d8c"},
+    {file = "zeroconf-0.28.8-py3-none-any.whl", hash = "sha256:3608be2db58f6f0dc70665e02ab420fb8bf428016f2c78403d879e066ecc9bff"},
+    {file = "zeroconf-0.28.8.tar.gz", hash = "sha256:4be24a10aa9c73406f48d42a8b3b077c217b0e8d7ed1e57639630da520c25959"},
 ]
 zipp = [
     {file = "zipp-3.4.0-py3-none-any.whl", hash = "sha256:102c24ef8f171fd729d46599845e95c7ab894a4cf45f5de11a44cc7444fb1108"},

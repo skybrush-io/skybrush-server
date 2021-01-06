@@ -403,6 +403,9 @@ class MAVLinkNetwork:
         if address is None:
             raise RuntimeError("UAV has no address in this network")
 
+        # TODO: if we are sending a land or RTL command and the extension is
+        # configured to route these through the secondary channel, send it there
+        # and not to the primary
         destination = (PRIMARY_CHANNEL, address)
 
         if wait_for_response:

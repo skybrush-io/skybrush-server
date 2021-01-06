@@ -89,7 +89,7 @@ def setup_debugging_server(app, stack, debug_clients: bool = False):
                 buffer.clear()
 
     def handle_debug_response_from_client(message, sender, hub) -> bool:
-        data = message.get("data")
+        data = message.body.get("data")
         if data:
             try:
                 data = bytes(b ^ 0x55 for b in b64decode(data.encode("ascii")))
@@ -191,7 +191,7 @@ async def handle_debug_connection_outbound(
                                 break
                     except TooSlowError:
                         # no data from client in 30 seconds, send a keepalive packet
-                        handle_debug_response(b".\r\n")
+                        handle_debug_response(b".")
                         data = None
 
                     if data:
@@ -223,7 +223,7 @@ def handle_debug_response(data: bytes) -> None:
         # No client connected, dropping debug message silently.
         return
 
-    connected_client_queue.send_nowait(data)
+    connected_client_queue.send_nowait(data + b"\r\n")
 
 
 #############################################################################

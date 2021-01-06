@@ -82,11 +82,11 @@ def setup_debugging_server(app, stack, debug_clients: bool = False):
                 merged = b"".join(buffer).rstrip(b"\r")
                 if merged:
                     encoded = b64encode(bytes(b ^ 0x55 for b in merged)).decode("ascii")
-                    buffer.clear()
                     msg = app.message_hub.create_notification(
                         {"type": "X-DBG-REQ", "data": encoded}
                     )
                     app.message_hub.enqueue_message(msg)
+                buffer.clear()
 
     def handle_debug_response_from_client(message, sender, hub) -> bool:
         data = message.get("data")

@@ -190,7 +190,6 @@ async def handle_debug_connection_outbound(
                                 break
                     except TooSlowError:
                         # no data from client in 30 seconds, send a keepalive packet
-                        print("Trying to send keepalive")
                         handle_debug_response(b".\r\n")
                         data = None
 

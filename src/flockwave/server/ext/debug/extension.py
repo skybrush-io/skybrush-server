@@ -40,6 +40,12 @@ connected_client_queue = None
 log = None
 
 
+#: Buffer in which we assemble debug messages to send to the client. It is
+#: assumed that debug messages are terminated by \n, optionally preceded by
+#: \r
+buffer = []
+
+
 async def run(app, configuration, logger):
     """Runs the extension."""
     http_server = app.import_api("http_server")
@@ -63,13 +69,8 @@ def setup_debugging_server(app, stack, debug_clients: bool = False):
     debug_request_signal = app.import_api("signals").get("debug:request")
     debug_response_signal = app.import_api("signals").get("debug:response")
 
-    # Buffer in which we assemble debug messages to send to the client. It is
-    # assumed that debug messages are terminated by \n, optionally preceded by
-    # \r
-    buffer = []
-
     def send_debug_message_to_client(data: bytes) -> None:
-        nonlocal buffer
+        global buffer
 
         while data:
             pre, sep, data = data.partition(b"\n")
@@ -177,7 +178,7 @@ async def handle_debug_connection_outbound(
     tx_queue, rx_queue = open_memory_channel(inf)
 
     async with tx_queue:
-        with overridden(globals(), connected_client_queue=tx_queue):
+        with overridden(globals(), connected_client_queue=tx_queue, buffer=[]):
             async with open_nursery() as nursery:
                 nursery.start_soon(handle_debug_connection_inbound, stream, rx_queue)
 

@@ -1705,8 +1705,8 @@ class MAVLinkUAV(UAVBase):
         that a reconnection event happened.
 
         This function _must_ be called only after a reconnection event. Right
-        now we always return `True`, but we could implement a more sophisticated
+        now we always return `False`, but we could implement a more sophisticated
         check in the future based on the `SYSTEM_TIME` messages and whether the
         `time_boot_ms` timestamp has decreased.
         """
-        return True
+        return False

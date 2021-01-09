@@ -40,6 +40,10 @@ exclude_modules = [
 # Parse default configuration
 root_dir = Path.cwd()
 src_dir = root_dir / "build" / "pyarmor" / "lib"
+if not src_dir.exists():
+    import sysconfig
+    src_dir = Path(sysconfig.get_path("purelib"))
+
 config_file = str(src_dir / "flockwave" / "server" / "config.py")
 config = {}
 exec(

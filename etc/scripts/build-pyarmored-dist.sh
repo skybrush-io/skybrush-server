@@ -81,7 +81,7 @@ if [ $STANDALONE = 1 ]; then
   # Replace the unobfuscated libraries with the obfuscated ones in the PyInstaller
   # distribution
   .venv/bin/python -m pyarmor.helper.repack -p "${BUILD_DIR}/obf" "${BUILD_DIR}/dist/skybrushd"
-  mv skybrushd_obf build/pyarmor/bin/skybrushd
+  mv skybrushd_obf ${BUILD_DIR}/bin/skybrushd
 
   # Clean up after ourselves
   rm -rf skybrushd_extracted

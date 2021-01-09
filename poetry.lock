@@ -533,7 +533,7 @@ reference = "collmot"
 
 [[package]]
 name = "flockwave-spec"
-version = "0.43.0"
+version = "0.44.0"
 description = "JSON-Schema specification of the Flockwave protocol"
 category = "main"
 optional = false
@@ -1778,7 +1778,7 @@ reference = "collmot"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7"
-content-hash = "5144311b89cfdccd8db9672ded1d86f21bf1ed34b41c213f9f3789f9c74392b6"
+content-hash = "158d58e724c4dd5616b8ece27efc1b6082855823f57b24fc373e1d939842cff7"
 
 [metadata.files]
 aio-usb-hotplug = [
@@ -1953,8 +1953,8 @@ flockwave-parsers = [
     {file = "flockwave_parsers-1.2.0-py3-none-any.whl", hash = "md5:4f53aadf684d06c79998b332ec2dcaa0"},
 ]
 flockwave-spec = [
-    {file = "flockwave-spec-0.43.0.tar.gz", hash = "md5:73f6da3084830851c6a9365595ff818c"},
-    {file = "flockwave_spec-0.43.0-py3-none-any.whl", hash = "md5:1da91f133059cc522da57e1a9fe530fd"},
+    {file = "flockwave-spec-0.44.0.tar.gz", hash = "md5:1f7a0a72e501f96c68d477d5868da4ab"},
+    {file = "flockwave_spec-0.44.0-py3-none-any.whl", hash = "md5:381591721a4366a8b2cc74ce0a978796"},
 ]
 future = [
     {file = "future-0.18.2.tar.gz", hash = "sha256:b1bead90b70cf6ec3f0710ae53a525360fa360d306a86583adc6bf83a4db537d"},

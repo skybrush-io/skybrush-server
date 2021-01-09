@@ -50,6 +50,7 @@ class RTKExtension(ExtensionBase):
         self._statistics = RTKStatistics()
         self._survey_settings = SurveySettings()
         self._tx_queue = None
+        self._use_high_precision = True
 
     def configure(self, configuration):
         """Loads the extension."""
@@ -101,6 +102,8 @@ class RTKExtension(ExtensionBase):
             ]
         else:
             self._dynamic_serial_port_filters = []
+
+        self._use_high_precision = bool(configuration.get("use_high_precision", True))
 
     @property
     def current_preset(self) -> Optional[RTKConfigurationPreset]:
@@ -319,7 +322,9 @@ class RTKExtension(ExtensionBase):
             accuracy_cm = int(accuracy * 100)
 
             configurator = UBXRTKBaseConfigurator(
-                duration=duration, accuracy=accuracy, use_high_precision=False
+                duration=duration,
+                accuracy=accuracy,
+                use_high_precision=self._use_high_precision,
             )
 
             self.log.info(

@@ -104,6 +104,7 @@ EXTENSIONS = {
             # },
         },
         "add_serial_ports": True,
+        "use_high_precision": True  # set to false if the rover cannot handle high-precision MSM RTK messages
         # "exclude_serial_ports": ["*ttyAMA*"
     },
     "show": {},

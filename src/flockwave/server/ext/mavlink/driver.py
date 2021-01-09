@@ -367,6 +367,27 @@ class MAVLinkDriver(UAVDriver):
             NotSupportedError: if the command is not supported by the UAV (i.e.
                 we received a response with `MAV_RESULT_UNSUPPORTED`)
         """
+        if channel != Channel.PRIMARY:
+            # We allow and expect ACKs only on the primary channel; the backup
+            # channel is assumed to be one-way only so we fall back to the
+            # non-ACKed version
+            await self.send_command_long_without_ack(
+                target,
+                command_id,
+                param1,
+                param2,
+                param3,
+                param4,
+                param5,
+                param6,
+                param7,
+                timeout=timeout,
+                channel=channel,
+            )
+
+            # Pretend that we have received an ACK
+            return True
+
         if timeout is None or timeout <= 0:
             timeout = self._default_timeout
         if retries is None or retries < 0:
@@ -651,7 +672,7 @@ class MAVLinkDriver(UAVDriver):
         await sleep(0.1)
 
         # Send the takeoff command
-        await uav.takeoff_to_relative_altitude(2.5)
+        await uav.takeoff_to_relative_altitude(2.5, channel=channel)
 
 
 @dataclass
@@ -1396,13 +1417,16 @@ class MAVLinkUAV(UAVBase):
         )
         await self.driver.send_packet(message, self, channel=channel)
 
-    async def takeoff_to_relative_altitude(self, altitude: float = 2.5) -> None:
+    async def takeoff_to_relative_altitude(
+        self, altitude: float = 2.5, *, channel: str = Channel.PRIMARY
+    ) -> None:
         """Instructs the UAV to take off to a relative altitude above its
         current position.
 
         Parameters:
             altitude: the relative altitude above the current position of the
                 UAV where we should take off to
+            channel: the channel to use to send the command
 
         Raises:
             RuntimeError: if the command cannot be sent to the UAV or if it does
@@ -1443,6 +1467,7 @@ class MAVLinkUAV(UAVBase):
             param5=lat,  # latitude
             param6=lon,  # longitude
             param7=altitude,  # takeoff altitude
+            channel=channel,
         ):
             raise RuntimeError("Failed to send takeoff command")
 

@@ -318,7 +318,9 @@ class RTKExtension(ExtensionBase):
             accuracy = self._survey_settings.accuracy
             accuracy_cm = int(accuracy * 100)
 
-            configurator = UBXRTKBaseConfigurator(duration=duration, accuracy=accuracy)
+            configurator = UBXRTKBaseConfigurator(
+                duration=duration, accuracy=accuracy, use_high_precision=False
+            )
 
             self.log.info(
                 f"Starting survey for {preset.title!r} for at least {duration} "

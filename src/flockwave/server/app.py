@@ -35,6 +35,7 @@ from .model.errors import ClientNotSubscribedError, NoSuchPathError
 from .model.log import LogMessage, Severity
 from .model.messages import FlockwaveMessage, FlockwaveResponse
 from .model.object import ModelObject
+from .model.transport import TransportOptions
 from .model.uav import is_uav, UAV, UAVDriver
 from .model.world import World
 from .registries import (
@@ -50,6 +51,37 @@ from .version import __version__ as server_version
 __all__ = ("app",)
 
 PACKAGE_NAME = __name__.rpartition(".")[0]
+
+
+#: Table that describes the handlers of several UAV-related command requests
+UAV_COMMAND_HANDLERS = {
+    "OBJ-CMD": ("send_command", None),
+    "UAV-FLY": (
+        "send_fly_to_target_signal",
+        {"target": GPSCoordinate.from_json},
+    ),
+    "UAV-HALT": ("send_shutdown_signal", {"transport": TransportOptions.from_json}),
+    "UAV-LAND": ("send_landing_signal", {"transport": TransportOptions.from_json}),
+    "UAV-MOTOR": (
+        "send_motor_start_stop_signal",
+        {"transport": TransportOptions.from_json},
+    ),
+    "UAV-PREFLT": ("request_preflight_report", None),
+    "UAV-RST": ("send_reset_signal", {"transport": TransportOptions.from_json}),
+    "UAV-RTH": (
+        "send_return_to_home_signal",
+        {"transport": TransportOptions.from_json},
+    ),
+    "UAV-SIGNAL": (
+        "send_light_or_sound_emission_signal",
+        {"duration": divide_by(1000), "transport": TransportOptions.from_json},
+    ),
+    "UAV-TAKEOFF": ("send_takeoff_signal", {"transport": TransportOptions.from_json}),
+    "UAV-VER": ("request_version_info", None),
+}
+
+#: Constant for a dummy UAV command handler that does nothing
+NULL_HANDLER = (None, None)
 
 
 class SkybrushServer(DaemonApp):
@@ -395,25 +427,7 @@ class SkybrushServer(DaemonApp):
         uavs_by_drivers = self.sort_uavs_by_drivers(uav_ids, response)
 
         # Find the method to invoke on the driver
-        method_name, transformer = {
-            "OBJ-CMD": ("send_command", None),
-            "UAV-FLY": (
-                "send_fly_to_target_signal",
-                {"target": GPSCoordinate.from_json},
-            ),
-            "UAV-HALT": ("send_shutdown_signal", None),
-            "UAV-LAND": ("send_landing_signal", None),
-            "UAV-MOTOR": ("send_motor_start_stop_signal", None),
-            "UAV-PREFLT": ("request_preflight_report", None),
-            "UAV-RST": ("send_reset_signal", None),
-            "UAV-RTH": ("send_return_to_home_signal", None),
-            "UAV-SIGNAL": (
-                "send_light_or_sound_emission_signal",
-                {"duration": divide_by(1000)},
-            ),
-            "UAV-TAKEOFF": ("send_takeoff_signal", None),
-            "UAV-VER": ("request_version_info", None),
-        }.get(message_type, (None, None))
+        method_name, transformer = UAV_COMMAND_HANDLERS.get(message_type, NULL_HANDLER)
 
         # Transform the incoming arguments if needed before sending them
         # to the driver method

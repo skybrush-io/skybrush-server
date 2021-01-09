@@ -240,6 +240,7 @@ class MAVLinkDronesExtension(UAVExtensionBase):
         target: UAV,
         wait_for_response: Optional[MAVLinkMessageSpecification] = None,
         wait_for_one_of: Optional[Sequence[Tuple[str, MAVLinkMessageMatcher]]] = None,
+        channel: Optional[str] = None,
     ) -> Optional[MAVLinkMessage]:
         """Sends a message to the given UAV and optionally waits for a matching
         response.
@@ -255,6 +256,8 @@ class MAVLinkDronesExtension(UAVExtensionBase):
                 this argument to accept it as a response. The source system of
                 the MAVLink message must also be equal to the system ID of the
                 UAV where this message was sent.
+            channel: specifies the channel that the packet should be sent on;
+                defaults to the preferred channel of the network
         """
         network_id = target.network_id
         if not self._networks:
@@ -262,7 +265,7 @@ class MAVLinkDronesExtension(UAVExtensionBase):
 
         network = self._networks[network_id]
         return await network.send_packet(
-            spec, target, wait_for_response, wait_for_one_of
+            spec, target, wait_for_response, wait_for_one_of, channel
         )
 
     def _update_show_configuration_in_networks(self, config=None, app=None) -> None:

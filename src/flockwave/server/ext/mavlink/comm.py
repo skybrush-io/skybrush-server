@@ -4,6 +4,7 @@ UAV and the ground station via some communication link.
 
 from collections import defaultdict
 from compose import compose
+from enum import Enum
 from functools import partial
 from importlib import import_module
 from typing import Any, Callable, List, Union, Tuple
@@ -20,6 +21,25 @@ from .types import MAVLinkMessage, MAVLinkMessageSpecification
 
 
 __all__ = ("create_communication_manager",)
+
+
+class Channel(Enum):
+    """Enum class to contain string aliases for the channels where the primary
+    and the RTK traffic should be sent on.
+    """
+
+    #: Constant to denote packets that we wish to send on the primary channel of the
+    #: network (typically wifi). This will be added as an alias to the first
+    #: connection in each network.
+    PRIMARY = "_primary"
+
+    #: Constant to denote packets that we wish to send on the secondary channel of the
+    #: network (typically a long-range radio). This will be added as an alias to the second
+    #: connection in each network.
+    SECONDARY = "_secondary"
+
+    #: Alias of the channel that should be used for sending RTK connections
+    RTK = "_rtk"
 
 
 def get_mavlink_factory(

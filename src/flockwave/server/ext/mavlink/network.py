@@ -36,7 +36,11 @@ from flockwave.server.concurrency import race
 from flockwave.server.model import ConnectionPurpose, UAV
 from flockwave.server.utils import nop, overridden
 
-from .comm import create_communication_manager, MAVLinkMessage
+from .comm import (
+    create_communication_manager,
+    Channel,
+    MAVLinkMessage,
+)
 from .driver import MAVLinkUAV
 from .enums import MAVAutopilot, MAVComponent, MAVMessageType, MAVState, MAVType
 from .packets import DroneShowStatus
@@ -54,14 +58,6 @@ from .utils import (
 )
 
 __all__ = ("MAVLinkNetwork",)
-
-#: Constant to denote packets that we wish to send on the primary channel of the
-#: network (typically wifi). This will be added as an alias to the first
-#: connection in each network.
-PRIMARY_CHANNEL = "_primary"
-
-#: Alias of the channel that should be used for sending RTK connections
-RTK_CHANNEL = "_rtk"
 
 #: MAVLink message specification for heartbeat messages that we are sending
 #: to connected UAVs to keep them sending telemetry data
@@ -340,7 +336,7 @@ class MAVLinkNetwork:
 
         for message in self._rtk_correction_packet_encoder.encode(packet):
             self.manager.enqueue_broadcast_packet(
-                message, destination=RTK_CHANNEL, allow_failure=True
+                message, destination=Channel.RTK, allow_failure=True
             )
 
     def notify_scheduled_takeoff_config_changed(self, config):
@@ -363,7 +359,7 @@ class MAVLinkNetwork:
         if address is None:
             raise RuntimeError("UAV has no address in this network")
 
-        destination = (PRIMARY_CHANNEL, address)
+        destination = (Channel.PRIMARY, address)
         await self.manager.send_packet(spec, destination)
 
     async def send_packet(
@@ -372,6 +368,7 @@ class MAVLinkNetwork:
         target: UAV,
         wait_for_response: Optional[Tuple[str, MAVLinkMessageMatcher]] = None,
         wait_for_one_of: Optional[Sequence[Tuple[str, MAVLinkMessageMatcher]]] = None,
+        channel: Optional[str] = None,
     ) -> Optional[MAVLinkMessage]:
         """Sends a message to the given UAV and optionally waits for a matching
         response.
@@ -392,6 +389,8 @@ class MAVLinkNetwork:
                 matches our expectations. The source system of the MAVLink
                 reply must also be equal to the system ID of the UAV where
                 the original message was sent.
+            channel: specifies the channel that the packet should be sent on;
+                defaults to the primary channel of the network
         """
         spec[1].update(
             target_system=target.system_id,
@@ -403,10 +402,7 @@ class MAVLinkNetwork:
         if address is None:
             raise RuntimeError("UAV has no address in this network")
 
-        # TODO: if we are sending a land or RTL command and the extension is
-        # configured to route these through the secondary channel, send it there
-        # and not to the primary
-        destination = (PRIMARY_CHANNEL, address)
+        destination = (channel or Channel.PRIMARY, address)
 
         if wait_for_response:
             response_type, response_fields = wait_for_response
@@ -493,7 +489,7 @@ class MAVLinkNetwork:
         """
         async for _ in periodic(1):
             await manager.broadcast_packet(
-                HEARTBEAT_SPEC, destination=PRIMARY_CHANNEL, allow_failure=True
+                HEARTBEAT_SPEC, destination=Channel.PRIMARY, allow_failure=True
             )
 
     async def _handle_inbound_messages(self, channel: ReceiveChannel):
@@ -725,7 +721,7 @@ class MAVLinkNetwork:
         log,
     ) -> None:
         """Registers some connection aliases in the given communication manager
-        object so we can simply send RTK packets to an `RTK_CHANNEL` alias and
+        object so we can simply send RTK packets to an `Channel.RTK` alias and
         ensure that it ends up at the correct connection.
 
         This method is called automatically from the main task of this network
@@ -747,11 +743,18 @@ class MAVLinkNetwork:
         extra = {"id": self.id}
 
         # Register the first connection as the primary
-        channel = register_by_index(PRIMARY_CHANNEL, 0)
-        log.info(f"Routing primary traffic to {channel}", extra=extra)
+        channel = register_by_index(Channel.PRIMARY, 0)
+        secondary_channel = register_by_index(Channel.SECONDARY, 1)
+        if channel != secondary_channel:
+            log.info(
+                f"Routing primary traffic to {channel}, falling back to {secondary_channel}",
+                extra=extra,
+            )
+        else:
+            log.info(f"Routing primary traffic to {channel}", extra=extra)
 
         # Register the RTK channel according to the routing setup
-        channel = register_by_index(RTK_CHANNEL, self._routing.get("rtk"))
+        channel = register_by_index(Channel.RTK, self._routing.get("rtk"))
         log.info(f"Routing RTK corrections to {channel}", extra=extra)
 
     async def _update_broadcast_address_of_channel_to_subnet(

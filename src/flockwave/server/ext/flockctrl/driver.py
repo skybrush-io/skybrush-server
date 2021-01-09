@@ -642,7 +642,7 @@ class FlockCtrlDriver(UAVDriver):
             cmd = "go N{0.lat:.7f} E{0.lon:.7f}".format(target)
         return await self._send_command_to_uav_and_check_for_errors(cmd, uav)
 
-    async def _send_reset_signal_single(self, uav, component):
+    async def _send_reset_signal_single(self, uav, component, *, transport=None):
         if not component:
             # Resetting the whole UAV, this is supported
             return await self._send_command_to_uav_and_check_for_errors("restart", uav)
@@ -650,7 +650,7 @@ class FlockCtrlDriver(UAVDriver):
             # No component resets are implemented on this UAV yet
             raise RuntimeError(f"Resetting {component!r} is not supported")
 
-    async def _send_shutdown_signal_single(self, uav):
+    async def _send_shutdown_signal_single(self, uav, *, transport=None):
         return await self._send_command_to_uav_and_check_for_errors("halt", uav)
 
     def _uavs_to_ids(self, uavs):

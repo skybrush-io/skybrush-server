@@ -203,26 +203,26 @@ class VirtualUAVDriver(UAVDriver):
         uav.stop_trajectory()
         uav.target = target
 
-    async def _send_landing_signal_single(self, uav) -> None:
+    async def _send_landing_signal_single(self, uav, *, transport) -> None:
         # Make the landing signal async to simulate how it works for "real" drones
         await sleep(0.2)
         uav.land()
 
     def _send_light_or_sound_emission_signal_single(
-        self, uav, signals, duration
+        self, uav, signals, duration, *, transport
     ) -> None:
         if "light" in signals:
             uav.handle_where_are_you(duration)
 
     def _send_motor_start_stop_signal_single(
-        self, uav, start: bool, force: bool = False
+        self, uav, start: bool, force: bool = False, *, transport=None
     ) -> None:
         if start:
             uav.start_motors()
         else:
             uav.stop_motors()
 
-    def _send_reset_signal_single(self, uav, component) -> None:
+    def _send_reset_signal_single(self, uav, component, *, transport=None) -> None:
         if not component:
             # Resetting the whole UAV, this is supported
             uav.reset()
@@ -230,7 +230,7 @@ class VirtualUAVDriver(UAVDriver):
             # No components on this UAV
             raise RuntimeError(f"Resetting {component!r} is not supported")
 
-    def _send_return_to_home_signal_single(self, uav) -> bool:
+    def _send_return_to_home_signal_single(self, uav, *, transport=None) -> bool:
         if uav.state == VirtualUAVState.AIRBORNE:
             target = uav.home.copy()
             target.agl = uav.status.position.agl
@@ -242,11 +242,11 @@ class VirtualUAVDriver(UAVDriver):
         else:
             raise RuntimeError("UAV is not airborne, cannot start RTH")
 
-    def _send_shutdown_signal_single(self, uav) -> bool:
+    def _send_shutdown_signal_single(self, uav, *, transport=None) -> bool:
         uav.shutdown()
 
     async def _send_takeoff_signal_single(
-        self, uav, *, scheduled: bool = False
+        self, uav, *, scheduled: bool = False, transport=None
     ) -> None:
         await sleep(0.2)
         uav.takeoff()

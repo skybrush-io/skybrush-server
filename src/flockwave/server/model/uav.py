@@ -7,6 +7,7 @@ from typing import Any, Dict, Iterable, List, Optional, Union
 
 from flockwave.gps.vectors import GPSCoordinate, PositionXYZ, VelocityNED, VelocityXYZ
 from flockwave.server.errors import NotSupportedError
+from flockwave.server.model.transport import TransportOptions
 from flockwave.server.logger import log as base_log
 from flockwave.spec.schema import get_complex_object_schema
 
@@ -531,7 +532,9 @@ class UAVDriver(metaclass=ABCMeta):
             target=target,
         )
 
-    def send_landing_signal(self, uavs):
+    def send_landing_signal(
+        self, uavs: List[UAV], transport: Optional[TransportOptions] = None
+    ):
         """Asks the driver to send a landing signal to the given UAVs, each
         of which are assumed to be managed by this driver.
 
@@ -539,7 +542,8 @@ class UAVDriver(metaclass=ABCMeta):
         a driver; override ``_send_landing_signal_single()`` instead.
 
         Parameters:
-            uavs (List[UAV]): the UAVs to address with this request.
+            uavs: the UAVs to address with this request.
+            transport: transport options for sending the signal
 
         Returns:
             Dict[UAV,object]: dict mapping UAVs to the corresponding results
@@ -548,11 +552,18 @@ class UAVDriver(metaclass=ABCMeta):
                 awaitables)
         """
         return self._send_signal(
-            uavs, "landing signal", self._send_landing_signal_single
+            uavs,
+            "landing signal",
+            self._send_landing_signal_single,
+            transport=transport,
         )
 
     def send_light_or_sound_emission_signal(
-        self, uavs, signals: List[str], duration: int
+        self,
+        uavs,
+        signals: List[str],
+        duration: int,
+        transport: Optional[TransportOptions] = None,
     ):
         """Asks the driver to send a light or sound emission signal to the
         given UAVs, each of which are assumed to be managed by this driver.
@@ -562,10 +573,11 @@ class UAVDriver(metaclass=ABCMeta):
         instead.
 
         Parameters:
-            uavs (List[UAV]): the UAVs to address with this request.
-            signals (List[str]): the list of signal types that the
-                targeted UAVs should emit (e.g., 'sound', 'light')
-            duration (int): the duration of the required signal in milliseconds
+            uavs: the UAVs to address with this request.
+            signals: the list of signal types that the targeted UAVs should
+                emit (e.g., 'sound', 'light')
+            duration: the duration of the required signal in milliseconds
+            transport: transport options for sending the signal
 
         Returns:
             Dict[UAV,object]: dict mapping UAVs to the corresponding results
@@ -579,10 +591,15 @@ class UAVDriver(metaclass=ABCMeta):
             self._send_light_or_sound_emission_signal_single,
             signals=signals,
             duration=duration,
+            transport=transport,
         )
 
     def send_motor_start_stop_signal(
-        self, uavs, start: bool = False, force: bool = False
+        self,
+        uavs,
+        start: bool = False,
+        force: bool = False,
+        transport: Optional[TransportOptions] = None,
     ):
         """Asks the driver to send a signal to start or stop the motors of the
         given UAVs, each of which are assumed to be managed by this driver.
@@ -596,6 +613,7 @@ class UAVDriver(metaclass=ABCMeta):
                 (`False`)
             force: whether to force the execution of the command even if it is
                 unsafe (e.g., stopping the motors while airborne)
+            transport: transport options for sending the signal
 
         Returns:
             Dict[UAV,object]: dict mapping UAVs to the corresponding results
@@ -609,9 +627,16 @@ class UAVDriver(metaclass=ABCMeta):
             self._send_motor_start_stop_signal_single,
             start=start,
             force=force,
+            transport=transport,
         )
 
-    def send_reset_signal(self, uavs, *, component: Optional[str] = None):
+    def send_reset_signal(
+        self,
+        uavs,
+        *,
+        component: Optional[str] = None,
+        transport: Optional[TransportOptions] = None,
+    ):
         """Asks the driver to send a reset signal to the given UAVs in order
         to restart some component of the UAV or the whole UAV itself.
 
@@ -621,6 +646,7 @@ class UAVDriver(metaclass=ABCMeta):
         Parameters:
             component: the component to reset. ``None`` or an empty string means
                 to reset the entire UAV.
+            transport: transport options for sending the signal
 
         Returns:
             Dict[UAV,object]: dict mapping UAVs to the corresponding results
@@ -633,9 +659,12 @@ class UAVDriver(metaclass=ABCMeta):
             "reset signal",
             self._send_reset_signal_single,
             component=str(component or ""),
+            transport=transport,
         )
 
-    def send_return_to_home_signal(self, uavs):
+    def send_return_to_home_signal(
+        self, uavs, transport: Optional[TransportOptions] = None
+    ):
         """Asks the driver to send a return-to-home signal to the given
         UAVs, each of which are assumed to be managed by this driver.
 
@@ -644,6 +673,7 @@ class UAVDriver(metaclass=ABCMeta):
 
         Parameters:
             uavs (List[UAV]): the UAVs to address with this request.
+            transport: transport options for sending the signal
 
         Returns:
             Dict[UAV,object]: dict mapping UAVs to the corresponding results
@@ -652,10 +682,15 @@ class UAVDriver(metaclass=ABCMeta):
                 awaitables)
         """
         return self._send_signal(
-            uavs, "return to home signal", self._send_return_to_home_signal_single
+            uavs,
+            "return to home signal",
+            self._send_return_to_home_signal_single,
+            transport=transport,
         )
 
-    def send_shutdown_signal(self, uavs):
+    def send_shutdown_signal(
+        self, uavs: List[UAV], transport: Optional[TransportOptions] = None
+    ):
         """Asks the driver to send a shutdown signal to the given UAVs, each
         of which are assumed to be managed by this driver.
 
@@ -663,7 +698,8 @@ class UAVDriver(metaclass=ABCMeta):
         a driver; override ``_send_shutdown_signal_single()`` instead.
 
         Parameters:
-            uavs (List[UAV]): the UAVs to address with this request.
+            uavs: the UAVs to address with this request
+            transport: transport options for sending the signal
 
         Returns:
             Dict[UAV,object]: dict mapping UAVs to the corresponding results
@@ -672,7 +708,10 @@ class UAVDriver(metaclass=ABCMeta):
                 awaitables)
         """
         return self._send_signal(
-            uavs, "shutdown signal", self._send_shutdown_signal_single
+            uavs,
+            "shutdown signal",
+            self._send_shutdown_signal_single,
+            transport=transport,
         )
 
     def send_takeoff_countdown_notification(self, uavs, delay: Optional[float]):
@@ -702,7 +741,11 @@ class UAVDriver(metaclass=ABCMeta):
         )
 
     def send_takeoff_signal(
-        self, uavs: List[UAV], *, scheduled: bool = False
+        self,
+        uavs: List[UAV],
+        *,
+        scheduled: bool = False,
+        transport: Optional[TransportOptions] = None,
     ) -> Dict[UAV, object]:
         """Asks the driver to send a takeoff signal to the given UAVs, each
         of which are assumed to be managed by this driver.
@@ -714,6 +757,7 @@ class UAVDriver(metaclass=ABCMeta):
             uavs: the UAVs to address with this request
             scheduled: whether the takeoff signal was scheduled earlier and is
                 now issued autonomously by the server
+            transport: transport options for sending the signal
 
         Returns:
             dict mapping UAVs to the corresponding results (which may also be
@@ -725,6 +769,7 @@ class UAVDriver(metaclass=ABCMeta):
             "takeoff signal",
             self._send_takeoff_signal_single,
             scheduled=scheduled,
+            transport=transport,
         )
 
     def validate_command(self, command: str, args, kwds) -> Optional[str]:
@@ -841,7 +886,9 @@ class UAVDriver(metaclass=ABCMeta):
         """
         raise NotImplementedError
 
-    def _send_landing_signal_single(self, uav: UAV) -> None:
+    def _send_landing_signal_single(
+        self, uav: UAV, *, transport: Optional[TransportOptions] = None
+    ) -> None:
         """Asks the driver to send a landing signal to a single UAV managed
         by this driver.
 
@@ -864,7 +911,12 @@ class UAVDriver(metaclass=ABCMeta):
         raise NotImplementedError
 
     def _send_light_or_sound_emission_signal_single(
-        self, uav: UAV, signals: List[str], duration: int
+        self,
+        uav: UAV,
+        signals: List[str],
+        duration: int,
+        *,
+        transport: Optional[TransportOptions] = None,
     ) -> None:
         """Asks the driver to send a light or sound emission signal to a
         single UAV managed by this driver.
@@ -886,6 +938,7 @@ class UAVDriver(metaclass=ABCMeta):
             signals: the list of signal types that the targeted UAV should emit
                 (e.g., 'sound', 'light')
             duration: the duration of the required signal in milliseconds
+            transport: transport options for sending the signal
 
         Raises:
             NotImplementedError: if the operation is not supported by the
@@ -896,7 +949,12 @@ class UAVDriver(metaclass=ABCMeta):
         raise NotImplementedError
 
     def _send_motor_start_stop_signal_single(
-        self, uav: UAV, start: bool, force: bool = False
+        self,
+        uav: UAV,
+        start: bool,
+        force: bool = False,
+        *,
+        transport: Optional[TransportOptions] = None,
     ) -> None:
         """Asks the driver to send a signal to start or stop the motors of the
         given UAVs, each of which are assumed to be managed by this driver.
@@ -914,6 +972,7 @@ class UAVDriver(metaclass=ABCMeta):
                 (`False`)
             force: whether to force the execution of the command even if it is
                 unsafe (e.g., stopping the motors while airborne)
+            transport: transport options for sending the signal
 
         Raises:
             NotImplementedError: if the operation is not supported by the
@@ -923,7 +982,9 @@ class UAVDriver(metaclass=ABCMeta):
         """
         raise NotImplementedError
 
-    def _send_reset_signal_single(self, uav: UAV, *, component: str) -> None:
+    def _send_reset_signal_single(
+        self, uav: UAV, *, component: str, transport: Optional[TransportOptions] = None
+    ) -> None:
         """Asks the driver to send a reset signal to a single UAV managed by
         this driver.
 
@@ -938,6 +999,7 @@ class UAVDriver(metaclass=ABCMeta):
             uav: the UAV to address with this request.
             component: the component to reset; an empty string means that the
                 entire UAV should be reset.
+            transport: transport options for sending the signal
 
         Raises:
             NotImplementedError: if the operation is not supported by the
@@ -947,7 +1009,9 @@ class UAVDriver(metaclass=ABCMeta):
         """
         raise NotImplementedError
 
-    def _send_return_to_home_signal_single(self, uav: UAV):
+    def _send_return_to_home_signal_single(
+        self, uav: UAV, *, transport: Optional[TransportOptions] = None
+    ):
         """Asks the driver to send a return-to-home signal to a single UAV
         managed by this driver.
 
@@ -960,6 +1024,7 @@ class UAVDriver(metaclass=ABCMeta):
 
         Parameters:
             uav: the UAV to address with this request.
+            transport: transport options for sending the signal
 
         Raises:
             NotImplementedError: if the operation is not supported by the
@@ -969,7 +1034,9 @@ class UAVDriver(metaclass=ABCMeta):
         """
         raise NotImplementedError
 
-    def _send_shutdown_signal_single(self, uav: UAV):
+    def _send_shutdown_signal_single(
+        self, uav: UAV, *, transport: Optional[TransportOptions] = None
+    ):
         """Asks the driver to send a shutdown signal to a single UAV managed
         by this driver.
 
@@ -982,6 +1049,7 @@ class UAVDriver(metaclass=ABCMeta):
 
         Parameters:
             uav: the UAV to address with this request.
+            transport: transport options for sending the signal
 
         Raises:
             NotImplementedError: if the operation is not supported by the
@@ -1011,7 +1079,9 @@ class UAVDriver(metaclass=ABCMeta):
         """
         pass
 
-    def _send_takeoff_signal_single(self, uav: UAV):
+    def _send_takeoff_signal_single(
+        self, uav: UAV, *, transport: Optional[TransportOptions] = None
+    ):
         """Asks the driver to send a takeoff signal to a single UAV managed
         by this driver.
 
@@ -1024,6 +1094,7 @@ class UAVDriver(metaclass=ABCMeta):
 
         Parameters:
             uav: the UAV to address with this request.
+            transport: transport options for sending the signal
 
         Raises:
             NotImplementedError: if the operation is not supported by the

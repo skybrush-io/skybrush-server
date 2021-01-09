@@ -225,19 +225,21 @@ class CrazyflieDriver(UAVDriver):
     async def _request_version_info_single(self, uav) -> VersionInfo:
         return await uav.get_version_info()
 
-    async def _send_landing_signal_single(self, uav) -> None:
+    async def _send_landing_signal_single(self, uav, *, transport) -> None:
         if uav.is_in_drone_show_mode:
             await uav.stop_drone_show()
         else:
             await uav.land()
 
     async def _send_light_or_sound_emission_signal_single(
-        self, uav, signals, duration
+        self, uav, signals, duration, *, transport
     ) -> None:
         if "light" in signals:
             await uav.emit_light_signal()
 
-    async def _send_reset_signal_single(self, uav, component) -> None:
+    async def _send_reset_signal_single(
+        self, uav, component, *, transport=None
+    ) -> None:
         if not component:
             # Resetting the whole UAV, this is supported
             # TODO(ntamas): log blocks have to be re-configured after reboot
@@ -246,7 +248,7 @@ class CrazyflieDriver(UAVDriver):
             # No component resets are implemented on this UAV yet
             raise RuntimeError(f"Resetting {component!r} is not supported")
 
-    async def _send_shutdown_signal_single(self, uav) -> None:
+    async def _send_shutdown_signal_single(self, uav, *, transport=None) -> None:
         await uav.shutdown()
 
     async def _send_takeoff_countdown_notification_single(
@@ -267,7 +269,7 @@ class CrazyflieDriver(UAVDriver):
                 await uav.stop_drone_show()
 
     async def _send_takeoff_signal_single(
-        self, uav, *, scheduled: bool = False
+        self, uav, *, scheduled: bool = False, transport=None
     ) -> None:
         if uav.is_in_drone_show_mode:
             await uav.start_drone_show()

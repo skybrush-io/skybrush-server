@@ -118,6 +118,7 @@ fi
 
 cd skybrush-server
 git pull
+rm -rf dist/pyarmor/*.tar.gz
 etc/scripts/build-pyarmored-dist.sh
 cd ..
 
@@ -127,6 +128,7 @@ fi
 
 cd skybrush-console-frontend
 git pull
+rm -rf dist/pyarmor/*.tar.gz
 etc/scripts/build-pyarmored-dist.sh
 cd ..
 

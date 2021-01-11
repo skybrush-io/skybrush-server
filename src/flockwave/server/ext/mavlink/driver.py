@@ -85,7 +85,7 @@ def transport_options_to_channel(options: Optional[TransportOptions]) -> Channel
     of the CommunicationManager to fall back to another channel if the specified
     channel is not open.
     """
-    if options is not None and options.channel and options.channel > 0:
+    if options is not None and getattr(options, "channel", 0) > 0:
         return Channel.SECONDARY
     else:
         return Channel.PRIMARY

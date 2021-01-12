@@ -31,7 +31,7 @@ poetry build -f sdist
 # Generate requirements.txt files. We assume Python 3.7.9 because some packages
 # do not provide wheels for 3.8 yet
 poetry export -f requirements.txt -o requirements.txt --without-hashes --with-credentials
-.venv/bin/python etc/scripts/collect-win32-deps.py ${PYTHON_VERSION}
+.venv/bin/python etc/deployment/nsis/collect-win32-deps.py ${PYTHON_VERSION}
 ls dist/`echo ${PROJECT_NAME} | sed -e 's/-/_/g'`*.whl >>requirements-win32-wheels.txt
 trap "rm -f requirements.txt requirements-win32-*.txt installer.cfg" EXIT
 
@@ -61,8 +61,8 @@ cat >installer.cfg <<EOF
 name=Skybrush Server
 version=${VERSION}
 publisher=CollMot Robotics
-entry_point=flockwave.server.launcher:start
-# TODO: icon
+script=etc/deployment/nsis/skybrushd.py
+icon=assets/icons/win/skybrushd.ico
 console=true
 
 [Python]

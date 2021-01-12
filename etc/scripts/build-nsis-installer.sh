@@ -6,6 +6,7 @@ BUILD_DIR="./build/nsis"
 WHEEL_DIR="./build/wheels"
 OUTPUT_DIR="./dist/windows"
 OBFUSCATED_PACKAGES="aiocflib flockwave skybrush"
+PYTHON_VERSION=3.7.9
 
 ###############################################################################
 
@@ -30,9 +31,9 @@ poetry build -f sdist
 # Generate requirements.txt files. We assume Python 3.7.9 because some packages
 # do not provide wheels for 3.8 yet
 poetry export -f requirements.txt -o requirements.txt --without-hashes --with-credentials
-.venv/bin/python etc/scripts/collect-win32-deps.py
+.venv/bin/python etc/scripts/collect-win32-deps.py ${PYTHON_VERSION}
 ls dist/`echo ${PROJECT_NAME} | sed -e 's/-/_/g'`*.whl >>requirements-win32-wheels.txt
-trap "rm -f requirements.txt installer.cfg" EXIT
+trap "rm -f requirements.txt requirements-win32-*.txt installer.cfg" EXIT
 
 # Collect all wheels and stuff into a folder
 rm -rf "${WHEEL_DIR}"
@@ -65,7 +66,7 @@ entry_point=flockwave.server.launcher:start
 console=true
 
 [Python]
-version=3.7.9
+version=${PYTHON_VERSION}
 bitness=32
 
 [Include]

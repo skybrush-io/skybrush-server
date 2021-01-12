@@ -6,19 +6,27 @@
 from contextlib import ExitStack
 from packaging.markers import Marker
 
+import sys
 import toml
 
 
 def main():
+    if len(sys.argv) < 2:
+        print("Usage: {0} python-version".format(sys.argv[0]))
+        sys.exit(1)
+
+    python_full_version = str(sys.argv[1])
+    python_version, _, _ = python_full_version.rpartition(".")
+
     with open("poetry.lock") as fp:
         lockfile = toml.load(fp)
 
     env = {
         "os_name": "nt",
         "sys_platform": "win32",
-        "python_version": "3.7",
-        "python_full_version": "3.7.9",
-        "implementation_name": "cp"
+        "python_version": python_version,
+        "python_full_version": python_full_version,
+        "implementation_name": "cp",
     }
 
     stack = ExitStack()
@@ -34,14 +42,19 @@ def main():
                 fps = (wheels_fp, source_fp)
             else:
                 spec, _, markers = line.partition(";")
+                # HACK HACK HACK: remove markers because Poetry seems to include
+                # incorrect rules there
+                markers = ""
                 if not markers or Marker(markers).evaluate(env):
-                    name = spec[:spec.index("=")]
+                    name = spec[: spec.index("=")]
                     if name == "lxml":
                         fps = ()
                     else:
                         files = lockfile["metadata"]["files"][name]
-                        has_wheel = any(entry["file"].endswith(".whl") for entry in files)
-                        fps = (wheels_fp, ) if has_wheel else (source_fp, )
+                        has_wheel = any(
+                            entry["file"].endswith(".whl") for entry in files
+                        )
+                        fps = (wheels_fp,) if has_wheel else (source_fp,)
                         line = spec
                 else:
                     fps = ()
@@ -49,6 +62,6 @@ def main():
             for fp in fps:
                 fp.write(line + "\n")
 
+
 if __name__ == "__main__":
     main()
-

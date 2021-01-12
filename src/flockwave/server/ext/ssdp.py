@@ -12,6 +12,7 @@ M-SEARCH requests for root devices, and for searches for
 
 from contextlib import closing
 from datetime import datetime
+from errno import EADDRNOTAVAIL
 from http.server import BaseHTTPRequestHandler
 from io import BytesIO
 from os import getenv
@@ -279,11 +280,32 @@ async def run(app, configuration, logger):
         configuration.get("label", app.config.get("SERVER_NAME")),
     )
 
+    # Set up the extension context
+    context = dict(app=app, label=label, log=logger)
+
     # Set up the socket pair that we will use to send and receive SSDP messages
     sender = create_socket(trio.socket.SOCK_DGRAM)
     sender.setsockopt(trio.socket.IPPROTO_IP, trio.socket.IP_MULTICAST_TTL, 2)
     await sender.bind(("", 0))
 
+    with overridden(globals(), **context), closing(sender):
+        while True:
+            try:
+                await receive_ssdp_messages(multicast_group, port, sender=sender)
+            except OSError as error:
+                logger.warn("SSDP receiver socket closed: '{}'".format(error))
+
+            # If we get here, the receiver socket closed for some reason, so
+            # we wait a bit and then retry
+            await sleep(2)
+
+
+async def receive_ssdp_messages(multicast_group, port, *, sender):
+    global log
+
+    # Set up the receiver end of the socket pair. This is the one that will most
+    # likely fail due to various reasons so we will keep on re-trying this if
+    # needed
     receiver = create_socket(trio.socket.SOCK_DGRAM)
     receiver.setsockopt(trio.socket.IPPROTO_IP, trio.socket.IP_MULTICAST_TTL, 2)
     membership_request = struct.pack(
@@ -297,13 +319,15 @@ async def run(app, configuration, logger):
             trio.socket.IPPROTO_IP, trio.socket.IP_ADD_MEMBERSHIP, membership_request
         )
     except OSError as error:
-        logger.warn("OSError while calling receiver.setsockopt(): '{}'".format(error))
+        if error.errno == EADDRNOTAVAIL:
+            # This happens with ad-hoc wifi on macOS
+            log.warn(f"Cannot join multicast group {multicast_group}")
+        else:
+            raise
 
     await receiver.bind((multicast_group, port))
 
-    context = dict(app=app, label=label, log=logger)
-
-    with overridden(globals(), **context), closing(sender), closing(receiver):
+    with closing(receiver):
         while True:
             data = await receiver.recvfrom(65536)
             await handle_message(*data, socket=sender)

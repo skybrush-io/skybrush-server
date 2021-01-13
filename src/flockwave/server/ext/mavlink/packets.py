@@ -52,6 +52,7 @@ class DroneShowStatusFlag(IntFlag):
     HAS_ORIENTATION = 1 << 4
     HAS_GEOFENCE = 1 << 3
     HAS_AUTHORIZATION_TO_START = 1 << 2
+    IS_GPS_TIME_BAD = 1 << 1
 
 
 _stage_descriptions = {
@@ -241,6 +242,13 @@ class DroneShowStatus:
                 # have been set yet; interpreting the SHOW_START_TIME parameter
                 # needs GPS fix
                 return "No 3D GPS fix yet"
+            elif flags & DroneShowStatusFlag.IS_GPS_TIME_BAD:
+                # If we get here, it means that we _do_ have 3D fix _but_ we
+                # still don't have a GPS timestamp. This can happen only if the
+                # GPS is not sending us the full timestamp; e.g., if it sends
+                # the iTOW but not the GPS week number (as it is on Entron 300
+                # drones)
+                return "Invalid GPS timestamp"
             elif stage is DroneShowExecutionStage.OFF:
                 # We are not even in show mode so the start time info is not relevant
                 return ""

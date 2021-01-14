@@ -2,6 +2,8 @@
 #
 # Script that takes an existing Python virtualenv with all dependencies installed,
 # and obfuscates the main files with PyArmor
+#
+# Use the TARGET_PLATFORM envvar to define a different target platform
 
 ###############################################################################
 
@@ -13,7 +15,11 @@ set -e
 
 SCRIPT_ROOT=`dirname $0`
 REPO_ROOT="${SCRIPT_ROOT}/../.."
-PYARMOR_ARGS="--with-license outer --advanced 2"
+PYARMOR_ARGS="--with-license outer"
+
+if [ "x$TARGET_PLATFORM" != x ]; then
+    PYARMOR_ARGS="${PYARMOR_ARGS} --platform ${TARGET_PLATFORM}"
+fi
 
 if [ "x$3" = x ]; then
     echo "Usage: $0 path-to-pyarmor libdir workdir [--keep]"
@@ -45,6 +51,7 @@ rm -rf "${WORKDIR}"
 for PACKAGE in ${OBFUSCATED_PACKAGES}; do
   mkdir -p "${WORKDIR}/${PACKAGE}"
   ${PYARMOR} obfuscate $PYARMOR_ARGS --no-runtime --recursive --output "${WORKDIR}/${PACKAGE}" "${LIBDIR}/${PACKAGE}/__init__.py"
+  sed -i -e 's/^from \.pytransform/from pytransform/' "${WORKDIR}/${PACKAGE}/__init__.py"
 done
 
 # Obfuscate the launcher script as well
@@ -67,13 +74,17 @@ if [ "x$1" = "x--keep" ]; then
 fi
 
 # Move the obfuscated scripts back to lib/ to overwrite the originals
+if [ -d "${WORKDIR}/pytransform" ]; then
+    mv "${WORKDIR}"/pytransform "${LIBDIR}"
+fi
 (
   cd "${WORKDIR}";
   for i in `find . -type f -name '*.py'`; do
 	mv "$i" "${LIBDIR}/$i"
   done
 )
-mv "${WORKDIR}"/pytransform* "${LIBDIR}"
+mv "${WORKDIR}"/pytransform* "${LIBDIR}" || true
+
 rm -rf "${WORKDIR}"
 
 # Validate that all files are obfuscated that need to be

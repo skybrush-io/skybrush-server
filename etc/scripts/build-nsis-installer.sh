@@ -65,7 +65,8 @@ cat >installer.cfg <<EOF
 name=Skybrush Server
 version=${VERSION}
 publisher=CollMot Robotics
-script=skybrushd-win32.py
+target=\$INSTDIR\\skybrushd.bat
+parameters=
 icon=assets/icons/win/skybrushd.ico
 console=true
 
@@ -77,15 +78,41 @@ bitness=32
 local_wheels=${WHEEL_DIR}/*.whl
 files=etc/blobs/win32/libusb-1.0.dll >\$INSTDIR\lib
     etc/deployment/nsis/skybrushd.bat >\$INSTDIR
+    skybrushd-win32.py >\$INSTDIR
     etc/deployment/nsis/skybrush.jsonc >\$INSTDIR
 
 [Build]
 installer_name=../../dist/windows/Skybrush Server Setup ${VERSION}.exe
 EOF
 
-# Now clean the build dir and invoke pynsist
+# Now clean the build dir and invoke pynsist, but don't run makensis just yet;
+# we will need to obfuscate stuff before that
 rm -rf "${BUILD_DIR}"
-.venv/bin/python -m nsist installer.cfg
+.venv/bin/python -m nsist installer.cfg --no-makensis
+
+# Install the _exact_ Python version that we are going to use with
+# PyArmor. PyArmor absolutely needs a matching Python version when doing
+# cross-platform builds
+pyenv install $PYTHON_VERSION --skip-existing
+
+# Create a virtualenv with the given Python version and install pyarmor in it
+PYARMOR_VENV_NAME=pyarmor-$PYTHON_VERSION
+PYARMOR_VENV=`pyenv virtualenv-prefix ${PYARMOR_VENV_NAME} 2>/dev/null || true`
+if [ "x${PYARMOR_VENV}" = x ]; then
+  pyenv virtualenv $PYTHON_VERSION $PYARMOR_VENV_NAME
+  PYARMOR_VENV=`pyenv virtualenv-prefix ${PYARMOR_VENV_NAME}`
+fi
+if [ "x${PYARMOR_VENV}" = x ]; then
+  echo "Could not create PyArmor virtualenv!"
+  exit 1
+fi
+${PYARMOR_VENV}/bin/pip install -U pyarmor
+
+# Obfuscate the source
+PYARMOR_PLATFORM=darwin.x86_64.0 TARGET_PLATFORM=windows.x86.0 etc/scripts/apply-pyarmor-on-venv.sh ${PYARMOR_VENV}/bin/pyarmor "${BUILD_DIR}/pkgs" "${BUILD_DIR}/obf"
+
+# Okay, call makensis now
+makensis "${BUILD_DIR}"/installer.nsi
 
 # Finally, remove the entry script that was put there only for pynsist's sake
 rm skybrushd-win32.py

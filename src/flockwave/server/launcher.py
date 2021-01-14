@@ -26,7 +26,7 @@ from flockwave.logger import log
 )
 @click.option(
     "--log-style",
-    type=click.Choice(["fancy", "plain"]),
+    type=click.Choice(["fancy", "plain", "json"]),
     default="fancy",
     help="Specify the style of the logging output",
 )

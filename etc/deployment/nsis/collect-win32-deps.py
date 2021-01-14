@@ -10,6 +10,11 @@ import sys
 import toml
 
 
+excluded_wheels = {
+    "python_json_logger"
+}
+
+
 def main():
     if len(sys.argv) < 2:
         print("Usage: {0} python-version".format(sys.argv[0]))
@@ -51,7 +56,7 @@ def main():
                         fps = ()
                     else:
                         files = lockfile["metadata"]["files"][name]
-                        has_wheel = any(
+                        has_wheel = name not in excluded_wheels and any(
                             entry["file"].endswith(".whl") for entry in files
                         )
                         fps = (wheels_fp,) if has_wheel else (source_fp,)

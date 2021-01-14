@@ -1,10 +1,12 @@
 #!python3.7-32
+# Launcher script for Skybrush Server on Win32
 
 import os
 import site
 import sys
 
 scriptdir, script = os.path.split(__file__)
+scriptdir = os.path.abspath(scriptdir or ".")
 installdir = scriptdir  # for compatibility with commands
 
 pkgdir = os.path.join(scriptdir, "pkgs")
@@ -26,5 +28,6 @@ if "pythonw" in sys.executable:
 
 if __name__ == "__main__":
     from flockwave.server.launcher import start
+    os.chdir(scriptdir)
     sys.exit(start())
 

@@ -47,7 +47,7 @@ pyledctrl = "^3.1.0"
 aiocflib = "^0.9.1"
 appdirs = "^1.4.4"
 crcmod = "^1.7"
-flockwave-app-framework = {version = "^0.4.0", extras = ["daemon"]}
+flockwave-app-framework = {version = "^1.1.1", extras = ["daemon"]}
 msgpack = "^1.0.0"
 aio-usb-hotplug = "^3.0.0"
 pyserial = "^3.4"

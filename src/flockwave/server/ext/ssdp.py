@@ -325,7 +325,12 @@ async def receive_ssdp_messages(multicast_group, port, *, sender):
         else:
             raise
 
-    await receiver.bind((multicast_group, port))
+    if platform.system() == "Windows":
+        # Apparently on Windows you need to bind to all interfaces, you cannot
+        # bind to the multicast group
+        await receiver.bind(("", port))
+    else:
+        await receiver.bind((multicast_group, port))
 
     with closing(receiver):
         while True:

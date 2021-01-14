@@ -24,9 +24,9 @@ VERSION=`cat pyproject.toml|grep ^version|head -1|cut -d '"' -f 2`
 # Remove all requirements.txt files, we don't use them, only poetry
 rm -f requirements*.txt
 
-# Build the Skybrush source tarball first
-rm -rf dist/"${PROJECT_NAME}"*.tar.gz
-poetry build -f sdist
+# Build the Skybrush wheel first
+rm -rf dist/"${PROJECT_NAME}"*.whl
+poetry build -f wheel
 
 # Generate requirements.txt files. We assume Python 3.7.9 because some packages
 # do not provide wheels for 3.8 yet
@@ -56,12 +56,16 @@ cp etc/wheels/win32/*.whl "${WHEEL_DIR}"
 # TODO(ntamas): clean up unused MAVlink dialects somehow!
 
 # Create installer.cfg for pynsist
+# We temporarily copy skybrushd.py to the root because pynsist wants it to be
+# there. We could use an alternative path, but then that would be used in the
+# shortcut in the generated desktop shortcut, with slashes :(
+cp etc/deployment/nsis/skybrushd.py skybrushd-win32.py
 cat >installer.cfg <<EOF
 [Application]
 name=Skybrush Server
 version=${VERSION}
 publisher=CollMot Robotics
-script=etc/deployment/nsis/skybrushd.py
+script=skybrushd-win32.py
 icon=assets/icons/win/skybrushd.ico
 console=true
 
@@ -71,14 +75,20 @@ bitness=32
 
 [Include]
 local_wheels=${WHEEL_DIR}/*.whl
+files=etc/blobs/win32/libusb-1.0.dll >\$INSTDIR\lib
+    etc/deployment/nsis/skybrushd.bat >\$INSTDIR
+    etc/deployment/nsis/skybrush.jsonc >\$INSTDIR
 
 [Build]
-installer_name=../../dist/windows/Skybrush Server ${VERSION}.exe
+installer_name=../../dist/windows/Skybrush Server Setup ${VERSION}.exe
 EOF
 
 # Now clean the build dir and invoke pynsist
 rm -rf "${BUILD_DIR}"
 .venv/bin/python -m nsist installer.cfg
+
+# Finally, remove the entry script that was put there only for pynsist's sake
+rm skybrushd-win32.py
 
 echo ""
 echo "------------------------------------------------------------------------"

@@ -79,6 +79,7 @@ EXTENSIONS = {
     "hotplug": {},
     "http": {},
     "http_server": {},
+    "license": {},
     "mavlink": {
         "enabled": False,
         "id_format": "{0:02}",

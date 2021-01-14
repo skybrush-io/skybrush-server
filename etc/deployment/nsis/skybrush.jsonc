@@ -4,7 +4,6 @@
 
 {
   "EXTENSIONS": {
-
     # Make the server listen on all interfaces so it can be connected to from
     # other machines
     "http_server": {
@@ -16,11 +15,6 @@
       # Add all serial ports as potential RTK data sources with baud rates 9600
       # and 57600
       "add_serial_ports": [9600, 57600]
-    },
-
-    # Set the name that the server uses when advertising itself on the network
-    "ssdp": {
-      "label": "Skybrush RPi server"
     },
 
     # Listen for MAVLink-based drones

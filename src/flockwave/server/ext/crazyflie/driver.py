@@ -328,7 +328,9 @@ class CrazyflieUAV(UAVBase):
         return await self._crazyflie.param.get(name, fetch=fetch)
 
     async def get_version_info(self) -> VersionInfo:
-        return {"firmware": await self._crazyflie.platform.get_firmware_version()}
+        version = await self._crazyflie.platform.get_firmware_version()
+        revision = await self._crazyflie.platform.get_firmware_revision()
+        return {"firmware": version, "revision": revision}
 
     async def go_to(
         self,

@@ -13,7 +13,7 @@ pyusb = ">=1.1.0,<2.0.0"
 
 [[package]]
 name = "aiocflib"
-version = "0.9.1"
+version = "1.0.0"
 description = "asyncio-based API for Crazyflie drones"
 category = "main"
 optional = false
@@ -325,7 +325,7 @@ reference = "collmot"
 
 [[package]]
 name = "colorlog"
-version = "4.6.2"
+version = "4.7.2"
 description = "Log formatting with colors!"
 category = "main"
 optional = false
@@ -1927,7 +1927,7 @@ reference = "collmot"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7"
-content-hash = "c81493b63cdfa82b17f2eedfaa2eabeb84ad038499243bec1e14beed9dd8f786"
+content-hash = "b4995b66a154c30a816440cdd6de19e266b69b2171e5ac7b56ba3a5ec534fc49"
 
 [metadata.files]
 aio-usb-hotplug = [
@@ -1935,8 +1935,8 @@ aio-usb-hotplug = [
     {file = "aio_usb_hotplug-3.0.0-py3-none-any.whl", hash = "sha256:e22e166e616a624846a8d1b59df9e37ce1e6bd425c33a7a1329fbbce7f08492a"},
 ]
 aiocflib = [
-    {file = "aiocflib-0.9.1-py3-none-any.whl", hash = "md5:6f5e2a19f8b1a44a4bf7c83488daca78"},
-    {file = "aiocflib-0.9.1.tar.gz", hash = "md5:8f6e5b9834a395ac96327f094098f199"},
+    {file = "aiocflib-1.0.0-py3-none-any.whl", hash = "md5:f2be4adad5575ee8d3b0fc85f79579f5"},
+    {file = "aiocflib-1.0.0.tar.gz", hash = "md5:22ce2f5dd6cffbc9cd1b8271db3cc9a2"},
 ]
 aiofiles = [
     {file = "aiofiles-0.6.0-py3-none-any.whl", hash = "sha256:bd3019af67f83b739f8e4053c6c0512a7f545b9a8d91aaeab55e6e0f9d123c27"},
@@ -2047,8 +2047,8 @@ colorama = [
     {file = "colorama-0.4.4.tar.gz", hash = "sha256:5941b2b48a20143d2267e95b1c2a7603ce057ee39fd88e7329b0c292aa16869b"},
 ]
 colorlog = [
-    {file = "colorlog-4.6.2-py2.py3-none-any.whl", hash = "sha256:edd5ada5de03e880e42b2526f8be5570fd9b692f8eb7cf6b1fdcac3e3fb23976"},
-    {file = "colorlog-4.6.2.tar.gz", hash = "sha256:54e5f153419c22afc283c130c4201db19a3dbd83221a0f4657d5ee66234a2ea4"},
+    {file = "colorlog-4.7.2-py2.py3-none-any.whl", hash = "sha256:0a9dcdba6cab68e8a768448b418a858d73c52b37b6e8dea2568296faece393bd"},
+    {file = "colorlog-4.7.2.tar.gz", hash = "sha256:18d05b616438a75762d7d214b9ec3b05d274466c9f3ddd92807e755840c88251"},
 ]
 colour = [
     {file = "colour-0.1.5-py2.py3-none-any.whl", hash = "sha256:33f6db9d564fadc16e59921a56999b79571160ce09916303d35346dddc17978c"},

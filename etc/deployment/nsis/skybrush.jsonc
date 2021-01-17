@@ -19,7 +19,14 @@
 
     # Listen for MAVLink-based drones
     "mavlink": {
-      "enabled": true
+      "enabled": true,
+      # Listen for heartbeats on UDP port 14550, send broadcasts to UDP port 14555
+      "connections": ["default"],
+      # Delete the previous line and uncomment the following two lines to enable a
+      # secondary radio channel on port COM6, 57600 baud that is used for RTK
+      # corrections and as a fallback for commands
+      # "connections": ["default", "serial:COM6?baud=57600"],
+      # "routing": {"rtk": 1}
     }
   }
 }

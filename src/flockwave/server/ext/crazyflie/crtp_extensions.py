@@ -67,6 +67,7 @@ class DroneShowStatusFlag(IntFlag):
     DRONE_SHOW_MODE_ENABLED = 4
     AIRBORNE = 8
     TESTING_MODE = 16
+    DISARMED = 32
 
 
 class DroneShowExecutionStage(IntEnum):
@@ -168,6 +169,11 @@ class DroneShowStatus:
         return self.flags & DroneShowStatusFlag.AIRBORNE
 
     @property
+    def armed(self) -> bool:
+        """Returns whether the Crazyflie is armed."""
+        return not self.flags & DroneShowStatusFlag.DISARMED
+
+    @property
     def battery_percentage(self) -> int:
         """Returns the approximate battery charge percentage."""
         percentage = round(100 * (self.battery_voltage - 3.0) / 1.2)
@@ -195,6 +201,7 @@ class DroneShowStatus:
 
         checks, x, y, z, yaw, light = cls._struct.unpack(data[3:15])
         checks = tuple((checks >> (index * 2)) & 0x03 for index in range(8))
+
         return cls(
             battery_voltage=data[1] / 10.0,
             flags=data[2],

@@ -464,6 +464,7 @@ class CrazyflieUAV(UAVBase):
                     message = f"(test) {message}"
                 message = message.encode("utf-8")
 
+                self._armed = status.armed
                 self._battery.charging = status.charging
                 self._battery.voltage = status.battery_voltage
                 self._battery.percentage = status.battery_percentage
@@ -679,12 +680,11 @@ class CrazyflieUAV(UAVBase):
         """
         report = PreflightCheckInfo()
         report.add_item("battery", "Battery")
-        report.add_item("stabilizer", "Stabilizer")
+        report.add_item("stabilizer", "Sensors")
         report.add_item("kalman", "Kalman filter")
         report.add_item("positioning", "Positioning")
         report.add_item("home", "Home position")
-        report.add_item("trajectory", "Trajectory")
-        report.add_item("lights", "Light program")
+        report.add_item("trajectory", "Trajectory and lights")
         return report
 
     async def _enable_show_mode(self) -> None:
@@ -693,9 +693,10 @@ class CrazyflieUAV(UAVBase):
         if self.driver.use_test_mode:
             await self._crazyflie.param.set("show.testing", 1)
 
-    def _on_battery_state_received(self, message):
+    def _on_battery_and_system_state_received(self, message):
         self._battery.voltage = message.items[0]
         self._battery.charging = message.items[1] == 1  # PM state 1 = charging
+        self._armed = bool(message.items[2])
         self._update_error_codes()
         self.update_status(battery=self._battery)
         self.notify_updated()
@@ -727,6 +728,7 @@ class CrazyflieUAV(UAVBase):
         to the UAV or after re-establishing a connection.
         """
         self._preflight_status = self._create_empty_preflight_status_report()
+        self._armed = True  # Crazyflies typically boot in an armed state
         self._battery = BatteryInfo()
         self._position = PositionXYZ()
         self._show_execution_stage = DroneShowExecutionStage.UNKNOWN
@@ -745,8 +747,9 @@ class CrazyflieUAV(UAVBase):
         session.create_block(
             "pm.vbat",
             "pm.state",
+            "sys.armed",
             period=1,
-            handler=self._on_battery_state_received,
+            handler=self._on_battery_and_system_state_received,
         )
         session.create_block(
             "stateEstimateZ.x",
@@ -777,6 +780,8 @@ class CrazyflieUAV(UAVBase):
             FlockwaveErrorCode.PREARM_CHECK_FAILURE,
             present=self._preflight_status.failed_conclusively,
         )
+
+        self.ensure_error(FlockwaveErrorCode.DISARMED, present=not self._armed)
 
         self.ensure_error(
             FlockwaveErrorCode.TAKEOFF,

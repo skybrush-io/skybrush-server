@@ -15,10 +15,10 @@ set -e
 
 SCRIPT_ROOT=`dirname $0`
 REPO_ROOT="${SCRIPT_ROOT}/../.."
-PYARMOR_ARGS="--with-license outer"
+EXTRA_PYARMOR_ARGS="--with-license outer --package-runtime 0"
 
 if [ "x$TARGET_PLATFORM" != x ]; then
-    PYARMOR_ARGS="${PYARMOR_ARGS} --platform ${TARGET_PLATFORM}"
+    EXTRA_PYARMOR_ARGS="${EXTRA_PYARMOR_ARGS} --platform ${TARGET_PLATFORM}"
 fi
 
 if [ "x$3" = x ]; then
@@ -50,13 +50,13 @@ cd "${REPO_ROOT}"
 rm -rf "${WORKDIR}"
 for PACKAGE in ${OBFUSCATED_PACKAGES}; do
   mkdir -p "${WORKDIR}/${PACKAGE}"
-  ${PYARMOR} obfuscate $PYARMOR_ARGS --no-runtime --recursive --output "${WORKDIR}/${PACKAGE}" "${LIBDIR}/${PACKAGE}/__init__.py"
+  ${PYARMOR} obfuscate $PYARMOR_ARGS $EXTRA_PYARMOR_ARGS --no-runtime --recursive --output "${WORKDIR}/${PACKAGE}" "${LIBDIR}/${PACKAGE}/__init__.py"
   sed -i -e 's/^from \.pytransform/from pytransform/' "${WORKDIR}/${PACKAGE}/__init__.py"
 done
 
 # Obfuscate the launcher script as well
 cp "src/flockwave/server/__main__.py" "${LIBDIR}/skybrushd.py"
-${PYARMOR} obfuscate $PYARMOR_ARGS --exact --output "${WORKDIR}" "${LIBDIR}/skybrushd.py"
+${PYARMOR} obfuscate $PYARMOR_ARGS $EXTRA_PYARMOR_ARGS --exact --output "${WORKDIR}" "${LIBDIR}/skybrushd.py"
 rm "${LIBDIR}/skybrushd.py"
 
 # Raspberry Pi distributions need an extra symlink for pytransform.so
@@ -83,7 +83,7 @@ fi
 	mv "$i" "${LIBDIR}/$i"
   done
 )
-mv "${WORKDIR}"/pytransform* "${LIBDIR}" || true
+mv "${WORKDIR}"/*pytransform* "${LIBDIR}" || true
 
 rm -rf "${WORKDIR}"
 

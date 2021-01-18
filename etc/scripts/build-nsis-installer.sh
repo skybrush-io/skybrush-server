@@ -120,7 +120,9 @@ if [ $OBFUSCATE -gt 0 ]; then
   fi
   ${PYARMOR_VENV}/bin/pip install -U pyarmor
 
-  # Obfuscate the source
+  # Obfuscate the source. Note that we need to specify the current and the
+  # target platform, but we _cannot_ use --advanced 2 here because the generated
+  # installer wouldn't work on the target platform for some reason.
   PYARMOR_PLATFORM=darwin.x86_64.0 TARGET_PLATFORM=windows.x86.0 etc/scripts/apply-pyarmor-on-venv.sh ${PYARMOR_VENV}/bin/pyarmor "${BUILD_DIR}/pkgs" "${BUILD_DIR}/obf"
 fi
 

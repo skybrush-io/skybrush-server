@@ -1,6 +1,6 @@
 [[package]]
 name = "aio-usb-hotplug"
-version = "3.0.0"
+version = "3.0.1"
 description = "Asynchronous generators yielding detected hotplug events on the USB buses"
 category = "main"
 optional = false
@@ -1927,12 +1927,12 @@ reference = "collmot"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7"
-content-hash = "abadad3ee26c236a5bbca89763f00bf3726cb7d36ce7186234929d82708076c5"
+content-hash = "bbf0faceb11b146a2d115b679806dd443da64129c71d7c9155a3bfb2886e8393"
 
 [metadata.files]
 aio-usb-hotplug = [
-    {file = "aio-usb-hotplug-3.0.0.tar.gz", hash = "sha256:c08878d5ba88227ac281b1b238bc5d592bab9608c15a97734e5ac773b6d610ed"},
-    {file = "aio_usb_hotplug-3.0.0-py3-none-any.whl", hash = "sha256:e22e166e616a624846a8d1b59df9e37ce1e6bd425c33a7a1329fbbce7f08492a"},
+    {file = "aio-usb-hotplug-3.0.1.tar.gz", hash = "sha256:e3ed19ed451ef65b4df7628f726b2f0747f7eea98ff4e1e7ee6776505223a070"},
+    {file = "aio_usb_hotplug-3.0.1-py3-none-any.whl", hash = "sha256:59ad7f835776be016b62f2e0eddab82b89b92dee5322e4983b0293375ba65ce0"},
 ]
 aiocflib = [
     {file = "aiocflib-1.0.0-py3-none-any.whl", hash = "md5:f2be4adad5575ee8d3b0fc85f79579f5"},

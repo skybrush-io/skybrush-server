@@ -90,7 +90,7 @@ local_wheels=${WHEEL_DIR}/*.whl
 files=etc/blobs/win32/libusb-1.0.dll >\$INSTDIR\lib
     etc/deployment/nsis/skybrushd.bat >\$INSTDIR
     skybrushd-win32.py >\$INSTDIR
-    etc/deployment/nsis/skybrush.jsonc >\$INSTDIR
+    etc/deployment/configs/skybrush-outdoor.jsonc >\$INSTDIR
 
 [Build]
 installer_name=../../dist/windows/${INSTALLER_NAME}

@@ -1,0 +1,33 @@
+# This is the main configuration file for Skybrush Server.
+# The file is essentially a JSON file, but C-style comments are allowed, and
+# lines starting with a hash are ignored.
+
+{
+  "EXTENSIONS": {
+    # Make the server listen on all interfaces so it can be connected to from
+    # other machines
+    "http_server": {
+      "host": ""
+    },
+
+    # RTK extension configuration
+    "rtk": {
+      # Add all serial ports as potential RTK data sources with baud rates 9600
+      # and 57600
+      "add_serial_ports": [9600, 57600]
+    },
+
+    # Listen for MAVLink-based drones
+    "mavlink": {
+      "enabled": true,
+      # Listen for heartbeats on UDP port 14550, send broadcasts to UDP port 14555
+      "connections": ["default"],
+      # Delete the previous line and uncomment the following two lines to enable a
+      # secondary radio channel on port COM6, 57600 baud that is used for RTK
+      # corrections and as a fallback for commands
+      # "connections": ["default", "serial:COM6?baud=57600"],
+      # "routing": {"rtk": 1}
+    }
+  }
+}
+

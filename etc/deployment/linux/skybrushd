@@ -17,4 +17,5 @@ fi
 export PYARMOR_LICENSE
 
 chmod a+x lib/skybrushd
-lib/skybrushd
+exec lib/skybrushd "$@"
+

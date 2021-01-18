@@ -7,6 +7,7 @@ BUILD_DIR="./build/pyarmor"
 OUTPUT_DIR="./dist/pyarmor"
 TMP_DIR="./tmp"
 OBFUSCATED_PACKAGES="aiocflib flockwave skybrush"
+TARBALL_NAME="skybrush-server"
 
 ###############################################################################
 
@@ -82,7 +83,7 @@ if [ $STANDALONE = 1 ]; then
 
   # Replace the unobfuscated libraries with the obfuscated ones in the PyInstaller
   # distribution
-  .venv/bin/python -m pyarmor.helper.repack -p "${BUILD_DIR}/obf" "${BUILD_DIR}/dist/skybrushd"
+  .venv/bin/python etc/deployment/pyarmor/repack.py -p "${BUILD_DIR}/obf" "${BUILD_DIR}/dist/skybrushd"
   mv skybrushd_obf ${BUILD_DIR}/bin/skybrushd
 
   # Clean up after ourselves
@@ -101,9 +102,10 @@ else
 fi
 
 # Create a tarball
-TARBALL_STEM="${PROJECT_NAME}-${VERSION}"
+TARBALL_STEM="${TARBALL_NAME}-${VERSION}"
 rm -rf "${TMP_DIR}/${TARBALL_STEM}"
 mkdir -p "${TMP_DIR}/${TARBALL_STEM}"
+mkdir -p "${OUTPUT_DIR}"
 mv "${BUILD_DIR}"/* "${TMP_DIR}/${TARBALL_STEM}"
 tar -C "${TMP_DIR}" --exclude "__pycache__" -czf "${OUTPUT_DIR}/${TARBALL_STEM}.tar.gz" "${TARBALL_STEM}/"
 rm -rf "${TMP_DIR}/${TARBALL_STEM}"

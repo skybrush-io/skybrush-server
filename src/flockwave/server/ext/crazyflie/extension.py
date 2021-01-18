@@ -1,6 +1,7 @@
 """Extension that adds support for Crazyflie drones."""
 
 from contextlib import AsyncExitStack, ExitStack
+from errno import EACCES
 from functools import partial
 from pathlib import Path
 from trio import open_memory_channel, open_nursery
@@ -61,6 +62,11 @@ class CrazyflieDronesExtension(UAVExtensionBase):
                     num_radios += 1
                 except NotFoundError:
                     self.log.warn(f"Could not acquire Crazyradio #{index}")
+                except OSError as ex:
+                    if ex.errno == EACCES:
+                        self.log.warn(f"Permission denied while trying to access Crazyradio #{index}. Do you have the permissions to work with USB devices?")
+                    else:
+                        raise ex
 
             if not num_radios:
                 self.log.error("Failed to acquire any Crazyradios; Crazyflie extension disabled.")

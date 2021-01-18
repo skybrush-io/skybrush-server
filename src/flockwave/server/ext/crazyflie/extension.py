@@ -1,6 +1,6 @@
 """Extension that adds support for Crazyflie drones."""
 
-from contextlib import ExitStack
+from contextlib import AsyncExitStack, ExitStack
 from functools import partial
 from pathlib import Path
 from trio import open_memory_channel, open_nursery
@@ -45,56 +45,72 @@ class CrazyflieDronesExtension(UAVExtensionBase):
     async def run(self, app, configuration):
         from aiocflib.crtp.drivers import init_drivers
         from aiocflib.crtp.drivers.radio import SharedCrazyradio
+        from aiocflib.errors import NotFoundError
 
         init_drivers()
 
+        # TODO(ntamas): we need to acquire all shared crazyradio instances that
+        # we will use _now_, otherwise Trio gets confused. This is fragile but
+        # it's the best we can do.
+        async with AsyncExitStack() as stack:
+            num_radios = 0
+
+            for index in range(1):
+                try:
+                    await stack.enter_async_context(SharedCrazyradio(index))
+                    num_radios += 1
+                except NotFoundError:
+                    self.log.warn(f"Could not acquire Crazyradio #{index}")
+
+            if not num_radios:
+                self.log.error("Failed to acquire any Crazyradios; Crazyflie extension disabled.")
+            else:
+                return await self._run(app, configuration)
+
+    async def _run(self, app, configuration):
         connection_config = configuration.get("connections", [])
 
         # Create a channel that will be used to create new UAVs as needed
         new_uav_tx_channel, new_uav_rx_channel = open_memory_channel(0)
 
-        # TODO(ntamas): we need to acquire all shared crazyradio instances that
-        # we will use _now_, otherwise Trio gets confused. This is fragile but
-        # it's the best we can do.
-        async with SharedCrazyradio(0):
-            # We need a nursery that will be the parent of all tasks that handle
-            # Crazyradio connections
-            async with open_nursery() as nursery:
-                with ExitStack() as stack:
+        # We need a nursery that will be the parent of all tasks that handle
+        # Crazyradio connections
+        async with open_nursery() as nursery:
+            with ExitStack() as stack:
+                stack.enter_context(
+                    create_connection.use(CrazyradioConnection, "crazyradio")
+                )
+
+                # Register all the connections and ask the app to supervise them
+                for index, spec in enumerate(connection_config):
+                    connection = create_connection(spec)
+                    if hasattr(connection, "assign_nursery"):
+                        connection.assign_nursery(nursery)
+
                     stack.enter_context(
-                        create_connection.use(CrazyradioConnection, "crazyradio")
+                        app.connection_registry.use(
+                            connection,
+                            f"Crazyradio{index}",
+                            description=f"Crazyradio connection {index}",
+                            purpose=ConnectionPurpose.uavRadioLink,
+                        )
                     )
 
-                    # Register all the connections and ask the app to supervise them
-                    for index, spec in enumerate(connection_config):
-                        connection = create_connection(spec)
-                        if hasattr(connection, "assign_nursery"):
-                            connection.assign_nursery(nursery)
+                    task = partial(
+                        CrazyradioScannerTask.create_and_run,
+                        log=self.log,
+                        channel=new_uav_tx_channel,
+                    )
 
-                        stack.enter_context(
-                            app.connection_registry.use(
-                                connection,
-                                f"Crazyradio{index}",
-                                description=f"Crazyradio connection {index}",
-                                purpose=ConnectionPurpose.uavRadioLink,
-                            )
-                        )
+                    nursery.start_soon(
+                        partial(app.supervise, connection, task=task)
+                    )
 
-                        task = partial(
-                            CrazyradioScannerTask.create_and_run,
-                            log=self.log,
-                            channel=new_uav_tx_channel,
-                        )
-
-                        nursery.start_soon(
-                            partial(app.supervise, connection, task=task)
-                        )
-
-                    # Wait for newly detected UAVs and spawn a task for each of them
-                    async with new_uav_rx_channel:
-                        async for address_space, index, disposer in new_uav_rx_channel:
-                            uav = self._driver.get_or_create_uav(address_space, index)
-                            nursery.start_soon(uav.run, disposer)
+                # Wait for newly detected UAVs and spawn a task for each of them
+                async with new_uav_rx_channel:
+                    async for address_space, index, disposer in new_uav_rx_channel:
+                        uav = self._driver.get_or_create_uav(address_space, index)
+                        nursery.start_soon(uav.run, disposer)
 
 
 construct = CrazyflieDronesExtension

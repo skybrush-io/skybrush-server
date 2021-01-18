@@ -125,9 +125,12 @@ etc/scripts/build-pyarmored-dist.sh --standalone
 cd ..
 
 rm -rf staging
-mkdir -p staging/skybrush
+mkdir -p staging/skybrush/bin
+mkdir -p staging/skybrush/lib
 tar -C staging/skybrush --strip-components=1 -xvvzf skybrush-server/dist/pyarmor/*.tar.gz
 cp skybrush-server/etc/deployment/configs/skybrush-indoor.jsonc staging/skybrush/skybrush.jsonc
+mv staging/skybrush/bin/skybrushd staging/skybrush/lib
+cp skybrush-server/etc/deployment/linux/skybrushd staging/skybrush/bin/skybrushd
 tar -C staging --owner=0 --group=0 -cvvzf "${OUTPUT_FILE}" skybrush
 rm -rf staging
 

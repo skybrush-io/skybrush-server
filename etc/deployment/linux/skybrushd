@@ -1,0 +1,20 @@
+#!/bin/bash
+
+SCRIPT_ROOT=`dirname $0`
+
+cd "${SCRIPT_ROOT}/.."
+SCRIPT_ROOT=`pwd`
+
+PYARMOR_LICENSE="${SCRIPT_ROOT}/skybrushd.cml"
+
+if [ ! -f "${PYARMOR_LICENSE}" ]; then
+    echo "No license file found at ${PYARMOR_LICENSE}"
+	echo ""
+	echo "Please add your license file there before starting the server."
+	exit 1
+fi
+
+export PYARMOR_LICENSE
+
+chmod a+x lib/skybrushd
+lib/skybrushd

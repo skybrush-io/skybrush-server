@@ -17,6 +17,7 @@ rm -f requirements*.txt
 poetry export -f requirements.txt -o requirements-main.txt --without-hashes --with-credentials
 trap "rm -f requirements-main.txt" EXIT
 
+# Build the Skybrush wheel and append it to the requirements
 rm -rf dist/*.whl
 poetry build
 ls dist/*.whl >>requirements-main.txt
@@ -32,15 +33,16 @@ fi
 
 # Generate the bundle for Linux
 if [ x$GENERATE_LINUX = x1 ]; then
-    VENV_DIR="/root/.pyenv/versions/3.7.5"
+    VENV_DIR="/root/.pyenv/versions/3.7.9"
 
     rm -rf dist/linux
     docker run --rm \
         -v "$(pwd):/src/" \
         -v "${HOME}/.pyarmor:/root/.pyarmor/" \
+        -e VENV_DIR="${VENV_DIR}" \
         --entrypoint /bin/bash \
-        cdrx/pyinstaller-linux:python3 \
-		-c "rm -rf /tmp/.wine-0 && apt-get update && apt-get remove -y python-pip && apt-get install -y curl git netbase && curl https://bootstrap.pypa.io/get-pip.py -o /tmp/get-pip.py && ${VENV_DIR}/bin/python /tmp/get-pip.py && ${VENV_DIR}/bin/pip install -U pip wheel pyarmor && ${VENV_DIR}/bin/pip install -r requirements-main.txt && etc/scripts/apply-pyarmor-on-venv.sh ${VENV_DIR}/bin/pyarmor ${VENV_DIR}/lib/python3.7/site-packages/ ./dist/linux/obf --keep && ${VENV_DIR}/bin/pyinstaller --clean -y --dist ./dist/linux --workpath /tmp etc/deployment/pyinstaller/pyinstaller.spec && ${VENV_DIR}/bin/python -m pyarmor.helper.repack -p ./dist/linux/obf ./dist/linux/skybrushd && mv skybrushd_obf ./dist/linux/skybrushd && rm -rf ./dist/linux/obf && chown -R --reference=. ./dist/linux"
+        toilal/pyinstaller-linux:python3-xenial \
+		-c "rm -rf /tmp/.wine-0 && apt-get update && apt-get remove -y python-pip && apt-get install -y curl git netbase && curl https://bootstrap.pypa.io/get-pip.py -o /tmp/get-pip.py && ${VENV_DIR}/bin/python /tmp/get-pip.py && etc/scripts/build-pyarmored-dist.sh --standalone ${VENV_DIR}"
 fi
 
 # Generate the bundle for Windows
@@ -50,7 +52,7 @@ if [ x$GENERATE_WINDOWS = x1 ]; then
         -v "$(pwd):/src/" \
         -v "${HOME}/.pyarmor:/root/.pyarmor/" \
 		--entrypoint /bin/bash \
-        cdrx/pyinstaller-windows:python3 \
+        cdrx/pyinstaller-windows:python3-xenial \
         -c "rm -rf /tmp/.wine-0 && python -m pip install --upgrade pip && pip install -U pypiwin32 wheel pyarmor && pip install -r requirements-main.txt && pyinstaller --clean -y --dist ./dist/windows --workpath /tmp pyinstaller.spec && chown -R --reference=. ./dist/windows"
 fi
 

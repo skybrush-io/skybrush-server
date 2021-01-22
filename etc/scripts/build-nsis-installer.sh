@@ -71,6 +71,7 @@ fi
 # there. We could use an alternative path, but then that would be used in the
 # shortcut in the generated desktop shortcut, with slashes :(
 cp etc/deployment/nsis/skybrushd.py skybrushd-win32.py
+cp etc/deployment/configs/skybrush-outdoor.jsonc skybrush.jsonc
 cat >installer.cfg <<EOF
 [Application]
 name=Skybrush Server
@@ -90,7 +91,7 @@ local_wheels=${WHEEL_DIR}/*.whl
 files=etc/blobs/win32/libusb-1.0.dll >\$INSTDIR\lib
     etc/deployment/nsis/skybrushd.bat >\$INSTDIR
     skybrushd-win32.py >\$INSTDIR
-    etc/deployment/configs/skybrush-outdoor.jsonc >\$INSTDIR
+    skybrush.jsonc >\$INSTDIR
 
 [Build]
 installer_name=../../dist/windows/${INSTALLER_NAME}
@@ -129,8 +130,8 @@ fi
 # Okay, call makensis now
 makensis "${BUILD_DIR}"/installer.nsi
 
-# Finally, remove the entry script that was put there only for pynsist's sake
-rm skybrushd-win32.py
+# Finally, remove the entry script and the config file that was put there only for pynsist's sake
+rm skybrushd-win32.py skybrush.jsonc
 
 echo ""
 echo "------------------------------------------------------------------------"

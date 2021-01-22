@@ -9,9 +9,9 @@ PYARMOR_LICENSE="${SCRIPT_ROOT}/skybrushd.cml"
 
 if [ ! -f "${PYARMOR_LICENSE}" ]; then
     echo "No license file found at ${PYARMOR_LICENSE}"
-	echo ""
-	echo "Please add your license file there before starting the server."
-	exit 1
+    echo ""
+    echo "Please add your license file there before starting the server."
+    exit 1
 fi
 
 export PYARMOR_LICENSE

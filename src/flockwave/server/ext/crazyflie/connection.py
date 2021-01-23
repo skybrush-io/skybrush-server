@@ -14,7 +14,7 @@ class CrazyradioConnection(TaskConnectionBase):
     drones with a single Crazyradio.
     """
 
-    def __init__(self, host: str, path: str = ""):
+    def __init__(self, host: str, path: str = "", length: int = 64):
         """Constructor.
 
         Parameters:
@@ -23,6 +23,7 @@ class CrazyradioConnection(TaskConnectionBase):
                 namespace where the Crazyflie drones are accessible, in the
                 following format: ``/channel/data_rate/prefix``; e.g.:
                 ``/80/2M/7E7E7E7E``.
+            length: the length of the address space of the Crazyflies
         """
         from aiocflib.utils.addressing import RadioAddressSpace
 
@@ -34,7 +35,7 @@ class CrazyradioConnection(TaskConnectionBase):
             raise RuntimeError("Radio index must be integer")
 
         self._crazyflie_address_space = RadioAddressSpace.from_uri(
-            f"bradio://{host}{path}", length=64
+            f"bradio://{host}{path}", length=length
         )
         self._radio = None
 

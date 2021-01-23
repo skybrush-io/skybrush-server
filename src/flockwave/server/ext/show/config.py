@@ -2,7 +2,7 @@
 
 from blinker import Signal
 from enum import Enum
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 __all__ = ("DroneShowConfiguration", "StartMethod")
 
@@ -14,8 +14,17 @@ class StartMethod(Enum):
     AUTO = "auto"
 
 
+class LightEffectType(Enum):
+    """Enumeration holding the type of light effects that could be configured
+    on the drones.
+    """
+
+    OFF = "off"
+    SOLID = "solid"
+
+
 class DroneShowConfiguration:
-    """Configuration object for the drone show extension."""
+    """Main configuration object for the drone show extension."""
 
     updated = Signal(doc="Signal emitted when the configuration is updated")
 
@@ -76,6 +85,54 @@ class DroneShowConfiguration:
                 ):
                     self.uav_ids = uav_ids
                     changed = True
+
+        if changed:
+            self.updated.send(self)
+
+
+class LightConfiguration:
+    """LED light related configuration object for the drone show extension."""
+
+    updated = Signal(doc="Signal emitted when the configuration is updated")
+
+    def __init__(self):
+        """Constructor."""
+        self.color = (0, 0, 0)  # type: Tuple[int, int, int]
+        self.effect = LightEffectType.OFF  # type: LightEffectType
+
+    def clone(self):
+        """Makes an exact shallow copy of the configuration object."""
+        result = self.__class__()
+        result.update_from_json(self.json)
+        return result
+
+    @property
+    def json(self):
+        """Returns the JSON representation of the configuration object."""
+        return {"color": list(self.color), "effect": str(self.effect.value)}
+
+    def update_from_json(self, obj):
+        """Updates the configuration object from its JSON representation."""
+        changed = False
+
+        color = obj.get("color")
+        if color:
+            if (
+                isinstance(color, (list, tuple))
+                and len(color) >= 3
+                and all(isinstance(x, (int, float)) for x in color)
+            ):
+                new_color = tuple(int(x) for x in color)
+                if new_color != self.color:
+                    self.color = new_color
+                    changed = True
+
+        effect = obj.get("effect")
+        if effect:
+            new_effect = LightEffectType(effect)
+            if new_effect != self.effect:
+                self.effect = new_effect
+                changed = True
 
         if changed:
             self.updated.send(self)

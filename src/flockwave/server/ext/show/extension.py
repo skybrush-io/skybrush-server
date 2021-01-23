@@ -29,7 +29,6 @@ class DroneShowExtension(ExtensionBase):
         super().__init__()
 
         self._clock = None
-        self._light_tasks = None
         self._nursery = None
         self._show_tasks = None
 
@@ -37,7 +36,10 @@ class DroneShowExtension(ExtensionBase):
         self._lights = LightConfiguration()
 
     def exports(self) -> Dict[str, Any]:
-        return {"get_configuration": self._get_configuration}
+        return {
+            "get_configuration": self._get_configuration,
+            "get_light_configuration": self._get_light_configuration,
+        }
 
     def handle_SHOW_CFG(self, message, sender, hub):
         return hub.create_response_or_notification(
@@ -73,7 +75,6 @@ class DroneShowExtension(ExtensionBase):
         }
 
         async with open_nursery() as self._nursery:
-            self._light_tasks = CancellableTaskGroup(self._nursery)
             self._show_tasks = CancellableTaskGroup(self._nursery)
 
             with ExitStack() as stack:
@@ -95,6 +96,10 @@ class DroneShowExtension(ExtensionBase):
         """Returns a copy of the current drone show configuration."""
         return self._config.clone()
 
+    def _get_light_configuration(self) -> LightConfiguration:
+        """Returns a copy of the current LED lgiht configuration."""
+        return self._lights.clone()
+
     def _on_config_updated(self, sender):
         """Handler that is called when the configuration of the start settings
         of the show was updated from any source.
@@ -114,8 +119,6 @@ class DroneShowExtension(ExtensionBase):
         """Handler that is called when the configuration of the LED lights was
         updated from any source.
         """
-        self._light_tasks.cancel_all()
-
         updated_signal = self.app.import_api("signals").get("show:lights_updated")
         updated_signal.send(self, config=self._lights.clone())
 

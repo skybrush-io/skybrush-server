@@ -122,17 +122,19 @@ class LightConfiguration:
                 and len(color) >= 3
                 and all(isinstance(x, (int, float)) for x in color)
             ):
-                new_color = tuple(int(x) for x in color)
-                if new_color != self.color:
-                    self.color = new_color
-                    changed = True
+                self.color = tuple(int(x) for x in color)
+                # Send a signal even if the color stayed the same; maybe the
+                # user sent the same configuration again because some of the
+                # drones in the show haven't received the previous request
+                changed = True
 
         effect = obj.get("effect")
         if effect:
-            new_effect = LightEffectType(effect)
-            if new_effect != self.effect:
-                self.effect = new_effect
-                changed = True
+            # Send a signal even if the effect stayed the same; maybe the
+            # user sent the same configuration again because some of the
+            # drones in the show haven't received the previous request
+            self.effect = LightEffectType(effect)
+            changed = True
 
         if changed:
             self.updated.send(self)

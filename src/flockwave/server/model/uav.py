@@ -555,6 +555,7 @@ class UAVDriver(metaclass=ABCMeta):
             uavs,
             "landing signal",
             self._send_landing_signal_single,
+            getattr(self, "_send_landing_signal_broadcast", None),
             transport=transport,
         )
 
@@ -589,6 +590,7 @@ class UAVDriver(metaclass=ABCMeta):
             uavs,
             "light or sound emission signal",
             self._send_light_or_sound_emission_signal_single,
+            getattr(self, "_send_light_or_sound_emission_signal_broadcast", None),
             signals=signals,
             duration=duration,
             transport=transport,
@@ -625,6 +627,7 @@ class UAVDriver(metaclass=ABCMeta):
             uavs,
             "motor start signal" if start else "motor stop signal",
             self._send_motor_start_stop_signal_single,
+            getattr(self, "_send_motor_start_stop_signal_broadcast", None),
             start=start,
             force=force,
             transport=transport,
@@ -658,6 +661,7 @@ class UAVDriver(metaclass=ABCMeta):
             uavs,
             "reset signal",
             self._send_reset_signal_single,
+            getattr(self, "_send_reset_signal_broadcast", None),
             component=str(component or ""),
             transport=transport,
         )
@@ -685,6 +689,7 @@ class UAVDriver(metaclass=ABCMeta):
             uavs,
             "return to home signal",
             self._send_return_to_home_signal_single,
+            getattr(self, "_send_return_to_home_signal_broadcast", None),
             transport=transport,
         )
 
@@ -711,6 +716,7 @@ class UAVDriver(metaclass=ABCMeta):
             uavs,
             "shutdown signal",
             self._send_shutdown_signal_single,
+            getattr(self, "_send_shutdown_signal_broadcast", None),
             transport=transport,
         )
 
@@ -737,7 +743,8 @@ class UAVDriver(metaclass=ABCMeta):
             uavs,
             "takeoff countdown notification",
             self._send_takeoff_countdown_notification_single,
-            delay,
+            getattr(self, "_send_takeoff_countdown_notification_broadcast", None),
+            seconds=delay,
         )
 
     def send_takeoff_signal(
@@ -768,6 +775,7 @@ class UAVDriver(metaclass=ABCMeta):
             uavs,
             "takeoff signal",
             self._send_takeoff_signal_single,
+            getattr(self, "_send_takeoff_signal_broadcast", None),
             scheduled=scheduled,
             transport=transport,
         )
@@ -800,7 +808,7 @@ class UAVDriver(metaclass=ABCMeta):
         pass
 
     def _send_signal(
-        self, uavs: UAV, signal_name: str, handler, *args, **kwds
+        self, uavs: UAV, signal_name: str, handler, broadcaster=None, **kwds
     ) -> Dict[UAV, Any]:
         """Common implementation for the body of several ``send_*_signal()``
         methods in this class.
@@ -808,7 +816,7 @@ class UAVDriver(metaclass=ABCMeta):
         result = {}
         for uav in uavs:
             try:
-                outcome = handler(uav, *args, **kwds)
+                outcome = handler(uav, **kwds)
             except NotImplementedError:
                 outcome = NotImplementedError(f"{signal_name} not implemented yet")
             except NotSupportedError as ex:
@@ -1147,7 +1155,9 @@ class PassiveUAVDriver(UAVDriver):
         """
         return self.app.object_registry.add_if_missing(id, factory=self._create_uav)
 
-    def _send_signal(self, uavs: UAV, signal_name: str, handler):
+    def _send_signal(
+        self, uavs: UAV, signal_name: str, handler, broadcaster=None, **kwds
+    ) -> Dict[UAV, Any]:
         error = RuntimeError("{0} not supported".format(signal_name))
         return {uav: error for uav in uavs}
 

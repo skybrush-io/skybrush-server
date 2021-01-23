@@ -92,6 +92,7 @@ class MAVLinkDronesExtension(UAVExtensionBase):
         signals = app.import_api("signals")
         rtk_signal = signals.get("rtk:packet")
         show_configuration_changed_signal = signals.get("show:config_updated")
+        show_light_confguration_changed_signal = signals.get("show:lights_updated")
 
         # Create self._uavs only here and not in the constructor; this is to
         # ensure that we cannot accidentally register a UAV when the extension
@@ -107,6 +108,11 @@ class MAVLinkDronesExtension(UAVExtensionBase):
             stack.enter_context(
                 show_configuration_changed_signal.connected_to(
                     self._on_show_configuration_changed
+                )
+            )
+            stack.enter_context(
+                show_light_confguration_changed_signal.connected_to(
+                    self._on_show_light_configuration_changed
                 )
             )
 
@@ -222,6 +228,20 @@ class MAVLinkDronesExtension(UAVExtensionBase):
 
         # Send the configuration to all the networks
         self._update_show_configuration_in_networks(config)
+
+    def _on_show_light_configuration_changed(self, sender, config) -> None:
+        """Handler that is called when the user changes the LED light configuration
+        of the drones in the `show` extesion.
+        """
+        if not self._networks:
+            return
+
+        # Make a copy of the configuration in case someone else who comes after
+        # us in the handler chain messes with it
+        config = config.clone()
+
+        # TODO(ntamas)
+        print(repr(config))
 
     def _register_uav(self, uav: UAV) -> None:
         """Registers a new UAV object in the object registry of the application

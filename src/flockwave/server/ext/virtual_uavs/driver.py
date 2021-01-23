@@ -120,11 +120,11 @@ class VirtualUAVDriver(UAVDriver):
         UAV.
         """
         if not value:
-            uav.handle_color_override(None)
+            uav.override_led_color(None)
             return "Color override turned off."
         else:
             color = Color(value)
-            uav.handle_color_override(color)
+            uav.override_led_color(color)
             return f"Color set to {color}"
 
     async def handle_command_disarm(self, uav):
@@ -558,12 +558,6 @@ class VirtualUAV(UAVBase):
             if present:
                 self.errors.append(code)
 
-    def handle_color_override(self, color: Optional[Color]) -> None:
-        """Handles a command request to override the current color of the
-        simulated light on the drone.
-        """
-        self._light_controller.override = color
-
     def handle_show_upload(self, show):
         """Handles the upload of a full drone show (trajectory + light program).
 
@@ -604,6 +598,10 @@ class VirtualUAV(UAVBase):
             self._target_xyz = self._position_xyz.copy()
         self._target_xyz.z = 0
         self.state = VirtualUAVState.LANDING
+
+    def override_led_color(self, color: Optional[Color]) -> None:
+        """Overrides the current color of the simulated light on the drone."""
+        self._light_controller.override = color
 
     def reset(self):
         """Requests the UAV to reset itself if it is currently running."""

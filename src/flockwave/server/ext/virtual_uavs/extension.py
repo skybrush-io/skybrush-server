@@ -1,8 +1,9 @@
 from __future__ import absolute_import, division
 
+from colour import Color
 from functools import partial
 from random import uniform
-from trio import open_nursery, sleep
+from trio import open_nursery, sleep, sleep_forever
 from typing import Callable
 
 from flockwave.gps.vectors import (
@@ -169,6 +170,14 @@ class VirtualUAVProviderExtension(UAVExtensionBase):
                 else:
                     await sleep(0.2)
 
+    async def run(self):
+        lights_updated_signal = self.app.import_api("signals").get(
+            "show:lights_updated"
+        )
+
+        with lights_updated_signal.connected_to(self._on_lights_updated):
+            await sleep_forever()
+
     async def worker(self, app, configuration, logger):
         """Main background task of the extension that updates the state of
         the UAVs periodically.
@@ -177,6 +186,14 @@ class VirtualUAVProviderExtension(UAVExtensionBase):
             for uav in self.uavs:
                 nursery.start_soon(self.simulate_uav, uav, nursery.start_soon)
 
+    def _on_lights_updated(self, sender, config):
+        color = config.color if str(config.effect.value) == "solid" else None
+        if color is not None:
+            color = Color(rgb=(x / 255.0 for x in color))
+
+        for uav in self.uavs:
+            uav.override_led_color(color)
+
 
 construct = VirtualUAVProviderExtension
-dependencies = ()
+dependencies = ("signals",)

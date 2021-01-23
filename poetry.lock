@@ -577,7 +577,7 @@ reference = "collmot"
 
 [[package]]
 name = "flockwave-spec"
-version = "0.44.0"
+version = "1.45.0"
 description = "JSON-Schema specification of the Flockwave protocol"
 category = "main"
 optional = false
@@ -1470,7 +1470,7 @@ reference = "collmot"
 
 [[package]]
 name = "pyusb"
-version = "1.1.0"
+version = "1.1.1"
 description = "Python USB access module"
 category = "main"
 optional = false
@@ -1927,7 +1927,7 @@ reference = "collmot"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7"
-content-hash = "bbf0faceb11b146a2d115b679806dd443da64129c71d7c9155a3bfb2886e8393"
+content-hash = "bfaebb73567c50ccbaa532f762c020d6a701d7d0803a243063f2ba1e0871d2c5"
 
 [metadata.files]
 aio-usb-hotplug = [
@@ -2113,8 +2113,8 @@ flockwave-parsers = [
     {file = "flockwave_parsers-1.2.0-py3-none-any.whl", hash = "md5:4f53aadf684d06c79998b332ec2dcaa0"},
 ]
 flockwave-spec = [
-    {file = "flockwave-spec-0.44.0.tar.gz", hash = "md5:1f7a0a72e501f96c68d477d5868da4ab"},
-    {file = "flockwave_spec-0.44.0-py3-none-any.whl", hash = "md5:381591721a4366a8b2cc74ce0a978796"},
+    {file = "flockwave-spec-1.45.0.tar.gz", hash = "md5:9c0b3b93ab07145dc0a2e311b9f2fd83"},
+    {file = "flockwave_spec-1.45.0-py3-none-any.whl", hash = "md5:0ba443e0118661e6700f297b7905c966"},
 ]
 future = [
     {file = "future-0.18.2.tar.gz", hash = "sha256:b1bead90b70cf6ec3f0710ae53a525360fa360d306a86583adc6bf83a4db537d"},
@@ -2475,7 +2475,8 @@ pyudev = [
     {file = "pyudev-0.22.0.tar.gz", hash = "sha256:69bb1beb7ac52855b6d1b9fe909eefb0017f38d917cba9939602c6880035b276"},
 ]
 pyusb = [
-    {file = "pyusb-1.1.0.tar.gz", hash = "sha256:d69ed64bff0e2102da11b3f49567256867853b861178689671a163d30865c298"},
+    {file = "pyusb-1.1.1-py3-none-any.whl", hash = "sha256:f18eb813d3a1439918071234589162c2f209a19adbeffeb1377ce078a4aebc70"},
+    {file = "pyusb-1.1.1.tar.gz", hash = "sha256:7d449ad916ce58aff60b89aae0b65ac130f289c24d6a5b7b317742eccffafc38"},
 ]
 pywin32-ctypes = [
     {file = "pywin32-ctypes-0.2.0.tar.gz", hash = "sha256:24ffc3b341d457d48e8922352130cf2644024a4ff09762a2261fd34c36ee5942"},

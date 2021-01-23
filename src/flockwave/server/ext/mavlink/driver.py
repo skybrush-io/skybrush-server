@@ -14,7 +14,7 @@ from typing import List, Optional, Tuple, Union
 from flockwave.gps.time import datetime_to_gps_time_of_week, gps_time_of_week_to_utc
 from flockwave.gps.vectors import GPSCoordinate, VelocityNED
 
-from flockwave.server.concurrency import aclosing, delayed
+from flockwave.concurrency import aclosing, delayed
 from flockwave.server.errors import NotSupportedError
 from flockwave.server.model.battery import BatteryInfo
 from flockwave.server.model.commands import (

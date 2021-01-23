@@ -9,6 +9,7 @@ from trio import CancelScope, sleep
 from trio_util import periodic
 from typing import Callable, Optional
 
+from flockwave.concurrency import delayed
 from flockwave.gps.vectors import (
     FlatEarthCoordinate,
     GPSCoordinate,
@@ -16,7 +17,6 @@ from flockwave.gps.vectors import (
     Vector3D,
     VelocityNED,
 )
-from flockwave.server.concurrency import delayed
 from flockwave.server.model.gps import GPSFixType
 from flockwave.server.model.preflight import PreflightCheckResult, PreflightCheckInfo
 from flockwave.server.model.uav import VersionInfo, UAVBase, UAVDriver

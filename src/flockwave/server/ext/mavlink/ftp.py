@@ -13,7 +13,7 @@ from struct import Struct
 from trio import fail_after, move_on_after, TooSlowError, wrap_file
 from typing import Awaitable, Callable, Iterable, Optional, Union
 
-from flockwave.server.concurrency import aclosing
+from flockwave.concurrency import aclosing
 
 from .types import MAVLinkMessage, spec
 

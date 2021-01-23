@@ -459,7 +459,7 @@ reference = "collmot"
 
 [[package]]
 name = "flockwave-conn"
-version = "2.6.1"
+version = "2.7.0"
 description = "Connection objects for various data sources"
 category = "main"
 optional = false
@@ -1927,7 +1927,7 @@ reference = "collmot"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7"
-content-hash = "bfaebb73567c50ccbaa532f762c020d6a701d7d0803a243063f2ba1e0871d2c5"
+content-hash = "84fc3f079c15ce4e2c7b2c7a5de12faf156ab7810d8be58c121d308a6b4e2e4d"
 
 [metadata.files]
 aio-usb-hotplug = [
@@ -2089,8 +2089,8 @@ flockwave-app-framework = [
     {file = "flockwave_app_framework-1.1.1-py3-none-any.whl", hash = "md5:180dc3c6038b31d1eb400bca576b5c90"},
 ]
 flockwave-conn = [
-    {file = "flockwave-conn-2.6.1.tar.gz", hash = "md5:1d7e630bce0aeabd9cb9c4ef9592e671"},
-    {file = "flockwave_conn-2.6.1-py3-none-any.whl", hash = "md5:1562b3c6a2287a33fe1ec12f8a8b0b8c"},
+    {file = "flockwave-conn-2.7.0.tar.gz", hash = "md5:8bc3277343a2c38ab5d9268ba9ae9411"},
+    {file = "flockwave_conn-2.7.0-py3-none-any.whl", hash = "md5:d940c111a9e0d00ba1d6f0fbd75005d0"},
 ]
 flockwave-ext = [
     {file = "flockwave-ext-1.4.1.tar.gz", hash = "md5:9117bb199fb10fb5f22f0798426ad2da"},

@@ -8,7 +8,7 @@ from trio import Event, MemorySendChannel, move_on_after, sleep
 from typing import AsyncIterable, Callable, Iterable, List, Optional, Union
 
 from aiocflib.drivers.crazyradio import RadioConfiguration
-from flockwave.server.concurrency import aclosing
+from flockwave.concurrency import aclosing
 
 from .connection import CrazyradioConnection
 

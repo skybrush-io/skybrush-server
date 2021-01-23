@@ -29,10 +29,9 @@ from typing import (
 )
 
 from flockwave.connections import Connection, create_connection, ListenerConnection
-from flockwave.concurrency import Future
+from flockwave.concurrency import Future, race
 from flockwave.networking import find_interfaces_with_address
 from flockwave.server.comm import CommunicationManager
-from flockwave.server.concurrency import race
 from flockwave.server.model import ConnectionPurpose, UAV
 from flockwave.server.utils import nop, overridden
 

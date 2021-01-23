@@ -5,7 +5,7 @@ USB device is removed.
 
 from aio_usb_hotplug import HotplugDetector, NoBackendError
 
-from flockwave.server.concurrency import aclosing
+from flockwave.concurrency import aclosing
 
 
 async def run(app, configuration, log):

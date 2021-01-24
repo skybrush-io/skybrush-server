@@ -64,12 +64,16 @@ class CrazyflieDronesExtension(UAVExtensionBase):
                     self.log.warn(f"Could not acquire Crazyradio #{index}")
                 except OSError as ex:
                     if ex.errno == EACCES:
-                        self.log.warn(f"Permission denied while trying to access Crazyradio #{index}. Do you have the permissions to work with USB devices?")
+                        self.log.warn(
+                            f"Permission denied while trying to access Crazyradio #{index}. Do you have the permissions to work with USB devices?"
+                        )
                     else:
                         raise ex
 
             if not num_radios:
-                self.log.error("Failed to acquire any Crazyradios; Crazyflie extension disabled.")
+                self.log.error(
+                    "Failed to acquire any Crazyradios; Crazyflie extension disabled."
+                )
             else:
                 return await self._run(app, configuration)
 
@@ -108,9 +112,7 @@ class CrazyflieDronesExtension(UAVExtensionBase):
                         channel=new_uav_tx_channel,
                     )
 
-                    nursery.start_soon(
-                        partial(app.supervise, connection, task=task)
-                    )
+                    nursery.start_soon(partial(app.supervise, connection, task=task))
 
                 # Wait for newly detected UAVs and spawn a task for each of them
                 async with new_uav_rx_channel:

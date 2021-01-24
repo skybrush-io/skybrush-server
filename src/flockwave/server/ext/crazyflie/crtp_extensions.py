@@ -33,6 +33,8 @@ class DroneShowCommand(IntEnum):
     STOP = 2
     STATUS = 3
     DEFINE_LIGHT_PROGRAM = 4
+    RESTART = 5
+    TRIGGER_GCS_LIGHT_EFFECT = 6
 
 
 class LightProgramLocation(IntEnum):
@@ -48,6 +50,16 @@ class LightProgramType(IntEnum):
     RGB = 0
     RGB565 = 1
     SKYBRUSH = 2
+
+
+class GCSLightEffectType(IntEnum):
+    """Enum representing the possible light effects that we can trigger on a
+    Crazyflie LED ring from the GCS, overriding the light program or the
+    preflight check light signals.
+    """
+
+    OFF = 0
+    SOLID = 1
 
 
 class PreflightCheckStatus(IntEnum):

@@ -43,6 +43,7 @@ from .crtp_extensions import (
     DroneShowCommand,
     DroneShowExecutionStage,
     DroneShowStatus,
+    GCSLightEffectType,
     LightProgramLocation,
     LightProgramType,
 )
@@ -147,6 +148,20 @@ class CrazyflieDriver(UAVDriver):
             uav.uri = address_space[index]
 
         return uav
+
+    async def handle_command_color(self, uav, red=None, green=None, blue=None):
+        """Command that overrides the color of the LED ring on the UAV."""
+        if (red is None or str(red).lower() == "off") or green is None or blue is None:
+            await uav.override_led_color(None)
+            return "Color override turned off."
+        else:
+            red = int(red)
+            green = int(green)
+            blue = int(blue)
+            color = red, green, blue
+            await uav.override_led_color(color)
+            color = "#{0:02X}{1:02X}{2:02X}".format(*color)
+            return f"Color set to {color}"
 
     async def handle_command_go(
         self,
@@ -604,6 +619,28 @@ class CrazyflieUAV(UAVBase):
             await self._crazyflie.led_ring.test()
         else:
             raise NotSupportedError
+
+    async def override_led_color(self, color: Optional[Tuple[int, int, int]] = None):
+        """Overrides the color of the LED ring of the UAV.
+
+        Parameters:
+            color: the color to apply; `None` turns off the override.
+        """
+        if color is not None and len(color) < 3:
+            color = None
+
+        await self._crazyflie.run_command(
+            port=DRONE_SHOW_PORT,
+            command=DroneShowCommand.TRIGGER_GCS_LIGHT_EFFECT,
+            data=Struct("<BBBB").pack(
+                GCSLightEffectType.SOLID
+                if color
+                else GCSLightEffectType.OFF,  # effect ID
+                color[0] if color else 0,
+                color[1] if color else 0,
+                color[2] if color else 0,
+            ),
+        )
 
     async def upload_show(self, show, *, remember: bool = True) -> None:
         home = get_home_position_from_show_specification(show)

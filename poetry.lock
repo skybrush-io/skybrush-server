@@ -13,7 +13,7 @@ pyusb = ">=1.1.0,<2.0.0"
 
 [[package]]
 name = "aiocflib"
-version = "1.0.0"
+version = "1.1.0"
 description = "asyncio-based API for Crazyflie drones"
 category = "main"
 optional = false
@@ -1927,7 +1927,7 @@ reference = "collmot"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7"
-content-hash = "84fc3f079c15ce4e2c7b2c7a5de12faf156ab7810d8be58c121d308a6b4e2e4d"
+content-hash = "08e1b1a9d487349472a001313dc2e111be2055a14fd06f17723b83635727b57b"
 
 [metadata.files]
 aio-usb-hotplug = [
@@ -1935,8 +1935,8 @@ aio-usb-hotplug = [
     {file = "aio_usb_hotplug-3.0.1-py3-none-any.whl", hash = "sha256:59ad7f835776be016b62f2e0eddab82b89b92dee5322e4983b0293375ba65ce0"},
 ]
 aiocflib = [
-    {file = "aiocflib-1.0.0-py3-none-any.whl", hash = "md5:f2be4adad5575ee8d3b0fc85f79579f5"},
-    {file = "aiocflib-1.0.0.tar.gz", hash = "md5:22ce2f5dd6cffbc9cd1b8271db3cc9a2"},
+    {file = "aiocflib-1.1.0-py3-none-any.whl", hash = "md5:c8d46d040faa6e672c93bdab7d9ac189"},
+    {file = "aiocflib-1.1.0.tar.gz", hash = "md5:abe0f32c4a0b888c5575421a8f482ad0"},
 ]
 aiofiles = [
     {file = "aiofiles-0.6.0-py3-none-any.whl", hash = "sha256:bd3019af67f83b739f8e4053c6c0512a7f545b9a8d91aaeab55e6e0f9d123c27"},

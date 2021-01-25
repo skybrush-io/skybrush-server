@@ -1,7 +1,6 @@
 import gzip
 import sys
 
-from binascii import hexlify
 from json import load
 from pathlib import Path
 
@@ -25,6 +24,41 @@ def test_figure8():
         b"@\x1f\x04)\x05\xd0\x07X\x1b\xec,\x05\xd0\x07p\x17\x04)\x05\xd0\x07X\x1b\x1c%\x05\xd0\x07"
         b"@\x1f\x04)\x10\xb8\x0b\x00\x00\x00\x00\x00"
     )
+
+
+def test_encoding_of_bezier_control_points():
+    trajectory = TrajectorySpecification(
+        {
+            "version": 1,
+            "points": [
+                [0, [0, 0, 0], []],
+                [8, [0, 0, 8], [[0, 0, 0], [0, 0, 8]]],
+                [16, [0, 6, 8], [[0, 0, 8], [0, 6, 8]]],
+                [24, [3, 6, 8], [[0, 6, 8], [3, 6, 8]]],
+                [32, [3, 0, 0], [[3, 6, 8], [3, 0, 0]]],
+            ],
+        }
+    )
+    expected = (
+        # start point
+        b"\x00\x00\x00\x00\x00\x00\x00\x00"
+        # header: 0x20 (Z is Bezier, X and Y are constant), duration: 8000 msec, then Z coords
+        # of control points, then the final Z coord
+        b"\x20\x40\x1f\x00\x00\x40\x1f\x40\x1f"
+        # header: 0x08 (Y is Bezier, X and Z are constant), duration: 8000 msec, then Y coords
+        # of control points, then the final Z coord
+        b"\x08\x40\x1f\x00\x00\x70\x17\x70\x17"
+        # header: 0x02 (X is Bezier, Y and Z are constant), duration: 8000 msec, then X coords
+        # of control points, then the final Z coord
+        b"\x02\x40\x1f\x00\x00\xb8\x0b\xb8\x0b"
+        # header: 0x28 (Y and Z are Bezier, X is constant), duration: 8000 msec, then Y coords, then Z coords
+        b"\x28\x40\x1f\x70\x17\x00\x00\x00\x00\x40\x1f\x00\x00\x00\x00"
+        # end of trajectory
+        b"\x00\x00\x00"
+    )
+
+    data = encode_trajectory(trajectory, encoding=TrajectoryEncoding.COMPRESSED)
+    assert data == expected
 
 
 def test_show_5cf_demo():

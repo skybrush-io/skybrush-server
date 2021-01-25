@@ -4,6 +4,8 @@ drones with a single Crazyradio.
 
 from trio import sleep_forever
 
+from aiocflib.crtp.broadcaster import Broadcaster
+from aiocflib.crtp.crtpstack import CRTPPort
 from flockwave.connections.base import TaskConnectionBase
 
 __all__ = ("CrazyradioConnection",)
@@ -37,16 +39,22 @@ class CrazyradioConnection(TaskConnectionBase):
         self._crazyflie_address_space = RadioAddressSpace.from_uri(
             f"bradio://{host}{path}", length=length
         )
+        self._broadcaster = None
         self._radio = None
 
     async def _run(self, started):
         from aiocflib.crtp.drivers.radio import SharedCrazyradio
 
+        # TODO(ntamas): use the public uri_prefix getter once we have
+        # exposed it in the API
+        uri_prefix = self._crazyflie_address_space._uri_prefix
+
         try:
             async with SharedCrazyradio(self._crazyradio_index) as self._radio:
-                started()
-                await sleep_forever()
+                async with Broadcaster(uri_prefix) as self._broadcaster:
+                    await sleep_forever()
         finally:
+            self._broadcaster = None
             self._radio = None
 
     @property
@@ -57,6 +65,18 @@ class CrazyradioConnection(TaskConnectionBase):
         potential Crazyflie drones that the connection can detect and handle.
         """
         return self._crazyflie_address_space
+
+    async def broadcast(self, port: CRTPPort, data: bytes) -> None:
+        """Broadcasts a CRTP packet to all Crazyflie drones in the range of the
+        connection.
+
+        No-op if the radio is not connected yet or is not connected any more.
+
+        Parameters:
+            packet: the packet to broadcast
+        """
+        if self._broadcaster:
+            await self._broadcaster.send_packet(port, data)
 
     async def scan(self, targets=None):
         """Scans the address space associated to the connection for Crazyflie

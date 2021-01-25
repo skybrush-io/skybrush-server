@@ -50,7 +50,7 @@ class CrazyflieDronesExtension(UAVExtensionBase):
 
         init_drivers()
 
-        # TODO(ntamas): we need to acquire all shared crazyradio instances that
+        # TODO(ntamas): we need to acquire all shared Crazyradio instances that
         # we will use _now_, otherwise Trio gets confused. This is fragile but
         # it's the best we can do.
         async with AsyncExitStack() as stack:

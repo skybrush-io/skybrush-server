@@ -6,7 +6,17 @@ from io import BytesIO, SEEK_END
 from math import floor
 from struct import Struct
 from trio import wrap_file
-from typing import AsyncIterable, Awaitable, Callable, IO, List, Optional, Tuple, Union
+from typing import (
+    AsyncIterable,
+    Awaitable,
+    Callable,
+    IO,
+    Iterable,
+    List,
+    Optional,
+    Tuple,
+    Union,
+)
 
 from .trajectory import TrajectorySegment, TrajectorySpecification
 from .utils import Point
@@ -211,6 +221,8 @@ class SkybrushBinaryShowFile:
         chunks = [bytes([scaling_factor])]  # MSB means whether to use yaw, but we won't
         encoder = SegmentEncoder(scaling_factor)
 
+        # TODO(ntamas): replace this with SegmentEncoder.encode_multiple_segments()
+        # once we have a test case in place for that
         first = True
         for segment in trajectory.segments():
             if first:
@@ -345,6 +357,36 @@ class SegmentEncoder:
         parts.extend(zs)
 
         return b"".join(parts)
+
+    def iter_encode_multiple_segments(
+        self,
+        segments: Iterable[TrajectorySegment],
+        chunks: Optional[List[bytes]] = None,
+    ) -> Iterable[bytes]:
+        """Iteratively encodes a sequence of trajectory segments.
+
+        Parameters:
+            segments: the segments to encode
+
+        Yields:
+            the representation of the first point of the first segment, followed by
+            the representation of each segment without its first point. (Note that
+            the last point of each segment is the same as the first point of the
+            next segment so the encoding does not lose information).
+        """
+        chunks = chunks or []
+
+        first = True
+        for segment in segments:
+            if first:
+                # Encode the start point of the trajectory
+                yield self.encode_point(segment.start)
+                first = False
+
+            # Encode the segment without its start point
+            yield self.encode_segment(segment)
+
+        return chunks
 
     def _encode_coordinate_series(self, xs: Tuple[float]) -> Tuple[int, List[bytes]]:
         first, *xs = xs

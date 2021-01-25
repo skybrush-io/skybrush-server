@@ -7,6 +7,7 @@ from enum import IntEnum
 from struct import Struct
 from typing import Sequence, Tuple
 
+from skybrush.formats import SegmentEncoder
 from skybrush.trajectory import TrajectorySpecification
 
 from .math import get_poly_degree, to_bernstein_form
@@ -167,7 +168,7 @@ class Poly4D:
 
 
 def encode_trajectory(
-    segments: Sequence[Poly4D],
+    trajectory: TrajectorySpecification,
     *,
     encoding: TrajectoryEncoding = TrajectoryEncoding.POLY4D,
 ) -> bytes:
@@ -182,15 +183,12 @@ def encode_trajectory(
         the encoded trajectory
     """
     if encoding is TrajectoryEncoding.POLY4D:
-        result = b"".join(segment.encode() for segment in segments)
+        polynomials = to_poly4d_sequence(trajectory)
+        result = b"".join(polynomial.encode() for polynomial in polynomials)
     else:
-        result = (
-            b"".join(
-                segment.encode_compressed(with_start_point=(index == 0))
-                for index, segment in enumerate(segments)
-            )
-            + b"\x00\x00\x00"
-        )
+        encoder = SegmentEncoder(scale=1)
+        encoded = encoder.iter_encode_multiple_segments(trajectory.segments())
+        result = b"".join(encoded) + b"\x00\x00\x00"
 
     return result
 
@@ -213,16 +211,3 @@ def to_poly4d_sequence(trajectory: TrajectorySpecification) -> Sequence[Poly4D]:
         result.append(Poly4D(duration=dt, xs=xs, ys=ys, zs=zs))
 
     return result
-
-
-if __name__ == "__main__":
-    from binascii import hexlify
-    from json import load
-
-    with open("../hydra/etc/trajectories/figure8.json") as fp:
-        trajectory = load(fp)
-
-    trajectory = to_poly4d_sequence(trajectory)
-    data = encode_trajectory(trajectory, encoding=TrajectoryEncoding.COMPRESSED)
-
-    print(hexlify(data))

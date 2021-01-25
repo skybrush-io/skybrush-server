@@ -47,7 +47,7 @@ from .crtp_extensions import (
     LightProgramLocation,
     LightProgramType,
 )
-from .trajectory import encode_trajectory, TrajectoryEncoding, to_poly4d_sequence
+from .trajectory import encode_trajectory, TrajectoryEncoding
 
 __all__ = ("CrazyflieDriver",)
 
@@ -894,9 +894,7 @@ class CrazyflieUAV(UAVBase):
         await self.set_parameter("show.landingHeight", trajectory.landing_height)
 
         # Encode the trajectory and write it to the Crazyflie memory
-        data = encode_trajectory(
-            to_poly4d_sequence(trajectory), encoding=TrajectoryEncoding.COMPRESSED
-        )
+        data = encode_trajectory(trajectory, encoding=TrajectoryEncoding.COMPRESSED)
         addr = await write_with_checksum(memory, 0, data, only_if_changed=True)
 
         # Now we can define the entire trajectory as well

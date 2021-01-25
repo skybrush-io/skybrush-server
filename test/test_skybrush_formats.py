@@ -1,4 +1,3 @@
-from io import BytesIO
 from skybrush.formats import SkybrushBinaryShowFile, SkybrushBinaryFormatBlockType
 
 

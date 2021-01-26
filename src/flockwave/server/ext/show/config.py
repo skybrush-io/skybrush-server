@@ -10,7 +10,10 @@ __all__ = ("DroneShowConfiguration", "StartMethod")
 class StartMethod(Enum):
     """Enumeration holding the possible start methods for a drone show."""
 
+    #: Show starts only with RC
     RC = "rc"
+
+    #: Show starts automatically based on GPS time or MIDI timecode
     AUTO = "auto"
 
 
@@ -19,7 +22,10 @@ class LightEffectType(Enum):
     on the drones.
     """
 
+    #: GCS is not controlling the LED lights on the drones
     OFF = "off"
+
+    #: GCS is asking the drones to use a solid LED light
     SOLID = "solid"
 
 

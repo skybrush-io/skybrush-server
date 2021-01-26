@@ -116,10 +116,14 @@ class MAVLinkDronesExtension(UAVExtensionBase):
                 )
             )
 
-            # Get the current start configuration for the drones in this network.
+            # Forward the current start configuration for the drones in this network.
             # Note that this can be called only if self._networks has been set
             # up so we cannot do it outside the exit stack
             self._update_show_configuration_in_networks(app=app)
+
+            # Also forward the current lights configuration for the drones in
+            # this network.
+            self._update_show_light_configuration_in_networks(app=app)
 
             try:
                 async with self.use_nursery() as nursery:
@@ -240,8 +244,8 @@ class MAVLinkDronesExtension(UAVExtensionBase):
         # us in the handler chain messes with it
         config = config.clone()
 
-        # TODO(ntamas)
-        print(repr(config))
+        # Send the configuration to all the networks
+        self._update_show_light_configuration_in_networks(config)
 
     def _register_uav(self, uav: UAV) -> None:
         """Registers a new UAV object in the object registry of the application
@@ -308,6 +312,30 @@ class MAVLinkDronesExtension(UAVExtensionBase):
             except Exception:
                 self.log.warn(
                     f"Failed to update start configuration of drones in network {name!r}"
+                )
+
+    def _update_show_light_configuration_in_networks(
+        self, config=None, app=None
+    ) -> None:
+        """Updates the current LED light settings of the drones managed by this
+        extension, based on the given configuration object from the `show`
+        extension. If the configuration object is `None`, retrieves it from the
+        `show` extension itself.
+        """
+        if config is None:
+            if app is None:
+                raise RuntimeError(
+                    "'app' kwarg must be provided if 'config' is missing"
+                )
+
+            config = app.import_api("show").get_light_configuration()
+
+        for name, network in self._networks.items():
+            try:
+                network.notify_led_light_config_changed(config)
+            except Exception:
+                self.log.warn(
+                    f"Failed to update LED light configuration of drones in network {name!r}"
                 )
 
 

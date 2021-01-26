@@ -13,7 +13,7 @@ multiple independent MAVLink-based drone swarms.
 from collections import defaultdict
 from contextlib import contextmanager, ExitStack
 from time import time_ns
-from trio import move_on_after, to_thread
+from trio import move_on_after, open_nursery, to_thread
 from trio.abc import ReceiveChannel
 from trio_util import periodic
 from typing import (
@@ -42,6 +42,7 @@ from .comm import (
 )
 from .driver import MAVLinkUAV
 from .enums import MAVAutopilot, MAVComponent, MAVMessageType, MAVState, MAVType
+from .led_lights import LEDLightConfigurationManager
 from .packets import DroneShowStatus
 from .rtk import RTKCorrectionPacketEncoder
 from .takeoff import ScheduledTakeoffManager
@@ -134,6 +135,7 @@ class MAVLinkNetwork:
         """
         self._id = id
         self._id_formatter = id_formatter
+        self._led_light_configuration_manager = LEDLightConfigurationManager(self)
         self._matchers = None
         self._packet_loss = max(float(packet_loss), 0.0)
         self._routing = dict(routing) or {}
@@ -295,24 +297,28 @@ class MAVLinkNetwork:
                 )
             )
 
-            # Start a background task that checks the configured start times on
-            # the drones at regular intervals
-            # TODO(ntamas): the task is not cancelled if the network goes down,
-            # this can be a problem
-            self.driver.run_in_background(self._scheduled_takeoff_manager.run)
+            async with open_nursery() as nursery:
+                # Start background tasks that check the configured start times
+                # on the drones at regular intervals and that take care of
+                # broadcasting the current light configuration to the drones
+                nursery.start_soon(self._scheduled_takeoff_manager.run)
+                nursery.start_soon(self._led_light_configuration_manager.run)
 
-            # Start the communication manager
-            try:
-                await manager.run(
-                    consumer=self._handle_inbound_messages,
-                    supervisor=supervisor,
-                    log=log,
-                    tasks=[self._generate_heartbeats],
-                )
-            finally:
-                for matcher in matchers.values():
-                    for _, _, future in matcher:
-                        future.cancel()
+                # Start the communication manager
+                try:
+                    await manager.run(
+                        consumer=self._handle_inbound_messages,
+                        supervisor=supervisor,
+                        log=log,
+                        tasks=[self._generate_heartbeats],
+                    )
+                finally:
+                    for matcher in matchers.values():
+                        for _, _, future in matcher:
+                            future.cancel()
+
+                # Cancel all tasks in this nursery as we are about to shut down
+                nursery.cancel_scope.cancel()
 
     async def broadcast_packet(self, spec: MAVLinkMessageSpecification) -> None:
         """Broadcasts a message to all UAVs in the network.
@@ -337,6 +343,13 @@ class MAVLinkNetwork:
             self.manager.enqueue_broadcast_packet(
                 message, destination=Channel.RTK, allow_failure=True
             )
+
+    def notify_led_light_config_changed(self, config):
+        """Notifies the network that the LED light configuration of the drones
+        has changed in the system. The network will then update the LED light
+        configuration of each drone.
+        """
+        self._led_light_configuration_manager.notify_config_changed(config)
 
     def notify_scheduled_takeoff_config_changed(self, config):
         """Notifies the network that the automatic start configuration of the
@@ -788,6 +801,7 @@ class MAVLinkNetwork:
                         self.log.info(
                             f"Broadcast address updated to {subnet.broadcast_address} "
                             f"({interface})",
+                            extra={"id": self.id},
                         )
                         success = True
 

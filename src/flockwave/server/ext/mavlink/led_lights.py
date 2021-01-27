@@ -74,12 +74,15 @@ class LEDLightConfigurationManager:
         we need to send to all the drones in order to instruct them to do the
         current light effect.
         """
+        is_active = self._config.effect == LightEffectType.SOLID
         data = _light_control_packet_struct.pack(
             self._config.color[0],
             self._config.color[1],
             self._config.color[2],
-            30000,  # drone will switch back to normal mode after 30 sec
-            1 if self._config.effect == LightEffectType.SOLID else 0,
+            30000  # drone will switch back to normal mode after 30 sec
+            if is_active
+            else 0,  # submitting zero duration turns off any effect that we have
+            1 if is_active else 0,
         )
         return spec.led_control(
             target_system=0,

@@ -4,7 +4,8 @@ each other's API.
 """
 
 from blinker import NamedSignal, Signal
-from typing import Optional
+from contextlib import contextmanager, ExitStack
+from typing import Callable, ContextManager, Dict, Optional
 
 
 #: Logger that will be used to log unexpected exceptions from signal handlers
@@ -79,6 +80,19 @@ def get_signal(name: str) -> Signal:
     return signals.signal(name)
 
 
+@contextmanager
+def use_signals(map: Dict[str, Callable]) -> ContextManager[None]:
+    """Context manager that registers signal handler functions for multiple
+    signals when entering the context and unregisters them when exiting the
+    context.
+    """
+    with ExitStack() as stack:
+        for key, func in map.items():
+            signal = get_signal(key)
+            stack.enter_context(signal.connected_to(func))
+        yield
+
+
 def load(app, configuration, logger):
     global signals
     global log
@@ -93,4 +107,4 @@ def unload():
 
 
 #: The API of this extension
-exports = {"get": get_signal}
+exports = {"get": get_signal, "use": use_signals}

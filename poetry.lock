@@ -13,7 +13,7 @@ pyusb = ">=1.1.0,<2.0.0"
 
 [[package]]
 name = "aiocflib"
-version = "1.1.0"
+version = "1.2.0"
 description = "asyncio-based API for Crazyflie drones"
 category = "main"
 optional = false
@@ -1441,7 +1441,7 @@ reference = "collmot"
 
 [[package]]
 name = "python-rtmidi"
-version = "1.4.6"
+version = "1.4.7"
 description = "A Python binding for the RtMidi C++ library implemented using Cython."
 category = "main"
 optional = false
@@ -1813,7 +1813,7 @@ reference = "collmot"
 
 [[package]]
 name = "urllib3"
-version = "1.26.2"
+version = "1.26.3"
 description = "HTTP library with thread-safe connection pooling, file post, and more."
 category = "main"
 optional = false
@@ -1927,7 +1927,7 @@ reference = "collmot"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7"
-content-hash = "08e1b1a9d487349472a001313dc2e111be2055a14fd06f17723b83635727b57b"
+content-hash = "3561735c060f948216ecd1833ca3a8388a490ef2cac71010b4401fc047263d14"
 
 [metadata.files]
 aio-usb-hotplug = [
@@ -1935,8 +1935,8 @@ aio-usb-hotplug = [
     {file = "aio_usb_hotplug-3.0.1-py3-none-any.whl", hash = "sha256:59ad7f835776be016b62f2e0eddab82b89b92dee5322e4983b0293375ba65ce0"},
 ]
 aiocflib = [
-    {file = "aiocflib-1.1.0-py3-none-any.whl", hash = "md5:c8d46d040faa6e672c93bdab7d9ac189"},
-    {file = "aiocflib-1.1.0.tar.gz", hash = "md5:abe0f32c4a0b888c5575421a8f482ad0"},
+    {file = "aiocflib-1.2.0-py3-none-any.whl", hash = "md5:067b0d90c300ef2ebb20382f8045b12b"},
+    {file = "aiocflib-1.2.0.tar.gz", hash = "md5:7aa541fc040677eafabd58fc658098dc"},
 ]
 aiofiles = [
     {file = "aiofiles-0.6.0-py3-none-any.whl", hash = "sha256:bd3019af67f83b739f8e4053c6c0512a7f545b9a8d91aaeab55e6e0f9d123c27"},
@@ -2458,18 +2458,18 @@ python-json-logger = [
     {file = "python-json-logger-2.0.1.tar.gz", hash = "sha256:f26eea7898db40609563bed0a7ca11af12e2a79858632706d835a0f961b7d398"},
 ]
 python-rtmidi = [
-    {file = "python-rtmidi-1.4.6.tar.gz", hash = "sha256:1f7a8c6f19a56e56c4314cd562b5595ad4be645617655887e319c0c113d510ab"},
-    {file = "python_rtmidi-1.4.6-cp27-cp27m-win32.whl", hash = "sha256:5e2eb72986b882605f476cddb4202e95e0aaa7ea33c49b99bc2c8243db864e7f"},
-    {file = "python_rtmidi-1.4.6-cp36-cp36m-macosx_10_6_intel.whl", hash = "sha256:919f62b4e4f762064b8e6070f13b76c5490a44405f13f75dd24901658ac370a8"},
-    {file = "python_rtmidi-1.4.6-cp36-cp36m-win32.whl", hash = "sha256:c2e8c3a077928ab5996dc6a0ad7d3723235b76458177c2d7297cb9706bedc779"},
-    {file = "python_rtmidi-1.4.6-cp36-cp36m-win_amd64.whl", hash = "sha256:87cfac386769a4ad415432d94277ca5526f082050d8bc364bd3038e811ea3511"},
-    {file = "python_rtmidi-1.4.6-cp37-cp37m-macosx_10_9_x86_64.whl", hash = "sha256:2151a856964b5a99f823d336102b202b0100cab381aee6582eb7b166cd9672da"},
-    {file = "python_rtmidi-1.4.6-cp37-cp37m-win32.whl", hash = "sha256:107aa9d57c3b7190e65710e436a1ac2db34f22b2e82f459397ebb14dc6d3f63b"},
-    {file = "python_rtmidi-1.4.6-cp37-cp37m-win_amd64.whl", hash = "sha256:5821f8726c62b3da00f70c82443eb00ee09f4d905c09954c65869e372d700373"},
-    {file = "python_rtmidi-1.4.6-cp38-cp38-macosx_10_9_x86_64.whl", hash = "sha256:9141a328e82ebf59519133f24a630283768ffaf69b5e2ade298d1e6b01f4ab69"},
-    {file = "python_rtmidi-1.4.6-cp38-cp38-win32.whl", hash = "sha256:f992685ec4739a51a080069f35355b1769e47b7ed2351008014a6085a08f95f5"},
-    {file = "python_rtmidi-1.4.6-cp38-cp38-win_amd64.whl", hash = "sha256:615eb4426a5df90275616aab8d6382185a7c6be2a09ce44c7f058c4493bdb635"},
-    {file = "python_rtmidi-1.4.6-cp39-cp39-macosx_10_9_x86_64.whl", hash = "sha256:565da90d8e2fc00a7e6c608ea86427c4a2ce69db44adda4be71df95fffe3d262"},
+    {file = "python-rtmidi-1.4.7.tar.gz", hash = "sha256:d7dbc2b174b09015dfbee449a672a072aa72b367be40b13e04ee35a2e2e399e3"},
+    {file = "python_rtmidi-1.4.7-cp27-cp27m-win32.whl", hash = "sha256:b3cc68264297c9ef4e3d02a45a698c4ca88d4ad1415d009fbf740e4a5ff0bbdb"},
+    {file = "python_rtmidi-1.4.7-cp36-cp36m-macosx_10_6_intel.whl", hash = "sha256:ac61260bd0d63c9bde5b5c9f3585f0fffbca427cc381a99a3cdbb9a5503f48d0"},
+    {file = "python_rtmidi-1.4.7-cp36-cp36m-win32.whl", hash = "sha256:18f1d2873f9514fd3f2de3ca9a1722c470fad0505f79738d03ee1d13ec3a846c"},
+    {file = "python_rtmidi-1.4.7-cp36-cp36m-win_amd64.whl", hash = "sha256:2a2bf0a9526fadbe4de8e438899f0932e497b03f0b549eaf329cb05217b76cfa"},
+    {file = "python_rtmidi-1.4.7-cp37-cp37m-macosx_10_9_x86_64.whl", hash = "sha256:de321ee7c68485563a0777b72ea9db5fc8bee6d413ddc125dc881e904bf9c602"},
+    {file = "python_rtmidi-1.4.7-cp37-cp37m-win32.whl", hash = "sha256:fd57b90b28728b6781fdbac78f71b2538b127db5d0fd8aa9304efc7b58daf994"},
+    {file = "python_rtmidi-1.4.7-cp37-cp37m-win_amd64.whl", hash = "sha256:179b2acaa3b2498f71633988799fc392a77bfe983a66b94f70bd35615c94fa33"},
+    {file = "python_rtmidi-1.4.7-cp38-cp38-macosx_10_9_x86_64.whl", hash = "sha256:266ad15fbd97713d4bef07a31ff72ff13cc8cdecc9f4518d2537b01d3f53e47d"},
+    {file = "python_rtmidi-1.4.7-cp38-cp38-win32.whl", hash = "sha256:d1288a0faf12735afd842edba2362ec696f56b4b86917fa4e3113aee3976c84d"},
+    {file = "python_rtmidi-1.4.7-cp38-cp38-win_amd64.whl", hash = "sha256:96b1ca04b4aea71320d71fae81ab882767bd8d801763a54b20ef7e56d4d39a07"},
+    {file = "python_rtmidi-1.4.7-cp39-cp39-macosx_10_9_x86_64.whl", hash = "sha256:922cdcf677e845750d763c114dd334d8ee54bd89f4729bf02bc6a8d3afe6456d"},
 ]
 pyudev = [
     {file = "pyudev-0.22.0.tar.gz", hash = "sha256:69bb1beb7ac52855b6d1b9fe909eefb0017f38d917cba9939602c6880035b276"},
@@ -2632,8 +2632,8 @@ typing-extensions = [
     {file = "typing_extensions-3.7.4.3.tar.gz", hash = "sha256:99d4073b617d30288f569d3f13d2bd7548c3a7e4c8de87db09a9d29bb3a4a60c"},
 ]
 urllib3 = [
-    {file = "urllib3-1.26.2-py2.py3-none-any.whl", hash = "sha256:d8ff90d979214d7b4f8ce956e80f4028fc6860e4431f731ea4a8c08f23f99473"},
-    {file = "urllib3-1.26.2.tar.gz", hash = "sha256:19188f96923873c92ccb987120ec4acaa12f0461fa9ce5d3d0772bc965a39e08"},
+    {file = "urllib3-1.26.3-py2.py3-none-any.whl", hash = "sha256:1b465e494e3e0d8939b50680403e3aedaa2bc434b7d5af64dfd3c958d7f5ae80"},
+    {file = "urllib3-1.26.3.tar.gz", hash = "sha256:de3eedaad74a2683334e282005cd8d7f22f4d55fa690a2a1020a416cb0a47e73"},
 ]
 wcwidth = [
     {file = "wcwidth-0.2.5-py2.py3-none-any.whl", hash = "sha256:beb4802a9cebb9144e99086eff703a642a13d6a0052920003a230f3294bbe784"},

@@ -19,12 +19,12 @@ from aiocflib.crazyflie.mem import write_with_checksum
 from aiocflib.errors import TimeoutError
 
 from flockwave.gps.vectors import PositionXYZ, VelocityXYZ
-from flockwave.server.errors import NotSupportedError
-from flockwave.server.ext.logger import log as base_log
-from flockwave.server.model.commands import (
+from flockwave.server.command_handlers import (
     create_parameter_command_handler,
     create_version_command_handler,
 )
+from flockwave.server.errors import NotSupportedError
+from flockwave.server.ext.logger import log as base_log
 from flockwave.server.model.preflight import PreflightCheckInfo, PreflightCheckResult
 from flockwave.server.model.uav import BatteryInfo, UAVBase, UAVDriver, VersionInfo
 from flockwave.server.utils import optional_float
@@ -152,14 +152,14 @@ class CrazyflieDriver(UAVDriver):
     async def handle_command_color(self, uav, red=None, green=None, blue=None):
         """Command that overrides the color of the LED ring on the UAV."""
         if (red is None or str(red).lower() == "off") or green is None or blue is None:
-            await uav.override_led_color(None)
+            await uav.set_led_color(None)
             return "Color override turned off."
         else:
             red = int(red)
             green = int(green)
             blue = int(blue)
             color = red, green, blue
-            await uav.override_led_color(color)
+            await uav.set_led_color(color)
             color = "#{0:02X}{1:02X}{2:02X}".format(*color)
             return f"Color set to {color}"
 
@@ -620,7 +620,7 @@ class CrazyflieUAV(UAVBase):
         else:
             raise NotSupportedError
 
-    async def override_led_color(self, color: Optional[Tuple[int, int, int]] = None):
+    async def set_led_color(self, color: Optional[Tuple[int, int, int]] = None):
         """Overrides the color of the LED ring of the UAV.
 
         Parameters:

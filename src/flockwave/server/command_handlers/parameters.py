@@ -3,8 +3,7 @@
 from typing import Callable, Optional, Union
 
 from flockwave.server.errors import NotSupportedError
-
-from .uav import UAV, UAVDriver
+from flockwave.server.model.uav import UAV, UAVDriver
 
 __all__ = ("create_parameter_command_handler",)
 

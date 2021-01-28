@@ -15,12 +15,12 @@ from flockwave.gps.time import datetime_to_gps_time_of_week, gps_time_of_week_to
 from flockwave.gps.vectors import GPSCoordinate, VelocityNED
 
 from flockwave.concurrency import aclosing, delayed
-from flockwave.server.errors import NotSupportedError
-from flockwave.server.model.battery import BatteryInfo
-from flockwave.server.model.commands import (
+from flockwave.server.command_handlers import (
     create_parameter_command_handler,
     create_version_command_handler,
 )
+from flockwave.server.errors import NotSupportedError
+from flockwave.server.model.battery import BatteryInfo
 from flockwave.server.model.geofence import GeofenceConfigurationRequest, GeofenceStatus
 from flockwave.server.model.gps import GPSFix
 from flockwave.server.model.preflight import PreflightCheckInfo, PreflightCheckResult

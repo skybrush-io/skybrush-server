@@ -3,17 +3,11 @@ UAVs.
 """
 
 from flockwave.spec.schema import get_complex_object_schema
-from inspect import iscoroutinefunction
 from time import time
 
 from .metamagic import ModelMeta
-from .parameters import create_parameter_command_handler
 
-__all__ = (
-    "CommandExecutionStatus",
-    "create_parameter_command_handler",
-    "create_version_command_handler",
-)
+__all__ = ("CommandExecutionStatus",)
 
 
 class CommandExecutionStatus(metaclass=ModelMeta):
@@ -99,29 +93,3 @@ class CommandExecutionStatus(metaclass=ModelMeta):
         """
         if self.sent is None:
             self.sent = time()
-
-
-async def _version_command_handler(driver, uav) -> str:
-    if iscoroutinefunction(uav.get_version_info):
-        version_info = await uav.get_version_info()
-    else:
-        version_info = uav.get_version_info()
-
-    if version_info:
-        parts = [f"{key} = {version_info[key]}" for key in sorted(version_info.keys())]
-        return "\n".join(parts)
-    else:
-        return "No version information available"
-
-
-def create_version_command_handler():
-    """Creates a generic async command handler function that allows the user to
-    retrieve the version information of the UAV, assuming that the UAV
-    has an async method named `get_version_info()`.
-
-    Assign the function returned from this factory function to the
-    `handle_command_version()` method of a UAVDriver_ subclass to make the
-    driver support parameter retrievals and updates, assuming that the
-    corresponding UAV_ object already supports it.
-    """
-    return _version_command_handler

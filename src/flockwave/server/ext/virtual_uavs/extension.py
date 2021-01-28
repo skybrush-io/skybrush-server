@@ -192,7 +192,7 @@ class VirtualUAVProviderExtension(UAVExtensionBase):
             color = Color(rgb=(x / 255.0 for x in color))
 
         for uav in self.uavs:
-            uav.override_led_color(color)
+            uav.set_led_color(color)
 
 
 construct = VirtualUAVProviderExtension

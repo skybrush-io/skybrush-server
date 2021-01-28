@@ -150,6 +150,7 @@ class MessageHub:
         self._broadcast_methods = None
         self._channel_type_registry = None
         self._client_registry = None
+        self._log_messages = False
 
         self._queue_tx, self._queue_rx = open_memory_channel(4096)
 
@@ -400,12 +401,13 @@ class MessageHub:
             log.warning("Error message from Flockwave client silently dropped")
             return True
 
-        type = message.body.get("type") if hasattr(message, "body") else "NO-TYPE"
-        if type not in ("RTK-STAT", "UAV-PREFLT", "X-DBG-RESP", "X-RTK-STAT"):
-            log.info(
-                "Received {0.body[type]} message".format(message),
-                extra={"id": message.id, "semantics": "request"},
-            )
+        if self._log_messages:
+            type = message.body.get("type") if hasattr(message, "body") else "NO-TYPE"
+            if type not in ("RTK-STAT", "UAV-PREFLT", "X-DBG-RESP", "X-RTK-STAT"):
+                log.info(
+                    "Received {0.body[type]} message".format(message),
+                    extra={"id": message.id, "semantics": "request"},
+                )
 
         handled = await self._feed_message_to_handlers(message, sender)
 
@@ -819,7 +821,9 @@ class MessageHub:
             self._broadcast_methods = self._commit_broadcast_methods()
 
         if self._broadcast_methods:
-            self._log_message_sending(message)
+            if self._log_messages:
+                self._log_message_sending(message)
+
             failures = 0
             for func in self._broadcast_methods:
                 try:
@@ -836,7 +840,9 @@ class MessageHub:
         done()
 
     async def _send_message(self, message, to, in_response_to=None, done=None):
-        self._log_message_sending(message, to, in_response_to)
+        if self._log_messages:
+            self._log_message_sending(message, to, in_response_to)
+
         if not isinstance(to, Client):
             try:
                 client = self._client_registry[to]

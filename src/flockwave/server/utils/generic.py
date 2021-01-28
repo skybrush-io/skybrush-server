@@ -15,6 +15,7 @@ __all__ = (
     "bind",
     "clamp",
     "color_to_rgb565",
+    "color_to_rgb8_triplet",
     "consecutive_pairs",
     "constant",
     "datetime_to_unix_timestamp",
@@ -74,21 +75,32 @@ def clamp(value: float, lo: float, hi: float) -> float:
 
 
 def color_to_rgb565(color: Color) -> int:
-    """Converts a color given as an RGB triplet into its RGB565
-    representation.
+    """Converts a color object into its RGB565 representation.
 
     Parameters:
         color: the color to convert
 
     Returns:
-        int: the color in its RGB565 representation
+        the color in its RGB565 representation
     """
-    red, green, blue = [round(x * 255) for x in color.rgb]
+    red, green, blue = color_to_rgb8_triplet(color)
     return (
         (((red >> 3) & 0x1F) << 11)
         + (((green >> 2) & 0x3F) << 5)
         + ((blue >> 3) & 0x1F)
     )
+
+
+def color_to_rgb8_triplet(color: Color) -> Tuple[int, int, int]:
+    """Converts a color object into its RGB8 triplet representation.
+
+    Parameters:
+        color: the color to convert
+
+    Returns:
+        the color in its RGB8 triplet representation
+    """
+    return tuple(round(x * 255) for x in color.rgb)
 
 
 T = TypeVar("T")

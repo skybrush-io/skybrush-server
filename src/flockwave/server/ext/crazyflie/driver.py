@@ -1,6 +1,7 @@
 """Driver class for Crazyflie drones."""
 
 from collections import defaultdict
+from colour import Color
 from contextlib import asynccontextmanager, AsyncExitStack
 from functools import partial
 from math import hypot
@@ -20,6 +21,7 @@ from aiocflib.errors import TimeoutError
 
 from flockwave.gps.vectors import PositionXYZ, VelocityXYZ
 from flockwave.server.command_handlers import (
+    create_color_command_handler,
     create_parameter_command_handler,
     create_version_command_handler,
 )
@@ -27,7 +29,7 @@ from flockwave.server.errors import NotSupportedError
 from flockwave.server.ext.logger import log as base_log
 from flockwave.server.model.preflight import PreflightCheckInfo, PreflightCheckResult
 from flockwave.server.model.uav import BatteryInfo, UAVBase, UAVDriver, VersionInfo
-from flockwave.server.utils import optional_float
+from flockwave.server.utils import color_to_rgb8_triplet, optional_float
 from flockwave.spec.errors import FlockwaveErrorCode
 from flockwave.spec.ids import make_valid_object_id
 
@@ -149,20 +151,6 @@ class CrazyflieDriver(UAVDriver):
 
         return uav
 
-    async def handle_command_color(self, uav, red=None, green=None, blue=None):
-        """Command that overrides the color of the LED ring on the UAV."""
-        if (red is None or str(red).lower() == "off") or green is None or blue is None:
-            await uav.set_led_color(None)
-            return "Color override turned off."
-        else:
-            red = int(red)
-            green = int(green)
-            blue = int(blue)
-            color = red, green, blue
-            await uav.set_led_color(color)
-            color = "#{0:02X}{1:02X}{2:02X}".format(*color)
-            return f"Color set to {color}"
-
     async def handle_command_go(
         self,
         uav,
@@ -230,6 +218,7 @@ class CrazyflieDriver(UAVDriver):
         """
         await uav.upload_show(show, remember=True)
 
+    handle_command_color = create_color_command_handler()
     handle_command_motoroff = handle_command_stop
     handle_command_param = create_parameter_command_handler()
     handle_command_version = create_version_command_handler()
@@ -620,14 +609,16 @@ class CrazyflieUAV(UAVBase):
         else:
             raise NotSupportedError
 
-    async def set_led_color(self, color: Optional[Tuple[int, int, int]] = None):
+    async def set_led_color(self, color: Optional[Color] = None):
         """Overrides the color of the LED ring of the UAV.
 
         Parameters:
             color: the color to apply; `None` turns off the override.
         """
-        if color is not None and len(color) < 3:
-            color = None
+        if color is not None:
+            red, green, blue = color_to_rgb8_triplet(color)
+        else:
+            red, green, blue = 0, 0, 0
 
         await self._crazyflie.run_command(
             port=DRONE_SHOW_PORT,
@@ -636,9 +627,9 @@ class CrazyflieUAV(UAVBase):
                 GCSLightEffectType.SOLID
                 if color
                 else GCSLightEffectType.OFF,  # effect ID
-                color[0] if color else 0,
-                color[1] if color else 0,
-                color[2] if color else 0,
+                red,
+                green,
+                blue,
             ),
         )
 

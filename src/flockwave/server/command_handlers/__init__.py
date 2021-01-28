@@ -2,12 +2,12 @@
 by multiple UAV drivers.
 """
 
-# from .color import create_color_command_handler
+from .color import create_color_command_handler
 from .parameters import create_parameter_command_handler
 from .version import create_version_command_handler
 
 __all__ = (
-    # "create_color_command_handler",
+    "create_color_command_handler",
     "create_parameter_command_handler",
     "create_version_command_handler",
 )

@@ -28,7 +28,7 @@ def create_version_command_handler() -> Callable[[UAVDriver, UAV], str]:
 
     Assign the function returned from this factory function to the
     `handle_command_version()` method of a UAVDriver_ subclass to make the
-    driver support parameter retrievals and updates, assuming that the
-    corresponding UAV_ object already supports it.
+    driver version number retrievals, assuming that the corresponding UAV_
+    object already supports it.
     """
     return _version_command_handler

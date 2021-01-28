@@ -3,19 +3,21 @@
 from __future__ import division
 
 from collections import defaultdict
+from colour import Color
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from functools import partial
 from math import inf
 from time import monotonic
 from trio import fail_after, move_on_after, sleep, TooSlowError
-from typing import List, Optional, Tuple, Union
+from typing import List, Optional, Union
 
 from flockwave.gps.time import datetime_to_gps_time_of_week, gps_time_of_week_to_utc
 from flockwave.gps.vectors import GPSCoordinate, VelocityNED
 
 from flockwave.concurrency import aclosing, delayed
 from flockwave.server.command_handlers import (
+    create_color_command_handler,
     create_parameter_command_handler,
     create_version_command_handler,
 )
@@ -26,7 +28,7 @@ from flockwave.server.model.gps import GPSFix
 from flockwave.server.model.preflight import PreflightCheckInfo, PreflightCheckResult
 from flockwave.server.model.transport import TransportOptions
 from flockwave.server.model.uav import VersionInfo, UAVBase, UAVDriver
-from flockwave.server.utils import to_uppercase_string
+from flockwave.server.utils import color_to_rgb8_triplet, to_uppercase_string
 from flockwave.spec.errors import FlockwaveErrorCode
 
 from skybrush import (
@@ -147,6 +149,7 @@ class MAVLinkDriver(UAVDriver):
         """
         return int(monotonic() * 1000)
 
+    handle_command_color = create_color_command_handler()
     handle_command_param = create_parameter_command_handler(
         name_validator=to_uppercase_string
     )
@@ -1079,18 +1082,13 @@ class MAVLinkUAV(UAVBase):
                 await sleep(3)
         elif component == "led":
             color_sequence = [
-                (255, 0, 0),
-                (0, 255, 0),
-                (0, 0, 255),
-                (255, 255, 0),
-                (0, 255, 255),
-                (255, 0, 255),
-                (255, 255, 255),
+                Color(name)
+                for name in "red lime blue yellow cyan magenta white".split()
             ]
             for index, color in enumerate(color_sequence):
                 if index > 0:
                     await sleep(1)
-                await self.set_led_color(color, channel=channel)
+                await self.set_led_color(color, channel=channel, duration=2)
         elif component == "led_flash":
             await self.flash_led(channel=channel)
         else:
@@ -1400,20 +1398,35 @@ class MAVLinkUAV(UAVBase):
         await self.set_parameter("SHOW_START_TIME", gps_time_of_week)
 
     async def set_led_color(
-        self, color: Tuple[int, int, int], *, channel: str = Channel.PRIMARY
+        self,
+        color: Optional[Color],
+        *,
+        channel: str = Channel.PRIMARY,
+        duration: float = 5,
     ) -> None:
-        """Sets the color of the drone LED to a specific RGB color.
-
-        Color componentss are expressed in the range [0; 255].
-        """
-        if len(color) != 3 or any(not isinstance(x, (int, float)) for x in color):
-            raise RuntimeError("Invalid color")
+        """Sets the color of the drone LED to a specific RGB color."""
+        if color is not None:
+            red, green, blue = color_to_rgb8_triplet(color)
+            duration_msec = max(0, min(int(duration * 1000), 65535))
+            effect = 1
+        else:
+            red, green, blue = 0, 0, 0
+            duration_msec = 0
+            effect = 0
 
         message = spec.led_control(
             instance=42,
             pattern=42,
             custom_len=3,
-            custom_bytes=bytes([max(0, min(255, int(x))) for x in color] + [0] * 21),
+            custom_bytes=[
+                red,
+                green,
+                blue,
+                duration_msec & 0xFF,
+                duration_msec >> 8,
+                effect,
+            ]
+            + [0] * 18,
         )
         await self.driver.send_packet(message, self, channel=channel)
 

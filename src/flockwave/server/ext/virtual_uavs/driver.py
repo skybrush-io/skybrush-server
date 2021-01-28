@@ -17,6 +17,7 @@ from flockwave.gps.vectors import (
     Vector3D,
     VelocityNED,
 )
+from flockwave.server.command_handlers import create_color_command_handler
 from flockwave.server.model.gps import GPSFixType
 from flockwave.server.model.preflight import PreflightCheckResult, PreflightCheckInfo
 from flockwave.server.model.uav import VersionInfo, UAVBase, UAVDriver
@@ -115,21 +116,6 @@ class VirtualUAVDriver(UAVDriver):
             uav.battery.voltage = float(value)
             return f"Voltage set to {uav.battery.voltage:.2f}V"
 
-    def handle_command_color(self, uav, red=None, green=None, blue=None):
-        """Command that overrides the color of the simulated light of the
-        UAV.
-        """
-        if (red is None or str(red).lower() == "off") or green is None or blue is None:
-            uav.set_led_color(None)
-            return "Color override turned off."
-        else:
-            red = int(red)
-            green = int(green)
-            blue = int(blue)
-            color = Color(red=red / 255, green=green / 255, blue=blue / 255)
-            uav.set_led_color(color)
-            return f"Color set to {color.hex_l}"
-
     async def handle_command_disarm(self, uav):
         """Command that disarms the virtual drone if it is on the ground."""
         if uav.disarm_if_on_ground():
@@ -190,6 +176,8 @@ class VirtualUAVDriver(UAVDriver):
     async def handle_command_yo(self, uav):
         await sleep(0.5 + random())
         return "yo" + choice("?!.")
+
+    handle_command_color = create_color_command_handler()
 
     def _request_preflight_report_single(self, uav) -> PreflightCheckInfo:
         return _dummy_preflight_check_info

@@ -88,11 +88,8 @@ class MAVLinkDronesExtension(UAVExtensionBase):
             "use_connection": app.connection_registry.use,
         }
 
-        # Get a handle to the signals that we will need
+        # Get a handle to the signals extension that we will need
         signals = app.import_api("signals")
-        rtk_signal = signals.get("rtk:packet")
-        show_configuration_changed_signal = signals.get("show:config_updated")
-        show_light_confguration_changed_signal = signals.get("show:lights_updated")
 
         # Create self._uavs only here and not in the constructor; this is to
         # ensure that we cannot accidentally register a UAV when the extension
@@ -104,15 +101,13 @@ class MAVLinkDronesExtension(UAVExtensionBase):
             stack.enter_context(overridden(self, _uavs=uavs, _networks=networks))
 
             # Connect the signals to our signal handlers
-            stack.enter_context(rtk_signal.connected_to(self._on_rtk_correction_packet))
             stack.enter_context(
-                show_configuration_changed_signal.connected_to(
-                    self._on_show_configuration_changed
-                )
-            )
-            stack.enter_context(
-                show_light_confguration_changed_signal.connected_to(
-                    self._on_show_light_configuration_changed
+                signals.use(
+                    {
+                        "rtk:packet": self._on_rtk_correction_packet,
+                        "show:config_updated": self._on_show_configuration_changed,
+                        "show:lights_updated": self._on_show_light_configuration_changed,
+                    }
                 )
             )
 

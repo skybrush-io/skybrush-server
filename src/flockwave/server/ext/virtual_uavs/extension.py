@@ -171,11 +171,8 @@ class VirtualUAVProviderExtension(UAVExtensionBase):
                     await sleep(0.2)
 
     async def run(self):
-        lights_updated_signal = self.app.import_api("signals").get(
-            "show:lights_updated"
-        )
-
-        with lights_updated_signal.connected_to(self._on_lights_updated):
+        signals = self.app.import_api("signals")
+        with signals.use({"show:lights_updated": self._on_lights_updated}):
             await sleep_forever()
 
     async def worker(self, app, configuration, logger):

@@ -142,7 +142,7 @@ class FlockCtrlDronesExtension(UAVExtensionBase):
         )
 
         clock_registry = app.import_api("clocks").registry
-        rtk_signal = app.import_api("signals").get("rtk:packet")
+        signals = app.import_api("signals")
 
         with ExitStack() as stack:
             # Attach ourselves to the clock registry
@@ -186,7 +186,9 @@ class FlockCtrlDronesExtension(UAVExtensionBase):
                 manager.add(radio_link, name="radio")
 
             # Register a callback for RTK correction packets
-            stack.enter_context(rtk_signal.connected_to(self._on_rtk_correction_packet))
+            stack.enter_context(
+                signals.use({"rtk:packet": self._on_rtk_correction_packet})
+            )
 
             # Start the communication manager
             try:

@@ -45,13 +45,12 @@ class CrazyradioConnection(TaskConnectionBase):
     async def _run(self, started):
         from aiocflib.crtp.drivers.radio import SharedCrazyradio
 
-        # TODO(ntamas): use the public uri_prefix getter once we have
-        # exposed it in the API
-        uri_prefix = self._crazyflie_address_space._uri_prefix
+        uri_prefix = self._crazyflie_address_space.uri_prefix
 
         try:
             async with SharedCrazyradio(self._crazyradio_index) as self._radio:
                 async with Broadcaster(uri_prefix) as self._broadcaster:
+                    started()
                     await sleep_forever()
         finally:
             self._broadcaster = None

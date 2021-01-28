@@ -257,6 +257,25 @@ class CrazyradioScannerTask:
             channel: channel in which we should put the address space and index
                 of any newly detected UAV
         """
+        space = self._conn.address_space
+        first_address = space[0]
+        if len(space) > 1:
+            last_address = space[len(space) - 1]
+            address_space = f"{first_address} to {last_address}"
+        else:
+            address_space = first_address
+
+        if self._log:
+            self._log.info(f"Scanning Crazyflies from {address_space}")
+
+        try:
+            await self._run(channel)
+        except Exception:
+            if self._log:
+                self._log.error(f"Task scanning {address_space} stopped unexpectedly.")
+            raise
+
+    async def _run(self, channel: MemorySendChannel) -> None:
         self._excluded = set()
 
         scheduler = DefaultScheduler()

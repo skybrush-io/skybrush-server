@@ -48,11 +48,6 @@ fi
 # Generate the bundle for Windows
 if [ x$GENERATE_WINDOWS = x1 ]; then
     rm -rf dist/windows
-    docker run --rm \
-        -v "$(pwd):/src/" \
-        -v "${HOME}/.pyarmor:/root/.pyarmor/" \
-		--entrypoint /bin/bash \
-        cdrx/pyinstaller-windows:python3-xenial \
-        -c "rm -rf /tmp/.wine-0 && python -m pip install --upgrade pip && pip install -U pypiwin32 wheel pyarmor && pip install -r requirements-main.txt && pyinstaller --clean -y --dist ./dist/windows --workpath /tmp pyinstaller.spec && chown -R --reference=. ./dist/windows"
+    etc/scripts/build-nsis-installer.sh
 fi
 

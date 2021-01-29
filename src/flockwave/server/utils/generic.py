@@ -8,7 +8,7 @@ from functools import partial
 from inspect import Parameter, signature
 from itertools import tee
 from operator import mul
-from typing import Any, Callable, Generator, Iterable, Optional, Tuple, TypeVar
+from typing import Any, Callable, Generator, Iterable, Optional, Sequence, Tuple, TypeVar
 
 
 __all__ = (
@@ -24,6 +24,7 @@ __all__ = (
     "is_timezone_aware",
     "itersubclasses",
     "keydefaultdict",
+    "longest_common_prefix",
     "multiply_by",
     "nop",
     "once",
@@ -215,6 +216,20 @@ class keydefaultdict(defaultdict):
         else:
             ret = self[key] = self.default_factory(key)
             return ret
+
+
+def longest_common_prefix(strings: Sequence[str]) -> str:
+    """Finds the longest common prefix of a sequence of strings."""
+    if not strings:
+        return ""
+
+    shortest_string = min(strings, key=len)
+    for i, char in enumerate(shortest_string):
+        for other in strings:
+            if other[i] != char:
+                return shortest_string[:i]
+
+    return shortest_string
 
 
 def multiply_by(term: float) -> Callable[[float], float]:

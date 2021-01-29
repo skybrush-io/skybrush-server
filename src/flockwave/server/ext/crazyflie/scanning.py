@@ -8,7 +8,9 @@ from trio import Event, MemorySendChannel, move_on_after, sleep
 from typing import AsyncIterable, Callable, Iterable, List, Optional, Union
 
 from aiocflib.drivers.crazyradio import RadioConfiguration
+
 from flockwave.concurrency import aclosing
+from flockwave.server.utils import longest_common_prefix
 
 from .connection import CrazyradioConnection
 
@@ -261,6 +263,9 @@ class CrazyradioScannerTask:
         first_address = space[0]
         if len(space) > 1:
             last_address = space[len(space) - 1]
+            prefix = longest_common_prefix((first_address, last_address))
+            if prefix:
+                last_address = "..." + last_address[len(prefix) :]
             address_space = f"{first_address} to {last_address}"
         else:
             address_space = first_address

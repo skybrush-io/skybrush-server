@@ -167,7 +167,7 @@ async def handle_message(message, client, *, limit: CapacityLimiter) -> None:
 
 async def run(app, configuration, logger):
     """Background task that is active while the extension is loaded."""
-    path = configuration.get("path", str(Path(gettempdir()) / "flockwaved.sock"))
+    path = configuration.get("path", str(Path(gettempdir()) / "skybrushd.sock"))
     pool_size = configuration.get("pool_size", 1000)
 
     with ExitStack() as stack:

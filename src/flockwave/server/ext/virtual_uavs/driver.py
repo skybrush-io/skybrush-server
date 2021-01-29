@@ -17,7 +17,10 @@ from flockwave.gps.vectors import (
     Vector3D,
     VelocityNED,
 )
-from flockwave.server.command_handlers import create_color_command_handler
+from flockwave.server.command_handlers import (
+    create_color_command_handler,
+    create_version_command_handler,
+)
 from flockwave.server.model.gps import GPSFixType
 from flockwave.server.model.preflight import PreflightCheckResult, PreflightCheckInfo
 from flockwave.server.model.uav import VersionInfo, UAVBase, UAVDriver
@@ -178,12 +181,13 @@ class VirtualUAVDriver(UAVDriver):
         return "yo" + choice("?!.")
 
     handle_command_color = create_color_command_handler()
+    handle_command_version = create_version_command_handler()
 
     def _request_preflight_report_single(self, uav) -> PreflightCheckInfo:
         return _dummy_preflight_check_info
 
     def _request_version_info_single(self, uav) -> VersionInfo:
-        return {"firmware": self.app.version}
+        return uav.get_version_info()
 
     def _send_fly_to_target_signal_single(self, uav, target) -> None:
         if uav.state == VirtualUAVState.LANDED:
@@ -290,6 +294,7 @@ class VirtualUAV(UAVBase):
 
         super().__init__(*args, **kwds)
 
+        self._version = 1
         self._armed = True  # will be disarmed when booting if needed
         self._autopilot_initializing = False
         self._home_amsl = None
@@ -388,6 +393,11 @@ class VirtualUAV(UAVBase):
             if self._mission_started_at is not None
             else None
         )
+
+    def get_version_info(self) -> VersionInfo:
+        from flockwave.server.version import __version__ as server_version
+
+        return {"server": server_version, "firmware": self._version}
 
     @property
     def has_trajectory(self):

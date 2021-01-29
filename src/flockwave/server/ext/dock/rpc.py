@@ -1,6 +1,7 @@
 from tinyrpc.dispatch import public
 from typing import Optional
 
+from flockwave.gps.vectors import GPSCoordinate
 from flockwave.server.version import __version__
 
 from .model import Dock
@@ -50,3 +51,21 @@ class DockRPCServer:
 
         with self.create_mutator() as mutator:
             self.dock.update_temperatures(mutator, internal=value / 10)
+
+    def process_full_state_update(self, state):
+        """Processes a full state update from the docking station in response
+        to a `getState()` RPC request.
+        """
+        with self.create_mutator() as mutator:
+            updates = {}
+            if state.get("extTemp") is not None:
+                updates["external"] = state["extTemp"] / 10
+            if state.get("temp") is not None:
+                updates["internal"] = state["temp"] / 10
+            if updates:
+                self.dock.update_temperatures(mutator, **updates)
+
+            if state.get("location") is not None:
+                self.dock.update_status(
+                    position=GPSCoordinate.from_json(state["location"])
+                )

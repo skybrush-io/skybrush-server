@@ -95,8 +95,10 @@ class DockExtension(UAVExtensionBase):
 
                     self.log.info("Connected to docking station {0}".format(dock.id))
                     with self.app.object_registry.use(dock):
-                        # TODO(ntamas): get initial state here
+                        state = await peer.request.getState()
+                        server.process_full_state_update(state)
                         await sleep_forever()
+
         except Exception as ex:
             # Exceptions raised during a connection are caught and logged here;
             # we do not let the main task itself crash because of them

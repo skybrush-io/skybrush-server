@@ -75,7 +75,7 @@ class CrazyradioConnection(TaskConnectionBase):
             packet: the packet to broadcast
         """
         if self._broadcaster:
-            await self._broadcaster.send_packet(port, data)
+            await self._broadcaster.send_packet(port=port, data=data)
 
     async def scan(self, targets=None):
         """Scans the address space associated to the connection for Crazyflie

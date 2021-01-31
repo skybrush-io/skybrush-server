@@ -720,33 +720,6 @@ class UAVDriver(metaclass=ABCMeta):
             transport=transport,
         )
 
-    def send_takeoff_countdown_notification(self, uavs, delay: Optional[float]):
-        """Asks the driver to send a takeoff countdown notification to the given
-        UAVs, each of which are assumed to be managed by this driver.
-
-        Typically, you don't need to override this method when implementing
-        a driver; override ``_send_takeoff_countdown_notification_single()``
-        instead.
-
-        Parameters:
-            uavs (List[UAV]): the UAVs to address with this request.
-            delay: the number of seconds left until takeoff, or `None` if the
-                takeoff was cancelled
-
-        Returns:
-            Dict[UAV,object]: dict mapping UAVs to the corresponding results
-                (which may also be errors or awaitables; it is the
-                responsibility of the caller to evaluate errors and wait for
-                awaitables)
-        """
-        return self._send_signal(
-            uavs,
-            "takeoff countdown notification",
-            self._send_takeoff_countdown_notification_single,
-            getattr(self, "_send_takeoff_countdown_notification_broadcast", None),
-            seconds=delay,
-        )
-
     def send_takeoff_signal(
         self,
         uavs: List[UAV],
@@ -1066,26 +1039,6 @@ class UAVDriver(metaclass=ABCMeta):
                 driver and will not be supported in the future either
         """
         raise NotImplementedError
-
-    def _send_takeoff_countdown_notification_single(
-        self, uav: UAV, seconds: Optional[float]
-    ):
-        """Asks the driver to send a takeoff countdown notification to a single
-        UAV managed by this driver.
-
-        May return an awaitable if processing the countdown takes a longer time.
-
-        The function follows the "samurai principle", i.e. "return victorious,
-        or not at all". It means that if it returns, the operation succeeded.
-        Raise an exception if the operation cannot be executed for any reason;
-        a RuntimeError is typically sufficient.
-
-        Parameters:
-            uav: the UAV to address with this notification
-            seconds: the number of seconds until takeoff; `None` means to cancel
-                the countdown
-        """
-        pass
 
     def _send_takeoff_signal_single(
         self, uav: UAV, *, transport: Optional[TransportOptions] = None

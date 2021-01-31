@@ -172,17 +172,12 @@ class DroneShowExtension(ExtensionBase):
     def _notify_uavs_about_countdown_state(
         self, seconds_left: float = 0, cancelled: bool = False
     ):
-        delay = seconds_left if not cancelled else None
-        uavs_by_drivers = self.app.sort_uavs_by_drivers(self._config.uav_ids)
-        for driver, uavs in uavs_by_drivers.items():
-            results = driver.send_takeoff_countdown_notification(uavs, delay)
-            self._nursery.start_soon(
-                self._process_command_results_in_background,
-                results,
-                "countdown notifications",
-            )
+        countdown_signal = self.app.import_api("signals").get("show:countdown")
+        countdown_signal.send(self, delay=seconds_left if not cancelled else None)
 
     def _start_uavs_if_needed(self):
+        self._notify_uavs_about_countdown_state(seconds_left=0)
+
         uavs_by_drivers = self.app.sort_uavs_by_drivers(self._config.uav_ids)
         for driver, uavs in uavs_by_drivers.items():
             results = driver.send_takeoff_signal(uavs, scheduled=True)

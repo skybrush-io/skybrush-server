@@ -255,26 +255,13 @@ class CrazyflieDriver(UAVDriver):
     async def _send_shutdown_signal_single(self, uav, *, transport=None) -> None:
         await uav.shutdown()
 
-    async def _send_takeoff_countdown_notification_single(
-        self, uav, seconds: Optional[float]
-    ):
-        if uav.is_in_drone_show_mode:
-            if seconds is not None:
-                if abs(seconds) < 32:
-                    # TODO(ntamas): we need to compensate for the time spent
-                    # between putting the request in the queue and getting it from
-                    # there
-                    await uav.start_drone_show(delay=seconds)
-                else:
-                    # We don't send a message now because the Crazyflie firmware
-                    # supports notifications +-32000 msec around the start time only
-                    pass
-            else:
-                await uav.stop_drone_show()
-
     async def _send_takeoff_signal_single(
         self, uav, *, scheduled: bool = False, transport=None
     ) -> None:
+        if scheduled:
+            # Handled by a broadcast signal in the extension class
+            return
+
         if uav.is_in_drone_show_mode:
             await uav.start_drone_show()
         else:

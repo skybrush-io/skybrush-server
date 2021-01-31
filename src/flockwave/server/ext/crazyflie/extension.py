@@ -4,14 +4,16 @@ from contextlib import AsyncExitStack, ExitStack
 from errno import EACCES
 from functools import partial
 from pathlib import Path
+from struct import Struct
 from trio import open_memory_channel, open_nursery
-from typing import Any, Dict
+from typing import Any, Callable, Dict, Optional
 
 from flockwave.connections.factory import create_connection
 from flockwave.server.ext.base import UAVExtensionBase
 from flockwave.server.model import ConnectionPurpose
 
 from .connection import CrazyradioConnection
+from .crtp_extensions import DRONE_SHOW_PORT, DroneShowCommand
 from .driver import CrazyflieDriver
 from .scanning import CrazyradioScannerTask
 
@@ -78,6 +80,8 @@ class CrazyflieDronesExtension(UAVExtensionBase):
                 return await self._run(app, configuration)
 
     async def _run(self, app, configuration):
+        signals = self.app.import_api("signals")
+
         connection_config = configuration.get("connections", [])
 
         # Create a channel that will be used to create new UAVs as needed
@@ -87,6 +91,8 @@ class CrazyflieDronesExtension(UAVExtensionBase):
         # Crazyradio connections
         async with open_nursery() as nursery:
             with ExitStack() as stack:
+                # Let the create_connection connection factory know about the
+                # CrazyradioConnection class
                 stack.enter_context(
                     create_connection.use(CrazyradioConnection, "crazyradio")
                 )
@@ -97,6 +103,7 @@ class CrazyflieDronesExtension(UAVExtensionBase):
                     if hasattr(connection, "assign_nursery"):
                         connection.assign_nursery(nursery)
 
+                    # Register the radio connection in the connection registry
                     stack.enter_context(
                         app.connection_registry.use(
                             connection,
@@ -106,12 +113,31 @@ class CrazyflieDronesExtension(UAVExtensionBase):
                         )
                     )
 
+                    # Let the connection know when the light configuration of
+                    # the show changes
+                    stack.enter_context(
+                        signals.use(
+                            {
+                                "show:countdown": partial(
+                                    self._on_show_countdown_notification,
+                                    connection=connection,
+                                    start_soon=nursery.start_soon,
+                                ),
+                                "show:lights_updated": partial(
+                                    self._on_show_light_configuration_changed,
+                                    connection=connection,
+                                ),
+                            }
+                        )
+                    )
+
+                    # Run a background task that scans the radio connection and
+                    # attempts to find newly booted Crazyflie drones
                     task = partial(
                         CrazyradioScannerTask.create_and_run,
                         log=self.log,
                         channel=new_uav_tx_channel,
                     )
-
                     nursery.start_soon(partial(app.supervise, connection, task=task))
 
                 # Wait for newly detected UAVs and spawn a task for each of them
@@ -119,6 +145,33 @@ class CrazyflieDronesExtension(UAVExtensionBase):
                     async for address_space, index, disposer in new_uav_rx_channel:
                         uav = self._driver.get_or_create_uav(address_space, index)
                         nursery.start_soon(uav.run, disposer)
+
+    def _on_show_countdown_notification(
+        self,
+        sender,
+        delay: Optional[float],
+        *,
+        connection: CrazyradioConnection,
+        start_soon: Callable,
+    ) -> None:
+        if delay is not None:
+            delay = int(delay * 1000)
+            if abs(delay) >= 32000:
+                # Too far in the future
+                delay = None
+
+        if delay is None:
+            data = Struct("<B").pack(DroneShowCommand.STOP)
+        else:
+            data = Struct("<Bh").pack(DroneShowCommand.START, delay)
+
+        start_soon(connection.broadcast, DRONE_SHOW_PORT, data)
+
+    def _on_show_light_configuration_changed(
+        self, sender, config, *, connection: CrazyradioConnection
+    ) -> None:
+        # TODO(ntamas)
+        pass
 
 
 construct = CrazyflieDronesExtension

@@ -459,7 +459,7 @@ reference = "collmot"
 
 [[package]]
 name = "flockwave-conn"
-version = "2.7.0"
+version = "2.9.0"
 description = "Connection objects for various data sources"
 category = "main"
 optional = false
@@ -767,7 +767,7 @@ reference = "collmot"
 
 [[package]]
 name = "jinja2"
-version = "2.11.2"
+version = "2.11.3"
 description = "A very fast and expressive template engine."
 category = "main"
 optional = false
@@ -997,7 +997,7 @@ reference = "collmot"
 
 [[package]]
 name = "packaging"
-version = "20.8"
+version = "20.9"
 description = "Core utilities for Python packages"
 category = "dev"
 optional = false
@@ -1133,7 +1133,7 @@ reference = "collmot"
 
 [[package]]
 name = "pyarmor"
-version = "6.6.0"
+version = "6.6.1"
 description = "A tool used to obfuscate python scripts, bind obfuscated scripts to fixed machine or expire obfuscated scripts."
 category = "dev"
 optional = false
@@ -1927,7 +1927,7 @@ reference = "collmot"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7"
-content-hash = "3561735c060f948216ecd1833ca3a8388a490ef2cac71010b4401fc047263d14"
+content-hash = "51187830816869695378aad2ce2798ad876b1a6883f26311c0347daba8eb50f1"
 
 [metadata.files]
 aio-usb-hotplug = [
@@ -2089,8 +2089,8 @@ flockwave-app-framework = [
     {file = "flockwave_app_framework-1.1.1-py3-none-any.whl", hash = "md5:180dc3c6038b31d1eb400bca576b5c90"},
 ]
 flockwave-conn = [
-    {file = "flockwave-conn-2.7.0.tar.gz", hash = "md5:8bc3277343a2c38ab5d9268ba9ae9411"},
-    {file = "flockwave_conn-2.7.0-py3-none-any.whl", hash = "md5:d940c111a9e0d00ba1d6f0fbd75005d0"},
+    {file = "flockwave-conn-2.9.0.tar.gz", hash = "md5:251a8536a5ababcf4b45c2da447f1c22"},
+    {file = "flockwave_conn-2.9.0-py3-none-any.whl", hash = "md5:95fb1b0a692d540d9cb51378df4a873d"},
 ]
 flockwave-ext = [
     {file = "flockwave-ext-1.4.1.tar.gz", hash = "md5:9117bb199fb10fb5f22f0798426ad2da"},
@@ -2159,8 +2159,8 @@ itsdangerous = [
     {file = "itsdangerous-1.1.0.tar.gz", hash = "sha256:321b033d07f2a4136d3ec762eac9f16a10ccd60f53c0c91af90217ace7ba1f19"},
 ]
 jinja2 = [
-    {file = "Jinja2-2.11.2-py2.py3-none-any.whl", hash = "sha256:f0a4641d3cf955324a89c04f3d94663aa4d638abe8f733ecd3582848e1c37035"},
-    {file = "Jinja2-2.11.2.tar.gz", hash = "sha256:89aab215427ef59c34ad58735269eb58b1a5808103067f7bb9d5836c651b3bb0"},
+    {file = "Jinja2-2.11.3-py2.py3-none-any.whl", hash = "sha256:03e47ad063331dd6a3f04a43eddca8a966a26ba0c5b7207a9a9e4e08f1b29419"},
+    {file = "Jinja2-2.11.3.tar.gz", hash = "sha256:a6d58433de0ae800347cab1fa3043cebbabe8baa9d29e668f1c768cb87a333c6"},
 ]
 jsonpointer = [
     {file = "jsonpointer-2.0-py2.py3-none-any.whl", hash = "sha256:ff379fa021d1b81ab539f5ec467c7745beb1a5671463f9dcc2b2d458bd361c1e"},
@@ -2344,8 +2344,8 @@ outcome = [
     {file = "outcome-1.1.0.tar.gz", hash = "sha256:e862f01d4e626e63e8f92c38d1f8d5546d3f9cce989263c521b2e7990d186967"},
 ]
 packaging = [
-    {file = "packaging-20.8-py2.py3-none-any.whl", hash = "sha256:24e0da08660a87484d1602c30bb4902d74816b6985b93de36926f5bc95741858"},
-    {file = "packaging-20.8.tar.gz", hash = "sha256:78598185a7008a470d64526a8059de9aaa449238f280fc9eb6b13ba6c4109093"},
+    {file = "packaging-20.9-py2.py3-none-any.whl", hash = "sha256:67714da7f7bc052e064859c05c595155bd1ee9f69f76557e21f051443c20947a"},
+    {file = "packaging-20.9.tar.gz", hash = "sha256:5b327ac1320dc863dca72f4514ecc086f31186744b84a230374cc1fd776feae5"},
 ]
 paramiko = [
     {file = "paramiko-2.7.2-py2.py3-none-any.whl", hash = "sha256:4f3e316fef2ac628b05097a637af35685183111d4bc1b5979bd397c2ab7b5898"},
@@ -2375,8 +2375,8 @@ py = [
     {file = "py-1.10.0.tar.gz", hash = "sha256:21b81bda15b66ef5e1a777a21c4dcd9c20ad3efd0b3f817e7a809035269e1bd3"},
 ]
 pyarmor = [
-    {file = "pyarmor-6.6.0-py2.py3-none-any.whl", hash = "sha256:2ef2ab97c3e5606206c0299e70732d55861b6ebcea9a05a557ba76cbaf9e69bb"},
-    {file = "pyarmor-6.6.0.zip", hash = "sha256:e1f615d6e0655563d55fd3619a96e204006e7a78459476f6a093432edac6fdba"},
+    {file = "pyarmor-6.6.1-py2.py3-none-any.whl", hash = "sha256:b9d2b1f20634a81e51a258044ce88ec175543c2aa7eb1086b5c6f8911a8496b4"},
+    {file = "pyarmor-6.6.1.zip", hash = "sha256:f42e81f132f325f6509bfe7158666cf4060add3ecb126779dfd00290d132af23"},
 ]
 pycparser = [
     {file = "pycparser-2.20-py2.py3-none-any.whl", hash = "sha256:7582ad22678f0fcd81102833f60ef8d0e57288b6b5fb00323d101be910e35705"},

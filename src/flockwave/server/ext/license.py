@@ -1,33 +1,148 @@
+from abc import abstractmethod, ABCMeta
+from flockwave.ext.errors import ApplicationExit
+from flockwave.networking import get_link_layer_address_mapping
+from typing import Dict, Optional, Tuple
+
 import json
 
-__all__ = ("load", )
+__all__ = ("load",)
+
+
+#: Symbolic constant to return from get_days_left_until_expiry() if the license
+#: never expires
+NEVER_EXPIRES = 20 * 365
+
+
+class License(metaclass=ABCMeta):
+    """Abstraction layer to help us with switching to different license managers
+    if we want to.
+    """
+
+    @abstractmethod
+    def get_allowed_mac_addresses(self) -> Optional[Tuple[str]]:
+        """Returns a tuple containing the MAC addresses associated to the
+        license, or `None` if the license does not have MAC address
+        restrictions.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_days_left_until_expiry(self) -> int:
+        """Returns the number of days left until the expiry of the license;
+        returns at least 20 years if the license never expires.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_licensee(self) -> str:
+        """Returns the licensee of this license."""
+        raise NotImplementedError
+
+    def is_valid(self) -> bool:
+        """Returns whether the license is valid."""
+        # Check date restriction
+        if self.get_days_left_until_expiry() < 0:
+            return False
+
+        # Check MAC address restriction
+        allowed_mac_addresses = self.get_allowed_mac_addresses()
+        if allowed_mac_addresses:
+            all_mac_addresses = {
+                addr for addr in get_link_layer_address_mapping().values()
+            }
+            if not any(addr in all_mac_addresses for addr in allowed_mac_addresses):
+                return False
+
+        return True
+
+
+class PyArmorLicense(License):
+    """License class for PyArmor-based licenses."""
+
+    @classmethod
+    def get_license(cls):
+        try:
+            from pytransform import get_license_info, get_expired_days
+
+            return cls(get_license_info(), get_expired_days())
+        except ImportError:
+            return None
+
+    def __init__(self, license_info: str, expired_days: int = -1):
+        """Constructor.
+
+        Do not use directly; use the `get_license()` class method instead.
+        """
+        self._expired_days = expired_days if expired_days >= 0 else NEVER_EXPIRES
+        self._license_info = license_info
+
+    def get_allowed_mac_addresses(self) -> Optional[Tuple[str]]:
+        return self._get_conditions().get("mac")
+
+    def get_days_left_until_expiry(self) -> int:
+        return self._expired_days
+
+    def get_licensee(self) -> str:
+        parsed = self._parse_license_info()
+        return str(parsed.get("licensee", ""))
+
+    def _get_conditions(self) -> Dict[str, str]:
+        parsed = self._parse_license_info()
+        return parsed.get("cond", {})
+
+    def _parse_license_info(self):
+        if not hasattr(self, "_parsed_license_info"):
+            data = self._license_info.get("DATA")
+            if data:
+                try:
+                    data = json.loads(data)
+                    if not isinstance(data, dict):
+                        data = None
+                except Exception:
+                    data = None
+
+            self._parsed_license_info = data or {}
+
+        return self._parsed_license_info
 
 
 def load(app, configuration, logger):
-    try:
-        from pytransform import get_license_info, get_expired_days
-        show_license_information(logger, get_license_info(), get_expired_days())
-    except ImportError:
-        # licensing not used
-        pass
-        
-        
-def show_license_information(logger, info, days_left):
-    data = info.get("DATA")
-    if data:
+    # License factories must raise an ApplicationExit exception if they have
+    # found a license and it is not valid
+    license_factories = [PyArmorLicense.get_license]
+
+    for factory in license_factories:
         try:
-            data = json.loads(data)
+            license = factory()
         except Exception:
-            data = None
-    if data:
-        licensee = data.get("licensee")
-        if licensee:
-            logger.info(f"Licensed to {licensee}")
-    if days_left >= 15:
+            # Move on and try the next factory
+            pass
+
+    if license and not license.is_valid():
+        raise ApplicationExit("License expired or is not valid for this machine")
+
+    show_license_information(logger, license)
+
+
+def show_license_information(logger, license: Optional[License]) -> None:
+    """Shows detailed information about the current license in the application
+    logs at startup.
+    """
+    if license is None:
+        return
+
+    licensee = license.get_licensee()
+    if licensee:
+        logger.info(f"Licensed to {licensee}")
+
+    days_left = license.get_days_left_until_expiry()
+    if days_left >= NEVER_EXPIRES:
+        pass
+    elif days_left >= 15:
         logger.info(f"This license expires in {days_left} days")
     elif days_left > 1:
         logger.warn(f"This license expires in {days_left} days")
     elif days_left == 1:
-        logger.warn(f"This license expires in one day")
+        logger.warn("This license expires in one day")
     elif days_left == 0:
-        logger.warn(f"This license expires today")
+        logger.warn("This license expires today")

@@ -794,12 +794,31 @@ class MAVLinkNetwork:
             for entries in self.manager._entries_by_name.values():
                 for entry in entries:
                     if entry.channel and entry.name == connection_id:
+                        broadcast_address = subnet.broadcast_address
+                        if str(broadcast_address) == "127.255.255.255":
+                            # We are on localhost, so just keep on using localhost
+                            broadcast_address = "127.0.0.1"
+
+                        old_broadcast_address = getattr(
+                            entry.channel, "broadcast_address", None
+                        )
+                        if (
+                            old_broadcast_address
+                            and isinstance(old_broadcast_address, tuple)
+                            and len(old_broadcast_address) == 2
+                        ):
+                            # Keep the port, update the address only
+                            broadcast_port = old_broadcast_address[1]
+                        else:
+                            # Hmmm, let's just assume that the source port of this packet is okay
+                            broadcast_port = port
+
                         entry.channel.broadcast_address = (
-                            str(subnet.broadcast_address),
-                            port,
+                            str(broadcast_address),
+                            broadcast_port,
                         )
                         self.log.info(
-                            f"Broadcast address updated to {subnet.broadcast_address} "
+                            f"Broadcast address updated to {broadcast_address}:{broadcast_port} "
                             f"({interface})",
                             extra={"id": self.id},
                         )

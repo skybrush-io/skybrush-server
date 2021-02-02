@@ -320,13 +320,17 @@ class MAVLinkNetwork:
                 # Cancel all tasks in this nursery as we are about to shut down
                 nursery.cancel_scope.cancel()
 
-    async def broadcast_packet(self, spec: MAVLinkMessageSpecification) -> None:
+    async def broadcast_packet(
+        self, spec: MAVLinkMessageSpecification, channel: Optional[str] = None
+    ) -> None:
         """Broadcasts a message to all UAVs in the network.
 
         Parameters:
             spec: the specification of the MAVLink message to send
+            channel: specifies the channel that the packet should be sent on;
+                defaults to the primary channel of the network
         """
-        await self.manager.broadcast_packet(spec)
+        await self.manager.broadcast_packet(spec, destination=channel)
 
     def enqueue_rtk_correction_packet(self, packet: bytes) -> None:
         """Handles an RTK correction packet that the server wishes to forward

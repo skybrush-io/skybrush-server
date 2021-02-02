@@ -10,7 +10,7 @@ from functools import partial
 from math import inf
 from time import monotonic
 from trio import fail_after, move_on_after, sleep, TooSlowError
-from typing import List, Optional, Union
+from typing import List, Optional, Sequence, Union
 
 from flockwave.gps.time import datetime_to_gps_time_of_week, gps_time_of_week_to_utc
 from flockwave.gps.vectors import GPSCoordinate, VelocityNED
@@ -97,16 +97,31 @@ class MAVLinkDriver(UAVDriver):
     """Driver class for MAVLink-based drones.
 
     Attributes:
-        app (SkybrushServer): the app in which the driver lives
-        create_device_tree_mutator (callable): a function that should be
-            called by the driver as a context manager whenever it wants to
-            mutate the state of the device tree
-        send_packet (callable): a function that should be called by the
-            driver whenever it wants to send a packet. The function must
-            be called with the packet to send, and a pair formed by the
-            medium via which the packet should be forwarded and the
-            destination address in that medium.
+        app: the app in which the driver lives
+        create_device_tree_mutator: a function that should be called by the
+            driver as a context manager whenever it wants to mutate the state
+            of the device tree
+        broadcast_packet: a function that should be called by the driver
+            whenever it wants to broadcast a packet. The function must be
+            called with the packet to send. May be `None` if broadcasting
+            is not supported.
+        send_packet: a function that should be called by the driver whenever it
+            wants to send a packet. The function must be called with the packet
+            to send, and a pair formed by the medium via which the packet
+            should be forwarded and the destination address in that medium.
     """
+
+    @staticmethod
+    def _create_led_control_packet(
+        data: Optional[Sequence[int]] = None, broadcast: bool = False
+    ):
+        kwds = {
+            "instance": 42,
+            "pattern": 42,
+            "custom_len": len(data) if data else 0,
+            "custom_bytes": _EMPTY[len(data) :] if data else _EMPTY,
+        }
+        return spec.led_control(**kwds)
 
     def __init__(self, app=None):
         """Constructor.
@@ -118,6 +133,7 @@ class MAVLinkDriver(UAVDriver):
 
         self.app = app
 
+        self.broadcast_packet = None
         self.create_device_tree_mutator = None
         self.log = None
         self.mandatory_custom_mode = None
@@ -126,6 +142,107 @@ class MAVLinkDriver(UAVDriver):
 
         self._default_timeout = 2
         self._default_retries = 5
+        self._default_delay = 0.1
+
+    async def broadcast_command_long_with_retries(
+        self,
+        command_id: int,
+        param1: float = 0,
+        param2: float = 0,
+        param3: float = 0,
+        param4: float = 0,
+        param5: float = 0,
+        param6: float = 0,
+        param7: float = 0,
+        *,
+        timeout: Optional[float] = None,
+        retries: Optional[int] = None,
+        delay: Optional[float] = None,
+        channel: str = Channel.PRIMARY,
+    ) -> None:
+        """Broadcasts a MAVLink command to all UAVs reachable on a given
+        communication channel a given number of times, without waiting for an
+        acknowledgment.
+
+        Due to the broadcasting nature of this command, we cannot wait for
+        acknowledgments as we do not know how many acknowledgments we are
+        expecting.
+
+        Parameters:
+            target: the UAV to send the command to
+            param1: the first parameter of the command
+            param2: the second parameter of the command
+            param3: the third parameter of the command
+            param4: the fourth parameter of the command
+            param5: the fifth parameter of the command
+            param6: the sixth parameter of the command
+            param7: the seventh parameter of the command
+            timeout: timeout in seconds for _sending_ the command; `None` means
+                to use the default timeout for the driver
+            retries: number of times the command will be sent, no matter whether
+                a response is received or not; `None` means to use the default
+                retry count for the driver
+            delay: number of seconds to wait between sending attempts; `None`
+                means to use the default setting for the driver
+            channel: the channel to send the command on
+
+        Raises:
+            NotSupportedError: if the driver does not support broadcasting
+        """
+        if self.broadcast_packet is None:
+            raise NotSupportedError("This driver does not support broadcasting")
+
+        if timeout is None or timeout <= 0:
+            timeout = self._default_timeout
+
+        if retries is None or retries <= 0:
+            retries = self._default_retries
+
+        if delay is None or delay < 0:
+            delay = self._default_delay
+
+        tried, sent = 0, 0
+
+        while tried < retries:
+            try:
+                with fail_after(timeout):
+                    message = spec.command_long(
+                        command=command_id,
+                        param1=param1,
+                        param2=param2,
+                        param3=param3,
+                        param4=param4,
+                        param5=param5,
+                        param6=param6,
+                        param7=param7,
+                        confirmation=0,
+                        target_system=0,
+                        target_component=0,
+                    )
+                    tried += 1
+                    await self.broadcast_packet(message, channel=channel)
+                    sent += 1
+            except TooSlowError:
+                pass
+
+            if delay > 0:
+                await sleep(delay)
+
+        if sent < tried:
+            if sent > 1:
+                self.log.warn(
+                    "Tried to send broadcast command {tried} times but only {sent} were successful"
+                )
+            elif sent > 0:
+                self.log.warn(
+                    "Tried to send broadcast command {tried} times but only one was successful"
+                )
+            elif tried > 1:
+                self.log.warn(
+                    "Tried to send broadcast command {tried} times but none were successful"
+                )
+            else:
+                self.log.warn("Failed to send broadcast command")
 
     def create_uav(self, id: str) -> "MAVLinkUAV":
         """Creates a new UAV that is to be managed by this driver.
@@ -469,10 +586,7 @@ class MAVLinkDriver(UAVDriver):
 
         Raises:
             TooSlowError: if the link to the UAV failed to send the command in
-                time, even after
-                re-sending the command as needed
-            NotSupportedError: if the command is not supported by the UAV (i.e.
-                we received a response with `MAV_RESULT_UNSUPPORTED`)
+                time, even after re-sending the command as needed
         """
         if timeout is None or timeout <= 0:
             timeout = self._default_timeout
@@ -576,14 +690,28 @@ class MAVLinkDriver(UAVDriver):
     ) -> None:
         await uav.fly_to(target)
 
+    async def _send_landing_signal_broadcast(self, *, transport=None) -> None:
+        channel = transport_options_to_channel(transport)
+        await self.broadcast_command_long_with_retries(
+            MAVCommand.NAV_LAND, channel=channel
+        )
+
     async def _send_landing_signal_single(self, uav, *, transport=None) -> None:
         channel = transport_options_to_channel(transport)
-
         success = await self.send_command_long(
             uav, MAVCommand.NAV_LAND, channel=channel
         )
         if not success:
             raise RuntimeError("Landing command failed")
+
+    async def _send_light_or_sound_emission_signal_broadcast(
+        self, signals: List[str], duration: int, *, transport=None
+    ) -> None:
+        channel = transport_options_to_channel(transport)
+
+        if "light" in signals:
+            message = MAVLinkDriver._create_led_control_packet(broadcast=True)
+            await self.broadcast_packet(message, channel=channel)
 
     async def _send_light_or_sound_emission_signal_single(
         self, uav, signals: List[str], duration: int, *, transport=None
@@ -591,9 +719,19 @@ class MAVLinkDriver(UAVDriver):
         channel = transport_options_to_channel(transport)
 
         if "light" in signals:
-            # The Skybrush firmware uses a "secret" LED instance / pattern
-            # combination (42/42) to make the LED emit a flash pattern
-            await uav.test_component("led_flash", channel=channel)
+            message = MAVLinkDriver._create_led_control_packet()
+            await self.send_packet(message, uav, channel=channel)
+
+    async def _send_motor_start_stop_signal_broadcast(
+        self, start: bool, force: bool = False, *, transport=None
+    ) -> None:
+        channel = transport_options_to_channel(transport)
+        await self.broadcast_command_long_with_retries(
+            MAVCommand.COMPONENT_ARM_DISARM,
+            1 if start else 0,
+            FORCE_MAGIC if force else 0,
+            channel=channel,
+        )
 
     async def _send_motor_start_stop_signal_single(
         self, uav, start: bool, force: bool = False, *, transport=None
@@ -610,6 +748,20 @@ class MAVLinkDriver(UAVDriver):
             raise RuntimeError(
                 "Failed to arm motors" if start else "Failed to disarm motors"
             )
+
+    async def _send_reset_signal_broadcast(self, component, *, transport=None) -> None:
+        channel = transport_options_to_channel(transport)
+
+        if not component:
+            # Resetting all the UAVs, this is supported
+            await self.broadcast_command_long_with_retries(
+                MAVCommand.PREFLIGHT_REBOOT_SHUTDOWN,
+                1,  # reboot autopilot
+                channel=channel,
+            )
+        else:
+            # No per-component resets are implemented yet
+            raise RuntimeError(f"Resetting {component!r} is not supported")
 
     async def _send_reset_signal_single(
         self, uav, component, *, transport=None
@@ -629,8 +781,14 @@ class MAVLinkDriver(UAVDriver):
             else:
                 uav.notify_rebooted_by_us()
         else:
-            # No component resets are implemented on this UAV yet
+            # No per-component resets are implemented on this UAV yet
             raise RuntimeError(f"Resetting {component!r} is not supported")
+
+    async def _send_return_to_home_signal_broadcast(self, *, transport=None) -> None:
+        channel = transport_options_to_channel(transport)
+        await self.broadcast_command_long_with_retries(
+            MAVCommand.NAV_RETURN_TO_LAUNCH, channel=channel
+        )
 
     async def _send_return_to_home_signal_single(self, uav, *, transport=None) -> None:
         channel = transport_options_to_channel(transport)
@@ -641,6 +799,17 @@ class MAVLinkDriver(UAVDriver):
 
         if not success:
             raise RuntimeError("Return to home command failed")
+
+    async def _send_shutdown_signal_broadcast(self, *, transport=None) -> None:
+        channel = transport_options_to_channel(transport)
+        await self._send_motor_start_stop_signal_broadcast(
+            start=False, force=True, transport=transport
+        )
+        await self.broadcast_command_long_with_retries(
+            MAVCommand.PREFLIGHT_REBOOT_SHUTDOWN,
+            2,  # shutdown autopilot
+            channel=channel,
+        )
 
     async def _send_shutdown_signal_single(self, uav, *, transport=None) -> None:
         channel = transport_options_to_channel(transport)
@@ -892,9 +1061,7 @@ class MAVLinkUAV(UAVBase):
         Parameters:
             channel: the communication channel to send the command on
         """
-        message = spec.led_control(
-            instance=42, pattern=42, custom_len=0, custom_bytes=_EMPTY
-        )
+        message = MAVLinkDriver._create_led_control_packet()
         await self.driver.send_packet(message, self, channel=channel)
 
     async def fly_to(self, target: GPSCoordinate) -> None:
@@ -1089,8 +1256,6 @@ class MAVLinkUAV(UAVBase):
                 if index > 0:
                     await sleep(1)
                 await self.set_led_color(color, channel=channel, duration=2)
-        elif component == "led_flash":
-            await self.flash_led(channel=channel)
         else:
             raise NotSupportedError
 
@@ -1414,11 +1579,8 @@ class MAVLinkUAV(UAVBase):
             duration_msec = 0
             effect = 0
 
-        message = spec.led_control(
-            instance=42,
-            pattern=42,
-            custom_len=3,
-            custom_bytes=[
+        message = MAVLinkDriver._create_led_control_packet(
+            [
                 red,
                 green,
                 blue,
@@ -1426,7 +1588,6 @@ class MAVLinkUAV(UAVBase):
                 duration_msec >> 8,
                 effect,
             ]
-            + [0] * 18,
         )
         await self.driver.send_packet(message, self, channel=channel)
 

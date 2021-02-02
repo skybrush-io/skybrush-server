@@ -539,7 +539,8 @@ class UAVDriver(metaclass=ABCMeta):
         of which are assumed to be managed by this driver.
 
         Typically, you don't need to override this method when implementing
-        a driver; override ``_send_landing_signal_single()`` instead.
+        a driver; override ``_send_landing_signal_single()`` and optionally
+        ``_send_landing_signal_broadcast()`` instead.
 
         Parameters:
             uavs: the UAVs to address with this request.
@@ -571,6 +572,7 @@ class UAVDriver(metaclass=ABCMeta):
 
         Typically, you don't need to override this method when implementing
         a driver; override ``_send_light_or_sound_emission_signal_single()``
+        and optionally ``_send_light_or_sound_emission_signal_broadcast()``
         instead.
 
         Parameters:
@@ -607,7 +609,8 @@ class UAVDriver(metaclass=ABCMeta):
         given UAVs, each of which are assumed to be managed by this driver.
 
         Typically, you don't need to override this method when implementing
-        a driver; override ``_send_motor_start_stop_signal_single()`` instead.
+        a driver; override ``_send_motor_start_stop_signal_single()`` and
+        optionally ``_send_motor_start_stop_signal_broadcast()`` instead.
 
         Parameters:
             uavs (List[UAV]): the UAVs to address with this request.
@@ -644,7 +647,8 @@ class UAVDriver(metaclass=ABCMeta):
         to restart some component of the UAV or the whole UAV itself.
 
         Typically, you don't need to override this method when implementing
-        a driver; override ``_send_reset_signal_single()`` instead.
+        a driver; override ``_send_reset_signal_single()`` and optionally
+        ``_send_reset_signal_broadcast()`` instead.
 
         Parameters:
             component: the component to reset. ``None`` or an empty string means
@@ -673,7 +677,8 @@ class UAVDriver(metaclass=ABCMeta):
         UAVs, each of which are assumed to be managed by this driver.
 
         Typically, you don't need to override this method when implementing
-        a driver; override ``_send_return_to_home_signal_single()`` instead.
+        a driver; override ``_send_return_to_home_signal_single()`` and
+        optionally ``_send_return_to_home_signal_broadcast()`` instead.
 
         Parameters:
             uavs (List[UAV]): the UAVs to address with this request.
@@ -700,7 +705,8 @@ class UAVDriver(metaclass=ABCMeta):
         of which are assumed to be managed by this driver.
 
         Typically, you don't need to override this method when implementing
-        a driver; override ``_send_shutdown_signal_single()`` instead.
+        a driver; override ``_send_shutdown_signal_single()`` and optionally
+        ``_send_shutdown_signal_broadcast()`` instead.
 
         Parameters:
             uavs: the UAVs to address with this request
@@ -731,7 +737,8 @@ class UAVDriver(metaclass=ABCMeta):
         of which are assumed to be managed by this driver.
 
         Typically, you don't need to override this method when implementing
-        a driver; override ``_send_takeoff_signal_single()`` instead.
+        a driver; override ``_send_takeoff_signal_single()`` and optionally
+        ``_send_takeoff_signal_broadcast()`` instead.
 
         Parameters:
             uavs: the UAVs to address with this request
@@ -782,26 +789,65 @@ class UAVDriver(metaclass=ABCMeta):
 
     def _send_signal(
         self, uavs: UAV, signal_name: str, handler, broadcaster=None, **kwds
-    ) -> Dict[UAV, Any]:
+    ) -> Union[Any, Dict[UAV, Any]]:
         """Common implementation for the body of several ``send_*_signal()``
         methods in this class.
         """
         result = {}
-        for uav in uavs:
+
+        # Determine whether we need to broadcast this signal
+        is_broadcast = False
+        if broadcaster and "transport" in kwds:
+            transport = kwds.get("transport")
+            if isinstance(transport, TransportOptions):
+                is_broadcast = bool(transport.broadcast)
+
+        if is_broadcast:
+            # We need to broadcast and we know that we have a separate function
+            # for broadcasting
             try:
-                outcome = handler(uav, **kwds)
+                outcome = broadcaster(**kwds)
             except NotImplementedError:
-                outcome = NotImplementedError(f"{signal_name} not implemented yet")
+                outcome = NotImplementedError(
+                    f"Broadcasting {signal_name} not implemented yet"
+                )
             except NotSupportedError as ex:
-                outcome = NotSupportedError(str(ex) or f"{signal_name} not supported")
+                outcome = NotSupportedError(
+                    str(ex) or f"Broadcasting {signal_name} not supported"
+                )
             except RuntimeError as ex:
-                outcome = RuntimeError(f"Error while sending {signal_name}: {str(ex)}")
+                outcome = RuntimeError(
+                    f"Error while broadcasting {signal_name}: {str(ex)}"
+                )
             except Exception as ex:
                 log.exception(ex)
                 outcome = ex.__class__(
-                    f"Unexpected error while sending {signal_name}: {ex!r}"
+                    f"Unexpected error while broadcasting {signal_name}: {ex!r}"
                 )
-            result[uav] = outcome
+            return outcome
+
+        else:
+            # We need to send this command one by one to all the UAVs
+            for uav in uavs:
+                try:
+                    outcome = handler(uav, **kwds)
+                except NotImplementedError:
+                    outcome = NotImplementedError(f"{signal_name} not implemented yet")
+                except NotSupportedError as ex:
+                    outcome = NotSupportedError(
+                        str(ex) or f"{signal_name} not supported"
+                    )
+                except RuntimeError as ex:
+                    outcome = RuntimeError(
+                        f"Error while sending {signal_name}: {str(ex)}"
+                    )
+                except Exception as ex:
+                    log.exception(ex)
+                    outcome = ex.__class__(
+                        f"Unexpected error while sending {signal_name}: {ex!r}"
+                    )
+                result[uav] = outcome
+
         return result
 
     def _request_preflight_report_single(self, uav: UAV) -> PreflightCheckInfo:

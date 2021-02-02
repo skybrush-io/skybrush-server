@@ -66,6 +66,7 @@ class MAVLinkDronesExtension(UAVExtensionBase):
             configuration (dict): the configuration dictionary of the
                 extension
         """
+        driver.broadcast_packet = self._broadcast_packet
         driver.create_device_tree_mutator = self.create_device_tree_mutation_context
         driver.log = self.log
         driver.mandatory_custom_mode = optional_int(configuration.get("custom_mode"))
@@ -132,6 +133,25 @@ class MAVLinkDronesExtension(UAVExtensionBase):
             finally:
                 for uav in uavs:
                     app.object_registry.remove(uav)
+
+    async def _broadcast_packet(
+        self,
+        spec: MAVLinkMessageSpecification,
+        channel: Optional[str] = None,
+    ):
+        """Broadcasts a message to all the UAVs on all the networks managed by
+        this extension.
+
+        Parameters:
+            spec: the specification of the MAVLink message to send
+            channel: specifies the channel that the packet should be sent on;
+                defaults to the preferred channel of the network
+        """
+        if not self._networks:
+            raise RuntimeError("Cannot send packet; extension is not running")
+
+        for network in self._networks.values():
+            await network.broadcast_packet(spec, channel)
 
     def _get_network_specifications_from_configuration(self, configuration):
         # Construct the network specifications first
@@ -278,11 +298,10 @@ class MAVLinkDronesExtension(UAVExtensionBase):
             channel: specifies the channel that the packet should be sent on;
                 defaults to the preferred channel of the network
         """
-        network_id = target.network_id
         if not self._networks:
             raise RuntimeError("Cannot send packet; extension is not running")
 
-        network = self._networks[network_id]
+        network = self._networks[target.network_id]
         return await network.send_packet(
             spec, target, wait_for_response, wait_for_one_of, channel
         )

@@ -48,6 +48,6 @@ fi
 # Generate the bundle for Windows
 if [ x$GENERATE_WINDOWS = x1 ]; then
     rm -rf dist/windows
-    etc/scripts/build-nsis-installer.sh
+    etc/scripts/_build-nsis-installer.sh
 fi
 

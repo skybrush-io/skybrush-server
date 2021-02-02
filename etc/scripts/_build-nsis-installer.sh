@@ -1,6 +1,9 @@
 #!/bin/bash
 #
 # Builds an NSIS installer for the server application
+#
+# Typically you don't need to call this; call `etc/scripts/deploy.sh windows`
+# instead.
 
 BUILD_DIR="./build/nsis"
 WHEEL_DIR="./build/wheels"
@@ -94,11 +97,11 @@ files=etc/blobs/win32/libusb-1.0.dll >\$INSTDIR\lib
     skybrush.jsonc >\$INSTDIR
 
 [Build]
-installer_name=../../dist/windows/${INSTALLER_NAME}
+installer_name=../../${OUTPUT_DIR}/${INSTALLER_NAME}
 EOF
 
 # Now clean the build dir and invoke pynsist, but don't run makensis just yet;
-# we will need to obfuscate stuff before that
+# we will need to obfuscate stuff before that.
 rm -rf "${BUILD_DIR}"
 .venv/bin/python -m nsist installer.cfg --no-makensis
 
@@ -124,10 +127,11 @@ if [ $OBFUSCATE -gt 0 ]; then
   # Obfuscate the source. Note that we need to specify the current and the
   # target platform, but we _cannot_ use --advanced 2 here because the generated
   # installer wouldn't work on the target platform for some reason.
-  PYARMOR_PLATFORM=darwin.x86_64.0 TARGET_PLATFORM=windows.x86.0 etc/scripts/apply-pyarmor-on-venv.sh ${PYARMOR_VENV}/bin/pyarmor "${BUILD_DIR}/pkgs" "${BUILD_DIR}/obf"
+  PYARMOR_PLATFORM=darwin.x86_64.0 TARGET_PLATFORM=windows.x86.0 etc/scripts/_apply-pyarmor-on-venv.sh ${PYARMOR_VENV}/bin/pyarmor "${BUILD_DIR}/pkgs" "${BUILD_DIR}/obf"
 fi
 
 # Okay, call makensis now
+mkdir -p "${OUTPUT_DIR}"
 makensis "${BUILD_DIR}"/installer.nsi
 
 # Finally, remove the entry script and the config file that was put there only for pynsist's sake
@@ -137,7 +141,7 @@ echo ""
 echo "------------------------------------------------------------------------"
 
 echo ""
-echo "Installer created in dist/windows/${INSTALLER_NAME}"
+echo "Installer created in ${OUTPUT_DIR}/${INSTALLER_NAME}"
 if [ $OBFUSCATE -le 0 ]; then
   echo ""
   echo "WARNING: THIS BUILD IS UNOBFUSCATED! DO NOT DISTRIBUTE!"

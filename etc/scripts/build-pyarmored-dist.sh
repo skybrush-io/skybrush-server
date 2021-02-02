@@ -93,7 +93,7 @@ if [ $STANDALONE = 1 ]; then
   # Invoke obfuscation script on virtualenv. Note that we need --advanced 2 here
   # because the PyInstaller repacking trick does not work with the "normal"
   # mode.
-  PYARMOR_ARGS="--advanced 2" etc/scripts/apply-pyarmor-on-venv.sh "${PYARMOR}" "${BUILD_DIR}/lib" "${BUILD_DIR}/obf" --keep
+  PYARMOR_ARGS="--advanced 2" etc/scripts/_apply-pyarmor-on-venv.sh "${PYARMOR}" "${BUILD_DIR}/lib" "${BUILD_DIR}/obf" --keep
 
   # Call PyInstaller to produce an unobfuscated distribution first
   # TODO(ntamas): BUILD_DIR is hardcoded into pyinstaller.spec

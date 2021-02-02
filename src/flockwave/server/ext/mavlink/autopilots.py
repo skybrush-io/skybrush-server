@@ -649,8 +649,22 @@ class ArduPilotWithSkybrush(ArduPilot):
         self, heartbeat: MAVLinkMessage, sys_status: MAVLinkMessage
     ) -> bool:
         # Our patched firmware (ab)uses the CALIBRATING state in the heartbeat
-        # for this
-        return heartbeat.system_status == MAVState.CALIBRATING
+        # for this before ArduCopter 4.0.5. From ArduCopter 4.0.5 onwwards,
+        # there is a "preflight check" sensor so we use that
+        mask = MAVSysStatusSensor.PREARM_CHECK
+        if sys_status.onboard_control_sensors_present & mask:
+            # ArduCopter version reports prearm check status with this message
+            if sys_status.onboard_control_sensors_enabled & mask:
+                # Prearm checks are enabled so return whether they pass or not
+                return not bool(sys_status.onboard_control_sensors_health & mask)
+            else:
+                # Prearm checks are disabled so they are never in progress
+                return False
+        else:
+            # ArduCopter version does not know about this flag so we assume that
+            # we are running our firmware and that the CALIBRATING status is
+            # used for reporting this
+            return heartbeat.system_status == MAVState.CALIBRATING
 
     @ArduPilot.supports_scheduled_takeoff.getter
     def supports_scheduled_takeoff(self):

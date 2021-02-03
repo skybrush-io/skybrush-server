@@ -10,7 +10,7 @@ from functools import partial
 from math import inf
 from time import monotonic
 from trio import fail_after, move_on_after, sleep, TooSlowError
-from typing import List, Optional, Sequence, Union
+from typing import List, Optional, Union
 
 from flockwave.gps.time import datetime_to_gps_time_of_week, gps_time_of_week_to_utc
 from flockwave.gps.vectors import GPSCoordinate, VelocityNED
@@ -1914,7 +1914,11 @@ class MAVLinkUAV(UAVBase):
                 heartbeat.system_status == MAVState.BOOT
             ),
             FlockwaveErrorCode.UNSPECIFIED_ERROR: (
-                heartbeat.system_status == MAVState.CRITICAL and not not_healthy_sensors
+                # RC errors apparently trigger this error condition with
+                # ArduCopter if we don't exclude it explicitly
+                heartbeat.system_status == MAVState.CRITICAL
+                and not not_healthy_sensors
+                and not has_rc_error
             ),
             FlockwaveErrorCode.UNSPECIFIED_CRITICAL_ERROR: (
                 heartbeat.system_status == MAVState.EMERGENCY

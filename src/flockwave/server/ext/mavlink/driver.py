@@ -119,7 +119,7 @@ class MAVLinkDriver(UAVDriver):
             "instance": 42,
             "pattern": 42,
             "custom_len": len(data) if data else 0,
-            "custom_bytes": _EMPTY[len(data) :] if data else _EMPTY,
+            "custom_bytes": bytes(data) + _EMPTY[len(data) :] if data else _EMPTY,
         }
         return spec.led_control(**kwds)
 

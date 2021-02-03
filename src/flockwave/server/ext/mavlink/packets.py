@@ -3,14 +3,34 @@ from datetime import timezone
 from enum import IntEnum, IntFlag
 from functools import lru_cache
 from struct import Struct
+from typing import Optional, Sequence
 
 from flockwave.gps.time import gps_time_of_week_to_utc
 from flockwave.server.model.gps import GPSFixType as OurGPSFixType
 
 from .enums import GPSFixType
-from .types import MAVLinkMessage
+from .types import MAVLinkMessage, spec
 
-__all__ = ("DroneShowStatus",)
+__all__ = ("DroneShowStatus", "create_led_control_packet")
+
+
+#: Helper constant used when we try to send an empty byte array via MAVLink
+_EMPTY = b"\x00" * 256
+
+
+def create_led_control_packet(
+    data: Optional[Sequence[int]] = None, broadcast: bool = False
+):
+    """Creates a special LED light control packet used by our firmware."""
+    kwds = {
+        "instance": 42,
+        "pattern": 42,
+        "custom_len": len(data) if data else 0,
+        "custom_bytes": bytes(data) + _EMPTY[len(data) :] if data else _EMPTY,
+    }
+    if broadcast:
+        kwds.update(target_system=0, target_component=0)
+    return spec.led_control(**kwds)
 
 
 def format_elapsed_time(value: int) -> str:

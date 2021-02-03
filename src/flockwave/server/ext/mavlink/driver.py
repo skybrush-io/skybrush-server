@@ -57,7 +57,7 @@ from .enums import (
     PositionTargetTypemask,
 )
 from .ftp import MAVFTP
-from .packets import DroneShowStatus
+from .packets import create_led_control_packet, DroneShowStatus
 from .types import MAVLinkMessage, spec
 from .utils import log_id_for_uav, mavlink_version_number_to_semver
 
@@ -70,9 +70,6 @@ SEC_TO_USEC = 1000000
 #: Magic number to force an arming or disarming operation even if it is unsafe
 #: to do so
 FORCE_MAGIC = 21196
-
-#: Helper constant used when we try to send an empty byte array via MAVLink
-_EMPTY = b"\x00" * 256
 
 #: "Not a number" constant, used in some MAVLink messages to indicate a default
 #: value
@@ -110,18 +107,6 @@ class MAVLinkDriver(UAVDriver):
             to send, and a pair formed by the medium via which the packet
             should be forwarded and the destination address in that medium.
     """
-
-    @staticmethod
-    def _create_led_control_packet(
-        data: Optional[Sequence[int]] = None, broadcast: bool = False
-    ):
-        kwds = {
-            "instance": 42,
-            "pattern": 42,
-            "custom_len": len(data) if data else 0,
-            "custom_bytes": bytes(data) + _EMPTY[len(data) :] if data else _EMPTY,
-        }
-        return spec.led_control(**kwds)
 
     def __init__(self, app=None):
         """Constructor.
@@ -710,7 +695,7 @@ class MAVLinkDriver(UAVDriver):
         channel = transport_options_to_channel(transport)
 
         if "light" in signals:
-            message = MAVLinkDriver._create_led_control_packet(broadcast=True)
+            message = create_led_control_packet(broadcast=True)
             await self.broadcast_packet(message, channel=channel)
 
     async def _send_light_or_sound_emission_signal_single(
@@ -719,7 +704,7 @@ class MAVLinkDriver(UAVDriver):
         channel = transport_options_to_channel(transport)
 
         if "light" in signals:
-            message = MAVLinkDriver._create_led_control_packet()
+            message = create_led_control_packet()
             await self.send_packet(message, uav, channel=channel)
 
     async def _send_motor_start_stop_signal_broadcast(
@@ -1061,7 +1046,7 @@ class MAVLinkUAV(UAVBase):
         Parameters:
             channel: the communication channel to send the command on
         """
-        message = MAVLinkDriver._create_led_control_packet()
+        message = create_led_control_packet()
         await self.driver.send_packet(message, self, channel=channel)
 
     async def fly_to(self, target: GPSCoordinate) -> None:
@@ -1579,7 +1564,7 @@ class MAVLinkUAV(UAVBase):
             duration_msec = 0
             effect = 0
 
-        message = MAVLinkDriver._create_led_control_packet(
+        message = create_led_control_packet(
             [
                 red,
                 green,

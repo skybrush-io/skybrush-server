@@ -5,7 +5,8 @@ from typing import Optional, TYPE_CHECKING
 
 from flockwave.server.ext.show.config import LightConfiguration, LightEffectType
 
-from .types import MAVLinkMessageSpecification, spec
+from .packets import create_led_control_packet
+from .types import MAVLinkMessageSpecification
 
 __all__ = ("LEDLightConfigurationManager",)
 
@@ -13,8 +14,7 @@ if TYPE_CHECKING:
     from .network import MAVLinkNetwork
 
 
-#: Payload length must be 24 bytes so we have lots of padding at the end
-_light_control_packet_struct = Struct("<BBBHBxxxxxxxxxxxxxxxxxx")
+_light_control_packet_struct = Struct("<BBBHB")
 
 
 class LEDLightConfigurationManager:
@@ -84,14 +84,7 @@ class LEDLightConfigurationManager:
             else 0,  # submitting zero duration turns off any effect that we have
             1 if is_active else 0,
         )
-        return spec.led_control(
-            target_system=0,
-            target_component=0,
-            instance=42,
-            pattern=42,
-            custom_len=6,
-            custom_bytes=data,
-        )
+        return create_led_control_packet(data, broadcast=True)
 
     async def _run(self, log) -> None:
         while True:

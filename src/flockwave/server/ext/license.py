@@ -13,6 +13,10 @@ __all__ = ("load",)
 NEVER_EXPIRES = 20 * 365
 
 
+#: Global variable holding the current license
+license = None  # type: Optional[License]
+
+
 class License(metaclass=ABCMeta):
     """Abstraction layer to help us with switching to different license managers
     if we want to.
@@ -31,6 +35,11 @@ class License(metaclass=ABCMeta):
         """Returns the number of days left until the expiry of the license;
         returns at least 20 years if the license never expires.
         """
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_id(self) -> str:
+        """Returns a unique ID of the license."""
         raise NotImplementedError
 
     @abstractmethod
@@ -54,6 +63,22 @@ class License(metaclass=ABCMeta):
                 return False
 
         return True
+
+
+class DummyLicense(License):
+    """License class used for testing purposes."""
+
+    def get_allowed_mac_addresses(self):
+        return None
+
+    def get_days_left_until_expiry(self) -> int:
+        return 42
+
+    def get_id(self) -> str:
+        return "test-1"
+
+    def get_licensee(self) -> str:
+        return "Test license"
 
 
 class PyArmorLicense(License):
@@ -82,6 +107,9 @@ class PyArmorLicense(License):
     def get_days_left_until_expiry(self) -> int:
         return self._expired_days
 
+    def get_id(self) -> str:
+        return self._license_info.get("CODE") or ""
+
     def get_licensee(self) -> str:
         parsed = self._parse_license_info()
         return str(parsed.get("licensee", ""))
@@ -107,9 +135,11 @@ class PyArmorLicense(License):
 
 
 def load(app, configuration, logger):
+    global license
+
     # License factories must raise an ApplicationExit exception if they have
     # found a license and it is not valid
-    license_factories = [PyArmorLicense.get_license]
+    license_factories = [DummyLicense, PyArmorLicense.get_license]
 
     for factory in license_factories:
         try:
@@ -117,11 +147,28 @@ def load(app, configuration, logger):
         except Exception:
             # Move on and try the next factory
             pass
+        else:
+            # The first license that works is used
+            break
 
     if license and not license.is_valid():
         raise ApplicationExit("License expired or is not valid for this machine")
 
     show_license_information(logger, license)
+
+
+def unload():
+    global license
+
+    license = None
+
+
+def get_license() -> Optional[License]:
+    """Returns the currently loaded license, or `None` if there is no license
+    associated to the app.
+    """
+    global license
+    return license
 
 
 def show_license_information(logger, license: Optional[License]) -> None:
@@ -146,3 +193,6 @@ def show_license_information(logger, license: Optional[License]) -> None:
         logger.warn("This license expires in one day")
     elif days_left == 0:
         logger.warn("This license expires today")
+
+
+exports = {"get_license": get_license}

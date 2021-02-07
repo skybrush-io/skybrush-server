@@ -6,6 +6,7 @@ link (e.g., standard 802.11 wifi).
 from collections import defaultdict
 from contextlib import contextmanager
 from dataclasses import dataclass
+from errno import ENETDOWN, ENETUNREACH
 from functools import partial
 from logging import Logger
 from trio import BrokenResourceError, open_memory_channel, WouldBlock
@@ -434,9 +435,22 @@ class CommunicationManager(Generic[PacketType, AddressType]):
                             sent = True
                         if sent:
                             break
+                    except OSError as ex:
+                        if ex.errno in (ENETDOWN, ENETUNREACH):
+                            # This is okay
+                            self.log.error(
+                                "Network is down or unreachable",
+                                extra={"id": name or "", "sentry_ignore": True},
+                            )
+                        else:
+                            self.log.exception(
+                                f"Error while sending message on channel {name}[{index}]",
+                                extra={"id": name or ""},
+                            )
                     except Exception:
                         self.log.exception(
-                            f"Error while sending message on channel {name}[{index}]"
+                            f"Error while sending message on channel {name}[{index}]",
+                            extra={"id": name or ""},
                         )
 
         if not sent and address is not BROADCAST:

@@ -653,9 +653,6 @@ class MAVLinkNetwork:
         uav = self._find_uav_from_message(message, address)
         if uav:
             uav.handle_message_heartbeat(message)
-            # TODO(ntamas): if the UAV requires regular unicast heartbeat packets to be
-            # sent from the GCS, uncomment this
-            # self.driver.run_in_background(self.send_heartbeat, uav)
 
     def _handle_message_statustext(
         self, message: MAVLinkMessage, *, connection_id: str, address: Any
@@ -673,10 +670,12 @@ class MAVLinkNetwork:
 
         for target in self._statustext_targets:
             if target == "server":
+                extra = self._log_extra_from_message(message)
+                extra["sentry_ignore"] = True
                 self.log.log(
                     python_log_level_from_mavlink_severity(message.severity),
                     text,
-                    extra=self._log_extra_from_message(message),
+                    extra=extra,
                 )
             elif target == "client":
                 if uav:

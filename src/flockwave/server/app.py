@@ -881,9 +881,10 @@ class SkybrushServer(DaemonApp):
         cfg = config.get("COMMAND_EXECUTION_MANAGER", {})
         self.command_execution_manager.timeout = cfg.get("timeout", 30)
 
-        # Force-load the ext_manager extension
+        # Force-load the ext_manager and the licensing extension
         cfg = config.setdefault("EXTENSIONS", {})
         cfg["ext_manager"] = {}
+        cfg["license"] = {}
 
     def _setup_app_configurator(self, configurator: AppConfigurator) -> None:
         configurator.key_filter = str.isupper

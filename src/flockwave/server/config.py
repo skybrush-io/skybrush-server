@@ -108,6 +108,10 @@ EXTENSIONS = {
         "use_high_precision": True  # set to false if the rover cannot handle high-precision MSM RTK messages
         # "exclude_serial_ports": ["*ttyAMA*"
     },
+    "sentry": {
+        # Override the DSN to turn on Sentry integration
+        "dsn": ""
+    },
     "show": {},
     "socketio": {},
     # "smpte_timecode": {"connection": "midi:IAC Driver Bus 1"},

@@ -11,6 +11,9 @@ from sentry_sdk.integrations.logging import ignore_logger
 #: first startup and send an event
 load_count = 0
 
+#: Hardcoded DSN to use when a license is installed with the app
+LICENSED_DSN = "https://be573f3895324321bf9084a2a10426b1@sentry.io/1778076"
+
 
 def on_before_sending_log_event(event, hint):
     """Filter function that ignores certain events that we do not want to end
@@ -26,7 +29,13 @@ def on_before_sending_log_event(event, hint):
 def load(app, configuration, logger):
     global load_count
 
-    dsn = os.environ.get("SENTRY_DSN") or configuration.get("dsn")
+    get_license = app.import_api("license").get_license
+    license = get_license() if callable(get_license) else None
+    if license is not None:
+        dsn = LICENSED_DSN
+    else:
+        dsn = os.environ.get("SENTRY_DSN") or configuration.get("dsn")
+
     if dsn is None:
         logger.warn("Sentry DSN not specified; Sentry integration disabled.")
         logger.info(
@@ -37,11 +46,6 @@ def load(app, configuration, logger):
         load_count += 1
 
         return
-
-    get_license = app.import_api("license").get_license
-
-    if callable(get_license):
-        license = get_license()
 
     if not load_count:
         init_sentry(dsn, license)

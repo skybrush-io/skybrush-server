@@ -139,7 +139,7 @@ def load(app, configuration, logger):
 
     # License factories must raise an ApplicationExit exception if they have
     # found a license and it is not valid
-    license_factories = [DummyLicense, PyArmorLicense.get_license]
+    license_factories = [PyArmorLicense.get_license]
 
     for factory in license_factories:
         try:

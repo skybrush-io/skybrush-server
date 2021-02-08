@@ -215,7 +215,7 @@ class ModelMetaHelpers(object):
                 try:
                     return self._json[name]
                 except KeyError:
-                    raise AttributeError(name)
+                    raise AttributeError(name) from None
 
             def setter(self, value):
                 self._json[name] = value
@@ -227,7 +227,7 @@ class ModelMetaHelpers(object):
                 try:
                     raw_value = self._json[name]
                 except KeyError:
-                    raise AttributeError(name)
+                    raise AttributeError(name) from None
                 return from_json(raw_value)
 
             def setter(self, value):

@@ -800,7 +800,7 @@ class UAVDriver(metaclass=ABCMeta):
         if broadcaster and "transport" in kwds:
             transport = kwds.get("transport")
             if isinstance(transport, TransportOptions):
-                is_broadcast = bool(transport.broadcast)
+                is_broadcast = bool(getattr(transport, "broadcast", False))
 
         if is_broadcast:
             # We need to broadcast and we know that we have a separate function

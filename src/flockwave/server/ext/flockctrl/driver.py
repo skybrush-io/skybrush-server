@@ -5,6 +5,11 @@ from __future__ import division
 from base64 import b64decode
 from bidict import bidict
 from colour import Color
+from time import monotonic
+from trio import CapacityLimiter, to_thread
+from typing import Optional, List, Tuple
+from zlib import decompress
+
 from flockwave.concurrency import FutureCancelled, FutureMap
 from flockwave.protocols.flockctrl.enums import MultiTargetCommand, StatusFlag
 from flockwave.protocols.flockctrl.packets import (
@@ -23,13 +28,10 @@ from flockwave.protocols.flockctrl.packets import (
 from flockwave.server.ext.logger import log
 from flockwave.server.model.battery import BatteryInfo
 from flockwave.server.model.gps import GPSFixType
+from flockwave.server.model.transport import TransportOptions
 from flockwave.server.model.uav import UAVBase, UAVDriver, VersionInfo
 from flockwave.server.utils import color_to_rgb565, nop
 from flockwave.spec.ids import make_valid_object_id
-from time import monotonic
-from trio import CapacityLimiter, to_thread
-from typing import Optional, List, Tuple
-from zlib import decompress
 
 from .algorithms import handle_algorithm_data_packet
 from .comm import BurstedMultiTargetMessageManager, upload_mission
@@ -174,7 +176,7 @@ class FlockCtrlDriver(UAVDriver):
                 )
                 self._disable_warnings_until[uav_id] = now + 1
 
-    def send_landing_signal(self, uavs):
+    def send_landing_signal(self, uavs, transport: Optional[TransportOptions] = None):
         self._bursted_message_manager.schedule_burst(
             MultiTargetCommand.LAND,
             uav_ids=self._uavs_to_ids(uavs),
@@ -182,7 +184,11 @@ class FlockCtrlDriver(UAVDriver):
         )
 
     def send_light_or_sound_emission_signal(
-        self, uavs, signals: List[str], duration: int
+        self,
+        uavs,
+        signals: List[str],
+        duration: int,
+        transport: Optional[TransportOptions] = None,
     ):
         """Asks the driver to send a light or sound emission signal to the
         given UAVs.
@@ -203,7 +209,11 @@ class FlockCtrlDriver(UAVDriver):
         )
 
     def send_motor_start_stop_signal(
-        self, uavs, start: bool = False, force: bool = True
+        self,
+        uavs,
+        start: bool = False,
+        force: bool = True,
+        transport: Optional[TransportOptions] = None,
     ):
         if start:
             command = MultiTargetCommand.MOTOR_ON
@@ -215,14 +225,22 @@ class FlockCtrlDriver(UAVDriver):
             command, uav_ids=self._uavs_to_ids(uavs), duration=BURST_DURATION
         )
 
-    def send_return_to_home_signal(self, uavs):
+    def send_return_to_home_signal(
+        self, uavs, transport: Optional[TransportOptions] = None
+    ):
         self._bursted_message_manager.schedule_burst(
             MultiTargetCommand.RTH,
             uav_ids=self._uavs_to_ids(uavs),
             duration=BURST_DURATION,
         )
 
-    def send_takeoff_signal(self, uavs, *, scheduled: bool = False):
+    def send_takeoff_signal(
+        self,
+        uavs,
+        *,
+        scheduled: bool = False,
+        transport: Optional[TransportOptions] = None,
+    ):
         self._bursted_message_manager.schedule_burst(
             MultiTargetCommand.TAKEOFF,
             uav_ids=self._uavs_to_ids(uavs),

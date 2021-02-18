@@ -35,6 +35,11 @@ BROADCAST = object()
 #: Marker object used to denote "no broadcast address"
 _NO_BROADCAST_ADDRESS = object()
 
+#: Special Windows error codes for "network unreachable" condition
+WSAENETDOWN = 10050
+WSAENETUNREACH = 10051
+WSAESERVERUNREACH = 10065
+
 
 class CommunicationManager(Generic[PacketType, AddressType]):
     """Reusable communication manager class for drone driver extensions, with
@@ -436,7 +441,7 @@ class CommunicationManager(Generic[PacketType, AddressType]):
                         if sent:
                             break
                     except OSError as ex:
-                        if ex.errno in (ENETDOWN, ENETUNREACH):
+                        if ex.errno in (ENETDOWN, ENETUNREACH, WSAENETDOWN, WSAENETUNREACH, WSAESERVERUNREACH):
                             # This is okay
                             self.log.error(
                                 "Network is down or unreachable",

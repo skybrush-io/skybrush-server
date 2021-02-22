@@ -6,6 +6,7 @@ from .formats import SkybrushBinaryShowFile
 from .geofence import get_geofence_configuration_from_show_specification
 from .lights import get_light_program_from_show_specification
 from .trajectory import (
+    get_altitude_reference_from_show_specification,
     get_coordinate_system_from_show_specification,
     get_home_position_from_show_specification,
     get_trajectory_from_show_specification,
@@ -13,6 +14,7 @@ from .trajectory import (
 )
 
 __all__ = (
+    "get_altitude_reference_from_show_specification",
     "get_coordinate_system_from_show_specification",
     "get_geofence_configuration_from_show_specification",
     "get_home_position_from_show_specification",

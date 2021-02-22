@@ -399,6 +399,12 @@ class SegmentEncoder:
             # segment is linear
             return 1, coords
 
+        if len(xs) == 2:
+            # segment is a quadratic Bezier curve, we need to promote it to
+            # cubic
+            raise NotImplementedError("quadratic Bezier curves not implemented yet")
+            return 2, coords
+
         if len(xs) == 3:
             # segment is a cubic Bezier curve
             return 2, coords
@@ -407,8 +413,7 @@ class SegmentEncoder:
             # segment is a 7D polynomial curve
             return 2, coords
 
-        # TODO(ntamas): convert quadratic Bezier curves to cubic Bezier
-        # curves, convert 4-5-6D curves to 7D ones
+        # TODO(ntamas): convert 4-5-6D curves to 7D ones
         raise NotImplementedError(f"{len(xs)}D curves not implemented yet")
 
     def _scale_point(self, point: Point) -> Tuple[int, int, int]:

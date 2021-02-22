@@ -32,6 +32,7 @@ from flockwave.server.utils import color_to_rgb8_triplet, to_uppercase_string
 from flockwave.spec.errors import FlockwaveErrorCode
 
 from skybrush import (
+    get_altitude_reference_from_show_specification,
     get_coordinate_system_from_show_specification,
     get_geofence_configuration_from_show_specification,
     get_light_program_from_show_specification,
@@ -1635,6 +1636,7 @@ class MAVLinkUAV(UAVBase):
         if coordinate_system.type != "nwu":
             raise RuntimeError("Only NWU coordinate systems are supported")
 
+        altitude_reference = get_altitude_reference_from_show_specification(show)
         light_program = get_light_program_from_show_specification(show)
         trajectory = get_trajectory_from_show_specification(show)
         geofence = get_geofence_configuration_from_show_specification(show)
@@ -1651,7 +1653,7 @@ class MAVLinkUAV(UAVBase):
         # Ask drone to reload show file
         await self.reload_show()
 
-        # Configure show origin and orientation
+        # Configure show origin, orientation and altitude reference
         # TODO(ntamas): this is not entirely accurate due to the back-and-forth
         # conversion happening between floats and ints; sometimes the 7th
         # decimal digit is off by one.
@@ -1662,6 +1664,11 @@ class MAVLinkUAV(UAVBase):
             "SHOW_ORIGIN_LNG", int(coordinate_system.origin.lon * 1e7)
         )
         await self.set_parameter("SHOW_ORIENTATION", coordinate_system.orientation)
+        # TODO(ntamas): do not freak out if the drone does not support it
+        await self.set_parameter(
+            "SHOW_ORIGIN_AMSL",
+            (altitude_reference * 1e3) if altitude_reference is not None else -32768000,
+        )
 
         # Configure and enable geofence
         await self.configure_geofence(geofence)

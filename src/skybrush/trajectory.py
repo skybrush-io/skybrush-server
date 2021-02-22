@@ -11,6 +11,7 @@ from flockwave.gps.vectors import FlatEarthToGPSCoordinateTransformation
 from .utils import BoundingBoxCalculator, Point
 
 __all__ = (
+    "get_altitude_reference_from_show_specification",
     "get_coordinate_system_from_show_specification",
     "get_home_position_from_show_specification",
     "get_trajectory_from_show_specification",
@@ -217,3 +218,17 @@ def get_home_position_from_show_specification(
         return home
     else:
         return None
+
+
+def get_altitude_reference_from_show_specification(show: Dict) -> Optional[float]:
+    """Returns the altitude above mean sea level where the Z coordinates of the
+    show should be referred to, or `None` if the show is to be controlled with
+    relative coordinates (altitude above ground level).
+    """
+    amsl = show.get("amslReference")
+    if amsl is None:
+        return None
+    elif amsl >= -10000 and amsl <= 10000:
+        return float(amsl)
+    else:
+        raise ValueError(f"Invalid altitude reference in show specification: {amsl!r}")

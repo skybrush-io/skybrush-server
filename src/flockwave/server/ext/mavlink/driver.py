@@ -1653,22 +1653,49 @@ class MAVLinkUAV(UAVBase):
         # Ask drone to reload show file
         await self.reload_show()
 
-        # Configure show origin, orientation and altitude reference
+        # Encode latitude and longitude of show origin
         # TODO(ntamas): this is not entirely accurate due to the back-and-forth
         # conversion happening between floats and ints; sometimes the 7th
         # decimal digit is off by one.
-        await self.set_parameter(
-            "SHOW_ORIGIN_LAT", int(coordinate_system.origin.lat * 1e7)
+        encoded_lat = int(coordinate_system.origin.lat * 1e7)
+        encoded_lon = int(coordinate_system.origin.lon * 1e7)
+        encoded_amsl = (
+            int(altitude_reference * 1e3)
+            if altitude_reference is not None
+            else -32768000
         )
-        await self.set_parameter(
-            "SHOW_ORIGIN_LNG", int(coordinate_system.origin.lon * 1e7)
-        )
-        await self.set_parameter("SHOW_ORIENTATION", coordinate_system.orientation)
-        # TODO(ntamas): do not freak out if the drone does not support it
-        await self.set_parameter(
-            "SHOW_ORIGIN_AMSL",
-            (altitude_reference * 1e3) if altitude_reference is not None else -32768000,
-        )
+
+        # Try configuring with a single USER_2 command first, falling back to
+        # the old parameter-based configuration if USER_2 is not supported.
+        try:
+            success = await self.driver.send_command_int(
+                self,
+                MAVCommand.USER_2,
+                0,  # command code
+                0,  # unused
+                0,  # unused
+                coordinate_system.orientation,
+                encoded_lat,
+                encoded_lon,
+                encoded_amsl,
+            )
+        except NotSupportedError:
+            success = False
+
+        if not success:
+            # Configure show origin, orientation and altitude reference using
+            # the old method. There is no version of the firmware that would
+            # support SHOW_ORIGIN_AMSL but does not support the new-style
+            # configuration method so we raise an error if the user tries to
+            # set an AMSL value
+            if altitude_reference is not None:
+                raise NotSupportedError(
+                    "AMSL-based control is not supported in this firmware"
+                )
+
+            await self.set_parameter("SHOW_ORIGIN_LAT", encoded_lat)
+            await self.set_parameter("SHOW_ORIGIN_LNG", encoded_lon)
+            await self.set_parameter("SHOW_ORIENTATION", coordinate_system.orientation)
 
         # Configure and enable geofence
         await self.configure_geofence(geofence)

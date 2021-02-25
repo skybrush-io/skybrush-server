@@ -952,7 +952,7 @@ class MAVLinkUAV(UAVBase):
         if component == "baro":
             params[2] = 1
         elif component == "gyro":
-            params[1] = 1
+            params[0] = 1
         elif component == "level":
             params[4] = 2
         else:

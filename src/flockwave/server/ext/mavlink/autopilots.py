@@ -1,6 +1,7 @@
 """Implementations of autopilot-specific functionality."""
 
 from abc import ABCMeta, abstractmethod, abstractproperty
+from trio import fail_after, sleep, TooSlowError
 from typing import Type, Union
 
 from flockwave.server.errors import NotSupportedError
@@ -13,6 +14,8 @@ from flockwave.server.utils import clamp
 
 from .enums import (
     MAVAutopilot,
+    MAVCommand,
+    MAVMessageType,
     MAVModeFlag,
     MAVParamType,
     MAVProtocolCapability,
@@ -25,6 +28,7 @@ from .types import MAVLinkFlightModeNumbers, MAVLinkMessage
 from .utils import (
     decode_param_from_wire_representation,
     encode_param_to_wire_representation,
+    log_id_for_uav,
 )
 
 
@@ -89,6 +93,18 @@ class Autopilot(metaclass=ABCMeta):
         """Decides whether the motor outputs of a UAV with this autopilot are
         disabled, given the MAVLink HEARTBEAT and SYS_STATUS messages where this
         information is conveyed for _some_ autopilots.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    async def calibrate_compass(self, uav) -> None:
+        """Calibrates the compass of the UAV.
+
+        Raises:
+            NotImplementedError: if we have not implemented support for
+                calibrating the compass (but it supports compass calibration)
+            NotSupportedError: if the autopilot does not support calibrating the
+                compass
         """
         raise NotImplementedError
 
@@ -213,6 +229,9 @@ class UnknownAutopilot(Autopilot):
     """Class representing an autopilot that we do not know."""
 
     name = "Unknown autopilot"
+
+    async def calibrate_compass(self, uav) -> None:
+        raise NotSupportedError
 
     async def configure_geofence(
         self, uav, configuration: GeofenceConfigurationRequest
@@ -346,6 +365,9 @@ class PX4(Autopilot):
         # anywhere
         return False
 
+    async def calibrate_compass(self, uav) -> None:
+        raise NotImplementedError
+
     async def configure_geofence(
         self, uav, configuration: GeofenceConfigurationRequest
     ) -> None:
@@ -455,6 +477,9 @@ class ArduPilot(Autopilot):
         4: (GeofenceAction.STOP, GeofenceAction.LAND),
     }
 
+    #: Maximum allowed duration of a compass calibration, in seconds
+    MAX_COMPASS_CALIBRATION_DURATION = 60
+
     @classmethod
     def describe_custom_mode(cls, base_mode: int, custom_mode: int) -> str:
         """Returns the description of the current custom mode that the autopilot
@@ -484,6 +509,70 @@ class ArduPilot(Autopilot):
             )
         else:
             return False
+
+    async def calibrate_compass(self, uav) -> None:
+        calibration_messages = {
+            MAVMessageType.MAG_CAL_PROGRESS: 1,
+            MAVMessageType.MAG_CAL_REPORT: 1,
+        }
+        started, success = False, False
+        timeout = self.MAX_COMPASS_CALIBRATION_DURATION
+
+        try:
+            async with uav.temporarily_request_messages(calibration_messages):
+                # Messages are not handled here but in the MAVLinkNetwork,
+                # which forwards them to the UAV< which in turn refreshes its
+                # state variables in its CompassCalibration object. This is not
+                # nice, but it works.
+                await uav.driver.send_command_long(
+                    uav,
+                    MAVCommand.DO_START_MAG_CAL,
+                    0,  # calibrate all compasses
+                    0,  # retry on failure
+                    1,  # autosave on success
+                )
+                started = True
+
+                # We give ourselves 60 seconds to do the compass calibration.
+                # Anything that goes slower than 60 seconds probably indicates a
+                # problem with the compass of the UAV.
+                with fail_after(timeout):
+                    success = await uav.compass_calibration.wait_until_termination()
+
+        except TooSlowError:
+            raise RuntimeError(
+                f"Compass calibration did not finish in {timeout} seconds"
+            )
+
+        except Exception:
+            if not started:
+                raise
+                raise RuntimeError("Failed to start compass calibration")
+            else:
+                try:
+                    await uav.driver.send_command_long(
+                        uav, MAVCommand.DO_CANCEL_MAG_CAL
+                    )
+                except Exception:
+                    uav.driver.log.warn(
+                        "Failed to cancel compass calibration",
+                        extra={"id": log_id_for_uav(uav)},
+                    )
+                raise RuntimeError("Compass calibration terminated unexpectedly")
+
+        if not success:
+            raise RuntimeError("Compass calibration failed")
+
+        # Wait a bit so the user sees the LED flashes on the drone that indicate a
+        # successful calibration
+        await sleep(1.5)
+
+        try:
+            await uav.reboot()
+        except Exception:
+            raise RuntimeError(
+                "Failed to reboot UAV after successful compass calibration"
+            )
 
     async def configure_geofence(
         self, uav, configuration: GeofenceConfigurationRequest

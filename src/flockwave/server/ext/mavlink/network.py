@@ -528,6 +528,8 @@ class MAVLinkNetwork:
             "HOME_POSITION": nop,
             "HWSTATUS": nop,
             "LOCAL_POSITION_NED": nop,  # maybe later?
+            "MAG_CAL_PROGRESS": self._handle_message_mag_cal_progress,
+            "MAG_CAL_REPORT": self._handle_message_mag_cal_report,
             "MEMINFO": nop,
             "MISSION_ACK": nop,  # used for mission and geofence download / upload
             "MISSION_COUNT": nop,  # used for mission and geofence download / upload
@@ -653,6 +655,22 @@ class MAVLinkNetwork:
         uav = self._find_uav_from_message(message, address)
         if uav:
             uav.handle_message_heartbeat(message)
+
+    def _handle_message_mag_cal_progress(
+        self, message: MAVLinkMessage, *, connection_id: str, address: Any
+    ):
+        """Handles an incoming MAVLink MAG_CAL_PROGRESS message."""
+        uav = self._find_uav_from_message(message, address)
+        if uav:
+            uav.handle_message_mag_cal_progress(message)
+
+    def _handle_message_mag_cal_report(
+        self, message: MAVLinkMessage, *, connection_id: str, address: Any
+    ):
+        """Handles an incoming MAVLink MAG_CAL_REPORT message."""
+        uav = self._find_uav_from_message(message, address)
+        if uav:
+            uav.handle_message_mag_cal_report(message)
 
     def _handle_message_statustext(
         self, message: MAVLinkMessage, *, connection_id: str, address: Any

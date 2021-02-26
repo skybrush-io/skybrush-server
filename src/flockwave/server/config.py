@@ -23,7 +23,7 @@ SECRET_KEY = (
 )
 
 # Configure the command execution manager
-COMMAND_EXECUTION_MANAGER = {"timeout": 30}
+COMMAND_EXECUTION_MANAGER = {"timeout": 90}
 
 # Declare the list of extensions to load
 EXTENSIONS = {
@@ -125,7 +125,7 @@ EXTENSIONS = {
         "count": 5,
         "delay": 0.2,
         "enabled": False,
-        "id_format": "{0:02}",
+        "id_format": "{0}",
         "origin": [18.915125, 47.486305, 215],  # Fahegy
         # "origin": [19.062159, 47.473360],  # ELTE kert
         "orientation": 59,

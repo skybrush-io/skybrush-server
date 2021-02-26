@@ -77,6 +77,9 @@ class MAVCommand(IntEnum):
     USER_4 = 31013
     USER_5 = 31014
 
+    # ArduPilot-specific commands
+    DO_START_MAG_CAL = 42424
+
 
 class MAVComponent(IntEnum):
     """Replica of the `MAV_COMPONENT` enum of the MAVLink protocol, using proper
@@ -139,6 +142,8 @@ class MAVMessageType(IntEnum):
     COMMAND_ACK = 77
     SET_POSITION_TARGET_GLOBAL_INT = 86
     AUTOPILOT_VERSION = 148
+    MAG_CAL_PROGRESS = 191  # ArduPilot-specific
+    MAG_CAL_REPORT = 192
 
 
 class MAVMissionResult(IntEnum):
@@ -456,3 +461,30 @@ class MotorTestThrottleType(IntEnum):
     PWM = 1
     PILOT = 2
     CAL = 3
+
+
+class MagCalStatus(IntEnum):
+    """Replica of the `MAG_CAL_STATUS` enum of the MAVLink protocol, using
+    proper Python enums.
+    """
+
+    NOT_STARTED = 0
+    WAITING_TO_START = 1
+    RUNNING_STEP_ONE = 2
+    RUNNING_STEP_TWO = 3
+    SUCCESS = 4
+    FAILED = 5
+    BAD_ORIENTATION = 6
+    BAD_RADIUS = 7
+
+    @property
+    def is_calibrating(self) -> bool:
+        return self >= 1 and self <= 3
+
+    @property
+    def is_failure(self) -> bool:
+        return self >= 5
+
+    @property
+    def is_successful(self) -> bool:
+        return self == 4

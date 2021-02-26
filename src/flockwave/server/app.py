@@ -879,7 +879,7 @@ class SkybrushServer(DaemonApp):
     def _process_configuration(self, config: Configuration) -> Optional[int]:
         # Process the configuration options
         cfg = config.get("COMMAND_EXECUTION_MANAGER", {})
-        self.command_execution_manager.timeout = cfg.get("timeout", 30)
+        self.command_execution_manager.timeout = cfg.get("timeout", 90)
 
         # Force-load the ext_manager and the licensing extension
         cfg = config.setdefault("EXTENSIONS", {})

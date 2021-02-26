@@ -4,13 +4,14 @@ from __future__ import division
 
 from collections import defaultdict
 from colour import Color
+from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from functools import partial
 from math import inf
 from time import monotonic
 from trio import fail_after, move_on_after, sleep, TooSlowError
-from typing import List, Optional, Union
+from typing import Dict, List, Optional, Union
 
 from flockwave.gps.time import datetime_to_gps_time_of_week, gps_time_of_week_to_utc
 from flockwave.gps.vectors import GPSCoordinate, VelocityNED
@@ -42,6 +43,7 @@ from skybrush.formats import SkybrushBinaryShowFile
 
 from .autopilots import ArduPilot, Autopilot, UnknownAutopilot
 from .comm import Channel
+from .compass import CompassCalibration
 from .enums import (
     GPSFixType,
     MAVCommand,
@@ -263,6 +265,9 @@ class MAVLinkDriver(UAVDriver):
         if component == "baro":
             await uav.calibrate_component("baro")
             return "Ground pressure calibrated"
+        elif component == "compass":
+            await uav.calibrate_component("compass")
+            return "Compass calibrated"
         elif component == "gyro":
             await uav.calibrate_component("gyro")
             return "Gyroscope calibrated"
@@ -270,7 +275,7 @@ class MAVLinkDriver(UAVDriver):
             await uav.calibrate_component("level")
             return "Level calibration executed"
         elif not component:
-            return "Usage: test <led|motor>"
+            return "Usage: calib <baro|compass|gyro|level>"
         else:
             raise NotSupportedError
 
@@ -745,6 +750,8 @@ class MAVLinkDriver(UAVDriver):
                 1,  # reboot autopilot
                 channel=channel,
             )
+            # TODO(ntamas): shall we notify all the UAVs that they are about to
+            # be rebooted (i.e. _notify_rebooted_by_us())
         else:
             # No per-component resets are implemented yet
             raise RuntimeError(f"Resetting {component!r} is not supported")
@@ -756,16 +763,7 @@ class MAVLinkDriver(UAVDriver):
 
         if not component:
             # Resetting the whole UAV, this is supported
-            success = await self.send_command_long(
-                uav,
-                MAVCommand.PREFLIGHT_REBOOT_SHUTDOWN,
-                1,  # reboot autopilot
-                channel=channel,
-            )
-            if not success:
-                raise RuntimeError("Reset command failed")
-            else:
-                uav.notify_rebooted_by_us()
+            await uav.reboot(channel=channel)
         else:
             # No per-component resets are implemented on this UAV yet
             raise RuntimeError(f"Resetting {component!r} is not supported")
@@ -867,6 +865,9 @@ class MAVLinkUAV(UAVBase):
         #: Battery status of the drone
         self._battery = BatteryInfo()
 
+        #: Compass calibration status of the drone
+        self._compass_calibration = CompassCalibration()
+
         #: Stores whether we are currently configuring the data stream rates
         #: for the drone. Used to avoid multiple parallel configuration attempts.
         self._configuring_data_streams = False
@@ -938,16 +939,36 @@ class MAVLinkUAV(UAVBase):
         self._network_id = network_id
         self._system_id = system_id
 
+    async def calibrate_compass(self) -> None:
+        """Calibrates the compass of the UAV.
+
+        Raises:
+            NotSupportedError: if the compass calibration is not supported on
+                the UAV
+        """
+        try:
+            return await self._autopilot.calibrate_compass(self)
+        except NotImplementedError:
+            # Turn NotImplementedError from the autopilot into a NotSupportedError
+            raise NotSupportedError
+
     async def calibrate_component(self, component: str) -> None:
         """Calibrates a component of the UAV.
 
         Parameters:
             component: the component to calibrate; currently we support
-                ``baro``, ``level`` or ``gyro``.
+                ``baro``, ``compass``, ``gyro`` or ``level``.
 
         Raises:
+            NotSupportedError: if the calibration of the given component is not
+                supported on this UAV
             RuntimeError: if the UAV rejected to calibrate the component
         """
+        if component == "compass":
+            # Compass calibration is a whole different thing so that's handled
+            # in a separate function
+            return await self.calibrate_compass()
+
         params = [0] * 7
         if component == "baro":
             params[2] = 1
@@ -1374,6 +1395,12 @@ class MAVLinkUAV(UAVBase):
         self.update_status(gps=self._gps_fix)
         self.notify_updated()
 
+    def handle_message_mag_cal_progress(self, message: MAVLinkMessage):
+        self.compass_calibration.handle_message_mag_cal_progress(message)
+
+    def handle_message_mag_cal_report(self, message: MAVLinkMessage):
+        self.compass_calibration.handle_message_mag_cal_report(message)
+
     def handle_message_sys_status(self, message: MAVLinkMessage):
         self._store_message(message)
         self._update_errors_from_sys_status_and_heartbeat()
@@ -1402,6 +1429,11 @@ class MAVLinkUAV(UAVBase):
             pass
 
         self._store_message(message)
+
+    @property
+    def compass_calibration(self) -> CompassCalibration:
+        """State object of the compass calibration procedure."""
+        return self._compass_calibration
 
     @property
     def is_connected(self) -> bool:
@@ -1434,7 +1466,7 @@ class MAVLinkUAV(UAVBase):
         # configuration
         self._reset_mavlink_version()
 
-    def notify_rebooted_by_us(self) -> None:
+    def _notify_rebooted_by_us(self) -> None:
         """Notifies the UAV state object that we have rebooted the UAV ourselves
         and we should configure its data streams again soon once we re-establish
         connection.
@@ -1476,6 +1508,19 @@ class MAVLinkUAV(UAVBase):
     @property
     def preflight_status(self) -> PreflightCheckInfo:
         return self._preflight_status
+
+    async def reboot(self, channel: str = Channel.PRIMARY) -> None:
+        """Reboots the autopilot of the UAV."""
+        success = await self.driver.send_command_long(
+            self,
+            MAVCommand.PREFLIGHT_REBOOT_SHUTDOWN,
+            1,  # reboot autopilot
+            channel=channel,
+        )
+        if not success:
+            raise RuntimeError("Reset command failed")
+        else:
+            self._notify_rebooted_by_us()
 
     async def reload_show(self) -> None:
         """Asks the UAV to reload the current drone show file."""
@@ -1630,6 +1675,49 @@ class MAVLinkUAV(UAVBase):
             channel=channel,
         ):
             raise RuntimeError("Failed to send takeoff command")
+
+    @asynccontextmanager
+    async def temporarily_request_messages(self, messages: Dict[int, float]) -> None:
+        """Temporarily requests the UAV to send a given set of messages while
+        the execution is in the context, resetting the messages upon exiting
+        the context. Resetting is done at a best-effort basis; failures will be
+        ignored.
+
+        Parameters:
+            messages: a dict mapping MAVLink message IDs to their corresponding
+                stream rates in Hz
+        """
+        successful = []
+        try:
+            for message, rate in messages.items():
+                success = await self.driver.send_command_long(
+                    self,
+                    MAVCommand.SET_MESSAGE_INTERVAL,
+                    message,
+                    1000000 / rate,  # one per second
+                )
+                if success:
+                    successful.append(message)
+                else:
+                    raise RuntimeError(
+                        f"UAV rejected message stream rate of {rate} Hz for message {message}"
+                    )
+            yield
+        finally:
+            failed = []
+            for message in successful:
+                try:
+                    await self.driver.send_command_long(
+                        self, MAVCommand.SET_MESSAGE_INTERVAL, message, 0  # off
+                    )
+                except Exception:
+                    failed.append(message)
+
+            for message in failed:
+                self.driver.log.warn(
+                    f"Failed to reset data stream rate(s) for message(s) {message}",
+                    extra={"id": log_id_for_uav(self)},
+                )
 
     async def upload_show(self, show) -> None:
         coordinate_system = get_coordinate_system_from_show_specification(show)
@@ -1835,6 +1923,9 @@ class MAVLinkUAV(UAVBase):
             # Don't set the mode immediately because the drone might now
             # respond right after bootup
             self.driver.run_in_background(self._configure_mandatory_custom_mode)
+
+        # Reset our internal state object of the compass calibration procedure
+        self.compass_calibration.reset()
 
     async def _request_autopilot_capabilities(self) -> None:
         """Sends a request to the autopilot to send its capabilities via MAVLink

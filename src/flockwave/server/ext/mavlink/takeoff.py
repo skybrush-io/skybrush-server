@@ -98,7 +98,11 @@ class ScheduledTakeoffManager:
                         packet = create_start_time_configuration_packet(
                             desired_takeoff_time, desired_auth_flag
                         )
-                        await self._network.broadcast_packet(packet)
+                        try:
+                            await self._network.broadcast_packet(packet)
+                        except Exception:
+                            # Do not blow up if the broadcasting fails for any reason
+                            pass
 
                     # First we scan the _uavs array and find all UAVs that need to
                     # be configured. The actual configuration will take place in a

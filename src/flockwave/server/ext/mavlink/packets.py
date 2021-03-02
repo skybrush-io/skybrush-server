@@ -2,10 +2,10 @@ from dataclasses import dataclass
 from datetime import timezone
 from enum import IntEnum, IntFlag
 from functools import lru_cache
-from struct import Struct
+from struct import Struct, pack
 from typing import Optional, Sequence
 
-from flockwave.gps.time import gps_time_of_week_to_utc
+from flockwave.gps.time import unix_to_gps_time_of_week, gps_time_of_week_to_utc
 from flockwave.server.model.gps import GPSFixType as OurGPSFixType
 
 from .enums import GPSFixType
@@ -16,6 +16,60 @@ __all__ = ("DroneShowStatus", "create_led_control_packet")
 
 #: Helper constant used when we try to send an empty byte array via MAVLink
 _EMPTY = b"\x00" * 256
+
+
+def create_custom_data_packet(type: int, payload: bytes):
+    """Creates a custom data packet used by our firmware with the given type
+    and payload.
+    """
+    length = len(payload) + 1
+    if length <= 16:
+        padded_length = 16
+        packet = spec.data16
+    elif length <= 32:
+        padded_length = 32
+        packet = spec.data32
+    elif length <= 64:
+        padded_length = 64
+        packet = spec.data64
+    elif length <= 96:
+        padded_length = 96
+        packet = spec.data96
+    else:
+        raise ValueError("payload too long")
+
+    return packet(
+        type=0x5C,
+        len=length,
+        data=bytes([type]) + payload + b"\x00" * (padded_length - length),
+    )
+
+
+def create_start_time_configuration_packet(
+    start_time: Optional[float], is_authorized: bool
+):
+    """Creates a custom command packet used by our firmware that sets the
+    scheduled takeoff time and the takeoff authorization of the swarm.
+
+    Parameters:
+        start_time: the desired takeoff time of the swarm as a UNIX timestamp;
+            `None` if it should be cleared, negative if it must not be changed
+        is_authorized: whether the swarm is authorized to take off
+    """
+    if start_time is None:
+        # clear start time; this is expressed by -1 on the drone's side
+        start_time = -1
+    elif start_time < 0:
+        # do not touch; this is expressed by a value larger than 604800 on the
+        # drone's side
+        start_time = 0xFFFFFF
+    else:
+        # convert from UNIX timestamp to GPS time-of-week
+        _, start_time = unix_to_gps_time_of_week(int(start_time))
+
+    return create_custom_data_packet(
+        type=1, payload=pack("<i?", start_time, is_authorized)
+    )
 
 
 def create_led_control_packet(

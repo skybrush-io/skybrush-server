@@ -1,4 +1,4 @@
-from weakref import WeakKeyDictionary
+from time import time
 from trio import (
     CapacityLimiter,
     current_time,
@@ -11,8 +11,11 @@ from trio import (
 from trio.lowlevel import ParkingLot
 from trio_util import periodic
 from typing import Optional, Tuple, TYPE_CHECKING
+from weakref import WeakKeyDictionary
 
 from flockwave.server.ext.show.config import DroneShowConfiguration, StartMethod
+
+from .packets import create_start_time_configuration_packet
 
 __all__ = ("ScheduledTakeoffManager",)
 
@@ -80,6 +83,23 @@ class ScheduledTakeoffManager:
                         await self._parking_lot.park()
                         continue
 
+                    # Figure out what the desired takeoff time and the auth flag
+                    # should be
+                    (
+                        desired_takeoff_time,
+                        desired_auth_flag,
+                    ) = self._get_desired_takeoff_time_and_auth_flag(config)
+
+                    # Broadcast a packet that contains the desired takeoff time
+                    # and the auth flag. If it fails, well, it does not matter
+                    # because we will check the UAVs one by one as well. We
+                    # send this packet only if the start time is in the future.
+                    if desired_takeoff_time is None or desired_takeoff_time >= time():
+                        packet = create_start_time_configuration_packet(
+                            desired_takeoff_time, desired_auth_flag
+                        )
+                        await self._network.broadcast_packet(packet)
+
                     # First we scan the _uavs array and find all UAVs that need to
                     # be configured. The actual configuration will take place in a
                     # separate task to ensure that we don't block the entire process
@@ -92,17 +112,20 @@ class ScheduledTakeoffManager:
                         ):
                             continue
 
-                        (
-                            desired_takeoff_time,
-                            desired_auth_flag,
-                        ) = self._get_desired_takeoff_time_and_auth_flag_for(
-                            uav, config
-                        )
-
-                        needs_update = (
-                            desired_takeoff_time != uav.scheduled_takeoff_time
-                            or desired_auth_flag != uav.is_scheduled_takeoff_authorized
-                        )
+                        if desired_auth_flag != uav.is_scheduled_takeoff_authorized:
+                            # Auth flag is different so we definitely need an update
+                            needs_update = True
+                        elif desired_takeoff_time is None or desired_takeoff_time >= 0:
+                            # Takeoff time must be cleared (None) or set to a specific
+                            # value; we need an update if it is different from what
+                            # we have on the UAV
+                            needs_update = (
+                                uav.scheduled_takeoff_time != desired_takeoff_time
+                            )
+                        else:
+                            # Auth flag is the same and the takeoff time does not
+                            # need to change
+                            needs_update = False
 
                         if needs_update:
                             timestamp = self._uavs_last_updated_at.get(uav)
@@ -197,12 +220,14 @@ class ScheduledTakeoffManager:
     # drone. If the start has not been authorized, we clear the scheduled
     # start time of the drone.
 
-    def _get_desired_takeoff_time_and_auth_flag_for(
-        self, uav, config: DroneShowConfiguration
+    def _get_desired_takeoff_time_and_auth_flag(
+        self, config: DroneShowConfiguration
     ) -> Tuple[Optional[float], bool]:
         """Returns the desired start time in seconds and the desired state
-        of the takeoff authorization flag on the given UAV by examining the
-        state of the UAV and the drone show configuration.
+        of the takeoff authorization flag on all the UAVs.
+
+        Returns a negative start time to indicate that the start time has to be
+        left as is for each of the UAVs.
         """
         desired_auth_flag = config.authorized_to_start
 
@@ -220,7 +245,7 @@ class ScheduledTakeoffManager:
                 # User authorized the start so we don't mess around with the
                 # takeoff time, it is the responsibility of the person holding
                 # the RC to set the takeoff time
-                desired_takeoff_time = uav.scheduled_takeoff_time
+                desired_takeoff_time = -1
             else:
                 # User did not authorize the start yet so the start time must
                 # be cleared
@@ -232,9 +257,11 @@ class ScheduledTakeoffManager:
         (
             desired_takeoff_time,
             desired_auth_flag,
-        ) = self._get_desired_takeoff_time_and_auth_flag_for(uav, self._config)
+        ) = self._get_desired_takeoff_time_and_auth_flag(self._config)
 
-        if desired_takeoff_time != uav.scheduled_takeoff_time:
+        if (
+            desired_takeoff_time is None or desired_takeoff_time >= 0
+        ) and desired_takeoff_time != uav.scheduled_takeoff_time:
             await uav.set_scheduled_takeoff_time(seconds=desired_takeoff_time)
 
         if desired_auth_flag != uav.is_scheduled_takeoff_authorized:
@@ -242,7 +269,7 @@ class ScheduledTakeoffManager:
 
         log = self._network.log
         if log:
-            log.info(f"Updating takeoff configuration of {uav.id}")
+            log.debug(f"Updating takeoff configuration of {uav.id}")
 
         # Remember that we sent a command to update the start time on this UAV
         # and that it was sent successfully so we don't try it again in the next

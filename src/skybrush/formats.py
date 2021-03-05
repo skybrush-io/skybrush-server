@@ -394,16 +394,15 @@ class SegmentEncoder:
             # segment is constant, this is easy
             return 0, b""
 
+        if len(xs) == 2:
+            # segment is a quadratic Bezier curve, we need to promote it to
+            # cubic first
+            xs = ((first + 2 * xs[0]) / 3, (2 * xs[0] + xs[1]) / 3, xs[1])
+
         coords = [x.to_bytes(2, byteorder="little", signed=True) for x in xs]
         if len(xs) == 1:
             # segment is linear
             return 1, coords
-
-        if len(xs) == 2:
-            # segment is a quadratic Bezier curve, we need to promote it to
-            # cubic
-            raise NotImplementedError("quadratic Bezier curves not implemented yet")
-            return 2, coords
 
         if len(xs) == 3:
             # segment is a cubic Bezier curve

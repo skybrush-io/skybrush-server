@@ -127,6 +127,7 @@ class DroneShowStatusFlag(IntFlag):
     HAS_GEOFENCE = 1 << 3
     HAS_AUTHORIZATION_TO_START = 1 << 2
     IS_GPS_TIME_BAD = 1 << 1
+    IS_MISPLACED_BEFORE_TAKEOFF = 1 << 0
 
 
 _stage_descriptions = {
@@ -305,6 +306,8 @@ class DroneShowStatus:
             return "Origin not set"
         elif not flags & DroneShowStatusFlag.HAS_ORIENTATION:
             return "Orientation not set"
+        elif flags & DroneShowStatusFlag.IS_MISPLACED_BEFORE_TAKEOFF:
+            return "Not at takeoff position"
         elif (
             not flags & DroneShowStatusFlag.HAS_START_TIME
             and stage != DroneShowExecutionStage.LANDED

@@ -388,7 +388,7 @@ class SegmentEncoder:
 
         return chunks
 
-    def _encode_coordinate_series(self, xs: Tuple[float]) -> Tuple[int, List[bytes]]:
+    def _encode_coordinate_series(self, xs: Tuple[int]) -> Tuple[int, List[bytes]]:
         first, *xs = xs
         if all(x == first for x in xs):
             # segment is constant, this is easy
@@ -398,6 +398,7 @@ class SegmentEncoder:
             # segment is a quadratic Bezier curve, we need to promote it to
             # cubic first
             xs = ((first + 2 * xs[0]) / 3, (2 * xs[0] + xs[1]) / 3, xs[1])
+            xs = [int(round(x)) for x in xs]
 
         coords = [x.to_bytes(2, byteorder="little", signed=True) for x in xs]
         if len(xs) == 1:

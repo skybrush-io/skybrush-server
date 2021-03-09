@@ -450,6 +450,7 @@ class MAVFTP:
 
         message = MAVFTPMessage(MAVFTPOpCode.OPEN_FILE_RO, data=remote_path)
         reply = await self._send_and_wait(message)
+
         async with self._open_session(reply.session_id) as session:
             offset = 0
             got_eof = False
@@ -629,7 +630,7 @@ class MAVFTP:
                     retries -= 1
                     continue
                 else:
-                    raise
+                    break
 
             reply = MAVFTPMessage.decode(reply.payload)
             if reply.is_ack:
@@ -642,7 +643,7 @@ class MAVFTP:
             else:
                 raise RuntimeError("Received reply that is neither ACK nor NAK")
 
-        raise TooSlowError()
+        raise TooSlowError("no response received for MAVFTP packet in time")
 
     def _to_ftp_path(self, posix_path: PurePosixPath) -> bytes:
         return (str(posix_path)[1:] or ".").encode("utf-8")

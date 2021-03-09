@@ -1311,6 +1311,7 @@ class MAVLinkUAV(UAVBase):
 
         debug = data.message.encode("utf-8")
 
+        self._update_errors_from_drone_show_status_packet(data)
         self.update_status(light=data.light, gps=self._gps_fix, debug=debug)
         self.notify_updated()
 
@@ -1355,6 +1356,7 @@ class MAVLinkUAV(UAVBase):
         self.update_status(
             mode=self._autopilot.describe_mode(message.base_mode, message.custom_mode)
         )
+        self.notify_updated()
 
     def handle_message_global_position_int(self, message: MAVLinkMessage):
         # TODO(ntamas): reboot detection with time_boot_ms
@@ -1979,11 +1981,29 @@ class MAVLinkUAV(UAVBase):
         """
         self._last_messages[message.get_msgId()].update(message)
 
+    def _update_errors_from_drone_show_status_packet(self, status: DroneShowStatus):
+        """Updates the error codes based on the most recent drone show status
+        message.
+
+        The error codes managed by this function are disjoint from the error
+        codes managed by `_update_errors_from_sys_status_and_heartbeat()`.
+        Make sure to keep it this way.
+        """
+        errors = {
+            FlockwaveErrorCode.TIMESYNC_ERROR: status.has_timesync_error,
+            FlockwaveErrorCode.FAR_FROM_TAKEOFF_POSITION: status.is_misplaced_before_takeoff,
+        }
+        self.ensure_errors(errors)
+
     def _update_errors_from_sys_status_and_heartbeat(self):
         """Updates the error codes based on the most recent HEARTBEAT and
         SYS_STATUS messages. We need both to have an accurate picture of what is
         going on, hence a separate function that is called from both message
         handlers.
+
+        The error codes managed by this function are disjoint from the error
+        codes managed by `_update_errors_from_drone_show_status_packet()`.
+        Make sure to keep it this way.
         """
         heartbeat = self.get_last_message(MAVMessageType.HEARTBEAT)
         sys_status = self.get_last_message(MAVMessageType.SYS_STATUS)

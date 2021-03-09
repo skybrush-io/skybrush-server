@@ -120,6 +120,10 @@ def format_gps_time_of_week(value: int) -> str:
 class DroneShowStatusFlag(IntFlag):
     """Status flags used in the Skybrush-specific drone show status packet."""
 
+    IS_MISPLACED_BEFORE_TAKEOFF = 1 << 11
+    UNUSED_1 = 1 << 10
+    UNUSED_2 = 1 << 9
+    UNUSED_3 = 1 << 8
     HAS_SHOW_FILE = 1 << 7
     HAS_START_TIME = 1 << 6
     HAS_ORIGIN = 1 << 5
@@ -127,13 +131,13 @@ class DroneShowStatusFlag(IntFlag):
     HAS_GEOFENCE = 1 << 3
     HAS_AUTHORIZATION_TO_START = 1 << 2
     IS_GPS_TIME_BAD = 1 << 1
-    IS_MISPLACED_BEFORE_TAKEOFF = 1 << 0
+    UNUSED_4 = 1 << 0
 
 
 _stage_descriptions = {
     0: "",
     1: "Initializing...",
-    2: "Ready to start",
+    2: "Waiting for start time",
     3: "Taking off",
     4: "Performing show",
     5: "Return to launch",
@@ -224,10 +228,16 @@ class DroneShowStatus:
         if len(data) < 12:
             data = data.ljust(12, b"\x00")
 
-        start_time, light, flags, stage, gps_health, elapsed_time = cls._struct.unpack(
+        start_time, light, flags, flags2, gps_health, elapsed_time = cls._struct.unpack(
             data[:12]
         )
 
+        # merge flags and flags2 into one byte. lower 4 bits of flags2 is the
+        # execution stage
+        flags |= (flags2 & 0xF0) << 4
+        stage = flags2 & 0x0F
+
+        # validate the execution stage
         try:
             stage = DroneShowExecutionStage(stage)
         except Exception:
@@ -271,6 +281,20 @@ class DroneShowStatus:
         show status message.
         """
         return bool(self.flags & DroneShowStatusFlag.HAS_AUTHORIZATION_TO_START)
+
+    @property
+    def has_timesync_error(self) -> bool:
+        """Returns whether there is probably a time synchronization problem
+        as we are receiving invalid timestamps from the GPS.
+        """
+        return bool(self.flags & DroneShowStatusFlag.IS_GPS_TIME_BAD)
+
+    @property
+    def is_misplaced_before_takeoff(self) -> bool:
+        """Returns whether we are currently before the takeoff stage and the
+        drone seems to be misplaced.
+        """
+        return bool(self.flags & DroneShowStatusFlag.IS_MISPLACED_BEFORE_TAKEOFF)
 
     @property
     def message(self) -> str:

@@ -60,7 +60,7 @@ def create_app():
         index_url = get_index_url()
         if index_url:
             if request.query_string:
-                index_url += "?" + request.query_string.encode("utf-8")
+                index_url += "?" + request.query_string.decode("utf-8")
             return redirect(index_url)
         else:
             abort(404)

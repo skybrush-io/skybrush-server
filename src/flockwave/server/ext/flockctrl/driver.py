@@ -147,10 +147,14 @@ class FlockCtrlDriver(UAVDriver):
         mission = generate_mission_file_from_show_specification(show)
         await self._handle_mission_upload(uav, mission)
 
-    def handle_generic_command(self, uav, command, args, kwds):
+    async def handle_generic_command(self, uav, command, args, kwds):
         """Sends a generic command execution request to the given UAV."""
         command = " ".join([command, *args])
-        return self._send_command_to_uav(command, uav)
+        response = await self._send_command_to_uav_and_check_for_errors(command, uav)
+        return {
+            "type": "preformatted",
+            "data": response
+        }
 
     def handle_inbound_packet(self, packet, source):
         """Handles an inbound FlockCtrl packet received over a connection."""

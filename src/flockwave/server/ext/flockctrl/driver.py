@@ -28,6 +28,7 @@ from flockwave.protocols.flockctrl.packets import (
 from flockwave.server.ext.logger import log
 from flockwave.server.model.battery import BatteryInfo
 from flockwave.server.model.gps import GPSFixType
+from flockwave.server.model.preflight import PreflightCheckInfo, PreflightCheckResult
 from flockwave.server.model.transport import TransportOptions
 from flockwave.server.model.uav import UAVBase, UAVDriver, VersionInfo
 from flockwave.server.utils import color_to_rgb565, nop
@@ -332,7 +333,7 @@ class FlockCtrlDriver(UAVDriver):
         """
         return {
             StatusPacket: self._handle_inbound_status_packet,
-            PrearmStatusPacket: nop,
+            PrearmStatusPacket: self._handle_inbound_prearm_status_packet,
             CompressedCommandResponsePacket: self._handle_inbound_command_response_packet,
             CommandResponsePacket: self._handle_inbound_command_response_packet,
             AlgorithmDataPacket: self._handle_inbound_algorithm_data_packet,
@@ -518,6 +519,15 @@ class FlockCtrlDriver(UAVDriver):
             == StatusFlag.MOTOR_RUNNING
         )
 
+        # update preflight status 
+        # TODO: generate more detailed prearm status
+        if packet.flags & StatusFlag.PREARM:
+            uav._preflight_status.message = "Prearm checks in progress"
+            uav._preflight_status.result = PreflightCheckResult.RUNNING
+        else:
+            uav._preflight_status.message = "Passed"
+            uav._preflight_status.result = PreflightCheckResult.PASS
+        
         # update generic uav status
         uav.update_status(
             position=packet.location,
@@ -532,6 +542,17 @@ class FlockCtrlDriver(UAVDriver):
         )
 
         self.app.request_to_send_UAV_INF_message_for([uav.id])
+
+    def _handle_inbound_prearm_status_packet(self, packet: PrearmStatusPacket, source):
+        """Handles an inbound FlockCtrl prearm status packet.
+
+        Parameters:
+            packet: the packet to handle
+            source: the source the packet was received from
+        """
+        pass
+        # TODO: implement parsing this into preflight status
+        #print(packet.statuses)
 
     async def _handle_mission_upload(self, uav: "FlockCtrlUAV", data: bytes) -> None:
         """Uploads the given mission data file to a drone.
@@ -647,6 +668,9 @@ class FlockCtrlDriver(UAVDriver):
             raise RuntimeError(response[3:].strip())
         return response
 
+    def _request_preflight_report_single(self, uav) -> PreflightCheckInfo:
+        return uav.preflight_status
+
     async def _request_version_info_single(self, uav) -> VersionInfo:
         response = await self._send_command_to_uav_and_check_for_errors("version", uav)
         result = {}
@@ -696,6 +720,9 @@ class FlockCtrlUAV(UAVBase):
         self.mission_name = None
         self._is_airborne = False
 
+        #: Status of the preflight checks on the drone
+        self._preflight_status = PreflightCheckInfo()
+
     @property
     def is_airborne(self) -> bool:
         """Returns whether the UAV is probably airborne (motors running and
@@ -722,6 +749,10 @@ class FlockCtrlUAV(UAVBase):
         raise ValueError(
             "UAV has no address yet in any of the supported communication media"
         )
+
+    @property
+    def preflight_status(self) -> PreflightCheckInfo:
+        return self._preflight_status
 
     @property
     def ssh_host(self) -> str:

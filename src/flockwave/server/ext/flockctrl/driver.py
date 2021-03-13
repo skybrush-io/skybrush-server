@@ -11,7 +11,11 @@ from typing import Optional, List, Tuple
 from zlib import decompress
 
 from flockwave.concurrency import FutureCancelled, FutureMap
-from flockwave.protocols.flockctrl.enums import MultiTargetCommand, StatusFlag, PrearmCheckFlag
+from flockwave.protocols.flockctrl.enums import (
+    MultiTargetCommand,
+    StatusFlag,
+    PrearmCheck,
+)
 from flockwave.protocols.flockctrl.packets import (
     AlgorithmDataPacket,
     ChunkedPacketAssembler,
@@ -172,10 +176,7 @@ class FlockCtrlDriver(UAVDriver):
         """Sends a generic command execution request to the given UAV."""
         command = " ".join([command, *args])
         response = await self._send_command_to_uav_and_check_for_errors(command, uav)
-        return {
-            "type": "preformatted",
-            "data": response
-        }
+        return {"type": "preformatted", "data": response}
 
     def handle_inbound_packet(self, packet, source):
         """Handles an inbound FlockCtrl packet received over a connection."""
@@ -541,7 +542,7 @@ class FlockCtrlDriver(UAVDriver):
 
         # Note: packet.flags & StatusFlag.PREARM is not handled here as
         # prearm status packets should arrive separately with more detail
-        
+
         # update generic uav status
         uav.update_status(
             position=packet.location,
@@ -570,7 +571,7 @@ class FlockCtrlDriver(UAVDriver):
             PreflightCheckResult.FAILURE,
             PreflightCheckResult.RUNNING,
         ]
-        
+
         try:
             uav = self._uavs_by_source_address[source]
         except KeyError:
@@ -579,14 +580,12 @@ class FlockCtrlDriver(UAVDriver):
 
         for i, status in enumerate(packet.statuses):
             uav._preflight_status.set_result(
-                id=PrearmCheckFlag(i).name, 
-                result=_preflight_result_map[status], 
-                label=packet.index_to_description(i)
+                id=PrearmCheck(i).name,
+                result=_preflight_result_map[status],
+                label=packet.index_to_description(i),
             )
-        
+
         uav._preflight_status.update_summary()
-
-
 
     async def _handle_mission_upload(self, uav: "FlockCtrlUAV", data: bytes) -> None:
         """Uploads the given mission data file to a drone.
@@ -802,7 +801,6 @@ class FlockCtrlUAV(UAVBase):
         if not success:
             raise RuntimeError(f"Failed to calibrate component: {component!r}")
 
-
     @property
     def is_airborne(self) -> bool:
         """Returns whether the UAV is probably airborne (motors running and
@@ -931,12 +929,10 @@ class FlockCtrlUAV(UAVBase):
         periodically.
         """
         report = PreflightCheckInfo()
-        for i in range(len(PrearmCheckFlag)):
-            report.add_item(PrearmCheckFlag(i).name, PrearmCheckFlag(i).description)
+        for check in PrearmCheck:
+            report.add_item(check.name, check.description)
         report.update_summary()
-
         return report
-
 
     def _initialize_device_tree_node(self, node):
         # add geiger muller counter node and measurement channels

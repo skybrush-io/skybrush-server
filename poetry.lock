@@ -519,7 +519,7 @@ reference = "collmot"
 
 [[package]]
 name = "flockwave-flockctrl"
-version = "0.13.0"
+version = "0.14.0"
 description = "flockctrl protocol parser and encoder for Skybrush"
 category = "main"
 optional = false
@@ -799,7 +799,7 @@ reference = "collmot"
 
 [[package]]
 name = "jsonpointer"
-version = "2.0"
+version = "2.1"
 description = "Identify specific nodes in a JSON document (RFC 6901)"
 category = "main"
 optional = false
@@ -1942,7 +1942,7 @@ reference = "collmot"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7"
-content-hash = "810efd3cb3e168a0d6ef34e7c1201612980000ce606f3ba23401674ae16a54f9"
+content-hash = "832b6afccab89e8d47d296defafc0efe8a687d9bb81f9a58737ba55b7e88c674"
 
 [metadata.files]
 aio-usb-hotplug = [
@@ -2115,8 +2115,8 @@ flockwave-ext = [
     {file = "flockwave_ext-1.5.0-py3-none-any.whl", hash = "md5:a4788c7f82cd14bbbd6e372dbfe82e80"},
 ]
 flockwave-flockctrl = [
-    {file = "flockwave-flockctrl-0.13.0.tar.gz", hash = "md5:185e0a7933b69c6bbcd7d42442a2dc13"},
-    {file = "flockwave_flockctrl-0.13.0-py3-none-any.whl", hash = "md5:766b354b73406128521ca1602d172ae4"},
+    {file = "flockwave-flockctrl-0.14.0.tar.gz", hash = "md5:1f41302c44c7f4e1687779432958bf36"},
+    {file = "flockwave_flockctrl-0.14.0-py3-none-any.whl", hash = "md5:ae386fb62e0d76e15ea672adeb1e60c3"},
 ]
 flockwave-gps = [
     {file = "flockwave-gps-1.4.0.tar.gz", hash = "md5:5b6ac98be4578e19bdbb43f154e911f6"},
@@ -2181,8 +2181,8 @@ jinja2 = [
     {file = "Jinja2-2.11.3.tar.gz", hash = "sha256:a6d58433de0ae800347cab1fa3043cebbabe8baa9d29e668f1c768cb87a333c6"},
 ]
 jsonpointer = [
-    {file = "jsonpointer-2.0-py2.py3-none-any.whl", hash = "sha256:ff379fa021d1b81ab539f5ec467c7745beb1a5671463f9dcc2b2d458bd361c1e"},
-    {file = "jsonpointer-2.0.tar.gz", hash = "sha256:c192ba86648e05fdae4f08a17ec25180a9aef5008d973407b581798a83975362"},
+    {file = "jsonpointer-2.1-py2.py3-none-any.whl", hash = "sha256:150f80c5badd02c757da6644852f612f88e8b4bc2f9852dcbf557c8738919686"},
+    {file = "jsonpointer-2.1.tar.gz", hash = "sha256:5a34b698db1eb79ceac454159d3f7c12a451a91f6334a4f638454327b7a89962"},
 ]
 jsonschema = [
     {file = "jsonschema-3.2.0-py2.py3-none-any.whl", hash = "sha256:4e5b3cf8216f577bee9ce139cbe72eca3ea4f292ec60928ff24758ce626cd163"},

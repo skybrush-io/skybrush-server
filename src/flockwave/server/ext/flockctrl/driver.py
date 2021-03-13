@@ -25,6 +25,7 @@ from flockwave.protocols.flockctrl.packets import (
     RawGPSInjectionPacket,
     StatusPacket,
 )
+from flockwave.server.errors import NotSupportedError
 from flockwave.server.ext.logger import log
 from flockwave.server.model.battery import BatteryInfo
 from flockwave.server.model.gps import GPSFixType
@@ -147,6 +148,25 @@ class FlockCtrlDriver(UAVDriver):
 
         mission = generate_mission_file_from_show_specification(show)
         await self._handle_mission_upload(uav, mission)
+
+    async def handle_command_calib(self, uav, component: Optional[str] = None) -> None:
+        """Calibrates a component of the UAV."""
+        if component == "baro":
+            await uav.calibrate_component("baro")
+            return "Ground pressure calibrated"
+        elif component == "compass":
+            await uav.calibrate_component("compass")
+            return "Compass calibrated"
+        elif component == "gyro":
+            await uav.calibrate_component("gyro")
+            return "Gyroscope calibrated"
+        elif component == "level":
+            await uav.calibrate_component("level")
+            return "Level calibration executed"
+        elif not component:
+            return "Usage: calib <baro|compass|gyro|level>"
+        else:
+            raise NotSupportedError
 
     async def handle_generic_command(self, uav, command, args, kwds):
         """Sends a generic command execution request to the given UAV."""
@@ -734,6 +754,54 @@ class FlockCtrlUAV(UAVBase):
         self.mission_name = None
         self._is_airborne = False
         self._preflight_status = self._create_empty_preflight_status_report()
+
+    async def calibrate_compass(self) -> None:
+        """Calibrates the compass of the UAV.
+
+        Raises:
+            NotSupportedError: if the compass calibration is not supported on
+                the UAV
+        """
+        raise NotSupportedError
+
+    async def calibrate_component(self, component: str) -> None:
+        """Calibrates a component of the UAV.
+
+        Parameters:
+            component: the component to calibrate; currently we support
+                ``baro``, ``compass``, ``gyro`` or ``level``.
+
+        Raises:
+            NotSupportedError: if the calibration of the given component is not
+                supported on this UAV
+            RuntimeError: if the UAV rejected to calibrate the component
+        """
+        if component == "compass":
+            # Compass calibration is a whole different thing so that's handled
+            # in a separate function
+            return await self.calibrate_compass()
+
+        params = [0] * 7
+        if component == "baro":
+            params[2] = 1
+        elif component == "gyro":
+            params[0] = 1
+        elif component == "level":
+            params[4] = 2
+        else:
+            raise NotSupportedError
+
+        # TODO: so far this is copied from mavlink but a calibration message needs to be implemented
+        # in flockctrl as well first to be able to trigger it from here
+
+        # success = await self.driver.send_command_long(
+        #     self, MAVCommand.PREFLIGHT_CALIBRATION, *params
+        # )
+        raise NotSupportedError
+
+        if not success:
+            raise RuntimeError(f"Failed to calibrate component: {component!r}")
+
 
     @property
     def is_airborne(self) -> bool:

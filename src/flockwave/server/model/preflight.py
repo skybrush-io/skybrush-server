@@ -150,6 +150,14 @@ class PreflightCheckInfo(metaclass=ModelMeta):
                 PreflightCheckResult.OFF,
             )
 
+    def get_result(self, id: str) -> PreflightCheckResult:
+        """Returns a single preflight check result for the given individual id."""
+        for item in self.items:
+            if item.id == id:
+                return item.result
+
+        return PreflightCheckResult.OFF
+
     def set_result(
         self, id: str, result: PreflightCheckResult, label: Optional[str] = None
     ) -> None:

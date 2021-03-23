@@ -38,6 +38,7 @@ from flockwave.server.model.transport import TransportOptions
 from flockwave.server.model.uav import UAVBase, UAVDriver, VersionInfo
 from flockwave.server.utils import color_to_rgb565, nop
 from flockwave.spec.ids import make_valid_object_id
+from flockwave.spec.errors import FlockwaveErrorCode
 
 from .algorithms import handle_algorithm_data_packet
 from .comm import BurstedMultiTargetMessageManager, upload_mission
@@ -504,14 +505,25 @@ class FlockCtrlDriver(UAVDriver):
         else:
             mode = "unknown"
 
+        # convert error code to convenient format
+        errors = map_flockctrl_error_code_and_flags(packet.error, packet.flags)
+
         # derive GPS fix. Note that the status packets do not
         # contain information about the GPS fix if it is not
-        # DGPS-augmented or RTK-based; in this case we pretend
-        # that we have no GPS
+        # DGPS-augmented or RTK-based; In this case we check
+        # the prearm state to infer the value of the GPS status
+
+        # TODO: add RTK fix and get all of this in proper message,
+        # possibly together with number of satellites
         if packet.flags & StatusFlag.DGPS:
             gps_fix = GPSFixType.DGPS
         elif packet.flags & StatusFlag.RTK:
             gps_fix = GPSFixType.RTK_FLOAT
+        elif (
+            uav._preflight_status.get_result("GPS") == PreflightCheckResult.PASS
+            and FlockwaveErrorCode.GPS_SIGNAL_LOST not in errors
+        ):
+            gps_fix = GPSFixType.FIX_3D
         else:
             gps_fix = GPSFixType.NO_GPS
 
@@ -548,7 +560,7 @@ class FlockCtrlDriver(UAVDriver):
             mode=mode,
             battery=battery,
             light=light,
-            errors=map_flockctrl_error_code_and_flags(packet.error, packet.flags),
+            errors=errors,
             debug=debug,
         )
 

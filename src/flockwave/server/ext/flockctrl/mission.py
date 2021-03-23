@@ -10,7 +10,13 @@ from typing import Iterable, Tuple
 from zipfile import ZipFile, ZIP_DEFLATED
 
 from flockwave.gps.vectors import FlatEarthToGPSCoordinateTransformation
-from skybrush import get_light_program_from_show_specification
+from skybrush import (
+    get_altitude_reference_from_show_specification,
+    get_coordinate_system_from_show_specification,
+    get_geofence_configuration_from_show_specification,
+    get_light_program_from_show_specification,
+    get_trajectory_from_show_specification,
+)
 
 __all__ = ("get_template", "gps_coordinate_to_string")
 
@@ -45,7 +51,8 @@ def get_template(name: str, *, encoding: str = "utf-8", errors: str = "strict") 
     return read_text(package, name, encoding=encoding, errors=errors)
 
 
-# TODO(ntamas): move these to src/skybrush somewhere:
+# TODO(ntamas): move these to src/skybrush somewhere
+# comment(Gabor): they are not used here any more, geofence properties are used instead directly
 #
 # - get_all_points_from_trajectory(),
 # - get_maximum_altitude_with_safety_margin()
@@ -122,6 +129,7 @@ def generate_mission_file_from_show_specification(show) -> bytes:
     Returns:
         the uploadable mission ZIP file as a raw bytes object
     """
+
     # TODO: move this to a proper place, I do not know where...
     # TODO: generalize all conversions in flockwave.gps.vectors
     def to_neu(pos, type_string):
@@ -139,12 +147,11 @@ def generate_mission_file_from_show_specification(show) -> bytes:
 
         return pos_neu
 
-    # parse coordinate system
-    coordinate_system = show.get("coordinateSystem")
-    try:
-        trans = FlatEarthToGPSCoordinateTransformation.from_json(coordinate_system)
-    except Exception:
-        raise RuntimeError("Invalid or missing coordinate system specification")
+    altitude_reference = get_altitude_reference_from_show_specification(show)
+    light_program = get_light_program_from_show_specification(show)
+    # trajectory = get_trajectory_from_show_specification(show)
+    geofence = get_geofence_configuration_from_show_specification(show)
+    trans = get_coordinate_system_from_show_specification(show)
 
     # pin down to_neu to the transformation type
     to_neu = partial(to_neu, type_string=trans.type)
@@ -201,13 +208,6 @@ def generate_mission_file_from_show_specification(show) -> bytes:
         )
         last_t = t
 
-    # derive the properties of the geofence
-    max_altitude = get_maximum_altitude_with_safety_margin(points)
-    max_distance = get_maximum_distance_with_safety_margin(points)
-
-    # TODO(ntamas): respect geofence settings from the show specification if it
-    # has one; use get_geofence_configuration_from_show_specification()
-
     # create waypoint file template
     waypoint_str = get_template("waypoints.cfg").format(
         angle=trans.orientation,
@@ -224,13 +224,23 @@ def generate_mission_file_from_show_specification(show) -> bytes:
         waypoints="waypoint={} {} -100 4 2 T1000 6".format(home[0], home[1]),
     )
 
+    # create geofence (we use only the first one so far)
+    if len(geofence.polygons) != 1 or not geofence.polygons[0].is_inclusion:
+        raise RuntimeError(
+            "Exactly one inclusive geofence polygon can be handled so far"
+        )
+    geofence_lines = ["[show]"]
+    for point in geofence.polygons[0].points:
+        geofence_lines.append(f"zone={point.lat} {point.lon}")
+    geofence_str = "\n".join(geofence_lines)
+
     # gather parameters that are used in the mission and choreography file
     # templates
     params = {
         "altitude_setpoint": 5,  # TODO: get from show if needed
         "display_name": display_name,
-        "max_flying_height": max_altitude,
-        "max_flying_range": max_distance,
+        "max_flying_height": geofence.max_altitude,
+        "max_flying_range": geofence.max_distance,
         "orientation": -1,  # TODO: get from show
         "velocity_xy": 5,  # TODO: get from show
         "velocity_z": 2,  # TODO: get from show
@@ -244,18 +254,16 @@ def generate_mission_file_from_show_specification(show) -> bytes:
     # create choreography file
     choreography_str = get_template("show/choreography.cfg").format(**params)
 
-    # parse lights
-    light_data = get_light_program_from_show_specification(show)
-
     # create mission.zip
     # create the zipfile and write content to it
     buffer = BytesIO()
     with ZipFile(buffer, "w", ZIP_DEFLATED) as zip_archive:
         zip_archive.writestr("waypoints.cfg", waypoint_str)
         zip_archive.writestr("waypoints_ground.cfg", waypoint_ground_str)
+        zip_archive.writestr("flyingzone.cfg", geofence_str)
         zip_archive.writestr("choreography.cfg", choreography_str)
         zip_archive.writestr("mission.cfg", mission_str)
-        zip_archive.writestr("light_show.bin", light_data)
+        zip_archive.writestr("light_show.bin", light_program)
         zip_archive.writestr("_meta/version", "1")
         zip_archive.writestr("_meta/name", show.get("name", "drone-show"))
         zip_archive.close()

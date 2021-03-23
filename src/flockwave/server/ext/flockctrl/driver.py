@@ -512,13 +512,12 @@ class FlockCtrlDriver(UAVDriver):
         # contain information about the GPS fix if it is not
         # DGPS-augmented or RTK-based; In this case we check
         # the prearm state to infer the value of the GPS status
-
-        # TODO: add RTK fix and get all of this in proper message,
-        # possibly together with number of satellites
-        if packet.flags & StatusFlag.DGPS:
+        if (packet.flags & StatusFlag.DGPS) and not (packet.flags & StatusFlag.RTK):
             gps_fix = GPSFixType.DGPS
-        elif packet.flags & StatusFlag.RTK:
+        elif not (packet.flags & StatusFlag.DGPS) and (packet.flags & StatusFlag.RTK):
             gps_fix = GPSFixType.RTK_FLOAT
+        elif (packet.flags & StatusFlag.DGPS) and (packet.flags & StatusFlag.RTK):
+            gps_fix = GPSFixType.RTK_FIXED
         elif (
             uav._preflight_status.get_result("GPS") == PreflightCheckResult.PASS
             and FlockwaveErrorCode.GPS_SIGNAL_LOST not in errors
@@ -526,6 +525,8 @@ class FlockCtrlDriver(UAVDriver):
             gps_fix = GPSFixType.FIX_3D
         else:
             gps_fix = GPSFixType.NO_GPS
+
+        # TODO: get number of satellites somehow once when we will really need that
 
         # derive debug information that includes the clock status and the
         # choreography index as well. This is because the Flockwave protocol

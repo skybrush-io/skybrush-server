@@ -137,7 +137,7 @@ class DroneShowStatusFlag(IntFlag):
 _stage_descriptions = {
     0: "",
     1: "Initializing...",
-    2: "Waiting for start time",
+    2: "Countdown to show start",
     3: "Taking off",
     4: "Performing show",
     5: "Return to launch",

@@ -1,6 +1,7 @@
 """Error classes specific to the FlockCtrl extension."""
 
 from flockwave.protocols.flockctrl.enums import StatusFlag
+from flockwave.server.model.preflight import PreflightCheckInfo, PreflightCheckResult
 from flockwave.spec.errors import FlockwaveErrorCode
 from typing import Tuple, Union
 
@@ -80,10 +81,10 @@ _error_code_mapping = {
 
 
 def map_flockctrl_error_code_and_flags(
-    error_code: int, flags: int = 0
+    error_code: int, flags: StatusFlag, preflight: PreflightCheckInfo
 ) -> Union[Tuple[FlockwaveErrorCode], Tuple[()]]:
-    """Maps an error code from a FlockCtrl status packet to the corresponding
-    Flockwave error code.
+    """Maps an error code from FlockCtrl status and preflight packets
+    to the corresponding Flockwave error code.
 
     Returns:
         FlockwaveErrorCode: the Flockwave error codes corresponding to the
@@ -94,6 +95,30 @@ def map_flockctrl_error_code_and_flags(
 
     if flags & StatusFlag.PREARM:
         aux.append(FlockwaveErrorCode.PREARM_CHECK_IN_PROGRESS.value)
+
+        # TODO: move code below to separate function and call it from proper place
+        # after prearm packet parsing, same way as in mavlink driver with ensure_errors()
+
+        # check detailed prearm flags
+        if preflight.get_result("TAKEOFF_PLACEMENT") == PreflightCheckResult.FAILURE:
+            aux.append(FlockwaveErrorCode.FAR_FROM_TAKEOFF_POSITION)
+        if preflight.get_result("RC") == PreflightCheckResult.FAILURE:
+            aux.append(FlockwaveErrorCode.RC_SIGNAL_LOST_WARNING)
+        if preflight.get_result("BATTERY") == PreflightCheckResult.FAILURE:
+            aux.append(FlockwaveErrorCode.BATTERY_LOW_WARNING)
+
+        # TODO: would be nice to have the followings:
+        #   INVALID_MISSION_CONFIGURATION
+        #   TIMESYNC_ERROR
+        #   LOW_DISK_SPACE
+        # TODO: prearm contains info for these also, if needed:
+        #   NO_GPS_HOME_POSITION
+        #   GEOFENCE_VIOLATION
+        #   GPS_SIGNAL_LOST
+        #   AUTOPILOT_COMM_FAILED
+        #   SENSOR_FAILURE
+        #   etc.
+
     if (
         flags & (StatusFlag.MOTOR_RUNNING | StatusFlag.ON_GROUND)
         == StatusFlag.MOTOR_RUNNING | StatusFlag.ON_GROUND

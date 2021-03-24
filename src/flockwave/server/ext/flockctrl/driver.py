@@ -506,7 +506,12 @@ class FlockCtrlDriver(UAVDriver):
             mode = "unknown"
 
         # convert error code to convenient format
-        errors = map_flockctrl_error_code_and_flags(packet.error, packet.flags)
+        # TODO: we use preflight status from here now but it would be better
+        # to set error codes from it from the prearm packet handler, if
+        # there is no interrelation between the codes from the two packets
+        errors = map_flockctrl_error_code_and_flags(
+            packet.error, packet.flags, uav._preflight_status
+        )
 
         # derive GPS fix. Note that the status packets do not
         # contain information about the GPS fix if it is not

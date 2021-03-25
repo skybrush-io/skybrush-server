@@ -524,10 +524,18 @@ class FlockCtrlDriver(UAVDriver):
         elif (packet.flags & StatusFlag.DGPS) and (packet.flags & StatusFlag.RTK):
             gps_fix = GPSFixType.RTK_FIXED
         elif (
-            uav._preflight_status.get_result("GPS") == PreflightCheckResult.PASS
+            (
+                not (packet.flags & StatusFlag.PREARM)
+                or uav._preflight_status.get_result("GPS") == PreflightCheckResult.PASS
+            )
             and FlockwaveErrorCode.GPS_SIGNAL_LOST not in errors
+            and packet.location.lat
+            and packet.location.lon
+            and packet.location.amsl
         ):
             gps_fix = GPSFixType.FIX_3D
+        elif packet.location.lat and packet.location.lon and not packet.location.amsl:
+            gps_fix = GPSFixType.FIX_2D
         else:
             gps_fix = GPSFixType.NO_GPS
 

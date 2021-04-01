@@ -1300,11 +1300,11 @@ reference = "collmot"
 
 [[package]]
 name = "pynsist"
-version = "2.6"
+version = "2.7"
 description = "Build NSIS installers for Python applications."
 category = "dev"
 optional = false
-python-versions = ">=3.5"
+python-versions = ">=3.6"
 
 [package.dependencies]
 distlib = ">=0.3"
@@ -1942,7 +1942,7 @@ reference = "collmot"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7"
-content-hash = "832b6afccab89e8d47d296defafc0efe8a687d9bb81f9a58737ba55b7e88c674"
+content-hash = "2e77f1d8f5912075d4ad89b671f621c6772308ae81bb30210b5202417ef4a06a"
 
 [metadata.files]
 aio-usb-hotplug = [
@@ -2442,8 +2442,8 @@ pynmea2 = [
     {file = "pynmea2-1.17.0.tar.gz", hash = "sha256:2d415c586bf2f40aebf452d62105528428806a5333321bfcdcfadf16caccbd74"},
 ]
 pynsist = [
-    {file = "pynsist-2.6-py3-none-any.whl", hash = "sha256:d7211cf0e7a165e059f3f0498e6307fa271209be608a1b79afd2ed8812dc7f11"},
-    {file = "pynsist-2.6.tar.gz", hash = "sha256:7498517f5620a838b4cefea9c6da0e1c69507dbc3c85cc6f892adf9cc0f2c8fa"},
+    {file = "pynsist-2.7-py3-none-any.whl", hash = "sha256:87c6d24fe68a11c904dc27681330527ff3ee1846f28cfa35c8b630bf42e3b6c5"},
+    {file = "pynsist-2.7.tar.gz", hash = "sha256:d97a6afc2dc6b1dc7dfe7838e363ea61344948f582a8d25cdf52719ef5bb1c6a"},
 ]
 pyparsing = [
     {file = "pyparsing-2.4.7-py2.py3-none-any.whl", hash = "sha256:ef9d7589ef3c200abe66653d3f1ab1033c3c419ae9b9bdb1240a85b024efc88b"},

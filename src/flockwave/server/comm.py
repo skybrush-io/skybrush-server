@@ -70,7 +70,13 @@ class CommunicationManager(Generic[PacketType, AddressType]):
     @dataclass
     class Entry:
         """A single entry in the communication manager that contains a connection
-        managed by the manager and its associated data.
+        managed by the manager, the associated message channel, and a few
+        additional properties.
+
+        Each entry is permanently assigned to a connection and has a name that
+        uniquely identifies the connection. Besides that, it has an associated
+        MessageChannel_ instance that is not `None` if and only if the connection
+        is up and running.
         """
 
         connection: Connection
@@ -441,7 +447,13 @@ class CommunicationManager(Generic[PacketType, AddressType]):
                         if sent:
                             break
                     except OSError as ex:
-                        if ex.errno in (ENETDOWN, ENETUNREACH, WSAENETDOWN, WSAENETUNREACH, WSAESERVERUNREACH):
+                        if ex.errno in (
+                            ENETDOWN,
+                            ENETUNREACH,
+                            WSAENETDOWN,
+                            WSAENETUNREACH,
+                            WSAESERVERUNREACH,
+                        ):
                             # This is okay
                             self.log.error(
                                 "Network is down or unreachable",

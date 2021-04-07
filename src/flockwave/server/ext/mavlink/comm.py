@@ -173,12 +173,9 @@ def _create_stream_based_mavlink_message_channel(
     mavlink = mavlink_factory()
 
     def parser(data: bytes) -> List[Tuple[MAVLinkMessage, Any]]:
-        # TODO(ntamas): sometimes mavlink.parse_buffer() returns None, how
-        # can that happen?
-
-        # Parse the MAVLink messages from the buffer
+        # Parse the MAVLink messages from the buffer. mavlink.parse_buffer()
+        # may occasionally return None so make sure we handle that gracefully.
         messages = mavlink.parse_buffer(data) or ()
-
         return [(message, "") for message in messages]
 
     def encoder(spec_and_address: Tuple[MAVLinkMessageSpecification, Any]) -> bytes:

@@ -19,6 +19,7 @@ from typing import Iterable, Optional
 import logging
 
 from flockwave.networking import format_socket_address
+from flockwave.server.ports import get_port_number_for_service
 from flockwave.server.types import Disposer
 
 from .routing import RoutingMiddleware
@@ -197,7 +198,7 @@ def load(app, configuration):
 
     address = (
         configuration.get("host", "localhost"),
-        int(configuration.get("port", 5000)),
+        configuration.get("port", get_port_number_for_service("http")),
     )
 
     exports.update(address=address, asgi_app=create_app())

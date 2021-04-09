@@ -10,7 +10,7 @@ can be as follows:
 - A `socat` instance is set up on the remote server to listen on _two_
   TCP ports: port 5000 and 5001.
 
-- An `nginx` proxy is set up on the remote server that performs SSL offloadin
+- An `nginx` proxy is set up on the remote server that performs SSL offloading
   and forwards all incoming HTTP requests to port 5001.
 
 - The Skybrush server and the Skybrush proxy is started up on the field computer.

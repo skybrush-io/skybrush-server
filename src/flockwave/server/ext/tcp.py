@@ -16,6 +16,7 @@ from trio import (
     Lock,
     open_nursery,
     serve_tcp,
+    SocketStream,
 )
 from typing import Any, Optional
 
@@ -23,6 +24,7 @@ from flockwave.channels import ParserChannel
 from flockwave.encoders.json import create_json_encoder
 from flockwave.parsers.json import create_json_parser
 from flockwave.server.model import CommunicationChannel
+from flockwave.server.ports import get_port_number_for_service
 from flockwave.networking import format_socket_address, get_socket_address
 from flockwave.server.utils import overridden
 
@@ -149,13 +151,12 @@ async def handle_connection(stream, *, limit):
                 pass
 
 
-async def handle_connection_safely(stream, *, limit):
+async def handle_connection_safely(stream: SocketStream, *, limit: CapacityLimiter):
     """Handles a connection attempt from a single client, ensuring
     that exceptions do not propagate through.
 
     Parameters:
-        stream (SocketStream): a Trio socket stream that we can use to
-            communicate with the client
+        stream: a Trio socket stream that we can use to communicate with the client
         limit: Trio capacity limiter that ensures that we are not processing
             too many requests concurrently
     """
@@ -184,7 +185,7 @@ async def handle_message(message: Any, client, *, limit: CapacityLimiter) -> Non
 async def run(app, configuration, logger):
     """Background task that is active while the extension is loaded."""
     host = configuration.get("host", "")
-    port = configuration.get("port", 5001)
+    port = configuration.get("port", get_port_number_for_service("tcp"))
     pool_size = configuration.get("pool_size", 1000)
 
     if not host:

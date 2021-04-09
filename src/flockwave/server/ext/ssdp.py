@@ -27,6 +27,7 @@ import struct
 import trio.socket
 
 from flockwave.networking import create_socket
+from flockwave.server.ports import get_port_number_for_service
 from flockwave.server.utils import overridden
 from flockwave.server.version import __version__ as skybrush_version
 
@@ -274,7 +275,7 @@ async def run(app, configuration, logger):
     function for each incoming message.
     """
     multicast_group = configuration.get("multicast_group", "239.255.255.250")
-    port = configuration.get("port", 1900)
+    port = configuration.get("port", get_port_number_for_service("ssdp"))
     label = getenv(
         "SKYBRUSH_SSDP_LABEL",
         configuration.get("label", app.config.get("SERVER_NAME")),

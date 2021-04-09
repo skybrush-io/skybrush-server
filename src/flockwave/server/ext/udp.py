@@ -15,12 +15,13 @@ from typing import Any, Optional, Tuple
 
 from flockwave.encoders.json import create_json_encoder
 from flockwave.parsers.json import create_json_parser
-from flockwave.server.model import CommunicationChannel
 from flockwave.networking import (
     create_socket,
     format_socket_address,
     get_socket_address,
 )
+from flockwave.server.model import CommunicationChannel
+from flockwave.server.ports import get_port_number_for_service
 from flockwave.server.utils import overridden
 
 
@@ -141,7 +142,10 @@ async def handle_message_safely(
 
 async def run(app, configuration, logger):
     """Background task that is active while the extension is loaded."""
-    address = configuration.get("host", ""), configuration.get("port", 5001)
+    host = configuration.get("host", "")
+    port = configuration.get("port", get_port_number_for_service("udp"))
+
+    address = host, port
     pool_size = configuration.get("pool_size", 1000)
 
     sock = create_socket(trio.socket.SOCK_DGRAM)

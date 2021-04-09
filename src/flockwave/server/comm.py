@@ -352,10 +352,10 @@ class CommunicationManager(Generic[PacketType, AddressType]):
             channel_created = True
             if address:
                 self.log.info(
-                    f"Connection at {address} up and running.", extra=log_extra
+                    f"Connection at {address} up and running", extra=log_extra
                 )
             else:
-                self.log.info("Connection up and running.", extra=log_extra)
+                self.log.info("Connection up and running", extra=log_extra)
 
             async for message in entry.channel:
                 await queue.send((entry.name, message))
@@ -369,19 +369,21 @@ class CommunicationManager(Generic[PacketType, AddressType]):
             if channel_created:
                 if address:
                     self.log.warn(
-                        f"Connection at {address} down, trying to reopen.",
+                        f"Connection at {address} down, trying to reopen...",
                         extra=log_extra,
                     )
                 else:
-                    self.log.warn("Connection down, trying to reopen.", extra=log_extra)
+                    self.log.warn(
+                        "Connection down, trying to reopen...", extra=log_extra
+                    )
 
         finally:
             entry.channel = None
             if channel_created and not has_error:
                 if address:
-                    self.log.info(f"Connection at {address} closed.", extra=log_extra)
+                    self.log.info(f"Connection at {address} closed", extra=log_extra)
                 else:
-                    self.log.info("Connection closed.", extra=log_extra)
+                    self.log.info("Connection closed", extra=log_extra)
 
     async def _run_outbound_links(self):
         # ephemeris RTK streams send messages in bursts so it's better to have

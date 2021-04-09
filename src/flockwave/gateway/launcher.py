@@ -57,7 +57,7 @@ def start(config, debug, quiet, log_style):
     trio.run(app.run)
 
     # Log that we have stopped cleanly.
-    log.info("Shutdown finished.")
+    log.info("Shutdown finished")
 
 
 if __name__ == "__main__":

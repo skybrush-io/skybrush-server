@@ -244,7 +244,7 @@ async def run(app, configuration, logger):
 
     while True:
         logger.info(
-            "Starting {1} server on {0}...".format(
+            "Starting {1} server on {0}".format(
                 format_socket_address(address), "HTTPS" if secure else "HTTP"
             )
         )

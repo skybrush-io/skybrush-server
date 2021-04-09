@@ -27,6 +27,11 @@
       # corrections and as a fallback for commands
       # "connections": ["default", "serial:COM6?baud=57600"],
       # "routing": {"rtk": 1}
+    },
+
+    # Provide RTK corrections to Skybrush Sidekick if needed
+    "sidekick": {
+      "enabled": true
     }
   }
 }

@@ -113,6 +113,7 @@ EXTENSIONS = {
         "dsn": ""
     },
     "show": {},
+    "sidekick": {"enabled": False},
     "socketio": {},
     # "smpte_timecode": {"connection": "midi:IAC Driver Bus 1"},
     "ssdp": {},

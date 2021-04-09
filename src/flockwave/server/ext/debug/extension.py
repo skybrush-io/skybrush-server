@@ -15,7 +15,6 @@ from trio import (
     fail_after,
     open_memory_channel,
     open_nursery,
-    serve_tcp,
     TooSlowError,
 )
 from trio.abc import ReceiveChannel, Stream
@@ -24,6 +23,7 @@ from typing import Callable
 
 from flockwave.networking import format_socket_address
 from flockwave.server.utils import overridden
+from flockwave.server.utils.networking import serve_tcp_and_log_errors
 
 __all__ = ("index", "run")
 
@@ -138,10 +138,11 @@ async def run_debug_port(
     address = host, port
     log.info(f"Starting debug listener on {format_socket_address(address)}...")
     try:
-        await serve_tcp(
+        await serve_tcp_and_log_errors(
             partial(handle_debug_connection_safely, on_message=on_message),
             port,
             host=host,
+            log=log,
         )
     finally:
         log.info("Debug listener closed.")

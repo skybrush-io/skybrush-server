@@ -217,7 +217,10 @@ class SkybrushGatewayServer:
                         retries = 0
 
                     if retries < max_retries:
-                        log.error("Server stopped unexpectedly, retrying...")
+                        log.error(
+                            "Server stopped unexpectedly, retrying...",
+                            extra={"sentry_ignore": True},
+                        )
                         await sleep(1)
                         retries += 1
                     else:

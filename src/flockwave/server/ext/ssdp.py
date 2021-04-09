@@ -19,6 +19,7 @@ from os import getenv
 from random import random
 from time import mktime
 from trio import sleep
+from typing import Optional
 from wsgiref.handlers import format_date_time
 
 import platform
@@ -113,32 +114,43 @@ class Sockets(object):
             self.receiver = None
 
 
-def get_service_uri(channel_id: str, address=None):
+def get_service_uri(service_id: str, address=None) -> Optional[str]:
     """Returns the location URI of the UPnP service that belongs to the given
-    registered Flockwave communication channel.
+    registered Skybrush service ID.
 
     Parameters:
-        channel_id: the ID of the Flockwave channel from the channel type
-            registry
+        service_id: the ID of the registered Skybrush service; typically a
+            channel identifier from the channel type registry
         address: the address of the device requesting the location URI. This
             will be used if the server is listening on multiple interfaces;
             the server tries to ensure that the address returned from this
             function is in the same subnet as the address of the requestor
 
     Returns:
-        Optional[str]: the URI of the channel, if known, ``None`` otherwise
+        the URI of the channel, if known, ``None`` otherwise
     """
     global app
 
     if app is None:
         return None
 
+    # service_id is not found in the list of registered services in this
+    # extension, so it is most likely a Skybrush channel ID (tcp, udp or
+    # websocket)
     try:
-        service = app.channel_type_registry.find_by_id(channel_id)
+        service = app.channel_type_registry.find_by_id(service_id)
     except KeyError:
         service = None
 
-    return service.get_ssdp_location(address) if service else None
+    try:
+        location = service.get_ssdp_location(address) if service else None
+    except Exception:
+        log.exception(
+            "Failed to retrieve UPnP location of service", extra={"id": service_id}
+        )
+        location = None
+
+    return location
 
 
 async def handle_message(message, sender, *, socket):

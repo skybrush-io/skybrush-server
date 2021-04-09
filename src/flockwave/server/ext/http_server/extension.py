@@ -260,7 +260,10 @@ async def run(app, configuration, logger):
                 retries = 0
 
             if retries < max_retries:
-                logger.error("Server stopped unexpectedly, retrying...")
+                logger.error(
+                    "Server stopped unexpectedly, retrying...",
+                    extra={"sentry_ignore": True},
+                )
                 await sleep(1)
                 retries += 1
             else:

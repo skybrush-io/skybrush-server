@@ -17,12 +17,13 @@ required for Skybrush Sidekick to work. In particular, the extension provides:
 """
 
 from contextlib import ExitStack
-from trio import serve_tcp, SocketStream
+from trio import SocketStream
 
 from flockwave.encoders.json import create_json_encoder
 from flockwave.networking import format_socket_address
 from flockwave.server.ports import get_port_number_for_service
 from flockwave.server.utils import overridden
+from flockwave.server.utils.networking import serve_tcp_and_log_errors
 
 
 app = None
@@ -83,7 +84,9 @@ async def run(app, configuration, logger):
         logger.info(f"Listening for Skybrush Sidekick connections on {address}")
 
         try:
-            await serve_tcp(handle_connection_safely, port, host=host)
+            await serve_tcp_and_log_errors(
+                handle_connection_safely, port, host=host, log=log
+            )
         finally:
             logger.info(f"Skybrush Sidekick socket closed on {address}")
 

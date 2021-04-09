@@ -15,7 +15,6 @@ from trio import (
     ClosedResourceError,
     Lock,
     open_nursery,
-    serve_tcp,
     SocketStream,
 )
 from typing import Any, Optional
@@ -27,6 +26,7 @@ from flockwave.server.model import CommunicationChannel
 from flockwave.server.ports import get_port_number_for_service
 from flockwave.networking import format_socket_address, get_socket_address
 from flockwave.server.utils import overridden
+from flockwave.server.utils.networking import serve_tcp_and_log_errors
 
 app = None
 encoder = create_json_encoder()
@@ -205,4 +205,4 @@ async def run(app, configuration, logger):
         limit = CapacityLimiter(pool_size)
         handler = partial(handle_connection_safely, limit=limit)
 
-        await serve_tcp(handler, port, host=host)
+        await serve_tcp_and_log_errors(handler, port, host=host, log=logger)

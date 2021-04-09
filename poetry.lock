@@ -164,22 +164,18 @@ reference = "collmot"
 
 [[package]]
 name = "bidict"
-version = "0.19.0"
+version = "0.21.2"
 description = "The bidirectional mapping library for Python."
 category = "main"
 optional = false
-python-versions = ">=3"
+python-versions = ">=3.6"
 
 [package.extras]
-coverage = ["coverage (<5)", "pytest-cov (<3)"]
-dev = ["setuptools-scm (<4)", "Sphinx (<3)", "docutils (==0.15.2)", "hypothesis (<5)", "py (<2)", "pytest (<6)", "pytest-benchmark (>=3.2.0,<4)", "sortedcollections (<2)", "sortedcontainers (<3)", "coverage (<5)", "pytest-cov (<3)", "flake8 (<3.8)", "pydocstyle (<3.1)", "pylint (==2.4.3)", "astroid (==2.3.2)", "pre-commit (<2)", "tox (<4)"]
-docs = ["Sphinx (<3)", "docutils (==0.15.2)"]
-flake8 = ["flake8 (<3.8)"]
-lint = ["flake8 (<3.8)", "pydocstyle (<3.1)", "pylint (==2.4.3)", "astroid (==2.3.2)"]
-pydocstyle = ["pydocstyle (<3.1)"]
-pylint = ["pylint (==2.4.3)", "astroid (==2.3.2)"]
-sphinx = ["Sphinx (<3)", "docutils (==0.15.2)"]
-test = ["hypothesis (<5)", "py (<2)", "pytest (<6)", "pytest-benchmark (>=3.2.0,<4)", "sortedcollections (<2)", "sortedcontainers (<3)", "Sphinx (<3)", "docutils (==0.15.2)"]
+coverage = ["coverage (<6)", "pytest-cov (<3)"]
+dev = ["setuptools-scm", "hypothesis (<6)", "py (<2)", "pytest (<7)", "pytest-benchmark (>=3.2.0,<4)", "sortedcollections (<2)", "sortedcontainers (<3)", "Sphinx (<4)", "sphinx-autodoc-typehints (<2)", "coverage (<6)", "pytest-cov (<3)", "pre-commit (<3)", "tox (<4)"]
+docs = ["Sphinx (<4)", "sphinx-autodoc-typehints (<2)"]
+precommit = ["pre-commit (<3)"]
+test = ["hypothesis (<6)", "py (<2)", "pytest (<7)", "pytest-benchmark (>=3.2.0,<4)", "sortedcollections (<2)", "sortedcontainers (<3)", "Sphinx (<4)", "sphinx-autodoc-typehints (<2)"]
 
 [package.source]
 type = "legacy"
@@ -449,17 +445,17 @@ reference = "collmot"
 
 [[package]]
 name = "flockwave-app-framework"
-version = "1.2.0"
+version = "1.3.0"
 description = "Generic app framework for CLI based apps in the Skybrush suite"
 category = "main"
 optional = false
 python-versions = ">=3.7,<4.0"
 
 [package.dependencies]
-commentjson = ">=0.9.0,<0.10.0"
+commentjson = ">=0.9.0"
 flockwave-conn = {version = ">=2.3.1,<3.0.0", optional = true, markers = "extra == \"daemon\""}
 flockwave-ext = {version = ">=1.5.0,<2.0.0", optional = true, markers = "extra == \"daemon\""}
-trio = ">=0.17.0,<0.18.0"
+trio = ">=0.17.0"
 
 [package.extras]
 daemon = ["flockwave-conn (>=2.3.1,<3.0.0)", "flockwave-ext (>=1.5.0,<2.0.0)"]
@@ -472,7 +468,7 @@ reference = "collmot"
 
 [[package]]
 name = "flockwave-conn"
-version = "2.9.2"
+version = "2.10.0"
 description = "Connection objects for various data sources"
 category = "main"
 optional = false
@@ -486,8 +482,8 @@ netifaces = ">=0.10.9"
 pyserial = {version = ">=3.4,<4.0", optional = true, markers = "extra == \"serial\""}
 python-rtmidi = {version = ">=1.4.1,<2.0.0", optional = true, markers = "extra == \"midi\""}
 tinyrpc = {version = ">=1.0.4,<2.0.0", extras = ["msgpack"], optional = true, markers = "extra == \"rpc\""}
-trio = ">=0.17.0"
-trio-util = ">=0.2.0"
+trio = ">=0.18.0"
+trio-util = ">=0.5.0"
 
 [package.extras]
 midi = ["mido (>=1.2.9,<2.0.0)", "python-rtmidi (>=1.4.1,<2.0.0)"]
@@ -679,7 +675,7 @@ reference = "collmot"
 
 [[package]]
 name = "hypercorn"
-version = "0.10.2"
+version = "0.11.2"
 description = "A ASGI Server based on Hyper libraries and inspired by Gunicorn."
 category = "main"
 optional = false
@@ -691,7 +687,7 @@ h2 = ">=3.1.0"
 priority = "*"
 toml = "*"
 trio = {version = ">=0.11.0", optional = true, markers = "extra == \"trio\""}
-typing-extensions = "*"
+typing-extensions = {version = "*", markers = "python_version < \"3.8\""}
 wsproto = ">=0.14.0"
 
 [package.extras]
@@ -1393,14 +1389,14 @@ reference = "collmot"
 
 [[package]]
 name = "pytest-trio"
-version = "0.6.0"
+version = "0.7.0"
 description = "Pytest plugin for trio"
 category = "dev"
 optional = false
-python-versions = ">=3.5"
+python-versions = ">=3.6"
 
 [package.dependencies]
-async-generator = ">=1.9"
+async_generator = ">=1.9"
 outcome = "*"
 pytest = ">=3.6"
 trio = ">=0.15.0"
@@ -1425,8 +1421,8 @@ reference = "collmot"
 
 [[package]]
 name = "python-dotenv"
-version = "0.14.0"
-description = "Add .env support to your django/flask apps in development and deployments"
+version = "0.17.0"
+description = "Read key-value pairs from a .env file and set them as environment variables"
 category = "main"
 optional = false
 python-versions = "*"
@@ -1509,7 +1505,7 @@ reference = "collmot"
 
 [[package]]
 name = "quart"
-version = "0.12.0"
+version = "0.14.1"
 description = "A Python ASGI web microframework with the same API as Flask"
 category = "main"
 optional = false
@@ -1523,6 +1519,7 @@ hypercorn = ">=0.7.0"
 itsdangerous = "*"
 jinja2 = "*"
 toml = "*"
+typing-extensions = {version = "*", markers = "python_version < \"3.8\""}
 werkzeug = ">=1.0.0"
 
 [package.extras]
@@ -1535,7 +1532,7 @@ reference = "collmot"
 
 [[package]]
 name = "quart-trio"
-version = "0.5.1"
+version = "0.7.0"
 description = "A Quart extension to provide trio support."
 category = "main"
 optional = false
@@ -1543,7 +1540,7 @@ python-versions = ">=3.7.0"
 
 [package.dependencies]
 hypercorn = {version = ">=0.6.0", extras = ["trio"]}
-quart = ">=0.11.1"
+quart = ">=0.14.0"
 trio = ">=0.9.0"
 
 [package.source]
@@ -1621,7 +1618,7 @@ reference = "collmot"
 
 [[package]]
 name = "sentry-sdk"
-version = "0.19.5"
+version = "1.0.0"
 description = "Python client for Sentry (https://sentry.io)"
 category = "main"
 optional = false
@@ -1763,7 +1760,7 @@ reference = "collmot"
 
 [[package]]
 name = "trio"
-version = "0.17.0"
+version = "0.18.0"
 description = "A friendly Python library for async concurrency and I/O"
 category = "main"
 optional = false
@@ -1908,7 +1905,7 @@ reference = "collmot"
 
 [[package]]
 name = "zeroconf"
-version = "0.28.8"
+version = "0.29.0"
 description = "Pure Python Multicast DNS Service Discovery Library (Bonjour/Avahi compatible)"
 category = "main"
 optional = false
@@ -1942,7 +1939,7 @@ reference = "collmot"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7"
-content-hash = "2e77f1d8f5912075d4ad89b671f621c6772308ae81bb30210b5202417ef4a06a"
+content-hash = "c5bf68f6cb2a37c78ce8e69f9c66b211fd00f24db253bce4b2a0be553adea712"
 
 [metadata.files]
 aio-usb-hotplug = [
@@ -1991,8 +1988,8 @@ bcrypt = [
     {file = "bcrypt-3.2.0.tar.gz", hash = "sha256:5b93c1726e50a93a033c36e5ca7fdcd29a5c7395af50a6892f5d9e7c6cfbfb29"},
 ]
 bidict = [
-    {file = "bidict-0.19.0-py2.py3-none-any.whl", hash = "sha256:754756ef233b3c71984b185b7028fdd6f402382e84c9d3e89b0b866d40dd5d45"},
-    {file = "bidict-0.19.0.tar.gz", hash = "sha256:ef7461a18fb4a6f3ccaa73f43ffe2e98661fba4b43b647ec7886b3298c8e9187"},
+    {file = "bidict-0.21.2-py2.py3-none-any.whl", hash = "sha256:929d056e8d0d9b17ceda20ba5b24ac388e2a4d39802b87f9f4d3f45ecba070bf"},
+    {file = "bidict-0.21.2.tar.gz", hash = "sha256:4fa46f7ff96dc244abfc437383d987404ae861df797e2fd5b190e233c302be09"},
 ]
 bitstring = [
     {file = "bitstring-3.1.7.tar.gz", hash = "sha256:fdf3eb72b229d2864fb507f8f42b1b2c57af7ce5fec035972f9566de440a864a"},
@@ -2103,12 +2100,12 @@ distlib = [
     {file = "distlib-0.3.1.zip", hash = "sha256:edf6116872c863e1aa9d5bb7cb5e05a022c519a4594dc703843343a9ddd9bff1"},
 ]
 flockwave-app-framework = [
-    {file = "flockwave-app-framework-1.2.0.tar.gz", hash = "md5:03664398d276ac3505d8be795b7b247d"},
-    {file = "flockwave_app_framework-1.2.0-py3-none-any.whl", hash = "md5:eeda97271b217842c0d46f42ce7e42e3"},
+    {file = "flockwave-app-framework-1.3.0.tar.gz", hash = "md5:912ec02183a968659d8f2ff03d932da1"},
+    {file = "flockwave_app_framework-1.3.0-py3-none-any.whl", hash = "md5:445e8fd556702e8c369028a14e155a27"},
 ]
 flockwave-conn = [
-    {file = "flockwave-conn-2.9.2.tar.gz", hash = "md5:1a47334aea06341c4401ecccd2fe308a"},
-    {file = "flockwave_conn-2.9.2-py3-none-any.whl", hash = "md5:9a8775c62dca3501d132a61f560cbb3f"},
+    {file = "flockwave-conn-2.10.0.tar.gz", hash = "md5:92e4c84b57908aa3968bd2741ad17e17"},
+    {file = "flockwave_conn-2.10.0-py3-none-any.whl", hash = "md5:61a720b110c3ca6d2cb855a5f1c37277"},
 ]
 flockwave-ext = [
     {file = "flockwave-ext-1.5.0.tar.gz", hash = "md5:7a437186a52efa8208b30b860cbb5450"},
@@ -2153,8 +2150,8 @@ hpack = [
     {file = "hpack-4.0.0.tar.gz", hash = "sha256:fc41de0c63e687ebffde81187a948221294896f6bdc0ae2312708df339430095"},
 ]
 hypercorn = [
-    {file = "Hypercorn-0.10.2-py3-none-any.whl", hash = "sha256:809d77f3bf9fa0794a598d8dfa0f8d889e7e1c2f927581cd33068803169dc474"},
-    {file = "Hypercorn-0.10.2.tar.gz", hash = "sha256:19f32e7267225c8108ad585b2c5deddf1fe75950797a0e87a682a3a00ef1af95"},
+    {file = "Hypercorn-0.11.2-py3-none-any.whl", hash = "sha256:8007c10f81566920f8ae12c0e26e146f94ca70506da964b5a727ad610aa1d821"},
+    {file = "Hypercorn-0.11.2.tar.gz", hash = "sha256:5ba1e719c521080abd698ff5781a2331e34ef50fc1c89a50960538115a896a9a"},
 ]
 hyperframe = [
     {file = "hyperframe-6.0.0-py3-none-any.whl", hash = "sha256:a51026b1591cac726fc3d0b7994fbc7dc5efab861ef38503face2930fd7b2d34"},
@@ -2461,15 +2458,14 @@ pytest = [
     {file = "pytest-5.4.3.tar.gz", hash = "sha256:7979331bfcba207414f5e1263b5a0f8f521d0f457318836a7355531ed1a4c7d8"},
 ]
 pytest-trio = [
-    {file = "pytest-trio-0.6.0.tar.gz", hash = "sha256:9bf0a490fd177a33617e8709242293fae47934de2b51f8209eb2c0545b6ca8fe"},
-    {file = "pytest_trio-0.6.0-py3-none-any.whl", hash = "sha256:3f48cc1df66d279d705af38ad38d1639c2e2380ddffcdc3a45bb81758de61f03"},
+    {file = "pytest-trio-0.7.0.tar.gz", hash = "sha256:c01b741819aec2c419555f28944e132d3c711dae1e673d63260809bf92c30c31"},
 ]
 python-baseconv = [
     {file = "python-baseconv-1.2.2.tar.gz", hash = "sha256:0539f8bd0464013b05ad62e0a1673f0ac9086c76b43ebf9f833053527cd9931b"},
 ]
 python-dotenv = [
-    {file = "python-dotenv-0.14.0.tar.gz", hash = "sha256:8c10c99a1b25d9a68058a1ad6f90381a62ba68230ca93966882a4dbc3bc9c33d"},
-    {file = "python_dotenv-0.14.0-py2.py3-none-any.whl", hash = "sha256:c10863aee750ad720f4f43436565e4c1698798d763b63234fb5021b6c616e423"},
+    {file = "python-dotenv-0.17.0.tar.gz", hash = "sha256:471b782da0af10da1a80341e8438fca5fadeba2881c54360d5fd8d03d03a4f4a"},
+    {file = "python_dotenv-0.17.0-py2.py3-none-any.whl", hash = "sha256:49782a97c9d641e8a09ae1d9af0856cc587c8d2474919342d5104d85be9890b2"},
 ]
 python-json-logger = [
     {file = "python-json-logger-2.0.1.tar.gz", hash = "sha256:f26eea7898db40609563bed0a7ca11af12e2a79858632706d835a0f961b7d398"},
@@ -2500,12 +2496,12 @@ pywin32-ctypes = [
     {file = "pywin32_ctypes-0.2.0-py2.py3-none-any.whl", hash = "sha256:9dc2d991b3479cc2df15930958b674a48a227d5361d413827a4cfd0b5876fc98"},
 ]
 quart = [
-    {file = "Quart-0.12.0-py3-none-any.whl", hash = "sha256:f706e6eff0ef756b88d9965359f7445c9c2773551dca822deb8c018c58c00902"},
-    {file = "Quart-0.12.0.tar.gz", hash = "sha256:99a65bc90d0e1260c9cc9a7dd0b8523eb6cd9f4ec146e771e98a55ee180ae6c2"},
+    {file = "Quart-0.14.1-py3-none-any.whl", hash = "sha256:7b13786e07541cc9ce1466fdc6a6ccd5f36eb39118edd25a42d617593cd17707"},
+    {file = "Quart-0.14.1.tar.gz", hash = "sha256:429c5b4ff27e1d2f9ca0aacc38f6aba0ff49b38b815448bf24b613d3de12ea02"},
 ]
 quart-trio = [
-    {file = "Quart-Trio-0.5.1.tar.gz", hash = "sha256:dafc8f0440d4b70fa60d24122a161d2373894d2bfa9f713d9f1df1fd508f0834"},
-    {file = "Quart_Trio-0.5.1-py3-none-any.whl", hash = "sha256:00f3b20f8d82ce7e81ead61db4efba38ed7653c7e28199defded46b663ab2595"},
+    {file = "Quart-Trio-0.7.0.tar.gz", hash = "sha256:933e3c18e232ece30ccbac7579fdc5f62f2f9c79c3273d6c341f5a1686791eb1"},
+    {file = "Quart_Trio-0.7.0-py3-none-any.whl", hash = "sha256:1e7fce0df41afc3038bf0431b20614f90984de50341b19f9d4d3b9ba1ac7574a"},
 ]
 regex = [
     {file = "regex-2021.4.4-cp36-cp36m-macosx_10_9_x86_64.whl", hash = "sha256:619d71c59a78b84d7f18891fe914446d07edd48dc8328c8e149cbe0929b4e000"},
@@ -2563,8 +2559,8 @@ scp = [
     {file = "scp-0.13.3.tar.gz", hash = "sha256:8bd748293d7362073169b96ce4b8c4f93bcc62cfc5f7e1d949e01e406a025bd4"},
 ]
 sentry-sdk = [
-    {file = "sentry-sdk-0.19.5.tar.gz", hash = "sha256:737a094e49a529dd0fdcaafa9e97cf7c3d5eb964bd229821d640bc77f3502b3f"},
-    {file = "sentry_sdk-0.19.5-py2.py3-none-any.whl", hash = "sha256:0a711ec952441c2ec89b8f5d226c33bc697914f46e876b44a4edd3e7864cf4d0"},
+    {file = "sentry-sdk-1.0.0.tar.gz", hash = "sha256:71de00c9711926816f750bc0f57ef2abbcb1bfbdf5378c601df7ec978f44857a"},
+    {file = "sentry_sdk-1.0.0-py2.py3-none-any.whl", hash = "sha256:9221e985f425913204989d0e0e1cbb719e8b7fa10540f1bc509f660c06a34e66"},
 ]
 six = [
     {file = "six-1.15.0-py2.py3-none-any.whl", hash = "sha256:8b74bedcbbbaca38ff6d7491d76f2b06b3592611af620f8426e82dddb04a5ced"},
@@ -2605,8 +2601,8 @@ tqdm = [
     {file = "tqdm-4.60.0.tar.gz", hash = "sha256:ebdebdb95e3477ceea267decfc0784859aa3df3e27e22d23b83e9b272bf157ae"},
 ]
 trio = [
-    {file = "trio-0.17.0-py3-none-any.whl", hash = "sha256:fc70c74e8736d1105b3c05cc2e49b30c58755733740f9c51ae6d88a4d6d0a291"},
-    {file = "trio-0.17.0.tar.gz", hash = "sha256:e85cf9858e445465dfbb0e3fdf36efe92082d2df87bfe9d62585eedd6e8e9d7d"},
+    {file = "trio-0.18.0-py3-none-any.whl", hash = "sha256:a42af0634ba729cbfe8578be058750c6471dac19fbc7167ec6a3ca3f966fb424"},
+    {file = "trio-0.18.0.tar.gz", hash = "sha256:87a66ae61f27fe500c9024926a9ba482c07e1e0f56380b70a264d19c435ba076"},
 ]
 trio-util = [
     {file = "trio_util-0.5.0-py3-none-any.whl", hash = "sha256:01ccf3db503a1294321e07e02c9099565604c7947e9934d32d63aa07526c4289"},
@@ -2670,8 +2666,8 @@ yarg = [
     {file = "yarg-0.1.9.tar.gz", hash = "sha256:55695bf4d1e3e7f756496c36a69ba32c40d18f821e38f61d028f6049e5e15911"},
 ]
 zeroconf = [
-    {file = "zeroconf-0.28.8-py3-none-any.whl", hash = "sha256:3608be2db58f6f0dc70665e02ab420fb8bf428016f2c78403d879e066ecc9bff"},
-    {file = "zeroconf-0.28.8.tar.gz", hash = "sha256:4be24a10aa9c73406f48d42a8b3b077c217b0e8d7ed1e57639630da520c25959"},
+    {file = "zeroconf-0.29.0-py3-none-any.whl", hash = "sha256:85fdeeef88b08965ab87559177457cfdb5dd2e4bc62a476208c2473a51dfa0b2"},
+    {file = "zeroconf-0.29.0.tar.gz", hash = "sha256:7aefbb658b452b1fd7e51124364f938c6f5e42d6ea893fa2557bea8c06c540af"},
 ]
 zipp = [
     {file = "zipp-3.4.1-py3-none-any.whl", hash = "sha256:51cb66cc54621609dd593d1787f286ee42a5c0adbb4b29abea5a63edc3e03098"},

@@ -45,7 +45,7 @@ class ClockRegistry(RegistryBase):
         """
         old_clock = self._entries.get(clock.id, None)
         if old_clock is not None and old_clock != clock:
-            raise KeyError("Clock ID already taken: {clock.id}")
+            raise KeyError(f"Clock ID already taken: {clock.id}")
         self._entries[clock.id] = clock
         self._subscribe_to_clock(clock)
 
@@ -85,7 +85,7 @@ class ClockRegistry(RegistryBase):
         """Temporarily adds a new clock, hands control back to the caller in a
         context, and then removes the clock when the caller exits the context.
 
-        Arguments:
+        Parameters:
             clock (Clock): the clock to add
 
         Yields:

@@ -29,8 +29,11 @@ import trio.socket
 
 from flockwave.networking import create_socket
 from flockwave.server.ports import get_port_number_for_service
+from flockwave.server.registries import find_in_registry
 from flockwave.server.utils import overridden
 from flockwave.server.version import __version__ as skybrush_version
+
+from .registry import UPnPServiceRegistry
 
 USN = "flockwave"
 UPNP_DEVICE_ID = "urn:collmot-com:device:{0}:1".format(USN)
@@ -39,6 +42,14 @@ UPNP_SERVICE_ID_TEMPLATE = "urn:collmot-com:service:{0}-{{0}}:1".format(USN)
 app = None
 label = None
 log = None
+registry = None
+
+exports = {
+    "register_service": None,
+    "registry": None,
+    "unregister_service": None,
+    "use_service": None,
+}
 
 ############################################################################
 
@@ -94,7 +105,7 @@ class Request(BaseHTTPRequestHandler):
         self.error_message = message
 
 
-class Sockets(object):
+class Sockets:
     """Simple value object to manage a pair of sockets, one for receiving and
     one for sending.
     """
@@ -133,6 +144,13 @@ def get_service_uri(service_id: str, address=None) -> Optional[str]:
 
     if app is None:
         return None
+
+    if registry is not None:
+        uri = find_in_registry(registry, service_id)
+        if uri is not None:
+            if callable(uri):
+                uri = uri(address)
+            return uri
 
     # service_id is not found in the list of registered services in this
     # extension, so it is most likely a Skybrush channel ID (tcp, udp or
@@ -227,11 +245,11 @@ async def handle_m_search(request, *, socket):
             pass
 
 
-def is_valid_service(service):
+def is_valid_service(service: str) -> bool:
     """Returns whether the service with the given name is a valid service that
     we should respond to in M-SEARCH requests.
     """
-    global app
+    global app, registry
 
     if app is None:
         return False
@@ -241,6 +259,10 @@ def is_valid_service(service):
         return False
 
     service = match.group(1)
+
+    if registry is not None and registry.contains(service):
+        return True
+
     channel = app.channel_type_registry.find_by_id(service)
     return channel and channel.get_ssdp_location() is not None
 
@@ -282,6 +304,38 @@ def prepare_response(headers=None, extra=None, prefix=None):
 ############################################################################
 
 
+def load(app, configuration, logger):
+    global registry
+
+    # Create a registry to store the registered service IDs
+    registry = UPnPServiceRegistry()
+
+    # Set up the functions to export
+    exports.update(
+        {
+            "register_service": registry.add,
+            "registry": registry,
+            "unregister_service": registry.remove,
+            "use_service": registry.use,
+        }
+    )
+
+
+def unload():
+    global registry
+
+    exports.update(
+        {
+            "register_service": None,
+            "registry": None,
+            "unregister_service": None,
+            "use_service": None,
+        }
+    )
+
+    registry = None
+
+
 async def run(app, configuration, logger):
     """Loop that listens for incoming messages and calls a handler
     function for each incoming message.
@@ -294,7 +348,7 @@ async def run(app, configuration, logger):
     )
 
     # Set up the extension context
-    context = dict(app=app, label=label, log=logger)
+    context = dict(app=app, label=label, log=logger, registry=registry)
 
     # Set up the socket pair that we will use to send and receive SSDP messages
     sender = create_socket(trio.socket.SOCK_DGRAM)

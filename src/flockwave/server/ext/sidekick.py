@@ -18,6 +18,7 @@ required for Skybrush Sidekick to work. In particular, the extension provides:
 
 from contextlib import ExitStack
 from trio import SocketStream
+from typing import Optional
 
 from flockwave.encoders.json import create_json_encoder
 from flockwave.networking import format_socket_address
@@ -26,6 +27,7 @@ from flockwave.server.utils import overridden
 from flockwave.server.utils.networking import serve_tcp_and_log_errors
 
 
+address = None
 app = None
 encoder = create_json_encoder()
 log = None
@@ -33,6 +35,24 @@ log = None
 
 def log_encoded_rtk(sender, packet):
     print(repr(packet))
+
+
+def get_ssdp_location(client_address) -> Optional[str]:
+    """Returns the SSDP location descriptor of the Sidekick listener socket.
+
+    Parameters:
+        address: when not `None` and we are listening on multiple (or all)
+            interfaces, this address is used to pick a reported address that
+            is in the same subnet as the given address
+    """
+    global address
+    return (
+        format_socket_address(
+            address, format="tcp://{host}:{port}", in_subnet_of=client_address
+        )
+        if address
+        else None
+    )
 
 
 async def handle_connection(stream: SocketStream):
@@ -49,13 +69,13 @@ async def handle_connection_safely(stream: SocketStream):
         limit: Trio capacity limiter that ensures that we are not processing
             too many requests concurrently
     """
-    address = None
+    client_address = None
     success = True
 
     try:
-        address = format_socket_address(stream.socket)
+        client_address = format_socket_address(stream.socket)
         log.info(
-            f"Sidekick connection accepted from {address}",
+            f"Sidekick connection accepted from {client_address}",
             extra={"semantics": "success"},
         )
         return await handle_connection(stream)
@@ -65,8 +85,8 @@ async def handle_connection_safely(stream: SocketStream):
         log.exception(ex)
         success = False
     finally:
-        if success and address:
-            log.info(f"Sidekick connection from {address} closed")
+        if success and client_address:
+            log.info(f"Sidekick connection from {client_address} closed")
 
 
 async def run(app, configuration, logger):
@@ -74,21 +94,27 @@ async def run(app, configuration, logger):
     host = configuration.get("host", "")
     port = configuration.get("port", get_port_number_for_service("sidekick"))
 
-    address = format_socket_address((host, port))
+    address = host, port
+    formatted_address = format_socket_address((host, port))
 
     signals = app.import_api("signals")
-    with ExitStack() as stack:
-        stack.enter_context(overridden(globals(), app=app, log=logger))
-        stack.enter_context(signals.use({"mavlink:encoded_rtk": log_encoded_rtk}))
+    ssdp = app.import_api("ssdp")
 
-        logger.info(f"Listening for Skybrush Sidekick connections on {address}")
+    with ExitStack() as stack:
+        stack.enter_context(overridden(globals(), address=address, app=app, log=logger))
+        stack.enter_context(signals.use({"mavlink:encoded_rtk": log_encoded_rtk}))
+        stack.enter_context(ssdp.use_service("sidekick-server", get_ssdp_location))
+
+        logger.info(
+            f"Listening for Skybrush Sidekick connections on {formatted_address}"
+        )
 
         try:
             await serve_tcp_and_log_errors(
                 handle_connection_safely, port, host=host, log=log
             )
         finally:
-            logger.info(f"Skybrush Sidekick socket closed on {address}")
+            logger.info(f"Skybrush Sidekick socket closed on {formatted_address}")
 
 
-dependencies = ("signals",)
+dependencies = ("ssdp", "signals")

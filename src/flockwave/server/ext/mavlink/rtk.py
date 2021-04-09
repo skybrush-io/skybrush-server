@@ -40,10 +40,10 @@ class RTKCorrectionPacketEncoder:
                     )
                 return
 
-            seq_no = next(self._seq_no) << 3
+            seq_no = next(self._seq_no)
 
             for fragment_id, packet in enumerate(slices):
-                flags = seq_no + (fragment_id << 1) + 1
+                flags = (seq_no << 3) + (fragment_id << 1) + 1
                 yield spec.gps_rtcm_data(
                     flags=flags, len=len(packet), data=packet.ljust(180, b"\x00")
                 )

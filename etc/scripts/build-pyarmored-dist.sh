@@ -128,7 +128,7 @@ else
   # Separate obfuscated Python modules; typically for a Raspberry Pi
 
   # Invoke obfuscation script on virtualenv
-  etc/scripts/apply-pyarmor-on-venv.sh "${PYARMOR}" "${BUILD_DIR}/lib" "${BUILD_DIR}/obf"
+  etc/scripts/_apply-pyarmor-on-venv.sh "${PYARMOR}" "${BUILD_DIR}/lib" "${BUILD_DIR}/obf"
 
   # Create a launcher script
   cp etc/deployment/pyarmor/skybrushd "${BUILD_DIR}/bin"

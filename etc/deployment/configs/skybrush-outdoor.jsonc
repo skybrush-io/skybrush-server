@@ -24,7 +24,8 @@
       "connections": ["default"],
       # Delete the previous line and uncomment the following two lines to enable a
       # secondary radio channel on port COM6, 57600 baud that is used for RTK
-      # corrections and as a fallback for commands
+      # corrections and as a fallback for commands. Do _not_ uncomment this
+      # line if you use Skybrush Sidekick to manage the radio channel.
       # "connections": ["default", "serial:COM6?baud=57600"],
       # "routing": {"rtk": 1}
     },

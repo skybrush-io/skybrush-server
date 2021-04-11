@@ -150,6 +150,7 @@ class MAVLinkNetwork:
         self._uav_addresses = {}
 
         self._rtk_correction_packet_encoder = RTKCorrectionPacketEncoder()
+        self._rtk_packet_fragments_signal = None
 
     def add_connection(self, connection: Connection):
         """Adds the given connection object to this network.
@@ -210,7 +211,16 @@ class MAVLinkNetwork:
         """The unique identifier of this MAVLink network."""
         return self._id
 
-    async def run(self, *, driver, log, register_uav, supervisor, use_connection):
+    async def run(
+        self,
+        *,
+        driver,
+        log,
+        register_uav,
+        rtk_packet_fragments_signal,
+        supervisor,
+        use_connection,
+    ):
         """Starts the network manager.
 
         Parameters:
@@ -218,6 +228,11 @@ class MAVLinkNetwork:
             log: a logging object where the network manager can log messages
             register_uav: a callable that can be called with a single UAV_
                 object as an argument to get it registered in the application
+            rtk_packet_fragments_signal: signal to emit when an RTK correction
+                packet has been fragmented into MAVLink packets and is about to
+                be sent to the networks. Can be used to implement a secondary
+                backup channel for RTK corrections; see also the `sidekick`
+                extension
             supervisor: the application supervisor that can be used to re-open
                 connections if they get closed
             use_connection: context manager that must be entered when the
@@ -294,6 +309,7 @@ class MAVLinkNetwork:
                     manager=manager,
                     register_uav=register_uav,
                     _matchers=matchers,
+                    _rtk_packet_fragments_signal=rtk_packet_fragments_signal,
                 )
             )
 
@@ -343,10 +359,23 @@ class MAVLinkNetwork:
         if not self.manager:
             return
 
+        messages = []
         for message in self._rtk_correction_packet_encoder.encode(packet):
             self.manager.enqueue_broadcast_packet(
                 message, destination=Channel.RTK, allow_failure=True
             )
+            messages.append(message)
+
+        if messages and self._rtk_packet_fragments_signal:
+            try:
+                self._rtk_packet_fragments_signal.send(self, messages=messages)
+            except Exception:
+                # We do not take responsibility for exceptions thrown in the
+                # signal handlers
+                if self.log:
+                    self.log.exception(
+                        "RTK packet fragment signal handler threw an exception"
+                    )
 
     def notify_led_light_config_changed(self, config):
         """Notifies the network that the LED light configuration of the drones

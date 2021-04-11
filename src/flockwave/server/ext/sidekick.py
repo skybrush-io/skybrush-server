@@ -16,9 +16,15 @@ required for Skybrush Sidekick to work. In particular, the extension provides:
     Sidekick may use on its own UI to show which drones are active.
 """
 
+from base64 import b64encode
 from contextlib import ExitStack
-from trio import SocketStream
-from typing import Optional
+from trio import (
+    BrokenResourceError,
+    open_memory_channel,
+    SocketStream,
+    WouldBlock,
+)
+from typing import Any, Optional
 
 from flockwave.encoders.json import create_json_encoder
 from flockwave.networking import format_socket_address
@@ -29,12 +35,16 @@ from flockwave.server.utils.networking import serve_tcp_and_log_errors
 
 address = None
 app = None
+channels = []
 encoder = create_json_encoder()
 log = None
 
 
-def log_encoded_rtk(sender, packet):
-    print(repr(packet))
+def encode_command(type: str, data: Any) -> Any:
+    """Encodes a command type and a corresponding payload into a format that is
+    suitable to be sent over the connection to the Sidekick clients.
+    """
+    return encoder({"type": type, "data": data})
 
 
 def get_ssdp_location(client_address) -> Optional[str]:
@@ -57,7 +67,24 @@ def get_ssdp_location(client_address) -> Optional[str]:
 
 async def handle_connection(stream: SocketStream):
     """Handles a connection attempt from a single client."""
-    await stream.send_all(b"Hello!\n")
+    # TODO(ntamas): send keepalive packets (empty lines) on the connection
+
+    # We need to use a small buffer here for the memory channel. This is because
+    # if there is a congestion on the radio link, we don't want to keep many RTK
+    # correction packets in the buffer because they quickly become obsolete.
+    # On the other hand, the buffer cannot be too small because RTK correction
+    # packet requests may come in bursts. The value below seems to be a good
+    # middle ground.
+    tx_channel, rx_channel = open_memory_channel(16)
+
+    try:
+        channels.append(tx_channel)
+        async with rx_channel:
+            async for data in rx_channel:
+                await stream.send_all(data)
+
+    finally:
+        channels.remove(tx_channel)
 
 
 async def handle_connection_safely(stream: SocketStream):
@@ -79,6 +106,9 @@ async def handle_connection_safely(stream: SocketStream):
             extra={"semantics": "success"},
         )
         return await handle_connection(stream)
+    except BrokenResourceError:
+        # Client closed connection, this is okay.
+        pass
     except Exception as ex:
         # Exceptions raised during a connection are caught and logged here;
         # we do not let the main task itself crash because of them
@@ -87,6 +117,47 @@ async def handle_connection_safely(stream: SocketStream):
     finally:
         if success and client_address:
             log.info(f"Sidekick connection from {client_address} closed")
+
+
+def handle_mavlink_rtk_packet_fragments(sender, messages) -> None:
+    """Handles RTK packet fragments emitted as MAVLink packet specifications
+    from the MAVLink extension and enqueues it to be sent to all the connected
+    clients.
+
+    Enqueueing is non-blocking; if the client cannot keep up with the packet
+    flow, the packet will simply be dropped.
+
+    Parameters:
+        sender: the MAVLink network that sent the packet specifications;
+            currently ignored.
+        messages: list of (type, fields) tuples that describe the MAVLink
+            messages to be sent from Sidekick
+    """
+    if not channels:
+        return
+
+    # Each message contains a payload of type 'bytes'; we need to encode this
+    # with Base64 so it can be sent over the wire in JSON
+    encoded_messages = []
+    for type, fields in messages:
+        if "data" in fields:
+            fields = dict(fields)
+            fields["data"] = b64encode(fields["data"]).decode("ascii")
+        encoded_messages.append((type, fields))
+    data = encode_command("rtk", encoded_messages)
+
+    # Okay, now send the messages and count the number of clients where we needed
+    # to drop a packet due to backpressure
+    num_dropped = 0
+    for channel in channels:
+        try:
+            channel.send_nowait(data)
+        except WouldBlock:
+            # Dropping packet
+            num_dropped += 1
+
+    if num_dropped > 0:
+        log.warn("Dropping outbound RTK correction packet due to backpressure")
 
 
 async def run(app, configuration, logger):
@@ -102,7 +173,9 @@ async def run(app, configuration, logger):
 
     with ExitStack() as stack:
         stack.enter_context(overridden(globals(), address=address, app=app, log=logger))
-        stack.enter_context(signals.use({"mavlink:encoded_rtk": log_encoded_rtk}))
+        stack.enter_context(
+            signals.use({"mavlink:rtk_fragments": handle_mavlink_rtk_packet_fragments})
+        )
         stack.enter_context(ssdp.use_service("sidekick-server", get_ssdp_location))
 
         logger.info(

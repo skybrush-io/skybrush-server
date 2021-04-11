@@ -81,14 +81,6 @@ class MAVLinkDronesExtension(UAVExtensionBase):
             ).items()
         }
 
-        kwds = {
-            "driver": self._driver,
-            "log": self.log,
-            "register_uav": self._register_uav,
-            "supervisor": app.supervise,
-            "use_connection": app.connection_registry.use,
-        }
-
         # Get a handle to the signals extension that we will need
         signals = app.import_api("signals")
 
@@ -96,6 +88,17 @@ class MAVLinkDronesExtension(UAVExtensionBase):
         # ensure that we cannot accidentally register a UAV when the extension
         # is not running yet
         uavs = []
+
+        # Create a list of arguments to pass to `network.run()` for each MAVLink
+        # network that the extension manages
+        kwds = {
+            "driver": self._driver,
+            "log": self.log,
+            "register_uav": self._register_uav,
+            "rtk_packet_fragments_signal": signals.get("mavlink:rtk_fragments"),
+            "supervisor": app.supervise,
+            "use_connection": app.connection_registry.use,
+        }
 
         # Create a cleanup context and run the extension
         with ExitStack() as stack:
@@ -217,11 +220,11 @@ class MAVLinkDronesExtension(UAVExtensionBase):
 
     def _on_rtk_correction_packet(self, sender, packet: bytes):
         """Handles an RTK correction packet that the server wishes to forward
-        to the drones in this network.
+        to the drones in all the networks belonging to the extension.
 
         Parameters:
             packet: the raw RTK correction packet to forward to the drones in
-                this network
+                all the networks belonging to the extension
         """
         if not self._networks:
             return
@@ -230,9 +233,10 @@ class MAVLinkDronesExtension(UAVExtensionBase):
             try:
                 network.enqueue_rtk_correction_packet(packet)
             except Exception:
-                self.log.warn(
-                    f"Failed to enqueue RTK correction packet to network {name!r}"
-                )
+                if self.log:
+                    self.log.warn(
+                        f"Failed to enqueue RTK correction packet to network {name!r}"
+                    )
 
     def _on_show_configuration_changed(self, sender, config) -> None:
         """Handler that is called when the user changes the start time or start

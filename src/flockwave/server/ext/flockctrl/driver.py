@@ -788,7 +788,7 @@ class FlockCtrlUAV(UAVBase):
         """
         # TODO: implement getting continuous status of compass calibration
         return await self.driver._send_command_to_uav_and_check_for_errors(
-            f"calib compass", uav
+            "calib compass", self
         )
 
     async def calibrate_component(self, component: str) -> str:
@@ -813,7 +813,7 @@ class FlockCtrlUAV(UAVBase):
         elif component in ["baro", "gyro", "level"]:
             # rest of the components are simply handled as a proper generic calib command
             return await self.driver._send_command_to_uav_and_check_for_errors(
-                f"calib {component}", uav
+                "calib {component}", self
             )
         else:
             raise NotSupportedError

@@ -20,6 +20,7 @@ from base64 import b64encode
 from contextlib import ExitStack
 from trio import (
     BrokenResourceError,
+    move_on_after,
     open_memory_channel,
     SocketStream,
     WouldBlock,
@@ -67,8 +68,6 @@ def get_ssdp_location(client_address) -> Optional[str]:
 
 async def handle_connection(stream: SocketStream):
     """Handles a connection attempt from a single client."""
-    # TODO(ntamas): send keepalive packets (empty lines) on the connection
-
     # We need to use a small buffer here for the memory channel. This is because
     # if there is a congestion on the radio link, we don't want to keep many RTK
     # correction packets in the buffer because they quickly become obsolete.
@@ -77,10 +76,18 @@ async def handle_connection(stream: SocketStream):
     # middle ground.
     tx_channel, rx_channel = open_memory_channel(16)
 
+    # Keepalive packet
+    KEEPALIVE = b"\n"
+
+    # Register this channel so we get RTK correction packets
+    channels.append(tx_channel)
+
     try:
-        channels.append(tx_channel)
         async with rx_channel:
-            async for data in rx_channel:
+            while True:
+                data = KEEPALIVE
+                with move_on_after(10):
+                    data = await rx_channel.receive()
                 await stream.send_all(data)
 
     finally:
@@ -100,7 +107,7 @@ async def handle_connection_safely(stream: SocketStream):
     success = True
 
     try:
-        client_address = format_socket_address(stream.socket)
+        client_address = format_socket_address(stream.socket.getpeername())
         log.info(
             f"Sidekick connection accepted from {client_address}",
             extra={"semantics": "success"},
@@ -156,6 +163,7 @@ def handle_mavlink_rtk_packet_fragments(sender, messages) -> None:
             # Dropping packet
             num_dropped += 1
 
+    # Print a warning if packets were dropped
     if num_dropped > 0:
         log.warn("Dropping outbound RTK correction packet due to backpressure")
 

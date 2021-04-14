@@ -1453,7 +1453,7 @@ class MAVLinkUAV(UAVBase):
         return self._network_id
 
     @property
-    def system_id(self) -> str:
+    def system_id(self) -> int:
         """The system ID of the UAV."""
         return self._system_id
 

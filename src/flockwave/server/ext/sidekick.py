@@ -41,7 +41,7 @@ encoder = create_json_encoder()
 log = None
 
 
-def encode_command(type: str, data: Any) -> Any:
+def encode_command(type: str, data: Any) -> bytes:
     """Encodes a command type and a corresponding payload into a format that is
     suitable to be sent over the connection to the Sidekick clients.
     """
@@ -151,8 +151,55 @@ def handle_mavlink_rtk_packet_fragments(sender, messages) -> None:
             fields = dict(fields)
             fields["data"] = b64encode(fields["data"]).decode("ascii")
         encoded_messages.append((type, fields))
-    data = encode_command("rtk", encoded_messages)
 
+    # Send the correction packet to all connected clients
+    send_encoded_command_to_connected_clients(
+        encode_command("rtk", encoded_messages), "RTK correction packet"
+    )
+
+
+def handle_mavlink_status_summary_events(sender, summary) -> None:
+    """Handles MAVLink drone status summary events from the MAVLink extension
+    and enqueues them to be sent to all the connected clients.
+
+    Enqueueing is non-blocking; if the client cannot keep up with the packet
+    flow, the packet will simply be dropped.
+
+    The status summary is a list of length 256 where the i-th element is
+    `None` if the drone with MAVLink system ID `i` is currently disconnected,
+    otherwise it contains the highest (most severe) error code for the drone.
+    An error code of zero means that the drone has no errors or events to
+    report.
+
+    Parameters:
+        sender: the ID of the MAVLink network that sent the status summary
+        summary: the status summary
+    """
+    if not channels:
+        return
+
+    # Let's compress the status summary a bit
+    mask, bit = 0, 1
+    encoded_summary = [sender, 0]
+    for index, entry in enumerate(summary):
+        if entry is not None:
+            mask |= bit
+            if entry != 0:
+                encoded_summary.append(index)
+                encoded_summary.append(entry)
+    encoded_summary[1] = mask
+
+    # Send the correction packet to all connected clients
+    send_encoded_command_to_connected_clients(
+        encode_command("status.v1", encoded_summary), "status summary packet"
+    )
+
+
+def send_encoded_command_to_connected_clients(data: bytes, what: str) -> None:
+    """Sends an encoded command to all connected clients, dropping packets for
+    slow consumers as necessary and printing warnings during the process if
+    needed.
+    """
     # Okay, now send the messages and count the number of clients where we needed
     # to drop a packet due to backpressure
     num_dropped = 0
@@ -165,7 +212,7 @@ def handle_mavlink_rtk_packet_fragments(sender, messages) -> None:
 
     # Print a warning if packets were dropped
     if num_dropped > 0:
-        log.warn("Dropping outbound RTK correction packet due to backpressure")
+        log.warn(f"Dropping outbound {what} due to backpressure")
 
 
 async def run(app, configuration, logger):
@@ -182,7 +229,12 @@ async def run(app, configuration, logger):
     with ExitStack() as stack:
         stack.enter_context(overridden(globals(), address=address, app=app, log=logger))
         stack.enter_context(
-            signals.use({"mavlink:rtk_fragments": handle_mavlink_rtk_packet_fragments})
+            signals.use(
+                {
+                    "mavlink:rtk_fragments": handle_mavlink_rtk_packet_fragments,
+                    "mavlink:status_summary": handle_mavlink_status_summary_events,
+                }
+            )
         )
         stack.enter_context(ssdp.use_service("sidekick-server", get_ssdp_location))
 

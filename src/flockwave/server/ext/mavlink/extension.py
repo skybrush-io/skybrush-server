@@ -83,6 +83,8 @@ class MAVLinkDronesExtension(UAVExtensionBase):
 
         # Get a handle to the signals extension that we will need
         signals = app.import_api("signals")
+        status_summary_signal = signals.get("mavlink:status_summary")
+        rtk_packet_fragments_signal = signals.get("mavlink:rtk_fragments")
 
         # Create self._uavs only here and not in the constructor; this is to
         # ensure that we cannot accidentally register a UAV when the extension
@@ -95,7 +97,7 @@ class MAVLinkDronesExtension(UAVExtensionBase):
             "driver": self._driver,
             "log": self.log,
             "register_uav": self._register_uav,
-            "rtk_packet_fragments_signal": signals.get("mavlink:rtk_fragments"),
+            "rtk_packet_fragments_signal": rtk_packet_fragments_signal,
             "supervisor": app.supervise,
             "use_connection": app.connection_registry.use,
         }
@@ -131,8 +133,12 @@ class MAVLinkDronesExtension(UAVExtensionBase):
                         nursery.start_soon(partial(network.run, **kwds))
 
                     # Create an additional task that periodically checks whether the UAVs
-                    # registered in the extension are still alive
-                    nursery.start_soon(check_uavs_alive, uavs)
+                    # registered in the extension are still alive, and that sends
+                    # status summary signals to interested consumers (typically
+                    # the sidekick extension)
+                    nursery.start_soon(
+                        check_uavs_alive, uavs, status_summary_signal, self.log
+                    )
             finally:
                 for uav in uavs:
                     app.object_registry.remove(uav)

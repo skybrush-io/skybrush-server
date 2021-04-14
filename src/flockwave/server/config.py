@@ -79,6 +79,7 @@ EXTENSIONS = {
     "hotplug": {},
     "http": {},
     "http_server": {},
+    "insomnia": {"keep_display_on": False},
     "license": {},
     "mavlink": {
         "enabled": False,

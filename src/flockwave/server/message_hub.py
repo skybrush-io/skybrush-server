@@ -35,7 +35,7 @@ from typing import (
 )
 
 from flockwave.connections import ConnectionState
-from flockwave.concurrency import AsyncBundler
+from flockwave.concurrency import aclosing, AsyncBundler
 
 from .logger import log as base_log
 from .model import (
@@ -944,14 +944,15 @@ class BatchMessageRateLimiter(RateLimiter, Generic[T]):
 
     async def run(self, dispatcher, nursery):
         self.bundler.clear()
-        async for bundle in self.bundler:
-            try:
-                await dispatcher(self.factory(bundle))
-            except Exception:
-                log.exception(
-                    f"Error while dispatching messages from {self.name} factory"
-                )
-            await sleep(self.delay)
+        async with self.bundler.iter() as bundle_iterator:
+            async for bundle in bundle_iterator:
+                try:
+                    await dispatcher(self.factory(bundle))
+                except Exception:
+                    log.exception(
+                        f"Error while dispatching messages from {self.name} factory"
+                    )
+                await sleep(self.delay)
 
 
 @dataclass
@@ -988,14 +989,15 @@ class UAVMessageRateLimiter(RateLimiter):
 
     async def run(self, dispatcher, nursery):
         self.bundler.clear()
-        async for bundle in self.bundler:
-            try:
-                await dispatcher(self.factory(bundle))
-            except Exception:
-                log.exception(
-                    f"Error while dispatching messages from {self.name} factory"
-                )
-            await sleep(self.delay)
+        async with self.bundler.iter() as bundle_iterator:
+            async for bundle in bundle_iterator:
+                try:
+                    await dispatcher(self.factory(bundle))
+                except Exception:
+                    log.exception(
+                        f"Error while dispatching messages from {self.name} factory"
+                    )
+                await sleep(self.delay)
 
 
 class ConnectionStatusMessageRateLimiter(RateLimiter):

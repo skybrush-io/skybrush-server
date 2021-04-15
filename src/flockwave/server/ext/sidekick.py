@@ -34,11 +34,25 @@ from flockwave.server.utils import overridden
 from flockwave.server.utils.networking import serve_tcp_and_log_errors
 
 
+#: Stores the address where the extension is listening for incoming connections
 address = None
+
+#: Reference to the app that the extension is loaded in
 app = None
+
+#: List of currently open channels to clients
 channels = []
+
+#: JSON encoder to use when sending messages to clients
 encoder = create_json_encoder()
+
+#: Reference to the logger object that the application allocated to us when the
+#: extension was loaded
 log = None
+
+#: Cache of most recent status summaries by networks to avoid sending a status
+#: summary to clients if it is the same as before
+status_summary_cache = {}
 
 
 def encode_command(type: str, data: Any) -> bytes:
@@ -68,13 +82,19 @@ def get_ssdp_location(client_address) -> Optional[str]:
 
 async def handle_connection(stream: SocketStream):
     """Handles a connection attempt from a single client."""
+    # Invalidate the status summary cache to ensure that the newly connected
+    # client gets a full status update. Note that this means that all other
+    # connected clients also get a full status update, but as we don't expect
+    # many clients to be connected at the same time, this is probably okay.
+    status_summary_cache.clear()
+
     # We need to use a small buffer here for the memory channel. This is because
     # if there is a congestion on the radio link, we don't want to keep many RTK
     # correction packets in the buffer because they quickly become obsolete.
     # On the other hand, the buffer cannot be too small because RTK correction
     # packet requests may come in bursts. The value below seems to be a good
     # middle ground.
-    tx_channel, rx_channel = open_memory_channel(16)
+    tx_channel, rx_channel = open_memory_channel(32)
 
     # Keepalive packet
     KEEPALIVE = b"\n"
@@ -178,16 +198,25 @@ def handle_mavlink_status_summary_events(sender, summary) -> None:
     if not channels:
         return
 
-    # Let's compress the status summary a bit
-    mask, bit = 0, 1
-    encoded_summary = [sender, 0]
-    for index, entry in enumerate(summary):
-        if entry is not None:
-            mask |= bit
-            if entry != 0:
-                encoded_summary.append(index)
-                encoded_summary.append(entry)
-    encoded_summary[1] = mask
+    old_summary = status_summary_cache.get(sender)
+    if old_summary == summary:
+        # Status did not change, we can skip notifying the clients
+        return
+
+    # Make a copy of the summary; it is a mutable list and the sender will
+    # happily keep on mutating it if the status changes
+    status_summary_cache[sender] = list(summary)
+
+    # Let's compress the status summary a bit; we are only sending the
+    # widest slice that contains non-null elements
+    start, end = 0, len(summary)
+    while end > 0 and summary[end - 1] is None:
+        end -= 1
+    while start < end and summary[start] is None:
+        start += 1
+
+    encoded_summary = [sender, start]
+    encoded_summary.extend(summary[start:end])
 
     # Send the correction packet to all connected clients
     send_encoded_command_to_connected_clients(
@@ -227,7 +256,16 @@ async def run(app, configuration, logger):
     ssdp = app.import_api("ssdp")
 
     with ExitStack() as stack:
-        stack.enter_context(overridden(globals(), address=address, app=app, log=logger))
+        stack.enter_context(
+            overridden(
+                globals(),
+                address=address,
+                app=app,
+                channels=[],
+                log=logger,
+                status_summary_cache={},
+            )
+        )
         stack.enter_context(
             signals.use(
                 {

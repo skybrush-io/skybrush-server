@@ -106,7 +106,7 @@ async def handle_connection(stream: SocketStream):
         async with rx_channel:
             while True:
                 data = KEEPALIVE
-                with move_on_after(10):
+                with move_on_after(5):
                     data = await rx_channel.receive()
                 await stream.send_all(data)
 

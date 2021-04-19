@@ -62,7 +62,10 @@ async def run(app, configuration, logger):
 
         if port is not None:
             on_message = setup_debugging_server(app, stack, debug_clients=True)
-            await run_debug_port(host, port, on_message=on_message)
+
+            # (host or None) is needed below because an empty string as the
+            # hostname is not okay on Linux
+            await run_debug_port(host or "", port, on_message=on_message)
 
 
 def setup_debugging_server(app, stack, debug_clients: bool = False):

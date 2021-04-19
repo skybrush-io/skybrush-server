@@ -281,8 +281,10 @@ async def run(app, configuration, logger):
         )
 
         try:
+            # (host or None) is needed below because an empty string as the
+            # hostname is not okay on Linux
             await serve_tcp_and_log_errors(
-                handle_connection_safely, port, host=host, log=log
+                handle_connection_safely, port, host=(host or None), log=log
             )
         finally:
             logger.info(f"Skybrush Sidekick socket closed on {formatted_address}")

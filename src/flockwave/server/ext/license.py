@@ -186,13 +186,15 @@ def show_license_information(logger, license: Optional[License]) -> None:
     if days_left >= NEVER_EXPIRES:
         pass
     elif days_left >= 15:
-        logger.info(f"This license expires in {days_left} days")
+        logger.info(f"Your license key expires in {days_left} days")
     elif days_left > 1:
-        logger.warn(f"This license expires in {days_left} days")
+        logger.warn(
+            f"Your license key expires in {days_left} days. Contact us for renewal."
+        )
     elif days_left == 1:
-        logger.warn("This license expires in one day")
+        logger.warn("Your license key expires in one day. Contact us for renewal.")
     elif days_left == 0:
-        logger.warn("This license expires today")
+        logger.warn("Your license key expires today. Contact us for renewal.")
 
 
 exports = {"get_license": get_license}

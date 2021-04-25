@@ -4,6 +4,7 @@ from typing import Callable, Optional, Union
 
 from flockwave.server.errors import NotSupportedError
 from flockwave.server.model.uav import UAV, UAVDriver
+from flockwave.server.utils import format_number_nicely
 
 __all__ = ("create_parameter_command_handler",)
 
@@ -81,8 +82,12 @@ def create_parameter_command_handler(
 
         try:
             value = await uav.get_parameter(name, fetch=True)
-            return f"{name} = {value}"
         except KeyError:
             raise RuntimeError(f"No such parameter: {name}")
+
+        if isinstance(value, (int, float)):
+            value = format_number_nicely(value)
+
+        return f"{name} = {value}"
 
     return handler

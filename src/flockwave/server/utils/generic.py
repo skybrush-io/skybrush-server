@@ -8,7 +8,16 @@ from functools import partial
 from inspect import Parameter, signature
 from itertools import tee
 from operator import mul
-from typing import Any, Callable, Generator, Iterable, Optional, Sequence, Tuple, TypeVar
+from typing import (
+    Any,
+    Callable,
+    Generator,
+    Iterable,
+    Optional,
+    Sequence,
+    Tuple,
+    TypeVar,
+)
 
 
 __all__ = (
@@ -166,6 +175,13 @@ def divide_by(value: float) -> Callable[[float], float]:
     with the given value.
     """
     return partial(mul, 1.0 / value)
+
+
+def format_number_nicely(value: float) -> str:
+    """Formats a float nicely, stripping trailing zeros and avoiding scientific
+    notation where possible.
+    """
+    return f"{value:.7f}".rstrip("0").rstrip(".")
 
 
 def identity(obj: Any) -> Any:

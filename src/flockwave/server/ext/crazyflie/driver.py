@@ -196,11 +196,15 @@ class CrazyflieDriver(UAVDriver):
             # TODO(ntamas): allow this only when the drone is on the ground!
             await uav.test_component("motor")
             return "Motor test started"
+        elif component == "battery":
+            # TODO(ntamas): allow this only when the drone is on the ground!
+            await uav.test_component("battery")
+            return "Battery test started"
         elif component == "led":
             await uav.test_component("led")
             return "LED test executed"
         else:
-            return "Usage: test <led|motor>"
+            return "Usage: test <battery|led|motor>"
 
     async def handle_command_stop(self, uav):
         """Stops the motors of the UAV immediately."""
@@ -586,13 +590,15 @@ class CrazyflieUAV(UAVBase):
         """Tests a component of the UAV.
 
         Parameters:
-            component: the component to test; currently we support ``motor`` and
-                ``led``
+            component: the component to test; currently we support ``motor``,
+                ``battery`` and ``led``
         """
         if component == "motor":
             await self.set_parameter("health.startPropTest", 1)
         elif component == "led":
             await self._crazyflie.led_ring.test()
+        elif component == "battery":
+            await self.set_parameter("health.startBatTest", 1)
         else:
             raise NotSupportedError
 

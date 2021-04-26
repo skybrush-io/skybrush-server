@@ -29,6 +29,20 @@ fi
 
 cd "${REPO_ROOT}"
 
+# Use GNU tar if available; useful on macOS
+if [ "$(uname)" == "Darwin" ]; then
+  TAR=gtar
+else
+  TAR=tar
+fi
+
+TAR_PATH=`which $TAR 2>/dev/null || true`
+
+if [ "x${TAR_PATH}" = x ]; then
+  echo "$TAR must be installed on this platform before using this script"
+  exit 1
+fi
+
 # Extract the name of the project and the version number from pyproject.toml
 PROJECT_NAME=`cat pyproject.toml|grep ^name|head -1|cut -d '"' -f 2`
 VERSION=`cat pyproject.toml|grep ^version|head -1|cut -d '"' -f 2`
@@ -144,7 +158,7 @@ rm -rf "${TMP_DIR}/${TARBALL_STEM}"
 mkdir -p "${TMP_DIR}/${TARBALL_STEM}"
 mkdir -p "${OUTPUT_DIR}"
 mv ${BUILD_DIR}/staging/* "${TMP_DIR}/${TARBALL_STEM}"
-tar -C "${TMP_DIR}" --owner=0 --group=0 --exclude "__pycache__" -czf "${OUTPUT_DIR}/${TARBALL_STEM}.tar.gz" "${TARBALL_STEM}/"
+$TAR -C "${TMP_DIR}" --owner=0 --group=0 --exclude "__pycache__" -czf "${OUTPUT_DIR}/${TARBALL_STEM}.tar.gz" "${TARBALL_STEM}/"
 rm -rf "${TMP_DIR}/${TARBALL_STEM}"
 rm -rf "${BUILD_DIR}/staging"
 
@@ -152,4 +166,3 @@ echo ""
 echo "------------------------------------------------------------------------"
 echo ""
 echo "Obfuscated bundle created successfully in ${OUTPUT_DIR}/${TARBALL_STEM}.tar.gz"
-

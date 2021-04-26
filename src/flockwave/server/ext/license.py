@@ -1,6 +1,7 @@
 from abc import abstractmethod, ABCMeta
 from flockwave.ext.errors import ApplicationExit
 from flockwave.networking import get_link_layer_address_mapping
+from math import inf
 from typing import Dict, Optional, Tuple
 
 import json
@@ -47,6 +48,14 @@ class License(metaclass=ABCMeta):
         """Returns the licensee of this license."""
         raise NotImplementedError
 
+    @abstractmethod
+    def get_maximum_drone_count(self) -> float:
+        """Returns the maximum number of drones that the user is allowed to
+        manage with this license; returns infinity if the license does not
+        impose a restriction on the number of drones.
+        """
+        raise NotImplementedError
+
     def is_valid(self) -> bool:
         """Returns whether the license is valid."""
         # Check date restriction
@@ -79,6 +88,9 @@ class DummyLicense(License):
 
     def get_licensee(self) -> str:
         return "Test license"
+
+    def get_maximum_drone_count(self) -> float:
+        return 5
 
 
 class PyArmorLicense(License):
@@ -113,6 +125,9 @@ class PyArmorLicense(License):
     def get_licensee(self) -> str:
         parsed = self._parse_license_info()
         return str(parsed.get("licensee", ""))
+
+    def get_maximum_drone_count(self) -> float:
+        return self._get_conditions().get("drones", inf)
 
     def _get_conditions(self) -> Dict[str, str]:
         parsed = self._parse_license_info()
@@ -154,12 +169,14 @@ def load(app, configuration, logger):
     if license and not license.is_valid():
         raise ApplicationExit("License expired or is not valid for this machine")
 
-    show_license_information(logger, license)
+    enforce_license_limits(license, app)
+    show_license_information(license, logger)
 
 
-def unload():
+def unload(app):
     global license
 
+    enforce_license_limits(None, app)
     license = None
 
 
@@ -171,7 +188,12 @@ def get_license() -> Optional[License]:
     return license
 
 
-def show_license_information(logger, license: Optional[License]) -> None:
+def enforce_license_limits(license: Optional[License], app) -> None:
+    num_drones = license.get_maximum_drone_count() if license else inf
+    app.object_registry.size_limit = num_drones
+
+
+def show_license_information(license: Optional[License], logger) -> None:
     """Shows detailed information about the current license in the application
     logs at startup.
     """

@@ -144,7 +144,10 @@ class CrazyflieDronesExtension(UAVExtensionBase):
                 async with new_uav_rx_channel:
                     async for address_space, index, disposer in new_uav_rx_channel:
                         uav = self._driver.get_or_create_uav(address_space, index)
-                        nursery.start_soon(uav.run, disposer)
+
+                        # uav might be None if the user hits the license limit
+                        if uav:
+                            nursery.start_soon(uav.run, disposer)
 
     def _on_show_countdown_notification(
         self,

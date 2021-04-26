@@ -36,6 +36,7 @@ from flockwave.server.model.gps import GPSFixType
 from flockwave.server.model.preflight import PreflightCheckInfo, PreflightCheckResult
 from flockwave.server.model.transport import TransportOptions
 from flockwave.server.model.uav import UAVBase, UAVDriver, VersionInfo
+from flockwave.server.registries.errors import RegistryFull
 from flockwave.server.utils import color_to_rgb565, nop
 from flockwave.spec.ids import make_valid_object_id
 from flockwave.spec.errors import FlockwaveErrorCode
@@ -412,7 +413,11 @@ class FlockCtrlDriver(UAVDriver):
             packet: the packet to handle
             source: the source the packet was received from
         """
-        uav = self._get_or_create_uav(packet.uav_id)
+        try:
+            uav = self._get_or_create_uav(packet.uav_id)
+        except RegistryFull:
+            return
+
         try:
             algorithm = packet.algorithm
         except KeyError:
@@ -463,7 +468,11 @@ class FlockCtrlDriver(UAVDriver):
             packet: the packet to handle
             source: the source the packet was received from
         """
-        uav = self._get_or_create_uav(packet.id)
+        try:
+            uav = self._get_or_create_uav(packet.id)
+        except RegistryFull:
+            return
+
         medium, address = source
 
         self._check_or_record_uav_address(uav, medium, address)

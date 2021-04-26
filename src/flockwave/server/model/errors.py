@@ -2,14 +2,9 @@
 
 from builtins import str
 
+from flockwave.server.errors import FlockwaveError
 
 __all__ = ("ClientNotSubscribedError", "NoSuchPathError")
-
-
-class FlockwaveError(RuntimeError):
-    """Base class for all error classes related to the Flockwave model."""
-
-    pass
 
 
 class ClientNotSubscribedError(FlockwaveError):

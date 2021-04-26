@@ -10,6 +10,7 @@ from typing import Optional, Sequence, Tuple
 
 from flockwave.server.ext.base import UAVExtensionBase
 from flockwave.server.model.uav import UAV
+from flockwave.server.registries.errors import RegistryFull
 from flockwave.server.utils import optional_int, overridden
 
 from .driver import MAVLinkDriver
@@ -280,7 +281,13 @@ class MAVLinkDronesExtension(UAVExtensionBase):
         if self._uavs is None:
             raise RuntimeError("cannot register a UAV before the extension is started")
 
-        self.app.object_registry.add(uav)
+        try:
+            self.app.object_registry.add(uav)
+        except RegistryFull:
+            # User reached the license limit, this is okay, we still keep track
+            # of the UAV ourselves but it won't appear in the object registry
+            pass
+
         self._uavs.append(uav)
 
     async def _send_packet(

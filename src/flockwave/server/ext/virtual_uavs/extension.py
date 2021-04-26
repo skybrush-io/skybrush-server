@@ -11,6 +11,7 @@ from flockwave.gps.vectors import (
     FlatEarthToGPSCoordinateTransformation,
 )
 from flockwave.spec.ids import make_valid_object_id
+from flockwave.server.registries.errors import RegistryFull
 
 from ..base import UAVExtensionBase
 
@@ -151,6 +152,13 @@ class VirtualUAVProviderExtension(UAVExtensionBase):
             spawn: function to call when the UAV wishes to spawn a background
                 task
         """
+        try:
+            await self._simulate_uav(uav, spawn)
+        except RegistryFull:
+            # This is okay
+            pass
+
+    async def _simulate_uav(self, uav: VirtualUAV, spawn: Callable):
         updater = partial(self.app.request_to_send_UAV_INF_message_for, [uav.id])
 
         with self.app.object_registry.use(uav):

@@ -29,6 +29,7 @@ from flockwave.server.errors import NotSupportedError
 from flockwave.server.ext.logger import log as base_log
 from flockwave.server.model.preflight import PreflightCheckInfo, PreflightCheckResult
 from flockwave.server.model.uav import BatteryInfo, UAVBase, UAVDriver, VersionInfo
+from flockwave.server.registries.errors import RegistryFull
 from flockwave.server.utils import color_to_rgb8_triplet, optional_float
 from flockwave.spec.errors import FlockwaveErrorCode
 from flockwave.spec.ids import make_valid_object_id
@@ -123,7 +124,7 @@ class CrazyflieDriver(UAVDriver):
         """
         return self._cache_folder
 
-    def get_or_create_uav(self, address_space, index: int) -> "CrazyflieUAV":
+    def get_or_create_uav(self, address_space, index: int) -> Optional["CrazyflieUAV"]:
         """Retrieves the UAV with the given index in the given address space
         or creates one if the driver has not seen a UAV with the given index in
         the given address space yet.
@@ -133,7 +134,8 @@ class CrazyflieDriver(UAVDriver):
             index: the index of the address within the address space
 
         Returns:
-            an appropriate UAV object
+            an appropriate UAV object or `None` if the UAV object cannot be
+            added to the object registry due to the registry being full
         """
         uav_id_map = self._uav_ids_by_address_space.get(address_space)
         formatted_id = uav_id_map.get(index) if uav_id_map else None
@@ -143,9 +145,13 @@ class CrazyflieDriver(UAVDriver):
             )
             self._uav_ids_by_address_space[address_space][index] = formatted_id
 
-        uav = self.app.object_registry.add_if_missing(
-            formatted_id, factory=self._create_uav
-        )
+        try:
+            uav = self.app.object_registry.add_if_missing(
+                formatted_id, factory=self._create_uav
+            )
+        except RegistryFull:
+            return None
+
         if uav.uri is None:
             uav.uri = address_space[index]
 

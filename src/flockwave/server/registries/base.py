@@ -83,7 +83,7 @@ class RegistryBase(Generic[T], Registry[T]):
 
     def __init__(self):
         """Constructor."""
-        super(RegistryBase, self).__init__()
+        super().__init__()
         self._entries = {}
 
     def contains(self, entry_id: str) -> bool:

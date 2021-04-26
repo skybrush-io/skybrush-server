@@ -2,15 +2,17 @@
 server knows.
 """
 
-__all__ = ("ObjectRegistry",)
-
 from blinker import Signal
 from contextlib import contextmanager
+from math import inf
 from typing import Callable, Iterable, Optional, Type, Union
 
-from .base import RegistryBase
+from flockwave.server.model import ModelObject
 
-from ..model import ModelObject
+from .base import RegistryBase
+from .errors import RegistryFull
+
+__all__ = ("ObjectRegistry",)
 
 
 class ObjectRegistry(RegistryBase[ModelObject]):
@@ -46,6 +48,10 @@ class ObjectRegistry(RegistryBase[ModelObject]):
         """
     )
 
+    def __init__(self) -> None:
+        self._size_limit = inf
+        super().__init__()
+
     def add(self, object: ModelObject) -> None:
         """Registers an object in the registry.
 
@@ -56,10 +62,14 @@ class ObjectRegistry(RegistryBase[ModelObject]):
 
         Throws:
             KeyError: if the ID is already registered for a different object
+            RegistryFull: if the registry is full and no additional objects of
+                the given type can be registered
         """
         old_object = self._entries.get(object.id, None)
         if old_object is not None and old_object != object:
             raise KeyError("Object ID already taken: {0!r}".format(object.id))
+
+        self._ensure_has_free_slot_for_object(object)
         self._entries[object.id] = object
         self.added.send(self, object=object)
 
@@ -118,10 +128,9 @@ class ObjectRegistry(RegistryBase[ModelObject]):
         if not filter:
             return []
         else:
+            filter = tuple(filter)
             return (
-                key
-                for key, value in self._entries.items()
-                if isinstance(value, tuple(filter))
+                key for key, value in self._entries.items() if isinstance(value, filter)
             )
 
     def remove(self, object: ModelObject) -> Optional[ModelObject]:
@@ -155,6 +164,14 @@ class ObjectRegistry(RegistryBase[ModelObject]):
             self.removed.send(self, object=object)
         return object
 
+    @property
+    def size_limit(self) -> int:
+        return self._size_limit
+
+    @size_limit.setter
+    def size_limit(self, value: int) -> None:
+        self._size_limit = max(value, 0)
+
     @contextmanager
     def use(self, *args: ModelObject) -> None:
         """Temporarily adds one or more new objects to the registry, hands
@@ -173,3 +190,19 @@ class ObjectRegistry(RegistryBase[ModelObject]):
         finally:
             for object in added:
                 self.remove(object)
+
+    def _ensure_has_free_slot_for_object(self, object: ModelObject) -> None:
+        """Ensures that there is at least one free slot in the object registry
+        to store the given model object.
+
+        Technically speaking, an object registry should be able to hold an
+        arbitrary amount of objects. However, we sometimes enforce limits on the
+        number of objects that can be held in the registry due to restrictions
+        from the license manager. These limits are enforced here.
+
+        Raises:
+            RegistryFull: if the registry is full and no additional objects of
+                the given type can be registered
+        """
+        if len(self._entries) >= self._size_limit:
+            raise RegistryFull

@@ -18,6 +18,7 @@ from flockwave.parsers.json import create_json_parser
 from flockwave.server.errors import NotSupportedError
 from flockwave.server.model import ConnectionPurpose
 from flockwave.server.model.uav import PassiveUAVDriver
+from flockwave.server.registries.errors import RegistryFull
 from flockwave.spec.ids import make_valid_object_id
 
 from .base import UAVExtensionBase
@@ -181,7 +182,12 @@ class GPSExtension(UAVExtensionBase):
 
     def _handle_single_gps_update(self, message):
         uav_id = self._get_uav_id(message["device"])
-        uav = self.driver.get_or_create_uav(uav_id)
+
+        try:
+            uav = self.driver.get_or_create_uav(uav_id)
+        except RegistryFull:
+            return
+
         uav.update_status(position=message["position"], heading=message["heading"])
         self.app.request_to_send_UAV_INF_message_for([uav_id])
 

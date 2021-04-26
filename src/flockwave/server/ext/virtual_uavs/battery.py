@@ -20,7 +20,7 @@ class VirtualBattery:
         max_voltage: float = 12.6,
         discharge_time: float = 600,
         initial_charge: Optional[float] = 1,
-        report_percentage: bool = True
+        report_percentage: bool = True,
     ):
         """Constructor.
 

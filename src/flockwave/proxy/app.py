@@ -38,7 +38,7 @@ def parse_content_length(headers: bytes) -> int:
 
 
 async def parse_http_headers_from_connection(
-    conn: Connection
+    conn: Connection,
 ) -> Tuple[bytes, bytes, bytes]:
     """Parses the status line and the HTTP headers from the given connection.
 
@@ -155,8 +155,8 @@ class SkybrushProxyServer:
             log.info(f"Opened connection to {format_socket_address(conn.address)}")
             async with conn:
                 while True:
-                    should_close = await self.handle_single_request_from_remote_connection(
-                        conn
+                    should_close = (
+                        await self.handle_single_request_from_remote_connection(conn)
                     )
                     if should_close:
                         break
@@ -212,9 +212,11 @@ class SkybrushProxyServer:
             await local_connection.write(preamble)
 
             # Read the response so we know how many bytes to expect
-            response_status_line, response_headers, response_body = await parse_http_headers_from_connection(
-                local_connection
-            )
+            (
+                response_status_line,
+                response_headers,
+                response_body,
+            ) = await parse_http_headers_from_connection(local_connection)
 
             await conn.write(response_status_line + CRLF + response_headers + CRLFCRLF)
             await conn.write(response_body)

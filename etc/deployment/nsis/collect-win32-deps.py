@@ -10,9 +10,7 @@ import sys
 import toml
 
 
-excluded_wheels = {
-    "python_json_logger"
-}
+excluded_wheels = {"python_json_logger"}
 
 
 def main():
@@ -52,7 +50,12 @@ def main():
                 markers = ""
                 if not markers or Marker(markers).evaluate(env):
                     name = spec[: spec.index("=")]
-                    if name == "lxml":
+                    if name in (
+                        "lxml",
+                        "pyobjc-core",
+                        "pyobjc-framework-cocoa",
+                        "pyudev",
+                    ):
                         fps = ()
                     else:
                         files = lockfile["metadata"]["files"][name]

@@ -6,6 +6,8 @@
 SCRIPT_ROOT=`dirname $0`
 REPO_ROOT="${SCRIPT_ROOT}/../.."
 
+set -e
+
 cd "${REPO_ROOT}"
 
 # Remove all requirements.txt files, we don't use them, only poetry
@@ -50,4 +52,3 @@ if [ x$GENERATE_WINDOWS = x1 ]; then
     rm -rf dist/windows
     etc/scripts/_build-nsis-installer.sh
 fi
-

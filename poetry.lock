@@ -514,7 +514,7 @@ reference = "collmot"
 
 [[package]]
 name = "flockwave-ext"
-version = "1.5.1"
+version = "1.5.2"
 description = "Generic extension manager for Skybrush-related projects"
 category = "main"
 optional = false
@@ -1496,7 +1496,7 @@ reference = "collmot"
 
 [[package]]
 name = "python-rtmidi"
-version = "1.4.8"
+version = "1.4.9"
 description = "A Python binding for the RtMidi C++ library implemented using Cython."
 category = "main"
 optional = false
@@ -1985,7 +1985,7 @@ reference = "collmot"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7"
-content-hash = "42f2604b49d7a6768a91035ea07c7b885a5a66df205c2067e87ea93b704f37c8"
+content-hash = "4816c8fb540cf5ae0c8ac1d622f7cfd2cf40fbfcb8f10e2276ef2a3a43471efb"
 
 [metadata.files]
 adrenaline = [
@@ -2158,8 +2158,8 @@ flockwave-conn = [
     {file = "flockwave_conn-2.10.0-py3-none-any.whl", hash = "md5:61a720b110c3ca6d2cb855a5f1c37277"},
 ]
 flockwave-ext = [
-    {file = "flockwave-ext-1.5.1.tar.gz", hash = "md5:8fb0543382d707f6c12a2756b0726456"},
-    {file = "flockwave_ext-1.5.1-py3-none-any.whl", hash = "md5:754d619d078114fafdd560651b19c3f9"},
+    {file = "flockwave-ext-1.5.2.tar.gz", hash = "md5:ab3e9aecf9f3e24d0d8b4092e0bad363"},
+    {file = "flockwave_ext-1.5.2-py3-none-any.whl", hash = "md5:28aca04af212d58a6ef1b419a1d514c6"},
 ]
 flockwave-flockctrl = [
     {file = "flockwave-flockctrl-0.14.0.tar.gz", hash = "md5:1f41302c44c7f4e1687779432958bf36"},
@@ -2537,18 +2537,19 @@ python-json-logger = [
     {file = "python-json-logger-2.0.1.tar.gz", hash = "sha256:f26eea7898db40609563bed0a7ca11af12e2a79858632706d835a0f961b7d398"},
 ]
 python-rtmidi = [
-    {file = "python-rtmidi-1.4.8.tar.gz", hash = "sha256:319e9fbb84cf3f4d657255dc37fbfc6ce9a3ccd1f883bc488f783749b9f27a41"},
-    {file = "python_rtmidi-1.4.8-cp36-cp36m-macosx_10_6_intel.whl", hash = "sha256:25ff79e516d232f48f3f034e9fd93f258432549e55edff02620f39e57cb55d30"},
-    {file = "python_rtmidi-1.4.8-cp36-cp36m-win32.whl", hash = "sha256:73f726f0dd1b14eedb12c5a15ab1bdb4144059861af9ecaa69ba43e7835f04c3"},
-    {file = "python_rtmidi-1.4.8-cp36-cp36m-win_amd64.whl", hash = "sha256:98931bcaa2538d55776f9f4b6a73021786c8e94d19a313c9485e03ddb29e3ae5"},
-    {file = "python_rtmidi-1.4.8-cp37-cp37m-macosx_10_9_x86_64.whl", hash = "sha256:e802ff7be71e1e5557185b2930a18a5051a7914cec45155a9d1f4d12aefce014"},
-    {file = "python_rtmidi-1.4.8-cp37-cp37m-win32.whl", hash = "sha256:a2b0ac9ef82cfbf1f8f7fa46af8837dbda69736614ee659f27d2ba74f40bf060"},
-    {file = "python_rtmidi-1.4.8-cp37-cp37m-win_amd64.whl", hash = "sha256:2936699fa127182154b8cc65cbe4e9a4938a79a7b429fb2adce7ce0e4a0b5568"},
-    {file = "python_rtmidi-1.4.8-cp38-cp38-macosx_10_9_x86_64.whl", hash = "sha256:71de504f117d8fdb686df214dee76937dfff07c4e690409ad3e613e218ab62bf"},
-    {file = "python_rtmidi-1.4.8-cp38-cp38-win32.whl", hash = "sha256:001654f1d6aaa770fa5585bc519ac8b064ab8ce7cf44f3aaef912691d7d886b1"},
-    {file = "python_rtmidi-1.4.8-cp38-cp38-win_amd64.whl", hash = "sha256:192fe6f3c4a830eb3fd6b15c153da175e8d20d6e2c26f47ae45ca275dbef3911"},
-    {file = "python_rtmidi-1.4.8-cp39-cp39-macosx_10_9_x86_64.whl", hash = "sha256:644ad12607f720c5bd0ddd53527f397e0d32bbcc21dd743b2f695cb68607497d"},
-    {file = "python_rtmidi-1.4.8-cp39-cp39-win32.whl", hash = "sha256:af83f364e4cad53e021c9b4843cf4852810bec21830579ddf5f13c4ca3d2571a"},
+    {file = "python-rtmidi-1.4.9.tar.gz", hash = "sha256:bfeb4ed99d0cccf6fa2837566907652ded7adc1c03b69f2160c9de4082301302"},
+    {file = "python_rtmidi-1.4.9-cp36-cp36m-macosx_10_6_intel.whl", hash = "sha256:8f7e154681c5d6ed7228ce8639708592da758ef4c0f575f7020854e07ca6478b"},
+    {file = "python_rtmidi-1.4.9-cp36-cp36m-win32.whl", hash = "sha256:6f495672ec76700400d4dff6f8848dbd52ca60301ed6011a6a1b3a9e95a7a07e"},
+    {file = "python_rtmidi-1.4.9-cp36-cp36m-win_amd64.whl", hash = "sha256:4d75788163327f6ac1f898c29e3b4527da83dbc5bab5a7e614b6a4385fde3231"},
+    {file = "python_rtmidi-1.4.9-cp37-cp37m-macosx_10_9_x86_64.whl", hash = "sha256:d201516bb1c64511e7e4de50533f6b828072113e3c26f3f5b657f11b90252073"},
+    {file = "python_rtmidi-1.4.9-cp37-cp37m-win32.whl", hash = "sha256:0f5409e1b2e92cfe377710a0ea5c450c58fda8b52ec4bf4baf517aa731d9f6a6"},
+    {file = "python_rtmidi-1.4.9-cp37-cp37m-win_amd64.whl", hash = "sha256:3d4b7fdb477d8036d51cce281b303686114ae676f1c83693db963ab01db11cf5"},
+    {file = "python_rtmidi-1.4.9-cp38-cp38-macosx_10_9_x86_64.whl", hash = "sha256:5dad7a28035eea9e24aaab4fcb756cd2b78c5b14835aa64750cb4062f77ec169"},
+    {file = "python_rtmidi-1.4.9-cp38-cp38-win32.whl", hash = "sha256:7d27d0a70e85d991f1451f286416cf5ef4514292b027155bf91dcae0b8c0d5d2"},
+    {file = "python_rtmidi-1.4.9-cp38-cp38-win_amd64.whl", hash = "sha256:69907663e0f167fcf3fc1632a792419d0d9d00550f94dca39370ebda3bc999db"},
+    {file = "python_rtmidi-1.4.9-cp39-cp39-macosx_10_9_x86_64.whl", hash = "sha256:04bd95dd86fef3fe8d72838f719d31875f107a842127024bfe276617961eed5d"},
+    {file = "python_rtmidi-1.4.9-cp39-cp39-win32.whl", hash = "sha256:2286ab096a5603430ab1e1a664fe4d96acc40f9443f44c27e911dfad85ea3ac8"},
+    {file = "python_rtmidi-1.4.9-cp39-cp39-win_amd64.whl", hash = "sha256:54d40cb794a6b079105bfb923ab0b4d5f041e9eef5dc5cce25480e4c3e3fc2f6"},
 ]
 pyudev = [
     {file = "pyudev-0.22.0.tar.gz", hash = "sha256:69bb1beb7ac52855b6d1b9fe909eefb0017f38d917cba9939602c6880035b276"},

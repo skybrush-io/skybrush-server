@@ -48,7 +48,7 @@ def start(config, debug, quiet, log_style):
     from flockwave.proxy.app import app
 
     # Log what we are doing
-    log.info(f"Starting Skybrush proxy server {__version__}...")
+    log.info(f"Starting Skybrush proxy server {__version__}")
 
     # Configure the application
     retval = app.prepare(config, debug=debug)

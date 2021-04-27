@@ -9,6 +9,8 @@ import trio
 from flockwave import logger
 from flockwave.logger import log
 
+from .version import __version__
+
 
 @click.command()
 @click.option(
@@ -46,7 +48,7 @@ def start(config, debug, quiet, log_style):
     from flockwave.proxy.app import app
 
     # Log what we are doing
-    log.info("Starting Skybrush proxy server...")
+    log.info(f"Starting Skybrush proxy server {__version__}...")
 
     # Configure the application
     retval = app.prepare(config, debug=debug)

@@ -532,7 +532,7 @@ reference = "collmot"
 
 [[package]]
 name = "flockwave-flockctrl"
-version = "0.14.0"
+version = "0.15.0"
 description = "flockctrl protocol parser and encoder for Skybrush"
 category = "main"
 optional = false
@@ -1159,7 +1159,7 @@ reference = "collmot"
 
 [[package]]
 name = "pyarmor"
-version = "6.6.2"
+version = "6.7.0"
 description = "A tool used to obfuscate python scripts, bind obfuscated scripts to fixed machine or expire obfuscated scripts."
 category = "dev"
 optional = false
@@ -1985,7 +1985,7 @@ reference = "collmot"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7"
-content-hash = "4816c8fb540cf5ae0c8ac1d622f7cfd2cf40fbfcb8f10e2276ef2a3a43471efb"
+content-hash = "7182a08b38db30180bd64335e3cd14fa2ec8b4064cd04daf66dd78d39de3eae1"
 
 [metadata.files]
 adrenaline = [
@@ -2162,8 +2162,8 @@ flockwave-ext = [
     {file = "flockwave_ext-1.5.2-py3-none-any.whl", hash = "md5:28aca04af212d58a6ef1b419a1d514c6"},
 ]
 flockwave-flockctrl = [
-    {file = "flockwave-flockctrl-0.14.0.tar.gz", hash = "md5:1f41302c44c7f4e1687779432958bf36"},
-    {file = "flockwave_flockctrl-0.14.0-py3-none-any.whl", hash = "md5:ae386fb62e0d76e15ea672adeb1e60c3"},
+    {file = "flockwave-flockctrl-0.15.0.tar.gz", hash = "md5:71d24830a16ef9f212cd8bdeafcba693"},
+    {file = "flockwave_flockctrl-0.15.0-py3-none-any.whl", hash = "md5:46d427d762ab1268827d34d42672188a"},
 ]
 flockwave-gps = [
     {file = "flockwave-gps-1.4.0.tar.gz", hash = "md5:5b6ac98be4578e19bdbb43f154e911f6"},
@@ -2439,8 +2439,8 @@ py = [
     {file = "py-1.10.0.tar.gz", hash = "sha256:21b81bda15b66ef5e1a777a21c4dcd9c20ad3efd0b3f817e7a809035269e1bd3"},
 ]
 pyarmor = [
-    {file = "pyarmor-6.6.2-py2.py3-none-any.whl", hash = "sha256:3676cf3e89eab45b23cb7cad17c20b86834f609581b6a2f84286d0bb21ccdb8f"},
-    {file = "pyarmor-6.6.2.zip", hash = "sha256:188c4176a0e5155d4d3d2102a6c72a3dca050b8f8625a2fe78d402953dd37419"},
+    {file = "pyarmor-6.7.0-py2.py3-none-any.whl", hash = "sha256:ab33263aec035a99f1c1622755039f93c071a4483311b841204bab3604a8b057"},
+    {file = "pyarmor-6.7.0.zip", hash = "sha256:69cd9917f3b8112f38ba379ae72c61af0b3258fadf2f5ef0a9b4a8e72b90dec8"},
 ]
 pycparser = [
     {file = "pycparser-2.20-py2.py3-none-any.whl", hash = "sha256:7582ad22678f0fcd81102833f60ef8d0e57288b6b5fb00323d101be910e35705"},

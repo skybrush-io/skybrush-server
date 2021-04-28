@@ -38,7 +38,7 @@ tinyrpc = {version = ">=1.0.4", extras = ["msgpack"]}
 passlib = {extras = ["bcrypt"], version = "^1.7.2"}
 flockwave-conn = {extras = ["midi", "rpc", "serial"], version = "^2.10.0"}
 flockwave-ext = "^1.5.2"
-flockwave-flockctrl = "^0.14.0"
+flockwave-flockctrl = "^0.15.0"
 flockwave-gps = "^1.4.0"
 flockwave-logger = "^1.6.0"
 flockwave-parsers = "^1.2.0"

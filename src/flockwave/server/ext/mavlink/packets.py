@@ -77,7 +77,6 @@ def create_start_time_configuration_packet(
         msec_until_start = -0x80000000
     else:
         # convert from UNIX timestamp to GPS time-of-week
-        raise ValueError("test")
         msec_until_start = int(1000 * (start_time - time()))
         msec_until_start = min(max(msec_until_start, -MSEC_IN_WEEK), MSEC_IN_WEEK)
         _, start_time = unix_to_gps_time_of_week(int(start_time))

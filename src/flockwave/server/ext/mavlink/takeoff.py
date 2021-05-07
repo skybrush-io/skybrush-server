@@ -158,15 +158,19 @@ class ScheduledTakeoffManager:
                         ):
                             continue
 
-                        if desired_auth_flag != uav.is_scheduled_takeoff_authorized:
+                        if (
+                            takeoff_config.authorized
+                            != uav.is_scheduled_takeoff_authorized
+                        ):
                             # Auth flag is different so we definitely need an update
                             needs_update = True
-                        elif desired_takeoff_time is None or desired_takeoff_time >= 0:
+                        elif takeoff_config.should_update_takeoff_time:
                             # Takeoff time must be cleared (None) or set to a specific
                             # value; we need an update if it is different from what
                             # we have on the UAV
                             needs_update = (
-                                uav.scheduled_takeoff_time != desired_takeoff_time
+                                uav.scheduled_takeoff_time
+                                != takeoff_config.takeoff_time
                             )
                         else:
                             # Auth flag is the same and the takeoff time does not

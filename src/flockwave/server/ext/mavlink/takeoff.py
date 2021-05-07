@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from time import time
 from trio import (
     CapacityLimiter,
@@ -16,11 +17,54 @@ from weakref import WeakKeyDictionary
 from flockwave.server.ext.show.config import DroneShowConfiguration, StartMethod
 
 from .packets import create_start_time_configuration_packet
+from .types import MAVLinkMessageSpecification
 
 __all__ = ("ScheduledTakeoffManager",)
 
 if TYPE_CHECKING:
     from .network import MAVLinkNetwork
+
+
+@dataclass
+class TakeoffConfiguration:
+    """Simple value object that encapsulates an optional desired start time as a UNIX
+    timestamp, an authorization flag, and whether the start time should be
+    updated on the drones or not.
+    """
+
+    #: Whether the swarm is authorized to start
+    authorized: bool
+
+    #: Whether the start time should be updated on the drones according to the
+    #: takeoff_time property
+    should_update_takeoff_time: bool = True
+
+    #: The desired takeoff time of the swarm; `None` if the takeoff time should
+    #: be cleared
+    takeoff_time: Optional[int] = None
+
+    @property
+    def is_takeoff_in_the_future(self) -> bool:
+        """Returns whether the desired takeoff time is in the future."""
+        return self.takeoff_time is not None and self.takeoff_time >= time()
+
+    @property
+    def takeoff_time_in_legacy_format(self) -> Optional[int]:
+        """Returns the desired takeoff time in the legacy format we used in
+        earlier versions of the code.
+
+        Returns:
+            -1 if the takeoff time should not be updated, `None` if the takeoff
+            time should be cleared, or the real takeoff time otherwise
+        """
+        return self.takeoff_time if self.should_update_takeoff_time else -1
+
+    def create_start_time_configuration_packet(self) -> MAVLinkMessageSpecification:
+        return create_start_time_configuration_packet(
+            start_time=self.takeoff_time,
+            authorized=self.authorized,
+            should_update_takeoff_time=self.should_update_takeoff_time,
+        )
 
 
 class ScheduledTakeoffManager:
@@ -85,19 +129,17 @@ class ScheduledTakeoffManager:
 
                     # Figure out what the desired takeoff time and the auth flag
                     # should be
-                    (
-                        desired_takeoff_time,
-                        desired_auth_flag,
-                    ) = self._get_desired_takeoff_time_and_auth_flag(config)
+                    takeoff_config = self._get_desired_takeoff_configuration(config)
 
                     # Broadcast a packet that contains the desired takeoff time
                     # and the auth flag. If it fails, well, it does not matter
                     # because we will check the UAVs one by one as well. We
                     # send this packet only if the start time is in the future.
-                    if desired_takeoff_time is None or desired_takeoff_time >= time():
-                        packet = create_start_time_configuration_packet(
-                            desired_takeoff_time, desired_auth_flag
-                        )
+                    if (
+                        takeoff_config.takeoff_time is None
+                        or takeoff_config.is_takeoff_in_the_future
+                    ):
+                        packet = takeoff_config.create_start_time_configuration_packet()
                         try:
                             await self._network.broadcast_packet(packet)
                         except Exception:
@@ -157,11 +199,10 @@ class ScheduledTakeoffManager:
         update and processes them one by one by spawning further background
         tasks for it.
         """
-        async with queue:
-            async with open_nursery() as nursery:
-                while True:
-                    async for uav in queue:
-                        nursery.start_soon(self._update_start_time_on_uav, uav)
+        async with open_nursery() as nursery:
+            async with queue:
+                async for uav in queue:
+                    nursery.start_soon(self._update_start_time_on_uav, uav)
 
     async def _update_start_time_on_uav(self, uav) -> None:
         """Background task updates the desired start time and automatic takeoff
@@ -224,9 +265,9 @@ class ScheduledTakeoffManager:
     # drone. If the start has not been authorized, we clear the scheduled
     # start time of the drone.
 
-    def _get_desired_takeoff_time_and_auth_flag(
+    def _get_desired_takeoff_configuration(
         self, config: DroneShowConfiguration
-    ) -> Tuple[Optional[float], bool]:
+    ) -> TakeoffConfiguration:
         """Returns the desired start time in seconds and the desired state
         of the takeoff authorization flag on all the UAVs.
 
@@ -238,30 +279,32 @@ class ScheduledTakeoffManager:
         if config.start_method == StartMethod.AUTO:
             if config.start_time is not None:
                 # User configured a start time so we want to set that
-                desired_takeoff_time = int(config.start_time)
+                return TakeoffConfiguration(
+                    takeoff_time=int(config.start_time), authorized=desired_auth_flag
+                )
             else:
                 # User did not configure a start time so we want to clear what
                 # there is on the drone
-                desired_takeoff_time = None
+                return TakeoffConfiguration(authorized=desired_auth_flag)
 
         elif config.start_method == StartMethod.RC:
-            if config.authorized_to_start:
+            if desired_auth_flag:
                 # User authorized the start so we don't mess around with the
                 # takeoff time, it is the responsibility of the person holding
                 # the RC to set the takeoff time
-                desired_takeoff_time = -1
+                return TakeoffConfiguration(
+                    authorized=True, should_update_takeoff_time=False
+                )
             else:
                 # User did not authorize the start yet so the start time must
                 # be cleared
-                desired_takeoff_time = None
-
-        return desired_takeoff_time, desired_auth_flag
+                return TakeoffConfiguration(authorized=False)
 
     async def _update_start_time_on_uav_inner(self, uav) -> None:
-        (
-            desired_takeoff_time,
-            desired_auth_flag,
-        ) = self._get_desired_takeoff_time_and_auth_flag(self._config)
+        takeoff_config = self._get_desired_takeoff_configuration(self._config)
+
+        desired_auth_flag = takeoff_config.authorized
+        desired_takeoff_time = takeoff_config.takeoff_time_in_legacy_format
 
         if (
             desired_takeoff_time is None or desired_takeoff_time >= 0

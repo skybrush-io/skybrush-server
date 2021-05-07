@@ -3,13 +3,14 @@ from datetime import timezone
 from enum import IntEnum, IntFlag
 from functools import lru_cache
 from struct import Struct, pack
+from time import time
 from typing import Optional, Sequence
 
 from flockwave.gps.time import unix_to_gps_time_of_week, gps_time_of_week_to_utc
 from flockwave.server.model.gps import GPSFixType as OurGPSFixType
 
 from .enums import GPSFixType
-from .types import MAVLinkMessage, spec
+from .types import MAVLinkMessage, MAVLinkMessageSpecification, spec
 
 __all__ = ("DroneShowStatus", "create_led_control_packet")
 
@@ -17,8 +18,11 @@ __all__ = ("DroneShowStatus", "create_led_control_packet")
 #: Helper constant used when we try to send an empty byte array via MAVLink
 _EMPTY = b"\x00" * 256
 
+#: Number of milliseconds in a normal week
+MSEC_IN_WEEK = 604800000
 
-def create_custom_data_packet(type: int, payload: bytes):
+
+def create_custom_data_packet(type: int, payload: bytes) -> MAVLinkMessageSpecification:
     """Creates a custom data packet used by our firmware with the given type
     and payload.
     """
@@ -46,35 +50,46 @@ def create_custom_data_packet(type: int, payload: bytes):
 
 
 def create_start_time_configuration_packet(
-    start_time: Optional[float], is_authorized: bool
-):
+    authorized: bool,
+    start_time: Optional[float] = None,
+    should_update_takeoff_time: bool = True,
+) -> MAVLinkMessageSpecification:
     """Creates a custom command packet used by our firmware that sets the
     scheduled takeoff time and the takeoff authorization of the swarm.
 
     Parameters:
         start_time: the desired takeoff time of the swarm as a UNIX timestamp;
-            `None` if it should be cleared, negative if it must not be changed
-        is_authorized: whether the swarm is authorized to take off
+            `None` if it should be cleared
+        authorized: whether the swarm is authorized to take off
+        should_update_takeoff_time: whether the desired takeoff time should be
+            updated on the swarm; set this to `False` if you do not want to
+            change the start time, only the authorization flag
     """
-    if start_time is None:
-        # clear start time; this is expressed by -1 on the drone's side
-        start_time = -1
-    elif start_time < 0:
-        # do not touch; this is expressed by a value larger than 604800 on the
-        # drone's side
-        start_time = 0xFFFFFF
+    if not should_update_takeoff_time:
+        # do not touch; this is expressed by a value larger than 604800 seconds
+        # on the drone's side.
+        start_time = 0x7FFFFFFF
+        msec_until_start = 0x7FFFFFFF
+    elif start_time is None or start_time < 0:
+        # clear start time; this is expressed by a value smaller than -604800
+        # seconds on the drone's side
+        start_time = -0x80000000
+        msec_until_start = -0x80000000
     else:
         # convert from UNIX timestamp to GPS time-of-week
+        raise ValueError("test")
+        msec_until_start = int(1000 * (start_time - time()))
+        msec_until_start = min(max(msec_until_start, -MSEC_IN_WEEK), MSEC_IN_WEEK)
         _, start_time = unix_to_gps_time_of_week(int(start_time))
 
     return create_custom_data_packet(
-        type=1, payload=pack("<i?", start_time, is_authorized)
+        type=1, payload=pack("<i?i", start_time, authorized, msec_until_start)
     )
 
 
 def create_led_control_packet(
     data: Optional[Sequence[int]] = None, broadcast: bool = False
-):
+) -> MAVLinkMessageSpecification:
     """Creates a special LED light control packet used by our firmware."""
     kwds = {
         "instance": 42,

@@ -643,7 +643,7 @@ class MAVFTP:
             else:
                 raise RuntimeError("Received reply that is neither ACK nor NAK")
 
-        raise TooSlowError("no response received for MAVFTP packet in time")
+        raise TooSlowError("No response received for MAVFTP packet in time")
 
     def _to_ftp_path(self, posix_path: PurePosixPath) -> bytes:
         return (str(posix_path)[1:] or ".").encode("utf-8")

@@ -423,7 +423,7 @@ class MAVLinkDriver(UAVDriver):
                 retries -= 1
 
         if result is None:
-            raise TooSlowError(f"no response received for command {command_id} in time")
+            raise TooSlowError(f"No response received for command {command_id} in time")
 
         if result == MAVResult.UNSUPPORTED:
             raise NotSupportedError
@@ -534,7 +534,7 @@ class MAVLinkDriver(UAVDriver):
                 confirmation = 1
 
         if result is None:
-            raise TooSlowError(f"no response received for command {command_id} in time")
+            raise TooSlowError(f"No response received for command {command_id} in time")
 
         if result == MAVResult.UNSUPPORTED:
             raise NotSupportedError
@@ -666,7 +666,7 @@ class MAVLinkDriver(UAVDriver):
                 retries -= 1
 
         if response is None:
-            raise TooSlowError("no response received for the outbound packet in time")
+            raise TooSlowError("No response received for the outbound packet in time")
 
         return response
 

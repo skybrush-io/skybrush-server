@@ -5,6 +5,8 @@
 <p class="lead">The following table lists all the active asynchronous tasks in
 the server.</p>
 
+<p>There are <b>{{ tasks|length }}</b> active task(s).</p>
+
 <table class="table table-striped">
     <thead>
         <tr>
@@ -14,7 +16,7 @@ the server.</p>
     <tbody>
 {% for prefix, task in tasks %}
         <tr>
-            <td><pre>{{ prefix }}{{ task.name }}</pre></td>
+            <td><pre class="mb-0">{{ prefix }}{{ task.name }}</pre></td>
         </tr>
 {% endfor %}
     </tbody>

@@ -1,4 +1,5 @@
 from abc import abstractmethod, ABCMeta
+from datetime import date, timedelta
 from flockwave.ext.errors import ApplicationExit
 from flockwave.networking import get_link_layer_address_mapping
 from math import inf
@@ -34,7 +35,8 @@ class License(metaclass=ABCMeta):
     @abstractmethod
     def get_days_left_until_expiry(self) -> int:
         """Returns the number of days left until the expiry of the license;
-        returns at least 20 years if the license never expires.
+        returns at least 20 years if the license never expires. Returns zero
+        if the license expires today.
         """
         raise NotImplementedError
 
@@ -56,6 +58,16 @@ class License(metaclass=ABCMeta):
         """
         raise NotImplementedError
 
+    def get_expiry_date(self) -> Optional[date]:
+        """Returns the date on which the license expires (but is still valid),
+        or `None` if the license never expires.
+        """
+        days_left = self.get_days_left_until_expiry()
+        if days_left >= NEVER_EXPIRES:
+            return None
+        else:
+            return date.today() + timedelta(days=days_left)
+
     def is_valid(self) -> bool:
         """Returns whether the license is valid."""
         # Check date restriction
@@ -72,6 +84,43 @@ class License(metaclass=ABCMeta):
                 return False
 
         return True
+
+    @property
+    def json(self):
+        """Returns the JSON representation of this license in the format used
+        by the LCN-INF message.
+        """
+        result = {"id": self.get_id(), "licensee": self.get_licensee()}
+
+        expiry_date = self.get_expiry_date()
+        if expiry_date is not None:
+            result["expiryDate"] = expiry_date.strftime("%Y-%m-%d")
+
+        restrictions = []
+
+        allowed_mac_addresses = self.get_allowed_mac_addresses()
+        if allowed_mac_addresses:
+            if len(allowed_mac_addresses) > 2:
+                num_extra = len(allowed_mac_addresses) - 2
+                formatted_mac_addresses = (
+                    ", ".join(allowed_mac_addresses) + f" and {num_extra} more"
+                )
+            else:
+                formatted_mac_addresses = ", ".join(allowed_mac_addresses)
+
+            restrictions.append(
+                {
+                    "type": "mac",
+                    "label": "Restricted to MAC address",
+                    "secondaryLabel": formatted_mac_addresses,
+                    "parameters": {"addresses": allowed_mac_addresses},
+                }
+            )
+
+        if restrictions:
+            result["restrictions"] = restrictions
+
+        return result
 
 
 class DummyLicense(License):
@@ -110,7 +159,9 @@ class PyArmorLicense(License):
 
         Do not use directly; use the `get_license()` class method instead.
         """
-        self._expired_days = expired_days if expired_days >= 0 else NEVER_EXPIRES
+        # PyArmor returns 1 if the license expires today and never returns zero
+        # so we need to subtract 1
+        self._expired_days = (expired_days - 1) if expired_days > 0 else NEVER_EXPIRES
         self._license_info = license_info
 
     def get_allowed_mac_addresses(self) -> Optional[Tuple[str]]:
@@ -147,37 +198,6 @@ class PyArmorLicense(License):
             self._parsed_license_info = data or {}
 
         return self._parsed_license_info
-
-
-def load(app, configuration, logger):
-    global license
-
-    # License factories must raise an ApplicationExit exception if they have
-    # found a license and it is not valid
-    license_factories = [PyArmorLicense.get_license]
-
-    for factory in license_factories:
-        try:
-            license = factory()
-        except Exception:
-            # Move on and try the next factory
-            pass
-        else:
-            # The first license that works is used
-            break
-
-    if license and not license.is_valid():
-        raise ApplicationExit("License expired or is not valid for this machine")
-
-    enforce_license_limits(license, app)
-    show_license_information(license, logger)
-
-
-def unload(app):
-    global license
-
-    enforce_license_limits(None, app)
-    license = None
 
 
 def get_license() -> Optional[License]:
@@ -217,6 +237,52 @@ def show_license_information(license: Optional[License], logger) -> None:
         logger.warn("Your license key expires in one day. Contact us for renewal.")
     elif days_left == 0:
         logger.warn("Your license key expires today. Contact us for renewal.")
+
+
+#############################################################################
+
+
+def handle_LCN_INF(message, sender, hub):
+    global license
+    return {"license": license.json} if license else {"license": {"id": ""}}
+
+
+#############################################################################
+
+
+def load(app, configuration, logger):
+    global license
+
+    # License factories must raise an ApplicationExit exception if they have
+    # found a license and it is not valid
+    license_factories = [PyArmorLicense.get_license]
+
+    for factory in license_factories:
+        try:
+            license = factory()
+        except Exception:
+            # Move on and try the next factory
+            pass
+        else:
+            # The first license that works is used
+            break
+
+    if license and not license.is_valid():
+        raise ApplicationExit("License expired or is not valid for this machine")
+
+    enforce_license_limits(license, app)
+    show_license_information(license, logger)
+
+    app.message_hub.register_message_handler(handle_LCN_INF, "LCN-INF")
+
+
+def unload(app):
+    global license
+
+    app.message_hub.unregister_message_handler(handle_LCN_INF, "LCN-INF")
+
+    enforce_license_limits(None, app)
+    license = None
 
 
 exports = {"get_license": get_license}

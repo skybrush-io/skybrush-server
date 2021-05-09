@@ -435,19 +435,6 @@ url = "https://pypi.collmot.com/simple"
 reference = "collmot"
 
 [[package]]
-name = "diskcache"
-version = "5.2.1"
-description = "Disk Cache -- Disk and file backed persistent cache."
-category = "main"
-optional = false
-python-versions = ">=3"
-
-[package.source]
-type = "legacy"
-url = "https://pypi.collmot.com/simple"
-reference = "collmot"
-
-[[package]]
 name = "distlib"
 version = "0.3.1"
 description = "Distribution utilities"
@@ -1985,7 +1972,7 @@ reference = "collmot"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7"
-content-hash = "7182a08b38db30180bd64335e3cd14fa2ec8b4064cd04daf66dd78d39de3eae1"
+content-hash = "5608f74e63dd28accca7111912b0a3737a7dc29fa0778c681b21a1986a48e8a4"
 
 [metadata.files]
 adrenaline = [
@@ -2140,10 +2127,6 @@ cryptography = [
     {file = "cryptography-3.4.7-pp37-pypy37_pp73-manylinux2010_x86_64.whl", hash = "sha256:7ec5d3b029f5fa2b179325908b9cd93db28ab7b85bb6c1db56b10e0b54235177"},
     {file = "cryptography-3.4.7-pp37-pypy37_pp73-manylinux2014_x86_64.whl", hash = "sha256:ee77aa129f481be46f8d92a1a7db57269a2f23052d5f2433b4621bb457081cc9"},
     {file = "cryptography-3.4.7.tar.gz", hash = "sha256:3d10de8116d25649631977cb37da6cbdd2d6fa0e0281d014a5b7d337255ca713"},
-]
-diskcache = [
-    {file = "diskcache-5.2.1-py3-none-any.whl", hash = "sha256:6e8137c778fd2752b93c8a8f944e939b3665d645b46774d8537dd3528ac3baa1"},
-    {file = "diskcache-5.2.1.tar.gz", hash = "sha256:1805acd5868ac10ad547208951a1190a0ab7bbff4e70f9a07cde4dbdfaa69f64"},
 ]
 distlib = [
     {file = "distlib-0.3.1-py2.py3-none-any.whl", hash = "sha256:8c09de2c67b3e7deef7184574fc060ab8a793e7adbb183d942c389c8b13c52fb"},

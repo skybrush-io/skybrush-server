@@ -52,7 +52,6 @@ msgpack = "^1.0.0"
 aio-usb-hotplug = "^3.0.1"
 pyserial = "^3.4"
 compose = "^1.1.1"
-diskcache = "^5.2.1"
 adrenaline = "^0.2.0"
 
 [tool.poetry.dev-dependencies]

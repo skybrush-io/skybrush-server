@@ -1,6 +1,5 @@
 """Generic utility functions that do not fit elsewhere."""
 
-from collections import defaultdict
 from colour import Color
 from contextlib import contextmanager
 from datetime import datetime
@@ -32,7 +31,6 @@ __all__ = (
     "identity",
     "is_timezone_aware",
     "itersubclasses",
-    "keydefaultdict",
     "longest_common_prefix",
     "multiply_by",
     "nop",
@@ -219,19 +217,6 @@ def itersubclasses(cls):
         cls = queue.pop()
         yield cls
         queue.extend(cls.__subclasses__())
-
-
-class keydefaultdict(defaultdict):
-    """defaultdict subclass that passes the key of the item being created
-    to the default factory.
-    """
-
-    def __missing__(self, key):
-        if self.default_factory is None:
-            raise KeyError(key)
-        else:
-            ret = self[key] = self.default_factory(key)
-            return ret
 
 
 def longest_common_prefix(strings: Sequence[str]) -> str:

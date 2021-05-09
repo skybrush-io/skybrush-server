@@ -1,5 +1,6 @@
 """Utility functions that do not fit elsewhere."""
 
+from .data_structures import keydefaultdict, LastUpdatedOrderedDict
 from .generic import (
     bind,
     clamp,
@@ -13,7 +14,6 @@ from .generic import (
     identity,
     is_timezone_aware,
     itersubclasses,
-    keydefaultdict,
     longest_common_prefix,
     multiply_by,
     nop,
@@ -40,6 +40,7 @@ __all__ = (
     "is_timezone_aware",
     "itersubclasses",
     "keydefaultdict",
+    "LastUpdatedOrderedDict",
     "longest_common_prefix",
     "multiply_by",
     "nop",

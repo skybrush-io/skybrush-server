@@ -9,7 +9,6 @@ from math import ceil, hypot
 from typing import Iterable, Tuple
 from zipfile import ZipFile, ZIP_DEFLATED
 
-from flockwave.gps.vectors import FlatEarthToGPSCoordinateTransformation
 from skybrush import (
     get_altitude_reference_from_show_specification,
     get_coordinate_system_from_show_specification,

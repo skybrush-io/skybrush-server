@@ -99,12 +99,6 @@ class License(metaclass=ABCMeta):
         restrictions = []
 
         allowed_mac_addresses = self.get_allowed_mac_addresses()
-        allowed_mac_addresses = [
-            "00:11:22:33:44:55",
-            "66:77:88:99:AA:BB",
-            "CC:DD:EE:FF:00:11",
-        ]
-
         if allowed_mac_addresses:
             if len(allowed_mac_addresses) > 2:
                 num_extra = len(allowed_mac_addresses) - 2
@@ -261,7 +255,7 @@ def load(app, configuration, logger):
 
     # License factories must raise an ApplicationExit exception if they have
     # found a license and it is not valid
-    license_factories = [DummyLicense, PyArmorLicense.get_license]
+    license_factories = [PyArmorLicense.get_license]
 
     for factory in license_factories:
         try:

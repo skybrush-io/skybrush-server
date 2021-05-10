@@ -11,7 +11,7 @@ from trio import (
 )
 from trio.lowlevel import ParkingLot
 from trio_util import periodic
-from typing import Optional, Tuple, TYPE_CHECKING
+from typing import Optional, TYPE_CHECKING
 from weakref import WeakKeyDictionary
 
 from flockwave.server.ext.show.config import DroneShowConfiguration, StartMethod

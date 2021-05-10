@@ -74,7 +74,8 @@ class CrazyflieDronesExtension(UAVExtensionBase):
 
             if not num_radios:
                 self.log.error(
-                    "Failed to acquire any Crazyradios; Crazyflie extension disabled."
+                    "Failed to acquire any Crazyradios; Crazyflie extension disabled.",
+                    extra={"sentry_ignore": True},
                 )
             else:
                 return await self._run(app, configuration)

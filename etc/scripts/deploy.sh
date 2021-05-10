@@ -28,9 +28,12 @@ if [ x$1 = xlinux ]; then
     GENERATE_LINUX=1
 elif [ x$1 = xwin -o x$1 = xwindows ]; then
     GENERATE_WINDOWS=1
+elif [ x$1 = xmac -o x$1 = xmacos ]; then
+    GENERATE_MACOS=1
 else
     GENERATE_LINUX=1
     GENERATE_WINDOWS=1
+    GENERATE_MACOS=1
 fi
 
 # Generate the bundle for Linux
@@ -44,7 +47,22 @@ if [ x$GENERATE_LINUX = x1 ]; then
         -e VENV_DIR="${VENV_DIR}" \
         --entrypoint /bin/bash \
         toilal/pyinstaller-linux:python3-xenial \
-		-c "rm -rf /tmp/.wine-0 && apt-get update && apt-get remove -y python-pip && apt-get install -y curl git netbase && curl https://bootstrap.pypa.io/get-pip.py -o /tmp/get-pip.py && ${VENV_DIR}/bin/python /tmp/get-pip.py && etc/scripts/build-pyarmored-dist.sh --standalone ${VENV_DIR}"
+        -c "rm -rf /tmp/.wine-0 && apt-get update && apt-get remove -y python-pip && apt-get install -y curl git netbase && curl https://bootstrap.pypa.io/get-pip.py -o /tmp/get-pip.py && ${VENV_DIR}/bin/python /tmp/get-pip.py && etc/scripts/build-pyarmored-dist.sh --standalone ${VENV_DIR}"
+fi
+
+# Generate the bundle for macOS
+if [ x$GENERATE_MACOS = x1 ]; then
+    # We assume that we are running on macOS
+    if [ ! -d /Applications ]; then
+        echo "macOS version can only be built on macOS"
+        exit 1
+    fi
+
+    VENV_DIR=".venv"
+
+    rm -rf dist/macos
+    poetry install
+    etc/scripts/build-pyarmored-dist.sh --standalone ${VENV_DIR}
 fi
 
 # Generate the bundle for Windows

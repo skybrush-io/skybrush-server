@@ -17,27 +17,27 @@ reference = "collmot"
 
 [[package]]
 name = "aio-usb-hotplug"
-version = "3.0.1"
+version = "4.0.0"
 description = "Asynchronous generators yielding detected hotplug events on the USB buses"
 category = "main"
 optional = false
 python-versions = ">=3.7,<4.0"
 
 [package.dependencies]
-anyio = ">=2.0.2,<3.0.0"
+anyio = ">=3.0.0,<4.0.0"
 pyudev = {version = ">=0.22.0,<0.23.0", markers = "sys_platform == \"linux\""}
 pyusb = ">=1.1.0,<2.0.0"
 
 [[package]]
 name = "aiocflib"
-version = "1.2.0"
+version = "2.0.0"
 description = "asyncio-based API for Crazyflie drones"
 category = "main"
 optional = false
 python-versions = ">=3.7,<4.0"
 
 [package.dependencies]
-anyio = ">=2.0.0,<3.0.0"
+anyio = ">=3.0.0,<4.0.0"
 colorama = ">=0.4.3,<0.5.0"
 colour = ">=0.1.5,<0.2.0"
 hexdump = ">=3.3,<4.0"
@@ -78,7 +78,7 @@ reference = "collmot"
 
 [[package]]
 name = "anyio"
-version = "2.2.0"
+version = "3.0.1"
 description = "High level compatibility layer for multiple asynchronous event loop implementations"
 category = "main"
 optional = false
@@ -90,7 +90,6 @@ sniffio = ">=1.1"
 typing-extensions = {version = "*", markers = "python_version < \"3.8\""}
 
 [package.extras]
-curio = ["curio (>=1.4)"]
 doc = ["sphinx-rtd-theme", "sphinx-autodoc-typehints (>=1.2.0)"]
 test = ["coverage[toml] (>=4.5)", "hypothesis (>=4.0)", "pytest (>=6.0)", "trustme", "uvloop (<0.15)", "uvloop (>=0.15)"]
 trio = ["trio (>=0.16)"]
@@ -912,7 +911,7 @@ reference = "collmot"
 
 [[package]]
 name = "mido"
-version = "1.2.9"
+version = "1.2.10"
 description = "MIDI Objects for Python"
 category = "main"
 optional = false
@@ -1972,7 +1971,7 @@ reference = "collmot"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7"
-content-hash = "171931b5b1b145fe947706f71d40be962dccc41ce3320bcb1c1020d4b783e685"
+content-hash = "0f1dcd9df0013318db2fb9ee96fc2d82455ad6497886d51260edd55e6e41283c"
 
 [metadata.files]
 adrenaline = [
@@ -1980,12 +1979,12 @@ adrenaline = [
     {file = "adrenaline-0.2.0.tar.gz", hash = "sha256:07e818e8476082d38ced1050416fefd12ecfe7e3761861043d5c1ef75300a0cb"},
 ]
 aio-usb-hotplug = [
-    {file = "aio-usb-hotplug-3.0.1.tar.gz", hash = "sha256:e3ed19ed451ef65b4df7628f726b2f0747f7eea98ff4e1e7ee6776505223a070"},
-    {file = "aio_usb_hotplug-3.0.1-py3-none-any.whl", hash = "sha256:59ad7f835776be016b62f2e0eddab82b89b92dee5322e4983b0293375ba65ce0"},
+    {file = "aio-usb-hotplug-4.0.0.tar.gz", hash = "sha256:e36e08499c2c240d9725ef84528b50da0c0565c4a9c256264d47f898e3dd3335"},
+    {file = "aio_usb_hotplug-4.0.0-py3-none-any.whl", hash = "sha256:f8c930253c8eab601eab87723a415c32bd1423ab195da2d6242d83c3eda86e76"},
 ]
 aiocflib = [
-    {file = "aiocflib-1.2.0-py3-none-any.whl", hash = "md5:067b0d90c300ef2ebb20382f8045b12b"},
-    {file = "aiocflib-1.2.0.tar.gz", hash = "md5:7aa541fc040677eafabd58fc658098dc"},
+    {file = "aiocflib-2.0.0-py3-none-any.whl", hash = "md5:387194c2a9d9fcf64c6537b5bd465723"},
+    {file = "aiocflib-2.0.0.tar.gz", hash = "md5:b8f218a0e98e3c957c0053cec6c7acbe"},
 ]
 aiofiles = [
     {file = "aiofiles-0.6.0-py3-none-any.whl", hash = "sha256:bd3019af67f83b739f8e4053c6c0512a7f545b9a8d91aaeab55e6e0f9d123c27"},
@@ -1996,8 +1995,8 @@ altgraph = [
     {file = "altgraph-0.17.tar.gz", hash = "sha256:1f05a47122542f97028caf78775a095fbe6a2699b5089de8477eb583167d69aa"},
 ]
 anyio = [
-    {file = "anyio-2.2.0-py3-none-any.whl", hash = "sha256:aa3da546ed17f097ca876c78024dea380a3b7fa80759abfdda59f12176a3dac8"},
-    {file = "anyio-2.2.0.tar.gz", hash = "sha256:4a41c5b3a65ed92e469d51b6fba3779301850ea2e352afcf9e36c46f21ee14a9"},
+    {file = "anyio-3.0.1-py3-none-any.whl", hash = "sha256:ed71f7542ef39875b65def219794d9dcb0a48c571317b13612c12b1f292701b5"},
+    {file = "anyio-3.0.1.tar.gz", hash = "sha256:1ef7622396ab55829d4236a6f75e2199df6d26a4ba79bea0cb942a5fd2f79a23"},
 ]
 appdirs = [
     {file = "appdirs-1.4.4-py2.py3-none-any.whl", hash = "sha256:a841dacd6b99318a741b166adb07e19ee71a274450e68237b4650ca1055ab128"},
@@ -2302,8 +2301,8 @@ memoized = [
     {file = "memoized-0.3.tar.gz", hash = "sha256:cdce8bacc6941a64f9a825067602c13810cfd9b84efaaf024c400ef6e7d378d8"},
 ]
 mido = [
-    {file = "mido-1.2.9-py2.py3-none-any.whl", hash = "sha256:fc6364efa028c8405166f63e6a83cbc6c17aaeac2c28680abe64ae48703a89dd"},
-    {file = "mido-1.2.9.tar.gz", hash = "sha256:c4a7d5528fefa3d3dcaa2056d4bc873e2c96a395658d15af5a89c8c3fa7c7acc"},
+    {file = "mido-1.2.10-py2.py3-none-any.whl", hash = "sha256:0e618232063e0a220249da4961563c7636fea00096cfb3e2b87a4231f0ac1a9e"},
+    {file = "mido-1.2.10.tar.gz", hash = "sha256:17b38a8e4594497b850ec6e78b848eac3661706bfc49d484a36d91335a373499"},
 ]
 more-itertools = [
     {file = "more-itertools-8.7.0.tar.gz", hash = "sha256:c5d6da9ca3ff65220c3bfd2a8db06d698f05d4d2b9be57e1deb2be5a45019713"},

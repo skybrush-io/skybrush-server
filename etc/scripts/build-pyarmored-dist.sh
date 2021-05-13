@@ -135,7 +135,7 @@ if [ $STANDALONE = 1 ]; then
   mv "${BUILD_DIR}/doc" "${BUILD_DIR}/staging/doc"
 
   # TODO(ntamas): create separate bundles for indoor and outdoor
-  cp etc/deployment/configs/skybrush-indoor.jsonc "${BUILD_DIR}/staging/skybrush.jsonc"
+  cp etc/deployment/configs/skybrush-outdoor.jsonc "${BUILD_DIR}/staging/skybrush.jsonc"
   cp etc/deployment/linux/skybrushd "${BUILD_DIR}/staging/bin/skybrushd"
   chmod a+x "${BUILD_DIR}/staging/bin/skybrushd"
 else

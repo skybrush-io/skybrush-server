@@ -62,11 +62,13 @@ if [ x$GENERATE_MACOS = x1 ]; then
 
     rm -rf dist/macos
     poetry install
-    etc/scripts/build-pyarmored-dist.sh --standalone ${VENV_DIR}
+    etc/scripts/build-pyarmored-dist.sh --standalone --keep-staging --no-tarball ${VENV_DIR}
+    etc/deployment/darwin-x64/build.sh build/pyarmor/staging 1.8.0
+    rm -rf build/pyarmor/staging
 fi
 
 # Generate the bundle for Windows
 if [ x$GENERATE_WINDOWS = x1 ]; then
     rm -rf dist/windows
-    etc/scripts/_build-nsis-installer.sh
+    etc/deployment/nsis/build-nsis-installer.sh
 fi

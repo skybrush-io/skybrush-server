@@ -17,15 +17,24 @@ set -e
 SCRIPT_ROOT=`dirname $0`
 REPO_ROOT="${SCRIPT_ROOT}/../.."
 STANDALONE=0
+KEEP_STAGING_FOLDER=0
+BUILD_TARBALL=1
 
-if [ "x$1" = "x--standalone" ]; then
-  STANDALONE=1
-  shift
-fi
-
-if [ "x$1" != x ]; then
-  VENV_DIR="$1"
-fi
+while [ "x$1" != x ]; do
+  if [ "x$1" = "x--standalone" ]; then
+    STANDALONE=1
+    shift
+  elif [ "x$1" = "x--keep-staging" ]; then
+    KEEP_STAGING_FOLDER=1
+    shift
+  elif [ "x$1" = "x--no-tarball" ]; then
+    BUILD_TARBALL=0
+    shift
+  else
+    VENV_DIR="$1"
+    shift
+  fi
+done
 
 cd "${REPO_ROOT}"
 
@@ -153,16 +162,27 @@ else
 fi
 
 # Create a tarball
-TARBALL_STEM="${TARBALL_NAME}-${VERSION}"
-rm -rf "${TMP_DIR}/${TARBALL_STEM}"
-mkdir -p "${TMP_DIR}/${TARBALL_STEM}"
-mkdir -p "${OUTPUT_DIR}"
-mv ${BUILD_DIR}/staging/* "${TMP_DIR}/${TARBALL_STEM}"
-$TAR -C "${TMP_DIR}" --owner=0 --group=0 --exclude "__pycache__" -czf "${OUTPUT_DIR}/${TARBALL_STEM}.tar.gz" "${TARBALL_STEM}/"
-rm -rf "${TMP_DIR}/${TARBALL_STEM}"
-rm -rf "${BUILD_DIR}/staging"
+if [ "x$BUILD_TARBALL" = x1 ]; then
+  TARBALL_STEM="${TARBALL_NAME}-${VERSION}"
+  rm -rf "${TMP_DIR}/${TARBALL_STEM}"
+  mkdir -p "${TMP_DIR}/${TARBALL_STEM}"
+  mkdir -p "${OUTPUT_DIR}"
+  mv ${BUILD_DIR}/staging/* "${TMP_DIR}/${TARBALL_STEM}"
+  $TAR -C "${TMP_DIR}" --owner=0 --group=0 --exclude "__pycache__" -czf "${OUTPUT_DIR}/${TARBALL_STEM}.tar.gz" "${TARBALL_STEM}/"
+  rm -rf "${TMP_DIR}/${TARBALL_STEM}"
+fi
+
+# Remove staging folder
+if [ "x$KEEP_STAGING_FOLDER" = x0 ]; then
+  rm -rf "${BUILD_DIR}/staging"
+fi
 
 echo ""
 echo "------------------------------------------------------------------------"
 echo ""
-echo "Obfuscated bundle created successfully in ${OUTPUT_DIR}/${TARBALL_STEM}.tar.gz"
+if [ "x$BUILD_TARBALL" = x1 ]; then
+  echo "Obfuscated bundle created successfully in ${OUTPUT_DIR}/${TARBALL_STEM}.tar.gz"
+fi
+if [ "x$KEEP_STAGING_FOLDER" = x1 ]; then
+  echo "Staging folder was kept at ${BUILD_DIR}/staging"
+fi

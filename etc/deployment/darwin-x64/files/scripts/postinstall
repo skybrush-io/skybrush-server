@@ -1,0 +1,40 @@
+#!/bin/bash
+
+# Installation root
+INSTALL_ROOT=/usr/local
+
+# Parameters
+PRODUCT_HOME=${INSTALL_ROOT}/opt/__PRODUCT__
+PRODUCT_VERSIONED_HOME=${PRODUCT_HOME}/__VERSION__
+LAUNCHER=${INSTALL_ROOT}/bin/__LAUNCHER__
+
+# Path of the application executable relative to PRODUCT_VERSIONED_HOME
+APPLICATION_FILE_PATH=bin/__LAUNCHER__
+
+# Ensure that the app is executable
+chmod 0755 ${PRODUCT_VERSIONED_HOME}/${APPLICATION_FILE_PATH}
+
+# Add application shortcut to /usr/local/bin
+[ -d ${INSTALL_ROOT} ] || mkdir -p ${INSTALL_ROOT}
+if [ -e ${LAUNCHER} -a ! -L ${LAUNCHER} ]; then
+  rm -f ${LAUNCHER}
+fi
+if [ ! -e ${LAUNCHER} ]; then
+  ln -s ${PRODUCT_HOME}/current/${APPLICATION_FILE_PATH} ${LAUNCHER}
+fi
+
+cd ${PRODUCT_HOME}
+
+# If there is a "current" folder and it has a license file or a config file,
+# copy these over to the new version
+if [ -d current ]; then
+  [ -e current/skybrushd.cml ] && cp current/skybrushd.cml __VERSION__/
+  [ -e current/skybrush.jsonc ] && (
+    mv __VERSION__/skybrush.jsonc __VERSION__/skybrush-config-template.jsonc &&
+    cp current/skybrush.jsonc __VERSION__/
+  )
+fi
+
+# Update "current" symlink to newly installed version
+rm -f current
+ln -s __VERSION__ current

@@ -1,6 +1,11 @@
 #!/bin/bash
 
-SCRIPT_ROOT=`dirname $0`
+# TODO(ntamas): if $0 is a symlink, resolve where it points to
+SCRIPT_PATH="$0"
+if [ -L "${SCRIPT_PATH}" ]; then
+  SCRIPT_PATH=`readlink "${SCRIPT_PATH}"`
+fi
+SCRIPT_ROOT=`dirname "${SCRIPT_PATH}"`
 
 cd "${SCRIPT_ROOT}/.."
 SCRIPT_ROOT=`pwd`
@@ -18,4 +23,3 @@ export PYARMOR_LICENSE
 
 chmod a+x lib/skybrushd
 exec lib/skybrushd "$@"
-

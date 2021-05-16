@@ -126,6 +126,21 @@ copyBuildDirectory() {
     # chmod -R 755 ${TARGET_DIRECTORY}/pkg
 }
 
+function addIconsInApplicationsFolder() {
+    mkdir -p "${TARGET_DIRECTORY}/darwinpkg/Applications/${PRODUCT_DISPLAY_NAME}"
+    cat >"${TARGET_DIRECTORY}/darwinpkg/Applications/${PRODUCT_DISPLAY_NAME}/${PRODUCT_DISPLAY_NAME}.command" <<EOF
+#/bin/sh
+clear
+/usr/local/opt/${PRODUCT}/current/bin/${LAUNCHER}
+EOF
+    cat >"${TARGET_DIRECTORY}/darwinpkg/Applications/${PRODUCT_DISPLAY_NAME}/Uninstall ${PRODUCT_DISPLAY_NAME}.command" <<EOF
+#/bin/sh
+clear
+/usr/local/opt/${PRODUCT}/current/bin/uninstall.sh
+EOF
+    chmod a+x "${TARGET_DIRECTORY}/darwinpkg/Applications/${PRODUCT_DISPLAY_NAME}"/*.command
+}
+
 function buildPackage() {
     log_info "Application installer package building started. (1/3)"
     pkgbuild --identifier com.collmot.${PRODUCT}.${VERSION} \
@@ -188,6 +203,7 @@ log_info "macOS installer generation started."
 
 copyFilesDirectory
 copyBuildDirectory
+addIconsInApplicationsFolder
 createUninstaller
 createInstaller
 

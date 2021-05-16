@@ -86,7 +86,7 @@ else
   rm -rf "${PRODUCT_HOME}"
 
   # Remove link to shortcut file
-  rm -f "${LAUNCHER}" > /dev/null 2>&1
+  rm -rf "${LAUNCHER}" "/Applications/__PRODUCT_DISPLAY_NAME__" > /dev/null 2>&1
   if [ $? -eq 0 ]
   then
     echo "[3/3] [DONE] Successfully deleted launcher script"

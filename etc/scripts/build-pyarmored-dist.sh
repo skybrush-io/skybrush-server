@@ -145,6 +145,7 @@ if [ $STANDALONE = 1 ]; then
 
   # TODO(ntamas): create separate bundles for indoor and outdoor
   cp etc/deployment/configs/skybrush-outdoor.jsonc "${BUILD_DIR}/staging/skybrush.jsonc"
+  cp etc/deployment/configs/skybrush-outdoor.jsonc "${BUILD_DIR}/staging/skybrush-config-template.jsonc"
   cp etc/deployment/linux/skybrushd "${BUILD_DIR}/staging/bin/skybrushd"
   chmod a+x "${BUILD_DIR}/staging/bin/skybrushd"
 else
@@ -160,6 +161,9 @@ else
   mkdir -p "${BUILD_DIR}/staging"
   mv "${BUILD_DIR}/bin" "${BUILD_DIR}/lib" "${BUILD_DIR}/staging"
 fi
+
+# Add version file
+echo "${VERSION}" >"${BUILD_DIR}/staging/VERSION"
 
 # Create a tarball
 if [ "x$BUILD_TARBALL" = x1 ]; then

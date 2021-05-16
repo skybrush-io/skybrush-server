@@ -29,10 +29,7 @@ cd ${PRODUCT_HOME}
 # copy these over to the new version
 if [ -d current ]; then
   [ -e current/skybrushd.cml ] && cp current/skybrushd.cml __VERSION__/
-  [ -e current/skybrush.jsonc ] && (
-    mv __VERSION__/skybrush.jsonc __VERSION__/skybrush-config-template.jsonc &&
-    cp current/skybrush.jsonc __VERSION__/
-  )
+  [ -e current/skybrush.jsonc ] && cp current/skybrush.jsonc __VERSION__/
 fi
 
 # Update "current" symlink to newly installed version

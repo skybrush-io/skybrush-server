@@ -4,7 +4,7 @@ Skybrush-related trajectories, until we find a better place for them.
 
 from dataclasses import dataclass
 from math import ceil
-from typing import Dict, Generator, Optional, Tuple
+from typing import Dict, Generator, List, Optional, Tuple
 
 from flockwave.gps.vectors import FlatEarthToGPSCoordinateTransformation
 
@@ -25,7 +25,7 @@ class TrajectorySegment:
 
     t: float
     duration: float
-    points: Point
+    points: List[Point]
 
     @property
     def has_control_points(self) -> bool:
@@ -156,7 +156,7 @@ class TrajectorySpecification:
         prev_t, start = None, None
         for point in points:
             t, point, control = point
-            if start is None:
+            if prev_t is None:
                 # This is the first keyframe so we simply make sure that there
                 # are no control points
                 if control:
@@ -176,9 +176,8 @@ class TrajectorySpecification:
                         f"segment too long: {dt} seconds, allowed max is 65.5"
                     )
 
-                yield TrajectorySegment(
-                    t=prev_t, duration=dt, points=(start, *control, point)
-                )
+                points = [start, *control, point]  # type: ignore
+                yield TrajectorySegment(t=prev_t, duration=dt, points=points)
 
             prev_t = t
             start = point
@@ -214,8 +213,8 @@ def get_home_position_from_show_specification(
     """
     home = show.get("home")
     if home and len(home) == 3:
-        home = [float(x) for x in home]
-        return home
+        home = tuple(float(x) for x in home)
+        return home  # type: ignore
     else:
         return None
 

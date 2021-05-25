@@ -148,7 +148,7 @@ def generate_mission_file_from_show_specification(show) -> bytes:
 
     altitude_reference = get_altitude_reference_from_show_specification(show)
     light_program = get_light_program_from_show_specification(show)
-    # trajectory = get_trajectory_from_show_specification(show)
+    trajectory = get_trajectory_from_show_specification(show)
     geofence = get_geofence_configuration_from_show_specification(show)
     trans = get_coordinate_system_from_show_specification(show)
 
@@ -176,32 +176,41 @@ def generate_mission_file_from_show_specification(show) -> bytes:
         display_name = ""
 
     # parse trajectory
-    if "trajectory" in show:
-        trajectory = show["trajectory"]
-        takeoff_time = trajectory["takeoffTime"]
-        points = trajectory["points"]
-    else:
+    if not trajectory:
         raise RuntimeError("No trajectory in show specification")
 
-    # convert all points in trajectory to NEU coordinates
-    points = [
-        (t, to_neu(point), map(to_neu, control_points))
-        for t, point, control_points in points
-    ]
-
     # create waypoints
+    first = True
     last_t = 0
+    takeoff_time = trajectory.takeoff_time
     waypoints = []
-    for t, point, _ in points:
-        # add takeoff time to waypoints
-        t += takeoff_time
+    vxy = (8,)  # TODO: get from show
+    vz = (2.9,)  # TODO: get from show
+
+    for segment in trajectory.iter_segments():
+        if segment.has_control_points:
+            raise ValueError("control points are not implemented yet")
+
+        if first:
+            t = segment.start_time + takeoff_time
+            point = to_neu(segment.start)
+            waypoints.append(
+                "waypoint={x} {y} {z} {vxy} {vz} T{t} 6".format(
+                    x=point[0], y=point[1], z=point[2], vxy=vxy, vz=vz, t=t - last_t
+                )
+            )
+            last_t = t
+            first = False
+
+        point = to_neu(segment.end)
+        t = segment.end_time + takeoff_time
         waypoints.append(
             "waypoint={x} {y} {z} {vxy} {vz} T{t} 6".format(
                 x=point[0],
                 y=point[1],
                 z=point[2],
-                vxy=8,  # TODO: get from show
-                vz=2.9,  # TODO: get from show
+                vxy=vxy,
+                vz=vz,
                 t=t - last_t,
             )
         )

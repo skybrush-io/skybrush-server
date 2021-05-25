@@ -4,7 +4,7 @@ Skybrush-related trajectories, until we find a better place for them.
 
 from dataclasses import dataclass
 from math import ceil
-from typing import Dict, Generator, List, Optional, Tuple
+from typing import Dict, Iterable, List, Optional, Tuple
 
 from flockwave.gps.vectors import FlatEarthToGPSCoordinateTransformation
 
@@ -41,6 +41,16 @@ class TrajectorySegment:
     def end(self) -> Point:
         """Returns the end point of the segment."""
         return self.points[-1]
+
+    @property
+    def start_time(self) -> float:
+        """Returns the start time of the segment."""
+        return self.t
+
+    @property
+    def end_time(self) -> float:
+        """Returns the end time of the segment."""
+        return self.t + self.duration
 
 
 class TrajectorySpecification:
@@ -128,27 +138,7 @@ class TrajectorySpecification:
         """Returns the takeoff time of the drone within the show, in seconds."""
         return float(self._data.get("takeoffTime", 0.0))
 
-    def propose_scaling_factor(self) -> float:
-        """Proposes a scaling factor to use in a Skybrush binary show file when
-        storing the trajectory.
-        """
-        if self.is_empty:
-            return 1.0
-
-        mins, maxs = self.bounding_box
-
-        coords = []
-        coords.extend(abs(x) for x in mins)
-        coords.extend(abs(x) for x in maxs)
-        extremum = ceil(max(coords) * 1000)
-
-        # With scale=1, we can fit values from 0 to 32767 into the binary show
-        # file, so we basically need to divide (extremum+1) by 32768 and round
-        # up. This gives us scale = 1 for extrema in [0; 32767],
-        # scale = 2 for extrema in [32768; 65535] and so on.
-        return ceil((extremum + 1) / 32768)
-
-    def segments(self) -> Generator[TrajectorySegment, None, None]:
+    def iter_segments(self) -> Iterable[TrajectorySegment]:
         points = self._data.get("points")
         if not points:
             return
@@ -181,6 +171,26 @@ class TrajectorySpecification:
 
             prev_t = t
             start = point
+
+    def propose_scaling_factor(self) -> float:
+        """Proposes a scaling factor to use in a Skybrush binary show file when
+        storing the trajectory.
+        """
+        if self.is_empty:
+            return 1.0
+
+        mins, maxs = self.bounding_box
+
+        coords = []
+        coords.extend(abs(x) for x in mins)
+        coords.extend(abs(x) for x in maxs)
+        extremum = ceil(max(coords) * 1000)
+
+        # With scale=1, we can fit values from 0 to 32767 into the binary show
+        # file, so we basically need to divide (extremum+1) by 32768 and round
+        # up. This gives us scale = 1 for extrema in [0; 32767],
+        # scale = 2 for extrema in [32768; 65535] and so on.
+        return ceil((extremum + 1) / 32768)
 
 
 def get_trajectory_from_show_specification(

@@ -33,10 +33,10 @@ class Poly4D:
     """
 
     duration: float
-    xs: Tuple[float] = (0.0,) * 8
-    ys: Tuple[float] = (0.0,) * 8
-    zs: Tuple[float] = (0.0,) * 8
-    yaws: Tuple[float] = (0.0,) * 8
+    xs: Tuple[float, ...] = (0.0,) * 8
+    ys: Tuple[float, ...] = (0.0,) * 8
+    zs: Tuple[float, ...] = (0.0,) * 8
+    yaws: Tuple[float, ...] = (0.0,) * 8
 
     _float_coords_struct = Struct("<ffffffff")
     _duration_struct = Struct("<f")
@@ -187,7 +187,7 @@ def encode_trajectory(
         result = b"".join(polynomial.encode() for polynomial in polynomials)
     else:
         encoder = SegmentEncoder(scale=1)
-        encoded = encoder.iter_encode_multiple_segments(trajectory.segments())
+        encoded = encoder.iter_encode_multiple_segments(trajectory.iter_segments())
         result = b"".join(encoded) + b"\x00\x00\x00"
 
     return result
@@ -196,7 +196,7 @@ def encode_trajectory(
 def to_poly4d_sequence(trajectory: TrajectorySpecification) -> Sequence[Poly4D]:
     result = []
 
-    for segment in trajectory.segments():
+    for segment in trajectory.iter_segments():
         if segment.has_control_points:
             raise ValueError("control points are not implemented yet")
 

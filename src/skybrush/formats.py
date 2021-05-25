@@ -224,7 +224,7 @@ class SkybrushBinaryShowFile:
         # TODO(ntamas): replace this with SegmentEncoder.encode_multiple_segments()
         # once we have a test case in place for that
         first = True
-        for segment in trajectory.segments():
+        for segment in trajectory.iter_segments():
             if first:
                 # Encode the start point of the trajectory
                 chunks.append(encoder.encode_point(segment.start))

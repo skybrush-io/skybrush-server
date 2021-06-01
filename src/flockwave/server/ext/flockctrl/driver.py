@@ -822,7 +822,7 @@ class FlockCtrlUAV(UAVBase):
         elif component in ["baro", "gyro", "level"]:
             # rest of the components are simply handled as a proper generic calib command
             return await self.driver._send_command_to_uav_and_check_for_errors(
-                "calib {component}", self
+                f"calib {component}", self
             )
         else:
             raise NotSupportedError

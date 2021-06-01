@@ -1,14 +1,19 @@
 fail_fast: true
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v3.4.0
+    rev: v4.0.1
     hooks:
       - id: check-ast
       - id: end-of-file-fixer
       - id: trailing-whitespace
 
   - repo: https://github.com/psf/black
-    rev: 21.4b0
+    rev: 21.5b1
     hooks:
       - id: black
         language_version: python3
+
+  - repo: https://github.com/pycqa/flake8
+    rev: 3.9.2  # pick a git hash / tag to point to
+    hooks:
+      - id: flake8

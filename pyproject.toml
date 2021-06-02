@@ -39,7 +39,7 @@ passlib = {extras = ["bcrypt"], version = "^1.7.2"}
 flockwave-conn = {extras = ["midi", "rpc", "serial"], version = "^2.10.0"}
 flockwave-ext = "^1.5.2"
 flockwave-flockctrl = "^0.15.0"
-flockwave-gps = "^1.4.0"
+flockwave-gps = "^1.4.1"
 flockwave-logger = "^1.6.0"
 flockwave-parsers = "^1.2.0"
 flockwave-spec = "^1.47.0"

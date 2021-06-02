@@ -7,7 +7,7 @@ from bidict import bidict
 from colour import Color
 from time import monotonic
 from trio import CapacityLimiter, to_thread
-from typing import Optional, List, Tuple
+from typing import Optional, List, Tuple, Union
 from zlib import decompress
 
 from flockwave.concurrency import FutureCancelled, FutureMap
@@ -155,7 +155,9 @@ class FlockCtrlDriver(UAVDriver):
         mission = generate_mission_file_from_show_specification(show)
         await self._handle_mission_upload(uav, mission)
 
-    async def handle_command_calib(self, uav, component: Optional[str] = None) -> None:
+    async def handle_command_calib(
+        self, uav, component: Optional[str] = None
+    ) -> Union[bool, str]:
         """Calibrates a component of the UAV."""
         if component == "baro":
             return await uav.calibrate_component("baro")

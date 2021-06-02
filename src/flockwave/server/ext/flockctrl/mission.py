@@ -184,8 +184,8 @@ def generate_mission_file_from_show_specification(show) -> bytes:
     last_t = 0
     takeoff_time = trajectory.takeoff_time
     waypoints = []
-    vxy = (8,)  # TODO: get from show
-    vz = (2.9,)  # TODO: get from show
+    vxy = 8  # TODO: get from show
+    vz = 2.9  # TODO: get from show
 
     for segment in trajectory.iter_segments():
         if segment.has_control_points:

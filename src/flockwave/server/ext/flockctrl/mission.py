@@ -6,7 +6,7 @@ from functools import partial
 from importlib.resources import read_text
 from io import BytesIO
 from math import ceil, hypot
-from typing import Iterable, Tuple
+from typing import Iterable, Optional, Tuple
 from zipfile import ZipFile, ZIP_DEFLATED
 
 from skybrush import (
@@ -163,17 +163,15 @@ def generate_mission_file_from_show_specification(show) -> bytes:
 
     # parse display name of mission
     mission_spec = show.get("mission")
+    display_name: str = ""
+    mission_id: Optional[str] = None
     if mission_spec:
+        mission_id = mission_spec.get("id")
         display_name = str(mission_spec.get("displayName"))
         if not display_name:
-            mission_id = mission_spec.get("id")
             mission_index = mission_spec.get("index")
             if mission_id is not None and mission_index is not None:
                 display_name = f"{mission_id}/{mission_index}"
-            else:
-                display_name = ""
-    else:
-        display_name = ""
 
     # parse trajectory
     if not trajectory:
@@ -235,12 +233,13 @@ def generate_mission_file_from_show_specification(show) -> bytes:
     )
 
     # create geofence (we use only the first one so far)
-    if len(geofence.polygons) != 1 or not geofence.polygons[0].is_inclusion:
+    polygons = geofence.polygons if geofence.polygons is not None else []
+    if len(polygons) != 1 or not polygons[0].is_inclusion:
         raise RuntimeError(
             "Exactly one inclusive geofence polygon can be handled so far"
         )
     geofence_lines = ["[show]"]
-    for point in geofence.polygons[0].points:
+    for point in polygons[0].points:
         geofence_lines.append(f"zone={point.lat} {point.lon}")
     geofence_str = "\n".join(geofence_lines)
 
@@ -275,7 +274,7 @@ def generate_mission_file_from_show_specification(show) -> bytes:
         zip_archive.writestr("mission.cfg", mission_str)
         zip_archive.writestr("light_show.bin", light_program)
         zip_archive.writestr("_meta/version", "1")
-        zip_archive.writestr("_meta/name", show.get("name", "drone-show"))
+        zip_archive.writestr("_meta/name", mission_id or "mission")
         zip_archive.close()
 
     return buffer.getvalue()

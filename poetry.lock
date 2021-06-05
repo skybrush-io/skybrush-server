@@ -336,8 +336,8 @@ reference = "collmot"
 
 [[package]]
 name = "colorlog"
-version = "4.8.0"
-description = "Log formatting with colors!"
+version = "5.0.1"
+description = "Add colours to the output of Python's logging module."
 category = "main"
 optional = false
 python-versions = "*"
@@ -556,7 +556,7 @@ reference = "collmot"
 
 [[package]]
 name = "flockwave-logger"
-version = "1.6.0"
+version = "1.7.0"
 description = "Basic colored logger for Skybrush server and related projects"
 category = "main"
 optional = false
@@ -564,7 +564,7 @@ python-versions = ">=3.7,<4.0"
 
 [package.dependencies]
 colorama = {version = ">=0.4.3,<0.5.0", markers = "os_name == \"nt\""}
-colorlog = ">=4.1.0,<5.0.0"
+colorlog = ">=5.0.1,<6.0.0"
 hexdump = ">=3.3,<4.0"
 python-json-logger = ">=2.0.1,<3.0.0"
 
@@ -744,7 +744,7 @@ reference = "collmot"
 
 [[package]]
 name = "importlib-metadata"
-version = "4.4.0"
+version = "4.5.0"
 description = "Read metadata from Python packages"
 category = "main"
 optional = false
@@ -1948,7 +1948,7 @@ reference = "collmot"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7"
-content-hash = "5a61bf9a342b35e83e55125a6d5a6bc808363c9a69363a803c04964f1fd87068"
+content-hash = "27f66ab65c98cf5eebbb20b791e6f55bc6a47c4afffee6328e738b3e31c85174"
 
 [metadata.files]
 adrenaline = [
@@ -2085,8 +2085,8 @@ colorama = [
     {file = "colorama-0.4.4.tar.gz", hash = "sha256:5941b2b48a20143d2267e95b1c2a7603ce057ee39fd88e7329b0c292aa16869b"},
 ]
 colorlog = [
-    {file = "colorlog-4.8.0-py2.py3-none-any.whl", hash = "sha256:3dd15cb27e8119a24c1a7b5c93f9f3b455855e0f73993b1c25921b2f646f1dcd"},
-    {file = "colorlog-4.8.0.tar.gz", hash = "sha256:59b53160c60902c405cdec28d38356e09d40686659048893e026ecbd589516b1"},
+    {file = "colorlog-5.0.1-py2.py3-none-any.whl", hash = "sha256:4e6be13d9169254e2ded6526a6a4a1abb8ac564f2fa65b310a98e4ca5bea2c04"},
+    {file = "colorlog-5.0.1.tar.gz", hash = "sha256:f17c013a06962b02f4449ee07cfdbe6b287df29efc2c9a1515b4a376f4e588ea"},
 ]
 colour = [
     {file = "colour-0.1.5-py2.py3-none-any.whl", hash = "sha256:33f6db9d564fadc16e59921a56999b79571160ce09916303d35346dddc17978c"},
@@ -2141,8 +2141,8 @@ flockwave-gps = [
     {file = "flockwave_gps-1.4.1-py3-none-any.whl", hash = "md5:98ad77afa45f38ffda9834005fdeb461"},
 ]
 flockwave-logger = [
-    {file = "flockwave-logger-1.6.0.tar.gz", hash = "md5:bb0a084006e49ef54653efcaced72834"},
-    {file = "flockwave_logger-1.6.0-py3-none-any.whl", hash = "md5:b0b29ffa6c2c0f2306ca499521f5640d"},
+    {file = "flockwave-logger-1.7.0.tar.gz", hash = "md5:e9917e5f0e9a82defe7d7b7ce10bd01a"},
+    {file = "flockwave_logger-1.7.0-py3-none-any.whl", hash = "md5:cbd9fd69eacf6c00b2454a2bd9bbc5a5"},
 ]
 flockwave-parsers = [
     {file = "flockwave-parsers-1.2.0.tar.gz", hash = "md5:9c5fae8990f5b6612cb9776753f24d03"},
@@ -2187,8 +2187,8 @@ ifaddr = [
     {file = "ifaddr-0.1.7.tar.gz", hash = "sha256:1f9e8a6ca6f16db5a37d3356f07b6e52344f6f9f7e806d618537731669eb1a94"},
 ]
 importlib-metadata = [
-    {file = "importlib_metadata-4.4.0-py3-none-any.whl", hash = "sha256:960d52ba7c21377c990412aca380bf3642d734c2eaab78a2c39319f67c6a5786"},
-    {file = "importlib_metadata-4.4.0.tar.gz", hash = "sha256:e592faad8de1bda9fe920cf41e15261e7131bcf266c30306eec00e8e225c1dd5"},
+    {file = "importlib_metadata-4.5.0-py3-none-any.whl", hash = "sha256:833b26fb89d5de469b24a390e9df088d4e52e4ba33b01dc5e0e4f41b81a16c00"},
+    {file = "importlib_metadata-4.5.0.tar.gz", hash = "sha256:b142cc1dd1342f31ff04bb7d022492b09920cb64fed867cd3ea6f80fe3ebd139"},
 ]
 itsdangerous = [
     {file = "itsdangerous-2.0.1-py3-none-any.whl", hash = "sha256:5174094b9637652bdb841a3029700391451bd092ba3db90600dea710ba28e97c"},

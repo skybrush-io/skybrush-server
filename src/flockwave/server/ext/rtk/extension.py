@@ -46,7 +46,7 @@ class RTKExtension(ExtensionBase):
         self._registry = None
         self._running_tasks = {}
         self._rtk_preset_task_cancel_scope = None
-        self._rtk_survey_trigger = None
+        self._rtk_survey_trigger: Optional[AsyncBool] = None
         self._statistics = RTKStatistics()
         self._survey_settings = SurveySettings()
         self._tx_queue = None
@@ -349,7 +349,10 @@ class RTKExtension(ExtensionBase):
                         extra={"semantics": "success"},
                     )
                 else:
-                    self.log.error(f"Failed to start survey for {preset.title!r}")
+                    self.log.error(
+                        f"Failed to start survey for {preset.title!r}",
+                        extra={"sentry_ignore": True},
+                    )
 
     async def _run_connections_for_preset(
         self, preset: RTKConfigurationPreset, *, task_status

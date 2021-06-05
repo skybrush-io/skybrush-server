@@ -56,7 +56,9 @@ class Scheduler:
         async for item in self._run(addresses):
             yield item
 
-    async def _run(addresses: AddressListGetter) -> AsyncIterable[Optional[List[str]]]:
+    async def _run(
+        self, addresses: AddressListGetter
+    ) -> AsyncIterable[Optional[List[str]]]:
         raise NotImplementedError
 
 
@@ -275,10 +277,22 @@ class CrazyradioScannerTask:
 
         try:
             await self._run(channel)
-        except Exception:
-            if self._log:
-                self._log.error(f"Task scanning {address_space} stopped unexpectedly.")
-            raise
+        except Exception as ex:
+            if "may have been disconnected" in str(ex):
+                # libusb indicates that the radio may have been disconnected.
+                # This is something worth logging but not worth sending to
+                # Sentry.
+                if self._log:
+                    self._log.error(
+                        f"Crazyradio scanning {address_space} was probably unplugged.",
+                        extra={"sentry_ignore": True},
+                    )
+            else:
+                if self._log:
+                    self._log.error(
+                        f"Task scanning {address_space} stopped unexpectedly."
+                    )
+                raise
 
     async def _run(self, channel: MemorySendChannel) -> None:
         self._excluded = set()

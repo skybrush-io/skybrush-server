@@ -163,7 +163,7 @@ class TrajectorySpecification:
                     raise ValueError(f"time should not stand still at t = {t}")
                 elif dt > max_length:
                     raise ValueError(
-                        f"segment too long: {dt} seconds, allowed max is {max_length}"
+                        f"segment starting at t = {t} is too long: {dt} seconds, allowed max is {max_length}"
                     )
 
                 points = [start, *control, point]  # type: ignore

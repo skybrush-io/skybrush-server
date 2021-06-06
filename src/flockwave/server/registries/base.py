@@ -143,7 +143,7 @@ class RegistryBase(Generic[T], Registry[T]):
 
 
 def find_in_registry(
-    registry: Registry[T],
+    registry: Optional[Registry[T]],
     entry_id: str,
     *,
     predicate: Optional[Callable[[T], bool]] = None,
@@ -156,7 +156,8 @@ def find_in_registry(
 
     Parameters:
         entry_id: the ID of the entry to find
-        registry: the registry in which to find the entry
+        registry: the registry in which to find the entry; `None` is accepted
+            and it is assumed to be an empty registry
         predicate: optional predicate to call for the entry if it was found;
             if the predicate returns `False`, we pretend that the entry does not
             exist.
@@ -166,15 +167,19 @@ def find_in_registry(
 
     Returns:
         the entry from the registry with the given ID or ``None`` if there is
-        no such entry
+        no such entry (or if the registry itself was ``None``)
     """
-    try:
-        entry = registry.find_by_id(entry_id)
-        exists = True
-    except KeyError:
-        exists = False
+    entry = None
+    exists = False
 
-    exists = exists and (not predicate or predicate(entry))
+    if registry:
+        try:
+            entry = registry.find_by_id(entry_id)
+            exists = True
+        except KeyError:
+            exists = False
+
+        exists = exists and (not predicate or predicate(entry))
 
     if not exists:
         if hasattr(response, "add_error"):

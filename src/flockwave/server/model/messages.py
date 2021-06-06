@@ -15,14 +15,16 @@ __all__ = ("FlockwaveMessage", "FlockwaveNotification", "FlockwaveResponse")
 class FlockwaveMessage(metaclass=ModelMeta):
     """Class representing a single Flockwave message."""
 
+    body: Any
+
     class __meta__:
         schema = get_message_schema()
 
     @staticmethod
-    def is_experimental(message: dict) -> str:
+    def is_experimental(message: dict) -> bool:
         """Returns whether the given raw JSON representation of a Flockwave
         message contains an experimental message type for which no validation
-        schema exusts.
+        schema exists.
         """
         body = message.get("body")
         type = body.get("type") if isinstance(body, dict) else None

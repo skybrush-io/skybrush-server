@@ -3,6 +3,9 @@ from typing import Any, Dict, Iterable, Optional
 __all__ = ("describe_serial_port", "list_serial_ports")
 
 
+#: Type specification for dict-style serial port configurations
+SerialPortConfiguration = Dict[str, Any]
+
 #: Type specification for a generic serial port descriptor returned from
 #: `list_serial_ports()`
 SerialPortDescriptor = Any
@@ -33,7 +36,7 @@ def describe_serial_port(
 
 
 def describe_serial_port_configuration(
-    config: Dict[str, Any], only: Optional[Iterable[str]] = None
+    config: SerialPortConfiguration, only: Optional[Iterable[str]] = None
 ) -> str:
     """Returns a human-readable description of the given serial port configuration
     object. The object must have the same keyword arguments as the ones supported

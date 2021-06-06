@@ -7,7 +7,7 @@ from fnmatch import fnmatch
 from functools import partial
 from trio import CancelScope, open_memory_channel, open_nursery, sleep
 from trio_util import AsyncBool
-from typing import Optional
+from typing import List, Optional
 
 from flockwave.channels import ParserChannel
 from flockwave.connections import Connection, create_connection
@@ -18,6 +18,7 @@ from flockwave.server.model.messages import FlockwaveMessage
 from flockwave.server.registries import find_in_registry
 from flockwave.server.utils import overridden
 from flockwave.server.utils.serial import (
+    SerialPortConfiguration,
     describe_serial_port,
     list_serial_ports,
 )
@@ -39,18 +40,18 @@ class RTKExtension(ExtensionBase):
         """Constructor."""
         super().__init__()
 
-        self._current_preset = None
-        self._dynamic_serial_port_configurations = []
+        self._current_preset: Optional[RTKConfigurationPreset] = None
+        self._dynamic_serial_port_configurations: List[SerialPortConfiguration] = []
         self._dynamic_serial_port_filters = []
-        self._presets = []
-        self._registry = None
+        self._presets: List[RTKConfigurationPreset] = []
+        self._registry: Optional[RTKPresetRegistry] = None
         self._running_tasks = {}
         self._rtk_preset_task_cancel_scope = None
         self._rtk_survey_trigger: Optional[AsyncBool] = None
         self._statistics = RTKStatistics()
         self._survey_settings = SurveySettings()
         self._tx_queue = None
-        self._use_high_precision = True
+        self._use_high_precision: bool = True
 
     def configure(self, configuration):
         """Loads the extension."""
@@ -511,7 +512,9 @@ class RTKExtension(ExtensionBase):
                 self.log.info(f"Added new RTK preset {preset.title!r} for serial port")
 
         current_preset = self.current_preset
-        if current_preset and current_preset.id not in self._registry:
+        if current_preset and (
+            not self._registry or current_preset.id not in self._registry
+        ):
             self._request_preset_switch_later(None)
 
     @staticmethod

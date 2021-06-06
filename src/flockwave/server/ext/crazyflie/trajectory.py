@@ -206,9 +206,9 @@ def to_poly4d_sequence(trajectory: TrajectorySpecification) -> Sequence[Poly4D]:
         dx, dy, dz = end[0] - start[0], end[1] - start[1], end[2] - start[2]
         dt = segment.duration
 
-        xs = [start[0], dx / dt, 0, 0, 0, 0, 0, 0]
-        ys = [start[1], dy / dt, 0, 0, 0, 0, 0, 0]
-        zs = [start[2], dz / dt, 0, 0, 0, 0, 0, 0]
+        xs = (start[0], dx / dt, 0, 0, 0, 0, 0, 0)
+        ys = (start[1], dy / dt, 0, 0, 0, 0, 0, 0)
+        zs = (start[2], dz / dt, 0, 0, 0, 0, 0, 0)
 
         result.append(Poly4D(duration=dt, xs=xs, ys=ys, zs=zs))
 

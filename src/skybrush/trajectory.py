@@ -3,7 +3,7 @@ Skybrush-related trajectories, until we find a better place for them.
 """
 
 from dataclasses import dataclass
-from math import ceil
+from math import ceil, inf
 from typing import Dict, Iterable, List, Optional, Tuple
 
 from flockwave.gps.vectors import FlatEarthToGPSCoordinateTransformation
@@ -138,7 +138,7 @@ class TrajectorySpecification:
         """Returns the takeoff time of the drone within the show, in seconds."""
         return float(self._data.get("takeoffTime", 0.0))
 
-    def iter_segments(self) -> Iterable[TrajectorySegment]:
+    def iter_segments(self, max_length: float = inf) -> Iterable[TrajectorySegment]:
         points = self._data.get("points")
         if not points:
             return
@@ -161,9 +161,9 @@ class TrajectorySpecification:
                     raise ValueError(f"time should not move backwards at t = {t}")
                 elif dt == 0:
                     raise ValueError(f"time should not stand still at t = {t}")
-                elif dt > 65.5:
+                elif dt > max_length:
                     raise ValueError(
-                        f"segment too long: {dt} seconds, allowed max is 65.5"
+                        f"segment too long: {dt} seconds, allowed max is {max_length}"
                     )
 
                 points = [start, *control, point]  # type: ignore
@@ -172,12 +172,12 @@ class TrajectorySpecification:
             prev_t = t
             start = point
 
-    def propose_scaling_factor(self) -> float:
+    def propose_scaling_factor(self) -> int:
         """Proposes a scaling factor to use in a Skybrush binary show file when
         storing the trajectory.
         """
         if self.is_empty:
-            return 1.0
+            return 1
 
         mins, maxs = self.bounding_box
 

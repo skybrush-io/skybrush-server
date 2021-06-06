@@ -6,7 +6,7 @@ from functools import partial
 from importlib.resources import read_text
 from io import BytesIO
 from math import ceil, hypot
-from typing import Iterable, Optional, Tuple
+from typing import Callable, Iterable, Optional, Sequence, Tuple
 from zipfile import ZipFile, ZIP_DEFLATED
 
 from skybrush import (
@@ -29,7 +29,7 @@ XYZ = Tuple[float, float, float]
 #: Type specification for a trajectory consisting of a sequence of
 #: timestamps, the corresponding waypoints and the corresponding auxiliary
 #: Bexier control points
-Trajectory = Tuple[float, XYZ, Iterable[XYZ]]
+Trajectory = Sequence[Tuple[float, XYZ, Iterable[XYZ]]]
 
 
 def get_template(name: str, *, encoding: str = "utf-8", errors: str = "strict") -> str:
@@ -131,7 +131,7 @@ def generate_mission_file_from_show_specification(show) -> bytes:
 
     # TODO: move this to a proper place, I do not know where...
     # TODO: generalize all conversions in flockwave.gps.vectors
-    def to_neu(pos, type_string):
+    def to_neu_from(pos: XYZ, type_string: str) -> XYZ:
         """Convert a flat earth coordinate to 'neu' type."""
         if type_string == "neu":
             pos_neu = (pos[0], pos[1], pos[2])
@@ -153,7 +153,7 @@ def generate_mission_file_from_show_specification(show) -> bytes:
     trans = get_coordinate_system_from_show_specification(show)
 
     # pin down to_neu to the transformation type
-    to_neu = partial(to_neu, type_string=trans.type)
+    to_neu: Callable[[XYZ], XYZ] = partial(to_neu_from, type_string=trans.type)
 
     # parse home coordinate
     if "home" in show:
@@ -185,34 +185,30 @@ def generate_mission_file_from_show_specification(show) -> bytes:
     vxy = 8  # TODO: get from show
     vz = 2.9  # TODO: get from show
 
+    def append(point: XYZ, dt: float) -> float:
+        point = to_neu(point)
+        dt = round(dt, 3)
+        waypoints.append(
+            "waypoint={x} {y} {z} {vxy} {vz} T{dt} 6".format(
+                x=point[0], y=point[1], z=point[2], vxy=vxy, vz=vz, dt=dt
+            )
+        )
+
+        # This mechanism is needed to prevent the accumulation of roundoff
+        # errors
+        return dt
+
     for segment in trajectory.iter_segments():
         if segment.has_control_points:
             raise ValueError("control points are not implemented yet")
 
         if first:
             t = segment.start_time + takeoff_time
-            point = to_neu(segment.start)
-            waypoints.append(
-                "waypoint={x} {y} {z} {vxy} {vz} T{t} 6".format(
-                    x=point[0], y=point[1], z=point[2], vxy=vxy, vz=vz, t=t - last_t
-                )
-            )
-            last_t = t
+            last_t += append(segment.start, dt=t - last_t)
             first = False
 
-        point = to_neu(segment.end)
         t = segment.end_time + takeoff_time
-        waypoints.append(
-            "waypoint={x} {y} {z} {vxy} {vz} T{t} 6".format(
-                x=point[0],
-                y=point[1],
-                z=point[2],
-                vxy=vxy,
-                vz=vz,
-                t=t - last_t,
-            )
-        )
-        last_t = t
+        last_t += append(segment.end, dt=t - last_t)
 
     # create waypoint file template
     waypoint_str = get_template("waypoints.cfg").format(
@@ -276,6 +272,9 @@ def generate_mission_file_from_show_specification(show) -> bytes:
         zip_archive.writestr("_meta/version", "1")
         zip_archive.writestr("_meta/name", mission_id or "mission")
         zip_archive.close()
+
+    with open("/tmp/mission.zip", "wb") as fp:
+        fp.write(buffer.getvalue())
 
     return buffer.getvalue()
 

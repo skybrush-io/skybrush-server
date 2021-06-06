@@ -2,8 +2,14 @@
 string identifiers.
 """
 
+from __future__ import annotations
+
 from abc import ABCMeta, abstractmethod, abstractproperty
-from typing import Callable, Generic, Iterable, Optional, TypeVar
+from typing import Callable, Generic, Iterable, Optional, TypeVar, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from flockwave.server.model.messages import FlockwaveResponse
+
 
 __all__ = ("Registry", "RegistryBase")
 
@@ -147,7 +153,7 @@ def find_in_registry(
     entry_id: str,
     *,
     predicate: Optional[Callable[[T], bool]] = None,
-    response=None,
+    response: Optional["FlockwaveResponse"] = None,
     failure_reason: Optional[str] = None,
 ) -> Optional[T]:
     """Finds an entry in the given registry with the given ID or
@@ -161,8 +167,7 @@ def find_in_registry(
         predicate: optional predicate to call for the entry if it was found;
             if the predicate returns `False`, we pretend that the entry does not
             exist.
-        response (Optional[FlockwaveResponse]): the response in which
-            the failure can be registered
+        response: the response in which the failure can be registered
         failure_reason: the failure reason to register
 
     Returns:

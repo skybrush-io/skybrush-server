@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- The server now attempts to re-connect to an RTK base station if the base
+  station disappeared briefly for at most 30 seconds while it was being used.
+  This helps to recover automatically in cases when the RTK base station was
+  plugged into an unpowered USB hub and the device disappeared briefly from the
+  OS due to power issues on the USB port.
+
 ## [1.18.0] - 2021-05-10
 
 This is the release that serves as a basis for changelog entries above. Refer

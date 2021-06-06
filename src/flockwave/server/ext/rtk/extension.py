@@ -3,18 +3,20 @@ and forwards the corrections to the UAVs managed by the server.
 """
 
 from contextlib import ExitStack
+from dataclasses import dataclass, field
 from fnmatch import fnmatch
 from functools import partial
+from time import monotonic
 from trio import CancelScope, open_memory_channel, open_nursery, sleep
 from trio_util import AsyncBool
-from typing import List, Optional
+from typing import cast, List, Optional
 
 from flockwave.channels import ParserChannel
 from flockwave.connections import Connection, create_connection
 from flockwave.gps.ubx.rtk_config import UBXRTKBaseConfigurator
 from flockwave.server.message_hub import MessageHub
 from flockwave.server.model import ConnectionPurpose
-from flockwave.server.model.messages import FlockwaveMessage
+from flockwave.server.model.messages import FlockwaveMessage, FlockwaveResponse
 from flockwave.server.registries import find_in_registry
 from flockwave.server.utils import overridden
 from flockwave.server.utils.serial import (
@@ -31,6 +33,25 @@ from .statistics import RTKStatistics
 from .survey import SurveySettings
 
 
+@dataclass
+class RTKPresetRequest:
+    """Simple dataclass that stores the name of the last RTK preset that the
+    user attempted to use, along with its timestamp.
+    """
+
+    preset_id: str
+    timestamp: float = field(default_factory=monotonic)
+
+    @property
+    def age(self) -> float:
+        """Returns the number of seconds elapsed since this request."""
+        return max(0, monotonic() - self.timestamp)
+
+    def touch(self) -> None:
+        """Updates the timestamp of the request to the current timestamp."""
+        self.timestamp = monotonic()
+
+
 class RTKExtension(ExtensionBase):
     """Extension that connects to one or more data sources for RTK connections
     and forwards the corrections to the UAVs managed by the server.
@@ -43,6 +64,7 @@ class RTKExtension(ExtensionBase):
         self._current_preset: Optional[RTKConfigurationPreset] = None
         self._dynamic_serial_port_configurations: List[SerialPortConfiguration] = []
         self._dynamic_serial_port_filters = []
+        self._last_preset_request_from_user: Optional[RTKPresetRequest] = None
         self._presets: List[RTKConfigurationPreset] = []
         self._registry: Optional[RTKPresetRegistry] = None
         self._running_tasks = {}
@@ -114,20 +136,19 @@ class RTKExtension(ExtensionBase):
         return self._current_preset
 
     def find_preset_by_id(
-        self, preset_id: str, response: Optional[FlockwaveMessage] = None
-    ):
+        self, preset_id: str, response: Optional[FlockwaveResponse] = None
+    ) -> Optional[RTKConfigurationPreset]:
         """Finds the RTK preset with the given ID in the RTK preset registry or
         registers a failure in the given response object if there is no preset
         with the given ID.
 
         Parameters:
-            preset_id (str): the ID of the preset to find
-            response (Optional[FlockwaveResponse]): the response in which
-                the failure can be registered
+            preset_id: the ID of the preset to find
+            response: the response in which the failure can be registered
 
         Returns:
-            Optional[RTKConfigurationPreset]: the RTK preset with the given ID
-                or ``None`` if there is no such RTK preset
+            the RTK preset with the given ID or ``None`` if there is no such
+            RTK preset
         """
         return find_in_registry(
             self._registry,
@@ -162,14 +183,20 @@ class RTKExtension(ExtensionBase):
         """Handles an incoming RTK-SOURCE message."""
         if "id" in message.body:
             # Selecting a new RTK source to use
-            if message.body["id"] is None:
+            preset_id = message.body["id"]
+            if preset_id is None:
                 desired_preset = None
-            else:
-                desired_preset = self.find_preset_by_id(message.body["id"])
+            elif isinstance(preset_id, str):
+                desired_preset = self.find_preset_by_id(preset_id)
                 if desired_preset is None:
                     return hub.reject(message, reason="No such RTK preset")
+            else:
+                preset_id, desired_preset = None, None
 
             self._request_preset_switch_later(desired_preset)
+            self._last_preset_request_from_user = (
+                RTKPresetRequest(preset_id=preset_id) if desired_preset else None
+            )
 
             return hub.acknowledge(message)
         else:
@@ -256,7 +283,8 @@ class RTKExtension(ExtensionBase):
             async with self.use_nursery():
                 async for message, args in rx_queue:
                     if message == "set_preset":
-                        await self._perform_preset_switch(args)
+                        preset = cast(Optional[RTKConfigurationPreset], args)
+                        await self._perform_preset_switch(preset)
 
     @property
     def survey_settings(self) -> SurveySettings:
@@ -295,7 +323,9 @@ class RTKExtension(ExtensionBase):
         """
         self.app.run_in_background(self._request_survey)
 
-    async def _perform_preset_switch(self, value: RTKConfigurationPreset) -> None:
+    async def _perform_preset_switch(
+        self, value: Optional[RTKConfigurationPreset]
+    ) -> None:
         """Performs the switch from an RTK configuration preset to another,
         cleaning up the old connection and creating a new one.
         """
@@ -512,10 +542,28 @@ class RTKExtension(ExtensionBase):
                 self.log.info(f"Added new RTK preset {preset.title!r} for serial port")
 
         current_preset = self.current_preset
-        if current_preset and (
-            not self._registry or current_preset.id not in self._registry
-        ):
-            self._request_preset_switch_later(None)
+
+        if current_preset:
+            # If the currently used RTK preset is gone (probably because the user
+            # unplugged the device), switch to not using a preset
+            if not self._registry or current_preset.id not in self._registry:
+                self._request_preset_switch_later(None)
+        else:
+            # If we do not have a selected preset yet, but we remember the name
+            # that the user explicitly requested for the last time, the request
+            # was in the last 10 seocnds, _and_ this preset has re-appeared,
+            # re-activate the preset. This helps with situations when the RTK
+            # base station is plugged into an unpowered USB hub and the device
+            # goes away for a few seconds
+            req = self._last_preset_request_from_user
+            if req and req.age < 30:
+                last_used_preset = self.find_preset_by_id(req.preset_id)
+                if last_used_preset is not None:
+                    self.log.info(
+                        f"Re-connecting to RTK preset {last_used_preset.title!r}"
+                    )
+                    req.touch()
+                    self._request_preset_switch_later(last_used_preset)
 
     @staticmethod
     def _get_dynamic_preset_id_for_serial_port(port, index: int = 0) -> str:

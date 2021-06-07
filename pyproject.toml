@@ -15,7 +15,7 @@ url = "https://pypi.collmot.com/simple/"
 [tool.poetry.dependencies]
 python = "^3.7"
 bidict = ">=0.19.0"
-click = "^7.1.2"
+click = "^8.0.0"
 blinker = "^1.4"
 jsonschema = "^3.2.0"
 python-baseconv = "^1.2.2"

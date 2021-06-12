@@ -474,7 +474,7 @@ reference = "collmot"
 
 [[package]]
 name = "flockwave-conn"
-version = "2.10.0"
+version = "2.11.0"
 description = "Connection objects for various data sources"
 category = "main"
 optional = false
@@ -1231,14 +1231,14 @@ reference = "collmot"
 
 [[package]]
 name = "pyledctrl"
-version = "3.2.0"
+version = "3.2.1"
 description = "Compiler to convert LED light show scripts to bytecode format"
 category = "main"
 optional = false
 python-versions = ">=3.7,<4.0"
 
 [package.extras]
-cli = ["click (>=7.1.2,<8.0.0)", "tqdm (>=4.47.0,<5.0.0)"]
+cli = ["click (>=8.0.0,<9.0.0)", "tqdm (>=4.47.0,<5.0.0)"]
 sunlite = ["lxml (>=4.5.2,<5.0.0)"]
 
 [package.source]
@@ -1634,7 +1634,7 @@ reference = "collmot"
 
 [[package]]
 name = "scp"
-version = "0.13.3"
+version = "0.13.4"
 description = "scp module for paramiko"
 category = "main"
 optional = false
@@ -2131,8 +2131,8 @@ flockwave-app-framework = [
     {file = "flockwave_app_framework-1.3.0-py3-none-any.whl", hash = "md5:445e8fd556702e8c369028a14e155a27"},
 ]
 flockwave-conn = [
-    {file = "flockwave-conn-2.10.0.tar.gz", hash = "md5:92e4c84b57908aa3968bd2741ad17e17"},
-    {file = "flockwave_conn-2.10.0-py3-none-any.whl", hash = "md5:61a720b110c3ca6d2cb855a5f1c37277"},
+    {file = "flockwave-conn-2.11.0.tar.gz", hash = "md5:b82d32a65b94fd063ffd6798e2163b26"},
+    {file = "flockwave_conn-2.11.0-py3-none-any.whl", hash = "md5:3e9993f274846302d65551d570f93649"},
 ]
 flockwave-ext = [
     {file = "flockwave-ext-1.5.2.tar.gz", hash = "md5:ab3e9aecf9f3e24d0d8b4092e0bad363"},
@@ -2454,8 +2454,8 @@ pyjwt = [
     {file = "PyJWT-1.7.1.tar.gz", hash = "sha256:8d59a976fb773f3e6a39c85636357c4f0e242707394cadadd9814f5cbaa20e96"},
 ]
 pyledctrl = [
-    {file = "pyledctrl-3.2.0-py3-none-any.whl", hash = "md5:a7c02cb9c93c9e81adced3980df0f415"},
-    {file = "pyledctrl-3.2.0.tar.gz", hash = "md5:b388499f626cb640fcbc5f1fdd1a4f55"},
+    {file = "pyledctrl-3.2.1-py3-none-any.whl", hash = "md5:da95ddc3f91b8268330c4f4531d92823"},
+    {file = "pyledctrl-3.2.1.tar.gz", hash = "md5:2940fcbae4543b6b3a945607616bd5e6"},
 ]
 pymavlink = [
     {file = "pymavlink-2.4.15.tar.gz", hash = "sha256:7bf45ad4a250e5e9928c33b5ff56afed4dbc6f99c8f58d05051e2a308150db80"},
@@ -2618,8 +2618,8 @@ requests-download = [
     {file = "requests_download-0.1.2.tar.gz", hash = "sha256:92d895a6ca51ea51aa42bab864bddaee31b5601c7e7e1ade4c27b0eb6695d846"},
 ]
 scp = [
-    {file = "scp-0.13.3-py2.py3-none-any.whl", hash = "sha256:f2fa9fb269ead0f09b4e2ceb47621beb7000c135f272f6b70d3d9d29928d7bf0"},
-    {file = "scp-0.13.3.tar.gz", hash = "sha256:8bd748293d7362073169b96ce4b8c4f93bcc62cfc5f7e1d949e01e406a025bd4"},
+    {file = "scp-0.13.4-py2.py3-none-any.whl", hash = "sha256:cab0fc23407fced438565497ab092b7c20df261a9fd0975d0e6c1edad8a92cff"},
+    {file = "scp-0.13.4.tar.gz", hash = "sha256:e60948dd3e1aa13da21aa1bf8a025fabbbc2816ed04f1a1272410247d1a86f15"},
 ]
 sentry-sdk = [
     {file = "sentry-sdk-1.1.0.tar.gz", hash = "sha256:c1227d38dca315ba35182373f129c3e2722e8ed999e52584e6aca7d287870739"},

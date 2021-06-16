@@ -2,13 +2,15 @@
 UAV and the ground station via some communication link.
 """
 
+from __future__ import annotations
+
 from datetime import datetime
 from io import BytesIO
 from paramiko import SSHClient
 from select import select
 from trio import Event
 from trio_util import periodic
-from typing import Any, Iterable, Optional, Tuple, Union
+from typing import Any, Iterable, List, Optional, TYPE_CHECKING, Tuple, Union
 
 from flockwave.channels import MessageChannel
 from flockwave.connections import (
@@ -29,6 +31,8 @@ from flockwave.protocols.flockctrl.packets import MultiTargetCommandPacket
 from flockwave.server.comm import CommunicationManager
 from flockwave.server.utils import constant
 
+if TYPE_CHECKING:
+    from .driver import FlockCtrlDriver
 
 __all__ = ("create_communication_manager", "execute_ssh_command", "upload_mission")
 
@@ -67,9 +71,9 @@ def create_flockctrl_message_channel(
             extension
     """
     if isinstance(connection, UDPSocketConnection):
-        return create_flockctrl_udp_message_channel(connection, log)
+        return create_flockctrl_udp_message_channel(connection, log)  # type: ignore
     elif isinstance(connection, StreamConnectionBase):
-        return create_flockctrl_radio_message_channel(connection, log)
+        return create_flockctrl_radio_message_channel(connection, log)  # type: ignore
 
     raise TypeError(f"Connection type not supported: {connection.__class__.__name__}")
 
@@ -154,9 +158,7 @@ def execute_ssh_command(
         Tuple[bytes, bytes, int]: the data read from the standard output and
         standard error streams as well as the exit code of the command
     """
-    stdin_stream, stdout_stream, stderr_stream = ssh.exec_command(
-        command, timeout=timeout
-    )
+    stdin_stream, stdout_stream, _ = ssh.exec_command(command, timeout=timeout)
     channel = stdout_stream.channel
 
     if stdin is not None:
@@ -237,11 +239,24 @@ def upload_mission(raw_data: bytes, address: Union[str, Tuple[str, int]]) -> Non
         .replace(":", "")
         .replace("-", "")
     )
+
+    # TODO(ntamas): this thread needs to be interruptible, otherwise we are
+    # blocking one entry in the CapacityLimiter even if the upstream request
+    # timed out. Using a progress handler in putfo() and then throwing an
+    # exception from there would probably work as an interruption, but even the
+    # progress handler is not called regularly if the connection is stuck so we
+    # probably need another solution (e.g., use another process?)
     with open_ssh(address, username="root") as ssh:
         scp = open_scp(ssh)
-        scp.putfo(BytesIO(raw_data), f"/data/inbox/{name}.mission")
-        stdout, stderr, exit_code = execute_ssh_command(
-            ssh, "systemctl restart flockctrl"
+        scp.putfo(BytesIO(raw_data), f"/tmp/{name}.mission-tmp")
+        _, _, exit_code = execute_ssh_command(
+            ssh,
+            " && ".join(
+                [
+                    f"mv /tmp/{name}.mission-tmp /data/inbox/{name}.mission",
+                    "systemctl restart flockctrl",
+                ]
+            ),
         )
 
         if exit_code != 0:
@@ -253,11 +268,11 @@ class BurstedMultiTargetMessageManager:
     drones in the flock and keeping track of sequence numbers.
     """
 
-    def __init__(self, driver):
+    def __init__(self, driver: "FlockCtrlDriver"):
         """Constructor."""
         self._driver = driver
-        self._sequence_ids = [0] * 16
-        self._active_bursts = [None] * 16
+        self._sequence_ids: List[int] = [0] * 16
+        self._active_bursts: List[Optional[Event]] = [None] * 16
 
     def schedule_burst(
         self, command: MultiTargetCommand, uav_ids: Iterable[int], duration: float
@@ -299,12 +314,12 @@ class BurstedMultiTargetMessageManager:
             duration: duration of the burst, in seconds.
             event: a Trio event that can be used to cancel the burst
         """
-        packet = MultiTargetCommandPacket(uav_ids, command, self._sequence_ids[command])
+        packet = MultiTargetCommandPacket(
+            list(uav_ids), command, self._sequence_ids[command]
+        )
         self._sequence_ids[command] += 1
 
         async for elapsed, _ in periodic(0.1):
-            # We want to ensure that the packet is sent at least once so we
-            # broadcast first and then check the elapsed time
             if elapsed >= duration or event.is_set():
                 break
 

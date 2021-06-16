@@ -225,7 +225,7 @@ class VirtualUAVDriver(UAVDriver):
             # No components on this UAV
             raise RuntimeError(f"Resetting {component!r} is not supported")
 
-    def _send_return_to_home_signal_single(self, uav, *, transport=None) -> bool:
+    def _send_return_to_home_signal_single(self, uav, *, transport=None) -> None:
         if uav.state == VirtualUAVState.AIRBORNE:
             target = uav.home.copy()
             target.agl = uav.status.position.agl
@@ -237,7 +237,7 @@ class VirtualUAVDriver(UAVDriver):
         else:
             raise RuntimeError("UAV is not airborne, cannot start RTH")
 
-    def _send_shutdown_signal_single(self, uav, *, transport=None) -> bool:
+    def _send_shutdown_signal_single(self, uav, *, transport=None) -> None:
         uav.shutdown()
 
     async def _send_takeoff_signal_single(
@@ -397,14 +397,14 @@ class VirtualUAV(UAVBase):
     def get_version_info(self) -> VersionInfo:
         from flockwave.server.version import __version__ as server_version
 
-        return {"server": server_version, "firmware": self._version}
+        return {"server": server_version, "firmware": str(self._version)}
 
     @property
-    def has_trajectory(self):
+    def has_trajectory(self) -> bool:
         return self._trajectory is not None
 
     @property
-    def has_user_defined_error(self):
+    def has_user_defined_error(self) -> bool:
         return bool(self._user_defined_error)
 
     @property
@@ -654,7 +654,7 @@ class VirtualUAV(UAVBase):
 
                     notify()
 
-            return self._shutdown_reason
+            return self._shutdown_reason or "shutdown"
         finally:
             self._notify_shutdown()
 
@@ -932,6 +932,9 @@ class VirtualUAV(UAVBase):
         and the trajectory that it needs to follow.
         """
         t = self.elapsed_time_in_mission
+        if t is None:
+            return
+
         if not self._trajectory_player.is_before_takeoff(t):
             x, y, z = self._trajectory_player.position_at(t)
             self.target = self._trajectory_transformation.to_gps(

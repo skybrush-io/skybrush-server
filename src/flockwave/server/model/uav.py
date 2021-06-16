@@ -13,7 +13,7 @@ from flockwave.spec.schema import get_complex_object_schema
 
 from .battery import BatteryInfo
 from .devices import ObjectNode
-from .gps import GPSFix
+from .gps import GPSFix, GPSFixLike
 from .metamagic import ModelMeta
 from .mixins import TimestampLike, TimestampMixin
 from .object import ModelObject, register
@@ -267,7 +267,7 @@ class UAVBase(UAV):
         velocity_xyz: Optional[VelocityXYZ] = None,
         heading: Optional[float] = None,
         mode: Optional[str] = None,
-        gps: Optional[GPSFix] = None,
+        gps: Optional[GPSFixLike] = None,
         battery: Optional[BatteryInfo] = None,
         light: Optional[int] = None,
         errors: Optional[Union[int, Iterable[int]]] = None,

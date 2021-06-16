@@ -47,7 +47,7 @@ def create_ssh_client(
 open_ssh = create_ssh_client
 
 
-def open_scp(address: AddressLike, *args, **kwds) -> SCPClient:
+def open_scp(address: Union[AddressLike, SSHClient], *args, **kwds) -> SCPClient:
     """Creates an SCP client that is suitable for connecting to a
     flockctrl-based drone in an unsupervised manner (assuming that the
     appropriate public key is installed on the drone).

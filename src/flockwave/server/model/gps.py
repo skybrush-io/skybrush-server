@@ -1,6 +1,8 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
 from enum import IntEnum
-from typing import Optional
+from typing import Optional, Union
 
 
 __all__ = ("GPSFix", "GPSFixType")
@@ -19,6 +21,10 @@ class GPSFixType(IntEnum):
     STATIC = 7
 
 
+#: Type alias for objects that can be used to update a GPSFix object
+GPSFixLike = Union[int, GPSFixType, "GPSFix"]
+
+
 @dataclass
 class GPSFix:
     """Class representing basic GPS fix information of a single UAV."""
@@ -34,7 +40,7 @@ class GPSFix:
             else [int(self.type), int(self.num_satellites)]
         )
 
-    def update_from(self, other) -> None:
+    def update_from(self, other: GPSFixLike) -> None:
         """Updates this GPS fix object from another one. You may also specify a
         single GPSFixType_ as the input; in this case, the fix type will be
         updated and the number of satellites will be cleared.

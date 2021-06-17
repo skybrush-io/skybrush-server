@@ -10,7 +10,7 @@ from typing import Optional
 
 from trio import open_memory_channel, move_on_after, sleep, WouldBlock
 
-__all__ = "wait_until"
+__all__ = ("wait_until",)
 
 log = base_log.getChild("alarm")
 
@@ -120,7 +120,7 @@ async def wait_until(
         raise RuntimeError("only one of 'ticks' and 'seconds' may be given")
 
     if seconds is None:
-        seconds = ticks / clock.ticks_per_seocnd
+        seconds = ticks / clock.ticks_per_second
 
     # Check whether we need to return immediately
     seconds_left = seconds - clock.seconds

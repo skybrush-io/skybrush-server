@@ -476,7 +476,7 @@ reference = "collmot"
 
 [[package]]
 name = "flockwave-ext"
-version = "1.5.2"
+version = "1.6.0"
 description = "Generic extension manager for Skybrush-related projects"
 category = "main"
 optional = false
@@ -1708,7 +1708,7 @@ reference = "collmot"
 
 [[package]]
 name = "trio"
-version = "0.18.0"
+version = "0.19.0"
 description = "A friendly Python library for async concurrency and I/O"
 category = "main"
 optional = false
@@ -1873,7 +1873,7 @@ reference = "collmot"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7"
-content-hash = "a6b9222b2eeec2d3a8f370e512ecb5413edbbebbd2e3e2a7d0ca2fd083bd69e5"
+content-hash = "07b0792c639aee0d15b4fcaee575134a74647c1848846affac5ba0d4ae24ff49"
 
 [metadata.files]
 adrenaline = [
@@ -2053,8 +2053,8 @@ flockwave-conn = [
     {file = "flockwave_conn-2.11.0-py3-none-any.whl", hash = "md5:3e9993f274846302d65551d570f93649"},
 ]
 flockwave-ext = [
-    {file = "flockwave-ext-1.5.2.tar.gz", hash = "md5:ab3e9aecf9f3e24d0d8b4092e0bad363"},
-    {file = "flockwave_ext-1.5.2-py3-none-any.whl", hash = "md5:28aca04af212d58a6ef1b419a1d514c6"},
+    {file = "flockwave-ext-1.6.0.tar.gz", hash = "md5:700bc6be35d0929311fd369e6955d5d0"},
+    {file = "flockwave_ext-1.6.0-py3-none-any.whl", hash = "md5:2bc9150c2623be87d3f333bf0253bad1"},
 ]
 flockwave-flockctrl = [
     {file = "flockwave-flockctrl-0.15.0.tar.gz", hash = "md5:71d24830a16ef9f212cd8bdeafcba693"},
@@ -2527,8 +2527,8 @@ toml = [
     {file = "toml-0.10.2.tar.gz", hash = "sha256:b3bda1d108d5dd99f4a20d24d9c348e91c4db7ab1b749200bded2f839ccbe68f"},
 ]
 trio = [
-    {file = "trio-0.18.0-py3-none-any.whl", hash = "sha256:a42af0634ba729cbfe8578be058750c6471dac19fbc7167ec6a3ca3f966fb424"},
-    {file = "trio-0.18.0.tar.gz", hash = "sha256:87a66ae61f27fe500c9024926a9ba482c07e1e0f56380b70a264d19c435ba076"},
+    {file = "trio-0.19.0-py3-none-any.whl", hash = "sha256:c27c231e66336183c484fbfe080fa6cc954149366c15dc21db8b7290081ec7b8"},
+    {file = "trio-0.19.0.tar.gz", hash = "sha256:895e318e5ec5e8cea9f60b473b6edb95b215e82d99556a03eb2d20c5e027efe1"},
 ]
 trio-util = [
     {file = "trio_util-0.5.0-py3-none-any.whl", hash = "sha256:01ccf3db503a1294321e07e02c9099565604c7947e9934d32d63aa07526c4289"},

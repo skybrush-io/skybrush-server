@@ -11,7 +11,18 @@ from functools import partial
 from logging import Logger
 from trio import BrokenResourceError, open_memory_channel, WouldBlock
 from trio_util import wait_all
-from typing import Callable, Generator, Generic, Iterator, Optional, Tuple, TypeVar
+from typing import (
+    Any,
+    Awaitable,
+    Callable,
+    Generator,
+    Generic,
+    Iterator,
+    List,
+    Optional,
+    Tuple,
+    TypeVar,
+)
 
 from flockwave.channels import MessageChannel
 from flockwave.connections import Connection
@@ -66,6 +77,7 @@ class CommunicationManager(Generic[PacketType, AddressType]):
 
     channel_factory: Callable[[Connection, Logger], MessageChannel]
     format_address: Callable[[AddressType], str]
+    log: Optional[Logger]
 
     @dataclass
     class Entry:
@@ -321,7 +333,9 @@ class CommunicationManager(Generic[PacketType, AddressType]):
     async def _run(self, *, consumer, supervisor, tasks):
         tx_queue, rx_queue = open_memory_channel(0)
 
-        tasks = [partial(task, self) for task in (tasks or [])]
+        tasks: List[Callable[..., Awaitable[Any]]] = [
+            partial(task, self) for task in (tasks or [])
+        ]
         tasks.extend(
             partial(
                 supervisor,

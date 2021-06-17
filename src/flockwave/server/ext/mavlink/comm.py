@@ -73,7 +73,7 @@ def get_mavlink_factory(
 
 def create_communication_manager(
     packet_loss: float = 0, system_id: int = 255
-) -> CommunicationManager[Any, Any]:
+) -> CommunicationManager[MAVLinkMessageSpecification, Any]:
     """Creates a communication manager instance for the extension.
 
     Parameters:

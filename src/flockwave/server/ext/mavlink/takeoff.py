@@ -222,7 +222,7 @@ class ScheduledTakeoffManager:
                 limit that the network can handle
         """
         try:
-            async with self._limiter:
+            async with self._limiter:  # type: ignore
                 await self._update_start_time_on_uav_inner(uav)
         except TooSlowError:
             log = self._network.log
@@ -303,6 +303,9 @@ class ScheduledTakeoffManager:
                 # User did not authorize the start yet so the start time must
                 # be cleared
                 return TakeoffConfiguration(authorized=False)
+
+        else:
+            return TakeoffConfiguration(authorized=False)
 
     async def _update_start_time_on_uav_inner(self, uav) -> None:
         takeoff_config = self._get_desired_takeoff_configuration(self._config)

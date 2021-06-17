@@ -6,14 +6,14 @@ from __future__ import absolute_import
 
 from contextlib import ExitStack
 from functools import partial
-from typing import Optional, Sequence, Tuple
+from typing import Dict, Optional
 
 from flockwave.server.ext.base import UAVExtensionBase
 from flockwave.server.model.uav import UAV
 from flockwave.server.registries.errors import RegistryFull
 from flockwave.server.utils import optional_int, overridden
 
-from .driver import MAVLinkDriver
+from .driver import MAVLinkDriver, MAVLinkUAV
 from .network import MAVLinkNetwork
 from .tasks import check_uavs_alive
 from .types import (
@@ -22,7 +22,6 @@ from .types import (
     MAVLinkMessageSpecification,
     MAVLinkNetworkSpecification,
 )
-
 
 __all__ = ("construct", "dependencies")
 
@@ -47,7 +46,7 @@ class MAVLinkDronesExtension(UAVExtensionBase):
         super(MAVLinkDronesExtension, self).__init__()
 
         self._driver = None
-        self._networks = None
+        self._networks: Optional[Dict[str, MAVLinkNetwork]] = None
         self._start_method = None
         self._uavs = None
 
@@ -163,7 +162,9 @@ class MAVLinkDronesExtension(UAVExtensionBase):
         for network in self._networks.values():
             await network.broadcast_packet(spec, channel)
 
-    def _get_network_specifications_from_configuration(self, configuration):
+    def _get_network_specifications_from_configuration(
+        self, configuration
+    ) -> Dict[str, MAVLinkNetworkSpecification]:
         # Construct the network specifications first
         if "networks" in configuration:
             if "connections" in configuration:
@@ -293,9 +294,9 @@ class MAVLinkDronesExtension(UAVExtensionBase):
     async def _send_packet(
         self,
         spec: MAVLinkMessageSpecification,
-        target: UAV,
+        target: MAVLinkUAV,
         wait_for_response: Optional[MAVLinkMessageSpecification] = None,
-        wait_for_one_of: Optional[Sequence[Tuple[str, MAVLinkMessageMatcher]]] = None,
+        wait_for_one_of: Optional[Dict[str, MAVLinkMessageMatcher]] = None,
         channel: Optional[str] = None,
     ) -> Optional[MAVLinkMessage]:
         """Sends a message to the given UAV and optionally waits for a matching

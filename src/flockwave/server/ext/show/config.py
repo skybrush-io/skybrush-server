@@ -1,5 +1,7 @@
 """Configuration object for the drone show extension."""
 
+from __future__ import annotations
+
 from blinker import Signal
 from enum import Enum
 from typing import List, Optional, Tuple
@@ -101,12 +103,26 @@ class LightConfiguration:
 
     updated = Signal(doc="Signal emitted when the configuration is updated")
 
+    color: Tuple[int, int, int]
+    effect: LightEffectType
+
+    @classmethod
+    def create_solid_color(cls, color: Tuple[int, int, int]) -> "LightConfiguration":
+        result = cls()
+        result.color = tuple(color)  # type: ignore
+        result.effect = LightEffectType.SOLID
+        return result
+
+    @classmethod
+    def turn_off(cls) -> "LightConfiguration":
+        return cls()
+
     def __init__(self):
         """Constructor."""
         self.color = (0, 0, 0)  # type: Tuple[int, int, int]
         self.effect = LightEffectType.OFF  # type: LightEffectType
 
-    def clone(self):
+    def clone(self) -> "LightConfiguration":
         """Makes an exact shallow copy of the configuration object."""
         result = self.__class__()
         result.update_from_json(self.json)
@@ -128,7 +144,7 @@ class LightConfiguration:
                 and len(color) >= 3
                 and all(isinstance(x, (int, float)) for x in color)
             ):
-                self.color = tuple(int(x) for x in color)
+                self.color = tuple(int(x) for x in color)  # type: ignore
                 # Send a signal even if the color stayed the same; maybe the
                 # user sent the same configuration again because some of the
                 # drones in the show haven't received the previous request

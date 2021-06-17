@@ -1,7 +1,6 @@
 from abc import ABCMeta, abstractmethod
 from logging import Logger
-from time import monotonic
-from trio import BrokenResourceError, Event, move_on_after, sleep
+from trio import BrokenResourceError, Event, current_time, move_on_after, sleep
 from typing import Generic, Optional, TypeVar
 
 from flockwave.server.ext.show.config import LightConfiguration, LightEffectType
@@ -17,16 +16,49 @@ TPacket = TypeVar("TPacket")
 class LEDLightConfigurationManagerBase(Generic[TPacket], metaclass=ABCMeta):
     """Base class for objects that manage the state of the LED lights on a set
     of drones when the lights are controlled by commands from the GCS.
+
+    The configuration manager may exist in one of two modes: normal or rapid.
+    Normal mode is the default. Rapid mode is entered when the light
+    configuration changes; during rapid mode, the messages that instruct the
+    drones to change their LED colors are fired more frequently than normal to
+    ensure that all drones get the changes relatively quickly.
+
+    Attributes:
+        message_interval: number of seconds between consecutive messages sent
+            from the LED light configuration manager if the manager is not in
+            rapid mode
+        message_interval_in_rapid_mode: number of seconds between consecutive
+            messages sent from the LED light configuration manager if the manager
+            is in rapid mode
+        rapid_mode_duration: total duration of the rapid mode of the light
+            configuration manager. The default value is 5 seconds.
     """
+
+    _active: bool
+    _config: Optional[LightConfiguration]
+    _config_last_updated_at: float
+    _rapid_mode: bool
+    _rapid_mode_triggered: Event
+    _suppress_warnings_until: float
+
+    message_interval: float
+    message_interval_in_rapid_mode: float
+    rapid_mode_interval: float
+
+    rapid_mode_duration: float
 
     def __init__(self):
         """Constructor."""
-        self._active: bool = False
-        self._config: Optional[LightConfiguration] = None
-        self._config_last_updated_at: float = 0
-        self._rapid_mode: bool = False
-        self._rapid_mode_triggered: Event = Event()
-        self._suppress_warnings_until: float = 0
+        self.message_interval = 3
+        self.message_interval_in_rapid_mode = 0.2
+        self.rapid_mode_duration = 5
+
+        self._active = False
+        self._config = None
+        self._config_last_updated_at = 0
+        self._rapid_mode = False
+        self._rapid_mode_triggered = Event()
+        self._suppress_warnings_until = 0
 
     def notify_config_changed(self, config: LightConfiguration) -> None:
         """Notifies the manager that the LED light configuration has changed.
@@ -36,7 +68,7 @@ class LEDLightConfigurationManagerBase(Generic[TPacket], metaclass=ABCMeta):
         """
         # Store the configuration
         self._config = config
-        self._config_last_updated_at = monotonic()
+        self._config_last_updated_at = current_time()
 
         # Note that we need to dispatch messages actively if the mode is not
         # "off"
@@ -74,7 +106,7 @@ class LEDLightConfigurationManagerBase(Generic[TPacket], metaclass=ABCMeta):
                 if self._config is not None
                 else None
             )
-            if packet:
+            if packet is not None:
                 try:
                     await self._send_light_control_packet(packet)
                 except BrokenResourceError:
@@ -92,16 +124,20 @@ class LEDLightConfigurationManagerBase(Generic[TPacket], metaclass=ABCMeta):
             # the lights on the drones, we simply wait until the next
             # configuration change
             if self._rapid_mode:
-                await sleep(0.2)
+                await sleep(self.message_interval_in_rapid_mode)
             elif self._active:
-                with move_on_after(3):
+                with move_on_after(self.message_interval):
                     await self._rapid_mode_triggered.wait()
             else:
                 await self._rapid_mode_triggered.wait()
 
             # Fall back to normal mode 5 seconds after the last configuration
             # change
-            if self._rapid_mode and monotonic() - self._config_last_updated_at >= 5:
+            if (
+                self._rapid_mode
+                and current_time() - self._config_last_updated_at
+                >= self.rapid_mode_duration
+            ):
                 self._rapid_mode = False
                 self._rapid_mode_triggered = Event()
 
@@ -136,7 +172,7 @@ class LEDLightConfigurationManagerBase(Generic[TPacket], metaclass=ABCMeta):
         """Prints a warning to the log and suppresses further warnings for the
         next five seconds if needed.
         """
-        now = monotonic()
+        now = current_time()
         if now < self._suppress_warnings_until:
             return
 

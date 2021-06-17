@@ -494,7 +494,7 @@ reference = "collmot"
 
 [[package]]
 name = "flockwave-flockctrl"
-version = "0.15.0"
+version = "1.16.0"
 description = "flockctrl protocol parser and encoder for Skybrush"
 category = "main"
 optional = false
@@ -1873,7 +1873,7 @@ reference = "collmot"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7"
-content-hash = "07b0792c639aee0d15b4fcaee575134a74647c1848846affac5ba0d4ae24ff49"
+content-hash = "1d6d35a4ed5a3fc80087ef51ec268f04dc58109377ab9619d8a9a2a8555beb3a"
 
 [metadata.files]
 adrenaline = [
@@ -2057,8 +2057,8 @@ flockwave-ext = [
     {file = "flockwave_ext-1.6.0-py3-none-any.whl", hash = "md5:2bc9150c2623be87d3f333bf0253bad1"},
 ]
 flockwave-flockctrl = [
-    {file = "flockwave-flockctrl-0.15.0.tar.gz", hash = "md5:71d24830a16ef9f212cd8bdeafcba693"},
-    {file = "flockwave_flockctrl-0.15.0-py3-none-any.whl", hash = "md5:46d427d762ab1268827d34d42672188a"},
+    {file = "flockwave-flockctrl-1.16.0.tar.gz", hash = "md5:811157eddbe32048b9428b24a1494370"},
+    {file = "flockwave_flockctrl-1.16.0-py3-none-any.whl", hash = "md5:2de47b5eb8ddc4115fb9be7e39b70768"},
 ]
 flockwave-gps = [
     {file = "flockwave-gps-1.4.1.tar.gz", hash = "md5:23c11f032b6e26d53c04dd755851770a"},

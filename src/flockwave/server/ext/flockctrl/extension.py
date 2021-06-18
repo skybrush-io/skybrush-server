@@ -313,15 +313,17 @@ class FlockCtrlDronesExtension(UAVExtensionBase):
         # Send the configuration to the driver to handle it
         self._led_manager.notify_config_changed(config)
 
-    def _on_rtk_correction_packet(self, sender, data: bytes):
+    def _on_rtk_correction_packet(self, sender, packet: bytes):
         """Handles an RTK correction packet that the server wishes to forward
         to the drones managed by this extension.
 
         Parameters:
-            data: the raw RTK correction packet to forward to the drone
+            packet: the raw RTK correction packet to forward to the drone
         """
-        packet = RawGPSInjectionPacket(data)
-        self._enqueue_broadcast_packet_over_radio_falling_back_to_wireless(packet)
+        packet_to_inject = RawGPSInjectionPacket(packet)
+        self._enqueue_broadcast_packet_over_radio_falling_back_to_wireless(
+            packet_to_inject
+        )
 
     async def _broadcast_packet(self, packet: FlockCtrlPacket, medium: str) -> None:
         """Broadcasts a FlockCtrl packet to all UAVs in the network managed

@@ -356,9 +356,11 @@ class FlockCtrlDriver(UAVDriver):
                 raise AddressConflictError(uav, medium, address)
 
         if existing_address is not None:
-            self.log.warn(
-                "UAV possibly rebooted, address changed to {}".format(address)
-            )
+            # self.log.warn(
+            #     "UAV possibly rebooted, address changed to {}".format(address)
+            # )
+            pass
+
         uav.addresses[medium] = address
         self._uavs_by_source_address[medium, address] = uav
 

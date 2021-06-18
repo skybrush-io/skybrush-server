@@ -320,7 +320,7 @@ class BurstedMultiTargetMessageManager:
             cancelled_event: a Trio event that can be used to cancel the burst
         """
         packet = MultiTargetCommandPacket(
-            list(uav_ids), command, self._sequence_ids[command]
+            list(uav_ids), command=command, sequence_id=self._sequence_ids[command]
         )
         self._sequence_ids[command] += 1
 

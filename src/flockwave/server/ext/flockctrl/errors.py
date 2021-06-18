@@ -3,7 +3,7 @@
 from flockwave.protocols.flockctrl.enums import StatusFlag
 from flockwave.server.model.preflight import PreflightCheckInfo, PreflightCheckResult
 from flockwave.spec.errors import FlockwaveErrorCode
-from typing import Tuple, Union
+from typing import Dict, List, Tuple
 
 
 __all__ = ("AddressConflictError", "map_flockctrl_error_code_and_flags")
@@ -42,7 +42,7 @@ class AddressConflictError(FlockCtrlError):
         self.address = address
 
 
-_error_code_mapping = {
+_error_code_mapping: Dict[int, Tuple[int, ...]] = {
     0: (),
     1: (FlockwaveErrorCode.HW_SW_INCOMPATIBLE.value,),
     2: (FlockwaveErrorCode.AUTOPILOT_COMM_TIMEOUT.value,),
@@ -79,10 +79,12 @@ _error_code_mapping = {
     203: (FlockwaveErrorCode.TIMESYNC_ERROR.value,),
 }
 
+_unspecified: Tuple[int, ...] = (FlockwaveErrorCode.UNSPECIFIED_ERROR,)
+
 
 def map_flockctrl_error_code_and_flags(
-    error_code: int, flags: StatusFlag, preflight: PreflightCheckInfo
-) -> Union[Tuple[FlockwaveErrorCode], Tuple[()]]:
+    error_code: int, flags: int, preflight: PreflightCheckInfo
+) -> Tuple[int, ...]:
     """Maps an error code from FlockCtrl status and preflight packets
     to the corresponding Flockwave error code.
 
@@ -90,8 +92,8 @@ def map_flockctrl_error_code_and_flags(
         FlockwaveErrorCode: the Flockwave error codes corresponding to the
             given FlockCtrl error code and flags
     """
-    base = _error_code_mapping.get(error_code, FlockwaveErrorCode.UNSPECIFIED_ERROR)
-    aux = []
+    base = _error_code_mapping.get(error_code, _unspecified)
+    aux: List[int] = []
 
     if flags & StatusFlag.PREARM:
         aux.append(FlockwaveErrorCode.PREARM_CHECK_IN_PROGRESS.value)
@@ -101,11 +103,11 @@ def map_flockctrl_error_code_and_flags(
 
         # check detailed prearm flags
         if preflight.get_result("TAKEOFF_PLACEMENT") == PreflightCheckResult.FAILURE:
-            aux.append(FlockwaveErrorCode.FAR_FROM_TAKEOFF_POSITION)
+            aux.append(FlockwaveErrorCode.FAR_FROM_TAKEOFF_POSITION.value)
         if preflight.get_result("RC") == PreflightCheckResult.FAILURE:
-            aux.append(FlockwaveErrorCode.RC_SIGNAL_LOST_WARNING)
+            aux.append(FlockwaveErrorCode.RC_SIGNAL_LOST_WARNING.value)
         if preflight.get_result("BATTERY") == PreflightCheckResult.FAILURE:
-            aux.append(FlockwaveErrorCode.BATTERY_LOW_WARNING)
+            aux.append(FlockwaveErrorCode.BATTERY_LOW_WARNING.value)
 
         # TODO: would be nice to have the followings:
         #   INVALID_MISSION_CONFIGURATION
@@ -125,12 +127,12 @@ def map_flockctrl_error_code_and_flags(
     ):
         aux.append(FlockwaveErrorCode.MOTORS_RUNNING_WHILE_ON_GROUND.value)
     if not flags & StatusFlag.ARMED:
-        aux.append(FlockwaveErrorCode.DISARMED)
+        aux.append(FlockwaveErrorCode.DISARMED.value)
     if flags & StatusFlag.TAKEOFF:
-        aux.append(FlockwaveErrorCode.TAKEOFF)
+        aux.append(FlockwaveErrorCode.TAKEOFF.value)
     if flags & StatusFlag.LANDING:
-        aux.append(FlockwaveErrorCode.LANDING)
+        aux.append(FlockwaveErrorCode.LANDING.value)
     if flags & StatusFlag.AUTOPILOT_INIT_PENDING:
-        aux.append(FlockwaveErrorCode.AUTOPILOT_INITIALIZING)
+        aux.append(FlockwaveErrorCode.AUTOPILOT_INITIALIZING.value)
 
     return base + tuple(aux) if aux else base

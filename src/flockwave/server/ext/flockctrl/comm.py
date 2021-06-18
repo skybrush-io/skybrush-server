@@ -263,6 +263,11 @@ def upload_mission(raw_data: bytes, address: Union[str, Tuple[str, int]]) -> Non
             raise ValueError("Failed to restart flockctrl process")
 
 
+#: Number of commands supported by the multi-target messages in the
+#: flockctrl protocol
+NUM_COMMANDS = 16
+
+
 class BurstedMultiTargetMessageManager:
     """Class that is responsible for sending multi-target messages to the
     drones in the flock and keeping track of sequence numbers.
@@ -271,8 +276,8 @@ class BurstedMultiTargetMessageManager:
     def __init__(self, driver: "FlockCtrlDriver"):
         """Constructor."""
         self._driver = driver
-        self._sequence_ids: List[int] = [0] * 16
-        self._active_bursts: List[Optional[Event]] = [None] * 16
+        self._sequence_ids: List[int] = [0] * NUM_COMMANDS
+        self._active_burst_cancellations: List[Optional[Event]] = [None] * NUM_COMMANDS
 
     def schedule_burst(
         self, command: MultiTargetCommand, uav_ids: Iterable[int], duration: float
@@ -285,11 +290,11 @@ class BurstedMultiTargetMessageManager:
                 the numeric IDs in the FlockCtrl network, not the global UAV IDs.
             duration: duration of the burst, in seconds.
         """
-        if self._active_bursts[command]:
+        if self._active_burst_cancellations[command]:
             # Cancel the previous burst for this command
-            self._active_bursts[command].set()
+            self._active_burst_cancellations[command].set()
 
-        event = self._active_bursts[command] = Event()
+        event = self._active_burst_cancellations[command] = Event()
         self._driver.run_in_background(
             self._execute_burst, command, uav_ids, duration, event
         )
@@ -299,7 +304,7 @@ class BurstedMultiTargetMessageManager:
         command: MultiTargetCommand,
         uav_ids: Iterable[int],
         duration: float,
-        event: Event,
+        cancelled_event: Event,
     ) -> None:
         """Performs a bursted simple command transmission targeting multiple
         UAVs.
@@ -312,7 +317,7 @@ class BurstedMultiTargetMessageManager:
             uav_ids: the IDs of the UAVs to target. The IDs presented here are
                 the numeric IDs in the FlockCtrl network, not the global UAV IDs.
             duration: duration of the burst, in seconds.
-            event: a Trio event that can be used to cancel the burst
+            cancelled_event: a Trio event that can be used to cancel the burst
         """
         packet = MultiTargetCommandPacket(
             list(uav_ids), command, self._sequence_ids[command]
@@ -320,7 +325,7 @@ class BurstedMultiTargetMessageManager:
         self._sequence_ids[command] += 1
 
         async for elapsed, _ in periodic(0.1):
-            if elapsed >= duration or event.is_set():
+            if elapsed >= duration or cancelled_event.is_set():
                 break
 
             await self._driver.broadcast_packet(packet, "wireless")

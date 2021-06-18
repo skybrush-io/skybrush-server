@@ -98,16 +98,20 @@ class DroneShowConfiguration:
             self.updated.send(self)
 
 
+#: Type alias for an RGB color
+RGBColor = Tuple[int, int, int]
+
+
 class LightConfiguration:
     """LED light related configuration object for the drone show extension."""
 
     updated = Signal(doc="Signal emitted when the configuration is updated")
 
-    color: Tuple[int, int, int]
+    color: RGBColor
     effect: LightEffectType
 
     @classmethod
-    def create_solid_color(cls, color: Tuple[int, int, int]) -> "LightConfiguration":
+    def create_solid_color(cls, color: RGBColor) -> "LightConfiguration":
         result = cls()
         result.color = tuple(color)  # type: ignore
         result.effect = LightEffectType.SOLID
@@ -119,8 +123,8 @@ class LightConfiguration:
 
     def __init__(self):
         """Constructor."""
-        self.color = (0, 0, 0)  # type: Tuple[int, int, int]
-        self.effect = LightEffectType.OFF  # type: LightEffectType
+        self.color = (0, 0, 0)
+        self.effect = LightEffectType.OFF
 
     def clone(self) -> "LightConfiguration":
         """Makes an exact shallow copy of the configuration object."""

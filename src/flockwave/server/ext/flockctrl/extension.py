@@ -16,13 +16,16 @@ from flockwave.protocols.flockctrl.packets import (
     ClockSynchronizationPacket,
     RawGPSInjectionPacket,
 )
-from flockwave.server.comm import BROADCAST
+from flockwave.server.comm import BROADCAST, CommunicationManager
 from flockwave.server.ext.base import UAVExtensionBase
 from flockwave.server.model import ConnectionPurpose
 from flockwave.server.utils import datetime_to_unix_timestamp
 
+from flockwave.server.ext.show.config import LightConfiguration
+
 from .comm import create_communication_manager
 from .driver import FlockCtrlDriver
+from .led_lights import FlockCtrlLEDLightConfigurationManager
 
 # from .wireless import WirelessCommunicationManager
 
@@ -69,11 +72,16 @@ class FlockCtrlDronesExtension(UAVExtensionBase):
     protocol.
     """
 
+    _driver: Optional[FlockCtrlDriver]
+    _comm_manager: Optional[CommunicationManager[FlockCtrlPacket, IPAddressAndPort]]
+    _led_manager: Optional[FlockCtrlLEDLightConfigurationManager]
+
     def __init__(self):
         super(FlockCtrlDronesExtension, self).__init__()
 
         self._driver = None
-        self._manager = None
+        self._comm_manager = None
+        self._led_manager = None
 
     def _create_connections(
         self, configuration
@@ -174,35 +182,49 @@ class FlockCtrlDronesExtension(UAVExtensionBase):
                 )
 
             # Create the communication manager
-            manager = create_communication_manager()
+            comm_manager = create_communication_manager()
 
             # Register the links with the communication manager. The order is
             # important here; the first one will be used for sending, so that
             # must be the unicast link.
-            manager.add(unicast_link, name="wireless")
-            manager.add(broadcast_link, name="wireless", can_send=False)
+            comm_manager.add(unicast_link, name="wireless")
+            comm_manager.add(broadcast_link, name="wireless", can_send=False)
             if radio_link is not None:
-                manager.add(radio_link, name="radio")
+                comm_manager.add(radio_link, name="radio")
 
-            # Register a callback for RTK correction packets
+            # Create the LED light configuration manager
+            assert self._driver is not None
+            led_manager = FlockCtrlLEDLightConfigurationManager(
+                self._enqueue_broadcast_packet_over_radio_falling_back_to_wireless
+            )
+
+            # Register signal handlers
             stack.enter_context(
-                signals.use({"rtk:packet": self._on_rtk_correction_packet})
+                signals.use(
+                    {
+                        "rtk:packet": self._on_rtk_correction_packet,
+                        "show:lights_updated": self._on_show_light_configuration_changed,
+                    }
+                )
             )
 
             # Start the communication manager
             try:
                 async with self.use_nursery() as nursery:
-                    self._manager = manager
+                    self._comm_manager = comm_manager
+                    self._led_manager = led_manager
+                    nursery.start_soon(led_manager.run)
                     nursery.start_soon(
                         partial(
-                            manager.run,
+                            comm_manager.run,
                             consumer=self._handle_inbound_packets,
                             supervisor=app.supervise,
                             log=self.log,
                         )
                     )
             finally:
-                self._manager = None
+                self._comm_manager = None
+                self._led_manager = None
 
     def configure_driver(self, driver, configuration):
         """Configures the driver that will manage the UAVs created by
@@ -273,31 +295,51 @@ class FlockCtrlDronesExtension(UAVExtensionBase):
             ticks=clock.ticks_given_time(now_as_timestamp),
             ticks_per_second=clock.ticks_per_second,
         )
-        self._send_packet(packet)
+        self._enqueue_broadcast_packet_over_radio_falling_back_to_wireless(packet)
 
-    def _on_rtk_correction_packet(self, sender, packet: bytes):
+    def _on_show_light_configuration_changed(
+        self, sender, config: LightConfiguration
+    ) -> None:
+        """Handler that is called when the user changes the LED light configuration
+        of the drones in the `show` extesion.
+        """
+        if self._led_manager is None:
+            return
+
+        # Make a copy of the configuration in case someone else who comes after
+        # us in the handler chain messes with it
+        config = config.clone()
+
+        # Send the configuration to the driver to handle it
+        self._led_manager.notify_config_changed(config)
+
+    def _on_rtk_correction_packet(self, sender, data: bytes):
         """Handles an RTK correction packet that the server wishes to forward
         to the drones managed by this extension.
 
         Parameters:
-            packet: the raw RTK correction packet to forward to the drone
+            data: the raw RTK correction packet to forward to the drone
         """
-        packet = RawGPSInjectionPacket(packet)
-
-        if self._manager:
-            # For RTK packets, we primarily send them over the radio link,
-            # unless we don't have a radio, in which case we fall back to the
-            # wireless connection
-            if self._manager.is_channel_open("radio"):
-                self._manager.enqueue_packet(packet, ("radio", BROADCAST))
-            else:
-                self._manager.enqueue_packet(packet, ("wireless", BROADCAST))
+        packet = RawGPSInjectionPacket(data)
+        self._enqueue_broadcast_packet_over_radio_falling_back_to_wireless(packet)
 
     async def _broadcast_packet(self, packet: FlockCtrlPacket, medium: str) -> None:
         """Broadcasts a FlockCtrl packet to all UAVs in the network managed
         by the extension.
         """
         await self._send_packet(packet, (medium, BROADCAST))
+
+    def _enqueue_broadcast_packet_over_radio_falling_back_to_wireless(
+        self, packet: FlockCtrlPacket
+    ) -> None:
+        """Enqueues the given packet for a broadcast transmission over the radio
+        link, falling back to the wifi link if the radio link is not open.
+        """
+        if self._comm_manager:
+            if self._comm_manager.is_channel_open("radio"):
+                self._comm_manager.enqueue_packet(packet, ("radio", BROADCAST))
+            else:
+                self._comm_manager.enqueue_packet(packet, ("wireless", BROADCAST))
 
     async def _send_packet(
         self,
@@ -314,8 +356,8 @@ class FlockCtrlDronesExtension(UAVExtensionBase):
                 an address means to send a broadcast packet on the given
                 channel.
         """
-        if self._manager:
-            await self._manager.send_packet(packet, destination)
+        if self._comm_manager:
+            await self._comm_manager.send_packet(packet, destination)
         else:
             raise ValueError("communication manager not running")
 

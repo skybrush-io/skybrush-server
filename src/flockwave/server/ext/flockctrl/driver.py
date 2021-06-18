@@ -1,13 +1,14 @@
 """Driver class for FlockCtrl-based drones."""
 
-from __future__ import division
+from __future__ import annotations
 
 from base64 import b64decode
 from bidict import bidict
 from colour import Color
+from logging import Logger
 from time import monotonic
 from trio import CapacityLimiter, to_thread
-from typing import Optional, List, Tuple, Union
+from typing import Any, Dict, Iterable, Optional, List, Tuple, Union
 from zlib import decompress
 
 from flockwave.concurrency import FutureCancelled, FutureMap
@@ -44,7 +45,6 @@ from flockwave.spec.errors import FlockwaveErrorCode
 from .algorithms import handle_algorithm_data_packet
 from .comm import BurstedMultiTargetMessageManager, upload_mission
 from .errors import AddressConflictError, map_flockctrl_error_code_and_flags
-
 from .mission import generate_mission_file_from_show_specification
 
 __all__ = ("FlockCtrlDriver",)
@@ -63,7 +63,7 @@ class FlockCtrlDriver(UAVDriver):
     """Driver class for FlockCtrl-based drones.
 
     Attributes:
-        allow_multiple_commands_per_uav (bool): whether the driver should
+        allow_multiple_commands_per_uav: whether the driver should
             allow the user to send a command to an UAV while another one is
             still in progress (i.e. hasn't timed out). When the property is
             ``True``, sending the second command is allowed and it will
@@ -72,7 +72,7 @@ class FlockCtrlDriver(UAVDriver):
             user cancels the execution of the first command explicitly.
             The default is ``True``.
         app (SkybrushServer): the app in which the driver lives
-        id_format (str): Python format string that receives a numeric
+        id_format: Python format string that receives a numeric
             drone ID in the flock and returns its preferred formatted
             identifier that is used when the drone is registered in the
             server, or any other object that has a ``format()`` method
@@ -92,12 +92,23 @@ class FlockCtrlDriver(UAVDriver):
             which the packet should be forwarded.
     """
 
-    def __init__(self, app=None, id_format="{0:02}"):
+    allow_multiple_commands_per_uav: bool
+    id_format: str
+    log: Logger
+
+    _bursted_message_manager: BurstedMultiTargetMessageManager
+    _disable_warnings_until: Dict[int, float]
+    _index_to_uav_id: bidict[int, str]
+    _pending_commands_by_uav: FutureMap[str]
+    _uavs_by_source_address: Dict[Any, FlockCtrlUAV]
+    _upload_capacity: CapacityLimiter
+
+    def __init__(self, app=None, id_format: str = "{0:02}"):
         """Constructor.
 
         Parameters:
             app (SkybrushServer): the app in which the driver lives
-            id_format (str): the format of the UAV IDs used by this driver.
+            id_format: the format of the UAV IDs used by this driver.
                 See the class documentation for more details.
         """
         super().__init__()
@@ -124,7 +135,9 @@ class FlockCtrlDriver(UAVDriver):
         self.id_format = id_format
         self.log = log.getChild("flockctrl").getChild("driver")
 
-    async def handle_command___mission_upload(self, uav: "FlockCtrlUAV", mission: str):
+    async def handle_command___mission_upload(
+        self, uav: "FlockCtrlUAV", mission: str
+    ) -> None:
         """Handles a mission upload request for the given UAV.
 
         This is a temporary solution until we figure out something that is
@@ -156,7 +169,7 @@ class FlockCtrlDriver(UAVDriver):
         await self._handle_mission_upload(uav, mission)
 
     async def handle_command_calib(
-        self, uav, component: Optional[str] = None
+        self, uav: "FlockCtrlUAV", component: Optional[str] = None
     ) -> Union[bool, str]:
         """Calibrates a component of the UAV."""
         if component == "baro":
@@ -172,7 +185,7 @@ class FlockCtrlDriver(UAVDriver):
         else:
             raise NotSupportedError
 
-    async def handle_generic_command(self, uav, command, args, kwds):
+    async def handle_generic_command(self, uav: "FlockCtrlUAV", command, args, kwds):
         """Sends a generic command execution request to the given UAV."""
         command = " ".join([command, *args])
         response = await self._send_command_to_uav_and_check_for_errors(command, uav)
@@ -193,14 +206,15 @@ class FlockCtrlDriver(UAVDriver):
             handler(packet, source)
         except AddressConflictError as ex:
             uav_id = ex.uav.id if ex.uav else None
-            deadline = self._disable_warnings_until.get(uav_id, 0)
-            now = monotonic()
-            if now >= deadline:
-                self.log.warn(
-                    "Dropped packet from invalid source: "
-                    "{0}/{1}, sent to UAV {2}".format(ex.medium, ex.address, uav_id)
-                )
-                self._disable_warnings_until[uav_id] = now + 1
+            if uav_id is not None:
+                deadline = self._disable_warnings_until.get(uav_id, 0)
+                now = monotonic()
+                if now >= deadline:
+                    self.log.warn(
+                        "Dropped packet from invalid source: "
+                        "{0}/{1}, sent to UAV {2}".format(ex.medium, ex.address, uav_id)
+                    )
+                    self._disable_warnings_until[uav_id] = now + 1
 
     def send_landing_signal(self, uavs, transport: Optional[TransportOptions] = None):
         self._bursted_message_manager.schedule_burst(
@@ -363,15 +377,14 @@ class FlockCtrlDriver(UAVDriver):
             RawGPSInjectionPacket: nop,
         }
 
-    def _create_uav(self, formatted_id):
+    def _create_uav(self, formatted_id: str) -> "FlockCtrlUAV":
         """Creates a new UAV that is to be managed by this driver.
 
         Parameters:
-            formatted_id (str): the formatted string identifier of the UAV
-                to create
+            formatted_id: the formatted string identifier of the UAV to create
 
         Returns:
-            FlockCtrlUAV: an appropriate UAV object
+            an appropriate UAV object
         """
         return FlockCtrlUAV(formatted_id, driver=self)
 
@@ -386,7 +399,7 @@ class FlockCtrlDriver(UAVDriver):
         except ValueError:
             raise ValueError("Address of UAV is not known yet")
 
-    def _get_or_create_uav(self, id):
+    def _get_or_create_uav(self, id: int) -> "FlockCtrlUAV":
         """Retrieves the UAV with the given numeric ID, or creates one if
         the driver has not seen a UAV with the given ID yet.
 
@@ -449,7 +462,7 @@ class FlockCtrlDriver(UAVDriver):
             self._on_chunked_packet_assembled(body, source)
 
     def _handle_inbound_mission_info_packet(self, packet: MissionInfoPacket, source):
-        """Handles an inbound FlockCtrl mision information packet.
+        """Handles an inbound FlockCtrl mission information packet.
 
         Parameters:
             packet: the packet to handle
@@ -613,7 +626,7 @@ class FlockCtrlDriver(UAVDriver):
 
         for i, status in enumerate(packet.statuses):
             uav._preflight_status.set_result(
-                id=PrearmCheck(i).name,
+                id=PrearmCheck(i).name,  # type: ignore
                 result=_preflight_result_map[status],
                 label=packet.index_to_description(i),
             )
@@ -645,12 +658,12 @@ class FlockCtrlDriver(UAVDriver):
             limiter=self._upload_capacity,
         )
 
-    def _on_chunked_packet_assembled(self, body, source):
+    def _on_chunked_packet_assembled(self, body: bytes, source) -> None:
         """Handler called when the response chunk handler has assembled
         the body of a chunked packet.
 
         Parameters:
-            body (bytes): the assembled body of the packet
+            body: the assembled body of the packet
             source (Tuple[str, object]): source medium and address where the
                 packet was sent from
         """
@@ -697,13 +710,13 @@ class FlockCtrlDriver(UAVDriver):
         await self.send_packet(packet, address)
         return packet
 
-    async def _send_command_to_uav(self, command, uav):
+    async def _send_command_to_uav(self, command: str, uav: "FlockCtrlUAV") -> str:
         """Sends a command string to the given UAV.
 
         Parameters:
-            command (str): the command to send. It will be encoded in UTF-8
-                before sending it.
-            uav (FlockCtrlUAV): the UAV to send the command to
+            command: the command to send. It will be encoded in UTF-8 before
+                sending it.
+            uav: the UAV to send the command to
 
         Returns:
             the result of the command
@@ -719,7 +732,9 @@ class FlockCtrlDriver(UAVDriver):
             except FutureCancelled:
                 return "Execution cancelled"
 
-    async def _send_command_to_uav_and_check_for_errors(self, cmd, uav) -> None:
+    async def _send_command_to_uav_and_check_for_errors(
+        self, cmd: str, uav: "FlockCtrlUAV"
+    ) -> str:
         """Sends a single command to a UAV and checks the response to determine
         whether it looks like an error.
 
@@ -734,10 +749,12 @@ class FlockCtrlDriver(UAVDriver):
             raise RuntimeError(response[3:].strip())
         return response
 
-    def _request_preflight_report_single(self, uav) -> PreflightCheckInfo:
+    def _request_preflight_report_single(
+        self, uav: "FlockCtrlUAV"
+    ) -> PreflightCheckInfo:
         return uav.preflight_status
 
-    async def _request_version_info_single(self, uav) -> VersionInfo:
+    async def _request_version_info_single(self, uav: "FlockCtrlUAV") -> VersionInfo:
         response = await self._send_command_to_uav_and_check_for_errors("version", uav)
         result = {}
         for line in response.splitlines():
@@ -746,7 +763,7 @@ class FlockCtrlDriver(UAVDriver):
                 result[component] = version.strip()
         return result
 
-    async def _send_fly_to_target_signal_single(self, uav, target):
+    async def _send_fly_to_target_signal_single(self, uav: "FlockCtrlUAV", target):
         altitude = target.agl
         if altitude is not None:
             cmd = "go N{0.lat:.7f} E{0.lon:.7f} {1}".format(target, altitude)
@@ -754,7 +771,9 @@ class FlockCtrlDriver(UAVDriver):
             cmd = "go N{0.lat:.7f} E{0.lon:.7f}".format(target)
         return await self._send_command_to_uav_and_check_for_errors(cmd, uav)
 
-    async def _send_reset_signal_single(self, uav, component, *, transport=None):
+    async def _send_reset_signal_single(
+        self, uav: "FlockCtrlUAV", component, *, transport=None
+    ):
         if not component:
             # Resetting the whole UAV, this is supported
             return await self._send_command_to_uav_and_check_for_errors("restart", uav)
@@ -762,12 +781,16 @@ class FlockCtrlDriver(UAVDriver):
             # No component resets are implemented on this UAV yet
             raise RuntimeError(f"Resetting {component!r} is not supported")
 
-    async def _send_shutdown_signal_single(self, uav, *, transport=None):
+    async def _send_shutdown_signal_single(
+        self, uav: "FlockCtrlUAV", *, transport=None
+    ):
         return await self._send_command_to_uav_and_check_for_errors("halt", uav)
 
-    def _uavs_to_ids(self, uavs):
+    def _uavs_to_ids(self, uavs: Iterable["FlockCtrlUAV"]) -> List[int]:
         inverse_id_map = self._index_to_uav_id.inverse
-        return [inverse_id_map.get(uav.id) for uav in uavs]
+        return [
+            index for uav in uavs if (index := inverse_id_map.get(uav.id)) is not None
+        ]
 
 
 class FlockCtrlUAV(UAVBase):
@@ -779,6 +802,12 @@ class FlockCtrlUAV(UAVBase):
             various communication media that we may use to access the UAVs
             (e.g., ``wireless``)
     """
+
+    addresses: Dict[str, Any]
+    mission_name: Optional[str]
+
+    _is_airborne: bool
+    _preflight_status: PreflightCheckInfo
 
     def __init__(self, *args, **kwds):
         super().__init__(*args, **kwds)

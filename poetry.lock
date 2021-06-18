@@ -447,7 +447,7 @@ reference = "collmot"
 
 [[package]]
 name = "flockwave-conn"
-version = "2.11.0"
+version = "2.11.1"
 description = "Connection objects for various data sources"
 category = "main"
 optional = false
@@ -494,7 +494,7 @@ reference = "collmot"
 
 [[package]]
 name = "flockwave-flockctrl"
-version = "1.16.0"
+version = "1.17.0"
 description = "flockctrl protocol parser and encoder for Skybrush"
 category = "main"
 optional = false
@@ -1873,7 +1873,7 @@ reference = "collmot"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7"
-content-hash = "1d6d35a4ed5a3fc80087ef51ec268f04dc58109377ab9619d8a9a2a8555beb3a"
+content-hash = "61cc7dd3dee1b0109cc4ae77051b087431e253f0fa36c4a92dcba9487fa985ec"
 
 [metadata.files]
 adrenaline = [
@@ -2049,16 +2049,16 @@ flockwave-app-framework = [
     {file = "flockwave_app_framework-1.3.0-py3-none-any.whl", hash = "md5:445e8fd556702e8c369028a14e155a27"},
 ]
 flockwave-conn = [
-    {file = "flockwave-conn-2.11.0.tar.gz", hash = "md5:b82d32a65b94fd063ffd6798e2163b26"},
-    {file = "flockwave_conn-2.11.0-py3-none-any.whl", hash = "md5:3e9993f274846302d65551d570f93649"},
+    {file = "flockwave-conn-2.11.1.tar.gz", hash = "md5:b16554961b820adb3171cd16052bb9b7"},
+    {file = "flockwave_conn-2.11.1-py3-none-any.whl", hash = "md5:9b834880bcfe2cca27752657a3530d7a"},
 ]
 flockwave-ext = [
     {file = "flockwave-ext-1.6.0.tar.gz", hash = "md5:700bc6be35d0929311fd369e6955d5d0"},
     {file = "flockwave_ext-1.6.0-py3-none-any.whl", hash = "md5:2bc9150c2623be87d3f333bf0253bad1"},
 ]
 flockwave-flockctrl = [
-    {file = "flockwave-flockctrl-1.16.0.tar.gz", hash = "md5:811157eddbe32048b9428b24a1494370"},
-    {file = "flockwave_flockctrl-1.16.0-py3-none-any.whl", hash = "md5:2de47b5eb8ddc4115fb9be7e39b70768"},
+    {file = "flockwave-flockctrl-1.17.0.tar.gz", hash = "md5:67133a7b5350f4a8ed970bf12ce99d19"},
+    {file = "flockwave_flockctrl-1.17.0-py3-none-any.whl", hash = "md5:433e43d5ccd3bbc9b041c44271ce3285"},
 ]
 flockwave-gps = [
     {file = "flockwave-gps-1.4.1.tar.gz", hash = "md5:23c11f032b6e26d53c04dd755851770a"},

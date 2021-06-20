@@ -1,9 +1,15 @@
 """Error classes specific to the FlockCtrl extension."""
 
+from __future__ import annotations
+
 from flockwave.protocols.flockctrl.enums import StatusFlag
+from flockwave.protocols.flockctrl.misc import ClockStatus
 from flockwave.server.model.preflight import PreflightCheckInfo, PreflightCheckResult
 from flockwave.spec.errors import FlockwaveErrorCode
-from typing import Dict, List, Tuple
+from typing import Any, Dict, List, Tuple, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .driver import FlockCtrlUAV
 
 
 __all__ = ("AddressConflictError", "map_flockctrl_error_code_and_flags")
@@ -22,15 +28,15 @@ class AddressConflictError(FlockCtrlError):
     ID and a mismatching source address.
     """
 
-    def __init__(self, uav, medium, address):
+    def __init__(self, uav: "FlockCtrlUAV", medium: str, address: Any):
         """Constructor.
 
         Parameters:
-            uav (FlockCtrlUAV): the UAV that the packet is addressed to,
+            uav: the UAV that the packet is addressed to,
                 based on the UAV ID found in the packet
-            medium (str): the communication medium on which the address is
+            medium: the communication medium on which the address is
                 valid
-            address (object): the source address where the packet came from
+            address: the source address where the packet came from
         """
         super(AddressConflictError, self).__init__(
             "Packet for UAV #{0.id} received from source address on "
@@ -83,7 +89,10 @@ _unspecified: Tuple[int, ...] = (FlockwaveErrorCode.UNSPECIFIED_ERROR,)
 
 
 def map_flockctrl_error_code_and_flags(
-    error_code: int, flags: int, preflight: PreflightCheckInfo
+    error_code: int,
+    flags: int,
+    clock_status: ClockStatus,
+    preflight: PreflightCheckInfo,
 ) -> Tuple[int, ...]:
     """Maps an error code from FlockCtrl status and preflight packets
     to the corresponding Flockwave error code.
@@ -134,5 +143,8 @@ def map_flockctrl_error_code_and_flags(
         aux.append(FlockwaveErrorCode.LANDING.value)
     if flags & StatusFlag.AUTOPILOT_INIT_PENDING:
         aux.append(FlockwaveErrorCode.AUTOPILOT_INITIALIZING.value)
+
+    if not clock_status.pps_timesync_achieved:
+        aux.append(FlockwaveErrorCode.TIMESYNC_ERROR)
 
     return base + tuple(aux) if aux else base

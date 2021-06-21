@@ -77,7 +77,7 @@ reference = "collmot"
 
 [[package]]
 name = "anyio"
-version = "3.1.0"
+version = "3.2.0"
 description = "High level compatibility layer for multiple asynchronous event loop implementations"
 category = "main"
 optional = false
@@ -447,7 +447,7 @@ reference = "collmot"
 
 [[package]]
 name = "flockwave-conn"
-version = "2.11.1"
+version = "2.11.2"
 description = "Connection objects for various data sources"
 category = "main"
 optional = false
@@ -1400,7 +1400,7 @@ reference = "collmot"
 
 [[package]]
 name = "python-dotenv"
-version = "0.17.1"
+version = "0.18.0"
 description = "Read key-value pairs from a .env file and set them as environment variables"
 category = "main"
 optional = false
@@ -1873,7 +1873,7 @@ reference = "collmot"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7"
-content-hash = "61cc7dd3dee1b0109cc4ae77051b087431e253f0fa36c4a92dcba9487fa985ec"
+content-hash = "d3f558626010e41c9913fc6987cf097fc61e6ec6f4b303f09b2a5f5813c05470"
 
 [metadata.files]
 adrenaline = [
@@ -1897,8 +1897,8 @@ altgraph = [
     {file = "altgraph-0.17.tar.gz", hash = "sha256:1f05a47122542f97028caf78775a095fbe6a2699b5089de8477eb583167d69aa"},
 ]
 anyio = [
-    {file = "anyio-3.1.0-py3-none-any.whl", hash = "sha256:5e335cef65fbd1a422bbfbb4722e8e9a9fadbd8c06d5afe9cd614d12023f6e5a"},
-    {file = "anyio-3.1.0.tar.gz", hash = "sha256:43e20711a9d003d858d694c12356dc44ab82c03ccc5290313c3392fa349dad0e"},
+    {file = "anyio-3.2.0-py3-none-any.whl", hash = "sha256:89e19b1498c8a6f12277e0bd2949597e445aa1b14361fbab2c36943639ef5190"},
+    {file = "anyio-3.2.0.tar.gz", hash = "sha256:41c4be842c284222b197a625d76a7ab85adf9d52788f563172fe180c2744b6c1"},
 ]
 appdirs = [
     {file = "appdirs-1.4.4-py2.py3-none-any.whl", hash = "sha256:a841dacd6b99318a741b166adb07e19ee71a274450e68237b4650ca1055ab128"},
@@ -2049,8 +2049,8 @@ flockwave-app-framework = [
     {file = "flockwave_app_framework-1.3.0-py3-none-any.whl", hash = "md5:445e8fd556702e8c369028a14e155a27"},
 ]
 flockwave-conn = [
-    {file = "flockwave-conn-2.11.1.tar.gz", hash = "md5:b16554961b820adb3171cd16052bb9b7"},
-    {file = "flockwave_conn-2.11.1-py3-none-any.whl", hash = "md5:9b834880bcfe2cca27752657a3530d7a"},
+    {file = "flockwave-conn-2.11.2.tar.gz", hash = "md5:c482029ffacbf8987af91c8cc826bce7"},
+    {file = "flockwave_conn-2.11.2-py3-none-any.whl", hash = "md5:ded70e13f65a6822732c93f78c7ee634"},
 ]
 flockwave-ext = [
     {file = "flockwave-ext-1.6.0.tar.gz", hash = "md5:700bc6be35d0929311fd369e6955d5d0"},
@@ -2436,8 +2436,8 @@ python-baseconv = [
     {file = "python-baseconv-1.2.2.tar.gz", hash = "sha256:0539f8bd0464013b05ad62e0a1673f0ac9086c76b43ebf9f833053527cd9931b"},
 ]
 python-dotenv = [
-    {file = "python-dotenv-0.17.1.tar.gz", hash = "sha256:b1ae5e9643d5ed987fc57cc2583021e38db531946518130777734f9589b3141f"},
-    {file = "python_dotenv-0.17.1-py2.py3-none-any.whl", hash = "sha256:00aa34e92d992e9f8383730816359647f358f4a3be1ba45e5a5cefd27ee91544"},
+    {file = "python-dotenv-0.18.0.tar.gz", hash = "sha256:effaac3c1e58d89b3ccb4d04a40dc7ad6e0275fda25fd75ae9d323e2465e202d"},
+    {file = "python_dotenv-0.18.0-py2.py3-none-any.whl", hash = "sha256:dd8fe852847f4fbfadabf6183ddd4c824a9651f02d51714fa075c95561959c7d"},
 ]
 python-json-logger = [
     {file = "python-json-logger-2.0.1.tar.gz", hash = "sha256:f26eea7898db40609563bed0a7ca11af12e2a79858632706d835a0f961b7d398"},

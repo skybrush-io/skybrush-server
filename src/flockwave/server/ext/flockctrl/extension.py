@@ -340,7 +340,7 @@ class FlockCtrlDronesExtension(UAVExtensionBase):
         if self._comm_manager:
             if self._comm_manager.is_channel_open("radio"):
                 self._comm_manager.enqueue_packet(packet, ("radio", BROADCAST))
-            else:
+            if self._comm_manager.is_channel_open("wireless"):
                 self._comm_manager.enqueue_packet(packet, ("wireless", BROADCAST))
 
     async def _send_packet(

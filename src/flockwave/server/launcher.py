@@ -40,8 +40,9 @@ def start(config, debug, quiet, log_style):
         style=log_style,
     )
 
-    # Silence Engine.IO and Socket.IO debug messages
-    for logger_name in ("engineio", "socketio"):
+    # Silence Engine.IO and Socket.IO debug messages and debug messages from
+    # Paramiko
+    for logger_name in ("engineio", "socketio", "paramiko"):
         log_handler = logging.getLogger(logger_name)
         log_handler.setLevel(logging.ERROR)
 

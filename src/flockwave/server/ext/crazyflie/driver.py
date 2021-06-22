@@ -8,9 +8,9 @@ from math import hypot
 from pathlib import Path
 from random import random
 from struct import Struct
-from trio import open_memory_channel, open_nursery, sleep
+from trio import Nursery, open_memory_channel, open_nursery, sleep
 from trio_util import periodic
-from typing import Callable, List, Optional, Tuple
+from typing import AsyncIterator, Callable, List, Optional, Tuple
 
 from aiocflib.crazyflie import Crazyflie
 from aiocflib.crtp.crtpstack import MemoryType
@@ -118,7 +118,7 @@ class CrazyflieDriver(UAVDriver):
         return uav
 
     @property
-    def cache_folder(self) -> str:
+    def cache_folder(self) -> Optional[str]:
         """Returns the full path to a folder where the driver can store
         the parameter TOC files of the Crazyflie drones that it sees.
         """
@@ -159,7 +159,7 @@ class CrazyflieDriver(UAVDriver):
 
     async def handle_command_go(
         self,
-        uav,
+        uav: "CrazyflieUAV",
         x: Optional[str] = None,
         y: Optional[str] = None,
         z: Optional[str] = None,
@@ -171,14 +171,15 @@ class CrazyflieDriver(UAVDriver):
             )
 
         try:
-            x, y, z = optional_float(x), optional_float(y), optional_float(z)
+            coords = optional_float(x), optional_float(y), optional_float(z)
         except ValueError:
             raise RuntimeError("Invalid number found in input")
 
-        x, y, z = await uav.go_to(x, y, z)
-        return f"Target set to ({x:.2f}, {y:.2f}, {z:.2f}) m"
+        x_num, y_num, z_num = coords
+        x_num, y_num, z_num = await uav.go_to(x_num, y_num, z_num)
+        return f"Target set to ({x_num:.2f}, {y_num:.2f}, {z_num:.2f}) m"
 
-    async def handle_command_home(self, uav):
+    async def handle_command_home(self, uav: "CrazyflieUAV"):
         """Command that retrieves the current home position of the UAV."""
         home = await uav.get_home_position()
         if home is None:
@@ -187,7 +188,9 @@ class CrazyflieDriver(UAVDriver):
             x, y, z = home
             return f"Home: [{x:.2f}, {y:.2f}, {z:.2f}] m"
 
-    async def handle_command_kalman(self, uav, command: Optional[str] = None) -> None:
+    async def handle_command_kalman(
+        self, uav: "CrazyflieUAV", command: Optional[str] = None
+    ) -> str:
         if command is None:
             return "Run 'kalman reset' to reset the Kalman filter"
         elif command == "reset":
@@ -196,7 +199,9 @@ class CrazyflieDriver(UAVDriver):
         else:
             raise RuntimeError(f"Unknown command: {command}")
 
-    async def handle_command_test(self, uav, component: Optional[str] = None) -> None:
+    async def handle_command_test(
+        self, uav: "CrazyflieUAV", component: Optional[str] = None
+    ) -> str:
         """Runs a self-test on a component of the UAV."""
         if component == "motor":
             # TODO(ntamas): allow this only when the drone is on the ground!
@@ -212,7 +217,7 @@ class CrazyflieDriver(UAVDriver):
         else:
             return "Usage: test <battery|led|motor>"
 
-    async def handle_command_stop(self, uav):
+    async def handle_command_stop(self, uav: "CrazyflieUAV") -> str:
         """Stops the motors of the UAV immediately."""
         await uav.stop()
         return "Motor stop signal sent"
@@ -295,7 +300,7 @@ class CrazyflieUAV(UAVBase):
 
     def __init__(self, *args, **kwds):
         super().__init__(*args, **kwds)
-        self.uri = None
+        self.uri: Optional[str] = None
         self.notify_updated = None
         self.notify_shutdown_or_reboot = None
         self.send_log_message_to_gcs = None
@@ -331,7 +336,7 @@ class CrazyflieUAV(UAVBase):
     async def get_version_info(self) -> VersionInfo:
         version = await self._crazyflie.platform.get_firmware_version()
         revision = await self._crazyflie.platform.get_firmware_revision()
-        return {"firmware": version, "revision": revision}
+        return {"firmware": version or "", "revision": revision or ""}
 
     async def go_to(
         self,
@@ -340,7 +345,7 @@ class CrazyflieUAV(UAVBase):
         z: Optional[float] = None,
         velocity_xy: float = 2,
         velocity_z: float = 0.5,
-    ) -> None:
+    ) -> Tuple[float, float, float]:
         """Sends the UAV to a given coordinate.
 
         Parameters:
@@ -519,7 +524,9 @@ class CrazyflieUAV(UAVBase):
         await self._crazyflie.param.set(name, value)
 
     @asynccontextmanager
-    async def set_and_restore_parameter(self, name: str, value: float) -> None:
+    async def set_and_restore_parameter(
+        self, name: str, value: float
+    ) -> AsyncIterator[None]:
         """Context manager that sets the value of a parameter on the UAV upon
         entering the context and resets it upon exiting.
         """
@@ -929,16 +936,17 @@ class CrazyflieHandlerTask:
         """
         try:
             await self._run()
-        except Exception as ex:
+        except IOError as ex:
             log.error(
+                f"Error while handling Crazyflie: {str(ex)}",
+                extra={"id": self._uav.id, "sentry_ignore": True},
+            )
+            # We do not log the stack trace of IOErrors -- the stack trace is too long
+            # and in 99% of the cases it is simply a communication error
+        except Exception as ex:
+            log.exception(
                 f"Error while handling Crazyflie: {str(ex)}", extra={"id": self._uav.id}
             )
-            if not isinstance(ex, IOError):
-                log.exception(ex)
-            else:
-                # We do not log IOErrors -- the stack trace is too long
-                # and in 99% of the cases it is simply a communication error
-                pass
 
     async def _run(self):
         """Implementation of the task itself.
@@ -978,7 +986,7 @@ class CrazyflieHandlerTask:
                         pass
                     return
 
-                nursery = await enter(open_nursery())
+                nursery: Nursery = await enter(open_nursery())
                 self._uav.notify_shutdown_or_reboot = nursery.cancel_scope.cancel
                 nursery.start_soon(self._uav.process_console_messages)
                 nursery.start_soon(self._uav.process_drone_show_status_messages)
@@ -997,8 +1005,9 @@ class CrazyflieHandlerTask:
         coming from an external positioning system.
         """
         async for _ in periodic(0.2):
-            x, y, z = self._use_fake_position
-            await self._uav._crazyflie._localization.send_external_position(x, y, z)
+            if self._use_fake_position:
+                x, y, z = self._use_fake_position
+                await self._uav._crazyflie._localization.send_external_position(x, y, z)
 
     async def _reupload_last_show_if_needed(self) -> None:
         try:

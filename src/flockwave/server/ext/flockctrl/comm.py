@@ -4,10 +4,6 @@ UAV and the ground station via some communication link.
 
 from __future__ import annotations
 
-from datetime import datetime
-from io import BytesIO
-from paramiko import SSHClient
-from select import select
 from trio import Event
 from trio_util import periodic
 from typing import Any, Iterable, List, Optional, TYPE_CHECKING, Tuple, Union
@@ -34,7 +30,7 @@ from flockwave.server.utils import constant
 if TYPE_CHECKING:
     from .driver import FlockCtrlDriver
 
-__all__ = ("create_communication_manager", "execute_ssh_command", "upload_mission")
+__all__ = ("create_communication_manager",)
 
 
 def create_communication_manager() -> CommunicationManager[
@@ -139,61 +135,6 @@ def create_flockctrl_udp_message_channel(
     return channel
 
 
-def execute_ssh_command(
-    ssh: SSHClient, command: str, stdin: Optional[bytes] = None, timeout: float = 5
-):
-    """Executes the given command on an established SSH connection, optionally
-    submitting the given data on the standard input stream before reading
-    anything from stdout or stderr. stdout and stderr is then read until the
-    end.
-
-    Parameters:
-        ssh: the SSH connection
-        command: the command string to send
-        stdin: optional input to send on the standard input
-        timeout: number of seconds to wait for a response before the attempt is
-            considered to have timed out
-
-    Returns:
-        Tuple[bytes, bytes, int]: the data read from the standard output and
-        standard error streams as well as the exit code of the command
-    """
-    stdin_stream, stdout_stream, _ = ssh.exec_command(command, timeout=timeout)
-    channel = stdout_stream.channel
-
-    if stdin is not None:
-        stdin_stream.write(stdin)
-
-    channel.shutdown_write()
-    stdin_stream.close()
-
-    stdout, stderr = [], []
-
-    while True:
-        rl, _, _ = select([channel], [], [])
-        if rl:
-            num_bytes = 0
-            if channel.recv_stderr_ready():
-                recv_bytes = channel.recv_stderr(1024)
-                num_bytes += len(recv_bytes)
-                stderr.append(recv_bytes)
-            if channel.recv_ready():
-                recv_bytes = channel.recv(1024)
-                num_bytes += len(recv_bytes)
-                stdout.append(recv_bytes)
-            if not num_bytes:
-                break
-
-    channel.close()
-
-    exit_code = channel.recv_exit_status()
-    if exit_code == -1:
-        # Bad, bad server...
-        exit_code = 0
-
-    return b"".join(stdout), b"".join(stderr), exit_code
-
-
 def format_flockctrl_address(address: Any) -> str:
     """Returns a formatted representation of the address of a `flockctrl`
     message channel.
@@ -202,65 +143,6 @@ def format_flockctrl_address(address: Any) -> str:
         return format_socket_address(address)
     except ValueError:
         return str(address)
-
-
-def upload_mission(raw_data: bytes, address: Union[str, Tuple[str, int]]) -> None:
-    """Uploads the given raw mission data to the inbox of a drone at the given
-    address.
-
-    This function blocks the thread it is running in; it is advised to run it
-    in a separate thread in order not to block the main event loop.
-
-    Parameters:
-        raw_data: the raw data to upload. It must be an in-memory mission ZIP
-            file. Some basic validity checks will be performed on it before
-            attempting the upload.
-        address: the network address of the UAV, either as a hostname or as a
-            tuple consisting of a hostname and a port
-    """
-    from zipfile import ZipFile
-    from .ssh import open_scp, open_ssh
-
-    with ZipFile(BytesIO(raw_data)) as parsed_data:
-        if parsed_data.testzip():
-            raise ValueError("Invalid mission file")
-
-        version_info = parsed_data.read("_meta/version").strip()
-        if version_info != b"1":
-            raise ValueError("Only version 1 mission files are supported")
-
-        if "mission.cfg" not in parsed_data.namelist():
-            raise ValueError("No mission configuration in mission file")
-
-    name = (
-        datetime.now()
-        .replace(microsecond=0)
-        .isoformat()
-        .replace(":", "")
-        .replace("-", "")
-    )
-
-    # TODO(ntamas): this thread needs to be interruptible, otherwise we are
-    # blocking one entry in the CapacityLimiter even if the upstream request
-    # timed out. Using a progress handler in putfo() and then throwing an
-    # exception from there would probably work as an interruption, but even the
-    # progress handler is not called regularly if the connection is stuck so we
-    # probably need another solution (e.g., use another process?)
-    with open_ssh(address, username="root") as ssh:
-        scp = open_scp(ssh)
-        scp.putfo(BytesIO(raw_data), f"/tmp/{name}.mission-tmp")
-        _, _, exit_code = execute_ssh_command(
-            ssh,
-            " && ".join(
-                [
-                    f"mv /tmp/{name}.mission-tmp /data/inbox/{name}.mission",
-                    "systemctl restart flockctrl",
-                ]
-            ),
-        )
-
-        if exit_code != 0:
-            raise ValueError("Failed to restart flockctrl process")
 
 
 #: Number of commands supported by the multi-target messages in the

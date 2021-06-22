@@ -6,8 +6,7 @@ from functools import partial
 from importlib.resources import read_text
 from io import BytesIO
 from math import ceil, hypot
-from typing import Callable, Iterable, Optional, Sequence, Tuple
-from zipfile import ZipFile, ZIP_DEFLATED
+from typing import Callable, Iterable, IO, Optional, Sequence, Tuple, Union
 
 from skybrush import (
     get_altitude_reference_from_show_specification,
@@ -17,7 +16,12 @@ from skybrush import (
     get_trajectory_from_show_specification,
 )
 
-__all__ = ("get_template", "gps_coordinate_to_string")
+__all__ = (
+    "generate_mission_file_from_show_specification",
+    "get_template",
+    "gps_coordinate_to_string",
+    "validate_mission_data",
+)
 
 
 _template_pkg = __name__.rpartition(".")[0] + ".templates"
@@ -128,6 +132,7 @@ def generate_mission_file_from_show_specification(show) -> bytes:
     Returns:
         the uploadable mission ZIP file as a raw bytes object
     """
+    from zipfile import ZipFile, ZIP_DEFLATED
 
     # TODO: move this to a proper place, I do not know where...
     # TODO: generalize all conversions in flockwave.gps.vectors
@@ -300,3 +305,29 @@ def gps_coordinate_to_string(lat: float, lon: float, amsl: float = None) -> str:
         retval += f" {amsl_sign}{amsl:.3f}"
 
     return retval
+
+
+def validate_mission_data(data: Union[bytes, IO[bytes]]) -> None:
+    """Validates an in-memory or stream-based ZIP representation of a mission.
+
+    Parameters:
+        data: the raw mission data, either as an in-memory byte array, or as a
+            file handle
+
+    Raises:
+        ValueError: if the mission representation is invalid
+    """
+    from zipfile import ZipFile
+
+    handle: IO[bytes] = BytesIO(data) if isinstance(data, bytes) else data
+
+    with ZipFile(handle) as parsed_data:
+        if parsed_data.testzip():
+            raise ValueError("Invalid mission file")
+
+        version_info = parsed_data.read("_meta/version").strip()
+        if version_info != b"1":
+            raise ValueError("Only version 1 mission files are supported")
+
+        if "mission.cfg" not in parsed_data.namelist():
+            raise ValueError("No mission configuration in mission file")

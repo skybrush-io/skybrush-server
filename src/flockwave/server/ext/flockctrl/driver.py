@@ -7,7 +7,6 @@ from bidict import bidict
 from colour import Color
 from logging import Logger
 from time import monotonic
-from trio import CapacityLimiter, to_thread
 from typing import Any, Dict, Iterable, Optional, List, Tuple, Union
 from zlib import decompress
 
@@ -43,9 +42,10 @@ from flockwave.spec.ids import make_valid_object_id
 from flockwave.spec.errors import FlockwaveErrorCode
 
 from .algorithms import handle_algorithm_data_packet
-from .comm import BurstedMultiTargetMessageManager, upload_mission
+from .comm import BurstedMultiTargetMessageManager
 from .errors import AddressConflictError, map_flockctrl_error_code_and_flags
 from .mission import generate_mission_file_from_show_specification
+from .upload import upload_mission
 
 __all__ = ("FlockCtrlDriver",)
 
@@ -101,7 +101,6 @@ class FlockCtrlDriver(UAVDriver):
     _index_to_uav_id: bidict[int, str]
     _pending_commands_by_uav: FutureMap[str]
     _uavs_by_source_address: Dict[Any, FlockCtrlUAV]
-    _upload_capacity: CapacityLimiter
 
     def __init__(self, app=None, id_format: str = "{0:02}"):
         """Constructor.
@@ -119,7 +118,6 @@ class FlockCtrlDriver(UAVDriver):
         self._disable_warnings_until = {}
         self._index_to_uav_id = bidict()
         self._uavs_by_source_address = {}
-        self._upload_capacity = CapacityLimiter(5)
 
         # These functions will be provided to the driver by the extension
         self.broadcast_packet = None
@@ -652,13 +650,7 @@ class FlockCtrlDriver(UAVDriver):
         if uav.is_airborne:
             raise RuntimeError("Cannot upload a mission while the drone is airborne")
 
-        await to_thread.run_sync(
-            upload_mission,
-            data,
-            uav.ssh_host,
-            cancellable=True,
-            limiter=self._upload_capacity,
-        )
+        await upload_mission(data, uav.ssh_host)
 
     def _on_chunked_packet_assembled(self, body: bytes, source) -> None:
         """Handler called when the response chunk handler has assembled

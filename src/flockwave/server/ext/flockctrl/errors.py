@@ -6,7 +6,7 @@ from flockwave.protocols.flockctrl.enums import StatusFlag
 from flockwave.protocols.flockctrl.misc import ClockStatus
 from flockwave.server.model.preflight import PreflightCheckInfo, PreflightCheckResult
 from flockwave.spec.errors import FlockwaveErrorCode
-from typing import Any, Dict, List, Tuple, TYPE_CHECKING
+from typing import Any, Dict, List, Optional, Tuple, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from .driver import FlockCtrlUAV
@@ -91,7 +91,7 @@ _unspecified: Tuple[int, ...] = (FlockwaveErrorCode.UNSPECIFIED_ERROR,)
 def map_flockctrl_error_code_and_flags(
     error_code: int,
     flags: int,
-    clock_status: ClockStatus,
+    clock_status: Optional[ClockStatus],
     preflight: PreflightCheckInfo,
 ) -> Tuple[int, ...]:
     """Maps an error code from FlockCtrl status and preflight packets
@@ -144,7 +144,7 @@ def map_flockctrl_error_code_and_flags(
     if flags & StatusFlag.AUTOPILOT_INIT_PENDING:
         aux.append(FlockwaveErrorCode.AUTOPILOT_INITIALIZING.value)
 
-    if not clock_status.pps_timesync_achieved:
+    if clock_status and not clock_status.pps_timesync_achieved:
         aux.append(FlockwaveErrorCode.TIMESYNC_ERROR)
 
     return base + tuple(aux) if aux else base

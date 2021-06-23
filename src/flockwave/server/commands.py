@@ -76,7 +76,7 @@ class CommandExecutionManager(RegistryBase[CommandExecutionStatus]):
             timeout: the number of seconds that must pass since the start of a
                 command to consider the command as having timed out.
         """
-        super(CommandExecutionManager, self).__init__()
+        super().__init__()
         self._builder = CommandExecutionStatusBuilder()
         self._tx_queue, self._rx_queue = open_memory_channel(0)
         self.timeout = timeout
@@ -106,9 +106,8 @@ class CommandExecutionManager(RegistryBase[CommandExecutionStatus]):
         was passed back to the client that originally initiated the request.
 
         Parameters:
-            receipt_id (str or CommandExecutionStatus): the receipt
-                identifier of the command, or the execution status object
-                of the command itself.
+            receipt_id: the receipt identifier of the command, or the execution
+                status object of the command itself.
 
         Throws:
             ValueError: if the given receipt belongs to a different manager

@@ -34,7 +34,7 @@ class CommandExecutionStatus(metaclass=ModelMeta):
         """Constructor.
 
         Parameters:
-            id (str): the receipt ID of this status object
+            id: the receipt ID of this status object
         """
         self.id = id
         self.created_at = time()

@@ -3,7 +3,7 @@
 from __future__ import absolute_import
 
 from flockwave.spec.schema import get_message_schema
-from typing import Any, Iterable, Optional, Union
+from typing import Any, Iterable, List, Optional, Union
 
 from .commands import CommandExecutionStatus
 from .metamagic import ModelMeta
@@ -15,6 +15,7 @@ __all__ = ("FlockwaveMessage", "FlockwaveNotification", "FlockwaveResponse")
 class FlockwaveMessage(metaclass=ModelMeta):
     """Class representing a single Flockwave message."""
 
+    id: str
     body: Any
 
     class __meta__:
@@ -41,6 +42,8 @@ class FlockwaveResponse(FlockwaveMessage):
     """Specialized Flockwave message that represents a response to some
     other message.
     """
+
+    refs: List[str]
 
     def __init__(self, *args, **kwds):
         self._on_sent = []

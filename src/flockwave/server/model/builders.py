@@ -5,6 +5,7 @@ from __future__ import absolute_import
 from baseconv import base64
 from builtins import str
 from random import getrandbits
+from typing import Any, Callable, Dict
 
 from .commands import CommandExecutionStatus
 from .messages import FlockwaveMessage, FlockwaveNotification, FlockwaveResponse
@@ -12,19 +13,21 @@ from .messages import FlockwaveMessage, FlockwaveNotification, FlockwaveResponse
 __all__ = ("CommandExecutionStatusBuilder", "FlockwaveMessageBuilder")
 
 
-def _default_id_generator():
+def _default_id_generator() -> str:
     """Default ID generator that generates 60-bit random integers and
     encodes them using base64, yielding ten-character random identifiers.
     """
     return base64.encode(getrandbits(60))
 
 
-class CommandExecutionStatusBuilder(object):
+class CommandExecutionStatusBuilder:
     """Builder object that can be used to create new command execution
     status objects.
     """
 
-    def __init__(self, id_generator=_default_id_generator):
+    id_generator: Callable[[], str]
+
+    def __init__(self, id_generator: Callable[[], str] = _default_id_generator):
         """Constructs a new command execution status builder.
 
         Parameters:
@@ -34,33 +37,39 @@ class CommandExecutionStatusBuilder(object):
         """
         self.id_generator = id_generator
 
-    def create_status_object(self):
+    def create_status_object(self) -> CommandExecutionStatus:
         """Creates a new command execution status object.
 
         Returns:
             CommandExecutionStatus: the newly created command execution
                 status object
         """
-        id = str(self.id_generator())
-        return CommandExecutionStatus(id=id)
+        return CommandExecutionStatus(id=self.id_generator())
 
 
 class FlockwaveMessageBuilder(object):
     """Builder object that can be used to create new Flockwave messages."""
 
-    def __init__(self, version="1.0", id_generator=_default_id_generator):
+    id_generator: Callable[[], str]
+    version: str
+
+    def __init__(
+        self,
+        version: str = "1.0",
+        id_generator: Callable[[], str] = _default_id_generator,
+    ):
         """Constructs a new message builder.
 
         Parameters:
-            version (string): the version of the Flockwave protocol that
-                we put in the generated messages
-            id_generator (callable): callable that will generate a new
-                message ID when called without arguments
+            version: the version of the Flockwave protocol that we put in the
+                generated messages
+            id_generator: callable that will generate a new message ID when
+                called without arguments
         """
         self.id_generator = id_generator
         self.version = version
 
-    def _create_message_object(self, body=None):
+    def _create_message_object(self, body: Any = None) -> Dict[str, Any]:
         """Creates a new Flockwave message object with the given body.
 
         Parameters:
@@ -74,37 +83,36 @@ class FlockwaveMessageBuilder(object):
             result["body"] = body
         return result
 
-    def create_message(self, body=None):
+    def create_message(self, body: Any = None) -> FlockwaveMessage:
         """Creates a new Flockwave message with the given body.
 
         Parameters:
-            body (object): the body of the message.
+            body: the body of the message.
 
         Returns:
-            FlockwaveMessage: the newly created message
+            the newly created message
         """
         result = self._create_message_object(body)
-        return FlockwaveMessage.from_json(result, validate=False)
+        return FlockwaveMessage.from_json(result, validate=False)  # type: ignore
 
-    def create_notification(self, body=None):
+    def create_notification(self, body: Any = None) -> FlockwaveNotification:
         """Creates a new Flockwave notification with the given body.
 
         Parameters:
-            body (object): the body of the notification.
+            body: the body of the notification.
 
         Returns:
-            FlockwaveNotification: the newly created notification
+            the newly created notification
         """
         result = self._create_message_object(body)
-        return FlockwaveNotification.from_json(result, validate=False)
+        return FlockwaveNotification.from_json(result, validate=False)  # type: ignore
 
-    def create_response_to(self, message, body=None):
+    def create_response_to(self, message: Any, body: Any = None) -> FlockwaveResponse:
         """Creates a new Flockwave message that is a response to the
         given message.
 
         Parameters:
-            message (FlockwaveMessage): the message that the constructed
-                message will respond to
+            message: the message that the constructed message will respond to
             body (object): the body of the response. When it is not ``None``
                 and its type is missing, the type will be made equal to the
                 type of the incoming message.
@@ -122,4 +130,4 @@ class FlockwaveMessageBuilder(object):
 
         result = self._create_message_object(body)
         result["refs"] = message_id
-        return FlockwaveResponse.from_json(result, validate=False)
+        return FlockwaveResponse.from_json(result, validate=False)  # type: ignore

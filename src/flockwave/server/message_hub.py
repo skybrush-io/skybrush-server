@@ -1,6 +1,6 @@
 """Classes related to message handling in Flockwave."""
 
-from __future__ import absolute_import
+from __future__ import annotations
 
 from abc import ABCMeta, abstractmethod
 from collections import defaultdict
@@ -9,12 +9,15 @@ from dataclasses import dataclass, field
 from functools import partial
 from inspect import isawaitable
 from itertools import chain
+from logging import Logger
 from jsonschema import ValidationError
 from time import monotonic
 from trio import (
     BrokenResourceError,
     ClosedResourceError,
     Event,
+    MemoryReceiveChannel,
+    MemorySendChannel,
     move_on_after,
     open_memory_channel,
     open_nursery,
@@ -24,14 +27,18 @@ from typing import (
     Any,
     Awaitable,
     Callable,
+    DefaultDict,
     Dict,
     Generator,
     Generic,
     Iterable,
+    Iterator,
+    List,
     Optional,
     Tuple,
     TypeVar,
     Union,
+    overload,
 )
 
 from flockwave.connections import ConnectionState
@@ -45,7 +52,7 @@ from .model import (
     FlockwaveNotification,
     FlockwaveResponse,
 )
-from .registries import ClientRegistry
+from .registries import ChannelTypeRegistry, ClientRegistry
 
 __all__ = (
     "ConnectionStatusMessageRateLimiter",
@@ -54,11 +61,15 @@ __all__ = (
     "RateLimiters",
 )
 
-log = base_log.getChild("message_hub")
+log: Logger = base_log.getChild("message_hub")
 
 
-MessageHandler = Callable[[FlockwaveMessage, Client, "MessageHub"], FlockwaveMessage]
+#: Type specification for message handler functions that take a message, a
+#: client that the message came from, and the message hub, and return a boolean
+#: that encodes whether the message was handled by the handler or not
+MessageHandler = Callable[[FlockwaveMessage, Client, "MessageHub"], Awaitable[bool]]
 
+#: Type variable for generics
 T = TypeVar("T")
 
 
@@ -91,13 +102,13 @@ class Request:
     #: outbound queue of the message hub. Constructed lazily.
     event: Optional[Event] = None
 
-    def notify_sent(self):
+    def notify_sent(self) -> None:
         """Marks the request as fulfilled."""
         self.fulfilled = True
         if self.event is not None:
             self.event.set()
 
-    async def wait_until_sent(self):
+    async def wait_until_sent(self) -> None:
         """Waits until the request has been served from the outbound message
         queue.
         """
@@ -143,6 +154,15 @@ class MessageHub:
     assuming that it is equal to the type of the incoming message.
     """
 
+    _broadcast_methods: Optional[List[Callable[[FlockwaveMessage], Awaitable[None]]]]
+    _channel_type_registry: Optional[ChannelTypeRegistry]
+    _client_registry: Optional[ClientRegistry]
+    _handlers_by_type: DefaultDict[Optional[str], List[MessageHandler]]
+    _log_messages: bool
+    _message_builder: FlockwaveMessageBuilder
+    _queue_rx: MemoryReceiveChannel
+    _queue_tx: MemorySendChannel
+
     def __init__(self):
         """Constructor."""
         self._handlers_by_type = defaultdict(list)
@@ -179,7 +199,7 @@ class MessageHub:
             body["reason"] = reason
         return self._message_builder.create_response_to(message, body)
 
-    async def broadcast_message(self, message):
+    async def broadcast_message(self, message: FlockwaveNotification) -> Request:
         """Sends a broadcast message from this message hub.
 
         Blocks until the message was actually broadcast to all connected
@@ -187,7 +207,7 @@ class MessageHub:
         sent, use `enqueue_broadcast_message()` instead.
 
         Parameters:
-            message (FlockwaveNotification): the notification to broadcast.
+            message: the notification to broadcast.
 
         Returns:
             Request: the request object that identifies this message in the
@@ -203,7 +223,7 @@ class MessageHub:
         return request
 
     @property
-    def channel_type_registry(self):
+    def channel_type_registry(self) -> Optional[ChannelTypeRegistry]:
         """Registry that keeps track of the different channel types that the
         app can handle. This is used by the message hub to figure out how to
         broadcast messages to all connected clients.
@@ -211,7 +231,7 @@ class MessageHub:
         return self._channel_type_registry
 
     @channel_type_registry.setter
-    def channel_type_registry(self, value):
+    def channel_type_registry(self, value: Optional[ChannelTypeRegistry]) -> None:
         if self._channel_type_registry == value:
             return
 
@@ -234,14 +254,14 @@ class MessageHub:
             )
 
     @property
-    def client_registry(self):
+    def client_registry(self) -> Optional[ClientRegistry]:
         """Registry that keeps track of connected clients so the message hub
         can broadcast messages to all connected clients.
         """
         return self._client_registry
 
     @client_registry.setter
-    def client_registry(self, value):
+    def client_registry(self, value: Optional[ClientRegistry]) -> None:
         if self._client_registry == value:
             return
 
@@ -263,7 +283,7 @@ class MessageHub:
                 self._invalidate_broadcast_methods, sender=self._client_registry
             )
 
-    def create_notification(self, body=None):
+    def create_notification(self, body: Any = None) -> FlockwaveNotification:
         """Creates a new Flockwave notification to be sent by the server.
 
         Parameters:
@@ -274,15 +294,29 @@ class MessageHub:
         """
         return self._message_builder.create_notification(body)
 
-    def create_response_or_notification(self, body=None, in_response_to=None):
+    @overload
+    def create_response_or_notification(
+        self, body: Any = None, in_response_to: None = None
+    ) -> FlockwaveNotification:
+        ...
+
+    @overload
+    def create_response_or_notification(
+        self, body: Any, in_response_to: FlockwaveMessage
+    ) -> FlockwaveResponse:
+        ...
+
+    def create_response_or_notification(
+        self, body: Any, in_response_to: Optional[FlockwaveMessage] = None
+    ) -> Union[FlockwaveResponse, FlockwaveNotification]:
         """Creates a new Flockwave response or notification object,
         depending on whether the caller specifies a message to respond to
         or not.
 
         Parameters:
-            body (object): the body of the response.
-            message (FlockwaveMessage or None): the message to respond to
-                or ``None`` if we want to createa a notification instead.
+            body: the body of the response.
+            message: the message to respond to or ``None`` if we want to create
+                a notification instead.
 
         Returns:
             FlockwaveMessage: a response or notification object
@@ -292,21 +326,22 @@ class MessageHub:
         else:
             return self.create_response_to(in_response_to, body)
 
-    def create_response_to(self, message, body=None):
+    def create_response_to(
+        self, message: FlockwaveMessage, body: Any = None
+    ) -> FlockwaveResponse:
         """Creates a new Flockwave response object that will respond to the
         given message.
 
         Parameters:
-            message (FlockwaveMessage): the message to respond to
-            body (object): the body of the response.
+            message: the message to respond to
+            body: the body of the response.
 
         Returns:
-            FlockwaveResponse: a response object that will respond to the
-                given message
+            a response object that will respond to the given message
         """
         return self._message_builder.create_response_to(message, body)
 
-    def enqueue_broadcast_message(self, message):
+    def enqueue_broadcast_message(self, message: FlockwaveNotification) -> None:
         """Enqueues a broadcast message in this message hub to be sent later.
 
         Broadcast messages are sent to all connected clients.
@@ -316,7 +351,7 @@ class MessageHub:
         is actually in the queue.
 
         Parameters:
-            message (FlockwaveNotification): the notification to enqueue
+            message: the notification to enqueue
         """
         assert isinstance(
             message, FlockwaveNotification
@@ -359,7 +394,7 @@ class MessageHub:
                 message, in_response_to=in_response_to
             )
         if to is None:
-            assert in_response_to is None, (
+            assert isinstance(message, FlockwaveNotification), (
                 "broadcast messages cannot be sent in response to a "
                 "particular message"
             )
@@ -371,22 +406,24 @@ class MessageHub:
                 Request(message, to=to, in_response_to=in_response_to)
             )
 
-    async def handle_incoming_message(self, message, sender):
+    async def handle_incoming_message(
+        self, message: Dict[str, Any], sender: Client
+    ) -> bool:
         """Handles an incoming Flockwave message by calling the appropriate
         message handlers.
 
         Parameters:
-            message (dict): the incoming message, already decoded from
-                its string representation into a Python dict, but before
-                it was validated against the Flockwave schema
-            sender (Client): the sender of the message
+            message: the incoming message, already decoded from its string
+                representation into a Python dict, but before it was validated
+                against the Flockwave schema
+            sender: the sender of the message
 
         Returns:
             bool: whether the message was handled by at least one handler
                 or internally by the hub itself
         """
         try:
-            message = self._decode_incoming_message(message)
+            decoded_message = self._decode_incoming_message(message)
         except MessageValidationError as ex:
             reason = str(ex)
             log.exception(reason)
@@ -397,27 +434,28 @@ class MessageHub:
             else:
                 return False
 
-        if "error" in message:
-            log.warning("Error message from Flockwave client silently dropped")
-            return True
-
         if self._log_messages:
-            type = message.body.get("type") if hasattr(message, "body") else "NO-TYPE"
+            type = (
+                decoded_message.body.get("type")
+                if hasattr(decoded_message, "body")
+                else "NO-TYPE"
+            )
             if type not in ("RTK-STAT", "UAV-PREFLT", "X-DBG-RESP", "X-RTK-STAT"):
                 log.info(
-                    "Received {0.body[type]} message".format(message),
-                    extra={"id": message.id, "semantics": "request"},
+                    "Received {0.body[type]} message".format(decoded_message),
+                    extra={"id": decoded_message.id, "semantics": "request"},
                 )
 
-        handled = await self._feed_message_to_handlers(message, sender)
+        handled = await self._feed_message_to_handlers(decoded_message, sender)
 
         if not handled:
             log.warning(
-                "Unhandled message: {0.body[type]}".format(message),
-                extra={"id": message.id},
+                "Unhandled message: {0.body[type]}".format(decoded_message),
+                extra={"id": decoded_message.id},
             )
             ack = self.reject(
-                message, reason="No handler managed to parse this message in the server"
+                decoded_message,
+                reason="No handler managed to parse this message in the server",
             )
             await self.send_message(ack, to=sender)
             return False
@@ -450,7 +488,9 @@ class MessageHub:
         """
         to_handlers, from_clients = open_memory_channel(0)
 
-        async def handle(message, sender, hub):
+        async def handle(
+            message: FlockwaveMessage, sender: Client, hub: "MessageHub"
+        ) -> bool:
             await to_handlers.send((message, sender))
             return True
 
@@ -463,7 +503,9 @@ class MessageHub:
                     )
                     yield message.body, sender, responder
 
-    def _commit_broadcast_methods(self):
+    def _commit_broadcast_methods(
+        self,
+    ) -> List[Callable[[FlockwaveMessage], Awaitable[None]]]:
         """Calculates the list of methods to call when the message hub
         wishes to broadcast a message to all the connected clients.
         """
@@ -488,16 +530,18 @@ class MessageHub:
 
         return result
 
-    async def _feed_message_to_handlers(self, message, sender):
+    async def _feed_message_to_handlers(
+        self, message: FlockwaveMessage, sender: Client
+    ) -> bool:
         """Forwards an incoming, validated Flockwave message to the message
         handlers registered in the message hub.
 
         Parameters:
-            message (FlockwaveMessage): the message to process
-            sender (Client): the sender of the message
+            message: the message to process
+            sender: the sender of the message
 
         Returns:
-            bool: whether the message was handled by at least one handler
+            whether the message was handled by at least one handler
         """
         # TODO(ntamas): right now the handlers are executed in sequence so
         # one handler could arbitrarily delay the ones coming later in the
@@ -554,7 +598,7 @@ class MessageHub:
         """
         self._broadcast_methods = None
 
-    def on(self, *args):
+    def on(self, *args: str) -> Callable[[MessageHandler], MessageHandler]:
         """Decorator factory function that allows one to register a message
         handler on a MessageHub_ with the following syntax::
 
@@ -563,7 +607,7 @@ class MessageHub:
                 [...]
         """
 
-        def decorator(func):
+        def decorator(func: MessageHandler) -> MessageHandler:
             self.register_message_handler(func, args)
             return func
 
@@ -580,7 +624,6 @@ class MessageHub:
         Parameters:
             func: the handler to register. It will be called with the incoming
                 message and the message hub object.
-
             message_types: an iterable that yields the message types for which
                 this handler will be registered. ``None`` means to register the
                 handler for all message types. The handler function must return
@@ -588,16 +631,22 @@ class MessageHub:
                 if it skipped the message. Note that returning ``True`` will not
                 prevent other handlers from getting the message.
         """
-        if message_types is None or isinstance(message_types, str):
-            message_types = [message_types]
+        message_type_list: Iterable[Optional[str]]
 
-        for message_type in message_types:
+        if message_types is None or isinstance(message_types, str):
+            message_type_list = [message_types]
+        else:
+            message_type_list = message_types
+
+        for message_type in message_type_list:
             if message_type is not None and not isinstance(message_type, str):
                 message_type = message_type.decode("utf-8")
             self._handlers_by_type[message_type].append(func)
 
     def reject(
-        self, message: Optional[FlockwaveMessage] = None, reason: Optional[str] = None
+        self,
+        message: Optional[Union[Dict[str, Any], FlockwaveMessage]] = None,
+        reason: Optional[str] = None,
     ) -> FlockwaveResponse:
         """Creates a new negative acknowledgment (i.e. rejection) of the given
         message.
@@ -615,7 +664,7 @@ class MessageHub:
             body["reason"] = reason
         return self._message_builder.create_response_to(message, body)
 
-    async def run(self):
+    async def run(self) -> None:
         """Runs the message hub periodically in an infinite loop. This
         method should be launched in a Trio nursery.
         """
@@ -639,7 +688,7 @@ class MessageHub:
         message: Union[FlockwaveMessage, Dict[str, Any]],
         to: Optional[Union[str, Client]] = None,
         in_response_to: Optional[FlockwaveMessage] = None,
-    ) -> None:
+    ) -> Request:
         """Sends a message or notification from this message hub.
 
         Notifications are sent to all connected clients, unless ``to`` is
@@ -668,7 +717,7 @@ class MessageHub:
                 message, in_response_to=in_response_to
             )
         if to is None:
-            assert in_response_to is None, (
+            assert isinstance(message, FlockwaveNotification), (
                 "broadcast messages cannot be sent in response to a "
                 "particular message"
             )
@@ -692,10 +741,14 @@ class MessageHub:
                 to all messages in general), it will also have to be unregistered
                 from the individual message types.
         """
-        if message_types is None or isinstance(message_types, str):
-            message_types = [message_types]
+        message_type_list: Iterable[Optional[str]]
 
-        for message_type in message_types:
+        if message_types is None or isinstance(message_types, str):
+            message_type_list = [message_types]
+        else:
+            message_type_list = message_types
+
+        for message_type in message_type_list:
             if message_type is not None and not isinstance(message_type, str):
                 message_type = message_type.decode("utf-8")
             handlers = self._handlers_by_type.get(message_type)
@@ -708,7 +761,7 @@ class MessageHub:
     @contextmanager
     def use_message_handler(
         self, func: MessageHandler, message_types: Optional[Iterable[str]] = None
-    ) -> None:
+    ) -> Iterator[None]:
         """Context manager that registers a handler function that will handle
         incoming messages, and unregisters the function upon exiting the
         context.
@@ -724,14 +777,16 @@ class MessageHub:
                 if it skipped the message. Note that returning ``True`` will not
                 prevent other handlers from getting the message.
         """
+        self.register_message_handler(func, message_types)
         try:
-            self.register_message_handler(func, message_types)
             yield
         finally:
             self.unregister_message_handler(func, message_types)
 
     @contextmanager
-    def use_message_handlers(self, handlers: Dict[str, MessageHandler]) -> None:
+    def use_message_handlers(
+        self, handlers: Dict[str, MessageHandler]
+    ) -> Iterator[None]:
         """Context manager that registers multiple handler functions, specified
         in a dictionary mapping message types to handlers, and then unregisters
         the functions upon exiting the context.
@@ -748,7 +803,7 @@ class MessageHub:
                 stack.callback(self.unregister_message_handler, handler, [message_type])
             yield
 
-    def _decode_incoming_message(self, message):
+    def _decode_incoming_message(self, message: Dict[str, Any]) -> FlockwaveMessage:
         """Decodes an incoming, raw JSON message that has already been
         decoded from the string representation into a dictionary on the
         Python side, but that has not been validated against the Flockwave
@@ -765,14 +820,14 @@ class MessageHub:
             MessageDecodingError: if the message could not have been decoded
         """
         try:
-            return FlockwaveMessage.from_json(message)
+            return FlockwaveMessage.from_json(message)  # type: ignore
         except ValidationError:
             # We should not re-raise directly from here because on Python 3.x
             # we would get a very long stack trace that includes the original
             # exception as well.
             if FlockwaveMessage.is_experimental(message):
                 try:
-                    return FlockwaveMessage.from_json(message, validate=False)
+                    return FlockwaveMessage.from_json(message, validate=False)  # type: ignore
                 except Exception as ex:
                     error = MessageValidationError(
                         "Unexpected exception: {0!r}".format(ex)
@@ -788,7 +843,12 @@ class MessageHub:
             error = MessageValidationError("Unexpected exception: {0!r}".format(ex))
         raise error
 
-    def _log_message_sending(self, message, to=None, in_response_to=None):
+    def _log_message_sending(
+        self,
+        message: FlockwaveMessage,
+        to: Client = None,
+        in_response_to: Optional[FlockwaveMessage] = None,
+    ) -> None:
         type = message.body.get("type") if hasattr(message, "body") else "NO-TYPE"
 
         if to is None:
@@ -816,7 +876,9 @@ class MessageHub:
 
             log.info(f"Sending {type} message", extra=extra)
 
-    async def _broadcast_message(self, message, done):
+    async def _broadcast_message(
+        self, message: FlockwaveNotification, done: Callable[[], None]
+    ) -> None:
         if self._broadcast_methods is None:
             self._broadcast_methods = self._commit_broadcast_methods()
 
@@ -839,11 +901,14 @@ class MessageHub:
 
         done()
 
-    async def _send_message(self, message, to, in_response_to=None, done=None):
-        if self._log_messages:
-            self._log_message_sending(message, to, in_response_to)
-
-        if not isinstance(to, Client):
+    async def _send_message(
+        self,
+        message: FlockwaveMessage,
+        to: Optional[Union[str, Client]] = None,
+        in_response_to: Optional[FlockwaveMessage] = None,
+        done: Optional[Callable[[], None]] = None,
+    ):
+        if to is not None and not isinstance(to, Client):
             try:
                 client = self._client_registry[to]
             except KeyError:
@@ -853,6 +918,9 @@ class MessageHub:
                 return
         else:
             client = to
+
+        if self._log_messages:
+            self._log_message_sending(message, client, in_response_to)
 
         try:
             await client.channel.send(message)
@@ -864,11 +932,13 @@ class MessageHub:
             )
         else:
             if hasattr(message, "_notify_sent"):
-                message._notify_sent()
+                message._notify_sent()  # type: ignore
             if done:
                 done()
 
-    async def _send_response(self, message, to, in_response_to):
+    async def _send_response(
+        self, message, to: Client, in_response_to: FlockwaveMessage
+    ) -> Optional[FlockwaveResponse]:
         """Sends a response to a message from this message hub.
 
         Parameters:
@@ -886,7 +956,8 @@ class MessageHub:
                 object is responding to
 
         Returns:
-            FlockwaveResponse: the response that was sent back to the client
+            the response that was sent back to the client, or `None` if the
+            response could not have been created for some reason
         """
         if isinstance(message, FlockwaveResponse):
             assert message.refs == in_response_to.id
@@ -898,12 +969,17 @@ class MessageHub:
                 )
             except Exception:
                 log.exception("Failed to create response")
-        await self.send_message(response, to=to, in_response_to=in_response_to)
+                response = None
+
+        if response:
+            await self.send_message(response, to=to, in_response_to=in_response_to)
         return response
 
 
 class RateLimiter(metaclass=ABCMeta):
     """Abstract base class for rate limiter objects."""
+
+    name: Optional[str] = None
 
     @abstractmethod
     def add_request(self, *args, **kwds) -> None:

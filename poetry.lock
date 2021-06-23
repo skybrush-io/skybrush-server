@@ -1729,6 +1729,28 @@ url = "https://pypi.collmot.com/simple"
 reference = "collmot"
 
 [[package]]
+name = "trio-parallel"
+version = "0.5.1"
+description = "CPU parallelism for Trio"
+category = "main"
+optional = false
+python-versions = ">=3.6"
+
+[package.dependencies]
+outcome = "*"
+trio = ">=0.18.0"
+
+[package.extras]
+blacken = ["black (==20.8b1)", "flake8"]
+docs = ["sphinx (>3.5.0)", "sphinx-rtd-theme", "sphinxcontrib-trio", "towncrier"]
+test = ["pytest", "pytest-trio", "pytest-cov", "coverage"]
+
+[package.source]
+type = "legacy"
+url = "https://pypi.collmot.com/simple"
+reference = "collmot"
+
+[[package]]
 name = "trio-util"
 version = "0.5.0"
 description = "Utility library for the Trio async/await framework"
@@ -1873,7 +1895,7 @@ reference = "collmot"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7"
-content-hash = "d3f558626010e41c9913fc6987cf097fc61e6ec6f4b303f09b2a5f5813c05470"
+content-hash = "e8c23fcea26d26e1302dfbb4b0e24ed5dd56a7d5d5205bc265a1f7f19b7346fd"
 
 [metadata.files]
 adrenaline = [
@@ -2529,6 +2551,10 @@ toml = [
 trio = [
     {file = "trio-0.19.0-py3-none-any.whl", hash = "sha256:c27c231e66336183c484fbfe080fa6cc954149366c15dc21db8b7290081ec7b8"},
     {file = "trio-0.19.0.tar.gz", hash = "sha256:895e318e5ec5e8cea9f60b473b6edb95b215e82d99556a03eb2d20c5e027efe1"},
+]
+trio-parallel = [
+    {file = "trio-parallel-0.5.1.tar.gz", hash = "sha256:32fad6a7c9ba480f70d424772506fe4299c5dcc42c7628e6fd49df9cf6bd32e4"},
+    {file = "trio_parallel-0.5.1-py3-none-any.whl", hash = "sha256:8bf4a6cd1ca7850549c114253572c63ee7957f8608281290e5a3cdea0209d2db"},
 ]
 trio-util = [
     {file = "trio_util-0.5.0-py3-none-any.whl", hash = "sha256:01ccf3db503a1294321e07e02c9099565604c7947e9934d32d63aa07526c4289"},

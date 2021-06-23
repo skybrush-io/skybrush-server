@@ -1,3 +1,5 @@
+import trio_parallel
+
 from datetime import datetime
 from io import BytesIO
 from trio import CapacityLimiter, to_thread
@@ -8,6 +10,9 @@ from flockwave.server.ext.flockctrl.mission import validate_mission_data
 __all__ = ("upload_mission",)
 
 
+#: Type specification for addresses used in this module
+AddressLike = Union[str, Tuple[str, int]]
+
 #: Maximum number of concurrent upload tasks
 MAX_UPLOAD_TASKS = 5
 
@@ -15,7 +20,7 @@ MAX_UPLOAD_TASKS = 5
 capacity_limiter = CapacityLimiter(MAX_UPLOAD_TASKS)
 
 
-async def upload_mission_in_worker_thread(data: bytes, address: ...) -> None:
+async def upload_mission_in_worker_thread(data: bytes, address: AddressLike) -> None:
     """Mission upload implementation that delegates the actual communication
     to a worker thread.
 
@@ -26,6 +31,8 @@ async def upload_mission_in_worker_thread(data: bytes, address: ...) -> None:
         address: the network address of the UAV, either as a hostname or as a
             tuple consisting of a hostname and a port
     """
+    validate_mission_data(data)
+
     # This method is problematic because the thread would need to be
     # interruptible, otherwise we are blocking one entry in the CapacityLimiter
     # even if the upstream request timed out. However, Paramiko provides no way
@@ -39,9 +46,29 @@ async def upload_mission_in_worker_thread(data: bytes, address: ...) -> None:
     )
 
 
-def _upload_mission_blocking(
-    raw_data: bytes, address: Union[str, Tuple[str, int]]
-) -> None:
+async def upload_mission_in_subprocess(data: bytes, address: AddressLike) -> None:
+    """Mission upload implementation that delegates the actual communication
+    to a subprocess.
+
+    Parameters:
+        raw_data: the raw data to upload. It must be an in-memory mission ZIP
+            file. Some basic validity checks will be performed on it before
+            attempting the upload.
+        address: the network address of the UAV, either as a hostname or as a
+            tuple consisting of a hostname and a port
+    """
+    validate_mission_data(data)
+
+    await trio_parallel.run_sync(
+        _upload_mission_blocking,
+        data,
+        address,
+        cancellable=True,
+        limiter=capacity_limiter,
+    )
+
+
+def _upload_mission_blocking(raw_data: bytes, address: AddressLike) -> None:
     """Uploads the given raw mission data to the inbox of a drone at the given
     address.
 
@@ -56,8 +83,6 @@ def _upload_mission_blocking(
             tuple consisting of a hostname and a port
     """
     from .ssh import execute_ssh_command, open_scp, open_ssh
-
-    validate_mission_data(raw_data)
 
     name = (
         datetime.now()
@@ -84,4 +109,4 @@ def _upload_mission_blocking(
             raise ValueError("Failed to restart flockctrl process")
 
 
-upload_mission = upload_mission_in_worker_thread
+upload_mission = upload_mission_in_subprocess

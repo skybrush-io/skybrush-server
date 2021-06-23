@@ -53,6 +53,7 @@ aio-usb-hotplug = "^4.0.0"
 pyserial = "^3.4"
 compose = "^1.1.1"
 adrenaline = "^0.2.0"
+trio-parallel = "^0.5.1"
 
 [tool.poetry.dev-dependencies]
 pytest = "^5.4.3"

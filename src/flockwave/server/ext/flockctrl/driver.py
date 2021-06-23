@@ -650,7 +650,10 @@ class FlockCtrlDriver(UAVDriver):
         if uav.is_airborne:
             raise RuntimeError("Cannot upload a mission while the drone is airborne")
 
-        await upload_mission(data, uav.ssh_host)
+        try:
+            await upload_mission(data, uav.ssh_host)
+        except TimeoutError:
+            raise RuntimeError("Timeout while uploading mission")
 
     def _on_chunked_packet_assembled(self, body: bytes, source) -> None:
         """Handler called when the response chunk handler has assembled

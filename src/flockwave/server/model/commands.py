@@ -4,6 +4,7 @@ UAVs.
 
 from flockwave.spec.schema import get_complex_object_schema
 from time import time
+from typing import Any, Optional, Set
 
 from .metamagic import ModelMeta
 
@@ -18,7 +19,18 @@ class CommandExecutionStatus(metaclass=ModelMeta):
     class __meta__:
         schema = get_complex_object_schema("commandExecutionStatus")
 
-    def __init__(self, id=None):
+    id: str
+    created_at: float
+    client_notified: Optional[float]
+    error: Optional[Exception]
+    result: Any
+    sent: Optional[float]
+    finished: Optional[float]
+    cancelled: Optional[float]
+
+    _clients_to_notify: Set[str]
+
+    def __init__(self, id: str):
         """Constructor.
 
         Parameters:
@@ -35,27 +47,27 @@ class CommandExecutionStatus(metaclass=ModelMeta):
 
         self._clients_to_notify = set()
 
-    def add_client_to_notify(self, client_id):
+    def add_client_to_notify(self, client_id: str) -> None:
         """Appends the ID of a client to notify to the list of clients
         interested in the completion of this command.
         """
         self._clients_to_notify.add(client_id)
 
     @property
-    def clients_to_notify(self):
+    def clients_to_notify(self) -> Set[str]:
         """Set of clients to notify when this command finishes
         execution.
         """
         return self._clients_to_notify
 
     @property
-    def is_in_progress(self):
+    def is_in_progress(self) -> bool:
         """Returns whether the command is still in progress, i.e. has not
         finished and has not been cancelled yet.
         """
         return self.cancelled is None and self.finished is None
 
-    def mark_as_cancelled(self):
+    def mark_as_cancelled(self) -> None:
         """Marks the command as being cancelled with the current timestamp if
         it has not been marked as cancelled yet and it has not finished
         either. Otherwise this function is a no-op.
@@ -63,14 +75,14 @@ class CommandExecutionStatus(metaclass=ModelMeta):
         if self.is_in_progress:
             self.cancelled = time()
 
-    def mark_as_clients_notified(self):
+    def mark_as_clients_notified(self) -> None:
         """Marks that the receipt ID of the command was sent to the client that
         initially wished to execute the command.
         """
         if self.client_notified is None:
             self.client_notified = time()
 
-    def mark_as_finished(self, result_or_error):
+    def mark_as_finished(self, result_or_error: Any) -> None:
         """Marks the command as being finished with the current timestamp if
         it has not been marked as finished yet and it has not been cancelled
         either. Otherwise this function is a no-op.
@@ -86,7 +98,7 @@ class CommandExecutionStatus(metaclass=ModelMeta):
                 self.result = result_or_error
             self.finished = time()
 
-    def mark_as_sent(self):
+    def mark_as_sent(self) -> None:
         """Marks the command as being sent to the UAV that will ultimately
         execute it. Also stores the current timestamp if the command has not
         been marked as sent yet. Otherwise this function is a no-op.

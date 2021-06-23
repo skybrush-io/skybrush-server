@@ -5,7 +5,7 @@ string identifiers.
 from __future__ import annotations
 
 from abc import ABCMeta, abstractmethod, abstractproperty
-from typing import Callable, Generic, Iterable, Optional, TypeVar, TYPE_CHECKING
+from typing import Callable, Dict, Generic, Iterable, Optional, TypeVar, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from flockwave.server.model.messages import FlockwaveResponse
@@ -86,6 +86,8 @@ class RegistryBase(Generic[T], Registry[T]):
     """Abstract base class for registries that keep track of "things" by
     string identifiers.
     """
+
+    _entries: Dict[str, T]
 
     def __init__(self):
         """Constructor."""

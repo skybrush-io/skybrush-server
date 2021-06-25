@@ -565,7 +565,7 @@ reference = "collmot"
 
 [[package]]
 name = "flockwave-spec"
-version = "1.48.0"
+version = "1.49.0"
 description = "JSON-Schema specification of the Flockwave protocol"
 category = "main"
 optional = false
@@ -1765,7 +1765,7 @@ reference = "collmot"
 
 [[package]]
 name = "urllib3"
-version = "1.26.5"
+version = "1.26.6"
 description = "HTTP library with thread-safe connection pooling, file post, and more."
 category = "main"
 optional = false
@@ -1878,7 +1878,7 @@ reference = "collmot"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7"
-content-hash = "2a10f46a9f9b12c07cfc2432b1c3c58e73d5555d8037e4eec6285a633f4ec875"
+content-hash = "d77c3c00c19805f9098e9eb1b06f752f6c51c87c10050f0894871b04fa7a1dc7"
 
 [metadata.files]
 adrenaline = [
@@ -2078,8 +2078,8 @@ flockwave-parsers = [
     {file = "flockwave_parsers-1.2.0-py3-none-any.whl", hash = "md5:4f53aadf684d06c79998b332ec2dcaa0"},
 ]
 flockwave-spec = [
-    {file = "flockwave-spec-1.48.0.tar.gz", hash = "md5:4fea811114de219aad78ceede4990652"},
-    {file = "flockwave_spec-1.48.0-py3-none-any.whl", hash = "md5:0d05179f19e6c81ad7d1c78046d90d87"},
+    {file = "flockwave-spec-1.49.0.tar.gz", hash = "md5:44869b78108f41684e20b5a4cd697445"},
+    {file = "flockwave_spec-1.49.0-py3-none-any.whl", hash = "md5:e08be64912f6987121b2308d689659de"},
 ]
 future = [
     {file = "future-0.18.2.tar.gz", hash = "sha256:b1bead90b70cf6ec3f0710ae53a525360fa360d306a86583adc6bf83a4db537d"},
@@ -2546,8 +2546,8 @@ typing-extensions = [
     {file = "typing_extensions-3.10.0.0.tar.gz", hash = "sha256:50b6f157849174217d0656f99dc82fe932884fb250826c18350e159ec6cdf342"},
 ]
 urllib3 = [
-    {file = "urllib3-1.26.5-py2.py3-none-any.whl", hash = "sha256:753a0374df26658f99d826cfe40394a686d05985786d946fbe4165b5148f5a7c"},
-    {file = "urllib3-1.26.5.tar.gz", hash = "sha256:a7acd0977125325f516bda9735fa7142b909a8d01e8b2e4c8108d0984e6e0098"},
+    {file = "urllib3-1.26.6-py2.py3-none-any.whl", hash = "sha256:39fb8672126159acb139a7718dd10806104dec1e2f0f6c88aab05d17df10c8d4"},
+    {file = "urllib3-1.26.6.tar.gz", hash = "sha256:f57b4c16c62fa2760b7e3d97c35b255512fb6b59a259730f36ba32ce9f8e342f"},
 ]
 wcwidth = [
     {file = "wcwidth-0.2.5-py2.py3-none-any.whl", hash = "sha256:beb4802a9cebb9144e99086eff703a642a13d6a0052920003a230f3294bbe784"},

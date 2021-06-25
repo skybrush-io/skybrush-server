@@ -565,7 +565,7 @@ reference = "collmot"
 
 [[package]]
 name = "flockwave-spec"
-version = "1.47.0"
+version = "1.48.0"
 description = "JSON-Schema specification of the Flockwave protocol"
 category = "main"
 optional = false
@@ -573,10 +573,9 @@ python-versions = ">=3.7,<4.0"
 
 [package.dependencies]
 jsonpointer = ">=2.0,<3.0"
-memoized = ">=0.3,<0.4"
 
 [package.extras]
-cli = ["click (>=7.1.2,<8.0.0)", "jsonschema (>=3.2.0,<4.0.0)"]
+cli = ["click (>=8.0.0,<9.0.0)", "jsonschema (>=3.2.0,<4.0.0)"]
 
 [package.source]
 type = "legacy"
@@ -863,22 +862,6 @@ description = "Safely add untrusted strings to HTML/XML markup."
 category = "main"
 optional = false
 python-versions = ">=3.6"
-
-[package.source]
-type = "legacy"
-url = "https://pypi.collmot.com/simple"
-reference = "collmot"
-
-[[package]]
-name = "memoized"
-version = "0.3"
-description = "General purpose efficient memoization"
-category = "main"
-optional = false
-python-versions = "*"
-
-[package.extras]
-sig = ["decorator"]
 
 [package.source]
 type = "legacy"
@@ -2095,8 +2078,8 @@ flockwave-parsers = [
     {file = "flockwave_parsers-1.2.0-py3-none-any.whl", hash = "md5:4f53aadf684d06c79998b332ec2dcaa0"},
 ]
 flockwave-spec = [
-    {file = "flockwave-spec-1.47.0.tar.gz", hash = "md5:f09a13cc2e796b12fca83ed9f75dbdcb"},
-    {file = "flockwave_spec-1.47.0-py3-none-any.whl", hash = "md5:d36d60f833147b4ec9d3153d4a70671e"},
+    {file = "flockwave-spec-1.48.0.tar.gz", hash = "md5:4fea811114de219aad78ceede4990652"},
+    {file = "flockwave_spec-1.48.0-py3-none-any.whl", hash = "md5:0d05179f19e6c81ad7d1c78046d90d87"},
 ]
 future = [
     {file = "future-0.18.2.tar.gz", hash = "sha256:b1bead90b70cf6ec3f0710ae53a525360fa360d306a86583adc6bf83a4db537d"},
@@ -2242,9 +2225,6 @@ markupsafe = [
     {file = "MarkupSafe-2.0.1-cp39-cp39-win32.whl", hash = "sha256:10f82115e21dc0dfec9ab5c0223652f7197feb168c940f3ef61563fc2d6beb74"},
     {file = "MarkupSafe-2.0.1-cp39-cp39-win_amd64.whl", hash = "sha256:693ce3f9e70a6cf7d2fb9e6c9d8b204b6b39897a2c4a1aa65728d5ac97dcc1d8"},
     {file = "MarkupSafe-2.0.1.tar.gz", hash = "sha256:594c67807fb16238b30c44bdf74f36c02cdf22d1c8cda91ef8a0ed8dabf5620a"},
-]
-memoized = [
-    {file = "memoized-0.3.tar.gz", hash = "sha256:cdce8bacc6941a64f9a825067602c13810cfd9b84efaaf024c400ef6e7d378d8"},
 ]
 mido = [
     {file = "mido-1.2.10-py2.py3-none-any.whl", hash = "sha256:0e618232063e0a220249da4961563c7636fea00096cfb3e2b87a4231f0ac1a9e"},

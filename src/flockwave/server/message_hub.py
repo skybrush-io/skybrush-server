@@ -64,10 +64,17 @@ __all__ = (
 log: Logger = base_log.getChild("message_hub")
 
 
+#: Type specification for objects that we can return from a message handler
+#: function
+MessageHandlerResponse = Union[FlockwaveMessage, bool, dict]
+
 #: Type specification for message handler functions that take a message, a
 #: client that the message came from, and the message hub, and return a boolean
 #: that encodes whether the message was handled by the handler or not
-MessageHandler = Callable[[FlockwaveMessage, Client, "MessageHub"], Awaitable[bool]]
+MessageHandler = Callable[
+    [FlockwaveMessage, Client, "MessageHub"],
+    Union[MessageHandlerResponse, Awaitable[MessageHandlerResponse]],
+]
 
 #: Type variable for generics
 T = TypeVar("T")
@@ -509,9 +516,12 @@ class MessageHub:
         """Calculates the list of methods to call when the message hub
         wishes to broadcast a message to all the connected clients.
         """
-        assert isinstance(
-            self.client_registry, ClientRegistry
+        assert (
+            self._client_registry is not None
         ), "message hub does not have a client registry yet"
+        assert (
+            self._channel_type_registry is not None
+        ), "message hub does not have a channel type registry yet"
 
         result = []
         clients_for = self._client_registry.client_ids_for_channel_type
@@ -752,11 +762,12 @@ class MessageHub:
             if message_type is not None and not isinstance(message_type, str):
                 message_type = message_type.decode("utf-8")
             handlers = self._handlers_by_type.get(message_type)
-            try:
-                handlers.remove(func)
-            except ValueError:
-                # Handler not in list; no problem
-                pass
+            if handlers:
+                try:
+                    handlers.remove(func)
+                except ValueError:
+                    # Handler not in list; no problem
+                    pass
 
     @contextmanager
     def use_message_handler(
@@ -904,11 +915,15 @@ class MessageHub:
     async def _send_message(
         self,
         message: FlockwaveMessage,
-        to: Optional[Union[str, Client]] = None,
+        to: Union[str, Client],
         in_response_to: Optional[FlockwaveMessage] = None,
         done: Optional[Callable[[], None]] = None,
     ):
-        if to is not None and not isinstance(to, Client):
+        assert (
+            self._client_registry is not None
+        ), "message hub does not have a client registry yet"
+
+        if not isinstance(to, Client):
             try:
                 client = self._client_registry[to]
             except KeyError:

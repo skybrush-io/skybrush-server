@@ -7,9 +7,12 @@ from __future__ import absolute_import
 from blinker import Signal
 from collections import defaultdict
 from contextlib import contextmanager
+from typing import Dict, Iterable, Iterator, Set
 
-from ..logger import log as base_log
-from ..model import Client
+from flockwave.server.model.client import Client
+from flockwave.server.registries.channels import ChannelTypeRegistry
+from flockwave.server.logger import log as base_log
+
 from .base import RegistryBase
 
 __all__ = ("ClientRegistry",)
@@ -17,7 +20,7 @@ __all__ = ("ClientRegistry",)
 log = base_log.getChild("registries.clients")
 
 
-class ClientRegistry(RegistryBase):
+class ClientRegistry(RegistryBase[Client]):
     """Registry that contains information about all the clients that the
     server is currently connected to.
 
@@ -46,14 +49,19 @@ class ClientRegistry(RegistryBase):
     count_changed: Signal = Signal()
     removed: Signal = Signal()
 
-    def __init__(self, channel_type_registry=None):
+    channel_type_registry: ChannelTypeRegistry
+
+    _client_id_to_channel_type: Dict[str, str]
+    _entries_by_channel_type: Dict[str, Set[str]]
+
+    def __init__(self, channel_type_registry: ChannelTypeRegistry):
         """Constructor."""
-        super(ClientRegistry, self).__init__()
-        self.channel_type_registry = None
+        super().__init__()
+        self.channel_type_registry = channel_type_registry
         self._client_id_to_channel_type = {}
         self._entries_by_channel_type = defaultdict(set)
 
-    def add(self, client_id, channel_type):
+    def add(self, client_id: str, channel_type: str) -> Client:
         """Adds a new client to the set of clients connected to the server.
 
         This function is a no-op if the client is already added. It is
@@ -61,13 +69,13 @@ class ClientRegistry(RegistryBase):
         same ID.
 
         Arguments:
-            client_id (str): the ID of the client
-            channel_type (str): the type of the communication channel that
+            client_id: the ID of the client
+            channel_type: the type of the communication channel that
                 connects the client to the server. It must be registered in
                 the channel type registry.
 
         Returns:
-            Client: the client object that was added
+            the client object that was added
         """
         if client_id in self:
             return self[client_id]
@@ -87,7 +95,7 @@ class ClientRegistry(RegistryBase):
 
         return client
 
-    def client_ids_for_channel_type(self, channel_type):
+    def client_ids_for_channel_type(self, channel_type: str) -> Iterable[str]:
         """Returns an iterator that contains the IDs of all the clients who
         are registered in the registry with the given channel type.
 
@@ -100,33 +108,33 @@ class ClientRegistry(RegistryBase):
         """
         return iter(self._entries_by_channel_type.get(channel_type, []))
 
-    def has_clients_for_channel_type(self, channel_type):
+    def has_clients_for_channel_type(self, channel_type: str) -> bool:
         """Returns whether there is at least one connected client for the
         given channel type.
 
         Arguments:
-            channel_type (str): the communication channel type to query
+            channel_type: the communication channel type to query
 
         Returns:
-            bool: ``True`` if there is at least one connected client with
-                the given channel type, ``False`` otherwise
+            ``True`` if there is at least one connected client with the given
+            channel type, ``False`` otherwise
         """
         return bool(self._entries_by_channel_type.get(channel_type))
 
     @property
-    def num_entries(self):
+    def num_entries(self) -> int:
         """Returns the number of clients currently connected to the
         server.
         """
         return len(self._entries)
 
-    def remove(self, client_id):
+    def remove(self, client_id: str) -> None:
         """Removes a client from the set of clients connected to the server.
 
         This function is a no-op if the client was already removed.
 
         Arguments:
-            client_id (str): the ID of the client to remove
+            client_id: the ID of the client to remove
         """
         try:
             client = self._entries.pop(client_id)
@@ -138,6 +146,7 @@ class ClientRegistry(RegistryBase):
         except KeyError:
             # This should not happen
             log.warn("Cannot find channel type for client ID {0!r}".format(client_id))
+            return
 
         try:
             self._entries_by_channel_type[channel_type].remove(client_id)
@@ -154,14 +163,14 @@ class ClientRegistry(RegistryBase):
         self.removed.send(self, client=client)
 
     @contextmanager
-    def use(self, client_id, channel_type):
+    def use(self, client_id: str, channel_type: str) -> Iterator[Client]:
         """Temporarily adds a new client with the given client ID and
         channel type, hands control back to the caller in a context, and
         then removes the client when the caller exits the context.
 
         Arguments:
-            client_id (str): the ID of the client
-            channel_type (str): the type of the communication channel that
+            client_id: the ID of the client
+            channel_type: the type of the communication channel that
                 connects the client to the server. It must be registered in
                 the channel type registry.
 

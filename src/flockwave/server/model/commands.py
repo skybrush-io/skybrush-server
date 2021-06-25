@@ -4,7 +4,7 @@ UAVs.
 
 from flockwave.spec.schema import get_complex_object_schema
 from time import time
-from typing import Any, Optional, Set
+from typing import Any, Callable, Optional, Set
 
 from .metamagic import ModelMeta
 
@@ -29,6 +29,7 @@ class CommandExecutionStatus(metaclass=ModelMeta):
     cancelled: Optional[float]
 
     _clients_to_notify: Set[str]
+    _on_cancelled: Optional[Callable[[], None]]
 
     def __init__(self, id: str):
         """Constructor.
@@ -46,6 +47,7 @@ class CommandExecutionStatus(metaclass=ModelMeta):
         self.cancelled = None
 
         self._clients_to_notify = set()
+        self._on_cancelled = None
 
     def add_client_to_notify(self, client_id: str) -> None:
         """Appends the ID of a client to notify to the list of clients
@@ -74,6 +76,8 @@ class CommandExecutionStatus(metaclass=ModelMeta):
         """
         if self.is_in_progress:
             self.cancelled = time()
+        if self._on_cancelled:
+            self._on_cancelled()
 
     def mark_as_clients_notified(self) -> None:
         """Marks that the receipt ID of the command was sent to the client that
@@ -105,3 +109,14 @@ class CommandExecutionStatus(metaclass=ModelMeta):
         """
         if self.sent is None:
             self.sent = time()
+
+    def when_cancelled(self, func: Callable[[], None]) -> None:
+        """Registers the given function to be called when the command execution
+        is cancelled.
+
+        Overrides any previously registered function when called multiple times.
+
+        Parameters:
+            func: the function to call.
+        """
+        self._on_cancelled = func

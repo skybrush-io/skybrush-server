@@ -67,8 +67,8 @@ class CommandExecutionManager(RegistryBase[CommandExecutionStatus]):
 
     timeout: float
 
-    _tx_queue: SendChannel[Tuple[Result, str]]
-    _rx_queue: ReceiveChannel[Tuple[Result, str]]
+    _tx_queue: SendChannel[Tuple[Result, CommandExecutionStatus]]
+    _rx_queue: ReceiveChannel[Tuple[Result, CommandExecutionStatus]]
 
     def __init__(self, timeout: float = 30):
         """Constructor.
@@ -158,7 +158,7 @@ class CommandExecutionManager(RegistryBase[CommandExecutionStatus]):
             receipt.add_client_to_notify(client_to_notify)
 
         self._entries[receipt.id] = receipt
-        await self._tx_queue.send((result, receipt.id))
+        await self._tx_queue.send((result, receipt))
 
         return receipt
 
@@ -175,6 +175,15 @@ class CommandExecutionManager(RegistryBase[CommandExecutionStatus]):
         async with open_nursery() as nursery:
             nursery.start_soon(self._run_cleanup, cleanup_period)
             nursery.start_soon(self._run_execution, nursery)
+
+    def _cancelled_by_user(self, receipt_id: str) -> None:
+        """Marks the asynchronous command with the given receipt identifier
+        as having been cancelled by the user.
+
+        Parameters:
+            receipt_id: the receipt identifier of the command that timed out
+        """
+        self._entries.pop(receipt_id, None)
 
     def _cleanup(self) -> None:
         """Runs a cleanup process on the dictionary containing the commands
@@ -241,15 +250,16 @@ class CommandExecutionManager(RegistryBase[CommandExecutionStatus]):
         command receipts.
         """
         while True:
-            result, receipt_id = await self._rx_queue.receive()
+            result, receipt = await self._rx_queue.receive()
             if isawaitable(result):
                 # We need to construct the cancel scope here, not inside
                 # self._wait_for, otherwise we would not take into account the
                 # time it takes for the nursery to start the execution
                 scope = CancelScope(deadline=current_time() + self.timeout)  # type: ignore
-                nursery.start_soon(self._wait_for, result, receipt_id, scope)
+                receipt.when_cancelled(scope.cancel)
+                nursery.start_soon(self._wait_for, result, receipt.id, scope)
             else:
-                self._finish(receipt_id, result)
+                self._finish(receipt.id, result)
 
     def _finish(self, receipt_id: ReceiptLike, result: Any = None) -> None:
         """Marks the asynchronous command with the given receipt identifier
@@ -282,6 +292,12 @@ class CommandExecutionManager(RegistryBase[CommandExecutionStatus]):
             self.finished.send(self, status=command)
 
     def _timeout(self, receipt_id: str) -> None:
+        """Marks the asynchronous command with the given receipt identifier
+        as having timed out.
+
+        Parameters:
+            receipt_id: the receipt identifier of the command that timed out
+        """
         command = self._entries.pop(receipt_id, None)
         if command:
             self.expired.send(self, statuses=[command])
@@ -315,6 +331,9 @@ class CommandExecutionManager(RegistryBase[CommandExecutionStatus]):
             result = ex
 
         if scope.cancelled_caught:
-            self._timeout(receipt_id)
+            if scope.deadline > current_time():
+                self._cancelled_by_user(receipt_id)
+            else:
+                self._timeout(receipt_id)
         else:
             self._finish(receipt_id, result)

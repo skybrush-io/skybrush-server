@@ -39,12 +39,12 @@
                 <button type="button" class="btn btn-danger" onclick="disconnect(); return false;">Disconnect</button>
 
                 <div class="float-right">
-                    <div class="btn-group" role="group">
-                        <button type="button" id="preset-dropdown-button" class="btn btn-secondary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                            Presets <span class="caret"></span>
+                    <div class="dropdown">
+                        <button type="button" id="preset-dropdown-button" class="btn btn-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                            Presets
                         </button>
-                        <div class="dropdown-menu" id="preset-buttons">
-                        </div>
+                        <ul class="dropdown-menu" aria-labelledby="preset-dropdown-button" id="preset-buttons">
+                        </ul>
                     </div>
                 </div>
             </form>

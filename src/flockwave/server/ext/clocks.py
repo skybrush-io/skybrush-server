@@ -83,7 +83,7 @@ def on_clock_changed(sender, clock):
 
 
 def handle_CLK_INF(message, sender, hub):
-    return create_CLK_INF_message_for(message.body["ids"], in_response_to=message)
+    return create_CLK_INF_message_for(message.get_ids(), in_response_to=message)
 
 
 def handle_CLK_LIST(message, sender, hub):

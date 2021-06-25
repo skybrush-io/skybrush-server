@@ -3,7 +3,7 @@
 from __future__ import absolute_import
 
 from flockwave.spec.schema import get_message_schema
-from typing import Any, Iterable, List, Optional, Union
+from typing import Any, Dict, Iterable, List, Optional, Sequence, Union
 
 from .commands import CommandExecutionStatus
 from .metamagic import ModelMeta
@@ -13,13 +13,21 @@ __all__ = ("FlockwaveMessage", "FlockwaveNotification", "FlockwaveResponse")
 
 
 class FlockwaveMessage(metaclass=ModelMeta):
-    """Class representing a single Flockwave message."""
+    """Class representing a single Flockwave message, irrespectively of whether
+    it is a request, a notification or a response.
+    """
 
     id: str
-    body: Any
+    body: Dict[str, Any]
 
     class __meta__:
         schema = get_message_schema()
+
+    def get_ids(self) -> Sequence[str]:
+        """Returns the `"ids"` property of the message body, or an empty sequence
+        if there is no such member in the body.
+        """
+        return self.body.get("ids") or ()
 
     @staticmethod
     def is_experimental(message: dict) -> bool:

@@ -121,7 +121,7 @@ class DockExtension(UAVExtensionBase):
         """
         statuses = {}
 
-        dock_ids = message.body["ids"]
+        dock_ids = message.get_ids()
 
         body = {"status": statuses, "type": "DOCK-INF"}
         response = hub.create_response_or_notification(

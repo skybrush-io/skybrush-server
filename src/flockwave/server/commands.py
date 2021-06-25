@@ -18,7 +18,8 @@ from trio_util import periodic
 from typing import Any, Awaitable, Optional, Union, Tuple
 
 from .logger import log as base_log
-from .model import CommandExecutionStatus, CommandExecutionStatusBuilder
+from .model.builders import CommandExecutionStatusBuilder
+from .model.commands import CommandExecutionStatus
 from .registries.base import RegistryBase
 
 __all__ = ("CommandExecutionManager",)
@@ -93,13 +94,26 @@ class CommandExecutionManager(RegistryBase[CommandExecutionStatus]):
         if command is None:
             # Request has probably expired in the meanwhile
             log.warn(
-                "Received cancellation request for expired receipt: "
+                "Received cancellation request for non-existent receipt: "
                 "{0}".format(receipt_id)
             )
             return
 
         command.mark_as_cancelled()
         self.cancelled.send(self, status=command)
+
+    def is_valid_receipt_id(self, receipt_id: ReceiptLike) -> bool:
+        """Returns whether the given receipt ID is valid and corresponds to an
+        active, ongoing asynchronous command.
+
+        Parameters:
+            receipt_id: the receipt identifier to test
+
+        Returns:
+            True if the given receipt ID is valid and corresponds to an active,
+            ongoing asynchronous command, False otherwise
+        """
+        return self._get_command_from_id(receipt_id) is not None
 
     def mark_as_clients_notified(self, receipt_id: ReceiptLike) -> None:
         """Marks that the asynchronous command with the given receipt identifier

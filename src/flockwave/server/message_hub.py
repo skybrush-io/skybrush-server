@@ -433,7 +433,9 @@ class MessageHub:
             decoded_message = self._decode_incoming_message(message)
         except MessageValidationError as ex:
             reason = str(ex)
-            log.exception(reason)
+            log.error(
+                reason, extra={"id": str(message.get("body", {}).get("type", ""))}
+            )
             if "id" in message:
                 ack = self.reject(message, reason=reason)
                 await self.send_message(ack, to=sender)
@@ -828,7 +830,7 @@ class MessageHub:
                 FlockwaveMessage_ object
 
         Raises:
-            MessageDecodingError: if the message could not have been decoded
+            MessageValidationError: if the message could not have been decoded
         """
         try:
             return FlockwaveMessage.from_json(message)  # type: ignore

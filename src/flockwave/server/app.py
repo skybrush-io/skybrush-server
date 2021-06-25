@@ -3,6 +3,7 @@
 from appdirs import AppDirs
 from collections import defaultdict
 from inspect import isawaitable
+from flockwave.connections.base import ConnectionState
 from trio import (
     BrokenResourceError,
     move_on_after,
@@ -115,7 +116,41 @@ class SkybrushServer(DaemonApp):
     See also the attributed inherited from DaemonApp_.
     """
 
-    def create_CONN_INF_message_for(self, connection_ids, in_response_to=None):
+    def cancel_async_operations(
+        self, receipt_ids: Iterable[str], in_response_to: FlockwaveMessage
+    ) -> FlockwaveResponse:
+        """Handles a request to cancel one or more pending asynchronous operations,
+        identified by their receipt IDs.
+
+        Parameters:
+            receipt_ids: the receipt IDs of the pending asynchronous operations
+            in_response_to: the message that the constructed message will
+                respond to
+        """
+        response = self.message_hub.create_response_or_notification(
+            body={}, in_response_to=in_response_to
+        )
+        valid_ids: list[str] = []
+
+        manager = self.command_execution_manager
+
+        for receipt_id in receipt_ids:
+            if manager.is_valid_receipt_id(receipt_id):
+                valid_ids.append(receipt_id)
+                response.add_success(receipt_id)
+            else:
+                response.add_error(receipt_id, "no such receipt")
+
+        for receipt_id in valid_ids:
+            manager.cancel(receipt_id)
+
+        return response
+
+    def create_CONN_INF_message_for(
+        self,
+        connection_ids: Iterable[str],
+        in_response_to: Optional[FlockwaveMessage] = None,
+    ) -> FlockwaveMessage:
         """Creates a CONN-INF message that contains information regarding
         the connections with the given IDs.
 
@@ -143,21 +178,22 @@ class SkybrushServer(DaemonApp):
 
         return response
 
-    def create_DEV_INF_message_for(self, paths, in_response_to=None):
+    def create_DEV_INF_message_for(
+        self, paths: Iterable[str], in_response_to: Optional[FlockwaveMessage] = None
+    ) -> FlockwaveMessage:
         """Creates a DEV-INF message that contains information regarding
         the current values of the channels in the subtrees of the device
         tree matched by the given device tree paths.
 
         Parameters:
-            paths (iterable): list of device tree paths
-            in_response_to (Optional[FlockwaveMessage]): the message that the
-                constructed message will respond to. ``None`` means that the
-                constructed message will be a notification.
+            paths: list of device tree paths
+            in_response_to: the message that the constructed message will
+                respond to. ``None`` means that the constructed message will be
+                a notification.
 
         Returns:
-            FlockwaveMessage: the DEV-INF message with the current values of
-                the channels in the subtrees matched by the given device
-                tree paths
+            the DEV-INF message with the current values of the channels in the
+            subtrees matched by the given device tree paths
         """
         return self.device_tree_subscriptions.create_DEV_INF_message_for(
             paths, in_response_to
@@ -172,7 +208,7 @@ class SkybrushServer(DaemonApp):
         the device trees of the objects with the given IDs.
 
         Parameters:
-            object_ids (iterable): list of object IDs
+            object_ids: list of object IDs
             in_response_to: the message that the constructed message will
                 respond to.
 
@@ -380,7 +416,7 @@ class SkybrushServer(DaemonApp):
         return response
 
     async def disconnect_client(
-        self, client: Client, reason: str = None, timeout: float = 10
+        self, client: Client, reason: Optional[str] = None, timeout: float = 10
     ) -> None:
         """Disconnects the given client from the server.
 
@@ -551,7 +587,7 @@ class SkybrushServer(DaemonApp):
         )  # type: ignore
 
     @property
-    def num_clients(self):
+    def num_clients(self) -> int:
         """The number of clients connected to the server."""
         return self.client_registry.num_entries
 
@@ -585,14 +621,14 @@ class SkybrushServer(DaemonApp):
         )
         self.rate_limiters.request_to_send("SYS-MSG", entry)
 
-    def request_to_send_UAV_INF_message_for(self, uav_ids):
+    def request_to_send_UAV_INF_message_for(self, uav_ids: Iterable[str]) -> None:
         """Requests the application to send an UAV-INF message that contains
         information regarding the UAVs with the given IDs. The application
         may send the message immediately or opt to delay it a bit in order
         to ensure that UAV-INF notifications are not emitted too frequently.
 
         Parameters:
-            uav_ids (iterable): list of UAV IDs
+            uav_ids: list of UAV IDs
         """
         self.rate_limiters.request_to_send("UAV-INF", uav_ids)
 
@@ -623,7 +659,7 @@ class SkybrushServer(DaemonApp):
                 result[uav.driver].append(uav)
         return result
 
-    def _create_components(self):
+    def _create_components(self) -> None:
         # Create an object that can be used to get hold of commonly used
         # directories within the app
         self.dirs = AppDirs("Skybrush Server", "CollMot Robotics")
@@ -699,34 +735,15 @@ class SkybrushServer(DaemonApp):
 
         # Create an object to manage the associations between clients and
         # the device tree paths that the clients are subscribed to
-        self.device_tree_subscriptions = DeviceTreeSubscriptionManager(self.device_tree)
-        self.device_tree_subscriptions.client_registry = self.client_registry
-        self.device_tree_subscriptions.message_hub = self.message_hub
-
-    def _find_command_receipt_by_id(self, receipt_id, response=None):
-        """Finds the asynchronous command execution receipt with the given
-        ID in the command execution manager or registers a failure in the
-        given response object if there is no command being executed with the
-        given ID.
-
-        Parameters:
-            receipt_id (str): the ID of the receipt to find
-            response (Optional[FlockwaveResponse]): the response in which
-                the failure can be registered
-
-        Returns:
-            Optional[CommandExecutionStatus]: the status object for the
-                execution of the asynchronous command with the given ID
-                or ``None`` if there is no such command
-        """
-        return find_in_registry(
-            self.command_execution_manager,
-            receipt_id,
-            response=response,
-            failure_reason="No such receipt",
+        self.device_tree_subscriptions = DeviceTreeSubscriptionManager(
+            self.device_tree,
+            client_registry=self.client_registry,
+            message_hub=self.message_hub,
         )
 
-    def _find_connection_by_id(self, connection_id, response=None):
+    def _find_connection_by_id(
+        self, connection_id: str, response: Optional[FlockwaveResponse] = None
+    ) -> Optional[ConnectionRegistryEntry]:
         """Finds the connection with the given ID in the connection registry
         or registers a failure in the given response object if there is no
         connection with the given ID.
@@ -769,7 +786,7 @@ class SkybrushServer(DaemonApp):
             failure_reason="No such object",
         )
 
-    def _on_client_count_changed(self, sender):
+    def _on_client_count_changed(self, sender: ClientRegistry) -> None:
         """Handler called when the number of clients attached to the server
         has changed.
         """
@@ -778,7 +795,13 @@ class SkybrushServer(DaemonApp):
                 self.extension_manager.set_spinning, self.num_clients > 0
             )
 
-    def _on_connection_state_changed(self, sender, entry, old_state, new_state):
+    def _on_connection_state_changed(
+        self,
+        sender: ConnectionRegistry,
+        entry: ConnectionRegistryEntry,
+        old_state: ConnectionState,
+        new_state: ConnectionState,
+    ) -> None:
         """Handler called when the state of a connection changes somewhere
         within the server. Dispatches an appropriate ``CONN-INF`` message.
 
@@ -922,9 +945,14 @@ app = SkybrushServer("skybrush", PACKAGE_NAME)
 # ######################################################################## #
 
 
+@app.message_hub.on("ASYNC-CANCEL")
+def handle_ASYNC_CANCEL(message: FlockwaveMessage, sender: Client, hub: MessageHub):
+    return app.cancel_async_operations(message.get_ids(), in_response_to=message)
+
+
 @app.message_hub.on("CONN-INF")
 def handle_CONN_INF(message: FlockwaveMessage, sender: Client, hub: MessageHub):
-    return app.create_CONN_INF_message_for(message.body["ids"], in_response_to=message)
+    return app.create_CONN_INF_message_for(message.get_ids(), in_response_to=message)
 
 
 @app.message_hub.on("CONN-LIST")
@@ -939,7 +967,7 @@ def handle_DEV_INF(message: FlockwaveMessage, sender: Client, hub: MessageHub):
 
 @app.message_hub.on("DEV-LIST")
 def handle_DEV_LIST(message: FlockwaveMessage, sender: Client, hub: MessageHub):
-    return app.create_DEV_LIST_message_for(message.body["ids"], in_response_to=message)
+    return app.create_DEV_LIST_message_for(message.get_ids(), in_response_to=message)
 
 
 @app.message_hub.on("DEV-LISTSUB")
@@ -1011,7 +1039,7 @@ def handle_SYS_VER(message: FlockwaveMessage, sender: Client, hub: MessageHub):
 
 @app.message_hub.on("UAV-INF")
 def handle_UAV_INF(message: FlockwaveMessage, sender: Client, hub: MessageHub):
-    return app.create_UAV_INF_message_for(message.body["ids"], in_response_to=message)
+    return app.create_UAV_INF_message_for(message.get_ids(), in_response_to=message)
 
 
 @app.message_hub.on("UAV-LIST")

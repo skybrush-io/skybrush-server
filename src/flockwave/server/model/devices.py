@@ -4,14 +4,20 @@ from __future__ import annotations
 
 from blinker import Signal
 from builtins import str
-from collections import Counter, defaultdict
-from flockwave.spec.schema import get_enum_from_schema, get_complex_object_schema
+from collections import defaultdict
 from itertools import islice
+from typing import overload, Counter, Dict, Iterable, Optional, Tuple, TYPE_CHECKING
+
+from flockwave.spec.schema import get_enum_from_schema, get_complex_object_schema
 
 from .client import Client
 from .errors import ClientNotSubscribedError, NoSuchPathError
 from .metamagic import ModelMeta
 from .object import ModelObject
+
+if TYPE_CHECKING:
+    from flockwave.server.registries.clients import ClientRegistry
+    from flockwave.server.message_hub import MessageHub
 
 __all__ = (
     "ChannelNode",
@@ -71,6 +77,12 @@ class DeviceTreeNodeBase(metaclass=ModelMeta):
     class __meta__:
         schema = get_complex_object_schema("deviceTreeNode")
 
+    children: Dict[str, "DeviceTreeNodeBase"]
+
+    _subscribers: Optional[Counter[Client]]
+    _parent: Optional["DeviceTreeNodeBase"]
+    _path: Optional[str]
+
     def __init__(self):
         """Constructor."""
         self._subscribers = None
@@ -112,19 +124,18 @@ class DeviceTreeNodeBase(metaclass=ModelMeta):
         """Returns whether this node has at least one subscriber."""
         return bool(self._subscribers)
 
-    def iterchildren(self):
+    def iterchildren(self) -> Iterable[Tuple[str, "DeviceTreeNodeBase"]]:
         """Iterates over the children of this node.
 
         Yields:
-            (str, DeviceTreeNodeBase): the ID of the child node and the
-                child node itself, for all children
+            the ID of the child node and the child node itself, for all children
         """
         if hasattr(self, "children"):
             return self.children.items()
         else:
             return iter(())
 
-    def iterparents(self, include_self: bool = False):
+    def iterparents(self, include_self: bool = False) -> Iterable["DeviceTreeNodeBase"]:
         """Iterates over the parents of this node, in increasing distance
         from the node itself.
 
@@ -132,15 +143,14 @@ class DeviceTreeNodeBase(metaclass=ModelMeta):
             include_self: whether to yield the node itself in the result
 
         Yields:
-            DeviceTreeNodeBase: the parents of this node, in increasing
-                distance from the node itself
+            the parents of this node, in increasing distance from the node itself
         """
         node = self if include_self else self._parent
         while node is not None:
             yield node
             node = node._parent
 
-    def itersubscribers(self):
+    def itersubscribers(self) -> Iterable[Client]:
         """Iterates over the subscribers registered at this node,
         reporting each subscriber only once even if it is registered
         multiple times.
@@ -151,7 +161,7 @@ class DeviceTreeNodeBase(metaclass=ModelMeta):
             return iter(())
 
     @property
-    def parent(self):
+    def parent(self) -> Optional["DeviceTreeNodeBase"]:
         """Returns the parent node of this node."""
         return self._parent
 
@@ -192,20 +202,30 @@ class DeviceTreeNodeBase(metaclass=ModelMeta):
         result.reverse()
         return "/".join(result)
 
-    def traverse_dfs(self, own_id=None):
+    @overload
+    def traverse_dfs(
+        self, own_id: None = None
+    ) -> Iterable[Tuple[Optional[str], "DeviceTreeNodeBase"]]:
+        ...
+
+    @overload
+    def traverse_dfs(self, own_id: str) -> Iterable[Tuple[str, "DeviceTreeNodeBase"]]:
+        ...
+
+    def traverse_dfs(
+        self, own_id: Optional[str] = None
+    ) -> Iterable[Tuple[Optional[str], "DeviceTreeNodeBase"]]:
         """Returns a generator that yields all the nodes in the subtree of
         this node, including the node itself, in depth-first order.
 
         Parameters:
-            own_id (Optional[str]): the ID of this node in its parent, if
-                known. This will be yielded in the traversal results for
-                the node itself.
+            own_id: the ID of this node in its parent, if known. This will be
+                yielded in the traversal results for the node itself.
 
         Yields:
-            (str, DeviceTreeNode): each node in the subtree of this node,
-                including the node itself, and its associated ID in its
-                parent, in depth-first order. The ID will be the value of
-                the ``own_id`` parameter for this node.
+            each node in the subtree of this node, including the node itself,
+            and its associated ID in its parent, in depth-first order. The ID
+            will be the value of the ``own_id`` parameter for this node.
         """
         queue = [(own_id, self)]
         while queue:
@@ -221,15 +241,15 @@ class DeviceTreeNodeBase(metaclass=ModelMeta):
             node = node._parent
         return node if node is None else node.tree
 
-    def _add_child(self, id, node):
+    def _add_child(self, id: str, node: "DeviceTreeNodeBase") -> "DeviceTreeNodeBase":
         """Adds the given node as a child node to this node.
 
         Parameters:
-            id (str): the ID of the node
-            node (DeviceTreeNodeBase): the node to add
+            id: the ID of the node
+            node: the node to add
 
         Returns:
-            DeviceTreeNodeBase: the node that was added
+            the node that was added
 
         Throws:
             ValueError: if another node with the same ID already exists for
@@ -263,14 +283,14 @@ class DeviceTreeNodeBase(metaclass=ModelMeta):
                 child._dispose()
             self.children = {}
 
-    def _remove_child(self, node):
+    def _remove_child(self, node: "DeviceTreeNodeBase") -> "DeviceTreeNodeBase":
         """Removes the given child node from this node.
 
         Parameters:
-            node (DeviceTreeNodeBase): the node to remove
+            node: the node to remove
 
         Returns:
-            DeviceTreeNodeBase: the node that was removed
+            the node that was removed
 
         Throws:
             ValueError: if the node is not a child of this node
@@ -280,14 +300,11 @@ class DeviceTreeNodeBase(metaclass=ModelMeta):
                 return self._remove_child_by_id(id)
         raise ValueError("the given node is not a child of this node")
 
-    def _remove_child_by_id(self, id):
+    def _remove_child_by_id(self, id: str) -> None:
         """Removes the child node with the given ID from this node.
 
         Parameters:
-            id (str): the ID of the node to remove
-
-        Returns:
-            DeviceTreeNodeBase: the node that was removed
+            id: the ID of the node to remove
 
         Throws:
             ValueError: if there is no such child with the given ID
@@ -299,7 +316,7 @@ class DeviceTreeNodeBase(metaclass=ModelMeta):
         node._parent = None
         node._path = None
 
-    def _subscribe(self, client):
+    def _subscribe(self, client: Client) -> None:
         """Subscribes the given client object to this node and its subtree.
         The client will get notified whenever one of the channels in the
         subtree of this node (or in the node itself if the node is a channel
@@ -320,7 +337,7 @@ class DeviceTreeNodeBase(metaclass=ModelMeta):
             self._subscribers = Counter()
         self._subscribers[client] += 1
 
-    def _unsubscribe(self, client, force=False):
+    def _unsubscribe(self, client: Client, force: bool = False) -> None:
         """Unsubscribes the given client object from this node and its
         subtree.
 
@@ -336,6 +353,8 @@ class DeviceTreeNodeBase(metaclass=ModelMeta):
                 ``force`` is ``False``
         """
         if self.count_subscriptions_of(client) > 0:
+            assert self._subscribers is not None
+
             if force:
                 del self._subscribers[client]
             else:
@@ -344,6 +363,7 @@ class DeviceTreeNodeBase(metaclass=ModelMeta):
                     del self._subscribers[client]
                 else:
                     self._subscribers[client] = new_count
+
         elif not force:
             raise KeyError(client)
 
@@ -360,7 +380,7 @@ class ChannelNode(DeviceTreeNodeBase):
             modifications.
     """
 
-    def __init__(self, channel_type, operations=None, unit=None):
+    def __init__(self, channel_type, operations=None, unit: Optional[str] = None):
         """Constructor.
 
         Parameters:
@@ -368,10 +388,10 @@ class ChannelNode(DeviceTreeNodeBase):
             operations (List[ChannelOperation]): the allowed operations of
                 the channel. Defaults to ``[ChannelOperation.read]`` if
                 set to ``None``.
-            unit (Optional[str]): the unit in which the value of the channel
+            unit: the unit in which the value of the channel
                 is expressed.
         """
-        super(ChannelNode, self).__init__()
+        super().__init__()
 
         if operations is None:
             operations = [ChannelOperation.read]
@@ -788,28 +808,42 @@ class DeviceTreeMutator:
         self._updated_nodes.add(node)
 
 
-class DeviceTreeSubscriptionManager(object):
+class DeviceTreeSubscriptionManager:
     """Object that is responsible for managing the subscriptions of clients
     to the nodes of a device tree and notifying clients when the values of
     the channel nodes change.
     """
 
-    def __init__(self, tree):
+    _tree: DeviceTree
+    _client_registry: Optional["ClientRegistry"]
+    _message_hub: "MessageHub"
+
+    def __init__(
+        self,
+        tree: DeviceTree,
+        *,
+        client_registry: Optional["ClientRegistry"],
+        message_hub: "MessageHub"
+    ):
         """Constructor.
 
         Parameters:
-            tree (DeviceTree): the tree whose subscriptions this object will
-                manage
+            tree: the tree whose subscriptions this object will manage
+            client_registry: the client registry that enables the subscription
+                manager to remove subscriptions of clients that have disconnected
         """
         self._tree = tree
         self._tree.channel_nodes_updated.connect(
             self._on_channel_nodes_updated, sender=self._tree
         )
+
         self._client_registry = None
-        self._message_hub = None
+        self._message_hub = message_hub
+
+        self.client_registry = client_registry
 
     @property
-    def client_registry(self):
+    def client_registry(self) -> Optional["ClientRegistry"]:
         """The client registry that the device tree watches. The device tree
         will remove the subscriptions of clients from the tree when a
         client is removed from this registry.
@@ -817,7 +851,7 @@ class DeviceTreeSubscriptionManager(object):
         return self._client_registry
 
     @client_registry.setter
-    def client_registry(self, value):
+    def client_registry(self, value: Optional["ClientRegistry"]) -> None:
         if self._client_registry == value:
             return
 
@@ -834,31 +868,27 @@ class DeviceTreeSubscriptionManager(object):
             )
 
     @property
-    def message_hub(self):
+    def message_hub(self) -> "MessageHub":
         """The message hub that the subscription manager can use to inform
         subscribers about changes in the values of channel nodes
         """
         return self._message_hub
 
-    @message_hub.setter
-    def message_hub(self, value):
-        self._message_hub = value
-
-    def _collect_subscriptions(self, client, path, node, result):
+    def _collect_subscriptions(
+        self, client: Client, path: DeviceTreePath, node, result: Counter
+    ) -> None:
         """Finds all the subscriptions of the given client in the subtree
         of the given tree node (including the node itself) and adds tem to
         the given result object.
 
         Parameters:
-            client (Client): the client whose subscriptions we want to
-                collect
-            path (DeviceTreePath): the path that leads to the root node. It
-                will be mutated so make sure that you clone the original
-                path of the node before passing it here.
+            client: the client whose subscriptions we want to collect
+            path: the path that leads to the root node. It will be mutated so
+                make sure that you clone the original path of the node before
+                passing it here.
             node (DeviceTreeNode): the root node that the search starts
                 from
-            result (Counter): the counter object that counts the
-                subscriptions
+            result: the counter object that counts the subscriptions
         """
         count = node.count_subscriptions_of(client)
         if count > 0:
@@ -906,7 +936,7 @@ class DeviceTreeSubscriptionManager(object):
 
         self._message_hub.enqueue_message(message, to=subscriber)
 
-    def _on_client_removed(self, sender, client):
+    def _on_client_removed(self, sender: "ClientRegistry", client: Client) -> None:
         """Handler called when a client disconnected from the server."""
         for _, node in self._tree.traverse_dfs():
             node._unsubscribe(client, force=True)

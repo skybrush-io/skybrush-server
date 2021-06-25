@@ -158,6 +158,8 @@ class ConnectionRegistry(RegistryBase):
 class ConnectionRegistryEntry:
     """A single entry in the connection registry."""
 
+    info: ConnectionInfo
+
     def __init__(self, registry, connection=None, name=None):
         self._connection = None
         self._registry = registry

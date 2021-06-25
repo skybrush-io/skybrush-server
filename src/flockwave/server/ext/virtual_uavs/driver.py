@@ -1,5 +1,7 @@
 """Driver class for virtual drones."""
 
+from __future__ import annotations
+
 from colour import Color
 from enum import Enum
 from math import atan2, cos, hypot, sin
@@ -7,7 +9,7 @@ from random import random, choice
 from time import monotonic
 from trio import CancelScope, sleep
 from trio_util import periodic
-from typing import Callable, Optional
+from typing import Callable, List, NoReturn, Optional, Union
 
 from flockwave.concurrency import delayed
 from flockwave.gps.vectors import (
@@ -60,191 +62,6 @@ _dummy_preflight_check_info.add_item("pressure", "Pressure sensor")
 for item in _dummy_preflight_check_info.items:
     item.result = PreflightCheckResult.PASS
 _dummy_preflight_check_info.update_summary()
-
-
-class VirtualUAVDriver(UAVDriver):
-    """Virtual UAV driver that manages a group of virtual UAVs provided by this
-    extension.
-    """
-
-    def __init__(self, *args, **kwds):
-        super().__init__(*args, **kwds)
-        self.uavs_armed_after_boot = False
-        self.use_battery_percentages = False
-
-    def create_uav(self, id, home: GPSCoordinate, heading: float = 0):
-        """Creates a new UAV that is to be managed by this driver.
-
-        Parameters:
-            id (str): the identifier of the UAV to create
-            home (GPSCoordinate): the home position of the UAV
-
-        Returns:
-            VirtualUAV: an appropriate virtual UAV object
-        """
-        uav = VirtualUAV(
-            id, driver=self, use_battery_percentage=self.use_battery_percentages
-        )
-        uav.boots_armed = bool(self.uavs_armed_after_boot)
-        uav.takeoff_altitude = 3
-        uav.home = home.copy()
-        uav.home.amsl = None
-        uav.home.agl = 0
-        uav.target = home.copy()
-        uav.update_status(heading=heading)
-        return uav
-
-    async def handle_command_arm(self, uav):
-        """Command that arms the virtual drone if it is on the ground."""
-        if uav.arm_if_on_ground():
-            return "Armed"
-        else:
-            return "Failed to arm"
-
-    async def handle_command_async_exception(self, uav):
-        """Throws an synchronous exception."""
-        await sleep(0.2)
-        raise ValueError("Async exception raised")
-
-    async def handle_command_battery(self, uav, value):
-        """Command that sets the battery voltage to a given value."""
-        if hasattr(value, "endswith") and value.endswith("%"):
-            uav.battery.percentage = float(value[:-1])
-            if uav.battery.percentage is not None:
-                return f"Battery percentage set to {uav.battery.percentage:.2f}%"
-            else:
-                # This may happen if the UAV is configured not to report percentages
-                return f"Voltage set to {uav.battery.voltage:.2f}V"
-        else:
-            uav.battery.voltage = float(value)
-            return f"Voltage set to {uav.battery.voltage:.2f}V"
-
-    async def handle_command_disarm(self, uav):
-        """Command that disarms the virtual drone if it is on the ground."""
-        if uav.disarm_if_on_ground():
-            return "Disarmed"
-        else:
-            return "Failed to disarm"
-
-    def handle_command_echo(self, uav, message):
-        """Echoes a message back to the client using a SYS-MSG message and as
-        normal response as well.
-        """
-        uav.send_log_message_to_gcs(message)
-        return message
-
-    def handle_command_error(self, uav, value=0):
-        """Sets or clears the error code of the virtual drone."""
-        value = int(value)
-        uav.user_defined_error = value
-        return (
-            f"Error code set to {uav.user_defined_error}"
-            if uav.has_user_defined_error
-            else "Error code cleared"
-        )
-
-    def handle_command_exception(self, uav):
-        """Throws a synchronous exception."""
-        raise ValueError("Sync exception raised")
-
-    async def handle_command_progress(self, uav):
-        """Dummy command that can be used to test progress reports sent
-        during the execution of a command.
-
-        The execution of this command takes five seconds. A progress report
-        is sent every 500 milliseconds.
-        """
-        for i in range(10):
-            await sleep(0.5)
-        return "Result."
-
-    async def handle_command_timeout(self, uav):
-        """Dummy command that does not respond in a reasonable amount of time.
-        Can be used on the client side to test response timeouts.
-        """
-        await sleep(1000000)
-
-    async def handle_command___show_upload(self, uav, *, show):
-        """Handles a drone show upload request for the given UAV.
-
-        This is a temporary solution until we figure out something that is
-        more sustainable in the long run.
-
-        Parameters:
-            show: the show data
-        """
-        uav.handle_show_upload(show)
-        await sleep(0.25 + random() * 0.5)
-
-    async def handle_command_yo(self, uav):
-        await sleep(0.5 + random())
-        return "yo" + choice("?!.")
-
-    handle_command_color = create_color_command_handler()
-    handle_command_version = create_version_command_handler()
-
-    def _request_preflight_report_single(self, uav) -> PreflightCheckInfo:
-        return _dummy_preflight_check_info
-
-    def _request_version_info_single(self, uav) -> VersionInfo:
-        return uav.get_version_info()
-
-    def _send_fly_to_target_signal_single(self, uav, target) -> None:
-        if uav.state == VirtualUAVState.LANDED:
-            uav.takeoff()
-            if target.agl is None and target.amsl is None:
-                target.agl = uav.takeoff_altitude
-
-        uav.stop_trajectory()
-        uav.target = target
-
-    async def _send_landing_signal_single(self, uav, *, transport) -> None:
-        # Make the landing signal async to simulate how it works for "real" drones
-        await sleep(0.2)
-        uav.land()
-
-    def _send_light_or_sound_emission_signal_single(
-        self, uav, signals, duration, *, transport
-    ) -> None:
-        if "light" in signals:
-            uav.handle_where_are_you(duration)
-
-    def _send_motor_start_stop_signal_single(
-        self, uav, start: bool, force: bool = False, *, transport=None
-    ) -> None:
-        if start:
-            uav.start_motors()
-        else:
-            uav.stop_motors()
-
-    def _send_reset_signal_single(self, uav, component, *, transport=None) -> None:
-        if not component:
-            # Resetting the whole UAV, this is supported
-            uav.reset()
-        else:
-            # No components on this UAV
-            raise RuntimeError(f"Resetting {component!r} is not supported")
-
-    def _send_return_to_home_signal_single(self, uav, *, transport=None) -> None:
-        if uav.state == VirtualUAVState.AIRBORNE:
-            target = uav.home.copy()
-            target.agl = uav.status.position.agl
-
-            uav.stop_trajectory()
-            uav.target = target
-
-            uav.ensure_error(FlockwaveErrorCode.RETURN_TO_HOME)
-        else:
-            raise RuntimeError("UAV is not airborne, cannot start RTH")
-
-    def _send_shutdown_signal_single(self, uav, *, transport=None) -> None:
-        uav.shutdown()
-
-    async def _send_takeoff_signal_single(
-        self, uav, *, scheduled: bool = False, transport=None
-    ) -> None:
-        await sleep(0.2)
-        uav.takeoff()
 
 
 class VirtualUAV(UAVBase):
@@ -935,8 +752,206 @@ class VirtualUAV(UAVBase):
         if t is None:
             return
 
+        assert self._trajectory_player is not None
+
         if not self._trajectory_player.is_before_takeoff(t):
             x, y, z = self._trajectory_player.position_at(t)
             self.target = self._trajectory_transformation.to_gps(
                 FlatEarthCoordinate(x=x, y=y, agl=z)
             )
+
+
+class VirtualUAVDriver(UAVDriver):
+    """Virtual UAV driver that manages a group of virtual UAVs provided by this
+    extension.
+    """
+
+    uavs_armed_after_boot: bool
+    use_battery_percentages: bool
+
+    def __init__(self, *args, **kwds):
+        super().__init__(*args, **kwds)
+        self.uavs_armed_after_boot = False
+        self.use_battery_percentages = False
+
+    def create_uav(
+        self, id: str, home: GPSCoordinate, heading: float = 0
+    ) -> VirtualUAV:
+        """Creates a new UAV that is to be managed by this driver.
+
+        Parameters:
+            id: the identifier of the UAV to create
+            home: the home position of the UAV
+
+        Returns:
+            an appropriate virtual UAV object
+        """
+        uav = VirtualUAV(
+            id, driver=self, use_battery_percentage=self.use_battery_percentages
+        )
+        uav.boots_armed = bool(self.uavs_armed_after_boot)
+        uav.takeoff_altitude = 3
+        uav.home = home.copy()
+        uav.home.amsl = None
+        uav.home.agl = 0
+        uav.target = home.copy()
+        uav.update_status(heading=heading)
+        return uav
+
+    async def handle_command_arm(self, uav: VirtualUAV) -> str:
+        """Command that arms the virtual drone if it is on the ground."""
+        if uav.arm_if_on_ground():
+            return "Armed"
+        else:
+            return "Failed to arm"
+
+    async def handle_command_async_exception(self, uav: VirtualUAV) -> NoReturn:
+        """Throws an synchronous exception."""
+        await sleep(0.2)
+        raise ValueError("Async exception raised")
+
+    async def handle_command_battery(self, uav: VirtualUAV, value: str) -> str:
+        """Command that sets the battery voltage to a given value."""
+        if hasattr(value, "endswith") and value.endswith("%"):
+            uav.battery.percentage = float(value[:-1])
+            if uav.battery.percentage is not None:
+                return f"Battery percentage set to {uav.battery.percentage:.2f}%"
+            else:
+                # This may happen if the UAV is configured not to report percentages
+                return f"Voltage set to {uav.battery.voltage:.2f}V"
+        else:
+            uav.battery.voltage = float(value)
+            return f"Voltage set to {uav.battery.voltage:.2f}V"
+
+    async def handle_command_disarm(self, uav: VirtualUAV) -> str:
+        """Command that disarms the virtual drone if it is on the ground."""
+        if uav.disarm_if_on_ground():
+            return "Disarmed"
+        else:
+            return "Failed to disarm"
+
+    def handle_command_echo(self, uav: VirtualUAV, message: str) -> str:
+        """Echoes a message back to the client using a SYS-MSG message and as
+        normal response as well.
+        """
+        uav.send_log_message_to_gcs(message)
+        return message
+
+    def handle_command_error(self, uav: VirtualUAV, value: Union[str, int] = 0) -> str:
+        """Sets or clears the error code of the virtual drone."""
+        value = int(value)
+        uav.user_defined_error = value
+        return (
+            f"Error code set to {uav.user_defined_error}"
+            if uav.has_user_defined_error
+            else "Error code cleared"
+        )
+
+    def handle_command_exception(self, uav: VirtualUAV) -> NoReturn:
+        """Throws a synchronous exception."""
+        raise ValueError("Sync exception raised")
+
+    async def handle_command_progress(self, uav: VirtualUAV) -> str:
+        """Dummy command that can be used to test progress reports sent
+        during the execution of a command.
+
+        The execution of this command takes five seconds. A progress report
+        is sent every 500 milliseconds.
+
+        TODO: no progress reports are sent yet
+        """
+        for _ in range(10):
+            await sleep(0.5)
+        return "Result."
+
+    async def handle_command_timeout(self, uav: VirtualUAV) -> None:
+        """Dummy command that does not respond in a reasonable amount of time.
+        Can be used on the client side to test response timeouts.
+        """
+        await sleep(1000000)
+
+    async def handle_command___show_upload(self, uav: VirtualUAV, *, show) -> None:
+        """Handles a drone show upload request for the given UAV.
+
+        This is a temporary solution until we figure out something that is
+        more sustainable in the long run.
+
+        Parameters:
+            show: the show data
+        """
+        uav.handle_show_upload(show)
+        await sleep(0.25 + random() * 0.5)
+
+    async def handle_command_yo(self, uav: VirtualUAV) -> str:
+        await sleep(0.5 + random())
+        return "yo" + choice("?!.")
+
+    handle_command_color = create_color_command_handler()
+    handle_command_version = create_version_command_handler()
+
+    def _request_preflight_report_single(self, uav: VirtualUAV) -> PreflightCheckInfo:
+        return _dummy_preflight_check_info
+
+    def _request_version_info_single(self, uav: VirtualUAV) -> VersionInfo:
+        return uav.get_version_info()
+
+    def _send_fly_to_target_signal_single(self, uav: VirtualUAV, target) -> None:
+        if uav.state == VirtualUAVState.LANDED:
+            uav.takeoff()
+            if target.agl is None and target.amsl is None:
+                target.agl = uav.takeoff_altitude
+
+        uav.stop_trajectory()
+        uav.target = target
+
+    async def _send_landing_signal_single(self, uav: VirtualUAV, *, transport) -> None:
+        # Make the landing signal async to simulate how it works for "real" drones
+        await sleep(0.2)
+        uav.land()
+
+    def _send_light_or_sound_emission_signal_single(
+        self, uav: VirtualUAV, signals: List[str], duration: float, *, transport
+    ) -> None:
+        if "light" in signals:
+            uav.handle_where_are_you(duration)
+
+    def _send_motor_start_stop_signal_single(
+        self, uav: VirtualUAV, start: bool, force: bool = False, *, transport=None
+    ) -> None:
+        if start:
+            uav.start_motors()
+        else:
+            uav.stop_motors()
+
+    def _send_reset_signal_single(
+        self, uav: VirtualUAV, component: str, *, transport=None
+    ) -> None:
+        if not component:
+            # Resetting the whole UAV, this is supported
+            uav.reset()
+        else:
+            # No components on this UAV
+            raise RuntimeError(f"Resetting {component!r} is not supported")
+
+    def _send_return_to_home_signal_single(
+        self, uav: VirtualUAV, *, transport=None
+    ) -> None:
+        if uav.state == VirtualUAVState.AIRBORNE:
+            target = uav.home.copy()
+            target.agl = uav.status.position.agl
+
+            uav.stop_trajectory()
+            uav.target = target
+
+            uav.ensure_error(FlockwaveErrorCode.RETURN_TO_HOME)
+        else:
+            raise RuntimeError("UAV is not airborne, cannot start RTH")
+
+    def _send_shutdown_signal_single(self, uav: VirtualUAV, *, transport=None) -> None:
+        uav.shutdown()
+
+    async def _send_takeoff_signal_single(
+        self, uav: VirtualUAV, *, scheduled: bool = False, transport=None
+    ) -> None:
+        await sleep(0.2)
+        uav.takeoff()

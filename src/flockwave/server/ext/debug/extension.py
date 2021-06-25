@@ -19,7 +19,7 @@ from trio import (
 )
 from trio.abc import ReceiveChannel, Stream
 from trio.lowlevel import current_root_task
-from typing import Callable
+from typing import Any, Callable, List, Tuple
 
 from flockwave.networking import format_socket_address
 from flockwave.server.utils import overridden
@@ -139,7 +139,10 @@ async def run_debug_port(
         on_message: the function to call when an incoming data chunk is received
     """
     address = host, port
-    log.info(f"Starting debug listener on {format_socket_address(address)}...")
+
+    if log:
+        log.info(f"Starting debug listener on {format_socket_address(address)}...")
+
     try:
         await serve_tcp_and_log_errors(
             partial(handle_debug_connection_safely, on_message=on_message),
@@ -148,7 +151,8 @@ async def run_debug_port(
             log=log,
         )
     finally:
-        log.info("Debug listener closed.")
+        if log:
+            log.info("Debug listener closed.")
 
 
 async def handle_debug_connection_safely(
@@ -163,7 +167,8 @@ async def handle_debug_connection_safely(
         # THis is OK.
         pass
     except Exception:
-        log.exception("Unexpected exception caught while handling debug connection")
+        if log:
+            log.exception("Unexpected exception caught while handling debug connection")
 
 
 async def handle_debug_connection_outbound(
@@ -202,9 +207,10 @@ async def handle_debug_connection_outbound(
                         try:
                             on_message(data)
                         except Exception:
-                            log.exception(
-                                "Unexpected exception while executing debug message handler"
-                            )
+                            if log:
+                                log.exception(
+                                    "Unexpected exception while executing debug message handler"
+                                )
 
                 nursery.cancel_scope.cancel()
 
@@ -252,7 +258,7 @@ async def list_tasks():
     """Returns a page that lists all active Trio tasks in the server."""
 
     tasks = []
-    queue = [(0, current_root_task())]
+    queue: List[Tuple[int, Any]] = [(0, current_root_task())]
     while queue:
         level, task = queue.pop()
         tasks.append(("    " * level, task))

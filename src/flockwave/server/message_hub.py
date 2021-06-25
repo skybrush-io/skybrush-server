@@ -1235,7 +1235,7 @@ class RateLimiters:
     sent in a single batch with a minimum prescribed delay between batches.
     """
 
-    def __init__(self, dispatcher: Callable[[FlockwaveMessage], Awaitable[None]]):
+    def __init__(self, dispatcher: Callable[[FlockwaveMessage], Awaitable[Any]]):
         """Constructor.
 
         Parameters:

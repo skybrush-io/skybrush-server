@@ -7,7 +7,7 @@ from trio import (
     BrokenResourceError,
     move_on_after,
 )
-from typing import Dict, Iterable, List, Optional
+from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence, Tuple
 
 from flockwave.app_framework import DaemonApp
 from flockwave.app_framework.configurator import AppConfigurator, Configuration
@@ -19,7 +19,7 @@ from flockwave.server.utils.system_time import (
     set_system_time_msec,
 )
 
-from .commands import CommandExecutionManager
+from .commands import CommandExecutionManager, CommandExecutionStatus
 from .errors import NotSupportedError
 from .logger import log
 from .message_hub import (
@@ -33,7 +33,7 @@ from .model.client import Client
 from .model.devices import DeviceTree, DeviceTreeSubscriptionManager
 from .model.errors import ClientNotSubscribedError, NoSuchPathError
 from .model.log import LogMessage, Severity
-from .model.messages import FlockwaveMessage, FlockwaveResponse
+from .model.messages import FlockwaveMessage, FlockwaveNotification, FlockwaveResponse
 from .model.object import ModelObject
 from .model.transport import TransportOptions
 from .model.uav import is_uav, UAV, UAVDriver
@@ -54,7 +54,9 @@ PACKAGE_NAME = __name__.rpartition(".")[0]
 
 
 #: Table that describes the handlers of several UAV-related command requests
-UAV_COMMAND_HANDLERS = {
+UAV_COMMAND_HANDLERS: Dict[
+    str, Tuple[str, Optional[Dict[str, Callable[[Any], Any]]]]
+] = {
     "OBJ-CMD": ("send_command", None),
     "UAV-FLY": (
         "send_fly_to_target_signal",
@@ -161,19 +163,21 @@ class SkybrushServer(DaemonApp):
             paths, in_response_to
         )
 
-    def create_DEV_LIST_message_for(self, object_ids, in_response_to=None):
+    def create_DEV_LIST_message_for(
+        self,
+        object_ids: Iterable[str],
+        in_response_to: FlockwaveMessage,
+    ) -> FlockwaveMessage:
         """Creates a DEV-LIST message that contains information regarding
         the device trees of the objects with the given IDs.
 
         Parameters:
             object_ids (iterable): list of object IDs
-            in_response_to (Optional[FlockwaveMessage]): the message that the
-                constructed message will respond to. ``None`` means that the
-                constructed message will be a notification.
+            in_response_to: the message that the constructed message will
+                respond to.
 
         Returns:
-            FlockwaveMessage: the DEV-LIST message with the device trees of
-                the given objects
+            the DEV-LIST message with the device trees of the given objects
         """
         devices = {}
 
@@ -192,22 +196,26 @@ class SkybrushServer(DaemonApp):
 
         return response
 
-    def create_DEV_LISTSUB_message_for(self, client, path_filter, in_response_to=None):
+    def create_DEV_LISTSUB_message_for(
+        self,
+        client: Client,
+        path_filter: Iterable[str],
+        in_response_to: FlockwaveMessage,
+    ):
         """Creates a DEV-LISTSUB message that contains information about the
         device tree paths that the given client is subscribed to.
 
         Parameters:
-            client (Client): the client whose subscriptions we are
-                interested in
-            path_filter (iterable): list of device tree paths whose subtrees
+            client: the client whose subscriptions we are interested in
+            path_filter: list of device tree paths whose subtrees
                 the client is interested in
-            in_response_to (Optional[FlockwaveMessage]): the message that the
-                constructed message will respond to. ``None`` means that the
-                constructed message will be a notification.
+            in_response_to: the message that the constructed message will
+                respond to. ``None`` means that the constructed message will be
+                a notification.
 
         Returns:
-            FlockwaveMessage: the DEV-LISTSUB message with the subscriptions
-                of the client that match the path filters
+            the DEV-LISTSUB message with the subscriptions of the client that
+            match the path filters
         """
         manager = self.device_tree_subscriptions
         subscriptions = manager.list_subscriptions(client, path_filter)
@@ -220,21 +228,22 @@ class SkybrushServer(DaemonApp):
 
         return response
 
-    def create_DEV_SUB_message_for(self, client, paths, in_response_to):
+    def create_DEV_SUB_message_for(
+        self, client: Client, paths: Iterable[str], in_response_to: FlockwaveMessage
+    ) -> FlockwaveMessage:
         """Creates a DEV-SUB response for the given message and subscribes
         the given client to the given paths.
 
         Parameters:
-            client (Client): the client to subscribe to the given paths
-            paths (iterable): list of device tree paths to subscribe the
-                client to
-            in_response_to (FlockwaveMessage): the message that the
-                constructed message will respond to.
+            client: the client to subscribe to the given paths
+            paths: list of device tree paths to subscribe the client to
+            in_response_to: the message that the constructed message will
+                respond to.
 
         Returns:
-            FlockwaveMessage: the DEV-SUB message with the paths that the
-                client was subscribed to, along with error messages for the
-                paths that the client was not subscribed to
+            the DEV-SUB message with the paths that the client was subscribed
+            to, along with error messages for the paths that the client was not
+            subscribed to
         """
         manager = self.device_tree_subscriptions
         response = self.message_hub.create_response_or_notification(
@@ -252,30 +261,36 @@ class SkybrushServer(DaemonApp):
         return response
 
     def create_DEV_UNSUB_message_for(
-        self, client, paths, in_response_to, remove_all, include_subtrees
-    ):
+        self,
+        client: Client,
+        paths: Iterable[str],
+        *,
+        in_response_to: FlockwaveMessage,
+        remove_all: bool,
+        include_subtrees: bool,
+    ) -> FlockwaveResponse:
         """Creates a DEV-UNSUB response for the given message and
         unsubscribes the given client from the given paths.
 
         Parameters:
-            client (Client): the client to unsubscribe from the given paths
-            paths (iterable): list of device tree paths to unsubscribe the
+            client: the client to unsubscribe from the given paths
+            paths: list of device tree paths to unsubscribe the
                 given client from
-            in_response_to (FlockwaveMessage): the message that the
+            in_response_to: the message that the
                 constructed message will respond to.
-            remove_all (bool): when ``True``, the client will be unsubscribed
+            remove_all: when ``True``, the client will be unsubscribed
                 from the given paths no matter how many times it is
                 subscribed to them. When ``False``, an unsubscription will
                 decrease the number of subscriptions to the given path by
                 1 only.
-            include_subtrees (bool): when ``True``, subscriptions to nodes
+            include_subtrees: when ``True``, subscriptions to nodes
                 that are in the subtrees of the given paths will also be
                 removed
 
         Returns:
-            FlockwaveMessage: the DEV-UNSUB message with the paths that the
-                client was unsubscribed from, along with error messages for
-                the paths that the client was not unsubscribed from
+            the DEV-UNSUB message with the paths that the client was
+            unsubscribed from, along with error messages for the paths that the
+            client was not unsubscribed from
         """
         manager = self.device_tree_subscriptions
         response = self.message_hub.create_response_or_notification(
@@ -299,7 +314,9 @@ class SkybrushServer(DaemonApp):
 
         return response
 
-    def create_SYS_MSG_message_from(self, messages: Iterable[LogMessage]):
+    def create_SYS_MSG_message_from(
+        self, messages: Iterable[LogMessage]
+    ) -> FlockwaveNotification:
         """Creates a SYS-MSG message containing the given list of log messages.
 
         Typically, you should not use this method (unless you know what you are
@@ -315,13 +332,15 @@ class SkybrushServer(DaemonApp):
                 message
 
         Returns:
-            FlockwaveMessage: the SYS-MSG message with the given log
+            FlockwaveNotification: the SYS-MSG message with the given log
                 messages
         """
         body = {"items": list(messages), "type": "SYS-MSG"}
         return self.message_hub.create_response_or_notification(body=body)
 
-    def create_UAV_INF_message_for(self, uav_ids, in_response_to=None):
+    def create_UAV_INF_message_for(
+        self, uav_ids: Iterable[str], in_response_to: Optional[FlockwaveMessage] = None
+    ):
         """Creates an UAV-INF message that contains information regarding
         the UAVs with the given IDs.
 
@@ -337,10 +356,10 @@ class SkybrushServer(DaemonApp):
         UAV-INF messages are sent too frequently.
 
         Parameters:
-            uav_ids (iterable): list of UAV IDs
-            in_response_to (Optional[FlockwaveMessage]): the message that the
-                constructed message will respond to. ``None`` means that the
-                constructed message will be a notification.
+            uav_ids: list of UAV IDs
+            in_response_to: the message that the constructed message will
+                respond to. ``None`` means that the constructed message will be
+                a notification.
 
         Returns:
             FlockwaveMessage: the UAV-INF message with the status info of
@@ -421,7 +440,7 @@ class SkybrushServer(DaemonApp):
         # Process the body
         parameters = dict(message.body)
         message_type = parameters.pop("type")
-        uav_ids = parameters.pop("ids", ())
+        uav_ids: Sequence[str] = parameters.pop("ids", ())
 
         # Sort the UAVs being targeted by drivers
         uavs_by_drivers = self.sort_uavs_by_drivers(uav_ids, response)
@@ -445,7 +464,7 @@ class SkybrushServer(DaemonApp):
             # Look up the method in the driver
             common_error, results = None, None
             try:
-                method = getattr(driver, method_name)
+                method = getattr(driver, method_name)  # type: ignore
             except (AttributeError, RuntimeError, TypeError):
                 common_error = "Operation not supported"
                 method = None
@@ -518,8 +537,7 @@ class SkybrushServer(DaemonApp):
 
         Parameters:
             uav_id: the ID of the UAV to find
-            response: the response in which
-                the failure can be registered
+            response: the response in which the failure can be registered
 
         Returns:
             the UAV with the given ID or ``None`` if there is no such UAV
@@ -530,7 +548,7 @@ class SkybrushServer(DaemonApp):
             predicate=is_uav,
             response=response,
             failure_reason="No such UAV",
-        )
+        )  # type: ignore
 
     @property
     def num_clients(self):
@@ -543,7 +561,7 @@ class SkybrushServer(DaemonApp):
         *,
         severity: Severity = Severity.INFO,
         sender: Optional[str] = None,
-        timestamp: Optional[int] = None
+        timestamp: Optional[int] = None,
     ):
         """Requests the application to send a SYS-MSG message to the connected
         clients with the given message body, severity, sender ID and timestamp.
@@ -562,10 +580,10 @@ class SkybrushServer(DaemonApp):
                 timestamp is not relevant and it will be omitted from the
                 generated message
         """
-        message = LogMessage(
+        entry = LogMessage(
             message=message, severity=severity, sender=sender, timestamp=timestamp
         )
-        self.rate_limiters.request_to_send("SYS-MSG", message)
+        self.rate_limiters.request_to_send("SYS-MSG", entry)
 
     def request_to_send_UAV_INF_message_for(self, uav_ids):
         """Requests the application to send an UAV-INF message that contains
@@ -585,7 +603,7 @@ class SkybrushServer(DaemonApp):
         return await super().run()
 
     def sort_uavs_by_drivers(
-        self, uav_ids: List[str], response: Optional[FlockwaveResponse] = None
+        self, uav_ids: Iterable[str], response: Optional[FlockwaveResponse] = None
     ) -> Dict[UAVDriver, List[UAV]]:
         """Given a list of UAV IDs, returns a mapping that maps UAV drivers
         to the UAVs specified by the IDs.
@@ -616,8 +634,7 @@ class SkybrushServer(DaemonApp):
 
         # Create an object to hold information about all the connected
         # clients that the server can talk to
-        self.client_registry = ClientRegistry()
-        self.client_registry.channel_type_registry = self.channel_type_registry
+        self.client_registry = ClientRegistry(self.channel_type_registry)
         self.client_registry.count_changed.connect(
             self._on_client_count_changed, sender=self.client_registry
         )
@@ -756,9 +773,10 @@ class SkybrushServer(DaemonApp):
         """Handler called when the number of clients attached to the server
         has changed.
         """
-        self.run_in_background(
-            self.extension_manager.set_spinning, self.num_clients > 0
-        )
+        if self.extension_manager:
+            self.run_in_background(
+                self.extension_manager.set_spinning, self.num_clients > 0
+            )
 
     def _on_connection_state_changed(self, sender, entry, old_state, new_state):
         """Handler called when the state of a connection changes somewhere
@@ -773,14 +791,16 @@ class SkybrushServer(DaemonApp):
         """
         self.rate_limiters.request_to_send("CONN-INF", entry.id, old_state, new_state)
 
-    def _on_command_execution_finished(self, sender, status):
+    def _on_command_execution_finished(
+        self, sender: CommandExecutionManager, status: CommandExecutionStatus
+    ) -> None:
         """Handler called when the execution of a remote asynchronous
         command finished. Dispatches an appropriate ``ASYNC-RESP`` message.
 
         Parameters:
-            sender (CommandExecutionManager): the command execution manager
-            status (CommandExecutionStatus): the status object corresponding
-                to the command whose execution has just finished.
+            sender: the command execution manager
+            status: the status object corresponding to the command whose
+                execution has just finished.
         """
         body = {"type": "ASYNC-RESP", "id": status.id}
 
@@ -788,7 +808,7 @@ class SkybrushServer(DaemonApp):
             body["error"] = (
                 str(status.error)
                 if not hasattr(status.error, "json")
-                else status.error.json
+                else status.error.json  # type: ignore
             )
         else:
             body["result"] = status.result
@@ -797,15 +817,19 @@ class SkybrushServer(DaemonApp):
         for client_id in status.clients_to_notify:
             self.message_hub.enqueue_message(message, to=client_id)
 
-    def _on_command_execution_timeout(self, sender, statuses):
+    def _on_command_execution_timeout(
+        self,
+        sender: CommandExecutionManager,
+        statuses: Iterable[CommandExecutionStatus],
+    ) -> None:
         """Handler called when the execution of a remote asynchronous
         command was abandoned with a timeout. Dispatches an appropriate
         ``ASYNC-TIMEOUT`` message.
 
         Parameters:
-            sender (CommandExecutionManager): the command execution manager
-            statuses (List[CommandExecutionStatus]): the status objects
-                corresponding to the commands whose execution has timed out.
+            sender: the command execution manager
+            statuses: the status objects corresponding to the commands whose
+                execution has timed out.
         """
         # Multiple commands may have timed out at the same time, and we
         # need to sort them by the clients that originated these requests
@@ -899,27 +923,27 @@ app = SkybrushServer("skybrush", PACKAGE_NAME)
 
 
 @app.message_hub.on("CONN-INF")
-def handle_CONN_INF(message, sender, hub):
+def handle_CONN_INF(message: FlockwaveMessage, sender: Client, hub: MessageHub):
     return app.create_CONN_INF_message_for(message.body["ids"], in_response_to=message)
 
 
 @app.message_hub.on("CONN-LIST")
-def handle_CONN_LIST(message, sender, hub):
+def handle_CONN_LIST(message: FlockwaveMessage, sender: Client, hub: MessageHub):
     return {"ids": list(app.connection_registry.ids)}
 
 
 @app.message_hub.on("DEV-INF")
-def handle_DEV_INF(message, sender, hub):
+def handle_DEV_INF(message: FlockwaveMessage, sender: Client, hub: MessageHub):
     return app.create_DEV_INF_message_for(message.body["paths"], in_response_to=message)
 
 
 @app.message_hub.on("DEV-LIST")
-def handle_DEV_LIST(message, sender, hub):
+def handle_DEV_LIST(message: FlockwaveMessage, sender: Client, hub: MessageHub):
     return app.create_DEV_LIST_message_for(message.body["ids"], in_response_to=message)
 
 
 @app.message_hub.on("DEV-LISTSUB")
-def handle_DEV_LISTSUB(message, sender, hub):
+def handle_DEV_LISTSUB(message: FlockwaveMessage, sender: Client, hub: MessageHub):
     return app.create_DEV_LISTSUB_message_for(
         client=sender,
         path_filter=message.body.get("pathFilter", ("/",)),
@@ -928,14 +952,14 @@ def handle_DEV_LISTSUB(message, sender, hub):
 
 
 @app.message_hub.on("DEV-SUB")
-def handle_DEV_SUB(message, sender, hub):
+def handle_DEV_SUB(message: FlockwaveMessage, sender: Client, hub: MessageHub):
     return app.create_DEV_SUB_message_for(
         client=sender, paths=message.body["paths"], in_response_to=message
     )
 
 
 @app.message_hub.on("DEV-UNSUB")
-def handle_DEV_UNSUB(message, sender, hub):
+def handle_DEV_UNSUB(message: FlockwaveMessage, sender: Client, hub: MessageHub):
     return app.create_DEV_UNSUB_message_for(
         client=sender,
         paths=message.body["paths"],
@@ -946,7 +970,7 @@ def handle_DEV_UNSUB(message, sender, hub):
 
 
 @app.message_hub.on("OBJ-LIST")
-def handle_OBJ_LIST(message, sender, hub):
+def handle_OBJ_LIST(message: FlockwaveMessage, sender: Client, hub: MessageHub):
     filter = message.body.get("filter")
     if filter is None:
         it = app.object_registry.ids
@@ -956,12 +980,12 @@ def handle_OBJ_LIST(message, sender, hub):
 
 
 @app.message_hub.on("SYS-PING")
-def handle_SYS_PING(message, sender, hub):
+def handle_SYS_PING(message: FlockwaveMessage, sender: Client, hub: MessageHub):
     return hub.acknowledge(message)
 
 
 @app.message_hub.on("SYS-TIME")
-def handle_SYS_TIME(message, sender, hub):
+def handle_SYS_TIME(message: FlockwaveMessage, sender: Client, hub: MessageHub):
     adjustment = message.body.get("adjustment")
     if adjustment is not None:
         adjustment = float(adjustment)
@@ -981,17 +1005,17 @@ def handle_SYS_TIME(message, sender, hub):
 
 
 @app.message_hub.on("SYS-VER")
-def handle_SYS_VER(message, sender, hub):
+def handle_SYS_VER(message: FlockwaveMessage, sender: Client, hub: MessageHub):
     return {"software": "skybrushd", "version": server_version}
 
 
 @app.message_hub.on("UAV-INF")
-def handle_UAV_INF(message, sender, hub):
+def handle_UAV_INF(message: FlockwaveMessage, sender: Client, hub: MessageHub):
     return app.create_UAV_INF_message_for(message.body["ids"], in_response_to=message)
 
 
 @app.message_hub.on("UAV-LIST")
-def handle_UAV_LIST(message, sender, hub):
+def handle_UAV_LIST(message: FlockwaveMessage, sender: Client, hub: MessageHub):
     return {"ids": list(app.object_registry.ids_by_type(UAV))}
 
 
@@ -1008,7 +1032,9 @@ def handle_UAV_LIST(message, sender, hub):
     "UAV-TAKEOFF",
     "UAV-VER",
 )
-async def handle_UAV_operations(message, sender, hub):
+async def handle_UAV_operations(
+    message: FlockwaveMessage, sender: Client, hub: MessageHub
+):
     return await app.dispatch_to_uavs(message, sender)
 
 

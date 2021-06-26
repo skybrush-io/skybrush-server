@@ -678,9 +678,6 @@ class SkybrushServer(DaemonApp):
         # Create an object that keeps track of commands being executed
         # asynchronously on remote UAVs
         self.command_execution_manager = CommandExecutionManager()
-        self.command_execution_manager.cancelled.connect(
-            self._on_command_execution_cancelled, sender=self.command_execution_manager
-        )
         self.command_execution_manager.expired.connect(
             self._on_command_execution_timeout, sender=self.command_execution_manager
         )
@@ -839,23 +836,6 @@ class SkybrushServer(DaemonApp):
         else:
             body["result"] = status.result
 
-        message = self.message_hub.create_response_or_notification(body)
-        for client_id in status.clients_to_notify:
-            self.message_hub.enqueue_message(message, to=client_id)
-
-    def _on_command_execution_cancelled(
-        self, sender: CommandExecutionManager, status: CommandExecutionStatus
-    ) -> None:
-        """Handler called when the execution of a remote asynchronous
-        command was cancelled explicitly by the user. Dispatches an appropriate
-        ``ASYNC-RESP`` message with a cancellation error.
-
-        Parameters:
-            sender: the command execution manager
-            status: the status object corresponding to the command whose
-                execution has just been cancelled.
-        """
-        body = {"type": "ASYNC-RESP", "id": status.id, "error": "Cancelled"}
         message = self.message_hub.create_response_or_notification(body)
         for client_id in status.clients_to_notify:
             self.message_hub.enqueue_message(message, to=client_id)

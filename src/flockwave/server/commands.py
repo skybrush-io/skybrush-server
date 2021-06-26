@@ -173,8 +173,8 @@ class CommandExecutionManager(RegistryBase[CommandExecutionStatus]):
         # TODO(ntamas): no need for regular cleanups if we utilize
         # trio.move_on_after() instead
         async with open_nursery() as nursery:
-            nursery.start_soon(self._run_cleanup, cleanup_period)
-            nursery.start_soon(self._run_execution, nursery)
+            nursery.start_soon(self._run_cleanup, cleanup_period, name="cleanup_task")
+            nursery.start_soon(self._run_execution, nursery, name="executor_task")
 
     def _cancelled_by_user(self, receipt_id: str) -> None:
         """Marks the asynchronous command with the given receipt identifier
@@ -257,7 +257,13 @@ class CommandExecutionManager(RegistryBase[CommandExecutionStatus]):
                 # time it takes for the nursery to start the execution
                 scope = CancelScope(deadline=current_time() + self.timeout)  # type: ignore
                 receipt.when_cancelled(scope.cancel)
-                nursery.start_soon(self._wait_for, result, receipt.id, scope)
+                nursery.start_soon(
+                    self._wait_for,
+                    result,
+                    receipt.id,
+                    scope,
+                    name=f"async_operation:{receipt.id}",
+                )
             else:
                 self._finish(receipt.id, result)
 

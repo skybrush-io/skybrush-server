@@ -1,4 +1,4 @@
-{% extends "layout.html.j2" %}
+{% extends "_layout.html.j2" %}
 
 {% block frontmatter %}
 <style>
@@ -9,9 +9,11 @@
 </style>
 {% endblock %}
 
-{% block body %}
-<h1 class="display-4">Skybrush Server Debug Page</h1>
+{% block title %}
+Debug Page
+{% endblock %}
 
+{% block body %}
 <p class="lead">Use the form below to send test messages to this
     Skybrush server. Predefined message templates may be loaded
     with the buttons on the right.

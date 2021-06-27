@@ -243,21 +243,21 @@ def handle_debug_response(data: bytes) -> None:
 @blueprint.route("/")
 async def index():
     """Returns the index page of the extension."""
-    return await render_template("index.html")
+    return await render_template("index.html.j2", title="Debug page")
 
 
 @blueprint.route("/threads")
 async def list_threads():
     """Returns a page that lists all active threads in the server."""
-    data = {"threads": threading.enumerate()}
-    return await render_template("threads.html", **data)
+    data = {"threads": threading.enumerate(), "title": "Thread list"}
+    return await render_template("threads.html.j2", **data)
 
 
 @blueprint.route("/tasks")
 async def list_tasks():
     """Returns a page that lists all active Trio tasks in the server."""
 
-    tasks = []
+    tasks: List[Tuple[str, Any]] = []
     queue: List[Tuple[int, Any]] = [(0, current_root_task())]
     while queue:
         level, task = queue.pop()
@@ -270,7 +270,7 @@ async def list_tasks():
                 )
             )
 
-    return await render_template("tasks.html", tasks=tasks)
+    return await render_template("tasks.html.j2", title="Task list", tasks=tasks)
 
 
 dependencies = ("http_server", "signals")

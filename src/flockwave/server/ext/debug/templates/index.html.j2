@@ -1,0 +1,301 @@
+{% extends "layout.html.j2" %}
+
+{% block frontmatter %}
+<style>
+    #messageToSend {
+        font-family: Menlo, Monaco, Consolas, "Courier New", monospace;
+        font-size: 0.875em;
+    }
+</style>
+{% endblock %}
+
+{% block body %}
+<h1 class="display-4">Skybrush Server Debug Page</h1>
+
+<p class="lead">Use the form below to send test messages to this
+    Skybrush server. Predefined message templates may be loaded
+    with the buttons on the right.
+</p>
+
+<form>
+    <div class="form-group">
+        <label for="messageToSend">Message</label>
+        <textarea id="messageToSend" class="form-control" rows="8"
+            placeholder="Send a message to the server...">
+        </textarea>
+    </div>
+
+    <button type="button" class="btn btn-primary" onclick="send(); return false;">Send</button>
+    <button type="button" class="btn btn-danger" onclick="disconnect(); return false;">Disconnect</button>
+
+    <div class="float-right">
+        <div class="dropdown">
+            <button type="button" id="preset-dropdown-button" class="btn btn-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                Presets
+            </button>
+            <ul class="dropdown-menu" aria-labelledby="preset-dropdown-button" id="preset-buttons">
+            </ul>
+        </div>
+    </div>
+</form>
+
+<div>&nbsp;</div>
+
+<h2 class="h4">Server responses</h2>
+
+<div id="responses">
+    <p class="lead hint">Responses from the server will appear here.</p>
+</div>
+
+<h2 class="h4">Notifications</h2>
+
+<div id="notification-type-selector" class="form-check">
+  <input type="checkbox" class="form-check-input" data-type="UAV-INF" onclick="return toggleMessageType(event, 'UAV-INF')">
+  <label class="form-check-label">Show UAV-INF notifications</label>
+</div>
+
+<div>&nbsp;</div>
+
+<div id="notifications">
+    <p class="lead hint">Notifications from the server will appear here.</p>
+</div>
+{% endblock %}
+
+
+{% block backmatter %}
+<script type="text/javascript" src="static/js/socket.io-2.3.0.slim.js"></script>
+<script type="text/javascript">
+    var presets = {
+        "AUTH-INF": {
+            "type": "AUTH-INF"
+        },
+        "AUTH-REQ": {
+            "type": "AUTH-REQ",
+            "method": "basic",
+            "data": "dXNlckBkb21haW4ueHl6OnBhc3N3b3Jk"
+        },
+        "AUTH-WHOAMI": {
+            "type": "AUTH-WHOAMI"
+        },
+        "CLK-INF": {
+            "type": "CLK-INF",
+            "ids": ["system"]
+        },
+        "CLK-LIST": {
+            "type": "CLK-LIST"
+        },
+        "CONN-INF": {
+            "type": "CONN-INF",
+            "ids": ["virtualConnection0", "virtualConnection1"]
+        },
+        "CONN-LIST": {
+            "type": "CONN-LIST"
+        },
+        "DEV-INF": {
+            "type": "DEV-INF",
+            "paths": ["/COLLMOT-00", "/COLLMOT-01/thermometer", "/COLLMOT-02/thermometer/temperature"]
+        },
+        "DEV-LIST": {
+            "type": "DEV-LIST",
+            "ids": ["COLLMOT-01", "COLLMOT-02"]
+        },
+        "DEV-LISTSUB": {
+            "type": "DEV-LISTSUB",
+            "pathFilter": ["/COLLMOT-01", "/COLLMOT-01/thermometer", "/COLLMOT-00"]
+        },
+        "DEV-SUB": {
+            "type": "DEV-SUB",
+            "paths": ["/COLLMOT-02/thermometer/temperature"]
+        },
+        "DEV-UNSUB": {
+            "type": "DEV-UNSUB",
+            "paths": ["/COLLMOT-02/thermometer/temperature"]
+        },
+        "OBJ-CMD": {
+            "type": "OBJ-CMD",
+            "ids": ["COLLMOT-01", "COLLMOT-02"],
+            "command": "yo"
+        },
+        "OBJ-LIST": {
+            "type": "OBJ-LIST"
+        },
+        "SYS-PING": {
+            "type": "SYS-PING"
+        },
+        "SYS-TIME": {
+            "type": "SYS-TIME"
+        },
+        "SYS-VER": {
+            "type": "SYS-VER"
+        },
+        "UAV-INF": {
+            "type": "UAV-INF",
+            "ids": ["COLLMOT-01", "COLLMOT-02"]
+        },
+        "UAV-LAND": {
+            "type": "UAV-LAND",
+            "ids": ["COLLMOT-00"]
+        },
+        "UAV-LIST": {
+            "type": "UAV-LIST"
+        },
+        "UAV-MOTOR": {
+            "type": "UAV-MOTOR",
+            "ids": ["COLLMOT-00"],
+            "start": true,
+            "force": false
+        },
+        "UAV-SIGNAL": {
+            "type": "UAV-SIGNAL",
+            "ids": ["COLLMOT-00"],
+            "signals": ["light", "sound"],
+            "duration": 1000
+        },
+        "UAV-TAKEOFF": {
+            "type": "UAV-TAKEOFF",
+            "ids": ["COLLMOT-00"]
+        },
+        "UAV-VER": {
+            "type": "UAV-VER",
+            "ids": ["COLLMOT-00"]
+        }
+    };
+
+    var filteredTypes = {
+        "UAV-INF": true
+    };
+
+    var socket = io();
+    var $responsePanel = $('#responses');
+    var $notificationPanel = $('#notifications');
+
+    var numResponses = 0;
+    var numNotifications = 0;
+
+    socket.on('fw', function(data) {
+        var isResponse = data.hasOwnProperty("refs");
+        if (data.hasOwnProperty("body") && data.body.hasOwnProperty("type") &&
+            !isResponse && filteredTypes[data.body.type]) {
+            return
+        }
+
+        if (isResponse) {
+            numResponses++;
+        } else {
+            numNotifications++;
+        }
+
+        addEntryToPanel(
+            data,
+            isResponse ? ('Response #' + numResponses) : ('Notification #' + numNotifications),
+            isResponse ? $responsePanel : $notificationPanel
+        );
+    });
+
+    function addEntryToPanel(data, header, $panel) {
+        var $item = $('<pre>').text(
+            JSON.stringify(data, null, '    ')
+        ).css('margin-bottom', 0);
+
+        $item = $('<div>').addClass('card-body').append($item);
+        $item = $('<div>').addClass('card bg-light').append($item).css('margin-bottom', '1em');
+
+        if (header) {
+            $item.prepend(
+                $('<div>').text(header).addClass('card-header')
+            );
+        }
+
+        $panel.find('.hint').hide();
+        $item.prependTo($panel);
+        $panel.children('div:gt(50)').remove();
+    }
+
+    function guid() {
+        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+            var r = crypto.getRandomValues(new Uint8Array(1))[0]%16|0, v = c == 'x' ? r : (r&0x3|0x8);
+            return v.toString(16);
+        });
+    }
+
+    function disconnect(){
+        socket.disconnect();
+    }
+
+    function loadPreset(name) {
+        $('#messageToSend').val(JSON.stringify(presets[name], null, "    "));
+    }
+
+    function preparePresetButtons() {
+        var $presetDropdownButton = $('#preset-dropdown-button');
+        var $presetButtons = $('#preset-buttons');
+        var presetNames = $.map(presets,
+            function(preset, presetName) {
+                return presetName;
+            });
+        presetNames.sort();
+
+        $.each(presetNames, function(index, presetName) {
+            $('<a href="#">')
+                .on("click", function() {
+                    loadPreset(presetName);
+                    $presetDropdownButton.dropdown('toggle');
+                    return false;
+                })
+                .text(presetName)
+                .wrap('<a>')
+                .addClass('dropdown-item')
+                .parent()
+                .appendTo($presetButtons);
+        });
+    }
+
+    function updateFilterCheckboxes() {
+        var $filterCheckboxes = $('#notification-type-selector input[type=checkbox]');
+        $filterCheckboxes.each(function(index, checkbox) {
+        checkbox.checked = !filteredTypes[checkbox.dataset.type];
+        });
+    }
+
+    function send() {
+        var body = $('#messageToSend').val();
+        var parsedBody;
+        var message;
+
+        try {
+            parsedBody = JSON.parse(body);
+        } catch (e) {
+            alert("Message is not a valid JSON object.");
+            return;
+        }
+
+        if (!parsedBody.hasOwnProperty("type")) {
+            alert("Message must have a 'type' property.");
+            return;
+        }
+
+        message = {
+            "$fw.version": "1.0",
+            "id": guid(),
+            "body": parsedBody
+        }
+
+        socket.emit("fw", message);
+    }
+
+    function toggleMessageType(event, type) {
+        if (event.target.checked) {
+        filteredTypes[type] = false;
+        } else {
+        filteredTypes[type] = true;
+        }
+        updateFilterCheckboxes();
+    }
+
+    $(function() {
+        preparePresetButtons();
+        updateFilterCheckboxes();
+        loadPreset('SYS-VER');
+    });
+</script>
+{% endblock %}

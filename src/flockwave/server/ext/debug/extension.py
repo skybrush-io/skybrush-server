@@ -243,14 +243,15 @@ def handle_debug_response(data: bytes) -> None:
 @blueprint.route("/")
 async def index():
     """Returns the index page of the extension."""
-    return await render_template("index.html.j2", title="Debug page")
+    return await render_template("index.html.j2", title="Messages")
 
 
 @blueprint.route("/threads")
 async def list_threads():
     """Returns a page that lists all active threads in the server."""
-    data = {"threads": threading.enumerate(), "title": "Thread list"}
-    return await render_template("threads.html.j2", **data)
+    return await render_template(
+        "threads.html.j2", threads=threading.enumerate(), title="Threads"
+    )
 
 
 @blueprint.route("/tasks")
@@ -270,7 +271,7 @@ async def list_tasks():
                 )
             )
 
-    return await render_template("tasks.html.j2", title="Task list", tasks=tasks)
+    return await render_template("tasks.html.j2", title="Tasks", tasks=tasks)
 
 
 dependencies = ("http_server", "signals")

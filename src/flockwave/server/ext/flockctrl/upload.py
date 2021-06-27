@@ -106,7 +106,9 @@ def _upload_mission_blocking(raw_data: bytes, address: AddressLike) -> None:
         )
 
         if exit_code != 0:
-            raise ValueError("Failed to restart flockctrl process")
+            raise RuntimeError(
+                f"Failed to restart flockctrl process, exit code = {exit_code}"
+            )
 
 
 upload_mission = upload_mission_in_subprocess

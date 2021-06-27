@@ -106,6 +106,33 @@ class VirtualUAV(UAVBase):
             reports percentages (True) or only voltages (False)
     """
 
+    _version: int
+    _armed: bool
+    _autopilot_initializing: bool
+    _light_controller: DefaultLightController
+    _mission_started_at: Optional[float]
+    _motors_running: bool
+    _position_xyz: Vector3D
+    _position_flat: FlatEarthCoordinate
+    _request_shutdown: Optional[Callable[[], None]]
+    _shutdown_reason: Optional[str]
+    _state: VirtualUAVState
+    _target: Optional[GPSCoordinate]
+    _target_xyz: Optional[Vector3D]
+    _trajectory_transformation: Optional[FlatEarthToGPSCoordinateTransformation]
+    _trans: FlatEarthToGPSCoordinateTransformation
+    _user_defined_error: Optional[int]
+    _velocity_xyz: Vector3D
+    _velocity_ned: VelocityNED
+
+    boots_armed: bool
+    errors: List[int]
+    max_acceleration_xy: float
+    max_acceleration_z: float
+    max_velocity_xy: float
+    max_velocity_z: float
+    takeoff_altitude: float
+
     def __init__(self, *args, use_battery_percentage, **kwds):
         self.use_battery_percentage = use_battery_percentage
 
@@ -120,7 +147,7 @@ class VirtualUAV(UAVBase):
         self._motors_running = False
         self._position_xyz = Vector3D()
         self._position_flat = FlatEarthCoordinate()
-        self._state = None
+        self._state = None  # type: ignore
         self._target_xyz = None
         self._trajectory = None
         self._trajectory_player = None
@@ -201,7 +228,7 @@ class VirtualUAV(UAVBase):
         )
 
     @property
-    def elapsed_time_in_mission(self):
+    def elapsed_time_in_mission(self) -> Optional[float]:
         """Returns the number of seconds elapsed in the execution of the current
         mission (trajectory) or `None` if no mission is running yet.
         """
@@ -225,14 +252,14 @@ class VirtualUAV(UAVBase):
         return bool(self._user_defined_error)
 
     @property
-    def home(self):
+    def home(self) -> GPSCoordinate:
         coord = self._trans.origin.copy()
         if self._home_amsl:
             coord.amsl = self._home_amsl
         return coord
 
     @home.setter
-    def home(self, value):
+    def home(self, value: GPSCoordinate) -> None:
         self._trans.origin = value
         if value.amsl is not None:
             self._home_amsl = float(value.amsl)
@@ -247,14 +274,14 @@ class VirtualUAV(UAVBase):
         return self.driver.app.request_to_send_SYS_MSG_message(*args, **kwds)
 
     @property
-    def state(self):
+    def state(self) -> VirtualUAVState:
         """The state of the UAV; one of the constants from the VirtualUAVState_
         enum class.
         """
         return self._state
 
     @state.setter
-    def state(self, value):
+    def state(self, value: VirtualUAVState) -> None:
         if self._state == value:
             return
 
@@ -291,18 +318,18 @@ class VirtualUAV(UAVBase):
             self.stop_motors()
 
     @property
-    def target(self):
+    def target(self) -> Optional[GPSCoordinate]:
         """The target coordinates of the UAV in GPS coordinates."""
         return self._target
 
     @target.setter
-    def target(self, value):
+    def target(self, value: Optional[GPSCoordinate]) -> None:
         self._target = value
 
         # Clear the "return to home" error code (if any)
         self.ensure_error(FlockwaveErrorCode.RETURN_TO_HOME, present=False)
 
-        if self._target is None:
+        if value is None:
             self._target_xyz = None
         else:
             # Calculate the real altitude component of the target
@@ -315,12 +342,13 @@ class VirtualUAV(UAVBase):
                 new_altitude = value.agl
 
             # Update the target and its XYZ representation
+            assert self._target is not None
             self._target.update(agl=new_altitude)
             flat = self._trans.to_flat_earth(value)
             self._target_xyz = Vector3D(x=flat.x, y=flat.y, z=new_altitude)
 
     @property
-    def target_xyz(self):
+    def target_xyz(self) -> Optional[Vector3D]:
         """The target coordinates of the UAV in flat Earth coordinates around
         its home.
         """
@@ -376,7 +404,7 @@ class VirtualUAV(UAVBase):
             if present:
                 self.errors.append(code)
 
-    def handle_show_upload(self, show):
+    def handle_show_upload(self, show) -> None:
         """Handles the upload of a full drone show (trajectory + light program).
 
         Parameters:
@@ -399,15 +427,15 @@ class VirtualUAV(UAVBase):
 
         self.update_status(mode="mission" if self.has_trajectory else "stab")
 
-    def handle_where_are_you(self, duration):
+    def handle_where_are_you(self, duration: float) -> None:
         """Handles a 'where are you' command.
 
         Parameters:
-            duration(int): duration of the signal in seconds.
+            duration: duration of the signal in seconds.
         """
         self._light_controller.where_are_you(duration)
 
-    def land(self):
+    def land(self) -> None:
         """Starts a simulated landing with the virtual UAV."""
         if self.state != VirtualUAVState.AIRBORNE:
             return
@@ -421,7 +449,7 @@ class VirtualUAV(UAVBase):
         """Overrides the current color of the simulated light on the drone."""
         self._light_controller.override = color
 
-    def reset(self):
+    def reset(self) -> None:
         """Requests the UAV to reset itself if it is currently running."""
         if self._request_shutdown:
             self._shutdown_reason = "reset"
@@ -475,7 +503,7 @@ class VirtualUAV(UAVBase):
         finally:
             self._notify_shutdown()
 
-    def shutdown(self):
+    def shutdown(self) -> None:
         """Requests the UAV to shutdown if it is currently running."""
         if self._request_shutdown:
             self._shutdown_reason = "shutdown"
@@ -672,7 +700,7 @@ class VirtualUAV(UAVBase):
                 {"lat": position.lat, "lon": position.lon, "value": observed_count},
             )
 
-    def stop_trajectory(self):
+    def stop_trajectory(self) -> None:
         """Prevents the UAV from following its pre-defined trajectory if it is
         currently following one. No-op if the UAV is not following a predefined
         trajectory.
@@ -684,7 +712,7 @@ class VirtualUAV(UAVBase):
             self._trajectory_player = None
             self._trajectory_transformation = None
 
-    def takeoff(self):
+    def takeoff(self) -> None:
         """Starts a simulated take-off with the virtual UAV."""
         if self.state != VirtualUAVState.LANDED:
             return
@@ -700,7 +728,7 @@ class VirtualUAV(UAVBase):
 
         self.state = VirtualUAVState.TAKEOFF
 
-    def _initialize_device_tree_node(self, node):
+    def _initialize_device_tree_node(self, node) -> None:
         self.battery = VirtualBattery(report_percentage=self.use_battery_percentage)
         self.battery.register_in_device_tree(node)
 
@@ -753,6 +781,7 @@ class VirtualUAV(UAVBase):
             return
 
         assert self._trajectory_player is not None
+        assert self._trajectory_transformation is not None
 
         if not self._trajectory_player.is_before_takeoff(t):
             x, y, z = self._trajectory_player.position_at(t)
@@ -880,6 +909,7 @@ class VirtualUAVDriver(UAVDriver):
             show: the show data
         """
         uav.handle_show_upload(show)
+        await sleep(1000)
         await sleep(0.25 + random() * 0.5)
 
     async def handle_command_yo(self, uav: VirtualUAV) -> str:

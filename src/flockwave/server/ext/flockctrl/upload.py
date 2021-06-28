@@ -2,6 +2,7 @@ import trio_parallel
 
 from datetime import datetime
 from io import BytesIO
+from paramiko.ssh_exception import AuthenticationException, NoValidConnectionsError
 from trio import CapacityLimiter, to_thread
 from typing import Tuple, Union
 
@@ -92,23 +93,27 @@ def _upload_mission_blocking(raw_data: bytes, address: AddressLike) -> None:
         .replace("-", "")
     )
 
-    with open_ssh(address, username="root") as ssh:
-        scp = open_scp(ssh)
-        scp.putfo(BytesIO(raw_data), f"/tmp/{name}.mission-tmp")
-        _, _, exit_code = execute_ssh_command(
-            ssh,
-            " && ".join(
-                [
-                    f"mv /tmp/{name}.mission-tmp /data/inbox/{name}.mission",
-                    "systemctl restart flockctrl",
-                ]
-            ),
-        )
-
-        if exit_code != 0:
-            raise RuntimeError(
-                f"Failed to restart flockctrl process, exit code = {exit_code}"
+    try:
+        with open_ssh(address, username="root") as ssh:
+            scp = open_scp(ssh)
+            scp.putfo(BytesIO(raw_data), f"/tmp/{name}.mission-tmp")
+            _, _, exit_code = execute_ssh_command(
+                ssh,
+                " && ".join(
+                    [
+                        f"mv /tmp/{name}.mission-tmp /data/inbox/{name}.mission",
+                        "systemctl restart flockctrl",
+                    ]
+                ),
             )
+    except AuthenticationException:
+        raise RuntimeError("SSH authentication failed")
+    except NoValidConnectionsError:
+        raise RuntimeError("Failed to establish SSH connection")
+    if exit_code != 0:
+        raise RuntimeError(
+            f"Failed to restart flockctrl process, exit code = {exit_code}"
+        )
 
 
 upload_mission = upload_mission_in_subprocess

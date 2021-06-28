@@ -30,7 +30,7 @@ from flockwave.server.ext.logger import log as base_log
 from flockwave.server.model.preflight import PreflightCheckInfo, PreflightCheckResult
 from flockwave.server.model.uav import BatteryInfo, UAVBase, UAVDriver, VersionInfo
 from flockwave.server.registries.errors import RegistryFull
-from flockwave.server.utils import color_to_rgb8_triplet, optional_float
+from flockwave.server.utils import color_to_rgb8_triplet, nop, optional_float
 from flockwave.spec.errors import FlockwaveErrorCode
 from flockwave.spec.ids import make_valid_object_id
 
@@ -298,12 +298,20 @@ class CrazyflieUAV(UAVBase):
         PreflightCheckResult.SOFT_FAILURE,
     ]
 
+    notify_updated: Callable[[], None]
+    notify_shutdown_or_reboot: Callable[[], None]
+    send_log_message_to_gcs: Callable[[str], None]
+    uri: Optional[str]
+
+    _crazyflie: Optional[Crazyflie]
+    _log_session: Optional[LogSession]
+
     def __init__(self, *args, **kwds):
         super().__init__(*args, **kwds)
         self.uri: Optional[str] = None
-        self.notify_updated = None
-        self.notify_shutdown_or_reboot = None
-        self.send_log_message_to_gcs = None
+        self.notify_updated = nop
+        self.notify_shutdown_or_reboot = nop
+        self.send_log_message_to_gcs = nop
 
         self._command_queue_tx, self._command_queue_rx = open_memory_channel(0)
 
@@ -313,11 +321,22 @@ class CrazyflieUAV(UAVBase):
 
         self._reset_status_variables()
 
+    def _get_crazyflie(self) -> Crazyflie:
+        """Returns the internal Crazyflie_ object that represents the connection
+        to the drone.
+
+        Raises:
+            RuntimeError: if the connection to the Crazyflie is not established
+        """
+        if self._crazyflie is None:
+            raise RuntimeError(f"Not connected to the Crazyflie drone at {self.uri}")
+        return self._crazyflie
+
     async def emit_light_signal(self) -> None:
         """Asks the UAV to emit a visible light signal from its LED ring to
         attract attention.
         """
-        await self._crazyflie.led_ring.flash()
+        await self._get_crazyflie().led_ring.flash()
 
     async def get_home_position(self) -> Optional[Tuple[float, float, float]]:
         """Returns the current home position of the UAV."""
@@ -331,11 +350,12 @@ class CrazyflieUAV(UAVBase):
 
     async def get_parameter(self, name: str, fetch: bool = False) -> float:
         """Returns the value of a parameter from the Crazyflie."""
-        return await self._crazyflie.param.get(name, fetch=fetch)
+        return await self._get_crazyflie().param.get(name, fetch=fetch)
 
     async def get_version_info(self) -> VersionInfo:
-        version = await self._crazyflie.platform.get_firmware_version()
-        revision = await self._crazyflie.platform.get_firmware_revision()
+        cf = self._get_crazyflie()
+        version = await cf.platform.get_firmware_version()
+        revision = await cf.platform.get_firmware_revision()
         return {"firmware": version or "", "revision": revision or ""}
 
     async def go_to(
@@ -357,22 +377,24 @@ class CrazyflieUAV(UAVBase):
                 Z coordinate
         """
         current = self.status.position_xyz
-        if current is None and (x is None or y is None or z is None):
+        if current is None:
             raise RuntimeError("UAV has no known position yet")
 
-        x = current.x if x is None else x
-        y = current.y if y is None else y
-        z = current.z if z is None else z
+        cf = self._get_crazyflie()
 
-        dx, dy, dz = x - current.x, y - current.y, z - current.z
+        target_x = current.x if x is None else x
+        target_y = current.y if y is None else y
+        target_z = current.z if z is None else z
+
+        dx, dy, dz = target_x - current.x, target_y - current.y, target_z - current.z
         travel_time = max(hypot(dx, dy) / velocity_xy, abs(dz) / velocity_z)
 
         # TODO(ntamas): keep current yaw!
-        await self._crazyflie.high_level_commander.go_to(
-            x, y, z, yaw=0, duration=travel_time
+        await cf.high_level_commander.go_to(
+            target_x, target_y, target_z, yaw=0, duration=travel_time
         )
 
-        return x, y, z
+        return target_x, target_y, target_z
 
     @property
     def has_previously_uploaded_show(self) -> bool:
@@ -403,7 +425,9 @@ class CrazyflieUAV(UAVBase):
         # early with the result
         # TODO(ntamas): figure out how much time the landing will take
         # approximately and shut down the motors at the end
-        await self._crazyflie.high_level_commander.land(altitude, velocity=velocity)
+        await self._get_crazyflie().high_level_commander.land(
+            altitude, velocity=velocity
+        )
 
     @property
     def last_uploaded_show(self):
@@ -439,7 +463,8 @@ class CrazyflieUAV(UAVBase):
         them to the logger of the extension.
         """
         extra = {"id": self.id}
-        async for message in self._crazyflie.console.messages():
+        console = self._get_crazyflie().console
+        async for message in console.messages():
             log.info(message, extra=extra)
             self.send_log_message_to_gcs(message)
 
@@ -453,8 +478,9 @@ class CrazyflieUAV(UAVBase):
         """
         await sleep(random() * 0.5)
         async for _ in periodic(period):
+            cf = self._get_crazyflie()
             try:
-                status = await self._crazyflie.run_command(
+                status = await cf.run_command(
                     port=DRONE_SHOW_PORT, command=DroneShowCommand.STATUS
                 )
                 status = DroneShowStatus.from_bytes(status)
@@ -494,13 +520,13 @@ class CrazyflieUAV(UAVBase):
         """Runs a task that processes incoming log messages and calls the
         appropriate log message handlers.
         """
+        assert self._log_session is not None
         await self._log_session.process_messages()
 
     async def reboot(self):
         """Reboots the UAV."""
-        await self._crazyflie.reboot()
-        if self.notify_shutdown_or_reboot:
-            self.notify_shutdown_or_reboot()
+        await self._get_crazyflie().reboot()
+        self.notify_shutdown_or_reboot()
 
     async def reupload_last_show(self) -> None:
         """Uploads the last show that was uploaded to this drone again."""
@@ -521,7 +547,7 @@ class CrazyflieUAV(UAVBase):
 
     async def set_parameter(self, name: str, value: float) -> None:
         """Sets the value of a parameter on the Crazyflie."""
-        await self._crazyflie.param.set(name, value)
+        await self._get_crazyflie().param.set(name, value)
 
     @asynccontextmanager
     async def set_and_restore_parameter(
@@ -530,7 +556,7 @@ class CrazyflieUAV(UAVBase):
         """Context manager that sets the value of a parameter on the UAV upon
         entering the context and resets it upon exiting.
         """
-        async with self._crazyflie.param.set_and_restore(name, value):
+        async with self._get_crazyflie().param.set_and_restore(name, value):
             yield
 
     async def set_home_position(
@@ -549,14 +575,14 @@ class CrazyflieUAV(UAVBase):
 
     async def stop(self) -> None:
         """Stops the motors of the UAV immediately."""
-        await self._crazyflie.commander.stop()
-        await self._crazyflie.high_level_commander.stop()
+        cf = self._get_crazyflie()
+        await cf.commander.stop()
+        await cf.high_level_commander.stop()
 
     async def shutdown(self):
         """Shuts down the UAV."""
-        await self._crazyflie.shutdown()
-        if self.notify_shutdown_or_reboot:
-            self.notify_shutdown_or_reboot()
+        await self._get_crazyflie().shutdown()
+        self.notify_shutdown_or_reboot()
 
     async def start_drone_show(self, delay: float = 0):
         """Instructs the UAV to start the pre-programmed drone show in drone
@@ -571,7 +597,7 @@ class CrazyflieUAV(UAVBase):
         else:
             data = None
 
-        await self._crazyflie.run_command(
+        await self._get_crazyflie().run_command(
             port=DRONE_SHOW_PORT, command=DroneShowCommand.START, data=data
         )
 
@@ -580,7 +606,7 @@ class CrazyflieUAV(UAVBase):
         show mode. Assumes that the UAV is already in drone show mode; it will
         _not_ attempt to switch the mode.
         """
-        await self._crazyflie.run_command(
+        await self._get_crazyflie().run_command(
             port=DRONE_SHOW_PORT, command=DroneShowCommand.STOP
         )
 
@@ -595,7 +621,7 @@ class CrazyflieUAV(UAVBase):
             relative: whether the altitude is relative to the current position
             velocity: the desired takeoff velocity, in meters per second
         """
-        await self._crazyflie.high_level_commander.takeoff(
+        await self._get_crazyflie().high_level_commander.takeoff(
             altitude, relative=relative, velocity=velocity
         )
 
@@ -609,7 +635,7 @@ class CrazyflieUAV(UAVBase):
         if component == "motor":
             await self.set_parameter("health.startPropTest", 1)
         elif component == "led":
-            await self._crazyflie.led_ring.test()
+            await self._get_crazyflie().led_ring.test()
         elif component == "battery":
             await self.set_parameter("health.startBatTest", 1)
         else:
@@ -626,7 +652,7 @@ class CrazyflieUAV(UAVBase):
         else:
             red, green, blue = 0, 0, 0
 
-        await self._crazyflie.run_command(
+        await self._get_crazyflie().run_command(
             port=DRONE_SHOW_PORT,
             command=DroneShowCommand.TRIGGER_GCS_LIGHT_EFFECT,
             data=Struct("<BBBB").pack(
@@ -667,6 +693,9 @@ class CrazyflieUAV(UAVBase):
         """
         uri = self.uri
 
+        if uri is None:
+            raise RuntimeError("Crazyflie URI is not set yet")
+
         if debug and "+log" not in uri:
             uri = uri.replace("://", "+log://")
 
@@ -700,9 +729,10 @@ class CrazyflieUAV(UAVBase):
         only.
         """
         needs_show_mode = self.has_previously_uploaded_show
+        cf = self._get_crazyflie()
 
-        await self._crazyflie.param.validate()
-        await self._crazyflie.high_level_commander.enable()
+        await cf.param.validate()
+        await cf.high_level_commander.enable()
 
         if needs_show_mode:
             await self._enable_show_mode()
@@ -723,9 +753,10 @@ class CrazyflieUAV(UAVBase):
 
     async def _enable_show_mode(self) -> None:
         """Enables the drone-show mode on the Crazyflie."""
-        await self._crazyflie.param.set("show.enabled", 1)
+        cf = self._get_crazyflie()
+        await cf.param.set("show.enabled", 1)
         if self.driver.use_test_mode:
-            await self._crazyflie.param.set("show.testing", 1)
+            await cf.param.set("show.testing", 1)
 
     def _on_battery_and_system_state_received(self, message):
         self._battery.voltage = message.items[0]
@@ -831,10 +862,13 @@ class CrazyflieUAV(UAVBase):
         )
 
         voltage = self._battery.voltage
-        self.ensure_error(FlockwaveErrorCode.BATTERY_LOW_ERROR, present=voltage <= 3.1)
+        self.ensure_error(
+            FlockwaveErrorCode.BATTERY_LOW_ERROR,
+            present=voltage is not None and voltage <= 3.1,
+        )
         self.ensure_error(
             FlockwaveErrorCode.BATTERY_LOW_WARNING,
-            present=voltage <= 3.3 and voltage > 3.1,
+            present=voltage is not None and (voltage <= 3.3 and voltage > 3.1),
         )
 
     def _update_preflight_status_from_result_codes(self, codes: List[int]) -> None:
@@ -854,12 +888,13 @@ class CrazyflieUAV(UAVBase):
 
     async def _upload_light_program(self, data: bytes) -> None:
         """Uploads the given light program to the Crazyflie drone."""
+        cf = self._get_crazyflie()
         try:
-            memory = await self._crazyflie.mem.find(MemoryType.APP)
+            memory = await cf.mem.find(MemoryType.APP)
         except ValueError:
             raise RuntimeError("Light programs are not supported on this drone")
         addr = await write_with_checksum(memory, 0, data, only_if_changed=True)
-        await self._crazyflie.run_command(
+        await cf.run_command(
             port=DRONE_SHOW_PORT,
             command=DroneShowCommand.DEFINE_LIGHT_PROGRAM,
             data=Struct("<BBBBII").pack(
@@ -878,8 +913,9 @@ class CrazyflieUAV(UAVBase):
         home: Optional[Tuple[float, float, float]],
     ) -> None:
         """Uploads the given trajectory data to the Crazyflie drone."""
+        cf = self._get_crazyflie()
         try:
-            memory = await self._crazyflie.mem.find(MemoryType.TRAJECTORY)
+            memory = await cf.mem.find(MemoryType.TRAJECTORY)
         except ValueError:
             raise RuntimeError("Trajectories are not supported on this drone")
 
@@ -895,7 +931,7 @@ class CrazyflieUAV(UAVBase):
         addr = await write_with_checksum(memory, 0, data, only_if_changed=True)
 
         # Now we can define the entire trajectory as well
-        await self._crazyflie.high_level_commander.define_trajectory(
+        await cf.high_level_commander.define_trajectory(
             0, addr=addr, type=TrajectoryType.COMPRESSED
         )
 
@@ -998,7 +1034,7 @@ class CrazyflieHandlerTask:
 
                 await self._reupload_last_show_if_needed()
         finally:
-            self._uav.notify_shutdown_or_reboot = None
+            self._uav.notify_shutdown_or_reboot = nop
 
     async def _feed_fake_position(self) -> None:
         """Background task that feeds a fake position to the UAV as if it was

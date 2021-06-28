@@ -10,7 +10,6 @@ from operator import mul
 from typing import (
     Any,
     Callable,
-    Generator,
     Iterable,
     Optional,
     Sequence,
@@ -40,6 +39,9 @@ __all__ = (
     "overridden",
     "to_uppercase_string",
 )
+
+
+T = TypeVar("T")
 
 
 def bind(func, args=None, kwds=None, *, partial=False):
@@ -75,11 +77,11 @@ def bind(func, args=None, kwds=None, *, partial=False):
         return partial(func, *args, **kwds)
 
 
-def clamp(value: float, lo: float, hi: float) -> float:
+def clamp(value: T, lo: T, hi: T) -> T:
     """Clamps the given value between a minimum and a maximum allowed value
     (both inclusive).
     """
-    return max(min(value, hi), lo)
+    return max(min(value, hi), lo)  # type: ignore
 
 
 def color_to_rgb565(color: Color) -> int:
@@ -108,13 +110,13 @@ def color_to_rgb8_triplet(color: Color) -> Tuple[int, int, int]:
     Returns:
         the color in its RGB8 triplet representation
     """
-    return tuple(round(x * 255) for x in color.rgb)
+    return tuple(round(x * 255) for x in color.rgb)  # type: ignore
 
 
 T = TypeVar("T")
 
 
-def consecutive_pairs(iterable: Iterable[T]) -> Generator[Tuple[T, T], None, None]:
+def consecutive_pairs(iterable: Iterable[T]) -> Iterable[Tuple[T, T]]:
     """Given an iterable, returns a generator that generates consecutive
     pairs of items from the iterable.
 

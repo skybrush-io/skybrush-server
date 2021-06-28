@@ -178,7 +178,7 @@ class DroneShowStatus:
     @property
     def airborne(self) -> bool:
         """Returns whether the Crazyflie is probably airborne."""
-        return self.flags & DroneShowStatusFlag.AIRBORNE
+        return bool(self.flags & DroneShowStatusFlag.AIRBORNE)
 
     @property
     def armed(self) -> bool:
@@ -194,7 +194,7 @@ class DroneShowStatus:
     @property
     def charging(self) -> bool:
         """Returns whether the battery is charging."""
-        return self.flags & DroneShowStatusFlag.BATTERY_CHARGING
+        return bool(self.flags & DroneShowStatusFlag.BATTERY_CHARGING)
 
     @classmethod
     def from_bytes(cls, data: bytes):
@@ -243,4 +243,4 @@ class DroneShowStatus:
     @property
     def testing(self) -> bool:
         """Returns whether the drone is in testing mode is charging."""
-        return self.flags & DroneShowStatusFlag.TESTING_MODE
+        return bool(self.flags & DroneShowStatusFlag.TESTING_MODE)

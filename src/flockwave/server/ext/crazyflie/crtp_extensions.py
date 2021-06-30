@@ -5,7 +5,7 @@ related to our extensions that we added to the Crazyflie firmware.
 from dataclasses import dataclass
 from enum import IntEnum, IntFlag
 from struct import Struct
-from typing import Optional, Tuple
+from typing import Tuple
 
 from aiocflib.crtp.crtpstack import CRTPPort
 
@@ -168,7 +168,7 @@ class DroneShowStatus:
     battery_voltage: float = 0.0
     flags: int = 0
     preflight_checks: Tuple[PreflightCheckStatus, ...] = ()
-    position: Optional[Tuple[float, float, float]] = None
+    position: Tuple[float, float, float] = (0.0, 0.0, 0.0)
     light: int = 0
     show_execution_stage: DroneShowExecutionStage = DroneShowExecutionStage.UNKNOWN
     yaw: float = 0.0

@@ -513,7 +513,7 @@ reference = "collmot"
 
 [[package]]
 name = "flockwave-gps"
-version = "2.0.0"
+version = "2.0.1"
 description = "GPS and geography related routines and classes"
 category = "main"
 optional = false
@@ -1896,7 +1896,7 @@ reference = "collmot"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7"
-content-hash = "6ce9b6929dff4928bfda1f978d263e06e9812713c0d6649dc728a9d94217d237"
+content-hash = "776a975ca6a4fbabd9be72e6ecf1b024e7a1a56b7344453fe4f07d4a8e8ccb22"
 
 [metadata.files]
 adrenaline = [
@@ -2084,8 +2084,8 @@ flockwave-flockctrl = [
     {file = "flockwave_flockctrl-1.17.1-py3-none-any.whl", hash = "md5:fe4460a7e42b970a9838daf7d2cdfce2"},
 ]
 flockwave-gps = [
-    {file = "flockwave-gps-2.0.0.tar.gz", hash = "md5:41265852a293aa22877d95f24cfededa"},
-    {file = "flockwave_gps-2.0.0-py3-none-any.whl", hash = "md5:2e43cf739b308899a51b2509476d6a33"},
+    {file = "flockwave-gps-2.0.1.tar.gz", hash = "md5:53e4bac7cebca10a71a286edbd7cd8a9"},
+    {file = "flockwave_gps-2.0.1-py3-none-any.whl", hash = "md5:f9b213fe0e02566b0d79a1c3a95c9b6d"},
 ]
 flockwave-logger = [
     {file = "flockwave-logger-1.7.0.tar.gz", hash = "md5:e9917e5f0e9a82defe7d7b7ce10bd01a"},

@@ -140,6 +140,8 @@ class RTKExtension(ExtensionBase):
         )
 
         gnss_types = configuration.get("gnss_types")
+        if gnss_types == "all":
+            gnss_types = None
         try:
             self._survey_settings.update_from_json({"gnssTypes": gnss_types})
         except ValueError:

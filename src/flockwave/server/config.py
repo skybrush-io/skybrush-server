@@ -84,11 +84,10 @@ EXTENSIONS = {
     "mavlink": {
         "enabled": False,
         "id_format": "{0:02}",
-        # "connections": ["apm-sitl"],   # for ArduPilot SITL simulator
         "connections": [
             "default"
         ],  # default setup; listens for heartbeats on UDP port 14550, sends broadcasts to UDP port 14555
-        "routing": {"rtk": 0},  # send RTK corrections to primary link
+        "routing": {"rtk": 0},
         "custom_mode": None,
         "system_id": 254,
     },
@@ -106,6 +105,7 @@ EXTENSIONS = {
             # },
         },
         "add_serial_ports": True,
+        "gnss_types": "all",  # or a list like ["gps", "glonass"]
         "use_high_precision": True  # set to false if the rover cannot handle high-precision MSM RTK messages
         # "exclude_serial_ports": ["*ttyAMA*"
     },

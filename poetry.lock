@@ -494,7 +494,7 @@ reference = "collmot"
 
 [[package]]
 name = "flockwave-flockctrl"
-version = "1.17.0"
+version = "1.17.1"
 description = "flockctrl protocol parser and encoder for Skybrush"
 category = "main"
 optional = false
@@ -502,7 +502,7 @@ python-versions = ">=3.7,<4.0"
 
 [package.dependencies]
 crcmod = ">=1.7,<2.0"
-flockwave-gps = ">=1.0.0,<2.0.0"
+flockwave-gps = ">=1.4.0,<3.0.0"
 flockwave-parsers = ">=1.2.0,<2.0.0"
 hexdump = ">=3.3,<4.0"
 
@@ -513,7 +513,7 @@ reference = "collmot"
 
 [[package]]
 name = "flockwave-gps"
-version = "1.4.1"
+version = "2.0.0"
 description = "GPS and geography related routines and classes"
 category = "main"
 optional = false
@@ -720,7 +720,7 @@ reference = "collmot"
 
 [[package]]
 name = "importlib-metadata"
-version = "4.6.0"
+version = "4.6.1"
 description = "Read metadata from Python packages"
 category = "main"
 optional = false
@@ -973,11 +973,11 @@ reference = "collmot"
 
 [[package]]
 name = "packaging"
-version = "20.9"
+version = "21.0"
 description = "Core utilities for Python packages"
 category = "dev"
 optional = false
-python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
+python-versions = ">=3.6"
 
 [package.dependencies]
 pyparsing = ">=2.0.2"
@@ -1096,7 +1096,7 @@ reference = "collmot"
 
 [[package]]
 name = "pyarmor"
-version = "6.7.2"
+version = "6.7.3"
 description = "A tool used to obfuscate python scripts, bind obfuscated scripts to fixed machine or expire obfuscated scripts."
 category = "dev"
 optional = false
@@ -1459,11 +1459,11 @@ reference = "collmot"
 
 [[package]]
 name = "pyusb"
-version = "1.1.1"
+version = "1.2.0"
 description = "Python USB access module"
 category = "main"
 optional = false
-python-versions = "*"
+python-versions = ">=3.6.0"
 
 [package.source]
 type = "legacy"
@@ -1862,7 +1862,7 @@ reference = "collmot"
 
 [[package]]
 name = "zeroconf"
-version = "0.32.0"
+version = "0.32.1"
 description = "Pure Python Multicast DNS Service Discovery Library (Bonjour/Avahi compatible)"
 category = "main"
 optional = false
@@ -1878,7 +1878,7 @@ reference = "collmot"
 
 [[package]]
 name = "zipp"
-version = "3.4.1"
+version = "3.5.0"
 description = "Backport of pathlib-compatible object wrapper for zip files"
 category = "main"
 optional = false
@@ -1886,7 +1886,7 @@ python-versions = ">=3.6"
 
 [package.extras]
 docs = ["sphinx", "jaraco.packaging (>=8.2)", "rst.linker (>=1.9)"]
-testing = ["pytest (>=4.6)", "pytest-checkdocs (>=1.2.3)", "pytest-flake8", "pytest-cov", "pytest-enabler", "jaraco.itertools", "func-timeout", "pytest-black (>=0.3.7)", "pytest-mypy"]
+testing = ["pytest (>=4.6)", "pytest-checkdocs (>=2.4)", "pytest-flake8", "pytest-cov", "pytest-enabler (>=1.0.1)", "jaraco.itertools", "func-timeout", "pytest-black (>=0.3.7)", "pytest-mypy"]
 
 [package.source]
 type = "legacy"
@@ -1896,7 +1896,7 @@ reference = "collmot"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7"
-content-hash = "976d8d0458de898d349098129011652a0c2d4f63427443f742acdf1ed6687c05"
+content-hash = "6ce9b6929dff4928bfda1f978d263e06e9812713c0d6649dc728a9d94217d237"
 
 [metadata.files]
 adrenaline = [
@@ -2080,12 +2080,12 @@ flockwave-ext = [
     {file = "flockwave_ext-1.6.0-py3-none-any.whl", hash = "md5:2bc9150c2623be87d3f333bf0253bad1"},
 ]
 flockwave-flockctrl = [
-    {file = "flockwave-flockctrl-1.17.0.tar.gz", hash = "md5:67133a7b5350f4a8ed970bf12ce99d19"},
-    {file = "flockwave_flockctrl-1.17.0-py3-none-any.whl", hash = "md5:433e43d5ccd3bbc9b041c44271ce3285"},
+    {file = "flockwave-flockctrl-1.17.1.tar.gz", hash = "md5:71bb3e7984ac47904867ae7856485739"},
+    {file = "flockwave_flockctrl-1.17.1-py3-none-any.whl", hash = "md5:fe4460a7e42b970a9838daf7d2cdfce2"},
 ]
 flockwave-gps = [
-    {file = "flockwave-gps-1.4.1.tar.gz", hash = "md5:23c11f032b6e26d53c04dd755851770a"},
-    {file = "flockwave_gps-1.4.1-py3-none-any.whl", hash = "md5:98ad77afa45f38ffda9834005fdeb461"},
+    {file = "flockwave-gps-2.0.0.tar.gz", hash = "md5:41265852a293aa22877d95f24cfededa"},
+    {file = "flockwave_gps-2.0.0-py3-none-any.whl", hash = "md5:2e43cf739b308899a51b2509476d6a33"},
 ]
 flockwave-logger = [
     {file = "flockwave-logger-1.7.0.tar.gz", hash = "md5:e9917e5f0e9a82defe7d7b7ce10bd01a"},
@@ -2134,8 +2134,8 @@ ifaddr = [
     {file = "ifaddr-0.1.7.tar.gz", hash = "sha256:1f9e8a6ca6f16db5a37d3356f07b6e52344f6f9f7e806d618537731669eb1a94"},
 ]
 importlib-metadata = [
-    {file = "importlib_metadata-4.6.0-py3-none-any.whl", hash = "sha256:c6513572926a96458f8c8f725bf0e00108fba0c9583ade9bd15b869c9d726e33"},
-    {file = "importlib_metadata-4.6.0.tar.gz", hash = "sha256:4a5611fea3768d3d967c447ab4e93f567d95db92225b43b7b238dbfb855d70bb"},
+    {file = "importlib_metadata-4.6.1-py3-none-any.whl", hash = "sha256:9f55f560e116f8643ecf2922d9cd3e1c7e8d52e683178fecd9d08f6aa357e11e"},
+    {file = "importlib_metadata-4.6.1.tar.gz", hash = "sha256:079ada16b7fc30dfbb5d13399a5113110dab1aa7c2bc62f66af75f0b717c8cac"},
 ]
 itsdangerous = [
     {file = "itsdangerous-2.0.1-py3-none-any.whl", hash = "sha256:5174094b9637652bdb841a3029700391451bd092ba3db90600dea710ba28e97c"},
@@ -2342,8 +2342,8 @@ outcome = [
     {file = "outcome-1.1.0.tar.gz", hash = "sha256:e862f01d4e626e63e8f92c38d1f8d5546d3f9cce989263c521b2e7990d186967"},
 ]
 packaging = [
-    {file = "packaging-20.9-py2.py3-none-any.whl", hash = "sha256:67714da7f7bc052e064859c05c595155bd1ee9f69f76557e21f051443c20947a"},
-    {file = "packaging-20.9.tar.gz", hash = "sha256:5b327ac1320dc863dca72f4514ecc086f31186744b84a230374cc1fd776feae5"},
+    {file = "packaging-21.0-py3-none-any.whl", hash = "sha256:c86254f9220d55e31cc94d69bade760f0847da8000def4dfe1c6b872fd14ff14"},
+    {file = "packaging-21.0.tar.gz", hash = "sha256:7dc96269f53a4ccec5c0670940a4281106dd0bb343f47b7471f779df49c2fbe7"},
 ]
 paramiko = [
     {file = "paramiko-2.7.2-py2.py3-none-any.whl", hash = "sha256:4f3e316fef2ac628b05097a637af35685183111d4bc1b5979bd397c2ab7b5898"},
@@ -2369,8 +2369,8 @@ py = [
     {file = "py-1.10.0.tar.gz", hash = "sha256:21b81bda15b66ef5e1a777a21c4dcd9c20ad3efd0b3f817e7a809035269e1bd3"},
 ]
 pyarmor = [
-    {file = "pyarmor-6.7.2-py2.py3-none-any.whl", hash = "sha256:485e3273f5bfc67f5b679c24e13a88c30ab1f92dbf658d46bcc2af6eeb6d754d"},
-    {file = "pyarmor-6.7.2.zip", hash = "sha256:6be6d02fff00a6d2786a4843c193d24ba967860163f03ad6c4fef0ce615f0fcf"},
+    {file = "pyarmor-6.7.3-py2.py3-none-any.whl", hash = "sha256:7955092466fc9c22270cdaade65cc15044c5cf830cb6309d3ec63428eb91ca1d"},
+    {file = "pyarmor-6.7.3.zip", hash = "sha256:20056970ced0beac2f9a86ad57c23a1a85c29982e5f1db8ea123d37598f152d1"},
 ]
 pycparser = [
     {file = "pycparser-2.20-py2.py3-none-any.whl", hash = "sha256:7582ad22678f0fcd81102833f60ef8d0e57288b6b5fb00323d101be910e35705"},
@@ -2505,8 +2505,8 @@ pyudev = [
     {file = "pyudev-0.22.0.tar.gz", hash = "sha256:69bb1beb7ac52855b6d1b9fe909eefb0017f38d917cba9939602c6880035b276"},
 ]
 pyusb = [
-    {file = "pyusb-1.1.1-py3-none-any.whl", hash = "sha256:f18eb813d3a1439918071234589162c2f209a19adbeffeb1377ce078a4aebc70"},
-    {file = "pyusb-1.1.1.tar.gz", hash = "sha256:7d449ad916ce58aff60b89aae0b65ac130f289c24d6a5b7b317742eccffafc38"},
+    {file = "pyusb-1.2.0-py3-none-any.whl", hash = "sha256:97a52f049c20d8d103c7908b0ac8145e7b3ededb4e8ca0774526b547e9037b1d"},
+    {file = "pyusb-1.2.0.tar.gz", hash = "sha256:d68597d2cf7df766bdf816b1a337b72ab8233c19825e170ae18714f16b838cbc"},
 ]
 pywin32-ctypes = [
     {file = "pywin32-ctypes-0.2.0.tar.gz", hash = "sha256:24ffc3b341d457d48e8922352130cf2644024a4ff09762a2261fd34c36ee5942"},
@@ -2608,10 +2608,10 @@ yarg = [
     {file = "yarg-0.1.9.tar.gz", hash = "sha256:55695bf4d1e3e7f756496c36a69ba32c40d18f821e38f61d028f6049e5e15911"},
 ]
 zeroconf = [
-    {file = "zeroconf-0.32.0-py3-none-any.whl", hash = "sha256:c97c63330a2b9a7a4372eb04c9b9ada3c8ce05f79c0a63771c09577834486ad2"},
-    {file = "zeroconf-0.32.0.tar.gz", hash = "sha256:88130cfe31eb6e4de7c527d47897568db499baa161ef099123ae278c649b2a86"},
+    {file = "zeroconf-0.32.1-py3-none-any.whl", hash = "sha256:5b91d4d93c225f60dbb37915f63c2d1b445b7b39ba17f8da42f51c373d866af4"},
+    {file = "zeroconf-0.32.1.tar.gz", hash = "sha256:75e6616401f6d4a51f522f558b5d8a329da1407adc3e876134a4533e29acd279"},
 ]
 zipp = [
-    {file = "zipp-3.4.1-py3-none-any.whl", hash = "sha256:51cb66cc54621609dd593d1787f286ee42a5c0adbb4b29abea5a63edc3e03098"},
-    {file = "zipp-3.4.1.tar.gz", hash = "sha256:3607921face881ba3e026887d8150cca609d517579abe052ac81fc5aeffdbd76"},
+    {file = "zipp-3.5.0-py3-none-any.whl", hash = "sha256:957cfda87797e389580cb8b9e3870841ca991e2125350677b2ca83a0e99390a3"},
+    {file = "zipp-3.5.0.tar.gz", hash = "sha256:f5812b1e007e48cff63449a5e9f4e7ebea716b4111f9c4f9a645f91d579bf0c4"},
 ]

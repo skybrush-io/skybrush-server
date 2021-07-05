@@ -13,6 +13,7 @@ from typing import cast, List, Optional
 
 from flockwave.channels import ParserChannel
 from flockwave.connections import Connection, create_connection
+from flockwave.gps.rtk import RTKMessageSet, RTKSurveySettings
 from flockwave.gps.ubx.rtk_config import UBXRTKBaseConfigurator
 from flockwave.server.message_hub import MessageHub
 from flockwave.server.model import ConnectionPurpose
@@ -352,11 +353,14 @@ class RTKExtension(ExtensionBase):
             accuracy = self._survey_settings.accuracy
             accuracy_cm = int(accuracy * 100)
 
-            configurator = UBXRTKBaseConfigurator(
+            settings = RTKSurveySettings(
                 duration=duration,
                 accuracy=accuracy,
-                use_high_precision=self._use_high_precision,
+                message_set=RTKMessageSet.MSM7
+                if self._use_high_precision
+                else RTKMessageSet.MSM4,
             )
+            configurator = UBXRTKBaseConfigurator(settings)
 
             self.log.info(
                 f"Starting survey for {preset.title!r} for at least {duration} "

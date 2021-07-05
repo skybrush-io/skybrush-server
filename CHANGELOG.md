@@ -15,6 +15,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   plugged into an unpowered USB hub and the device disappeared briefly from the
   OS due to power issues on the USB port.
 
+- The RTK extension of the server can now be configured to send RTK corrections
+  only for a subset of all supported GNSS types; for instance, one can now
+  configure the extension to send corrections for GPS and GLONASS only, saving
+  bandwidth in geographical areas where BeiDou is not relevant.
+
 ## [1.18.0] - 2021-05-10
 
 This is the release that serves as a basis for changelog entries above. Refer

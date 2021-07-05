@@ -10,7 +10,7 @@ from random import random
 from struct import Struct
 from trio import Nursery, open_memory_channel, open_nursery, sleep
 from trio_util import periodic
-from typing import AsyncIterator, Callable, List, Optional, Tuple
+from typing import AsyncIterator, Callable, Optional, Sequence, Tuple
 
 from aiocflib.crazyflie import Crazyflie
 from aiocflib.crtp.crtpstack import MemoryType
@@ -49,6 +49,7 @@ from .crtp_extensions import (
     GCSLightEffectType,
     LightProgramLocation,
     LightProgramType,
+    PreflightCheckStatus,
 )
 from .trajectory import encode_trajectory, TrajectoryEncoding
 
@@ -156,6 +157,26 @@ class CrazyflieDriver(UAVDriver):
             uav.uri = address_space[index]
 
         return uav
+
+    async def handle_command_alt(
+        self,
+        uav: "CrazyflieUAV",
+        z: Optional[str] = None,
+    ):
+        """Command that sends the UAV to a given altitude."""
+        try:
+            z_num = optional_float(z)
+        except ValueError:
+            raise RuntimeError("Invalid number found in input")
+
+        if z_num is None:
+            current = uav.status.position_xyz
+            if current is None:
+                raise RuntimeError("UAV has no known position yet")
+            return f"Current altitude is {current.z:.2f} m"
+        else:
+            x_num, y_num, z_num = await uav.go_to(None, None, z_num)
+            return f"Target set to ({x_num:.2f}, {y_num:.2f}, {z_num:.2f}) m"
 
     async def handle_command_go(
         self,
@@ -871,7 +892,9 @@ class CrazyflieUAV(UAVBase):
             present=voltage is not None and (voltage <= 3.3 and voltage > 3.1),
         )
 
-    def _update_preflight_status_from_result_codes(self, codes: List[int]) -> None:
+    def _update_preflight_status_from_result_codes(
+        self, codes: Sequence[PreflightCheckStatus]
+    ) -> None:
         """Updates the result of the local preflight check report data structure
         from the result codes received in a stauts package.
         """

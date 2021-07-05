@@ -8,8 +8,9 @@ from fnmatch import fnmatch
 from functools import partial
 from time import monotonic
 from trio import CancelScope, open_memory_channel, open_nursery, sleep
+from trio.abc import SendChannel
 from trio_util import AsyncBool
-from typing import cast, List, Optional
+from typing import cast, Iterator, List, Optional, Union
 
 from flockwave.channels import ParserChannel
 from flockwave.connections import Connection, create_connection
@@ -31,7 +32,6 @@ from ..base import ExtensionBase
 from .preset import RTKConfigurationPreset
 from .registry import RTKPresetRegistry
 from .statistics import RTKStatistics
-from .survey import SurveySettings
 
 
 @dataclass
@@ -64,16 +64,15 @@ class RTKExtension(ExtensionBase):
 
         self._current_preset: Optional[RTKConfigurationPreset] = None
         self._dynamic_serial_port_configurations: List[SerialPortConfiguration] = []
-        self._dynamic_serial_port_filters = []
+        self._dynamic_serial_port_filters: List[str] = []
         self._last_preset_request_from_user: Optional[RTKPresetRequest] = None
         self._presets: List[RTKConfigurationPreset] = []
         self._registry: Optional[RTKPresetRegistry] = None
-        self._running_tasks = {}
-        self._rtk_preset_task_cancel_scope = None
+        self._rtk_preset_task_cancel_scope: Optional[CancelScope] = None
         self._rtk_survey_trigger: Optional[AsyncBool] = None
         self._statistics = RTKStatistics()
-        self._survey_settings = SurveySettings()
-        self._tx_queue = None
+        self._survey_settings = RTKSurveySettings()
+        self._tx_queue: Optional[SendChannel] = None
         self._use_high_precision: bool = True
 
     def configure(self, configuration):
@@ -84,37 +83,46 @@ class RTKExtension(ExtensionBase):
             try:
                 self._presets.append(RTKConfigurationPreset.from_json(spec, id=id))
             except Exception:
-                self.log.error(f"Ignoring invalid RTK configuration {id!r}")
+                if self.log:
+                    self.log.error(f"Ignoring invalid RTK configuration {id!r}")
 
         self._dynamic_serial_port_configurations = []
         serial_port_specs = configuration.get("add_serial_ports")
         if serial_port_specs is not None:
-            if serial_port_specs is True:
-                serial_port_specs = [115200]  # standard baud rate for 433 MHz radios
-            elif serial_port_specs is False:
-                serial_port_specs = []
+            serial_port_spec_list: List[Union[int, dict]]
+            serial_port_specs_iter: Optional[Iterator[Union[int, dict]]] = None
 
-            if isinstance(serial_port_specs, int):
+            if serial_port_specs is True:
+                serial_port_spec_list = [
+                    115200
+                ]  # standard baud rate for 433 MHz radios
+            elif serial_port_specs is False:
+                serial_port_spec_list = []
+            elif isinstance(serial_port_specs, int):
                 # we assume it is a single baud rate
-                serial_port_specs = [serial_port_specs]
+                serial_port_spec_list = [serial_port_specs]
+            else:
+                serial_port_spec_list = serial_port_specs
 
             try:
-                serial_port_specs = iter(serial_port_specs)
+                serial_port_specs_iter = iter(serial_port_spec_list)
             except Exception:
-                self.log.error(
-                    f"Ignoring invalid serial port configuration {serial_port_specs!r}"
-                )
-                serial_port_specs = None
-
-            for index, spec in enumerate(serial_port_specs):
-                if isinstance(spec, int):
-                    spec = {"baud": spec}
-                if isinstance(spec, dict):
-                    self._dynamic_serial_port_configurations.append(spec)
-                else:
+                if self.log:
                     self.log.error(
-                        f"Ignoring invalid serial port configuration at index #{index}"
+                        f"Ignoring invalid serial port configuration {serial_port_specs!r}"
                     )
+
+            if serial_port_specs_iter:
+                for index, spec in enumerate(serial_port_specs_iter):
+                    if isinstance(spec, int):
+                        spec = {"baud": spec}
+                    if isinstance(spec, dict):
+                        self._dynamic_serial_port_configurations.append(spec)
+                    else:
+                        if self.log:
+                            self.log.error(
+                                f"Ignoring invalid serial port configuration at index #{index}"
+                            )
 
         serial_port_filters = configuration.get("exclude_serial_ports")
         if isinstance(serial_port_filters, str):
@@ -158,7 +166,9 @@ class RTKExtension(ExtensionBase):
             failure_reason="No such RTK preset",
         )
 
-    def handle_RTK_INF(self, message: FlockwaveMessage, sender, hub: MessageHub):
+    def handle_RTK_INF(
+        self, message: FlockwaveMessage, sender, hub: MessageHub
+    ) -> FlockwaveResponse:
         """Handles an incoming RTK-INF message."""
         presets = {}
 
@@ -174,17 +184,22 @@ class RTKExtension(ExtensionBase):
 
         return response
 
-    def handle_RTK_LIST(self, message: FlockwaveMessage, sender, hub: MessageHub):
+    def handle_RTK_LIST(
+        self, message: FlockwaveMessage, sender, hub: MessageHub
+    ) -> FlockwaveResponse:
         """Handles an incoming RTK-LIST message."""
         return hub.create_response_or_notification(
-            body={"ids": self._registry.ids}, in_response_to=message
+            body={"ids": self._registry.ids if self._registry else []},
+            in_response_to=message,
         )
 
-    def handle_RTK_SOURCE(self, message: FlockwaveMessage, sender, hub: MessageHub):
+    def handle_RTK_SOURCE(
+        self, message: FlockwaveMessage, sender, hub: MessageHub
+    ) -> FlockwaveResponse:
         """Handles an incoming RTK-SOURCE message."""
         if "id" in message.body:
             # Selecting a new RTK source to use
-            preset_id = message.body["id"]
+            preset_id: Optional[str] = message.body["id"]
             if preset_id is None:
                 desired_preset = None
             elif isinstance(preset_id, str):
@@ -196,7 +211,9 @@ class RTKExtension(ExtensionBase):
 
             self._request_preset_switch_later(desired_preset)
             self._last_preset_request_from_user = (
-                RTKPresetRequest(preset_id=preset_id) if desired_preset else None
+                RTKPresetRequest(preset_id=preset_id)
+                if preset_id and desired_preset
+                else None
             )
 
             return hub.acknowledge(message)
@@ -220,24 +237,14 @@ class RTKExtension(ExtensionBase):
             settings = message.body["settings"]
             error = None
             if isinstance(settings, dict):
-                accuracy = settings.get("accuracy")
-                if accuracy is not None:
-                    if not isinstance(accuracy, (float, int)) or accuracy <= 0:
-                        error = "Invalid accuracy"
-                    else:
-                        self.survey_settings.accuracy = accuracy
-
-                duration = settings.get("duration")
-                if duration is not None:
-                    if not isinstance(duration, (float, int)) or duration <= 0:
-                        error = "Invalid duration"
-                    else:
-                        self.survey_settings.duration = duration
-
+                try:
+                    self.survey_settings.update_from_json(settings)
+                except ValueError as ex:
+                    error = str(ex)
             else:
                 error = "Settings object missing or invalid"
 
-            if not error:
+            if error is None:
                 self._request_survey_later()
 
             return hub.acknowledge(message, outcome=error is None, reason=error)
@@ -264,6 +271,8 @@ class RTKExtension(ExtensionBase):
             )
             stack.enter_context(hotplug_event.connected_to(self._on_hotplug_event))
 
+            assert self._registry is not None
+
             for preset in self._presets:
                 self._registry.add(preset)
 
@@ -288,7 +297,7 @@ class RTKExtension(ExtensionBase):
                         await self._perform_preset_switch(preset)
 
     @property
-    def survey_settings(self) -> SurveySettings:
+    def survey_settings(self) -> RTKSurveySettings:
         """Returns the current survey settings of the RTK extension."""
         return self._survey_settings
 
@@ -297,7 +306,10 @@ class RTKExtension(ExtensionBase):
     ) -> None:
         """Requests the extension to switch to a new RTK preset."""
         if not self._tx_queue:
-            self.log.warning("Cannot set RTK preset when the extension is not running")
+            if self.log:
+                self.log.warning(
+                    "Cannot set RTK preset when the extension is not running"
+                )
         else:
             await self._tx_queue.send(("set_preset", value))
 
@@ -307,6 +319,7 @@ class RTKExtension(ExtensionBase):
         """Requests the extension to switch to a new RTK preset as soon as
         possible (but not immediately).
         """
+        assert self.app is not None
         self.app.run_in_background(self._request_preset_switch, value)
 
     async def _request_survey(self) -> None:
@@ -314,7 +327,10 @@ class RTKExtension(ExtensionBase):
         current RTK connection.
         """
         if not self._rtk_survey_trigger:
-            self.log.warning("Cannot set RTK preset when the extension is not running")
+            if self.log:
+                self.log.warning(
+                    "Cannot set RTK preset when the extension is not running"
+                )
         else:
             self._rtk_survey_trigger.value = True
 
@@ -322,6 +338,7 @@ class RTKExtension(ExtensionBase):
         """Requests the extension to start a survey process on the current
         RTK connection as soon as possible (but not immediately).
         """
+        assert self.app is not None
         self.app.run_in_background(self._request_survey)
 
     async def _perform_preset_switch(
@@ -339,6 +356,8 @@ class RTKExtension(ExtensionBase):
             self._current_preset = None
 
         self._current_preset = value
+
+        assert self._nursery is not None
 
         if value is not None:
             self._rtk_preset_task_cancel_scope = await self._nursery.start(
@@ -362,10 +381,11 @@ class RTKExtension(ExtensionBase):
             )
             configurator = UBXRTKBaseConfigurator(settings)
 
-            self.log.info(
-                f"Starting survey for {preset.title!r} for at least {duration} "
-                f"seconds, desired accuracy is {accuracy_cm} cm",
-            )
+            if self.log:
+                self.log.info(
+                    f"Starting survey for {preset.title!r} for at least {duration} "
+                    f"seconds, desired accuracy is {accuracy_cm} cm",
+                )
 
             success = False
             try:
@@ -373,21 +393,23 @@ class RTKExtension(ExtensionBase):
                 await configurator.run(connection.write, sleep)
                 success = True
             except Exception:
-                self.log.exception(
-                    f"Unexpected exception while setting up survey for "
-                    f"{preset.title!r}"
-                )
+                if self.log:
+                    self.log.exception(
+                        f"Unexpected exception while setting up survey for "
+                        f"{preset.title!r}"
+                    )
             finally:
-                if success:
-                    self.log.info(
-                        f"Started survey for {preset.title!r}",
-                        extra={"semantics": "success"},
-                    )
-                else:
-                    self.log.error(
-                        f"Failed to start survey for {preset.title!r}",
-                        extra={"sentry_ignore": True},
-                    )
+                if self.log:
+                    if success:
+                        self.log.info(
+                            f"Started survey for {preset.title!r}",
+                            extra={"semantics": "success"},
+                        )
+                    else:
+                        self.log.error(
+                            f"Failed to start survey for {preset.title!r}",
+                            extra={"sentry_ignore": True},
+                        )
 
     async def _run_connections_for_preset(
         self, preset: RTKConfigurationPreset, *, task_status
@@ -397,6 +419,9 @@ class RTKExtension(ExtensionBase):
         """
         with ExitStack() as stack:
             stack.enter_context(self._statistics.use())
+
+            assert self._rtk_survey_trigger is not None
+            assert self.app is not None
 
             async with open_nursery() as nursery:
                 self._rtk_survey_trigger.value = preset.auto_survey
@@ -415,7 +440,7 @@ class RTKExtension(ExtensionBase):
                                 f"RTK corrections ({preset.title})"
                                 if preset.title
                                 else "RTK corrections",
-                                ConnectionPurpose.dgps,
+                                ConnectionPurpose.dgps,  # type: ignore
                             )
                         )
                         nursery.start_soon(
@@ -429,9 +454,10 @@ class RTKExtension(ExtensionBase):
                             )
                         )
                     except Exception:
-                        self.log.exception(
-                            "Unexpected error while creating RTK connection"
-                        )
+                        if self.log:
+                            self.log.exception(
+                                "Unexpected error while creating RTK connection"
+                            )
 
                 survey_task = None
                 while True:
@@ -460,7 +486,9 @@ class RTKExtension(ExtensionBase):
         """Task that reads messages from a single connection related to an
         RTK preset.
         """
-        channel = ParserChannel(connection, parser=preset.create_parser())
+        assert self.app is not None
+
+        channel = ParserChannel(connection, parser=preset.create_parser())  # type: ignore
         signal = self.app.import_api("signals").get("rtk:packet")
         encoder = preset.create_encoder()
 
@@ -500,7 +528,7 @@ class RTKExtension(ExtensionBase):
             first: whether the list of dynamic presets is being updated for the
                 first time during the initialization of the extension
         """
-        if not self._dynamic_serial_port_configurations:
+        if not self._dynamic_serial_port_configurations or not self._registry:
             return
 
         to_add = []
@@ -536,14 +564,18 @@ class RTKExtension(ExtensionBase):
 
         for preset in to_remove:
             self._registry.remove(preset)
-            self.log.info(
-                f"Removing RTK preset {preset.title!r} because the device was unplugged"
-            )
+            if self.log:
+                self.log.info(
+                    f"Removing RTK preset {preset.title!r} because the device was unplugged"
+                )
 
         for preset in to_add:
             self._registry.add(preset)
             if not first:
-                self.log.info(f"Added new RTK preset {preset.title!r} for serial port")
+                if self.log:
+                    self.log.info(
+                        f"Added new RTK preset {preset.title!r} for serial port"
+                    )
 
         current_preset = self.current_preset
 
@@ -563,9 +595,10 @@ class RTKExtension(ExtensionBase):
             if req and req.age < 30:
                 last_used_preset = self.find_preset_by_id(req.preset_id)
                 if last_used_preset is not None:
-                    self.log.info(
-                        f"Re-connecting to RTK preset {last_used_preset.title!r}"
-                    )
+                    if self.log:
+                        self.log.info(
+                            f"Re-connecting to RTK preset {last_used_preset.title!r}"
+                        )
                     req.touch()
                     self._request_preset_switch_later(last_used_preset)
 

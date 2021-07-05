@@ -73,18 +73,18 @@ class RTKExtension(ExtensionBase):
         self._statistics = RTKStatistics()
         self._survey_settings = RTKSurveySettings()
         self._tx_queue: Optional[SendChannel] = None
-        self._use_high_precision: bool = True
 
     def configure(self, configuration):
         """Loads the extension."""
+        assert self.log
+
         self._id_format = configuration.get("id_format", "rtk:{0}")
         self._presets = []
         for id, spec in configuration.get("presets", {}).items():
             try:
                 self._presets.append(RTKConfigurationPreset.from_json(spec, id=id))
             except Exception:
-                if self.log:
-                    self.log.error(f"Ignoring invalid RTK configuration {id!r}")
+                self.log.error(f"Ignoring invalid RTK configuration {id!r}")
 
         self._dynamic_serial_port_configurations = []
         serial_port_specs = configuration.get("add_serial_ports")
@@ -107,10 +107,9 @@ class RTKExtension(ExtensionBase):
             try:
                 serial_port_specs_iter = iter(serial_port_spec_list)
             except Exception:
-                if self.log:
-                    self.log.error(
-                        f"Ignoring invalid serial port configuration {serial_port_specs!r}"
-                    )
+                self.log.error(
+                    f"Ignoring invalid serial port configuration {serial_port_specs!r}"
+                )
 
             if serial_port_specs_iter:
                 for index, spec in enumerate(serial_port_specs_iter):
@@ -119,10 +118,9 @@ class RTKExtension(ExtensionBase):
                     if isinstance(spec, dict):
                         self._dynamic_serial_port_configurations.append(spec)
                     else:
-                        if self.log:
-                            self.log.error(
-                                f"Ignoring invalid serial port configuration at index #{index}"
-                            )
+                        self.log.error(
+                            f"Ignoring invalid serial port configuration at index #{index}"
+                        )
 
         serial_port_filters = configuration.get("exclude_serial_ports")
         if isinstance(serial_port_filters, str):
@@ -135,7 +133,19 @@ class RTKExtension(ExtensionBase):
         else:
             self._dynamic_serial_port_filters = []
 
-        self._use_high_precision = bool(configuration.get("use_high_precision", True))
+        self._survey_settings.message_set = (
+            RTKMessageSet.MSM7
+            if configuration.get("use_high_precision", True)
+            else RTKMessageSet.MSM4
+        )
+
+        gnss_types = configuration.get("gnss_types")
+        try:
+            self._survey_settings.update_from_json({"gnssTypes": gnss_types})
+        except ValueError:
+            self.log.warning(
+                f"Ignoring invalid GNSS type specification: {gnss_types!r}"
+            )
 
     @property
     def current_preset(self) -> Optional[RTKConfigurationPreset]:
@@ -372,14 +382,7 @@ class RTKExtension(ExtensionBase):
             accuracy = self._survey_settings.accuracy
             accuracy_cm = int(accuracy * 100)
 
-            settings = RTKSurveySettings(
-                duration=duration,
-                accuracy=accuracy,
-                message_set=RTKMessageSet.MSM7
-                if self._use_high_precision
-                else RTKMessageSet.MSM4,
-            )
-            configurator = UBXRTKBaseConfigurator(settings)
+            configurator = UBXRTKBaseConfigurator(self._survey_settings)
 
             if self.log:
                 self.log.info(

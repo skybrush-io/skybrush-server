@@ -110,6 +110,10 @@ def _upload_mission_blocking(raw_data: bytes, address: AddressLike) -> None:
         raise RuntimeError("SSH authentication failed")
     except NoValidConnectionsError:
         raise RuntimeError("Failed to establish SSH connection")
+    except EOFError:
+        raise RuntimeError("Unexpected end of file error while communicating over SSH")
+    except OSError as ex:
+        raise RuntimeError(f"OS error while communicating over SSH ({ex.strerror})")
     if exit_code != 0:
         raise RuntimeError(
             f"Failed to restart flockctrl process, exit code = {exit_code}"

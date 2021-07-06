@@ -40,6 +40,8 @@ class AntennaInformation:
     serial_number: Optional[str] = None
     position: Optional[GPSCoordinate] = None
 
+    _antenna_position_timestamp: float = 0.0
+
     @staticmethod
     def is_antenna_related_packet(packet: GPSPacket) -> bool:
         """Returns whether the given GPS packet conveys information that
@@ -59,12 +61,15 @@ class AntennaInformation:
         self.descriptor = None
         self.serial_number = None
         self.position = None
+        self._antenna_position_timestamp = monotonic()
 
     @property
     def json(self):
         """Returns the JSON representation of this object that we post in the
         response of an RTK-STAT message.
         """
+        if self.position:
+            self._forget_old_antenna_position_if_needed()
         return {
             "stationId": self.station_id,
             "descriptor": self.descriptor,
@@ -89,6 +94,15 @@ class AntennaInformation:
         position = getattr(packet, "position", None)
         if position is not None:
             self.position = _ecef_to_gps.to_gps(position)
+            self._antenna_position_timestamp = monotonic()
+
+    def _forget_old_antenna_position_if_needed(self) -> None:
+        """Clears the position of the antenna we have not received another
+        antenna position packet for the last 30 seconds.
+        """
+        now = monotonic()
+        if now - self._antenna_position_timestamp >= 30:
+            self.position = None
 
 
 @dataclass
@@ -145,7 +159,9 @@ class MessageObservations:
 @dataclass
 class SatelliteCNRs:
     entries: Dict[str, float] = field(default_factory=dict)
-    _timestamps: Dict[str, float] = field(default_factory=LastUpdatedOrderedDict)
+    _timestamps: LastUpdatedOrderedDict[str, float] = field(
+        default_factory=LastUpdatedOrderedDict
+    )
 
     @staticmethod
     def has_satellite_info(packet: GPSPacket) -> bool:
@@ -161,7 +177,7 @@ class SatelliteCNRs:
         if timestamp is None:
             timestamp = monotonic()
 
-        for satellite in packet.satellites:
+        for satellite in packet.satellites:  # type: ignore
             id = getattr(satellite, "id", None)
             if not id:
                 continue
@@ -253,7 +269,7 @@ class SurveyStatus:
     @property
     def active(self) -> bool:
         """Returns whether the survey is in progress."""
-        return self.flags & SurveyStatusFlag.ACTIVE
+        return bool(self.flags & SurveyStatusFlag.ACTIVE)
 
     @property
     def json(self):
@@ -263,16 +279,16 @@ class SurveyStatus:
     @property
     def supported(self) -> bool:
         """Returns whether the survey procedure is supported."""
-        return self.flags & SurveyStatusFlag.SUPPORTED
+        return bool(self.flags & SurveyStatusFlag.SUPPORTED)
 
     @property
     def valid(self) -> bool:
         """Returns whether the surveyed coordinate is valid."""
-        return self.flags & SurveyStatusFlag.VALID
+        return bool(self.flags & SurveyStatusFlag.VALID)
 
     def clear(self) -> None:
         """Clears the contents of the survey info object."""
-        self.flags = 0
+        self.flags = SurveyStatusFlag.UNKNOWN
         self.accuracy = 0.0
 
     def notify(self, packet: UBXPacket) -> None:
@@ -326,13 +342,13 @@ class RTKStatistics:
             self._message_observations[type].add(packet, monotonic())
 
         if SatelliteCNRs.has_satellite_info(packet):
-            self._satellite_cnrs.add(packet, monotonic())
+            self._satellite_cnrs.add(packet, monotonic())  # type: ignore
 
         if AntennaInformation.is_antenna_related_packet(packet):
-            self._antenna_information.notify(packet)
+            self._antenna_information.notify(packet)  # type: ignore
 
         if SurveyStatus.is_survey_related_packet(packet):
-            self._survey_status.notify(packet)
+            self._survey_status.notify(packet)  # type: ignore
 
     @contextmanager
     def use(self):

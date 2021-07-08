@@ -14,6 +14,10 @@ class VirtualBattery:
     automatic recharge when it is about to be depleted.
     """
 
+    _report_percentage: bool
+    _status: BatteryInfo
+    _voltage: float
+
     def __init__(
         self,
         min_voltage: float = 9,
@@ -55,29 +59,32 @@ class VirtualBattery:
         else:
             initial_charge = random() * 0.03 + 0.97
 
-        self._critical_threshold = self._min + self._range * 0.05
-        self._very_low_threshold = self._min + self._range * 0.1
-        self._low_threshold = self._min + self._range * 0.2
+        self._critical_threshold = self._min + self._range * 0.1
+        self._very_low_threshold = self._min + self._range * 0.25
+        self._low_threshold = self._min + self._range / 3
 
         self.voltage = initial_charge * self._range + self._min
 
     @property
-    def is_critical(self):
+    def is_critical(self) -> bool:
         """Returns whether the battery voltage is considered critically."""
-        return self._status.voltage <= self._critical_threshold
+        voltage = self._status.voltage
+        return voltage is not None and voltage <= self._critical_threshold
 
     @property
-    def is_low(self):
+    def is_low(self) -> bool:
         """Returns whether the battery voltage is considered low."""
-        return self._status.voltage <= self._low_threshold
+        voltage = self._status.voltage
+        return voltage is not None and voltage <= self._low_threshold
 
     @property
-    def is_very_low(self):
+    def is_very_low(self) -> bool:
         """Returns whether the battery voltage is considered very low."""
-        return self._status.voltage <= self._very_low_threshold
+        voltage = self._status.voltage
+        return voltage is not None and voltage <= self._very_low_threshold
 
     @property
-    def percentage(self):
+    def percentage(self) -> Optional[int]:
         """The current charge percentage of the battery, in the range of 0 to
         100, or `None` if the battery does not report percentages.
         """
@@ -89,12 +96,12 @@ class VirtualBattery:
         self.voltage = self._min + self._range * (value / 100)
 
     @property
-    def status(self):
+    def status(self) -> BatteryInfo:
         """The general status of the battery as a BatteryInfo_ object."""
         return self._status
 
     @property
-    def voltage(self):
+    def voltage(self) -> Optional[float]:
         """The current voltage of the battery."""
         return self._status.voltage
 
@@ -106,21 +113,23 @@ class VirtualBattery:
             percentage = (value - self._min) / self._range * 100
             self._status.percentage = round(clamp(percentage, 0, 100))
 
-    def recharge(self):
+    def recharge(self) -> None:
         """Recharges the battery to the maximum voltage."""
         self.voltage = self._max
 
-    def discharge(self, dt, load, *, mutator=None):
+    def discharge(self, dt: float, load: float, *, mutator=None):
         """Simulates the discharge of the battery over the given time
         period.
 
         Parameters:
-            dt (float): the time that has passed
-            load (float): the current workload of the system, expressed as a
-                number between 0 (completely idle) and 1 (operating at full
-                discharge rate)
+            dt: the time that has passed
+            load: the current workload of the system, expressed as a number
+                between 0 (completely idle) and 1 (operating at full discharge
+                rate)
         """
-        new_voltage = self.voltage - dt * load * self._peak_discharge_rate
+        voltage = self.voltage
+        discharged = dt * load * self._peak_discharge_rate
+        new_voltage = (voltage if voltage is not None else self._max) - discharged
         while new_voltage < self._min:
             new_voltage += self._range
         self.voltage = new_voltage

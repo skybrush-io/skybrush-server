@@ -14,4 +14,4 @@ class OSCMessage:
     address: OSCAddress
 
     #: The values in the OSC message
-    values: Tuple[OSCValue]
+    values: Tuple[OSCValue, ...]

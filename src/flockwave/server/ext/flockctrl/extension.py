@@ -56,7 +56,7 @@ WIRELESS_PRESETS = {
         "broadcast": "udp-multicast://239.255.67.77:4243?interface=127.0.0.1",
         # ?multicast_interface=127.0.0.1 ensures that multicast packets from
         # this socket are sent on the loopback interface
-        "unicast": "udp://127.0.0.1?multicast_interface=127.0.0.1",
+        "unicast": "udp-listen://127.0.0.1?multicast_interface=127.0.0.1",
     },
 }
 

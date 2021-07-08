@@ -29,7 +29,7 @@ __all__ = ("construct", "dependencies")
 #: Dictionary that resolves common connection preset aliases used in
 #: the configuration file
 CONNECTION_PRESETS = {
-    "default": "udp://:14550?broadcast_port=14555",
+    "default": "udp-listen://:14550?broadcast_port=14555",
     "apm-sitl": "tcp://localhost:5760",
 }
 

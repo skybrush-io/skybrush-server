@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 from urllib.parse import urlencode
-from typing import Any, Callable, Dict, Iterable, List, Optional
+from typing import Any, Callable, Dict, Iterable, List, Optional, Set, Type
 
 from flockwave.channels.types import Encoder, Parser
 from flockwave.gps.parser import create_gps_parser
@@ -58,7 +58,7 @@ class RTKConfigurationPreset:
     auto_survey: bool = False
 
     @classmethod
-    def from_json(cls, spec, *, id: Optional[str] = None):
+    def from_json(cls, spec, *, id: str):
         """Creates an RTK configuration preset object from its JSON
         representation used in configuration files.
 
@@ -104,7 +104,7 @@ class RTKConfigurationPreset:
         port,
         configuration: Dict[str, Any],
         *,
-        id: Optional[str] = None,
+        id: str,
         use_configuration_in_title: bool = True,
     ):
         """Creates an RTK configuration preset object from a serial port
@@ -192,6 +192,25 @@ def _is_rtcm_packet(packet: GPSPacket) -> bool:
     return isinstance(packet, (RTCMV2Packet, RTCMV3Packet))
 
 
+def _process_rtcm_packet_id_list(
+    id_list: Optional[Iterable[str]],
+) -> Optional[Dict[Type[RTCMPacket], Set[int]]]:
+    if id_list is None:
+        return None
+
+    result: Dict[Type[RTCMPacket], Set[int]] = {
+        RTCMV2Packet: set(),
+        RTCMV3Packet: set(),
+    }
+    for spec in id_list:
+        if spec.startswith("rtcm2/"):
+            result[RTCMV2Packet].add(int(spec[6:]))
+        elif spec.startswith("rtcm3/"):
+            result[RTCMV3Packet].add(int(spec[6:]))
+
+    return result
+
+
 def create_filter_function(
     accept: Optional[Iterable[str]] = None, reject: Optional[Iterable[str]] = None
 ) -> Callable[[GPSPacket], bool]:
@@ -218,26 +237,13 @@ def create_filter_function(
         an appropriate filter function
     """
 
-    def _process_rtcm_packet_id_list(id_list):
-        if id_list is None:
-            return None
-
-        result = {RTCMV2Packet: set(), RTCMV3Packet: set()}
-        for spec in id_list:
-            if spec.startswith("rtcm2/"):
-                result[RTCMV2Packet].add(int(spec[6:]))
-            elif spec.startswith("rtcm3/"):
-                result[RTCMV3Packet].add(int(spec[6:]))
-
-        return result
-
     if accept is None and reject is None:
         return _is_rtcm_packet
 
-    accept = _process_rtcm_packet_id_list(accept)
-    reject = _process_rtcm_packet_id_list(reject)
+    accept_by_class = _process_rtcm_packet_id_list(accept)
+    reject_by_class = _process_rtcm_packet_id_list(reject)
 
-    def filter(packet: RTCMPacket) -> bool:
+    def filter(packet: GPSPacket) -> bool:
         if isinstance(packet, RTCMV2Packet):
             cls = RTCMV2Packet
         elif isinstance(packet, RTCMV3Packet):
@@ -245,10 +251,10 @@ def create_filter_function(
         else:
             return False
 
-        if reject and packet.packet_type in reject[cls]:
+        if reject_by_class and packet.packet_type in reject_by_class[cls]:
             return False
 
-        if accept and packet.packet_type not in accept[cls]:
+        if accept_by_class and packet.packet_type not in accept_by_class[cls]:
             return False
 
         return True

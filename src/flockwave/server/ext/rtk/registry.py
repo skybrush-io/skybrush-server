@@ -12,7 +12,7 @@ from flockwave.server.registries.base import RegistryBase
 from .preset import RTKConfigurationPreset
 
 
-class RTKPresetRegistry(RegistryBase):
+class RTKPresetRegistry(RegistryBase[RTKConfigurationPreset]):
     """Registry that contains information about the RTK presets registered in
     the server.
     """

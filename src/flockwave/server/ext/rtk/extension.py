@@ -10,7 +10,7 @@ from time import monotonic
 from trio import CancelScope, open_memory_channel, open_nursery, sleep
 from trio.abc import SendChannel
 from trio_util import AsyncBool
-from typing import cast, Iterator, List, Optional, Union
+from typing import cast, Any, Dict, Iterator, List, Optional, Union
 
 from flockwave.channels import ParserChannel
 from flockwave.connections import Connection, create_connection
@@ -23,6 +23,7 @@ from flockwave.server.registries import find_in_registry
 from flockwave.server.utils import overridden
 from flockwave.server.utils.serial import (
     SerialPortConfiguration,
+    SerialPortDescriptor,
     describe_serial_port,
     list_serial_ports,
 )
@@ -74,7 +75,7 @@ class RTKExtension(ExtensionBase):
         self._survey_settings = RTKSurveySettings()
         self._tx_queue: Optional[SendChannel] = None
 
-    def configure(self, configuration):
+    def configure(self, configuration: Dict[str, Any]) -> None:
         """Loads the extension."""
         assert self.log
 
@@ -126,7 +127,9 @@ class RTKExtension(ExtensionBase):
         if isinstance(serial_port_filters, str):
             serial_port_filters = [serial_port_filters]
 
-        if hasattr(serial_port_filters, "__iter__"):
+        if serial_port_filters is None:
+            self._dynamic_serial_port_filters = []
+        elif hasattr(serial_port_filters, "__iter__"):
             self._dynamic_serial_port_filters = [
                 str(filter) for filter in serial_port_filters
             ]
@@ -510,7 +513,9 @@ class RTKExtension(ExtensionBase):
         """
         self._update_dynamic_presets()
 
-    def _should_use_serial_port_as_dynamic_preset(self, port) -> bool:
+    def _should_use_serial_port_as_dynamic_preset(
+        self, port: SerialPortDescriptor
+    ) -> bool:
         """Returns whether the given serial port should appear as a dynamic
         preset in the list of RTK sources offered by the extension.
         """

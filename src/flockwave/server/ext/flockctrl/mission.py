@@ -2,6 +2,8 @@
 the flockctrl system.
 """
 
+import re
+
 from functools import partial
 from importlib.resources import read_text
 from io import BytesIO
@@ -125,6 +127,9 @@ def get_maximum_distance_with_safety_margin(
     return int(ceil((max_distance + margin) / steps)) * steps
 
 
+_mission_truncation_regex = re.compile(r"/?[0-9]+$")
+
+
 def generate_mission_file_from_show_specification(show) -> bytes:
     """Generates a full uploadable mission ZIP file from a drone light show
     specification in Skybrush format.
@@ -177,6 +182,17 @@ def generate_mission_file_from_show_specification(show) -> bytes:
             mission_index = mission_spec.get("index")
             if mission_id is not None and mission_index is not None:
                 display_name = f"{mission_id}/{mission_index}"
+
+    # abbreviate the display name of the mission if needed; the flockctrl
+    # protocol truncates the display name at 15 chars so if we have numbers
+    # at the end, make sure to keep those and truncate _before_ the numbers
+    if len(display_name) > 15:
+        trailer = _mission_truncation_regex.search(display_name)
+        if trailer:
+            trailing_number = trailer.group(0)
+            if not trailing_number.startswith("/"):
+                trailing_number = "/" + trailing_number
+            display_name = display_name[: 15 - len(trailing_number)] + trailing_number
 
     # parse trajectory
     if not trajectory:

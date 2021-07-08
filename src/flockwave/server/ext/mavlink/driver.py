@@ -8,6 +8,7 @@ from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from functools import partial
+from logging import Logger
 from math import inf
 from time import monotonic
 from trio import fail_after, move_on_after, sleep, TooSlowError
@@ -111,6 +112,8 @@ class MAVLinkDriver(UAVDriver):
             should be forwarded and the destination address in that medium.
     """
 
+    log: Logger
+
     def __init__(self, app=None):
         """Constructor.
 
@@ -123,7 +126,7 @@ class MAVLinkDriver(UAVDriver):
 
         self.broadcast_packet = None
         self.create_device_tree_mutator = None
-        self.log = None
+        self.log = None  # type: ignore
         self.mandatory_custom_mode = None
         self.run_in_background = None
         self.send_packet = None
@@ -260,7 +263,7 @@ class MAVLinkDriver(UAVDriver):
     )
     handle_command_version = create_version_command_handler()
 
-    async def handle_command_calib(self, uav, component: Optional[str] = None) -> None:
+    async def handle_command_calib(self, uav, component: Optional[str] = None) -> str:
         """Calibrates a component of the UAV."""
         if component == "baro":
             await uav.calibrate_component("baro")
@@ -327,7 +330,7 @@ class MAVLinkDriver(UAVDriver):
             self.log.error(str(ex))
             raise
 
-    async def handle_command_test(self, uav, component: Optional[str] = None) -> None:
+    async def handle_command_test(self, uav, component: Optional[str] = None) -> str:
         """Runs a self-test on a component of the UAV."""
         if component == "motor":
             await uav.test_component("motor")
@@ -1989,7 +1992,7 @@ class MAVLinkUAV(UAVBase):
         codes managed by `_update_errors_from_sys_status_and_heartbeat()`.
         Make sure to keep it this way.
         """
-        errors = {
+        errors: Dict[int, bool] = {
             FlockwaveErrorCode.TIMESYNC_ERROR: status.has_timesync_error,
             FlockwaveErrorCode.FAR_FROM_TAKEOFF_POSITION: status.is_misplaced_before_takeoff,
         }
@@ -2050,6 +2053,9 @@ class MAVLinkUAV(UAVBase):
         is_prearm_check_in_progress = self._autopilot.is_prearm_check_in_progress(
             heartbeat, sys_status
         )
+        is_returning_home = self._autopilot.is_rth_flight_mode(
+            heartbeat.base_mode, heartbeat.custom_mode
+        )
 
         errors = {
             FlockwaveErrorCode.AUTOPILOT_INIT_FAILED: (
@@ -2087,6 +2093,11 @@ class MAVLinkUAV(UAVBase):
                 heartbeat.base_mode & MAVModeFlag.SAFETY_ARMED
                 and heartbeat.system_status == MAVState.STANDBY
             ),
+            # Use the special RTH error code if the drone is in RTH or smart RTH mode
+            # and its mode index is larger than the standby mode (typically:
+            # active, critical, emergency, poweroff, termination)
+            FlockwaveErrorCode.RETURN_TO_HOME: is_returning_home
+            and heartbeat.system_status > MAVState.STANDBY,
         }
 
         # Clear the collected prearm failure messages if the heartbeat and/or

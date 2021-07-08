@@ -2,7 +2,7 @@
 
 from abc import ABCMeta, abstractmethod, abstractproperty
 from trio import fail_after, sleep, TooSlowError
-from typing import Type, Union
+from typing import Dict, Type, Union
 
 from flockwave.server.errors import NotSupportedError
 from flockwave.server.model.geofence import (
@@ -75,6 +75,9 @@ class Autopilot(metaclass=ABCMeta):
         elif base_mode & 64:
             # manual mode
             return "manual"
+        else:
+            # anything else
+            return "unknown"
 
     @classmethod
     def describe_custom_mode(cls, base_mode: int, custom_mode: int) -> str:
@@ -187,9 +190,17 @@ class Autopilot(metaclass=ABCMeta):
         """
         raise NotImplementedError
 
+    @abstractmethod
     def is_prearm_error_message(self, text: str) -> bool:
         """Returns whether the given text from a MAVLink STATUSTEXT message
         indicates a prearm check error.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def is_rth_flight_mode(self, base_mode: int, custom_mode: int) -> bool:
+        """Decides whether the flight mode identified by the given base and
+        custom mode numbers is a return-to-home mode.
         """
         raise NotImplementedError
 
@@ -260,6 +271,9 @@ class UnknownAutopilot(Autopilot):
     def is_prearm_check_in_progress(
         self, heartbeat: MAVLinkMessage, sys_status: MAVLinkMessage
     ) -> bool:
+        return False
+
+    def is_rth_flight_mode(self, base_mode: int, custom_mode: int) -> bool:
         return False
 
     @property
@@ -407,6 +421,11 @@ class PX4(Autopilot):
 
     def is_prearm_error_message(self, text: str) -> bool:
         return text.startswith("Preflight ")
+
+    def is_rth_flight_mode(self, base_mode: int, custom_mode: int) -> bool:
+        # base mode & 1 is "custom mode", 0x04 is the "auto" custom main mode,
+        # 0x05 is the "rth" submode of the auto custom main mode
+        return bool(base_mode & 1) and custom_mode & 0xFFFF0000 == 0x05040000
 
     def process_prearm_error_message(self, text: str) -> str:
         prefix, sep, suffix = text.partition(":")
@@ -672,6 +691,9 @@ class ArduPilot(Autopilot):
     def is_prearm_error_message(self, text: str) -> bool:
         return text.startswith("PreArm: ")
 
+    def is_rth_flight_mode(self, base_mode: int, custom_mode: int) -> bool:
+        return bool(base_mode & 1) and (custom_mode == 6 or custom_mode == 21)
+
     def process_prearm_error_message(self, text: str) -> str:
         return text[8:]
 
@@ -760,4 +782,7 @@ class ArduPilotWithSkybrush(ArduPilot):
         return True
 
 
-_autopilot_registry = {MAVAutopilot.ARDUPILOTMEGA: ArduPilot, MAVAutopilot.PX4: PX4}
+_autopilot_registry: Dict[int, Type[Autopilot]] = {
+    MAVAutopilot.ARDUPILOTMEGA: ArduPilot,
+    MAVAutopilot.PX4: PX4,
+}

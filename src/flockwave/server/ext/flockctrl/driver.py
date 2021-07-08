@@ -43,7 +43,7 @@ from flockwave.spec.errors import FlockwaveErrorCode
 
 from .algorithms import handle_algorithm_data_packet
 from .comm import BurstedMultiTargetMessageManager
-from .errors import AddressConflictError, map_flockctrl_error_code_and_flags
+from .errors import AddressConflictError, get_error_codes_from_status_packet
 from .mission import generate_mission_file_from_show_specification
 from .upload import upload_mission
 
@@ -533,9 +533,7 @@ class FlockCtrlDriver(UAVDriver):
         # TODO: we use preflight status from here now but it would be better
         # to set error codes from it from the prearm packet handler, if
         # there is no interrelation between the codes from the two packets
-        errors = map_flockctrl_error_code_and_flags(
-            packet.error, packet.flags, packet.clock_status, uav._preflight_status
-        )
+        errors = get_error_codes_from_status_packet(packet, uav._preflight_status)
 
         # derive GPS fix. Note that the status packets do not
         # contain information about the GPS fix if it is not

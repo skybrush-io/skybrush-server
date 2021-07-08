@@ -3,16 +3,16 @@
 from __future__ import annotations
 
 from flockwave.protocols.flockctrl.enums import StatusFlag
-from flockwave.protocols.flockctrl.misc import ClockStatus
+from flockwave.protocols.flockctrl.packets import StatusPacket
 from flockwave.server.model.preflight import PreflightCheckInfo, PreflightCheckResult
 from flockwave.spec.errors import FlockwaveErrorCode
-from typing import Any, Dict, List, Optional, Tuple, TYPE_CHECKING
+from typing import Any, Dict, List, Tuple, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from .driver import FlockCtrlUAV
 
 
-__all__ = ("AddressConflictError", "map_flockctrl_error_code_and_flags")
+__all__ = ("AddressConflictError", "get_error_codes_from_status_packet")
 
 
 class FlockCtrlError(RuntimeError):
@@ -88,10 +88,8 @@ _error_code_mapping: Dict[int, Tuple[int, ...]] = {
 _unspecified: Tuple[int, ...] = (FlockwaveErrorCode.UNSPECIFIED_ERROR,)
 
 
-def map_flockctrl_error_code_and_flags(
-    error_code: int,
-    flags: int,
-    clock_status: Optional[ClockStatus],
+def get_error_codes_from_status_packet(
+    packet: StatusPacket,
     preflight: PreflightCheckInfo,
 ) -> Tuple[int, ...]:
     """Maps an error code from FlockCtrl status and preflight packets
@@ -101,8 +99,15 @@ def map_flockctrl_error_code_and_flags(
         FlockwaveErrorCode: the Flockwave error codes corresponding to the
             given FlockCtrl error code and flags
     """
+    error_code = packet.error
+    flags = packet.flags
+    clock_status = packet.clock_status
+
     base = _error_code_mapping.get(error_code, _unspecified)
     aux: List[int] = []
+
+    if not flags & StatusFlag.RADIO:
+        aux.append(FlockwaveErrorCode.RADIO_MISSING.value)
 
     if flags & StatusFlag.PREARM:
         aux.append(FlockwaveErrorCode.PREARM_CHECK_IN_PROGRESS.value)
@@ -141,6 +146,8 @@ def map_flockctrl_error_code_and_flags(
         aux.append(FlockwaveErrorCode.TAKEOFF.value)
     if flags & StatusFlag.LANDING:
         aux.append(FlockwaveErrorCode.LANDING.value)
+    if flags & StatusFlag.RETURN_TO_HOME:
+        aux.append(FlockwaveErrorCode.RETURN_TO_HOME.value)
     if flags & StatusFlag.AUTOPILOT_INIT_PENDING:
         aux.append(FlockwaveErrorCode.AUTOPILOT_INITIALIZING.value)
 

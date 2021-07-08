@@ -565,7 +565,7 @@ reference = "collmot"
 
 [[package]]
 name = "flockwave-spec"
-version = "1.49.0"
+version = "1.50.0"
 description = "JSON-Schema specification of the Flockwave protocol"
 category = "main"
 optional = false
@@ -1585,7 +1585,7 @@ reference = "collmot"
 
 [[package]]
 name = "sentry-sdk"
-version = "1.1.0"
+version = "1.3.0"
 description = "Python client for Sentry (https://sentry.io)"
 category = "main"
 optional = false
@@ -1604,6 +1604,7 @@ chalice = ["chalice (>=1.16.0)"]
 django = ["django (>=1.8)"]
 falcon = ["falcon (>=1.4)"]
 flask = ["flask (>=0.11)", "blinker (>=1.1)"]
+httpx = ["httpx (>=0.16.0)"]
 pure_eval = ["pure-eval", "executing", "asttokens"]
 pyspark = ["pyspark (>=2.4.4)"]
 rq = ["rq (>=0.6)"]
@@ -1896,7 +1897,7 @@ reference = "collmot"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7"
-content-hash = "776a975ca6a4fbabd9be72e6ecf1b024e7a1a56b7344453fe4f07d4a8e8ccb22"
+content-hash = "3dc9dfa050ea83a6e844f0c1c85ecf3cb9d4904df3b8a9de745984de26a03729"
 
 [metadata.files]
 adrenaline = [
@@ -2096,8 +2097,8 @@ flockwave-parsers = [
     {file = "flockwave_parsers-1.2.0-py3-none-any.whl", hash = "md5:4f53aadf684d06c79998b332ec2dcaa0"},
 ]
 flockwave-spec = [
-    {file = "flockwave-spec-1.49.0.tar.gz", hash = "md5:44869b78108f41684e20b5a4cd697445"},
-    {file = "flockwave_spec-1.49.0-py3-none-any.whl", hash = "md5:e08be64912f6987121b2308d689659de"},
+    {file = "flockwave-spec-1.50.0.tar.gz", hash = "md5:f204c90ccad3be466d415f8185be7f8e"},
+    {file = "flockwave_spec-1.50.0-py3-none-any.whl", hash = "md5:26c8290c3c6b950e6ced20f7721ec87d"},
 ]
 future = [
     {file = "future-0.18.2.tar.gz", hash = "sha256:b1bead90b70cf6ec3f0710ae53a525360fa360d306a86583adc6bf83a4db537d"},
@@ -2533,8 +2534,8 @@ scp = [
     {file = "scp-0.13.5.tar.gz", hash = "sha256:0ab2ee9178b8be53dc5c9fe2f33761e01a2435087f5c9fb5b54519873c650d60"},
 ]
 sentry-sdk = [
-    {file = "sentry-sdk-1.1.0.tar.gz", hash = "sha256:c1227d38dca315ba35182373f129c3e2722e8ed999e52584e6aca7d287870739"},
-    {file = "sentry_sdk-1.1.0-py2.py3-none-any.whl", hash = "sha256:c7d380a21281e15be3d9f67a3c4fbb4f800c481d88ff8d8931f39486dd7b4ada"},
+    {file = "sentry-sdk-1.3.0.tar.gz", hash = "sha256:5210a712dd57d88d225c1fc3fe3a3626fee493637bcd54e204826cf04b8d769c"},
+    {file = "sentry_sdk-1.3.0-py2.py3-none-any.whl", hash = "sha256:6864dcb6f7dec692635e5518c2a5c80010adf673c70340817f1a1b713d65bb41"},
 ]
 six = [
     {file = "six-1.16.0-py2.py3-none-any.whl", hash = "sha256:8abb2f1d86890a2dfb989f9a77cfcfd3e47c2a354b01111771326f8aa26e0254"},

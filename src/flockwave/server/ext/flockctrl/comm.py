@@ -13,7 +13,7 @@ from flockwave.connections import (
     Connection,
     IPAddressAndPort,
     StreamConnectionBase,
-    UDPSocketConnection,
+    UDPListenerConnection,
 )
 from flockwave.logger import Logger
 from flockwave.networking import format_socket_address
@@ -66,7 +66,7 @@ def create_flockctrl_message_channel(
         TypeError: if we do not support the given connection type in this
             extension
     """
-    if isinstance(connection, UDPSocketConnection):
+    if isinstance(connection, UDPListenerConnection):
         return create_flockctrl_udp_message_channel(connection, log)  # type: ignore
     elif isinstance(connection, StreamConnectionBase):
         return create_flockctrl_radio_message_channel(connection, log)  # type: ignore
@@ -96,7 +96,7 @@ def create_flockctrl_radio_message_channel(
 
     # TODO(ntamas): the parser does nothing for the time being, just consumes
     # everything
-    channel = MessageChannel(
+    channel: MessageChannel[Tuple[FlockCtrlPacket, int]] = MessageChannel(
         connection,
         parser=constant(()),
         encoder=FlockCtrlEncoder.create_radio_encoder_function(
@@ -109,7 +109,7 @@ def create_flockctrl_radio_message_channel(
 
 
 def create_flockctrl_udp_message_channel(
-    connection: UDPSocketConnection, log: Logger
+    connection: UDPListenerConnection, log: Logger
 ) -> MessageChannel[Tuple[FlockCtrlPacket, IPAddressAndPort]]:
     """Creates a bidirectional Trio-style channel that reads data from and
     writes data to the given UDP connection, and handles the parsing of
@@ -123,7 +123,7 @@ def create_flockctrl_udp_message_channel(
     Returns:
         the message channel
     """
-    channel = MessageChannel(
+    channel: MessageChannel[Tuple[FlockCtrlPacket, IPAddressAndPort]] = MessageChannel(
         connection,
         parser=FlockCtrlParser.create_udp_parser_function(log),
         encoder=FlockCtrlEncoder.create_udp_encoder_function(log),
@@ -172,9 +172,10 @@ class BurstedMultiTargetMessageManager:
                 the numeric IDs in the FlockCtrl network, not the global UAV IDs.
             duration: duration of the burst, in seconds.
         """
-        if self._active_burst_cancellations[command]:
+        cancel_event = self._active_burst_cancellations[command]
+        if cancel_event:
             # Cancel the previous burst for this command
-            self._active_burst_cancellations[command].set()
+            cancel_event.set()
 
         event = self._active_burst_cancellations[command] = Event()
         self._driver.run_in_background(

@@ -533,7 +533,7 @@ class RTKExtension(ExtensionBase):
             first: whether the list of dynamic presets is being updated for the
                 first time during the initialization of the extension
         """
-        if not self._dynamic_serial_port_configurations or not self._registry:
+        if self._registry is None:
             return
 
         to_add = []

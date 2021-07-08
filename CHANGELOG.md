@@ -20,6 +20,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   configure the extension to send corrections for GPS and GLONASS only, saving
   bandwidth in geographical areas where BeiDou is not relevant.
 
+### Changed
+
+- The server now requires an RTK base station to broadcast its own antenna
+  position at least once every 30 seconds, otherwise the last antenna position
+  will be invalidated.
+
 ## [1.18.0] - 2021-05-10
 
 This is the release that serves as a basis for changelog entries above. Refer

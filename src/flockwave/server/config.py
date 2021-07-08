@@ -91,6 +91,7 @@ EXTENSIONS = {
         "custom_mode": None,
         "system_id": 254,
     },
+    "osc": {"enabled": False},
     "radiation": {
         "enabled": False,
         "sources": [{"lat": 47.473703, "lon": 19.061739, "intensity": 50000}],

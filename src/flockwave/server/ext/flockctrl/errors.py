@@ -146,7 +146,10 @@ def get_error_codes_from_status_packet(
         aux.append(FlockwaveErrorCode.TAKEOFF.value)
     if flags & StatusFlag.LANDING:
         aux.append(FlockwaveErrorCode.LANDING.value)
-    if flags & StatusFlag.RETURN_TO_HOME:
+    if (
+        flags & (StatusFlag.MOTOR_RUNNING | StatusFlag.RETURN_TO_HOME)
+        == StatusFlag.MOTOR_RUNNING | StatusFlag.RETURN_TO_HOME
+    ):
         aux.append(FlockwaveErrorCode.RETURN_TO_HOME.value)
     if flags & StatusFlag.AUTOPILOT_INIT_PENDING:
         aux.append(FlockwaveErrorCode.AUTOPILOT_INITIALIZING.value)

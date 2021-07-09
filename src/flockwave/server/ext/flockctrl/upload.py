@@ -2,7 +2,12 @@ import trio_parallel
 
 from datetime import datetime
 from io import BytesIO
-from paramiko.ssh_exception import AuthenticationException, NoValidConnectionsError
+from paramiko.ssh_exception import (
+    AuthenticationException,
+    NoValidConnectionsError,
+    SSHException,
+)
+from scp import SCPException
 from trio import CapacityLimiter, to_thread
 from typing import Tuple, Union
 
@@ -107,13 +112,21 @@ def _upload_mission_blocking(raw_data: bytes, address: AddressLike) -> None:
                 ),
             )
     except AuthenticationException:
-        raise RuntimeError("SSH authentication failed")
+        raise RuntimeError("SSH authentication failed") from None
     except NoValidConnectionsError:
-        raise RuntimeError("Failed to establish SSH connection")
+        raise RuntimeError("Failed to establish SSH connection") from None
+    except SSHException as ex:
+        raise RuntimeError(f"SSH exception: {str(ex)}") from None
+    except SCPException as ex:
+        raise RuntimeError(f"SCP exception: {str(ex)}") from None
     except EOFError:
-        raise RuntimeError("Unexpected end of file error while communicating over SSH")
+        raise RuntimeError(
+            "Unexpected end of file error while communicating over SSH"
+        ) from None
     except OSError as ex:
-        raise RuntimeError(f"OS error while communicating over SSH ({ex.strerror})")
+        raise RuntimeError(
+            f"OS error while communicating over SSH ({ex.strerror})"
+        ) from None
     if exit_code != 0:
         raise RuntimeError(
             f"Failed to restart flockctrl process, exit code = {exit_code}"

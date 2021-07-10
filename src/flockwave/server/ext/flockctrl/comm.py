@@ -27,6 +27,8 @@ from flockwave.protocols.flockctrl.packets import MultiTargetCommandPacket
 from flockwave.server.comm import CommunicationManager
 from flockwave.server.utils import constant
 
+from flockwave.server.model.transport import TransportOptions
+
 if TYPE_CHECKING:
     from .driver import FlockCtrlDriver
 
@@ -155,14 +157,22 @@ class BurstedMultiTargetMessageManager:
     drones in the flock and keeping track of sequence numbers.
     """
 
+    _driver: "FlockCtrlDriver"
+    _sequence_ids: List[int]
+    _active_burst_cancellations: List[Optional[Event]]
+
     def __init__(self, driver: "FlockCtrlDriver"):
         """Constructor."""
         self._driver = driver
-        self._sequence_ids: List[int] = [0] * NUM_COMMANDS
-        self._active_burst_cancellations: List[Optional[Event]] = [None] * NUM_COMMANDS
+        self._sequence_ids = [0] * NUM_COMMANDS
+        self._active_burst_cancellations = [None] * NUM_COMMANDS
 
     def schedule_burst(
-        self, command: MultiTargetCommand, uav_ids: Iterable[int], duration: float
+        self,
+        command: MultiTargetCommand,
+        uav_ids: Iterable[int],
+        duration: float,
+        transport: Optional[TransportOptions] = None,
     ) -> None:
         """Schedules a bursted simple command execution targeting multiple UAVs.
 
@@ -170,7 +180,8 @@ class BurstedMultiTargetMessageManager:
             command: the command code to send
             uav_ids: the IDs of the UAVs to target. The IDs presented here are
                 the numeric IDs in the FlockCtrl network, not the global UAV IDs.
-            duration: duration of the burst, in seconds.
+            duration: duration of the burst, in seconds
+            transport: transport options for sending the command
         """
         cancel_event = self._active_burst_cancellations[command]
         if cancel_event:
@@ -179,7 +190,7 @@ class BurstedMultiTargetMessageManager:
 
         event = self._active_burst_cancellations[command] = Event()
         self._driver.run_in_background(
-            self._execute_burst, command, uav_ids, duration, event
+            self._execute_burst, command, uav_ids, duration, transport, event
         )
 
     async def _execute_burst(
@@ -187,6 +198,7 @@ class BurstedMultiTargetMessageManager:
         command: MultiTargetCommand,
         uav_ids: Iterable[int],
         duration: float,
+        transport: Optional[TransportOptions],
         cancelled_event: Event,
     ) -> None:
         """Performs a bursted simple command transmission targeting multiple
@@ -207,8 +219,17 @@ class BurstedMultiTargetMessageManager:
         )
         self._sequence_ids[command] += 1
 
+        channels: List[str] = ["wireless"]
+
+        # When the user tries to send over the secondary channel, we send over
+        # _both_ wifi and radio. This is not entirely consistent with how the
+        # TransportOptions object is specified in the specs.
+        if TransportOptions.is_secondary(transport):
+            channels.append("radio")
+
         async for elapsed, _ in periodic(0.1):
             if elapsed >= duration or cancelled_event.is_set():
                 break
 
-            await self._driver.broadcast_packet(packet, "wireless")
+            for channel in channels:
+                await self._driver.broadcast_packet(packet, channel)

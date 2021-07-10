@@ -788,7 +788,7 @@ class UAVDriver(metaclass=ABCMeta):
         pass
 
     def _send_signal(
-        self, uavs: UAV, signal_name: str, handler, broadcaster=None, **kwds
+        self, uavs: List[UAV], signal_name: str, handler, broadcaster=None, **kwds
     ) -> Union[Any, Dict[UAV, Any]]:
         """Common implementation for the body of several ``send_*_signal()``
         methods in this class.

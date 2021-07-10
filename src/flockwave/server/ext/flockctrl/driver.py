@@ -219,6 +219,7 @@ class FlockCtrlDriver(UAVDriver):
             MultiTargetCommand.LAND,
             uav_ids=self._uavs_to_ids(uavs),
             duration=BURST_DURATION,
+            transport=transport,
         )
 
     def send_light_or_sound_emission_signal(
@@ -244,6 +245,7 @@ class FlockCtrlDriver(UAVDriver):
             MultiTargetCommand.FLASH_LIGHT,
             uav_ids=self._uavs_to_ids(uavs),
             duration=duration,
+            transport=transport,
         )
 
     def send_motor_start_stop_signal(
@@ -260,7 +262,10 @@ class FlockCtrlDriver(UAVDriver):
         else:
             command = MultiTargetCommand.MOTOR_OFF
         self._bursted_message_manager.schedule_burst(
-            command, uav_ids=self._uavs_to_ids(uavs), duration=BURST_DURATION
+            command,
+            uav_ids=self._uavs_to_ids(uavs),
+            duration=BURST_DURATION,
+            transport=transport,
         )
 
     def send_return_to_home_signal(
@@ -270,6 +275,7 @@ class FlockCtrlDriver(UAVDriver):
             MultiTargetCommand.RTH,
             uav_ids=self._uavs_to_ids(uavs),
             duration=BURST_DURATION,
+            transport=transport,
         )
 
     def send_takeoff_signal(
@@ -283,6 +289,7 @@ class FlockCtrlDriver(UAVDriver):
             MultiTargetCommand.TAKEOFF,
             uav_ids=self._uavs_to_ids(uavs),
             duration=BURST_DURATION,
+            transport=transport,
         )
 
     def validate_command(self, command: str, args, kwds) -> Optional[str]:
@@ -767,7 +774,11 @@ class FlockCtrlDriver(UAVDriver):
         return await self._send_command_to_uav_and_check_for_errors(cmd, uav)
 
     async def _send_reset_signal_single(
-        self, uav: "FlockCtrlUAV", component, *, transport=None
+        self,
+        uav: "FlockCtrlUAV",
+        component,
+        *,
+        transport: Optional[TransportOptions] = None,
     ):
         if not component:
             # Resetting the whole UAV, this is supported
@@ -777,7 +788,7 @@ class FlockCtrlDriver(UAVDriver):
             raise RuntimeError(f"Resetting {component!r} is not supported")
 
     async def _send_shutdown_signal_single(
-        self, uav: "FlockCtrlUAV", *, transport=None
+        self, uav: "FlockCtrlUAV", *, transport: Optional[TransportOptions] = None
     ):
         return await self._send_command_to_uav_and_check_for_errors("halt", uav)
 

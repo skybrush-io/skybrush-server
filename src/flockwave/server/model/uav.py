@@ -3,7 +3,7 @@
 from __future__ import absolute_import
 
 from abc import ABCMeta, abstractproperty
-from typing import Any, Dict, Iterable, List, Optional, Union
+from typing import Any, Callable, Dict, Iterable, List, Optional, Union
 
 from flockwave.gps.vectors import GPSCoordinate, PositionXYZ, VelocityNED, VelocityXYZ
 from flockwave.server.errors import NotSupportedError
@@ -46,6 +46,19 @@ class UAVStatusInfo(TimestampMixin, metaclass=ModelMeta):
         schema = get_complex_object_schema("uavStatusInfo")
         mappers = {"heading": scaled_by(10), "debug": as_base64}
 
+    debug: bytes
+    errors: List[int]
+    gps: GPSFix
+    heading: float
+    id: str
+    light: int
+    mode: str
+    position: GPSCoordinate
+    positionXYZ: Optional[PositionXYZ]
+    velocity: VelocityNED
+    velocityXYZ: Optional[VelocityXYZ]
+    battery: BatteryInfo
+
     def __init__(
         self, id: Optional[str] = None, timestamp: Optional[TimestampLike] = None
     ):
@@ -59,11 +72,13 @@ class UAVStatusInfo(TimestampMixin, metaclass=ModelMeta):
         """
         TimestampMixin.__init__(self, timestamp)
 
+        self.debug = b""
         self.errors = []
         self.gps = GPSFix()
         self.heading = 0.0
-        self.id = id
+        self.id = id  # type: ignore
         self.light = 0  # black
+        self.mode = ""
         self.position = GPSCoordinate()
         self.velocity = VelocityNED()
         self.positionXYZ = None
@@ -71,19 +86,19 @@ class UAVStatusInfo(TimestampMixin, metaclass=ModelMeta):
         self.battery = BatteryInfo()
 
     @property
-    def position_xyz(self):
+    def position_xyz(self) -> Optional[PositionXYZ]:
         return self.positionXYZ
 
     @position_xyz.setter
-    def position_xyz(self, value):
+    def position_xyz(self, value: Optional[PositionXYZ]) -> None:
         self.positionXYZ = value
 
     @property
-    def velocity_xyz(self):
+    def velocity_xyz(self) -> Optional[VelocityXYZ]:
         return self.velocityXYZ
 
     @velocity_xyz.setter
-    def velocity_xyz(self, value):
+    def velocity_xyz(self, value: Optional[VelocityXYZ]) -> None:
         self.velocityXYZ = value
 
 
@@ -403,7 +418,7 @@ class UAVDriver(metaclass=ABCMeta):
             self._request_preflight_report_single,
         )
 
-    def request_version_info(self, uavs) -> Dict[str, VersionInfo]:
+    def request_version_info(self, uavs) -> Dict[UAV, VersionInfo]:
         """Asks the driver to request detailed version information from the
         given UAVs.
 
@@ -411,10 +426,9 @@ class UAVDriver(metaclass=ABCMeta):
         a driver; override ``_request_version_info_single()`` instead.
 
         Returns:
-            Dict[UAV,object]: dict mapping UAVs to the corresponding results
-                (which may also be errors or awaitables; it is the
-                responsibility of the caller to evaluate errors and wait for
-                awaitables)
+            dict mapping UAVs to the corresponding results (which may also be
+            errors or awaitables; it is the responsibility of the caller to
+            evaluate errors and wait for awaitables)
         """
         return self._send_signal(
             uavs, "version info request", self._request_version_info_single
@@ -1121,7 +1135,7 @@ class PassiveUAVDriver(UAVDriver):
     support responding to commands.
     """
 
-    def __init__(self, uav_factory=PassiveUAV):
+    def __init__(self, uav_factory: Callable[..., PassiveUAV] = PassiveUAV):
         """Constructor.
 
         Parameters:
@@ -1131,31 +1145,32 @@ class PassiveUAVDriver(UAVDriver):
         super(PassiveUAVDriver, self).__init__()
         self._uav_factory = uav_factory
 
-    def _create_uav(self, id):
+    def _create_uav(self, id: str) -> PassiveUAV:
         """Creates a new UAV that is to be managed by this driver.
 
         Parameters:
-            id (str): the string identifier of the UAV to create
+            id: the string identifier of the UAV to create
 
         Returns:
-            UAVBase: an appropriate UAV object
+            an appropriate UAV object
         """
         return self._uav_factory(id, driver=self)
 
-    def get_or_create_uav(self, id):
+    def get_or_create_uav(self, id: str) -> PassiveUAV:
         """Retrieves the UAV with the given ID, or creates one if
         the driver has not seen a UAV with the given ID.
 
         Parameters:
-            id (str): the identifier of the UAV to retrieve
+            id: the identifier of the UAV to retrieve
 
         Returns:
-            UAVBase: an appropriate UAV object
+            an appropriate UAV object
         """
+        assert self.app is not None
         return self.app.object_registry.add_if_missing(id, factory=self._create_uav)
 
     def _send_signal(
-        self, uavs: UAV, signal_name: str, handler, broadcaster=None, **kwds
+        self, uavs: Iterable[UAV], signal_name: str, handler, broadcaster=None, **kwds
     ) -> Dict[UAV, Any]:
         error = RuntimeError("{0} not supported".format(signal_name))
         return {uav: error for uav in uavs}

@@ -2,9 +2,20 @@
 server.
 """
 
+from __future__ import annotations
+
 from abc import ABCMeta, abstractproperty
 from contextlib import contextmanager
-from typing import Any, Callable, Optional, TYPE_CHECKING
+from typing import (
+    Callable,
+    Dict,
+    Iterator,
+    Optional,
+    Type,
+    TypeVar,
+    TYPE_CHECKING,
+    overload,
+)
 
 from flockwave.server.logger import log as base_log
 
@@ -12,10 +23,13 @@ log = base_log.getChild("object")
 
 __all__ = ("ModelObject", "register", "registered", "unregister")
 
-_type_registry = {}
+_type_registry: Dict[str, Type["ModelObject"]] = {}
 
 if TYPE_CHECKING:
     from .devices import ObjectNode
+
+
+T = TypeVar("T", bound="ModelObject")
 
 
 class ModelObject(metaclass=ABCMeta):
@@ -24,7 +38,7 @@ class ModelObject(metaclass=ABCMeta):
     """
 
     @staticmethod
-    def resolve_type(type: str) -> Optional[Any]:
+    def resolve_type(type: str) -> Optional[Type["ModelObject"]]:
         """Resolves the given model object type specified as a string (as it
         appears in the Flockwave protocol) into the corresponding model object
         class, or `None` if the given type does not map to a model object class.
@@ -59,7 +73,19 @@ class ModelObject(metaclass=ABCMeta):
         _type_registry[type] = cls
 
 
-def register(type: str, cls: Optional[Callable[[], ModelObject]] = None):
+@overload
+def register(
+    type: str,
+) -> Callable[[Type[T]], Type[T]]:
+    ...
+
+
+@overload
+def register(type: str, cls: Type[T]) -> Callable[[Type[T]], Type[T]]:
+    ...
+
+
+def register(type: str, cls: Optional[Type[T]] = None):
     """Registers a ModelObject_ subclass or factory in the Flockwave messaging
     system with a given type name.
 
@@ -100,7 +126,7 @@ def unregister(type: str) -> None:
 
 
 @contextmanager
-def registered(type: str, cls: Callable[[], ModelObject]) -> None:
+def registered(type: str, cls: Type[ModelObject]) -> Iterator[None]:
     """Context manager that temporarily registers the class in the Flockwave
     messaging system with a given type name, and unregisters the class
     when exiting the context.

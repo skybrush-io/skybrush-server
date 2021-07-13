@@ -1,5 +1,7 @@
 """Driver class for Crazyflie drones."""
 
+from __future__ import annotations
+
 from collections import defaultdict
 from colour import Color
 from contextlib import asynccontextmanager, AsyncExitStack
@@ -28,6 +30,7 @@ from flockwave.server.command_handlers import (
 from flockwave.server.errors import NotSupportedError
 from flockwave.server.ext.logger import log as base_log
 from flockwave.server.model.preflight import PreflightCheckInfo, PreflightCheckResult
+from flockwave.server.model.transport import TransportOptions
 from flockwave.server.model.uav import BatteryInfo, UAVBase, UAVDriver, VersionInfo
 from flockwave.server.registries.errors import RegistryFull
 from flockwave.server.utils import color_to_rgb8_triplet, nop, optional_float
@@ -259,26 +262,52 @@ class CrazyflieDriver(UAVDriver):
     handle_command_param = create_parameter_command_handler()
     handle_command_version = create_version_command_handler()
 
-    def _request_preflight_report_single(self, uav) -> PreflightCheckInfo:
+    def _request_preflight_report_single(
+        self, uav: "CrazyflieUAV"
+    ) -> PreflightCheckInfo:
         return uav.preflight_status
 
-    async def _request_version_info_single(self, uav) -> VersionInfo:
+    async def _request_version_info_single(self, uav: "CrazyflieUAV") -> VersionInfo:
         return await uav.get_version_info()
 
-    async def _send_landing_signal_single(self, uav, *, transport) -> None:
+    async def _send_landing_signal_single(
+        self, uav: "CrazyflieUAV", *, transport: Optional[TransportOptions]
+    ) -> None:
         if uav.is_in_drone_show_mode:
             await uav.stop_drone_show()
         else:
             await uav.land()
 
     async def _send_light_or_sound_emission_signal_single(
-        self, uav, signals, duration, *, transport
+        self,
+        uav: "CrazyflieUAV",
+        signals,
+        duration,
+        *,
+        transport: Optional[TransportOptions],
     ) -> None:
         if "light" in signals:
             await uav.emit_light_signal()
 
+    async def _send_motor_start_stop_signal_single(
+        self,
+        uav: "CrazyflieUAV",
+        start: bool,
+        force: bool,
+        *,
+        transport: Optional[TransportOptions],
+    ) -> None:
+        if start:
+            await uav.arm(force=force)
+        else:
+            await uav.disarm(force=force)
+
     async def _send_reset_signal_single(
-        self, uav, component, *, transport=None
+        self,
+        uav: "CrazyflieUAV",
+        component: str,
+        *,
+        transport: Optional[TransportOptions],
     ) -> None:
         if not component:
             # Resetting the whole UAV, this is supported
@@ -288,11 +317,13 @@ class CrazyflieDriver(UAVDriver):
             # No component resets are implemented on this UAV yet
             raise RuntimeError(f"Resetting {component!r} is not supported")
 
-    async def _send_shutdown_signal_single(self, uav, *, transport=None) -> None:
+    async def _send_shutdown_signal_single(
+        self, uav: "CrazyflieUAV", *, transport: Optional[TransportOptions]
+    ) -> None:
         await uav.shutdown()
 
     async def _send_takeoff_signal_single(
-        self, uav, *, scheduled: bool = False, transport=None
+        self, uav, *, scheduled: bool = False, transport: Optional[TransportOptions]
     ) -> None:
         if scheduled:
             # Handled by a broadcast signal in the extension class
@@ -352,6 +383,22 @@ class CrazyflieUAV(UAVBase):
         if self._crazyflie is None:
             raise RuntimeError(f"Not connected to the Crazyflie drone at {self.uri}")
         return self._crazyflie
+
+    async def arm(self, force: bool = False) -> None:
+        """Arms the motors of the Crazyflie."""
+        await self._get_crazyflie().run_command(
+            port=DRONE_SHOW_PORT,
+            command=DroneShowCommand.ARM_OR_DISARM,
+            data=Struct("<B").pack(3 if force else 1),
+        )
+
+    async def disarm(self, force: bool = False) -> None:
+        """Disarms or force-disarms the motors of the Crazyflie."""
+        await self._get_crazyflie().run_command(
+            port=DRONE_SHOW_PORT,
+            command=DroneShowCommand.ARM_OR_DISARM,
+            data=Struct("<B").pack(2 if force else 0),
+        )
 
     async def emit_light_signal(self) -> None:
         """Asks the UAV to emit a visible light signal from its LED ring to
@@ -1045,7 +1092,7 @@ class CrazyflieHandlerTask:
                         pass
                     return
 
-                nursery: Nursery = await enter(open_nursery())
+                nursery: Nursery = await enter(open_nursery())  # type: ignore
                 self._uav.notify_shutdown_or_reboot = nursery.cancel_scope.cancel
                 nursery.start_soon(self._uav.process_console_messages)
                 nursery.start_soon(self._uav.process_drone_show_status_messages)
@@ -1063,6 +1110,7 @@ class CrazyflieHandlerTask:
         """Background task that feeds a fake position to the UAV as if it was
         coming from an external positioning system.
         """
+        assert self._uav._crazyflie is not None
         async for _ in periodic(0.2):
             if self._use_fake_position:
                 x, y, z = self._use_fake_position

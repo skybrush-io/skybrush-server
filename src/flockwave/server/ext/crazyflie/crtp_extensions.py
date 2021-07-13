@@ -35,6 +35,7 @@ class DroneShowCommand(IntEnum):
     DEFINE_LIGHT_PROGRAM = 4
     RESTART = 5
     TRIGGER_GCS_LIGHT_EFFECT = 6
+    ARM_OR_DISARM = 7
 
 
 class LightProgramLocation(IntEnum):

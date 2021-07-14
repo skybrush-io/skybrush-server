@@ -244,6 +244,8 @@ class MAVLinkDriver(UAVDriver):
         Returns:
             MAVLinkUAV: an appropriate MAVLink UAV object
         """
+        assert self.app is not None
+
         uav = MAVLinkUAV(id, driver=self)
         uav.notify_updated = partial(self.app.request_to_send_UAV_INF_message_for, [id])
         uav.send_log_message_to_gcs = partial(

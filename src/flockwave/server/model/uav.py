@@ -1,6 +1,6 @@
 """Model classes related to a single UAV."""
 
-from __future__ import absolute_import
+from __future__ import annotations
 
 from abc import ABCMeta, abstractproperty
 from typing import Any, Callable, Dict, Iterable, List, Optional, Union
@@ -109,21 +109,21 @@ class UAV(ModelObject, metaclass=ABCMeta):
     """
 
     @abstractproperty
-    def driver(self):
+    def driver(self) -> "UAVDriver":
         """Returns the UAVDriver_ object that is responsible for handling
         communication with this UAV.
         """
         raise NotImplementedError
 
     @abstractproperty
-    def id(self):
+    def id(self) -> str:
         """A unique identifier for the UAV, assigned at construction
         time.
         """
         raise NotImplementedError
 
     @abstractproperty
-    def status(self):
+    def status(self) -> UAVStatusInfo:
         """Returns an UAVStatusInfo_ object representing the status of the
         UAV.
         """
@@ -135,13 +135,13 @@ class UAVBase(UAV):
     of the methods required by the UAV_ interface.
     """
 
-    def __init__(self, id, driver):
+    def __init__(self, id: str, driver: "UAVDriver"):
         """Constructor.
 
         Parameters:
-            id (str): the unique identifier of the UAV
-            driver (UAVDriver): the driver that is responsible for handling
-                communication with this UAV.
+            id: the unique identifier of the UAV
+            driver: the driver that is responsible for handling communication
+                with this UAV.
         """
         self._device_tree_node = ObjectNode()
         self._driver = driver
@@ -161,21 +161,21 @@ class UAVBase(UAV):
         return self._device_tree_node
 
     @property
-    def driver(self):
+    def driver(self) -> "UAVDriver":
         """Returns the UAVDriver_ object that is responsible for handling
         communication with this UAV.
         """
         return self._driver
 
     @property
-    def id(self):
+    def id(self) -> str:
         """A unique identifier for the UAV, assigned at construction
         time.
         """
         return self._id
 
     @property
-    def status(self):
+    def status(self) -> UAVStatusInfo:
         """Returns an UAVStatusInfo_ object representing the status of the
         UAV.
 
@@ -184,7 +184,7 @@ class UAVBase(UAV):
         """
         return self._status
 
-    def _initialize_device_tree_node(self, node):
+    def _initialize_device_tree_node(self, node) -> None:
         """Initializes the device tree node of the UAV when it is
         constructed.
 
@@ -198,7 +198,7 @@ class UAVBase(UAV):
         """
         pass
 
-    def clear_errors(self):
+    def clear_errors(self) -> None:
         """Clears the error codes of the UAV."""
         return self.update_status(errors=())
 

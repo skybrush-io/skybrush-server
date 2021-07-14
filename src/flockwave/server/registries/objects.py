@@ -5,7 +5,7 @@ server knows.
 from blinker import Signal
 from contextlib import contextmanager
 from math import inf
-from typing import Callable, Iterable, Optional, Type, Union
+from typing import Callable, Iterable, Iterator, Optional, Type, Union
 
 from flockwave.server.model import ModelObject
 
@@ -102,15 +102,19 @@ class ObjectRegistry(RegistryBase[ModelObject]):
                 or its registered string identifier in the ModelObject_ base
                 class
         """
-        cls = ModelObject.resolve_type(cls) if isinstance(cls, str) else cls
-        if cls is None:
+        resolved_cls = ModelObject.resolve_type(cls) if isinstance(cls, str) else cls
+        if resolved_cls is None:
             return []
         else:
             return (
-                key for key, value in self._entries.items() if isinstance(value, cls)
+                key
+                for key, value in self._entries.items()
+                if isinstance(value, resolved_cls)
             )
 
-    def ids_by_types(self, classes: Iterable[Union[Type[ModelObject], str]]):
+    def ids_by_types(
+        self, classes: Iterable[Union[Type[ModelObject], str]]
+    ) -> Iterable[str]:
         """Returns an iterable that iterates over all the identifiers in the
         registry where the associated object matches the given predicate.
 
@@ -165,15 +169,15 @@ class ObjectRegistry(RegistryBase[ModelObject]):
         return object
 
     @property
-    def size_limit(self) -> int:
+    def size_limit(self) -> float:
         return self._size_limit
 
     @size_limit.setter
-    def size_limit(self, value: int) -> None:
+    def size_limit(self, value: float) -> None:
         self._size_limit = max(value, 0)
 
     @contextmanager
-    def use(self, *args: ModelObject) -> None:
+    def use(self, *args: ModelObject) -> Iterator[None]:
         """Temporarily adds one or more new objects to the registry, hands
         control back to the caller in a context, and then removes the objects
         when the caller exits the context.

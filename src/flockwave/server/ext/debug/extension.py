@@ -89,7 +89,7 @@ async def list_extensions():
     extensions: List[ExtensionInfo] = []
 
     if extension_manager:
-        for name in extension_manager.loaded_extensions:
+        for name in extension_manager.known_extensions:
             info = ExtensionInfo(name=name, loaded=extension_manager.is_loaded(name))
             extensions.append(info)
 

@@ -14,7 +14,7 @@
 {% for extension in extensions %}
         <tr>
             <td style="width: 48px">
-                <input class="form-check-input mx-2" type="checkbox" id="chk-enabled-{{ extension.name }}" value="" disabled checked="{{ extension.loaded }}" />
+                <input class="form-check-input mx-2" type="checkbox" id="chk-enabled-{{ extension.name }}" value="" disabled {{ "checked" if extension.loaded else "" }} />
             </td>
             <td>
                 <label class="form-check-label" for="chk-enabled-{{ extension.name }}">

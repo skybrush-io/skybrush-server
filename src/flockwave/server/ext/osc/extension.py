@@ -26,12 +26,20 @@ if TYPE_CHECKING:
 app: Optional["SkybrushServer"] = None
 log: Optional[Logger] = None
 
+#: The prefix to prepend to the path of each OSC message dispatched from the
+#: extension
+path_prefix: str = "/"
+
 
 async def run(app: "SkybrushServer", configuration, log: Logger):
     connection_spec = configuration.get("connection", "")
     host = configuration.get("host", "localhost")
     port = configuration.get("port", 10000)
     interval = configuration.get("interval", 0.5)
+    path = str(configuration.get("path", "/"))
+
+    if not path.startswith("/"):
+        path = f"/{path}"
 
     if not connection_spec:
         connection_spec = f"udp://{host}:{port}"
@@ -39,7 +47,7 @@ async def run(app: "SkybrushServer", configuration, log: Logger):
     address, _, _ = connection_spec.partition("?")
 
     with ExitStack() as stack:
-        stack.enter_context(overridden(globals(), app=app, log=log))
+        stack.enter_context(overridden(globals(), app=app, log=log, path_prefix=path))
 
         connection = create_connection(connection_spec)
         stack.enter_context(
@@ -106,7 +114,7 @@ async def run_channel(channel: MessageChannel[OSCMessage], *, interval: float) -
 
 
 def generate_status_messages() -> Generator[OSCMessage, None, None]:
-    global app
+    global app, path_prefix
 
     if app is None:
         return
@@ -122,7 +130,7 @@ def generate_status_messages() -> Generator[OSCMessage, None, None]:
             pos_geo = uav.status.position
             if pos_geo.amsl is not None and (pos_geo.lat != 0 or pos_geo.lon != 0):
                 yield OSCMessage(
-                    f"/skybrush/uavs/{uav_id}/pos/geo".encode(
+                    f"/{path_prefix}/uavs/{uav_id}/pos/geo".encode(
                         "ascii", errors="replace"
                     ),
                     (float(pos_geo.lat), float(pos_geo.lon), float(pos_geo.amsl)),
@@ -131,7 +139,7 @@ def generate_status_messages() -> Generator[OSCMessage, None, None]:
             pos_xyz = uav.status.position_xyz
             if pos_xyz:
                 yield OSCMessage(
-                    f"/skybrush/uavs/{uav_id}/pos/xyz".encode(
+                    f"{path_prefix}/uavs/{uav_id}/pos/xyz".encode(
                         "ascii", errors="replace"
                     ),
                     (float(pos_xyz.x), float(pos_xyz.y), float(pos_xyz.z)),

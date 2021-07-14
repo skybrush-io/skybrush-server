@@ -96,6 +96,7 @@ EXTENSIONS = {
         "host": "localhost",
         "port": 10000,
         "interval": 0.5,  # number of seconds between consecutive status reports
+        "path": "/skybrush",  # prefix to prepend to the OSC paths of the messages
     },
     "radiation": {
         "enabled": False,

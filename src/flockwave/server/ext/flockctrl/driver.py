@@ -7,7 +7,18 @@ from bidict import bidict
 from colour import Color
 from logging import Logger
 from time import monotonic
-from typing import Any, Dict, Iterable, Optional, List, Tuple, Union
+from typing import (
+    Any,
+    Awaitable,
+    Callable,
+    Dict,
+    Iterable,
+    Optional,
+    List,
+    Tuple,
+    Type,
+    Union,
+)
 from zlib import decompress
 
 from flockwave.concurrency import FutureCancelled, FutureMap
@@ -23,6 +34,7 @@ from flockwave.protocols.flockctrl.packets import (
     CommandResponsePacketBase,
     CommandResponsePacket,
     CompressedCommandResponsePacket,
+    FlockCtrlPacket,
     MissionInfoPacket,
     MultiTargetCommandPacket,
     PrearmStatusPacket,
@@ -81,11 +93,10 @@ class FlockCtrlDriver(UAVDriver):
         create_device_tree_mutator (callable): a function that should be
             called by the driver as a context manager whenever it wants to
             mutate the state of the device tree
-        send_packet (callable): a function that should be called by the
-            driver whenever it wants to send a packet. The function must
-            be called with the packet to send, and a pair formed by the
-            medium via which the packet should be forwarded and the
-            destination address in that medium.
+        send_packet: a function that should be called by the driver whenever it
+            wants to send a packet. The function must be called with the packet
+            to send, and a pair formed by the medium via which the packet should
+            be forwarded and the destination address in that medium.
         broadcast_packet (callable): a function that should be called by the
             driver whenever it wants to broadcast a packet. The function must
             be called with the packet to send and the name of the medium via
@@ -95,10 +106,14 @@ class FlockCtrlDriver(UAVDriver):
     allow_multiple_commands_per_uav: bool
     id_format: str
     log: Logger
+    send_packet: Callable[[FlockCtrlPacket, UAVAddress], Awaitable[None]]
 
     _bursted_message_manager: BurstedMultiTargetMessageManager
     _disable_warnings_until: Dict[int, float]
     _index_to_uav_id: bidict[int, str]
+    _packet_handlers: Dict[
+        Type[FlockCtrlPacket], Callable[[FlockCtrlPacket, UAVAddress], None]
+    ]
     _pending_commands_by_uav: FutureMap[str]
     _uavs_by_source_address: Dict[Any, FlockCtrlUAV]
 
@@ -123,7 +138,7 @@ class FlockCtrlDriver(UAVDriver):
         self.broadcast_packet = None
         self.create_device_tree_mutator = None
         self.run_in_background = None
-        self.send_packet = None
+        self.send_packet = None  # type: ignore
 
         self._packet_handlers = self._configure_packet_handlers()
         self._packet_assembler = ChunkedPacketAssembler()
@@ -189,7 +204,7 @@ class FlockCtrlDriver(UAVDriver):
         response = await self._send_command_to_uav_and_check_for_errors(command, uav)
         return {"type": "preformatted", "data": response}
 
-    def handle_inbound_packet(self, packet, source):
+    def handle_inbound_packet(self, packet: FlockCtrlPacket, source: UAVAddress):
         """Handles an inbound FlockCtrl packet received over a connection."""
         packet_class = packet.__class__
         handler = self._packet_handlers.get(packet_class)
@@ -369,7 +384,9 @@ class FlockCtrlDriver(UAVDriver):
         uav.addresses[medium] = address
         self._uavs_by_source_address[medium, address] = uav
 
-    def _configure_packet_handlers(self):
+    def _configure_packet_handlers(
+        self,
+    ) -> Dict[Type, Callable[[Type, UAVAddress], None]]:
         """Constructs a mapping that maps FlockCtrl packet types to the
         handler functions that should be responsible for handling them.
         """

@@ -793,10 +793,19 @@ class FlockCtrlDriver(UAVDriver):
         return await self._send_command_to_uav_and_check_for_errors("halt", uav)
 
     def _uavs_to_ids(self, uavs: Iterable["FlockCtrlUAV"]) -> List[int]:
+        """Given a list of UAVs, returns the corresponding list of UAV IDs,
+        excluding those UAVs that do not have an ID yet.
+
+        In theory, each UAV should have an ID, but it's best to be on the safe
+        side.
+        """
         inverse_id_map = self._index_to_uav_id.inverse
-        return [
-            index for uav in uavs if (index := inverse_id_map.get(uav.id)) is not None
-        ]
+        result = []
+        for uav in uavs:
+            index = inverse_id_map.get(uav.id)
+            if index is not None:
+                result.append(index)
+        return result
 
 
 class FlockCtrlUAV(UAVBase):

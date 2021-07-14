@@ -1285,6 +1285,11 @@ class RateLimiters:
         try:
             async with open_nursery() as nursery:
                 for entry in self._rate_limiters.values():
-                    nursery.start_soon(entry.run, self._dispatcher, nursery)
+                    nursery.start_soon(
+                        entry.run,
+                        self._dispatcher,
+                        nursery,
+                        name=f"rate_limiter:{entry.name}/run",
+                    )
         finally:
             self._running = False

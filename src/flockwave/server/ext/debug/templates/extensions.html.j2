@@ -1,0 +1,29 @@
+{% extends "_layout.html.j2" %}
+
+{% block body %}
+<p class="lead">The following table lists all the extensions currently known to the server.</p>
+
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th></th>
+            <th>Name</th>
+        </tr>
+    </thead>
+    <tbody>
+{% for extension in extensions %}
+        <tr>
+            <td style="width: 48px">
+                <input class="form-check-input mx-2" type="checkbox" id="chk-enabled-{{ extension.name }}" value="" disabled checked="{{ extension.loaded }}" />
+            </td>
+            <td>
+                <label class="form-check-label" for="chk-enabled-{{ extension.name }}">
+                    <pre class="mb-0">{{ prefix }}{{ extension.name }}</pre>
+                </label>
+            </td>
+        </tr>
+{% endfor %}
+    </tbody>
+</table>
+
+{% endblock %}

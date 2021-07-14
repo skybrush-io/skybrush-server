@@ -65,7 +65,8 @@ class VirtualUAVProviderExtension(UAVExtensionBase):
 
         # Get the center of the home positions
         if "origin" not in configuration and "center" in configuration:
-            self.log.warn("'center' is deprecated; use 'origin' instead")
+            if self.log:
+                self.log.warn("'center' is deprecated; use 'origin' instead")
             configuration["origin"] = configuration.pop("center")
 
         # Create a transformation from flat Earth to GPS
@@ -159,6 +160,8 @@ class VirtualUAVProviderExtension(UAVExtensionBase):
             pass
 
     async def _simulate_uav(self, uav: VirtualUAV, spawn: Callable):
+        assert self.app is not None
+
         updater = partial(self.app.request_to_send_UAV_INF_message_for, [uav.id])
 
         with self.app.object_registry.use(uav):
@@ -179,6 +182,8 @@ class VirtualUAVProviderExtension(UAVExtensionBase):
                     await sleep(0.2)
 
     async def run(self):
+        assert self.app is not None
+
         signals = self.app.import_api("signals")
         with signals.use({"show:lights_updated": self._on_lights_updated}):
             await sleep_forever()

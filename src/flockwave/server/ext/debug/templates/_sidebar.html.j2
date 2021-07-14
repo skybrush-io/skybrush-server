@@ -1,5 +1,12 @@
 <ul class="nav flex-column">
     <li class="nav-item">
+        <a class="nav-link" href="{{ url_for('debug.list_extensions') }}">
+            <span data-feather="package"></span>
+            Extensions
+        </a>
+    </li>
+
+    <li class="nav-item">
         <a class="nav-link" href="{{ url_for('debug.index') }}">
             <span data-feather="message-square"></span>
             Messages

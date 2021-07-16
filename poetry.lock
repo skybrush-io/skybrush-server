@@ -254,7 +254,7 @@ reference = "collmot"
 
 [[package]]
 name = "charset-normalizer"
-version = "2.0.1"
+version = "2.0.2"
 description = "The Real First Universal Charset Detector. Open, modern and actively maintained alternative to Chardet."
 category = "dev"
 optional = false
@@ -450,7 +450,7 @@ reference = "collmot"
 
 [[package]]
 name = "flockwave-conn"
-version = "3.0.0"
+version = "3.0.1"
 description = "Connection objects for various data sources"
 category = "main"
 optional = false
@@ -458,6 +458,7 @@ python-versions = ">=3.7,<4.0"
 
 [package.dependencies]
 blinker = ">=1.4,<2.0"
+flockwave-net = {version = ">=1.0.1,<2.0.0", extras = ["async"]}
 flockwave-parsers = ">=1.2.0,<2.0.0"
 mido = {version = ">=1.2.9,<2.0.0", optional = true, markers = "extra == \"midi\""}
 netifaces = ">=0.10.9"
@@ -547,6 +548,26 @@ colorama = {version = ">=0.4.3,<0.5.0", markers = "os_name == \"nt\""}
 colorlog = ">=5.0.1,<6.0.0"
 hexdump = ">=3.3,<4.0"
 python-json-logger = ">=2.0.1,<3.0.0"
+
+[package.source]
+type = "legacy"
+url = "https://pypi.collmot.com/simple"
+reference = "collmot"
+
+[[package]]
+name = "flockwave-net"
+version = "1.0.1"
+description = "Networking related functions for apps based on the Flockwave framework"
+category = "main"
+optional = false
+python-versions = ">=3.7,<4.0"
+
+[package.dependencies]
+netifaces = ">=0.11.0"
+trio = {version = ">=0.19.0,<0.20.0", optional = true, markers = "extra == \"async\""}
+
+[package.extras]
+async = ["trio (>=0.19.0,<0.20.0)"]
 
 [package.source]
 type = "legacy"
@@ -1900,7 +1921,7 @@ reference = "collmot"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7"
-content-hash = "96f929bab283dffe62a60f9c364e48cc8f9739f98acddc56d18991961ed4e527"
+content-hash = "c875ac9f36651b8bf4db3504c9d2fa48f059a4ff0593d96006c859b3034e1311"
 
 [metadata.files]
 adrenaline = [
@@ -2014,8 +2035,8 @@ cffi = [
     {file = "cffi-1.14.6.tar.gz", hash = "sha256:c9a875ce9d7fe32887784274dd533c57909b7b1dcadcc128a2ac21331a9765dd"},
 ]
 charset-normalizer = [
-    {file = "charset-normalizer-2.0.1.tar.gz", hash = "sha256:ad0da505736fc7e716a8da15bf19a985db21ac6415c26b34d2fafd3beb3d927e"},
-    {file = "charset_normalizer-2.0.1-py3-none-any.whl", hash = "sha256:b68b38179052975093d71c1b5361bf64afd80484697c1f27056e50593e695ceb"},
+    {file = "charset-normalizer-2.0.2.tar.gz", hash = "sha256:951567c2f7433a70ab63f1be67e5ee05d3925d9423306ecb71a3b272757bcc95"},
+    {file = "charset_normalizer-2.0.2-py3-none-any.whl", hash = "sha256:3c502a35807c9df35697b0f44b1d65008f83071ff29c69677c7c22573bc5a45a"},
 ]
 click = [
     {file = "click-8.0.1-py3-none-any.whl", hash = "sha256:fba402a4a47334742d782209a7c79bc448911afe1149d07bdabdf480b3e2f4b6"},
@@ -2072,8 +2093,8 @@ flockwave-app-framework = [
     {file = "flockwave_app_framework-1.3.2-py3-none-any.whl", hash = "md5:de4d870e612b4f3f274054d23b2ef713"},
 ]
 flockwave-conn = [
-    {file = "flockwave-conn-3.0.0.tar.gz", hash = "md5:33e7ef8eb01247f879d6e9801572d8fc"},
-    {file = "flockwave_conn-3.0.0-py3-none-any.whl", hash = "md5:12703191fc18c221e960bc5ba3475750"},
+    {file = "flockwave-conn-3.0.1.tar.gz", hash = "md5:6398d4b5b6d8360236e5012fc40b72b8"},
+    {file = "flockwave_conn-3.0.1-py3-none-any.whl", hash = "md5:9123b9c7459133d43a066be3f57dabf1"},
 ]
 flockwave-ext = [
     {file = "flockwave-ext-1.7.0.tar.gz", hash = "md5:0a22f87618449c26ede1c2fdb06410c4"},
@@ -2090,6 +2111,10 @@ flockwave-gps = [
 flockwave-logger = [
     {file = "flockwave-logger-1.7.0.tar.gz", hash = "md5:e9917e5f0e9a82defe7d7b7ce10bd01a"},
     {file = "flockwave_logger-1.7.0-py3-none-any.whl", hash = "md5:cbd9fd69eacf6c00b2454a2bd9bbc5a5"},
+]
+flockwave-net = [
+    {file = "flockwave-net-1.0.1.tar.gz", hash = "md5:ceaa8f8a011526d50e45a435262bdd56"},
+    {file = "flockwave_net-1.0.1-py3-none-any.whl", hash = "md5:dc74988e96e1bb287875ba5b418f68d4"},
 ]
 flockwave-parsers = [
     {file = "flockwave-parsers-1.2.0.tar.gz", hash = "md5:9c5fae8990f5b6612cb9776753f24d03"},

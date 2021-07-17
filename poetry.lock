@@ -556,7 +556,7 @@ reference = "collmot"
 
 [[package]]
 name = "flockwave-net"
-version = "1.0.1"
+version = "1.0.2"
 description = "Networking related functions for apps based on the Flockwave framework"
 category = "main"
 optional = false
@@ -2113,8 +2113,8 @@ flockwave-logger = [
     {file = "flockwave_logger-1.7.0-py3-none-any.whl", hash = "md5:cbd9fd69eacf6c00b2454a2bd9bbc5a5"},
 ]
 flockwave-net = [
-    {file = "flockwave-net-1.0.1.tar.gz", hash = "md5:ceaa8f8a011526d50e45a435262bdd56"},
-    {file = "flockwave_net-1.0.1-py3-none-any.whl", hash = "md5:dc74988e96e1bb287875ba5b418f68d4"},
+    {file = "flockwave-net-1.0.2.tar.gz", hash = "md5:d74d74cac744bc6cad35d01afd9051e0"},
+    {file = "flockwave_net-1.0.2-py3-none-any.whl", hash = "md5:22330e06bbcbe883e54b5481ec87f059"},
 ]
 flockwave-parsers = [
     {file = "flockwave-parsers-1.2.0.tar.gz", hash = "md5:9c5fae8990f5b6612cb9776753f24d03"},

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from itertools import cycle
 from struct import Struct
+from time import monotonic
 from typing import Callable, Optional, Tuple
 
 from flockwave.protocols.flockctrl import FlockCtrlPacket
@@ -37,6 +38,8 @@ class FlockCtrlLEDLightConfigurationManager(
     def __init__(self, packet_sender: Callable[[FlockCtrlPacket], None]):
         """Constructor."""
         super().__init__()
+
+        self._last_light_control_packet_generated_at = monotonic() - 100
         self._packet = None
         self._packet_sender = packet_sender
         self._prev_spec = ((0, 0, 0), False)
@@ -53,10 +56,14 @@ class FlockCtrlLEDLightConfigurationManager(
         color = config.color
         spec = color, is_active
 
-        if spec != self._prev_spec:
-            # Re-generate the packet with the next sequence ID if either the
-            # "active" state or the color changes. Otherwise keep on using the
-            # previous packet with the same sequence ID
+        # Re-generate the packet with the next sequence ID if either the
+        # "active" state or the color changes, or more than 15 seconds has
+        # elapsed since the last generation. Otherwise keep on using the
+        # previous packet with the same sequence ID
+        if (
+            spec != self._prev_spec
+            or self._last_light_control_packet_generated_at < monotonic() - 15
+        ):
             self._prev_spec = spec
             payload = _light_control_packet_struct.pack(
                 color[0],
@@ -71,6 +78,7 @@ class FlockCtrlLEDLightConfigurationManager(
                 sequence_id=next(self._sequence_id_gen),
                 payload=payload,
             )
+            self._last_light_control_packet_generated_at = monotonic()
 
         return self._packet
 

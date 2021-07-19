@@ -70,5 +70,5 @@ fi
 # Generate the bundle for Windows
 if [ x$GENERATE_WINDOWS = x1 ]; then
     rm -rf dist/windows
-    etc/deployment/nsis/build-nsis-installer.sh
+    etc/deployment/nsis/build.sh
 fi

@@ -129,19 +129,19 @@ def makedirs(path, exist_ok=False):
 def get_carchive_info(filepath):
     PYINST_COOKIE_SIZE = 24 + 64  # For pyinstaller 2.1+
     MAGIC = b"MEI\014\013\012\013\016"
-    LOOKBACK = 256 * 1024
+    LOOKBACK = 4 * 1024
 
     fp = open(filepath, "rb")
     size = os.stat(filepath).st_size
 
     fp.seek(max(0, size - LOOKBACK), os.SEEK_SET)
-    # searchpos = fp.tell()
+    searchpos = fp.tell()
     buf = fp.read(min(size, LOOKBACK))
     pos = buf.rfind(MAGIC)
     if pos == -1:
         raise RuntimeError("%s is not a valid CArchive" % filepath)
 
-    # filelen = searchpos + pos + PYINST_COOKIE_SIZE
+    filelen = searchpos + pos + PYINST_COOKIE_SIZE
 
     # Read CArchive cookie
     magic, lengthofPackage, toc, tocLen, pyver, pylibname = struct.unpack(
@@ -150,7 +150,7 @@ def get_carchive_info(filepath):
     fp.close()
 
     # Overlay is the data appended at the end of the PE
-    pos = size - lengthofPackage
+    pos = filelen - lengthofPackage
     return pos, pylibname.decode()
 
 
@@ -232,6 +232,13 @@ def repack_pyz(pyz, obfpath, cipher=None, clean=False):
 def repack_exe(path, obfname, logic_toc, obfentry):
     logger.info('Repacking EXE "%s"', obfname)
 
+    if is_darwin:
+        # Strip existing code signature (if any)
+        logger.info('Stripping code signature from "%s"', obfname)
+        import PyInstaller.utils.osx as osxutils
+
+        osxutils.remove_signature_from_binary(obfname)
+
     offset, pylib_name = get_carchive_info(obfname)
     logger.info('Get archive info (%d, "%s")', offset, pylib_name)
 
@@ -261,6 +268,9 @@ def repack_exe(path, obfname, logic_toc, obfentry):
         import PyInstaller.utils.osx as osxutils
 
         osxutils.fix_exe_for_code_signing(obfname)
+
+        logger.info('Signing "%s" with ad-hoc signature', obfname)
+        osxutils.sign_binary(obfname, None, None)
 
     logger.info('Generate patched bundle "%s" successfully', obfname)
 

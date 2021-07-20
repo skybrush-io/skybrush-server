@@ -15,6 +15,7 @@ from typing import (
     Iterable,
     Optional,
     List,
+    Sequence,
     Tuple,
     Type,
     Union,
@@ -67,9 +68,6 @@ MAX_CAMERA_FEATURE_COUNT = 32
 #: Type specification for UAV network addresses in this driver
 UAVAddress = Tuple[str, int]
 
-#: Default duration of bursted command packets, in seconds
-BURST_DURATION = 5
-
 
 class FlockCtrlDriver(UAVDriver):
     """Driver class for FlockCtrl-based drones.
@@ -106,10 +104,11 @@ class FlockCtrlDriver(UAVDriver):
     allow_multiple_commands_per_uav: bool
     id_format: str
     log: Logger
+    broadcast_packet: Callable[[FlockCtrlPacket, str], Awaitable[None]]
     send_packet: Callable[[FlockCtrlPacket, UAVAddress], Awaitable[None]]
 
     _bursted_message_manager: BurstedMultiTargetMessageManager
-    _disable_warnings_until: Dict[int, float]
+    _disable_warnings_until: Dict[str, float]
     _index_to_uav_id: bidict[int, str]
     _packet_handlers: Dict[
         Type[FlockCtrlPacket], Callable[[FlockCtrlPacket, UAVAddress], None]
@@ -198,11 +197,23 @@ class FlockCtrlDriver(UAVDriver):
         else:
             raise NotSupportedError
 
-    async def handle_generic_command(self, uav: "FlockCtrlUAV", command, args, kwds):
+    async def handle_generic_command(
+        self, uav: "FlockCtrlUAV", command: str, args: Sequence[str], kwds
+    ):
         """Sends a generic command execution request to the given UAV."""
-        command = " ".join([command, *args])
-        response = await self._send_command_to_uav_and_check_for_errors(command, uav)
-        return {"type": "preformatted", "data": response}
+        # Special case: if the command is "@all", we treat it as a request to
+        # send a command to all the UAVs. Only a few commands are supported in
+        # broadcast mode
+        if command == "@all" and args:
+            command, *args = args
+            await self._send_command_to_all_uavs(command, args)
+            return {"type": "preformatted", "data": "Command sent successfully."}
+        else:
+            command = " ".join([command, *args])
+            response = await self._send_command_to_uav_and_check_for_errors(
+                command, uav
+            )
+            return {"type": "preformatted", "data": response}
 
     def handle_inbound_packet(self, packet: FlockCtrlPacket, source: UAVAddress):
         """Handles an inbound FlockCtrl packet received over a connection."""
@@ -233,7 +244,6 @@ class FlockCtrlDriver(UAVDriver):
         self._bursted_message_manager.schedule_burst(
             MultiTargetCommand.LAND,
             uav_ids=self._uavs_to_ids(uavs),
-            duration=BURST_DURATION,
             transport=transport,
         )
 
@@ -259,7 +269,6 @@ class FlockCtrlDriver(UAVDriver):
         self._bursted_message_manager.schedule_burst(
             MultiTargetCommand.FLASH_LIGHT,
             uav_ids=self._uavs_to_ids(uavs),
-            duration=duration,
             transport=transport,
         )
 
@@ -279,7 +288,6 @@ class FlockCtrlDriver(UAVDriver):
         self._bursted_message_manager.schedule_burst(
             command,
             uav_ids=self._uavs_to_ids(uavs),
-            duration=BURST_DURATION,
             transport=transport,
         )
 
@@ -289,7 +297,6 @@ class FlockCtrlDriver(UAVDriver):
         self._bursted_message_manager.schedule_burst(
             MultiTargetCommand.RTH,
             uav_ids=self._uavs_to_ids(uavs),
-            duration=BURST_DURATION,
             transport=transport,
         )
 
@@ -303,7 +310,6 @@ class FlockCtrlDriver(UAVDriver):
         self._bursted_message_manager.schedule_burst(
             MultiTargetCommand.TAKEOFF,
             uav_ids=self._uavs_to_ids(uavs),
-            duration=BURST_DURATION,
             transport=transport,
         )
 
@@ -728,6 +734,27 @@ class FlockCtrlDriver(UAVDriver):
         packet = CommandRequestPacket(command.encode("utf-8"))
         await self.send_packet(packet, address)
         return packet
+
+    async def _send_command_to_all_uavs(
+        self, command: str, args: Iterable[str] = ()
+    ) -> None:
+        """Sends a command to all UAVs.
+
+        Only a few commands are supported, i.e. the ones that are supported by
+        a MultiTargetCommandPacket_ in the ``flockctrl`` protocol.
+
+        Parameters:
+            command: the command to send
+            args: the arguments of the command
+        """
+        if command == "where":
+            self._bursted_message_manager.schedule_burst(
+                MultiTargetCommand.FLASH_LIGHT,
+                uav_ids=BurstedMultiTargetMessageManager.ALL_UAVS,
+                transport=TransportOptions(broadcast=True, channel=1),
+            )
+        else:
+            raise RuntimeError(f"No such broadcast command: {command}")
 
     async def _send_command_to_uav(self, command: str, uav: "FlockCtrlUAV") -> str:
         """Sends a command string to the given UAV.

@@ -195,7 +195,7 @@ class FlockCtrlDronesExtension(UAVExtensionBase):
             # Create the LED light configuration manager
             assert self._driver is not None
             led_manager = FlockCtrlLEDLightConfigurationManager(
-                self._enqueue_broadcast_packet_over_radio_falling_back_to_wireless
+                self._enqueue_broadcast_packet_over_radio_and_wireless
             )
 
             # Register signal handlers
@@ -295,7 +295,7 @@ class FlockCtrlDronesExtension(UAVExtensionBase):
             ticks=clock.ticks_given_time(now_as_timestamp),
             ticks_per_second=clock.ticks_per_second,
         )
-        self._enqueue_broadcast_packet_over_radio_falling_back_to_wireless(packet)
+        self._enqueue_broadcast_packet_over_radio_and_wireless(packet)
 
     def _on_show_light_configuration_changed(
         self, sender, config: LightConfiguration
@@ -321,9 +321,7 @@ class FlockCtrlDronesExtension(UAVExtensionBase):
             packet: the raw RTK correction packet to forward to the drone
         """
         packet_to_inject = RawGPSInjectionPacket(packet)
-        self._enqueue_broadcast_packet_over_radio_falling_back_to_wireless(
-            packet_to_inject
-        )
+        self._enqueue_broadcast_packet_over_radio_and_wireless(packet_to_inject)
 
     async def _broadcast_packet(self, packet: FlockCtrlPacket, medium: str) -> None:
         """Broadcasts a FlockCtrl packet to all UAVs in the network managed
@@ -331,11 +329,11 @@ class FlockCtrlDronesExtension(UAVExtensionBase):
         """
         await self._send_packet(packet, (medium, BROADCAST))
 
-    def _enqueue_broadcast_packet_over_radio_falling_back_to_wireless(
+    def _enqueue_broadcast_packet_over_radio_and_wireless(
         self, packet: FlockCtrlPacket
     ) -> None:
         """Enqueues the given packet for a broadcast transmission over the radio
-        link, falling back to the wifi link if the radio link is not open.
+        link and the wifi link at the same time.
         """
         if self._comm_manager:
             if self._comm_manager.is_channel_open("radio"):

@@ -151,11 +151,22 @@ def format_flockctrl_address(address: Any) -> str:
 #: flockctrl protocol
 NUM_COMMANDS = 16
 
+#: Default duration of multi-target message bursts, in seconds
+DEFAULT_BURST_DURATION = 5
+
+
+class _AllUAVMarker:
+    pass
+
 
 class BurstedMultiTargetMessageManager:
     """Class that is responsible for sending multi-target messages to the
     drones in the flock and keeping track of sequence numbers.
     """
+
+    #: Marker object that is used in place of uav_ids when the target must be
+    #: all the UAVs
+    ALL_UAVS = _AllUAVMarker()
 
     _driver: "FlockCtrlDriver"
     _sequence_ids: List[int]
@@ -170,8 +181,8 @@ class BurstedMultiTargetMessageManager:
     def schedule_burst(
         self,
         command: MultiTargetCommand,
-        uav_ids: Iterable[int],
-        duration: float,
+        uav_ids: Union[Iterable[int], _AllUAVMarker],
+        duration: float = DEFAULT_BURST_DURATION,
         transport: Optional[TransportOptions] = None,
     ) -> None:
         """Schedules a bursted simple command execution targeting multiple UAVs.
@@ -180,6 +191,7 @@ class BurstedMultiTargetMessageManager:
             command: the command code to send
             uav_ids: the IDs of the UAVs to target. The IDs presented here are
                 the numeric IDs in the FlockCtrl network, not the global UAV IDs.
+                Pass an empty tuple here for broadcasting to all UAVs.
             duration: duration of the burst, in seconds
             transport: transport options for sending the command
         """
@@ -196,7 +208,7 @@ class BurstedMultiTargetMessageManager:
     async def _execute_burst(
         self,
         command: MultiTargetCommand,
-        uav_ids: Iterable[int],
+        uav_ids: Union[Iterable[int], _AllUAVMarker],
         duration: float,
         transport: Optional[TransportOptions],
         cancelled_event: Event,
@@ -214,8 +226,15 @@ class BurstedMultiTargetMessageManager:
             duration: duration of the burst, in seconds.
             cancelled_event: a Trio event that can be used to cancel the burst
         """
+        if isinstance(uav_ids, _AllUAVMarker):
+            targets = ()
+        else:
+            targets = list(uav_ids)
+            if not targets:
+                return
+
         packet = MultiTargetCommandPacket(
-            list(uav_ids), command=command, sequence_id=self._sequence_ids[command]
+            targets, command=command, sequence_id=self._sequence_ids[command]
         )
         self._sequence_ids[command] += 1
 

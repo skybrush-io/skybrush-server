@@ -1,12 +1,7 @@
 {% extends "_layout.html.j2" %}
 
 {% block body %}
-<p class="lead">The following table lists all the active asynchronous tasks in
-the server.</p>
-
-<p>There are <b>{{ tasks|length }}</b> active task(s).</p>
-
-<table class="table table-striped">
+<table class="table table-striped table-sm mb-0">
     <thead>
         <tr>
             <th>Name</th>
@@ -19,6 +14,10 @@ the server.</p>
         </tr>
 {% endfor %}
     </tbody>
+    <tfoot>
+        <tr>
+            <td><b>{{ tasks|length }}</b> active tasks(s).</td>
+        </tr>
+    </tfoot>
 </table>
-
 {% endblock %}

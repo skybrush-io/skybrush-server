@@ -93,7 +93,9 @@ async def list_extensions():
             info = ExtensionInfo(name=name, loaded=extension_manager.is_loaded(name))
             extensions.append(info)
 
-    return await render_template("extensions.html.j2", extensions=extensions)
+    return await render_template(
+        "extensions.html.j2", title="Extensions", extensions=extensions
+    )
 
 
 @blueprint.route("/threads")

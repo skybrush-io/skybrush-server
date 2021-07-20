@@ -1,10 +1,7 @@
 {% extends "_layout.html.j2" %}
 
 {% block body %}
-<p class="lead">The following table lists all the active threads in the
-server.</p>
-
-<table class="table table-striped">
+<table class="table table-striped table-sm mb-0">
     <thead>
         <tr>
             <th>Ident</th>
@@ -21,6 +18,10 @@ server.</p>
         </tr>
 {% endfor %}
     </tbody>
+    <tfoot>
+        <tr>
+            <td><b>{{ threads|length }}</b> running thread(s).</td>
+        </tr>
+    </tfoot>
 </table>
-
 {% endblock %}

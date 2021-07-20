@@ -1,29 +1,47 @@
 {% extends "_layout.html.j2" %}
 
 {% block body %}
-<p class="lead">The following table lists all the extensions currently known to the server.</p>
-
-<table class="table table-striped">
+<table class="table table-hover table-striped table-sm mb-0"">
     <thead>
         <tr>
             <th></th>
             <th>Name</th>
+            <th>Description</th>
+            <th></th>
         </tr>
     </thead>
     <tbody>
 {% for extension in extensions %}
-        <tr>
-            <td style="width: 48px">
-                <input class="form-check-input mx-2" type="checkbox" id="chk-enabled-{{ extension.name }}" value="" disabled {{ "checked" if extension.loaded else "" }} />
+        <tr style="cursor: pointer; {{ "" if true or extension.loaded else "opacity: 0.5" }}">
+            <td class="align-baseline text-right" style="width: 24px">
+                {% if extension.loaded %}
+                <span class="text-success" data-feather="check"></span>
+                {% else %}
+                <span class="text-danger" data-feather="x"></span>
+                {% endif %}
             </td>
-            <td>
-                <label class="form-check-label" for="chk-enabled-{{ extension.name }}">
-                    <pre class="mb-0">{{ prefix }}{{ extension.name }}</pre>
-                </label>
+            <td class="align-baseline">
+                <pre class="mb-0">{{ prefix }}{{ extension.name }}</pre>
+            </td>
+            <td class="align-baseline"></td>
+            <td class="align-baseline text-right" style="width: 96px">
+{#
+                <button type="button" class="btn btn-outline-secondary btn-sm">
+                    <span data-feather="settings"></span>
+                </button>
+                {% if extension.loaded %}
+                <button type="button" class="btn btn-outline-danger btn-sm">
+                    <span data-feather="x"></span>
+                </button>
+                {% else %}
+                <button type="button" class="btn btn-outline-success btn-sm">
+                    <span data-feather="plus"></span>
+                </button>
+                {% endif %}
+#}
             </td>
         </tr>
 {% endfor %}
     </tbody>
 </table>
-
 {% endblock %}

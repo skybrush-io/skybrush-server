@@ -768,9 +768,9 @@ class FlockCtrlDriver(UAVDriver):
             command_code = MultiTargetCommand.TAKEOFF
         elif command == "takeoff":
             command_code = MultiTargetCommand.TAKEOFF
-        elif command == "mission" and len(args) == 1:
+        elif command == "mission" and len(args) >= 1:
             command_code = MultiTargetCommand.CHANGE_MISSION
-            mission = str(args[0]).encode("ascii")
+            mission = " ".join([str(arg) for arg in args]).encode("ascii")
             if mission == b"clear":
                 mission = b""
             payload = bytes([len(mission)]) + mission

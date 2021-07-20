@@ -134,7 +134,7 @@ class FlockCtrlDriver(UAVDriver):
         self._uavs_by_source_address = {}
 
         # These functions will be provided to the driver by the extension
-        self.broadcast_packet = None
+        self.broadcast_packet = None  # type: ignore
         self.create_device_tree_mutator = None
         self.run_in_background = None
         self.send_packet = None  # type: ignore
@@ -207,7 +207,7 @@ class FlockCtrlDriver(UAVDriver):
         if command == "@all" and args:
             command, *args = args
             await self._send_command_to_all_uavs(command, args)
-            return {"type": "preformatted", "data": "Command sent successfully."}
+            return {"type": "preformatted", "data": "Command burst sent successfully."}
         else:
             command = " ".join([command, *args])
             response = await self._send_command_to_uav_and_check_for_errors(
@@ -736,7 +736,7 @@ class FlockCtrlDriver(UAVDriver):
         return packet
 
     async def _send_command_to_all_uavs(
-        self, command: str, args: Iterable[str] = ()
+        self, command: str, args: Sequence[str] = ()
     ) -> None:
         """Sends a command to all UAVs.
 
@@ -747,9 +747,38 @@ class FlockCtrlDriver(UAVDriver):
             command: the command to send
             args: the arguments of the command
         """
+        command_code: Optional[MultiTargetCommand] = None
+        payload: bytes = b""
+
         if command == "where":
+            command_code = MultiTargetCommand.FLASH_LIGHT
+        elif command == "motoron":
+            if args == ("FORCE",):
+                command_code = MultiTargetCommand.FORCE_MOTOR_ON
+            else:
+                command_code = MultiTargetCommand.MOTOR_ON
+        elif command == "motoroff":
+            if args == ("FORCE",):
+                command_code = MultiTargetCommand.FORCE_MOTOR_OFF
+            else:
+                command_code = MultiTargetCommand.MOTOR_OFF
+        elif command == "rth":
+            command_code = MultiTargetCommand.RTH
+        elif command == "choreo" and args == ("1",):
+            command_code = MultiTargetCommand.TAKEOFF
+        elif command == "takeoff":
+            command_code = MultiTargetCommand.TAKEOFF
+        elif command == "mission" and len(args) == 1:
+            command_code = MultiTargetCommand.CHANGE_MISSION
+            mission = str(args[0]).encode("ascii")
+            if mission == b"clear":
+                mission = b""
+            payload = bytes([len(mission)]) + mission
+
+        if command_code is not None:
             self._bursted_message_manager.schedule_burst(
-                MultiTargetCommand.FLASH_LIGHT,
+                command_code,
+                payload=payload,
                 uav_ids=BurstedMultiTargetMessageManager.ALL_UAVS,
                 transport=TransportOptions(broadcast=True, channel=1),
             )
@@ -863,6 +892,7 @@ class FlockCtrlUAV(UAVBase):
     """
 
     addresses: Dict[str, Any]
+    driver: FlockCtrlDriver
     mission_name: Optional[str]
 
     _is_airborne: bool

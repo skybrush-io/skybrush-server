@@ -181,7 +181,8 @@ class BurstedMultiTargetMessageManager:
     def schedule_burst(
         self,
         command: MultiTargetCommand,
-        uav_ids: Union[Iterable[int], _AllUAVMarker],
+        payload: bytes = b"",
+        uav_ids: Union[Iterable[int], _AllUAVMarker] = (),
         duration: float = DEFAULT_BURST_DURATION,
         transport: Optional[TransportOptions] = None,
     ) -> None:
@@ -202,12 +203,13 @@ class BurstedMultiTargetMessageManager:
 
         event = self._active_burst_cancellations[command] = Event()
         self._driver.run_in_background(
-            self._execute_burst, command, uav_ids, duration, transport, event
+            self._execute_burst, command, payload, uav_ids, duration, transport, event
         )
 
     async def _execute_burst(
         self,
         command: MultiTargetCommand,
+        payload: bytes,
         uav_ids: Union[Iterable[int], _AllUAVMarker],
         duration: float,
         transport: Optional[TransportOptions],
@@ -221,6 +223,7 @@ class BurstedMultiTargetMessageManager:
 
         Parameters:
             command: the command code to send
+            payload: the additional payload of the command (if any)
             uav_ids: the IDs of the UAVs to target. The IDs presented here are
                 the numeric IDs in the FlockCtrl network, not the global UAV IDs.
             duration: duration of the burst, in seconds.
@@ -234,7 +237,10 @@ class BurstedMultiTargetMessageManager:
                 return
 
         packet = MultiTargetCommandPacket(
-            targets, command=command, sequence_id=self._sequence_ids[command]
+            targets,
+            command=command,
+            sequence_id=self._sequence_ids[command],
+            payload=payload,
         )
         self._sequence_ids[command] += 1
 

@@ -199,7 +199,7 @@ reference = "collmot"
 
 [[package]]
 name = "bitstring"
-version = "3.1.8"
+version = "3.1.9"
 description = "Simple construction, analysis and modification of binary data."
 category = "main"
 optional = false
@@ -498,7 +498,7 @@ reference = "collmot"
 
 [[package]]
 name = "flockwave-flockctrl"
-version = "1.17.1"
+version = "1.18.0"
 description = "flockctrl protocol parser and encoder for Skybrush"
 category = "main"
 optional = false
@@ -1921,7 +1921,7 @@ reference = "collmot"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7"
-content-hash = "c875ac9f36651b8bf4db3504c9d2fa48f059a4ff0593d96006c859b3034e1311"
+content-hash = "f6560469a60e0ea09b446e7c4b51933539934df0597eff6bc0b543b38132bf22"
 
 [metadata.files]
 adrenaline = [
@@ -1978,9 +1978,9 @@ bidict = [
     {file = "bidict-0.21.2.tar.gz", hash = "sha256:4fa46f7ff96dc244abfc437383d987404ae861df797e2fd5b190e233c302be09"},
 ]
 bitstring = [
-    {file = "bitstring-3.1.8-py2-none-any.whl", hash = "sha256:3ae43c75c1839e1734b37eceba69353eb60dad1d4d7b3a07641b43fd44f02d65"},
-    {file = "bitstring-3.1.8-py3-none-any.whl", hash = "sha256:7b736320a2cfc6f009cd364dbd4346f67391637dabfa2bfa6e8299a80c298619"},
-    {file = "bitstring-3.1.8.tar.gz", hash = "sha256:c2e327184804d74847ff6c4eb8a750c250d98cf32015311e4a791d8b5264625e"},
+    {file = "bitstring-3.1.9-py2-none-any.whl", hash = "sha256:e3e340e58900a948787a05e8c08772f1ccbe133f6f41fe3f0fa19a18a22bbf4f"},
+    {file = "bitstring-3.1.9-py3-none-any.whl", hash = "sha256:0de167daa6a00c9386255a7cac931b45e6e24e0ad7ea64f1f92a64ac23ad4578"},
+    {file = "bitstring-3.1.9.tar.gz", hash = "sha256:a5848a3f63111785224dca8bb4c0a75b62ecdef56a042c8d6be74b16f7e860e7"},
 ]
 blinker = [
     {file = "blinker-1.4.tar.gz", hash = "sha256:471aee25f3992bd325afa3772f1063dbdbbca947a041b8b89466dc00d606f8b6"},
@@ -2103,8 +2103,8 @@ flockwave-ext = [
     {file = "flockwave_ext-1.7.0-py3-none-any.whl", hash = "md5:0a27ecda02193338f5d8e63e15a74bc3"},
 ]
 flockwave-flockctrl = [
-    {file = "flockwave-flockctrl-1.17.1.tar.gz", hash = "md5:71bb3e7984ac47904867ae7856485739"},
-    {file = "flockwave_flockctrl-1.17.1-py3-none-any.whl", hash = "md5:fe4460a7e42b970a9838daf7d2cdfce2"},
+    {file = "flockwave-flockctrl-1.18.0.tar.gz", hash = "md5:9a5dd2bf734fdd142823c8a80bb55ca3"},
+    {file = "flockwave_flockctrl-1.18.0-py3-none-any.whl", hash = "md5:49bd4e65a3e8bda6ff6b9755c795a4b2"},
 ]
 flockwave-gps = [
     {file = "flockwave-gps-2.0.1.tar.gz", hash = "md5:53e4bac7cebca10a71a286edbd7cd8a9"},

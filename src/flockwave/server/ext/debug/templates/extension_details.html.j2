@@ -1,0 +1,58 @@
+{% extends "_layout.html.j2" %}
+
+{% block body %}
+
+<nav aria-label="breadcrumb">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item"><a href="{{ url_for('debug.list_extensions') }}">Extensions</a></li>
+    <li class="breadcrumb-item active" aria-current="page">{{ extension.name }}</li>
+  </ol>
+</nav>
+
+<div class="pb-3 px-3">
+
+{% if extension.description %}
+<p class="lead">{{ extension.description }}</p>
+{% endif %}
+
+<dl class="row">
+  <dt class="col-sm-2">Status</dt>
+  <dd class="col-sm-10">
+    {% if extension.loaded %}
+      <span class="text-success"><strong>loaded</strong></span>
+    {% else %}
+      <span class="text-danger">unloaded</span>
+    {% endif %}
+  </dd>
+
+  {% if extension.dependencies %}
+  <dt class="col-sm-2">Dependencies</dt>
+  <dd class="col-sm-10">
+    {% for dep in extension.dependencies %}
+      <a href="{{ url_for('debug.show_extension_details', name=dep) }}">{{ dep }}</a>
+      {{ "·" if not loop.last else "" }}
+    {% endfor %}
+  </dd>
+  {% endif %}
+
+  {% if extension.dependents %}
+  <dt class="col-sm-2">Dependents</dt>
+  <dd class="col-sm-10">
+    {% for dep in extension.dependents %}
+      <a href="{{ url_for('debug.show_extension_details', name=dep) }}">{{ dep }}</a>
+      {{ "·" if not loop.last else "" }}
+    {% endfor %}
+  </dd>
+  {% endif %}
+</dl>
+
+<form>
+  <div class="form-group">
+    <label for="configuration">Configuration</label>
+    <textarea class="form-control monospaced" disabled id="configuration" rows="20">{{ config | tojson(indent=2) }}</textarea>
+  </div>
+</form>
+
+</div>
+
+{% endblock %}

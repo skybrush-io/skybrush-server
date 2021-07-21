@@ -7,10 +7,10 @@ from __future__ import annotations
 import threading
 
 from contextlib import ExitStack
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from logging import Logger
 from operator import attrgetter
-from quart import Blueprint, render_template
+from quart import abort, Blueprint, render_template
 from trio import sleep_forever
 from trio.lowlevel import current_root_task
 from typing import Any, List, Optional, Tuple, TYPE_CHECKING
@@ -21,6 +21,8 @@ from .server import run_debug_port, setup_debugging_server
 
 if TYPE_CHECKING:
     from flockwave.server.app import SkybrushServer
+    from flockwave.ext.manager import ExtensionManager
+
 
 __all__ = ("index", "run")
 
@@ -67,7 +69,26 @@ async def run(app, configuration, logger):
 @dataclass
 class ExtensionInfo:
     name: str
+    description: str = ""
     loaded: bool = False
+    dependencies: List[str] = field(default_factory=list)
+    dependents: List[str] = field(default_factory=list)
+
+    @classmethod
+    def for_extension(
+        cls, name: str, ext_manager: "ExtensionManager", *, details: bool = False
+    ):
+        result = cls(name=name, loaded=ext_manager.is_loaded(name))
+
+        if details:
+            result.dependencies = sorted(
+                ext_manager._get_dependencies_of_extension(name)
+            )
+            result.dependents = sorted(
+                ext_manager._get_reverse_dependencies_of_extension(name)
+            )
+
+        return result
 
 
 #############################################################################
@@ -90,7 +111,7 @@ async def list_extensions():
 
     if extension_manager:
         for name in extension_manager.known_extensions:
-            info = ExtensionInfo(name=name, loaded=extension_manager.is_loaded(name))
+            info = ExtensionInfo.for_extension(name, extension_manager)
             extensions.append(info)
 
     return await render_template(
@@ -124,6 +145,34 @@ async def list_tasks():
             )
 
     return await render_template("tasks.html.j2", title="Tasks", tasks=tasks)
+
+
+@blueprint.route("/extensions/<name>")
+async def show_extension_details(name):
+    """Returns a page that shows the details and configuration of an extension
+    of the server.
+    """
+    extension_manager = app.extension_manager if app else None
+    if extension_manager and name in extension_manager.known_extensions:
+        extension = ExtensionInfo.for_extension(name, extension_manager, details=True)
+    else:
+        extension = None
+
+    if extension is None:
+        abort(404)
+
+    assert extension_manager is not None
+
+    config = extension_manager.get_configuration_snapshot(name)
+    if isinstance(config, dict):
+        config.pop("enabled", None)
+
+    return await render_template(
+        "extension_details.html.j2",
+        title=f"Extension: {name}",
+        extension=extension,
+        config=config,
+    )
 
 
 dependencies = ("http_server", "signals")

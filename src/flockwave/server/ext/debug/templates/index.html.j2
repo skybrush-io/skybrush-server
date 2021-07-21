@@ -1,18 +1,5 @@
 {% extends "_layout.html.j2" %}
 
-{% block frontmatter %}
-<style>
-    #messageToSend {
-        font-family: Menlo, Monaco, Consolas, "Courier New", monospace;
-        font-size: 0.875em;
-    }
-</style>
-{% endblock %}
-
-{% block title %}
-Debug Page
-{% endblock %}
-
 {% block body %}
 <div class="p-4">
 
@@ -24,7 +11,7 @@ Debug Page
 <form>
     <div class="form-group">
         <label for="messageToSend">Message</label>
-        <textarea id="messageToSend" class="form-control" rows="8"
+        <textarea id="messageToSend" class="form-control monospaced" rows="8"
             placeholder="Send a message to the server...">
         </textarea>
     </div>

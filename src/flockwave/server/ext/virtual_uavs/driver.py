@@ -271,6 +271,7 @@ class VirtualUAV(UAVBase):
 
     def send_log_message_to_gcs(self, *args, **kwds):
         kwds["sender"] = self.id
+        assert self.driver.app is not None
         return self.driver.app.request_to_send_SYS_MSG_message(*args, **kwds)
 
     @property
@@ -909,7 +910,6 @@ class VirtualUAVDriver(UAVDriver):
             show: the show data
         """
         uav.handle_show_upload(show)
-        await sleep(1000)
         await sleep(0.25 + random() * 0.5)
 
     async def handle_command_yo(self, uav: VirtualUAV) -> str:

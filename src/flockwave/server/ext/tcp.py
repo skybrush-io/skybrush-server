@@ -9,6 +9,7 @@ import weakref
 
 from contextlib import ExitStack
 from functools import partial
+from logging import Logger
 from trio import (
     aclose_forcefully,
     CapacityLimiter,
@@ -22,7 +23,7 @@ from typing import Any, Optional
 from flockwave.channels import ParserChannel
 from flockwave.encoders.json import create_json_encoder
 from flockwave.parsers.json import create_json_parser
-from flockwave.server.model import CommunicationChannel
+from flockwave.server.model import Client, CommunicationChannel
 from flockwave.server.ports import get_port_number_for_service
 from flockwave.networking import format_socket_address, get_socket_address
 from flockwave.server.utils import overridden
@@ -30,13 +31,16 @@ from flockwave.server.utils.networking import serve_tcp_and_log_errors
 
 app = None
 encoder = create_json_encoder()
-log = None
+log: Optional[Logger] = None
 
 
 class TCPChannel(CommunicationChannel):
     """Object that represents a TCP communication channel between a
     server and a single client.
     """
+
+    client_ref: Optional["weakref.ref[Client]"]
+    lock: Lock
 
     def __init__(self):
         """Constructor."""
@@ -45,7 +49,7 @@ class TCPChannel(CommunicationChannel):
         self.lock = Lock()
         self.stream = None
 
-    def bind_to(self, client):
+    def bind_to(self, client: Client) -> None:
         """Binds the communication channel to the given client.
 
         Parameters:
@@ -58,7 +62,7 @@ class TCPChannel(CommunicationChannel):
         else:
             raise ValueError("client has no ID or address yet")
 
-    async def close(self, force: bool = False):
+    async def close(self, force: bool = False) -> None:
         if self.stream is None:
             if self.client_ref is not None:
                 self.stream = self.client_ref().stream
@@ -85,7 +89,7 @@ class TCPChannel(CommunicationChannel):
             # dispatches each message in a separate task)
             await self.stream.send_all(encoder(message))
 
-    def _erase_stream(self, ref):
+    def _erase_stream(self, ref) -> None:
         self.stream = None
 
 
@@ -165,7 +169,8 @@ async def handle_connection_safely(stream: SocketStream, *, limit: CapacityLimit
     except Exception as ex:
         # Exceptions raised during a connection are caught and logged here;
         # we do not let the main task itself crash because of them
-        log.exception(ex)
+        if log:
+            log.exception(ex)
 
 
 async def handle_message(message: Any, client, *, limit: CapacityLimiter) -> None:
@@ -206,3 +211,6 @@ async def run(app, configuration, logger):
         handler = partial(handle_connection_safely, limit=limit)
 
         await serve_tcp_and_log_errors(handler, port, host=host, log=logger)
+
+
+description = "TCP socket-based communication channel"

@@ -207,3 +207,4 @@ class VirtualUAVProviderExtension(UAVExtensionBase):
 
 construct = VirtualUAVProviderExtension
 dependencies = ("signals",)
+description = "Simulated, non-realistic UAVs for testing or demonstration purposes"

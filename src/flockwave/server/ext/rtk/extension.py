@@ -621,6 +621,7 @@ class RTKExtension(ExtensionBase):
 
 construct = RTKExtension
 dependencies = ("ntrip", "signals")
+description = "Support for RTK base stations and external RTK correction sources"
 optional_dependencies = {
     "hotplug": "detects when new USB devices are plugged in and updates the RTK sources automatically"
 }

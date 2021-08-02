@@ -76,3 +76,4 @@ def init_sentry(dsn: str, license) -> None:
 
 
 dependencies = ("license",)
+description = "Logs unhandled exceptions to Sentry.io"

@@ -53,3 +53,7 @@ def get_dependencies():
 def unload(app):
     """Unloads the extension."""
     app.import_api("clocks").unregister_clock(clock)
+
+
+dependencies = ("clocks",)
+description = "System clock that always shows the current timestamp of the server"

@@ -4,6 +4,6 @@ Useful primarily for debugging purposes and for testing the server without
 having access to real hardware that provides UAV position and velocity data.
 """
 
-from .extension import construct, dependencies
+from .extension import construct, dependencies, description
 
-__all__ = ("construct", "dependencies")
+__all__ = ("construct", "dependencies", "description")

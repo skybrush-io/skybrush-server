@@ -29,7 +29,7 @@ class Client:
 
     _id: str
     _channel: CommunicationChannel
-    _user: User = None
+    _user: Optional[User] = None
 
     @property
     def channel(self) -> CommunicationChannel:
@@ -46,9 +46,9 @@ class Client:
         return self._id
 
     @property
-    def user(self) -> User:
+    def user(self) -> Optional[User]:
         """The user that is authenticated on the communication channel that
-        this client uses.
+        this client uses; `None` if the client is not authenticated yet.
         """
         return self._user
 

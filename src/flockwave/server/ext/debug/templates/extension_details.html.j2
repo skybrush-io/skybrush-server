@@ -53,6 +53,26 @@
   </div>
 </form>
 
+{% if extension.loaded and not extension.dependents %}
+<button class="btn btn-danger sb-btn-unload">
+  <span data-feather="trash-2"></span> Unload
+</button>
+{% endif %}
 </div>
 
+{% endblock %}
+
+{% block backmatter %}
+<script type="module">
+import ky from './static/js/ky-0.27.0.min.js';
+
+function unload() {
+  alert('Not implemented yet');
+}
+
+const buttons = document.querySelectorAll(".sb-btn-unload");
+for (let button of buttons) {
+  button.addEventListener('click', unload);
+}
+</script>
 {% endblock %}

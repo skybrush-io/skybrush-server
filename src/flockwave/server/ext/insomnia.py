@@ -12,10 +12,17 @@ async def run(app, configuration, logger):
     try:
         from adrenaline import prevent_sleep
 
-        context = prevent_sleep(display=keep_display_on)
+        context = prevent_sleep(
+            app_name="Skybrush Server",
+            display=keep_display_on,
+            reason="Skybrush Server",
+        )
     except Exception:
         context = nullcontext()
         logger.warn("Cannot prevent sleep mode on this platform")
 
     with context:
         await sleep_forever()
+
+
+description = "Prevents the machine running the server from going to sleep"

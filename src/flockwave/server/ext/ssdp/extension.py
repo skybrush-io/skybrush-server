@@ -14,12 +14,13 @@ from contextlib import closing
 from datetime import datetime
 from errno import EADDRNOTAVAIL
 from http.server import BaseHTTPRequestHandler
+from logging import Logger
 from io import BytesIO
 from os import getenv
 from random import random
 from time import mktime
 from trio import sleep
-from typing import Optional
+from typing import Any, Callable, Dict, Optional
 from wsgiref.handlers import format_date_time
 
 import platform
@@ -41,10 +42,10 @@ UPNP_SERVICE_ID_TEMPLATE = "urn:collmot-com:service:{0}-{{0}}:1".format(USN)
 
 app = None
 label = None
-log = None
+log: Optional[Logger] = None
 registry = None
 
-exports = {
+exports: Dict[str, Optional[Callable[..., Any]]] = {
     "register_service": None,
     "registry": None,
     "unregister_service": None,
@@ -163,9 +164,10 @@ def get_service_uri(service_id: str, address=None) -> Optional[str]:
     try:
         location = service.get_ssdp_location(address) if service else None
     except Exception:
-        log.exception(
-            "Failed to retrieve UPnP location of service", extra={"id": service_id}
-        )
+        if log:
+            log.exception(
+                "Failed to retrieve UPnP location of service", extra={"id": service_id}
+            )
         location = None
 
     return location
@@ -180,7 +182,8 @@ async def handle_message(message, sender, *, socket):
     """
     request = Request(message, sender)
     if request.has_error:
-        log.warn("Malformed SSDP request received")
+        if log:
+            log.warn("Malformed SSDP request received")
         return
     elif request.command == "M-SEARCH" and request.path == "*":
         await handle_m_search(request, socket=socket)
@@ -188,7 +191,8 @@ async def handle_message(message, sender, *, socket):
         # We don't care.
         pass
     else:
-        log.warn("Unknown SSDP command: {0.command}".format(request))
+        if log:
+            log.warn("Unknown SSDP command: {0.command}".format(request))
 
 
 async def handle_m_search(request, *, socket):
@@ -217,10 +221,12 @@ async def handle_m_search(request, *, socket):
     if search_target in ("ssdp:all", "upnp:rootdevice", UPNP_DEVICE_ID):
         # Need to send a response with the device ID
         to_send.append((UPNP_DEVICE_ID, "unknown"))
-    if search_target and _UPNP_SERVICE_ID_REGEX.match(search_target):
-        # Need to send a response with the service ID
-        channel_type_id = _UPNP_SERVICE_ID_REGEX.match(search_target).group(1)
-        to_send.append((search_target, get_service_uri(channel_type_id, address)))
+    if search_target:
+        match = _UPNP_SERVICE_ID_REGEX.match(search_target)
+        if match:
+            # Need to send a response with the service ID
+            channel_type_id = match.group(1)
+            to_send.append((search_target, get_service_uri(channel_type_id, address)))
 
     # TODO(ntamas): for ssdp:all, we need to enumerate all services explicitly
 
@@ -311,7 +317,7 @@ def load(app, configuration, logger):
     registry = UPnPServiceRegistry()
 
     # Set up the functions to export
-    exports.update(
+    exports.update(  # type: ignore
         {
             "register_service": registry.add,
             "registry": registry,
@@ -388,7 +394,8 @@ async def receive_ssdp_messages(multicast_group, port, *, sender):
     except OSError as error:
         if error.errno == EADDRNOTAVAIL:
             # This happens with ad-hoc wifi on macOS
-            log.warn(f"Cannot join multicast group {multicast_group}")
+            if log:
+                log.warn(f"Cannot join multicast group {multicast_group}")
         else:
             raise
 
@@ -403,3 +410,6 @@ async def receive_ssdp_messages(multicast_group, port, *, sender):
         while True:
             data = await receiver.recvfrom(65536)
             await handle_message(*data, socket=sender)
+
+
+description = "Automatic server discovery on the local network with UPnP/SSDP"

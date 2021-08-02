@@ -364,3 +364,4 @@ class FlockCtrlDronesExtension(UAVExtensionBase):
 
 construct = FlockCtrlDronesExtension
 dependencies = ("clocks", "signals")
+description = "Support for drones that use the flockctrl protocol"

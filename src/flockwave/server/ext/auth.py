@@ -83,7 +83,7 @@ class AuthenticationExtension(ExtensionBase):
         Returns:
             object: the body of the response of the message
         """
-        return {"user": client.user or ""}
+        return {"user": str(client.user or "")}
 
     async def run(self, app):
         handler_map = {
@@ -113,3 +113,6 @@ class AuthenticationExtension(ExtensionBase):
 
 
 construct = AuthenticationExtension
+description = (
+    "Authentication-related message handlers and authentication method registry"
+)

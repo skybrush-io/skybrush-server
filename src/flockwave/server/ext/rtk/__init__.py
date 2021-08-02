@@ -2,6 +2,6 @@
 and forwards the corrections to the UAVs managed by the server.
 """
 
-from .extension import construct, dependencies
+from .extension import construct, dependencies, description, optional_dependencies
 
-__all__ = ("construct", "dependencies")
+__all__ = ("construct", "dependencies", "description", "optional_dependencies")

@@ -2,6 +2,6 @@
 local network with UPnP/SSDP.
 """
 
-from .extension import exports, load, run, unload
+from .extension import description, exports, load, run, unload
 
-__all__ = ("exports", "load", "run", "unload")
+__all__ = ("description", "exports", "load", "run", "unload")

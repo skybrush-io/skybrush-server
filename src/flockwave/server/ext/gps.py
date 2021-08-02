@@ -217,3 +217,4 @@ class GPSExtension(UAVExtensionBase):
 
 
 construct = GPSExtension
+description = "External GPS receivers as beacons"

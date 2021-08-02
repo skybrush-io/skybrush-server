@@ -285,4 +285,5 @@ def unload(app):
     license = None
 
 
+description = "License management"
 exports = {"get_license": get_license}

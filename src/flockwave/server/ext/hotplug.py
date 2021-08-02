@@ -18,3 +18,6 @@ async def run(app, configuration, log):
                 signal.send(event=event)
     except NoBackendError:
         log.warn("No suitable backend found for scanning the USB bus")
+
+
+description = "Hotplug event provider for other extensions"

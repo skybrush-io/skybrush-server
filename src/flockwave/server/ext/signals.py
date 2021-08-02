@@ -106,5 +106,5 @@ def unload():
     signals = None
 
 
-#: The API of this extension
+description = "Signal emission and subscription service for intra-server communication"
 exports = {"get": get_signal, "use": use_signals}

@@ -192,3 +192,4 @@ def _get_fd_to_console_frontend() -> Optional[int]:
 
 
 construct = ConsoleStatusExtension
+description = "Status information module for the console-based frontend"

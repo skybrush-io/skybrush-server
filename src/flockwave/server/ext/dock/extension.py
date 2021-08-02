@@ -197,3 +197,4 @@ class DockExtension(UAVExtensionBase):
 
 
 construct = DockExtension
+description = "Support for CollMot Robotics' docking station"

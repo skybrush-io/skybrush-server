@@ -14,7 +14,7 @@ def load(app, configuration):
     route = configuration.get("route", "/app")
 
     if path:
-        path = Path(path).resolve()
+        path = str(Path(path).resolve())
     else:
         path = "static"
 
@@ -31,3 +31,4 @@ def load(app, configuration):
 
 
 dependencies = ("http_server",)
+description = "Simple frontend index page serve over HTTP"

@@ -2,6 +2,6 @@
 positions of the drones to a remote OSC target.
 """
 
-from .extension import run
+from .extension import description, run
 
-__all__ = ("run",)
+__all__ = ("description", "run")

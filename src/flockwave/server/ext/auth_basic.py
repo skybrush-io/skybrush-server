@@ -149,3 +149,4 @@ async def run(app, configuration, logger):
 
 
 dependencies = ("auth",)
+description = "Basic username-password based authentication"

@@ -291,3 +291,4 @@ async def run(app, configuration, logger):
 
 
 dependencies = ("ssdp", "signals")
+description = "Communication channel to Skybrush Sidekick"

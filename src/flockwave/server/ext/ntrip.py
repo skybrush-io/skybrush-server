@@ -5,6 +5,7 @@ yielding RTCMv2 and RTCMv3 messages from a remote NTRIP server.
 from typing import Optional
 
 from flockwave.connections import ConnectionBase, create_connection, ReadableConnection
+from flockwave.gps.http.response import Response
 from flockwave.gps.ntrip.client import NtripClient
 
 __all__ = ("load", "unload")
@@ -12,6 +13,8 @@ __all__ = ("load", "unload")
 
 class NTRIPConnection(ConnectionBase, ReadableConnection[bytes]):
     """Connection to a remote NTRIP server."""
+
+    _stream: Optional[Response]
 
     def __init__(
         self,
@@ -74,6 +77,7 @@ class NTRIPConnection(ConnectionBase, ReadableConnection[bytes]):
             self._stream = None
 
     async def read(self, max_bytes: Optional[int] = None) -> bytes:
+        assert self._stream is not None
         return await self._stream.read(max_bytes)
 
 
@@ -83,3 +87,6 @@ def load():
 
 def unload():
     create_connection.unregister("ntrip")
+
+
+description = "Connections to NTRIP servers and casters"

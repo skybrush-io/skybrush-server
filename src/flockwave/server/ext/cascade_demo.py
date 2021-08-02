@@ -453,3 +453,4 @@ class ERPSystemConnectionDemoExtension(ExtensionBase):
 
 construct = ERPSystemConnectionDemoExtension
 dependencies = ("dock",)
+description = ""

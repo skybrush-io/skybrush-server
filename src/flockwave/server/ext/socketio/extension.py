@@ -172,3 +172,4 @@ async def run(app, configuration, logger):
 
 
 dependencies = ("http_server",)
+description = "Socket.IO communication channel"

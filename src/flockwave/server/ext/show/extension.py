@@ -11,7 +11,7 @@ from flockwave.server.tasks import wait_for_dict_items, wait_until
 from .clock import ShowClock
 from .config import DroneShowConfiguration, LightConfiguration, StartMethod
 
-__all__ = ("construct", "dependencies")
+__all__ = ("construct", "dependencies", "description")
 
 
 class DroneShowExtension(ExtensionBase):
@@ -203,3 +203,4 @@ class DroneShowExtension(ExtensionBase):
 
 construct = DroneShowExtension
 dependencies = ("clocks", "signals")
+description = "Support for managing drone shows"

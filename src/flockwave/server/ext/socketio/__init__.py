@@ -2,6 +2,6 @@
 messages on a Socket.IO connection.
 """
 
-from .extension import dependencies, run
+from .extension import dependencies, description, run
 
-__all__ = ("dependencies", "run")
+__all__ = ("dependencies", "description", "run")

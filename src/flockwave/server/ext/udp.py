@@ -24,7 +24,6 @@ from flockwave.server.model import CommunicationChannel
 from flockwave.server.ports import get_port_number_for_service
 from flockwave.server.utils import overridden
 
-
 app = None
 encoder = create_json_encoder()
 log = None
@@ -172,3 +171,6 @@ async def run(app, configuration, logger):
                 data, address = await sock.recvfrom(65536)
                 message = parser(data)
                 nursery.start_soon(handler, message, address)
+
+
+description = "UDP socket-based communication channel"

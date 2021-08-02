@@ -79,13 +79,14 @@ class ExtensionInfo:
         cls, name: str, ext_manager: "ExtensionManager", *, details: bool = False
     ):
         result = cls(name=name, loaded=ext_manager.is_loaded(name))
+        result.description = ext_manager.get_description_of_extension(name) or ""
 
         if details:
             result.dependencies = sorted(
-                ext_manager._get_dependencies_of_extension(name)
+                ext_manager.get_dependencies_of_extension(name)
             )
             result.dependents = sorted(
-                ext_manager._get_reverse_dependencies_of_extension(name)
+                ext_manager.get_reverse_dependencies_of_extension(name)
             )
 
         return result
@@ -176,3 +177,4 @@ async def show_extension_details(name):
 
 
 dependencies = ("http_server", "signals")
+description = "Debugging tools"

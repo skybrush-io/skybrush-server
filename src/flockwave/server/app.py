@@ -113,7 +113,7 @@ class SkybrushServer(DaemonApp):
             of UAVs live. By default, the world is empty but extensions may
             extend it with objects.
 
-    See also the attributed inherited from DaemonApp_.
+    See also the attributes inherited from DaemonApp_.
     """
 
     def cancel_async_operations(

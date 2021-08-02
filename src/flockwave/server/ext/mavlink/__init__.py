@@ -2,6 +2,6 @@
 the MAVLink protocol.
 """
 
-from .extension import construct, dependencies
+from .extension import construct, dependencies, description
 
-__all__ = ("construct", "dependencies")
+__all__ = ("construct", "dependencies", "description")

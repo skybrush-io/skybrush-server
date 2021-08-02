@@ -144,3 +144,8 @@ def generate_status_messages() -> Generator[OSCMessage, None, None]:
                     ),
                     (float(pos_xyz.x), float(pos_xyz.y), float(pos_xyz.z)),
                 )
+
+
+description = (
+    "OSC client that forwards the positions of the drones to a remote OSC target"
+)

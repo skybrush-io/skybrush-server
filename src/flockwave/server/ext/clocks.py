@@ -128,3 +128,6 @@ def unload(app):
 
     registry = None
     message_hub = None
+
+
+description = "Clocks and clock registry"

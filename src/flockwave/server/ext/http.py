@@ -244,3 +244,4 @@ async def run(app, configuration, logger):
 
 
 dependencies = ("auth", "http_server")
+description = "HTTP request-response communication channel"

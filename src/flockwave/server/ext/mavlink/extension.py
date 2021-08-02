@@ -373,3 +373,4 @@ class MAVLinkDronesExtension(UAVExtensionBase):
 
 construct = MAVLinkDronesExtension
 dependencies = ("show", "signals")
+description = "Support for drones that use the MAVLink protocol"

@@ -308,3 +308,6 @@ async def run(app, configuration, logger):
     }
     with app.message_hub.use_message_handlers(handlers):
         await sleep_forever()
+
+
+description = "Provides support for managing extensions while the server is running"

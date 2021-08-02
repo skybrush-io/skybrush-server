@@ -1,19 +1,15 @@
 [[package]]
 name = "adrenaline"
-version = "0.2.0"
+version = "0.2.1"
 description = "Keep your OS from sleeping (supports Windows and macOS)"
 category = "main"
 optional = false
 python-versions = ">=3.7,<4.0"
 
 [package.dependencies]
+jeepney = {version = ">=0.6.0,<0.7.0", markers = "sys_platform == \"linux\""}
 pyobjc-core = {version = ">=7.1,<8.0", markers = "sys_platform == \"darwin\""}
 pyobjc-framework-Cocoa = {version = ">=7.1,<8.0", markers = "sys_platform == \"darwin\""}
-
-[package.source]
-type = "legacy"
-url = "https://pypi.collmot.com/simple"
-reference = "collmot"
 
 [[package]]
 name = "aio-usb-hotplug"
@@ -77,7 +73,7 @@ reference = "collmot"
 
 [[package]]
 name = "anyio"
-version = "3.2.1"
+version = "3.3.0"
 description = "High level compatibility layer for multiple asynchronous event loop implementations"
 category = "main"
 optional = false
@@ -254,7 +250,7 @@ reference = "collmot"
 
 [[package]]
 name = "charset-normalizer"
-version = "2.0.3"
+version = "2.0.4"
 description = "The Real First Universal Charset Detector. Open, modern and actively maintained alternative to Chardet."
 category = "dev"
 optional = false
@@ -364,7 +360,7 @@ reference = "collmot"
 
 [[package]]
 name = "compose"
-version = "1.2.0"
+version = "1.2.2"
 description = "The classic ``compose``, with all the Pythonic features."
 category = "main"
 optional = false
@@ -480,7 +476,7 @@ reference = "collmot"
 
 [[package]]
 name = "flockwave-ext"
-version = "1.7.0"
+version = "1.8.0"
 description = "Generic extension manager for Skybrush-related projects"
 category = "main"
 optional = false
@@ -744,7 +740,7 @@ reference = "collmot"
 
 [[package]]
 name = "importlib-metadata"
-version = "4.6.1"
+version = "4.6.3"
 description = "Read metadata from Python packages"
 category = "main"
 optional = false
@@ -771,6 +767,22 @@ description = "Safely pass data to untrusted environments and back."
 category = "main"
 optional = false
 python-versions = ">=3.6"
+
+[package.source]
+type = "legacy"
+url = "https://pypi.collmot.com/simple"
+reference = "collmot"
+
+[[package]]
+name = "jeepney"
+version = "0.6.0"
+description = "Low-level, pure Python DBus protocol wrapper."
+category = "main"
+optional = false
+python-versions = ">=3.6"
+
+[package.extras]
+test = ["pytest", "pytest-trio", "pytest-asyncio", "testpath", "trio"]
 
 [package.source]
 type = "legacy"
@@ -1120,7 +1132,7 @@ reference = "collmot"
 
 [[package]]
 name = "pyarmor"
-version = "6.7.3"
+version = "6.7.4"
 description = "A tool used to obfuscate python scripts, bind obfuscated scripts to fixed machine or expire obfuscated scripts."
 category = "dev"
 optional = false
@@ -1146,7 +1158,7 @@ reference = "collmot"
 
 [[package]]
 name = "pyinstaller"
-version = "4.4"
+version = "4.5"
 description = "PyInstaller bundles a Python application and all its dependencies into a single package."
 category = "dev"
 optional = false
@@ -1163,7 +1175,7 @@ tinyaes = {version = ">=1.0.0", optional = true, markers = "extra == \"encryptio
 
 [package.extras]
 encryption = ["tinyaes (>=1.0.0)"]
-hook_testing = ["execnet (>=1.5.0)", "psutil", "pytest (>=2.7.3)"]
+hook_testing = ["pytest (>=2.7.3)", "execnet (>=1.5.0)", "psutil"]
 
 [package.source]
 type = "legacy"
@@ -1425,11 +1437,11 @@ reference = "collmot"
 
 [[package]]
 name = "python-dotenv"
-version = "0.18.0"
+version = "0.19.0"
 description = "Read key-value pairs from a .env file and set them as environment variables"
 category = "main"
 optional = false
-python-versions = "*"
+python-versions = ">=3.5"
 
 [package.extras]
 cli = ["click (>=5.0)"]
@@ -1441,11 +1453,11 @@ reference = "collmot"
 
 [[package]]
 name = "python-json-logger"
-version = "2.0.1"
+version = "2.0.2"
 description = "A python library adding a json log formatter"
 category = "main"
 optional = false
-python-versions = ">=3.4"
+python-versions = ">=3.5"
 
 [package.source]
 type = "legacy"
@@ -1609,7 +1621,7 @@ reference = "collmot"
 
 [[package]]
 name = "sentry-sdk"
-version = "1.3.0"
+version = "1.3.1"
 description = "Python client for Sentry (https://sentry.io)"
 category = "main"
 optional = false
@@ -1887,7 +1899,7 @@ reference = "collmot"
 
 [[package]]
 name = "zeroconf"
-version = "0.33.1"
+version = "0.33.2"
 description = "Pure Python Multicast DNS Service Discovery Library (Bonjour/Avahi compatible)"
 category = "main"
 optional = false
@@ -1921,12 +1933,12 @@ reference = "collmot"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7"
-content-hash = "fcf0f11e2703186865e9512e4e1fc389e3cf731ada9330710d7c75f5c99aa5b1"
+content-hash = "5135ecad265667357eb714eb64f9bad122c43e9afe26d695deb981c233f865a4"
 
 [metadata.files]
 adrenaline = [
-    {file = "adrenaline-0.2.0-py3-none-any.whl", hash = "sha256:bc44c06702f9440f12ff8e8548ed48318e7e703e831eb1ea28b18762bc23d2f5"},
-    {file = "adrenaline-0.2.0.tar.gz", hash = "sha256:07e818e8476082d38ced1050416fefd12ecfe7e3761861043d5c1ef75300a0cb"},
+    {file = "adrenaline-0.2.1-py3-none-any.whl", hash = "sha256:60531ae9b6a9be9edfd4609a8c04597d39f0d95d1052f0d0d0402da6a1ed1f63"},
+    {file = "adrenaline-0.2.1.tar.gz", hash = "sha256:f4cd68b3821fc334c36bf66eb9e98138c7479420b545db76a92a064b80a47795"},
 ]
 aio-usb-hotplug = [
     {file = "aio-usb-hotplug-4.0.0.tar.gz", hash = "sha256:e36e08499c2c240d9725ef84528b50da0c0565c4a9c256264d47f898e3dd3335"},
@@ -1945,8 +1957,8 @@ altgraph = [
     {file = "altgraph-0.17.tar.gz", hash = "sha256:1f05a47122542f97028caf78775a095fbe6a2699b5089de8477eb583167d69aa"},
 ]
 anyio = [
-    {file = "anyio-3.2.1-py3-none-any.whl", hash = "sha256:442678a3c7e1cdcdbc37dcfe4527aa851b1b0c9162653b516e9f509821691d50"},
-    {file = "anyio-3.2.1.tar.gz", hash = "sha256:07968db9fa7c1ca5435a133dc62f988d84ef78e1d9b22814a59d1c62618afbc5"},
+    {file = "anyio-3.3.0-py3-none-any.whl", hash = "sha256:929a6852074397afe1d989002aa96d457e3e1e5441357c60d03e7eea0e65e1b0"},
+    {file = "anyio-3.3.0.tar.gz", hash = "sha256:ae57a67583e5ff8b4af47666ff5651c3732d45fd26c929253748e796af860374"},
 ]
 appdirs = [
     {file = "appdirs-1.4.4-py2.py3-none-any.whl", hash = "sha256:a841dacd6b99318a741b166adb07e19ee71a274450e68237b4650ca1055ab128"},
@@ -2037,8 +2049,8 @@ cffi = [
     {file = "cffi-1.14.6.tar.gz", hash = "sha256:c9a875ce9d7fe32887784274dd533c57909b7b1dcadcc128a2ac21331a9765dd"},
 ]
 charset-normalizer = [
-    {file = "charset-normalizer-2.0.3.tar.gz", hash = "sha256:c46c3ace2d744cfbdebceaa3c19ae691f53ae621b39fd7570f59d14fb7f2fd12"},
-    {file = "charset_normalizer-2.0.3-py3-none-any.whl", hash = "sha256:88fce3fa5b1a84fdcb3f603d889f723d1dd89b26059d0123ca435570e848d5e1"},
+    {file = "charset-normalizer-2.0.4.tar.gz", hash = "sha256:f23667ebe1084be45f6ae0538e4a5a865206544097e4e8bbcacf42cd02a348f3"},
+    {file = "charset_normalizer-2.0.4-py3-none-any.whl", hash = "sha256:0c8911edd15d19223366a194a513099a302055a962bca2cec0f54b8b63175d8b"},
 ]
 click = [
     {file = "click-8.0.1-py3-none-any.whl", hash = "sha256:fba402a4a47334742d782209a7c79bc448911afe1149d07bdabdf480b3e2f4b6"},
@@ -2064,10 +2076,10 @@ commentjson = [
     {file = "commentjson-0.9.0.tar.gz", hash = "sha256:42f9f231d97d93aff3286a4dc0de39bfd91ae823d1d9eba9fa901fe0c7113dd4"},
 ]
 compose = [
-    {file = "compose-1.2.0-py2.py30-none-any.whl", hash = "sha256:ac8f8726fe6bad1cc3e6d830a04b4268bba6219a84cc6c21f83f7da5ba23da4c"},
-    {file = "compose-1.2.0-py35-none-any.whl", hash = "sha256:b6559277cbe0f21cc5469a7351b2764f529a6dd498312c50e7dbe3874174223d"},
-    {file = "compose-1.2.0-py38-none-any.whl", hash = "sha256:5a15efbc59fde70da34edc10b57d1afc9737c62a08ea266dcd3d9b5d5a4511f5"},
-    {file = "compose-1.2.0.tar.gz", hash = "sha256:56a71755ccff404b3bee9c19473c9665c1244288e377b9114ec8740b06b2d33b"},
+    {file = "compose-1.2.2-py2.py30-none-any.whl", hash = "sha256:d1447afb8f38b62e9ff8c0385c195cd14e199139e1d68d6e3d278e80dab71c00"},
+    {file = "compose-1.2.2-py35-none-any.whl", hash = "sha256:a55d4d2875997012328145d77f23ab033b0e9643d743aaab87fea8c6710facdc"},
+    {file = "compose-1.2.2-py38-none-any.whl", hash = "sha256:b143aa1b825848ea311645ca60905db466559cb78c83b8abb7ab7858fed2e392"},
+    {file = "compose-1.2.2.tar.gz", hash = "sha256:5fa988bc5d9a25a3305f4990c46cdff3a0549499ca4197820fd41b3b3d82c1e1"},
 ]
 crcmod = [
     {file = "crcmod-1.7.tar.gz", hash = "sha256:dc7051a0db5f2bd48665a990d3ec1cc305a466a77358ca4492826f41f283601e"},
@@ -2099,8 +2111,8 @@ flockwave-conn = [
     {file = "flockwave_conn-3.0.1-py3-none-any.whl", hash = "md5:9123b9c7459133d43a066be3f57dabf1"},
 ]
 flockwave-ext = [
-    {file = "flockwave-ext-1.7.0.tar.gz", hash = "md5:0a22f87618449c26ede1c2fdb06410c4"},
-    {file = "flockwave_ext-1.7.0-py3-none-any.whl", hash = "md5:0a27ecda02193338f5d8e63e15a74bc3"},
+    {file = "flockwave-ext-1.8.0.tar.gz", hash = "md5:a953108aca947ae8e21e63fd49067e9f"},
+    {file = "flockwave_ext-1.8.0-py3-none-any.whl", hash = "md5:794ecc72b1cd34563f72cb50b875a1d0"},
 ]
 flockwave-flockctrl = [
     {file = "flockwave-flockctrl-1.18.2.tar.gz", hash = "md5:dfd1a114a23d8de84fc55be5e9f3b2e8"},
@@ -2161,12 +2173,16 @@ ifaddr = [
     {file = "ifaddr-0.1.7.tar.gz", hash = "sha256:1f9e8a6ca6f16db5a37d3356f07b6e52344f6f9f7e806d618537731669eb1a94"},
 ]
 importlib-metadata = [
-    {file = "importlib_metadata-4.6.1-py3-none-any.whl", hash = "sha256:9f55f560e116f8643ecf2922d9cd3e1c7e8d52e683178fecd9d08f6aa357e11e"},
-    {file = "importlib_metadata-4.6.1.tar.gz", hash = "sha256:079ada16b7fc30dfbb5d13399a5113110dab1aa7c2bc62f66af75f0b717c8cac"},
+    {file = "importlib_metadata-4.6.3-py3-none-any.whl", hash = "sha256:51c6635429c77cf1ae634c997ff9e53ca3438b495f10a55ba28594dd69764a8b"},
+    {file = "importlib_metadata-4.6.3.tar.gz", hash = "sha256:0645585859e9a6689c523927a5032f2ba5919f1f7d0e84bd4533312320de1ff9"},
 ]
 itsdangerous = [
     {file = "itsdangerous-2.0.1-py3-none-any.whl", hash = "sha256:5174094b9637652bdb841a3029700391451bd092ba3db90600dea710ba28e97c"},
     {file = "itsdangerous-2.0.1.tar.gz", hash = "sha256:9e724d68fc22902a1435351f84c3fb8623f303fffcc566a4cb952df8c572cff0"},
+]
+jeepney = [
+    {file = "jeepney-0.6.0-py3-none-any.whl", hash = "sha256:aec56c0eb1691a841795111e184e13cad504f7703b9a64f63020816afa79a8ae"},
+    {file = "jeepney-0.6.0.tar.gz", hash = "sha256:7d59b6622675ca9e993a6bd38de845051d315f8b0c72cca3aef733a20b648657"},
 ]
 jinja2 = [
     {file = "Jinja2-3.0.1-py3-none-any.whl", hash = "sha256:1f06f2da51e7b56b8f238affdd6b4e2c61e39598a378cc49345bc1bd42a978a4"},
@@ -2396,20 +2412,20 @@ py = [
     {file = "py-1.10.0.tar.gz", hash = "sha256:21b81bda15b66ef5e1a777a21c4dcd9c20ad3efd0b3f817e7a809035269e1bd3"},
 ]
 pyarmor = [
-    {file = "pyarmor-6.7.3-py2.py3-none-any.whl", hash = "sha256:7955092466fc9c22270cdaade65cc15044c5cf830cb6309d3ec63428eb91ca1d"},
-    {file = "pyarmor-6.7.3.zip", hash = "sha256:20056970ced0beac2f9a86ad57c23a1a85c29982e5f1db8ea123d37598f152d1"},
+    {file = "pyarmor-6.7.4-py2.py3-none-any.whl", hash = "sha256:7a58a32a0352966e707f8c23df9294cd364fc20339798db67a661b5c121d6ad7"},
+    {file = "pyarmor-6.7.4.zip", hash = "sha256:7b0ac5b69f7c4598df480b0fd0693c798cb888fa5622db91ddc2ee5342e9b677"},
 ]
 pycparser = [
     {file = "pycparser-2.20-py2.py3-none-any.whl", hash = "sha256:7582ad22678f0fcd81102833f60ef8d0e57288b6b5fb00323d101be910e35705"},
     {file = "pycparser-2.20.tar.gz", hash = "sha256:2d475327684562c3a96cc71adf7dc8c4f0565175cf86b6d7a404ff4c771f15f0"},
 ]
 pyinstaller = [
-    {file = "pyinstaller-4.4-py3-none-macosx_10_13_universal2.whl", hash = "sha256:0e802c082487719aab6b2a93575819944c008e6e1ba44c7836fc45660a9586c0"},
-    {file = "pyinstaller-4.4-py3-none-manylinux2014_i686.whl", hash = "sha256:2cfef29a878fc54040e2287c19ea4bdc667f473b59918fcb51a1e68366ecb814"},
-    {file = "pyinstaller-4.4-py3-none-manylinux2014_x86_64.whl", hash = "sha256:b0f13d0a33b9a21659967db65b475c14645b456dc70ba68fa9cebf4bc29ef58e"},
-    {file = "pyinstaller-4.4-py3-none-win32.whl", hash = "sha256:d0b35f885650b9dc69072adf948b608bcb506c5256dd7f0d0967c1f177bb41b1"},
-    {file = "pyinstaller-4.4-py3-none-win_amd64.whl", hash = "sha256:4485046ca929e15f6a2db746ce183c14e1fc3c1e8d2102aad8f1403b25d9ebdf"},
-    {file = "pyinstaller-4.4.tar.gz", hash = "sha256:af3ef0b9f265a2d3859357a25ab16743fbb6143c89fd7c3570cb84b8d24db0ba"},
+    {file = "pyinstaller-4.5-py3-none-macosx_10_13_universal2.whl", hash = "sha256:0129e5ea77c5eb6b2e0de8b1f7ec006238991ac712e3c0e877b995a289e4d8ea"},
+    {file = "pyinstaller-4.5-py3-none-manylinux2014_i686.whl", hash = "sha256:3228e1c7d823c5e786ee41194171e19fc985c4d6074610e4876479697a97b60f"},
+    {file = "pyinstaller-4.5-py3-none-manylinux2014_x86_64.whl", hash = "sha256:8b22656d2eaf5141c20afa3b98422cce17bf05ff9ef4fa8b232b47853b18e4b9"},
+    {file = "pyinstaller-4.5-py3-none-win32.whl", hash = "sha256:9d78452652a27a20a7126fdb93fe7abe731b82dc2a6c163a67fd98bd2a9c44f5"},
+    {file = "pyinstaller-4.5-py3-none-win_amd64.whl", hash = "sha256:df294f6579443924774e7c987deccca47a5f6386137972c8f3f31983db37a43e"},
+    {file = "pyinstaller-4.5.tar.gz", hash = "sha256:86f694faec78a08c3893aacef84b1a49cb53d4e2880559c6124beefd196a3a74"},
 ]
 pyinstaller-hooks-contrib = [
     {file = "pyinstaller-hooks-contrib-2021.2.tar.gz", hash = "sha256:7f5d0689b30da3092149fc536a835a94045ac8c9f0e6dfb23ac171890f5ea8f2"},
@@ -2512,11 +2528,12 @@ python-baseconv = [
     {file = "python-baseconv-1.2.2.tar.gz", hash = "sha256:0539f8bd0464013b05ad62e0a1673f0ac9086c76b43ebf9f833053527cd9931b"},
 ]
 python-dotenv = [
-    {file = "python-dotenv-0.18.0.tar.gz", hash = "sha256:effaac3c1e58d89b3ccb4d04a40dc7ad6e0275fda25fd75ae9d323e2465e202d"},
-    {file = "python_dotenv-0.18.0-py2.py3-none-any.whl", hash = "sha256:dd8fe852847f4fbfadabf6183ddd4c824a9651f02d51714fa075c95561959c7d"},
+    {file = "python-dotenv-0.19.0.tar.gz", hash = "sha256:f521bc2ac9a8e03c736f62911605c5d83970021e3fa95b37d769e2bbbe9b6172"},
+    {file = "python_dotenv-0.19.0-py2.py3-none-any.whl", hash = "sha256:aae25dc1ebe97c420f50b81fb0e5c949659af713f31fdb63c749ca68748f34b1"},
 ]
 python-json-logger = [
-    {file = "python-json-logger-2.0.1.tar.gz", hash = "sha256:f26eea7898db40609563bed0a7ca11af12e2a79858632706d835a0f961b7d398"},
+    {file = "python-json-logger-2.0.2.tar.gz", hash = "sha256:202a4f29901a4b8002a6d1b958407eeb2dd1d83c18b18b816f5b64476dde9096"},
+    {file = "python_json_logger-2.0.2-py3-none-any.whl", hash = "sha256:99310d148f054e858cd5f4258794ed6777e7ad2c3fd7e1c1b527f1cba4d08420"},
 ]
 python-rtmidi = [
     {file = "python-rtmidi-1.4.9.tar.gz", hash = "sha256:bfeb4ed99d0cccf6fa2837566907652ded7adc1c03b69f2160c9de4082301302"},
@@ -2565,8 +2582,8 @@ scp = [
     {file = "scp-0.13.6.tar.gz", hash = "sha256:0a72f9d782e968b09b114d5607f96b1f16fe9942857afb355399edd55372fcf1"},
 ]
 sentry-sdk = [
-    {file = "sentry-sdk-1.3.0.tar.gz", hash = "sha256:5210a712dd57d88d225c1fc3fe3a3626fee493637bcd54e204826cf04b8d769c"},
-    {file = "sentry_sdk-1.3.0-py2.py3-none-any.whl", hash = "sha256:6864dcb6f7dec692635e5518c2a5c80010adf673c70340817f1a1b713d65bb41"},
+    {file = "sentry-sdk-1.3.1.tar.gz", hash = "sha256:ebe99144fa9618d4b0e7617e7929b75acd905d258c3c779edcd34c0adfffe26c"},
+    {file = "sentry_sdk-1.3.1-py2.py3-none-any.whl", hash = "sha256:f33d34c886d0ba24c75ea8885a8b3a172358853c7cbde05979fc99c29ef7bc52"},
 ]
 six = [
     {file = "six-1.16.0-py2.py3-none-any.whl", hash = "sha256:8abb2f1d86890a2dfb989f9a77cfcfd3e47c2a354b01111771326f8aa26e0254"},
@@ -2640,8 +2657,8 @@ yarg = [
     {file = "yarg-0.1.9.tar.gz", hash = "sha256:55695bf4d1e3e7f756496c36a69ba32c40d18f821e38f61d028f6049e5e15911"},
 ]
 zeroconf = [
-    {file = "zeroconf-0.33.1-py3-none-any.whl", hash = "sha256:46992d0786129c769c652c875221d394a63bdbef12832d443ac9e521005d46e1"},
-    {file = "zeroconf-0.33.1.tar.gz", hash = "sha256:ac88738639669f924859a4e01d9742f3783e619e710103f4a0d321a47f260fd2"},
+    {file = "zeroconf-0.33.2-py3-none-any.whl", hash = "sha256:2bc3503a9af1a15ee00a08d784881cb3111b4d24eff1f59e540f3b0813f1c365"},
+    {file = "zeroconf-0.33.2.tar.gz", hash = "sha256:5a59425d225a1f5fba0196766fccf856d4686f653037108cbc643a76c1a884fd"},
 ]
 zipp = [
     {file = "zipp-3.5.0-py3-none-any.whl", hash = "sha256:957cfda87797e389580cb8b9e3870841ca991e2125350677b2ca83a0e99390a3"},

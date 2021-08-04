@@ -8,7 +8,6 @@ from contextlib import ExitStack
 from errno import ECONNREFUSED
 from functools import partial
 from logging import Logger
-from time import time
 from trio import sleep
 from typing import cast, Generator, Optional, TYPE_CHECKING
 
@@ -17,6 +16,7 @@ from flockwave.connections import Connection, create_connection
 from flockwave.server.ext.osc.message import OSCMessage
 from flockwave.server.model import ConnectionPurpose, UAV
 from flockwave.server.utils.generic import overridden
+from flockwave.server.utils.system_time import get_current_unix_timestamp_msec
 
 from .channel import create_osc_channel
 
@@ -121,29 +121,37 @@ def generate_status_messages() -> Generator[OSCMessage, None, None]:
 
     # We dispatch a message for all UAVs where the status was updated in the
     # last five seconds
-    threshold = time() - 5
+    threshold = get_current_unix_timestamp_msec() - 5000
 
     for uav_id in app.object_registry.ids_by_type(UAV):
         uav = cast(UAV, app.object_registry.find_by_id(uav_id))
         timestamp = uav.status.timestamp
         if timestamp > threshold:
+            # This is an active UAV, send position information
+            yield OSCMessage(path_for_uav(uav_id, "/active"), (True,))
+
             pos_geo = uav.status.position
             if pos_geo.amsl is not None and (pos_geo.lat != 0 or pos_geo.lon != 0):
                 yield OSCMessage(
-                    f"/{path_prefix}/uavs/{uav_id}/pos/geo".encode(
-                        "ascii", errors="replace"
-                    ),
+                    path_for_uav(uav_id, "/pos/geo"),
                     (float(pos_geo.lat), float(pos_geo.lon), float(pos_geo.amsl)),
                 )
 
             pos_xyz = uav.status.position_xyz
             if pos_xyz:
                 yield OSCMessage(
-                    f"{path_prefix}/uavs/{uav_id}/pos/xyz".encode(
-                        "ascii", errors="replace"
-                    ),
+                    path_for_uav(uav_id, "/pos/xyz"),
                     (float(pos_xyz.x), float(pos_xyz.y), float(pos_xyz.z)),
                 )
+        else:
+            # This is an inactive UAV, send inactivity marker only
+            yield OSCMessage(path_for_uav(uav_id, "/active"), (False,))
+
+
+def path_for_uav(uav_id: str, suffix: str = "") -> bytes:
+    global path_prefix
+
+    return f"/{path_prefix}/uavs/{uav_id}{suffix}".encode("ascii", errors="replace")
 
 
 description = (

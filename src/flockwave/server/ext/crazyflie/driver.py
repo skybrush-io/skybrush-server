@@ -54,6 +54,7 @@ from .crtp_extensions import (
     LightProgramType,
     PreflightCheckStatus,
 )
+from .fence import Fence
 from .trajectory import encode_trajectory, TrajectoryEncoding
 
 __all__ = ("CrazyflieDriver",)
@@ -181,6 +182,51 @@ class CrazyflieDriver(UAVDriver):
             x_num, y_num, z_num = await uav.go_to(None, None, z_num)
             return f"Target set to ({x_num:.2f}, {y_num:.2f}, {z_num:.2f}) m"
 
+    async def handle_command_fence(
+        self,
+        uav: "CrazyflieUAV",
+        subcommand: Optional[str] = None,
+        x_min: Optional[str] = None,
+        y_min: Optional[str] = None,
+        z_min: Optional[str] = None,
+        x_max: Optional[str] = None,
+        y_max: Optional[str] = None,
+        z_max: Optional[str] = None,
+    ):
+        """Command that activates or deactivates the geofence on the UAV, or
+        sets up a geofence based on an axis-aligned bounding box.
+        """
+        if subcommand is None:
+            subcommand = "get"
+
+        subcommand = subcommand.lower()
+        fence = uav.fence
+
+        if fence is None:
+            raise RuntimeError("Drone has no fence object; this is probably a bug.")
+
+        if subcommand == "get":
+            enabled = await fence.is_enabled()
+            return "Fence is active" if enabled else "Fence is disabled"
+        elif subcommand == "on":
+            await fence.set_enabled(True)
+            return "Fence activated"
+        elif subcommand == "off":
+            await fence.set_enabled(False)
+            return "Fence disabled"
+        elif subcommand == "set":
+            try:
+                bounds = [float(x) for x in (x_min, y_min, z_min, x_max, y_max, z_max)]
+            except (TypeError, ValueError):
+                raise RuntimeError(
+                    "Invalid fence coordinates; expected xMin, yMin, zMin, xMax, yMax, zMax, separated by spaces"
+                )
+
+            await fence.set_axis_aligned_bounding_box(bounds[:3], bounds[3:])
+            return "Fence activated"
+        else:
+            raise RuntimeError(f"Unknown subcommand: {subcommand}")
+
     async def handle_command_go(
         self,
         uav: "CrazyflieUAV",
@@ -223,6 +269,11 @@ class CrazyflieDriver(UAVDriver):
         else:
             raise RuntimeError(f"Unknown command: {command}")
 
+    async def handle_command_stop(self, uav: "CrazyflieUAV") -> str:
+        """Stops the motors of the UAV immediately."""
+        await uav.stop()
+        return "Motor stop signal sent"
+
     async def handle_command_test(
         self, uav: "CrazyflieUAV", component: Optional[str] = None
     ) -> str:
@@ -240,11 +291,6 @@ class CrazyflieDriver(UAVDriver):
             return "LED test executed"
         else:
             return "Usage: test <battery|led|motor>"
-
-    async def handle_command_stop(self, uav: "CrazyflieUAV") -> str:
-        """Stops the motors of the UAV immediately."""
-        await uav.stop()
-        return "Motor stop signal sent"
 
     async def handle_command___show_upload(self, uav: "CrazyflieUAV", *, show):
         """Handles a drone show upload request for the given UAV.
@@ -350,17 +396,22 @@ class CrazyflieUAV(UAVBase):
         PreflightCheckResult.SOFT_FAILURE,
     ]
 
+    driver: CrazyflieDriver
     notify_updated: Callable[[], None]
     notify_shutdown_or_reboot: Callable[[], None]
     send_log_message_to_gcs: Callable[[str], None]
     uri: Optional[str]
 
+    _armed: bool
     _crazyflie: Optional[Crazyflie]
+    _fence: Optional[Fence]
+    _fence_breached: bool
     _log_session: Optional[LogSession]
 
     def __init__(self, *args, **kwds):
         super().__init__(*args, **kwds)
-        self.uri: Optional[str] = None
+
+        self.uri = None
         self.notify_updated = nop
         self.notify_shutdown_or_reboot = nop
         self.send_log_message_to_gcs = nop
@@ -368,6 +419,7 @@ class CrazyflieUAV(UAVBase):
         self._command_queue_tx, self._command_queue_rx = open_memory_channel(0)
 
         self._crazyflie = None
+        self._fence = None
         self._log_session = None
         self._last_uploaded_show = None
 
@@ -383,6 +435,10 @@ class CrazyflieUAV(UAVBase):
         if self._crazyflie is None:
             raise RuntimeError(f"Not connected to the Crazyflie drone at {self.uri}")
         return self._crazyflie
+
+    @property
+    def fence(self) -> Optional[Fence]:
+        return self._fence
 
     async def arm(self, force: bool = False) -> None:
         """Arms the motors of the Crazyflie."""
@@ -568,6 +624,7 @@ class CrazyflieUAV(UAVBase):
                 self._battery.charging = status.charging
                 self._battery.voltage = status.battery_voltage
                 self._battery.percentage = status.battery_percentage
+                self._fence_breached = status.fence_breached
                 self._position.update(
                     x=status.position[0], y=status.position[1], z=status.position[2]
                 )
@@ -641,6 +698,30 @@ class CrazyflieUAV(UAVBase):
         await self.set_parameter("preflight.homeY", y)
         await self.set_parameter("preflight.homeZ", z)
 
+    async def set_led_color(self, color: Optional[Color] = None):
+        """Overrides the color of the LED ring of the UAV.
+
+        Parameters:
+            color: the color to apply; `None` turns off the override.
+        """
+        if color is not None:
+            red, green, blue = color_to_rgb8_triplet(color)
+        else:
+            red, green, blue = 0, 0, 0
+
+        await self._get_crazyflie().run_command(
+            port=DRONE_SHOW_PORT,
+            command=DroneShowCommand.TRIGGER_GCS_LIGHT_EFFECT,
+            data=Struct("<BBBB").pack(
+                GCSLightEffectType.SOLID
+                if color
+                else GCSLightEffectType.OFF,  # effect ID
+                red,
+                green,
+                blue,
+            ),
+        )
+
     async def stop(self) -> None:
         """Stops the motors of the UAV immediately."""
         cf = self._get_crazyflie()
@@ -709,30 +790,6 @@ class CrazyflieUAV(UAVBase):
         else:
             raise NotSupportedError
 
-    async def set_led_color(self, color: Optional[Color] = None):
-        """Overrides the color of the LED ring of the UAV.
-
-        Parameters:
-            color: the color to apply; `None` turns off the override.
-        """
-        if color is not None:
-            red, green, blue = color_to_rgb8_triplet(color)
-        else:
-            red, green, blue = 0, 0, 0
-
-        await self._get_crazyflie().run_command(
-            port=DRONE_SHOW_PORT,
-            command=DroneShowCommand.TRIGGER_GCS_LIGHT_EFFECT,
-            data=Struct("<BBBB").pack(
-                GCSLightEffectType.SOLID
-                if color
-                else GCSLightEffectType.OFF,  # effect ID
-                red,
-                green,
-                blue,
-            ),
-        )
-
     async def upload_show(self, show, *, remember: bool = True) -> None:
         home = get_home_position_from_show_specification(show)
         trajectory = get_trajectory_from_show_specification(show)
@@ -771,6 +828,7 @@ class CrazyflieUAV(UAVBase):
             async with Crazyflie(
                 uri, cache=self.driver.cache_folder
             ) as self._crazyflie:
+                self._fence = Fence(self._crazyflie)
                 await self._crazyflie.log.validate()
                 try:
                     self._log_session = self._setup_logging_session()
@@ -778,6 +836,7 @@ class CrazyflieUAV(UAVBase):
                 finally:
                     self._log_session = None
         finally:
+            self._fence = None
             self._crazyflie = None
 
     async def setup_flight_mode(self):
@@ -862,6 +921,7 @@ class CrazyflieUAV(UAVBase):
         """
         self._preflight_status = self._create_empty_preflight_status_report()
         self._armed = True  # Crazyflies typically boot in an armed state
+        self._fence_breached = False
         self._battery = BatteryInfo()
         self._position = PositionXYZ()
         self._show_execution_stage = DroneShowExecutionStage.UNKNOWN
@@ -915,6 +975,9 @@ class CrazyflieUAV(UAVBase):
         )
 
         self.ensure_error(FlockwaveErrorCode.DISARMED, present=not self._armed)
+        self.ensure_error(
+            FlockwaveErrorCode.GEOFENCE_VIOLATION, present=self._fence_breached
+        )
 
         self.ensure_error(
             FlockwaveErrorCode.TAKEOFF,

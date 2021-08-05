@@ -22,6 +22,9 @@ __all__ = (
 #: services on the Crazyflie if it is running our patched firmware
 DRONE_SHOW_PORT = CRTPPort.UNUSED_1
 
+#: Constent representing the identifier of the geofence memory
+MEM_TYPE_FENCE = 0x40
+
 
 class DroneShowCommand(IntEnum):
     """Enum representing the possible command codes we can send to the
@@ -36,6 +39,22 @@ class DroneShowCommand(IntEnum):
     RESTART = 5
     TRIGGER_GCS_LIGHT_EFFECT = 6
     ARM_OR_DISARM = 7
+    DEFINE_FENCE = 8
+
+
+class FenceLocation(IntEnum):
+    """Location codes for safety fences."""
+
+    INVALID = 0
+    MEM = 1
+
+
+class FenceType(IntEnum):
+    """Enum representing the known geofence types of our firmware extension."""
+
+    UNLIMITED = 0
+    ALWAYS_BREACHED = 1
+    AXIS_ALIGNED_BOUNDING_BOX = 2
 
 
 class LightProgramLocation(IntEnum):
@@ -81,6 +100,7 @@ class DroneShowStatusFlag(IntFlag):
     AIRBORNE = 8
     TESTING_MODE = 16
     DISARMED = 32
+    FENCE_BREACHED = 64
 
 
 class DroneShowExecutionStage(IntEnum):
@@ -196,6 +216,11 @@ class DroneShowStatus:
     def charging(self) -> bool:
         """Returns whether the battery is charging."""
         return bool(self.flags & DroneShowStatusFlag.BATTERY_CHARGING)
+
+    @property
+    def fence_breached(self) -> bool:
+        """Returns whether the geofence was breached."""
+        return bool(self.flags & DroneShowStatusFlag.FENCE_BREACHED)
 
     @classmethod
     def from_bytes(cls, data: bytes):

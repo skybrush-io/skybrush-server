@@ -174,6 +174,7 @@ def generate_mission_file_from_show_specification(show) -> bytes:
     # parse display name of mission
     mission_spec = show.get("mission")
     display_name: str = ""
+    group_index: int = 0
     mission_id: Optional[str] = None
     if mission_spec:
         mission_id = mission_spec.get("id")
@@ -182,6 +183,11 @@ def generate_mission_file_from_show_specification(show) -> bytes:
             mission_index = mission_spec.get("index")
             if mission_id is not None and mission_index is not None:
                 display_name = f"{mission_id}/{mission_index}"
+
+    # parse group index of the drone
+    group_index = int(show["group"]) if "group" in show else 0
+    if group_index < 0 or group_index > 255:
+        raise RuntimeError("Group index outside valid range")
 
     # abbreviate the display name of the mission if needed; the flockctrl
     # protocol truncates the display name at 15 chars so if we have numbers
@@ -265,6 +271,7 @@ def generate_mission_file_from_show_specification(show) -> bytes:
     params = {
         "altitude_setpoint": 5,  # TODO: get from show if needed
         "display_name": display_name,
+        "group_index": group_index,
         "max_flying_height": geofence.max_altitude,
         "max_flying_range": geofence.max_distance,
         "orientation": -1,  # TODO: get from show

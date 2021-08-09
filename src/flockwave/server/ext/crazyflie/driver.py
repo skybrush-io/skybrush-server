@@ -6,11 +6,12 @@ from collections import defaultdict
 from colour import Color
 from contextlib import asynccontextmanager, AsyncExitStack
 from functools import partial
+from logging import Logger
 from math import hypot
 from pathlib import Path
 from random import random
 from struct import Struct
-from trio import Nursery, open_memory_channel, open_nursery, sleep
+from trio import Nursery, open_nursery, sleep
 from trio_util import periodic
 from typing import AsyncIterator, Callable, Optional, Sequence, Tuple
 
@@ -67,16 +68,23 @@ class CrazyflieDriver(UAVDriver):
 
     Attributes:
         app (SkybrushServer): the app in which the driver lives
-        id_format (str): Python format string that receives a numeric
-            drone ID in the flock and returns its preferred formatted
-            identifier that is used when the drone is registered in the
-            server, or any other object that has a ``format()`` method
-            accepting a single integer as an argument and returning the
-            preferred UAV identifier
-        use_fake_position (Optional[Tuple[float, float, float]]): whether to
-            feed a fake position into the positioning system of the
-            connected drones, strictly for testing purposes
+        id_format: Python format string that receives a numeric drone ID in the
+            flock and returns its preferred formatted identifier that is used
+            when the drone is registered in the server, or any other object that
+            has a ``format()`` method accepting a single integer as an argument
+            and returning the preferred UAV identifier
+        status_interval: number of seconds that should pass between consecutive
+            status requests sent to a drone
+        use_fake_position: whether to feed a fake position into the positioning
+            system of the connected drones, strictly for testing purposes
     """
+
+    debug: bool
+    id_format: str
+    log: Logger
+    status_interval: float = 0.5
+    use_fake_position: Optional[Tuple[float, float, float]] = None
+    use_test_mode: bool = False
 
     def __init__(
         self, app=None, id_format: str = "{0:02}", cache: Optional[Path] = None
@@ -216,7 +224,7 @@ class CrazyflieDriver(UAVDriver):
             return "Fence disabled"
         elif subcommand == "set":
             try:
-                bounds = [float(x) for x in (x_min, y_min, z_min, x_max, y_max, z_max)]
+                bounds = [float(x) for x in (x_min, y_min, z_min, x_max, y_max, z_max)]  # type: ignore
             except (TypeError, ValueError):
                 raise RuntimeError(
                     "Invalid fence coordinates; expected xMin, yMin, zMin, xMax, yMax, zMax, separated by spaces"
@@ -416,8 +424,6 @@ class CrazyflieUAV(UAVBase):
         self.notify_shutdown_or_reboot = nop
         self.send_log_message_to_gcs = nop
 
-        self._command_queue_tx, self._command_queue_rx = open_memory_channel(0)
-
         self._crazyflie = None
         self._fence = None
         self._log_session = None
@@ -569,19 +575,6 @@ class CrazyflieUAV(UAVBase):
     def preflight_status(self) -> PreflightCheckInfo:
         return self._preflight_status
 
-    async def process_command_queue(self) -> None:
-        """Runs a task that processes the commands targeted to this UAV as they
-        are placed in the incoming command queue of the UAV.
-
-        The processor will not interleave the execution of commands; only one
-        command will be executed at the same time.
-        """
-        # Don't put this in an async with() block; we don't want to close the
-        # RX queue when the producer of the TX queue (i.e. the CrazyflieHandlerTask)
-        # disappears, we want to keep on listening
-        async for command, args in self._command_queue_rx:
-            print(repr(command), repr(args))
-
     async def process_console_messages(self) -> None:
         """Runs a task that processes incoming console messages and forwards
         them to the logger of the extension.
@@ -600,7 +593,7 @@ class CrazyflieUAV(UAVBase):
             period: the number of seconds elapsed between consecutive status
                 requests, in seconds
         """
-        await sleep(random() * 0.5)
+        await sleep(random() * period)
         async for _ in periodic(period):
             cf = self._get_crazyflie()
             try:
@@ -664,6 +657,7 @@ class CrazyflieUAV(UAVBase):
             await CrazyflieHandlerTask(
                 self,
                 debug=self.driver.debug,
+                status_interval=self.driver.status_interval,
                 use_fake_position=self.driver.use_fake_position,
             ).run()
         finally:
@@ -927,7 +921,7 @@ class CrazyflieUAV(UAVBase):
         self._show_execution_stage = DroneShowExecutionStage.UNKNOWN
         self._velocity = VelocityXYZ()
 
-    def _setup_logging_session(self):
+    def _setup_logging_session(self) -> LogSession:
         """Sets up the log blocks that contain the variables we need from the
         Crazyflie, and returns a LogSession object.
         """
@@ -1074,10 +1068,16 @@ class CrazyflieHandlerTask:
     drone.
     """
 
+    _debug: bool
+    _status_interval: float
+    _uav: CrazyflieUAV
+    _use_fake_position: Optional[Tuple[float, float, float]]
+
     def __init__(
         self,
         uav: CrazyflieUAV,
         debug: bool = False,
+        status_interval: float = 0.5,
         use_fake_position: Optional[Tuple[float, float, float]] = None,
     ):
         """Constructor.
@@ -1085,16 +1085,18 @@ class CrazyflieHandlerTask:
         Parameters:
             uav: the Crazyflie UAV to communicate with
             debug: whether to log the communication with the UAV on the console
+            status_interval: number of seconds that should pass between consecutive
+                status requests sent to a drone
             use_fake_position: whether to feed a fake position to the UAV as if
                 it was received from an external positioning system. Strictly
                 for debugging purposes.
         """
-        self._command_queue_tx = uav._command_queue_tx
         self._uav = uav
         self._debug = bool(debug)
+        self._status_interval = float(status_interval)
         self._use_fake_position = use_fake_position
 
-    async def run(self):
+    async def run(self) -> None:
         """Executes the task that handles communication with the associated
         Crazyflie drone.
 
@@ -1117,7 +1119,7 @@ class CrazyflieHandlerTask:
                 f"Error while handling Crazyflie: {str(ex)}", extra={"id": self._uav.id}
             )
 
-    async def _run(self):
+    async def _run(self) -> None:
         """Implementation of the task itself.
 
         This task is guaranteed not to throw an exception so it won't crash the
@@ -1133,8 +1135,8 @@ class CrazyflieHandlerTask:
 
                 try:
                     await enter(self._uav.use(debug=self._debug))
+                    assert self._uav.log_session is not None
                     await enter(self._uav.log_session)
-                    await enter(self._uav._command_queue_tx)
                     await self._uav.setup_flight_mode()
                 except TimeoutError:
                     log.error(
@@ -1158,9 +1160,10 @@ class CrazyflieHandlerTask:
                 nursery: Nursery = await enter(open_nursery())  # type: ignore
                 self._uav.notify_shutdown_or_reboot = nursery.cancel_scope.cancel
                 nursery.start_soon(self._uav.process_console_messages)
-                nursery.start_soon(self._uav.process_drone_show_status_messages)
+                nursery.start_soon(
+                    self._uav.process_drone_show_status_messages, self._status_interval
+                )
                 nursery.start_soon(self._uav.process_log_messages)
-                # nursery.start_soon(self._uav.process_command_queue)
 
                 if self._use_fake_position:
                     nursery.start_soon(self._feed_fake_position)

@@ -3,6 +3,7 @@
 from contextlib import AsyncExitStack, ExitStack
 from errno import EACCES
 from functools import partial
+from logging import Logger
 from pathlib import Path
 from struct import Struct
 from trio import open_memory_channel, open_nursery
@@ -23,7 +24,12 @@ __all__ = ("construct",)
 class CrazyflieDronesExtension(UAVExtensionBase):
     """Extension that adds support for Crazyflie drones."""
 
-    def _create_driver(self):
+    log: Logger
+
+    _driver: CrazyflieDriver
+
+    def _create_driver(self) -> CrazyflieDriver:
+        assert self.app is not None
         return CrazyflieDriver(
             cache=Path(self.app.dirs.user_cache_dir) / "ext" / "crazyflie"
         )
@@ -39,6 +45,7 @@ class CrazyflieDronesExtension(UAVExtensionBase):
         driver.debug = bool(configuration.get("debug", False))
         driver.id_format = configuration.get("id_format", "{0:02}")
         driver.log = self.log.getChild("driver")
+        driver.status_interval = float(configuration.get("status_interval", 0.5))
         driver.use_fake_position = configuration.get("feed_fake_position", False)
         driver.use_test_mode = bool(configuration.get("testing", False))
 
@@ -81,6 +88,8 @@ class CrazyflieDronesExtension(UAVExtensionBase):
                 return await self._run(app, configuration)
 
     async def _run(self, app, configuration):
+        assert self.app is not None
+
         signals = self.app.import_api("signals")
 
         connection_config = configuration.get("connections", [])

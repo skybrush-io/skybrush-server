@@ -121,7 +121,9 @@ EXTENSIONS = {
         # Override the DSN to turn on Sentry integration
         "dsn": ""
     },
-    "show": {},
+    "show": {
+        "default_start_method": "rc"  # set to "auto" if you typically start shows automatically and not via a remote controller
+    },
     "sidekick": {"enabled": False},
     "socketio": {},
     # "smpte_timecode": {"connection": "midi:IAC Driver Bus 1"},

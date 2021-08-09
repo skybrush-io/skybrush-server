@@ -1,8 +1,11 @@
+from __future__ import annotations
+
 from contextlib import ExitStack
+from logging import Logger
 from math import inf
-from trio import fail_after, open_nursery, sleep_forever, TooSlowError
+from trio import fail_after, Nursery, open_nursery, sleep_forever, TooSlowError
 from trio_util import periodic
-from typing import Any, Dict
+from typing import Any, Dict, Optional, TYPE_CHECKING
 
 from flockwave.concurrency import CancellableTaskGroup
 from flockwave.ext.base import ExtensionBase
@@ -12,6 +15,9 @@ from .clock import ShowClock
 from .config import DroneShowConfiguration, LightConfiguration, StartMethod
 
 __all__ = ("construct", "dependencies", "description")
+
+if TYPE_CHECKING:
+    from flockwave.server.app import SkybrushServer
 
 
 class DroneShowExtension(ExtensionBase):
@@ -24,6 +30,13 @@ class DroneShowExtension(ExtensionBase):
     latter two receive a keyword argument named `config` that contains the new
     configuration.
     """
+
+    app: "SkybrushServer"
+    log: Logger
+
+    _clock: Optional[ShowClock]
+    _nursery: Optional[Nursery]
+    _show_tasks: Optional[CancellableTaskGroup]
 
     def __init__(self):
         super().__init__()
@@ -74,17 +87,23 @@ class DroneShowExtension(ExtensionBase):
             "SHOW-SETLIGHTS": self.handle_SHOW_SETLIGHTS,
         }
 
+        self._config.start_method = StartMethod(
+            configuration.get("default_start_method", "rc")
+        )
+
         async with open_nursery() as self._nursery:
+            assert self._nursery is not None
+
             self._show_tasks = CancellableTaskGroup(self._nursery)
 
             with ExitStack() as stack:
                 stack.enter_context(
-                    self._config.updated.connected_to(
+                    self._config.updated.connected_to(  # type: ignore
                         self._on_config_updated, sender=self._config
                     )
                 )
                 stack.enter_context(
-                    self._lights.updated.connected_to(
+                    self._lights.updated.connected_to(  # type: ignore
                         self._on_lights_updated, sender=self._lights
                     )
                 )
@@ -100,22 +119,24 @@ class DroneShowExtension(ExtensionBase):
         """Returns a copy of the current LED lgiht configuration."""
         return self._lights.clone()
 
-    def _on_config_updated(self, sender):
+    def _on_config_updated(self, sender) -> None:
         """Handler that is called when the configuration of the start settings
         of the show was updated from any source.
         """
-        self._clock.start_time = self._config.start_time
+        if self._clock is not None:
+            self._clock.start_time = self._config.start_time
 
-        self._show_tasks.cancel_all()
+        if self._show_tasks is not None:
+            self._show_tasks.cancel_all()
 
-        if self._should_run_countdown:
-            self._show_tasks.start_soon(self._start_show_when_needed)
-            self._show_tasks.start_soon(self._manage_countdown_before_start)
+            if self._should_run_countdown:
+                self._show_tasks.start_soon(self._start_show_when_needed)
+                self._show_tasks.start_soon(self._manage_countdown_before_start)
 
         updated_signal = self.app.import_api("signals").get("show:config_updated")
         updated_signal.send(self, config=self._config.clone())
 
-    def _on_lights_updated(self, sender):
+    def _on_lights_updated(self, sender) -> None:
         """Handler that is called when the configuration of the LED lights was
         updated from any source.
         """
@@ -129,13 +150,15 @@ class DroneShowExtension(ExtensionBase):
         """
         return (
             self._config.authorized_to_start
+            and self._clock is not None
             and self._clock.start_time is not None
             and self._config.start_method is StartMethod.AUTO
         )
 
-    async def _start_show_when_needed(self):
+    async def _start_show_when_needed(self) -> None:
         start_signal = self.app.import_api("signals").get("show:start")
 
+        assert self._clock is not None
         await wait_until(self._clock, seconds=0, edge_triggered=True)
 
         self._start_uavs_if_needed()
@@ -147,7 +170,8 @@ class DroneShowExtension(ExtensionBase):
         else:
             self.log.info("Started show accurately")
 
-    async def _manage_countdown_before_start(self):
+    async def _manage_countdown_before_start(self) -> None:
+        assert self._clock is not None
         await wait_until(self._clock, seconds=-11, edge_triggered=False)
 
         last_seconds = -inf
@@ -171,14 +195,17 @@ class DroneShowExtension(ExtensionBase):
 
     def _notify_uavs_about_countdown_state(
         self, seconds_left: float = 0, cancelled: bool = False
-    ):
+    ) -> None:
         countdown_signal = self.app.import_api("signals").get("show:countdown")
         countdown_signal.send(self, delay=seconds_left if not cancelled else None)
 
-    def _start_uavs_if_needed(self):
+    def _start_uavs_if_needed(self) -> None:
+        assert self._nursery is not None
+
         self._notify_uavs_about_countdown_state(seconds_left=0)
 
-        uavs_by_drivers = self.app.sort_uavs_by_drivers(self._config.uav_ids)
+        uav_ids = (uav_id for uav_id in self._config.uav_ids if uav_id is not None)
+        uavs_by_drivers = self.app.sort_uavs_by_drivers(uav_ids)
         for driver, uavs in uavs_by_drivers.items():
             results = driver.send_takeoff_signal(uavs, scheduled=True)
             self._nursery.start_soon(
@@ -187,7 +214,7 @@ class DroneShowExtension(ExtensionBase):
 
     async def _process_command_results_in_background(
         self, results, what: str = "commands"
-    ):
+    ) -> None:
         try:
             with fail_after(5):
                 results = await wait_for_dict_items(results)

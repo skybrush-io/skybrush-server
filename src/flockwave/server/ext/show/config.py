@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from blinker import Signal
 from enum import Enum
-from typing import List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, TypeVar
 
 __all__ = ("DroneShowConfiguration", "StartMethod")
 
@@ -31,26 +31,34 @@ class LightEffectType(Enum):
     SOLID = "solid"
 
 
+C = TypeVar("C", bound="DroneShowConfiguration")
+
+
 class DroneShowConfiguration:
     """Main configuration object for the drone show extension."""
 
     updated = Signal(doc="Signal emitted when the configuration is updated")
 
+    authorized_to_start: bool
+    start_method: StartMethod
+    start_time: Optional[float]
+    uav_ids: List[Optional[str]]
+
     def __init__(self):
         """Constructor."""
-        self.authorized_to_start = False  # type: bool
-        self.start_time = None  # type: Optional[float]
-        self.start_method = StartMethod.RC  # type: StartMethod
-        self.uav_ids = []  # type: List[Optional[str]]
+        self.authorized_to_start = False
+        self.start_time = None
+        self.start_method = StartMethod.RC
+        self.uav_ids = []
 
-    def clone(self):
+    def clone(self: C) -> C:
         """Makes an exact shallow copy of the configuration object."""
         result = self.__class__()
         result.update_from_json(self.json)
         return result
 
     @property
-    def json(self):
+    def json(self) -> Dict[str, Any]:
         """Returns the JSON representation of the configuration object."""
         return {
             "start": {
@@ -61,7 +69,7 @@ class DroneShowConfiguration:
             }
         }
 
-    def update_from_json(self, obj):
+    def update_from_json(self, obj: Dict[str, Any]) -> None:
         """Updates the configuration object from its JSON representation."""
         changed = False
 

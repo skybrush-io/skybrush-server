@@ -13,7 +13,11 @@
     # Listen for Crazyflie drones
     "crazyflie": {
       "enabled": true
+    },
+
+    # Start shows automatically by default, don't expect an RC to be present
+    "show": {
+      "default_start_method": "auto"
     }
   }
 }
-

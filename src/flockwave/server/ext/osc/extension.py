@@ -8,7 +8,7 @@ from contextlib import ExitStack
 from errno import ECONNREFUSED
 from functools import partial
 from logging import Logger
-from trio import sleep
+from trio import Cancelled, sleep
 from typing import cast, Generator, Optional, TYPE_CHECKING
 
 from flockwave.channels.message import MessageChannel
@@ -77,16 +77,26 @@ async def run_connection(
             as OSC messages on the connection
     """
     channel = create_osc_channel(connection)
+    cancelled = False
     try:
         if log:
-            log.info(f"OSC connection to {address} up and running")
+            log.info(
+                f"OSC connection to {address} up and running",
+                extra={"semantics": "success"},
+            )
         await run_channel(channel, interval=interval)
     except Exception as ex:
         if log:
             log.error(str(ex))
+    except Cancelled:
+        cancelled = True
+        raise
     finally:
         if log:
-            log.error(f"OSC connection to {address} stopped unexpectedly")
+            if cancelled:
+                log.info(f"OSC connection to {address} closed")
+            else:
+                log.error(f"OSC connection to {address} stopped unexpectedly")
 
 
 async def run_channel(channel: MessageChannel[OSCMessage], *, interval: float) -> None:

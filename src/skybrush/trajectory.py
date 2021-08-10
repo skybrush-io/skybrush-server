@@ -80,15 +80,11 @@ class TrajectorySpecification:
         The first point will contain the minimum coordinates, the second will
         contain the maximum coordinates.
 
-        Raises an exception if the trajectory has no points.
+        Raises:
+            ValueError: if the margin is negative or if the trajectory has no
+                points
         """
-        points = self._data.get("points", [])
-        bbox = BoundingBoxCalculator()
-        for _, point, control_points in points:
-            bbox.add(point)
-            for control_point in control_points:
-                bbox.add(control_point)
-        return bbox.get_corners()
+        return self.get_padded_bounding_box()
 
     @property
     def is_empty(self) -> bool:
@@ -137,6 +133,33 @@ class TrajectorySpecification:
     def takeoff_time(self) -> float:
         """Returns the takeoff time of the drone within the show, in seconds."""
         return float(self._data.get("takeoffTime", 0.0))
+
+    def get_padded_bounding_box(self, margin: float = 0) -> Tuple[Point, Point]:
+        """Returns the coordinates of the opposite corners of the axis-aligned
+        bounding box of the trajectory, optionally padded with the given margin.
+
+        The first point will contain the minimum coordinates, the second will
+        contain the maximum coordinates.
+
+        Parameters:
+            margin: the margin to apply on each side of the bounding box
+
+        Raises:
+            ValueError: if the margin is negative or if the trajectory has no
+                points
+        """
+        points = self._data.get("points", [])
+
+        bbox = BoundingBoxCalculator()
+        for _, point, control_points in points:
+            bbox.add(point)
+            for control_point in control_points:
+                bbox.add(control_point)
+
+        if margin > 0:
+            bbox.pad(margin)
+
+        return bbox.get_corners()
 
     def iter_segments(self, max_length: float = inf) -> Iterable[TrajectorySegment]:
         points = self._data.get("points")

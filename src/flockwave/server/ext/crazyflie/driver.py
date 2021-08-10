@@ -1041,10 +1041,18 @@ class CrazyflieUAV(UAVBase):
     ) -> None:
         """Uploads the given trajectory data to the Crazyflie drone."""
         cf = self._get_crazyflie()
+
         try:
-            memory = await cf.mem.find(MemoryType.TRAJECTORY)
+            trajectory_memory = await cf.mem.find(MemoryType.TRAJECTORY)
         except ValueError:
             raise RuntimeError("Trajectories are not supported on this drone")
+
+        supports_fence = await self.fence.is_supported() if self.fence else False
+        if not supports_fence:
+            self.driver.log.warning(
+                "Geofence is not supported on this drone; please update the firmware",
+                extra={"id": self.id},
+            )
 
         # Define the home position and the takeoff time first
         await self.set_home_position(home or trajectory.home_position)
@@ -1055,7 +1063,15 @@ class CrazyflieUAV(UAVBase):
 
         # Encode the trajectory and write it to the Crazyflie memory
         data = encode_trajectory(trajectory, encoding=TrajectoryEncoding.COMPRESSED)
-        addr = await write_with_checksum(memory, 0, data, only_if_changed=True)
+        addr = await write_with_checksum(
+            trajectory_memory, 0, data, only_if_changed=True
+        )
+
+        # Define the geofence first (for safety reasons)
+        if supports_fence:
+            assert self.fence is not None
+            bounds = trajectory.get_padded_bounding_box(margin=1)
+            await self.fence.set_axis_aligned_bounding_box(*bounds)
 
         # Now we can define the entire trajectory as well
         await cf.high_level_commander.define_trajectory(

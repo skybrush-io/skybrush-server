@@ -3,7 +3,7 @@
 from aiocflib.crazyflie.mem import write_with_checksum
 from aiocflib.crazyflie import Crazyflie
 from struct import Struct
-from typing import Sequence
+from typing import Optional, Sequence
 
 from .crtp_extensions import (
     DRONE_SHOW_PORT,
@@ -15,23 +15,36 @@ from .crtp_extensions import (
 
 
 class Fence:
-    """Geofence handling for a Crazyflie drone."""
+    """Fence handling for a Crazyflie drone."""
 
     _crazyflie: Crazyflie
+    _is_supported: Optional[bool]
 
     def __init__(self, crazyflie: Crazyflie):
         """Constructor.
 
         Parameters:
-            crazyflie: the Crazyflie for which we are handling geofence-related
+            crazyflie: the Crazyflie for which we are handling fence-related
                 commands
         """
         self._crazyflie = crazyflie
+        self._is_supported = None
 
     async def is_enabled(self, fetch: bool = False) -> bool:
-        """Returns whether the geofence of the Crazyflie is active."""
+        """Returns whether the fence of the Crazyflie is active."""
         value = await self._crazyflie.param.get("fence.enabled", fetch=fetch)
         return bool(value)
+
+    async def is_supported(self) -> bool:
+        """Returns whether the Crazyflie supports the fence functionality."""
+        if self._is_supported is None:
+            try:
+                await self._crazyflie.mem.find(MEM_TYPE_FENCE)  # type: ignore
+                self._is_supported = True
+            except ValueError:
+                self._is_supported = False
+
+        return bool(self._is_supported)
 
     async def set_enabled(self, enabled: bool = True) -> None:
         """Enables or disables the geofence on the Crazyflie.

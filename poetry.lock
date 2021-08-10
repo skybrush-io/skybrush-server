@@ -11,6 +11,11 @@ jeepney = {version = ">=0.6.0,<0.7.0", markers = "sys_platform == \"linux\""}
 pyobjc-core = {version = ">=7.1,<8.0", markers = "sys_platform == \"darwin\""}
 pyobjc-framework-Cocoa = {version = ">=7.1,<8.0", markers = "sys_platform == \"darwin\""}
 
+[package.source]
+type = "legacy"
+url = "https://pypi.collmot.com/simple"
+reference = "collmot"
+
 [[package]]
 name = "aio-usb-hotplug"
 version = "4.0.0"
@@ -26,7 +31,7 @@ pyusb = ">=1.1.0,<2.0.0"
 
 [[package]]
 name = "aiocflib"
-version = "2.0.2"
+version = "2.1.1"
 description = "asyncio-based API for Crazyflie drones"
 category = "main"
 optional = false
@@ -360,7 +365,7 @@ reference = "collmot"
 
 [[package]]
 name = "compose"
-version = "1.2.2"
+version = "1.2.5"
 description = "The classic ``compose``, with all the Pythonic features."
 category = "main"
 optional = false
@@ -1158,7 +1163,7 @@ reference = "collmot"
 
 [[package]]
 name = "pyinstaller"
-version = "4.5"
+version = "4.5.1"
 description = "PyInstaller bundles a Python application and all its dependencies into a single package."
 category = "dev"
 optional = false
@@ -1707,7 +1712,7 @@ reference = "collmot"
 
 [[package]]
 name = "tinyrpc"
-version = "1.0.4"
+version = "1.1.0"
 description = "A small, modular, transport and protocol neutral RPC library that, among other things, supports JSON-RPC and zmq."
 category = "main"
 optional = false
@@ -1722,6 +1727,7 @@ gevent = ["gevent"]
 httpclient = ["gevent-websocket", "requests", "websocket-client"]
 jsonext = ["jsonext"]
 msgpack = ["msgpack"]
+rabbitmq = ["pika"]
 websocket = ["gevent-websocket"]
 wsgi = ["werkzeug"]
 zmq = ["pyzmq"]
@@ -1899,7 +1905,7 @@ reference = "collmot"
 
 [[package]]
 name = "zeroconf"
-version = "0.33.2"
+version = "0.34.3"
 description = "Pure Python Multicast DNS Service Discovery Library (Bonjour/Avahi compatible)"
 category = "main"
 optional = false
@@ -1945,8 +1951,8 @@ aio-usb-hotplug = [
     {file = "aio_usb_hotplug-4.0.0-py3-none-any.whl", hash = "sha256:f8c930253c8eab601eab87723a415c32bd1423ab195da2d6242d83c3eda86e76"},
 ]
 aiocflib = [
-    {file = "aiocflib-2.0.2-py3-none-any.whl", hash = "md5:1783d35a2461af184a9c8559d2bda99c"},
-    {file = "aiocflib-2.0.2.tar.gz", hash = "md5:bf5623b0a7b27f6eb08b7f0927fd5340"},
+    {file = "aiocflib-2.1.1-py3-none-any.whl", hash = "md5:3184d7d86259817d6a9c69125a096286"},
+    {file = "aiocflib-2.1.1.tar.gz", hash = "md5:140e4db93522dfcd53beb74bc2702e16"},
 ]
 aiofiles = [
     {file = "aiofiles-0.7.0-py3-none-any.whl", hash = "sha256:c67a6823b5f23fcab0a2595a289cec7d8c863ffcb4322fb8cd6b90400aedfdbc"},
@@ -2076,10 +2082,10 @@ commentjson = [
     {file = "commentjson-0.9.0.tar.gz", hash = "sha256:42f9f231d97d93aff3286a4dc0de39bfd91ae823d1d9eba9fa901fe0c7113dd4"},
 ]
 compose = [
-    {file = "compose-1.2.2-py2.py30-none-any.whl", hash = "sha256:d1447afb8f38b62e9ff8c0385c195cd14e199139e1d68d6e3d278e80dab71c00"},
-    {file = "compose-1.2.2-py35-none-any.whl", hash = "sha256:a55d4d2875997012328145d77f23ab033b0e9643d743aaab87fea8c6710facdc"},
-    {file = "compose-1.2.2-py38-none-any.whl", hash = "sha256:b143aa1b825848ea311645ca60905db466559cb78c83b8abb7ab7858fed2e392"},
-    {file = "compose-1.2.2.tar.gz", hash = "sha256:5fa988bc5d9a25a3305f4990c46cdff3a0549499ca4197820fd41b3b3d82c1e1"},
+    {file = "compose-1.2.5-py2.py30-none-any.whl", hash = "sha256:6915be122d6a543b8ecd1fa80a2e9d96d9da655f5e04bbfd4a9bdfb04176d7ed"},
+    {file = "compose-1.2.5-py35-none-any.whl", hash = "sha256:831521d3da26b2e08911a9d51c4da8bb547bdac3714f7b6361ddcba3f9fcae1b"},
+    {file = "compose-1.2.5-py38-none-any.whl", hash = "sha256:97b7cc988a7940b272ad81baa3b043faa0b5c4b59973c3fee285a7ea175ff2aa"},
+    {file = "compose-1.2.5.tar.gz", hash = "sha256:92d109108f53ead1898d822b40d53eec3ef4c0bf8726cb938f082280e9d7cc35"},
 ]
 crcmod = [
     {file = "crcmod-1.7.tar.gz", hash = "sha256:dc7051a0db5f2bd48665a990d3ec1cc305a466a77358ca4492826f41f283601e"},
@@ -2420,12 +2426,13 @@ pycparser = [
     {file = "pycparser-2.20.tar.gz", hash = "sha256:2d475327684562c3a96cc71adf7dc8c4f0565175cf86b6d7a404ff4c771f15f0"},
 ]
 pyinstaller = [
-    {file = "pyinstaller-4.5-py3-none-macosx_10_13_universal2.whl", hash = "sha256:0129e5ea77c5eb6b2e0de8b1f7ec006238991ac712e3c0e877b995a289e4d8ea"},
-    {file = "pyinstaller-4.5-py3-none-manylinux2014_i686.whl", hash = "sha256:3228e1c7d823c5e786ee41194171e19fc985c4d6074610e4876479697a97b60f"},
-    {file = "pyinstaller-4.5-py3-none-manylinux2014_x86_64.whl", hash = "sha256:8b22656d2eaf5141c20afa3b98422cce17bf05ff9ef4fa8b232b47853b18e4b9"},
-    {file = "pyinstaller-4.5-py3-none-win32.whl", hash = "sha256:9d78452652a27a20a7126fdb93fe7abe731b82dc2a6c163a67fd98bd2a9c44f5"},
-    {file = "pyinstaller-4.5-py3-none-win_amd64.whl", hash = "sha256:df294f6579443924774e7c987deccca47a5f6386137972c8f3f31983db37a43e"},
-    {file = "pyinstaller-4.5.tar.gz", hash = "sha256:86f694faec78a08c3893aacef84b1a49cb53d4e2880559c6124beefd196a3a74"},
+    {file = "pyinstaller-4.5.1-py3-none-macosx_10_13_universal2.whl", hash = "sha256:ecc2baadeeefd2b6fbf39d13c65d4aa603afdda1c6aaaebc4577ba72893fee9e"},
+    {file = "pyinstaller-4.5.1-py3-none-manylinux2014_aarch64.whl", hash = "sha256:4d848cd782ee0893d7ad9fe2bfe535206a79f0b6760cecc5f2add831258b9322"},
+    {file = "pyinstaller-4.5.1-py3-none-manylinux2014_i686.whl", hash = "sha256:8f747b190e6ad30e2d2fd5da9a64636f61aac8c038c0b7f685efa92c782ea14f"},
+    {file = "pyinstaller-4.5.1-py3-none-manylinux2014_x86_64.whl", hash = "sha256:c587da8f521a7ce1b9efb4e3d0117cd63c92dc6cedff24590aeef89372f53012"},
+    {file = "pyinstaller-4.5.1-py3-none-win32.whl", hash = "sha256:fed9f5e4802769a416a8f2ca171c6be961d1861cc05a0b71d20dfe05423137e9"},
+    {file = "pyinstaller-4.5.1-py3-none-win_amd64.whl", hash = "sha256:aae456205c68355f9597411090576bb31b614e53976b4c102d072bbe5db8392a"},
+    {file = "pyinstaller-4.5.1.tar.gz", hash = "sha256:30733baaf8971902286a0ddf77e5499ac5f7bf8e7c39163e83d4f8c696ef265e"},
 ]
 pyinstaller-hooks-contrib = [
     {file = "pyinstaller-hooks-contrib-2021.2.tar.gz", hash = "sha256:7f5d0689b30da3092149fc536a835a94045ac8c9f0e6dfb23ac171890f5ea8f2"},
@@ -2613,7 +2620,7 @@ tinyaes = [
     {file = "tinyaes-1.0.1.tar.gz", hash = "sha256:874931ca374435949da538082672680707d06dadd067f1523fd5549a921af789"},
 ]
 tinyrpc = [
-    {file = "tinyrpc-1.0.4.tar.gz", hash = "sha256:4b41fab967fb1c978f573bf0d609a3b12cc3b6ed62bd3108f43f575563746396"},
+    {file = "tinyrpc-1.1.0.tar.gz", hash = "sha256:a618b8484eb3ffd58841b5593c5fa7d50e64145aa4fc2e888899444c5d038c6c"},
 ]
 toml = [
     {file = "toml-0.10.2-py2.py3-none-any.whl", hash = "sha256:806143ae5bfb6a3c6e736a764057db0e6a0e05e338b5630894a5f779cabb4f9b"},
@@ -2657,8 +2664,8 @@ yarg = [
     {file = "yarg-0.1.9.tar.gz", hash = "sha256:55695bf4d1e3e7f756496c36a69ba32c40d18f821e38f61d028f6049e5e15911"},
 ]
 zeroconf = [
-    {file = "zeroconf-0.33.2-py3-none-any.whl", hash = "sha256:2bc3503a9af1a15ee00a08d784881cb3111b4d24eff1f59e540f3b0813f1c365"},
-    {file = "zeroconf-0.33.2.tar.gz", hash = "sha256:5a59425d225a1f5fba0196766fccf856d4686f653037108cbc643a76c1a884fd"},
+    {file = "zeroconf-0.34.3-py3-none-any.whl", hash = "sha256:873028e8c0079c96cb08ed5e3a01dcb6b74bf69848bfab876872939083a713c8"},
+    {file = "zeroconf-0.34.3.tar.gz", hash = "sha256:145e67c182d361b350f057fb9240dedec5e79a7c61f465a01138d4a49a4b87b3"},
 ]
 zipp = [
     {file = "zipp-3.5.0-py3-none-any.whl", hash = "sha256:957cfda87797e389580cb8b9e3870841ca991e2125350677b2ca83a0e99390a3"},

@@ -107,6 +107,7 @@ def _upload_mission_blocking(raw_data: bytes, address: AddressLike) -> None:
                 " && ".join(
                     [
                         f"mv /tmp/{name}.mission-tmp /data/inbox/{name}.mission",
+                        "sync",
                         "systemctl restart flockctrl",
                     ]
                 ),

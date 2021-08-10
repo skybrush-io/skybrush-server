@@ -13,7 +13,7 @@
     <tbody>
 {% for extension in extensions %}
         <tr style="cursor: pointer; {{ "" if true or extension.loaded else "opacity: 0.5" }}"
-            onclick="window.location.href='{{ url_for('debug.show_extension_details', name=extension.name) }}'">
+            onclick="window.location.href='{{ url_for('.show_extension_details', name=extension.name) }}'">
             <td class="align-baseline text-right" style="width: 24px">
                 {% if extension.loaded %}
                 <span class="text-success" data-feather="check"></span>
@@ -26,22 +26,6 @@
             </td>
             <td class="align-baseline">
                 {{ extension.description }}
-            </td>
-            <td class="align-baseline text-right" style="width: 96px">
-                <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('debug.show_extension_details', name=extension.name) }}">
-                    <span data-feather="settings"></span>
-                </button>
-{#
-                {% if extension.loaded %}
-                <button type="button" class="btn btn-outline-danger btn-sm">
-                    <span data-feather="x"></span>
-                </button>
-                {% else %}
-                <button type="button" class="btn btn-outline-success btn-sm">
-                    <span data-feather="plus"></span>
-                </button>
-                {% endif %}
-#}
             </td>
         </tr>
 {% endfor %}

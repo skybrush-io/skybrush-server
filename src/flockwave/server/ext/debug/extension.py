@@ -13,15 +13,15 @@ from operator import attrgetter
 from quart import abort, Blueprint, render_template
 from trio import sleep_forever
 from trio.lowlevel import current_root_task
-from typing import Any, List, Optional, Tuple, TYPE_CHECKING
+from typing import Any, Awaitable, Callable, Dict, List, Optional, Tuple, TYPE_CHECKING
 
 from flockwave.server.utils import overridden
 
 from .server import run_debug_port, setup_debugging_server
 
 if TYPE_CHECKING:
-    from flockwave.server.app import SkybrushServer
     from flockwave.ext.manager import ExtensionManager
+    from flockwave.server.app import SkybrushServer
 
 
 __all__ = ("index", "run")
@@ -93,7 +93,45 @@ class ExtensionInfo:
 
 
 #############################################################################
-# Functions related to handling the dedicated debug port
+# Helper functions for routes
+
+
+def _get_extension_by_name(name: str) -> Tuple[ExtensionInfo, "ExtensionManager"]:
+    extension_manager = app.extension_manager if app else None
+    if extension_manager and name in extension_manager.known_extensions:
+        extension = ExtensionInfo.for_extension(name, extension_manager, details=True)
+    else:
+        extension = None
+
+    if extension is None:
+        abort(404)
+
+    assert extension_manager is not None
+
+    return extension, extension_manager
+
+
+async def _to_json(
+    func: Callable[..., Awaitable[Any]], *args, on_success: Any = None
+) -> Dict[str, Any]:
+    """Calls the given function and returns its result, wrapped in an appropriate
+    JSON object. Catches any exceptions raised from the function and also wraps
+    them in an appropriate JSON object.
+    """
+    global log
+
+    try:
+        result = await func(*args)
+    except Exception as ex:
+        if log:
+            log.exception(ex)
+        return {"error": str(ex)}
+
+    return {"result": on_success} if result is None else {"result": result}
+
+
+#############################################################################
+# Route definitions
 
 
 @blueprint.route("/")
@@ -153,17 +191,7 @@ async def show_extension_details(name):
     """Returns a page that shows the details and configuration of an extension
     of the server.
     """
-    extension_manager = app.extension_manager if app else None
-    if extension_manager and name in extension_manager.known_extensions:
-        extension = ExtensionInfo.for_extension(name, extension_manager, details=True)
-    else:
-        extension = None
-
-    if extension is None:
-        abort(404)
-
-    assert extension_manager is not None
-
+    extension, extension_manager = _get_extension_by_name(name)
     config = extension_manager.get_configuration_snapshot(name)
     if isinstance(config, dict):
         config.pop("enabled", None)
@@ -174,6 +202,20 @@ async def show_extension_details(name):
         extension=extension,
         config=config,
     )
+
+
+@blueprint.route("/extensions/<name>/load", methods=["POST"])
+async def load_extension(name):
+    """Loads the extension with the given name in response to a POST request."""
+    _, extension_manager = _get_extension_by_name(name)
+    return await _to_json(extension_manager.load, name, on_success=True)
+
+
+@blueprint.route("/extensions/<name>/unload", methods=["POST"])
+async def unload_extension(name):
+    """Unloads the extension with the given name in response to a POST request."""
+    _, extension_manager = _get_extension_by_name(name)
+    return await _to_json(extension_manager.unload, name, on_success=True)
 
 
 dependencies = ("http_server", "signals")

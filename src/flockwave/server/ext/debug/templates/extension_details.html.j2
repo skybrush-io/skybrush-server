@@ -4,7 +4,7 @@
 
 <nav aria-label="breadcrumb">
   <ol class="breadcrumb">
-    <li class="breadcrumb-item"><a href="{{ url_for('debug.list_extensions') }}">Extensions</a></li>
+    <li class="breadcrumb-item"><a href="{{ url_for('.list_extensions') }}">Extensions</a></li>
     <li class="breadcrumb-item active" aria-current="page">{{ extension.name }}</li>
   </ol>
 </nav>
@@ -29,7 +29,7 @@
   <dt class="col-sm-2">Dependencies</dt>
   <dd class="col-sm-10">
     {% for dep in extension.dependencies %}
-      <a href="{{ url_for('debug.show_extension_details', name=dep) }}">{{ dep }}</a>
+      <a href="{{ url_for('.show_extension_details', name=dep) }}">{{ dep }}</a>
       {{ "·" if not loop.last else "" }}
     {% endfor %}
   </dd>
@@ -39,7 +39,7 @@
   <dt class="col-sm-2">Dependents</dt>
   <dd class="col-sm-10">
     {% for dep in extension.dependents %}
-      <a href="{{ url_for('debug.show_extension_details', name=dep) }}">{{ dep }}</a>
+      <a href="{{ url_for('.show_extension_details', name=dep) }}">{{ dep }}</a>
       {{ "·" if not loop.last else "" }}
     {% endfor %}
   </dd>
@@ -54,10 +54,17 @@
 </form>
 
 {% if extension.loaded and not extension.dependents %}
-<button class="btn btn-danger sb-btn-unload">
+<button class="btn btn-danger sb-btn-unload" data-sb-extension-name="{{ extension.name }}">
   <span data-feather="trash-2"></span> Unload
 </button>
 {% endif %}
+
+{% if not extension.loaded %}
+<button class="btn btn-success sb-btn-load" data-sb-extension-name="{{ extension.name }}">
+  <span data-feather="play"></span> Load
+</button>
+{% endif %}
+
 </div>
 
 {% endblock %}
@@ -66,13 +73,36 @@
 <script type="module">
 import ky from './static/js/ky-0.27.0.min.js';
 
-function unload() {
-  alert('Not implemented yet');
+async function load() {
+  const { result, error } = await ky.post("{{ url_for('.load_extension', name=extension.name) }}").json();
+  if (error !== undefined) {
+    alert("Failed to load extension.");
+    console.error(error);
+  } else {
+    window.location.reload();
+  }
 }
 
-const buttons = document.querySelectorAll(".sb-btn-unload");
+async function unload() {
+  const { result, error } = await ky.post("{{ url_for('.unload_extension', name=extension.name) }}").json();
+  if (error !== undefined) {
+    alert("Failed to unload extension.");
+    console.error(error);
+  } else {
+    window.location.reload();
+  }
+}
+
+let buttons;
+
+buttons = document.querySelectorAll(".sb-btn-unload");
 for (let button of buttons) {
   button.addEventListener('click', unload);
+}
+
+buttons = document.querySelectorAll(".sb-btn-load");
+for (let button of buttons) {
+  button.addEventListener('click', load);
 }
 </script>
 {% endblock %}

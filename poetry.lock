@@ -590,7 +590,7 @@ reference = "collmot"
 
 [[package]]
 name = "flockwave-spec"
-version = "1.50.0"
+version = "1.51.0"
 description = "JSON-Schema specification of the Flockwave protocol"
 category = "main"
 optional = false
@@ -1939,7 +1939,7 @@ reference = "collmot"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7"
-content-hash = "5135ecad265667357eb714eb64f9bad122c43e9afe26d695deb981c233f865a4"
+content-hash = "5d8dc5a1bd6c00593b63c5bb53cc57c019f01921be85e63deef5eb66fc32963b"
 
 [metadata.files]
 adrenaline = [
@@ -2141,8 +2141,8 @@ flockwave-parsers = [
     {file = "flockwave_parsers-1.2.0-py3-none-any.whl", hash = "md5:4f53aadf684d06c79998b332ec2dcaa0"},
 ]
 flockwave-spec = [
-    {file = "flockwave-spec-1.50.0.tar.gz", hash = "md5:f204c90ccad3be466d415f8185be7f8e"},
-    {file = "flockwave_spec-1.50.0-py3-none-any.whl", hash = "md5:26c8290c3c6b950e6ced20f7721ec87d"},
+    {file = "flockwave-spec-1.51.0.tar.gz", hash = "md5:1a4cca1cf9907228a6ed8d2e736573bb"},
+    {file = "flockwave_spec-1.51.0-py3-none-any.whl", hash = "md5:d62ebfc64da65e7a95e062645c0e69f2"},
 ]
 future = [
     {file = "future-0.18.2.tar.gz", hash = "sha256:b1bead90b70cf6ec3f0710ae53a525360fa360d306a86583adc6bf83a4db537d"},

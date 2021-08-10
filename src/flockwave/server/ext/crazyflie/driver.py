@@ -277,6 +277,21 @@ class CrazyflieDriver(UAVDriver):
         else:
             raise RuntimeError(f"Unknown command: {command}")
 
+    async def handle_command_show(
+        self, uav: "CrazyflieUAV", command: Optional[str] = None
+    ) -> str:
+        if command is None:
+            return "Run 'show clear' to clear the last uploaded show"
+        elif command == "clear":
+            if uav.has_previously_uploaded_show:
+                uav.forget_last_uploaded_show()
+                await uav.reboot()
+                return "Last uploaded show cleared, drone rebooted."
+            else:
+                return "No show was recently uploaded to this drone."
+        else:
+            raise RuntimeError(f"Unknown command: {command}, expected 'clear'")
+
     async def handle_command_stop(self, uav: "CrazyflieUAV") -> str:
         """Stops the motors of the UAV immediately."""
         await uav.stop()
@@ -467,6 +482,12 @@ class CrazyflieUAV(UAVBase):
         attract attention.
         """
         await self._get_crazyflie().led_ring.flash()
+
+    def forget_last_uploaded_show(self) -> None:
+        """Forgets the last uploaded show to this drone so it does not get
+        re-uploaded if the drone is rebooted.
+        """
+        self._last_uploaded_show = None
 
     async def get_home_position(self) -> Optional[Tuple[float, float, float]]:
         """Returns the current home position of the UAV."""

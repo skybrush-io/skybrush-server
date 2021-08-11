@@ -5,7 +5,7 @@ of a Crazyflie address space for Crazyflie drones.
 from functools import partial
 from time import monotonic
 from trio import Event, MemorySendChannel, move_on_after, sleep
-from typing import AsyncIterable, Callable, Iterable, List, Optional, Union
+from typing import AsyncIterable, Callable, ClassVar, Iterable, List, Optional, Union
 
 from aiocflib.drivers.crazyradio import RadioConfiguration
 
@@ -170,6 +170,8 @@ class CrazyradioScannerTask:
     time it is opened to the time it is closed.
     """
 
+    last_invocation_failed: ClassVar[bool] = False
+
     @classmethod
     async def create_and_run(
         cls, conn: CrazyradioConnection, channel: MemorySendChannel, *args, **kwds
@@ -177,7 +179,15 @@ class CrazyradioScannerTask:
         """Creates and runs a new connection handler for the given radio
         connection.
         """
-        await CrazyradioScannerTask(conn, *args, **kwds).run(channel)
+        try:
+            await CrazyradioScannerTask(conn, *args, **kwds).run(channel)
+        finally:
+            # If we get here (i.e. exited the scanner task normally), it means that
+            # the radio was unplugged or there was a communication error with the
+            # radio. The connection cannot detect this condition so we need to.
+            cls.last_invocation_failed = True
+            conn.notify_error()
+            await conn.wait_until_disconnected()
 
     def __init__(self, conn: CrazyradioConnection, log=None):
         """Constructor.
@@ -272,27 +282,27 @@ class CrazyradioScannerTask:
         else:
             address_space = first_address
 
-        if self._log:
+        if self._log and not self.last_invocation_failed:
             self._log.info(f"Scanning Crazyflies from {address_space}")
 
         try:
             await self._run(channel)
         except Exception as ex:
-            if "may have been disconnected" in str(ex):
-                # libusb indicates that the radio may have been disconnected.
-                # This is something worth logging but not worth sending to
-                # Sentry.
-                if self._log:
+            if not self.last_invocation_failed and self._log:
+                if "may have been disconnected" in str(ex):
+                    # libusb indicates that the radio may have been disconnected.
+                    # This is something worth logging but not worth sending to
+                    # Sentry. Also, we log it only once and do not log it again for
+                    # subsequent unsuccessful scanning attempts until we scan at
+                    # least once successfully again.
                     self._log.error(
                         f"Crazyradio scanning {address_space} was probably unplugged.",
                         extra={"sentry_ignore": True},
                     )
-            else:
-                if self._log:
+                else:
                     self._log.error(
                         f"Task scanning {address_space} stopped unexpectedly."
                     )
-                raise
 
     async def _run(self, channel: MemorySendChannel) -> None:
         self._excluded = set()
@@ -303,6 +313,8 @@ class CrazyradioScannerTask:
         async with aclosing(gen):
             async for targets in gen:
                 result = await self._conn.scan(targets)
+                self.__class__.last_invocation_failed = False
+
                 for target in result:
                     target = target.to_uri()
                     address_space = self._conn.address_space

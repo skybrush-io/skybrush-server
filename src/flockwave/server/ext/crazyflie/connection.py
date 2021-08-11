@@ -2,10 +2,12 @@
 drones with a single Crazyradio.
 """
 
-from trio import sleep_forever
+from trio import Event
+from typing import Optional
 
 from aiocflib.crtp.broadcaster import Broadcaster
 from aiocflib.crtp.crtpstack import CRTPPort
+
 from flockwave.connections.base import TaskConnectionBase
 
 __all__ = ("CrazyradioConnection",)
@@ -15,6 +17,8 @@ class CrazyradioConnection(TaskConnectionBase):
     """Connection object that manages a permanent connection to several Crazyflie
     drones with a single Crazyradio.
     """
+
+    _request_close_event: Optional[Event]
 
     def __init__(self, host: str, path: str = "", length: int = 64):
         """Constructor.
@@ -41,6 +45,7 @@ class CrazyradioConnection(TaskConnectionBase):
         )
         self._broadcaster = None
         self._radio = None
+        self._request_close_event = None
 
     async def _run(self, started):
         from aiocflib.crtp.drivers.radio import SharedCrazyradio
@@ -50,10 +55,12 @@ class CrazyradioConnection(TaskConnectionBase):
         try:
             async with SharedCrazyradio(self._crazyradio_index) as self._radio:
                 async with Broadcaster(uri_prefix) as self._broadcaster:
+                    self._request_close_event = Event()
                     started()
-                    await sleep_forever()
+                    await self._request_close_event.wait()
         finally:
             self._broadcaster = None
+            self._request_close_event = None
             self._radio = None
 
     @property
@@ -76,6 +83,13 @@ class CrazyradioConnection(TaskConnectionBase):
         """
         if self._broadcaster:
             await self._broadcaster.send_packet(port=port, data=data)
+
+    def notify_error(self) -> None:
+        """Notifies the connection that an error happened while using the radio
+        and the connection should be closed.
+        """
+        if self._request_close_event:
+            self._request_close_event.set()
 
     async def scan(self, targets=None):
         """Scans the address space associated to the connection for Crazyflie

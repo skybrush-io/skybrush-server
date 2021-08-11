@@ -144,3 +144,10 @@ body {
     transform: rotate(360deg);
   }
 }
+
+/*
+ * Code editor
+ */
+.code-editor {
+  border: 1px solid #ddd;
+}

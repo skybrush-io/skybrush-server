@@ -49,7 +49,7 @@
 <form>
   <div class="form-group">
     <label for="configuration">Configuration</label>
-    <textarea class="form-control monospaced" disabled id="configuration" rows="20">{{ config | tojson(indent=2) }}</textarea>
+    <div id="configuration" class="code-editor" style="height: 464px"></div>
   </div>
 </form>
 
@@ -70,6 +70,23 @@
 {% endblock %}
 
 {% block backmatter %}
+<script type="text/javascript" src="static/js/ace-1.4.12.min.js"></script>
+<script>
+ace.config.setModuleUrl("ace/mode/json", "static/js/ace-mode-json-1.4.12.min.js");
+ace.config.setModuleUrl("ace/mode/json_worker", "static/js/ace-worker-json-1.4.12.min.js");
+
+var editor = ace.edit("configuration", {
+  mode: "ace/mode/json",
+  readOnly: true,
+  showPrintMargin: false,
+});
+editor.session.setTabSize(2);
+editor.session.setUseSoftTabs(true);
+
+var config = {{ config | tojson(indent=2) }};
+editor.setValue(JSON.stringify(config, null, 2), 1);
+editor.focus();
+</script>
 <script type="module">
 import ky from './static/js/ky-0.27.0.min.js';
 

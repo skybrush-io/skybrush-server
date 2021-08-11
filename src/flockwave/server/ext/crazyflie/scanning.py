@@ -2,6 +2,7 @@
 of a Crazyflie address space for Crazyflie drones.
 """
 
+from errno import ENODEV
 from functools import partial
 from time import monotonic
 from trio import Event, MemorySendChannel, move_on_after, sleep
@@ -289,7 +290,7 @@ class CrazyradioScannerTask:
             await self._run(channel)
         except Exception as ex:
             if not self.last_invocation_failed and self._log:
-                if "may have been disconnected" in str(ex):
+                if getattr(ex, "errno", 0) == ENODEV:
                     # libusb indicates that the radio may have been disconnected.
                     # This is something worth logging but not worth sending to
                     # Sentry. Also, we log it only once and do not log it again for

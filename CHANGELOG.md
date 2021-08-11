@@ -5,13 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased
+
+### Fixed
+
+- Fixed spurious log messages when a Crazyflie radio is unplugged from the USB
+  port while the server is running.
+
 ## [1.22.0] - 2021-08-09
+
+### Added
 
 - The interval between consecutive status information messages can now be
   configured in the Crazyflie extension, allowing you to track the Crazyflie
   more precisely from the server if needed.
 
 ## [1.21.2] - 2021-08-06
+
+### Added
 
 - The OSC extension now sends whether a given drone has been seen recently by
   the server or not, allowing one to ignore drones that have probably been

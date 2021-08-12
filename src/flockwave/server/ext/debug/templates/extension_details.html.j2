@@ -74,22 +74,47 @@
 
 {% block backmatter %}
 <script type="text/javascript" src="static/js/ace-1.4.12.min.js"></script>
+
+<script>
+var isDirty = false;
+
+function setDirty(value) {
+  value = !!value;
+  if (value === isDirty) {
+    return;
+  }
+
+  isDirty = value;
+
+  buttons = document.querySelectorAll(".sb-btn-reload");
+  for (let button of buttons) {
+    button.disabled = isDirty;
+  }
+}
+</script>
+
 <script>
 ace.config.setModuleUrl("ace/mode/json", "static/js/ace-mode-json-1.4.12.min.js");
 ace.config.setModuleUrl("ace/mode/json_worker", "static/js/ace-worker-json-1.4.12.min.js");
 
 var editor = ace.edit("configuration", {
   mode: "ace/mode/json",
-  readOnly: true,
   showPrintMargin: false,
 });
 editor.session.setTabSize(2);
 editor.session.setUseSoftTabs(true);
 
 var config = {{ config | tojson(indent=2) }};
-editor.setValue(JSON.stringify(config, null, 2), 1);
+var originalContent = JSON.stringify(config, null, 2);
+editor.setValue(originalContent, 1);
+
+editor.on("input", function() {
+    setDirty(editor.getValue() !== originalContent);
+});
+
 editor.focus();
 </script>
+
 <script type="module">
 import ky from './static/js/ky-0.27.0.min.js';
 

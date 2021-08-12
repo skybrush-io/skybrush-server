@@ -240,5 +240,18 @@ async def unload_extension(name):
     return await _to_json(extension_manager.unload, name, on_success=True)
 
 
+@blueprint.route("/extensions/<name>/reload", methods=["POST"])
+async def reload_extension(name):
+    """Reloads the extension with the given name in response to a POST request."""
+    _, extension_manager = _get_extension_by_name(name)
+
+    async def reload():
+        await extension_manager.unload(name)
+        await extension_manager.load(name)
+        return True
+
+    return await _to_json(reload)
+
+
 dependencies = ("http_server", "signals")
 description = "Debugging tools"

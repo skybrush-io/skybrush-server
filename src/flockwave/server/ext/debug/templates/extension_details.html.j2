@@ -54,13 +54,16 @@
 </form>
 
 {% if extension.loaded and not extension.dependents %}
-<button class="btn btn-danger sb-btn-unload" data-sb-extension-name="{{ extension.name }}">
+<button class="btn btn-primary sb-btn-reload">
+  <span data-feather="refresh-cw"></span> Reload
+</button>
+<button class="btn btn-danger sb-btn-unload">
   <span data-feather="trash-2"></span> Unload
 </button>
 {% endif %}
 
 {% if not extension.loaded %}
-<button class="btn btn-success sb-btn-load" data-sb-extension-name="{{ extension.name }}">
+<button class="btn btn-success sb-btn-load">
   <span data-feather="play"></span> Load
 </button>
 {% endif %}
@@ -110,6 +113,16 @@ async function unload() {
   }
 }
 
+async function reload() {
+  const { result, error } = await ky.post("{{ url_for('.reload_extension', name=extension.name) }}").json();
+  if (error !== undefined) {
+    alert("Failed to reload extension.");
+    console.error(error);
+  } else {
+    window.location.reload();
+  }
+}
+
 let buttons;
 
 buttons = document.querySelectorAll(".sb-btn-unload");
@@ -120,6 +133,11 @@ for (let button of buttons) {
 buttons = document.querySelectorAll(".sb-btn-load");
 for (let button of buttons) {
   button.addEventListener('click', load);
+}
+
+buttons = document.querySelectorAll(".sb-btn-reload");
+for (let button of buttons) {
+  button.addEventListener('click', reload);
 }
 </script>
 {% endblock %}

@@ -154,7 +154,12 @@ def get_error_codes_from_status_packet(
     if flags & StatusFlag.AUTOPILOT_INIT_PENDING:
         aux.append(FlockwaveErrorCode.AUTOPILOT_INITIALIZING.value)
 
-    if clock_status and not clock_status.pps_timesync_achieved:
+    # timesync error is relevant only if we have at least 2D GPS fix
+    if (
+        (packet.location.lon or packet.location.lat)
+        and clock_status
+        and not clock_status.pps_timesync_achieved
+    ):
         aux.append(FlockwaveErrorCode.TIMESYNC_ERROR)
 
     return base + tuple(aux) if aux else base

@@ -10,7 +10,7 @@ from contextlib import ExitStack
 from dataclasses import dataclass, field
 from logging import Logger
 from operator import attrgetter
-from quart import abort, Blueprint, render_template, request
+from quart import abort, Blueprint, redirect, render_template, request, url_for
 from trio import sleep_forever
 from trio.lowlevel import current_root_task
 from typing import Any, Awaitable, Callable, Dict, List, Optional, Tuple, TYPE_CHECKING
@@ -153,7 +153,7 @@ def fail_if_not_localhost() -> None:
 @blueprint.route("/")
 async def index():
     """Returns the index page of the extension."""
-    return await render_template("index.html.j2", title="Messages")
+    return redirect(url_for(".list_extensions"))
 
 
 @blueprint.route("/extensions")
@@ -172,6 +172,12 @@ async def list_extensions():
     return await render_template(
         "extensions.html.j2", title="Extensions", extensions=extensions
     )
+
+
+@blueprint.route("/messages")
+async def send_messages():
+    """Returns a page that allows the user to send messages to the server."""
+    return await render_template("messages.html.j2", title="Messages")
 
 
 @blueprint.route("/threads")

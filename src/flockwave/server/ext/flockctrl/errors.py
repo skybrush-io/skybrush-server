@@ -79,6 +79,7 @@ _error_code_mapping: Dict[int, Tuple[int, ...]] = {
     53: (FlockwaveErrorCode.EXTERNAL_CLOCK_ERROR.value,),
     54: (FlockwaveErrorCode.CONFIGURATION_ERROR.value,),
     55: (FlockwaveErrorCode.CONFIGURATION_ERROR.value,),
+    56: (FlockwaveErrorCode.RC_NOT_CALIBRATED,),
     200: (FlockwaveErrorCode.LOGGING_DEACTIVATED.value,),
     201: (FlockwaveErrorCode.LOW_DISK_SPACE.value,),
     202: (FlockwaveErrorCode.TIMESYNC_ERROR.value,),
@@ -125,7 +126,6 @@ def get_error_codes_from_status_packet(
 
         # TODO: would be nice to have the followings:
         #   INVALID_MISSION_CONFIGURATION
-        #   TIMESYNC_ERROR
         #   LOW_DISK_SPACE
         # TODO: prearm contains info for these also, if needed:
         #   NO_GPS_HOME_POSITION

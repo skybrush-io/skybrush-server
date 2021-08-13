@@ -57,6 +57,9 @@
 <button class="btn btn-primary sb-btn-reload">
   <span data-feather="refresh-cw"></span> Reload
 </button>
+<button class="btn btn-primary sb-btn-save-and-reload" style="display: none">
+  <span data-feather="refresh-cw"></span> Save and reload
+</button>
 <button class="btn btn-danger sb-btn-unload">
   <span data-feather="trash-2"></span> Unload
 </button>
@@ -77,23 +80,42 @@
 
 <script>
 var isDirty = false;
+var isValid = true;
 
 function setDirty(value) {
   value = !!value;
-  if (value === isDirty) {
-    return;
+  if (value !== isDirty) {
+    isDirty = value;
+    updateButtons();
   }
+}
 
-  isDirty = value;
+function setValid(value) {
+  value = !!value;
+  if (value !== isValid) {
+    isValid = value;
+    updateButtons();
+  }
+}
 
+function updateButtons() {
   buttons = document.querySelectorAll(".sb-btn-reload");
   for (let button of buttons) {
-    button.disabled = isDirty;
+    button.style.display = isDirty ? "none" : "inline-block";
+    button.disabled = !isValid;
+  }
+
+  buttons = document.querySelectorAll(".sb-btn-save-and-reload");
+  for (let button of buttons) {
+    button.style.display = !isDirty ? "none" : "inline-block";
+    button.disabled = !isValid;
   }
 }
 </script>
 
-<script>
+<script type="module">
+import ky from './static/js/ky-0.27.0.min.js';
+
 ace.config.setModuleUrl("ace/mode/json", "static/js/ace-mode-json-1.4.12.min.js");
 ace.config.setModuleUrl("ace/mode/json_worker", "static/js/ace-worker-json-1.4.12.min.js");
 
@@ -109,17 +131,48 @@ var originalContent = JSON.stringify(config, null, 2);
 editor.setValue(originalContent, 1);
 
 editor.on("input", function() {
-    setDirty(editor.getValue() !== originalContent);
+  var newValue = editor.getValue();
+
+  if (newValue === originalContent) {
+    setDirty(false);
+    setValid(true);
+  } else {
+    var newValid;
+    setDirty(true);
+    try {
+      JSON.parse(newValue);
+      newValid = true;
+    } catch {
+      newValid = false;
+    }
+    setValid(newValid);
+  }
 });
 
 editor.focus();
-</script>
 
-<script type="module">
-import ky from './static/js/ky-0.27.0.min.js';
+function getNewConfigIfChanged() {
+  const newContent = editor.getValue();
+  if (newContent !== originalContent) {
+    const newParsedContent = JSON.parse(newContent);
+    return { config: newParsedContent };
+  } else {
+    return {};
+  }
+}
 
 async function load() {
-  const { result, error } = await ky.post("{{ url_for('.load_extension', name=extension.name) }}").json();
+  let newConfig;
+
+  try {
+    newConfig = getNewConfigIfChanged();
+  } catch (ex) {
+    alert("Configuration has errors; please fix them and try again.");
+    console.error(ex);
+    return;
+  }
+
+  const { result, error } = await ky.post("{{ url_for('.load_extension', name=extension.name) }}", { json: newConfig }).json();
   if (error !== undefined) {
     alert("Failed to load extension.");
     console.error(error);
@@ -139,7 +192,17 @@ async function unload() {
 }
 
 async function reload() {
-  const { result, error } = await ky.post("{{ url_for('.reload_extension', name=extension.name) }}").json();
+  let newConfig;
+
+  try {
+    newConfig = getNewConfigIfChanged();
+  } catch (ex) {
+    alert("Configuration has errors; please fix them and try again.");
+    console.error(ex);
+    return;
+  }
+
+  const { result, error } = await ky.post("{{ url_for('.reload_extension', name=extension.name) }}", { json: newConfig }).json();
   if (error !== undefined) {
     alert("Failed to reload extension.");
     console.error(error);
@@ -161,6 +224,11 @@ for (let button of buttons) {
 }
 
 buttons = document.querySelectorAll(".sb-btn-reload");
+for (let button of buttons) {
+  button.addEventListener('click', reload);
+}
+
+buttons = document.querySelectorAll(".sb-btn-save-and-reload");
 for (let button of buttons) {
   button.addEventListener('click', reload);
 }

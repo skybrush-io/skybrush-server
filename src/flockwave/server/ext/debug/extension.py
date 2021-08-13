@@ -115,6 +115,21 @@ def _get_extension_by_name(name: str) -> Tuple[ExtensionInfo, "ExtensionManager"
     return extension, extension_manager
 
 
+async def _configure_extension_from_request_body_if_needed(
+    name: str,
+) -> "ExtensionManager":
+    _, extension_manager = _get_extension_by_name(name)
+
+    data = await request.get_json()
+    if data and isinstance(data, dict):
+        # Configure the extension first
+        config = data.get("config")
+        if isinstance(config, dict):
+            extension_manager.configure(name, config)
+
+    return extension_manager
+
+
 async def _to_json(
     func: Callable[..., Awaitable[Any]], *args, on_success: Any = None
 ) -> Dict[str, Any]:
@@ -218,18 +233,20 @@ async def show_extension_details(name):
     if isinstance(config, dict):
         config.pop("enabled", None)
 
+    schema = extension_manager.get_configuration_schema(name)
     return await render_template(
         "extension_details.html.j2",
         title=f"Extension: {name}",
         extension=extension,
         config=config,
+        schema=schema,
     )
 
 
 @blueprint.route("/extensions/<name>/load", methods=["POST"])
 async def load_extension(name):
     """Loads the extension with the given name in response to a POST request."""
-    _, extension_manager = _get_extension_by_name(name)
+    extension_manager = await _configure_extension_from_request_body_if_needed(name)
     return await _to_json(extension_manager.load, name, on_success=True)
 
 
@@ -247,6 +264,7 @@ async def reload_extension(name):
 
     async def reload():
         await extension_manager.unload(name)
+        await _configure_extension_from_request_body_if_needed(name)
         await extension_manager.load(name)
         return True
 

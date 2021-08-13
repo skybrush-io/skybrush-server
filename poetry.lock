@@ -481,7 +481,7 @@ reference = "collmot"
 
 [[package]]
 name = "flockwave-ext"
-version = "1.8.0"
+version = "1.9.0"
 description = "Generic extension manager for Skybrush-related projects"
 category = "main"
 optional = false
@@ -789,7 +789,7 @@ reference = "collmot"
 
 [[package]]
 name = "importlib-metadata"
-version = "4.6.3"
+version = "4.6.4"
 description = "Read metadata from Python packages"
 category = "main"
 optional = false
@@ -1968,7 +1968,7 @@ reference = "collmot"
 
 [[package]]
 name = "zeroconf"
-version = "0.34.3"
+version = "0.35.0"
 description = "Pure Python Multicast DNS Service Discovery Library (Bonjour/Avahi compatible)"
 category = "main"
 optional = false
@@ -2002,7 +2002,7 @@ reference = "collmot"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7"
-content-hash = "2a05cb4ece602903c307007d42d1fa00d857e4e43a9375a43d75af552c306d9b"
+content-hash = "7af78f0be9f5b81f8c66a4940ccaffdbf72d737c6996b6cd29856de3c4642ef2"
 
 [metadata.files]
 adrenaline = [
@@ -2180,8 +2180,8 @@ flockwave-conn = [
     {file = "flockwave_conn-3.0.1-py3-none-any.whl", hash = "md5:9123b9c7459133d43a066be3f57dabf1"},
 ]
 flockwave-ext = [
-    {file = "flockwave-ext-1.8.0.tar.gz", hash = "md5:a953108aca947ae8e21e63fd49067e9f"},
-    {file = "flockwave_ext-1.8.0-py3-none-any.whl", hash = "md5:794ecc72b1cd34563f72cb50b875a1d0"},
+    {file = "flockwave-ext-1.9.0.tar.gz", hash = "md5:5b15f01da2c48ecf279c3c4189d7c1d1"},
+    {file = "flockwave_ext-1.9.0-py3-none-any.whl", hash = "md5:b184100dff4dd8e86d7a0835b03feed8"},
 ]
 flockwave-flockctrl = [
     {file = "flockwave-flockctrl-1.18.2.tar.gz", hash = "md5:dfd1a114a23d8de84fc55be5e9f3b2e8"},
@@ -2250,8 +2250,8 @@ ifaddr = [
     {file = "ifaddr-0.1.7.tar.gz", hash = "sha256:1f9e8a6ca6f16db5a37d3356f07b6e52344f6f9f7e806d618537731669eb1a94"},
 ]
 importlib-metadata = [
-    {file = "importlib_metadata-4.6.3-py3-none-any.whl", hash = "sha256:51c6635429c77cf1ae634c997ff9e53ca3438b495f10a55ba28594dd69764a8b"},
-    {file = "importlib_metadata-4.6.3.tar.gz", hash = "sha256:0645585859e9a6689c523927a5032f2ba5919f1f7d0e84bd4533312320de1ff9"},
+    {file = "importlib_metadata-4.6.4-py3-none-any.whl", hash = "sha256:ed5157fef23a4bc4594615a0dd8eba94b2bb36bf2a343fa3d8bb2fa0a62a99d5"},
+    {file = "importlib_metadata-4.6.4.tar.gz", hash = "sha256:7b30a78db2922d78a6f47fb30683156a14f3c6aa5cc23f77cc8967e9ab2d002f"},
 ]
 itsdangerous = [
     {file = "itsdangerous-2.0.1-py3-none-any.whl", hash = "sha256:5174094b9637652bdb841a3029700391451bd092ba3db90600dea710ba28e97c"},
@@ -2739,8 +2739,8 @@ yarg = [
     {file = "yarg-0.1.9.tar.gz", hash = "sha256:55695bf4d1e3e7f756496c36a69ba32c40d18f821e38f61d028f6049e5e15911"},
 ]
 zeroconf = [
-    {file = "zeroconf-0.34.3-py3-none-any.whl", hash = "sha256:873028e8c0079c96cb08ed5e3a01dcb6b74bf69848bfab876872939083a713c8"},
-    {file = "zeroconf-0.34.3.tar.gz", hash = "sha256:145e67c182d361b350f057fb9240dedec5e79a7c61f465a01138d4a49a4b87b3"},
+    {file = "zeroconf-0.35.0-py3-none-any.whl", hash = "sha256:fd58104bff89603579fd71e1b5653bd7e63398c0b455a2efa390035bcbcaf4da"},
+    {file = "zeroconf-0.35.0.tar.gz", hash = "sha256:23478a7bce3ec51db5b2539e21677c539eb542a3fe0df1d173e31d34f9630672"},
 ]
 zipp = [
     {file = "zipp-3.5.0-py3-none-any.whl", hash = "sha256:957cfda87797e389580cb8b9e3870841ca991e2125350677b2ca83a0e99390a3"},

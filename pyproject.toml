@@ -44,7 +44,7 @@ flockwave-gps = "^2.0.1"
 flockwave-logger = "^1.7.0"
 flockwave-net = {extras = ["async"], version = "^1.0.1"}
 flockwave-parsers = "^1.2.0"
-flockwave-spec = "^1.51.0"
+flockwave-spec = "^1.52.0"
 pyledctrl = "^3.1.0"
 aiocflib = "^2.0.2"
 appdirs = "^1.4.4"
@@ -56,6 +56,7 @@ compose = "^1.1.1"
 adrenaline = "^0.2.1"
 trio-parallel = "^0.5.1"
 oscpy = "^0.6.0"
+httpx = "^0.18.2"
 
 [tool.poetry.dev-dependencies]
 pytest = "^5.4.3"

@@ -46,12 +46,17 @@
   {% endif %}
 </dl>
 
+{% if schema %}
+<div id="configuration" class="json-schema-editor">
+</div>
+{% else %}
 <form>
   <div class="form-group">
     <label for="configuration">Configuration</label>
-    <div id="configuration" class="code-editor" style="height: 464px"></div>
+    <div id="configuration" class="code-editor" style="height: 232px"></div>
   </div>
 </form>
+{% endif %}
 
 {% if extension.loaded and not extension.dependents %}
 <button class="btn btn-primary sb-btn-reload">
@@ -76,7 +81,6 @@
 {% endblock %}
 
 {% block backmatter %}
-<script type="text/javascript" src="static/js/ace-1.4.12.min.js"></script>
 
 <script>
 var isDirty = false;
@@ -113,53 +117,107 @@ function updateButtons() {
 }
 </script>
 
+{% if schema %}
+  <script type="text/javascript" src="static/js/jsoneditor-2.5.4.min.js"></script>
+  <script>
+  const element = document.getElementById('configuration');
+  const editor = new JSONEditor(element, {
+    disable_collapse: true,
+    disable_edit_json: true,
+    disable_properties: true,
+    form_name_root: 'config',
+    schema: {{ schema | tojson(indent=2) }},
+    startval: {{ config | tojson(indent=2) }},
+    theme: 'bootstrap4'
+  });
+  const originalContent = JSON.stringify(editor.getValue());
+  let nextChangeIsFirst = true;
+
+  function isConfigurationValid() {
+    const errors = editor.validate();
+    return errors.length === 0;
+  }
+
+  function getNewConfigIfChanged() {
+    const newParsedContent = editor.getValue();
+    if (JSON.stringify(newParsedContent) === originalContent) {
+      return {};
+    } else {
+      return { config: newParsedContent };
+    }
+  }
+
+  editor.on("change", function() {
+    if (nextChangeIsFirst) {
+      nextChangeIsFirst = false;
+      return;
+    }
+
+    const newValue = editor.getValue();
+    if (JSON.stringify(newValue) === originalContent) {
+      setDirty(false);
+      setValid(true);
+    } else {
+      setDirty(true);
+      setValid(isConfigurationValid());
+    }
+  });
+  </script>
+{% else %}
+  <script type="text/javascript" src="static/js/ace-1.4.12.min.js"></script>
+  <script>
+  ace.config.setModuleUrl("ace/mode/json", "static/js/ace-mode-json-1.4.12.min.js");
+  ace.config.setModuleUrl("ace/mode/json_worker", "static/js/ace-worker-json-1.4.12.min.js");
+
+  const editor = ace.edit("configuration", {
+    mode: "ace/mode/json",
+    showPrintMargin: false,
+  });
+  editor.session.setTabSize(2);
+  editor.session.setUseSoftTabs(true);
+
+  const config = {{ config | tojson(indent=2) }};
+  const originalContent = JSON.stringify(config, null, 2);
+  editor.setValue(originalContent, 1);
+
+  editor.on("input", function() {
+    var newValue = editor.getValue();
+
+    if (newValue === originalContent) {
+      setDirty(false);
+      setValid(true);
+    } else {
+      setDirty(true);
+      setValid(isConfigurationValid());
+    }
+  });
+
+  editor.focus();
+
+  function isConfigurationValid() {
+    const value = editor.getValue();
+    try {
+      JSON.parse(value);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  function getNewConfigIfChanged() {
+    const newContent = editor.getValue();
+    if (newContent !== originalContent) {
+      const newParsedContent = JSON.parse(newContent);
+      return { config: newParsedContent };
+    } else {
+      return {};
+    }
+  }
+  </script>
+{% endif %}
+
 <script type="module">
 import ky from './static/js/ky-0.27.0.min.js';
-
-ace.config.setModuleUrl("ace/mode/json", "static/js/ace-mode-json-1.4.12.min.js");
-ace.config.setModuleUrl("ace/mode/json_worker", "static/js/ace-worker-json-1.4.12.min.js");
-
-var editor = ace.edit("configuration", {
-  mode: "ace/mode/json",
-  showPrintMargin: false,
-});
-editor.session.setTabSize(2);
-editor.session.setUseSoftTabs(true);
-
-var config = {{ config | tojson(indent=2) }};
-var originalContent = JSON.stringify(config, null, 2);
-editor.setValue(originalContent, 1);
-
-editor.on("input", function() {
-  var newValue = editor.getValue();
-
-  if (newValue === originalContent) {
-    setDirty(false);
-    setValid(true);
-  } else {
-    var newValid;
-    setDirty(true);
-    try {
-      JSON.parse(newValue);
-      newValid = true;
-    } catch {
-      newValid = false;
-    }
-    setValid(newValid);
-  }
-});
-
-editor.focus();
-
-function getNewConfigIfChanged() {
-  const newContent = editor.getValue();
-  if (newContent !== originalContent) {
-    const newParsedContent = JSON.parse(newContent);
-    return { config: newParsedContent };
-  } else {
-    return {};
-  }
-}
 
 async function load() {
   let newConfig;

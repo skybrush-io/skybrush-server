@@ -210,7 +210,7 @@ schema = {
         },
         "status_interval": {
             "type": "number",
-            "minValue": 0.1,
+            "minimum": 0.1,
             "default": 0.5,
             "title": "Interval between status packets",
             "description": "Length of the time interval between two consecutive attempts to retrieve status information from a Crazyflie show drone. E.g., 0.5 = 0.5 seconds = two status reports per second.",

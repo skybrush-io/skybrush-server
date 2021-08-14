@@ -440,15 +440,15 @@ def get_schema():
                 "propertyOrder": 20,
             },
             "port": {
-                "type": "number",
+                "type": "integer",
                 "title": "Port",
                 "description": (
                     "Port that the server should listen on for incoming UPnP/SSDP "
                     "discovery requests. Tick the checkbox to override the default "
                     "UPnP/SSDP port."
                 ),
-                "minValue": 1,
-                "maxValue": 65535,
+                "minimum": 1,
+                "maximum": 65535,
                 "default": 1900,
                 "required": False,
                 "propertyOrder": 30,

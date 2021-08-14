@@ -306,14 +306,14 @@ schema = {
             "propertyOrder": 10,
         },
         "port": {
-            "type": "number",
+            "type": "integer",
             "title": "Port",
             "description": (
                 "Port that the server should listen on. Untick the checkbox to "
                 "let the server derive the port number from its own base port."
             ),
-            "minValue": 1,
-            "maxValue": 65535,
+            "minimum": 1,
+            "maximum": 65535,
             "default": get_port_number_for_service("sidekick"),
             "required": False,
             "propertyOrder": 20,

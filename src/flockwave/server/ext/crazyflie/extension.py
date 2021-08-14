@@ -18,7 +18,7 @@ from .crtp_extensions import DRONE_SHOW_PORT, DroneShowCommand
 from .driver import CrazyflieDriver
 from .scanning import CrazyradioScannerTask
 
-__all__ = ("construct",)
+__all__ = ("construct", "schema")
 
 
 class CrazyflieDronesExtension(UAVExtensionBase):
@@ -188,3 +188,39 @@ class CrazyflieDronesExtension(UAVExtensionBase):
 
 
 construct = CrazyflieDronesExtension
+schema = {
+    "properties": {
+        "connections": {
+            "title": "Connection URLs",
+            "type": "array",
+            "format": "table",
+            "items": {"type": "string"},
+        },
+        "debug": {
+            "type": "boolean",
+            "title": "Debug mode",
+            "format": "checkbox",
+            "propertyOrder": 2000,
+        },
+        "id_format": {
+            "type": "string",
+            "default": "{0:02}",
+            "title": "ID format",
+            "description": "Python format string that determines the format of the IDs of the drones created by this extension.",
+        },
+        "status_interval": {
+            "type": "number",
+            "minValue": 0.1,
+            "default": 0.5,
+            "title": "Interval between status packets",
+            "description": "Length of the time interval between two consecutive attempts to retrieve status information from a Crazyflie show drone. E.g., 0.5 = 0.5 seconds = two status reports per second.",
+        },
+        "testing": {
+            "type": "boolean",
+            "title": "Testing mode",
+            "description": "Tick this checkbox to prevent the Crazyflie drones from starting their motors while testing a show file",
+            "format": "checkbox",
+            "propertyOrder": 2000,
+        },
+    }
+}

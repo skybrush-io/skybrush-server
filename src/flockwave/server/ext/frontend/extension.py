@@ -32,3 +32,4 @@ def load(app, configuration):
 
 dependencies = ("http_server",)
 description = "Simple frontend index page served over HTTP"
+schema = {}

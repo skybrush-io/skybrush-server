@@ -174,3 +174,40 @@ async def run(app, configuration, logger):
 
 
 description = "UDP socket-based communication channel"
+schema = {
+    "properties": {
+        "host": {
+            "type": "string",
+            "title": "Host",
+            "description": (
+                "IP address of the host that the server should listen on for "
+                "incoming UDP packets. Use an empty string to listen on all "
+                "interfaces, or 127.0.0.1 to listen on localhost only"
+            ),
+            "default": "",
+            "propertyOrder": 10,
+        },
+        "port": {
+            "type": "number",
+            "title": "Port",
+            "description": (
+                "Port that the server should listen on for incoming UDP packets. "
+                "Untick the checkbox to let the server derive the port number from "
+                "its own base port."
+            ),
+            "minValue": 1,
+            "maxValue": 65535,
+            "default": get_port_number_for_service("udp"),
+            "required": False,
+            "propertyOrder": 20,
+        },
+        "pool_size": {
+            "type": "number",
+            "title": "Request handler pool size",
+            "minValue": 1,
+            "description": ("Maximum number of concurrent UDP requests to handle."),
+            "default": 1000,
+            "propertyOrder": 30,
+        },
+    }
+}

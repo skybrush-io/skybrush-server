@@ -90,14 +90,16 @@ def _convert_client_id(client_id: str) -> str:
 ############################################################################
 
 
-def handle_connection(client_id, environ):
+def handle_connection(client_id: str, environ) -> None:
     """Handler called when a client connects to the Skybrush server socket."""
+    assert app is not None
     client = app.client_registry.add(_convert_client_id(client_id), "sio")
     client.user = environ.get("REMOTE_USER")
 
 
-def handle_disconnection(client_id):
+def handle_disconnection(client_id: str) -> None:
     """Handler called when a client disconnects from the server socket."""
+    assert app is not None
     app.client_registry.remove(_convert_client_id(client_id))
 
 
@@ -110,6 +112,7 @@ async def handle_flockwave_message(client_id, message):
             its members have not been cast to the appropriate data types
             on the Python side.
     """
+    assert app is not None
     client_id = _convert_client_id(client_id)
     try:
         client = app.client_registry[client_id]
@@ -173,3 +176,4 @@ async def run(app, configuration, logger):
 
 dependencies = ("http_server",)
 description = "Socket.IO communication channel"
+schema = {}

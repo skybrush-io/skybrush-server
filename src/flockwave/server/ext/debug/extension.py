@@ -273,3 +273,4 @@ async def reload_extension(name):
 
 dependencies = ("http_server", "signals")
 description = "Debugging tools"
+schema = {}

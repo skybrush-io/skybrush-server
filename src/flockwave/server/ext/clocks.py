@@ -140,3 +140,4 @@ async def run(app, configuration, logger):
 
 
 description = "Clocks and clock registry"
+schema = {}

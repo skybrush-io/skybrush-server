@@ -412,4 +412,49 @@ async def receive_ssdp_messages(multicast_group, port, *, sender):
             await handle_message(*data, socket=sender)
 
 
+def get_schema():
+    global app
+    return {
+        "properties": {
+            "label": {
+                "type": "string",
+                "title": "Service name",
+                "description": (
+                    "Tick the checkbox to override the default service name used in "
+                    "UPnP/SSDP announcements"
+                ),
+                "default": app.config.get("SERVER_NAME") if app else "",
+                "required": False,
+                "propertyOrder": 10,
+            },
+            "multicast_group": {
+                "type": "string",
+                "title": "Multicast group",
+                "description": (
+                    "Multicast group to join when listening for UPnP/SSDP discovery "
+                    "requests. Tick the checkbox to override the default multicast "
+                    "group."
+                ),
+                "default": "239.255.255.250",
+                "required": False,
+                "propertyOrder": 20,
+            },
+            "port": {
+                "type": "number",
+                "title": "Port",
+                "description": (
+                    "Port that the server should listen on for incoming UPnP/SSDP "
+                    "discovery requests. Tick the checkbox to override the default "
+                    "UPnP/SSDP port."
+                ),
+                "minValue": 1,
+                "maxValue": 65535,
+                "default": 1900,
+                "required": False,
+                "propertyOrder": 30,
+            },
+        },
+    }
+
+
 description = "Automatic server discovery on the local network with UPnP/SSDP"

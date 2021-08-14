@@ -7,16 +7,20 @@ import os
 import platform
 
 from contextlib import ExitStack
+from logging import Logger
 from json import dumps
-from trio import open_memory_channel, WouldBlock
-from trio.abc import ReceiveChannel, SendChannel
-from typing import Any, List, Optional, Tuple
+from trio import open_memory_channel, MemorySendChannel, WouldBlock
+from trio.abc import ReceiveChannel
+from typing import Any, List, Optional, Tuple, TYPE_CHECKING
 
 from flockwave.connections import ConnectionState
 from flockwave.server.registries import ConnectionRegistry, ConnectionRegistryEntry
 from flockwave.server.utils import overridden
 
 from .base import ExtensionBase
+
+if TYPE_CHECKING:
+    from trio.lowlevel import FdStream  # not available on Windows
 
 
 #: Dictionary mapping connection statuses to corresponding string representations
@@ -34,10 +38,15 @@ class ConsoleStatusExtension(ExtensionBase):
     device.
     """
 
+    log: Logger
+
+    _queue_tx: Optional[MemorySendChannel]
+    _stream: Optional["FdStream"]
+
     def __init__(self):
         super().__init__()
 
-        self._queue_tx = None  # type: Optional[SendChannel]
+        self._queue_tx = None
         self._stream = None
 
     async def run(self, app, configuration, log) -> None:
@@ -103,6 +112,7 @@ class ConsoleStatusExtension(ExtensionBase):
         """Gathers the full status information to send from the application
         object and returns it as a list of key-value pairs.
         """
+        assert self.app is not None
         items = [
             self._get_status_information_for_entry(entry)
             for entry in self.app.connection_registry
@@ -113,6 +123,7 @@ class ConsoleStatusExtension(ExtensionBase):
     def _get_status_information_for_entry(
         self, entry: ConnectionRegistryEntry, deleted: bool = False
     ) -> Tuple[str, Any]:
+        assert entry.connection is not None
         status = _status_to_string.get(entry.connection.state, "unknown")
         return (f"Connections|{entry.description}", None if deleted else status)
 
@@ -173,7 +184,7 @@ class ConsoleStatusExtension(ExtensionBase):
 
     async def _send_status_information(self, obj) -> None:
         """Sends the given status information object to the console frontend."""
-        if not obj:
+        if not obj or not self._stream:
             return
 
         message = dumps({"type": "status", "args": [obj]}).encode("utf-8") + b"\n"
@@ -186,10 +197,11 @@ def _get_fd_to_console_frontend() -> Optional[int]:
     frontend.
     """
     try:
-        return int(os.environ.get("SB_CONSOLE_FRONTEND_STATUS_FD"))
+        return int(os.environ.get("SB_CONSOLE_FRONTEND_STATUS_FD"))  # type: ignore
     except Exception:
         return None
 
 
 construct = ConsoleStatusExtension
 description = "Status information module for the console-based frontend"
+schema = {}

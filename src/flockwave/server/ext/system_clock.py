@@ -52,3 +52,4 @@ async def run(app):
 
 dependencies = ("clocks",)
 description = "System clock that always shows the current timestamp of the server"
+schema = {}

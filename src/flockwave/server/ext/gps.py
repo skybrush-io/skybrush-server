@@ -218,3 +218,25 @@ class GPSExtension(UAVExtensionBase):
 
 construct = GPSExtension
 description = "External GPS receivers as beacons"
+schema = {
+    "properties": {
+        "connection": {
+            "type": "string",
+            "title": "Connection URL",
+            "description": (
+                "Use gpsd to connect to the local gpsd daemon; alternatively, "
+                "use the full name or path of a local serial port, or any "
+                "valid connection URL for more advanced cases"
+            ),
+        },
+        "id_format": {
+            "type": "string",
+            "default": "BEACON:{0}",
+            "title": "ID format",
+            "description": (
+                "Python format string that determines the format of the IDs of "
+                "the GPS beacons created by this extension."
+            ),
+        },
+    }
+}

@@ -198,3 +198,25 @@ class DockExtension(UAVExtensionBase):
 
 construct = DockExtension
 description = "Support for CollMot Robotics' docking station"
+schema = {
+    "properties": {
+        "listener": {
+            "type": "string",
+            "title": "Listener URL",
+            "description": (
+                "URL-style specification of the listener interface that the "
+                "server will provide for the docking station. Use unix:... "
+                "for standard UNIX domain sockets."
+            ),
+        },
+        "id_format": {
+            "type": "string",
+            "default": "DOCK:{0}",
+            "title": "ID format",
+            "description": (
+                "Python format string that determines the format of the IDs of "
+                "the docking stations created by this extension."
+            ),
+        },
+    }
+}

@@ -7,7 +7,7 @@ from fcntl import fcntl, F_GETFL, F_SETFL
 from functools import partial
 from os import O_NONBLOCK
 from trio import CapacityLimiter, ClosedResourceError, Lock, open_file, open_nursery
-from trio.hazmat import FdStream
+from trio.lowlevel import FdStream
 
 from flockwave.channels import ParserChannel
 from flockwave.encoders.json import create_json_encoder

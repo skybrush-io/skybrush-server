@@ -311,3 +311,4 @@ async def run(app, configuration, logger):
 
 
 description = "Provides support for managing extensions while the server is running"
+schema = {}

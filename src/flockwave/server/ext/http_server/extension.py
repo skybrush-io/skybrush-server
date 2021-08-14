@@ -24,7 +24,7 @@ from flockwave.server.types import Disposer
 
 from .routing import RoutingMiddleware
 
-__all__ = ("exports", "load", "unload")
+__all__ = ("exports", "load", "unload", "schema")
 
 PACKAGE_NAME = __name__.rpartition(".")[0]
 
@@ -232,9 +232,9 @@ async def run(app, configuration, logger):
     config = HyperConfig()
     config.accesslog = server_log
     config.bind = [f"{host}:{port}"]
-    config.certfile = configuration.get("certfile")
+    config.certfile = configuration.get("certfile") or None
     config.errorlog = server_log
-    config.keyfile = configuration.get("keyfile")
+    config.keyfile = configuration.get("keyfile") or None
     config.use_reloader = False
 
     secure = bool(config.ssl_enabled)
@@ -281,4 +281,45 @@ exports = {
     "mounted": mounted,
     "propose_index_page": propose_index_page,
     "proposed_index_page": proposed_index_page,
+}
+
+schema = {
+    "properties": {
+        "host": {
+            "type": "string",
+            "title": "Host",
+            "description": (
+                "IP address of the host that the server should listen on. Use "
+                "an empty string to listen on all interfaces, or 127.0.0.1 to "
+                "listen on localhost only"
+            ),
+            "default": "127.0.0.1",
+            "propertyOrder": 10,
+        },
+        "port": {
+            "type": "number",
+            "title": "Port",
+            "description": (
+                "Port that the server should listen on. Untick the checkbox to "
+                "let the server derive the port number from its own base port."
+            ),
+            "minValue": 1,
+            "maxValue": 65535,
+            "default": get_port_number_for_service("http"),
+            "required": False,
+            "propertyOrder": 20,
+        },
+        "certfile": {
+            "type": "string",
+            "title": "Certificate file",
+            "description": "Full path to the certificate file that the server should use for HTTPS connections",
+            "required": False,
+        },
+        "keyfile": {
+            "type": "string",
+            "title": "Private key file",
+            "description": "Full path to the private key file corresopnding to the certificate",
+            "required": False,
+        },
+    }
 }

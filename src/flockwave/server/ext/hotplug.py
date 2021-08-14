@@ -21,3 +21,4 @@ async def run(app, configuration, log):
 
 
 description = "Hotplug event provider for other extensions"
+schema = {}

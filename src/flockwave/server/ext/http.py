@@ -245,3 +245,16 @@ async def run(app, configuration, logger):
 
 dependencies = ("auth", "http_server")
 description = "HTTP request-response communication channel"
+schema = {
+    "properties": {
+        "route": {
+            "type": "string",
+            "title": "URL root",
+            "description": (
+                "URL where the extension is mounted within the HTTP namespace "
+                "of the server"
+            ),
+            "default": "/api/v1",
+        }
+    }
+}

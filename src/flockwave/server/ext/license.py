@@ -3,7 +3,7 @@ from datetime import date, timedelta
 from flockwave.ext.errors import ApplicationExit
 from flockwave.networking import get_link_layer_address_mapping
 from math import inf
-from typing import Dict, Optional, Tuple
+from typing import cast, Any, Dict, Optional, Tuple
 
 import json
 
@@ -90,7 +90,7 @@ class License(metaclass=ABCMeta):
         """Returns the JSON representation of this license in the format used
         by the LCN-INF message.
         """
-        result = {"id": self.get_id(), "licensee": self.get_licensee()}
+        result: Dict[str, Any] = {"id": self.get_id(), "licensee": self.get_licensee()}
 
         expiry_date = self.get_expiry_date()
         if expiry_date is not None:
@@ -154,7 +154,7 @@ class PyArmorLicense(License):
         except ImportError:
             return None
 
-    def __init__(self, license_info: str, expired_days: int = -1):
+    def __init__(self, license_info: Dict[str, Any], expired_days: int = -1):
         """Constructor.
 
         Do not use directly; use the `get_license()` class method instead.
@@ -180,11 +180,11 @@ class PyArmorLicense(License):
     def get_maximum_drone_count(self) -> float:
         return self._get_conditions().get("drones", inf)
 
-    def _get_conditions(self) -> Dict[str, str]:
+    def _get_conditions(self) -> Dict[str, Any]:
         parsed = self._parse_license_info()
         return parsed.get("cond", {})
 
-    def _parse_license_info(self):
+    def _parse_license_info(self) -> Dict[str, Any]:
         if not hasattr(self, "_parsed_license_info"):
             data = self._license_info.get("DATA")
             if data:
@@ -197,7 +197,7 @@ class PyArmorLicense(License):
 
             self._parsed_license_info = data or {}
 
-        return self._parsed_license_info
+        return cast(Dict[str, Any], self._parsed_license_info)
 
 
 def get_license() -> Optional[License]:
@@ -287,3 +287,4 @@ def unload(app):
 
 description = "License management"
 exports = {"get_license": get_license}
+schema = {}

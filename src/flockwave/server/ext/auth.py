@@ -116,3 +116,4 @@ construct = AuthenticationExtension
 description = (
     "Authentication-related message handlers and authentication method registry"
 )
+schema = {}

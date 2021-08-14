@@ -160,6 +160,21 @@
   height: 0 !important;
 }
 
-.json-schema-editor .form-group:last-child {
+.json-schema-editor .form-group label {
+  font-weight: bold;
+}
+
+.json-schema-editor .form-group label.form-check-label {
+  font-weight: normal;
+}
+
+.json-schema-editor h3.card-title {
+  font-size: 1rem;
   margin-bottom: 0;
+}
+
+.json-schema-editor h3.card-title .btn-group {
+  vertical-align: baseline;
+  padding-left: 0.5em;
+  float: right;
 }

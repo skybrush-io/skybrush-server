@@ -117,16 +117,22 @@ function updateButtons() {
 }
 </script>
 
-{% if schema %}
+{% if schema and schema.properties %}
   <script type="text/javascript" src="static/js/jsoneditor-2.5.4.min.js"></script>
   <script>
   const element = document.getElementById('configuration');
   const editor = new JSONEditor(element, {
+    array_controls_top: true,
+    compact: true,
+    disable_array_delete_all_rows: true,
+    disable_array_delete_last_row: true,
     disable_collapse: true,
     disable_edit_json: true,
     disable_properties: true,
     form_name_root: 'config',
+    required_by_default: true,
     schema: {{ schema | tojson(indent=2) }},
+    show_opt_in: true,
     startval: {{ config | tojson(indent=2) }},
     theme: 'bootstrap4'
   });
@@ -162,6 +168,25 @@ function updateButtons() {
       setValid(isConfigurationValid());
     }
   });
+
+  tables = document.querySelectorAll(".json-schema-editor .table");
+  for (let table of tables) {
+    let card = table.parentNode;
+
+    table.classList.add("table-borderless");
+    if (card.classList.contains("card")) {
+      card.parentNode.appendChild(table);
+      card.remove();
+    }
+  }
+
+  headers = document.querySelectorAll(".json-schema-editor .table th");
+  for (let header of headers) {
+    if (header.textContent === "row" && header.parentNode && header.parentNode.firstChild === header && header.parentNode.childNodes.length === 2) {
+      header.parentNode.style.display = "none";
+      console.log(header.textContent);
+    }
+  }
   </script>
 {% else %}
   <script type="text/javascript" src="static/js/ace-1.4.12.min.js"></script>
@@ -191,8 +216,6 @@ function updateButtons() {
       setValid(isConfigurationValid());
     }
   });
-
-  editor.focus();
 
   function isConfigurationValid() {
     const value = editor.getValue();

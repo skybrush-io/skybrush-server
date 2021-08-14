@@ -292,3 +292,31 @@ async def run(app, configuration, logger):
 
 dependencies = ("ssdp", "signals")
 description = "Communication channel to Skybrush Sidekick"
+schema = {
+    "properties": {
+        "host": {
+            "type": "string",
+            "title": "Host",
+            "description": (
+                "IP address of the host that the server should listen for incoming "
+                "connections from Skybrush Sidekick. Use an empty string to listen "
+                "on all interfaces, or 127.0.0.1 to listen on localhost only"
+            ),
+            "default": "",
+            "propertyOrder": 10,
+        },
+        "port": {
+            "type": "number",
+            "title": "Port",
+            "description": (
+                "Port that the server should listen on. Untick the checkbox to "
+                "let the server derive the port number from its own base port."
+            ),
+            "minValue": 1,
+            "maxValue": 65535,
+            "default": get_port_number_for_service("sidekick"),
+            "required": False,
+            "propertyOrder": 20,
+        },
+    }
+}

@@ -3,16 +3,19 @@ communicate with each other in a coordinated manner without needing to import
 each other's API.
 """
 
+from __future__ import annotations
+
 from blinker import NamedSignal, Signal
 from contextlib import contextmanager, ExitStack
-from typing import Callable, ContextManager, Dict, Optional
+from logging import Logger
+from typing import Callable, Dict, Iterator, Optional
 
 
 #: Logger that will be used to log unexpected exceptions from signal handlers
-log = None
+log: Optional[Logger] = None
 
 #: Namespace containing all the signals registered in this extension
-signals = None
+signals: Optional["Namespace"] = None
 
 
 class ProtectedSignal(NamedSignal):
@@ -39,7 +42,8 @@ class ProtectedSignal(NamedSignal):
             try:
                 retval = receiver(sender, **kwargs)
             except Exception as ex:
-                log.exception("Unexpected exception caught in signal dispatch")
+                if log:
+                    log.exception("Unexpected exception caught in signal dispatch")
                 retval = ex
             result.append((receiver, retval))
 
@@ -81,7 +85,7 @@ def get_signal(name: str) -> Signal:
 
 
 @contextmanager
-def use_signals(map: Dict[str, Callable]) -> ContextManager[None]:
+def use_signals(map: Dict[str, Callable]) -> Iterator[None]:
     """Context manager that registers signal handler functions for multiple
     signals when entering the context and unregisters them when exiting the
     context.
@@ -89,7 +93,7 @@ def use_signals(map: Dict[str, Callable]) -> ContextManager[None]:
     with ExitStack() as stack:
         for key, func in map.items():
             signal = get_signal(key)
-            stack.enter_context(signal.connected_to(func))
+            stack.enter_context(signal.connected_to(func))  # type: ignore
         yield
 
 
@@ -108,3 +112,4 @@ def unload():
 
 description = "Signal emission and subscription service for intra-server communication"
 exports = {"get": get_signal, "use": use_signals}
+schema = {}

@@ -18,6 +18,14 @@ class StartMethod(Enum):
     #: Show starts automatically based on GPS time or MIDI timecode
     AUTO = "auto"
 
+    def describe(self) -> str:
+        """Returns a human-readable description of the start method."""
+        return (
+            "Show starts only with RC"
+            if self is StartMethod.RC
+            else "Show starts automatically based on a designated start time"
+        )
+
 
 class LightEffectType(Enum):
     """Enumeration holding the type of light effects that could be configured

@@ -90,3 +90,4 @@ def unload():
 
 
 description = "Connections to NTRIP servers and casters"
+schema = {}

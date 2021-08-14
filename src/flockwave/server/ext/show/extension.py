@@ -231,3 +231,16 @@ class DroneShowExtension(ExtensionBase):
 construct = DroneShowExtension
 dependencies = ("clocks", "signals")
 description = "Support for managing drone shows"
+schema = {
+    "properties": {
+        "default_start_method": {
+            "type": "string",
+            "title": "Default start method for shows",
+            "enum": [StartMethod.RC.value, StartMethod.AUTO.value],
+            "default": StartMethod.RC.value,
+            "options": {
+                "enum_titles": [StartMethod.RC.describe(), StartMethod.AUTO.describe()],
+            },
+        }
+    }
+}

@@ -48,10 +48,15 @@ def create_wireless_connection_configuration_for_subnet(
     }
 
 
+#: Default wireless network to join, in CIDR notation
+DEFAULT_WIRELESS_NETWORK = "10.0.0.0/8"
+
 #: Dictionary that resolves common wireless connection preset aliases used in
 #: the configuration file
 WIRELESS_PRESETS = {
-    "default": create_wireless_connection_configuration_for_subnet("10.0.0.0/8"),
+    "default": create_wireless_connection_configuration_for_subnet(
+        DEFAULT_WIRELESS_NETWORK
+    ),
     "local": {
         "broadcast": "udp-multicast://239.255.67.77:4243?interface=127.0.0.1",
         # ?multicast_interface=127.0.0.1 ensures that multicast packets from
@@ -239,7 +244,7 @@ class FlockCtrlDronesExtension(UAVExtensionBase):
             configuration (dict): the configuration dictionary of the
                 extension
         """
-        driver.id_format = configuration.get("id_format", "{0:02}")
+        driver.id_format = configuration.get("id_format", "{0}")
         driver.log = self.log.getChild("driver")
 
         driver.broadcast_packet = self._broadcast_packet
@@ -365,3 +370,42 @@ class FlockCtrlDronesExtension(UAVExtensionBase):
 construct = FlockCtrlDronesExtension
 dependencies = ("clocks", "signals")
 description = "Support for drones that use the flockctrl protocol"
+schema = {
+    "properties": {
+        "connections": {
+            "title": "Connections",
+            "type": "object",
+            "properties": {
+                "wireless": {
+                    "title": "IEEE 802.11 wireless IP network",
+                    "type": "string",
+                    "description": (
+                        "IP network in CIDR notation that the server will "
+                        "attempt to join in order to receive status messages "
+                        f"from the drones. 'default' means {DEFAULT_WIRELESS_NETWORK}; "
+                        "'local' means localhost only (for simulations)."
+                    ),
+                    "default": "default",
+                    "propertyOrder": 10,
+                },
+                "radio": {
+                    "title": "Secondary radio connection",
+                    "type": "string",
+                    "description": (
+                        "Connection URL for the secondary radio connection. 'default' "
+                        "means an FTDI USB serial port with vendor ID = 0x0403 and "
+                        "product ID = 0x6015 at 57600 baud."
+                    ),
+                    "default": "default",
+                    "propertyOrder": 20,
+                },
+            },
+        },
+        "id_format": {
+            "type": "string",
+            "default": "{0}",
+            "title": "ID format",
+            "description": "Python format string that determines the format of the IDs of the drones created by this extension.",
+        },
+    },
+}

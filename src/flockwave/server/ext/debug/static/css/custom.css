@@ -160,6 +160,8 @@
   height: 0 !important;
 }
 
+.json-schema-editor .je-object__title label,
+.json-schema-editor .card-title label,
 .json-schema-editor .form-group label {
   font-weight: bold;
 }
@@ -177,4 +179,8 @@
   vertical-align: baseline;
   padding-left: 0.5em;
   float: right;
+}
+
+.json-schema-editor .table {
+  margin-left: -0.3rem;
 }

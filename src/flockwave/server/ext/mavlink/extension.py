@@ -195,7 +195,7 @@ class MAVLinkDronesExtension(UAVExtensionBase):
             "statustext_targets": configuration.get(
                 "statustext_targets", frozenset({"client", "server"})
             ),
-            "system_id": configuration.get("system_id", 255),
+            "system_id": configuration.get("system_id", 254),
         }
 
         # Apply the default ID format for networks that do not specify an
@@ -374,3 +374,81 @@ class MAVLinkDronesExtension(UAVExtensionBase):
 construct = MAVLinkDronesExtension
 dependencies = ("show", "signals")
 description = "Support for drones that use the MAVLink protocol"
+schema = {
+    "properties": {
+        "connections": {
+            "title": "Connection URLs",
+            "type": "array",
+            "format": "table",
+            "items": {"type": "string"},
+            "description": (
+                "URLs describing the connections where the server needs to "
+                "listen for incoming MAVLink packets. 'default' means that "
+                "incoming MAVLink packets are expected on UDP port 14550 and "
+                "outbound MAVLink packets are sent to UDP port 14555."
+            ),
+        },
+        "custom_mode": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 255,
+            "required": False,
+            "title": "Enforce MAVLink custom flight mode",
+            "description": (
+                "MAVLink custom flight mode number to switch drones to when "
+                "they are discovered the first time. 127 is the mode number of "
+                "the drone show mode for Skybrush-compatible MAVLink-based "
+                "drones. Refer to the documentation of your autopilot for more "
+                "details."
+            ),
+            "default": 127,
+        },
+        "id_format": {
+            "type": "string",
+            "default": "{0:02}",
+            "title": "ID format",
+            "description": "Python format string that determines the format of the IDs of the drones created by this extension.",
+        },
+        "routing": {
+            "type": "object",
+            "title": "Message routing",
+            "properties": {
+                "rtk": {
+                    "type": "integer",
+                    "title": "RTK messages",
+                    "description": "Index of the connection where RTK correction messages are routed to (zero-based)",
+                    "default": 0,
+                    "minimum": 0,
+                }
+            },
+        },
+        "statustext_targets": {
+            "type": "array",
+            "title": "STATUSTEXT message handling",
+            "items": {
+                "type": "string",
+                "enum": ["client", "server"],
+                "options": {
+                    "enum_titles": [
+                        "Forward STATUSTEXT messages to Skybrush clients",
+                        "Log STATUSTEXT messages in the server log",
+                    ]
+                },
+            },
+            "default": ["client", "server"],
+            "uniqueItems": True,
+        },
+        "system_id": {
+            "title": "System ID",
+            "description": "MAVLink system ID of the server; typically IDs from 251 to 254 are reserved for ground stations.",
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 255,
+            "default": 254,
+        },
+        # connections
+        # routing
+        # networks is an advanced setting and is not included here
+        # packet_loss is an advanced setting and is not included here
+    }
+}

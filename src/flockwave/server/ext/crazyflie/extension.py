@@ -43,7 +43,7 @@ class CrazyflieDronesExtension(UAVExtensionBase):
         server application.
         """
         driver.debug = bool(configuration.get("debug", False))
-        driver.id_format = configuration.get("id_format", "{0:02}")
+        driver.id_format = configuration.get("id_format", "{0}")
         driver.log = self.log.getChild("driver")
         driver.status_interval = float(configuration.get("status_interval", 0.5))
         driver.use_fake_position = configuration.get("feed_fake_position", False)
@@ -204,7 +204,7 @@ schema = {
         },
         "id_format": {
             "type": "string",
-            "default": "{0:02}",
+            "default": "{0}",
             "title": "ID format",
             "description": "Python format string that determines the format of the IDs of the drones created by this extension.",
         },

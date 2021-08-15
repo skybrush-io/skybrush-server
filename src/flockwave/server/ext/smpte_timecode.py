@@ -8,9 +8,10 @@ from __future__ import division
 
 from contextlib import contextmanager, ExitStack
 from dataclasses import dataclass
+from logging import Logger
 from time import time
 from trio import move_on_after
-from typing import Optional
+from typing import AsyncIterator, Iterator, Optional, Tuple
 
 from .base import ExtensionBase
 
@@ -26,12 +27,12 @@ class SMPTETimecode:
     """Class representing a single SMPTE timecode.
 
     Attributes:
-        hour (int): the hour part of the timecode
-        minute (int): the minute part of the timecode
-        second (int): the second part of the timecode
-        frame (int): the frame part of the timecode
-        frames_per_second (int): the number of frames per second
-        drop (bool): whether this is a drop-frame timecode
+        hour: the hour part of the timecode
+        minute: the minute part of the timecode
+        second: the second part of the timecode
+        frame: the frame part of the timecode
+        frames_per_second: the number of frames per second
+        drop: whether this is a drop-frame timecode
     """
 
     hour: int = 0
@@ -42,14 +43,14 @@ class SMPTETimecode:
     drop: bool = False
 
     @property
-    def total_frames(self):
+    def total_frames(self) -> int:
         """The total number of frames since the 00:00:00:00 timecode."""
         return (
             (self.hour * 60 + self.minute) * 60 + self.second
         ) * self.frames_per_second + self.frame
 
     @property
-    def total_seconds(self):
+    def total_seconds(self) -> float:
         """The total number of seconds since the 00:00:00:00 timecode."""
         return (
             self.hour * 3600
@@ -64,15 +65,22 @@ class SMPTETimecode:
         )
 
 
-class MIDITimecodeAssembler(object):
+class MIDITimecodeAssembler:
     """Stateful MIDI timecode assembler that receives MIDI messages with
     SysEx full time code messages and quarter-frame time code messages and
     yields the SMPTE timestamps parsed from these messages as well as the
     corresponding timestamps according to the local system clock.
     """
 
+    _expected_frame_type: int
+    _frame: int
+    _hour: int
+    _minute: int
+    _second: int
+    _time: Optional[float]
+
     @classmethod
-    def stream(cls, messages):
+    def stream(cls, messages) -> Iterator[Tuple[float, SMPTETimecode, bool]]:
         """Shorthand notation for taking an iterable yielding MIDI timecode
         messages and yielding SMPTE timecodes from them.
 
@@ -82,11 +90,10 @@ class MIDITimecodeAssembler(object):
                 are ignored.
 
         Yields:
-            (int, SMPTETimecode, bool): a tuple consisting of the timestamp
-                when the first byte of the SMPTE timecode was received, the
-                SMPTE timecode itself, and whether the clock is assumed to
-                be running now, for each timecode parsed from the inbound
-                messages
+            a tuple consisting of the timestamp when the first byte of the SMPTE
+            timecode was received, the SMPTE timecode itself, and whether the
+            clock is assumed to be running now, for each timecode parsed from
+            the inbound messages
         """
         assembler = cls()
         for message in messages:
@@ -98,11 +105,11 @@ class MIDITimecodeAssembler(object):
         """Constructor."""
         self.reset()
 
-    def feed(self, message):
+    def feed(self, message) -> Optional[Tuple[float, SMPTETimecode, bool]]:
         """Feeds a single MIDI message into the timecode assembler.
 
         Returns:
-            Optional[(int, SMPTETimecode, bool)]: a tuple consisting of the
+            Optional[(float, SMPTETimecode, bool)]: a tuple consisting of the
                 timestamp when the first byte of the SMPTE timecode was
                 received, the SMPTE timecode itself, and whether the clock
                 is assumed to be running now, or ``None`` if the
@@ -116,13 +123,15 @@ class MIDITimecodeAssembler(object):
         else:
             return None
 
-    def reset(self):
+    def reset(self) -> None:
         """Resets the state of the assembler."""
         self._expected_frame_type = 0
         self._frame, self._second, self._minute, self._hour = 0, 0, 0, 0
         self._time = None
 
-    def _feed_quarter_frame(self, message):
+    def _feed_quarter_frame(
+        self, message
+    ) -> Optional[Tuple[float, SMPTETimecode, bool]]:
         frame_type = message.frame_type
         result = None
 
@@ -156,12 +165,15 @@ class MIDITimecodeAssembler(object):
                 frames_per_second=frames_per_second,
                 drop=is_drop_frame,
             )
-            result = self._time, timecode, True
+            if self._time is not None:
+                result = self._time, timecode, True
+            else:
+                result = None
 
         self._expected_frame_type = (self._expected_frame_type + 1) % 8
         return result
 
-    def _feed_sysex_frame(self, message):
+    def _feed_sysex_frame(self, message) -> Optional[Tuple[float, SMPTETimecode, bool]]:
         if message.data[0:4] != (127, 127, 1, 1):
             # Not a full MIDI timecode frame
             return None
@@ -182,21 +194,21 @@ class MIDITimecodeAssembler(object):
         return now, timecode, False
 
     @staticmethod
-    def _rate_bits_to_fps(value):
+    def _rate_bits_to_fps(value: int) -> Tuple[int, bool]:
         """Given a data byte from a MIDI timecode quarter frame of type 7 or
         a full MIDI timecode frame, returns the frame rate and whether it is
         a drop-frame MIDI timecode.
 
         Parameters:
-            value (int): the frame rate bits of a MIDI timecode quarter
-                frame of type 7, or of a full MIDI timecode frame. The bits
-                have to be shifted down to the least significant positions
-                before calling this function; in other words, the only
-                allowed values here are 0, 1, 2 or 3.
+            value: the frame rate bits of a MIDI timecode quarter frame of type
+                7, or of a full MIDI timecode frame. The bits have to be shifted
+                down to the least significant positions before calling this
+                function; in other words, the only allowed values here are 0, 1,
+                2 or 3.
 
         Returns:
-            (int, bool): the number of frames per second and whether this is
-                a drop-frame MIDI timecode
+            the number of frames per second and whether this is a drop-frame
+            MIDI timecode
         """
         rate_bits = value & 3
         frames_per_second = (24, 25, 30, 30)[rate_bits]
@@ -204,20 +216,23 @@ class MIDITimecodeAssembler(object):
 
 
 class MIDIClock(StoppableClockBase):
-    """Clock subclass that the extension provides and registers.
+    """Clock subclass that the extension provides and registers."""
 
-    Attributes:
-        last_timecode (SMPTETimecode): the last SMPTE timecode received from
-            the MIDI port
-    """
+    #: The last SMPTE timecode received from the MIDI port
+    _last_timecode: SMPTETimecode
+
+    #: The local timestamp when the last SMPTE timecode was received
+    _last_local_timestamp: float
 
     def __init__(self):
         """Constructor."""
-        super(MIDIClock, self).__init__(id="mtc")
+        super().__init__(id="mtc")
         self._last_timecode = SMPTETimecode()
-        self._last_local_timestamp = None
+        self._last_local_timestamp = 0
 
-    def _calculate_drift(self, timecode, local_timestamp):
+    def _calculate_drift(
+        self, timecode: SMPTETimecode, local_timestamp: float
+    ) -> float:
         """Calculates how much the MIDI clock has drifted, based on the
         last timecode, the local timestamp when the last timecode was
         received (stored in the instance attributes), a newly received
@@ -244,7 +259,7 @@ class MIDIClock(StoppableClockBase):
         else:
             return delta_timecode
 
-    def notify_timecode(self, timecode: SMPTETimecode, local_timestamp: float):
+    def notify_timecode(self, timecode: SMPTETimecode, local_timestamp: float) -> None:
         """Notify the clock that an SMPTE timecode was observed on the MIDI
         connection.
 
@@ -285,20 +300,21 @@ class MIDIClock(StoppableClockBase):
 
 
 class InboundMessageParser:
-    """Trio task that parses and processes inbound MIDI messages.
+    """Trio task that parses and processes inbound MIDI messages."""
 
-    Attributes:
-        port (MIDIConnection): the MIDI connection that the task reads
-            messages from.
-    """
+    #: Assembler object used to parse a timecode from consecutive MIDI messages
+    assembler: MIDITimecodeAssembler
+
+    #: The MIDI connection that the parser reads messages from
+    port: MIDIPortConnection
 
     @dataclass
     class Message:
         timecode: Optional[SMPTETimecode] = None
-        local_timestamp: Optional[int] = None
+        local_timestamp: Optional[float] = None
         running: bool = False
 
-    def __init__(self, port):
+    def __init__(self, port: MIDIPortConnection):
         """Constructor.
 
         Parameters:
@@ -307,7 +323,7 @@ class InboundMessageParser:
         self.port = port
         self.assembler = MIDITimecodeAssembler()
 
-    async def _read_next_timecode(self):
+    async def _read_next_timecode(self) -> Tuple[float, SMPTETimecode, bool]:
         """Reads the next timecode frame from the MIDI connection. Blocks
         until the next timecode is received.
         """
@@ -317,7 +333,7 @@ class InboundMessageParser:
             if result is not None:
                 return result
 
-    async def run(self):
+    async def run(self) -> AsyncIterator[Message]:
         """Main entry point of the Trio task that reads messages in an infinite
         loop from the MIDI connection.
         """
@@ -355,13 +371,17 @@ class SMPTETimecodeExtension(ExtensionBase):
     connection.
     """
 
+    log: Logger
+
+    _clock: Optional[MIDIClock]
+
     def __init__(self, *args, **kwds):
         """Constructor."""
-        super(SMPTETimecodeExtension, self).__init__(*args, **kwds)
+        super().__init__(*args, **kwds)
         self._clock = None
 
     @property
-    def clock(self):
+    def clock(self) -> Optional[MIDIClock]:
         """The clock that the extension provides and registers in the
         server.
         """
@@ -383,31 +403,33 @@ class SMPTETimecodeExtension(ExtensionBase):
 
         with ExitStack() as stack:
             stack.enter_context(
-                self.app.connection_registry.use(
+                app.connection_registry.use(
                     conn,
                     "MIDI",
                     description="MIDI timecode provider",
-                    purpose=ConnectionPurpose.time,
+                    purpose=ConnectionPurpose.time,  # type: ignore
                 )
             )
             stack.enter_context(self._use_clock(MIDIClock()))
             await app.supervise(conn, task=self._handle_midi_messages)
 
-    async def _handle_midi_messages(self, conn):
+    async def _handle_midi_messages(self, conn: MIDIPortConnection) -> None:
         task = InboundMessageParser(conn)
         async for message in task.run():
             self._on_timecode_received(message)
 
-    def _on_clock_changed(self, sender, delta):
+    def _on_clock_changed(self, sender, delta: float) -> None:
         """Handler called when the MIDI clock was adjusted."""
         self.log.warn("MIDI clock adjusted by {0} frame(s)".format(delta))
 
-    def _on_clock_started(self, sender):
+    def _on_clock_started(self, sender) -> None:
         """Handler called when the MIDI clock was started."""
+        assert self._clock is not None
         self.log.info("MIDI clock started", extra={"id": self._clock.id})
 
-    def _on_clock_stopped(self, sender):
+    def _on_clock_stopped(self, sender) -> None:
         """Handler called when the MIDI clock was stopped."""
+        assert self._clock is not None
         self.log.info("MIDI clock stopped", extra={"id": self._clock.id})
 
     def _on_timecode_received(self, message: InboundMessageParser.Message) -> None:
@@ -418,16 +440,23 @@ class SMPTETimecodeExtension(ExtensionBase):
             message: the timecode that was received, and the corresponding local
                 timestamp
         """
+        if not self._clock:
+            return
+
         if message.timecode is not None:
+            assert message.local_timestamp is not None
             self._clock.notify_timecode(message.timecode, message.local_timestamp)
+
         self._clock.running = message.running
 
-    def _set_clock(self, value):
+    def _set_clock(self, value: Optional[MIDIClock]) -> None:
         """Private setter for the ``clock`` property that should not be
         called from the outside.
         """
         if value == self._clock:
             return
+
+        assert self.app is not None
 
         if self._clock is not None:
             self._clock.stop()
@@ -445,7 +474,7 @@ class SMPTETimecodeExtension(ExtensionBase):
             self._clock.stopped.connect(self._on_clock_stopped, sender=self._clock)
 
     @contextmanager
-    def _use_clock(self, value):
+    def _use_clock(self, value: MIDIClock) -> Iterator[None]:
         """Context manager variant of ``self._set_clock()``."""
         old_clock = self.clock
         self._set_clock(value)
@@ -457,3 +486,15 @@ class SMPTETimecodeExtension(ExtensionBase):
 
 construct = SMPTETimecodeExtension
 dependencies = ("clocks",)
+schema = {
+    "properties": {
+        "connection": {
+            "type": "string",
+            "title": "Connection URL",
+            "description": (
+                "Connection URL to the MIDI timecode device; must start with "
+                '"midi:". Example: "midi:IAC Driver Bus 1"',
+            ),
+        }
+    }
+}

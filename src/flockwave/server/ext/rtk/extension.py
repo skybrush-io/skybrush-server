@@ -14,6 +14,7 @@ from typing import cast, Any, Dict, Iterator, List, Optional, Union
 
 from flockwave.channels import ParserChannel
 from flockwave.connections import Connection, create_connection
+from flockwave.gps.enums import GNSSType
 from flockwave.gps.rtk import RTKMessageSet, RTKSurveySettings
 from flockwave.gps.ubx.rtk_config import UBXRTKBaseConfigurator
 from flockwave.server.message_hub import MessageHub
@@ -143,6 +144,8 @@ class RTKExtension(ExtensionBase):
         )
 
         gnss_types = configuration.get("gnss_types")
+        if gnss_types and hasattr(gnss_types, "__contains__") and "all" in gnss_types:
+            gnss_types = "all"
         if gnss_types == "all":
             gnss_types = None
         try:
@@ -625,3 +628,112 @@ description = "Support for RTK base stations and external RTK correction sources
 optional_dependencies = {
     "hotplug": "detects when new USB devices are plugged in and updates the RTK sources automatically"
 }
+
+
+def get_schema():
+    return {
+        "properties": {
+            "presets": {
+                "type": "object",
+                "title": "RTK base stations",
+                "description": (
+                    "Specifications of external RTK data sources that are provided "
+                    "by the server even if no RTK base stations are connected"
+                ),
+                "propertyOrder": 2000,
+                "options": {"disable_properties": False},
+                "additionalProperties": {
+                    "type": "object",
+                    "properties": {
+                        "source": {"title": "Connection URL", "type": "string"},
+                        "title": {
+                            "title": "Title",
+                            "type": "string",
+                            "description": "Human-readable title used on the user interface",
+                        },
+                        "filter": {
+                            "type": "object",
+                            "title": "Message filter",
+                            "properties": {
+                                "reject": {
+                                    "type": "array",
+                                    "title": "Reject messages",
+                                    "description": (
+                                        "Reject messages with the given IDs. IDs are in the following format: rtcm2/X or rtcm3/X where X is the numeric identifier of the RTCMv2 or RTCMv3 message"
+                                    ),
+                                    "format": "table",
+                                    "items": {"type": "string"},
+                                    "required": False,
+                                },
+                                "accept": {
+                                    "type": "array",
+                                    "title": "Accept messages",
+                                    "description": (
+                                        "Accept messages with the given IDs. IDs are in the following format: rtcm2/X or rtcm3/X where X is the numeric identifier of the RTCMv2 or RTCMv3 message"
+                                    ),
+                                    "format": "table",
+                                    "items": {"type": "string"},
+                                    "required": False,
+                                },
+                            },
+                            "required": False,
+                            "propertyOrder": 2000,
+                        },
+                    },
+                },
+            },
+            "add_serial_ports": {
+                "title": "Use serial ports automatically",
+                "description": (
+                    "Automatically offer serial ports as RTK sources with the given "
+                    "baud rates"
+                ),
+                "type": "array",
+                "format": "table",
+                "items": {"type": "integer"},
+                "required": False,
+            },
+            "exclude_serial_ports": {
+                "title": "Exclude serial ports",
+                "description": (
+                    "Exclude serial ports matching the given wildcard patterns "
+                    "from considering them as RTK base stations"
+                ),
+                "type": "array",
+                "format": "table",
+                "items": {"type": "string"},
+                "required": False,
+            },
+            "gnss_types": {
+                "title": "Use only selected GNSS types",
+                "description": (
+                    "GNSS types to request corrections for when auto-configuring an "
+                    "RTK base station. Uncheck to request corrections for all GNSS "
+                    "types."
+                ),
+                "type": "array",
+                "format": "checkbox",
+                "items": {
+                    "type": "string",
+                    "enum": ["all"] + [e.value for e in GNSSType],
+                    "options": {
+                        "enum_titles": ["All GNSS types"]
+                        + [e.describe() for e in GNSSType],
+                    },
+                },
+                "uniqueItems": True,
+                "required": False,
+            },
+            "use_high_precision": {
+                "type": "boolean",
+                "title": "Use high-precision MSM7 messages",
+                "description": (
+                    "Request corrections in high-precision MSM7 RTCM3 messages "
+                    "when auto-configuring an RTK base station. Uncheck if the "
+                    "rover(s) support MSM4 messages only."
+                ),
+                "default": True,
+                "format": "checkbox",
+            },
+        }
+    }

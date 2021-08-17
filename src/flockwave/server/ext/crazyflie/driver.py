@@ -1183,7 +1183,6 @@ class CrazyflieHandlerTask:
                     await enter(self._uav.use(debug=self._debug))
                     assert self._uav.log_session is not None
                     await enter(self._uav.log_session)
-                    await self._uav.setup_flight_mode()
                 except TimeoutError:
                     log.error(
                         "Communication timeout while initializing connection",
@@ -1215,6 +1214,31 @@ class CrazyflieHandlerTask:
                     nursery.start_soon(self._feed_fake_position)
 
                 await self._reupload_last_show_if_needed()
+
+                # We need to set up the flight mode here after a bit of delay,
+                # otherwise we try to set it too fast after a reboot and the
+                # drone will ignore the request
+                try:
+                    await sleep(2)
+                    await self._uav.setup_flight_mode()
+                except TimeoutError:
+                    log.error(
+                        "Communication timeout while setting flight mode",
+                        extra={"id": self._uav.id},
+                    )
+                    return
+                except Exception as ex:
+                    log.error(
+                        f"Error while setting flight mode: {str(ex)}",
+                        extra={"id": self._uav.id},
+                    )
+                    if not isinstance(ex, IOError):
+                        log.exception(ex)
+                    else:
+                        # We do not log IOErrors -- the stack trace is too long
+                        # and in 99% of the cases it is simply a communication error
+                        pass
+                    return
         finally:
             self._uav.notify_shutdown_or_reboot = nop
 

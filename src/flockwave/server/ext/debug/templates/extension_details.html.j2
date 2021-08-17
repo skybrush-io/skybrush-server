@@ -46,18 +46,7 @@
   {% endif %}
 </dl>
 
-{% if schema %}
-<div id="configuration" class="json-schema-editor">
-</div>
-{% else %}
-<form>
-  <div class="form-group">
-    <label for="configuration">Configuration</label>
-    <div id="configuration" class="code-editor" style="height: 232px"></div>
-  </div>
-</form>
-{% endif %}
-
+<div class="sticky-top pt-1 pb-4">
 {% if extension.loaded and not extension.dependents %}
 <button class="btn btn-primary sb-btn-reload">
   <span data-feather="refresh-cw"></span> Reload
@@ -69,11 +58,24 @@
   <span data-feather="trash-2"></span> Unload
 </button>
 {% endif %}
+</div>
 
 {% if not extension.loaded %}
 <button class="btn btn-success sb-btn-load">
   <span data-feather="play"></span> Load
 </button>
+{% endif %}
+
+{% if schema %}
+<div id="configuration" class="json-schema-editor">
+</div>
+{% else %}
+<form>
+  <div class="form-group">
+    <label for="configuration">Configuration</label>
+    <div id="configuration" class="code-editor" style="height: 232px"></div>
+  </div>
+</form>
 {% endif %}
 
 </div>

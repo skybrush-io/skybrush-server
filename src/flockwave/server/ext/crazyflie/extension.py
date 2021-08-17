@@ -14,8 +14,9 @@ from flockwave.server.ext.base import UAVExtensionBase
 from flockwave.server.model import ConnectionPurpose
 
 from .connection import CrazyradioConnection
-from .crtp_extensions import DRONE_SHOW_PORT, DroneShowCommand
+from .crtp_extensions import DRONE_SHOW_PORT, DroneShowCommand, FenceAction
 from .driver import CrazyflieDriver
+from .fence import FenceConfiguration
 from .scanning import CrazyradioScannerTask
 
 __all__ = ("construct", "schema")
@@ -43,7 +44,7 @@ class CrazyflieDronesExtension(UAVExtensionBase):
         server application.
         """
         driver.debug = bool(configuration.get("debug", False))
-        driver.fence_distance = float(configuration.get("fence_distance", 0.0))
+        driver.fence_config = FenceConfiguration.from_json(configuration.get("fence"))
         driver.id_format = configuration.get("id_format", "{0}")
         driver.log = self.log.getChild("driver")
         driver.status_interval = float(configuration.get("status_interval", 0.5))
@@ -203,23 +204,46 @@ schema = {
             "format": "checkbox",
             "propertyOrder": 2000,
         },
-        "fence_distance": {
-            "type": "number",
-            "title": "Safety fence distance, in meters",
-            "minimum": 0,
-            "default": 1,
+        "fence": {
+            "type": "object",
+            "title": "Safety fence",
             "description": (
-                "Before a show, an axis-aligned safety fence is configured on "
-                "each Crazyflie drone based on its own trajectory in the show. "
-                "The motors of the drone are shut down if the drone crosses the "
-                "safety fence. This setting specifies the distance between the "
-                "bounding box of the trajectory and the safety fence. Recommended "
-                "setting is at least 1 meter for Lighthouse positioning and at "
-                "least 2 meters for UWB positioning. Untick the checkbox or "
-                "set the value to zero to turn off the safety fence."
+                "Before a show, an axis-aligned safety fence can optionally "
+                "be configured on each Crazyflie drone based on its own "
+                "trajectory in the show, and a safety action may be taken by "
+                "the drone when it detects that the fence has been breached."
             ),
-            "propertyOrder": 1500,
-            "required": False,
+            "properties": {
+                "enabled": {
+                    "type": "boolean",
+                    "title": "Enabled",
+                    "format": "checkbox",
+                    "propertyOrder": 10,
+                },
+                "distance": {
+                    "type": "number",
+                    "title": "Safety fence distance, in meters",
+                    "minimum": 0,
+                    "default": 1,
+                    "description": (
+                        "The distance between the bounding box of the trajectory "
+                        "and the safety fence. Recommended setting is at least 1 "
+                        "meter for Lighthouse positioning and at least 2 meters "
+                        "for UWB positioning. Zero or negative values turn off "
+                        "the safety fence even if it is otherwise enabled above."
+                    ),
+                    "propertyOrder": 1500,
+                },
+                "action": {
+                    "type": "string",
+                    "title": "Action taken when fence is breached",
+                    "enum": FenceAction.get_valid_string_values_in_config_schema(),
+                    "options": {
+                        "enum_titles": [action.describe() for action in FenceAction]
+                    },
+                },
+            },
+            "default": {"enabled": True, "distance": 1, "action": "none"},
         },
         "id_format": {
             "type": "string",

@@ -51,6 +51,7 @@ EXTENSIONS = {
         "id_format": "{0:02}",
         "connections": ["crazyradio://0/80/2M/E7E7E7E7"],
         "enabled": False,
+        "fence": {"enabled": True, "distance": 1, "action": "none"},
         "status_interval": 0.5,  # number of seconds between consecutive status reports from a drone
     },
     "debug": {

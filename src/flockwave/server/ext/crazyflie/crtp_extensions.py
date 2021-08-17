@@ -42,6 +42,46 @@ class DroneShowCommand(IntEnum):
     DEFINE_FENCE = 8
 
 
+class FenceAction(IntEnum):
+    """Actions that may be taken by a Crazyflie when the safety fence is
+    breached.
+    """
+
+    NONE = 0
+    STOP_MOTORS = 1
+    SHUTDOWN = 2
+
+    @classmethod
+    def from_config_schema(cls, value: str):
+        """Returns a FenceAction instance from a string constant used to
+        represent it in the configuration schema of the extension.
+        """
+        value = str(value)
+        try:
+            index = cls.get_valid_string_values_in_config_schema().index(value)
+        except ValueError:
+            raise ValueError(f"{value!r} is not a valid fence action") from None
+        return cls(index)
+        if value == "none":
+            return cls.NONE
+        if value == "stopMotors":
+            return cls.STOP_MOTORS
+        if value == "shutdown":
+            return cls.SHUTDOWN
+        raise
+
+    @staticmethod
+    def get_valid_string_values_in_config_schema() -> Tuple[str, ...]:
+        """Returns the valid strings that can be used to represent a fence action
+        in the configuration of the extension.
+        """
+        return ("none", "stopMotors", "shutdown")
+
+    def describe(self) -> str:
+        """Returns a human-readable description of the fence action."""
+        return ("None (report only)", "Stop motors", "Shutdown immediately")[self]
+
+
 class FenceLocation(IntEnum):
     """Location codes for safety fences."""
 
@@ -50,7 +90,7 @@ class FenceLocation(IntEnum):
 
 
 class FenceType(IntEnum):
-    """Enum representing the known geofence types of our firmware extension."""
+    """Enum representing the known fence types of our firmware extension."""
 
     UNLIMITED = 0
     ALWAYS_BREACHED = 1

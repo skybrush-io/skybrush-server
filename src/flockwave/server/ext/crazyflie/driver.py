@@ -68,6 +68,8 @@ class CrazyflieDriver(UAVDriver):
 
     Attributes:
         app (SkybrushServer): the app in which the driver lives
+        fence_distance: distance of the safety fence from the axis-aligned
+            bounding boxes of the drones; zero or negative if no fence is needed
         id_format: Python format string that receives a numeric drone ID in the
             flock and returns its preferred formatted identifier that is used
             when the drone is registered in the server, or any other object that
@@ -82,6 +84,7 @@ class CrazyflieDriver(UAVDriver):
     debug: bool
     id_format: str
     log: Logger
+    fence_distance: float = 0.0
     status_interval: float = 0.5
     use_fake_position: Optional[Tuple[float, float, float]] = None
     use_test_mode: bool = False
@@ -815,7 +818,9 @@ class CrazyflieUAV(UAVBase):
         light_program = get_light_program_from_show_specification(show)
         await self._upload_light_program(light_program)
 
-        await self._upload_trajectory(trajectory, home)
+        await self._upload_trajectory_and_fence(
+            trajectory, home, fence_distance=self.driver.fence_distance
+        )
 
         await self._enable_show_mode()
 
@@ -1055,10 +1060,11 @@ class CrazyflieUAV(UAVBase):
             ),
         )
 
-    async def _upload_trajectory(
+    async def _upload_trajectory_and_fence(
         self,
         trajectory: TrajectorySpecification,
         home: Optional[Tuple[float, float, float]],
+        fence_distance: Optional[float] = None,
     ) -> None:
         """Uploads the given trajectory data to the Crazyflie drone."""
         cf = self._get_crazyflie()
@@ -1091,8 +1097,11 @@ class CrazyflieUAV(UAVBase):
         # Define the geofence first (for safety reasons)
         if supports_fence:
             assert self.fence is not None
-            bounds = trajectory.get_padded_bounding_box(margin=1)
-            await self.fence.set_axis_aligned_bounding_box(*bounds)
+            if fence_distance is not None and fence_distance > 0:
+                bounds = trajectory.get_padded_bounding_box(margin=fence_distance)
+                await self.fence.set_axis_aligned_bounding_box(*bounds)
+            else:
+                await self.fence.disable()
 
         # Now we can define the entire trajectory as well
         await cf.high_level_commander.define_trajectory(

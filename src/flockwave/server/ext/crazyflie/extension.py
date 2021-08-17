@@ -43,6 +43,7 @@ class CrazyflieDronesExtension(UAVExtensionBase):
         server application.
         """
         driver.debug = bool(configuration.get("debug", False))
+        driver.fence_distance = float(configuration.get("fence_distance", 0.0))
         driver.id_format = configuration.get("id_format", "{0}")
         driver.log = self.log.getChild("driver")
         driver.status_interval = float(configuration.get("status_interval", 0.5))
@@ -201,6 +202,24 @@ schema = {
             "title": "Debug mode",
             "format": "checkbox",
             "propertyOrder": 2000,
+        },
+        "fence_distance": {
+            "type": "number",
+            "title": "Safety fence distance, in meters",
+            "minimum": 0,
+            "default": 1,
+            "description": (
+                "Before a show, an axis-aligned safety fence is configured on "
+                "each Crazyflie drone based on its own trajectory in the show. "
+                "The motors of the drone are shut down if the drone crosses the "
+                "safety fence. This setting specifies the distance between the "
+                "bounding box of the trajectory and the safety fence. Recommended "
+                "setting is at least 1 meter for Lighthouse positioning and at "
+                "least 2 meters for UWB positioning. Untick the checkbox or "
+                "set the value to zero to turn off the safety fence."
+            ),
+            "propertyOrder": 1500,
+            "required": False,
         },
         "id_format": {
             "type": "string",

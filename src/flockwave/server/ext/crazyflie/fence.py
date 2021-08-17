@@ -30,6 +30,14 @@ class Fence:
         self._crazyflie = crazyflie
         self._is_supported = None
 
+    async def disable(self) -> None:
+        """Disables the safety fence on the Crazyflie."""
+        await self.set_enabled(False)
+
+    async def enable(self) -> None:
+        """Enables the safety fence on the Crazyflie."""
+        await self.set_enabled(True)
+
     async def is_enabled(self, fetch: bool = False) -> bool:
         """Returns whether the fence of the Crazyflie is active."""
         value = await self._crazyflie.param.get("fence.enabled", fetch=fetch)
@@ -97,4 +105,4 @@ class Fence:
                 len(data),  # length of geofence specification
             ),
         )
-        await self.set_enabled(True)
+        await self.enable()

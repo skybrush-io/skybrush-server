@@ -379,6 +379,7 @@ class SMPTETimecodeExtension(ExtensionBase):
         """Constructor."""
         super().__init__(*args, **kwds)
         self._clock = None
+        self._clocks_api = None
 
     @property
     def clock(self) -> Optional[MIDIClock]:
@@ -449,26 +450,24 @@ class SMPTETimecodeExtension(ExtensionBase):
 
         self._clock.running = message.running
 
-    def _set_clock(self, value: Optional[MIDIClock]) -> None:
+    def _set_clock(self, value: Optional[MIDIClock], app) -> None:
         """Private setter for the ``clock`` property that should not be
         called from the outside.
         """
         if value == self._clock:
             return
 
-        assert self.app is not None
-
         if self._clock is not None:
             self._clock.stop()
             self._clock.changed.disconnect(self._on_clock_changed)
             self._clock.started.disconnect(self._on_clock_started)
             self._clock.stopped.disconnect(self._on_clock_stopped)
-            self.app.import_api("clocks").unregister_clock(self._clock)
+            app.import_api("clocks").unregister_clock(self._clock)
 
         self._clock = value
 
         if self._clock is not None:
-            self.app.import_api("clocks").register_clock(self._clock)
+            app.import_api("clocks").register_clock(self._clock)
             self._clock.changed.connect(self._on_clock_changed, sender=self._clock)
             self._clock.started.connect(self._on_clock_started, sender=self._clock)
             self._clock.stopped.connect(self._on_clock_stopped, sender=self._clock)
@@ -476,25 +475,52 @@ class SMPTETimecodeExtension(ExtensionBase):
     @contextmanager
     def _use_clock(self, value: MIDIClock) -> Iterator[None]:
         """Context manager variant of ``self._set_clock()``."""
+        app = self.app
         old_clock = self.clock
-        self._set_clock(value)
+        self._set_clock(value, app)
         try:
             yield
         finally:
-            self._set_clock(old_clock)
+            self._set_clock(old_clock, app)
 
 
 construct = SMPTETimecodeExtension
 dependencies = ("clocks",)
-schema = {
-    "properties": {
-        "connection": {
-            "type": "string",
-            "title": "Connection URL",
-            "description": (
-                "Connection URL to the MIDI timecode device; must start with "
-                '"midi:". Example: "midi:IAC Driver Bus 1"',
-            ),
+
+
+def get_schema():
+    try:
+        input_ports, _ = MIDIPortConnection.list()
+        can_query_ports = True
+    except Exception:
+        # Just for the sake of example
+        input_ports = ["IAC Driver IAC Bus 1"]
+        can_query_ports = False
+
+    ports = sorted(x.strip() for x in set(input_ports))
+    connection_urls = [f"midi:{port}" for port in ports]
+
+    schema = {
+        "properties": {
+            "connection": {
+                "type": "string",
+                "title": "Connection URL",
+                "description": (
+                    "Connection URL to the MIDI timecode device; must start with "
+                    '"midi:". Example: "midi:mif4"',
+                ),
+            }
         }
     }
-}
+
+    if can_query_ports:
+        schema["properties"]["connection"].update(
+            {
+                "enum": [""] + connection_urls,
+                "options": {"enum_titles": ["None"] + ports},
+                "title": "MIDI device",
+                "description": "",
+            }
+        )
+
+    return schema

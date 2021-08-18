@@ -104,6 +104,7 @@ EXTENSIONS = {
         "sources": [{"lat": 47.473703, "lon": 19.061739, "intensity": 50000}],
         "background_intensity": 10,
     },
+    "rc": {},
     "rtk": {
         "presets": {
             # "javad": {

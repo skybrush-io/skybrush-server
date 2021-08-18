@@ -7,6 +7,7 @@ from dataclasses import dataclass, field
 from fnmatch import fnmatch
 from functools import partial
 from time import monotonic
+from flockwave.gps.vectors import ECEFToGPSCoordinateTransformation
 from trio import CancelScope, open_memory_channel, open_nursery, sleep
 from trio.abc import SendChannel
 from trio_util import AsyncBool
@@ -143,6 +144,35 @@ class RTKExtension(ExtensionBase):
             else RTKMessageSet.MSM4
         )
 
+        fixed = configuration.get("fixed")
+        if isinstance(fixed, (list, tuple)):
+            fixed = {"position": list(fixed)}
+
+        if isinstance(fixed, dict) and "position" in fixed:
+            if "accuracy" not in fixed:
+                self.log.warning(
+                    "Missing accuracy from fixed base station position "
+                    "specification, assuming 1m"
+                )
+                accuracy = 1
+            else:
+                accuracy = float(fixed["accuracy"])  # type: ignore
+            self._survey_settings.update_from_json(
+                {"position": fixed["position"], "accuracy": accuracy}
+            )
+
+            position = self._survey_settings.position
+            if position is not None:
+                coord = ECEFToGPSCoordinateTransformation().to_gps(position)
+                self.log.info(
+                    f"Base station is fixed at {coord.lat:.7f}°, {coord.lon:.7f}° (accuracy: {accuracy}m)"
+                )
+        elif fixed is not None:
+            self.log.warning(
+                "Ignoring invalid fixed base station position "
+                f"specification: {fixed!r}"
+            )
+
         gnss_types = configuration.get("gnss_types")
         if gnss_types and hasattr(gnss_types, "__contains__") and "all" in gnss_types:
             gnss_types = "all"
@@ -255,6 +285,10 @@ class RTKExtension(ExtensionBase):
             settings = message.body["settings"]
             error = None
             if isinstance(settings, dict):
+                # HACK HACK HACK: if we have a fixed position from the config
+                # file, don't update the accuracy
+                if "position" not in settings and "accuracy" in settings:
+                    del settings["accuracy"]
                 try:
                     self.survey_settings.update_from_json(settings)
                 except ValueError as ex:
@@ -702,6 +736,37 @@ def get_schema():
                 "type": "array",
                 "format": "table",
                 "items": {"type": "string"},
+                "required": False,
+            },
+            "fixed": {
+                "title": "Use fixed base station coordinate",
+                "description": (
+                    "Base station cooordinates and accuracy to use when auto-configuring "
+                    "an RTK base station. Uncheck to perform an automatic survey-in if "
+                    "the RTK base station supports it."
+                ),
+                "type": "object",
+                "properties": {
+                    "position": {
+                        "title": "Position",
+                        "description": "Use ECEF coordinates (Earth centered, Earth fixed), in meters",
+                        "minItems": 3,
+                        "maxItems": 3,
+                        "type": "array",
+                        "format": "table",
+                        "items": {"type": "number"},
+                        "propertyOrder": 1000,
+                    },
+                    "accuracy": {
+                        "title": "Accuracy",
+                        "description": "Accuracy of the measured coordinates, in meters",
+                        "type": "number",
+                        "minValue": 0,
+                        "default": 1,
+                        "propertyOrder": 2000,
+                    },
+                },
+                "propertyOrder": 3000,
                 "required": False,
             },
             "gnss_types": {

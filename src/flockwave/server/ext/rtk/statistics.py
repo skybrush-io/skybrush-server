@@ -19,7 +19,11 @@ from flockwave.gps.rtcm.packets import (
     RTCMV3ExtendedAntennaDescriptorPacket,
 )
 from flockwave.gps.ubx.packet import UBXClass, UBXPacket
-from flockwave.gps.vectors import ECEFToGPSCoordinateTransformation, GPSCoordinate
+from flockwave.gps.vectors import (
+    ECEFCoordinate,
+    ECEFToGPSCoordinateTransformation,
+    GPSCoordinate,
+)
 
 from flockwave.server.utils import LastUpdatedOrderedDict
 
@@ -39,6 +43,7 @@ class AntennaInformation:
     descriptor: Optional[str] = None
     serial_number: Optional[str] = None
     position: Optional[GPSCoordinate] = None
+    position_ecef: Optional[ECEFCoordinate] = None
 
     _antenna_position_timestamp: float = 0.0
 
@@ -61,6 +66,7 @@ class AntennaInformation:
         self.descriptor = None
         self.serial_number = None
         self.position = None
+        self.position_ecef = None
         self._antenna_position_timestamp = monotonic()
 
     @property
@@ -75,6 +81,7 @@ class AntennaInformation:
             "descriptor": self.descriptor,
             "serialNumber": self.serial_number,
             "position": self.position,
+            "positionECEF": self.position_ecef,
         }
 
     def notify(self, packet: RTCMV3Packet) -> None:
@@ -94,6 +101,8 @@ class AntennaInformation:
         position = getattr(packet, "position", None)
         if position is not None:
             self.position = _ecef_to_gps.to_gps(position)
+            self.position_ecef = position * 1000  # [m] -> [mm]
+            self.position_ecef.round(0)
             self._antenna_position_timestamp = monotonic()
 
     def _forget_old_antenna_position_if_needed(self) -> None:
@@ -103,6 +112,7 @@ class AntennaInformation:
         now = monotonic()
         if now - self._antenna_position_timestamp >= 30:
             self.position = None
+            self.position_ecef = None
 
 
 @dataclass

@@ -40,7 +40,7 @@ flockwave-app-framework = {version = "^1.3.2", extras = ["daemon"]}
 flockwave-conn = {extras = ["midi", "rpc", "serial"], version = "^3.0.0"}
 flockwave-ext = "^1.9.0"
 flockwave-flockctrl = "^1.18.2"
-flockwave-gps = "^2.0.1"
+flockwave-gps = "^2.1.0"
 flockwave-logger = "^1.7.0"
 flockwave-net = {extras = ["async"], version = "^1.0.1"}
 flockwave-parsers = "^1.2.0"

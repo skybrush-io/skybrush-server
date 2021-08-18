@@ -518,7 +518,7 @@ reference = "collmot"
 
 [[package]]
 name = "flockwave-gps"
-version = "2.0.1"
+version = "2.1.0"
 description = "GPS and geography related routines and classes"
 category = "main"
 optional = false
@@ -1775,7 +1775,7 @@ reference = "collmot"
 
 [[package]]
 name = "tinyrpc"
-version = "1.1.0"
+version = "1.1.1"
 description = "A small, modular, transport and protocol neutral RPC library that, among other things, supports JSON-RPC and zmq."
 category = "main"
 optional = false
@@ -1968,7 +1968,7 @@ reference = "collmot"
 
 [[package]]
 name = "zeroconf"
-version = "0.35.0"
+version = "0.36.0"
 description = "Pure Python Multicast DNS Service Discovery Library (Bonjour/Avahi compatible)"
 category = "main"
 optional = false
@@ -2002,7 +2002,7 @@ reference = "collmot"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7"
-content-hash = "7af78f0be9f5b81f8c66a4940ccaffdbf72d737c6996b6cd29856de3c4642ef2"
+content-hash = "0157da54cc34e26d759e173379f4922a406d54f103e23738a9ebb3853090e4e5"
 
 [metadata.files]
 adrenaline = [
@@ -2188,8 +2188,8 @@ flockwave-flockctrl = [
     {file = "flockwave_flockctrl-1.18.2-py3-none-any.whl", hash = "md5:310f311de25c700be578ddbc5526d276"},
 ]
 flockwave-gps = [
-    {file = "flockwave-gps-2.0.1.tar.gz", hash = "md5:53e4bac7cebca10a71a286edbd7cd8a9"},
-    {file = "flockwave_gps-2.0.1-py3-none-any.whl", hash = "md5:f9b213fe0e02566b0d79a1c3a95c9b6d"},
+    {file = "flockwave-gps-2.1.0.tar.gz", hash = "md5:68cde6029819fe8d056dda8e5d7534cc"},
+    {file = "flockwave_gps-2.1.0-py3-none-any.whl", hash = "md5:4941739d955af3ee25f6cf389127faf1"},
 ]
 flockwave-logger = [
     {file = "flockwave-logger-1.7.0.tar.gz", hash = "md5:e9917e5f0e9a82defe7d7b7ce10bd01a"},
@@ -2695,7 +2695,7 @@ tinyaes = [
     {file = "tinyaes-1.0.1.tar.gz", hash = "sha256:874931ca374435949da538082672680707d06dadd067f1523fd5549a921af789"},
 ]
 tinyrpc = [
-    {file = "tinyrpc-1.1.0.tar.gz", hash = "sha256:a618b8484eb3ffd58841b5593c5fa7d50e64145aa4fc2e888899444c5d038c6c"},
+    {file = "tinyrpc-1.1.1.tar.gz", hash = "sha256:9e68d7b9688dac8deaa342a2507d04f0b2ece64a9d19382aa2ee13d692e87d7f"},
 ]
 toml = [
     {file = "toml-0.10.2-py2.py3-none-any.whl", hash = "sha256:806143ae5bfb6a3c6e736a764057db0e6a0e05e338b5630894a5f779cabb4f9b"},
@@ -2739,8 +2739,8 @@ yarg = [
     {file = "yarg-0.1.9.tar.gz", hash = "sha256:55695bf4d1e3e7f756496c36a69ba32c40d18f821e38f61d028f6049e5e15911"},
 ]
 zeroconf = [
-    {file = "zeroconf-0.35.0-py3-none-any.whl", hash = "sha256:fd58104bff89603579fd71e1b5653bd7e63398c0b455a2efa390035bcbcaf4da"},
-    {file = "zeroconf-0.35.0.tar.gz", hash = "sha256:23478a7bce3ec51db5b2539e21677c539eb542a3fe0df1d173e31d34f9630672"},
+    {file = "zeroconf-0.36.0-py3-none-any.whl", hash = "sha256:0b673aefdc9213e13a0c3990bd68127b29f9a0499d67bc1a9b0a009a1c80f904"},
+    {file = "zeroconf-0.36.0.tar.gz", hash = "sha256:549f685a318c06d5345ed6533f54f33b206816b564ed7f7876e7b9522e77bf29"},
 ]
 zipp = [
     {file = "zipp-3.5.0-py3-none-any.whl", hash = "sha256:957cfda87797e389580cb8b9e3870841ca991e2125350677b2ca83a0e99390a3"},

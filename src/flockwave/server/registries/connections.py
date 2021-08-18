@@ -6,6 +6,9 @@ from __future__ import absolute_import
 
 from blinker import Signal
 from contextlib import contextmanager
+from typing import Iterator, Optional
+
+from flockwave.connections.base import Connection, ConnectionState
 
 from ..logger import log as base_log
 from ..model import ConnectionInfo, ConnectionPurpose
@@ -53,20 +56,26 @@ class ConnectionRegistry(RegistryBase):
         """
     )
 
-    def add(self, connection, name, description=None, purpose=ConnectionPurpose.other):
+    def add(
+        self,
+        connection: Connection,
+        name: str,
+        description: Optional[str] = None,
+        purpose=ConnectionPurpose.other,
+    ) -> "ConnectionRegistryEntry":
         """Adds a connection with the given name to the registry.
 
         Parameters:
-            connection (Connection): the connection to add
-            name (str): the name of the connection to use in the
+            connection: the connection to add
+            name: the name of the connection to use in the
                 registry.
-            description (str or None): a longer, human-readable description
+            description: a longer, human-readable description
                 of the connection. ``None`` means no description.
-            purpose (ConnectionPurpose): the purpose of the connection
+            purpose: the purpose of the connection
 
         Returns:
-            ConnectionRegistryEntry: the entry in the registry that was
-                created to hold information about the connection
+            the entry in the registry that was created to hold information about
+            the connection
 
         Throws:
             KeyError: if the given name is already taken
@@ -89,13 +98,13 @@ class ConnectionRegistry(RegistryBase):
 
         return entry
 
-    def remove(self, name):
+    def remove(self, name: str) -> None:
         """Removes an entry from the set of connections.
 
         This function is a no-op if there is no such connection.
 
         Arguments:
-            name (str): the name of the connection to remove
+            name: the name of the connection to remove
 
         Returns:
             the entry that was deregistered, or ``None`` if no connection was
@@ -107,7 +116,9 @@ class ConnectionRegistry(RegistryBase):
         return entry
 
     @contextmanager
-    def use(self, connection, name, *args, **kwds):
+    def use(
+        self, connection: Connection, name: str, *args, **kwds
+    ) -> Iterator["ConnectionRegistryEntry"]:
         """Temporarily adds a new connection with the given name and
         additional paramters, hands control back to the caller in a
         context, and then removes the connection when the caller exits
@@ -117,7 +128,7 @@ class ConnectionRegistry(RegistryBase):
         to `add()`.
 
         Yields:
-            Connection: the connection registry entry that was added
+            the connection registry entry that was added
         """
         if name in self:
             yield self[name]
@@ -129,7 +140,9 @@ class ConnectionRegistry(RegistryBase):
             finally:
                 self.remove(name)
 
-    def _create_entry(self, connection, name):
+    def _create_entry(
+        self, connection: Connection, name: str
+    ) -> "ConnectionRegistryEntry":
         """Creates a new entry for the given connection with the given
         name.
 
@@ -137,17 +150,21 @@ class ConnectionRegistry(RegistryBase):
         registry.
 
         Parameters:
-            connection (Connection): the connection to add
-            name (str): the name of the connection to use in the
-                registry.
+            connection: the connection to add
+            name: the name of the connection to use in the registry
 
         Returns:
-            ConnectionRegistryEntry: the entry in the registry that was
-                created to hold information about the connection
+            the entry in the registry that was created to hold information about
+            the connection
         """
         return ConnectionRegistryEntry(self, connection, name)
 
-    def _on_connection_state_changed(self, entry, old_state, new_state):
+    def _on_connection_state_changed(
+        self,
+        entry: "ConnectionRegistryEntry",
+        old_state: ConnectionState,
+        new_state: ConnectionState,
+    ) -> None:
         """Handler that is called when the state of a connection changes."""
         log.debug(f"Connection {entry.id}: {old_state} --> {new_state}")
         self.connection_state_changed.send(
@@ -160,7 +177,15 @@ class ConnectionRegistryEntry:
 
     info: ConnectionInfo
 
-    def __init__(self, registry, connection=None, name=None):
+    _connection: Optional[Connection]
+    _registry: ConnectionRegistry
+
+    def __init__(
+        self,
+        registry: ConnectionRegistry,
+        connection: Optional[Connection] = None,
+        name: Optional[str] = None,
+    ):
         self._connection = None
         self._registry = registry
 
@@ -168,7 +193,7 @@ class ConnectionRegistryEntry:
         self.connection = connection
 
     @property
-    def connection(self):
+    def connection(self) -> Optional[Connection]:
         """The connection stored in this entry."""
         return self._connection
 
@@ -191,16 +216,16 @@ class ConnectionRegistryEntry:
             )
 
     @property
-    def description(self):
+    def description(self) -> str:
         """The description of the connection; proxied to the info object."""
         return self.info.description
 
     @description.setter
-    def description(self, value):
+    def description(self, value: str):
         self.info.description = value
 
     @property
-    def id(self):
+    def id(self) -> str:
         """The ID of the connection; proxied to the info object."""
         return self.info.id
 
@@ -210,7 +235,7 @@ class ConnectionRegistryEntry:
         return self.info.json
 
     @property
-    def purpose(self):
+    def purpose(self) -> ConnectionPurpose:
         """The purpose of the connection; proxied to the info object."""
         return self.info.purpose
 
@@ -218,7 +243,9 @@ class ConnectionRegistryEntry:
     def purpose(self, value):
         self.info.purpose = value
 
-    def _on_connection_state_changed(self, sender, old_state, new_state):
+    def _on_connection_state_changed(
+        self, sender: Connection, old_state: ConnectionState, new_state: ConnectionState
+    ):
         """Handler that is called when the state of a connection changes."""
         self.info.update_status_from(self._connection)
         self.info.update_timestamp()

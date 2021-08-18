@@ -13,6 +13,9 @@ from typing import Any, ClassVar, List, Sequence
 #: new channel values
 rc_out_signal: Any = None
 
+#: Stores whether the extension is in debug mode
+debug: bool = False
+
 
 #: Object that contains the current values of the RC channels. Must _not_ be
 #: modified by other extensions.
@@ -81,14 +84,22 @@ class RCState(Sequence[int]):
 rc = RCState()
 
 
-def load(app):
-    global rc_out_signal
+def load(app, configuration):
+    global rc_out_signal, debug
 
-    rc_out_signal = app.import_api("signals").get("rc:out")
+    signals = app.import_api("signals")
+    rc_out_signal = signals.get("rc:out")
+
+    debug = bool(configuration.get("debug"))
+    if debug:
+        rc_out_signal.connect(print_debug_info)
 
 
 def unload():
-    global rc_out_signal
+    global rc_out_signal, debug
+
+    if debug:
+        rc_out_signal.disconnect(print_debug_info)
 
     rc_out_signal = None
 
@@ -101,6 +112,10 @@ def notify(values: Sequence[int]):
     global rc
     rc.update(values)
     rc_out_signal.send(rc)
+
+
+def print_debug_info(sender: RCState) -> None:
+    print("RC channels changed:", repr(sender.channels))
 
 
 dependencies = ("signals",)

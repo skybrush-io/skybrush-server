@@ -2,22 +2,23 @@
 and related applications.
 """
 
-from typing import Optional
+from typing import Dict, Optional, Tuple
 
 __all__ = ("get_base_port", "get_port_number_for_service")
 
 
 #: Base port number. Port numbers of services defined with a relative port
 #: number are derived by adding the relative port number to the base port.
-BASE_PORT = 5000
+BASE_PORT: int = 5000
 
 #: Dictionary mapping registered Skybrush-related services to the corresponding
 #: absolute or relative port numbers.
-SERVICE_MAP = {
+SERVICE_MAP: Dict[str, Tuple[str, int]] = {
     "http": ("relative", 0),
     "tcp": ("relative", 1),
     "udp": ("relative", 1),
     "sidekick": ("relative", 2),
+    "rcin": ("relative", 3),
     "ssdp": ("absolute", 1900),
 }
 

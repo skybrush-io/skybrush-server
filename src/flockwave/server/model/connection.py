@@ -30,6 +30,8 @@ class ConnectionInfo(TimestampMixin, metaclass=ModelMeta):
         "DISCONNECTING": ConnectionStatus.disconnecting,
     }
 
+    id: Optional[str]
+
     def __init__(
         self, id: Optional[str] = None, timestamp: Optional[TimestampLike] = None
     ):

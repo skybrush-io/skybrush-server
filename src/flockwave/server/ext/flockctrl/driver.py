@@ -31,6 +31,7 @@ from flockwave.protocols.flockctrl.enums import (
 from flockwave.protocols.flockctrl.packets import (
     AlgorithmDataPacket,
     ChunkedPacketAssembler,
+    ClockSynchronizationPacket,
     CommandRequestPacket,
     CommandResponsePacketBase,
     CommandResponsePacket,
@@ -405,6 +406,7 @@ class FlockCtrlDriver(UAVDriver):
             MissionInfoPacket: self._handle_inbound_mission_info_packet,
             MultiTargetCommandPacket: nop,
             RawGPSInjectionPacket: nop,
+            ClockSynchronizationPacket: nop,
         }
 
     def _create_uav(self, formatted_id: str) -> "FlockCtrlUAV":

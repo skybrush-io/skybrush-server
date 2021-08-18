@@ -462,7 +462,11 @@ class SMPTETimecodeExtension(ExtensionBase):
             self._clock.changed.disconnect(self._on_clock_changed)
             self._clock.started.disconnect(self._on_clock_started)
             self._clock.stopped.disconnect(self._on_clock_stopped)
-            app.import_api("clocks").unregister_clock(self._clock)
+            disposer = app.import_api("clocks").unregister_clock
+
+            # check needed to prevent an exception during app shutdown
+            if disposer:
+                disposer(self._clock)
 
         self._clock = value
 

@@ -11,7 +11,7 @@ from typing import Any, ClassVar, List, Sequence
 
 #: Signal that this extension emits in order to notify subscribers about the
 #: new channel values
-rc_out_signal: Any = None
+rc_changed_signal: Any = None
 
 #: Stores whether the extension is in debug mode
 debug: bool = False
@@ -85,23 +85,23 @@ rc = RCState()
 
 
 def load(app, configuration):
-    global rc_out_signal, debug
+    global rc_changed_signal, debug
 
     signals = app.import_api("signals")
-    rc_out_signal = signals.get("rc:out")
+    rc_changed_signal = signals.get("rc:changed")
 
     debug = bool(configuration.get("debug"))
     if debug:
-        rc_out_signal.connect(print_debug_info)
+        rc_changed_signal.connect(print_debug_info)
 
 
 def unload():
-    global rc_out_signal, debug
+    global rc_changed_signal, debug
 
     if debug:
-        rc_out_signal.disconnect(print_debug_info)
+        rc_changed_signal.disconnect(print_debug_info)
 
-    rc_out_signal = None
+    rc_changed_signal = None
 
 
 def notify(values: Sequence[int]):
@@ -111,7 +111,7 @@ def notify(values: Sequence[int]):
     """
     global rc
     rc.update(values)
-    rc_out_signal.send(rc)
+    rc_changed_signal.send(rc)
 
 
 def print_debug_info(sender: RCState) -> None:

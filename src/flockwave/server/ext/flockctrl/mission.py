@@ -252,7 +252,7 @@ def generate_mission_file_from_show_specification(show) -> bytes:
         angle=trans.orientation,
         ground_altitude=0,
         origin=gps_coordinate_to_string(lat=trans.origin.lat, lon=trans.origin.lon),
-        waypoints="waypoint={} {} -100 4 2 T1000 6".format(home[0], home[1]),
+        waypoints="waypoint={} {} -20 4 2 T10000 6".format(home[0], home[1]),
     )
 
     # create geofence (we use only the first one so far)

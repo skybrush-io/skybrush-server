@@ -44,6 +44,7 @@ from skybrush import (
     get_trajectory_from_show_specification,
     TrajectorySpecification,
 )
+from skybrush.trajectory import get_group_index_from_show_specification
 
 from .crtp_extensions import (
     DRONE_SHOW_PORT,
@@ -812,6 +813,10 @@ class CrazyflieUAV(UAVBase):
     async def upload_show(self, show, *, remember: bool = True) -> None:
         home = get_home_position_from_show_specification(show)
         trajectory = get_trajectory_from_show_specification(show)
+        group_index = get_group_index_from_show_specification(show)
+        if group_index > 7:
+            raise RuntimeError("Crazyflie drones support at most 8 groups only")
+
         scale = trajectory.propose_scaling_factor()
         if scale > 1:
             raise RuntimeError("Trajectory covers too large an area for a Crazyflie")
@@ -822,6 +827,9 @@ class CrazyflieUAV(UAVBase):
         await self._upload_trajectory_and_fence(
             trajectory, home, fence_config=self.driver.fence_config
         )
+
+        assert self._crazyflie is not None
+        await self._crazyflie.high_level_commander.set_group_mask(1 << group_index)
 
         await self._enable_show_mode()
 
@@ -1185,7 +1193,7 @@ class CrazyflieHandlerTask:
                 except TimeoutError:
                     log.error(
                         "Communication timeout while initializing connection",
-                        extra={"id": self._uav.id},
+                        extra={"id": self._uav.id, "sentry_ignore": True},
                     )
                     return
                 except Exception as ex:

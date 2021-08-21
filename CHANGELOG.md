@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.24.0] - 2021-08-21
+
+### Added
+
+- Safety fence distance and safety action for Crazyflies is now configurable in
+  the server settings.
+
+- RTK base stations can now be configured to a fixed coordinate in ECEF (Earth
+  centered Earth fixed).
+
+### Fixed
+
+- Fixed a bug with the initialization sequence after re-connection to
+  a Crazyflie drone after a temporary loss of connection (e.g., a reboot)
+
 ## [1.23.0] - 2021-08-13
 
 ### Added

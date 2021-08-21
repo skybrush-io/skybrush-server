@@ -13,6 +13,7 @@ from .utils import BoundingBoxCalculator, Point
 __all__ = (
     "get_altitude_reference_from_show_specification",
     "get_coordinate_system_from_show_specification",
+    "get_group_index_from_show_specification",
     "get_home_position_from_show_specification",
     "get_trajectory_from_show_specification",
     "TrajectorySpecification",
@@ -264,3 +265,17 @@ def get_altitude_reference_from_show_specification(show: Dict) -> Optional[float
         return float(amsl)
     else:
         raise ValueError(f"Invalid altitude reference in show specification: {amsl!r}")
+
+
+def get_group_index_from_show_specification(show: Dict) -> int:
+    """Returns the index of the group of the drone from the given show
+    specification object.
+
+    Raises:
+        RuntimeError: if the group index is out of its valid bounds. We support
+            at most 256 groups, with zero-based indexing
+    """
+    group_index = int(show["group"]) if "group" in show else 0
+    if group_index < 0 or group_index > 255:
+        raise RuntimeError("Group index outside valid range")
+    return group_index

@@ -14,6 +14,7 @@ from skybrush import (
     get_altitude_reference_from_show_specification,
     get_coordinate_system_from_show_specification,
     get_geofence_configuration_from_show_specification,
+    get_group_index_from_show_specification,
     get_light_program_from_show_specification,
     get_trajectory_from_show_specification,
 )
@@ -161,6 +162,7 @@ def generate_mission_file_from_show_specification(show) -> bytes:
     trajectory = get_trajectory_from_show_specification(show)
     geofence = get_geofence_configuration_from_show_specification(show)
     trans = get_coordinate_system_from_show_specification(show)
+    group_index = get_group_index_from_show_specification(show)
 
     # pin down to_neu to the transformation type
     to_neu: Callable[[XYZ], XYZ] = partial(to_neu_from, type_string=trans.type)
@@ -183,11 +185,6 @@ def generate_mission_file_from_show_specification(show) -> bytes:
             mission_index = mission_spec.get("index")
             if mission_id is not None and mission_index is not None:
                 display_name = f"{mission_id}/{mission_index}"
-
-    # parse group index of the drone
-    group_index = int(show["group"]) if "group" in show else 0
-    if group_index < 0 or group_index > 255:
-        raise RuntimeError("Group index outside valid range")
 
     # abbreviate the display name of the mission if needed; the flockctrl
     # protocol truncates the display name at 15 chars so if we have numbers

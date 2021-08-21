@@ -311,6 +311,13 @@ class SurveyStatus:
         if packet.payload[37]:
             self.flags |= SurveyStatusFlag.ACTIVE
 
+    def set_to_fixed_with_accuracy(self, accuracy: float) -> None:
+        """Notifies the survey object that the base station was switched to
+        fixed-coordinate mode with the given accuracy.
+        """
+        self.flags = SurveyStatusFlag.SUPPORTED | SurveyStatusFlag.VALID
+        self.accuracy = accuracy
+
 
 class RTKStatistics:
     """Object that collects basic statistics about the contents of the current
@@ -359,6 +366,12 @@ class RTKStatistics:
 
         if SurveyStatus.is_survey_related_packet(packet):
             self._survey_status.notify(packet)  # type: ignore
+
+    def set_to_fixed_with_accuracy(self, accuracy: float) -> None:
+        """Sets the base station statistics object to fixed mode with the given
+        known survey accuracy.
+        """
+        self._survey_status.set_to_fixed_with_accuracy(accuracy)
 
     @contextmanager
     def use(self):

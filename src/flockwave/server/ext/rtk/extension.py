@@ -7,7 +7,7 @@ from dataclasses import dataclass, field
 from fnmatch import fnmatch
 from functools import partial
 from time import monotonic
-from flockwave.gps.vectors import ECEFToGPSCoordinateTransformation
+from flockwave.gps.vectors import ECEFToGPSCoordinateTransformation, GPSCoordinate
 from trio import CancelScope, open_memory_channel, open_nursery, sleep
 from trio.abc import SendChannel
 from trio_util import AsyncBool
@@ -54,6 +54,11 @@ class RTKPresetRequest:
     def touch(self) -> None:
         """Updates the timestamp of the request to the current timestamp."""
         self.timestamp = monotonic()
+
+
+def format_gps_coordinate(coord: GPSCoordinate) -> str:
+    """Formats a GPS coordinate in a way commonly used in this extension."""
+    return f"{coord.lat:.7f}°, {coord.lon:.7f}°"
 
 
 class RTKExtension(ExtensionBase):
@@ -163,9 +168,11 @@ class RTKExtension(ExtensionBase):
 
             position = self._survey_settings.position
             if position is not None:
-                coord = ECEFToGPSCoordinateTransformation().to_gps(position)
+                coord = format_gps_coordinate(
+                    ECEFToGPSCoordinateTransformation().to_gps(position)
+                )
                 self.log.info(
-                    f"Base station is fixed at {coord.lat:.7f}°, {coord.lon:.7f}° (accuracy: {accuracy}m)"
+                    f"Base station is fixed at {coord} (accuracy: {accuracy}m)"
                 )
         elif fixed is not None:
             self.log.warning(
@@ -287,8 +294,9 @@ class RTKExtension(ExtensionBase):
             if isinstance(settings, dict):
                 # HACK HACK HACK: if we have a fixed position from the config
                 # file, don't update the accuracy
-                if "position" not in settings and "accuracy" in settings:
-                    del settings["accuracy"]
+                if self.survey_settings.position is not None:
+                    if "position" not in settings and "accuracy" in settings:
+                        del settings["accuracy"]
                 try:
                     self.survey_settings.update_from_json(settings)
                 except ValueError as ex:
@@ -297,7 +305,7 @@ class RTKExtension(ExtensionBase):
                 error = "Settings object missing or invalid"
 
             if error is None:
-                self._request_survey_later()
+                self._request_survey()
 
             return hub.acknowledge(message, outcome=error is None, reason=error)
 
@@ -374,7 +382,7 @@ class RTKExtension(ExtensionBase):
         assert self.app is not None
         self.app.run_in_background(self._request_preset_switch, value)
 
-    async def _request_survey(self) -> None:
+    def _request_survey(self) -> None:
         """Requests the extension to start a new survey process on the
         current RTK connection.
         """
@@ -385,13 +393,6 @@ class RTKExtension(ExtensionBase):
                 )
         else:
             self._rtk_survey_trigger.value = True
-
-    def _request_survey_later(self) -> None:
-        """Requests the extension to start a survey process on the current
-        RTK connection as soon as possible (but not immediately).
-        """
-        assert self.app is not None
-        self.app.run_in_background(self._request_survey)
 
     async def _perform_preset_switch(
         self, value: Optional[RTKConfigurationPreset]
@@ -422,15 +423,27 @@ class RTKExtension(ExtensionBase):
 
             duration = self._survey_settings.duration
             accuracy = self._survey_settings.accuracy
+            position = self._survey_settings.position
             accuracy_cm = int(accuracy * 100)
+
+            need_survey = position is None
 
             configurator = UBXRTKBaseConfigurator(self._survey_settings)
 
             if self.log:
-                self.log.info(
-                    f"Starting survey for {preset.title!r} for at least {duration} "
-                    f"seconds, desired accuracy is {accuracy_cm} cm",
-                )
+                if position is not None:
+                    coord = format_gps_coordinate(
+                        ECEFToGPSCoordinateTransformation().to_gps(position)
+                    )
+                    self.log.info(
+                        f"Configuring RTK base station to fixed coordinate: "
+                        f"{coord}, accuracy is {accuracy_cm} cm"
+                    )
+                else:
+                    self.log.info(
+                        f"Starting survey for {preset.title!r} for at least {duration} "
+                        f"seconds, desired accuracy is {accuracy_cm} cm",
+                    )
 
             success = False
             try:
@@ -445,16 +458,31 @@ class RTKExtension(ExtensionBase):
                     )
             finally:
                 if self.log:
-                    if success:
-                        self.log.info(
-                            f"Started survey for {preset.title!r}",
-                            extra={"semantics": "success"},
-                        )
+                    if need_survey:
+                        if success:
+                            self.log.info(
+                                f"Started survey for {preset.title!r}",
+                                extra={"semantics": "success"},
+                            )
+                        else:
+                            self.log.error(
+                                f"Failed to start survey for {preset.title!r}",
+                                extra={"sentry_ignore": True},
+                            )
                     else:
-                        self.log.error(
-                            f"Failed to start survey for {preset.title!r}",
-                            extra={"sentry_ignore": True},
-                        )
+                        if success:
+                            self.log.info(
+                                f"{preset.title!r} configured successfully",
+                                extra={"semantics": "success"},
+                            )
+                            self._statistics.set_to_fixed_with_accuracy(
+                                accuracy_cm / 100.0
+                            )
+                        else:
+                            self.log.error(
+                                f"Failed to configure {preset.title!r}",
+                                extra={"sentry_ignore": True},
+                            )
 
     async def _run_connections_for_preset(
         self, preset: RTKConfigurationPreset, *, task_status

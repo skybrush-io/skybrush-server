@@ -521,6 +521,7 @@ class CrazyflieUAV(UAVBase):
         z: Optional[float] = None,
         velocity_xy: float = 2,
         velocity_z: float = 0.5,
+        min_travel_time: float = 1,
     ) -> Tuple[float, float, float]:
         """Sends the UAV to a given coordinate.
 
@@ -531,6 +532,10 @@ class CrazyflieUAV(UAVBase):
                 Y coordinate
             z: the Z coordinate of the target; ``None`` means to use the current
                 Z coordinate
+            velocity_xy: maximum allowed horizontal velocity, in m/s
+            velocity_z: maximum allowed vertical velocity, in m/s
+            min_travel_time: minimum travel time; useful for very small changes
+                in the target position
         """
         current = self.status.position_xyz
         if current is None:
@@ -543,7 +548,9 @@ class CrazyflieUAV(UAVBase):
         target_z = current.z if z is None else z
 
         dx, dy, dz = target_x - current.x, target_y - current.y, target_z - current.z
-        travel_time = max(hypot(dx, dy) / velocity_xy, abs(dz) / velocity_z)
+        travel_time = max(
+            min_travel_time, hypot(dx, dy) / velocity_xy, abs(dz) / velocity_z
+        )
 
         # TODO(ntamas): keep current yaw!
         await cf.high_level_commander.go_to(

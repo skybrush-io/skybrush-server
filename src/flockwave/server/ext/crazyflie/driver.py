@@ -7,7 +7,7 @@ from colour import Color
 from contextlib import asynccontextmanager, AsyncExitStack
 from functools import partial
 from logging import Logger
-from math import hypot
+from math import ceil, hypot
 from pathlib import Path
 from random import random
 from struct import Struct
@@ -282,6 +282,40 @@ class CrazyflieDriver(UAVDriver):
         else:
             raise RuntimeError(f"Unknown command: {command}")
 
+    async def handle_command_rush(
+        self,
+        uav: "CrazyflieUAV",
+        x: Optional[str] = None,
+        y: Optional[str] = None,
+        z: Optional[str] = None,
+        multiplier: Optional[str] = None,
+    ):
+        """Temporary command for Nina's project that sends the UAV to a given
+        coordinate _very_ quickly."""
+        if x is None and y is None and z is None:
+            raise RuntimeError(
+                "You need to specify the target coordinate in X-Y-Z format"
+            )
+
+        try:
+            coords = optional_float(x), optional_float(y), optional_float(z)
+            multiplier_num = optional_float(multiplier)
+        except ValueError:
+            raise RuntimeError("Invalid number found in input")
+
+        if multiplier_num is None:
+            multiplier_num = 1
+
+        x_num, y_num, z_num = coords
+        velocity_xy, velocity_z = 4, 1
+        velocity_xy *= multiplier_num
+        velocity_z *= multiplier_num
+        x_num, y_num, z_num = await uav.go_to(
+            x_num, y_num, z_num, velocity_xy, velocity_z, min_travel_time=0.2
+        )
+
+        return f"Target set to ({x_num:.2f}, {y_num:.2f}, {z_num:.2f}) m"
+
     async def handle_command_show(
         self, uav: "CrazyflieUAV", command: Optional[str] = None
     ) -> str:
@@ -319,6 +353,24 @@ class CrazyflieDriver(UAVDriver):
             return "LED test executed"
         else:
             return "Usage: test <battery|led|motor>"
+
+    async def handle_command_trick(self, uav: "CrazyflieUAV", *params: str) -> str:
+        """Non-public command used for Nina's show as a last resort hack to send
+        the drone through the ceiling if the high-level commander is not suitable
+        for the task.
+        """
+        z_velocity = 1
+        distance = 3
+
+        if len(params) > 0:
+            z_velocity = max(0.2, float(params[0]))
+            if len(params) > 1:
+                distance = max(0.2, float(params[1]))
+
+        # Nina's shoot-the-drone-through-the-ceiling trick, speed = 1 m/s
+        await uav.perform_nina_trick(z_velocity=z_velocity, distance=distance)
+
+        return f"Velocity = {z_velocity} m/s, distance = {distance} m"
 
     async def handle_command___show_upload(self, uav: "CrazyflieUAV", *, show):
         """Handles a drone show upload request for the given UAV.
@@ -607,6 +659,20 @@ class CrazyflieUAV(UAVBase):
     @property
     def preflight_status(self) -> PreflightCheckInfo:
         return self._preflight_status
+
+    async def perform_nina_trick(
+        self, z_velocity: float = 1, distance: float = 3
+    ) -> None:
+        """Hacky implementation of Nina's send-the-drone-through-the-ceiling
+        trick.
+        """
+        cf = self._get_crazyflie()
+        duration = distance / z_velocity
+        iterations = int(ceil(duration / 0.1))
+        for i in range(iterations):
+            await cf.commander.send_altitude_hold_setpoint(z_velocity=z_velocity)
+            await sleep(0.1)
+        await cf.commander.send_stop_setpoint()
 
     async def process_console_messages(self) -> None:
         """Runs a task that processes incoming console messages and forwards

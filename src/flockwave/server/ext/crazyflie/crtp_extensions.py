@@ -62,13 +62,6 @@ class FenceAction(IntEnum):
         except ValueError:
             raise ValueError(f"{value!r} is not a valid fence action") from None
         return cls(index)
-        if value == "none":
-            return cls.NONE
-        if value == "stopMotors":
-            return cls.STOP_MOTORS
-        if value == "shutdown":
-            return cls.SHUTDOWN
-        raise
 
     @staticmethod
     def get_valid_string_values_in_config_schema() -> Tuple[str, ...]:
@@ -151,6 +144,8 @@ class DroneShowExecutionStage(IntEnum):
     """
 
     UNKNOWN = 0
+
+    # Normal show flow follows from here
     IDLE = 1
     WAIT_FOR_PREFLIGHT_CHECKS = 2
     WAIT_FOR_START_SIGNAL = 3
@@ -164,6 +159,10 @@ class DroneShowExecutionStage(IntEnum):
     LANDING_LOW_BATTERY = 9
     EXHAUSTED = 10
     ERROR = 11
+
+    # Additional non-error states
+    MANUAL_CONTROL = 12
+    POSITION_HOLD = 13
 
     def get_short_explanation(self) -> str:
         """Returns a short explanation of the execution stage, suitable to be
@@ -183,6 +182,8 @@ class DroneShowExecutionStage(IntEnum):
             cls.PERFORMING_SHOW,
             cls.LANDING,
             cls.LANDING_LOW_BATTERY,
+            cls.MANUAL_CONTROL,
+            cls.POSITION_HOLD,
         )
 
     @property
@@ -213,8 +214,8 @@ _execution_stage_explanations = [
     "Low battery",
     "Battery exhausted",
     "Error",
-    "",
-    "",
+    "Manual control",
+    "Position hold",
     "",
     "",
 ]

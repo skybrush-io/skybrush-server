@@ -682,18 +682,54 @@ class CrazyflieUAV(UAVBase):
         cf = self._get_crazyflie()
         dt = 0.1
 
+        # Disable the high-level commander so the show subsystem knows that we
+        # have intervened. Try this multiple times in case the connection is
+        # flaky.
+        tries = 5
+        while True:
+            try:
+                await cf.high_level_commander.disable()
+            except Exception:
+                if tries > 0:
+                    tries -= 1
+                else:
+                    raise
+            else:
+                break
+
+        # Perform the upward ascent
         duration = distance / z_velocity
         iterations = int(ceil(duration / dt))
         for _ in range(iterations):
-            await cf.commander.send_altitude_hold_setpoint(z_velocity=z_velocity)
+            try:
+                await cf.commander.send_altitude_hold_setpoint(z_velocity=z_velocity)
+            except Exception:
+                pass
             await sleep(dt)
 
+        # Wait and hover a bit until the trap door is closed
         iterations = int(ceil(hover_time / dt))
         for _ in range(iterations):
-            await cf.commander.send_altitude_hold_setpoint(z_velocity=0)
+            try:
+                await cf.commander.send_altitude_hold_setpoint(z_velocity=0)
+            except Exception:
+                pass
             await sleep(dt)
 
-        await cf.commander.send_stop_setpoint()
+        # Stop the motors and prevent them from starting again by pretending
+        # that the Crazyflie has flipped
+        tries = 20
+        while True:
+            try:
+                await cf.commander.send_stop_setpoint()
+                await cf.param.set("stabilizer.stop", 1)
+            except Exception:
+                if tries > 0:
+                    tries -= 1
+                else:
+                    raise
+            else:
+                break
 
     async def process_console_messages(self) -> None:
         """Runs a task that processes incoming console messages and forwards

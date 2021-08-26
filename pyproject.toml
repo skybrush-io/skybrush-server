@@ -46,7 +46,7 @@ flockwave-net = {extras = ["async"], version = "^1.0.1"}
 flockwave-parsers = "^1.2.0"
 flockwave-spec = "^1.52.0"
 pyledctrl = "^3.1.0"
-aiocflib = "^2.0.2"
+aiocflib = "^2.2.0"
 appdirs = "^1.4.4"
 crcmod = "^1.7"
 msgpack = "^1.0.0"

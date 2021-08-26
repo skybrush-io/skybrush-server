@@ -361,16 +361,21 @@ class CrazyflieDriver(UAVDriver):
         """
         z_velocity = 1
         distance = 3
+        hover_time = 5
 
         if len(params) > 0:
             z_velocity = max(0.2, float(params[0]))
-            if len(params) > 1:
-                distance = max(0.2, float(params[1]))
+        if len(params) > 1:
+            distance = max(0.2, float(params[1]))
+        if len(params) > 2:
+            hover_time = float(params[2])
 
-        # Nina's shoot-the-drone-through-the-ceiling trick, speed = 1 m/s
-        await uav.perform_nina_trick(z_velocity=z_velocity, distance=distance)
+        # Nina's shoot-the-drone-through-the-ceiling trick
+        await uav.perform_nina_trick(
+            z_velocity=z_velocity, distance=distance, hover_time=hover_time
+        )
 
-        return f"Velocity = {z_velocity} m/s, distance = {distance} m"
+        return f"Velocity = {z_velocity} m/s, distance = {distance} m, hover time = {hover_time} s"
 
     async def handle_command___show_upload(self, uav: "CrazyflieUAV", *, show):
         """Handles a drone show upload request for the given UAV.
@@ -661,17 +666,33 @@ class CrazyflieUAV(UAVBase):
         return self._preflight_status
 
     async def perform_nina_trick(
-        self, z_velocity: float = 1, distance: float = 3
+        self, z_velocity: float = 1, distance: float = 3, hover_time: float = 5
     ) -> None:
         """Hacky implementation of Nina's send-the-drone-through-the-ceiling
         trick.
+
+        Parameters:
+            z_velocity: vertical velocity of the drone during ascent, in
+                meters per seocnd
+            distance: distance to travel during ascent, in meters. The duration
+                of the ascent will be derived from the Z velocity and the distance
+            hover_time: hover time _after_ the ascent and _before_ the motors are
+                turned off, in seconds
         """
         cf = self._get_crazyflie()
+        dt = 0.1
+
         duration = distance / z_velocity
-        iterations = int(ceil(duration / 0.1))
-        for i in range(iterations):
+        iterations = int(ceil(duration / dt))
+        for _ in range(iterations):
             await cf.commander.send_altitude_hold_setpoint(z_velocity=z_velocity)
-            await sleep(0.1)
+            await sleep(dt)
+
+        iterations = int(ceil(hover_time / dt))
+        for _ in range(iterations):
+            await cf.commander.send_altitude_hold_setpoint(z_velocity=0)
+            await sleep(dt)
+
         await cf.commander.send_stop_setpoint()
 
     async def process_console_messages(self) -> None:

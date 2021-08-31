@@ -1361,7 +1361,7 @@ class CrazyflieHandlerTask:
                 except TimeoutError:
                     log.error(
                         "Communication timeout while setting flight mode",
-                        extra={"id": self._uav.id},
+                        extra={"id": self._uav.id, "sentry_ignore": True},
                     )
                     return
                 except Exception as ex:
@@ -1400,6 +1400,14 @@ class CrazyflieHandlerTask:
                 await sleep(2)
                 if not self._uav.is_running_show:
                     await self._uav.reupload_last_show()
+        except TimeoutError:
+            # This is normal, it comes from aiocflib when the Crazyflie is
+            # turned off again
+            log.warn(
+                "Failed to re-upload previously uploaded show to possibly "
+                "rebooted drone due to a communication timeout",
+                extra={"id": self._uav.id},
+            )
         except Exception as ex:
             log.warn(
                 "Failed to re-upload previously uploaded show to possibly rebooted drone",

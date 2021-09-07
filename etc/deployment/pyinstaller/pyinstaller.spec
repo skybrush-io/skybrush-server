@@ -88,7 +88,7 @@ while changed:
                 if hasattr(imported_module, "get_optional_dependencies"):
                     deps += tuple(imported_module.get_optional_dependencies().values())
                 elif hasattr(imported_module, "optional_dependencies"):
-                    deps += tuple(imported_module.optional_dependencies.values())
+                    deps += tuple(imported_module.optional_dependencies.keys())
             except ImportError:
                 deps = ()
             if deps:

@@ -2,7 +2,7 @@
 while the server is running.
 """
 
-from contextlib import nullcontext
+from contextlib import ExitStack, nullcontext
 from trio import sleep_forever
 
 
@@ -21,7 +21,14 @@ async def run(app, configuration, logger):
         context = nullcontext()
         logger.warn("Cannot prevent sleep mode on this platform")
 
-    with context:
+    with ExitStack() as stack:
+        from adrenaline.errors import NotSupportedError
+
+        try:
+            stack.enter_context(context)
+        except NotSupportedError:
+            logger.warn("Cannot prevent sleep mode on this platform")
+
         await sleep_forever()
 
 

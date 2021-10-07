@@ -12,13 +12,13 @@ M-SEARCH requests for root devices, and for searches for
 
 from contextlib import closing
 from datetime import datetime
-from errno import EADDRNOTAVAIL
+from errno import EADDRNOTAVAIL, ENODEV
 from http.server import BaseHTTPRequestHandler
 from logging import Logger
 from io import BytesIO
 from os import getenv
 from random import random
-from time import mktime
+from time import mktime, monotonic
 from trio import sleep
 from typing import Any, Callable, Dict, Optional
 from wsgiref.handlers import format_date_time
@@ -361,12 +361,29 @@ async def run(app, configuration, logger):
     sender.setsockopt(trio.socket.IPPROTO_IP, trio.socket.IP_MULTICAST_TTL, 2)
     await sender.bind(("", 0))
 
+    # Timestamp when the last error message was printed
+    last_error = monotonic()
+
     with overridden(globals(), **context), closing(sender):
         while True:
             try:
                 await receive_ssdp_messages(multicast_group, port, sender=sender)
             except OSError as error:
-                logger.warn("SSDP receiver socket closed: '{}'".format(error))
+                now = monotonic()
+
+                show_warning = True
+                if error.errno == ENODEV and (
+                    last_error is None or now - last_error < 5
+                ):
+                    # "No such device" typically means that the device is not
+                    # connected to the network. This is okay, we won't log it
+                    # if an error message was logged recently.
+                    show_warning = False
+
+                if show_warning:
+                    logger.warn("SSDP receiver socket closed: '{}'".format(error))
+
+                last_error = now
 
             # If we get here, the receiver socket closed for some reason, so
             # we wait a bit and then retry

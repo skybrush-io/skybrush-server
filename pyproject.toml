@@ -59,7 +59,7 @@ oscpy = "^0.6.0"
 httpx = "^0.18.2"
 
 [tool.poetry.dev-dependencies]
-pytest = "^5.4.3"
+pytest = "^6.2.5"
 pytest-trio = ">=0.6.0"
 click-man = ">=0.4.1"
 pyinstaller = {version = "^4.0", extras = ["encryption"]}

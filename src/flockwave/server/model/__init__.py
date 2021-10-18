@@ -23,6 +23,7 @@ from .errors import ClientNotSubscribedError, NoSuchPathError
 from .messages import FlockwaveMessage, FlockwaveNotification, FlockwaveResponse
 from .object import ModelObject
 from .uav import PassiveUAVDriver, UAVStatusInfo, UAVDriver, UAV, UAVBase
+from .weather import Weather
 from .world import World
 
 
@@ -59,4 +60,5 @@ __all__ = (
     "World",
     "CommunicationChannel",
     "PassiveUAVDriver",
+    "Weather",
 )

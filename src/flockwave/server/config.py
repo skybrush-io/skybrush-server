@@ -82,6 +82,7 @@ EXTENSIONS = {
     "http": {},
     "http_server": {},
     "insomnia": {"keep_display_on": False},
+    "kp_index": {"source": "potsdam"},
     "license": {},
     "mavlink": {
         "enabled": False,
@@ -145,6 +146,7 @@ EXTENSIONS = {
         "orientation": 59,
         "takeoff_area": {"type": "grid", "spacing": 5},
     },
+    "weather": {},
 }
 
 # smpte_timecode seems to have some problems on a Mac - it consumes 15% CPU

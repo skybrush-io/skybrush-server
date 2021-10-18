@@ -39,13 +39,8 @@ class SystemClock(ClockBase):
         return 1
 
 
-def get_dependencies():
-    """Returns the dependencies of this extension."""
-    return ("clocks",)
-
-
 async def run(app):
-    """Unloads the extension."""
+    """Runs the extension."""
     with app.import_api("clocks").use_clock(SystemClock()):
         await sleep_forever()
 

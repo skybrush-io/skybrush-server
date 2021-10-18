@@ -1,4 +1,4 @@
-from bidict import bidict
+from bidict import bidict  # type: ignore
 from enum import Enum
 from typing import Optional, Tuple
 

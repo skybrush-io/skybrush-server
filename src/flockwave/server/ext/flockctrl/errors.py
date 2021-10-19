@@ -136,8 +136,14 @@ def get_error_codes_from_status_packet(
         #   etc.
 
     if (
-        flags & (StatusFlag.MOTOR_RUNNING | StatusFlag.ON_GROUND)
-        == StatusFlag.MOTOR_RUNNING | StatusFlag.ON_GROUND
+        flags
+        & (
+            StatusFlag.MOTOR_RUNNING
+            | StatusFlag.AUTOPILOT_EMERGENCY
+            | StatusFlag.AUTOPILOT_CRITICAL
+            | StatusFlag.AIRBORNE
+        )
+        == StatusFlag.MOTOR_RUNNING
     ):
         aux.append(FlockwaveErrorCode.MOTORS_RUNNING_WHILE_ON_GROUND.value)
     if not flags & StatusFlag.ARMED:

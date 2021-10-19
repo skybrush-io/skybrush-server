@@ -358,7 +358,7 @@ reference = "collmot"
 
 [[package]]
 name = "compose"
-version = "1.2.7"
+version = "1.2.8"
 description = "The classic ``compose``, with all the Pythonic features."
 category = "main"
 optional = false
@@ -492,7 +492,7 @@ reference = "collmot"
 
 [[package]]
 name = "flockwave-flockctrl"
-version = "1.19.0"
+version = "2.0.0"
 description = "flockctrl protocol parser and encoder for Skybrush"
 category = "main"
 optional = false
@@ -1984,7 +1984,7 @@ reference = "collmot"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7"
-content-hash = "4907ea5d2758340aac43e200a8bb6161779e96ddba563672d899b823fdb1cb0c"
+content-hash = "6d02f264951b1f42307d604b2e3a46abecbdb5e22bca10c44615ac532d5e5662"
 
 [metadata.files]
 adrenaline = [
@@ -2132,10 +2132,10 @@ commentjson = [
     {file = "commentjson-0.9.0.tar.gz", hash = "sha256:42f9f231d97d93aff3286a4dc0de39bfd91ae823d1d9eba9fa901fe0c7113dd4"},
 ]
 compose = [
-    {file = "compose-1.2.7-py2.py30-none-any.whl", hash = "sha256:59e3f748baf92b688536a9c65020e57583bcc0128fb097eed3753606d3a650d9"},
-    {file = "compose-1.2.7-py35-none-any.whl", hash = "sha256:61a2212a26f8152778ba86709f851a364cdca0b0104683a92ef85ac9c2e638b9"},
-    {file = "compose-1.2.7-py38-none-any.whl", hash = "sha256:508ab6ad85f9926b16fd8e3f4591b5fb303436592a66ff77e9f67cbb256d32ba"},
-    {file = "compose-1.2.7.tar.gz", hash = "sha256:63adc21c4e6afc5787b84e322a9b0cf48b9de9eec9f72f2dbd11d5cd2cbb90c0"},
+    {file = "compose-1.2.8-py2.py30-none-any.whl", hash = "sha256:cf17e985b82f06247143dccd1a32e5deb16f5b8ef80d732386acb2394092c5c5"},
+    {file = "compose-1.2.8-py35-none-any.whl", hash = "sha256:3ae6b888e45238b31633313e78f4d64c79a13f3859efd04acfd1241c2afe7b74"},
+    {file = "compose-1.2.8-py38-none-any.whl", hash = "sha256:fb0d8c876528d2beb63a25c58b581d525dabb772f5d3b3da3cef4c87cb0c65be"},
+    {file = "compose-1.2.8.tar.gz", hash = "sha256:f36e4fb7d1bfc359b4a8a50c4a032b48dbbd3e682f5878fe1a7f0591b1569a22"},
 ]
 crcmod = [
     {file = "crcmod-1.7.tar.gz", hash = "sha256:dc7051a0db5f2bd48665a990d3ec1cc305a466a77358ca4492826f41f283601e"},
@@ -2179,8 +2179,8 @@ flockwave-ext = [
     {file = "flockwave_ext-1.9.0-py3-none-any.whl", hash = "md5:b184100dff4dd8e86d7a0835b03feed8"},
 ]
 flockwave-flockctrl = [
-    {file = "flockwave-flockctrl-1.19.0.tar.gz", hash = "md5:87a4ebb9425c547b10e3bfe8ccabf107"},
-    {file = "flockwave_flockctrl-1.19.0-py3-none-any.whl", hash = "md5:21519dadda08fe3594f8f6a1fdcb85a3"},
+    {file = "flockwave-flockctrl-2.0.0.tar.gz", hash = "md5:ddd9095260e5d4dca15ebdd97bccf51f"},
+    {file = "flockwave_flockctrl-2.0.0-py3-none-any.whl", hash = "md5:e63347669e2ebd93c37a57a37f713a6e"},
 ]
 flockwave-gps = [
     {file = "flockwave-gps-2.1.0.tar.gz", hash = "md5:68cde6029819fe8d056dda8e5d7534cc"},

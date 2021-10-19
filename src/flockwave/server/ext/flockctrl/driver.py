@@ -610,10 +610,11 @@ class FlockCtrlDriver(UAVDriver):
         debug = b"".join(debug)
 
         # update whether we are probably airborne; we need this info to decide
-        # whether we allow mission uploads or not
+        # whether we allow mission uploads or not. We consider ourselves airborne
+        # if either the motors are running, or the autopilot itself claims that
+        # it is airborne
         uav._is_airborne = (
-            packet.flags & (StatusFlag.MOTOR_RUNNING | StatusFlag.ON_GROUND)
-            == StatusFlag.MOTOR_RUNNING
+            packet.flags & (StatusFlag.MOTOR_RUNNING | StatusFlag.AIRBORNE) != 0
         )
 
         # Note: packet.flags & StatusFlag.PREARM is not handled here as
@@ -951,8 +952,8 @@ class FlockCtrlUAV(UAVBase):
 
     @property
     def is_airborne(self) -> bool:
-        """Returns whether the UAV is probably airborne (motors running and
-        is not on ground).
+        """Returns whether the UAV is probably airborne (motors running or the
+        autopilit itself claims that it is airborne).
         """
         return self._is_airborne
 

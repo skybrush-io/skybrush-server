@@ -110,6 +110,9 @@ def get_error_codes_from_status_packet(
     if not flags & StatusFlag.RADIO:
         aux.append(FlockwaveErrorCode.RADIO_MISSING.value)
 
+    if flags & StatusFlag.LOGGING_FAILURE:
+        aux.append(FlockwaveErrorCode.LOGGING_DEACTIVATED.value)
+
     if flags & StatusFlag.PREARM:
         aux.append(FlockwaveErrorCode.PREARM_CHECK_IN_PROGRESS.value)
 

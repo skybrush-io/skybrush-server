@@ -16,7 +16,9 @@ class Weather(metaclass=ModelMeta):
     class __meta__:
         schema = get_complex_object_schema("weather")
 
-    def __init__(self, position: GPSCoordinate, timestamp: Optional[int] = None):
+    def __init__(
+        self, position: Optional[GPSCoordinate] = None, timestamp: Optional[int] = None
+    ):
         self.position = position
         self.timestamp = timestamp if timestamp is not None else time()
 
@@ -28,4 +30,6 @@ SyncWeatherProvider = Callable[[Weather, GPSCoordinate], None]
 AsyncWeatherProvider = Callable[[Weather, GPSCoordinate], Awaitable[None]]
 
 #: Type specification for weather provider functions
-WeatherProvider = Callable[[Weather, GPSCoordinate], Union[None, Awaitable[None]]]
+WeatherProvider = Callable[
+    [Weather, Optional[GPSCoordinate]], Union[None, Awaitable[None]]
+]

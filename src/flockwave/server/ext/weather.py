@@ -10,7 +10,7 @@ from flockwave.server.message_hub import MessageHub
 from flockwave.server.model.client import Client
 from flockwave.server.model.messages import FlockwaveMessage, FlockwaveResponse
 from flockwave.server.model.weather import Weather
-from flockwave.server.registries.weather import WeatherProviderRegistry
+from flockwave.server.registries import find_in_registry, WeatherProviderRegistry
 
 #: Registry containing the registered weather providers by ID
 registry = WeatherProviderRegistry()
@@ -37,11 +37,29 @@ async def handle_WTH_AT(message: FlockwaveMessage, sender: Client, hub: MessageH
     return body
 
 
-def handle_WTH_INF(
+async def handle_WTH_INF(
     message: FlockwaveMessage, sender: Client, hub: MessageHub
 ) -> FlockwaveResponse:
-    body = {}
-    return hub.create_response_to(message, body=body)
+    statuses = {}
+
+    body = {"status": statuses, "type": "WTH-INF"}
+    response = hub.create_response_or_notification(body=body, in_response_to=message)
+
+    for station_id in message.get_ids():
+        provider = find_in_registry(
+            registry,
+            station_id,
+            response=response,
+            failure_reason="No such weather provider",
+        )
+        if provider:
+            weather = Weather()
+            result = provider(weather, None)
+            if isawaitable(result):
+                await result
+            statuses[station_id] = weather
+
+    return response
 
 
 def handle_WTH_LIST(message: FlockwaveMessage, sender: Client, hub: MessageHub):

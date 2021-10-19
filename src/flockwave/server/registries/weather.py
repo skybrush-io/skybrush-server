@@ -14,7 +14,7 @@ from flockwave.server.types import Disposer
 from .base import RegistryBase
 
 
-class WeatherProviderRegistry(RegistryBase):
+class WeatherProviderRegistry(RegistryBase[WeatherProvider]):
     """Registry that contains information about all the weather providers that
     the server knows.
 

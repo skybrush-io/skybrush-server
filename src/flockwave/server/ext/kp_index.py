@@ -112,10 +112,10 @@ class KpIndexData:
             self.min_timestamp = int(floor(ts[0] - (ts[1] - ts[0]) / 2))
             self.max_timestamp = int(ceil(ts[-1] + (ts[-1] - ts[-2]) / 2))
 
-        # Make the max timestamp at least 3 hours larger than the end of the
+        # Make the max timestamp at least 24 hours larger than the end of the
         # last interval; this is to allow forecasting into the future for a
         # few more hours.
-        self.max_timestamp += 3 * 60 * 60
+        self.max_timestamp += 24 * 60 * 60
 
 
 KpIndexData.INVALID = KpIndexData()
@@ -242,7 +242,7 @@ async def _fetch_kp_index_from_potsdam() -> KpIndexData:
     return KpIndexData.from_midpoints_and_values(entries)
 
 
-async def provide_kp_index(weather: Weather, position: GPSCoordinate) -> None:
+async def provide_kp_index(weather: Weather, position: Optional[GPSCoordinate]) -> None:
     """Extends the given weather object with the planetary Kp index estimate
     at the timestamp corresponding to the weather object.
     """

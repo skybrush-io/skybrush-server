@@ -13,6 +13,7 @@ from .clients import ClientRegistry
 from .clocks import ClockRegistry
 from .connections import ConnectionRegistry, ConnectionRegistryEntry
 from .objects import ObjectRegistry
+from .weather import WeatherProviderRegistry
 
 __all__ = (
     "Registry",
@@ -25,4 +26,5 @@ __all__ = (
     "ConnectionRegistryEntry",
     "ChannelTypeRegistry",
     "ObjectRegistry",
+    "WeatherProviderRegistry",
 )

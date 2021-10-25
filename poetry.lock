@@ -180,7 +180,7 @@ reference = "collmot"
 
 [[package]]
 name = "bidict"
-version = "0.21.3"
+version = "0.21.4"
 description = "The bidirectional mapping library for Python."
 category = "main"
 optional = false
@@ -492,7 +492,7 @@ reference = "collmot"
 
 [[package]]
 name = "flockwave-flockctrl"
-version = "2.0.0"
+version = "2.1.0"
 description = "flockctrl protocol parser and encoder for Skybrush"
 category = "main"
 optional = false
@@ -1380,11 +1380,14 @@ reference = "collmot"
 
 [[package]]
 name = "pyparsing"
-version = "2.4.7"
+version = "3.0.1"
 description = "Python parsing module"
 category = "dev"
 optional = false
-python-versions = ">=2.6, !=3.0.*, !=3.1.*, !=3.2.*"
+python-versions = ">=3.6"
+
+[package.extras]
+diagrams = ["jinja2", "railroad-diagrams"]
 
 [package.source]
 type = "legacy"
@@ -1950,7 +1953,7 @@ reference = "collmot"
 
 [[package]]
 name = "zeroconf"
-version = "0.36.8"
+version = "0.36.9"
 description = "Pure Python Multicast DNS Service Discovery Library (Bonjour/Avahi compatible)"
 category = "main"
 optional = false
@@ -1984,7 +1987,7 @@ reference = "collmot"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7"
-content-hash = "6d02f264951b1f42307d604b2e3a46abecbdb5e22bca10c44615ac532d5e5662"
+content-hash = "1afe3ba6d00932a8b81e70264368c18cc19de6093662ba79a57d2951151b9f4d"
 
 [metadata.files]
 adrenaline = [
@@ -2037,8 +2040,8 @@ bcrypt = [
     {file = "bcrypt-3.2.0.tar.gz", hash = "sha256:5b93c1726e50a93a033c36e5ca7fdcd29a5c7395af50a6892f5d9e7c6cfbfb29"},
 ]
 bidict = [
-    {file = "bidict-0.21.3-py3-none-any.whl", hash = "sha256:2cce0d01eb3db9b3fa85db501c00aaa3389ee4cab7ef82178604552dfa943a1b"},
-    {file = "bidict-0.21.3.tar.gz", hash = "sha256:d50bd81fae75e34198ffc94979a0eb0939ff9adb3ef32bcc93a913d8b3e3ed1d"},
+    {file = "bidict-0.21.4-py3-none-any.whl", hash = "sha256:3ac67daa353ecf853a1df9d3e924f005e729227a60a8dbada31a4c31aba7f654"},
+    {file = "bidict-0.21.4.tar.gz", hash = "sha256:42c84ffbe6f8de898af6073b4be9ea7ccedcd78d3474aa844c54e49d5a079f6f"},
 ]
 bitstring = [
     {file = "bitstring-3.1.9-py2-none-any.whl", hash = "sha256:e3e340e58900a948787a05e8c08772f1ccbe133f6f41fe3f0fa19a18a22bbf4f"},
@@ -2179,8 +2182,8 @@ flockwave-ext = [
     {file = "flockwave_ext-1.9.0-py3-none-any.whl", hash = "md5:b184100dff4dd8e86d7a0835b03feed8"},
 ]
 flockwave-flockctrl = [
-    {file = "flockwave-flockctrl-2.0.0.tar.gz", hash = "md5:ddd9095260e5d4dca15ebdd97bccf51f"},
-    {file = "flockwave_flockctrl-2.0.0-py3-none-any.whl", hash = "md5:e63347669e2ebd93c37a57a37f713a6e"},
+    {file = "flockwave-flockctrl-2.1.0.tar.gz", hash = "md5:679d64d36d883301367a1c1de87d8b32"},
+    {file = "flockwave_flockctrl-2.1.0-py3-none-any.whl", hash = "md5:a75faaf0947a8bfd49cd49a6eea88877"},
 ]
 flockwave-gps = [
     {file = "flockwave-gps-2.1.0.tar.gz", hash = "md5:68cde6029819fe8d056dda8e5d7534cc"},
@@ -2560,8 +2563,8 @@ pyobjc-framework-cocoa = [
     {file = "pyobjc_framework_Cocoa-7.3-cp39-cp39-macosx_10_9_x86_64.whl", hash = "sha256:6c15f43077c9a2ba1853eb402ff7a9515df9e584315bc2fcb779d4c95ef46dc5"},
 ]
 pyparsing = [
-    {file = "pyparsing-2.4.7-py2.py3-none-any.whl", hash = "sha256:ef9d7589ef3c200abe66653d3f1ab1033c3c419ae9b9bdb1240a85b024efc88b"},
-    {file = "pyparsing-2.4.7.tar.gz", hash = "sha256:c203ec8783bf771a155b207279b9bccb8dea02d8f0c9e5f8ead507bc3246ecc1"},
+    {file = "pyparsing-3.0.1-py3-none-any.whl", hash = "sha256:fd93fc45c47893c300bd98f5dd1b41c0e783eaeb727e7cea210dcc09d64ce7c3"},
+    {file = "pyparsing-3.0.1.tar.gz", hash = "sha256:84196357aa3566d64ad123d7a3c67b0e597a115c4934b097580e5ce220b91531"},
 ]
 pyrsistent = [
     {file = "pyrsistent-0.18.0-cp36-cp36m-macosx_10_9_x86_64.whl", hash = "sha256:f4c8cabb46ff8e5d61f56a037974228e978f26bfefce4f61a4b1ac0ba7a2ab72"},
@@ -2730,8 +2733,8 @@ yarg = [
     {file = "yarg-0.1.9.tar.gz", hash = "sha256:55695bf4d1e3e7f756496c36a69ba32c40d18f821e38f61d028f6049e5e15911"},
 ]
 zeroconf = [
-    {file = "zeroconf-0.36.8-py3-none-any.whl", hash = "sha256:262ff2e4025559eaf4acf5c689e86fd414bf1337796634d16925624c5996f414"},
-    {file = "zeroconf-0.36.8.tar.gz", hash = "sha256:9a13e0cdf9f1a142f1ba03df34d598d28b5e2fe4064e3e675c39310a33ec1a0f"},
+    {file = "zeroconf-0.36.9-py3-none-any.whl", hash = "sha256:dce72fdeda50e722a0d2ca99956b5f089ad338723b13e58bb8a2d9082e3403f2"},
+    {file = "zeroconf-0.36.9.tar.gz", hash = "sha256:023ebc58b765537edcb0395367b732e5271e2659760b1d5c6119aaacaeb7b390"},
 ]
 zipp = [
     {file = "zipp-3.6.0-py3-none-any.whl", hash = "sha256:9fe5ea21568a0a70e50f273397638d39b03353731e6cbbb3fd8502a33fec40bc"},

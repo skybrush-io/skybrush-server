@@ -32,11 +32,12 @@ from flockwave.spec.errors import FlockwaveErrorCode
 from skybrush import (
     get_coordinate_system_from_show_specification,
     get_light_program_from_show_specification,
+    TrajectoryPlayer,
+    TrajectorySpecification,
 )
 
 from .battery import VirtualBattery
 from .lights import DefaultLightController
-from .trajectory import TrajectoryPlayer
 
 
 __all__ = ("VirtualUAVDriver",)
@@ -305,7 +306,9 @@ class VirtualUAV(UAVBase):
             if old_state is VirtualUAVState.LANDED:
                 # Start following the trajectory if we have one
                 if self._trajectory is not None:
-                    self._trajectory_player = TrajectoryPlayer(self._trajectory)
+                    self._trajectory_player = TrajectoryPlayer(
+                        TrajectorySpecification(self._trajectory)
+                    )
 
                 # Start the light program
                 self._light_controller.play_light_program()

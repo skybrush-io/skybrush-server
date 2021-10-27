@@ -14,6 +14,7 @@ from typing import (
     Iterable,
     List,
     Optional,
+    Sequence,
     Tuple,
     Union,
 )
@@ -294,11 +295,16 @@ class SkybrushBinaryShowFile:
         """Returns the contents of the underlying in-memory buffer of the file
         if it is backed by an in-memory buffer.
         """
-        return self.get_buffer().getvalue()
+        if not self._buffer:
+            raise RuntimeError("file is not backed by an in-memory buffer")
+
+        return self._buffer.getvalue()
 
     @property
     def version(self) -> int:
         """Returns the version number of the file."""
+        if self._version is None:
+            raise RuntimeError("version header was not read yet")
         return self._version
 
 
@@ -388,7 +394,7 @@ class SegmentEncoder:
 
         return chunks
 
-    def _encode_coordinate_series(self, xs: Tuple[int]) -> Tuple[int, List[bytes]]:
+    def _encode_coordinate_series(self, xs: Sequence[int]) -> Tuple[int, List[bytes]]:
         first, *xs = xs
         if all(x == first for x in xs):
             # segment is constant, this is easy
@@ -397,8 +403,8 @@ class SegmentEncoder:
         if len(xs) == 2:
             # segment is a quadratic Bezier curve, we need to promote it to
             # cubic first
-            xs = ((first + 2 * xs[0]) / 3, (2 * xs[0] + xs[1]) / 3, xs[1])
-            xs = [int(round(x)) for x in xs]
+            xs_float = ((first + 2 * xs[0]) / 3, (2 * xs[0] + xs[1]) / 3, xs[1])
+            xs = [int(round(x)) for x in xs_float]
 
         coords = [x.to_bytes(2, byteorder="little", signed=True) for x in xs]
         if len(xs) == 1:
@@ -411,7 +417,7 @@ class SegmentEncoder:
 
         if len(xs) == 7:
             # segment is a 7D polynomial curve
-            return 2, coords
+            return 3, coords
 
         # TODO(ntamas): convert 4-5-6D curves to 7D ones
         raise NotImplementedError(f"{len(xs)}D curves not implemented yet")

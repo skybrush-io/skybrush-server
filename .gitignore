@@ -1,4 +1,5 @@
 .env
+.coverage
 .pytest_cache
 .tags
 *.egg-info
@@ -8,10 +9,9 @@
 .eggs/
 build/
 dist/
-licenses/
+htmlcov/
 tmp/
 .venv/
 .vscode/
 __pycache__/
 skybrush.cfg
-

@@ -59,7 +59,9 @@ oscpy = ">=0.6.0"
 httpx = ">=0.18.2"
 
 [tool.poetry.dev-dependencies]
+coverage = {extras = ["toml"], version = "^6.0.2"}
 pytest = "^6.2.5"
+pytest-cov = "^3.0.0"
 pytest-trio = ">=0.6.0"
 click-man = ">=0.4.1"
 pyinstaller = {version = "^4.0", extras = ["encryption"]}

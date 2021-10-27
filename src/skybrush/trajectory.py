@@ -25,8 +25,15 @@ class TrajectorySegment:
     """A single segment in a trajectory specification."""
 
     t: float
+    """The start time of the segment, relative to the takeoff time of the
+    trajectory.
+    """
+
     duration: float
+    """The total duration of the segment."""
+
     points: List[Point]
+    """The control points of the segment."""
 
     @property
     def has_control_points(self) -> bool:
@@ -45,12 +52,12 @@ class TrajectorySegment:
 
     @property
     def start_time(self) -> float:
-        """Returns the start time of the segment."""
+        """Returns the start time of the segment, relative to the takeoff time."""
         return self.t
 
     @property
     def end_time(self) -> float:
-        """Returns the end time of the segment."""
+        """Returns the end time of the segment, relative to the takeoff time."""
         return self.t + self.duration
 
 

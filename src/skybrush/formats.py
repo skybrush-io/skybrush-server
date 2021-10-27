@@ -88,7 +88,7 @@ class SkybrushBinaryFileBlock:
         if self._contents is None and self._loader is not None:
             self._contents = await self._loader()
             self._loader = None
-        return self._contents
+        return self._contents  # type: ignore
 
 
 class SkybrushBinaryShowFile:
@@ -392,7 +392,7 @@ class SegmentEncoder:
         first, *xs = xs
         if all(x == first for x in xs):
             # segment is constant, this is easy
-            return 0, b""
+            return 0, [b""]
 
         if len(xs) == 2:
             # segment is a quadratic Bezier curve, we need to promote it to

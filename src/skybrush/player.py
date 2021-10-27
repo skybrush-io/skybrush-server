@@ -19,16 +19,45 @@ __all__ = ("TrajectoryPlayer",)
 ZERO = (0.0, 0.0, 0.0)
 
 
-def create_function_for_segment(
-    start, end, control_points=None
-) -> Callable[[float], Point]:
-    """Creates a function for a segment that starts at the given point,
-    ends at the given other point and has the given set of control points
-    in between them.
+def create_function_for_segment(segment: TrajectorySegment) -> Callable[[float], Point]:
+    """Creates a function for a trajectory segment that evaluates it at any
+    given _ratio_ of the segment.
     """
-    if control_points:
-        raise RuntimeError("curves not supported yet")
+    if segment.has_control_points:
+        return _create_bezier_function_for_segment(segment)
+    else:
+        return _create_linear_interpolation_function(segment.start, segment.end)
 
+
+def _create_bezier_function_for_segment(
+    segment: TrajectorySegment,
+) -> Callable[[float], Point]:
+    coords = list(segment.points)
+
+    def de_casteljau_step(start: int, length: int, ratio: float):
+        if length <= 0:
+            return coords[start]
+        else:
+            # Make sure to copy here so we don't alter coords
+            p = [(1 - ratio) * x for x in de_casteljau_step(start, length - 1, ratio)]
+            for i, x in enumerate(de_casteljau_step(start + 1, length - 1, ratio)):
+                p[i] += ratio * x
+            return p
+
+    def func(ratio: float) -> Point:
+        if ratio == 0:
+            return tuple(coords[0])  # type: ignore
+        elif ratio == 1:
+            return tuple(coords[-1])  # type: ignore
+        else:
+            return tuple(de_casteljau_step(0, len(coords) - 1, ratio))  # type: ignore
+
+    return func
+
+
+def _create_linear_interpolation_function(
+    start: Point, end: Point
+) -> Callable[[float], Point]:
     diff = [e - s for s, e in zip(start, end)]
     coeffs = list(zip(diff, start))
 
@@ -164,7 +193,5 @@ class TrajectoryPlayer:
                 self._current_segment_end_time - self._current_segment_start_time
             )
             self._current_segment_func = create_function_for_segment(
-                start=self._current_segment.start,
-                end=self._current_segment.end,
-                control_points=self._current_segment.points[1:-1],
+                self._current_segment
             )

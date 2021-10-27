@@ -61,3 +61,43 @@ def test_trajectory_player_linear_segments_only():
     assert not player.is_before_takeoff(18)
     assert not player.is_before_takeoff(25)
     assert not player.is_before_takeoff(30)
+
+
+def test_trajectory_player_bezier_curves():
+    # Bezier curves obtained from:
+    #
+    # from skybrush.math.curves import create_cubic_spline
+    # create_cubic_spline(
+    #     points=[(0, 0, 0), (0, 3, 0), (3, 3, 0), (3, 0, 0)],
+    #     knots=[0, 6, 12, 18],
+    #     derivatives=(0, 0)
+    # )
+    test_data = {
+        "version": 1,
+        "points": [
+            [0, [0, 0, 0], []],
+            [6, [0, 3, 0], [[0, 0, 0], [-0.6, 2, 0]]],
+            [12, [3, 3, 0], [[0.6, 4, 0], [2.4, 4, 0]]],
+            [18, [3, 0, 0], [[3.6, 2, 0], [3, 0, 0]]],
+        ],
+        "takeoffTime": 3,
+    }
+    test_spec = TrajectorySpecification(test_data)
+    player = TrajectoryPlayer(test_spec)
+
+    assert player.position_at(1) == (0, 0, 0)
+    assert player.position_at(2.5) == (0, 0, 0)
+    assert player.position_at(3) == (0, 0, 0)
+    assert player.position_at(9) == (0, 3, 0)
+    assert player.position_at(10.5) == (51 / 80, 3 + 9 / 16, 0)
+    assert player.position_at(12) == (1.5, 3.75, 0)
+    assert player.position_at(13.5) == (189 / 80, 3 + 9 / 16, 0)
+    assert player.position_at(15) == (3, 3, 0)
+    assert player.position_at(21) == (3, 0, 0)
+    assert player.position_at(24) == (3, 0, 0)
+
+    assert player.is_before_takeoff(-2)
+    assert player.is_before_takeoff(0)
+    assert not player.is_before_takeoff(3)
+    assert not player.is_before_takeoff(18)
+    assert not player.is_before_takeoff(25)

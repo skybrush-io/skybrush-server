@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Callable, ClassVar
 
 from flockwave.spec.schema import get_complex_object_schema
 
@@ -14,6 +14,8 @@ class TransportOptions(metaclass=ModelMeta):
 
     class __meta__:
         schema = get_complex_object_schema("transportOptions")
+
+    from_json: ClassVar[Callable[[Any], "TransportOptions"]]
 
     @classmethod
     def is_broadcast(cls, transport: Any) -> bool:

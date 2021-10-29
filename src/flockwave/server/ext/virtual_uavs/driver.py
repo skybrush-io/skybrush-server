@@ -439,6 +439,17 @@ class VirtualUAV(UAVBase):
         """
         self._light_controller.where_are_you(duration)
 
+    def hold_position(self) -> None:
+        """Requests the UAV to hold its current position if it is flying,
+        otherwise do nothing.
+        """
+        if self.state is VirtualUAVState.LANDED:
+            # Do nothing
+            return
+
+        self._target_xyz = self._position_xyz.copy()
+        self.state = VirtualUAVState.AIRBORNE
+
     def land(self) -> None:
         """Starts a simulated landing with the virtual UAV."""
         if self.state != VirtualUAVState.AIRBORNE:
@@ -936,6 +947,11 @@ class VirtualUAVDriver(UAVDriver):
 
         uav.stop_trajectory()
         uav.target = target
+
+    async def _send_hover_signal_single(self, uav: VirtualUAV, *, transport) -> None:
+        # Make the hover signal async to simulate how it works for "real" drones
+        await sleep(0.2)
+        uav.hold_position()
 
     async def _send_landing_signal_single(self, uav: VirtualUAV, *, transport) -> None:
         # Make the landing signal async to simulate how it works for "real" drones

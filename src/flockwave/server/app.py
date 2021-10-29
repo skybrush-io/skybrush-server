@@ -59,11 +59,15 @@ UAV_COMMAND_HANDLERS: Dict[
     str, Tuple[str, Optional[Dict[str, Callable[[Any], Any]]]]
 ] = {
     "OBJ-CMD": ("send_command", None),
+    "PRM-GET": ("get_parameter", None),
+    "PRM-SET": ("set_parameter", None),
+    "UAV-CALIB": ("calibrate_component", None),
     "UAV-FLY": (
         "send_fly_to_target_signal",
         {"target": GPSCoordinate.from_json},
     ),
     "UAV-HALT": ("send_shutdown_signal", {"transport": TransportOptions.from_json}),
+    "UAV-HOVER": ("send_hover_signal", {"transport": TransportOptions.from_json}),
     "UAV-LAND": ("send_landing_signal", {"transport": TransportOptions.from_json}),
     "UAV-MOTOR": (
         "send_motor_start_stop_signal",
@@ -80,6 +84,7 @@ UAV_COMMAND_HANDLERS: Dict[
         {"duration": divide_by(1000), "transport": TransportOptions.from_json},
     ),
     "UAV-TAKEOFF": ("send_takeoff_signal", {"transport": TransportOptions.from_json}),
+    "UAV-TEST": ("test_component", None),
     "UAV-VER": ("request_version_info", None),
 }
 
@@ -1049,8 +1054,12 @@ def handle_UAV_LIST(message: FlockwaveMessage, sender: Client, hub: MessageHub):
 
 @app.message_hub.on(
     "OBJ-CMD",
+    "PRM-GET",
+    "PRM-SET",
+    "UAV-CALIB",
     "UAV-FLY",
     "UAV-HALT",
+    "UAV-HOVER",
     "UAV-LAND",
     "UAV-MOTOR",
     "UAV-PREFLT",
@@ -1058,6 +1067,7 @@ def handle_UAV_LIST(message: FlockwaveMessage, sender: Client, hub: MessageHub):
     "UAV-RTH",
     "UAV-SIGNAL",
     "UAV-TAKEOFF",
+    "UAV-TEST",
     "UAV-VER",
 )
 async def handle_UAV_operations(

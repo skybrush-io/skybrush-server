@@ -303,7 +303,7 @@ class MessageHub:
 
     @overload
     def create_response_or_notification(
-        self, body: Any = None, in_response_to: None = None
+        self, body: Any, in_response_to: None = None
     ) -> FlockwaveNotification:
         ...
 

@@ -297,7 +297,7 @@ class CommunicationManager(Generic[PacketType, AddressType]):
 
     async def send_packet(
         self, packet: PacketType, destination: Tuple[str, AddressType]
-    ):
+    ) -> None:
         """Requests the communication manager to send the given message packet
         to the given destination.
 

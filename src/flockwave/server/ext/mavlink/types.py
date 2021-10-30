@@ -2,7 +2,17 @@
 
 from dataclasses import dataclass, field
 from functools import partial
-from typing import Any, Callable, Dict, FrozenSet, List, Optional, Tuple, Union
+from typing import (
+    Any,
+    Awaitable,
+    Callable,
+    Dict,
+    FrozenSet,
+    List,
+    Optional,
+    Tuple,
+    Union,
+)
 
 __all__ = (
     "MAVLinkFlightModeNumbers",
@@ -34,6 +44,12 @@ MAVLinkMessageMatcher = Optional[
 
 #:
 MAVLinkMessageSpecification = Tuple[str, Dict[str, Any]]
+
+#: Type specification for the broadcast_packet() function of a MAVLinkNetwork object
+PacketBroadcasterFn = Callable[..., Awaitable[None]]
+
+#: Type specification for the send_packet() function of a MAVLinkNetwork object
+PacketSenderFn = Callable[..., Awaitable[Optional[MAVLinkMessage]]]
 
 
 def _spec(name, **kwds):

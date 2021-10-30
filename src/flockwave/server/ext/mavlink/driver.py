@@ -1,6 +1,6 @@
 """Driver class for FlockCtrl-based drones."""
 
-from __future__ import division
+from __future__ import annotations
 
 from collections import defaultdict
 from colour import Color
@@ -12,7 +12,7 @@ from logging import Logger
 from math import inf
 from time import monotonic
 from trio import fail_after, move_on_after, sleep, TooSlowError
-from typing import Dict, List, Optional, Union
+from typing import AsyncIterator, Callable, Dict, List, Optional, Union
 
 from flockwave.gps.time import datetime_to_gps_time_of_week, gps_time_of_week_to_utc
 from flockwave.gps.vectors import GPSCoordinate, VelocityNED
@@ -62,7 +62,7 @@ from .enums import (
 )
 from .ftp import MAVFTP
 from .packets import create_led_control_packet, DroneShowStatus
-from .types import MAVLinkMessage, spec
+from .types import MAVLinkMessage, PacketBroadcasterFn, PacketSenderFn, spec
 from .utils import log_id_for_uav, mavlink_version_number_to_semver
 
 __all__ = ("MAVLinkDriver",)
@@ -80,7 +80,7 @@ FORCE_MAGIC = 21196
 nan = float("nan")
 
 
-def transport_options_to_channel(options: Optional[TransportOptions]) -> Channel:
+def transport_options_to_channel(options: Optional[TransportOptions]) -> str:
     """Converts a transport options object sent by the user to a specific
     MAVLink channel that satisfies the transport options.
 
@@ -112,7 +112,10 @@ class MAVLinkDriver(UAVDriver):
             should be forwarded and the destination address in that medium.
     """
 
+    broadcast_packet: PacketBroadcasterFn
     log: Logger
+    run_in_background: Callable[[Callable], None]
+    send_packet: PacketSenderFn
 
     def __init__(self, app=None):
         """Constructor.
@@ -124,12 +127,12 @@ class MAVLinkDriver(UAVDriver):
 
         self.app = app
 
-        self.broadcast_packet = None
+        self.broadcast_packet = None  # type: ignore
         self.create_device_tree_mutator = None
         self.log = None  # type: ignore
         self.mandatory_custom_mode = None
-        self.run_in_background = None
-        self.send_packet = None
+        self.run_in_background = None  # type: ignore
+        self.send_packet = None  # type: ignore
 
         self._default_timeout = 2
         self._default_retries = 5
@@ -422,6 +425,7 @@ class MAVLinkDriver(UAVDriver):
                         target,
                         wait_for_response=("COMMAND_ACK", {"command": command_id}),
                     )
+                    assert response is not None
                     result = response.result
                     break
             except TooSlowError:
@@ -532,6 +536,7 @@ class MAVLinkDriver(UAVDriver):
                         wait_for_response=("COMMAND_ACK", {"command": command_id}),
                         channel=channel,
                     )
+                    assert response is not None
                     result = response.result
                     break
             except TooSlowError:
@@ -675,16 +680,39 @@ class MAVLinkDriver(UAVDriver):
 
         return response
 
-    def _request_preflight_report_single(self, uav) -> PreflightCheckInfo:
+    def _request_preflight_report_single(self, uav: "MAVLinkUAV") -> PreflightCheckInfo:
         return uav.preflight_status
 
-    def _request_version_info_single(self, uav) -> VersionInfo:
+    def _request_version_info_single(self, uav: "MAVLinkUAV") -> VersionInfo:
         return uav.get_version_info()
 
     async def _send_fly_to_target_signal_single(
-        self, uav, target: GPSCoordinate
+        self, uav: "MAVLinkUAV", target: GPSCoordinate
     ) -> None:
         await uav.fly_to(target)
+
+    async def _send_hover_signal_broadcast(self, *, transport=None) -> None:
+        channel = transport_options_to_channel(transport)
+
+        # TODO(ntamas): HACK HACK HACK This won't work for a PixHawk as we are
+        # hardcoding the ArduCopter mode numbers here. If we wanted to do this
+        # properly, we would not be able to broadcast because different UAVs
+        # may have different autopilots and the mode numbers might be different.
+        base_mode, mode, submode = MAVModeFlag.CUSTOM_MODE_ENABLED, 16, 0
+
+        await self.broadcast_command_long_with_retries(
+            MAVCommand.DO_SET_MODE,
+            param1=float(base_mode),
+            param2=float(mode),
+            param3=float(submode),
+            channel=channel,
+        )
+
+    async def _send_hover_signal_single(
+        self, uav: "MAVLinkUAV", *, transport=None
+    ) -> None:
+        channel = transport_options_to_channel(transport)
+        await uav.set_mode("pos hold", channel=channel)
 
     async def _send_landing_signal_broadcast(self, *, transport=None) -> None:
         channel = transport_options_to_channel(transport)
@@ -692,7 +720,9 @@ class MAVLinkDriver(UAVDriver):
             MAVCommand.NAV_LAND, channel=channel
         )
 
-    async def _send_landing_signal_single(self, uav, *, transport=None) -> None:
+    async def _send_landing_signal_single(
+        self, uav: "MAVLinkUAV", *, transport=None
+    ) -> None:
         channel = transport_options_to_channel(transport)
         success = await self.send_command_long(
             uav, MAVCommand.NAV_LAND, channel=channel
@@ -710,7 +740,7 @@ class MAVLinkDriver(UAVDriver):
             await self.broadcast_packet(message, channel=channel)
 
     async def _send_light_or_sound_emission_signal_single(
-        self, uav, signals: List[str], duration: int, *, transport=None
+        self, uav: "MAVLinkUAV", signals: List[str], duration: int, *, transport=None
     ) -> None:
         channel = transport_options_to_channel(transport)
 
@@ -730,7 +760,7 @@ class MAVLinkDriver(UAVDriver):
         )
 
     async def _send_motor_start_stop_signal_single(
-        self, uav, start: bool, force: bool = False, *, transport=None
+        self, uav: "MAVLinkUAV", start: bool, force: bool = False, *, transport=None
     ) -> None:
         channel = transport_options_to_channel(transport)
 
@@ -762,7 +792,7 @@ class MAVLinkDriver(UAVDriver):
             raise RuntimeError(f"Resetting {component!r} is not supported")
 
     async def _send_reset_signal_single(
-        self, uav, component, *, transport=None
+        self, uav: "MAVLinkUAV", component, *, transport=None
     ) -> None:
         channel = transport_options_to_channel(transport)
 
@@ -779,7 +809,9 @@ class MAVLinkDriver(UAVDriver):
             MAVCommand.NAV_RETURN_TO_LAUNCH, channel=channel
         )
 
-    async def _send_return_to_home_signal_single(self, uav, *, transport=None) -> None:
+    async def _send_return_to_home_signal_single(
+        self, uav: "MAVLinkUAV", *, transport=None
+    ) -> None:
         channel = transport_options_to_channel(transport)
 
         success = await self.send_command_long(
@@ -800,7 +832,9 @@ class MAVLinkDriver(UAVDriver):
             channel=channel,
         )
 
-    async def _send_shutdown_signal_single(self, uav, *, transport=None) -> None:
+    async def _send_shutdown_signal_single(
+        self, uav: "MAVLinkUAV", *, transport=None
+    ) -> None:
         channel = transport_options_to_channel(transport)
 
         await self._send_motor_start_stop_signal_single(
@@ -816,7 +850,7 @@ class MAVLinkDriver(UAVDriver):
             raise RuntimeError("Failed to send shutdown command to autopilot")
 
     async def _send_takeoff_signal_single(
-        self, uav, *, scheduled: bool = False, transport=None
+        self, uav: "MAVLinkUAV", *, scheduled: bool = False, transport=None
     ) -> None:
         if scheduled:
             # Ignore this; scheduled takeoffs are managed by the ScheduledTakeoffManager
@@ -860,6 +894,9 @@ class MAVLinkMessageRecord:
 
 class MAVLinkUAV(UAVBase):
     """Subclass for UAVs created by the driver for MAVLink-based drones."""
+
+    driver: MAVLinkDriver
+    notify_updated: Callable[[], None]
 
     def __init__(self, *args, **kwds):
         super().__init__(*args, **kwds)
@@ -925,7 +962,7 @@ class MAVLinkUAV(UAVBase):
         #: Current velocity of the drone in NED coordinate system, m/sec
         self._velocity = VelocityNED()
 
-        self.notify_updated = None
+        self.notify_updated = None  # type: ignore
         self.send_log_message_to_gcs = None
 
         self._reset_mavlink_version()
@@ -1060,7 +1097,7 @@ class MAVLinkUAV(UAVBase):
                     getattr(version_info, f"{version}_custom_version", None),
                 )
 
-        if version_info.board_version > 0:
+        if version_info is not None and version_info.board_version > 0:
             result["board"] = mavlink_version_number_to_semver(
                 version_info.board_version
             )
@@ -1251,11 +1288,11 @@ class MAVLinkUAV(UAVBase):
                     self,
                     MAVCommand.DO_MOTOR_TEST,
                     i + 1,  # motor instance number
-                    MotorTestThrottleType.PERCENT,
+                    float(MotorTestThrottleType.PERCENT),
                     15,  # 15%
                     2,  # timeout: 2 seconds
                     0,  # 1 motor only
-                    MotorTestOrder.DEFAULT,
+                    float(MotorTestOrder.DEFAULT),
                     channel=channel,
                 )
                 await sleep(3)
@@ -1543,7 +1580,9 @@ class MAVLinkUAV(UAVBase):
         if not success:
             raise RuntimeError("Failed to remove show file")
 
-    async def set_mode(self, mode: Union[int, str]) -> None:
+    async def set_mode(
+        self, mode: Union[int, str], *, channel: str = Channel.PRIMARY
+    ) -> None:
         """Attempts to set the UAV in the given custom mode."""
         if isinstance(mode, str):
             try:
@@ -1553,12 +1592,13 @@ class MAVLinkUAV(UAVBase):
 
         if isinstance(mode, int):
             base_mode, submode = MAVModeFlag.CUSTOM_MODE_ENABLED, 0
-
-        if isinstance(mode, str):
+        elif isinstance(mode, str):
             try:
                 base_mode, mode, submode = self._autopilot.get_flight_mode_numbers(mode)
             except NotSupportedError:
                 raise ValueError("setting flight modes by name is not supported")
+        else:
+            raise TypeError("flight mode must be numeric or string")
 
         success = await self.driver.send_command_long(
             self,
@@ -1566,6 +1606,7 @@ class MAVLinkUAV(UAVBase):
             param1=float(base_mode),
             param2=float(mode),
             param3=float(submode),
+            channel=channel,
         )
 
         if not success:
@@ -1684,7 +1725,9 @@ class MAVLinkUAV(UAVBase):
             raise RuntimeError("Failed to send takeoff command")
 
     @asynccontextmanager
-    async def temporarily_request_messages(self, messages: Dict[int, float]) -> None:
+    async def temporarily_request_messages(
+        self, messages: Dict[int, float]
+    ) -> AsyncIterator[None]:
         """Temporarily requests the UAV to send a given set of messages while
         the execution is in the context, resetting the messages upon exiting
         the context. Resetting is done at a best-effort basis; failures will be
@@ -1904,6 +1947,10 @@ class MAVLinkUAV(UAVBase):
         convenient to set up a custom mode in advance without an RC.
         """
         await sleep(2)
+
+        if self.driver.mandatory_custom_mode is None:
+            return
+
         try:
             await self.set_mode(self.driver.mandatory_custom_mode)
         except TooSlowError:

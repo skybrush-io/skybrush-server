@@ -7,11 +7,13 @@ HTTP authentication headers will be translated to AUTH-REQ requests.
 """
 
 from contextlib import ExitStack
+from logging import Logger
 from json import loads
 from quart import abort, Blueprint, Response, request
 from trio import Event, fail_after, sleep_forever, TooSlowError
-from typing import Any, Dict
+from typing import Any, Dict, List, Optional, Tuple
 
+from flockwave.encoders import Encoder
 from flockwave.encoders.json import create_json_encoder
 from flockwave.server.model import CommunicationChannel, FlockwaveMessageBuilder
 from flockwave.server.utils import overridden
@@ -19,8 +21,8 @@ from flockwave.server.utils import overridden
 
 app = None
 builder = None
-encoder = None
-log = None
+encoder: Optional[Encoder] = None
+log: Optional[Logger] = None
 
 
 class HTTPChannel(CommunicationChannel):
@@ -32,6 +34,9 @@ class HTTPChannel(CommunicationChannel):
     be delivered. Authentication-related headers are translated on-the-fly to
     AUTH-REQ messages.
     """
+
+    _event: Optional[Event]
+    _message_id: Optional[str]
 
     def __init__(self):
         """Constructor."""
@@ -66,12 +71,14 @@ class HTTPChannel(CommunicationChannel):
 
     async def send(self, message):
         """Inherited."""
-        refs = message.refs
+        refs = getattr(message, "refs", None)
         if refs is not None and refs == self._message_id:
             self._response = message
-            self._event.set()
+            if self._event is not None:
+                self._event.set()
 
     async def wait_for_response(self) -> Any:
+        assert self._event is not None
         await self._event.wait()
         return self._response
 
@@ -89,10 +96,12 @@ def ensure_authorization_header_is_present_if_needed() -> None:
     """
     global app
 
+    assert app is not None
+
     if not request.headers.get("Authorization"):
         auth = app.import_api("auth")
         if auth.is_required():
-            headers = []
+            headers: List[Tuple[str, str]] = []
             for method in auth.get_supported_methods():
                 if method == "basic":
                     headers.append(("WWW-Authenticate", "Basic"))
@@ -107,6 +116,8 @@ def wrap_message_in_envelope(message: Dict[str, Any]) -> Dict[str, Any]:
     new message object that includes the Flockwave envelope.
     """
     global builder
+
+    assert builder is not None
 
     has_envelope = "$fw.version" in message
     if not has_envelope:
@@ -128,6 +139,8 @@ async def authenticate_client_if_needed(client) -> None:
     the user were not accepted by the server.
     """
     global app
+
+    assert app is not None
 
     auth = app.import_api("auth")
     authorization_header = request.headers.get("Authorization")
@@ -181,6 +194,8 @@ async def index():
     """
     global app
 
+    assert app is not None
+
     # If authentication is required and we don't have an Authorization header,
     # bail out
     ensure_authorization_header_is_present_if_needed()
@@ -218,6 +233,8 @@ async def index():
     # response to the client
     if response is None:
         abort(408)  # Request timeout
+    elif encoder is None:
+        abort(500)  # Internal server error
     else:
         response = loads(encoder(response))
         return response.get("body")

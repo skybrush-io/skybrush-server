@@ -30,8 +30,9 @@ def create_parameter_command_handler(
     name to a new value
 
     Parameter names must be strings. Parameter values may be specified either as
-    strings or as floats; strings that can be cast into numbers will be cast
-    into numbers.
+    strings or as floats. Strings that can be cast into numbers will be cast
+    into numbers. Strings that _cannot_ be cast into numbers will throw an
+    error.
 
     Parameters:
         name_validator: optional function that will take the parameter name

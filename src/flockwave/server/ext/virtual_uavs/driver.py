@@ -21,6 +21,7 @@ from flockwave.gps.vectors import (
 )
 from flockwave.server.command_handlers import (
     create_color_command_handler,
+    create_parameter_command_handler,
     create_version_command_handler,
 )
 from flockwave.server.model.gps import GPSFixType
@@ -241,7 +242,10 @@ class VirtualUAV(UAVBase):
             else None
         )
 
-    def get_parameter(self, name: str) -> str:
+    async def get_parameter(self, name: str, fetch: bool = False) -> str:
+        if fetch:
+            # Simulate a bit of delay to make it more realistic
+            await sleep(0.05)
         return self._parameters.get(name, "unset")
 
     def get_version_info(self) -> VersionInfo:
@@ -280,7 +284,9 @@ class VirtualUAV(UAVBase):
         assert self.driver.app is not None
         return self.driver.app.request_to_send_SYS_MSG_message(*args, **kwds)
 
-    def set_parameter(self, name: str, value: Any) -> None:
+    async def set_parameter(self, name: str, value: Any) -> None:
+        # Simulate a bit of delay to make it more realistic
+        await sleep(0.05)
         self._parameters[name] = str(value)
 
     @property
@@ -939,11 +945,11 @@ class VirtualUAVDriver(UAVDriver):
         return "yo" + choice("?!.")
 
     handle_command_color = create_color_command_handler()
+    handle_command_param = create_parameter_command_handler()
     handle_command_version = create_version_command_handler()
 
     async def _get_parameter_single(self, uav: VirtualUAV, name: str) -> Any:
-        await sleep(0.1)
-        return uav.get_parameter(name)
+        return await uav.get_parameter(name)
 
     def _request_preflight_report_single(self, uav: VirtualUAV) -> PreflightCheckInfo:
         return _dummy_preflight_check_info
@@ -1020,5 +1026,4 @@ class VirtualUAVDriver(UAVDriver):
     async def _set_parameter_single(
         self, uav: VirtualUAV, name: str, value: Any
     ) -> None:
-        await sleep(0.1)
-        uav.set_parameter(name, value)
+        await uav.set_parameter(name, value)

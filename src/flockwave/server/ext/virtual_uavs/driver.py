@@ -9,7 +9,7 @@ from random import random, choice
 from time import monotonic
 from trio import CancelScope, sleep
 from trio_util import periodic
-from typing import Callable, List, NoReturn, Optional, Union
+from typing import Any, Callable, Dict, List, NoReturn, Optional, Union
 
 from flockwave.concurrency import delayed
 from flockwave.gps.vectors import (
@@ -113,6 +113,7 @@ class VirtualUAV(UAVBase):
     _light_controller: DefaultLightController
     _mission_started_at: Optional[float]
     _motors_running: bool
+    _parameters: Dict[str, str]
     _position_xyz: Vector3D
     _position_flat: FlatEarthCoordinate
     _request_shutdown: Optional[Callable[[], None]]
@@ -134,7 +135,7 @@ class VirtualUAV(UAVBase):
     max_velocity_z: float
     takeoff_altitude: float
 
-    def __init__(self, *args, use_battery_percentage, **kwds):
+    def __init__(self, *args, use_battery_percentage: bool, **kwds):
         self.use_battery_percentage = use_battery_percentage
 
         super().__init__(*args, **kwds)
@@ -146,6 +147,7 @@ class VirtualUAV(UAVBase):
         self._light_controller = DefaultLightController(self)
         self._mission_started_at = None
         self._motors_running = False
+        self._parameters = {}
         self._position_xyz = Vector3D()
         self._position_flat = FlatEarthCoordinate()
         self._state = None  # type: ignore
@@ -239,6 +241,9 @@ class VirtualUAV(UAVBase):
             else None
         )
 
+    def get_parameter(self, name: str) -> str:
+        return self._parameters.get(name, "unset")
+
     def get_version_info(self) -> VersionInfo:
         from flockwave.server.version import __version__ as server_version
 
@@ -274,6 +279,9 @@ class VirtualUAV(UAVBase):
         kwds["sender"] = self.id
         assert self.driver.app is not None
         return self.driver.app.request_to_send_SYS_MSG_message(*args, **kwds)
+
+    def set_parameter(self, name: str, value: Any) -> None:
+        self._parameters[name] = str(value)
 
     @property
     def state(self) -> VirtualUAVState:
@@ -933,6 +941,10 @@ class VirtualUAVDriver(UAVDriver):
     handle_command_color = create_color_command_handler()
     handle_command_version = create_version_command_handler()
 
+    async def _get_parameter_single(self, uav: VirtualUAV, name: str) -> Any:
+        await sleep(0.1)
+        return uav.get_parameter(name)
+
     def _request_preflight_report_single(self, uav: VirtualUAV) -> PreflightCheckInfo:
         return _dummy_preflight_check_info
 
@@ -1004,3 +1016,9 @@ class VirtualUAVDriver(UAVDriver):
     ) -> None:
         await sleep(0.2)
         uav.takeoff()
+
+    async def _set_parameter_single(
+        self, uav: VirtualUAV, name: str, value: Any
+    ) -> None:
+        await sleep(0.1)
+        uav.set_parameter(name, value)

@@ -15,6 +15,7 @@ from typing import (
     Any,
     Awaitable,
     Callable,
+    ClassVar,
     Generator,
     Generic,
     Iterator,
@@ -77,7 +78,12 @@ class CommunicationManager(Generic[PacketType, AddressType]):
 
     channel_factory: Callable[[Connection, Logger], MessageChannel]
     format_address: Callable[[AddressType], str]
-    log: Optional[Logger]
+    log: Logger
+
+    BROADCAST: ClassVar[object]
+    """Marker object that is used to indicate that a message is a broadcast
+    message.
+    """
 
     @dataclass
     class Entry:
@@ -286,7 +292,7 @@ class CommunicationManager(Generic[PacketType, AddressType]):
             self.log = log
             await self._run(consumer=consumer, supervisor=supervisor, tasks=tasks)
         finally:
-            self.log = None
+            self.log = None  # type: ignore
             self._running = False
 
     def remove_alias(self, alias: str) -> None:
@@ -330,12 +336,12 @@ class CommunicationManager(Generic[PacketType, AddressType]):
         for _, entries in self._entries_by_name.items():
             yield from entries
 
-    async def _run(self, *, consumer, supervisor, tasks):
+    async def _run(
+        self, *, consumer, supervisor, tasks: List[Callable[..., Awaitable[Any]]]
+    ) -> None:
         tx_queue, rx_queue = open_memory_channel(0)
 
-        tasks: List[Callable[..., Awaitable[Any]]] = [
-            partial(task, self) for task in (tasks or [])
-        ]
+        tasks = [partial(task, self) for task in (tasks or [])]
         tasks.extend(
             partial(
                 supervisor,

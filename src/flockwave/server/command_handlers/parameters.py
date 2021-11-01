@@ -1,6 +1,6 @@
 """Functions related to generic onboard parameter handling on UAVs."""
 
-from typing import Callable, Optional, Union
+from typing import Awaitable, Callable, Optional, Union
 
 from flockwave.server.errors import NotSupportedError
 from flockwave.server.model.uav import UAV, UAVDriver
@@ -11,7 +11,7 @@ __all__ = ("create_parameter_command_handler",)
 
 def create_parameter_command_handler(
     name_validator: Optional[Callable[[str], str]] = None
-):
+) -> Callable[..., Awaitable[str]]:
     """Creates a generic async command handler function that allows the user to
     retrieve or set the value of a parameter of a UAV, assuming that the UAV
     has async methods named `get_parameter()` and `set_parameter()`.
@@ -39,6 +39,9 @@ def create_parameter_command_handler(
             entered by the user and must return a validated version; this can
             be used, e.g., to convert all parameter names to uppercase if the
             UAV expects that
+
+    Returns:
+        the name of the parameter and its current (or new) value
     """
 
     async def handler(
@@ -46,7 +49,7 @@ def create_parameter_command_handler(
         uav: UAV,
         name: Optional[str] = None,
         value: Optional[Union[str, float]] = None,
-    ) -> None:
+    ) -> str:
         if not name:
             raise RuntimeError("Missing parameter name")
 
@@ -72,7 +75,7 @@ def create_parameter_command_handler(
                     "Setting parameters is not supported on this UAV"
                 )
             try:
-                await uav.set_parameter(name, value)
+                await uav.set_parameter(name, value)  # type: ignore
             except KeyError:
                 raise RuntimeError(f"No such parameter: {name}")
 
@@ -82,7 +85,7 @@ def create_parameter_command_handler(
             )
 
         try:
-            value = await uav.get_parameter(name, fetch=True)
+            value = await uav.get_parameter(name, fetch=True)  # type: ignore
         except KeyError:
             raise RuntimeError(f"No such parameter: {name}")
 

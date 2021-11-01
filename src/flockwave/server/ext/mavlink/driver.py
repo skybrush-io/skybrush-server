@@ -9,10 +9,10 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from functools import partial
 from logging import Logger
-from math import inf
+from math import inf, isfinite
 from time import monotonic
 from trio import fail_after, move_on_after, sleep, TooSlowError
-from typing import AsyncIterator, Callable, Dict, List, Optional, Union
+from typing import Any, AsyncIterator, Callable, Dict, List, Optional, Union
 
 from flockwave.gps.time import datetime_to_gps_time_of_week, gps_time_of_week_to_utc
 from flockwave.gps.vectors import GPSCoordinate, VelocityNED
@@ -680,6 +680,9 @@ class MAVLinkDriver(UAVDriver):
 
         return response
 
+    async def _get_parameter_single(self, uav: "MAVLinkUAV", name: str) -> float:
+        return await uav.get_parameter(name)
+
     def _request_preflight_report_single(self, uav: "MAVLinkUAV") -> PreflightCheckInfo:
         return uav.preflight_status
 
@@ -868,6 +871,15 @@ class MAVLinkDriver(UAVDriver):
 
         # Send the takeoff command
         await uav.takeoff_to_relative_altitude(2.5, channel=channel)
+
+    async def _set_parameter_single(
+        self, uav: "MAVLinkUAV", name: str, value: Any
+    ) -> None:
+        try:
+            value_as_float = float(value)
+        except ValueError:
+            raise RuntimeError("parameter value must be numeric")
+        await uav.set_parameter(name, value_as_float)
 
 
 @dataclass
@@ -1250,6 +1262,10 @@ class MAVLinkUAV(UAVBase):
 
     async def set_parameter(self, name: str, value: float) -> None:
         """Sets the value of a parameter on the UAV."""
+        # Basic sanity check on the value
+        if not isfinite(value):
+            raise RuntimeError("parameter value must be finite")
+
         # We need to retrieve the current value of the parameter first because
         # we need its type
         param_id = name.encode("utf-8")[:16]

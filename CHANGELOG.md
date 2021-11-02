@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.25.0] - 2021-11-02
+
+### Added
+
+- The server can now retrieve the current value of the planetary K-index from
+  various data sources. Future versions of Skybrush Live will make use of this
+  facility to show the Kp-index on the user interface.
+
+### Fixed
+
+- Fixed a trajectory encoding bug for Crazyflie drones when a segment of
+  a trajectory was described with a 7-degree polynomial.
+
 ## [1.24.2] - 2021-09-03
 
 ### Fixed

@@ -18,7 +18,7 @@ from typing import Iterable, Optional
 
 import logging
 
-from flockwave.networking import format_socket_address
+from flockwave.networking import can_bind_to_tcp_address, format_socket_address
 from flockwave.server.ports import get_port_number_for_service
 from flockwave.server.types import Disposer
 
@@ -239,6 +239,18 @@ async def run(app, configuration, logger):
 
     secure = bool(config.ssl_enabled)
 
+    # Test quickly whether we can bind to the given host and port; if we cannot,
+    # chances are that something else is using the port
+    if not await can_bind_to_tcp_address(address):
+        logger.error(
+            "Cannot bind {1} server to {0}; is the port already in use?".format(
+                format_socket_address(address), "HTTPS" if secure else "HTTP"
+            ),
+            extra={"sentry_ignore": True},
+        )
+        return
+
+    # Port seems to be available so try to start the "proper" server
     retries = 0
     max_retries = 3
 
@@ -253,7 +265,9 @@ async def run(app, configuration, logger):
 
         try:
             await serve(exports["asgi_app"], config)
-        except Exception:
+        except Exception as ex:
+            print(repr(ex))
+            print(getattr(ex, "__cause__", None))
             # Server crashed -- maybe a change in IP address? Let's try again
             # if we have not reached the maximum retry count.
             if current_time() - started_at >= 5:

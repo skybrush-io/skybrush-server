@@ -1,7 +1,5 @@
-"""Skybrush server extension that adds debugging tools and a test page to
-the Skybrush server.
-"""
+"""Adds debugging tools to the Skybrush server."""
 
-from .extension import dependencies, run, index, schema
+from .extension import dependencies, description, run, schema
 
-__all__ = ("dependencies", "run", "schema", "index")
+__all__ = ("dependencies", "description", "run", "schema")

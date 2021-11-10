@@ -148,7 +148,7 @@ def propose_index_page(route: str, priority: int = 0) -> Disposer:
 
     Parameters:
         route: name of a route to propose as the index page, in the form of
-            ``blueprint.route`` (e.g., ``debug.index``)
+            ``blueprint.route`` (e.g., ``webui.index``)
         priority: the priority of the proposed route.
 
     Returns:
@@ -179,7 +179,7 @@ def proposed_index_page(route: str, priority: int = 0):
 
     Parameters:
         route: name of a route to propose as the index page, in the form of
-            ``blueprint.route`` (e.g., ``debug.index``)
+            ``blueprint.route`` (e.g., ``webui.index``)
         priority: the priority of the proposed route.
     """
     disposer = propose_index_page(route, priority)
@@ -287,6 +287,8 @@ async def run(app, configuration, logger):
         else:
             break
 
+
+description = "HTTP server that listens on a specific port"
 
 exports = {
     "address": None,

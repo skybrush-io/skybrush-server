@@ -58,7 +58,6 @@ EXTENSIONS = {
         "enabled": False,
         # "host": "localhost",
         # "port": 35424,
-        # "route": "/debug",
     },
     "dock": {"enabled": False, "listener": "unix:/tmp/skybrushd-dock.sock"},
     "flockctrl": {
@@ -147,6 +146,10 @@ EXTENSIONS = {
         "takeoff_area": {"type": "grid", "spacing": 5},
     },
     "weather": {},
+    "webui": {
+        "enabled": True,
+        # "route": "/webui",
+    },
 }
 
 # smpte_timecode seems to have some problems on a Mac - it consumes 15% CPU

@@ -304,6 +304,7 @@ data_providers.update(
     noaa=_fetch_kp_index_from_noaa, potsdam=_fetch_kp_index_from_potsdam
 )
 dependencies = ("weather",)
+description = "Weather provider that provides planetary K-index values"
 schema = {
     "properties": {
         "source": {

@@ -6,6 +6,8 @@
         </a>
     </li>
 
+    {% if debug %}
+
     <li class="nav-item">
         <a class="nav-link" href="{{ url_for('.send_messages') }}">
             <span data-feather="message-square"></span>
@@ -26,4 +28,6 @@
             Tasks
         </a>
     </li>
+
+    {% endif %}
 </ul>

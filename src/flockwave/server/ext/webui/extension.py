@@ -8,6 +8,7 @@ import threading
 
 from contextlib import ExitStack
 from dataclasses import dataclass, field
+from functools import wraps
 from logging import Logger
 from operator import attrgetter
 from quart import abort, Blueprint, redirect, render_template, request, url_for
@@ -88,6 +89,28 @@ class ExtensionInfo:
 # Helper functions for routes
 
 
+def is_debugging() -> bool:
+    global app
+
+    extension_manager = app.extension_manager if app else None
+    return extension_manager is not None and extension_manager.is_loaded("debug")
+
+
+def only_when_debugging(func: Callable[..., Awaitable[Any]]):
+    """Decorator that can be added to a route and that enables the route if and
+    only if the debug extension is enabled.
+    """
+
+    @wraps(func)
+    async def decorated(*args, **kwds):
+        if is_debugging():
+            return await func(*args, **kwds)
+        else:
+            abort(404)
+
+    return decorated
+
+
 def _get_extension_by_name(name: str) -> Tuple[ExtensionInfo, "ExtensionManager"]:
     extension_manager = app.extension_manager if app else None
     if extension_manager and name in extension_manager.known_extensions:
@@ -153,6 +176,12 @@ def fail_if_not_localhost() -> None:
             abort(403)
 
 
+@blueprint.context_processor
+def inject_debug_variable() -> Dict[str, Any]:
+    """Injects the `debug` variable into all template contexts."""
+    return {"debug": is_debugging()}
+
+
 @blueprint.route("/")
 async def index():
     """Returns the index page of the extension."""
@@ -178,12 +207,14 @@ async def list_extensions():
 
 
 @blueprint.route("/messages")
+@only_when_debugging
 async def send_messages():
     """Returns a page that allows the user to send messages to the server."""
     return await render_template("messages.html.j2", title="Messages")
 
 
 @blueprint.route("/threads")
+@only_when_debugging
 async def list_threads():
     """Returns a page that lists all active threads in the server."""
     return await render_template(
@@ -192,6 +223,7 @@ async def list_threads():
 
 
 @blueprint.route("/tasks")
+@only_when_debugging
 async def list_tasks():
     """Returns a page that lists all active Trio tasks in the server."""
 

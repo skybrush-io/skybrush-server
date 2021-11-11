@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections import defaultdict
 from colour import Color
 from contextlib import asynccontextmanager, AsyncExitStack
+from errno import EIO
 from functools import partial
 from logging import Logger
 from math import ceil, hypot
@@ -956,11 +957,27 @@ class CrazyflieUAV(UAVBase):
             raise RuntimeError("Trajectory covers too large an area for a Crazyflie")
 
         light_program = get_light_program_from_show_specification(show)
-        await self._upload_light_program(light_program)
+        try:
+            await self._upload_light_program(light_program)
+        except OSError as ex:
+            if ex.errno == EIO:
+                raise RuntimeError(
+                    "IO error while uploading light program; is it too large?"
+                )
+            else:
+                raise
 
-        await self._upload_trajectory_and_fence(
-            trajectory, home, fence_config=self.driver.fence_config
-        )
+        try:
+            await self._upload_trajectory_and_fence(
+                trajectory, home, fence_config=self.driver.fence_config
+            )
+        except OSError as ex:
+            if ex.errno == EIO:
+                raise RuntimeError(
+                    "IO error while uploading trajectory; is it too large?"
+                )
+            else:
+                raise
 
         assert self._crazyflie is not None
         await self._crazyflie.high_level_commander.set_group_mask(1 << group_index)

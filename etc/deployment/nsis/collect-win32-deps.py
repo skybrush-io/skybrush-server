@@ -54,6 +54,7 @@ def main():
                         "lxml",
                         "pyobjc-core",
                         "pyobjc-framework-cocoa",
+                        "pyobjc-framework-systemconfiguration",
                         "pyudev",
                     ):
                         fps = ()

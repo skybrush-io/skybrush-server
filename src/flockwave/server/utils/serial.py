@@ -1,4 +1,4 @@
-from typing import Any, Dict, Iterable, Optional
+from typing import Any, Dict, FrozenSet, Iterable, Optional, Tuple
 
 __all__ = ("describe_serial_port", "list_serial_ports")
 
@@ -98,3 +98,38 @@ def list_serial_ports() -> Iterable[SerialPortDescriptor]:
     from serial.tools.list_ports import comports
 
     return comports()
+
+
+_RTK_BASE_BLACKLIST: FrozenSet[Tuple[int, int]] = frozenset(
+    [
+        (0x1209, 0x5740),  # ArduCopter generic
+        (0x1209, 0x5741),  # Pixhawk1
+        (0x2DAE, 0x1011),  # CubeBlack
+        (0x2DAE, 0x1101),  # CubeBlack+
+        (0x2DAE, 0x1012),  # CubeYellow
+        (0x2DAE, 0x1015),  # CubePurple
+        (0x2DAE, 0x1016),  # CubeOrange
+        (0x3162, 0x004B),  # Holybro Durandal
+        (0x26AC, 0x0011),  # Pixhawk1 bootloader
+        (0x2DAE, 0x1001),  # CubeBlack bootloader
+        (0x2DAE, 0x1002),  # CubeYellow bootloader
+        (0x2DAE, 0x1005),  # CubePurple bootloader
+    ]
+)
+
+
+def is_likely_not_rtk_base_station(desc: SerialPortDescriptor) -> bool:
+    """Returns true if the serial port described by the given descriptor is very
+    likely NOT an RTK base station.
+
+    This function essentially matches the USB vendor and product ID from the
+    port configuration against a list of known VID-PID pairs that occur
+    frequently in the UAV community but are known not to be RTK base stations.
+    Typical devices that are excluded this way are autopilots and bootloaders
+    of autopilots.
+    """
+    vid, pid = getattr(desc, "vid", None), getattr(desc, "pid", None)
+    if not isinstance(vid, int) or not isinstance(pid, int):
+        return False
+
+    return (vid, pid) in _RTK_BASE_BLACKLIST

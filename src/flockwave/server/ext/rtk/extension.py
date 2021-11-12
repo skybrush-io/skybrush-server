@@ -27,6 +27,7 @@ from flockwave.server.utils.serial import (
     SerialPortConfiguration,
     SerialPortDescriptor,
     describe_serial_port,
+    is_likely_not_rtk_base_station,
     list_serial_ports,
 )
 
@@ -73,6 +74,7 @@ class RTKExtension(ExtensionBase):
         self._current_preset: Optional[RTKConfigurationPreset] = None
         self._dynamic_serial_port_configurations: List[SerialPortConfiguration] = []
         self._dynamic_serial_port_filters: List[str] = []
+        self._exclude_non_rtk_bases: bool = True
         self._last_preset_request_from_user: Optional[RTKPresetRequest] = None
         self._presets: List[RTKConfigurationPreset] = []
         self._registry: Optional[RTKPresetRegistry] = None
@@ -129,6 +131,10 @@ class RTKExtension(ExtensionBase):
                         self.log.error(
                             f"Ignoring invalid serial port configuration at index #{index}"
                         )
+
+        self._exclude_non_rtk_bases = bool(
+            configuration.get("exclude_non_rtk_bases", True)
+        )
 
         serial_port_filters = configuration.get("exclude_serial_ports")
         if isinstance(serial_port_filters, str):
@@ -584,6 +590,9 @@ class RTKExtension(ExtensionBase):
         """Returns whether the given serial port should appear as a dynamic
         preset in the list of RTK sources offered by the extension.
         """
+        if self._exclude_non_rtk_bases and is_likely_not_rtk_base_station(port):
+            return False
+
         if not self._dynamic_serial_port_filters:
             return True
 
@@ -765,6 +774,17 @@ def get_schema():
                 "format": "table",
                 "items": {"type": "string"},
                 "required": False,
+            },
+            "exclude_non_rtk_bases": {
+                "title": "Exclude devices that are known not to be RTK base stations",
+                "description": (
+                    "Matches each serial port against a hardcoded list of devices that are "
+                    "known not to be RTK base stations and excludes ports that are on the "
+                    "list. Typically you should not need to uncheck this option."
+                ),
+                "type": "boolean",
+                "default": True,
+                "format": "checkbox",
             },
             "fixed": {
                 "title": "Use fixed base station coordinate",

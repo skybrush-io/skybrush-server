@@ -812,7 +812,13 @@ class VirtualUAV(UAVBase):
         assert self._trajectory_player is not None
         assert self._trajectory_transformation is not None
 
+        if self._trajectory_player.ended:
+            # Trajectory ended, land the drone
+            self.land()
+            return
+
         if not self._trajectory_player.is_before_takeoff(t):
+            # Time is after the start of the trajectory so evaluate it
             x, y, z = self._trajectory_player.position_at(t)
             self.target = self._trajectory_transformation.to_gps(
                 FlatEarthCoordinate(x=x, y=y, agl=z)

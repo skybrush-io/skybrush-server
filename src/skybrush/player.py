@@ -106,6 +106,13 @@ class TrajectoryPlayer:
         """Resets the state of the trajectory player."""
         self._select_segment(-1)
 
+    @property
+    def ended(self) -> bool:
+        """Returns whether the trajectory has ended, i.e. we have seeked to a
+        position that is after the end of the last segment.
+        """
+        return self._segment_index >= self._num_segments
+
     def is_before_takeoff(self, time: float) -> bool:
         """Returns whether the given timestamp is before the takeoff time of
         the mission.

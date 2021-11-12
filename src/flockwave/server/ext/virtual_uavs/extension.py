@@ -37,9 +37,11 @@ class VirtualUAVProviderExtension(UAVExtensionBase):
       mechanism of the command execution manager of the server.
     """
 
+    _driver: VirtualUAVDriver
+
     def __init__(self):
         """Constructor."""
-        super(VirtualUAVProviderExtension, self).__init__()
+        super().__init__()
         self._delay = 1
 
         self.radiation = None

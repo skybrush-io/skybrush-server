@@ -12,6 +12,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Serial ports connected to common autopilots and bootloaders do not get detected
   as RTK base station candidates any more.
 
+- In Linux and macOS, the `skybrushd` startup script now resolves relative
+  configuration file names from the current directory, as expected.
+
 ## [1.25.0] - 2021-11-02
 
 ### Added

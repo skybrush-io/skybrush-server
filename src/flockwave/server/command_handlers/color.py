@@ -2,7 +2,7 @@
 
 from colour import Color
 from inspect import iscoroutinefunction
-from typing import Callable, Optional, Union
+from typing import Awaitable, Callable, Optional, Union
 
 from flockwave.server.model.uav import UAV, UAVDriver
 
@@ -48,6 +48,11 @@ async def _color_command_handler(
     green: Optional[int] = None,
     blue: Optional[int] = None,
 ) -> str:
+    if red is None and green is None and blue is None:
+        raise RuntimeError(
+            "Please provide the red, green and blue components of the color to set"
+        )
+
     color = _parse_color(red, green, blue)
     if iscoroutinefunction(uav.set_led_color):
         await uav.set_led_color(color)
@@ -60,7 +65,10 @@ async def _color_command_handler(
         return "Color override turned off"
 
 
-def create_color_command_handler() -> Callable[[UAVDriver, UAV], str]:
+def create_color_command_handler() -> Callable[
+    [UAVDriver, UAV, Optional[Union[str, int]], Optional[int], Optional[int]],
+    Awaitable[str],
+]:
     """Creates a generic async command handler function that allows the user to
     set the color of the LED lights on the UAV, assuming that the UAV
     has an async or sync method named `set_led_color()`.

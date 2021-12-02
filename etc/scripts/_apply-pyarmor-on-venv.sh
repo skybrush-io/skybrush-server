@@ -100,4 +100,3 @@ if [ $NOT_OBFUSCATED_COUNT -gt 0 ]; then
   echo "$NOT_OBFUSCATED_FILES"
   exit 1
 fi
-

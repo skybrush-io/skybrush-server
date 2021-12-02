@@ -14,4 +14,3 @@ EOF
 
 # Replace git@git.collmot.com references in Pipfile with https://git.collmot.com
 source etc/scripts/switch_to_https_in_pipfile.sh
-

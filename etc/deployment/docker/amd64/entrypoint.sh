@@ -15,4 +15,3 @@ fi
 
 cd /data
 PYTHONPATH=/app/src python -m flockwave.${MODULE}.launcher "$@"
-

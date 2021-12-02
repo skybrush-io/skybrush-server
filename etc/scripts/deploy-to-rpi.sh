@@ -174,4 +174,3 @@ echo "tar -C / -xvvzf ${CWD}/${OUTPUT_FILE}"
 echo ""
 echo "After that you should reboot the RPi. Also, don't forget to add a license"
 echo "file to the RPi in /boot/collmot/skybrushd.cml"
-

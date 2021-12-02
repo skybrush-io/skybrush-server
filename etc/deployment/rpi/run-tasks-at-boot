@@ -30,7 +30,7 @@ for IFACE in eth0; do
   IFACE_UPPER=`echo $IFACE | tr '[:lower:]' '[:upper:]'`
   ADDRESS_VAR=ADDRESS_${IFACE_UPPER}
   ADDRESS="${!ADDRESS_VAR}"
-  
+
   if [ "x$ADDRESS" = x ]; then
     # Configure for DHCP; no extra lines needed
     true
@@ -75,4 +75,3 @@ fi
 
 # Sync all changes to the filesystem
 sync
-

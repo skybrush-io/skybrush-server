@@ -148,4 +148,3 @@ echo ""
 echo "Obfuscated bundle created successfully in ${OUTPUT_FILE}"
 echo ""
 echo "Don't forget to add a license file after extraction as skybrushd.cml"
-

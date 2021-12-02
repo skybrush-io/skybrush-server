@@ -61,12 +61,30 @@ exec(
 def extension_module(name):
     return "flockwave.server.ext.{0}".format(name)
 
+def is_extension_module(name):
+    return name.startswith("flockwave.server.ext.")
+
+
 extra_modules.add(extension_module("ext_manager"))  # this is implicitly loaded
 extra_modules.update(
     extension_module(ext_name)
     for ext_name in config["EXTENSIONS"]
     if not ext_name.startswith("_")
 )
+
+# Exclude private extensions that we do not want to ship to customers
+private_modules = set()
+for module_name in sorted(extra_modules):
+    if is_extension_module(module_name):
+        try:
+            imported_module = import_module(module_name)
+            if hasattr(imported_module, "private"):
+                is_private = bool(imported_module.private)
+        except ImportError:
+            is_private = False
+        if is_private:
+            private_modules.add(module_name)
+extra_modules -= private_modules
 
 # Prepare the dependency table
 dependencies = {}
@@ -78,9 +96,8 @@ if sys.platform.lower().startswith("linux"):
 changed = True
 while changed:
     changed = False
-    print(repr(extra_modules))
     for module_name in sorted(extra_modules):
-        if module_name.startswith("flockwave.server.ext."):
+        if is_extension_module(module_name):
             try:
                 imported_module = import_module(module_name)
                 if hasattr(imported_module, "get_dependencies"):

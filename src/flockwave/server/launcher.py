@@ -46,6 +46,11 @@ def start(config, debug, quiet, log_style):
         log_handler = logging.getLogger(logger_name)
         log_handler.setLevel(logging.ERROR)
 
+    # Also silence informational messages from charset_normalizer
+    for logger_name in ("charset_normalizer",):
+        log_handler = logging.getLogger(logger_name)
+        log_handler.setLevel(logging.WARN)
+
     # Load environment variables from .env
     dotenv.load_dotenv(verbose=debug)
 

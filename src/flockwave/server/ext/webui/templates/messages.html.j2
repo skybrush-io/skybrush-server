@@ -56,7 +56,7 @@
 
 
 {% block backmatter %}
-<script type="text/javascript" src="static/js/socket.io-2.3.0.slim.js"></script>
+<script type="text/javascript" src="static/js/socket.io-4.4.0.min.js"></script>
 <script type="text/javascript">
     var presets = {
         "AUTH-INF": {
@@ -278,9 +278,9 @@
 
     function toggleMessageType(event, type) {
         if (event.target.checked) {
-        filteredTypes[type] = false;
+            filteredTypes[type] = false;
         } else {
-        filteredTypes[type] = true;
+            filteredTypes[type] = true;
         }
         updateFilterCheckboxes();
     }

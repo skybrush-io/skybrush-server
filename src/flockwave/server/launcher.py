@@ -42,7 +42,14 @@ def start(config, debug, quiet, log_style):
 
     # Silence Engine.IO and Socket.IO debug messages, debug messages from
     # Paramiko and warnings from urllib3.connectionpool
-    for logger_name in ("engineio", "socketio", "paramiko", "urllib3.connectionpool"):
+    for logger_name in (
+        "engineio",
+        "engineio.server",
+        "socketio",
+        "socketio.server",
+        "paramiko",
+        "urllib3.connectionpool",
+    ):
         log_handler = logging.getLogger(logger_name)
         log_handler.setLevel(logging.ERROR)
 

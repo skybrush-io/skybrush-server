@@ -1,9 +1,9 @@
 import inspect
-import urllib
 import trio
 
 from functools import partial
 from math import inf
+from urllib.parse import parse_qs
 
 from . import exceptions, packet, server
 from .socket import Socket
@@ -263,6 +263,9 @@ class TrioServer(server.Server):
         else:
             environ = translate_request(*args, **kwargs)
 
+        return await self._handle_wsgi_request(environ)
+
+    async def _handle_wsgi_request(self, environ):
         if self.cors_allowed_origins != []:
             # Validate the origin header if present
             # This is important for WebSocket more than for HTTP, since
@@ -285,7 +288,7 @@ class TrioServer(server.Server):
                     return response
 
         method = environ["REQUEST_METHOD"]
-        query = urllib.parse.parse_qs(environ.get("QUERY_STRING", ""))
+        query = parse_qs(environ.get("QUERY_STRING", ""))
 
         sid = query["sid"][0] if "sid" in query else None
         b64 = False

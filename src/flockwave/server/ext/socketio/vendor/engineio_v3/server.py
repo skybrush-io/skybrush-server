@@ -131,8 +131,7 @@ class Server(object):
         for mode in modes:
             try:
                 self._async = importlib.import_module(
-                    "flockwave.server.ext.socketio.vendor.engineio.async_drivers."
-                    + mode
+                    ".async_drivers." + mode, __package__
                 )._async
                 asyncio_based = (
                     self._async["asyncio"] if "asyncio" in self._async else False

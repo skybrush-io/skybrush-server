@@ -63,4 +63,4 @@ def start(config, debug, quiet, log_style):
 
 
 if __name__ == "__main__":
-    sys.exit(start())
+    sys.exit(start(prog_name="skybrush-gatewayd"))

@@ -488,7 +488,7 @@ reference = "collmot"
 
 [[package]]
 name = "flockwave-conn"
-version = "3.0.0"
+version = "3.0.3"
 description = "Connection objects for various data sources"
 category = "main"
 optional = false
@@ -496,6 +496,7 @@ python-versions = ">=3.7,<4.0"
 
 [package.dependencies]
 blinker = ">=1.4,<2.0"
+flockwave-net = {version = ">=2.0.2,<3.0.0", extras = ["async"]}
 flockwave-parsers = ">=1.2.0,<2.0.0"
 mido = {version = ">=1.2.9,<2.0.0", optional = true, markers = "extra == \"midi\""}
 netifaces = ">=0.10.9"
@@ -593,7 +594,7 @@ reference = "collmot"
 
 [[package]]
 name = "flockwave-net"
-version = "2.0.1"
+version = "2.0.2"
 description = "Networking related functions for apps based on the Flockwave framework"
 category = "main"
 optional = false
@@ -2103,7 +2104,7 @@ reference = "collmot"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7"
-content-hash = "ae7abc4d4febde268639f9438922a3ffd7f45df4d3651619e0abeff8b2be4223"
+content-hash = "32516e10b7a25a3550d070ec9cf1e8e325c50e01e8f01ba6e09b0c625503bfda"
 
 [metadata.files]
 adrenaline = [
@@ -2344,8 +2345,8 @@ flockwave-app-framework = [
     {file = "flockwave_app_framework-2.1.0-py3-none-any.whl", hash = "md5:be410a4fabc3eb791c0d754d991436d4"},
 ]
 flockwave-conn = [
-    {file = "flockwave-conn-3.0.0.tar.gz", hash = "md5:33e7ef8eb01247f879d6e9801572d8fc"},
-    {file = "flockwave_conn-3.0.0-py3-none-any.whl", hash = "md5:12703191fc18c221e960bc5ba3475750"},
+    {file = "flockwave-conn-3.0.3.tar.gz", hash = "md5:b56b6af80061f415939ac24a782d4082"},
+    {file = "flockwave_conn-3.0.3-py3-none-any.whl", hash = "md5:67397d8d78c7db55bade92e0161db304"},
 ]
 flockwave-ext = [
     {file = "flockwave-ext-1.9.0.tar.gz", hash = "md5:5b15f01da2c48ecf279c3c4189d7c1d1"},
@@ -2364,8 +2365,8 @@ flockwave-logger = [
     {file = "flockwave_logger-1.7.2-py3-none-any.whl", hash = "md5:096d8af1b3011440f756ab7fc65a4514"},
 ]
 flockwave-net = [
-    {file = "flockwave-net-2.0.1.tar.gz", hash = "md5:18ba820506006af84c17d8a5f892c4be"},
-    {file = "flockwave_net-2.0.1-py3-none-any.whl", hash = "md5:dfae1c81bb9e69f75f20ad4a86af5cd0"},
+    {file = "flockwave-net-2.0.2.tar.gz", hash = "md5:f16c0b64e4a19109974cfb5638b8a329"},
+    {file = "flockwave_net-2.0.2-py3-none-any.whl", hash = "md5:28ef9817b6d162eb94ff9dd1b256bfaa"},
 ]
 flockwave-parsers = [
     {file = "flockwave-parsers-1.2.0.tar.gz", hash = "md5:9c5fae8990f5b6612cb9776753f24d03"},

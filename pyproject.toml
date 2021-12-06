@@ -37,12 +37,12 @@ hypercorn = {extras = ["trio"], version = ">=0.10.1"}
 tinyrpc = {version = ">=1.0.4", extras = ["msgpack"]}
 passlib = {extras = ["bcrypt"], version = "^1.7.2"}
 flockwave-app-framework = {version = "^2.1.0", extras = ["daemon"]}
-flockwave-conn = {extras = ["midi", "rpc", "serial"], version = "^3.0.0"}
+flockwave-conn = {extras = ["midi", "rpc", "serial"], version = "^3.0.3"}
 flockwave-ext = "^1.9.0"
 flockwave-flockctrl = "^2.1.0"
 flockwave-gps = "^2.1.0"
 flockwave-logger = "^1.7.0"
-flockwave-net = {extras = ["async"], version = "^2.0.0"}
+flockwave-net = {extras = ["async"], version = "^2.0.2"}
 flockwave-parsers = "^1.2.0"
 flockwave-spec = "^1.55.0"
 pyledctrl = "^3.1.0"

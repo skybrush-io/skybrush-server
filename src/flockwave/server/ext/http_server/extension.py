@@ -11,7 +11,8 @@ from dataclasses import dataclass
 from heapq import heapify, heappush
 from hypercorn.config import Config as HyperConfig
 from hypercorn.trio import serve
-from quart import Blueprint, abort, redirect, request, url_for
+from pathlib import Path
+from quart import abort, Blueprint, redirect, request, url_for
 from quart_trio import QuartTrio
 from trio import current_time, sleep
 from typing import Iterable, Optional
@@ -21,6 +22,7 @@ import logging
 from flockwave.networking import can_bind_to_tcp_address, format_socket_address
 from flockwave.server.ports import get_port_number_for_service
 from flockwave.server.types import Disposer
+from flockwave.server.utils.packaging import is_oxidized
 
 from .routing import RoutingMiddleware
 
@@ -53,7 +55,14 @@ def create_app():
     if quart_app is not None:
         raise RuntimeError("App is already created")
 
-    quart_app = app = QuartTrio(PACKAGE_NAME)
+    # root_path set to Path.cwd() because we won't have any resources here and
+    # we want to be compatible with PyOxidizer where everything preferably
+    # runs from memory
+    if is_oxidized():
+        cwd = str(Path.cwd())
+        quart_app = app = QuartTrio(PACKAGE_NAME, instance_path=cwd, root_path=cwd)
+    else:
+        quart_app = app = QuartTrio(PACKAGE_NAME)
 
     # Set up the default index route
     @app.route("/")

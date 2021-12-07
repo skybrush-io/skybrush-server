@@ -9,7 +9,7 @@ HTTP authentication headers will be translated to AUTH-REQ requests.
 from contextlib import ExitStack
 from logging import Logger
 from json import loads
-from quart import abort, Blueprint, Response, request
+from quart import abort, Response, request
 from trio import Event, fail_after, sleep_forever, TooSlowError
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -17,7 +17,7 @@ from flockwave.encoders import Encoder
 from flockwave.encoders.json import create_json_encoder
 from flockwave.server.model import CommunicationChannel, FlockwaveMessageBuilder
 from flockwave.server.utils import overridden
-
+from flockwave.server.utils.quart import make_blueprint
 
 app = None
 builder = None
@@ -184,7 +184,7 @@ async def authenticate_client_if_needed(client) -> None:
 ############################################################################
 
 
-blueprint = Blueprint("http", __name__)
+blueprint = make_blueprint("http", __name__)
 
 
 @blueprint.route("/", methods=["POST"])

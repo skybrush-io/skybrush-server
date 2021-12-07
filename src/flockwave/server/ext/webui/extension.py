@@ -11,12 +11,13 @@ from dataclasses import dataclass, field
 from functools import wraps
 from logging import Logger
 from operator import attrgetter
-from quart import abort, Blueprint, redirect, render_template, request, url_for
+from quart import abort, redirect, render_template, request, url_for
 from trio import sleep_forever
 from trio.lowlevel import current_root_task
 from typing import Any, Awaitable, Callable, Dict, List, Optional, Tuple, TYPE_CHECKING
 
 from flockwave.server.utils import overridden
+from flockwave.server.utils.quart import make_blueprint
 
 if TYPE_CHECKING:
     from flockwave.ext.manager import ExtensionManager
@@ -26,7 +27,7 @@ if TYPE_CHECKING:
 __all__ = ("index", "run")
 
 
-blueprint = Blueprint(
+blueprint = make_blueprint(
     "webui",
     __name__,
     static_folder="static",

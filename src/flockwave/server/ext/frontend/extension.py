@@ -3,7 +3,8 @@ served over HTTP.
 """
 
 from pathlib import Path
-from quart import Blueprint
+
+from flockwave.server.utils.quart import make_blueprint
 
 __all__ = ("load",)
 
@@ -18,7 +19,9 @@ def load(app, configuration):
     else:
         path = "static"
 
-    blueprint = Blueprint("frontend", __name__, static_folder=path, static_url_path="/")
+    blueprint = make_blueprint(
+        "frontend", __name__, static_folder=path, static_url_path="/"
+    )
 
     @blueprint.route("/")
     async def index():

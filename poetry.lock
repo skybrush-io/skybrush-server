@@ -366,22 +366,6 @@ url = "https://pypi.collmot.com/simple"
 reference = "collmot"
 
 [[package]]
-name = "commentjson"
-version = "0.9.0"
-description = "Add Python and JavaScript style comments in your JSON files."
-category = "main"
-optional = false
-python-versions = "*"
-
-[package.dependencies]
-lark-parser = ">=0.7.1,<0.8.0"
-
-[package.source]
-type = "legacy"
-url = "https://pypi.collmot.com/simple"
-reference = "collmot"
-
-[[package]]
 name = "compose"
 version = "1.2.8"
 description = "The classic ``compose``, with all the Pythonic features."
@@ -465,16 +449,16 @@ reference = "collmot"
 
 [[package]]
 name = "flockwave-app-framework"
-version = "2.1.0"
+version = "2.2.1"
 description = "Generic app framework for CLI based apps in the Skybrush suite"
 category = "main"
 optional = false
 python-versions = ">=3.7,<4.0"
 
 [package.dependencies]
-commentjson = ">=0.9.0"
 flockwave-conn = {version = ">=2.11.3,<4.0.0", optional = true, markers = "extra == \"daemon\""}
 flockwave-ext = {version = ">=1.5.0,<2.0.0", optional = true, markers = "extra == \"daemon\""}
+json5 = ">=0.9.6"
 trio = ">=0.17.0"
 
 [package.extras]
@@ -931,6 +915,22 @@ url = "https://pypi.collmot.com/simple"
 reference = "collmot"
 
 [[package]]
+name = "json5"
+version = "0.9.6"
+description = "A Python implementation of the JSON5 data format."
+category = "main"
+optional = false
+python-versions = "*"
+
+[package.extras]
+dev = ["hypothesis"]
+
+[package.source]
+type = "legacy"
+url = "https://pypi.collmot.com/simple"
+reference = "collmot"
+
+[[package]]
 name = "jsonpointer"
 version = "2.2"
 description = "Identify specific nodes in a JSON document (RFC 6901)"
@@ -960,19 +960,6 @@ pyrsistent = ">=0.14.0,<0.17.0 || >0.17.0,<0.17.1 || >0.17.1,<0.17.2 || >0.17.2"
 [package.extras]
 format = ["fqdn", "idna", "isoduration", "jsonpointer (>1.13)", "rfc3339-validator", "rfc3987", "uri-template", "webcolors (>=1.11)"]
 format_nongpl = ["fqdn", "idna", "isoduration", "jsonpointer (>1.13)", "rfc3339-validator", "rfc3986-validator (>0.1.0)", "uri-template", "webcolors (>=1.11)"]
-
-[package.source]
-type = "legacy"
-url = "https://pypi.collmot.com/simple"
-reference = "collmot"
-
-[[package]]
-name = "lark-parser"
-version = "0.7.8"
-description = "a modern parsing library"
-category = "main"
-optional = false
-python-versions = "*"
 
 [package.source]
 type = "legacy"
@@ -2104,7 +2091,7 @@ reference = "collmot"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7"
-content-hash = "32516e10b7a25a3550d070ec9cf1e8e325c50e01e8f01ba6e09b0c625503bfda"
+content-hash = "62d49f4014f0ac0d58fdccdf268b2498b7434ba56d38b74af6ca0ce993b14d34"
 
 [metadata.files]
 adrenaline = [
@@ -2252,9 +2239,6 @@ colour = [
     {file = "colour-0.1.5-py2.py3-none-any.whl", hash = "sha256:33f6db9d564fadc16e59921a56999b79571160ce09916303d35346dddc17978c"},
     {file = "colour-0.1.5.tar.gz", hash = "sha256:af20120fefd2afede8b001fbef2ea9da70ad7d49fafdb6489025dae8745c3aee"},
 ]
-commentjson = [
-    {file = "commentjson-0.9.0.tar.gz", hash = "sha256:42f9f231d97d93aff3286a4dc0de39bfd91ae823d1d9eba9fa901fe0c7113dd4"},
-]
 compose = [
     {file = "compose-1.2.8-py2.py30-none-any.whl", hash = "sha256:cf17e985b82f06247143dccd1a32e5deb16f5b8ef80d732386acb2394092c5c5"},
     {file = "compose-1.2.8-py35-none-any.whl", hash = "sha256:3ae6b888e45238b31633313e78f4d64c79a13f3859efd04acfd1241c2afe7b74"},
@@ -2341,8 +2325,8 @@ distlib = [
     {file = "distlib-0.3.3.zip", hash = "sha256:d982d0751ff6eaaab5e2ec8e691d949ee80eddf01a62eaa96ddb11531fe16b05"},
 ]
 flockwave-app-framework = [
-    {file = "flockwave-app-framework-2.1.0.tar.gz", hash = "md5:416567dcf04db84d5d57f95d855bfbc2"},
-    {file = "flockwave_app_framework-2.1.0-py3-none-any.whl", hash = "md5:be410a4fabc3eb791c0d754d991436d4"},
+    {file = "flockwave-app-framework-2.2.1.tar.gz", hash = "md5:e34b3f4e96caa855adc6be4e41f98f92"},
+    {file = "flockwave_app_framework-2.2.1-py3-none-any.whl", hash = "md5:16f49ef5a28fe13bca9296331a4f033f"},
 ]
 flockwave-conn = [
     {file = "flockwave-conn-3.0.3.tar.gz", hash = "md5:b56b6af80061f415939ac24a782d4082"},
@@ -2442,6 +2426,10 @@ jinja2 = [
     {file = "Jinja2-3.0.3-py3-none-any.whl", hash = "sha256:077ce6014f7b40d03b47d1f1ca4b0fc8328a692bd284016f806ed0eaca390ad8"},
     {file = "Jinja2-3.0.3.tar.gz", hash = "sha256:611bb273cd68f3b993fabdc4064fc858c5b47a973cb5aa7999ec1ba405c87cd7"},
 ]
+json5 = [
+    {file = "json5-0.9.6-py2.py3-none-any.whl", hash = "sha256:823e510eb355949bed817e1f3e2d682455dc6af9daf6066d5698d6a2ca4481c2"},
+    {file = "json5-0.9.6.tar.gz", hash = "sha256:9175ad1bc248e22bb8d95a8e8d765958bf0008fef2fe8abab5bc04e0f1ac8302"},
+]
 jsonpointer = [
     {file = "jsonpointer-2.2-py2.py3-none-any.whl", hash = "sha256:26d9a47a72d4dc3e3ae72c4c6cd432afd73c680164cd2540772eab53cb3823b6"},
     {file = "jsonpointer-2.2.tar.gz", hash = "sha256:f09f8deecaaa5aea65b5eb4f67ca4e54e1a61f7a11c75085e360fe6feb6a48bf"},
@@ -2449,9 +2437,6 @@ jsonpointer = [
 jsonschema = [
     {file = "jsonschema-4.2.1-py3-none-any.whl", hash = "sha256:2a0f162822a64d95287990481b45d82f096e99721c86534f48201b64ebca6e8c"},
     {file = "jsonschema-4.2.1.tar.gz", hash = "sha256:390713469ae64b8a58698bb3cbc3859abe6925b565a973f87323ef21b09a27a8"},
-]
-lark-parser = [
-    {file = "lark-parser-0.7.8.tar.gz", hash = "sha256:26215ebb157e6fb2ee74319aa4445b9f3b7e456e26be215ce19fdaaa901c20a4"},
 ]
 lxml = [
     {file = "lxml-4.6.4-cp27-cp27m-macosx_10_14_x86_64.whl", hash = "sha256:bbf2dc330bd44bfc0254ab37677ec60f7c7ecea55ad8ba1b8b2ea7bf20c265f5"},

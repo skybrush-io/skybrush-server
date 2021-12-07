@@ -3,17 +3,18 @@
 from http.client import parse_headers
 from io import BytesIO
 from trio import MultiError, open_nursery, sleep_forever
-from typing import Optional, Tuple
+from typing import Tuple
 
+from flockwave.app_framework import DaemonApp
+from flockwave.app_framework.configurator import AppConfigurator
 from flockwave.connections import (
     Connection,
-    ConnectionSupervisor,
     StreamConnection,
     create_connection,
     create_connection_factory,
 )
 from flockwave.networking import format_socket_address
-from flockwave.server.configurator import AppConfigurator
+from flockwave.server.utils.packaging import is_packaged
 
 from .logger import log
 
@@ -70,65 +71,8 @@ async def copy_stream(source: StreamConnection, target: StreamConnection) -> Non
         await target.write(data)
 
 
-class SkybrushProxyServer:
-    """Main application object for the Skybrush proxy server.
-
-    Attributes:
-        config (dict): dictionary holding the configuration options of the
-            application
-        debug (bool): boolean flag to denote whether the application is in
-            debugging mode
-    """
-
-    def __init__(self):
-        self.config = {}
-        self.debug = False
-
-        self._nursery = None
-        self._public_url_parts = None
-
-        self._create_components()
-
-    def _create_components(self):
-        """Creates all the components and registries of the proxy.
-
-        This function is called by the constructor once at construction time.
-        You should not need to call it later.
-
-        The configuration of the server is not loaded yet when this function is
-        executed. Avoid querying the configuration of the server here because
-        the settings will not be up-to-date yet. Use `prepare()` for any
-        preparations that depend on the configuration.
-        """
-        # Creates an object whose responsibility is to restart connections
-        # that closed unexpectedly
-        self.connection_supervisor = ConnectionSupervisor()
-
-    def prepare(self, config: Optional[str], debug: bool = False) -> Optional[int]:
-        """Hook function that contains preparation steps that should be
-        performed by the proxy before it starts establishing the connections
-        to the remote and the local server.
-
-        Parameters:
-            config: name of the configuration file to load
-            debug: whether to force the app into debug mode
-
-        Returns:
-            error code to terminate the app with if the preparation was not
-            successful; ``None`` if the preparation was successful
-        """
-        configurator = AppConfigurator(
-            self.config,
-            environment_variable="SKYBRUSH_PROXY_SETTINGS",
-            default_filename="skybrush-proxy.cfg",
-            log=log,
-            package_name=PACKAGE_NAME,
-        )
-        if not configurator.configure(config):
-            return 1
-
-        if debug or self.config.get("DEBUG"):
-            self.debug = True
+class SkybrushProxyServer(DaemonApp):
+    """Main application object for the Skybrush proxy server."""
 
     async def run(self) -> None:
         # Helper function to ignore KeyboardInterrupt exceptions even if
@@ -151,8 +95,11 @@ class SkybrushProxyServer:
             await sleep_forever()
 
     async def run_remote_connection(self, conn: Connection) -> None:
+        address = getattr(conn, "address", None)
+        assert address is not None
+
         try:
-            log.info(f"Opened connection to {format_socket_address(conn.address)}")
+            log.info(f"Opened connection to {format_socket_address(address)}")
             async with conn:
                 while True:
                     should_close = (
@@ -164,13 +111,16 @@ class SkybrushProxyServer:
         except Exception:
             log.exception("Unhandled exception")
         finally:
-            log.info(f"Closed connection to {format_socket_address(conn.address)}")
+            log.info(f"Closed connection to {format_socket_address(address)}")
 
     async def run_remote_connection_new(self, conn: Connection) -> None:
         # TODO(ntamas): this should be conceptually simpler and not dependent
         # on HTTP, but it does not work yet for some reason. Investigate.
+        address = getattr(conn, "address", None)
+        assert address is not None
+
         try:
-            log.info(f"Opened connection to {format_socket_address(conn.address)}")
+            log.info(f"Opened connection to {format_socket_address(address)}")
             async with conn:
                 local_conn = self.local_connection_factory()
                 async with local_conn:
@@ -180,11 +130,14 @@ class SkybrushProxyServer:
         except Exception:
             log.exception("Unhandled exception")
         finally:
-            log.info(f"Closed connection to {format_socket_address(conn.address)}")
+            log.info(f"Closed connection to {format_socket_address(address)}")
 
     async def handle_single_request_from_remote_connection(
         self, conn: Connection
-    ) -> None:
+    ) -> bool:
+        """Handles a single request from a remote connection. Returns whether
+        the connection should be closed after processing the request.
+        """
         parsed_stuff = await parse_http_headers_from_connection(conn)
         if parsed_stuff is None:
             return True
@@ -233,17 +186,24 @@ class SkybrushProxyServer:
                 if not chunk or bytes_read >= response_length:
                     break
 
+        return False
+
     async def supervise_local_connection(self, conn: Connection) -> None:
+        assert self.connection_supervisor is not None
         await self.connection_supervisor.supervise(
             conn, task=self.run_local_connection, policy=None
         )
 
     async def supervise_remote_connection(self, conn: Connection) -> None:
+        assert self.connection_supervisor is not None
         await self.connection_supervisor.supervise(
             conn, task=self.run_remote_connection, policy=None
         )
 
+    def _setup_app_configurator(self, configurator: AppConfigurator) -> None:
+        configurator.safe = is_packaged()
+
 
 ############################################################################
 
-app = SkybrushProxyServer()
+app = SkybrushProxyServer("skybrush-proxy", PACKAGE_NAME)

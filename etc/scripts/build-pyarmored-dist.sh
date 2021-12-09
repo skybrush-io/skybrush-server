@@ -65,7 +65,9 @@ if [ "x${POETRY}" != x ]; then
   # Generate requirements.txt from poetry. We use requirements-main.txt for sake of
   # compatibility with building this in a pyinstaller Docker container where we
   # cannot use requirements.txt
-  "${POETRY}" export -f requirements.txt -o requirements-main.txt --without-hashes --with-credentials
+  "${POETRY}" export -f requirements.txt --without-hashes --with-credentials | \
+      grep -v '^pyobjc' \
+      >requirements-main.txt
   trap "rm -f requirements-main.txt" EXIT
 
   # Build the Skybrush wheel and append it to the requirements
@@ -75,6 +77,8 @@ if [ "x${POETRY}" != x ]; then
 else
   echo "Poetry not installed; we assume that the requirements are already prepared in requirements-main.txt"
 fi
+
+cat requirements-main.txt
 
 # Create virtual environment if it doesn't exist yet
 if [ ! -d "${VENV_DIR}" ]; then

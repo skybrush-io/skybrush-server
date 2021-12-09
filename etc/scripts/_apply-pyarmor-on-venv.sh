@@ -7,7 +7,7 @@
 
 ###############################################################################
 
-OBFUSCATED_PACKAGES="aiocflib flockwave skybrush"
+OBFUSCATED_PACKAGES="aiocflib flockwave"
 
 ###############################################################################
 

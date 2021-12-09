@@ -16,11 +16,17 @@ rm -f requirements*.txt
 
 # Generate requirements.txt from pipenv. We use requirements-main.txt for sake
 # of consistency with deploy.sh
-poetry export -f requirements.txt -o requirements-main.txt --without-hashes --with-credentials
+poetry export -f requirements.txt -o requirements-main.txt --without-hashes --with-credentials | \
+    grep -v '^pyobjc' \
+    >requirements-main.txt
 trap "rm -f requirements-main.txt" EXIT
 
 # Build the Docker image
-DOCKER_BUILDKIT=1 docker build -t docker.collmot.com/${IMAGE_NAME}:latest -f etc/deployment/docker/amd64/Dockerfile .
+DOCKER_BUILDKIT=1 docker build \
+    --platform linux/amd64 \
+    -t docker.collmot.com/${IMAGE_NAME}:latest \
+    -f etc/deployment/docker/amd64/Dockerfile \
+    .
 echo "Successfully built Docker image."
 
 # If we are at an exact tag, also tag the image

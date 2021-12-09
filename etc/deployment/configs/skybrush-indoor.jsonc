@@ -1,21 +1,21 @@
-# This is the main configuration file for Skybrush Server.
-# The file is essentially a JSON file, but C-style comments are allowed, and
-# lines starting with a hash are ignored.
+// This is the main configuration file for Skybrush Server.
+// The file is essentially a JSON file, but C-style comments are allowed, and
+// lines starting with a hash are ignored.
 
 {
   "EXTENSIONS": {
-    # Make the server listen on all interfaces so it can be connected to from
-    # other machines
+    // Make the server listen on all interfaces so it can be connected to from
+    // other machines
     "http_server": {
       "host": ""
     },
 
-    # Listen for Crazyflie drones
+    // Listen for Crazyflie drones
     "crazyflie": {
       "enabled": true
     },
 
-    # Start shows automatically by default, don't expect an RC to be present
+    // Start shows automatically by default, don't expect an RC to be present
     "show": {
       "default_start_method": "auto"
     }

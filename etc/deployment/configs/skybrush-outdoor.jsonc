@@ -1,36 +1,36 @@
-# This is the main configuration file for Skybrush Server.
-# The file is essentially a JSON file, but C-style comments are allowed, and
-# lines starting with a hash are ignored.
+// This is the main configuration file for Skybrush Server.
+// The file is essentially a JSON file, but C-style comments are allowed, and
+// lines starting with a hash are ignored.
 
 {
   "EXTENSIONS": {
-    # Make the server listen on all interfaces so it can be connected to from
-    # other machines
+    // Make the server listen on all interfaces so it can be connected to from
+    // other machines
     "http_server": {
       "host": ""
     },
 
-    # RTK extension configuration
+    // RTK extension configuration
     "rtk": {
-      # Add all serial ports as potential RTK data sources with baud rates 9600
-      # and 57600
+      // Add all serial ports as potential RTK data sources with baud rates 9600
+      // and 57600
       "add_serial_ports": [9600, 57600]
     },
 
-    # Listen for MAVLink-based drones
+    // Listen for MAVLink-based drones
     "mavlink": {
       "enabled": true,
-      # Listen for heartbeats on UDP port 14550, send broadcasts to UDP port 14555
+      // Listen for heartbeats on UDP port 14550, send broadcasts to UDP port 14555
       "connections": ["default"],
-      # Delete the previous line and uncomment the following two lines to enable a
-      # secondary radio channel on port COM6, 57600 baud that is used for RTK
-      # corrections and as a fallback for commands. Do _not_ uncomment this
-      # line if you use Skybrush Sidekick to manage the radio channel.
-      # "connections": ["default", "serial:COM6?baud=57600"],
-      # "routing": {"rtk": 1}
+      // Delete the previous line and uncomment the following two lines to enable a
+      // secondary radio channel on port COM6, 57600 baud that is used for RTK
+      // corrections and as a fallback for commands. Do _not_ uncomment this
+      // line if you use Skybrush Sidekick to manage the radio channel.
+      // "connections": ["default", "serial:COM6?baud=57600"],
+      // "routing": {"rtk": 1}
     },
 
-    # Provide RTK corrections to Skybrush Sidekick if needed
+    // Provide RTK corrections to Skybrush Sidekick if needed
     "sidekick": {
       "enabled": true
     }

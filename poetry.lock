@@ -449,7 +449,7 @@ reference = "collmot"
 
 [[package]]
 name = "flockwave-app-framework"
-version = "2.2.1"
+version = "2.2.2"
 description = "Generic app framework for CLI based apps in the Skybrush suite"
 category = "main"
 optional = false
@@ -2091,7 +2091,7 @@ reference = "collmot"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7"
-content-hash = "62d49f4014f0ac0d58fdccdf268b2498b7434ba56d38b74af6ca0ce993b14d34"
+content-hash = "bc9d3f8e644b149a2dd13e4192a8ba7f5edbce642bccc1e66116b7f121c50c78"
 
 [metadata.files]
 adrenaline = [
@@ -2325,8 +2325,8 @@ distlib = [
     {file = "distlib-0.3.3.zip", hash = "sha256:d982d0751ff6eaaab5e2ec8e691d949ee80eddf01a62eaa96ddb11531fe16b05"},
 ]
 flockwave-app-framework = [
-    {file = "flockwave-app-framework-2.2.1.tar.gz", hash = "md5:e34b3f4e96caa855adc6be4e41f98f92"},
-    {file = "flockwave_app_framework-2.2.1-py3-none-any.whl", hash = "md5:16f49ef5a28fe13bca9296331a4f033f"},
+    {file = "flockwave-app-framework-2.2.2.tar.gz", hash = "md5:a97d31ec847cf265996280dbca89fb5a"},
+    {file = "flockwave_app_framework-2.2.2-py3-none-any.whl", hash = "md5:f33df61de1cb10da29f8f9a101a4b7e1"},
 ]
 flockwave-conn = [
     {file = "flockwave-conn-3.0.3.tar.gz", hash = "md5:b56b6af80061f415939ac24a782d4082"},

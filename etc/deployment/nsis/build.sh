@@ -80,7 +80,7 @@ cat >installer.cfg <<EOF
 name=Skybrush Server
 version=${VERSION}
 publisher=CollMot Robotics
-target=\$INSTDIR\\skybrushd.bat
+target=\$INSTDIR\\skybrushd.exe
 parameters=
 icon=assets/icons/win/skybrushd.ico
 console=true
@@ -92,7 +92,7 @@ bitness=32
 [Include]
 local_wheels=${WHEEL_DIR}/*.whl
 files=etc/blobs/win32/libusb-1.0.dll >\$INSTDIR\lib
-    etc/deployment/nsis/skybrushd.bat >\$INSTDIR
+    etc/blobs/win32/skybrushd.exe >\$INSTDIR
     skybrushd-win32.py >\$INSTDIR
     skybrush.jsonc >\$INSTDIR
 

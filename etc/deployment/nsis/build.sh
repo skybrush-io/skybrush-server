@@ -9,7 +9,13 @@ BUILD_DIR="./build/nsis"
 WHEEL_DIR="./build/wheels"
 OUTPUT_DIR="./dist/windows"
 OBFUSCATE=1
-PYTHON_VERSION=3.7.9
+
+# We cannot update to Python 3.x until netifaces releases wheels for Python 3.9
+# and later. 3.8.10 is the latest versin from the 3.8.x series that works with
+# pyenv
+
+PYTHON_VERSION=3.9.9
+PYTHON_VERSION_SHORT=39
 
 ###############################################################################
 
@@ -48,7 +54,7 @@ trap "rm -f requirements.txt requirements-win32-*.txt installer.cfg" EXIT
 rm -rf "${WHEEL_DIR}"
 mkdir -p "${WHEEL_DIR}"
 .venv/bin/pip download -r requirements-win32-wheels.txt \
-	--platform win32 --python-version 37 --implementation cp --abi cp37m \
+	--platform win32 --python-version ${PYTHON_VERSION_SHORT} --implementation cp --abi cp${PYTHON_VERSION_SHORT} \
 	--only-binary :all: --no-deps \
 	--progress-bar pretty \
 	-d "${WHEEL_DIR}"
@@ -58,8 +64,8 @@ DISABLE_MAVNATIVE=1 .venv/bin/pip wheel -r requirements-win32-source.txt \
 	-w "${WHEEL_DIR}"
 
 # Some packages do not have official Windows wheels, get the ones from Christoph Gohlke
-rm "${WHEEL_DIR}"/crcmod*.whl
-rm "${WHEEL_DIR}"/pyrsistent*.whl
+rm -f "${WHEEL_DIR}"/crcmod*.whl
+rm -f "${WHEEL_DIR}"/pyrsistent*.whl
 cp etc/wheels/win32/*.whl "${WHEEL_DIR}"
 
 # TODO(ntamas): clean up unused MAVlink dialects somehow!
@@ -98,6 +104,7 @@ files=etc/blobs/win32/libusb-1.0.dll >\$INSTDIR\lib
 
 [Build]
 installer_name=../../${OUTPUT_DIR}/${INSTALLER_NAME}
+nsi_template=etc/deployment/nsis/template.nsi
 EOF
 
 # Now clean the build dir and invoke pynsist, but don't run makensis just yet;
@@ -108,7 +115,7 @@ rm -rf "${BUILD_DIR}"
 if [ $OBFUSCATE -gt 0 ]; then
   # Install the _exact_ Python version that we are going to use with
   # PyArmor. PyArmor absolutely needs a matching Python version when doing
-  # cross-platform builds
+  # cross-platform builds.
   pyenv install $PYTHON_VERSION --skip-existing
 
   # Create a virtualenv with the given Python version and install pyarmor in it
@@ -127,7 +134,12 @@ if [ $OBFUSCATE -gt 0 ]; then
   # Obfuscate the source. Note that we need to specify the current and the
   # target platform, but we _cannot_ use --advanced 2 here because the generated
   # installer wouldn't work on the target platform for some reason.
-  PYARMOR_PLATFORM=darwin.x86_64.0 TARGET_PLATFORM=windows.x86.0 etc/scripts/_apply-pyarmor-on-venv.sh ${PYARMOR_VENV}/bin/pyarmor "${BUILD_DIR}/pkgs" "${BUILD_DIR}/obf"
+  if [ `uname -m` == 'arm64' ]; then
+    LOCAL_CPU_ARCH=aarch64
+  else
+    LOCAL_CPU_ARCH=x86_64
+  fi
+  PYARMOR_PLATFORM=darwin.${LOCAL_CPU_ARCH}.0 TARGET_PLATFORM=windows.x86.0 etc/scripts/_apply-pyarmor-on-venv.sh ${PYARMOR_VENV}/bin/pyarmor "${BUILD_DIR}/pkgs" "${BUILD_DIR}/obf"
 fi
 
 # Okay, call makensis now

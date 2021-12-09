@@ -52,6 +52,7 @@ def main():
                     name = spec[: spec.index("=")]
                     if name in (
                         "lxml",
+                        "netifaces",  # does not have wheel for Python 3.9 yet
                         "pyobjc-core",
                         "pyobjc-framework-cocoa",
                         "pyobjc-framework-systemconfiguration",

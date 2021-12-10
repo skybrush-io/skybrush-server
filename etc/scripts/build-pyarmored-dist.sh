@@ -95,7 +95,7 @@ mkdir -p "${BUILD_DIR}/bin"
 mkdir -p "${BUILD_DIR}/lib"
 
 # Install dependencies
-"${PIP}" install -U pip wheel "pyarmor>=6.6.0" pyinstaller
+"${PIP}" install -U pip wheel "pyarmor>=7.1.0" pyinstaller
 "${PIP}" install -r requirements-main.txt -t "${BUILD_DIR}/lib"
 
 # lxml is huge and we don't need it; pymavlink brings it in mistakenly as a

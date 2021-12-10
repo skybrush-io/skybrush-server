@@ -6,7 +6,7 @@
 # instead.
 
 BUILD_DIR="./build/nsis"
-WHEEL_DIR="./build/wheels"
+WHEEL_DIR="./build/wheels-win32"
 OUTPUT_DIR="./dist/windows"
 OBFUSCATE=1
 
@@ -43,8 +43,7 @@ rm -f requirements*.txt
 rm -rf dist/"${PROJECT_NAME}"*.whl
 poetry build -f wheel
 
-# Generate requirements.txt files. We assume Python 3.7.9 because some packages
-# do not provide wheels for 3.8 yet
+# Generate requirements.txt files
 poetry export -f requirements.txt -o requirements.txt --without-hashes --with-credentials
 .venv/bin/python etc/deployment/nsis/collect-win32-deps.py ${PYTHON_VERSION}
 ls dist/`echo ${PROJECT_NAME} | sed -e 's/-/_/g'`*.whl >>requirements-win32-wheels.txt

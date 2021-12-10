@@ -27,7 +27,9 @@ fi
 
 # Generate the bundle for Linux
 if [ x$GENERATE_LINUX = x1 ]; then
-    VENV_DIR="/root/.pyenv/versions/3.7.9"
+    # Use Python 3.9 virtualenv because batonogov/pyinstaller-linux bundles
+    # Python 3.9.9
+    VENV_DIR="/root/.pyenv/versions/3.9.9"
 
     # Generate requirements.txt from poetry. Caveats:
     # - we cannot call the file requirements.txt because the Docker container would
@@ -48,7 +50,7 @@ if [ x$GENERATE_LINUX = x1 ]; then
         -v "${HOME}/.pyarmor:/root/.pyarmor/" \
         -e VENV_DIR="${VENV_DIR}" \
         --entrypoint /bin/bash \
-        toilal/pyinstaller-linux:python3-xenial \
+        batonogov/pyinstaller-linux:python_3.9 \
         -c "rm -rf /tmp/.wine-0 && apt-get update && apt-get remove -y python-pip && apt-get install -y curl git netbase && curl https://bootstrap.pypa.io/get-pip.py -o /tmp/get-pip.py && ${VENV_DIR}/bin/python /tmp/get-pip.py && etc/scripts/build-pyarmored-dist.sh --standalone ${VENV_DIR}"
 
     rm -f requirements.txt

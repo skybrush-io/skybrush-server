@@ -1216,7 +1216,7 @@ reference = "collmot"
 
 [[package]]
 name = "pyarmor"
-version = "7.1.2"
+version = "7.2.2"
 description = "A tool used to obfuscate python scripts, bind obfuscated scripts to fixed machine or expire obfuscated scripts."
 category = "dev"
 optional = false
@@ -2078,7 +2078,7 @@ reference = "collmot"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7"
-content-hash = "23bdd902739bff1aa6b0f75d8ade1c1cee344019742de2e8549c69bbd741e7ca"
+content-hash = "2b8411171bb43921b8acda117684ccdd2168f66ea9decfcbfe7d1f6d86fb7f1e"
 
 [metadata.files]
 adrenaline = [
@@ -2670,8 +2670,8 @@ py = [
     {file = "py-1.11.0.tar.gz", hash = "sha256:51c75c4126074b472f746a24399ad32f6053d1b34b68d2fa41e558e6f4a98719"},
 ]
 pyarmor = [
-    {file = "pyarmor-7.1.2-py2.py3-none-any.whl", hash = "sha256:96cff3d8d10ad3050867b960d4b07729e192d0cd8cc21b1b44ccaebaba84dba5"},
-    {file = "pyarmor-7.1.2.zip", hash = "sha256:6256f001329e7b4c2db278bc4f8df2a96a462558c351d6ce31ce1f4af1952471"},
+    {file = "pyarmor-7.2.2-py2.py3-none-any.whl", hash = "sha256:8a15869d66536a6f0ace219d0daef948dc38609fb15b10de4181b0ae143fe0f2"},
+    {file = "pyarmor-7.2.2.zip", hash = "sha256:5cf3bca02e95208276f0e69e9e89810d85a9d5da29f4b6e7dccdd931068be6a0"},
 ]
 pycparser = [
     {file = "pycparser-2.21-py2.py3-none-any.whl", hash = "sha256:8ee45429555515e1f6b185e78100aea234072576aa43ab53aefcae078162fca9"},

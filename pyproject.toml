@@ -64,7 +64,7 @@ pytest-cov = "^3.0.0"
 pytest-trio = ">=0.6.0"
 click-man = ">=0.4.1"
 pyinstaller = {version = "^4.0", extras = ["encryption"]}
-pyarmor = "^7.1.2"
+pyarmor = "^7.2.2"
 pynsist = "^2.7"
 
 [tool.poetry.scripts]

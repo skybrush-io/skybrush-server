@@ -78,8 +78,6 @@ else
   echo "Poetry not installed; we assume that the requirements are already prepared in requirements-main.txt"
 fi
 
-cat requirements-main.txt
-
 # Create virtual environment if it doesn't exist yet
 if [ ! -d "${VENV_DIR}" ]; then
   python3 -m venv "${VENV_DIR}"

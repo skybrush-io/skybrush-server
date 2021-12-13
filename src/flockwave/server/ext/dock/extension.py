@@ -1,21 +1,18 @@
 from contextlib import ExitStack
+from operator import attrgetter
 from tinyrpc.dispatch import RPCDispatcher
 from tinyrpc.protocols.msgpackrpc import MSGPACKRPCProtocol
 from trio import open_nursery, sleep_forever
 from trio.abc import Stream
-from typing import Optional
 
 from flockwave.connections import create_connection, StreamWrapperConnection
 from flockwave.channels import MessageChannel
 from flockwave.listeners import create_listener
 from flockwave.parsers.rpc import RPCMessage
-from flockwave.server.message_hub import MessageHub
+from flockwave.server.message_hub import create_generic_INF_message_handler
 from flockwave.server.model import ConnectionPurpose
-from flockwave.server.model.client import Client
-from flockwave.server.model.messages import FlockwaveMessage, FlockwaveResponse
 from flockwave.server.model.object import registered
 from flockwave.server.model.uav import PassiveUAVDriver
-from flockwave.server.registries import find_in_registry
 
 from ..base import UAVExtensionBase
 
@@ -42,13 +39,15 @@ def create_rpc_message_channel(stream: Stream) -> MessageChannel[RPCMessage]:
 class DockExtension(UAVExtensionBase):
     """Extension that implements support for CollMot Robotics' docking station."""
 
+    _id_format: str
+
     def __init__(self):
         """Constructor."""
-        super(DockExtension, self).__init__()
+        super().__init__()
 
         self._connection = create_connection("dummy")
 
-        self._id_format = None
+        self._id_format = None  # type: ignore
         self._current_stream = None
 
     def _create_driver(self):
@@ -66,6 +65,9 @@ class DockExtension(UAVExtensionBase):
             stream: a Trio socket stream that we can use to communicate with the
                 client
         """
+        assert self.app is not None
+        assert self.log is not None
+
         if self._current_stream is not None:
             self.log.warn(
                 "Only one connection is supported; rejecting connection attempt"
@@ -109,42 +111,20 @@ class DockExtension(UAVExtensionBase):
 
             self._current_stream = None
 
-    def handle_DOCK_INF(
-        self, message: FlockwaveMessage, sender: Client, hub: MessageHub
-    ):
-        """Handles incoming DOCK-INF messages.
-
-        Parameters:
-            message: the message that was received
-            sender: the client that sent the message
-            hub: the message hub that handles the message
-        """
-        statuses = {}
-
-        dock_ids = message.get_ids()
-
-        body = {"status": statuses, "type": "DOCK-INF"}
-        response = hub.create_response_or_notification(
-            body=body, in_response_to=message
-        )
-
-        for dock_id in dock_ids:
-            dock = self._find_dock_by_id(dock_id, response)
-            if dock:
-                statuses[dock_id] = dock.status.json
-
-        return response
-
     async def run(self, app, configuration, logger):
         listener = configuration.get("listener")
 
         async with open_nursery() as nursery:
             with ExitStack() as stack:
                 # Register message handlers for dock-related messages
+                handle_DOCK_INF = create_generic_INF_message_handler(
+                    app.object_registry,
+                    filter=is_dock,
+                    getter=attrgetter("status"),
+                    description="beacon",
+                )
                 stack.enter_context(
-                    app.message_hub.use_message_handlers(
-                        {"DOCK-INF": self.handle_DOCK_INF}
-                    )
+                    app.message_hub.use_message_handlers({"DOCK-INF": handle_DOCK_INF})
                 )
 
                 stack.enter_context(registered("dock", Dock))
@@ -172,28 +152,6 @@ class DockExtension(UAVExtensionBase):
                         await sleep_forever()
                 else:
                     await sleep_forever()
-
-    def _find_dock_by_id(
-        self, dock_id: str, response: Optional[FlockwaveResponse] = None
-    ) -> Optional[Dock]:
-        """Finds the dock with the given ID in the object registry or registers
-        a failure in the given response object if there is no dock with the
-        given ID.
-
-        Parameters:
-            dock_id: the ID of the dock to find
-            response: the response in which the failure can be registered
-
-        Returns:
-            the dock with the given ID or ``None`` if there is no such dock
-        """
-        return find_in_registry(
-            self.app.object_registry,
-            dock_id,
-            predicate=is_dock,
-            response=response,
-            failure_reason="No such dock",
-        )
 
 
 construct = DockExtension

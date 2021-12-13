@@ -25,11 +25,11 @@ from trio import (
 )
 from typing import (
     Any,
+    AsyncIterator,
     Awaitable,
     Callable,
     DefaultDict,
     Dict,
-    Generator,
     Generic,
     Iterable,
     Iterator,
@@ -52,7 +52,7 @@ from .model import (
     FlockwaveNotification,
     FlockwaveResponse,
 )
-from .registries import ChannelTypeRegistry, ClientRegistry
+from .registries import ChannelTypeRegistry, ClientRegistry, Registry, find_in_registry
 
 __all__ = (
     "ConnectionStatusMessageRateLimiter",
@@ -458,22 +458,29 @@ class MessageHub:
         handled = await self._feed_message_to_handlers(decoded_message, sender)
 
         if not handled:
-            log.warning(
-                "Unhandled message: {0.body[type]}".format(decoded_message),
-                extra={"id": decoded_message.id},
-            )
+            message_type = decoded_message.body.get("type")
+            if message_type and message_type not in ("DOCK-INF", "BCN-INF"):
+                # Do not log DOCK-INF and BCN-INF; these may come from Skybrush
+                # Live but we do not want to freak out the user watching the
+                # server logs
+                log.warning(
+                    "Unhandled message: {0.body[type]}".format(decoded_message),
+                    extra={"id": decoded_message.id},
+                )
+
             ack = self.reject(
                 decoded_message,
                 reason="No handler managed to parse this message in the server",
             )
             await self.send_message(ack, to=sender)
+
             return False
 
         return True
 
     async def iterate(
         self, *args
-    ) -> Generator[Tuple[Dict[str, Any], Client, Callable[[Dict], None]], None, None]:
+    ) -> AsyncIterator[Tuple[Dict[str, Any], Client, Callable[[Dict], None]]]:
         """Returns an async generator that yields triplets consisting of
         the body of an incoming message, its sender and an appropriate function
         that can be used to respond to that message.
@@ -991,6 +998,62 @@ class MessageHub:
         if response:
             await self.send_message(response, to=to, in_response_to=in_response_to)
         return response
+
+
+def create_generic_INF_message_handler(
+    registry: Registry[T],
+    filter: Optional[Callable[[T], bool]] = None,
+    getter: Optional[Callable[[Any], Any]] = None,
+    description: str = "item",
+) -> Callable[[FlockwaveMessage, Client, MessageHub], FlockwaveResponse]:
+    """Creates a standard SOMETHING-INF-style Flockwave message handler that
+    looks up objects from an object registry by ID and returns their basic
+    status information in a response.
+
+    It is assumed that the incoming message contains a single `ids` key that
+    is an array of strings, each array representing an ID of an object to look
+    up. It is also assumed that the response body is shaped like a typical
+    ...-INF message response according to the Flockwave specs.
+
+    Returns the message handler that can be registered in the message hub.
+
+    Parameters:
+        registry: the registry in which the object is being looked up
+        filter: a predicate that the item from the registry matching a given
+            ID will be called with. Only items for which the predicate returns
+            `True` are allowed to be returned to the user; items for which the
+            predicate returns `False` are treated as nonexistent
+        getter: a function that takes a matched item from the registry and
+            extracts the status information to return
+        description: a textual, human-readable description of the item type
+            being looked up in this function. Used in error messages. Must be
+            lowercase.
+    """
+
+    def handler(message: FlockwaveMessage, sender: Client, hub: MessageHub):
+        statuses = {}
+        body = {"status": statuses}
+        response = hub.create_response_or_notification(
+            body=body, in_response_to=message
+        )
+
+        for item_id in message.get_ids():
+            item = find_in_registry(
+                registry,
+                item_id,
+                predicate=filter,
+                response=response,
+                failure_reason=f"No such {description}",
+            )
+            if item:
+                statuses[item_id] = getter(item) if getter else item  # type: ignore
+
+        return response
+
+    return handler
+
+
+##############################################################################
 
 
 class RateLimiter(metaclass=ABCMeta):

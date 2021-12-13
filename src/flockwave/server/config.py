@@ -29,6 +29,7 @@ COMMAND_EXECUTION_MANAGER = {"timeout": 90}
 EXTENSIONS = {
     "auth": {},
     "auth_basic": {"enabled": False, "passwords": {"user@domain.xyz": "password"}},
+    "beacon": {"enabled": False},
     "cascade_demo": {
         "enabled": False,
         # Farkashegy

@@ -25,7 +25,7 @@ class DockStatusInfo(TimestampMixin, metaclass=ModelMeta):
         """Constructor.
 
         Parameters:
-            id: ID of the UAV
+            id: ID of the docking station
             timestamp: time when the status information was received. ``None``
                 means to use the current date and time. Integers represent
                 milliseconds elapsed since the UNIX epoch.

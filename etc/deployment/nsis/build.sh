@@ -6,13 +6,9 @@
 # instead.
 
 BUILD_DIR="./build/nsis"
-WHEEL_DIR="./build/wheels-win32"
+WHEEL_DIR="./build/wheels/win32"
 OUTPUT_DIR="./dist/windows"
 OBFUSCATE=1
-
-# We cannot update to Python 3.x until netifaces releases wheels for Python 3.9
-# and later. 3.8.10 is the latest versin from the 3.8.x series that works with
-# pyenv
 
 PYTHON_VERSION=3.9.9
 PYTHON_VERSION_SHORT=39
@@ -49,7 +45,7 @@ poetry export -f requirements.txt -o requirements.txt --without-hashes --with-cr
 ls dist/`echo ${PROJECT_NAME} | sed -e 's/-/_/g'`*.whl >>requirements-win32-wheels.txt
 trap "rm -f requirements.txt requirements-win32-*.txt installer.cfg" EXIT
 
-# Collect all wheels and stuff into a folder
+# Collect all wheels into a folder
 rm -rf "${WHEEL_DIR}"
 mkdir -p "${WHEEL_DIR}"
 .venv/bin/pip download -r requirements-win32-wheels.txt \
@@ -62,7 +58,7 @@ DISABLE_MAVNATIVE=1 .venv/bin/pip wheel -r requirements-win32-source.txt \
 	--progress-bar pretty \
 	-w "${WHEEL_DIR}"
 
-# Some packages do not have official Windows wheels, get the ones from Christoph Gohlke
+# Some packages do not have official Windows wheels, use the ones from Christoph Gohlke
 rm -f "${WHEEL_DIR}"/crcmod*.whl
 rm -f "${WHEEL_DIR}"/pyrsistent*.whl
 cp etc/wheels/win32/*.whl "${WHEEL_DIR}"

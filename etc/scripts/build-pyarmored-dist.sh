@@ -19,6 +19,7 @@ REPO_ROOT="${SCRIPT_ROOT}/../.."
 STANDALONE=0
 KEEP_STAGING_FOLDER=0
 BUILD_TARBALL=1
+FROM_WHEELHOUSE=
 
 while [ "x$1" != x ]; do
   if [ "x$1" = "x--standalone" ]; then
@@ -30,6 +31,10 @@ while [ "x$1" != x ]; do
   elif [ "x$1" = "x--no-tarball" ]; then
     BUILD_TARBALL=0
     shift
+  elif [ "x$1" = "x--wheelhouse" ]; then
+    FROM_WHEELHOUSE="$2"
+    shift
+    shift
   else
     VENV_DIR="$1"
     shift
@@ -39,7 +44,7 @@ done
 cd "${REPO_ROOT}"
 
 # Use GNU tar if available; useful on macOS
-if [ "$(uname)" == "Darwin" ]; then
+if [ "$(uname)" = "Darwin" ]; then
   TAR=gtar
 else
   TAR=tar
@@ -58,7 +63,11 @@ VERSION=`cat pyproject.toml|grep ^version|head -1|cut -d '"' -f 2`
 
 POETRY=`which poetry 2>/dev/null || true`
 
-if [ "x${POETRY}" != x ]; then
+if [ "x${FROM_WHEELHOUSE}" != x ]; then
+  # Caller has prepared all the wheels in a folder, use those
+  ls "${FROM_WHEELHOUSE}"/*.whl >requirements-main.txt
+  ls "${FROM_WHEELHOUSE}"/*.tar* >>requirements-main.txt
+elif [ "x${POETRY}" != x ]; then
   # Remove all requirements.txt files, we don't use them, only poetry
   rm -f requirements*.txt
 
@@ -93,8 +102,13 @@ mkdir -p "${BUILD_DIR}/bin"
 mkdir -p "${BUILD_DIR}/lib"
 
 # Install dependencies
-"${PIP}" install -U pip wheel "pyarmor>=7.1.0" pyinstaller
-"${PIP}" install -r requirements-main.txt -t "${BUILD_DIR}/lib"
+"${PIP}" install -U pip wheel "pyarmor>=7.2.2" "pyinstaller>=4.7"
+
+if [ "x$FROM_WHEELHOUSE" != x ]; then
+  "${PIP}" install --no-deps --no-index --find-links="${FROM_WHEELHOUSE}"/ -r requirements-main.txt -t "${BUILD_DIR}/lib"
+else
+  "${PIP}" install -r requirements-main.txt -t "${BUILD_DIR}/lib"
+fi
 
 # lxml is huge and we don't need it; pymavlink brings it in mistakenly as a
 # dependency

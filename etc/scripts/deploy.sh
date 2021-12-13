@@ -1,7 +1,7 @@
 #!/bin/bash
 #
-# Builds single-file distributions of the Flockwave server for Windows
-# and Linux (amd64) using Docker.
+# Builds single-file distributions of the Flockwave server for Windows,
+# Linux (amd64) and macOS (hopefully both Intel and ARM).
 
 SCRIPT_ROOT=`dirname $0`
 REPO_ROOT="${SCRIPT_ROOT}/../.."
@@ -58,19 +58,8 @@ fi
 
 # Generate the bundle for macOS
 if [ x$GENERATE_MACOS = x1 ]; then
-    # We assume that we are running on macOS
-    if [ ! -d /Applications ]; then
-        echo "macOS version can only be built on macOS"
-        exit 1
-    fi
-
-    VENV_DIR=".venv"
-
-    rm -rf dist/macos
-    poetry install
-    etc/scripts/build-pyarmored-dist.sh --standalone --keep-staging --no-tarball ${VENV_DIR}
-    etc/deployment/darwin-x64/build.sh build/pyarmor/staging 1.8.0
-    rm -rf build/pyarmor/staging
+    rm -rf dist/mac
+    etc/deployment/mac/build.sh
 fi
 
 # Generate the bundle for Windows

@@ -44,6 +44,7 @@ async def run(app, configuration, logger):
     """Runs the extension."""
     global is_public
 
+    frontend = app.import_api("frontend")
     http_server = app.import_api("http_server")
     path = configuration.get("route", "/webui")
     is_public = bool(configuration.get("public"))
@@ -52,7 +53,7 @@ async def run(app, configuration, logger):
         stack.enter_context(overridden(globals(), app=app, log=logger))
         stack.enter_context(http_server.mounted(blueprint, path=path))
         stack.enter_context(
-            http_server.proposed_index_page("webui.index", priority=-100)
+            frontend.use_link_on_front_page(f"{blueprint.name}.index", "Configure")
         )
         await sleep_forever()
 
@@ -292,6 +293,6 @@ async def reload_extension(name):
     return await _to_json(reload)
 
 
-dependencies = ("http_server",)
+dependencies = ("frontend", "http_server")
 description = "Adds a web-based configuration user interface to the server."
 schema = {}

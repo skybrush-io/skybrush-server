@@ -40,7 +40,7 @@ class Route:
         return self.priority > other.priority
 
 
-class RoutingMiddleware(object):
+class RoutingMiddleware:
     """Simple routing middleware that acts as a top-level ASGI web application
     and forwards incoming requests to the appropriate sub-application.
 
@@ -95,7 +95,12 @@ class RoutingMiddleware(object):
         if path is not None and not path.endswith("/"):
             path = path + "/"
 
-        route = Route(app, scopes=frozenset(scopes), path=path, priority=priority)
+        route = Route(
+            app,
+            scopes=frozenset(scopes) if scopes is not None else None,
+            path=path,
+            priority=priority,
+        )
         insort_left(self._routes, route)
 
         return partial(self._remove, route)

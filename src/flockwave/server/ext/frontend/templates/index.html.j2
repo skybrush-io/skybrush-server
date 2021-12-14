@@ -14,6 +14,13 @@
         <div class="cover-page-content">
           <h1>Skybrush Server</h1>
           <p>Server is up and running.</p>
+          {%- if links %}
+          <div class="button-bar">
+            {%- for link in links %}
+              <a href="{{ link.url }}" class="button">{{ link.title }}</a>
+            {% endfor -%}
+          </div>
+          {% endif -%}
         </div>
       </div>
     </body>

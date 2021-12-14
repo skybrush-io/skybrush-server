@@ -2,6 +2,6 @@
 served over HTTP.
 """
 
-from .extension import dependencies, description, load, schema
+from .extension import dependencies, description, exports, load, schema
 
-__all__ = ("dependencies", "description", "load", "schema")
+__all__ = ("dependencies", "description", "exports", "load", "schema")

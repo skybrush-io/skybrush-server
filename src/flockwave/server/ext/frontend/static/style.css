@@ -1,7 +1,7 @@
-@import url('https://fonts.googleapis.com/css?family=Roboto:300,400&display=swap');
+@import url("https://fonts.googleapis.com/css?family=Roboto:300,400&display=swap");
 
 .cover-page {
-  background: #ECEFF1;
+  background: #eceff1;
   font-family: "Roboto", "Open Sans", "SF UI Text", Arial, sans-serif;
   font-size: 16px;
   height: 100%;
@@ -10,15 +10,15 @@
   z-index: 10000;
 
   -webkit-touch-callout: none; /* iOS Safari */
-    -webkit-user-select: none; /* Safari */
-     -khtml-user-select: none; /* Konqueror HTML */
-       -moz-user-select: none; /* Firefox */
-        -ms-user-select: none; /* Internet Explorer/Edge */
-            user-select: none;
+  -webkit-user-select: none; /* Safari */
+  -khtml-user-select: none; /* Konqueror HTML */
+  -moz-user-select: none; /* Firefox */
+  -ms-user-select: none; /* Internet Explorer/Edge */
+  user-select: none;
 }
 
 .cover-page-content {
-  color: #607D8B;
+  color: #607d8b;
   position: absolute;
   left: 50%;
   top: 50%;
@@ -26,9 +26,53 @@
 }
 
 .cover-page h1 {
-  color: #455A64;
+  color: #455a64;
   font-size: 32px;
   font-weight: 200;
   margin: 0.25em 0;
-  text-shadow: 0 1px 1px rgba(0,0,0,0.3);
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.3);
+}
+
+.button-bar {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  margin: 1.75rem 0;
+}
+
+.button-bar .button {
+  background-color: #037de8;
+  border: 1px solid #037de8;
+  border-radius: 0.25rem;
+  color: white;
+  display: inline-block;
+  font-size: 1rem;
+  line-height: 1.75rem;
+  margin: 0 0.4375rem;
+  padding: 0.4375rem 1.375rem;
+  text-align: center;
+  text-decoration: none;
+  user-select: none;
+  vertical-align: middle;
+
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.45);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+
+  transition: color 0.15s ease-in-out, background-color 0.15s ease-in-out,
+    border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out,
+    transform 0.15s ease-in-out;
+}
+
+.button-bar .button:hover {
+  background-color: #036ecc;
+  border-color: #036ecc;
+  text-decoration: none;
+}
+
+.button-bar .button:active {
+  background-color: #0464b9;
+  border-color: #0464b9;
+  box-shadow: 0 0 2px rgba(0, 0, 0, 0.6);
+  text-decoration: none;
+  transform: translateY(1px);
 }

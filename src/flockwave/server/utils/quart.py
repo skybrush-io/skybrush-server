@@ -135,5 +135,5 @@ def make_blueprint(name, import_name, *args, **kwds) -> Blueprint:
     if "root_path" not in kwds:
         kwds["root_path"] = _get_quart_root_path_of(name)
 
-    cls = PyOxidizerBlueprint if True or is_oxidized() else Blueprint
+    cls = PyOxidizerBlueprint if is_oxidized() else Blueprint
     return cls(name, import_name, *args, **kwds)

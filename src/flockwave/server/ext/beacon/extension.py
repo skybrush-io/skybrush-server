@@ -32,3 +32,4 @@ class BeaconExtension(ExtensionBase):
 
 construct = BeaconExtension
 description = "Beacon objects"
+schema = {}

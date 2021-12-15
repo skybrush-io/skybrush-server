@@ -8,13 +8,15 @@ docker run --rm -it --name=gpsd -p 2947:2947 -p 8888:8888 knowhowlab/gpsd-nmea-s
 
 from contextlib import ExitStack
 from functools import partial
+from json import loads
 from pynmea2 import parse as parse_nmea
+from typing import Any, Dict, Optional
 
 from flockwave.gps.vectors import GPSCoordinate
 from flockwave.channels import ParserChannel
-from flockwave.connections import create_connection, Connection
+from flockwave.channels.types import Parser
+from flockwave.connections import create_connection, ReadableConnection
 from flockwave.parsers import create_line_parser
-from flockwave.parsers.json import create_json_parser
 from flockwave.server.errors import NotSupportedError
 from flockwave.server.model import ConnectionPurpose
 from flockwave.server.model.uav import PassiveUAVDriver
@@ -23,10 +25,11 @@ from flockwave.spec.ids import make_valid_object_id
 
 from .base import UAVExtensionBase
 
-decode_json = create_json_parser()
+#: Type alias for the unified GPS-related message format used by this extension
+GPSMessage = Dict[str, Any]
 
 
-def create_gps_connection(connection, format=None):
+def create_gps_connection(connection: str, format: Optional[str] = None):
     """Creates a connection from a connection specification object found
     in the configuration of the extension. THe ``connection`` and ``format``
     keys of the configuration object must be passed to this function.
@@ -89,21 +92,23 @@ def create_gps_connection(connection, format=None):
     return create_connection(connection), parser
 
 
-def parse_incoming_gpsd_message(message):
+def parse_incoming_gpsd_message(message: bytes) -> GPSMessage:
     """Parses an incoming message from a `gpsd` device and translates its
     content to a standard form that will be used by the extension.
 
     Parameters:
-        message (bytes): a full message from `gpsd`, in JSON format
+        message: a full message from `gpsd`, in JSON format
 
     Returns:
-        dict: a dictionary mapping keys like `device`, `position`, `heading`
-            to the parsed `gpsd` device name, position data and heading
-            (course) information
+        a dictionary mapping keys like `device`, `position` and `heading` to the
+        parsed `gpsd` device name, position data and heading (course) information
     """
-    data = decode_json(message)
-    cls = data.get("class", None)
+    data = loads(message.decode("ascii"))
     result = {}
+    if not isinstance(data, dict):
+        return result
+
+    cls = data.get("class", None)
 
     if cls == "VERSION":
         result.update(version=data.get("release"))
@@ -119,16 +124,16 @@ def parse_incoming_gpsd_message(message):
     return result
 
 
-def parse_incoming_nmea_message(message):
+def parse_incoming_nmea_message(message: bytes) -> GPSMessage:
     """Parses a raw incoming NMEA message and translates its content to a
     standard form that will be used by the extension.
 
     Parameters:
-        message (bytes): a full NMEA message
+        message: a full NMEA message
 
     Returns:
-        dict: a dictionary mapping keys like `position`, `heading` to position
-            data and heading (course) information
+        a dictionary mapping keys like `position` and `heading` to position data
+        and heading (course) information
     """
     data = parse_nmea(message.decode("ascii"))
     result = {}
@@ -149,11 +154,16 @@ class GPSExtension(UAVExtensionBase):
     devices.
     """
 
+    _device_to_beacon_id: Dict[str, str]
+    _id_format: str
+
+    driver: PassiveUAVDriver
+
     def __init__(self):
         """Constructor."""
-        super(GPSExtension, self).__init__()
-        self._id_format = None
-        self._device_to_uav_id = {}
+        super().__init__()
+        self._id_format = None  # type: ignore
+        self._device_to_beacon_id = {}
 
     def _create_driver(self):
         return PassiveUAVDriver()
@@ -162,7 +172,9 @@ class GPSExtension(UAVExtensionBase):
         """Loads the extension."""
         self._id_format = configuration.get("id_format", "GPS:{0}")
 
-    async def handle_gps_messages(self, connection: Connection, parser):
+    async def handle_gps_messages(
+        self, connection: ReadableConnection, parser: Parser[bytes, GPSMessage]
+    ) -> None:
         """Worker task that reads incoming messages from the given connection,
         parses them using the given parser and then processes them to update the
         status of the beacons managed by this extension.
@@ -176,26 +188,32 @@ class GPSExtension(UAVExtensionBase):
             async for message in channel:
                 if "version" in message:
                     # Ask gpsd to start streaming status data
-                    await connection.write(b'?WATCH={"enable":true,"json":true}\n')
+                    await connection.write(b'?WATCH={"enable":true,"json":true}\n')  # type: ignore
                 elif "device" in message:
                     self._handle_single_gps_update(message)
 
-    def _handle_single_gps_update(self, message):
-        uav_id = self._get_uav_id(message["device"])
+    def _handle_single_gps_update(self, message: GPSMessage) -> None:
+        """Handles a single GPS status update message."""
+        beacon_id = self._get_beacon_id(message["device"])
 
         try:
-            uav = self.driver.get_or_create_uav(uav_id)
+            uav = self.driver.get_or_create_uav(beacon_id)
         except RegistryFull:
             return
 
         uav.update_status(position=message["position"], heading=message["heading"])
-        self.app.request_to_send_UAV_INF_message_for([uav_id])
 
-    def _get_uav_id(self, device_id):
-        result = self._device_to_uav_id.get(device_id)
+        if self.app:
+            self.app.request_to_send_UAV_INF_message_for([beacon_id])
+
+    def _get_beacon_id(self, device_id: str) -> str:
+        """Returns the global beacon object ID (registered in the object registry
+        of the app) from the local device ID.
+        """
+        result = self._device_to_beacon_id.get(device_id)
         if result is None:
             result = make_valid_object_id(self._id_format.format(device_id))
-            self._device_to_uav_id[device_id] = result
+            self._device_to_beacon_id[device_id] = result
         return result
 
     async def run(self, app, configuration, logger):
@@ -207,7 +225,10 @@ class GPSExtension(UAVExtensionBase):
         with ExitStack() as stack:
             stack.enter_context(
                 app.connection_registry.use(
-                    connection, "GPS", "GPS link", purpose=ConnectionPurpose.gps
+                    connection,
+                    "GPS",
+                    "GPS link",
+                    purpose=ConnectionPurpose.gps,  # type: ignore
                 )
             )
 
@@ -217,6 +238,7 @@ class GPSExtension(UAVExtensionBase):
 
 
 construct = GPSExtension
+dependencies = ("beacon",)
 description = "External GPS receivers as beacons"
 schema = {
     "properties": {

@@ -569,8 +569,8 @@ class UAVDriver(metaclass=ABCMeta):
         *,
         transport: Optional[TransportOptions] = None,
     ):
-        """Asks the driver to send a reset signal to the given UAVs in order
-        to request them to hover in place as soon as possible.
+        """Asks the driver to send a signal to the given UAVs in order to
+        request them to hover in place as soon as possible.
 
         Typically, you don't need to override this method when implementing
         a driver; override ``_send_hover_signal_single()`` and optionally

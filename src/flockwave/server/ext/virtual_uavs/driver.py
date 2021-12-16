@@ -461,6 +461,8 @@ class VirtualUAV(UAVBase):
             # Do nothing
             return
 
+        self.stop_trajectory()
+
         self._target_xyz = self._position_xyz.copy()
         self.state = VirtualUAVState.AIRBORNE
 

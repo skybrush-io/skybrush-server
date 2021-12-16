@@ -73,10 +73,10 @@ EXTENSIONS = {
     },
     "frontend": {},
     "gps": {
-        # "connection": "/dev/cu.usbmodem1411",
         "connection": "gpsd",
         "enabled": False,
-        "id_format": "BEACON:{0}",
+        "format": "auto",
+        "id_format": "GPS:{0}",
     },
     "hotplug": {},
     "http": {},

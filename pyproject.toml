@@ -42,7 +42,7 @@ flockwave-flockctrl = "^2.1.0"
 flockwave-gps = "^2.1.0"
 flockwave-logger = "^1.7.0"
 flockwave-net = {extras = ["async"], version = "^2.0.2"}
-flockwave-parsers = "^1.2.0"
+flockwave-parsers = "^2.0.0"
 flockwave-spec = "^1.57.0"
 pyledctrl = "^3.1.0"
 aiocflib = "^2.2.0"

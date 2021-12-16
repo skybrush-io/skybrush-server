@@ -5,10 +5,19 @@ string identifiers.
 from __future__ import annotations
 
 from abc import ABCMeta, abstractmethod, abstractproperty
-from typing import Callable, Dict, Generic, Iterable, Optional, TypeVar, TYPE_CHECKING
+from typing import (
+    Callable,
+    Dict,
+    Generic,
+    Iterable,
+    Optional,
+    TypeVar,
+    TYPE_CHECKING,
+    Union,
+)
 
 if TYPE_CHECKING:
-    from flockwave.server.model.messages import FlockwaveResponse
+    from flockwave.server.model.messages import FlockwaveNotification, FlockwaveResponse
 
 
 __all__ = ("Registry", "RegistryBase")
@@ -155,7 +164,7 @@ def find_in_registry(
     entry_id: str,
     *,
     predicate: Optional[Callable[[T], bool]] = None,
-    response: Optional["FlockwaveResponse"] = None,
+    response: Optional[Union["FlockwaveNotification", "FlockwaveResponse"]] = None,
     failure_reason: Optional[str] = None,
 ) -> Optional[T]:
     """Finds an entry in the given registry with the given ID or
@@ -190,7 +199,7 @@ def find_in_registry(
 
     if not exists:
         if hasattr(response, "add_error"):
-            response.add_error(entry_id, failure_reason)
+            response.add_error(entry_id, failure_reason)  # type: ignore
         return None
     else:
         return entry

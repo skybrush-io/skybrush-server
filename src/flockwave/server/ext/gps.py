@@ -6,24 +6,30 @@ Simulated GPS data can be generated in a throwaway Docker container with:
 docker run --rm -it --name=gpsd -p 2947:2947 -p 8888:8888 knowhowlab/gpsd-nmea-simulator
 """
 
+from __future__ import annotations
+
 from contextlib import ExitStack
 from functools import partial
 from json import loads
 from pynmea2 import parse as parse_nmea
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, TYPE_CHECKING
 
 from flockwave.gps.vectors import GPSCoordinate
 from flockwave.channels import ParserChannel
 from flockwave.channels.types import Parser
-from flockwave.connections import create_connection, ReadableConnection
+from flockwave.connections import create_connection, RWConnection
+from flockwave.ext.manager import ExtensionAPIProxy
 from flockwave.parsers import create_line_parser
 from flockwave.server.errors import NotSupportedError
 from flockwave.server.model import ConnectionPurpose
 from flockwave.server.model.uav import PassiveUAVDriver
-from flockwave.server.registries.errors import RegistryFull
 from flockwave.spec.ids import make_valid_object_id
 
 from .base import UAVExtensionBase
+
+if TYPE_CHECKING:
+    from flockwave.server.app import SkybrushServer
+    from flockwave.server.ext.beacon.model import Beacon
 
 #: Type alias for the unified GPS-related message format used by this extension
 GPSMessage = Dict[str, Any]
@@ -154,9 +160,11 @@ class GPSExtension(UAVExtensionBase):
     devices.
     """
 
+    _beacon_api: ExtensionAPIProxy
     _device_to_beacon_id: Dict[str, str]
     _id_format: str
 
+    app: "SkybrushServer"
     driver: PassiveUAVDriver
 
     def __init__(self):
@@ -173,7 +181,7 @@ class GPSExtension(UAVExtensionBase):
         self._id_format = configuration.get("id_format", "GPS:{0}")
 
     async def handle_gps_messages(
-        self, connection: ReadableConnection, parser: Parser[bytes, GPSMessage]
+        self, connection: RWConnection[bytes, bytes], parser: Parser[bytes, GPSMessage]
     ) -> None:
         """Worker task that reads incoming messages from the given connection,
         parses them using the given parser and then processes them to update the
@@ -188,7 +196,7 @@ class GPSExtension(UAVExtensionBase):
             async for message in channel:
                 if "version" in message:
                     # Ask gpsd to start streaming status data
-                    await connection.write(b'?WATCH={"enable":true,"json":true}\n')  # type: ignore
+                    await connection.write(b'?WATCH={"enable":true,"json":true}\n')
                 elif "device" in message:
                     self._handle_single_gps_update(message)
 
@@ -196,15 +204,14 @@ class GPSExtension(UAVExtensionBase):
         """Handles a single GPS status update message."""
         beacon_id = self._get_beacon_id(message["device"])
 
-        try:
-            uav = self.driver.get_or_create_uav(beacon_id)
-        except RegistryFull:
-            return
+        beacon: Optional[Beacon] = self._beacon_api.find_by_id(beacon_id)
+        if not beacon:
+            beacon = self._beacon_api.add(beacon_id)
+            assert beacon is not None
 
-        uav.update_status(position=message["position"], heading=message["heading"])
-
-        if self.app:
-            self.app.request_to_send_UAV_INF_message_for([beacon_id])
+        beacon.update_status(
+            position=message["position"], heading=message["heading"], active=True
+        )
 
     def _get_beacon_id(self, device_id: str) -> str:
         """Returns the global beacon object ID (registered in the object registry
@@ -216,11 +223,13 @@ class GPSExtension(UAVExtensionBase):
             self._device_to_beacon_id[device_id] = result
         return result
 
-    async def run(self, app, configuration, logger):
+    async def run(self, app: "SkybrushServer", configuration, logger):
         connection, parser = create_gps_connection(
             connection=configuration.get("connection", "gpsd"),
             format=configuration.get("format", "auto"),
         )
+
+        self._beacon_api = app.import_api("beacon")
 
         with ExitStack() as stack:
             stack.enter_context(

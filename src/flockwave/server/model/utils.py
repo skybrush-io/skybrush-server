@@ -1,10 +1,10 @@
 from base64 import b64decode, b64encode
 from enum import Enum, IntEnum
-from typing import Callable, Type, Union
+from typing import Callable, Optional, Type
 
 from .metamagic import MapperPair
 
-__all__ = ("as_base64", "coerce", "enum_to_json", "scaled_by")
+__all__ = ("as_base64", "coerce", "enum_to_json", "optionally_scaled_by", "scaled_by")
 
 
 def as_base64() -> MapperPair:
@@ -68,17 +68,33 @@ def enum_to_json(type: Type[Enum]) -> MapperPair:
     return from_json, to_json
 
 
-def scaled_by(factor: Union[int, float]) -> MapperPair:
+def scaled_by(factor: float) -> MapperPair:
     """Returns a property mapper function pair that can be used when the value
     of a numeric property is scaled up by a factor and then cast to an integer
     when it is stored in JSON.
     """
     factor = float(factor)
 
-    def from_json(value: Union[int, float]) -> float:
+    def from_json(value: float) -> float:
         return value / factor
 
     def to_json(value: float) -> int:
         return int(round(value * factor))
+
+    return from_json, to_json
+
+
+def optionally_scaled_by(factor: float) -> MapperPair:
+    """Returns a property mapper function pair that can be used when the value
+    of a numeric property is scaled up by a factor and then cast to an integer
+    when it is stored in JSON. Also handles None transparently.
+    """
+    factor = float(factor)
+
+    def from_json(value: Optional[float]) -> Optional[float]:
+        return value / factor if value is not None else None
+
+    def to_json(value: Optional[float]) -> Optional[int]:
+        return int(round(value * factor)) if value is not None else None
 
     return from_json, to_json

@@ -1,5 +1,7 @@
 {% extends "_layout.html.j2" %}
 
+{% set notification_types = ['BCN-INF', 'UAV-INF'] %}
+
 {% block body %}
 <div class="p-4">
 
@@ -40,9 +42,15 @@
 
 <h2 class="h4">Notifications</h2>
 
-<div id="notification-type-selector" class="form-check">
-  <input type="checkbox" class="form-check-input" data-type="UAV-INF" onclick="return toggleMessageType(event, 'UAV-INF')">
-  <label class="form-check-label">Show UAV-INF notifications</label>
+<div id="notification-type-selector" class="form-row">
+  {%- for type in notification_types %}
+    <div class="col-auto bg-light border rounded-lg px-2 py-1 mx-1">
+      <div class="form-check">
+        <input id="notification-type-{{ type }}" type="checkbox" class="form-check-input" data-type="{{ type }}" onclick="return toggleMessageType(event, '{{ type }}')">
+        <label class="form-check-label" for="notification-type-{{ type }}">{{ type }}</label>
+      </div>
+    </div>
+  {% endfor -%}
 </div>
 
 <div>&nbsp;</div>
@@ -155,7 +163,9 @@
     };
 
     var filteredTypes = {
-        "UAV-INF": true
+    {% for type in notification_types %}
+        "{{ type }}": true,
+    {% endfor %}
     };
 
     var socket = io();
@@ -246,7 +256,7 @@
     function updateFilterCheckboxes() {
         var $filterCheckboxes = $('#notification-type-selector input[type=checkbox]');
         $filterCheckboxes.each(function(index, checkbox) {
-        checkbox.checked = !filteredTypes[checkbox.dataset.type];
+            checkbox.checked = !filteredTypes[checkbox.dataset.type];
         });
     }
 

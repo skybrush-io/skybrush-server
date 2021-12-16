@@ -9,7 +9,10 @@ from flockwave.connections import create_connection, StreamWrapperConnection
 from flockwave.channels import MessageChannel
 from flockwave.listeners import create_listener
 from flockwave.parsers.rpc import RPCMessage
-from flockwave.server.message_hub import create_generic_INF_message_handler
+from flockwave.server.message_hub import (
+    create_generic_INF_message_factory,
+    create_generic_INF_message_handler,
+)
 from flockwave.server.model import ConnectionPurpose
 from flockwave.server.model.object import registered
 from flockwave.server.model.uav import PassiveUAVDriver
@@ -117,12 +120,14 @@ class DockExtension(UAVExtensionBase):
         async with open_nursery() as nursery:
             with ExitStack() as stack:
                 # Register message handlers for dock-related messages
-                handle_DOCK_INF = create_generic_INF_message_handler(
+                create_DOCK_INF = create_generic_INF_message_factory(
+                    "DOCK-INF",
                     app.object_registry,
                     filter=is_dock,
                     getter=attrgetter("status"),
                     description="beacon",
                 )
+                handle_DOCK_INF = create_generic_INF_message_handler(create_DOCK_INF)
                 stack.enter_context(
                     app.message_hub.use_message_handlers({"DOCK-INF": handle_DOCK_INF})
                 )
@@ -144,7 +149,7 @@ class DockExtension(UAVExtensionBase):
                             self._connection,
                             "Dock",
                             "Docking station",
-                            purpose=ConnectionPurpose.dock,
+                            purpose=ConnectionPurpose.dock,  # type: ignore
                         )
                     )
 

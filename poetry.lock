@@ -750,7 +750,7 @@ reference = "collmot"
 
 [[package]]
 name = "hypercorn"
-version = "0.13.0"
+version = "0.13.1"
 description = "A ASGI Server based on Hyper libraries and inspired by Gunicorn"
 category = "main"
 optional = false
@@ -816,7 +816,7 @@ reference = "collmot"
 
 [[package]]
 name = "importlib-metadata"
-version = "4.8.2"
+version = "4.8.3"
 description = "Read metadata from Python packages"
 category = "main"
 optional = false
@@ -1648,21 +1648,22 @@ reference = "collmot"
 
 [[package]]
 name = "quart"
-version = "0.15.1"
+version = "0.16.2"
 description = "A Python ASGI web microframework with the same API as Flask"
 category = "main"
 optional = false
-python-versions = ">=3.7.0"
+python-versions = ">=3.7"
 
 [package.dependencies]
 aiofiles = "*"
 blinker = "*"
 click = "*"
 hypercorn = ">=0.11.2"
+importlib_metadata = {version = "*", markers = "python_version < \"3.8\""}
 itsdangerous = "*"
 jinja2 = "*"
 toml = "*"
-typing-extensions = {version = "*", markers = "python_version < \"3.8\""}
+typing_extensions = {version = "*", markers = "python_version < \"3.8\""}
 werkzeug = ">=2.0.0"
 
 [package.extras]
@@ -1675,15 +1676,15 @@ reference = "collmot"
 
 [[package]]
 name = "quart-trio"
-version = "0.8.1"
+version = "0.9.0"
 description = "A Quart extension to provide trio support"
 category = "main"
 optional = false
 python-versions = ">=3.7"
 
 [package.dependencies]
-hypercorn = {version = ">=0.6.0", extras = ["trio"]}
-quart = ">=0.15"
+hypercorn = {version = ">=0.12.0", extras = ["trio"]}
+quart = ">=0.16"
 trio = ">=0.9.0"
 
 [package.source]
@@ -2082,7 +2083,7 @@ reference = "collmot"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7"
-content-hash = "e8471ecab447ff7706d20a9848373b7212063dd1475760fe7ca0dd8f3f2a82fb"
+content-hash = "a4bc9f6cd6d910fda0af886e3a532407c2ecff53388755c8a9020ba5f756d811"
 
 [metadata.files]
 adrenaline = [
@@ -2377,8 +2378,8 @@ httpx = [
     {file = "httpx-0.21.1.tar.gz", hash = "sha256:02af20df486b78892a614a7ccd4e4e86a5409ec4981ab0e422c579a887acad83"},
 ]
 hypercorn = [
-    {file = "Hypercorn-0.13.0-py3-none-any.whl", hash = "sha256:eafbed8b1cb9827552c0066386d3e693c16d3977dd60896bfa07dca4c9d92a20"},
-    {file = "Hypercorn-0.13.0.tar.gz", hash = "sha256:229d1e8684919c455281526d7c19e3568d51e4e5657a0051a4625d00902a1122"},
+    {file = "Hypercorn-0.13.1-py3-none-any.whl", hash = "sha256:fcbfd5b691176cfcbf558cfa536909b2ef249af5528c99fcf941405c1c9aba74"},
+    {file = "Hypercorn-0.13.1.tar.gz", hash = "sha256:3f55c7d0a51a93601d24fb773b88b1cd05c8ccb33e19294d1215bc0e19a6939c"},
 ]
 hyperframe = [
     {file = "hyperframe-6.0.1-py3-none-any.whl", hash = "sha256:0ec6bafd80d8ad2195c4f03aacba3a8265e57bc4cff261e802bf39970ed02a15"},
@@ -2393,8 +2394,8 @@ ifaddr = [
     {file = "ifaddr-0.1.7.tar.gz", hash = "sha256:1f9e8a6ca6f16db5a37d3356f07b6e52344f6f9f7e806d618537731669eb1a94"},
 ]
 importlib-metadata = [
-    {file = "importlib_metadata-4.8.2-py3-none-any.whl", hash = "sha256:53ccfd5c134223e497627b9815d5030edf77d2ed573922f7a0b8f8bb81a1c100"},
-    {file = "importlib_metadata-4.8.2.tar.gz", hash = "sha256:75bdec14c397f528724c1bfd9709d660b33a4d2e77387a3358f20b848bb5e5fb"},
+    {file = "importlib_metadata-4.8.3-py3-none-any.whl", hash = "sha256:65a9576a5b2d58ca44d133c42a241905cc45e34d2c06fd5ba2bafa221e5d7b5e"},
+    {file = "importlib_metadata-4.8.3.tar.gz", hash = "sha256:766abffff765960fcc18003801f7044eb6755ffae4521c8e8ce8e83b9c9b0668"},
 ]
 importlib-resources = [
     {file = "importlib_resources-5.4.0-py3-none-any.whl", hash = "sha256:33a95faed5fc19b4bc16b29a6eeae248a3fe69dd55d4d229d2b480e23eeaad45"},
@@ -2837,12 +2838,12 @@ pywin32-ctypes = [
     {file = "pywin32_ctypes-0.2.0-py2.py3-none-any.whl", hash = "sha256:9dc2d991b3479cc2df15930958b674a48a227d5361d413827a4cfd0b5876fc98"},
 ]
 quart = [
-    {file = "Quart-0.15.1-py3-none-any.whl", hash = "sha256:f35134fb1d81af61624e6d89bca33cd611dcedce2dc4e291f527ab04395f4e1a"},
-    {file = "Quart-0.15.1.tar.gz", hash = "sha256:f80c91d1e0588662483e22dd9c368a5778886b62e128c5399d2cc1b1898482cf"},
+    {file = "Quart-0.16.2-py3-none-any.whl", hash = "sha256:c1bcc4989c7e0b6c3301df10b6285c09ee0a1d75fa4cebd936f0d17312294e36"},
+    {file = "Quart-0.16.2.tar.gz", hash = "sha256:356f4fd795fbf5a7a97bdeb7ca908b5051d0e6e4c0499b2b7c30b743a6938a7e"},
 ]
 quart-trio = [
-    {file = "quart-trio-0.8.1.tar.gz", hash = "sha256:b3d63413ec47830a25e00d5573da70562cfc1840a6f18837072c47a5bd62d707"},
-    {file = "quart_trio-0.8.1-py3-none-any.whl", hash = "sha256:d0d90ca027c3f24e2ebd7c7463c6c2be0918d64215ce882ceb235c0de05cca37"},
+    {file = "quart-trio-0.9.0.tar.gz", hash = "sha256:85fcdc7d19f31a11600b053ce77e06a58245d16b015d58ad67aba2fe1f0616cd"},
+    {file = "quart_trio-0.9.0-py3-none-any.whl", hash = "sha256:2b409b0981f1852894f37d43cf6a9de622a65066194b3a8a6bda322cc1865f16"},
 ]
 requests = [
     {file = "requests-2.26.0-py2.py3-none-any.whl", hash = "sha256:6c1246513ecd5ecd4528a0906f910e8f0f9c6b8ec72030dc9fd154dc1a6efd24"},

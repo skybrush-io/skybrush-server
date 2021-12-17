@@ -59,6 +59,8 @@ __all__ = (
     "UAVMessageRateLimiter",
     "MessageHub",
     "RateLimiters",
+    "create_generic_INF_or_PROPS_message_factory",
+    "create_multi_object_message_handler",
 )
 
 log: Logger = base_log.getChild("message_hub")
@@ -1008,14 +1010,16 @@ GenericINFMessageFactory = Callable[
 ]
 
 
-def create_generic_INF_message_factory(
+def create_generic_INF_or_PROPS_message_factory(
     type: str,
+    key: str,
     registry: Registry[T],
     filter: Optional[Callable[[T], bool]] = None,
     getter: Optional[Callable[[Any], Any]] = None,
     description: str = "item",
 ) -> GenericINFMessageFactory:
-    """Creates a standard SOMETHING-INF-style Flockwave message factory function.
+    """Creates a standard SOMETHING-INF or SOMETHING-PROPS-style Flockwave
+    message factory function.
 
     The returned factory function takes a message hub, a list of object IDs and
     an optional source message that the IDs originated from. It must return an
@@ -1024,6 +1028,8 @@ def create_generic_INF_message_factory(
 
     Parameters:
         type: the Flockwave type of the message to produce
+        key: the name of the key in the Flockwave message body where the
+            information about the objects will be placed
         registry: the registry in which the objects are being looked up
         filter: a predicate that the item from the registry matching a given
             ID will be called with. Only items for which the predicate returns
@@ -1046,7 +1052,8 @@ def create_generic_INF_message_factory(
     ) -> Union[FlockwaveNotification, FlockwaveResponse]:
         statuses = {}
 
-        body = {"type": type, "status": statuses}
+        body: Dict[str, Any] = {"type": type}
+        body[key] = statuses
         response = hub.create_response_or_notification(
             body=body, in_response_to=in_response_to
         )
@@ -1067,15 +1074,15 @@ def create_generic_INF_message_factory(
     return factory
 
 
-def create_generic_INF_message_handler(
+def create_multi_object_message_handler(
     factory: GenericINFMessageFactory,
 ) -> MessageHandler:
     """Creates a standard SOMETHING-INF-style Flockwave message handler that
-    looks up objects from an object registry by ID and returns their basic
-    status information in a response.
+    looks up objects from an object registry by ID and returns some
+    information about them in a response.
 
     The lookup is performed by a message factory; see
-    `create_generic_INF_message_factory()` for more information about how to
+    `create_generic_INF_or_PROPS_message_factory()` for more information about how to
     construct it.
 
     It is assumed that the incoming message contains a single `ids` key that

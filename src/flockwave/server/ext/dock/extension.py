@@ -10,8 +10,8 @@ from flockwave.channels import MessageChannel
 from flockwave.listeners import create_listener
 from flockwave.parsers.rpc import RPCMessage
 from flockwave.server.message_hub import (
-    create_generic_INF_message_factory,
-    create_generic_INF_message_handler,
+    create_generic_INF_or_PROPS_message_factory,
+    create_multi_object_message_handler,
 )
 from flockwave.server.model import ConnectionPurpose
 from flockwave.server.model.object import registered
@@ -120,14 +120,15 @@ class DockExtension(UAVExtensionBase):
         async with open_nursery() as nursery:
             with ExitStack() as stack:
                 # Register message handlers for dock-related messages
-                create_DOCK_INF = create_generic_INF_message_factory(
+                create_DOCK_INF = create_generic_INF_or_PROPS_message_factory(
                     "DOCK-INF",
+                    "status",
                     app.object_registry,
                     filter=is_dock,
                     getter=attrgetter("status"),
                     description="beacon",
                 )
-                handle_DOCK_INF = create_generic_INF_message_handler(create_DOCK_INF)
+                handle_DOCK_INF = create_multi_object_message_handler(create_DOCK_INF)
                 stack.enter_context(
                     app.message_hub.use_message_handlers({"DOCK-INF": handle_DOCK_INF})
                 )

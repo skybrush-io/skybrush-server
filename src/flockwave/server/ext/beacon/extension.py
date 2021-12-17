@@ -7,8 +7,8 @@ from typing import ContextManager, Optional, TYPE_CHECKING
 from flockwave.concurrency import AsyncBundler
 from flockwave.server.ext.base import ExtensionBase
 from flockwave.server.message_hub import (
-    create_generic_INF_message_factory,
-    create_generic_INF_message_handler,
+    create_generic_INF_or_PROPS_message_factory,
+    create_multi_object_message_handler,
 )
 from flockwave.server.model.object import registered
 from flockwave.server.registries.base import find_in_registry
@@ -71,16 +71,32 @@ class BeaconExtension(ExtensionBase):
             self.beacons_to_update = AsyncBundler()
 
             # Register message handlers for beacon-related messages
-            create_BCN_INF = create_generic_INF_message_factory(
+            create_BCN_INF = create_generic_INF_or_PROPS_message_factory(
                 "BCN-INF",
+                "status",
                 app.object_registry,
                 filter=is_beacon,
                 getter=attrgetter("status"),
                 description="beacon",
             )
-            handle_BCN_INF = create_generic_INF_message_handler(create_BCN_INF)
+            create_BCN_PROPS = create_generic_INF_or_PROPS_message_factory(
+                "BCN-PROPS",
+                "result",
+                app.object_registry,
+                filter=is_beacon,
+                getter=attrgetter("basic_properties"),
+                description="beacon",
+            )
+
             stack.enter_context(
-                app.message_hub.use_message_handlers({"BCN-INF": handle_BCN_INF})
+                app.message_hub.use_message_handlers(
+                    {
+                        "BCN-INF": create_multi_object_message_handler(create_BCN_INF),
+                        "BCN-PROPS": create_multi_object_message_handler(
+                            create_BCN_PROPS
+                        ),
+                    }
+                )
             )
             stack.enter_context(registered("beacon", Beacon))
 

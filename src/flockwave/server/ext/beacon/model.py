@@ -13,6 +13,25 @@ from flockwave.spec.schema import get_complex_object_schema
 __all__ = ("Beacon", "is_beacon")
 
 
+class BeaconBasicProperties(metaclass=ModelMeta):
+    """Class representing the basic properties of a single beacon that typically
+    will not change over time.
+    """
+
+    class __meta__:
+        schema = get_complex_object_schema("beaconBasicProperties")
+
+    def __init__(self, id: Optional[str] = None, name: Optional[str] = None):
+        """Constructor.
+
+        Parameters:
+            id: ID of the beacon
+            name: the human-readable name of the beacon (if any)
+        """
+        self.id = id or ""
+        self.name = name or id or ""
+
+
 class BeaconStatusInfo(TimestampMixin, metaclass=ModelMeta):
     """Class representing the status information available about a single beacon."""
 
@@ -32,7 +51,7 @@ class BeaconStatusInfo(TimestampMixin, metaclass=ModelMeta):
                 milliseconds elapsed since the UNIX epoch.
         """
         TimestampMixin.__init__(self, timestamp)
-        self.id = id
+        self.id = id or ""
         self.position: Optional[GPSCoordinate] = None
         self.heading: Optional[float] = None
         self.active = False
@@ -43,13 +62,17 @@ class Beacon(ModelObject):
 
     updated = Signal(doc="Signal sent whenever the beacon status was updated.")
 
-    def __init__(self, id: str):
+    name: str
+
+    def __init__(self, id: str, name: Optional[str] = None):
         """Constructor.
 
         Parameters:
             id: the ID of the beacon
+            name: the human-readable name of the beacon (if any)
         """
         self._id = id
+        self._basic_properties = BeaconBasicProperties(id=id, name=name)
         self._status = BeaconStatusInfo(id=id)
 
     @property
@@ -57,13 +80,20 @@ class Beacon(ModelObject):
         return None
 
     @property
+    def basic_properties(self) -> BeaconBasicProperties:
+        """Returns a BeaconBasicProperties_ object representing the basic
+        properties of the beacon that are not likely to change over time.
+        """
+        return self._basic_properties
+
+    @property
     def id(self) -> str:
         return self._id
 
     @property
     def status(self) -> BeaconStatusInfo:
-        """Returns a BeaconStatusInfo object representing the status of the
-        dock.
+        """Returns a BeaconStatusInfo_ object representing the status of the
+        beacon.
         """
         return self._status
 

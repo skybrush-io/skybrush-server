@@ -615,7 +615,7 @@ reference = "collmot"
 
 [[package]]
 name = "flockwave-spec"
-version = "1.57.0"
+version = "1.58.0"
 description = "JSON-Schema specification of the Flockwave protocol"
 category = "main"
 optional = false
@@ -816,11 +816,11 @@ reference = "collmot"
 
 [[package]]
 name = "importlib-metadata"
-version = "4.8.3"
+version = "4.9.0"
 description = "Read metadata from Python packages"
 category = "main"
 optional = false
-python-versions = ">=3.6"
+python-versions = ">=3.7"
 
 [package.dependencies]
 typing-extensions = {version = ">=3.6.4", markers = "python_version < \"3.8\""}
@@ -948,7 +948,7 @@ reference = "collmot"
 
 [[package]]
 name = "jsonschema"
-version = "4.3.0"
+version = "4.3.1"
 description = "An implementation of JSON Schema validation for Python"
 category = "main"
 optional = false
@@ -2083,7 +2083,7 @@ reference = "collmot"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7"
-content-hash = "a4bc9f6cd6d910fda0af886e3a532407c2ecff53388755c8a9020ba5f756d811"
+content-hash = "c4542f44f1b41e180d2a28806e67deadca79145ab2f30d5579a9c6dc5c829665"
 
 [metadata.files]
 adrenaline = [
@@ -2348,8 +2348,8 @@ flockwave-parsers = [
     {file = "flockwave_parsers-2.0.0-py3-none-any.whl", hash = "md5:9425344d3750b6876964d66b60d045c3"},
 ]
 flockwave-spec = [
-    {file = "flockwave-spec-1.57.0.tar.gz", hash = "md5:424efde99803558d29b8c4ab95c8c675"},
-    {file = "flockwave_spec-1.57.0-py3-none-any.whl", hash = "md5:cf5da428de5612bdac6584ffc52a97dc"},
+    {file = "flockwave-spec-1.58.0.tar.gz", hash = "md5:67c9a68505fe2bd2a5d02478c349181d"},
+    {file = "flockwave_spec-1.58.0-py3-none-any.whl", hash = "md5:a9323cded30b32766c8a8135770d0cab"},
 ]
 future = [
     {file = "future-0.18.2.tar.gz", hash = "sha256:b1bead90b70cf6ec3f0710ae53a525360fa360d306a86583adc6bf83a4db537d"},
@@ -2394,8 +2394,8 @@ ifaddr = [
     {file = "ifaddr-0.1.7.tar.gz", hash = "sha256:1f9e8a6ca6f16db5a37d3356f07b6e52344f6f9f7e806d618537731669eb1a94"},
 ]
 importlib-metadata = [
-    {file = "importlib_metadata-4.8.3-py3-none-any.whl", hash = "sha256:65a9576a5b2d58ca44d133c42a241905cc45e34d2c06fd5ba2bafa221e5d7b5e"},
-    {file = "importlib_metadata-4.8.3.tar.gz", hash = "sha256:766abffff765960fcc18003801f7044eb6755ffae4521c8e8ce8e83b9c9b0668"},
+    {file = "importlib_metadata-4.9.0-py3-none-any.whl", hash = "sha256:e8b45564028bc25f8c99f546616112a6df5de6655893d7eb74c9a99680dc9751"},
+    {file = "importlib_metadata-4.9.0.tar.gz", hash = "sha256:ee50794eccb0ec340adbc838344ebb9a6ff2bcba78f752d31fc716497e2149d6"},
 ]
 importlib-resources = [
     {file = "importlib_resources-5.4.0-py3-none-any.whl", hash = "sha256:33a95faed5fc19b4bc16b29a6eeae248a3fe69dd55d4d229d2b480e23eeaad45"},
@@ -2426,8 +2426,8 @@ jsonpointer = [
     {file = "jsonpointer-2.2.tar.gz", hash = "sha256:f09f8deecaaa5aea65b5eb4f67ca4e54e1a61f7a11c75085e360fe6feb6a48bf"},
 ]
 jsonschema = [
-    {file = "jsonschema-4.3.0-py3-none-any.whl", hash = "sha256:ab7069946a3ad2037e79a5cdc8d0e9a74cd00721d426d75c5d69a6707c778218"},
-    {file = "jsonschema-4.3.0.tar.gz", hash = "sha256:cb7f57b40f870409d7571844d0623f66d8078c90a9c255d9a4d4314b5ec3fc7c"},
+    {file = "jsonschema-4.3.1-py3-none-any.whl", hash = "sha256:91ffbad994d766041c6003d5f8f475cceb890c30084bd0e64847ccb1c10e48bb"},
+    {file = "jsonschema-4.3.1.tar.gz", hash = "sha256:0070ca8dd5bf47941d1e9d8bc115a3654b1138cfb8aff44f3e3527276107314f"},
 ]
 lxml = [
     {file = "lxml-4.7.1-cp27-cp27m-macosx_10_14_x86_64.whl", hash = "sha256:d546431636edb1d6a608b348dd58cc9841b81f4116745857b6cb9f8dadb2725f"},

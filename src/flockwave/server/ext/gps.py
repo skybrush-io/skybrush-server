@@ -8,12 +8,14 @@ docker run --rm -it --name=gpsd -p 2947:2947 -p 8888:8888 knowhowlab/gpsd-nmea-s
 
 from __future__ import annotations
 
+from collections import defaultdict
 from contextlib import ExitStack
 from enum import Enum
 from functools import partial
 from json import loads
 from pynmea2 import parse as parse_nmea
-from typing import Any, Dict, Optional, Tuple, TYPE_CHECKING
+from re import sub
+from typing import Any, Dict, Optional, Set, Tuple, TYPE_CHECKING
 
 from flockwave.gps.vectors import GPSCoordinate
 from flockwave.channels import ParserChannel
@@ -29,7 +31,6 @@ from flockwave.networking import format_socket_address
 from flockwave.parsers import create_line_parser
 from flockwave.server.errors import NotSupportedError
 from flockwave.server.model import ConnectionPurpose
-from flockwave.server.model.uav import PassiveUAVDriver
 from flockwave.spec.ids import make_valid_object_id
 
 from flockwave.server.utils.generic import overridden
@@ -147,6 +148,14 @@ def parse_incoming_gpsd_message(message: bytes) -> GPSMessage:
     return result
 
 
+def _hex_to_chr(match) -> str:
+    return chr(int(match.group(1), 16))
+
+
+def _unescape_nmea(text: str) -> str:
+    return sub(r"\^([0-9A-Fa-f]{2})", _hex_to_chr, text)
+
+
 def parse_incoming_nmea_message(message: bytes) -> GPSMessage:
     """Parses a raw incoming NMEA message and translates its content to a
     standard form that will be used by the extension.
@@ -166,6 +175,15 @@ def parse_incoming_nmea_message(message: bytes) -> GPSMessage:
             position=GPSCoordinate(lat=data.latitude, lon=data.longitude),
             heading=data.true_course,
         )
+
+    elif data.sentence_type == "TXT":
+        try:
+            if int(data.num_msg) == 1 and int(data.msg_num) == 1:
+                text = _unescape_nmea(data.text)
+                if text.startswith("SB:NAME="):
+                    result.update({"name": text[8:]})
+        except Exception:
+            pass
 
     return result
 
@@ -189,20 +207,41 @@ class GPSExtension(UAVExtensionBase):
     """
 
     _beacon_api: ExtensionAPIProxy
-    _connection_to_id: Dict[Connection, str]
+    """Object that gives access to the functions provided by the `beacon`
+    extension.
+    """
+
+    _connection_to_beacon_ids: Dict[Connection, Set[str]]
+    """Object mapping the connection objects to the IDs of the beacons for which
+    the connection provided information at least once. Used to mark the beacons
+    as inactive when the connection is closed.
+    """
+
+    _connection_to_connection_id: Dict[Connection, str]
+    """Object mapping the connection objects to locally derived connection IDs
+    that may be used as parts of beacon IDs.
+    """
+
     _device_to_beacon_id: Dict[str, str]
+    """Object mapping `gpsd`-provided device IDs to locally derived beacon IDs
+    that may be used as parts of the globally registered beacon IDs.
+    """
+
     _id_format: str
+    """Format string that defines how to derive globally registered beacon IDs."""
+
     _main_connection: Optional[Connection]
+    """The "main" connection object of the extension."""
 
     app: "SkybrushServer"
-    driver: PassiveUAVDriver
 
     def __init__(self):
         """Constructor."""
         super().__init__()
         self._id_format = None  # type: ignore
 
-        self._connection_to_id = {}
+        self._connection_to_beacon_ids = defaultdict(set)
+        self._connection_to_connection_id = {}
         self._device_to_beacon_id = {}
         self._main_connection = None
 
@@ -222,16 +261,25 @@ class GPSExtension(UAVExtensionBase):
         """
         try:
             await connection.wait_until_connected()
-            if connection not in self._connection_to_id:
-                self._connection_to_id[connection] = self._derive_id_for_connection(
+            if connection not in self._connection_to_connection_id:
+                self._connection_to_connection_id[
                     connection
-                )
+                ] = self._derive_id_for_connection(connection)
             return await self._handle_gps_messages(connection, format.create_parser())
         except Exception as ex:
             if self.log:
                 self.log.exception(ex)
         finally:
-            self._connection_to_id.pop(connection, None)
+            self._connection_to_connection_id.pop(connection, None)
+            beacon_ids = self._connection_to_beacon_ids.pop(connection, ())
+            for beacon_id in beacon_ids:
+                self._deactivate_beacon(beacon_id)
+
+    def _deactivate_beacon(self, beacon_id: str) -> None:
+        """Marks the beacon with the given global ID as not active."""
+        beacon: Optional[Beacon] = self._beacon_api.find_by_id(beacon_id)
+        if beacon:
+            beacon.update_status(active=False)
 
     def _derive_id_for_connection(self, connection: RWConnection[bytes, bytes]):
         """Derives a (preferably permanent) connection identififer for the
@@ -260,7 +308,7 @@ class GPSExtension(UAVExtensionBase):
         """
         device_id_in_message = message.get("device")
         sender_id = (
-            self._connection_to_id.get(sender)
+            self._connection_to_connection_id.get(sender)
             if sender is not self._main_connection
             else None
         )
@@ -288,13 +336,13 @@ class GPSExtension(UAVExtensionBase):
                 if "version" in message:
                     # Ask gpsd to start streaming status data
                     await connection.write(b'?WATCH={"enable":true,"json":true}\n')
-                elif "position" in message:
+                elif "position" in message or "name" in message:
                     self._handle_single_gps_update(message, source=connection)
 
     def _handle_single_gps_update(
         self, message: GPSMessage, *, source: Connection
     ) -> None:
-        """Handles a single GPS status update message."""
+        """Handles a single GPS status update message or name change request."""
         device_id = self._get_local_device_id(message, source)
         beacon_id = self._get_global_beacon_id(device_id)
 
@@ -303,9 +351,14 @@ class GPSExtension(UAVExtensionBase):
             beacon = self._beacon_api.add(beacon_id)
             assert beacon is not None
 
-        beacon.update_status(
-            position=message["position"], heading=message["heading"], active=True
-        )
+        self._connection_to_beacon_ids[source].add(beacon_id)
+
+        if "position" in message:
+            beacon.update_status(
+                position=message["position"], heading=message["heading"], active=True
+            )
+        elif "name" in message:
+            beacon.basic_properties.name = message["name"]
 
     async def run(self, app: "SkybrushServer", configuration, log):
         self._beacon_api = app.import_api("beacon")

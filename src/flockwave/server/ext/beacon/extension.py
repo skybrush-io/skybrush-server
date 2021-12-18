@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from contextlib import ExitStack
+from contextlib import ExitStack, contextmanager
 from operator import attrgetter
-from typing import ContextManager, Optional, TYPE_CHECKING
+from typing import Iterator, Optional, TYPE_CHECKING
 
 from flockwave.concurrency import AsyncBundler
 from flockwave.server.ext.base import ExtensionBase
@@ -29,12 +29,6 @@ class BeaconExtension(ExtensionBase):
     app: "SkybrushServer"
     beacons_to_update: AsyncBundler[str]
 
-    def _add_beacon(self, beacon_id: str) -> Beacon:
-        beacon = Beacon(id=beacon_id)
-        self.app.object_registry.add(beacon)
-        beacon.updated.connect(self._on_beacon_updated, sender=beacon, weak=True)
-        return beacon
-
     def _find_beacon_by_id(self, id: str) -> Optional[Beacon]:
         """Finds a beacon by its ID in the object registry.
 
@@ -53,15 +47,22 @@ class BeaconExtension(ExtensionBase):
         if self.beacons_to_update:
             self.beacons_to_update.add(sender.id)
 
-    def _use_beacon(self, beacon: Beacon) -> ContextManager[None]:
+    def _remove_beacon(self, beacon: Beacon) -> None:
         if not is_beacon(beacon):
-            raise TypeError("expected beacon, got {beacon!r}")
+            raise TypeError(f"expected beacon, got {type(beacon)!r}")
 
-        return self.app.object_registry.use(beacon)
+        beacon.updated.disconnect(self._on_beacon_updated, sender=beacon)
+        self.app.object_registry.remove(beacon)
+
+    @contextmanager
+    def _use_beacon(self, beacon_id: str) -> Iterator[Beacon]:
+        beacon = Beacon(id=beacon_id)
+        with self.app.object_registry.use(beacon):
+            with beacon.updated.connected_to(self._on_beacon_updated, sender=beacon):  # type: ignore
+                yield beacon
 
     def exports(self):
         return {
-            "add": self._add_beacon,
             "find_by_id": self._find_beacon_by_id,
             "use": self._use_beacon,
         }

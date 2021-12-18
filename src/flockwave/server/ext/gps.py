@@ -211,6 +211,12 @@ class GPSExtension(UAVExtensionBase):
     extension.
     """
 
+    _beacon_context_stack: Optional[ExitStack]
+    """Stack in which the beacon objects created by this extension are pushed.
+    This stack is unwound when the extension is unloaded, removing all the
+    beacons.
+    """
+
     _connection_to_beacon_ids: Dict[Connection, Set[str]]
     """Object mapping the connection objects to the IDs of the beacons for which
     the connection provided information at least once. Used to mark the beacons
@@ -240,6 +246,7 @@ class GPSExtension(UAVExtensionBase):
         super().__init__()
         self._id_format = None  # type: ignore
 
+        self._beacon_context_stack = None
         self._connection_to_beacon_ids = defaultdict(set)
         self._connection_to_connection_id = {}
         self._device_to_beacon_id = {}
@@ -350,7 +357,14 @@ class GPSExtension(UAVExtensionBase):
 
         beacon: Optional[Beacon] = self._beacon_api.find_by_id(beacon_id)
         if not beacon:
-            beacon = self._beacon_api.add(beacon_id)
+            if not self._beacon_context_stack:
+                # Extension was already unloaded so we should not have gotten
+                # here. In case we did, let's just exit gracefully.
+                return
+
+            beacon = self._beacon_context_stack.enter_context(
+                self._beacon_api.use(beacon_id)
+            )
             assert beacon is not None
 
         self._connection_to_beacon_ids[source].add(beacon_id)
@@ -382,7 +396,11 @@ class GPSExtension(UAVExtensionBase):
                 log.info("Listening for incoming GPS connections")
 
         with ExitStack() as stack:
-            stack.enter_context(overridden(self, _main_connection=connection))
+            stack.enter_context(
+                overridden(
+                    self, _main_connection=connection, _beacon_context_stack=stack
+                )
+            )
             stack.enter_context(
                 app.connection_registry.use(
                     connection,
@@ -393,6 +411,7 @@ class GPSExtension(UAVExtensionBase):
                     purpose=ConnectionPurpose.gps,  # type: ignore
                 )
             )
+
             await app.supervise(
                 connection, task=partial(self.handle_gps_messages, format=format)
             )

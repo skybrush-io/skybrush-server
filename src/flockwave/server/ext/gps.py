@@ -289,7 +289,9 @@ class GPSExtension(UAVExtensionBase):
         if hasattr(connection, "address"):
             address = connection.address  # type: ignore
             if isinstance(address, tuple) and len(address) >= 2:
-                return format_socket_address(address)
+                # Use the hostname only; port number may change if the other end
+                # closes the socket, opens another one and reconnects
+                return address[0]
         return ""  # Do not use a prefix for this connection
 
     def _get_global_beacon_id(self, device_id: str) -> str:

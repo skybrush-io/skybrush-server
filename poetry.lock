@@ -471,6 +471,23 @@ url = "https://pypi.collmot.com/simple"
 reference = "collmot"
 
 [[package]]
+name = "flockwave-async"
+version = "1.0.2"
+description = "Asynchronous utility functions, mostly for Trio"
+category = "main"
+optional = false
+python-versions = ">=3.7,<4.0"
+
+[package.dependencies]
+trio = ">=0.18.0"
+trio-util = ">=0.7.0,<0.8.0"
+
+[package.source]
+type = "legacy"
+url = "https://pypi.collmot.com/simple"
+reference = "collmot"
+
+[[package]]
 name = "flockwave-conn"
 version = "3.1.2"
 description = "Connection objects for various data sources"
@@ -2083,7 +2100,7 @@ reference = "collmot"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7"
-content-hash = "c4542f44f1b41e180d2a28806e67deadca79145ab2f30d5579a9c6dc5c829665"
+content-hash = "cd8bc63cb45dece9f1951b04254e138b2e71ce9fd9eb4e9196227f1fcf1541cc"
 
 [metadata.files]
 adrenaline = [
@@ -2318,6 +2335,10 @@ distlib = [
 flockwave-app-framework = [
     {file = "flockwave-app-framework-2.2.2.tar.gz", hash = "md5:a97d31ec847cf265996280dbca89fb5a"},
     {file = "flockwave_app_framework-2.2.2-py3-none-any.whl", hash = "md5:f33df61de1cb10da29f8f9a101a4b7e1"},
+]
+flockwave-async = [
+    {file = "flockwave-async-1.0.2.tar.gz", hash = "md5:ee97477d2d38cbbcc28c4f83b85f3abc"},
+    {file = "flockwave_async-1.0.2-py3-none-any.whl", hash = "md5:b2ceab41ec365ee23f2ce4b607784842"},
 ]
 flockwave-conn = [
     {file = "flockwave-conn-3.1.2.tar.gz", hash = "md5:85f67c48490ce2da4024c5c2c576421f"},

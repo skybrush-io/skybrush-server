@@ -14,6 +14,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   until older versions of Skybrush Live that rely on Socket.IO v4 are phased
   out.
 
+- Added support for beacons. Extensions may now register beacon objects in the
+  server; beacons are shown on the map in clients that support them (e.g.,
+  Skybrush Live from version 1.25.0).
+
+- RTK extension now registers the position of the base station as a beacon.
+
 ### Fixed
 
 - Serial ports connected to common autopilots and bootloaders do not get detected

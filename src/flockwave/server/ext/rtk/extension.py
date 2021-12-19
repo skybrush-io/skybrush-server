@@ -2,6 +2,8 @@
 and forwards the corrections to the UAVs managed by the server.
 """
 
+from __future__ import annotations
+
 from contextlib import ExitStack
 from dataclasses import dataclass, field
 from fnmatch import fnmatch
@@ -11,7 +13,16 @@ from flockwave.gps.vectors import ECEFToGPSCoordinateTransformation, GPSCoordina
 from trio import CancelScope, open_memory_channel, open_nursery, sleep
 from trio.abc import SendChannel
 from trio_util import AsyncBool
-from typing import cast, Any, Dict, Iterator, List, Optional, Union
+from typing import (
+    cast,
+    Any,
+    ClassVar,
+    Dict,
+    Iterator,
+    List,
+    Optional,
+    Union,
+)
 
 from flockwave.channels import ParserChannel
 from flockwave.connections import Connection, create_connection
@@ -33,6 +44,7 @@ from flockwave.server.utils.serial import (
 
 from ..base import ExtensionBase
 
+from .beacon_manager import RTKBeaconManager
 from .preset import RTKConfigurationPreset
 from .registry import RTKPresetRegistry
 from .statistics import RTKStatistics
@@ -62,27 +74,38 @@ def format_gps_coordinate(coord: GPSCoordinate) -> str:
     return f"{coord.lat:.7f}°, {coord.lon:.7f}°"
 
 
-class RTKExtension(ExtensionBase):
+class RTKExtension(ExtensionBase["SkybrushServer"]):
     """Extension that connects to one or more data sources for RTK connections
     and forwards the corrections to the UAVs managed by the server.
     """
+
+    RTK_PACKET_SIGNAL: ClassVar[str] = "rtk:packet"
+
+    _current_preset: Optional[RTKConfigurationPreset] = None
+    _dynamic_serial_port_configurations: List[SerialPortConfiguration]
+    _dynamic_serial_port_filters: List[str]
+    _exclude_non_rtk_bases: bool = True
+    _last_preset_request_from_user: Optional[RTKPresetRequest] = None
+    _presets: List[RTKConfigurationPreset]
+    _registry: Optional[RTKPresetRegistry] = None
+    _rtk_beacon_manager: RTKBeaconManager
+    _rtk_preset_task_cancel_scope: Optional[CancelScope] = None
+    _rtk_survey_trigger: Optional[AsyncBool] = None
+    _statistics: RTKStatistics
+    _survey_settings: RTKSurveySettings
+    _tx_queue: Optional[SendChannel] = None
 
     def __init__(self):
         """Constructor."""
         super().__init__()
 
-        self._current_preset: Optional[RTKConfigurationPreset] = None
-        self._dynamic_serial_port_configurations: List[SerialPortConfiguration] = []
-        self._dynamic_serial_port_filters: List[str] = []
-        self._exclude_non_rtk_bases: bool = True
-        self._last_preset_request_from_user: Optional[RTKPresetRequest] = None
-        self._presets: List[RTKConfigurationPreset] = []
-        self._registry: Optional[RTKPresetRegistry] = None
-        self._rtk_preset_task_cancel_scope: Optional[CancelScope] = None
-        self._rtk_survey_trigger: Optional[AsyncBool] = None
+        self._dynamic_serial_port_configurations = []
+        self._dynamic_serial_port_filters = []
+        self._presets = []
+
+        self._rtk_beacon_manager = RTKBeaconManager()
         self._statistics = RTKStatistics()
         self._survey_settings = RTKSurveySettings()
-        self._tx_queue: Optional[SendChannel] = None
 
     def configure(self, configuration: Dict[str, Any]) -> None:
         """Loads the extension."""
@@ -134,6 +157,9 @@ class RTKExtension(ExtensionBase):
 
         self._exclude_non_rtk_bases = bool(
             configuration.get("exclude_non_rtk_bases", True)
+        )
+        self._rtk_beacon_manager.enabled = bool(
+            configuration.get("register_beacons", True)
         )
 
         serial_port_filters = configuration.get("exclude_serial_ports")
@@ -496,13 +522,16 @@ class RTKExtension(ExtensionBase):
         """Master task that handles all the connections that constitute a single
         RTK preset.
         """
-        with ExitStack() as stack:
-            stack.enter_context(self._statistics.use())
+        assert self.app is not None
 
+        with ExitStack() as stack:
             assert self._rtk_survey_trigger is not None
             assert self.app is not None
 
             async with open_nursery() as nursery:
+                stack.enter_context(self._statistics.use())
+                stack.enter_context(self._rtk_beacon_manager.use(self, nursery))
+
                 self._rtk_survey_trigger.value = preset.auto_survey
 
                 task_status.started(nursery.cancel_scope)
@@ -568,7 +597,7 @@ class RTKExtension(ExtensionBase):
         assert self.app is not None
 
         channel = ParserChannel(connection, parser=preset.create_parser())  # type: ignore
-        signal = self.app.import_api("signals").get("rtk:packet")
+        signal = self.app.import_api("signals").get(self.RTK_PACKET_SIGNAL)
         encoder = preset.create_encoder()
 
         async with channel:
@@ -694,10 +723,10 @@ class RTKExtension(ExtensionBase):
 
 
 construct = RTKExtension
-dependencies = ("ntrip", "signals")
+dependencies = ("beacon", "ntrip", "signals")
 description = "Support for RTK base stations and external RTK correction sources"
 optional_dependencies = {
-    "hotplug": "detects when new USB devices are plugged in and updates the RTK sources automatically"
+    "hotplug": "detects when new USB devices are plugged in and updates the RTK sources automatically",
 }
 
 
@@ -836,6 +865,17 @@ def get_schema():
                 },
                 "uniqueItems": True,
                 "required": False,
+            },
+            "register_beacons": {
+                "type": "boolean",
+                "title": "Register the RTK base station as a beacon",
+                "description": (
+                    "Registers the current RTK base station as a beacon in the server. "
+                    "This allows frontends like Skybrush Live to show the position of "
+                    "the RTK base station on the map."
+                ),
+                "default": True,
+                "format": "checkbox",
             },
             "use_high_precision": {
                 "type": "boolean",

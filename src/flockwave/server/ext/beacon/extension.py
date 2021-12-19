@@ -23,7 +23,7 @@ if TYPE_CHECKING:
 ############################################################################
 
 
-class BeaconExtension(ExtensionBase):
+class BeaconExtension(ExtensionBase["SkybrushServer"]):
     """Extension that implements support for beacons."""
 
     app: "SkybrushServer"

@@ -74,7 +74,7 @@ def format_gps_coordinate(coord: GPSCoordinate) -> str:
     return f"{coord.lat:.7f}°, {coord.lon:.7f}°"
 
 
-class RTKExtension(ExtensionBase["SkybrushServer"]):
+class RTKExtension(ExtensionBase):
     """Extension that connects to one or more data sources for RTK connections
     and forwards the corrections to the UAVs managed by the server.
     """

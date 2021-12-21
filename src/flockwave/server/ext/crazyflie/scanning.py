@@ -8,8 +8,6 @@ from time import monotonic
 from trio import Event, MemorySendChannel, move_on_after, sleep
 from typing import AsyncIterable, Callable, ClassVar, Iterable, List, Optional, Union
 
-from aiocflib.drivers.crazyradio import RadioConfiguration
-
 from flockwave.concurrency import aclosing
 from flockwave.server.utils import longest_common_prefix
 
@@ -26,7 +24,7 @@ __all__ = ("CrazyradioScannerTask",)
 AddressListGetter = Callable[[int], Iterable[str]]
 
 
-def _scan_all_addresses_in_connection(self, conn, priority: int):
+def _get_all_addresses_in_connection(conn: CrazyradioConnection, priority: int):
     return conn.address_space
 
 
@@ -46,13 +44,13 @@ class Scheduler:
 
         Parameters:
             addresses: a callable that returns a list of addresses to scan when
-                called with no arguments, or a single Crazyradio connection, in
-                which case the whole address space of the radio connection is
-                scanned.
+                called with a single priority argument, or a single Crazyradio
+                connection, in which case the whole address space of the radio
+                connection is scanned.
         """
         # If we have received a Crazyradio connection, create a getter for it
         if not callable(addresses):
-            addresses = partial(self._scan_all_addresses_in_connection, addresses)
+            addresses = partial(_get_all_addresses_in_connection, addresses)
 
         async for item in self._run(addresses):
             yield item
@@ -61,6 +59,12 @@ class Scheduler:
         self, addresses: AddressListGetter
     ) -> AsyncIterable[Optional[List[str]]]:
         raise NotImplementedError
+
+    def wake_up(self) -> None:
+        """Wakes up the scheduler and asks it to do the next scan as soon as
+        possible.
+        """
+        pass
 
 
 class DefaultScheduler(Scheduler):
@@ -111,7 +115,7 @@ class DefaultScheduler(Scheduler):
             full_scan = (
                 self._speedup_counter <= 0 or monotonic() > self._next_full_scan_at
             )
-            for address in addresses(min_priority=1 if not full_scan else 0):
+            for address in addresses(1 if not full_scan else 0):
                 targets.append(address)
                 if len(targets) >= self._batch_size:
                     # Slice full, scan it and then wait a bit
@@ -131,39 +135,11 @@ class DefaultScheduler(Scheduler):
         """Wakes up the scheduler and asks it to do the next scan as soon as
         possible.
 
-        After a wakeup call, the scheduler also switches to shorter delays
+        After a wakeup call, this scheduler also switches to shorter delays
         between scans for the next 10 full scans.
         """
         self._wakeup_event.set()
         self._speedup_counter = 10
-
-
-async def scan_connection(
-    conn: CrazyradioConnection, scheduler: Scheduler
-) -> AsyncIterable[Optional[List[RadioConfiguration]]]:
-    """Asynchronous generator that scans the address space of a Crazyradio
-    connection for Crazyflie drones and yields radio configuration objects
-    for each drone that was discovered.
-
-    Parameters:
-        conn: the connection to scan
-        addresses: optional callable that returns a list of addresses to scan
-            when called with no arguments. `None` means to scanning all
-            addresses on the connection
-        scheduler: a callable that can be called with a single connection and
-            that will return an async generator that periodically yields lists
-            of addresses to scan
-
-    Yields:
-        a RadioConfiguration instance for each drone that was discovered. You
-        may send a truthy value back into the generator to indicate that you
-        have acknowledged this item and you do not want the scanner to test for
-        it in later scan attempts.
-    """
-    async for targets in scheduler:
-        result = await conn.scan(targets)
-        for target in result:
-            yield target
 
 
 class CrazyradioScannerTask:
@@ -223,8 +199,6 @@ class CrazyradioScannerTask:
             list(addresses), key=self._get_priority_of_address, reverse=True
         )
         self._update_priorities()
-
-        # print([int(x[-2:], 16) for x in result])
 
         return result
 

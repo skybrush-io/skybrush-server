@@ -16,13 +16,12 @@ from flockwave.protocols.flockctrl.packets import (
 )
 from flockwave.server.comm import BROADCAST, CommunicationManager
 from flockwave.server.ext.base import UAVExtensionBase
-from flockwave.server.ext.show.config import LightConfiguration
 from flockwave.server.model import ConnectionPurpose
 from flockwave.server.utils import datetime_to_unix_timestamp
 
 from .comm import create_communication_manager
 from .driver import FlockCtrlDriver
-from .led_lights import FlockCtrlLEDLightConfigurationManager
+from .led_lights import FlockCtrlLEDLightConfigurationManager, LightConfiguration
 
 # from .wireless import WirelessCommunicationManager
 

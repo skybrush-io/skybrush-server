@@ -8,12 +8,12 @@ from typing import Callable, Optional, Tuple
 from flockwave.protocols.flockctrl import FlockCtrlPacket
 from flockwave.protocols.flockctrl.enums import MultiTargetCommand
 from flockwave.protocols.flockctrl.packets import MultiTargetCommandPacket
-from flockwave.server.ext.show.config import (
+from flockwave.server.tasks.led_lights import (
+    LEDLightConfigurationManagerBase,
     LightConfiguration,
     LightEffectType,
     RGBColor,
 )
-from flockwave.server.tasks.led_lights import LEDLightConfigurationManagerBase
 
 __all__ = ("FlockCtrlLEDLightConfigurationManager",)
 

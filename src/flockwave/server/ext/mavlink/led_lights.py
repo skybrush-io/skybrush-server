@@ -4,8 +4,11 @@ from logging import Logger
 from struct import Struct
 from typing import Optional, TYPE_CHECKING
 
-from flockwave.server.ext.show.config import LightConfiguration, LightEffectType
-from flockwave.server.tasks.led_lights import LEDLightConfigurationManagerBase
+from flockwave.server.tasks.led_lights import (
+    LightConfiguration,
+    LightEffectType,
+    LEDLightConfigurationManagerBase,
+)
 
 from .packets import create_led_control_packet
 from .types import MAVLinkMessageSpecification

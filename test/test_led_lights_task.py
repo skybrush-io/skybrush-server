@@ -1,9 +1,10 @@
-from flockwave.server.tasks.led_lights import LEDLightConfigurationManagerBase
+from pytest import fixture
 from trio import sleep
 
-from pytest import fixture
-
-from flockwave.server.ext.show.config import LightConfiguration
+from flockwave.server.tasks.led_lights import (
+    LEDLightConfigurationManagerBase,
+    LightConfiguration,
+)
 
 
 class MockLEDLightConfigurationManager(LEDLightConfigurationManagerBase[int]):

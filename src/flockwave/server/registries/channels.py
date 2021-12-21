@@ -8,8 +8,6 @@ Note that the registry keeps track of the different *types* of communication
 channels, not each individual channel between a client and the server.
 """
 
-from __future__ import absolute_import
-
 from blinker import Signal
 from collections import namedtuple
 from contextlib import contextmanager

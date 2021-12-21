@@ -4,8 +4,6 @@ locations of the radiation sources to provide UAVs with virtual Geiger-Muller
 counters.
 """
 
-from __future__ import absolute_import, division
-
 from flockwave.gps.vectors import (
     ECEFToGPSCoordinateTransformation,
     FlatEarthToGPSCoordinateTransformation,

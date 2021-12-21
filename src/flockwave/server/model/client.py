@@ -1,7 +1,5 @@
 """Model classes related to a single client connected to the server."""
 
-from __future__ import absolute_import
-
 from dataclasses import dataclass
 from trio import Event
 from typing import Optional, Union

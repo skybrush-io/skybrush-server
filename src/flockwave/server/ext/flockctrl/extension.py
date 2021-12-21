@@ -2,8 +2,6 @@
 ``flockctrl`` protocol.
 """
 
-from __future__ import absolute_import
-
 from contextlib import ExitStack
 from datetime import datetime, timezone
 from functools import partial
@@ -18,10 +16,9 @@ from flockwave.protocols.flockctrl.packets import (
 )
 from flockwave.server.comm import BROADCAST, CommunicationManager
 from flockwave.server.ext.base import UAVExtensionBase
+from flockwave.server.ext.show.config import LightConfiguration
 from flockwave.server.model import ConnectionPurpose
 from flockwave.server.utils import datetime_to_unix_timestamp
-
-from flockwave.server.ext.show.config import LightConfiguration
 
 from .comm import create_communication_manager
 from .driver import FlockCtrlDriver

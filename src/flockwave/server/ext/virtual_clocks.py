@@ -6,8 +6,6 @@ provide support for starting or stopping the clocks.
 Useful primarily for debugging purposes.
 """
 
-from __future__ import absolute_import
-
 from contextlib import ExitStack
 from trio import sleep_forever
 

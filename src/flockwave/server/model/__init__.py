@@ -1,7 +1,5 @@
 """Model-related classes for the Skybrush server."""
 
-from __future__ import absolute_import
-
 from .builders import CommandExecutionStatusBuilder, FlockwaveMessageBuilder
 from .channel import CommunicationChannel
 from .client import Client

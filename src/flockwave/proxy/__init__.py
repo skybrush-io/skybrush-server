@@ -18,8 +18,6 @@ can be as follows:
   the local Skybrush server, also on port 5000.
 """
 
-from __future__ import absolute_import
-
 from .version import __version__, __version_info__
 
 __all__ = ("__version__", "__version_info__")

@@ -2,8 +2,6 @@
 MAVLink protocol.
 """
 
-from __future__ import absolute_import
-
 from contextlib import ExitStack
 from functools import partial
 from typing import Dict, Optional

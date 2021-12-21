@@ -1,7 +1,5 @@
 """Builder classes for model objects for sake of convenience."""
 
-from __future__ import absolute_import
-
 from baseconv import base64
 from builtins import str
 from random import getrandbits

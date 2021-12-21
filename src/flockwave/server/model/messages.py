@@ -1,7 +1,5 @@
 """Flockwave message model classes."""
 
-from __future__ import absolute_import
-
 from flockwave.spec.schema import get_message_schema
 from typing import Any, Dict, Iterable, List, Optional, Sequence, Union
 

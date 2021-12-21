@@ -2,8 +2,6 @@
 server is currently connected to.
 """
 
-from __future__ import absolute_import
-
 from blinker import Signal
 from collections import defaultdict
 from contextlib import contextmanager

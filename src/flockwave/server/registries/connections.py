@@ -2,8 +2,6 @@
 server knows.
 """
 
-from __future__ import absolute_import
-
 from blinker import Signal
 from contextlib import contextmanager
 from typing import Iterator, Optional

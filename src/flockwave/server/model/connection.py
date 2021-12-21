@@ -1,7 +1,5 @@
 """Connection-related model objects."""
 
-from __future__ import absolute_import
-
 from flockwave.spec.schema import get_complex_object_schema, get_enum_from_schema
 from typing import Optional
 

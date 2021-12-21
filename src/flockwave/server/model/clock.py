@@ -1,7 +1,5 @@
 """Clock-related model objects."""
 
-from __future__ import absolute_import
-
 from abc import ABCMeta, abstractmethod, abstractproperty
 from blinker import Signal
 from datetime import datetime, timezone

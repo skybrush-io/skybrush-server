@@ -7,8 +7,6 @@ channels). The class in this package declares the base that the extensions
 must extend.
 """
 
-from __future__ import absolute_import
-
 from abc import ABCMeta, abstractmethod
 
 __all__ = ("CommunicationChannel",)

@@ -44,7 +44,7 @@ flockwave-gps = "^2.1.0"
 flockwave-logger = "^1.7.0"
 flockwave-net = {extras = ["async"], version = "^2.0.2"}
 flockwave-parsers = "^2.0.0"
-flockwave-spec = "^1.58.0"
+flockwave-spec = "^1.59.0"
 pyledctrl = "^3.1.0"
 aiocflib = "^2.2.0"
 appdirs = "^1.4.4"
@@ -57,6 +57,7 @@ adrenaline = ">=0.2.2"
 trio-parallel = "^1.0.0"
 oscpy = ">=0.6.0"
 httpx = ">=0.18.2"
+igrf-model = "^1.1.0"
 
 [tool.poetry.dev-dependencies]
 coverage = {extras = ["toml"], version = "^6.0.2"}

@@ -84,6 +84,7 @@ EXTENSIONS = {
     "insomnia": {"keep_display_on": False},
     "kp_index": {"source": "potsdam"},
     "license": {},
+    "magnetic_field": {},
     "mavlink": {
         "enabled": False,
         "id_format": "{0:02}",

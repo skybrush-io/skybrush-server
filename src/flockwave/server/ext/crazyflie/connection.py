@@ -3,14 +3,15 @@ drones with a single Crazyradio.
 """
 
 from trio import Event
-from typing import Optional
+from typing import AsyncContextManager, Callable, ClassVar, Optional
 
 from aiocflib.crtp.broadcaster import Broadcaster
 from aiocflib.crtp.crtpstack import CRTPPort
+from aiocflib.utils.addressing import parse_radio_uri
 
 from flockwave.connections.base import TaskConnectionBase
 
-__all__ = ("CrazyradioConnection",)
+__all__ = ("CrazyradioConnection", "parse_radio_uri")
 
 
 class CrazyradioConnection(TaskConnectionBase):
@@ -18,7 +19,34 @@ class CrazyradioConnection(TaskConnectionBase):
     drones with a single Crazyradio.
     """
 
-    _request_close_event: Optional[Event]
+    SCHEME: ClassVar[str] = "crazyradio"
+    """The connection scheme under which this connection should be registered
+    in the server.
+    """
+
+    _radio = None
+    _radio_factory: Optional[Callable[[], AsyncContextManager]] = None
+    _request_close_event: Optional[Event] = None
+
+    @classmethod
+    def parse_radio_index_from_uri(cls, uri: str) -> Optional[int]:
+        """Parses the given connection URI and returns the index of the
+        Crazyradio that it refers to, or ``None`` if the connection URI is not
+        a Crazyflie connection URI or it does not use a radio.
+        """
+        if not uri.startswith(cls.SCHEME):
+            return None
+
+        try:
+            parsed = parse_radio_uri(uri, allow_prefix=True)
+        except Exception:
+            # Probably not a radio URI
+            return None
+
+        if "index" in parsed and isinstance(parsed["index"], int):
+            return parsed["index"]
+        else:
+            return None
 
     def __init__(self, host: str, path: str = "", length: int = 64):
         """Constructor.

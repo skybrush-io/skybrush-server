@@ -20,6 +20,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - RTK extension now registers the position of the base station as a beacon.
 
+- The Light control panel in Skybrush Live is now also supported for Crazyflie
+  drones.
+
 ### Fixed
 
 - Serial ports connected to common autopilots and bootloaders do not get detected

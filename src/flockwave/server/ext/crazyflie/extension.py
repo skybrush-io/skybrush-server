@@ -7,7 +7,7 @@ from logging import Logger
 from pathlib import Path
 from struct import Struct
 from trio import open_memory_channel, open_nursery
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 from flockwave.connections.factory import create_connection
 from flockwave.server.ext.base import UAVExtensionBase
@@ -17,6 +17,7 @@ from .connection import CrazyradioConnection
 from .crtp_extensions import DRONE_SHOW_PORT, DroneShowCommand, FenceAction
 from .driver import CrazyflieDriver
 from .fence import FenceConfiguration
+from .led_lights import CrazyflieLEDLightConfigurationManager, LightConfiguration
 from .scanning import CrazyradioScannerTask
 
 __all__ = ("construct", "schema")
@@ -61,13 +62,20 @@ class CrazyflieDronesExtension(UAVExtensionBase):
 
         init_drivers()
 
+        connection_config = configuration.get("connections", [])
+        radio_indices: List[int] = []
+        for spec in connection_config:
+            index = CrazyradioConnection.parse_radio_index_from_uri(spec)
+            if index is not None:
+                radio_indices.append(index)
+
         # TODO(ntamas): we need to acquire all shared Crazyradio instances that
         # we will use _now_, otherwise Trio gets confused. This is fragile but
         # it's the best we can do.
         async with AsyncExitStack() as stack:
             num_radios = 0
 
-            for index in range(1):
+            for index in radio_indices:
                 try:
                     await stack.enter_async_context(SharedCrazyradio(index))
                     num_radios += 1
@@ -81,13 +89,19 @@ class CrazyflieDronesExtension(UAVExtensionBase):
                     else:
                         raise ex
 
-            if not num_radios:
-                self.log.error(
-                    "Failed to acquire any Crazyradios; Crazyflie extension disabled.",
-                    extra={"sentry_ignore": True},
-                )
-            else:
-                return await self._run(app, configuration)
+            if num_radios < len(radio_indices):
+                if not num_radios:
+                    self.log.error(
+                        "Failed to acquire any Crazyradios.",
+                        extra={"sentry_ignore": True},
+                    )
+                else:
+                    self.log.error(
+                        f"Requested {len(radio_indices)} Crazyradios but only {num_radios} were acquired.",
+                        extra={"sentry_ignore": True},
+                    )
+
+            return await self._run(app, configuration)
 
     async def _run(self, app, configuration):
         assert self.app is not None
@@ -106,7 +120,9 @@ class CrazyflieDronesExtension(UAVExtensionBase):
                 # Let the create_connection connection factory know about the
                 # CrazyradioConnection class
                 stack.enter_context(
-                    create_connection.use(CrazyradioConnection, "crazyradio")
+                    create_connection.use(
+                        CrazyradioConnection, CrazyradioConnection.SCHEME
+                    )
                 )
 
                 # Register all the connections and ask the app to supervise them
@@ -115,13 +131,20 @@ class CrazyflieDronesExtension(UAVExtensionBase):
                     if hasattr(connection, "assign_nursery"):
                         connection.assign_nursery(nursery)
 
+                    # Create a function that enqueues a packet for broadcasting
+                    # over the given connection
+                    broadcaster = partial(nursery.start_soon, connection.broadcast)
+
+                    # Create a dedicated LED manager for the connection
+                    led_manager = CrazyflieLEDLightConfigurationManager(broadcaster)
+
                     # Register the radio connection in the connection registry
                     stack.enter_context(
                         app.connection_registry.use(
                             connection,
                             f"Crazyradio{index}",
                             description=f"Crazyradio connection {index}",
-                            purpose=ConnectionPurpose.uavRadioLink,
+                            purpose=ConnectionPurpose.uavRadioLink,  # type: ignore
                         )
                     )
 
@@ -132,16 +155,19 @@ class CrazyflieDronesExtension(UAVExtensionBase):
                             {
                                 "show:countdown": partial(
                                     self._on_show_countdown_notification,
-                                    connection=connection,
-                                    start_soon=nursery.start_soon,
+                                    broadcaster=broadcaster,
                                 ),
                                 "show:lights_updated": partial(
                                     self._on_show_light_configuration_changed,
-                                    connection=connection,
+                                    led_manager=led_manager,
                                 ),
                             }
                         )
                     )
+
+                    # Run a background task that manages the LED lights of the
+                    # connected drones
+                    nursery.start_soon(led_manager.run)
 
                     # Run a background task that scans the radio connection and
                     # attempts to find newly booted Crazyflie drones
@@ -166,8 +192,7 @@ class CrazyflieDronesExtension(UAVExtensionBase):
         sender,
         delay: Optional[float],
         *,
-        connection: CrazyradioConnection,
-        start_soon: Callable,
+        broadcaster: Callable[[int, bytes], None],
     ) -> None:
         if delay is not None:
             delay = int(delay * 1000)
@@ -180,13 +205,24 @@ class CrazyflieDronesExtension(UAVExtensionBase):
         else:
             data = Struct("<Bh").pack(DroneShowCommand.START, delay)
 
-        start_soon(connection.broadcast, DRONE_SHOW_PORT, data)
+        broadcaster(DRONE_SHOW_PORT, data)
 
     def _on_show_light_configuration_changed(
-        self, sender, config, *, connection: CrazyradioConnection
+        self,
+        sender,
+        config: LightConfiguration,
+        *,
+        led_manager: CrazyflieLEDLightConfigurationManager,
     ) -> None:
-        # TODO(ntamas)
-        pass
+        """Handler that is called when the user changes the LED light configuration
+        of the drones in the `show` extesion.
+        """
+        # Make a copy of the configuration in case someone else who comes after
+        # us in the handler chain messes with it
+        config = config.clone()
+
+        # Send the configuration to the driver to handle it
+        led_manager.notify_config_changed(config)
 
 
 construct = CrazyflieDronesExtension

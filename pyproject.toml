@@ -57,7 +57,7 @@ adrenaline = ">=0.2.2"
 trio-parallel = "^1.0.0"
 oscpy = ">=0.6.0"
 httpx = ">=0.18.2"
-igrf-model = "^1.1.0"
+igrf-model = "^1.1.1"
 
 [tool.poetry.dev-dependencies]
 coverage = {extras = ["toml"], version = "^6.0.2"}

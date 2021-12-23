@@ -833,7 +833,7 @@ reference = "collmot"
 
 [[package]]
 name = "igrf-model"
-version = "1.1.0"
+version = "1.1.1"
 description = "Pure Python implementation of the IGRF13 magnetic model"
 category = "main"
 optional = false
@@ -2113,7 +2113,7 @@ reference = "collmot"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7"
-content-hash = "279cd828f90f9a11ae9469527001bc294b11cf731c4b8e4361eb07be6368d7b6"
+content-hash = "6db0d00f7c8c1b82a24b390cf954e76952e33bdb2420f8ab1e559df0aad5c6f9"
 
 [metadata.files]
 adrenaline = [
@@ -2428,8 +2428,8 @@ ifaddr = [
     {file = "ifaddr-0.1.7.tar.gz", hash = "sha256:1f9e8a6ca6f16db5a37d3356f07b6e52344f6f9f7e806d618537731669eb1a94"},
 ]
 igrf-model = [
-    {file = "igrf-model-1.1.0.tar.gz", hash = "md5:e28c8d7325b9e68329168ce8b976898a"},
-    {file = "igrf_model-1.1.0-py3-none-any.whl", hash = "md5:0005856579f43b5be2b8db76cc952c43"},
+    {file = "igrf-model-1.1.1.tar.gz", hash = "md5:75a7f27338405693632433a8d02b82be"},
+    {file = "igrf_model-1.1.1-py3-none-any.whl", hash = "md5:f2198fb8c958f5266064542e77ce99e5"},
 ]
 importlib-metadata = [
     {file = "importlib_metadata-4.10.0-py3-none-any.whl", hash = "sha256:b7cf7d3fef75f1e4c80a96ca660efbd51473d7e8f39b5ab9210febc7809012a4"},

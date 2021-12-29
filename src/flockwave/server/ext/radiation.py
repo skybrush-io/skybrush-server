@@ -216,3 +216,4 @@ class RadiationExtension(ExtensionBase):
 
 construct = RadiationExtension
 description = "Virtual radiation sources for simulation purposes"
+private = True  # pynsist: remove

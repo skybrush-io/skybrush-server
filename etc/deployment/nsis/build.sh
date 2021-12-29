@@ -103,9 +103,12 @@ nsi_template=etc/deployment/nsis/template.nsi
 EOF
 
 # Now clean the build dir and invoke pynsist, but don't run makensis just yet;
-# we will need to obfuscate stuff before that.
+# we will need to remove the private extensions and obfuscate stuff before that.
 rm -rf "${BUILD_DIR}"
 .venv/bin/python -m nsist installer.cfg --no-makensis
+
+# Remove all files from the pkgs dir that contain the '# pynsist: remove' marker
+find "${BUILD_DIR}/pkgs" -name "*.py" | xargs grep -H '# *pynsist: *remove' | cut -d ':' -f 1 | xargs rm -f
 
 if [ $OBFUSCATE -gt 0 ]; then
   # Install the _exact_ Python version that we are going to use with

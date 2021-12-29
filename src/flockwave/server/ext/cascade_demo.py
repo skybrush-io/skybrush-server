@@ -461,4 +461,4 @@ class ERPSystemConnectionDemoExtension(ExtensionBase):
 construct = ERPSystemConnectionDemoExtension
 dependencies = ("dock",)
 description = ""
-private = True
+private = True  # pynsist: remove

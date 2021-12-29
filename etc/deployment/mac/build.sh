@@ -89,8 +89,11 @@ python3 -m venv "${VENV_DIR}"
 # TODO(ntamas): clean up unused MAVlink dialects somehow!
 
 # At the moment, PyArmor does not work on Apple M1 (freezes when obfuscating)
-# unless we set the PYARMOR_PLATFORM envvar
-export PYARMOR_PLATFORM=darwin.aarch64.0
+# unless we set the PYARMOR_PLATFORM envvar. Note that we force it to x86_64 because
+# we are running the next builder script in an x86_64 environment
+if [ `uname -m` = "arm64" ]; then
+    export PYARMOR_PLATFORM=darwin.x86_64.0
+fi
 export TARGET_PLATFORM=darwin.x86_64.11.py39
 arch -x86_64 $(SHELL) etc/scripts/build-pyarmored-dist.sh --standalone --keep-staging --no-tarball --wheelhouse "${WHEEL_DIR}" "${VENV_DIR}"
 etc/deployment/mac/build-installer.sh build/pyarmor/staging

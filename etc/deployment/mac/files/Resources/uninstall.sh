@@ -12,6 +12,9 @@ fi
 # Installation root
 INSTALL_ROOT=/usr/local
 
+# Temporary folder
+TMP_ROOT=/tmp
+
 # Need to replace these with install preparation script
 VERSION=__VERSION__
 PRODUCT=__PRODUCT__
@@ -20,6 +23,7 @@ PRODUCT=__PRODUCT__
 PRODUCT_HOME=${INSTALL_ROOT}/opt/__PRODUCT__
 PRODUCT_VERSIONED_HOME=${PRODUCT_HOME}/__VERSION__
 LAUNCHER=${INSTALL_ROOT}/bin/__LAUNCHER__
+LICENSE_FILE=skybrushd.cml
 
 echo ""
 echo "Welcome to the __PRODUCT_DISPLAY_NAME__ Uninstaller"
@@ -46,6 +50,10 @@ else
   echo "[1/3] [ERROR] Could not delete installer receipt" >&2
 fi
 
+# Move license file to a temporary location
+rm -f "${TMP_ROOT}/${LICENSE_FILE}.backup"
+[ -f "${PRODUCT_VERSIONED_HOME}/${LICENSE_FILE}" ] && mv "${PRODUCT_VERSIONED_HOME}/${LICENSE_FILE}" "${TMP_ROOT}/${LICENSE_FILE}.backup"
+
 # Remove application source distribution
 [ -e "${PRODUCT_VERSIONED_HOME}" ] && rm -rf "${PRODUCT_VERSIONED_HOME}"
 if [ $? -eq 0 ]
@@ -59,7 +67,7 @@ fi
 REMAINING_VERSIONS=`find ${PRODUCT_HOME} -type d -maxdepth 1 -mindepth 1 -exec basename {} ';' | sort -n`
 if [ "x${REMAINING_VERSIONS}" != x ]; then
   MOST_RECENT_VERSION=""
-  for VERSION in "${REMAINING_VERSIONS}"; do
+  for VERSION in ${REMAINING_VERSIONS}; do
     MOST_RECENT_VERSION="${VERSION}"
   done
 
@@ -67,9 +75,17 @@ if [ "x${REMAINING_VERSIONS}" != x ]; then
     ( cd "${PRODUCT_HOME}"; rm -f current && ln -s "${MOST_RECENT_VERSION}" current ) > /dev/null 2>&1
     if [ $? -eq 0 ]
     then
-	  echo "[3/3] [DONE] Activated version ${MOST_RECENT_VERSION}"
+      echo "[3/3] [DONE] Activated version ${MOST_RECENT_VERSION}"
     else
-	  echo "[3/3] [DONE] Failed to activate version ${MOST_RECENT_VERSION}"
+      echo "[3/3] [DONE] Failed to activate version ${MOST_RECENT_VERSION}"
+    fi
+    if [ -f "${TMP_ROOT}/${LICENSE_FILE}.backup" -a ! -f "${PRODUCT_HOME}/current/${LICENSE_FILE}" ]
+    then
+      mv "${TMP_ROOT}/${LICENSE_FILE}.backup" "${PRODUCT_HOME}/current" > /dev/null 2>&1
+      if [ $? -ne 0 ]
+      then
+        echo "      [WARN] Failed to move license file to version ${MOST_RECENT_VERSION}"
+      fi
     fi
   fi
 
@@ -78,7 +94,7 @@ if [ "x${REMAINING_VERSIONS}" != x ]; then
   echo ""
 
   MOST_RECENT_VERSION=""
-  for VERSION in "${REMAINING_VERSIONS}"; do
+  for VERSION in ${REMAINING_VERSIONS}; do
     echo "  * __PRODUCT_DISPLAY_NAME__ ${VERSION}"
   done
 else
@@ -94,6 +110,9 @@ else
     echo "[3/3] [ERROR] Could not delete launcher script" >&2
   fi
 fi
+
+# Clean up
+rm -f "${TMP_ROOT}/${LICENSE_FILE}.backup"
 
 echo ""
 echo "Uninstallation finished."

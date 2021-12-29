@@ -67,6 +67,7 @@ if [ "x${FROM_WHEELHOUSE}" != x ]; then
   # Caller has prepared all the wheels in a folder, use those
   ls "${FROM_WHEELHOUSE}"/*.whl >requirements-main.txt
   ls "${FROM_WHEELHOUSE}"/*.tar* >>requirements-main.txt
+  ls "${FROM_WHEELHOUSE}"/*.zip >>requirements-main.txt
 elif [ "x${POETRY}" != x ]; then
   # Remove all requirements.txt files, we don't use them, only poetry
   rm -f requirements*.txt

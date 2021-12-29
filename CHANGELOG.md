@@ -5,14 +5,9 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.26.0] - 2021-12-06
+## [1.27.0] - 2021-12-29
 
 ### Added
-
-- Added support for Socket.IO protocol v5 as the transport layer between
-  Skybrush Live and Skybrush Server. Support for Socket.IO v4 is still kept
-  until older versions of Skybrush Live that rely on Socket.IO v4 are phased
-  out.
 
 - Added support for beacons. Extensions may now register beacon objects in the
   server; beacons are shown on the map in clients that support them (e.g.,
@@ -22,6 +17,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - The Light control panel in Skybrush Live is now also supported for Crazyflie
   drones.
+
+- Added a module that provides the magnetic vector for a given GPS coordinate;
+  this can be used by clients to calculate the magnetic declination to show it
+  on the user interface.
+
+## [1.26.0] - 2021-12-06
+
+### Added
+
+- Added support for Socket.IO protocol v5 as the transport layer between
+  Skybrush Live and Skybrush Server. Support for Socket.IO v4 is still kept
+  until older versions of Skybrush Live that rely on Socket.IO v4 are phased
+  out.
 
 ### Fixed
 

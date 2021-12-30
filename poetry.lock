@@ -165,17 +165,17 @@ reference = "collmot"
 
 [[package]]
 name = "attrs"
-version = "21.3.0"
+version = "21.4.0"
 description = "Classes Without Boilerplate"
 category = "main"
 optional = false
 python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*"
 
 [package.extras]
-dev = ["cloudpickle", "coverage[toml] (>=5.0.2)", "hypothesis", "pympler", "pytest (>=4.3.0)", "six", "mypy", "pytest-mypy-plugins", "zope.interface", "furo", "sphinx", "sphinx-notfound-page", "pre-commit"]
+dev = ["coverage[toml] (>=5.0.2)", "hypothesis", "pympler", "pytest (>=4.3.0)", "six", "mypy", "pytest-mypy-plugins", "zope.interface", "furo", "sphinx", "sphinx-notfound-page", "pre-commit", "cloudpickle"]
 docs = ["furo", "sphinx", "zope.interface", "sphinx-notfound-page"]
-tests = ["cloudpickle", "coverage[toml] (>=5.0.2)", "hypothesis", "pympler", "pytest (>=4.3.0)", "six", "mypy", "pytest-mypy-plugins", "zope.interface"]
-tests_no_zope = ["cloudpickle", "coverage[toml] (>=5.0.2)", "hypothesis", "pympler", "pytest (>=4.3.0)", "six", "mypy", "pytest-mypy-plugins"]
+tests = ["coverage[toml] (>=5.0.2)", "hypothesis", "pympler", "pytest (>=4.3.0)", "six", "mypy", "pytest-mypy-plugins", "zope.interface", "cloudpickle"]
+tests_no_zope = ["coverage[toml] (>=5.0.2)", "hypothesis", "pympler", "pytest (>=4.3.0)", "six", "mypy", "pytest-mypy-plugins", "cloudpickle"]
 
 [package.source]
 type = "legacy"
@@ -520,7 +520,7 @@ reference = "collmot"
 
 [[package]]
 name = "flockwave-ext"
-version = "1.9.0"
+version = "1.9.1"
 description = "Generic extension manager for Skybrush-related projects"
 category = "main"
 optional = false
@@ -2114,7 +2114,7 @@ reference = "collmot"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7"
-content-hash = "fa54eb8cc6059ec5aa75e86896f8bad7033332fdcdbe9e2ee833f5d57d2b6a61"
+content-hash = "17ef696d7fcaa9a275ada1a582ebde8ac6989689c173c78dc6816b62b9d5e6de"
 
 [metadata.files]
 adrenaline = [
@@ -2158,8 +2158,8 @@ atomicwrites = [
     {file = "atomicwrites-1.4.0.tar.gz", hash = "sha256:ae70396ad1a434f9c7046fd2dd196fc04b12f9e91ffb859164193be8b6168a7a"},
 ]
 attrs = [
-    {file = "attrs-21.3.0-py2.py3-none-any.whl", hash = "sha256:8f7335278dedd26b58c38e006338242cc0977f06d51579b2b8b87b9b33bff66c"},
-    {file = "attrs-21.3.0.tar.gz", hash = "sha256:50f3c9b216dc9021042f71b392859a773b904ce1a029077f58f6598272432045"},
+    {file = "attrs-21.4.0-py2.py3-none-any.whl", hash = "sha256:2d27e3784d7a565d36ab851fe94887c5eccd6a463168875832a1be79c82828b4"},
+    {file = "attrs-21.4.0.tar.gz", hash = "sha256:626ba8234211db98e869df76230a137c4c40a12d72445c45d5f5b716f076e2fd"},
 ]
 bcrypt = [
     {file = "bcrypt-3.2.0-cp36-abi3-macosx_10_9_x86_64.whl", hash = "sha256:c95d4cbebffafcdd28bd28bb4e25b31c50f6da605c81ffd9ad8a3d1b2ab7b1b6"},
@@ -2359,8 +2359,8 @@ flockwave-conn = [
     {file = "flockwave_conn-3.1.4-py3-none-any.whl", hash = "md5:48e3934443c64c13705833cb0f73bc58"},
 ]
 flockwave-ext = [
-    {file = "flockwave-ext-1.9.0.tar.gz", hash = "md5:5b15f01da2c48ecf279c3c4189d7c1d1"},
-    {file = "flockwave_ext-1.9.0-py3-none-any.whl", hash = "md5:b184100dff4dd8e86d7a0835b03feed8"},
+    {file = "flockwave-ext-1.9.1.tar.gz", hash = "md5:43f13ab3442d20a88170e34c83240d38"},
+    {file = "flockwave_ext-1.9.1-py3-none-any.whl", hash = "md5:e51df7c89508f1bb545aec5eae00d7ac"},
 ]
 flockwave-flockctrl = [
     {file = "flockwave-flockctrl-2.1.1.tar.gz", hash = "md5:4c8e3eeb5d24355f72f94b74ded4b411"},

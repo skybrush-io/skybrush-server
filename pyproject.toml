@@ -38,7 +38,7 @@ passlib = {extras = ["bcrypt"], version = "^1.7.2"}
 flockwave-app-framework = {version = "^2.2.2", extras = ["daemon"]}
 flockwave-async = "^1.0.2"
 flockwave-conn = {extras = ["midi", "rpc", "serial"], version = "^3.1.4"}
-flockwave-ext = "^1.9.1"
+flockwave-ext = "^1.9.2"
 flockwave-flockctrl = "^2.1.0"
 flockwave-gps = "^2.1.0"
 flockwave-logger = "^1.7.0"

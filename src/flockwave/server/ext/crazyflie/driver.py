@@ -1061,7 +1061,7 @@ class CrazyflieUAV(UAVBase):
     async def _enable_show_mode(self) -> None:
         """Enables the drone-show mode on the Crazyflie."""
         cf = self._get_crazyflie()
-        # await cf.param.set("kalman.robustTdoa", 1)
+        await cf.param.set("kalman.robustTdoa", 1)
         await cf.param.set("show.enabled", 1)
         if self.driver.use_test_mode:
             await cf.param.set("show.testing", 1)

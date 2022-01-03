@@ -1,5 +1,6 @@
 from contextlib import ExitStack, contextmanager
 from functools import partial
+from itertools import count
 from typing import Callable, ClassVar, Iterable, Iterator, TYPE_CHECKING, Optional
 
 from flockwave.concurrency import Watchdog
@@ -21,14 +22,18 @@ class RTKBeaconManager:
     of the RTK base station in the server.
     """
 
-    BEACON_ID: ClassVar[str] = "rtk::base"
+    BEACON_ID_TEMPLATE: ClassVar[str] = "rtk::base_{}"
 
     enabled: bool = False
     timeout: float = 15
 
+    _counter: Iterator[int]
     _parser: Callable[[bytes], Iterable[RTCMPacket]]
     _trans: ECEFToGPSCoordinateTransformation = ECEFToGPSCoordinateTransformation()
     _watchdog: Optional[Watchdog] = None
+
+    def __init__(self) -> None:
+        self._counter = count()
 
     @contextmanager
     def use(self, ext: "RTKExtension", nursery) -> Iterator[None]:
@@ -46,7 +51,12 @@ class RTKBeaconManager:
         self._parser = create_rtcm_parser()
 
         with ExitStack() as stack:
-            beacon = stack.enter_context(beacon_api.use(self.BEACON_ID))
+            # When switching RTK presets, it may happen that the new beacon is
+            # created _before_ the previous beacon is removed so we need to use
+            # a counter to ensure that the IDs are unique
+            beacon = stack.enter_context(
+                beacon_api.use(self.BEACON_ID_TEMPLATE.format(next(self._counter)))
+            )
             beacon.basic_properties.name = "RTK base"
 
             stack.enter_context(

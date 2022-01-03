@@ -13,6 +13,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   unhandled error message when the RTK base station was not sending valid
   messages at all.
 
+- Fixed a bug that prevented the magnetic vector provider from working properly
+  in macOS builds.
+
 ## [1.27.0] - 2021-12-29
 
 ### Added

@@ -472,7 +472,7 @@ reference = "collmot"
 
 [[package]]
 name = "flockwave-async"
-version = "1.0.2"
+version = "1.0.3"
 description = "Asynchronous utility functions, mostly for Trio"
 category = "main"
 optional = false
@@ -2351,8 +2351,8 @@ flockwave-app-framework = [
     {file = "flockwave_app_framework-2.2.2-py3-none-any.whl", hash = "md5:f33df61de1cb10da29f8f9a101a4b7e1"},
 ]
 flockwave-async = [
-    {file = "flockwave-async-1.0.2.tar.gz", hash = "md5:ee97477d2d38cbbcc28c4f83b85f3abc"},
-    {file = "flockwave_async-1.0.2-py3-none-any.whl", hash = "md5:b2ceab41ec365ee23f2ce4b607784842"},
+    {file = "flockwave-async-1.0.3.tar.gz", hash = "md5:dc70416787d83932ab44405b957911ef"},
+    {file = "flockwave_async-1.0.3-py3-none-any.whl", hash = "md5:e8b9ad4ab04ef193a76c58ed4f42650d"},
 ]
 flockwave-conn = [
     {file = "flockwave-conn-3.1.4.tar.gz", hash = "md5:6b2ce0f7799a3e70225c90186343c37a"},

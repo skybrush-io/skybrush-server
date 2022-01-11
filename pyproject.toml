@@ -35,14 +35,14 @@ scp = ">=0.13.2"
 hypercorn = {extras = ["trio"], version = ">=0.10.1"}
 tinyrpc = {version = ">=1.0.4", extras = ["msgpack"]}
 passlib = {extras = ["bcrypt"], version = "^1.7.2"}
-flockwave-app-framework = {version = "^2.2.2", extras = ["daemon"]}
+flockwave-app-framework = {version = "^2.3.0", extras = ["daemon"]}
 flockwave-async = "^1.0.2"
-flockwave-conn = {extras = ["midi", "rpc", "serial"], version = "^3.1.4"}
+flockwave-conn = {extras = ["midi", "rpc", "serial"], version = "^4.0.0"}
 flockwave-ext = "^1.9.2"
 flockwave-flockctrl = "^2.1.0"
 flockwave-gps = "^2.1.0"
 flockwave-logger = "^1.7.0"
-flockwave-net = {extras = ["async"], version = "^2.0.2"}
+flockwave-net = {extras = ["async"], version = "^3.0.0"}
 flockwave-parsers = "^2.0.1"
 flockwave-spec = "^1.59.0"
 pyledctrl = "^3.1.0"
@@ -53,7 +53,7 @@ msgpack = "^1.0.0"
 aio-usb-hotplug = "^4.0.0"
 pyserial = "^3.4"
 compose = "^1.1.1"
-adrenaline = ">=0.2.2"
+adrenaline = ">=0.3.0"
 trio-parallel = "^1.0.0"
 oscpy = ">=0.6.0"
 httpx = ">=0.18.2"

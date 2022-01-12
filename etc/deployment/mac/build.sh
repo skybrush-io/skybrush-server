@@ -52,31 +52,20 @@ poetry export -f requirements.txt --without-hashes --with-credentials \
 ls dist/`echo ${PROJECT_NAME} | sed -e 's/-/_/g'`*.whl >>requirements.txt
 trap "rm -f requirements.txt" EXIT
 
-# PyNaCl needs setuptools, wheel and cffi as a build dependency. We can remove
-# this once PyNaCl starts publishing universal wheels for macOS.
-#
-# pycparser is needed by cffi; we can remove pycparser once cffi starts publishing
-# universal wheels for macOS.
-cat <<EOF >>requirements.txt
-setuptools>=46.0.0
-cffi>=1.15.0
-wheel>=0.37.0
-pycparser>=2.21
-EOF
-
 # Set up environment variables to support macOS 10.13 at least. PyInstaller 4.7
 # has wheels for macOS 10.13 so we cannot go any earlier than that (but it's
 # okay). We cannot provide universal binaries yet because PyArmor does not
 # provide universal dylibs so we use Intel.
 export MACOSX_DEPLOYMENT_TARGET=10.13
-export CFLAGS="-arch x86_64"
-TARGET_PLATFORM="macosx_10_13_x86_64"
+TARGET_PLATFORM="macosx_10_13_universal2"
 
 # Collect all wheels into a folder
 rm -rf "${WHEEL_DIR}"
 mkdir -p "${WHEEL_DIR}"
 pip3 download -r requirements.txt \
-    --platform ${TARGET_PLATFORM} --python-version ${PYTHON_VERSION_SHORT} --implementation cp --abi cp${PYTHON_VERSION_SHORT} \
+    --platform ${TARGET_PLATFORM} \
+    --python-version ${PYTHON_VERSION_SHORT} \
+    --implementation cp --abi cp${PYTHON_VERSION_SHORT} \
     --prefer-binary --no-deps \
     --progress-bar pretty \
     -d "${WHEEL_DIR}"
@@ -84,17 +73,15 @@ pip3 download -r requirements.txt \
 # Now clean the build dir and install everything in a virtualenv in there
 rm -rf "${BUILD_DIR}"
 VENV_DIR="${BUILD_DIR}/venv"
-python3 -m venv "${VENV_DIR}"
+~/.pyenv/versions/3.9.9-universal/bin/python3 -m venv "${VENV_DIR}"
 
 # TODO(ntamas): clean up unused MAVlink dialects somehow!
 
-# At the moment, PyArmor does not work on Apple M1 (freezes when obfuscating)
-# unless we set the PYARMOR_PLATFORM envvar. Note that we force it to x86_64 because
-# we are running the next builder script in an x86_64 environment
-if [ `uname -m` = "arm64" ]; then
-    export PYARMOR_PLATFORM=darwin.x86_64.0
-fi
-export TARGET_PLATFORM=darwin.x86_64.11.py39
-arch -x86_64 $(SHELL) etc/scripts/build-pyarmored-dist.sh --standalone --keep-staging --no-tarball --wheelhouse "${WHEEL_DIR}" "${VENV_DIR}"
+# export TARGET_PLATFORM=darwin.x86_64.11.py39
+etc/scripts/build-pyarmored-dist.sh --standalone --keep-staging --no-obfuscation --no-tarball --wheelhouse "${WHEEL_DIR}" "${VENV_DIR}"
 etc/deployment/mac/build-installer.sh build/pyarmor/staging
 rm -rf build/pyarmor/staging
+
+echo ""
+echo "WARNING: macOS builds are currently unobfuscated!"
+echo "Fix it with PyArmor before releasing it to the public."

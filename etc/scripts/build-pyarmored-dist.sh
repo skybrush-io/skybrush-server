@@ -19,6 +19,7 @@ REPO_ROOT="${SCRIPT_ROOT}/../.."
 STANDALONE=0
 KEEP_STAGING_FOLDER=0
 BUILD_TARBALL=1
+RUN_PYARMOR=1
 FROM_WHEELHOUSE=
 
 while [ "x$1" != x ]; do
@@ -30,6 +31,9 @@ while [ "x$1" != x ]; do
     shift
   elif [ "x$1" = "x--no-tarball" ]; then
     BUILD_TARBALL=0
+    shift
+  elif [ "x$1" = "x--no-obfuscation" ]; then
+    RUN_PYARMOR=0
     shift
   elif [ "x$1" = "x--wheelhouse" ]; then
     FROM_WHEELHOUSE="$2"
@@ -103,7 +107,7 @@ mkdir -p "${BUILD_DIR}/bin"
 mkdir -p "${BUILD_DIR}/lib"
 
 # Install dependencies
-"${PIP}" install -U pip wheel "pyarmor>=7.2.2" "pyinstaller>=4.7"
+"${PIP}" install -U pip wheel "pyarmor>=7.3.0" "pyinstaller>=4.7"
 
 if [ "x$FROM_WHEELHOUSE" != x ]; then
   "${PIP}" install --no-deps --no-index --find-links="${FROM_WHEELHOUSE}"/ -r requirements-main.txt -t "${BUILD_DIR}/lib"
@@ -133,18 +137,31 @@ if [ $STANDALONE = 1 ]; then
   # Invoke obfuscation script on virtualenv. Note that we need --advanced 2 here
   # because the PyInstaller repacking trick does not work with the "normal"
   # mode.
-  PYARMOR_ARGS="--advanced 2" etc/scripts/_apply-pyarmor-on-venv.sh "${PYARMOR}" "${BUILD_DIR}/lib" "${BUILD_DIR}/obf" --keep
+  if [ "x$RUN_PYARMOR" = "x1" ]; then
+    PYARMOR_ARGS="--advanced 2" etc/scripts/_apply-pyarmor-on-venv.sh "${PYARMOR}" "${BUILD_DIR}/lib" "${BUILD_DIR}/obf" --keep
+  fi
 
   # Call PyInstaller to produce an unobfuscated distribution first
   # TODO(ntamas): BUILD_DIR is hardcoded into pyinstaller.spec
   # Apparently we need to pass PYTHONPATH earlier because pkg_resources does not
   # find stuff in it if we let PyInstaller extend the PATH later
-  PYTHONPATH="${BUILD_DIR}/lib" "${PYINSTALLER}" --clean -y --dist "${BUILD_DIR}/dist" etc/deployment/pyinstaller/pyinstaller.spec
+  PYINSTALLER_ARGS="--clean -y"
+  if [ `uname -m` = arm64 ]; then
+    # On macOS, force PyInstaller to create an universal binary
+    PYINSTALLER_ARGS="${PYINSTALLER_ARGS} --target-arch=universal2"
+  fi
+  PYTHONPATH="${BUILD_DIR}/lib" "${PYINSTALLER}" ${PYINSTALLER_ARGS} \
+    --dist "${BUILD_DIR}/dist" \
+    etc/deployment/pyinstaller/pyinstaller.spec
 
   # Replace the unobfuscated libraries with the obfuscated ones in the PyInstaller
   # distribution
-  "${PYTHON}" etc/deployment/pyarmor/repack.py -p "${BUILD_DIR}/obf" "${BUILD_DIR}/dist/skybrushd"
-  mv skybrushd_obf ${BUILD_DIR}/bin/skybrushd
+  if [ "x$RUN_PYARMOR" = "x1" ]; then
+    "${PYTHON}" etc/deployment/pyarmor/repack.py -p "${BUILD_DIR}/obf" "${BUILD_DIR}/dist/skybrushd"
+    mv skybrushd_obf ${BUILD_DIR}/bin/skybrushd
+  else
+    cp ${BUILD_DIR}/dist/skybrushd ${BUILD_DIR}/bin/skybrushd
+  fi
 
   # Clean up after ourselves
   rm -rf skybrushd_extracted
@@ -166,10 +183,12 @@ if [ $STANDALONE = 1 ]; then
   cp etc/deployment/linux/skybrushd "${BUILD_DIR}/staging/bin/skybrushd"
   chmod a+x "${BUILD_DIR}/staging/bin/skybrushd"
 else
-  # Separate obfuscated Python modules; typically for a Raspberry Pi
+  # Separate Python modules; typically for a Raspberry Pi
 
-  # Invoke obfuscation script on virtualenv
-  etc/scripts/_apply-pyarmor-on-venv.sh "${PYARMOR}" "${BUILD_DIR}/lib" "${BUILD_DIR}/obf"
+  if [ "x$RUN_PYARMOR" = x1 ]; then
+    # Invoke obfuscation script on virtualenv
+    etc/scripts/_apply-pyarmor-on-venv.sh "${PYARMOR}" "${BUILD_DIR}/lib" "${BUILD_DIR}/obf"
+  fi
 
   # Create a launcher script
   cp etc/deployment/pyarmor/skybrushd "${BUILD_DIR}/bin"

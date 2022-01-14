@@ -1000,7 +1000,7 @@ class FlockCtrlUAV(UAVBase):
         # flockctrl transfers parameters to the autopilots through the
         # 'autopilot param' console command
         await self.driver._send_command_to_uav_and_check_for_errors(
-            f"autopilot param {name}={value}", self
+            f"autopilot param {name} {value}", self
         )
 
         # TODO: should we send a response whether the param was sent successfully?

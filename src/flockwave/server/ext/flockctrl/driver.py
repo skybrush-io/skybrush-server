@@ -6,6 +6,7 @@ from base64 import b64decode
 from bidict import bidict
 from colour import Color
 from logging import Logger
+from math import isfinite
 from time import monotonic
 from typing import (
     Any,
@@ -849,6 +850,15 @@ class FlockCtrlDriver(UAVDriver):
             cmd = "go N{0.lat:.7f} E{0.lon:.7f}".format(target)
         return await self._send_command_to_uav_and_check_for_errors(cmd, uav)
 
+    async def _set_parameter_single(
+        self, uav: "FlockCtrlUAV", name: str, value: Any
+    ) -> None:
+        try:
+            value_as_float = float(value)
+        except ValueError:
+            raise RuntimeError("parameter value must be numeric")
+        await uav.set_parameter(name, value_as_float)
+
     async def _send_reset_signal_single(
         self,
         uav: "FlockCtrlUAV",
@@ -980,6 +990,20 @@ class FlockCtrlUAV(UAVBase):
     @property
     def preflight_status(self) -> PreflightCheckInfo:
         return self._preflight_status
+
+    async def set_parameter(self, name: str, value: float) -> None:
+        """Sets the value of a parameter on the UAV."""
+        # Basic sanity check on the value
+        if not isfinite(value):
+            raise RuntimeError("parameter value must be finite")
+
+        # flockctrl transfers parameters to the autopilots through the
+        # 'autopilot param' console command
+        await self.driver._send_command_to_uav_and_check_for_errors(
+            f"autopilot param {name}={value}", self
+        )
+
+        # TODO: should we send a response whether the param was sent successfully?
 
     @property
     def ssh_host(self) -> str:

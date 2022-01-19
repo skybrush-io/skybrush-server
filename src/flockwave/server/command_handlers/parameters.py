@@ -1,6 +1,5 @@
 """Functions related to generic onboard parameter handling on UAVs."""
 
-import re
 from typing import Awaitable, Callable, Optional, Union
 
 from flockwave.server.errors import NotSupportedError
@@ -30,10 +29,10 @@ def create_parameter_command_handler(
     - `param name value` or `param name=value` sets the parameter with the given
     name to a new value
 
-    Parameter names must be strings containing _only_ alphanumeric characters,
-    dashes or underscores. Parameter values may be specified either as strings
-    or as floats. Strings that can be cast into numbers will be cast into
-    numbers. Strings that _cannot_ be cast into numbers will throw an error.
+    Parameter names must be strings. Parameter values may be specified either as
+    strings or as floats. Strings that can be cast into numbers will be cast
+    into numbers. Strings that _cannot_ be cast into numbers will throw an
+    error.
 
     Parameters:
         name_validator: optional function that will take the parameter name
@@ -57,9 +56,6 @@ def create_parameter_command_handler(
         name = str(name)
         if "=" in name and value is None:
             name, value = name.split("=", 1)
-
-        if not re.compile("^[-A-Za-z0-9_]+$").match(name):
-            raise RuntimeError(f"Parameter name contains undesired characters: {name}")
 
         if name_validator:
             try:

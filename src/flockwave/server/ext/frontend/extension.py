@@ -5,6 +5,7 @@ served over HTTP.
 from bisect import insort_right
 from contextlib import contextmanager
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Iterator, List
 
 from quart import render_template, url_for
@@ -41,12 +42,19 @@ front_page_links: List[FrontPageLink] = []
 
 def load(app, configuration):
     """Loads the extension."""
+    static_folder_from_config = configuration.get("path")
+    has_static_folder_in_config = bool(static_folder_from_config)
     route = configuration.get("route", "/app")
+
+    if has_static_folder_in_config:
+        static_folder = str(Path(static_folder_from_config).resolve())
+    else:
+        static_folder = "static"
 
     blueprint = make_blueprint(
         "frontend",
         __name__,
-        static_folder="static",
+        static_folder=static_folder,
         template_folder="templates",
         static_url_path="/",
     )
@@ -54,7 +62,10 @@ def load(app, configuration):
     @blueprint.route("/")
     async def index():
         """Returns the index page of the extension."""
-        return await render_template("index.html.j2", links=front_page_links)
+        if has_static_folder_in_config:
+            return await blueprint.send_static_file("index.html")
+        else:
+            return await render_template("index.html.j2", links=front_page_links)
 
     http_server = app.import_api("http_server")
     http_server.mount(blueprint, path=route)

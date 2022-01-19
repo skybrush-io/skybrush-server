@@ -1,5 +1,5 @@
 # syntax = docker/dockerfile:1.0-experimental
-FROM python:3.8-slim AS builder
+FROM python:3.9-slim AS builder
 
 # Update all the things
 RUN apt-get update && apt-get -y upgrade
@@ -39,7 +39,7 @@ RUN find . | grep -E "(__pycache__|\.pyc$)" | xargs rm -rf
 
 # Start the second stage where we don't add the stuff that we only need for
 # compiling things
-FROM python:3.8-slim
+FROM python:3.9-slim
 
 # Add tini as an init system
 ENV TINI_VERSION v0.19.0

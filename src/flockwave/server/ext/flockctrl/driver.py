@@ -7,6 +7,7 @@ from bidict import bidict
 from colour import Color
 from logging import Logger
 from math import isfinite
+import re
 from time import monotonic
 from typing import (
     Any,
@@ -993,6 +994,9 @@ class FlockCtrlUAV(UAVBase):
 
     async def set_parameter(self, name: str, value: float) -> None:
         """Sets the value of a parameter on the UAV."""
+        # Basic sanity check on the name
+        if not re.compile("^[-A-Za-z0-9_]+$").match(name):
+            raise RuntimeError(f"Parameter name contains undesired characters: {name}")
         # Basic sanity check on the value
         if not isfinite(value):
             raise RuntimeError("parameter value must be finite")

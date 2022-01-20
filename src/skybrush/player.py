@@ -22,6 +22,13 @@ ZERO = (0.0, 0.0, 0.0)
 def create_function_for_segment(segment: TrajectorySegment) -> Callable[[float], Point]:
     """Creates a function for a trajectory segment that evaluates it at any
     given _ratio_ of the segment.
+
+    Parameters:
+        segment: the segment to evaluate
+
+    Returns:
+        a function that can be called with a ratio (between 0 and 1, inclusive)
+        and returns the corresponding point on the segment
     """
     if segment.has_control_points:
         return _create_bezier_function_for_segment(segment)

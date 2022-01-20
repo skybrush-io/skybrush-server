@@ -4,7 +4,7 @@ Skybrush-related trajectories, until we find a better place for them.
 
 from dataclasses import dataclass
 from math import ceil, inf
-from typing import Dict, Iterable, List, Optional, Tuple
+from typing import Dict, Iterable, List, Optional, Sequence, Tuple
 
 from flockwave.gps.vectors import FlatEarthToGPSCoordinateTransformation
 
@@ -20,7 +20,7 @@ __all__ = (
 )
 
 
-@dataclass
+@dataclass(frozen=True)
 class TrajectorySegment:
     """A single segment in a trajectory specification."""
 
@@ -33,7 +33,7 @@ class TrajectorySegment:
     """The total duration of the segment."""
 
     points: List[Point]
-    """The control points of the segment."""
+    """The control points of the segment, including the start and end point."""
 
     @property
     def has_control_points(self) -> bool:
@@ -59,6 +59,87 @@ class TrajectorySegment:
     def end_time(self) -> float:
         """Returns the end time of the segment, relative to the takeoff time."""
         return self.t + self.duration
+
+    def split_at(
+        self, fraction: float
+    ) -> Tuple["TrajectorySegment", "TrajectorySegment"]:
+        """Splits the segment into two pieces at the given relative fraction.
+
+        Parameters:
+            fraction: the fraction to split the segment at
+
+        Returns:
+            the two smaller pieces that the segment was split into
+        """
+        if fraction < 0 or fraction > 1:
+            raise ValueError("fraction must be between 0 and 1")
+        elif fraction == 0:
+            first = TrajectorySegment(self.t, 0, [self.start])
+            second = self
+        elif fraction == 1:
+            first = self
+            second = TrajectorySegment(self.end_time, 0, [self.end])
+        else:
+            first_points: List[Point] = []
+            second_points: List[Point] = []
+            first_points, second_points = self._split_helper(fraction, self.points)
+            first_duration = self.duration * fraction
+            first = TrajectorySegment(self.t, first_duration, first_points)
+            second = TrajectorySegment(
+                self.t + first_duration, self.duration - first_duration, second_points
+            )
+
+        return first, second
+
+    def split_to_max_duration(
+        self, max_duration: float
+    ) -> Iterable["TrajectorySegment"]:
+        """Splits the segment into smaller pieces such that the duration of
+        each piece is less than or equal to the given maxium duration.
+        """
+        if max_duration <= 0:
+            raise ValueError("maximum duration must be positive")
+
+        num_splits = self.duration // max_duration
+        current = self
+        if num_splits:
+            while num_splits > 0:
+                ratio = 1 / (num_splits + 1)
+                head, current = current.split_at(ratio)
+                num_splits -= 1
+                yield head
+        yield current
+
+    @staticmethod
+    def _split_helper(
+        t: float, points: Sequence[Point]
+    ) -> Tuple[List[Point], List[Point]]:
+        """Helper function for splitting the segment at a given fraction.
+        See https://pomax.github.io/bezierinfo/#splitting for more details.
+        """
+        left: List[Point] = []
+        right: List[Point] = []
+
+        while True:
+            left.append(points[0])
+            right.append(points[-1])
+            n = len(points)
+            if n > 1:
+                new_points: List[Point] = []
+                for i in range(n - 1):
+                    new_points.append(
+                        (
+                            (1 - t) * points[i][0] + t * points[i + 1][0],
+                            (1 - t) * points[i][1] + t * points[i + 1][1],
+                            (1 - t) * points[i][2] + t * points[i + 1][2],
+                        )
+                    )
+                points = new_points
+            else:
+                break
+
+        right.reverse()
+        return left, right
 
 
 class TrajectorySpecification:
@@ -192,13 +273,13 @@ class TrajectorySpecification:
                     raise ValueError(f"time should not move backwards at t = {t}")
                 elif dt == 0:
                     raise ValueError(f"time should not stand still at t = {t}")
-                elif dt > max_length:
-                    raise ValueError(
-                        f"segment starting at t = {t} is too long: {dt} seconds, allowed max is {max_length}"
-                    )
-
-                points = [start, *control, point]  # type: ignore
-                yield TrajectorySegment(t=prev_t, duration=dt, points=points)
+                else:
+                    points = [start, *control, point]  # type: ignore
+                    segment = TrajectorySegment(t=prev_t, duration=dt, points=points)
+                    if dt > max_length:
+                        yield from segment.split_to_max_duration(max_length)
+                    else:
+                        yield segment
 
             prev_t = t
             start = point

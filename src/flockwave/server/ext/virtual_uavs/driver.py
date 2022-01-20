@@ -874,7 +874,7 @@ class VirtualUAVDriver(UAVDriver):
     async def handle_command_async_exception(self, uav: VirtualUAV) -> NoReturn:
         """Throws an synchronous exception."""
         await sleep(0.2)
-        raise ValueError("Async exception raised")
+        raise RuntimeError("Async exception raised")
 
     async def handle_command_battery(self, uav: VirtualUAV, value: str) -> str:
         """Command that sets the battery voltage to a given value."""
@@ -915,7 +915,7 @@ class VirtualUAVDriver(UAVDriver):
 
     def handle_command_exception(self, uav: VirtualUAV) -> NoReturn:
         """Throws a synchronous exception."""
-        raise ValueError("Sync exception raised")
+        raise RuntimeError("Sync exception raised")
 
     async def handle_command_progress(self, uav: VirtualUAV) -> str:
         """Dummy command that can be used to test progress reports sent

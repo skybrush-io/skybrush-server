@@ -45,7 +45,7 @@ PacketType = TypeVar("PacketType")
 BROADCAST = object()
 
 #: Marker object used to denote "no broadcast address"
-_NO_BROADCAST_ADDRESS = object()
+NO_BROADCAST_ADDRESS = object()
 
 #: Special Windows error codes for "network unreachable" condition
 WSAENETDOWN = 10050
@@ -429,8 +429,8 @@ class CommunicationManager(Generic[PacketType, AddressType]):
         for entries in self._entries_by_name.values():
             for index, entry in enumerate(entries):
                 channel = entry.channel
-                address = getattr(channel, "broadcast_address", _NO_BROADCAST_ADDRESS)
-                if address is not _NO_BROADCAST_ADDRESS:
+                address = getattr(channel, "broadcast_address", NO_BROADCAST_ADDRESS)
+                if address is not NO_BROADCAST_ADDRESS:
                     try:
                         await channel.send((message, address))
                     except Exception:
@@ -448,19 +448,22 @@ class CommunicationManager(Generic[PacketType, AddressType]):
             entries = self._entries_by_name.get(name)
 
         sent = False
+        is_broadcast = address is BROADCAST
 
         if entries:
             for index, entry in enumerate(entries):
                 if entry.is_open and entry.can_send:
                     try:
-                        if address is BROADCAST:
-                            # This must be a broadcast
+                        if is_broadcast:
+                            # This message should be broadcast on this channel;
+                            # let's check if the channel has a broadcast address
                             address = getattr(
                                 entry.channel,
                                 "broadcast_address",
-                                _NO_BROADCAST_ADDRESS,
+                                NO_BROADCAST_ADDRESS,
                             )
-                            if address is not _NO_BROADCAST_ADDRESS:
+                            is_broadcast = True
+                            if address is not NO_BROADCAST_ADDRESS:
                                 await entry.channel.send((message, address))
                                 sent = True
                         else:
@@ -492,7 +495,7 @@ class CommunicationManager(Generic[PacketType, AddressType]):
                             extra={"id": name or ""},
                         )
 
-        if not sent and address is not BROADCAST:
+        if not sent and not is_broadcast:
             if entries:
                 self.log.warn(
                     f"Dropping outbound message, all channels broken for: {name!r}"

@@ -378,6 +378,8 @@ class MAVType(IntEnum):
     QUADROTOR = 2
     ANTENNA_TRACKER = 5
     GCS = 6
+    HEXAROTOR = 13
+    OCTOROTOR = 14
     ONBOARD_CONTROLLER = 18
     GIMBAL = 26
     ADSB = 27

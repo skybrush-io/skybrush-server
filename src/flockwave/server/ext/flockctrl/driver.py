@@ -452,6 +452,9 @@ class FlockCtrlDriver(UAVDriver):
             formatted_id, factory=self._create_uav
         )
 
+    async def _get_parameter_single(self, uav: "FlockCtrlUAV", name: str) -> float:
+        return await uav.get_parameter(name)
+
     def _handle_inbound_algorithm_data_packet(
         self, packet: AlgorithmDataPacket, source
     ):
@@ -960,6 +963,37 @@ class FlockCtrlUAV(UAVBase):
             )
         else:
             raise NotSupportedError
+
+    async def get_parameter(self, name: str) -> float:
+        """Returns the value of a parameter from the autopilot of the UAV.
+
+        WARNING: Note that in the current implementation the parameter is
+        retreived through the flockctrl console which means that NOT the
+        latest parameter value is returned from the underlying autopilot, but
+        the one that is already stored in flockctrl. Paralelly, a new param
+        request is sent to the autopilot to get a newer version. This is not
+        optimal but that is what is already implemented so far.
+
+        Returns:
+            stored parameter value if it could be received, NaN if not
+        """
+        # Basic sanity check on the name
+        if not re.compile("^[-A-Za-z0-9_]+$").match(name):
+            raise RuntimeError(f"Parameter name contains undesired characters: {name}")
+        # Retrieve the latest stored parameter value through the console
+        response = await self.driver._send_command_to_uav_and_check_for_errors(
+            f"autopilot param {name}", self
+        )
+        # ugly hack: get float value from assumed "param = value\n" style msg
+        stripped = response.strip().replace(" ", "")
+        if "=" not in stripped:
+            return float("nan")
+        try:
+            value = float(stripped.split("=", 1)[1])
+        except ValueError:
+            return float("nan")
+
+        return value
 
     @property
     def is_airborne(self) -> bool:

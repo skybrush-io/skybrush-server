@@ -423,7 +423,7 @@ class CommunicationManager(Generic[PacketType, AddressType]):
             if destination is BROADCAST:
                 await self._send_message_to_all_channels(message)
             else:
-                await self._send_message_to_single_destination(message, destination)
+                await self._send_message_to_single_channel(message, destination)
 
     async def _send_message_to_all_channels(self, message):
         for entries in self._entries_by_name.values():
@@ -438,7 +438,7 @@ class CommunicationManager(Generic[PacketType, AddressType]):
                         # if a few of them fail for whatever reason
                         pass
 
-    async def _send_message_to_single_destination(self, message, destination):
+    async def _send_message_to_single_channel(self, message, destination):
         name, address = destination
 
         entries = self._entries_by_name.get(name)

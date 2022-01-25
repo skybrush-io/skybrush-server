@@ -484,7 +484,7 @@ reference = "collmot"
 
 [[package]]
 name = "flockwave-conn"
-version = "4.0.0"
+version = "4.0.1"
 description = "Connection objects for various data sources"
 category = "main"
 optional = false
@@ -2105,7 +2105,7 @@ reference = "collmot"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7"
-content-hash = "e8eef02d822e7092b399b26cd3dd04307cec1814fada6f826fe4537caba192bc"
+content-hash = "196288250fa543c89bdd394be40934422fea626b2bb39e54ff4c8916ff3a2c45"
 
 [metadata.files]
 adrenaline = [
@@ -2349,8 +2349,8 @@ flockwave-async = [
     {file = "flockwave_async-1.0.3-py3-none-any.whl", hash = "md5:e8b9ad4ab04ef193a76c58ed4f42650d"},
 ]
 flockwave-conn = [
-    {file = "flockwave-conn-4.0.0.tar.gz", hash = "md5:4aacf2725f5f7f231f716f2aede4dfff"},
-    {file = "flockwave_conn-4.0.0-py3-none-any.whl", hash = "md5:3836110dbe5a934f0ceccdfdccd62646"},
+    {file = "flockwave-conn-4.0.1.tar.gz", hash = "md5:1982873635c4dba4787bd8f191500b36"},
+    {file = "flockwave_conn-4.0.1-py3-none-any.whl", hash = "md5:0e66d52fbad4e345b70dc47356df3eb0"},
 ]
 flockwave-ext = [
     {file = "flockwave-ext-1.9.2.tar.gz", hash = "md5:845cd133a561db04b089b545aeba5b56"},

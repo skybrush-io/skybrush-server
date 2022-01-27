@@ -666,6 +666,12 @@ class SkybrushServer(DaemonApp):
         return result
 
     def _create_components(self) -> None:
+        # Register skybrush.server.ext as an entry point group that is used to
+        # discover extensions
+        self.extension_manager.module_finder.add_entry_point_group(
+            "skybrush.server.ext"
+        )
+
         # Create an object that can be used to get hold of commonly used
         # directories within the app
         self.dirs = AppDirs("Skybrush Server", "CollMot Robotics")

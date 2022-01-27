@@ -30,23 +30,6 @@ EXTENSIONS = {
     "auth": {},
     "auth_basic": {"enabled": False, "passwords": {"user@domain.xyz": "password"}},
     "beacon": {"enabled": False},
-    "cascade_demo": {
-        "enabled": False,
-        # Farkashegy
-        "stations": {
-            "A": [18.9157319, 47.4848304],
-            "B": [18.9150453, 47.4857730],
-            "C": [18.9164507, 47.4856715],
-            # "D": [18.915955, 47.486647],
-            # "E": [18.917274, 47.485178],
-        },
-        "waypoints": {
-            "a": [18.9157748, 47.4854612],
-            "b": [18.9163113, 47.4850407],
-            "c": [18.9165688, 47.4853815],
-        },
-        "routes": {"A->B": [], "A->C": ["b", "c"], "B->C": ["a"]},
-    },
     "console_status": {},
     "crazyflie": {
         "id_format": "{0:02}",

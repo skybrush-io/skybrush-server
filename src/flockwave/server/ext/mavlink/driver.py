@@ -38,6 +38,7 @@ from skybrush import (
     get_coordinate_system_from_show_specification,
     get_geofence_configuration_from_show_specification,
     get_light_program_from_show_specification,
+    get_rth_plan_from_show_specification,
     get_trajectory_from_show_specification,
 )
 from skybrush.formats import SkybrushBinaryShowFile
@@ -1794,10 +1795,13 @@ class MAVLinkUAV(UAVBase):
         light_program = get_light_program_from_show_specification(show)
         trajectory = get_trajectory_from_show_specification(show)
         geofence = get_geofence_configuration_from_show_specification(show)
+        rth_plan = get_rth_plan_from_show_specification(show)
 
         async with SkybrushBinaryShowFile.create_in_memory() as show_file:
             await show_file.add_trajectory(trajectory)
             await show_file.add_light_program(light_program)
+            if rth_plan:
+                await show_file.add_rth_plan(rth_plan)
             data = show_file.get_contents()
 
         # Upload show file

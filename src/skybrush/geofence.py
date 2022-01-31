@@ -14,7 +14,7 @@ from flockwave.server.model.geofence import (
 )
 from flockwave.server.utils import optional_float
 
-from .trajectory import get_coordinate_system_from_show_specification
+from .show import get_coordinate_system_from_show_specification
 
 __all__ = ("get_geofence_configuration_from_show_specification",)
 
@@ -56,6 +56,7 @@ def get_geofence_configuration_from_show_specification(
         coordinate_system = None
 
     if polygons:
+        assert coordinate_system is not None
         result.polygons = [
             _parse_polygon(polygon, coordinate_system) for polygon in polygons
         ]

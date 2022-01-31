@@ -100,3 +100,7 @@ def test_trajectory_segment_splitting_to_max_duration():
         bezier = create_function_for_segment(segment)
         assert fragment.points[0] == approx(bezier(index / 6))
         assert fragment.points[-1] == approx(bezier((index + 1) / 6))
+
+    # Split with invalid duration
+    with raises(ValueError, match="must be positive"):
+        list(segment.split_to_max_duration(-2))

@@ -40,12 +40,12 @@ from flockwave.spec.errors import FlockwaveErrorCode
 from flockwave.spec.ids import make_valid_object_id
 
 from skybrush import (
+    get_group_index_from_show_specification,
     get_home_position_from_show_specification,
     get_light_program_from_show_specification,
     get_trajectory_from_show_specification,
     TrajectorySpecification,
 )
-from skybrush.trajectory import get_group_index_from_show_specification
 
 from .crtp_extensions import (
     DRONE_SHOW_PORT,

@@ -1,4 +1,13 @@
-from skybrush.formats import SkybrushBinaryShowFile, SkybrushBinaryFormatBlockType
+from pytest import fixture, raises
+from typing import List
+
+from skybrush.rth_plan import RTHAction, RTHPlan, RTHPlanEntry
+from skybrush.formats import (
+    RTHPlanEncoder,
+    SkybrushBinaryFileBlock,
+    SkybrushBinaryShowFile,
+    SkybrushBinaryFormatBlockType,
+)
 
 
 SIMPLE_SKYB_FILE = (
@@ -13,12 +22,127 @@ SIMPLE_SKYB_FILE = (
 )
 
 
+@fixture
+def plan() -> RTHPlan:
+    plan = RTHPlan()
+
+    entry = RTHPlanEntry(time=0, action=RTHAction.LAND)
+    plan.add_entry(entry)
+
+    entry = RTHPlanEntry(
+        time=15,
+        action=RTHAction.GO_TO_KEEPING_ALTITUDE_AND_LAND,
+        target=(30, 40),
+        duration=50,
+        post_delay=5,
+    )
+    plan.add_entry(entry)
+
+    entry = RTHPlanEntry(
+        time=45,
+        action=RTHAction.GO_TO_KEEPING_ALTITUDE_AND_LAND,
+        target=(-40, -30),
+        duration=50,
+        pre_delay=2,
+    )
+    plan.add_entry(entry)
+
+    entry = RTHPlanEntry(
+        time=65,
+        action=RTHAction.GO_TO_KEEPING_ALTITUDE_AND_LAND,
+        target=(30, 40),
+        duration=30,
+    )
+    plan.add_entry(entry)
+
+    entry = RTHPlanEntry(
+        time=80,
+        action=RTHAction.GO_TO_KEEPING_ALTITUDE_AND_LAND,
+        target=(30, 40),
+        duration=30,
+    )
+    plan.add_entry(entry)
+
+    entry = RTHPlanEntry(time=105, action=RTHAction.LAND)
+    plan.add_entry(entry)
+
+    return plan
+
+
+ENCODED_RTH_PLAN_WITH_PROPOSED_SCALING_FACTOR = (
+    # Scaling factor
+    b"\x02"
+    # Number of points
+    b"\x02\x00"
+    # Point 1: (30, 40)
+    b"\x98\x3a\x20\x4e"
+    # Point 2: (-40, -30)
+    b"\xe0\xb1\x68\xc5"
+    # Number of entries
+    b"\x06\x00"
+    # Entry 1: time=0, land
+    b"\x10\x00"
+    # Entry 2: time since previous = 15, go to (30, 40) in 50s, post-delay=5
+    b"\x21\x0f\x00\x32\x05"
+    # Entry 3: time since previous = 30, go to (-40, -30) in 50s, pre-delay=2
+    b"\x22\x1e\x01\x32\x02"
+    # Entry 4: time since previous = 20, go to (30, 40) in 30s
+    b"\x20\x14\x00\x1e"
+    # Entry 5: time since previous = 15, otherwise same as previous
+    b"\x00\x0f"
+    # Entry 6: time since previous = 25, land
+    b"\x10\x19"
+)
+
+ENCODED_RTH_PLAN_WITH_SCALING_FACTOR_10 = (
+    # Scaling factor
+    b"\x0a"
+    # Number of points
+    b"\x02\x00"
+    # Point 1: (30, 40)
+    b"\xb8\x0b\xa0\x0f"
+    # Point 2: (-40, -30)
+    b"\x60\xf0\x48\xf4"
+    # Number of entries
+    b"\x06\x00"
+    # Entry 1: time=0, land
+    b"\x10\x00"
+    # Entry 2: time since previous = 15, go to (30, 40) in 50s, post-delay=5
+    b"\x21\x0f\x00\x32\x05"
+    # Entry 3: time since previous = 30, go to (-40, -30) in 50s, pre-delay=2
+    b"\x22\x1e\x01\x32\x02"
+    # Entry 4: time since previous = 20, go to (30, 40) in 30s
+    b"\x20\x14\x00\x1e"
+    # Entry 5: time since previous = 15, otherwise same as previous
+    b"\x00\x0f"
+    # Entry 6: time since previous = 25, land
+    b"\x10\x19"
+)
+
+
+@fixture
+def too_large_plan() -> RTHPlan:
+    plan = RTHPlan()
+
+    entry = RTHPlanEntry(time=0, action=RTHAction.LAND)
+    plan.add_entry(entry)
+
+    entry = RTHPlanEntry(
+        time=15,
+        action=RTHAction.GO_TO_KEEPING_ALTITUDE_AND_LAND,
+        target=(30000, 40000),
+        duration=50,
+        post_delay=5,
+    )
+    plan.add_entry(entry)
+
+    return plan
+
+
 class TestSkybrushBinaryFileFormat:
     async def test_reading_blocks(self):
-        blocks = []
         async with SkybrushBinaryShowFile.from_bytes(SIMPLE_SKYB_FILE) as f:
-            async for block in f.blocks():
-                blocks.append(block)
+            blocks = await f.read_all_blocks()
 
             assert f.version == 1
             assert len(blocks) == 2
@@ -45,3 +169,84 @@ class TestSkybrushBinaryFileFormat:
             )
             await f.add_comment("this is a test file")
             assert f.get_contents()
+
+    async def test_adding_block_that_is_too_large(self):
+        async with SkybrushBinaryShowFile.create_in_memory() as f:
+            with raises(ValueError, match="body too large"):
+                await f.add_block(
+                    SkybrushBinaryFormatBlockType.TRAJECTORY,
+                    b"\x00" * 128 * 1024,
+                )
+
+    async def test_invalid_magic_marker(self):
+        with raises(RuntimeError, match="expected Skybrush binary file header"):
+            async with SkybrushBinaryShowFile.from_bytes(b"not-a-skyb-file") as f:
+                await f.read_all_blocks()
+
+    async def test_invalid_version(self):
+        with raises(RuntimeError, match="version"):
+            async with SkybrushBinaryShowFile.from_bytes(b"skyb\xff") as f:
+                await f.read_all_blocks()
+
+    async def test_adding_rth_plan_block(self, plan: RTHPlan):
+        async with SkybrushBinaryShowFile.create_in_memory() as f:
+            await f.add_rth_plan(plan)
+            contents = f.get_contents()
+
+        blocks: List[SkybrushBinaryFileBlock] = []
+        async with SkybrushBinaryShowFile.from_bytes(contents) as f:
+            blocks = await f.read_all_blocks()
+
+            assert len(blocks) == 1
+            assert blocks[0].type == SkybrushBinaryFormatBlockType.RTH_PLAN
+            assert (
+                await blocks[0].read()
+            ) == ENCODED_RTH_PLAN_WITH_PROPOSED_SCALING_FACTOR
+
+    async def test_adding_rth_plan_block_too_large(self, too_large_plan: RTHPlan):
+        async with SkybrushBinaryShowFile.create_in_memory() as f:
+            with raises(RuntimeError):
+                await f.add_rth_plan(too_large_plan)
+
+
+class TestRTHPlanEncoder:
+    async def test_encoding_basic_plan(self, plan: RTHPlan):
+        encoder = RTHPlanEncoder(scale=10)
+        data = encoder.encode(plan)
+        assert data == ENCODED_RTH_PLAN_WITH_SCALING_FACTOR_10
+
+    async def test_encoding_basic_plan_default_scaling_factor(self, plan: RTHPlan):
+        encoder = RTHPlanEncoder(scale=plan.propose_scaling_factor())
+        data = encoder.encode(plan)
+        assert data == ENCODED_RTH_PLAN_WITH_PROPOSED_SCALING_FACTOR
+
+    async def test_encoding_basic_plan_with_invalid_scale(self, plan: RTHPlan):
+        encoder = RTHPlanEncoder(scale=1)
+        with raises(Exception):
+            encoder.encode(plan)
+
+    async def test_encoding_plan_with_negative_step_duration(self):
+        plan = RTHPlan()
+        entry = RTHPlanEntry(
+            time=15,
+            action=RTHAction.GO_TO_KEEPING_ALTITUDE_AND_LAND,
+            target=(30, 40),
+            duration=-50,
+            post_delay=5,
+        )
+        plan.add_entry(entry)
+        with raises(ValueError, match="negative duration: -50"):
+            RTHPlanEncoder(scale=plan.propose_scaling_factor()).encode(plan)
+
+    async def test_encoding_plan_with_unknown_action(self):
+        plan = RTHPlan()
+        entry = RTHPlanEntry(
+            time=15,
+            action="no-such-action",  # type: ignore
+            target=(30, 40),
+            duration=-50,
+            post_delay=5,
+        )
+        plan.add_entry(entry)
+        with raises(ValueError, match="unknown RTH action: no-such-action"):
+            RTHPlanEncoder(scale=100).encode(plan)

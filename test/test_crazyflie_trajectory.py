@@ -10,7 +10,7 @@ from flockwave.server.ext.crazyflie.trajectory import (
 )
 from skybrush.trajectory import TrajectorySpecification
 
-fixture_dir = Path(sys.modules[__name__].__file__).parent / "fixtures"
+fixture_dir = Path(str(sys.modules[__name__].__file__)).parent / "fixtures"
 
 
 def test_figure8():

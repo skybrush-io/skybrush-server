@@ -17,11 +17,6 @@ on_mac = platform.system().lower() == "darwin"
 # Label that is used to identify the server in SSDP discovery requests
 SERVER_NAME = "Skybrush server"
 
-# Secret key to encode cookies and session data
-SECRET_KEY = (
-    b"\xa6\xd6\xd3a\xfd\xd9\x08R\xd2U\x05\x10\xbf\x8c2\t\t\x94\xb5R\x06z\xe5\xef"
-)
-
 # Configure the command execution manager
 COMMAND_EXECUTION_MANAGER = {"timeout": 90}
 
@@ -34,9 +29,11 @@ EXTENSIONS = {
     "crazyflie": {
         "id_format": "{0:02}",
         "connections": ["crazyradio://0/80/2M/E7E7E7E7"],
+        "debug": False,
         "enabled": False,
         "fence": {"enabled": True, "distance": 1, "action": "none"},
         "status_interval": 0.5,  # number of seconds between consecutive status reports from a drone
+        "testing": False,
     },
     "debug": {
         "enabled": False,

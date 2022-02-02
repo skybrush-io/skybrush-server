@@ -1,11 +1,21 @@
 from __future__ import annotations
 
+import json
+
 from copy import deepcopy
-from typing import TYPE_CHECKING
+from shutil import move
+from tempfile import NamedTemporaryFile
+from typing import Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from flockwave.app_framework.configurator import Configuration
     from flockwave.server.app import SkybrushServer
+
+__all__ = (
+    "can_save_server_configuration",
+    "get_server_configuration_as_json",
+    "save_server_configuration",
+)
 
 
 def get_server_configuration_as_json(
@@ -47,3 +57,41 @@ def get_server_configuration_as_json(
         app.configurator.minimize_configuration(config, defaults)
 
     return config
+
+
+def can_save_server_configuration(app: Optional["SkybrushServer"]) -> bool:
+    """Returns whether it is possible to save the current configuration of the
+    server back into a configuration file.
+    """
+    if not app:
+        return False
+
+    loaded_files = app.configurator.loaded_files
+    if not loaded_files:
+        return False
+
+    last_loaded_file = loaded_files[-1]
+    if not str(last_loaded_file.format.value).startswith("json"):
+        return False
+
+    return True
+
+
+async def save_server_configuration(app: "SkybrushServer") -> bool:
+    """Saves the current configuration of the server application, overwriting
+    the configuration file that was loaded the last time.
+    """
+    if not can_save_server_configuration(app):
+        return False
+
+    last_loaded_file = app.configurator.loaded_files[-1]
+    config = get_server_configuration_as_json(app, compact=True)
+
+    tmpfile = NamedTemporaryFile(
+        mode="w", encoding="utf-8", suffix=".cfg", delete=False
+    )
+    with tmpfile as fp:
+        json.dump(config, fp, indent=2, sort_keys=True)
+
+    move(tmpfile.name, last_loaded_file.name)
+    return True

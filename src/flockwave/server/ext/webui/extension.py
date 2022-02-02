@@ -19,7 +19,11 @@ from typing import Any, Awaitable, Callable, Dict, List, Optional, Tuple, TYPE_C
 from flockwave.server.utils import overridden
 from flockwave.server.utils.quart import make_blueprint
 
-from flockwave.server.ext.webui.utils import get_server_configuration_as_json
+from .utils import (
+    can_save_server_configuration,
+    get_server_configuration_as_json,
+    save_server_configuration,
+)
 
 if TYPE_CHECKING:
     from flockwave.ext.manager import ExtensionManager
@@ -182,8 +186,11 @@ def fail_if_not_localhost() -> None:
 
 @blueprint.context_processor
 def inject_debug_variable() -> Dict[str, Any]:
-    """Injects the `debug` variable into all template contexts."""
-    return {"debug": is_debugging()}
+    """Injects the `can_save_config` and `debug` variables into all template contexts."""
+    return {
+        "can_save_config": can_save_server_configuration(app),
+        "debug": is_debugging(),
+    }
 
 
 @blueprint.route("/")
@@ -213,6 +220,17 @@ async def get_configuration(as_attachment: bool = False, compact: bool = False):
         response.headers["Content-disposition"] = 'attachment; filename="config.json"'
 
     return response
+
+
+@blueprint.route("/config/save", methods=["POST"])
+async def save_configuration():
+    """Saves the current configuration of the server, overwriting its configuration
+    file.
+    """
+    if app is None:
+        abort(403)
+
+    return await _to_json(save_server_configuration, app, on_success=True)
 
 
 @blueprint.route("/extensions")

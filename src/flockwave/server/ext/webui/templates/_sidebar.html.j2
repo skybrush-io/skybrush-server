@@ -1,33 +1,94 @@
-<ul class="nav flex-column">
-    <li class="nav-item">
-        <a class="nav-link" href="{{ url_for('.list_extensions') }}">
-            <span data-feather="package"></span>
-            Extensions
-        </a>
-    </li>
+<div class="flex-fill overflow-auto">
+    <ul class="nav flex-column">
+        <li class="nav-item">
+            <a class="nav-link" href="{{ url_for('.list_extensions') }}">
+                <span data-feather="package"></span>
+                Extensions
+            </a>
+        </li>
 
-    {% if debug %}
+        {% if debug %}
 
-    <li class="nav-item">
-        <a class="nav-link" href="{{ url_for('.send_messages') }}">
-            <span data-feather="message-square"></span>
-            Messages
-        </a>
-    </li>
+        <li class="nav-item">
+            <a class="nav-link" href="{{ url_for('.send_messages') }}">
+                <span data-feather="message-square"></span>
+                Messages
+            </a>
+        </li>
 
-    <li class="nav-item">
-        <a class="nav-link" href="{{ url_for('.list_threads') }}">
-            <span data-feather="git-merge"></span>
-            Threads
-        </a>
-    </li>
+        <li class="nav-item">
+            <a class="nav-link" href="{{ url_for('.list_threads') }}">
+                <span data-feather="git-merge"></span>
+                Threads
+            </a>
+        </li>
 
-    <li class="nav-item">
-        <a class="nav-link" href="{{ url_for('.list_tasks') }}">
-            <span data-feather="clipboard"></span>
-            Tasks
-        </a>
-    </li>
+        <li class="nav-item">
+            <a class="nav-link" href="{{ url_for('.list_tasks') }}">
+                <span data-feather="clipboard"></span>
+                Tasks
+            </a>
+        </li>
 
-    {% endif %}
-</ul>
+        {% endif %}
+    </ul>
+</div>
+
+<div>
+    <hr/>
+    <h6 class="px-3">Configuration</h6>
+    <div class="d-flex flex-row px-3 mx-n1">
+        <div class="p-1 flex-fill">
+            <a class="btn btn-sm btn-block btn-outline-secondary" href="{{ url_for('.get_configuration', compact=True, as_attachment=True) }}">
+                <span data-feather="download"></span>
+                Export...
+            </a>
+        </div>
+        {% if can_save_config %}
+        <div class="p-1 flex-fill">
+            <button type="button" id="config-save-button" class="btn btn-sm btn-block btn-outline-primary">
+                <span data-feather="save"></span>
+                <span>Save</span>
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+{% if can_save_config %}
+<script type="module">
+import ky from './static/js/ky-0.27.0.min.js';
+
+async function saveConfiguration() {
+    var $button = $('#config-save-button');
+    var $label = $button.children('span').first();   // <span data-feather> is turned into an SVG node
+
+    $button.removeClass('btn-success').removeClass('btn-danger').addClass('btn-outline-primary');
+    $label.text('Saving...');
+
+    function _onConfigurationSaved() {
+        $button.addClass('btn-success').removeClass('btn-danger').removeClass('btn-outline-primary');
+        $label.text('Saved!');
+    }
+
+    function _onConfigurationSaveError() {
+        $button.removeClass('btn-success').addClass('btn-danger').removeClass('btn-outline-primary');
+        $label.text('Save');
+    }
+
+    const { result, error } = await ky.post("{{ url_for('.save_configuration') }}").json();
+    if (error !== undefined) {
+        _onConfigurationSaveError();
+        alert("Failed to save configuration.");
+    } else if (!result) {
+        _onConfigurationSaveError();
+        alert("Failed to save configuration.");
+    } else {
+        _onConfigurationSaved();
+    }
+}
+
+$('#config-save-button').click(saveConfiguration);
+
+</script>
+{% endif %}

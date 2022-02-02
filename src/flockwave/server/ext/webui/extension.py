@@ -11,13 +11,15 @@ from dataclasses import dataclass, field
 from functools import wraps
 from logging import Logger
 from operator import attrgetter
-from quart import abort, redirect, render_template, request, url_for
+from quart import abort, make_response, redirect, render_template, request, url_for
 from trio import sleep_forever
 from trio.lowlevel import current_root_task
 from typing import Any, Awaitable, Callable, Dict, List, Optional, Tuple, TYPE_CHECKING
 
 from flockwave.server.utils import overridden
 from flockwave.server.utils.quart import make_blueprint
+
+from flockwave.server.ext.webui.utils import get_server_configuration_as_json
 
 if TYPE_CHECKING:
     from flockwave.ext.manager import ExtensionManager
@@ -188,6 +190,29 @@ def inject_debug_variable() -> Dict[str, Any]:
 async def index():
     """Returns the index page of the extension."""
     return redirect(url_for(".list_extensions"))
+
+
+@blueprint.route("/config", defaults={"as_attachment": False, "compact": False})
+@blueprint.route("/config.json", defaults={"as_attachment": True, "compact": False})
+@blueprint.route("/config/full", defaults={"as_attachment": False, "compact": False})
+@blueprint.route(
+    "/config/full.json", defaults={"as_attachment": True, "compact": False}
+)
+@blueprint.route("/config/compact", defaults={"as_attachment": False, "compact": True})
+@blueprint.route(
+    "/config/compact.json", defaults={"as_attachment": True, "compact": True}
+)
+async def get_configuration(as_attachment: bool = False, compact: bool = False):
+    """Returns the current configuration of the server in JSON format."""
+    if app is None:
+        abort(403)
+
+    config = get_server_configuration_as_json(app, compact=compact)
+    response = await make_response(config, 200)
+    if as_attachment:
+        response.headers["Content-disposition"] = 'attachment; filename="config.json"'
+
+    return response
 
 
 @blueprint.route("/extensions")

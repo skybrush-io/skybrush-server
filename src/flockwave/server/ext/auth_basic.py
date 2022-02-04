@@ -7,9 +7,10 @@ server are secure if you are using this extension for authentication.
 """
 
 from base64 import b64decode
+from enum import Enum
 from pathlib import Path
 from trio import sleep_forever
-from typing import Callable, Dict, Optional, Union
+from typing import Callable, Dict, List, Mapping, Optional, Union
 
 from flockwave.server.model.authentication import (
     AuthenticationMethod,
@@ -23,12 +24,30 @@ HashComparator = Callable[[str, str], bool]
 #: Type specification for a password validator function
 PasswordValidator = Callable[[str, str], bool]
 
-#: Type specification for objects that can be converted into a password validator
-PasswordValidatorLike = Optional[Union[PasswordValidator, Dict[str, str], str]]
+#: Type specification for password validator specification objects
+PasswordValidatorSpecification = Dict[str, str]
+
+
+class PasswordDataSourceType(Enum):
+    """Enumeration describing the possible password data sources that the
+    extension supports.
+    """
+
+    HTPASSWD = ("htpasswd", "Apache htpasswd")
+    SINGLE = ("single", "Username-password pair")
+
+    description: str
+
+    def __init__(self, id: str, description: str):
+        self.id = id
+        self.description = description
+
+
+# ############################################################################
 
 
 def create_dict_validator(
-    passwords: Dict[str, str], compare: Optional[HashComparator] = None
+    passwords: Mapping[str, str], compare: Optional[HashComparator] = None
 ) -> PasswordValidator:
     """Password validator factory that validates passwords from the given
     dictionary.
@@ -80,24 +99,95 @@ def create_htpasswd_validator(filename: Union[Path, str]) -> PasswordValidator:
     return validator
 
 
+def create_single_validator(
+    expected_username: str, expected_password: str
+) -> PasswordValidator:
+    """Password validator factory that accepts a single username-password
+    pair only, given at construction time.
+
+    Parameters:
+        expected_username: the username to accept
+        expected_password: the password to accept
+
+    Returns:
+        an appropriate password validator function
+    """
+
+    def validator(username: str, password: str) -> bool:
+        return username == expected_username and password == expected_password
+
+    return validator
+
+
 def reject_all(username: str, password: str) -> bool:
     """Dummy password validator that rejects all username-password pairs."""
     return False
 
 
-class BasicAuthentication(AuthenticationMethod):
-    def __init__(self, validator: PasswordValidatorLike = None):
-        """Constructor.
+# ############################################################################
 
-        Parameters:
-            validator: the name of the ``htpasswd`` file holding the valid
-                username-password pairs, a dictionary that maps usernames to
-                passwords, or a callable that can be invoked with a username
-                and a password and that must return whether the password is
-                valid
+
+def create_validator_from_config(
+    spec: PasswordValidatorSpecification,
+) -> PasswordValidator:
+    """Creates a PasswordValidator_ instance from its representation in the
+    configuration object of the extension.
+
+    Parameters:
+        spec: the specification in the configuration object, with keys named
+            ``type`` and ``value``
+
+    Returns:
+        an appropriate PasswordValidator_ instance
+
+    Raises:
+        RuntimeError: for invalid configuration objects
+        FileNotFound: when the password file is not found
+    """
+    type = spec.get("type")
+    value = spec.get("value")
+
+    if not isinstance(type, str) or not isinstance(value, str):
+        raise RuntimeError(f"invalid password data source: {spec!r}")
+
+    if type == PasswordDataSourceType.SINGLE.id:
+        parts = value.split(None, 1)
+        if len(parts) < 2:
+            raise RuntimeError(
+                f"missing username or password in password data source: {value!r}"
+            )
+        return create_single_validator(parts[0], parts[1])
+    elif type == PasswordDataSourceType.HTPASSWD.id:
+        if value:
+            return create_htpasswd_validator(value)
+        else:
+            raise RuntimeError(
+                "no filename was specified for Apache htpasswd data source"
+            )
+    else:
+        raise RuntimeError(f"unknown password data source: {type!r}")
+
+
+# ############################################################################
+
+
+class BasicAuthentication(AuthenticationMethod):
+    """Implementation of a basic username-password-based authentication method."""
+
+    _validators: List[PasswordValidator]
+    """List of registered password validators. The username-password pair is
+    deemed valid if at least one of the validators accepts it.
+    """
+
+    def __init__(self):
+        """Constructor."""
+        self._validators = []
+
+    def add_validator(self, validator: PasswordValidator) -> None:
+        """Adds a new password validator to the list of registered password
+        validators.
         """
-        self._validator = reject_all
-        self.validator = validator
+        self._validators.append(validator)
 
     def authenticate(self, client, data):
         try:
@@ -109,7 +199,7 @@ class BasicAuthentication(AuthenticationMethod):
 
         if not user or not sep or not password:
             return AuthenticationResult.failure()
-        if self._validator(user, password):
+        if any(valid(user, password) for valid in self._validators):
             return AuthenticationResult.success(user)
         else:
             return AuthenticationResult.failure()
@@ -118,31 +208,33 @@ class BasicAuthentication(AuthenticationMethod):
     def id(self):
         return "basic"
 
-    @property
-    def validator(self) -> PasswordValidator:
-        """Returns the current password validator function."""
-        return self._validator
-
-    @validator.setter
-    def validator(self, value):
-        if value is None:
-            value = reject_all
-        elif isinstance(value, (str, Path)):
-            value = create_htpasswd_validator(value)
-        elif hasattr(value, "__getitem__"):
-            value = create_dict_validator(value)
-
-        self._validator = value
-
 
 async def run(app, configuration, logger):
     auth = BasicAuthentication()
-    validator = configuration.get("passwords")
+    sources = configuration.get("sources", ())
 
-    try:
-        auth.validator = validator
-    except FileNotFoundError:
-        logger.error(f"Password file not found: {validator}")
+    if not hasattr(sources, "__iter__"):
+        logger.error(
+            "Invalid configuration; password data sources must be stored in an array"
+        )
+
+    for spec in sources:
+        validator: Optional[PasswordValidator] = None
+
+        try:
+            validator = create_validator_from_config(spec)
+        except FileNotFoundError:
+            filename = repr(spec.get("value"))
+            logger.error(
+                f"Password file not found: {filename}", extra={"sentry_ignore": True}
+            )
+        except RuntimeError as ex:
+            logger.error(str(ex), extra={"sentry_ignore": True})
+        except Exception:
+            logger.exception("Unexpected error while creating password validator")
+
+        if validator:
+            auth.add_validator(validator)
 
     with app.import_api("auth").use(auth):
         await sleep_forever()
@@ -150,3 +242,45 @@ async def run(app, configuration, logger):
 
 dependencies = ("auth",)
 description = "Basic username-password based authentication"
+schema = {
+    "properties": {
+        "sources": {
+            "title": "Password data sources",
+            "type": "array",
+            "format": "table",
+            "items": {
+                "type": "object",
+                "options": {"disable_properties": False},
+                "properties": {
+                    "type": {
+                        "type": "string",
+                        "title": "Type",
+                        "description": "Type of the data source",
+                        "default": PasswordDataSourceType.HTPASSWD.id,
+                        "enum": [e.id for e in PasswordDataSourceType],
+                        "options": {
+                            "enum_titles": [
+                                e.description for e in PasswordDataSourceType
+                            ]
+                        },
+                    },
+                    "value": {
+                        "type": "string",
+                        "title": "Value",
+                        "description": (
+                            "The data source itself. For Apache htpasswd files, "
+                            "this must be the path to the htpasswd file. For "
+                            "explicit username-password pairs, this must be the "
+                            "username and the password, separated by whitespace."
+                        ),
+                    },
+                },
+            },
+            "description": (
+                "WARNING: do not use explicit username-password pairs as these "
+                "are stored in plain text in the configuration file. Use another "
+                "data source in production."
+            ),
+        }
+    }
+}

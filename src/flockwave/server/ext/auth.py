@@ -116,4 +116,13 @@ construct = AuthenticationExtension
 description = (
     "Authentication-related message handlers and authentication method registry"
 )
-schema = {}
+schema = {
+    "properties": {
+        "required": {
+            "type": "boolean",
+            "title": "Require authentication",
+            "description": "Tick this checkbox to require users to authenticate with the server after connection",
+            "format": "checkbox",
+        }
+    }
+}

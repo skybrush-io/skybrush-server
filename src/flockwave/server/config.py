@@ -23,7 +23,7 @@ COMMAND_EXECUTION_MANAGER = {"timeout": 90}
 # Declare the list of extensions to load
 EXTENSIONS = {
     "auth": {},
-    "auth_basic": {"enabled": False, "passwords": {"user@domain.xyz": "password"}},
+    "auth_basic": {"enabled": False},
     "beacon": {"enabled": False},
     "console_status": {},
     "crazyflie": {

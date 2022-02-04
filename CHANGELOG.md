@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- The server configuration can now be exported from the web UI in JSON format.
+
+- When the server is configured from a configuration file, the web UI now allows
+  the user to save the current configuration to the configuration file.
+
+- Basic user authentication can now be set up from the web UI.
+
 ## [1.27.2] - 2022-01-03
 
 ### Fixed

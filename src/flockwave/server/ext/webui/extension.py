@@ -4,6 +4,7 @@ the Skybrush server.
 
 from __future__ import annotations
 
+import json
 import threading
 
 from contextlib import ExitStack
@@ -215,7 +216,9 @@ async def get_configuration(as_attachment: bool = False, compact: bool = False):
         abort(403)
 
     config = get_server_configuration_as_json(app, compact=compact)
-    response = await make_response(config, 200)
+    formatted_config = json.dumps(config, indent=2, sort_keys=True)
+    response = await make_response(formatted_config, 200)
+    response.headers["Content-type"] = "application/json"
     if as_attachment:
         response.headers["Content-disposition"] = 'attachment; filename="config.json"'
 

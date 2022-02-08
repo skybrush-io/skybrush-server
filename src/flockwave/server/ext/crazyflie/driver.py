@@ -14,7 +14,16 @@ from random import random
 from struct import Struct
 from trio import Nursery, open_nursery, sleep
 from trio_util import periodic
-from typing import AsyncIterator, Callable, Optional, Sequence, Tuple
+from typing import (
+    Any,
+    AsyncIterator,
+    Callable,
+    Optional,
+    Sequence,
+    Tuple,
+    TYPE_CHECKING,
+    cast,
+)
 
 from aiocflib.crazyflie import Crazyflie
 from aiocflib.crtp.crtpstack import MemoryType
@@ -30,7 +39,6 @@ from flockwave.server.command_handlers import (
     create_version_command_handler,
 )
 from flockwave.server.errors import NotSupportedError
-from flockwave.server.ext.logger import log as base_log
 from flockwave.server.model.preflight import PreflightCheckInfo, PreflightCheckResult
 from flockwave.server.model.transport import TransportOptions
 from flockwave.server.model.uav import BatteryInfo, UAVBase, UAVDriver, VersionInfo
@@ -60,9 +68,10 @@ from .crtp_extensions import (
 from .fence import Fence, FenceConfiguration
 from .trajectory import encode_trajectory, TrajectoryEncoding
 
-__all__ = ("CrazyflieDriver",)
+if TYPE_CHECKING:
+    from flockwave.server.app import SkybrushServer
 
-log = base_log.getChild("crazyflie")
+__all__ = ("CrazyflieDriver",)
 
 
 class CrazyflieDriver(UAVDriver):
@@ -83,6 +92,7 @@ class CrazyflieDriver(UAVDriver):
             system of the connected drones, strictly for testing purposes
     """
 
+    app: "SkybrushServer"
     debug: bool
     id_format: str
     log: Logger
@@ -92,7 +102,10 @@ class CrazyflieDriver(UAVDriver):
     use_test_mode: bool = False
 
     def __init__(
-        self, app=None, id_format: str = "{0:02}", cache: Optional[Path] = None
+        self,
+        app=None,
+        id_format: str = "{0:02}",
+        cache: Optional[Path] = None,
     ):
         """Constructor.
 
@@ -165,8 +178,11 @@ class CrazyflieDriver(UAVDriver):
             self._uav_ids_by_address_space[address_space][index] = formatted_id
 
         try:
-            uav = self.app.object_registry.add_if_missing(
-                formatted_id, factory=self._create_uav
+            uav = cast(
+                Any,
+                self.app.object_registry.add_if_missing(
+                    formatted_id, factory=self._create_uav
+                ),
             )
         except RegistryFull:
             return None
@@ -743,7 +759,7 @@ class CrazyflieUAV(UAVBase):
         extra = {"id": self.id}
         console = self._get_crazyflie().console
         async for message in console.messages():
-            log.info(message, extra=extra)
+            self.driver.log.info(message, extra=extra)
             self.send_log_message_to_gcs(message)
 
     async def process_drone_show_status_messages(self, period: float = 0.5) -> None:
@@ -765,7 +781,9 @@ class CrazyflieUAV(UAVBase):
             except TimeoutError:
                 status = None
             except Exception:
-                log.warn("Malformed drone show status packet received, ignoring")
+                self.driver.log.warn(
+                    "Malformed drone show status packet received, ignoring"
+                )
                 status = None
 
             if status:
@@ -818,6 +836,7 @@ class CrazyflieUAV(UAVBase):
             await CrazyflieHandlerTask(
                 self,
                 debug=self.driver.debug,
+                log=self.driver.log,
                 status_interval=self.driver.status_interval,
                 use_fake_position=self.driver.use_fake_position,
             ).run()
@@ -1274,6 +1293,7 @@ class CrazyflieHandlerTask:
     """
 
     _debug: bool
+    _log: Logger
     _status_interval: float
     _uav: CrazyflieUAV
     _use_fake_position: Optional[Tuple[float, float, float]]
@@ -1281,6 +1301,7 @@ class CrazyflieHandlerTask:
     def __init__(
         self,
         uav: CrazyflieUAV,
+        log: Logger,
         debug: bool = False,
         status_interval: float = 0.5,
         use_fake_position: Optional[Tuple[float, float, float]] = None,
@@ -1296,6 +1317,7 @@ class CrazyflieHandlerTask:
                 it was received from an external positioning system. Strictly
                 for debugging purposes.
         """
+        self._log = log
         self._uav = uav
         self._debug = bool(debug)
         self._status_interval = float(status_interval)
@@ -1313,14 +1335,14 @@ class CrazyflieHandlerTask:
         try:
             await self._run()
         except IOError as ex:
-            log.error(
+            self._log.error(
                 f"Error while handling Crazyflie: {str(ex)}",
                 extra={"id": self._uav.id, "sentry_ignore": True},
             )
             # We do not log the stack trace of IOErrors -- the stack trace is too long
             # and in 99% of the cases it is simply a communication error
         except Exception as ex:
-            log.exception(
+            self._log.exception(
                 f"Error while handling Crazyflie: {str(ex)}", extra={"id": self._uav.id}
             )
 
@@ -1343,18 +1365,18 @@ class CrazyflieHandlerTask:
                     assert self._uav.log_session is not None
                     await enter(self._uav.log_session)
                 except TimeoutError:
-                    log.error(
+                    self._log.error(
                         "Communication timeout while initializing connection",
                         extra={"id": self._uav.id, "sentry_ignore": True},
                     )
                     return
                 except Exception as ex:
-                    log.error(
+                    self._log.error(
                         f"Error while initializing connection: {str(ex)}",
                         extra={"id": self._uav.id},
                     )
                     if not isinstance(ex, IOError):
-                        log.exception(ex)
+                        self._log.exception(ex)
                     else:
                         # We do not log IOErrors -- the stack trace is too long
                         # and in 99% of the cases it is simply a communication error
@@ -1381,18 +1403,18 @@ class CrazyflieHandlerTask:
                     await sleep(2)
                     await self._uav.setup_flight_mode()
                 except TimeoutError:
-                    log.error(
+                    self._log.error(
                         "Communication timeout while setting flight mode",
                         extra={"id": self._uav.id, "sentry_ignore": True},
                     )
                     return
                 except Exception as ex:
-                    log.error(
+                    self._log.error(
                         f"Error while setting flight mode: {str(ex)}",
                         extra={"id": self._uav.id},
                     )
                     if not isinstance(ex, IOError):
-                        log.exception(ex)
+                        self._log.exception(ex)
                     else:
                         # We do not log IOErrors -- the stack trace is too long
                         # and in 99% of the cases it is simply a communication error
@@ -1425,14 +1447,14 @@ class CrazyflieHandlerTask:
         except TimeoutError:
             # This is normal, it comes from aiocflib when the Crazyflie is
             # turned off again
-            log.warn(
+            self._log.warn(
                 "Failed to re-upload previously uploaded show to possibly "
                 "rebooted drone due to a communication timeout",
                 extra={"id": self._uav.id},
             )
         except Exception as ex:
-            log.warn(
+            self._log.warn(
                 "Failed to re-upload previously uploaded show to possibly rebooted drone",
                 extra={"id": self._uav.id},
             )
-            log.exception(ex)
+            self._log.exception(ex)

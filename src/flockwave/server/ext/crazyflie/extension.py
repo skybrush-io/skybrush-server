@@ -33,7 +33,7 @@ class CrazyflieDronesExtension(UAVExtensionBase):
     def _create_driver(self) -> CrazyflieDriver:
         assert self.app is not None
         return CrazyflieDriver(
-            cache=Path(self.app.dirs.user_cache_dir) / "ext" / "crazyflie"
+            cache=Path(self.app.dirs.user_cache_dir) / "ext" / "crazyflie",
         )
 
     def configure_driver(self, driver, configuration: Dict[str, Any]) -> None:
@@ -47,7 +47,7 @@ class CrazyflieDronesExtension(UAVExtensionBase):
         driver.debug = bool(configuration.get("debug", False))
         driver.fence_config = FenceConfiguration.from_json(configuration.get("fence"))
         driver.id_format = configuration.get("id_format", "{0}")
-        driver.log = self.log.getChild("driver")
+        driver.log = self.log
         driver.status_interval = float(configuration.get("status_interval", 0.5))
         driver.use_fake_position = configuration.get("feed_fake_position", False)
         driver.use_test_mode = bool(configuration.get("testing", False))

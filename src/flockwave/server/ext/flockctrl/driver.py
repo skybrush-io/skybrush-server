@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
+import re
+
 from base64 import b64decode
 from bidict import bidict
 from colour import Color
 from logging import Logger
 from math import isfinite
-import re
 from time import monotonic
 from typing import (
     Any,
@@ -21,6 +22,7 @@ from typing import (
     Tuple,
     Type,
     Union,
+    TYPE_CHECKING,
 )
 from zlib import decompress
 
@@ -46,7 +48,6 @@ from flockwave.protocols.flockctrl.packets import (
     StatusPacket,
 )
 from flockwave.server.errors import NotSupportedError
-from flockwave.server.ext.logger import log
 from flockwave.server.model.battery import BatteryInfo
 from flockwave.server.model.gps import GPSFixType
 from flockwave.server.model.preflight import PreflightCheckInfo, PreflightCheckResult
@@ -62,6 +63,9 @@ from .comm import BurstedMultiTargetMessageManager
 from .errors import AddressConflictError, get_error_codes_from_status_packet
 from .mission import generate_mission_file_from_show_specification
 from .upload import upload_mission
+
+if TYPE_CHECKING:
+    from flockwave.server.app import SkybrushServer
 
 __all__ = ("FlockCtrlDriver",)
 
@@ -91,6 +95,7 @@ class FlockCtrlDriver(UAVDriver):
             server, or any other object that has a ``format()`` method
             accepting a single integer as an argument and returning the
             preferred UAV identifier.
+        log (Logger): the logger object used by the driver
         create_device_tree_mutator (callable): a function that should be
             called by the driver as a context manager whenever it wants to
             mutate the state of the device tree
@@ -105,6 +110,7 @@ class FlockCtrlDriver(UAVDriver):
     """
 
     allow_multiple_commands_per_uav: bool
+    app: "SkybrushServer"
     id_format: str
     log: Logger
     broadcast_packet: Callable[[FlockCtrlPacket, str], Awaitable[None]]
@@ -119,7 +125,11 @@ class FlockCtrlDriver(UAVDriver):
     _pending_commands_by_uav: FutureMap[str]
     _uavs_by_source_address: Dict[Any, FlockCtrlUAV]
 
-    def __init__(self, app=None, id_format: str = "{0:02}"):
+    def __init__(
+        self,
+        app=None,
+        id_format: str = "{0:02}",
+    ):
         """Constructor.
 
         Parameters:
@@ -148,7 +158,6 @@ class FlockCtrlDriver(UAVDriver):
         self.allow_multiple_commands_per_uav = True
         self.app = app
         self.id_format = id_format
-        self.log = log.getChild("flockctrl").getChild("driver")
 
     async def handle_command___mission_upload(
         self, uav: "FlockCtrlUAV", mission: str
@@ -450,7 +459,7 @@ class FlockCtrlDriver(UAVDriver):
 
         return self.app.object_registry.add_if_missing(
             formatted_id, factory=self._create_uav
-        )
+        )  # type: ignore
 
     async def _get_parameter_single(self, uav: "FlockCtrlUAV", name: str) -> float:
         return await uav.get_parameter(name)

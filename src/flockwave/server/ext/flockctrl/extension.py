@@ -5,6 +5,7 @@
 from contextlib import ExitStack
 from datetime import datetime, timezone
 from functools import partial
+from logging import Logger
 from trio.abc import ReceiveChannel
 from typing import Any, Dict, Optional, Tuple
 
@@ -72,6 +73,8 @@ class FlockCtrlDronesExtension(UAVExtensionBase):
     """Extension that adds support for drone flocks using the ``flockctrl``
     protocol.
     """
+
+    log: Logger
 
     _driver: Optional[FlockCtrlDriver]
     _comm_manager: Optional[CommunicationManager[FlockCtrlPacket, IPAddressAndPort]]
@@ -141,7 +144,7 @@ class FlockCtrlDronesExtension(UAVExtensionBase):
 
         return broadcast_link, unicast_link, radio_link
 
-    def _create_driver(self):
+    def _create_driver(self) -> FlockCtrlDriver:
         return FlockCtrlDriver()
 
     async def run(self, app, configuration):
@@ -241,7 +244,7 @@ class FlockCtrlDronesExtension(UAVExtensionBase):
                 extension
         """
         driver.id_format = configuration.get("id_format", "{0}")
-        driver.log = self.log.getChild("driver")
+        driver.log = self.log
 
         driver.broadcast_packet = self._broadcast_packet
         driver.create_device_tree_mutator = self.create_device_tree_mutation_context

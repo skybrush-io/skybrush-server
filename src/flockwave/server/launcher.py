@@ -7,8 +7,8 @@ import sys
 import trio
 
 from flockwave import logger
-from flockwave.logger import log
 
+from .logger import log
 from .version import __version__
 
 

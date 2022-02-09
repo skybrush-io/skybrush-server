@@ -45,6 +45,8 @@ from flockwave.connections import ConnectionState
 from flockwave.concurrency import AsyncBundler
 
 from .logger import log as base_log
+from .middleware import RequestMiddleware, ResponseMiddleware
+from .middleware.logging import RequestLogMiddleware, ResponseLogMiddleware
 from .model import (
     Client,
     FlockwaveMessage,
@@ -170,6 +172,8 @@ class MessageHub:
     _handlers_by_type: DefaultDict[Optional[str], List[MessageHandler]]
     _log_messages: bool
     _message_builder: FlockwaveMessageBuilder
+    _request_middleware: List[RequestMiddleware]
+    _response_middleware: List[ResponseMiddleware]
     _queue_rx: MemoryReceiveChannel
     _queue_tx: MemorySendChannel
 
@@ -177,12 +181,18 @@ class MessageHub:
         """Constructor."""
         self._handlers_by_type = defaultdict(list)
         self._message_builder = FlockwaveMessageBuilder()
+        self._request_middleware = []
+        self._response_middleware = []
         self._broadcast_methods = None
         self._channel_type_registry = None
         self._client_registry = None
         self._log_messages = False
 
         self._queue_tx, self._queue_rx = open_memory_channel(4096)
+
+        if self._log_messages:
+            self._request_middleware.insert(0, RequestLogMiddleware(log))
+            self._response_middleware.append(ResponseLogMiddleware(log))
 
     def acknowledge(
         self,
@@ -446,13 +456,13 @@ class MessageHub:
             else:
                 return False
 
-        if self._log_messages:
-            type = decoded_message.get_type() or "untyped"
-            if type not in ("RTK-STAT", "UAV-PREFLT", "X-DBG-RESP", "X-RTK-STAT"):
-                log.info(
-                    f"Received {type} message",
-                    extra={"id": decoded_message.id, "semantics": "request"},
-                )
+        for middleware in self._request_middleware:
+            next_message = middleware(decoded_message, sender)
+            if next_message is None:
+                # Message dropped by middleware
+                return True
+
+            decoded_message = next_message
 
         handled = await self._feed_message_to_handlers(decoded_message, sender)
 
@@ -862,38 +872,6 @@ class MessageHub:
             error = MessageValidationError("Unexpected exception: {0!r}".format(ex))
         raise error
 
-    def _log_message_sending(
-        self,
-        message: FlockwaveMessage,
-        to: Client = None,
-        in_response_to: Optional[FlockwaveMessage] = None,
-    ) -> None:
-        type = message.get_type() or "untyped"
-        if to is None:
-            if type not in ("CONN-INF", "UAV-INF", "DEV-INF", "SYS-MSG", "X-DBG-REQ"):
-                log.info(
-                    f"Broadcasting {type} notification",
-                    extra={"id": message.id, "semantics": "notification"},
-                )
-        elif in_response_to is not None:
-            if type not in ("RTK-STAT", "X-RTK-STAT", "UAV-PREFLT"):
-                log.info(
-                    f"Sending {type} response",
-                    extra={"id": in_response_to.id, "semantics": "response_success"},
-                )
-        elif isinstance(message, FlockwaveNotification):
-            if type not in ("UAV-INF", "DEV-INF"):
-                log.info(
-                    f"Sending {type} notification",
-                    extra={"id": message.id, "semantics": "notification"},
-                )
-        else:
-            extra = {"semantics": "response_success"}
-            if hasattr(message, "id"):
-                extra["id"] = message.id
-
-            log.info(f"Sending {type} message", extra=extra)
-
     async def _broadcast_message(
         self, message: FlockwaveNotification, done: Callable[[], None]
     ) -> None:
@@ -901,21 +879,27 @@ class MessageHub:
             self._broadcast_methods = self._commit_broadcast_methods()
 
         if self._broadcast_methods:
-            if self._log_messages:
-                self._log_message_sending(message)
+            for middleware in self._response_middleware:
+                next_message = middleware(message, None, None)
+                if next_message is not None:
+                    # Message dropped by middleware
+                    break
+            else:
+                # Message passed through all middleware
+                failures = 0
+                for func in self._broadcast_methods:
+                    try:
+                        await func(message)
+                    except ClosedResourceError:
+                        # client is probably gone; no problem
+                        pass
+                    except Exception:
+                        failures += 1
 
-            failures = 0
-            for func in self._broadcast_methods:
-                try:
-                    await func(message)
-                except ClosedResourceError:
-                    # client is probably gone; no problem
-                    pass
-                except Exception:
-                    failures += 1
-
-            if failures > 0:
-                log.error(f"Error while broadcasting message to {failures} client(s)")
+                if failures > 0:
+                    log.error(
+                        f"Error while broadcasting message to {failures} client(s)"
+                    )
 
         done()
 
@@ -941,22 +925,26 @@ class MessageHub:
         else:
             client = to
 
-        if self._log_messages:
-            self._log_message_sending(message, client, in_response_to)
-
-        try:
-            await client.channel.send(message)
-        except ClosedResourceError:
-            log.warn("Client is gone; not sending message", extra={"id": client.id})
-        except Exception:
-            log.exception(
-                "Error while sending message to client", extra={"id": client.id}
-            )
+        for middleware in self._response_middleware:
+            next_message = middleware(message, client, in_response_to)
+            if next_message is not None:
+                # Message dropped by middleware
+                break
         else:
-            if hasattr(message, "_notify_sent"):
-                message._notify_sent()  # type: ignore
-            if done:
-                done()
+            # Message passed through all middleware
+            try:
+                await client.channel.send(message)
+            except ClosedResourceError:
+                log.warn("Client is gone; not sending message", extra={"id": client.id})
+            except Exception:
+                log.exception(
+                    "Error while sending message to client", extra={"id": client.id}
+                )
+            else:
+                if hasattr(message, "_notify_sent"):
+                    message._notify_sent()  # type: ignore
+                if done:
+                    done()
 
     async def _send_response(
         self, message, to: Client, in_response_to: FlockwaveMessage

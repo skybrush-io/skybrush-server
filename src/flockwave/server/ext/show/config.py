@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from blinker import Signal
+from datetime import datetime
 from enum import Enum
 from typing import Any, Dict, List, Optional, TypeVar
 
@@ -38,9 +39,16 @@ class DroneShowConfiguration:
     updated = Signal(doc="Signal emitted when the configuration is updated")
 
     authorized_to_start: bool
+    """Whether the show is authorized to start."""
+
     start_method: StartMethod
+    """The start method of the show (RC or automatic with countdown)."""
+
     start_time: Optional[float]
+    """The start time of the show; ``None`` if unscheduled."""
+
     uav_ids: List[Optional[str]]
+    """The list of UAV IDs participating in the show."""
 
     def __init__(self):
         """Constructor."""
@@ -54,6 +62,50 @@ class DroneShowConfiguration:
         result = self.__class__()
         result.update_from_json(self.json)
         return result
+
+    def format(self) -> str:
+        """Formats the configuration object in a human-readable format for
+        logging purposes.
+        """
+        if self.start_method is StartMethod.RC:
+            fmt_start_method = " with RC"
+            uav_ids_relevant = False
+        elif self.start_method is StartMethod.AUTO:
+            fmt_start_method = " automatically"
+            uav_ids_relevant = True
+        else:
+            fmt_start_method = ""
+            uav_ids_relevant = False
+
+        if self.start_time is None:
+            fmt_start_time = ""
+        else:
+            fmt_start_time = (
+                datetime.fromtimestamp(self.start_time).isoformat().replace("T", " ")
+            )
+            fmt_start_time = f" at {fmt_start_time}"
+
+        if uav_ids_relevant:
+            uav_ids = [id for id in self.uav_ids or () if id is not None]
+            uav_count = len(uav_ids)
+
+            if uav_count > 2:
+                fmt_uav_count = f"{uav_count} UAVs"
+            elif uav_count == 2:
+                fmt_uav_count = f"UAVs {uav_ids[0]} and {uav_ids[1]}"
+            elif uav_count == 1:
+                fmt_uav_count = f"UAV {uav_ids[0]}"
+            else:
+                fmt_uav_count = "No UAVs"
+        else:
+            fmt_uav_count = "UAVs"
+
+        if self.authorized_to_start:
+            return (
+                f"{fmt_uav_count} authorized to start{fmt_start_method}{fmt_start_time}"
+            )
+        else:
+            return f"{fmt_uav_count} to start{fmt_start_method}{fmt_start_time}, not authorized"
 
     @property
     def json(self) -> Dict[str, Any]:

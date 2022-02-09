@@ -133,6 +133,8 @@ class DroneShowExtension(ExtensionBase):
                 self._show_tasks.start_soon(self._start_show_when_needed)
                 self._show_tasks.start_soon(self._manage_countdown_before_start)
 
+        self.log.info(self._config.format())
+
         updated_signal = self.app.import_api("signals").get("show:config_updated")
         updated_signal.send(self, config=self._config.clone())
 

@@ -8,6 +8,7 @@ from enum import Enum
 from typing import Any, Dict, List, Optional, TypeVar
 
 from flockwave.server.tasks.led_lights import LightConfiguration
+from flockwave.server.utils import format_uav_ids_nicely
 
 __all__ = ("LightConfiguration", "DroneShowConfiguration", "StartMethod")
 
@@ -87,16 +88,8 @@ class DroneShowConfiguration:
 
         if uav_ids_relevant:
             uav_ids = [id for id in self.uav_ids or () if id is not None]
-            uav_count = len(uav_ids)
-
-            if uav_count > 2:
-                fmt_uav_count = f"{uav_count} UAVs"
-            elif uav_count == 2:
-                fmt_uav_count = f"UAVs {uav_ids[0]} and {uav_ids[1]}"
-            elif uav_count == 1:
-                fmt_uav_count = f"UAV {uav_ids[0]}"
-            else:
-                fmt_uav_count = "No UAVs"
+            uav_ids.sort()
+            fmt_uav_count = format_uav_ids_nicely(uav_ids, max_items=3)
         else:
             fmt_uav_count = "UAVs"
 

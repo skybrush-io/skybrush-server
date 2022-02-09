@@ -55,6 +55,7 @@ from .model import (
     FlockwaveResponse,
 )
 from .registries import ChannelTypeRegistry, ClientRegistry, Registry, find_in_registry
+from .types import Disposer
 
 __all__ = (
     "ConnectionStatusMessageRateLimiter",
@@ -191,8 +192,8 @@ class MessageHub:
         self._queue_tx, self._queue_rx = open_memory_channel(4096)
 
         if self._log_messages:
-            self._request_middleware.insert(0, RequestLogMiddleware(log))
-            self._response_middleware.append(ResponseLogMiddleware(log))
+            self.register_request_middleware(RequestLogMiddleware(log))
+            self.register_response_middleware(ResponseLogMiddleware(log))
 
     def acknowledge(
         self,
@@ -643,7 +644,7 @@ class MessageHub:
 
     def register_message_handler(
         self, func: MessageHandler, message_types: Optional[Iterable[str]] = None
-    ) -> None:
+    ) -> Disposer:
         """Registers a handler function that will handle incoming messages.
 
         It is possible to register the same handler function multiple times,
@@ -658,6 +659,10 @@ class MessageHub:
                 ``True`` if it has handled the message successfully, ``False``
                 if it skipped the message. Note that returning ``True`` will not
                 prevent other handlers from getting the message.
+
+        Returns:
+            a function that can be called with no arguments to unregister the
+            handler function from the given message types
         """
         message_type_list: Iterable[Optional[str]]
 
@@ -670,6 +675,76 @@ class MessageHub:
             if message_type is not None and not isinstance(message_type, str):
                 message_type = message_type.decode("utf-8")
             self._handlers_by_type[message_type].append(func)
+
+        return partial(self.unregister_message_handler, func, message_types)
+
+    def register_request_middleware(
+        self, middleware: RequestMiddleware, where: str = "post"
+    ) -> Disposer:
+        """Registers a request middleware that the incoming requests will
+        pass through. Request middleware may modify, log or filter incoming
+        requests as needed before it reaches the corresponding message handler.
+
+        Parameters:
+            middleware: the middleware to register. It will be called with
+                an incoming message and the client that sent the message, and
+                must return the same message (to pass it through intact),
+                a modified message or ``None`` to prevent the message from
+                reaching other middleware and the message handlers.
+            where: specifies whether the middleware should be registered
+                _before_ existing middleware (``pre``) or _after_ them
+                (``post``).
+
+        Raises:
+            ValueError: if the middleware is already registered
+        """
+        if middleware in self._request_middleware:
+            raise ValueError("middleware is already registered")
+
+        if where == "pre":
+            self._request_middleware.insert(0, middleware)
+        elif where == "post":
+            self._request_middleware.append(middleware)
+        else:
+            raise ValueError(f"unknown middleware position: {where!r}")
+
+        return partial(self.unregister_request_middleware, middleware)
+
+    def register_response_middleware(
+        self, middleware: ResponseMiddleware, where: str = "post"
+    ) -> Disposer:
+        """Registers a response middleware that the outbound responses,
+        notifications and broadcasts will pass through. Response middleware may
+        modify, log or filter outbound messages as needed before they are
+        dispatched to their intended recipients.
+
+        Parameters:
+            middleware: the middleware to register. It will be called with
+                an outbound message, an optional client that the message is
+                targeted to (if it is not a broadcast) and an optional additional
+                message that this message is a reply to. The client and the
+                additional message may be ``None``. The middleware must
+                must return the same outbound message (to pass it through intact),
+                a modified message or ``None`` to prevent the message from
+                being sent to its intended recipients.
+            where: specifies whether the middleware should be registered
+                _before_ existing middleware (``pre``) or _after_ them
+                (``post``).
+
+        Raises:
+            ValueError: if the middleware is already registered
+        """
+        if middleware in self._response_middleware:
+            raise ValueError("middleware is already registered")
+
+        if where == "pre":
+            self._response_middleware.insert(0, middleware)
+        elif where == "post":
+            self._response_middleware.append(middleware)
+        else:
+            raise ValueError(f"unknown middleware position: {where!r}")
+
+        return partial(self.unregister_response_middleware, middleware)
 
     def reject(
         self,
@@ -693,8 +768,8 @@ class MessageHub:
         return self._message_builder.create_response_to(message, body)
 
     async def run(self) -> None:
-        """Runs the message hub periodically in an infinite loop. This
-        method should be launched in a Trio nursery.
+        """Runs the message hub in an infinite loop. This method should be
+        launched in a Trio nursery.
         """
         async with open_nursery() as nursery, self._queue_rx:
             async for request in self._queue_rx:
@@ -787,6 +862,28 @@ class MessageHub:
                     # Handler not in list; no problem
                     pass
 
+    def unregister_request_middleware(self, middleware: RequestMiddleware) -> None:
+        """Unregisters the given request middleware from the middleware chain.
+
+        This function is a no-op if the middleware is not in the middleware
+        chain.
+        """
+        try:
+            self._request_middleware.remove(middleware)
+        except ValueError:
+            pass
+
+    def unregister_response_middleware(self, middleware: ResponseMiddleware) -> None:
+        """Unregisters the given response middleware from the middleware chain.
+
+        This function is a no-op if the middleware is not in the middleware
+        chain.
+        """
+        try:
+            self._response_middleware.remove(middleware)
+        except ValueError:
+            pass
+
     @contextmanager
     def use_message_handler(
         self, func: MessageHandler, message_types: Optional[Iterable[str]] = None
@@ -806,11 +903,11 @@ class MessageHub:
                 if it skipped the message. Note that returning ``True`` will not
                 prevent other handlers from getting the message.
         """
-        self.register_message_handler(func, message_types)
+        disposer = self.register_message_handler(func, message_types)
         try:
             yield
         finally:
-            self.unregister_message_handler(func, message_types)
+            disposer()
 
     @contextmanager
     def use_message_handlers(
@@ -828,9 +925,37 @@ class MessageHub:
         """
         with ExitStack() as stack:
             for message_type, handler in handlers.items():
-                self.register_message_handler(handler, [message_type])
-                stack.callback(self.unregister_message_handler, handler, [message_type])
+                disposer = self.register_message_handler(handler, [message_type])
+                stack.callback(disposer)
             yield
+
+    @contextmanager
+    def use_request_middleware(self, middleware: RequestMiddleware) -> Iterator[None]:
+        """Context manager that registers a request middleware when entering
+        the context, and unregisters it when exiting the context.
+
+        Parameters:
+            middleware: the middleware to register.
+        """
+        disposer = self.register_request_middleware(middleware)
+        try:
+            yield
+        finally:
+            disposer()
+
+    @contextmanager
+    def use_response_middleware(self, middleware: ResponseMiddleware) -> Iterator[None]:
+        """Context manager that registers a response middleware when entering
+        the context, and unregisters it when exiting the context.
+
+        Parameters:
+            middleware: the middleware to register.
+        """
+        disposer = self.register_response_middleware(middleware)
+        try:
+            yield
+        finally:
+            disposer()
 
     def _decode_incoming_message(self, message: Dict[str, Any]) -> FlockwaveMessage:
         """Decodes an incoming, raw JSON message that has already been

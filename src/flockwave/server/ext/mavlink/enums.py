@@ -380,18 +380,21 @@ class MAVType(IntEnum):
     GCS = 6
     HEXAROTOR = 13
     OCTOROTOR = 14
+    TRICOPTER = 15
     ONBOARD_CONTROLLER = 18
     GIMBAL = 26
     ADSB = 27
+    DODECAROTOR = 29
     CAMERA = 30
     CHARGING_STATION = 31
     FLARM = 32
     SERVO = 33
     ODID = 34
+    DECAROTOR = 35
 
     def is_vehicle(self) -> bool:
         """Returns whether the MAVType constant denotes a vehicle (most likely)."""
-        return int(self) < 34 and self not in (
+        return int(self) < 36 and self not in (
             MAVType.ANTENNA_TRACKER,
             MAVType.GCS,
             MAVType.ONBOARD_CONTROLLER,
@@ -404,6 +407,21 @@ class MAVType(IntEnum):
             MAVType.ODID,
         )
 
+    @property
+    def motor_count(self) -> int:
+        """Returns the best estimate of the motor count associated with the
+        given MAVType or 4 as a default."""
+        if self == MAVType.DODECAROTOR:
+            return 12
+        if self == MAVType.DECAROTOR:
+            return 10
+        if self == MAVType.OCTOROTOR:
+            return 8
+        if self == MAVType.HEXAROTOR:
+            return 6
+        if self == MAVType.TRICOPTER:
+            return 3
+        return 4
 
 class GPSFixType(IntEnum):
     """Replica of the `GPS_FIX_TYPE` enum of the MAVLink protocol, using

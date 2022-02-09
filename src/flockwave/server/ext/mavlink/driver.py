@@ -57,6 +57,7 @@ from .enums import (
     MAVResult,
     MAVState,
     MAVSysStatusSensor,
+    MAVType,
     MotorTestOrder,
     MotorTestThrottleType,
     PositionTargetTypemask,
@@ -1299,8 +1300,9 @@ class MAVLinkUAV(UAVBase):
         if component == "motor":
             # Older versions of ArduCopter did not support the motor count
             # parameter so let's just test all the motors one by one
-            # TODO(ntamas): add support for hexacopters, octocopters etc
-            for i in range(4):
+            heartbeat = self.get_last_message(MAVMessageType.HEARTBEAT)
+            motor_count = 4 if not heartbeat else MAVType(heartbeat.type).motor_count
+            for i in range(motor_count):
                 await self.driver.send_command_long(
                     self,
                     MAVCommand.DO_MOTOR_TEST,

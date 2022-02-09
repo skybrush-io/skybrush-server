@@ -177,13 +177,6 @@ def divide_by(value: float) -> Callable[[float], float]:
     return partial(mul, 1.0 / value)
 
 
-def format_number_nicely(value: float) -> str:
-    """Formats a float nicely, stripping trailing zeros and avoiding scientific
-    notation where possible.
-    """
-    return f"{value:.7f}".rstrip("0").rstrip(".")
-
-
 def identity(obj: Any) -> Any:
     """Identity function that returns its input argument."""
     return obj

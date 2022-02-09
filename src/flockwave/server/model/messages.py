@@ -27,6 +27,15 @@ class FlockwaveMessage(metaclass=ModelMeta):
         """
         return self.body.get("ids") or ()
 
+    def get_type(self) -> str:
+        """Returns the `"type"` property of the message body, or an empty string
+        if there is no such member in the body or if there is no message body.
+        """
+        if hasattr(self, "body"):
+            return str(self.body.get("type", ""))
+        else:
+            return ""
+
     @staticmethod
     def is_experimental(message: dict) -> bool:
         """Returns whether the given raw JSON representation of a Flockwave

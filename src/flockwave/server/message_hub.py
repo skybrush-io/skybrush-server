@@ -447,27 +447,23 @@ class MessageHub:
                 return False
 
         if self._log_messages:
-            type = (
-                decoded_message.body.get("type")
-                if hasattr(decoded_message, "body")
-                else "NO-TYPE"
-            )
+            type = decoded_message.get_type() or "untyped"
             if type not in ("RTK-STAT", "UAV-PREFLT", "X-DBG-RESP", "X-RTK-STAT"):
                 log.info(
-                    "Received {0.body[type]} message".format(decoded_message),
+                    f"Received {type} message",
                     extra={"id": decoded_message.id, "semantics": "request"},
                 )
 
         handled = await self._feed_message_to_handlers(decoded_message, sender)
 
         if not handled:
-            message_type = decoded_message.body.get("type")
+            message_type = decoded_message.get_type()
             if message_type and message_type not in ("DOCK-INF", "BCN-INF"):
                 # Do not log DOCK-INF and BCN-INF; these may come from Skybrush
                 # Live but we do not want to freak out the user watching the
                 # server logs
                 log.warning(
-                    "Unhandled message: {0.body[type]}".format(decoded_message),
+                    f"Unhandled message: {message_type}",
                     extra={"id": decoded_message.id},
                 )
 
@@ -872,8 +868,7 @@ class MessageHub:
         to: Client = None,
         in_response_to: Optional[FlockwaveMessage] = None,
     ) -> None:
-        type = message.body.get("type") if hasattr(message, "body") else "NO-TYPE"
-
+        type = message.get_type() or "untyped"
         if to is None:
             if type not in ("CONN-INF", "UAV-INF", "DEV-INF", "SYS-MSG", "X-DBG-REQ"):
                 log.info(

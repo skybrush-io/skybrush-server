@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-from enum import Enum
-from logging import FileHandler, Handler, Logger, getLogger
-from logging.handlers import TimedRotatingFileHandler
+from logging import Handler, Logger, getLogger
+from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from typing import Any, Dict, Optional, TYPE_CHECKING
 
@@ -20,12 +19,6 @@ log_dir: Optional[Path] = None
 LOG_FILENAME: str = "skybrushd.log"
 
 
-class LogRotationPolicy(Enum):
-    OFF = "off"
-    HOURLY = "hourly"
-    DAILY = "daily"
-
-
 def load(app: "SkybrushServer", configuration: Dict[str, Any], log: Logger):
     global handler
 
@@ -39,12 +32,18 @@ def load(app: "SkybrushServer", configuration: Dict[str, Any], log: Logger):
         log.warn(f"Unknown log format: {format_str!r}, assuming tabular")
         formatter = styles["tabular"]
 
-    rotate_str = str(configuration.get("rotate", LogRotationPolicy.DAILY.value))
+    size_limit_str = str(configuration.get("size", "0"))
     try:
-        rotate = LogRotationPolicy(rotate_str)
+        size_limit = int(size_limit_str)
     except ValueError:
-        log.warn(f"Unknown log rotation policy: {rotate_str!r}, assuming daily")
-        rotate = LogRotationPolicy.DAILY
+        log.warn(
+            f"Invalid maximum log file size: {size_limit_str!r}, assuming unlimited"
+        )
+        size_limit = 0
+
+    if size_limit < 0:
+        log.warn("Negative log file size limits are not allowed, assuming unlimited")
+        size_limit = 0
 
     keep_str = str(configuration.get("keep", 0))
     try:
@@ -67,18 +66,9 @@ def load(app: "SkybrushServer", configuration: Dict[str, Any], log: Logger):
 
     if log_dir_exists:
         log_filename = log_dir / LOG_FILENAME
-        if rotate is LogRotationPolicy.OFF:
-            handler = FileHandler(log_filename, delay=True)
-        elif rotate is LogRotationPolicy.HOURLY:
-            handler = TimedRotatingFileHandler(
-                log_filename, when="h", backupCount=backup_count, delay=True
-            )
-        elif rotate is LogRotationPolicy.DAILY:
-            handler = TimedRotatingFileHandler(
-                log_filename, when="d", backupCount=backup_count, delay=True
-            )
-        else:
-            handler = None
+        handler = RotatingFileHandler(
+            log_filename, maxBytes=size_limit, backupCount=backup_count, delay=True
+        )
 
     if handler:
         handler.setFormatter(formatter())
@@ -110,19 +100,12 @@ schema = {
             "default": "tabular",
             "options": {"enum_titles": ["Tabular", "JSON"]},
         },
-        "rotate": {
-            "type": "string",
-            "enum": [e.value for e in LogRotationPolicy],
-            "title": "Log rotation",
-            "description": "Setting this option will close the current log file and open a new one at regular intervals.",
-            "default": "daily",
-            "options": {
-                "enum_titles": [
-                    "Do not rotate log files",
-                    "Rotate log file once every hour",
-                    "Rotate log file once per day",
-                ]
-            },
+        "size": {
+            "type": "integer",
+            "minValue": 0,
+            "title": "Maximum log file size",
+            "description": "Maximum allowed size of a log file, in bytes. Log files will be rotated when they reach this size. Use zero for unlimited logs (i.e. no rotation).",
+            "default": 1000000,
         },
         "keep": {
             "type": "integer",

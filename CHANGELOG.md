@@ -16,6 +16,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Basic user authentication can now be set up from the web UI.
 
+### Fixed
+
+- Motor test now supports drones with more than four rotors.
+
 ## [1.27.2] - 2022-01-03
 
 ### Fixed

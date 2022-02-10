@@ -64,7 +64,7 @@ EXTENSIONS = {
     "insomnia": {"keep_display_on": False},
     "kp_index": {"source": "potsdam"},
     "license": {},
-    "logging": {"rotate": "daily", "keep": 7, "format": "tabular"},
+    "logging": {"keep": 7, "format": "tabular", "size": 1000000},
     "magnetic_field": {},
     "mavlink": {
         "enabled": False,

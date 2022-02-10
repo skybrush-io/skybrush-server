@@ -457,13 +457,17 @@ class MessageHub:
             else:
                 return False
 
-        for middleware in self._request_middleware:
-            next_message = middleware(decoded_message, sender)
-            if next_message is None:
-                # Message dropped by middleware
-                return True
+        try:
+            for middleware in self._request_middleware:
+                next_message = middleware(decoded_message, sender)
+                if next_message is None:
+                    # Message dropped by middleware
+                    return True
 
-            decoded_message = next_message
+                decoded_message = next_message
+        except Exception:
+            log.exception("Unexpected error in request middleware")
+            return False
 
         handled = await self._feed_message_to_handlers(decoded_message, sender)
 
@@ -1005,10 +1009,15 @@ class MessageHub:
 
         if self._broadcast_methods:
             for middleware in self._response_middleware:
-                next_message = middleware(message, None, None)
-                if next_message is not None:
+                try:
+                    next_message = middleware(message, None, None)
+                except Exception:
+                    log.exception("Unexpected error in response middleware")
+                    next_message = None
+                if next_message is None:
                     # Message dropped by middleware
                     break
+                message = next_message  # type: ignore
             else:
                 # Message passed through all middleware
                 failures = 0
@@ -1051,10 +1060,15 @@ class MessageHub:
             client = to
 
         for middleware in self._response_middleware:
-            next_message = middleware(message, client, in_response_to)
-            if next_message is not None:
+            try:
+                next_message = middleware(message, client, in_response_to)
+            except Exception:
+                log.exception("Unexpected error in response middleware")
+                next_message = None
+            if next_message is None:
                 # Message dropped by middleware
                 break
+            message = next_message
         else:
             # Message passed through all middleware
             try:

@@ -13,6 +13,7 @@ from flockwave.server.tasks import wait_for_dict_items, wait_until
 
 from .clock import ShowClock
 from .config import DroneShowConfiguration, LightConfiguration, StartMethod
+from .logging import ShowUploadLoggingMiddleware
 
 __all__ = ("construct", "dependencies", "description")
 
@@ -109,6 +110,11 @@ class DroneShowExtension(ExtensionBase):
                 )
                 stack.enter_context(app.import_api("clocks").use_clock(self._clock))
                 stack.enter_context(app.message_hub.use_message_handlers(handlers))
+                stack.enter_context(
+                    app.message_hub.use_request_middleware(
+                        ShowUploadLoggingMiddleware(self.log)
+                    )
+                )
                 await sleep_forever()
 
     def _get_configuration(self) -> DroneShowConfiguration:

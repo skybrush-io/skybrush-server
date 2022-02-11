@@ -79,6 +79,7 @@ class MAVLinkNetwork:
     """Representation of a MAVLink network."""
 
     driver: MAVLinkDriver
+    log: Logger
     manager: CommunicationManager[MAVLinkMessageSpecification, Any]
 
     _uav_addresses: Dict[MAVLinkUAV, Any]
@@ -141,7 +142,7 @@ class MAVLinkNetwork:
                 particular packet type in the dictionary will let the system
                 choose the link on its own.
         """
-        self.log: Optional[Logger] = None
+        self.log = None  # type: ignore
 
         self._id = id
         self._id_formatter = id_formatter
@@ -200,7 +201,7 @@ class MAVLinkNetwork:
 
         # Map values of type 'bytes' to 'str' in the params dict because
         # pymavlink never returns 'bytes'
-        if not callable(params):
+        if params is not None and not callable(params):
             for name, value in params.items():
                 if isinstance(value, bytes):
                     try:

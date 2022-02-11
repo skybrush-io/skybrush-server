@@ -18,7 +18,8 @@ from flockwave.gps.rtcm.packets import (
     RTCMV3AntennaDescriptorPacket,
     RTCMV3ExtendedAntennaDescriptorPacket,
 )
-from flockwave.gps.ubx.packet import UBXClass, UBXPacket
+from flockwave.gps.ubx.enums import UBXClass, UBXNAVSubclass
+from flockwave.gps.ubx.packet import UBXPacket
 from flockwave.gps.vectors import (
     ECEFCoordinate,
     ECEFToGPSCoordinateTransformation,
@@ -273,7 +274,7 @@ class SurveyStatus:
         return (
             isinstance(packet, UBXPacket)
             and packet.class_id == UBXClass.NAV
-            and packet.subclass_id == 0x3B
+            and packet.subclass_id == UBXNAVSubclass.SVIN
         )
 
     @property

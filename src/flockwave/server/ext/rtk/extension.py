@@ -22,6 +22,7 @@ from typing import (
     List,
     Optional,
     Union,
+    TYPE_CHECKING,
 )
 
 from flockwave.channels import ParserChannel
@@ -31,6 +32,7 @@ from flockwave.gps.rtk import RTKMessageSet, RTKSurveySettings
 from flockwave.gps.ubx.rtk_config import UBXRTKBaseConfigurator
 from flockwave.server.message_hub import MessageHub
 from flockwave.server.model import ConnectionPurpose
+from flockwave.server.model.log import Severity
 from flockwave.server.model.messages import FlockwaveMessage, FlockwaveResponse
 from flockwave.server.registries import find_in_registry
 from flockwave.server.utils import overridden
@@ -45,9 +47,13 @@ from flockwave.server.utils.serial import (
 from ..base import ExtensionBase
 
 from .beacon_manager import RTKBeaconManager
+from .clock_sync import GPSClockSynchronizationValidator
 from .preset import RTKConfigurationPreset
 from .registry import RTKPresetRegistry
 from .statistics import RTKStatistics
+
+if TYPE_CHECKING:
+    from flockwave.server.app import SkybrushServer
 
 
 @dataclass
@@ -81,6 +87,7 @@ class RTKExtension(ExtensionBase):
 
     RTK_PACKET_SIGNAL: ClassVar[str] = "rtk:packet"
 
+    _clock_sync_validator: GPSClockSynchronizationValidator
     _current_preset: Optional[RTKConfigurationPreset] = None
     _dynamic_serial_port_configurations: List[SerialPortConfiguration]
     _dynamic_serial_port_filters: List[str]
@@ -95,6 +102,8 @@ class RTKExtension(ExtensionBase):
     _survey_settings: RTKSurveySettings
     _tx_queue: Optional[SendChannel] = None
 
+    app: "SkybrushServer"
+
     def __init__(self):
         """Constructor."""
         super().__init__()
@@ -103,6 +112,7 @@ class RTKExtension(ExtensionBase):
         self._dynamic_serial_port_filters = []
         self._presets = []
 
+        self._clock_sync_validator = GPSClockSynchronizationValidator()
         self._rtk_beacon_manager = RTKBeaconManager()
         self._statistics = RTKStatistics()
         self._survey_settings = RTKSurveySettings()
@@ -524,6 +534,8 @@ class RTKExtension(ExtensionBase):
         """
         assert self.app is not None
 
+        self._clock_sync_validator.assume_sync()
+
         with ExitStack() as stack:
             assert self._rtk_survey_trigger is not None
             assert self.app is not None
@@ -531,6 +543,12 @@ class RTKExtension(ExtensionBase):
             async with open_nursery() as nursery:
                 stack.enter_context(self._statistics.use())
                 stack.enter_context(self._rtk_beacon_manager.use(self, nursery))
+                stack.enter_context(
+                    self._clock_sync_validator.sync_state_changed.connected_to(
+                        self._on_gps_clock_sync_state_changed,
+                        sender=self._clock_sync_validator,
+                    )  # type: ignore
+                )
 
                 self._rtk_survey_trigger.value = preset.auto_survey
 
@@ -602,10 +620,24 @@ class RTKExtension(ExtensionBase):
 
         async with channel:
             async for packet in channel:
+                self._clock_sync_validator.notify(packet)
                 self._statistics.notify(packet)
                 if preset.accepts(packet):
                     encoded = encoder(packet)
                     signal.send(packet=encoded)
+
+    def _on_gps_clock_sync_state_changed(self, sender, in_sync: bool) -> None:
+        """Handler called when the extension detects that the GPS clock is
+        out of sync with the server, or when the clocks are in sync again.
+        """
+        send_message = self.app.request_to_send_SYS_MSG_message
+        if in_sync:
+            send_message("GPS clock and server clock are now in sync.")
+        else:
+            send_message(
+                "Server clock is not synchronized to GPS clock. Please adjust the date and time on the server to a reliable time source.",
+                severity=Severity.WARNING,
+            )
 
     def _on_hotplug_event(self, sender, event) -> None:
         """Handler called for hotplug events. Used to trigger the regeneration

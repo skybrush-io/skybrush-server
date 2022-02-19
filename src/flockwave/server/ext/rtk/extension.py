@@ -635,7 +635,8 @@ class RTKExtension(ExtensionBase):
             send_message("GPS clock and server clock are now in sync.")
         else:
             send_message(
-                "Server clock is not synchronized to GPS clock. Please adjust the date and time on the server to a reliable time source.",
+                "Server clock is not synchronized to GPS clock. Please sync "
+                "the date and time on the server to a reliable time source.",
                 severity=Severity.WARNING,
             )
 

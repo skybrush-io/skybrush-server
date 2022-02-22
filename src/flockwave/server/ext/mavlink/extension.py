@@ -4,7 +4,8 @@ MAVLink protocol.
 
 from contextlib import ExitStack
 from functools import partial
-from typing import Dict, Optional
+from logging import Logger
+from typing import Dict, Optional, TYPE_CHECKING
 
 from flockwave.server.ext.base import UAVExtensionBase
 from flockwave.server.model.uav import UAV
@@ -20,6 +21,9 @@ from .types import (
     MAVLinkMessageSpecification,
     MAVLinkNetworkSpecification,
 )
+
+if TYPE_CHECKING:
+    from flockwave.server.app import SkybrushServer
 
 __all__ = ("construct", "dependencies")
 
@@ -40,11 +44,16 @@ class MAVLinkDronesExtension(UAVExtensionBase):
     protocol.
     """
 
+    app: "SkybrushServer"
+    log: Logger
+
+    _networks: Dict[str, MAVLinkNetwork]
+
     def __init__(self):
-        super(MAVLinkDronesExtension, self).__init__()
+        super().__init__()
 
         self._driver = None
-        self._networks: Optional[Dict[str, MAVLinkNetwork]] = None
+        self._networks = {}
         self._start_method = None
         self._uavs = None
 

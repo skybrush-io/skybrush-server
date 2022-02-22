@@ -331,9 +331,8 @@ async def reload_extension(name):
     _, extension_manager = _get_extension_by_name(name)
 
     async def reload():
-        await extension_manager.unload(name)
         await _configure_extension_from_request_body_if_needed(name)
-        await extension_manager.load(name)
+        await extension_manager.reload(name)
         return True
 
     return await _to_json(reload)

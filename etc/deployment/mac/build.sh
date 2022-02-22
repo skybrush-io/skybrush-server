@@ -73,7 +73,7 @@ pip3 download -r requirements.txt \
 # Now clean the build dir and install everything in a virtualenv in there
 rm -rf "${BUILD_DIR}"
 VENV_DIR="${BUILD_DIR}/venv"
-~/.pyenv/versions/3.9.9-universal/bin/python3 -m venv "${VENV_DIR}"
+~/.pyenv/versions/3.9.9/bin/python3 -m venv "${VENV_DIR}"
 
 # TODO(ntamas): clean up unused MAVlink dialects somehow!
 

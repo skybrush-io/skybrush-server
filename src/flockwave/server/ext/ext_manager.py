@@ -219,11 +219,7 @@ async def reload_extension(ext: ExtensionManager, identifier: str):
     Raises:
         RuntimeError: if the extension cannot be unloaded
     """
-    # TODO(ntamas): if there are other extensions that depend on the extension
-    # being reloaded, they also get unloaded, but we don't restore them at the
-    # end. This should be fixed.
-    await ext.unload(identifier)
-    await ext.load(identifier)
+    await ext.reload(identifier)
     return {}
 
 

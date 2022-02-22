@@ -5,10 +5,10 @@ from logging import Logger
 from math import inf
 from trio import fail_after, Nursery, open_nursery, sleep_forever, TooSlowError
 from trio_util import periodic
-from typing import Any, Dict, Optional, TYPE_CHECKING
+from typing import Any, Dict, Optional
 
 from flockwave.concurrency import CancellableTaskGroup
-from flockwave.ext.base import ExtensionBase
+from flockwave.server.ext.base import Extension
 from flockwave.server.tasks import wait_for_dict_items, wait_until
 
 from .clock import ShowClock
@@ -17,11 +17,8 @@ from .logging import ShowUploadLoggingMiddleware
 
 __all__ = ("construct", "dependencies", "description")
 
-if TYPE_CHECKING:
-    from flockwave.server.app import SkybrushServer
 
-
-class DroneShowExtension(ExtensionBase):
+class DroneShowExtension(Extension):
     """Extension that prepares the server to be able to manage drone shows.
 
     The extension provides three signals via the `signals` extension; `show:start`
@@ -32,7 +29,6 @@ class DroneShowExtension(ExtensionBase):
     configuration.
     """
 
-    app: "SkybrushServer"
     log: Logger
 
     _clock: Optional[ShowClock]
@@ -141,6 +137,7 @@ class DroneShowExtension(ExtensionBase):
 
         self.log.info(self._config.format())
 
+        assert self.app is not None
         updated_signal = self.app.import_api("signals").get("show:config_updated")
         updated_signal.send(self, config=self._config.clone())
 
@@ -148,6 +145,7 @@ class DroneShowExtension(ExtensionBase):
         """Handler that is called when the configuration of the LED lights was
         updated from any source.
         """
+        assert self.app is not None
         updated_signal = self.app.import_api("signals").get("show:lights_updated")
         updated_signal.send(self, config=self._lights.clone())
 
@@ -164,6 +162,7 @@ class DroneShowExtension(ExtensionBase):
         )
 
     async def _start_show_when_needed(self) -> None:
+        assert self.app is not None
         start_signal = self.app.import_api("signals").get("show:start")
 
         assert self._clock is not None
@@ -204,10 +203,12 @@ class DroneShowExtension(ExtensionBase):
     def _notify_uavs_about_countdown_state(
         self, seconds_left: float = 0, cancelled: bool = False
     ) -> None:
+        assert self.app is not None
         countdown_signal = self.app.import_api("signals").get("show:countdown")
         countdown_signal.send(self, delay=seconds_left if not cancelled else None)
 
     def _start_uavs_if_needed(self) -> None:
+        assert self.app is not None
         assert self._nursery is not None
 
         self._notify_uavs_about_countdown_state(seconds_left=0)

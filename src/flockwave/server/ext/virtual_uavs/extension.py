@@ -11,7 +11,7 @@ from flockwave.gps.vectors import (
 from flockwave.spec.ids import make_valid_object_id
 from flockwave.server.registries.errors import RegistryFull
 
-from ..base import UAVExtensionBase
+from ..base import UAVExtension
 
 from .driver import VirtualUAV, VirtualUAVDriver
 from .placement import place_drones
@@ -20,7 +20,7 @@ from .placement import place_drones
 __all__ = ("construct", "dependencies")
 
 
-class VirtualUAVProviderExtension(UAVExtensionBase):
+class VirtualUAVProviderExtension(UAVExtension):
     """Extension that creates one or more virtual UAVs in the server.
 
     Virtual UAVs circle around a given point in a given radius, with constant

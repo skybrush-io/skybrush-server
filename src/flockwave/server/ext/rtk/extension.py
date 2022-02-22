@@ -13,23 +13,14 @@ from flockwave.gps.vectors import ECEFToGPSCoordinateTransformation, GPSCoordina
 from trio import CancelScope, open_memory_channel, open_nursery, sleep
 from trio.abc import SendChannel
 from trio_util import AsyncBool
-from typing import (
-    cast,
-    Any,
-    ClassVar,
-    Dict,
-    Iterator,
-    List,
-    Optional,
-    Union,
-    TYPE_CHECKING,
-)
+from typing import cast, Any, ClassVar, Dict, Iterator, List, Optional, Union
 
 from flockwave.channels import ParserChannel
 from flockwave.connections import Connection, create_connection
 from flockwave.gps.enums import GNSSType
 from flockwave.gps.rtk import RTKMessageSet, RTKSurveySettings
 from flockwave.gps.ubx.rtk_config import UBXRTKBaseConfigurator
+from flockwave.server.ext.base import Extension
 from flockwave.server.message_hub import MessageHub
 from flockwave.server.model import ConnectionPurpose
 from flockwave.server.model.log import Severity
@@ -44,16 +35,11 @@ from flockwave.server.utils.serial import (
     list_serial_ports,
 )
 
-from ..base import ExtensionBase
-
 from .beacon_manager import RTKBeaconManager
 from .clock_sync import GPSClockSynchronizationValidator
 from .preset import RTKConfigurationPreset
 from .registry import RTKPresetRegistry
 from .statistics import RTKStatistics
-
-if TYPE_CHECKING:
-    from flockwave.server.app import SkybrushServer
 
 
 @dataclass
@@ -80,7 +66,7 @@ def format_gps_coordinate(coord: GPSCoordinate) -> str:
     return f"{coord.lat:.7f}°, {coord.lon:.7f}°"
 
 
-class RTKExtension(ExtensionBase):
+class RTKExtension(Extension):
     """Extension that connects to one or more data sources for RTK connections
     and forwards the corrections to the UAVs managed by the server.
     """
@@ -101,8 +87,6 @@ class RTKExtension(ExtensionBase):
     _statistics: RTKStatistics
     _survey_settings: RTKSurveySettings
     _tx_queue: Optional[SendChannel] = None
-
-    app: "SkybrushServer"
 
     def __init__(self):
         """Constructor."""
@@ -630,6 +614,9 @@ class RTKExtension(ExtensionBase):
         """Handler called when the extension detects that the GPS clock is
         out of sync with the server, or when the clocks are in sync again.
         """
+        if not self.app:
+            return
+
         send_message = self.app.request_to_send_SYS_MSG_message
         if in_sync:
             send_message("GPS clock and server clock are now in sync.")

@@ -2,10 +2,10 @@ from __future__ import annotations
 
 from contextlib import ExitStack, contextmanager
 from operator import attrgetter
-from typing import Iterator, Optional, TYPE_CHECKING
+from typing import Iterator, Optional
 
 from flockwave.concurrency import AsyncBundler
-from flockwave.server.ext.base import ExtensionBase
+from flockwave.server.ext.base import Extension
 from flockwave.server.message_hub import (
     create_generic_INF_or_PROPS_message_factory,
     create_multi_object_message_handler,
@@ -17,16 +17,12 @@ from flockwave.server.model.messages import FlockwaveNotification
 
 from .model import Beacon, is_beacon
 
-if TYPE_CHECKING:
-    from flockwave.server.app import SkybrushServer
-
 ############################################################################
 
 
-class BeaconExtension(ExtensionBase["SkybrushServer"]):
+class BeaconExtension(Extension):
     """Extension that implements support for beacons."""
 
-    app: "SkybrushServer"
     beacons_to_update: AsyncBundler[str]
 
     def _find_beacon_by_id(self, id: str) -> Optional[Beacon]:
@@ -52,10 +48,14 @@ class BeaconExtension(ExtensionBase["SkybrushServer"]):
             raise TypeError(f"expected beacon, got {type(beacon)!r}")
 
         beacon.updated.disconnect(self._on_beacon_updated, sender=beacon)
+
+        assert self.app is not None
         self.app.object_registry.remove(beacon)
 
     @contextmanager
     def _use_beacon(self, beacon_id: str) -> Iterator[Beacon]:
+        assert self.app is not None
+
         beacon = Beacon(id=beacon_id)
         with self.app.object_registry.use(beacon):
             with beacon.updated.connected_to(self._on_beacon_updated, sender=beacon):  # type: ignore
@@ -67,7 +67,10 @@ class BeaconExtension(ExtensionBase["SkybrushServer"]):
             "use": self._use_beacon,
         }
 
-    async def run(self, app: "SkybrushServer", configuration, logger):
+    async def run(self):
+        app = self.app
+        assert app is not None
+
         with ExitStack() as stack:
             self.beacons_to_update = AsyncBundler()
 

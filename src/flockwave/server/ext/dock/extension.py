@@ -17,7 +17,7 @@ from flockwave.server.model import ConnectionPurpose
 from flockwave.server.model.object import registered
 from flockwave.server.model.uav import PassiveUAVDriver
 
-from ..base import UAVExtensionBase
+from ..base import UAVExtension
 
 from .model import Dock, is_dock
 from .rpc import DockRPCServer
@@ -39,7 +39,7 @@ def create_rpc_message_channel(stream: Stream) -> MessageChannel[RPCMessage]:
 ############################################################################
 
 
-class DockExtension(UAVExtensionBase):
+class DockExtension(UAVExtension):
     """Extension that implements support for CollMot Robotics' docking station."""
 
     _id_format: str

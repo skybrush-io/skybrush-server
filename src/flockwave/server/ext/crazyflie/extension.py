@@ -10,7 +10,7 @@ from trio import open_memory_channel, open_nursery
 from typing import Any, Callable, Dict, List, Optional
 
 from flockwave.connections.factory import create_connection
-from flockwave.server.ext.base import UAVExtensionBase
+from flockwave.server.ext.base import UAVExtension
 from flockwave.server.model import ConnectionPurpose
 
 from .connection import CrazyradioConnection
@@ -23,7 +23,7 @@ from .scanning import CrazyradioScannerTask
 __all__ = ("construct", "schema")
 
 
-class CrazyflieDronesExtension(UAVExtensionBase):
+class CrazyflieDronesExtension(UAVExtension):
     """Extension that adds support for Crazyflie drones."""
 
     log: Logger

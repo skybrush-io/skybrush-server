@@ -17,7 +17,7 @@ from flockwave.connections import ConnectionState
 from flockwave.server.registries import ConnectionRegistry, ConnectionRegistryEntry
 from flockwave.server.utils import overridden
 
-from .base import ExtensionBase
+from .base import Extension
 
 if TYPE_CHECKING:
     from trio.lowlevel import FdStream  # not available on Windows
@@ -32,7 +32,7 @@ _status_to_string = {
 }
 
 
-class ConsoleStatusExtension(ExtensionBase):
+class ConsoleStatusExtension(Extension):
     """Extension that allows the server to provide status information to
     `skybrush-console-frontend` running on a Raspberry Pi or a similar
     device.

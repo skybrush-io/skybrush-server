@@ -16,7 +16,7 @@ from flockwave.protocols.flockctrl.packets import (
     RawGPSInjectionPacket,
 )
 from flockwave.server.comm import BROADCAST, CommunicationManager
-from flockwave.server.ext.base import UAVExtensionBase
+from flockwave.server.ext.base import UAVExtension
 from flockwave.server.model import ConnectionPurpose
 from flockwave.server.utils import datetime_to_unix_timestamp
 
@@ -69,7 +69,7 @@ RADIO_PRESETS = {
 }
 
 
-class FlockCtrlDronesExtension(UAVExtensionBase):
+class FlockCtrlDronesExtension(UAVExtension):
     """Extension that adds support for drone flocks using the ``flockctrl``
     protocol.
     """

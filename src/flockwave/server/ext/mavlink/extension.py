@@ -7,7 +7,7 @@ from functools import partial
 from logging import Logger
 from typing import Dict, Optional, TYPE_CHECKING
 
-from flockwave.server.ext.base import UAVExtensionBase
+from flockwave.server.ext.base import UAVExtension
 from flockwave.server.model.uav import UAV
 from flockwave.server.registries.errors import RegistryFull
 from flockwave.server.utils import optional_int, overridden
@@ -39,7 +39,7 @@ CONNECTION_PRESETS = {
 DEFAULT_ROUTING = {"rtk": 0}
 
 
-class MAVLinkDronesExtension(UAVExtensionBase):
+class MAVLinkDronesExtension(UAVExtension):
     """Extension that adds support for drone flocks using the MAVLink
     protocol.
     """

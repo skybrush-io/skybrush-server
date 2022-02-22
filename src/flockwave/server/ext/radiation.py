@@ -11,13 +11,13 @@ from flockwave.gps.vectors import (
 )
 from flockwave.server.utils import constant
 
-from .base import ExtensionBase
+from .base import Extension
 
 
 gps_to_ecef = ECEFToGPSCoordinateTransformation().to_ecef
 
 
-class Source(object):
+class Source:
     """Object representing a single radiation source with a given location
     and intensity.
     """
@@ -100,14 +100,14 @@ class Source(object):
         )
 
 
-class RadiationExtension(ExtensionBase):
+class RadiationExtension(Extension):
     """Extension that allows one to place virtual "radiation sources" into
     the world.
     """
 
     def __init__(self):
         """Constructor."""
-        super(RadiationExtension, self).__init__()
+        super().__init__()
         self._background_intensity = 0.0
         self._poisson = None
         self._sources = []

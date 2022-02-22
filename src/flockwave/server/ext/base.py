@@ -1,11 +1,24 @@
 """Base class for extensions."""
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from flockwave.ext.base import ExtensionBase
 
-__all__ = ("UAVExtensionBase",)
+if TYPE_CHECKING:
+    from flockwave.server.app import SkybrushServer  # noqa
+
+__all__ = ("UAVExtension",)
 
 
-class UAVExtensionBase(ExtensionBase):
+class Extension(ExtensionBase["SkybrushServer"]):
+    """Base class for extensions in the server application."""
+
+    pass
+
+
+class UAVExtension(Extension):
     """Base class for extensions that intend to provide support for a
     specific type of UAVs.
 
@@ -27,6 +40,7 @@ class UAVExtensionBase(ExtensionBase):
         done in a mutation context to ensure that clients are notified about
         the modifications.
         """
+        assert self.app is not None
         return self.app.device_tree.create_mutator()
 
     def configure(self, configuration):
@@ -59,7 +73,7 @@ class UAVExtensionBase(ExtensionBase):
         """
         return None
 
-    def _update_driver_from_app(self):
+    def _update_driver_from_app(self) -> None:
         """Updates the driver object in the extension when the associated
         app has changed.
         """

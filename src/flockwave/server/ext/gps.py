@@ -35,7 +35,7 @@ from flockwave.spec.ids import make_valid_object_id
 
 from flockwave.server.utils.generic import overridden
 
-from .base import UAVExtensionBase
+from .base import UAVExtension
 
 if TYPE_CHECKING:
     from flockwave.server.app import SkybrushServer
@@ -200,7 +200,7 @@ def parse_incoming_gpsd_or_nmea_message(message: bytes) -> GPSMessage:
         return parse_incoming_gpsd_message(message)
 
 
-class GPSExtension(UAVExtensionBase):
+class GPSExtension(UAVExtension):
     """Extension that tracks position information received from external GPS
     devices and creates UAVs in the UAV registry corresponding to the GPS
     devices.
@@ -238,8 +238,6 @@ class GPSExtension(UAVExtensionBase):
 
     _main_connection: Optional[Connection]
     """The "main" connection object of the extension."""
-
-    app: "SkybrushServer"
 
     def __init__(self):
         """Constructor."""

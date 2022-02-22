@@ -13,7 +13,7 @@ from time import time
 from trio import move_on_after
 from typing import AsyncIterator, Iterator, Optional, Tuple
 
-from .base import ExtensionBase
+from .base import Extension
 
 from ..model import ConnectionPurpose
 
@@ -366,7 +366,7 @@ class InboundMessageParser:
                 )
 
 
-class SMPTETimecodeExtension(ExtensionBase):
+class SMPTETimecodeExtension(Extension):
     """Extension that adds support for reading SMPTE timecode from a
     connection.
     """

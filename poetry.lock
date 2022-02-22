@@ -515,7 +515,7 @@ reference = "collmot"
 
 [[package]]
 name = "flockwave-ext"
-version = "1.12.0"
+version = "1.13.0"
 description = "Generic extension manager for Skybrush-related projects"
 category = "main"
 optional = false
@@ -2107,7 +2107,7 @@ reference = "collmot"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7"
-content-hash = "66774bba531ec82f71c06e472a550040a2d25268d99426a1bc10cffbff82cc0d"
+content-hash = "22934d5c97f465e8d8451354150dcb0426150afad2455c61266d57bf174dbeb5"
 
 [metadata.files]
 adrenaline = [
@@ -2349,8 +2349,8 @@ flockwave-conn = [
     {file = "flockwave_conn-4.0.1-py3-none-any.whl", hash = "md5:0e66d52fbad4e345b70dc47356df3eb0"},
 ]
 flockwave-ext = [
-    {file = "flockwave-ext-1.12.0.tar.gz", hash = "md5:93b8a391224bada161239a44d7147a33"},
-    {file = "flockwave_ext-1.12.0-py3-none-any.whl", hash = "md5:631b7ce4be619500a50cc2573b1cc41d"},
+    {file = "flockwave-ext-1.13.0.tar.gz", hash = "md5:0aed090f5a3023ee2534aeae56d0c9d1"},
+    {file = "flockwave_ext-1.13.0-py3-none-any.whl", hash = "md5:73601077729dd32a8b8d1cd4f9ed9205"},
 ]
 flockwave-flockctrl = [
     {file = "flockwave-flockctrl-2.1.1.tar.gz", hash = "md5:4c8e3eeb5d24355f72f94b74ded4b411"},

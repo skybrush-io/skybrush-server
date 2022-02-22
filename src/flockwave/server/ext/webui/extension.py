@@ -73,6 +73,7 @@ class ExtensionInfo:
     name: str
     description: str = ""
     loaded: bool = False
+    tags: List[str] = field(default_factory=list)
     dependencies: List[str] = field(default_factory=list)
     dependents: List[str] = field(default_factory=list)
 
@@ -82,6 +83,7 @@ class ExtensionInfo:
     ):
         result = cls(name=name, loaded=ext_manager.is_loaded(name))
         result.description = ext_manager.get_description_of_extension(name) or ""
+        result.tags = sorted(ext_manager.get_tags_of_extension(name))
 
         if details:
             result.dependencies = sorted(

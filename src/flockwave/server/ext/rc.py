@@ -122,3 +122,4 @@ dependencies = ("signals",)
 description = "RC transmitter support"
 exports = {"notify": notify}
 schema = {}
+tags = "experimental"

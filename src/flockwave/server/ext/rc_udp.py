@@ -145,6 +145,7 @@ async def handle_udp_datagrams(
 
 dependencies = ("rc",)
 description = "RC input source using UDP datagrams"
+tags = "experimental"
 schema = {
     "properties": {
         "host": {

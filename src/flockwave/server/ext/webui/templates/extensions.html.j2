@@ -1,5 +1,7 @@
 {% extends "_layout.html.j2" %}
 
+{% import "_tags.html.j2" as tags %}
+
 {% block body %}
 <table class="table table-hover table-striped table-sm mb-0"">
     <thead>
@@ -26,6 +28,7 @@
             </td>
             <td class="align-baseline">
                 {{ extension.description }}
+                {{ tags.inline_list(extension.tags) }}
             </td>
         </tr>
 {% endfor %}

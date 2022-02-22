@@ -1,5 +1,7 @@
 {% extends "_layout.html.j2" %}
 
+{% import "_tags.html.j2" as tags %}
+
 {% block body %}
 
 <nav aria-label="breadcrumb">
@@ -42,6 +44,13 @@
       <a href="{{ url_for('.show_extension_details', name=dep) }}">{{ dep }}</a>
       {{ "·" if not loop.last else "" }}
     {% endfor %}
+  </dd>
+  {% endif %}
+
+  {% if extension.tags %}
+  <dt class="col-sm-2">Tags</dt>
+  <dd class="col-sm-10">
+    {{ tags.inline_list(extension.tags) }}
   </dd>
   {% endif %}
 </dl>

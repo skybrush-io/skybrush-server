@@ -423,6 +423,7 @@ class MAVType(IntEnum):
             return 3
         return 4
 
+
 class GPSFixType(IntEnum):
     """Replica of the `GPS_FIX_TYPE` enum of the MAVLink protocol, using
     proper Python enums.

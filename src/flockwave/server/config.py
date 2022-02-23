@@ -75,6 +75,7 @@ EXTENSIONS = {
         "routing": {"rtk": 0},
         "system_id": 254,
     },
+    "missions": {},
     "osc": {
         "enabled": False,
         "host": "localhost",

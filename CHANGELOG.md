@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.28.0] - 2022-02-23
+
 ### Added
 
 - The server configuration can now be exported from the web UI in JSON format.
@@ -18,6 +20,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Server logs are now saved in a dedicated logging folder; logs are rotated
   at regular intervals.
+
+- Extensions can now be reloaded from the web UI even if other extensions
+  depend on them; the dependencies will be unloaded before the extension is
+  reloaded and they will be restored afterwards.
+
+- For uBlox RTK base stations, the server now requests the base station to send
+  UTC timestamps at regular intervals and warn connected clients if the server
+  clock is not synchronized to the clock of the RTK base station.
 
 ### Fixed
 

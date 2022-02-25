@@ -1,21 +1,13 @@
 """Builder classes for model objects for sake of convenience."""
 
-from baseconv import base64
 from builtins import str
-from random import getrandbits
 from typing import Any, Callable, Dict
 
 from .commands import CommandExecutionStatus
+from .identifiers import default_id_generator
 from .messages import FlockwaveMessage, FlockwaveNotification, FlockwaveResponse
 
 __all__ = ("CommandExecutionStatusBuilder", "FlockwaveMessageBuilder")
-
-
-def _default_id_generator() -> str:
-    """Default ID generator that generates 60-bit random integers and
-    encodes them using base64, yielding ten-character random identifiers.
-    """
-    return base64.encode(getrandbits(60))
 
 
 class CommandExecutionStatusBuilder:
@@ -25,7 +17,7 @@ class CommandExecutionStatusBuilder:
 
     id_generator: Callable[[], str]
 
-    def __init__(self, id_generator: Callable[[], str] = _default_id_generator):
+    def __init__(self, id_generator: Callable[[], str] = default_id_generator):
         """Constructs a new command execution status builder.
 
         Parameters:
@@ -54,7 +46,7 @@ class FlockwaveMessageBuilder(object):
     def __init__(
         self,
         version: str = "1.0",
-        id_generator: Callable[[], str] = _default_id_generator,
+        id_generator: Callable[[], str] = default_id_generator,
     ):
         """Constructs a new message builder.
 

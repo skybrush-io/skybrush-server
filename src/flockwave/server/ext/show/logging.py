@@ -64,8 +64,9 @@ class ShowUploadLoggingMiddleware:
             if should_log:
                 fmt_fingerprint = self._format_fingerprint(fingerprint)
                 show_id = str(fingerprint[0]) if fingerprint[0] else ""
+                sep = ", " if fmt_fingerprint else ""
                 self._log.info(
-                    f"Show upload started, {fmt_fingerprint}", extra={"id": show_id}
+                    f"Show upload started{sep}{fmt_fingerprint}", extra={"id": show_id}
                 )
 
             self._last_show_upload_command_at = now
@@ -107,7 +108,9 @@ class ShowUploadLoggingMiddleware:
         if fingerprint[1] and isinstance(fingerprint[1], dict):
             try:
                 xform = FlatEarthToGPSCoordinateTransformation.from_json(fingerprint[1])
-            except RuntimeError:
+            except (TypeError, RuntimeError):
+                # TypeError may be raised if fingerprint[1]["origin"] is None,
+                # which may be the case for indoor shows
                 xform = None
             if xform:
                 try:

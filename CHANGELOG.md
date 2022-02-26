@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Fixed a bug in the logging of start events for indoor shows
+
 ## [1.28.0] - 2022-02-23
 
 ### Added

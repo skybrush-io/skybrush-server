@@ -12,7 +12,7 @@ from flockwave.server.model import default_id_generator
 from flockwave.server.registries.base import RegistryBase
 from flockwave.server.types import Disposer
 
-from .types import MissionState, MissionType
+from .model import Mission, MissionType
 
 __all__ = ("MissionRegistry", "MissionTypeRegistry")
 
@@ -59,27 +59,48 @@ class MissionTypeRegistry(RegistryBase[MissionType]):
             disposer()
 
 
-class MissionRegistry(RegistryBase[MissionState]):
+class MissionRegistry(RegistryBase[Mission]):
     """Registry that maps mission identifiers to the state objects of the
     missions themselves.
     """
 
-    def create(self, type: str) -> MissionState:
+    _mission_type_registry: MissionTypeRegistry
+    """Registry that associates string identifiers of mission types to the
+    corresponding MissionType_ objects.
+    """
+
+    def __init__(self, mission_type_registry: MissionTypeRegistry):
+        """Constructor.
+
+        Parameters:
+            mission_type_registry: registry that associates string identifiers
+                of mission types to the corresponding MissionType_ objects
+        """
+        super().__init__()
+        self._mission_type_registry = mission_type_registry
+
+    def create(self, type: str) -> Mission:
         """Creates a new mission, adds it to the registry and returns the
         corresponding state object.
 
         Parameters:
             type: the identifier of the type of the mission
+
+        Raises:
+            KeyError: if the given mission type is not registered
         """
+        mission_type = self._mission_type_registry.find_by_id(type)
+
         while True:
             mission_id = default_id_generator()
             if mission_id not in self._entries:
-                mission = self._entries[mission_id] = MissionState(
-                    id=mission_id, type=type
-                )
+                mission: Mission = mission_type.create_mission()
+                mission.id = mission_id
+                mission.type = type
+                self._entries[mission_id] = mission
                 return mission
 
-    def remove_by_id(self, mission_id: str) -> Optional[MissionState]:
+    def remove_by_id(self, mission_id: str) -> Optional[Mission]:
         """Removes the mission with the given ID from the registry.
 
         This function is a no-op if no mission is registered with the given ID.

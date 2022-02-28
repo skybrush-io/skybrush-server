@@ -1,11 +1,32 @@
 from typing import Any, Dict
 
-from .types import MissionPlan, MissionType
+from .model import Mission, MissionPlan, MissionType
 
 __all__ = ("LandImmediatelyMissionType",)
 
 
-class LandImmediatelyMissionType(MissionType):
+class LandImmediatelyMission(Mission):
+    """Example mission that lands all associated drones as soon as it gains
+    control of the drone.
+
+    This mission type is mostly for illustrative and testing purposes.
+    """
+
+    delay: float = 0.0
+    """Number of seconds to wait before sending the landing command to a drone."""
+
+    @Mission.parameters.getter
+    def parameters(self) -> Dict[str, Any]:
+        return {"delay": self.delay}
+
+    def update_parameters(self, parameters: Dict[str, Any]) -> None:
+        delay: float = parameters.get("delay", 0.0)
+        if not isinstance(delay, (int, float)):
+            raise RuntimeError("delay must be numeric")
+        self.delay = float(delay)
+
+
+class LandImmediatelyMissionType(MissionType[LandImmediatelyMission]):
     """Example mission type that lands all associate drones as soon as it
     gains control of the drone.
 
@@ -19,6 +40,9 @@ class LandImmediatelyMissionType(MissionType):
     @property
     def name(self) -> str:
         return "Landing"
+
+    def create_mission(self) -> LandImmediatelyMission:
+        return LandImmediatelyMission()
 
     def create_plan(self, parameters: Dict[str, Any]) -> MissionPlan:
         return MissionPlan.EMPTY

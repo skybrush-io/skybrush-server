@@ -31,6 +31,7 @@ __all__ = (
     "is_timezone_aware",
     "itersubclasses",
     "longest_common_prefix",
+    "maybe_round",
     "multiply_by",
     "nop",
     "once",
@@ -226,6 +227,13 @@ def longest_common_prefix(strings: Sequence[str]) -> str:
                 return shortest_string[:i]
 
     return shortest_string
+
+
+def maybe_round(value: Optional[float], ndigits: int = 0) -> Optional[float]:
+    """Rounds the given value to the given number of digits if it is not
+    ``None``; returns ``None`` otherwise.
+    """
+    return round(value, ndigits) if value is not None else None
 
 
 def multiply_by(term: float) -> Callable[[float], float]:

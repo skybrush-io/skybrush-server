@@ -77,6 +77,7 @@ class MissionManagementExtension(Extension):
                     {
                         "X-MSN-INF": self._handle_MSN_INF,
                         "X-MSN-NEW": self._handle_MSN_NEW,
+                        "X-MSN-PARAM": self._handle_MSN_PARAM,
                         "X-MSN-PLAN": self._handle_MSN_PLAN,
                     }
                 )
@@ -156,20 +157,57 @@ class MissionManagementExtension(Extension):
         try:
             mission.update_parameters(parameters)
         except Exception as ex:
+            self._mission_registry.remove_by_id(mission.id)
             return hub.reject(
                 message, reason=f"Error while setting parameters for mission: {ex}"
             )
 
         if self.log:
-            extra = {"id": mission.id}
-            self.log.info(f"Mission created, type = {mission_type_id!r}", extra=extra)
+            self.log.info(
+                f"Mission created, type = {mission_type_id!r}", extra={"id": mission.id}
+            )
             if parameters:
                 keys = format_list_nicely(
                     sorted(parameters.keys()), item_formatter=repr
                 )
-                self.log.info(f"Mission parameters updated: {keys}", extra=extra)
+                self.log.info(
+                    f"Mission parameters updated: {keys}", extra={"id": mission.id}
+                )
 
         return {"result": mission.id}
+
+    async def _handle_MSN_PARAM(
+        self, message: FlockwaveMessage, sender: Client, hub: MessageHub
+    ):
+        """Handles an incoming request to update one or more parameters of a
+        mission.
+        """
+        try:
+            mission = self._get_mission_from_request_by_id(message)
+        except RuntimeError as ex:
+            return hub.reject(message, reason=str(ex))
+
+        parameters = message.body.get("parameters")
+        if not parameters or not isinstance(parameters, dict):
+            return hub.reject(message, reason="Parameters must be a dictionary")
+
+        try:
+            mission.update_parameters(parameters)
+        except Exception as ex:
+            return hub.reject(
+                message, reason=f"Error while setting parameters for mission: {ex}"
+            )
+
+        if parameters:
+            if self.log:
+                keys = format_list_nicely(
+                    sorted(parameters.keys()), item_formatter=repr
+                )
+                self.log.info(
+                    f"Mission parameters updated: {keys}", extra={"id": mission.id}
+                )
+
+        return hub.acknowledge(message)
 
     async def _handle_MSN_PLAN(
         self, message: FlockwaveMessage, sender: Client, hub: MessageHub
@@ -193,6 +231,13 @@ class MissionManagementExtension(Extension):
             plan = cast(MissionPlan, maybe_plan)
 
         return {"result": plan}
+
+    def _get_mission_from_request_by_id(self, message: FlockwaveMessage) -> Mission:
+        id = message.body.get("id") or ""
+        mission = self.find_mission_by_id(id)
+        if mission is None:
+            raise RuntimeError("No such mission")
+        return mission
 
     def _get_mission_type_and_id_from_request(
         self, message: FlockwaveMessage

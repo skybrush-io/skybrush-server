@@ -3,12 +3,11 @@
 from __future__ import annotations
 
 from blinker import Signal
-from datetime import datetime
 from enum import Enum
 from typing import Any, Dict, List, Optional, TypeVar
 
 from flockwave.server.tasks.led_lights import LightConfiguration
-from flockwave.server.utils import format_uav_ids_nicely
+from flockwave.server.utils import format_timestamp_nicely, format_uav_ids_nicely
 
 __all__ = ("LightConfiguration", "DroneShowConfiguration", "StartMethod")
 
@@ -81,9 +80,7 @@ class DroneShowConfiguration:
         if self.start_time is None:
             fmt_start_time = ""
         else:
-            fmt_start_time = (
-                datetime.fromtimestamp(self.start_time).isoformat().replace("T", " ")
-            )
+            fmt_start_time = format_timestamp_nicely(self.start_time)
             fmt_start_time = f" at {fmt_start_time}"
 
         if uav_ids_relevant:

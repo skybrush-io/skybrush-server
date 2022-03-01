@@ -1,6 +1,7 @@
 """Formatting-related utility functions."""
 
-from typing import Callable, Sequence, TypeVar
+from datetime import datetime
+from typing import Callable, Sequence, TypeVar, Union
 
 __all__ = ("format_list_nicely", "format_number_nicely", "format_uav_ids_nicely")
 
@@ -36,6 +37,16 @@ def format_number_nicely(value: float) -> str:
     notation where possible.
     """
     return f"{value:.7f}".rstrip("0").rstrip(".")
+
+
+def format_timestamp_nicely(timestamp: Union[float, datetime]) -> str:
+    """Formats a UNIX timestamp or a Python datetime object nicely."""
+    dt = (
+        timestamp
+        if isinstance(timestamp, datetime)
+        else datetime.fromtimestamp(timestamp)
+    )
+    return dt.isoformat().replace("T", " ")
 
 
 def format_uav_ids_nicely(ids: Sequence[str], *, max_items: int = 5) -> str:

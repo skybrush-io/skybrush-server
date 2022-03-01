@@ -1,7 +1,12 @@
 """Utility functions that do not fit elsewhere."""
 
 from .data_structures import LastUpdatedOrderedDict
-from .formatting import format_list_nicely, format_number_nicely, format_uav_ids_nicely
+from .formatting import (
+    format_list_nicely,
+    format_number_nicely,
+    format_timestamp_nicely,
+    format_uav_ids_nicely,
+)
 from .generic import (
     bind,
     clamp,
@@ -37,6 +42,7 @@ __all__ = (
     "divide_by",
     "format_list_nicely",
     "format_number_nicely",
+    "format_timestamp_nicely",
     "format_uav_ids_nicely",
     "get_current_unix_timestamp_msec",
     "identity",

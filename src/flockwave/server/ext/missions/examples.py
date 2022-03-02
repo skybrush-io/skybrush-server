@@ -1,3 +1,4 @@
+from trio import sleep
 from typing import Any, Dict
 
 from .model import Mission, MissionPlan, MissionType
@@ -18,6 +19,9 @@ class LandImmediatelyMission(Mission):
     @Mission.parameters.getter
     def parameters(self) -> Dict[str, Any]:
         return {"delay": self.delay}
+
+    async def run(self) -> None:
+        await sleep(5)
 
     def _update_parameters(self, parameters: Dict[str, Any]) -> None:
         delay: float = parameters.get("delay", 0.0)

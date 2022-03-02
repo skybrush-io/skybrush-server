@@ -2,7 +2,6 @@
 
 from contextlib import ExitStack, contextmanager
 from logging import Logger
-from trio import sleep
 from typing import cast, Any, Dict, Iterator, Optional
 
 from flockwave.concurrency.scheduler import Job, Scheduler
@@ -67,8 +66,8 @@ class MissionSchedulerTask:
         if self.log:
             self.log.info("Starting mission", extra={"id": mission.id})
 
-        # TODO(ntamas): call the real mission task here
-        await sleep(5)
+        # TODO(ntamas): manage the state variables of the mission
+        await mission.run()
 
         if self.log:
             self.log.info("Finished mission", extra={"id": mission.id})

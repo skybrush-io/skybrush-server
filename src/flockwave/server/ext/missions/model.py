@@ -24,13 +24,17 @@ from .types import MissionState
 __all__ = ("Mission", "MissionPlan", "MissionType")
 
 
-class Mission:
+class Mission(metaclass=ABCMeta):
     """Representation of a single mission on the server.
 
     A mission consists of a _type_, an associated set of _parameters_, an
     optional _mission plan_ (generated from the type and the parameters), and a
     set of drones that the server is allowed to control while the mission is
     running.
+
+    This is an abstract superclass that is meant to serve as a base implementation
+    for "real" missions. You will need to override at least the ``run()`` method
+    in subclasses.
     """
 
     id: str = ""
@@ -117,6 +121,16 @@ class Mission:
         self._ensure_new()
         self.authorized_at = time()
         self.state = MissionState.AUTHORIZED_TO_START
+
+    @abstractmethod
+    async def run(self) -> None:
+        """Run the task corresponding to the mission. This function will be
+        called by the mission scheduler when it is time to start the mission.
+
+        This is the function that you will absolutely need to override in
+        subclasses to add your own behaviour.
+        """
+        raise NotImplementedError
 
     @final
     def update_parameters(self, parameters: Dict[str, Any]) -> None:

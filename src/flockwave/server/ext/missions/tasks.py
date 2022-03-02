@@ -4,7 +4,7 @@ from contextlib import ExitStack, contextmanager
 from logging import Logger
 from typing import cast, Any, Dict, Iterator, Optional
 
-from flockwave.concurrency.scheduler import Job, Scheduler
+from flockwave.concurrency.scheduler import Job, LateSubmissionError, Scheduler
 
 from flockwave.server.utils import overridden
 from flockwave.server.utils.formatting import format_timestamp_nicely
@@ -53,7 +53,8 @@ class MissionSchedulerTask:
 
     async def run(self, log: Optional[Logger] = None):
         with ExitStack() as stack:
-            stack.enter_context(overridden(self, log=log, scheduler=Scheduler()))
+            scheduler = Scheduler(allow_late_submissions=False)
+            stack.enter_context(overridden(self, log=log, scheduler=scheduler))
             stack.enter_context(self._subscribed_to_missions())
 
             assert self.scheduler is not None
@@ -64,13 +65,18 @@ class MissionSchedulerTask:
         that is scheduled in the scheduler to the start time of the mission.
         """
         if self.log:
-            self.log.info("Starting mission", extra={"id": mission.id})
+            self.log.info(
+                "Started mission", extra={"id": mission.id, "semantics": "success"}
+            )
 
         # TODO(ntamas): manage the state variables of the mission
         await mission.run()
 
         if self.log:
-            self.log.info("Finished mission", extra={"id": mission.id})
+            # TODO(ntamas): use different semantics when the mission failed
+            self.log.info(
+                "Finished mission", extra={"id": mission.id, "semantics": "success"}
+            )
 
     def _on_mission_added_to_registry(
         self, sender: MissionRegistry, *, mission: Mission
@@ -120,18 +126,40 @@ class MissionSchedulerTask:
             return
 
         start_time = mission.starts_at
+        is_late = False
+
         if start_time is not None:
             # Mission has a new start time
             if job is not None:
                 # Mission already has a job so change the start time of the job
-                self.scheduler.reschedule_to(start_time, job)
+                try:
+                    self.scheduler.reschedule_to(start_time, job)
+                except LateSubmissionError:
+                    # New start time is earlier than current time so let's just
+                    # cancel the mission
+                    is_late = True
+                    self.cancel_mission(mission)
             else:
                 # Mission does not have a job yet, so create one
-                job = self.scheduler.schedule_at(start_time, self._run_mission, mission)
-                self._missions_to_jobs[mission] = job
+                try:
+                    job = self.scheduler.schedule_at(
+                        start_time, self._run_mission, mission
+                    )
+                except LateSubmissionError:
+                    # New start time is earlier than current time so let's not
+                    # start the mission
+                    is_late = True
+                else:
+                    self._missions_to_jobs[mission] = job
         else:
             # Mission has no start time any more
             self.cancel_mission(mission)
+
+        if is_late and self.log:
+            self.log.warn(
+                "Mission start time is in the past; mission will not be started",
+                extra={"id": mission.id},
+            )
 
     @contextmanager
     def _subscribed_to_missions(self) -> Iterator[None]:

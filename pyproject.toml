@@ -36,7 +36,7 @@ hypercorn = {extras = ["trio"], version = ">=0.10.1"}
 tinyrpc = {version = ">=1.0.4", extras = ["msgpack"]}
 passlib = {extras = ["bcrypt"], version = "^1.7.2"}
 flockwave-app-framework = {version = "^2.4.0", extras = ["daemon"]}
-flockwave-async = "^1.1.0"
+flockwave-async = "^1.2.1"
 flockwave-conn = {extras = ["midi", "rpc", "serial"], version = "^4.0.1"}
 flockwave-ext = "^1.13.0"
 flockwave-flockctrl = "^2.1.0"

@@ -51,8 +51,8 @@ reference = "collmot"
 
 [[package]]
 name = "aiocflib"
-version = "2.4.0"
-description = "asyncio-based API for Crazyflie drones"
+version = "2.5.0"
+description = "Python async API for Crazyflie drones"
 category = "main"
 optional = false
 python-versions = ">=3.7,<4.0"
@@ -64,11 +64,6 @@ colour = ">=0.1.5,<0.2.0"
 hexdump = ">=3.3,<4.0"
 outcome = ">=1.0.1,<2.0.0"
 pyusb = ">=1.0.2,<2.0.0"
-
-[package.source]
-type = "legacy"
-url = "https://pypi.collmot.com/simple"
-reference = "collmot"
 
 [[package]]
 name = "aiofiles"
@@ -467,7 +462,7 @@ reference = "collmot"
 
 [[package]]
 name = "flockwave-async"
-version = "1.1.0"
+version = "1.2.1"
 description = "Asynchronous utility functions, mostly for Trio"
 category = "main"
 optional = false
@@ -1249,7 +1244,7 @@ reference = "collmot"
 
 [[package]]
 name = "pyarmor"
-version = "7.3.6"
+version = "7.4.0"
 description = "A tool used to obfuscate python scripts, bind obfuscated scripts to fixed machine or expire obfuscated scripts."
 category = "dev"
 optional = false
@@ -2107,7 +2102,7 @@ reference = "collmot"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7"
-content-hash = "9584a6af6c12a5ba89f23a12c335c120c52b1d9e290754b30ea462b53aecb306"
+content-hash = "7dafaf55ecb26defc42bf1f49a3f20eb321a08f8f488434f78e45bb16ac52e6d"
 
 [metadata.files]
 adrenaline = [
@@ -2123,8 +2118,8 @@ aio-usb-hotplug = [
     {file = "aio_usb_hotplug-4.0.1-py3-none-any.whl", hash = "sha256:8b28e001ef8f0c6514f2a63f4065be55ff82e55a1a6b2a52b9a7943380decd9a"},
 ]
 aiocflib = [
-    {file = "aiocflib-2.4.0-py3-none-any.whl", hash = "md5:673d046be6bc4515fe6cfcc8eeb21415"},
-    {file = "aiocflib-2.4.0.tar.gz", hash = "md5:60e25a2f306ffbacb3815fcd1fa2a93c"},
+    {file = "aiocflib-2.5.0-py3-none-any.whl", hash = "sha256:6b66b9c80bd21deb5c2a9da70372583d1a6c99380b130cf087201d0030b8bf85"},
+    {file = "aiocflib-2.5.0.tar.gz", hash = "sha256:a89a31f9c23393d12e3f4e93e646277321bb42f2da60948e60de9bb2f175601c"},
 ]
 aiofiles = [
     {file = "aiofiles-0.8.0-py3-none-any.whl", hash = "sha256:7a973fc22b29e9962d0897805ace5856e6a566ab1f0c8e5c91ff6c866519c937"},
@@ -2341,8 +2336,8 @@ flockwave-app-framework = [
     {file = "flockwave_app_framework-2.4.0-py3-none-any.whl", hash = "md5:127dec449ec04bc57bf4b8bf1b8907b9"},
 ]
 flockwave-async = [
-    {file = "flockwave-async-1.1.0.tar.gz", hash = "md5:57f1fda9c55e06495c92d223888c564c"},
-    {file = "flockwave_async-1.1.0-py3-none-any.whl", hash = "md5:571b1f1dce5bb883fb1738dff4f18acb"},
+    {file = "flockwave-async-1.2.1.tar.gz", hash = "md5:ced9bfc7b8588a5f37a4655f0ccf44c4"},
+    {file = "flockwave_async-1.2.1-py3-none-any.whl", hash = "md5:59f587d77d490b0f57736171f444a622"},
 ]
 flockwave-conn = [
     {file = "flockwave-conn-4.0.1.tar.gz", hash = "md5:1982873635c4dba4787bd8f191500b36"},
@@ -2675,8 +2670,8 @@ py = [
     {file = "py-1.11.0.tar.gz", hash = "sha256:51c75c4126074b472f746a24399ad32f6053d1b34b68d2fa41e558e6f4a98719"},
 ]
 pyarmor = [
-    {file = "pyarmor-7.3.6-py2.py3-none-any.whl", hash = "sha256:ec82dc4949fba4aab5a31d43c139a3eaf024d47739006c2eaf2205463c5deeb1"},
-    {file = "pyarmor-7.3.6.zip", hash = "sha256:bb9aa52043d18896fa03a485de02dfd0f26711f86c56bcab42c3e5a600b567ef"},
+    {file = "pyarmor-7.4.0-py2.py3-none-any.whl", hash = "sha256:968980cdd9b5c40495aee184dfad5b70e8a617f7ad6e8f7e8bca1225dcdf9700"},
+    {file = "pyarmor-7.4.0.zip", hash = "sha256:2b426296ebe7d510fcfeffdbb17872293e93831fa26cffd9f26e9ede9cd7afd6"},
 ]
 pycparser = [
     {file = "pycparser-2.21-py2.py3-none-any.whl", hash = "sha256:8ee45429555515e1f6b185e78100aea234072576aa43ab53aefcae078162fca9"},

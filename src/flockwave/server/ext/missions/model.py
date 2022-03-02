@@ -1,7 +1,9 @@
 """Types specific to the mission planning and management extension."""
 
 from abc import ABCMeta, abstractmethod, abstractproperty
-from dataclasses import dataclass, field
+from blinker import Signal
+from dataclasses import dataclass
+from datetime import datetime
 from time import time
 from typing import (
     final,
@@ -22,7 +24,6 @@ from .types import MissionState
 __all__ = ("Mission", "MissionPlan", "MissionType")
 
 
-@dataclass
 class Mission:
     """Representation of a single mission on the server.
 
@@ -43,12 +44,12 @@ class Mission:
     state: MissionState = MissionState.NEW
     """The state of the mission."""
 
-    created_at: float = field(default_factory=time)
+    created_at: float
     """Timestamp that stores when the mission was created on the server."""
 
-    finalized_at: Optional[float] = None
-    """Timestamp that stores when the mission was finalized on the server, or
-    ``None`` if the mission was not finalized yet.
+    authorized_at: Optional[float] = None
+    """Timestamp that stores when the mission was authorized to start on the
+    server, or ``None`` if the mission was not authorized to start yet.
     """
 
     starts_at: Optional[float] = None
@@ -66,10 +67,18 @@ class Mission:
     has not finished yet or has not been started yet.
     """
 
+    on_start_time_changed: ClassVar[Signal] = Signal(
+        doc="""Signal that is emitted when the start time of a mission changes."""
+    )
+
+    def __init__(self):
+        """Constructor."""
+        self.created_at = time()
+
     @property
-    def is_finalized(self) -> bool:
-        """Returns whether the mission is finalized."""
-        return self.finalized_at is not None
+    def is_authorized_to_start(self) -> bool:
+        """Returns whether the mission is authorized to start."""
+        return self.authorized_at is not None
 
     @property
     def json(self) -> Dict[str, Any]:
@@ -80,7 +89,7 @@ class Mission:
             "state": self.state.value,
             "parameters": self.parameters,
             "createdAt": maybe_round(self.created_at),
-            "finalizedAt": maybe_round(self.finalized_at),
+            "authorizedAt": maybe_round(self.authorized_at),
             "startsAt": maybe_round(self.starts_at),
             "startedAt": maybe_round(self.started_at),
             "finishedAt": maybe_round(self.finished_at),
@@ -97,16 +106,17 @@ class Mission:
         return {}
 
     def finalize(self) -> None:
-        """Finalizes the mission, moving it from its ``NEW`` state to
-        ``FINALIZED``. Parameters of finalized missions can not be
-        modified any more.
+        """Authorizes the mission to start, moving it from its ``NEW`` state to
+        ``AUTHORIZED_TO_START``. Parameters of missions that are authorized to
+        start can not be modified any more. The scheduled start time may still
+        be modified or cleared.
 
         Raises:
             RuntimeError: if the mission is not in the ``NEW`` state
         """
         self._ensure_new()
-        self.finalized_at = time()
-        self.state = MissionState.FINALIZED
+        self.authorized_at = time()
+        self.state = MissionState.AUTHORIZED_TO_START
 
     @final
     def update_parameters(self, parameters: Dict[str, Any]) -> None:
@@ -115,14 +125,35 @@ class Mission:
         This function must be called only when the mission is in the ``NEW``
         state.
 
-        Do not override this method if you want to add support for mission
-        parameters; update the internal `_update_parameters()` method instead.
+        Do not override this method. If you want to add support for mission
+        parameters, update the internal `_update_parameters()` method instead.
 
         Raises:
             RuntimeError: if the mission is not in the ``NEW`` state
         """
         self._ensure_new()
         return self._update_parameters(parameters)
+
+    @final
+    def update_start_time(self, start_time: Optional[Union[float, datetime]]):
+        """Updates or clears the start time of the missions.
+
+        This function must be called only when the mission is in the ``NEW``
+        or ``AUTHORIZED_TO_START`` state.
+
+        Do not override this method. If you want to react to changes in the
+        scheduled start time of the mission, update the internal
+        `_handle_start_time_change()` method instead.
+        """
+        self._ensure_not_started_yet()
+        timestamp = (
+            start_time
+            if start_time is None or isinstance(start_time, float)
+            else start_time.timestamp()
+        )
+        self.starts_at = timestamp
+        self._handle_start_time_change()
+        self.on_start_time_changed.send(self)
 
     def _ensure_new(self) -> None:
         """Ensures that the mission is in the ``NEW`` state.
@@ -132,6 +163,27 @@ class Mission:
         """
         if self.state != MissionState.NEW:
             raise RuntimeError("Mission is already finalized")
+
+    def _ensure_not_started_yet(self) -> None:
+        """Ensure that the mission has not started yet. This is the case if the
+        mission is in the ``NEW`` or ``AUTHORIZED_TO_START`` state.
+
+        Raises:
+            RuntimeError: if the mission has already started
+        """
+        if self.state not in (MissionState.NEW, MissionState.AUTHORIZED_TO_START):
+            raise RuntimeError("Mission has started already")
+
+    def _handle_start_time_change(self) -> None:
+        """Handles the event when the scheduled start time of the mission
+        changes.
+
+        Override this method in subclasses if you want to react to changes in
+        the scheduled start time of the mission. The default implementation does
+        nothing, therefore it is safe to override without calling the superclass
+        method.
+        """
+        pass
 
     def _update_parameters(self, parameters: Dict[str, Any]) -> None:
         """Updates one or more parameters of the mission.

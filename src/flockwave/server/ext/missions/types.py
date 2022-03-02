@@ -13,16 +13,12 @@ class MissionState(Enum):
     It is not ready to start yet.
     """
 
-    FINALIZED = "FINALIZED"
+    AUTHORIZED_TO_START = "authorizedToStart"
     """The mission parameters and the mission plan have been finalized and the
     mission is waiting for a scheduled start time or a start signal. Modifications
-    to the parameters or the plan are not allowed; the mission must be unlocked
-    first to modify parameters further.
-    """
-
-    SCHEDULED = "scheduled"
-    """The mission has been finalized and has a scheduled start time, which has
-    not arrived yet.
+    to the parameters or the plan are not allowed; the authorization must be
+    revoked first to modify parameters further. The start time of the mission
+    may still be modified or cleared.
     """
 
     ONGOING = "ongoing"

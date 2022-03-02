@@ -6,7 +6,6 @@ from __future__ import annotations
 
 from contextlib import ExitStack
 from inspect import isawaitable
-from trio import sleep_forever
 from typing import Any, Dict, Iterable, Optional, Tuple, cast
 
 from flockwave.server.ext.base import Extension
@@ -18,6 +17,7 @@ from flockwave.server.utils.formatting import format_list_nicely
 from .examples import LandImmediatelyMissionType
 from .model import Mission, MissionPlan, MissionType
 from .registry import MissionRegistry, MissionTypeRegistry
+from .tasks import MissionSchedulerTask
 
 
 class MissionManagementExtension(Extension):
@@ -44,7 +44,8 @@ class MissionManagementExtension(Extension):
 
     def exports(self) -> Dict[str, Any]:
         return {
-            "use": self._mission_type_registry.use,
+            "find_mission_by_id": self.find_mission_by_id,
+            "use_mission_type": self._mission_type_registry.use,
         }
 
     def find_mission_by_id(
@@ -73,19 +74,20 @@ class MissionManagementExtension(Extension):
 
         with ExitStack() as stack:
             stack.enter_context(
+                self._mission_type_registry.use("land", LandImmediatelyMissionType())
+            )
+            stack.enter_context(
                 self.app.message_hub.use_message_handlers(
                     {
                         "X-MSN-INF": self._handle_MSN_INF,
                         "X-MSN-NEW": self._handle_MSN_NEW,
                         "X-MSN-PARAM": self._handle_MSN_PARAM,
                         "X-MSN-PLAN": self._handle_MSN_PLAN,
+                        "X-MSN-SCHED": self._handle_MSN_SCHED,
                     }
                 )
             )
-            stack.enter_context(
-                self._mission_type_registry.use("land", LandImmediatelyMissionType())
-            )
-            await sleep_forever()
+            await MissionSchedulerTask(self._mission_registry).run(self.log)
 
     def _create_MSN_INF_message_for(
         self,
@@ -231,6 +233,37 @@ class MissionManagementExtension(Extension):
             plan = cast(MissionPlan, maybe_plan)
 
         return {"result": plan}
+
+    async def _handle_MSN_SCHED(
+        self, message: FlockwaveMessage, sender: Client, hub: MessageHub
+    ):
+        """Handles an incoming request to set or clear the scheduled start time
+        of a mission.
+        """
+        try:
+            mission = self._get_mission_from_request_by_id(message)
+        except RuntimeError as ex:
+            return hub.reject(message, reason=str(ex))
+
+        if "startTime" not in message.body:
+            return hub.reject(message, reason="Missing start time")
+
+        start_time = message.body["startTime"]
+        if start_time is not None and not isinstance(start_time, (int, float)):
+            return hub.reject(
+                message, reason="Start time must be a UNIX timestamp or null"
+            )
+
+        start_time = None if start_time is None else float(start_time)
+
+        try:
+            mission.update_start_time(start_time)
+        except Exception as ex:
+            return hub.reject(
+                message, reason=f"Error while updating start time of mission: {ex}"
+            )
+
+        return hub.acknowledge(message)
 
     def _get_mission_from_request_by_id(self, message: FlockwaveMessage) -> Mission:
         id = message.body.get("id") or ""

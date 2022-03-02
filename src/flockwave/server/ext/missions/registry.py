@@ -4,9 +4,10 @@ register themselves in the mission planner registry so their services can
 be used by clients.
 """
 
+from blinker import Signal
 from contextlib import contextmanager
 from functools import partial
-from typing import Iterator, Optional
+from typing import ClassVar, Iterator, Optional
 
 from flockwave.server.model import default_id_generator
 from flockwave.server.registries.base import RegistryBase
@@ -69,6 +70,14 @@ class MissionRegistry(RegistryBase[Mission]):
     corresponding MissionType_ objects.
     """
 
+    mission_added: ClassVar[Signal] = Signal(
+        doc="""Signal that is emitted when a new mission is added to the registry."""
+    )
+
+    mission_removed: ClassVar[Signal] = Signal(
+        doc="""Signal that is emitted when a mission is removed from the registry."""
+    )
+
     def __init__(self, mission_type_registry: MissionTypeRegistry):
         """Constructor.
 
@@ -98,6 +107,7 @@ class MissionRegistry(RegistryBase[Mission]):
                 mission.id = mission_id
                 mission.type = type
                 self._entries[mission_id] = mission
+                self.mission_added.send(self, mission=mission)
                 return mission
 
     def remove_by_id(self, mission_id: str) -> Optional[Mission]:
@@ -112,4 +122,6 @@ class MissionRegistry(RegistryBase[Mission]):
             the mission that was deregistered, or ``None`` if the mission was not
             registered
         """
-        return self._entries.pop(mission_id, None)
+        mission = self._entries.pop(mission_id, None)
+        if mission:
+            self.mission_removed.send(self, mission=mission)

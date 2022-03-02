@@ -19,7 +19,7 @@ class LandImmediatelyMission(Mission):
     def parameters(self) -> Dict[str, Any]:
         return {"delay": self.delay}
 
-    def update_parameters(self, parameters: Dict[str, Any]) -> None:
+    def _update_parameters(self, parameters: Dict[str, Any]) -> None:
         delay: float = parameters.get("delay", 0.0)
         if not isinstance(delay, (int, float)):
             raise RuntimeError("delay must be numeric")

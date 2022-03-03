@@ -79,6 +79,7 @@ class MissionManagementExtension(Extension):
             stack.enter_context(
                 self.app.message_hub.use_message_handlers(
                     {
+                        "X-MSN-AUTH": self._handle_MSN_AUTH,
                         "X-MSN-INF": self._handle_MSN_INF,
                         "X-MSN-NEW": self._handle_MSN_NEW,
                         "X-MSN-PARAM": self._handle_MSN_PARAM,
@@ -123,6 +124,37 @@ class MissionManagementExtension(Extension):
                 statuses[mission_id] = mission.json
 
         return response
+
+    async def _handle_MSN_AUTH(
+        self, message: FlockwaveMessage, sender: Client, hub: MessageHub
+    ):
+        """Handles an incoming request to change the authorization state of a
+        mission.
+        """
+        try:
+            mission = self._get_mission_from_request_by_id(message)
+        except RuntimeError as ex:
+            return hub.reject(message, reason=str(ex))
+
+        if "authorized" not in message.body:
+            return hub.reject(message, reason="Missing authorization state")
+
+        authorized = message.body["authorized"]
+        if not isinstance(authorized, bool):
+            return hub.reject(message, reason="Authorization state must be a boolean")
+
+        try:
+            if authorized:
+                mission.authorize_to_start()
+            else:
+                mission.revoke_authorization()
+        except Exception as ex:
+            return hub.reject(
+                message,
+                reason=f"Error while updating authorization state of mission: {ex}",
+            )
+
+        return hub.acknowledge(message)
 
     async def _handle_MSN_INF(
         self, message: FlockwaveMessage, sender: Client, hub: MessageHub

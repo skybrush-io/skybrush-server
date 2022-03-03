@@ -95,14 +95,23 @@ class MissionSchedulerTask:
         self._unsubscribe_from_mission(mission)
         self.cancel_mission(mission)
 
+    def _on_mission_authorization_changed(self, sender: Mission) -> None:
+        """Signal handler that is called when the authorization of one of the
+        missions in the registry changes.
+        """
+        if self.log:
+            if sender.is_authorized_to_start:
+                self.log.info("Mission authorized to start", extra={"id": sender.id})
+            else:
+                self.log.info("Mission authorization revoked", extra={"id": sender.id})
+        self._update_mission_in_scheduler(sender)
+
     def _on_mission_start_time_changed(self, sender: Mission) -> None:
         """Signal handler that is called when the start time of one of the
         missions in the registry changes.
         """
-        start_time = sender.starts_at
-        self._schedule_mission(sender)
-
         if self.log:
+            start_time = sender.starts_at
             if start_time is not None:
                 fmt_start_time = format_timestamp_nicely(start_time)
                 self.log.info(
@@ -112,9 +121,13 @@ class MissionSchedulerTask:
             else:
                 self.log.info("Mission start time cleared", extra={"id": sender.id})
 
-    def _schedule_mission(self, mission: Mission) -> None:
-        """Updates the scheduler so the given mission is scheduled at its current
-        start time.
+        self._update_mission_in_scheduler(sender)
+
+    def _update_mission_in_scheduler(self, mission: Mission) -> None:
+        """Updates the scheduler so the given mission is scheduled at its
+        current start time if it has one and the mission is authorized to start.
+        Removes the job of the mission from the scheduler if the mission is not
+        scheduled to start or it has no authorization.
         """
         job = self._missions_to_jobs.get(mission)
         if self.scheduler is None:
@@ -125,11 +138,13 @@ class MissionSchedulerTask:
                 del self._missions_to_jobs[mission]
             return
 
-        start_time = mission.starts_at
+        start_time = mission.starts_at if mission.is_authorized_to_start else None
         is_late = False
 
         if start_time is not None:
-            # Mission has a new start time
+            fmt_start_time = format_timestamp_nicely(start_time)
+
+            # Mission has a new start time and it is authorized to start
             if job is not None:
                 # Mission already has a job so change the start time of the job
                 try:
@@ -139,6 +154,12 @@ class MissionSchedulerTask:
                     # cancel the mission
                     is_late = True
                     self.cancel_mission(mission)
+                else:
+                    if self.log:
+                        self.log.info(
+                            f"Mission rescheduled to {fmt_start_time}",
+                            extra={"id": mission.id},
+                        )
             else:
                 # Mission does not have a job yet, so create one
                 try:
@@ -151,8 +172,18 @@ class MissionSchedulerTask:
                     is_late = True
                 else:
                     self._missions_to_jobs[mission] = job
+                    if self.log:
+                        self.log.info(
+                            f"Mission scheduled to {fmt_start_time}",
+                            extra={"id": mission.id},
+                        )
         else:
-            # Mission has no start time any more
+            # Mission has no start time any more or its authorization has been
+            # revoked
+            if job is not None:
+                self.log.info(
+                    "Mission removed from scheduler", extra={"id": mission.id}
+                )
             self.cancel_mission(mission)
 
         if is_late and self.log:
@@ -195,9 +226,15 @@ class MissionSchedulerTask:
         mission.on_start_time_changed.connect(
             self._on_mission_start_time_changed, sender=cast(Any, mission)
         )
+        mission.on_authorization_changed.connect(
+            self._on_mission_authorization_changed, sender=cast(Any, mission)
+        )
 
     def _unsubscribe_from_mission(self, mission: Mission):
         """Unsubscribes from the given mission."""
+        mission.on_authorization_changed.disconnect(
+            self._on_mission_authorization_changed, sender=cast(Any, mission)
+        )
         mission.on_start_time_changed.disconnect(
             self._on_mission_start_time_changed, sender=cast(Any, mission)
         )

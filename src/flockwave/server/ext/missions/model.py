@@ -71,8 +71,12 @@ class Mission(metaclass=ABCMeta):
     has not finished yet or has not been started yet.
     """
 
+    on_authorization_changed: ClassVar[Signal] = Signal(
+        doc="Signal that is emitted when the authorization of a mission changes."
+    )
+
     on_start_time_changed: ClassVar[Signal] = Signal(
-        doc="""Signal that is emitted when the start time of a mission changes."""
+        doc="Signal that is emitted when the start time of a mission changes."
     )
 
     def __init__(self):
@@ -109,7 +113,7 @@ class Mission(metaclass=ABCMeta):
         """
         return {}
 
-    def finalize(self) -> None:
+    def authorize_to_start(self) -> None:
         """Authorizes the mission to start, moving it from its ``NEW`` state to
         ``AUTHORIZED_TO_START``. Parameters of missions that are authorized to
         start can not be modified any more. The scheduled start time may still
@@ -121,6 +125,21 @@ class Mission(metaclass=ABCMeta):
         self._ensure_new()
         self.authorized_at = time()
         self.state = MissionState.AUTHORIZED_TO_START
+        self.on_authorization_changed.send(self)
+
+    def revoke_authorization(self) -> None:
+        """Revokes the authorization of the mission to start, moving it from
+        its ``AUTHORIZED_TO_START`` state back to ``NEW``. Parameters can then
+        be modified again. The scheduled start time will not change but the
+        mission will not start until authorized again.
+
+        Raises:
+            RuntimeError: if the mission is not in the ``AUTHORIZED_TO_START`` state
+        """
+        self._ensure_waiting_to_start()
+        self.authorized_at = None
+        self.state = MissionState.NEW
+        self.on_authorization_changed.send(self)
 
     @abstractmethod
     async def run(self) -> None:
@@ -187,6 +206,15 @@ class Mission(metaclass=ABCMeta):
         """
         if self.state not in (MissionState.NEW, MissionState.AUTHORIZED_TO_START):
             raise RuntimeError("Mission has started already")
+
+    def _ensure_waiting_to_start(self) -> None:
+        """Ensures that the mission is in the ``AUTHORIZED_TO_START`` state.
+
+        Raises:
+            RuntimeError: if the mission is not in the ``NEW`` state
+        """
+        if self.state != MissionState.AUTHORIZED_TO_START:
+            raise RuntimeError("Mission is not in the 'authorized to start' state")
 
     def _handle_start_time_change(self) -> None:
         """Handles the event when the scheduled start time of the mission

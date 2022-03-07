@@ -5,8 +5,10 @@ uploading missions to UAVs.
 from __future__ import annotations
 
 from contextlib import ExitStack
+from functools import partial
 from inspect import isawaitable
-from typing import Any, Dict, Iterable, Optional, Tuple, cast
+from trio import open_nursery
+from typing import Any, Dict, Iterable, Optional, Tuple, cast, overload
 
 from flockwave.server.ext.base import Extension
 from flockwave.server.message_hub import MessageHub
@@ -14,15 +16,17 @@ from flockwave.server.model import Client, FlockwaveMessage, FlockwaveResponse
 from flockwave.server.registries import find_in_registry
 from flockwave.server.utils.formatting import format_list_nicely
 
+from flockwave.server.model.messages import FlockwaveNotification
+
 from .examples import LandImmediatelyMissionType
 from .model import Mission, MissionPlan, MissionType
 from .registry import MissionRegistry, MissionTypeRegistry
-from .tasks import MissionSchedulerTask
+from .tasks import MissionSchedulerTask, MissionUpdateNotifierTask
 
 
 class MissionManagementExtension(Extension):
     """Extension that provides some basic facilities for mission planning and
-    uploading missions to UAVs.
+    execution.
     """
 
     _mission_registry: MissionRegistry
@@ -88,7 +92,38 @@ class MissionManagementExtension(Extension):
                     }
                 )
             )
-            await MissionSchedulerTask(self._mission_registry).run(self.log)
+
+            scheduler = MissionSchedulerTask(self._mission_registry)
+            notifier = MissionUpdateNotifierTask(self._mission_registry)
+
+            async with open_nursery() as nursery:
+                nursery.start_soon(partial(scheduler.run, log=self.log))
+                nursery.start_soon(
+                    partial(
+                        notifier.run,
+                        log=self.log,
+                        notify_update=self._broadcast_MSN_INF_message_for,
+                    )
+                )
+
+    async def _broadcast_MSN_INF_message_for(self, mission_ids: Iterable[str]):
+        hub = self.app.message_hub if self.app else None
+        if hub:
+            await hub.broadcast_message(self._create_MSN_INF_message_for(mission_ids))
+
+    @overload
+    def _create_MSN_INF_message_for(
+        self, mission_ids: Iterable[str]
+    ) -> FlockwaveNotification:
+        ...
+
+    @overload
+    def _create_MSN_INF_message_for(
+        self,
+        mission_ids: Iterable[str],
+        in_response_to: FlockwaveMessage,
+    ) -> FlockwaveResponse:
+        ...
 
     def _create_MSN_INF_message_for(
         self,
@@ -105,8 +140,7 @@ class MissionManagementExtension(Extension):
                 a notification.
 
         Returns:
-            FlockwaveMessage: the MSN-INF message with the status info of
-                the given UAVs
+            the MSN-INF message with the status info of the given missions
         """
         if self.app is None:
             raise RuntimeError("application is not set")

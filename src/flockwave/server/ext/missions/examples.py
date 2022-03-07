@@ -20,7 +20,7 @@ class LandImmediatelyMission(Mission):
     def parameters(self) -> Dict[str, Any]:
         return {"delay": self.delay}
 
-    async def run(self) -> None:
+    async def _run(self) -> None:
         await sleep(5)
 
     def _update_parameters(self, parameters: Dict[str, Any]) -> None:

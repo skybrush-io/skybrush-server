@@ -79,6 +79,11 @@ class Mission(metaclass=ABCMeta):
         doc="Signal that is emitted when the start time of a mission changes."
     )
 
+    on_updated: ClassVar[Signal] = Signal(
+        doc="Signal that is emitted when the state of the mission changes in "
+        "any way that clients might be interested in."
+    )
+
     def __init__(self):
         """Constructor."""
         self.created_at = time()
@@ -113,43 +118,102 @@ class Mission(metaclass=ABCMeta):
         """
         return {}
 
+    @final
     def authorize_to_start(self) -> None:
         """Authorizes the mission to start, moving it from its ``NEW`` state to
         ``AUTHORIZED_TO_START``. Parameters of missions that are authorized to
         start can not be modified any more. The scheduled start time may still
         be modified or cleared.
 
+        This function is a no-op if the mission is already authorized with an
+        earlier timestamp.
+
+        Do not override this method. If you want to react to changes in the
+        authorization state of the mission, update the internal
+        `_handle_authorization()` method instead.
+
         Raises:
             RuntimeError: if the mission is not in the ``NEW`` state
         """
-        self._ensure_new()
-        self.authorized_at = time()
-        self.state = MissionState.AUTHORIZED_TO_START
-        self.on_authorization_changed.send(self)
+        self._ensure_not_started_yet()
 
+        old_authorization_time = self.authorized_at
+        old_state = self.state
+
+        if self.authorized_at is not None:
+            self.authorized_at = min(self.authorized_at, time())
+        else:
+            self.authorized_at = time()
+
+        if old_state != self.state or old_authorization_time != self.authorized_at:
+            self.state = MissionState.AUTHORIZED_TO_START
+            self._handle_authorization()
+            self.on_authorization_changed.send(self)
+            self.notify_updated()
+
+    def notify_updated(self) -> None:
+        """Notifies all subscribers to the `on_updated()` event that the mission
+        was updated.
+        """
+        self.on_updated.send(self)
+
+    @final
     def revoke_authorization(self) -> None:
         """Revokes the authorization of the mission to start, moving it from
         its ``AUTHORIZED_TO_START`` state back to ``NEW``. Parameters can then
         be modified again. The scheduled start time will not change but the
         mission will not start until authorized again.
 
-        Raises:
-            RuntimeError: if the mission is not in the ``AUTHORIZED_TO_START`` state
-        """
-        self._ensure_waiting_to_start()
-        self.authorized_at = None
-        self.state = MissionState.NEW
-        self.on_authorization_changed.send(self)
+        This function is a no-op if the mission is not authorized to start yet.
 
-    @abstractmethod
+        Do not override this method. If you want to react to changes in the
+        authorization state of the mission, update the internal
+        `_handle_authorization()` method instead.
+
+        Raises:
+            RuntimeError: if the mission is not in the ``NEW`` or
+                ``AUTHORIZED_TO_START`` state
+        """
+        self._ensure_not_started_yet()
+        if self.state != MissionState.NEW or self.authorized_at is not None:
+            self.authorized_at = None
+            self.state = MissionState.NEW
+            self._handle_authorization()
+            self.on_authorization_changed.send(self)
+            self.notify_updated()
+
+    @final
     async def run(self) -> None:
         """Run the task corresponding to the mission. This function will be
         called by the mission scheduler when it is time to start the mission.
 
-        This is the function that you will absolutely need to override in
-        subclasses to add your own behaviour.
+        This function must be called only when the mission is in the
+        ``AUTHORIZED_TO_START`` state (and the scheduler will ensure this in
+        normal operation).
+
+        Do not override this method; override the internal `_run()` method
+        instead.
+
+        Raises:
+            RuntimeError: if the mission is not in the ``AUTHORIZED_TO_START``
+                state
         """
-        raise NotImplementedError
+        self._ensure_waiting_to_start()
+
+        self.started_at = time()
+        self.state = MissionState.ONGOING
+        self.notify_updated()
+
+        try:
+            await self._run()
+            # TODO(ntamas): handle cancellation!
+        except Exception:
+            # TODO(ntamas): log exception?
+            self.state = MissionState.FAILED
+        else:
+            self.state = MissionState.SUCCESSFUL
+        self.finished_at = time()
+        self.notify_updated()
 
     @final
     def update_parameters(self, parameters: Dict[str, Any]) -> None:
@@ -165,7 +229,8 @@ class Mission(metaclass=ABCMeta):
             RuntimeError: if the mission is not in the ``NEW`` state
         """
         self._ensure_new()
-        return self._update_parameters(parameters)
+        self._update_parameters(parameters)
+        self.notify_updated()
 
     @final
     def update_start_time(self, start_time: Optional[Union[float, datetime]]):
@@ -184,9 +249,12 @@ class Mission(metaclass=ABCMeta):
             if start_time is None or isinstance(start_time, float)
             else start_time.timestamp()
         )
-        self.starts_at = timestamp
-        self._handle_start_time_change()
-        self.on_start_time_changed.send(self)
+
+        if self.starts_at != timestamp:
+            self.starts_at = timestamp
+            self._handle_start_time_change()
+            self.on_start_time_changed.send(self)
+            self.notify_updated()
 
     def _ensure_new(self) -> None:
         """Ensures that the mission is in the ``NEW`` state.
@@ -216,6 +284,16 @@ class Mission(metaclass=ABCMeta):
         if self.state != MissionState.AUTHORIZED_TO_START:
             raise RuntimeError("Mission is not in the 'authorized to start' state")
 
+    def _handle_authorization(self) -> None:
+        """Handles the event when the authorization state of the mission changes.
+
+        Override this method in subclasses if you want to react to changes in
+        the authorization state of the mission. The default implementation does
+        nothing, therefore it is safe to override without calling the superclass
+        method.
+        """
+        pass
+
     def _handle_start_time_change(self) -> None:
         """Handles the event when the scheduled start time of the mission
         changes.
@@ -226,6 +304,13 @@ class Mission(metaclass=ABCMeta):
         method.
         """
         pass
+
+    @abstractmethod
+    async def _run(self) -> None:
+        """Async function that runs the task corresponding to the mission.
+        This function must be overridden in subclasses to add your own behaviour.
+        """
+        raise NotImplementedError
 
     def _update_parameters(self, parameters: Dict[str, Any]) -> None:
         """Updates one or more parameters of the mission.

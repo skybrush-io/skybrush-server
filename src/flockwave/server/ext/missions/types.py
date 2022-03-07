@@ -30,12 +30,17 @@ class MissionState(Enum):
     """The mission was cancelled before it had a chance to start."""
 
     ABORTED = "aborted"
-    """The mission was aborted with an unexpected event or by user intervention
+    """The mission was aborted by an unexpected event or by user intervention
     while it was being executed. The task associated to the mission is not
     running any more.
     """
 
     SUCCESSFUL = "successful"
-    """THe mission terminated successfully. The task associated to the mission
+    """The mission terminated successfully. The task associated to the mission
     is not running any more.
+    """
+
+    FAILED = "failed"
+    """The mission terminated but it did not achieve its goals. The task
+    associated to the mission is not running any more.
     """

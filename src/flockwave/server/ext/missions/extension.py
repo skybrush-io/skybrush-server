@@ -92,6 +92,9 @@ class MissionManagementExtension(Extension):
                     }
                 )
             )
+            stack.enter_context(
+                self._mission_registry.use_object_registry(self.app.object_registry)
+            )
 
             scheduler = MissionSchedulerTask(self._mission_registry)
             notifier = MissionUpdateNotifierTask(self._mission_registry)

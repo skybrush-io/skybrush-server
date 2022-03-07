@@ -11,6 +11,7 @@ from typing import ClassVar, Iterator, Optional
 
 from flockwave.server.model import default_id_generator
 from flockwave.server.registries.base import RegistryBase
+from flockwave.server.registries.objects import ObjectRegistry
 from flockwave.server.types import Disposer
 
 from .model import Mission, MissionType
@@ -63,11 +64,23 @@ class MissionTypeRegistry(RegistryBase[MissionType]):
 class MissionRegistry(RegistryBase[Mission]):
     """Registry that maps mission identifiers to the state objects of the
     missions themselves.
+
+    This registry is a view into the global object registry of the application
+    such that it enumerates only the missions in the object registry.
+
+    It is assumed that missions are registered in the global object registry
+    only via this proxy object, never directly.
     """
 
     _mission_type_registry: MissionTypeRegistry
     """Registry that associates string identifiers of mission types to the
     corresponding MissionType_ objects.
+    """
+
+    _object_registry: Optional[ObjectRegistry] = None
+    """Global object registry of the application that the missions will be
+    registered in; ``None`` if the global object registry has not been assigned
+    to this proxy yet.
     """
 
     mission_added: ClassVar[Signal] = Signal(
@@ -78,10 +91,15 @@ class MissionRegistry(RegistryBase[Mission]):
         doc="""Signal that is emitted when a mission is removed from the registry."""
     )
 
-    def __init__(self, mission_type_registry: MissionTypeRegistry):
+    def __init__(
+        self,
+        mission_type_registry: MissionTypeRegistry,
+    ):
         """Constructor.
 
         Parameters:
+            object_registry: the global object registry that the missions will
+                be registered in
             mission_type_registry: registry that associates string identifiers
                 of mission types to the corresponding MissionType_ objects
         """
@@ -97,16 +115,23 @@ class MissionRegistry(RegistryBase[Mission]):
 
         Raises:
             KeyError: if the given mission type is not registered
+            RuntimeError: if the object registry was not assigned to the
+                mission registry yet
         """
+        if self._object_registry is None:
+            raise RuntimeError(
+                "object registry has not been assigned to mission registry yet"
+            )
         mission_type = self._mission_type_registry.find_by_id(type)
 
         while True:
             mission_id = default_id_generator()
-            if mission_id not in self._entries:
+            if mission_id not in self._object_registry:
                 mission: Mission = mission_type.create_mission()
-                mission.id = mission_id
+                mission._id = mission_id
                 mission.type = type
                 self._entries[mission_id] = mission
+                self._object_registry.add(mission)
                 self.mission_added.send(self, mission=mission)
                 return mission
 
@@ -124,4 +149,23 @@ class MissionRegistry(RegistryBase[Mission]):
         """
         mission = self._entries.pop(mission_id, None)
         if mission:
+            if self._object_registry:
+                self._object_registry.remove(mission)
             self.mission_removed.send(self, mission=mission)
+
+    @contextmanager
+    def use_object_registry(self, registry: ObjectRegistry):
+        """Context manager that assigns the given object registry to the mission
+        registry when entering the context and detaches it when exiting the
+        context.
+        """
+        self._object_registry = registry
+        try:
+            yield
+        finally:
+            for mission_id in self.ids:
+                try:
+                    self.remove_by_id(mission_id)
+                except Exception:
+                    pass
+            self._object_registry = None

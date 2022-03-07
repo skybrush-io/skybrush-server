@@ -17,6 +17,7 @@ from typing import (
     TypeVar,
 )
 
+from flockwave.server.model.object import ModelObject
 from flockwave.server.utils import maybe_round
 
 from .types import MissionState
@@ -24,7 +25,7 @@ from .types import MissionState
 __all__ = ("Mission", "MissionPlan", "MissionType")
 
 
-class Mission(metaclass=ABCMeta):
+class Mission(ModelObject):
     """Representation of a single mission on the server.
 
     A mission consists of a _type_, an associated set of _parameters_, an
@@ -37,7 +38,7 @@ class Mission(metaclass=ABCMeta):
     in subclasses.
     """
 
-    id: str = ""
+    _id: str = ""
     """The unique identifier of the mission."""
 
     type: str = ""
@@ -87,6 +88,14 @@ class Mission(metaclass=ABCMeta):
     def __init__(self):
         """Constructor."""
         self.created_at = time()
+
+    @property
+    def device_tree_node(self) -> None:
+        return None
+
+    @property
+    def id(self) -> str:
+        return self._id
 
     @property
     def is_authorized_to_start(self) -> bool:

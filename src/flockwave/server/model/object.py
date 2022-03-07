@@ -58,20 +58,6 @@ class ModelObject(metaclass=ABCMeta):
         """A unique identifier for the object, assigned at construction time."""
         raise NotImplementedError
 
-    @classmethod
-    def unregister(cls, type: str) -> None:
-        """Method that should be called by subclasses if they wish to register
-        themselves in the Flockwave messaging system with a given type name.
-
-        For instance, UAV subclasses register themselves as `uav` in the
-        messaging system such that calling `OBJ-LIST` filtered to `uav` will
-        return all registered objects in the object registry that are subclasses
-        of UAV.
-        """
-        if type in _type_registry:
-            raise ValueError(f"{repr(type)} is already registered as a type")
-        _type_registry[type] = cls
-
 
 @overload
 def register(
@@ -81,11 +67,13 @@ def register(
 
 
 @overload
-def register(type: str, cls: Type[T]) -> Callable[[Type[T]], Type[T]]:
+def register(type: str, cls: Type[T]) -> None:
     ...
 
 
-def register(type: str, cls: Optional[Type[T]] = None):
+def register(
+    type: str, cls: Optional[Type[T]] = None
+) -> Optional[Callable[[Type[T]], Type[T]]]:
     """Registers a ModelObject_ subclass or factory in the Flockwave messaging
     system with a given type name.
 
@@ -111,6 +99,8 @@ def register(type: str, cls: Optional[Type[T]] = None):
         if type in _type_registry:
             raise ValueError(f"{repr(type)} is already registered as a type")
         _type_registry[type] = cls
+
+        return None
 
 
 def unregister(type: str) -> None:

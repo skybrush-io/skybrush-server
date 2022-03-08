@@ -462,7 +462,7 @@ reference = "collmot"
 
 [[package]]
 name = "flockwave-async"
-version = "1.2.1"
+version = "1.3.0"
 description = "Asynchronous utility functions, mostly for Trio"
 category = "main"
 optional = false
@@ -1417,7 +1417,7 @@ reference = "collmot"
 
 [[package]]
 name = "pyobjc-core"
-version = "8.3"
+version = "8.4"
 description = "Python<->ObjC Interoperability Module"
 category = "main"
 optional = false
@@ -1430,14 +1430,14 @@ reference = "collmot"
 
 [[package]]
 name = "pyobjc-framework-cocoa"
-version = "8.3"
+version = "8.4"
 description = "Wrappers for the Cocoa frameworks on macOS"
 category = "main"
 optional = false
 python-versions = ">=3.6"
 
 [package.dependencies]
-pyobjc-core = ">=8.3"
+pyobjc-core = ">=8.4"
 
 [package.source]
 type = "legacy"
@@ -1446,15 +1446,15 @@ reference = "collmot"
 
 [[package]]
 name = "pyobjc-framework-systemconfiguration"
-version = "8.3"
+version = "8.4"
 description = "Wrappers for the framework SystemConfiguration on macOS"
 category = "main"
 optional = false
 python-versions = ">=3.6"
 
 [package.dependencies]
-pyobjc-core = ">=8.3"
-pyobjc-framework-Cocoa = ">=8.3"
+pyobjc-core = ">=8.4"
+pyobjc-framework-Cocoa = ">=8.4"
 
 [package.source]
 type = "legacy"
@@ -2102,7 +2102,7 @@ reference = "collmot"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7"
-content-hash = "7dafaf55ecb26defc42bf1f49a3f20eb321a08f8f488434f78e45bb16ac52e6d"
+content-hash = "8952a211de4ac5c2f28f6599f718bc9445bb67523cf4a1749b455a6ba8d6919d"
 
 [metadata.files]
 adrenaline = [
@@ -2336,8 +2336,8 @@ flockwave-app-framework = [
     {file = "flockwave_app_framework-2.4.0-py3-none-any.whl", hash = "md5:127dec449ec04bc57bf4b8bf1b8907b9"},
 ]
 flockwave-async = [
-    {file = "flockwave-async-1.2.1.tar.gz", hash = "md5:ced9bfc7b8588a5f37a4655f0ccf44c4"},
-    {file = "flockwave_async-1.2.1-py3-none-any.whl", hash = "md5:59f587d77d490b0f57736171f444a622"},
+    {file = "flockwave-async-1.3.0.tar.gz", hash = "md5:9bb7a58ec4c6ce6f07fb8af39bb55128"},
+    {file = "flockwave_async-1.3.0-py3-none-any.whl", hash = "md5:9ff00db6df7939f311b3c7b4050327db"},
 ]
 flockwave-conn = [
     {file = "flockwave-conn-4.0.1.tar.gz", hash = "md5:1982873635c4dba4787bd8f191500b36"},
@@ -2722,27 +2722,28 @@ pynsist = [
     {file = "pynsist-2.7.tar.gz", hash = "sha256:d97a6afc2dc6b1dc7dfe7838e363ea61344948f582a8d25cdf52719ef5bb1c6a"},
 ]
 pyobjc-core = [
-    {file = "pyobjc-core-8.3.tar.gz", hash = "sha256:9b7688188e28761ac7655cf3a2fa9942927e16d3a5a81cc8d726b0bcb3b4f283"},
-    {file = "pyobjc_core-8.3-cp310-cp310-macosx_10_9_universal2.whl", hash = "sha256:cfebdc2763a46f99043aae09e5076fb0e10ff4102099712ec358704ef1ba62c5"},
-    {file = "pyobjc_core-8.3-cp36-cp36m-macosx_10_9_x86_64.whl", hash = "sha256:3cc529b1ca996dd4ec7433b06694c8edf8655dfc5a0b11b4462b38d0721014a4"},
-    {file = "pyobjc_core-8.3-cp37-cp37m-macosx_10_9_x86_64.whl", hash = "sha256:46fcb04fef29ff436b6b5de44e90c6f1454934dda5c1879f1b3e4945d5bc6d13"},
-    {file = "pyobjc_core-8.3-cp38-cp38-macosx_10_9_x86_64.whl", hash = "sha256:35f246735fcba9b32a9a5dadbc81e0d64758182873744b5949ca8105bafb2323"},
-    {file = "pyobjc_core-8.3-cp39-cp39-macosx_10_9_universal2.whl", hash = "sha256:52981d4ae9ad6dff04cf415b21701f43b02a8686df47f6b6a13807c5ba957ac0"},
+    {file = "pyobjc-core-8.4.tar.gz", hash = "sha256:f257a06a051f724e88a35b6f1c1605e338783f357b03d7ba77f01eb09f642310"},
+    {file = "pyobjc_core-8.4-cp310-cp310-macosx_10_9_universal2.whl", hash = "sha256:d1159a2dbf9e1e2cf886e4dab021673a77f2f62f2b1a2198498c7c75bc9357f4"},
+    {file = "pyobjc_core-8.4-cp36-cp36m-macosx_10_9_x86_64.whl", hash = "sha256:d52ebcb2dc546b493fa4d1640398ac5592c6f07d79f757f02e20a86328bcacf4"},
+    {file = "pyobjc_core-8.4-cp37-cp37m-macosx_10_9_x86_64.whl", hash = "sha256:6026980937035c5d44cd3ed22410a88beeb47a56f40b0b8e24a15ee0b050bad1"},
+    {file = "pyobjc_core-8.4-cp38-cp38-macosx_10_9_x86_64.whl", hash = "sha256:f9c9359cf8a48c3730d58410812cedb37643de015034e0b16b6522c4375eb69b"},
+    {file = "pyobjc_core-8.4-cp38-cp38-macosx_11_0_universal2.whl", hash = "sha256:168fb00f92162342ee1974d58e7a0060316d01840c01568965be133865421d2e"},
+    {file = "pyobjc_core-8.4-cp39-cp39-macosx_10_9_universal2.whl", hash = "sha256:8696c6336c11e198ab374c29f8192d41c5db4f81e6988dfaaf0bfd63b860eb08"},
 ]
 pyobjc-framework-cocoa = [
-    {file = "pyobjc-framework-Cocoa-8.3.tar.gz", hash = "sha256:5003e780d9bfc2984b1415d9ee9ad07625f6abd2191964d153c6d331d81284fe"},
-    {file = "pyobjc_framework_Cocoa-8.3-cp310-cp310-macosx_10_9_universal2.whl", hash = "sha256:13251b47fbbe5321e6d1159f07158a598f2cdccc32e01985695702b96d092913"},
-    {file = "pyobjc_framework_Cocoa-8.3-cp36-cp36m-macosx_10_9_x86_64.whl", hash = "sha256:97c6c8247d2136c869ee96a7d8b3c314c8f1424452d4708ef4016516d6d4ab8a"},
-    {file = "pyobjc_framework_Cocoa-8.3-cp37-cp37m-macosx_10_9_x86_64.whl", hash = "sha256:042f00e981104a59affff2d74cf989248ada22f20122241522c4e48fe06ab96c"},
-    {file = "pyobjc_framework_Cocoa-8.3-cp38-cp38-macosx_10_9_x86_64.whl", hash = "sha256:87a16e7d16e74f9df35f8a01e025114f52bbf16acac6851971c233de7c36dd0e"},
-    {file = "pyobjc_framework_Cocoa-8.3-cp38-cp38-macosx_11_0_universal2.whl", hash = "sha256:7fec7732d93f5e7ea41bda64dd288e39087e5dea7add3d02f2bd156e0b2bd029"},
-    {file = "pyobjc_framework_Cocoa-8.3-cp39-cp39-macosx_10_9_universal2.whl", hash = "sha256:729206d414a0b8e15f3afccd96b07d5beafdd0ac587f942186444aa39b55d6ff"},
+    {file = "pyobjc-framework-Cocoa-8.4.tar.gz", hash = "sha256:ebc0fc51ced15f450e66565fb423eeeeb6c6eee1b85e229d4e2071c5d5b5e3b0"},
+    {file = "pyobjc_framework_Cocoa-8.4-cp310-cp310-macosx_10_9_universal2.whl", hash = "sha256:fc0dc582c24507053a8b62a10601d8bcbeba56738ebac81256fbfd2adcd73cae"},
+    {file = "pyobjc_framework_Cocoa-8.4-cp36-cp36m-macosx_10_9_x86_64.whl", hash = "sha256:01fc40adb9a38508f03dbb29fb24d9b6721f9892a8b88e8154a980292b5e3c9a"},
+    {file = "pyobjc_framework_Cocoa-8.4-cp37-cp37m-macosx_10_9_x86_64.whl", hash = "sha256:89c2c02bc84641dd11f811ad96e64e406fe2c3b5001e388eccb94883bdbff657"},
+    {file = "pyobjc_framework_Cocoa-8.4-cp38-cp38-macosx_10_9_x86_64.whl", hash = "sha256:a3bd91b7eeb13680b7bfa3c36cc308049b4745db103a6cf467b49dcdae98591f"},
+    {file = "pyobjc_framework_Cocoa-8.4-cp38-cp38-macosx_11_0_universal2.whl", hash = "sha256:e6fbe1ae133a2f1f930bfba0d21a501a251a2434b635edd5e3ed7cd1f698d9d5"},
+    {file = "pyobjc_framework_Cocoa-8.4-cp39-cp39-macosx_10_9_universal2.whl", hash = "sha256:58e59bbc2ee918511d7cfc830e57baf6963f26c42aabe44a860730bb4d5d85f0"},
 ]
 pyobjc-framework-systemconfiguration = [
-    {file = "pyobjc-framework-SystemConfiguration-8.3.tar.gz", hash = "sha256:30ef008dc256bf5db4ef1bbcf7e400c0a929db87be0b522448cb186c053e9525"},
-    {file = "pyobjc_framework_SystemConfiguration-8.3-cp36-abi3-macosx_10_9_universal2.whl", hash = "sha256:e7b42361642f1bb7866c10c74563b72dd861ea9c7df4b67ffdf33d707033776a"},
-    {file = "pyobjc_framework_SystemConfiguration-8.3-cp36-abi3-macosx_10_9_x86_64.whl", hash = "sha256:e77dc74eabb3c0d3d5a74ef37b73ec426f5558f8d167c37023d1f82ee05fc2fe"},
-    {file = "pyobjc_framework_SystemConfiguration-8.3-cp36-abi3-macosx_11_0_universal2.whl", hash = "sha256:0ce9af3168b2becb34101c98657d55879dab27d9cff8046c215d74f9e1061e7d"},
+    {file = "pyobjc-framework-SystemConfiguration-8.4.tar.gz", hash = "sha256:8790ab0a8680f313574a39d4a1bcd3368f87d8f2f5467f633e4d35e4ddcc7883"},
+    {file = "pyobjc_framework_SystemConfiguration-8.4-cp36-abi3-macosx_10_9_universal2.whl", hash = "sha256:9ac88ea3f21ce8b4906926ff0913f63f5464546d20eceec0c8751814423a5ae6"},
+    {file = "pyobjc_framework_SystemConfiguration-8.4-cp36-abi3-macosx_10_9_x86_64.whl", hash = "sha256:f7356c65235f9ac5c15f27a6f34949f6c9eab64dc5e92d3f7e6b0bd5a8ef1118"},
+    {file = "pyobjc_framework_SystemConfiguration-8.4-cp36-abi3-macosx_11_0_universal2.whl", hash = "sha256:2049ea2223dfe4203c31a9cbf191648a5a69698242b2a2a17c3d532487a16560"},
 ]
 pyparsing = [
     {file = "pyparsing-3.0.7-py3-none-any.whl", hash = "sha256:a6c06a88f252e6c322f65faf8f418b16213b51bdfaece0524c1c1bc30c63c484"},

@@ -141,39 +141,31 @@ class MissionSchedulerTask(MissionRegistryRelatedTaskBase):
         super().__init__(mission_registry=mission_registry)
         self._missions_to_jobs = {}
 
-    def cancel_mission(self, mission: Mission) -> None:
-        """Cancels the execution of the given mission if it is running. No-op
-        if the mission is not running.
-
-        Parameters:
-            mission: the mission to cancel
-        """
-        job = self._missions_to_jobs.get(mission)
-        if job is not None:
-            if self.scheduler:
-                self.scheduler.cancel(job)
-            del self._missions_to_jobs[mission]
+    def _handle_mission_removal(self, mission: Mission) -> None:
+        self._unschedule_mission(mission)
 
     async def _run(self, stack: ExitStack):
         scheduler = Scheduler(allow_late_submissions=False)
         stack.enter_context(overridden(self, scheduler=scheduler))
         await scheduler.run()
 
-    def _handle_mission_removal(self, mission: Mission) -> None:
-        self.cancel_mission(mission)
-
     async def _run_mission(self, mission: Mission) -> None:
         """Runs the task related to the given mission. This is the function
         that is scheduled in the scheduler to the start time of the mission.
         """
-        if self.log:
+        already_cancelled_at_start = mission.cancel_requested
+
+        if self.log and not already_cancelled_at_start:
             self.log.info(
                 "Started mission", extra={"id": mission.id, "semantics": "success"}
             )
 
-        await mission.run()
+        # Even if a cancellation was requested for the mission, we still need
+        # to call `mission.run()` because this is the function that manages the
+        # state variables of the mission
+        await mission.run(self.log)
 
-        if self.log:
+        if self.log and not already_cancelled_at_start:
             self.log.info(
                 "Finished mission",
                 extra={
@@ -186,18 +178,26 @@ class MissionSchedulerTask(MissionRegistryRelatedTaskBase):
         """Signal handler that is called when the authorization of one of the
         missions in the registry changes.
         """
-        if self.log:
+        # Do not log the new start time if the mission is already cancelled
+        if self.log and not sender.cancel_requested:
             if sender.is_authorized_to_start:
                 self.log.info("Mission authorized to start", extra={"id": sender.id})
             else:
                 self.log.info("Mission authorization revoked", extra={"id": sender.id})
         self._update_mission_in_scheduler(sender)
 
+    def _on_mission_cancellation_requested(self, sender: Mission) -> None:
+        """Signal handler that is called when the user requests the cancellation
+        of the mission.
+        """
+        self._update_mission_in_scheduler(sender)
+
     def _on_mission_start_time_changed(self, sender: Mission) -> None:
         """Signal handler that is called when the start time of one of the
         missions in the registry changes.
         """
-        if self.log:
+        # Do not log the new start time if the mission is already cancelled
+        if self.log and not sender.cancel_requested:
             start_time = sender.starts_at
             if start_time is not None:
                 fmt_start_time = format_timestamp_nicely(start_time)
@@ -218,8 +218,14 @@ class MissionSchedulerTask(MissionRegistryRelatedTaskBase):
         mission.on_authorization_changed.connect(
             self._on_mission_authorization_changed, sender=cast(Any, mission)
         )
+        mission.on_cancel_requested.connect(
+            self._on_mission_cancellation_requested, sender=cast(Any, mission)
+        )
 
     def _unsubscribe_from_mission(self, mission: Mission):
+        mission.on_cancel_requested.disconnect(
+            self._on_mission_cancellation_requested, sender=cast(Any, mission)
+        )
         mission.on_authorization_changed.disconnect(
             self._on_mission_authorization_changed, sender=cast(Any, mission)
         )
@@ -233,15 +239,15 @@ class MissionSchedulerTask(MissionRegistryRelatedTaskBase):
         Removes the job of the mission from the scheduler if the mission is not
         scheduled to start or it has no authorization.
         """
-        job = self._missions_to_jobs.get(mission)
         if self.scheduler is None:
-            if job is not None:
-                # We have no scheduler, so we should not have a job
-                # corresponding to the mission either. Nevertheless, we
-                # simply remove it from the mapping
-                del self._missions_to_jobs[mission]
+            self._unschedule_mission(mission)
             return
 
+        if mission.is_finished:
+            self._unschedule_mission(mission)
+            return
+
+        job = self._missions_to_jobs.get(mission)
         start_time = mission.starts_at if mission.is_authorized_to_start else None
         is_late = False
 
@@ -250,21 +256,30 @@ class MissionSchedulerTask(MissionRegistryRelatedTaskBase):
 
             # Mission has a new start time and it is authorized to start
             if job is not None:
-                # Mission already has a job so change the start time of the job
-                job.allow_late_start = mission.allow_late_start
-                try:
-                    self.scheduler.reschedule_to(start_time, job)
-                except LateSubmissionError:
-                    # New start time is earlier than current time so let's just
-                    # cancel the mission
-                    is_late = True
-                    self.cancel_mission(mission)
+                if job.running:
+                    # Job is already running
+                    if mission.cancel_requested:
+                        # Cancellation was requested for this mission. If it is
+                        # running, cancel the job.
+                        self._unschedule_mission(mission)
                 else:
-                    if self.log:
-                        self.log.info(
-                            f"Mission rescheduled to {fmt_start_time}",
-                            extra={"id": mission.id},
-                        )
+                    # Mission already has a job so update the start time of the job
+                    job.allow_late_start = mission.is_allowed_to_start_late
+                    try:
+                        self.scheduler.reschedule_to(start_time, job)
+                    except LateSubmissionError:
+                        # New start time is earlier than current time so let's just
+                        # cancel the mission
+                        is_late = True
+                        self._unschedule_mission(mission)
+                    else:
+                        # Do not report that the mission was rescheduled if it is
+                        # already cancelled -- it would only confuse the user
+                        if self.log and not mission.cancel_requested:
+                            self.log.info(
+                                f"Mission rescheduled to {fmt_start_time}",
+                                extra={"id": mission.id},
+                            )
             else:
                 # Mission does not have a job yet, so create one
                 try:
@@ -272,7 +287,7 @@ class MissionSchedulerTask(MissionRegistryRelatedTaskBase):
                         start_time,
                         self._run_mission,
                         mission,
-                        allow_late_start=mission.allow_late_start,
+                        allow_late_start=mission.is_allowed_to_start_late,
                     )
                 except LateSubmissionError:
                     # New start time is earlier than current time so let's not
@@ -280,7 +295,9 @@ class MissionSchedulerTask(MissionRegistryRelatedTaskBase):
                     is_late = True
                 else:
                     self._missions_to_jobs[mission] = job
-                    if self.log:
+                    # Do not report that the mission was scheduled if it is
+                    # already cancelled -- it would only confuse the user
+                    if self.log and not mission.cancel_requested:
                         self.log.info(
                             f"Mission scheduled to {fmt_start_time}",
                             extra={"id": mission.id},
@@ -292,13 +309,26 @@ class MissionSchedulerTask(MissionRegistryRelatedTaskBase):
                 self.log.info(
                     "Mission removed from scheduler", extra={"id": mission.id}
                 )
-            self.cancel_mission(mission)
+            self._unschedule_mission(mission)
 
         if is_late and self.log:
             self.log.warn(
                 "Mission start time is in the past; mission will not be started",
                 extra={"id": mission.id},
             )
+
+    def _unschedule_mission(self, mission: Mission) -> None:
+        """Cancels the execution of the given mission if it is running. No-op
+        if the mission is not running.
+
+        Parameters:
+            mission: the mission to cancel
+        """
+        job = self._missions_to_jobs.get(mission)
+        if job is not None:
+            if self.scheduler:
+                self.scheduler.cancel(job)
+            del self._missions_to_jobs[mission]
 
 
 class MissionUpdateNotifierTask(MissionRegistryRelatedTaskBase):

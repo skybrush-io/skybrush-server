@@ -1,10 +1,12 @@
 """Types specific to the mission planning and management extension."""
 
 from abc import ABCMeta, abstractmethod, abstractproperty
+from logging import Logger
 from blinker import Signal
 from dataclasses import dataclass
 from datetime import datetime
 from time import time
+from trio import Cancelled
 from typing import (
     final,
     Any,
@@ -72,19 +74,31 @@ class Mission(ModelObject):
     has not finished yet or has not been started yet.
     """
 
-    allow_late_start: bool = False
+    log: Optional[Logger] = None
+    """Logger to use during the execution of the mission. Not available when
+    the mission is not running.
+    """
+
+    _cancel_requested: bool = False
+    """Stores whether the mission was requested to be cancelled."""
+
+    _is_allowed_to_start_late: bool = False
     """Stores whether the mission is allowed to start even if the current
     timestamp is later than the start time of the mission _when the mission
-    is sent to the scheduler_. Typically you can keep this property at ``False``;
+    is sent to the scheduler_. Typically this property can remain ``False``;
     the only time you need to set it to ``True`` is when you want the mission
     to start immediately. In that case, you can set the start time of the mission
-    to the current POSIX timestamp, but you also need to set ``allow_late_start``
+    to the current POSIX timestamp, but you also need to set ``_is_allowed_to_start_late``
     to ``True``, otherwise a few milliseconds will pass until the mission gets
     scheduled in the scheduler, and by that time it would already be late.
     """
 
     on_authorization_changed: ClassVar[Signal] = Signal(
         doc="Signal that is emitted when the authorization of a mission changes."
+    )
+
+    on_cancel_requested: ClassVar[Signal] = Signal(
+        doc="Signal that is emitted when the user requests the cancellation of the mission."
     )
 
     on_start_time_changed: ClassVar[Signal] = Signal(
@@ -101,6 +115,11 @@ class Mission(ModelObject):
         self.created_at = time()
 
     @property
+    def cancel_requested(self) -> bool:
+        """Returns whether the user requested the mission to be cancelled."""
+        return self._cancel_requested
+
+    @property
     def device_tree_node(self) -> None:
         return None
 
@@ -109,9 +128,22 @@ class Mission(ModelObject):
         return self._id
 
     @property
+    def is_allowed_to_start_late(self) -> bool:
+        """Returns whether the mission is allowed to start later than its
+        scheduled start time. This property is set internally to ``True``
+        when ``start_now()`` is called.
+        """
+        return self._is_allowed_to_start_late
+
+    @property
     def is_authorized_to_start(self) -> bool:
         """Returns whether the mission is authorized to start."""
         return self.authorized_at is not None
+
+    @property
+    def is_finished(self) -> bool:
+        """Returns whether the mission has finished already (successfully or not)."""
+        return self.finished_at is not None
 
     @property
     def is_started(self) -> bool:
@@ -163,10 +195,10 @@ class Mission(ModelObject):
         `_handle_authorization()` method instead.
 
         Raises:
-            RuntimeError: if the mission is not in the ``NEW`` state
+            RuntimeError: if the mission is not in the ``NEW`` or
+                ``AUTHORIZED_TO_START`` state
         """
         self._ensure_not_started_yet()
-
         old_authorization_time = self.authorized_at
         old_state = self.state
 
@@ -180,6 +212,19 @@ class Mission(ModelObject):
             self._handle_authorization()
             self.on_authorization_changed.send(self)
             self.notify_updated()
+
+    def cancel(self) -> None:
+        """Cancels the mission if it is running. Skips execution and moves
+        straight to the cancelled state if the mission is not running. No-op if
+        the mission was already cancelled or terminated.
+        """
+        self._cancel_requested = True
+        if not self.is_started:
+            # Start the mission now; the scheduler will call the run() method
+            # of the mission, which will return immediately and update the
+            # state variables
+            self.start_now()
+        self.on_cancel_requested.send(self)
 
     def notify_updated(self) -> None:
         """Notifies all subscribers to the `on_updated()` event that the mission
@@ -213,7 +258,7 @@ class Mission(ModelObject):
             self.notify_updated()
 
     @final
-    async def run(self) -> None:
+    async def run(self, log: Optional[Logger]) -> None:
         """Run the task corresponding to the mission. This function will be
         called by the mission scheduler when it is time to start the mission.
 
@@ -224,6 +269,9 @@ class Mission(ModelObject):
         Do not override this method; override the internal `_run()` method
         instead.
 
+        Parameters:
+            log: the logger that the mission should use to log events of interest
+
         Raises:
             RuntimeError: if the mission is not in the ``AUTHORIZED_TO_START``
                 state
@@ -231,19 +279,57 @@ class Mission(ModelObject):
         self._ensure_waiting_to_start()
 
         self.started_at = time()
-        self.state = MissionState.ONGOING
-        self.notify_updated()
 
+        if not self._cancel_requested:
+            self.state = MissionState.ONGOING
+            self.notify_updated()
+
+        self.log = log
         try:
-            await self._run()
-            # TODO(ntamas): handle cancellation!
-        except Exception:
-            # TODO(ntamas): log exception?
+            if not self._cancel_requested:
+                await self._run()
+        except RuntimeError as ex:
+            # Sort-of-expected exception, simply log it as an error
+            if log:
+                log.error(str(ex), extra={"id": self.id, "sentry_ignore": True})
             self.state = MissionState.FAILED
+        except Exception:
+            # More serious exception, log it as a proper exception
+            if log:
+                log.exception(
+                    "Unexpected error while executing mission", extra={"id": self.id}
+                )
+            self.state = MissionState.FAILED
+        except Cancelled:
+            # Scheduler cancelled the execution of the mission
+            if log:
+                log.warn("Mission cancelled", extra={"id": self.id})
+            self.state = MissionState.CANCELLED
+
+            # Cancelled exceptions must be re-raised
+            raise
         else:
-            self.state = MissionState.SUCCESSFUL
-        self.finished_at = time()
-        self.notify_updated()
+            if self._cancel_requested:
+                self.state = MissionState.CANCELLED
+            else:
+                self.state = MissionState.SUCCESSFUL
+        finally:
+            self.log = None
+            self.finished_at = time()
+            self.notify_updated()
+
+    @final
+    def start_now(self) -> None:
+        """Authorizes the mission to start and starts it as soon as possible.
+
+        Raises:
+            RuntimeError: if the mission is not in the ``NEW`` or
+                ``AUTHORIZED_TO_START`` states.
+        """
+        self._ensure_not_started_yet()
+        self._is_allowed_to_start_late = True
+        self.update_start_time(time())
+        self.authorize_to_start()
 
     @final
     def update_parameters(self, parameters: Dict[str, Any]) -> None:
@@ -336,9 +422,12 @@ class Mission(ModelObject):
         pass
 
     @abstractmethod
-    async def _run(self) -> None:
+    async def _run(self, log: Optional[Logger] = None) -> None:
         """Async function that runs the task corresponding to the mission.
         This function must be overridden in subclasses to add your own behaviour.
+
+        Parameters:
+            log: the logger that the mission should use to log events of interest
         """
         raise NotImplementedError
 

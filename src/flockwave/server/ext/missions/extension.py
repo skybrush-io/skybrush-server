@@ -7,16 +7,16 @@ from __future__ import annotations
 from contextlib import ExitStack
 from functools import partial
 from inspect import isawaitable
+from time import time
 from trio import open_nursery
 from typing import Any, Dict, Iterable, Optional, Tuple, cast, overload
 
 from flockwave.server.ext.base import Extension
 from flockwave.server.message_hub import MessageHub
 from flockwave.server.model import Client, FlockwaveMessage, FlockwaveResponse
+from flockwave.server.model.messages import FlockwaveNotification
 from flockwave.server.registries import find_in_registry
 from flockwave.server.utils.formatting import format_list_nicely
-
-from flockwave.server.model.messages import FlockwaveNotification
 
 from .examples import LandImmediatelyMissionType
 from .model import Mission, MissionPlan, MissionType
@@ -89,6 +89,7 @@ class MissionManagementExtension(Extension):
                         "X-MSN-PARAM": self._handle_MSN_PARAM,
                         "X-MSN-PLAN": self._handle_MSN_PLAN,
                         "X-MSN-SCHED": self._handle_MSN_SCHED,
+                        "X-MSN-START": self._handle_MSN_START,
                     }
                 )
             )
@@ -327,6 +328,40 @@ class MissionManagementExtension(Extension):
 
         try:
             mission.update_start_time(start_time)
+        except Exception as ex:
+            return hub.reject(
+                message, reason=f"Error while updating start time of mission: {ex}"
+            )
+
+        return hub.acknowledge(message)
+
+    async def _handle_MSN_START(
+        self, message: FlockwaveMessage, sender: Client, hub: MessageHub
+    ):
+        """Handles an incoming request to start a mission as soon as possible.
+        The handler will also authorize the mission to start if it is not
+        authorized yet.
+        """
+        try:
+            mission = self._get_mission_from_request_by_id(message)
+        except RuntimeError as ex:
+            return hub.reject(message, reason=str(ex))
+
+        if mission.is_started:
+            return hub.reject(message, reason="Mission already started")
+
+        if not mission.is_authorized_to_start:
+            try:
+                mission.authorize_to_start()
+            except Exception as ex:
+                return hub.reject(
+                    message,
+                    reason=f"Error while updating authorization state of mission: {ex}",
+                )
+
+        try:
+            mission.allow_late_start = True
+            mission.update_start_time(time())
         except Exception as ex:
             return hub.reject(
                 message, reason=f"Error while updating start time of mission: {ex}"

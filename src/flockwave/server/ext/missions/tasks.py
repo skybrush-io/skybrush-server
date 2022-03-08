@@ -171,13 +171,15 @@ class MissionSchedulerTask(MissionRegistryRelatedTaskBase):
                 "Started mission", extra={"id": mission.id, "semantics": "success"}
             )
 
-        # TODO(ntamas): manage the state variables of the mission
         await mission.run()
 
         if self.log:
-            # TODO(ntamas): use different semantics when the mission failed
             self.log.info(
-                "Finished mission", extra={"id": mission.id, "semantics": "success"}
+                "Finished mission",
+                extra={
+                    "id": mission.id,
+                    "semantics": "success" if mission.was_successful else "error",
+                },
             )
 
     def _on_mission_authorization_changed(self, sender: Mission) -> None:
@@ -249,6 +251,7 @@ class MissionSchedulerTask(MissionRegistryRelatedTaskBase):
             # Mission has a new start time and it is authorized to start
             if job is not None:
                 # Mission already has a job so change the start time of the job
+                job.allow_late_start = mission.allow_late_start
                 try:
                     self.scheduler.reschedule_to(start_time, job)
                 except LateSubmissionError:
@@ -266,7 +269,10 @@ class MissionSchedulerTask(MissionRegistryRelatedTaskBase):
                 # Mission does not have a job yet, so create one
                 try:
                     job = self.scheduler.schedule_at(
-                        start_time, self._run_mission, mission
+                        start_time,
+                        self._run_mission,
+                        mission,
+                        allow_late_start=mission.allow_late_start,
                     )
                 except LateSubmissionError:
                     # New start time is earlier than current time so let's not

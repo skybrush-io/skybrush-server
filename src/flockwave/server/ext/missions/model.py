@@ -72,6 +72,17 @@ class Mission(ModelObject):
     has not finished yet or has not been started yet.
     """
 
+    allow_late_start: bool = False
+    """Stores whether the mission is allowed to start even if the current
+    timestamp is later than the start time of the mission _when the mission
+    is sent to the scheduler_. Typically you can keep this property at ``False``;
+    the only time you need to set it to ``True`` is when you want the mission
+    to start immediately. In that case, you can set the start time of the mission
+    to the current POSIX timestamp, but you also need to set ``allow_late_start``
+    to ``True``, otherwise a few milliseconds will pass until the mission gets
+    scheduled in the scheduler, and by that time it would already be late.
+    """
+
     on_authorization_changed: ClassVar[Signal] = Signal(
         doc="Signal that is emitted when the authorization of a mission changes."
     )
@@ -103,6 +114,11 @@ class Mission(ModelObject):
         return self.authorized_at is not None
 
     @property
+    def is_started(self) -> bool:
+        """Returns whether the mission has been started already."""
+        return self.started_at is not None
+
+    @property
     def json(self) -> Dict[str, Any]:
         """Returns the JSON representation of the mission."""
         return {
@@ -126,6 +142,11 @@ class Mission(ModelObject):
         parameters that you wish to expose in its JSON representation.
         """
         return {}
+
+    @property
+    def was_successful(self) -> bool:
+        """Returns whether the mission finished successfully."""
+        return self.state is MissionState.SUCCESSFUL
 
     @final
     def authorize_to_start(self) -> None:

@@ -266,6 +266,7 @@ def generate_mission_file_from_show_specification(show) -> bytes:
     # gather parameters that are used in the mission and choreography file
     # templates
     params = {
+        "altitude_reference": "agl" if altitude_reference is None else "amsl",
         "altitude_setpoint": 5,  # TODO: get from show if needed
         "display_name": display_name,
         "group_index": group_index,

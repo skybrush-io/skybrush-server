@@ -1,6 +1,6 @@
 [[package]]
 name = "adrenaline"
-version = "0.3.0"
+version = "1.0.0"
 description = "Keep your OS from sleeping (supports Windows and macOS)"
 category = "main"
 optional = false
@@ -195,11 +195,11 @@ reference = "collmot"
 
 [[package]]
 name = "bidict"
-version = "0.21.4"
+version = "0.22.0"
 description = "The bidirectional mapping library for Python."
 category = "main"
 optional = false
-python-versions = ">=3.6"
+python-versions = ">=3.7"
 
 [package.source]
 type = "legacy"
@@ -2098,12 +2098,12 @@ reference = "collmot"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7"
-content-hash = "c45cfc76b48634888d967ee68fbcce10bd928fddd67b81ef988d4c783e77f073"
+content-hash = "02f392adbf7f34776349934f6d9a2b08505efacdf2bdd2bc915ba4e348e75bc3"
 
 [metadata.files]
 adrenaline = [
-    {file = "adrenaline-0.3.0-py3-none-any.whl", hash = "sha256:cfd4f0a8e79d6adf25938a2d610676f6d73f040b8f4a52dfabbcdf91bf18375b"},
-    {file = "adrenaline-0.3.0.tar.gz", hash = "sha256:c180f9596258ca32f6c27eb39eea40b902b09a137712fadb6e8b1fd73a06c525"},
+    {file = "adrenaline-1.0.0-py3-none-any.whl", hash = "sha256:daa2a9d99d85a36244bb59730b3b955abeab90fdc6d5cd78bf082b5178f5a985"},
+    {file = "adrenaline-1.0.0.tar.gz", hash = "sha256:5a0565f08314bc42164c4d4179a84c02ae405bf8d339b77b18f91b5b88a2df8d"},
 ]
 aio-net-events = [
     {file = "aio-net-events-3.0.0.tar.gz", hash = "sha256:7fe7de8995e7c68efb76680f9e7f23504514cef00a121684d8b7ed726b15d39c"},
@@ -2158,8 +2158,8 @@ bcrypt = [
     {file = "bcrypt-3.2.0.tar.gz", hash = "sha256:5b93c1726e50a93a033c36e5ca7fdcd29a5c7395af50a6892f5d9e7c6cfbfb29"},
 ]
 bidict = [
-    {file = "bidict-0.21.4-py3-none-any.whl", hash = "sha256:3ac67daa353ecf853a1df9d3e924f005e729227a60a8dbada31a4c31aba7f654"},
-    {file = "bidict-0.21.4.tar.gz", hash = "sha256:42c84ffbe6f8de898af6073b4be9ea7ccedcd78d3474aa844c54e49d5a079f6f"},
+    {file = "bidict-0.22.0-py3-none-any.whl", hash = "sha256:415126d23a0c81e1a8c584a8fb1f6905ea090c772571803aeee0a2242e8e7ba0"},
+    {file = "bidict-0.22.0.tar.gz", hash = "sha256:5c826b3e15e97cc6e615de295756847c282a79b79c5430d3bfc909b1ac9f5bd8"},
 ]
 bitstring = [
     {file = "bitstring-3.1.9-py2-none-any.whl", hash = "sha256:e3e340e58900a948787a05e8c08772f1ccbe133f6f41fe3f0fa19a18a22bbf4f"},

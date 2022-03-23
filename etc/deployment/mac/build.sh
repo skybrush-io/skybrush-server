@@ -76,7 +76,7 @@ if [ ! -d "${PYENV_VERSION_DIR}" ]; then
     # PYTHON_CONFIGURE_OPTS needed for PyInstaller to work
     env PYTHON_CONFIGURE_OPTS="--enable-shared" pyenv install "${PYTHON_VERSION}"
 fi
-if [ `ls "${PYENV_VERSION_DIR}/lib/libpython*.dylib" | wc -l` -lt 1 ]; then
+if [ `ls "${PYENV_VERSION_DIR}"/lib/libpython*.dylib 2>/dev/null | wc -l` -lt 1 ]; then
     echo "${PYENV_VERSION_DIR} must be built as a shared library; remove it and run the deployment script again."
     exit 1
 fi
@@ -88,7 +88,7 @@ ${PYENV_VERSION_DIR}/bin/python3 -m venv "${VENV_DIR}"
 
 # TODO(ntamas): clean up unused MAVlink dialects somehow!
 
-# export TARGET_PLATFORM=darwin.x86_64.11.py39
+export TARGET_PLATFORM=darwin.x86_64.11.py39
 etc/scripts/build-pyarmored-dist.sh --standalone --keep-staging --no-obfuscation --no-tarball --wheelhouse "${WHEEL_DIR}" "${VENV_DIR}"
 etc/deployment/mac/build-installer.sh build/pyarmor/staging
 rm -rf build/pyarmor/staging

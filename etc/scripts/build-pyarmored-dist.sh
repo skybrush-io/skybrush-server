@@ -107,7 +107,7 @@ mkdir -p "${BUILD_DIR}/bin"
 mkdir -p "${BUILD_DIR}/lib"
 
 # Install dependencies
-"${PIP}" install -U pip wheel "pyarmor>=7.3.0" "pyinstaller>=4.7"
+"${PIP}" install -U pip wheel "pyarmor>=7.4.1" "pyinstaller>=4.10"
 
 if [ "x$FROM_WHEELHOUSE" != x ]; then
   "${PIP}" install --no-deps --no-index --find-links="${FROM_WHEELHOUSE}"/ -r requirements-main.txt -t "${BUILD_DIR}/lib"

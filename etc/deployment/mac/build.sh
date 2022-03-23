@@ -76,6 +76,10 @@ if [ ! -d "${PYENV_VERSION_DIR}" ]; then
     # PYTHON_CONFIGURE_OPTS needed for PyInstaller to work
     env PYTHON_CONFIGURE_OPTS="--enable-shared" pyenv install "${PYTHON_VERSION}"
 fi
+if [ `ls "${PYENV_VERSION_DIR}/lib/libpython*.dylib" | wc -l` -lt 1 ]; then
+    echo "${PYENV_VERSION_DIR} must be built as a shared library; remove it and run the deployment script again."
+    exit 1
+fi
 
 # Now clean the build dir and install everything in a virtualenv in there
 rm -rf "${BUILD_DIR}"

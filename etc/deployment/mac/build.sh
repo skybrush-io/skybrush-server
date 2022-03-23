@@ -70,10 +70,17 @@ pip3 download -r requirements.txt \
     --progress-bar pretty \
     -d "${WHEEL_DIR}"
 
+# Check whether the pyenv-built Python version is suitable
+PYENV_VERSION_DIR="${HOME}/.pyenv/versions/${PYTHON_VERSION}"
+if [ ! -d "${PYENV_VERSION_DIR}" ]; then
+    # PYTHON_CONFIGURE_OPTS needed for PyInstaller to work
+    env PYTHON_CONFIGURE_OPTS="--enable-shared" pyenv install "${PYTHON_VERSION}"
+fi
+
 # Now clean the build dir and install everything in a virtualenv in there
 rm -rf "${BUILD_DIR}"
 VENV_DIR="${BUILD_DIR}/venv"
-~/.pyenv/versions/3.9.9/bin/python3 -m venv "${VENV_DIR}"
+${PYENV_VERSION_DIR}/bin/python3 -m venv "${VENV_DIR}"
 
 # TODO(ntamas): clean up unused MAVlink dialects somehow!
 

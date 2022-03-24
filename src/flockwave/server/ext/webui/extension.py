@@ -17,6 +17,7 @@ from trio import sleep_forever
 from trio.lowlevel import current_root_task
 from typing import Any, Awaitable, Callable, Dict, List, Optional, Tuple, TYPE_CHECKING
 
+from flockwave.ext.errors import NotSupportedError
 from flockwave.server.utils import overridden
 from flockwave.server.utils.quart import make_blueprint
 
@@ -164,7 +165,7 @@ async def _to_json(
     try:
         result = await func(*args)
     except Exception as ex:
-        if log:
+        if not isinstance(ex, NotSupportedError) and log:
             log.exception(ex)
         return {"error": str(ex)}
 

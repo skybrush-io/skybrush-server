@@ -1,9 +1,10 @@
 from abc import abstractmethod, ABCMeta
 from datetime import date, timedelta
-from flockwave.ext.errors import ApplicationExit
-from flockwave.networking import get_link_layer_address_mapping
 from math import inf
 from typing import cast, Any, Dict, Optional, Tuple
+
+from flockwave.ext.errors import ApplicationExit, NotSupportedError
+from flockwave.networking import get_link_layer_address_mapping
 
 import json
 
@@ -277,6 +278,9 @@ def load(app, configuration, logger):
 
 
 def unload(app):
+    if not app.extension_manager.shutting_down:
+        raise NotSupportedError("License manager cannot be unloaded")
+
     global license
 
     app.message_hub.unregister_message_handler(handle_LCN_INF, "LCN-INF")

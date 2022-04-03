@@ -1,7 +1,7 @@
 from abc import abstractmethod, ABCMeta
 from datetime import date, timedelta
 from math import inf
-from typing import cast, Any, Dict, Optional, Tuple
+from typing import cast, Any, Dict, Mapping, Optional, Tuple
 
 from flockwave.ext.errors import ApplicationExit, NotSupportedError
 from flockwave.networking import get_link_layer_address_mapping
@@ -143,6 +143,98 @@ class DummyLicense(License):
         return 5
 
 
+class DictBasedLicense(License):
+    """License class for licenses that provide a standardized dictionary
+    that describes the capabilities of the license.
+
+    The dictionary should have the following keys:
+
+    - ``id`` - the unique identifier of the license. Must be a string.
+
+    - ``licensee`` - name of the licensee. Must be a string.
+
+    - ``cond`` - conditions that restrict the usage of the license. This must
+      map to another dictionary; condition subkeys will be described below.
+      The key may be omitted, in which case it is assumed that it maps to an
+      empty dictionary (i.e. no restrictions).
+
+    - ``expiresAt`` - POSIX timestamp in seconds when the license will expire.
+      The license is perpetual if this key is missing.
+
+    The condition dictionary can have the following keys:
+
+    - ``mac`` - list of MAC addresses that the license is valid for
+
+    - ``drones`` - maximum number of drones that can be used simultaneously"""
+
+    def __init__(self, license_info: Mapping[str, Any]):
+        """Constructor.
+
+        Do not use directly; use one of the subclasses instead.
+        """
+        self._license_info = license_info
+
+    def get_allowed_mac_addresses(self) -> Optional[Tuple[str]]:
+        addresses = self._get_conditions().get("mac")
+
+        # An earlier bug in cmtool sometimes added empty MAC addresses to the
+        # license; we fix it here
+        if addresses:
+            return tuple(address for address in addresses if address)
+        else:
+            return None
+
+    def get_days_left_until_expiry(self) -> int:
+        # TODO(ntamas)
+        return 10000
+
+    def get_id(self) -> str:
+        try:
+            return str(self._license_info["id"])
+        except KeyError:
+            return ""
+
+    def get_licensee(self) -> str:
+        try:
+            return str(self._license_info["licensee"])
+        except KeyError:
+            return ""
+
+    def get_maximum_drone_count(self) -> float:
+        cond = self._get_conditions()
+        try:
+            drone_count = cond["drones"]
+        except KeyError:
+            drone_count = inf
+        if not isinstance(drone_count, (int, float)):
+            return 0
+        else:
+            return float(int(drone_count)) if drone_count < inf else inf
+
+    def _get_conditions(self) -> Mapping[str, Any]:
+        try:
+            return self._license_info["cond"]
+        except KeyError:
+            return {}
+
+
+class CLSLicense(DictBasedLicense):
+    """License class for licenses based on CollMot's own license manager."""
+
+    @classmethod
+    def get_license(cls):
+        from cls import license
+
+        if (
+            hasattr(license, "__getitem__")
+            and hasattr(license, "__len__")
+            and len(license) > 0
+        ):
+            return cls(license)
+        else:
+            raise RuntimeError("no license")
+
+
 class PyArmorLicense(License):
     """License class for PyArmor-based licenses."""
 
@@ -166,7 +258,14 @@ class PyArmorLicense(License):
         self._license_info = license_info
 
     def get_allowed_mac_addresses(self) -> Optional[Tuple[str]]:
-        return self._get_conditions().get("mac")
+        addresses = self._get_conditions().get("mac")
+
+        # An earlier bug in cmtool sometimes added empty MAC addresses to the
+        # license; we fix it here
+        if addresses:
+            return tuple(address for address in addresses if address)
+        else:
+            return None
 
     def get_days_left_until_expiry(self) -> int:
         return self._expired_days
@@ -256,7 +355,7 @@ def load(app, configuration, logger):
 
     # License factories must raise an ApplicationExit exception if they have
     # found a license and it is not valid
-    license_factories = [PyArmorLicense.get_license]
+    license_factories = [CLSLicense.get_license, PyArmorLicense.get_license]
 
     for factory in license_factories:
         try:

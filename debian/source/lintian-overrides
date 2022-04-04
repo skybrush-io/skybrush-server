@@ -1,3 +1,0 @@
-# Some Python modules installed by third-party deps have a shebang
-skybrush-server source: script-not-executable
-skybrush-server source: source-is-missing

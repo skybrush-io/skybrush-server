@@ -25,8 +25,8 @@ from wsgiref.handlers import format_date_time
 
 import platform
 import re
+import socket
 import struct
-import trio.socket
 
 from flockwave.networking import create_socket
 from flockwave.server.ports import get_port_number_for_service
@@ -112,8 +112,8 @@ class Sockets:
     """
 
     def __init__(self):
-        self.sender = create_socket(trio.socket.SOCK_DGRAM)
-        self.receiver = create_socket(trio.socket.SOCK_DGRAM)
+        self.sender = create_socket(socket.SOCK_DGRAM)
+        self.receiver = create_socket(socket.SOCK_DGRAM)
 
     def close(self):
         """Closees the sockets managed by this object."""
@@ -357,8 +357,8 @@ async def run(app, configuration, logger):
     context = dict(app=app, label=label, log=logger, registry=registry)
 
     # Set up the socket pair that we will use to send and receive SSDP messages
-    sender = create_socket(trio.socket.SOCK_DGRAM)
-    sender.setsockopt(trio.socket.IPPROTO_IP, trio.socket.IP_MULTICAST_TTL, 2)
+    sender = create_socket(socket.SOCK_DGRAM)
+    sender.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, 2)
     await sender.bind(("", 0))
 
     # Timestamp when the last error message was printed
@@ -396,13 +396,16 @@ async def receive_ssdp_messages(multicast_group, port, *, sender):
     # Set up the receiver end of the socket pair. This is the one that will most
     # likely fail due to various reasons so we will keep on re-trying this if
     # needed
-    receiver = create_socket(trio.socket.SOCK_DGRAM)
-    receiver.setsockopt(trio.socket.SOL_SOCKET, trio.socket.SO_REUSEADDR, 1)
-    if hasattr(trio.socket, "SO_REUSEPORT"):
-        receiver.setsockopt(trio.socket.SOL_SOCKET, trio.socket.SO_REUSEPORT, 1)
-    receiver.setsockopt(trio.socket.IPPROTO_IP, trio.socket.IP_MULTICAST_TTL, 2)
+    receiver = create_socket(socket.SOCK_DGRAM)
+
+    # socket.SO_REUSEADDR is not re-exported in trio.socket so import it from
+    # socket directly
+    receiver.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    if hasattr(socket, "SO_REUSEPORT"):
+        receiver.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
+    receiver.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, 2)
     membership_request = struct.pack(
-        "4sl", trio.socket.inet_aton(multicast_group), trio.socket.INADDR_ANY
+        "4sl", socket.inet_aton(multicast_group), socket.INADDR_ANY
     )
 
     # TODO(ntamas): make sure that this works even if there is no network
@@ -410,7 +413,7 @@ async def receive_ssdp_messages(multicast_group, port, *, sender):
     # except OSError in case ad-hoc wifi is not compatible with IP multicast group
     try:
         receiver.setsockopt(
-            trio.socket.IPPROTO_IP, trio.socket.IP_ADD_MEMBERSHIP, membership_request
+            socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, membership_request
         )
     except OSError as error:
         if error.errno == EADDRNOTAVAIL:

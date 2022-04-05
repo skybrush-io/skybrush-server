@@ -397,10 +397,14 @@ async def receive_ssdp_messages(multicast_group, port, *, sender):
     # likely fail due to various reasons so we will keep on re-trying this if
     # needed
     receiver = create_socket(trio.socket.SOCK_DGRAM)
+    receiver.setsockopt(trio.socket.SOL_SOCKET, trio.socket.SO_REUSEADDR, 1)
+    if hasattr(trio.socket, "SO_REUSEPORT"):
+        receiver.setsockopt(trio.socket.SOL_SOCKET, trio.socket.SO_REUSEPORT, 1)
     receiver.setsockopt(trio.socket.IPPROTO_IP, trio.socket.IP_MULTICAST_TTL, 2)
     membership_request = struct.pack(
         "4sl", trio.socket.inet_aton(multicast_group), trio.socket.INADDR_ANY
     )
+
     # TODO(ntamas): make sure that this works even if there is no network
     # connection
     # except OSError in case ad-hoc wifi is not compatible with IP multicast group
@@ -410,19 +414,13 @@ async def receive_ssdp_messages(multicast_group, port, *, sender):
         )
     except OSError as error:
         if error.errno == EADDRNOTAVAIL:
-            # This happens with ad-hoc wifi on macOS
+            # This may happen with ad-hoc wifi on macOS
             if log:
                 log.warn(f"Cannot join multicast group {multicast_group}")
         else:
             raise
 
-    if platform.system() == "Windows":
-        # Apparently on Windows you need to bind to all interfaces, you cannot
-        # bind to the multicast group
-        await receiver.bind(("", port))
-    else:
-        await receiver.bind((multicast_group, port))
-
+    await receiver.bind(("", port))
     with closing(receiver):
         while True:
             data = await receiver.recvfrom(65536)

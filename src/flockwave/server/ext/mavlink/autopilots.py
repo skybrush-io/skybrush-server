@@ -231,6 +231,13 @@ class Autopilot(metaclass=ABCMeta):
         raise NotImplementedError
 
     @abstractproperty
+    def supports_repositioning(self) -> bool:
+        """Returns whether the autopilot understands the MAVLink MAV_CMD_DO_REPOSITION
+        command.
+        """
+        raise NotImplementedError
+
+    @abstractproperty
     def supports_scheduled_takeoff(self) -> bool:
         """Returns whether the autopilot supports scheduled takeoffs."""
         raise NotImplementedError
@@ -418,6 +425,8 @@ class PX4(Autopilot):
             & mask
         ):
             return not bool(sys_status.onboard_control_sensors_health & mask)
+        else:
+            return False
 
     def is_prearm_error_message(self, text: str) -> bool:
         return text.startswith("Preflight ")

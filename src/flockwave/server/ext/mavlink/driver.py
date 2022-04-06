@@ -2121,6 +2121,7 @@ class MAVLinkUAV(UAVBase):
         are_motor_outputs_disabled = self._autopilot.are_motor_outputs_disabled(
             heartbeat, sys_status
         )
+        are_motors_running = heartbeat.base_mode & MAVModeFlag.SAFETY_ARMED
         is_prearm_check_in_progress = self._autopilot.is_prearm_check_in_progress(
             heartbeat, sys_status
         )
@@ -2152,7 +2153,12 @@ class MAVLinkUAV(UAVBase):
             FlockwaveErrorCode.PRESSURE_SENSOR_ERROR: has_baro_error,
             FlockwaveErrorCode.GPS_SIGNAL_LOST: has_gps_error,
             FlockwaveErrorCode.MOTOR_MALFUNCTION: has_motor_error,
-            FlockwaveErrorCode.GEOFENCE_VIOLATION: has_geofence_error,
+            FlockwaveErrorCode.GEOFENCE_VIOLATION: (
+                has_geofence_error and are_motors_running
+            ),
+            FlockwaveErrorCode.GEOFENCE_VIOLATION_WARNING: (
+                has_geofence_error and not are_motors_running
+            ),
             FlockwaveErrorCode.RC_SIGNAL_LOST_WARNING: has_rc_error,
             FlockwaveErrorCode.BATTERY_CRITICAL: has_battery_error,
             FlockwaveErrorCode.LOGGING_DEACTIVATED: has_logging_error,
@@ -2161,8 +2167,7 @@ class MAVLinkUAV(UAVBase):
             # If the motors are running but we are not in the air yet; we use an
             # informational flag to let the user know
             FlockwaveErrorCode.MOTORS_RUNNING_WHILE_ON_GROUND: (
-                heartbeat.base_mode & MAVModeFlag.SAFETY_ARMED
-                and heartbeat.system_status == MAVState.STANDBY
+                are_motors_running and heartbeat.system_status == MAVState.STANDBY
             ),
             # Use the special RTH error code if the drone is in RTH or smart RTH mode
             # and its mode index is larger than the standby mode (typically:

@@ -1175,6 +1175,10 @@ class CrazyflieUAV(UAVBase):
         )
 
         self.ensure_error(FlockwaveErrorCode.DISARMED, present=not self._armed)
+
+        # TODO(ntamas): use GEOFENCE_VIOLATION_WARNING if the motors are not
+        # running. Currently we have no information about whether the motors are
+        # running or not.
         self.ensure_error(
             FlockwaveErrorCode.GEOFENCE_VIOLATION, present=self._fence_breached
         )

@@ -104,8 +104,15 @@ def get_error_codes_from_status_packet(
     flags = packet.flags
     clock_status = packet.clock_status
 
-    base = _error_code_mapping.get(error_code, _unspecified)
+    base: Tuple[int, ...] = _error_code_mapping.get(error_code, _unspecified)
     aux: List[int] = []
+
+    if (
+        base == FlockwaveErrorCode.GEOFENCE_VIOLATION
+        and not flags & StatusFlag.MOTOR_RUNNING
+    ):
+        # Motor is not running so convert the violation to a warning
+        base = (FlockwaveErrorCode.GEOFENCE_VIOLATION_WARNING,)
 
     if not flags & StatusFlag.RADIO:
         aux.append(FlockwaveErrorCode.RADIO_MISSING.value)

@@ -493,7 +493,7 @@ reference = "fury"
 
 [[package]]
 name = "flockwave-spec"
-version = "1.59.0"
+version = "1.60.0"
 description = "JSON-Schema specification of the Flockwave protocol"
 category = "main"
 optional = false
@@ -507,8 +507,8 @@ cli = ["click (>=8.0.3,<9.0.0)", "jsonschema (>=4.2.1,<5.0.0)"]
 
 [package.source]
 type = "legacy"
-url = "https://pypi.collmot.com/simple"
-reference = "collmot"
+url = "https://pypi.fury.io/skybrush"
+reference = "fury"
 
 [[package]]
 name = "future"
@@ -1556,7 +1556,7 @@ flockctrl = ["flockwave-flockctrl"]
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7"
-content-hash = "56eb8e34ca583e97c59896e0a2c8fa53e46683254af2cc62adba70841940fceb"
+content-hash = "e478f4b1a7145b0808aa113053174f7b4f5a1e0868bc2005253b9a120cd09fa6"
 
 [metadata.files]
 adrenaline = [
@@ -1825,8 +1825,8 @@ flockwave-parsers = [
     {file = "flockwave_parsers-2.0.1-py3-none-any.whl", hash = "sha256:9c4e652d21ffc3b2a799024b8b1c947e08fd327671c27522a0ad1948fd6def4e"},
 ]
 flockwave-spec = [
-    {file = "flockwave-spec-1.59.0.tar.gz", hash = "md5:c159f06fb76fac12711d8a9a6e6abf56"},
-    {file = "flockwave_spec-1.59.0-py3-none-any.whl", hash = "md5:fb8a4f31c8acdf8483594265e761c7b3"},
+    {file = "flockwave-spec-1.60.0.tar.gz", hash = "sha256:c6cd7e36caec366657faf3b8b04b90cf11829cdc85fd17a7fdccd9733a55b380"},
+    {file = "flockwave_spec-1.60.0-py3-none-any.whl", hash = "sha256:75e713400981b268d0b5603f9a121810a26fcbb246490314628b9464a64aeecd"},
 ]
 future = [
     {file = "future-0.18.2.tar.gz", hash = "sha256:b1bead90b70cf6ec3f0710ae53a525360fa360d306a86583adc6bf83a4db537d"},

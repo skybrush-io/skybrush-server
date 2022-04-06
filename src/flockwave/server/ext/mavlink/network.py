@@ -562,6 +562,7 @@ class MAVLinkNetwork:
             "BAD_DATA": nop,
             "COMMAND_ACK": nop,
             "DATA16": self._handle_message_data16,
+            "FENCE_STATUS": nop,
             "FILE_TRANSFER_PROTOCOL": nop,
             "GLOBAL_POSITION_INT": self._handle_message_global_position_int,
             "GPS_GLOBAL_ORIGIN": nop,

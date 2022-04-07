@@ -28,7 +28,7 @@ pyobjc-framework-SystemConfiguration = {version = ">=8.0,<9.0", markers = "sys_p
 
 [[package]]
 name = "aio-usb-hotplug"
-version = "4.0.1"
+version = "5.0.0"
 description = "Asynchronous generators yielding detected hotplug events on the USB buses"
 category = "main"
 optional = false
@@ -1556,7 +1556,7 @@ flockctrl = ["flockwave-flockctrl"]
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7"
-content-hash = "e478f4b1a7145b0808aa113053174f7b4f5a1e0868bc2005253b9a120cd09fa6"
+content-hash = "f07c6ad32f49853d9463991c8b8552d3ef938fab27d495b0156e00c676df301b"
 
 [metadata.files]
 adrenaline = [
@@ -1568,8 +1568,8 @@ aio-net-events = [
     {file = "aio_net_events-3.0.0-py3-none-any.whl", hash = "sha256:a1d6f5b54ad97145c848f75443eccd2218553f6e86aab5c598c1db6da92a948b"},
 ]
 aio-usb-hotplug = [
-    {file = "aio-usb-hotplug-4.0.1.tar.gz", hash = "sha256:ec7448a8d35081ed6bf95fe0ad9a80768f1ee91e945d4c526c7bd1f953984fe5"},
-    {file = "aio_usb_hotplug-4.0.1-py3-none-any.whl", hash = "sha256:8b28e001ef8f0c6514f2a63f4065be55ff82e55a1a6b2a52b9a7943380decd9a"},
+    {file = "aio-usb-hotplug-5.0.0.tar.gz", hash = "sha256:d4d924581559ee162011010a43c786808e6b1b027318ccd5749f672d06c711ef"},
+    {file = "aio_usb_hotplug-5.0.0-py3-none-any.whl", hash = "sha256:d268b5960b05ca3d431f976816276345bd47d4b45e92c09701a12d42ae90215d"},
 ]
 aiocflib = [
     {file = "aiocflib-2.5.0-py3-none-any.whl", hash = "sha256:6b66b9c80bd21deb5c2a9da70372583d1a6c99380b130cf087201d0030b8bf85"},

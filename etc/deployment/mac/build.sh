@@ -47,7 +47,6 @@ poetry build -f wheel
 
 # Generate requirements.txt files
 poetry export -f requirements.txt --without-hashes --with-credentials \
-    | grep -v lxml \
     >requirements.txt
 ls dist/`echo ${PROJECT_NAME} | sed -e 's/-/_/g'`*.whl >>requirements.txt
 trap "rm -f requirements.txt" EXIT

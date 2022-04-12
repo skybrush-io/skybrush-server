@@ -32,9 +32,7 @@ extra_modules = set([
 # Modules to exclude
 exclude_modules = [
     # No Tcl/Tk
-    "FixTk", "tcl", "tk", "_tkinter", "tkinter", "Tkinter",
-    # No lxml; pymavlink brings it in mistakenly as a dependency
-    "lxml"
+    "FixTk", "tcl", "tk", "_tkinter", "tkinter", "Tkinter"
 ]
 
 # Parse default configuration

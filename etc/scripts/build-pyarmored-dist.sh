@@ -115,11 +115,6 @@ else
   "${PIP}" install -r requirements-main.txt -t "${BUILD_DIR}/lib"
 fi
 
-# lxml is huge and we don't need it; pymavlink brings it in mistakenly as a
-# dependency
-rm -rf "${BUILD_DIR}/lib/lxml"
-rm -rf "${BUILD_DIR}/lib/lxml*.dist-info"
-
 # Remove executables of dependencies; they are not needed
 rm -rf "${BUILD_DIR}/lib/bin"
 

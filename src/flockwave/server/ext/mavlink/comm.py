@@ -58,7 +58,7 @@ def get_mavlink_factory(
     if callable(dialect):
         return dialect
 
-    module = import_module(f"pymavlink.dialects.v20.{dialect}")
+    module = import_module(f"flockwave.protocols.mavlink.dialects.v20.{dialect}")
 
     def factory():
         # Use robust parsing so we don't freak out if we see some noise on the

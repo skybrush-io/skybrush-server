@@ -27,7 +27,6 @@ jsonschema = "^4.0.3"
 python-baseconv = "^1.2.2"
 pynmea2 = "^1.15.0"
 zeroconf = ">=0.28.0"
-pymavlink = "^2.4.9"
 trio = ">=0.20.0"
 quart = ">=0.16.0"
 quart-trio = ">=0.9.0"
@@ -48,6 +47,7 @@ flockwave-ext = {version = "^1.14.1", source = "fury"}
 flockwave-flockctrl = {version = "^2.1.0", source = "collmot", optional = true}
 flockwave-gps = {version = "^2.2.0", source = "fury"}
 flockwave-logger = {version = "^1.8.0", source = "fury"}
+flockwave-mavlink = {version = ">=0.1.0", source = "fury"}
 flockwave-net = {extras = ["async"], version = "^3.0.1", source = "fury"}
 flockwave-parsers = {version = "^2.0.1", source = "fury"}
 flockwave-spec = {version = "^1.60.0", source = "fury"}

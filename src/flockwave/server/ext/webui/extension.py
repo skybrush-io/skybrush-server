@@ -126,7 +126,12 @@ def only_when_debugging(func: Callable[..., Awaitable[Any]]):
 def _get_extension_by_name(name: str) -> Tuple[ExtensionInfo, "ExtensionManager"]:
     extension_manager = app.extension_manager if app else None
     if extension_manager and name in extension_manager.known_extensions:
-        extension = ExtensionInfo.for_extension(name, extension_manager, details=True)
+        try:
+            extension = ExtensionInfo.for_extension(
+                name, extension_manager, details=True
+            )
+        except ModuleNotFoundError:
+            extension = None
     else:
         extension = None
 
@@ -249,8 +254,17 @@ async def list_extensions():
 
     if extension_manager:
         for name in extension_manager.known_extensions:
-            info = ExtensionInfo.for_extension(name, extension_manager)
-            extensions.append(info)
+            try:
+                info = ExtensionInfo.for_extension(name, extension_manager)
+                extensions.append(info)
+            except ModuleNotFoundError:
+                # The configuration somehow refers to an extension that does not
+                # exist; this is okay, we just ignore it
+                pass
+            except Exception:
+                # error while importing extension; let's log it an ignore it
+                if log:
+                    log.warning(f"Error while importing extension: {name!r}")
 
     return await render_template(
         "extensions.html.j2", title="Extensions", extensions=extensions

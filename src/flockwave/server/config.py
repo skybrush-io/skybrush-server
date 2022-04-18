@@ -110,7 +110,6 @@ EXTENSIONS = {
     "show": {
         "default_start_method": "rc"  # set to "auto" if you typically start shows automatically and not via a remote controller
     },
-    "sidekick": {"enabled": False},
     "socketio": {},
     # "smpte_timecode": {"connection": "midi:IAC Driver Bus 1"},
     "ssdp": {},

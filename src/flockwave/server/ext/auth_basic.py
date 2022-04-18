@@ -226,10 +226,10 @@ async def run(app, configuration, logger):
         except FileNotFoundError:
             filename = repr(spec.get("value"))
             logger.error(
-                f"Password file not found: {filename}", extra={"sentry_ignore": True}
+                f"Password file not found: {filename}", extra={"telemetry": "ignore"}
             )
         except RuntimeError as ex:
-            logger.error(str(ex), extra={"sentry_ignore": True})
+            logger.error(str(ex), extra={"telemetry": "ignore"})
         except Exception:
             logger.exception("Unexpected error while creating password validator")
 

@@ -267,12 +267,12 @@ class CrazyradioScannerTask:
                 if getattr(ex, "errno", 0) == ENODEV:
                     # libusb indicates that the radio may have been disconnected.
                     # This is something worth logging but not worth sending to
-                    # Sentry. Also, we log it only once and do not log it again for
-                    # subsequent unsuccessful scanning attempts until we scan at
-                    # least once successfully again.
+                    # telemetry servers. Also, we log it only once and do not log
+                    # it again for subsequent unsuccessful scanning attempts until
+                    # we scan at least once successfully again.
                     self._log.error(
                         f"Crazyradio scanning {address_space} was probably unplugged.",
-                        extra={"sentry_ignore": True},
+                        extra={"telemetry": "ignore"},
                     )
                 else:
                     self._log.error(

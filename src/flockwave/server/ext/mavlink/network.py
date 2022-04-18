@@ -732,7 +732,7 @@ class MAVLinkNetwork:
         for target in self._statustext_targets:
             if target == "server":
                 extra = self._log_extra_from_message(message)
-                extra["sentry_ignore"] = True
+                extra["telemetry"] = "ignore"
                 self.log.log(
                     python_log_level_from_mavlink_severity(message.severity),
                     text,

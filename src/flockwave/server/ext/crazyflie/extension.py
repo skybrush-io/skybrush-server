@@ -93,12 +93,12 @@ class CrazyflieDronesExtension(UAVExtension):
                 if not num_radios:
                     self.log.error(
                         "Failed to acquire any Crazyradios.",
-                        extra={"sentry_ignore": True},
+                        extra={"telemetry": "ignore"},
                     )
                 else:
                     self.log.error(
                         f"Requested {len(radio_indices)} Crazyradios but only {num_radios} were acquired.",
-                        extra={"sentry_ignore": True},
+                        extra={"telemetry": "ignore"},
                     )
 
             return await self._run(app, configuration)

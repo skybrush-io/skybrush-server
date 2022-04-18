@@ -12,6 +12,6 @@ async def serve_tcp_and_log_errors(handler, port, *, log, **kwds):
         return await serve_tcp(handler, port, **kwds)
     except OSError as ex:
         if ex.errno == EADDRINUSE:
-            log.error(f"Port {port} is already in use", extra={"sentry_ignore": True})
+            log.error(f"Port {port} is already in use", extra={"telemetry": "ignore"})
         else:
             raise

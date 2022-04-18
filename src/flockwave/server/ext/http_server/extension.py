@@ -255,7 +255,7 @@ async def run(app, configuration, logger):
             "Cannot bind {1} server to {0}; is the port already in use?".format(
                 format_socket_address(address), "HTTPS" if secure else "HTTP"
             ),
-            extra={"sentry_ignore": True},
+            extra={"telemetry": "ignore"},
         )
         return
 
@@ -285,7 +285,7 @@ async def run(app, configuration, logger):
             if retries < max_retries:
                 logger.error(
                     "Server stopped unexpectedly, retrying...",
-                    extra={"sentry_ignore": True},
+                    extra={"telemetry": "ignore"},
                 )
                 await sleep(1)
                 retries += 1

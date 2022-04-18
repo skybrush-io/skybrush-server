@@ -482,7 +482,7 @@ class CommunicationManager(Generic[PacketType, AddressType]):
                             # This is okay
                             self.log.error(
                                 "Network is down or unreachable",
-                                extra={"id": name or "", "sentry_ignore": True},
+                                extra={"id": name or "", "telemetry": "ignore"},
                             )
                         else:
                             self.log.exception(

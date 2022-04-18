@@ -103,10 +103,6 @@ EXTENSIONS = {
         "use_high_precision": True  # set to false if the rover cannot handle high-precision MSM RTK messages
         # "exclude_serial_ports": ["*ttyAMA*"
     },
-    "sentry": {
-        # Override the DSN to turn on Sentry integration
-        "dsn": ""
-    },
     "show": {
         "default_start_method": "rc"  # set to "auto" if you typically start shows automatically and not via a remote controller
     },

@@ -493,7 +493,7 @@ class RTKExtension(Extension):
                         else:
                             self.log.error(
                                 f"Failed to start survey for {preset.title!r}",
-                                extra={"sentry_ignore": True},
+                                extra={"telemetry": "ignore"},
                             )
                     else:
                         if success:
@@ -507,7 +507,7 @@ class RTKExtension(Extension):
                         else:
                             self.log.error(
                                 f"Failed to configure {preset.title!r}",
-                                extra={"sentry_ignore": True},
+                                extra={"telemetry": "ignore"},
                             )
 
     async def _run_connections_for_preset(

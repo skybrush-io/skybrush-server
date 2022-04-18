@@ -171,7 +171,7 @@ class SkybrushGatewayServer(DaemonApp):
                     if retries < max_retries:
                         log.error(
                             "Server stopped unexpectedly, retrying...",
-                            extra={"sentry_ignore": True},
+                            extra={"telemetry": "ignore"},
                         )
                         await sleep(1)
                         retries += 1

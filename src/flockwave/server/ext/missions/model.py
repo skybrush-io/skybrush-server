@@ -291,7 +291,7 @@ class Mission(ModelObject):
         except RuntimeError as ex:
             # Sort-of-expected exception, simply log it as an error
             if log:
-                log.error(str(ex), extra={"id": self.id, "sentry_ignore": True})
+                log.error(str(ex), extra={"id": self.id, "telemetry": "ignore"})
             self.state = MissionState.FAILED
         except Exception:
             # More serious exception, log it as a proper exception

@@ -1341,7 +1341,7 @@ class CrazyflieHandlerTask:
         except IOError as ex:
             self._log.error(
                 f"Error while handling Crazyflie: {str(ex)}",
-                extra={"id": self._uav.id, "sentry_ignore": True},
+                extra={"id": self._uav.id, "telemetry": "ignore"},
             )
             # We do not log the stack trace of IOErrors -- the stack trace is too long
             # and in 99% of the cases it is simply a communication error
@@ -1371,7 +1371,7 @@ class CrazyflieHandlerTask:
                 except TimeoutError:
                     self._log.error(
                         "Communication timeout while initializing connection",
-                        extra={"id": self._uav.id, "sentry_ignore": True},
+                        extra={"id": self._uav.id, "telemetry": "ignore"},
                     )
                     return
                 except Exception as ex:
@@ -1409,7 +1409,7 @@ class CrazyflieHandlerTask:
                 except TimeoutError:
                     self._log.error(
                         "Communication timeout while setting flight mode",
-                        extra={"id": self._uav.id, "sentry_ignore": True},
+                        extra={"id": self._uav.id, "telemetry": "ignore"},
                     )
                     return
                 except Exception as ex:

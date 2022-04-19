@@ -19,7 +19,7 @@ url = "https://pypi.fury.io/skybrush/"
 secondary = true
 
 [tool.poetry.dependencies]
-python = "^3.7"
+python = "^3.8"
 bidict = ">=0.19.0"
 click = "^8.0.0"
 blinker = "^1.4"
@@ -49,6 +49,7 @@ flockwave-mavlink = {version = ">=0.1.0", source = "fury"}
 flockwave-net = {extras = ["async"], version = "^3.0.1", source = "fury"}
 flockwave-parsers = {version = "^2.0.1", source = "fury"}
 flockwave-spec = {version = "^1.60.0", source = "fury"}
+skybrush-ext-sidekick = {version = "^1.0.0", source = "collmot", optional = true}
 pyledctrl = "^3.1.0"
 aiocflib = "^2.2.0"
 appdirs = "^1.4.4"

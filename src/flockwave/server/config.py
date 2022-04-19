@@ -41,16 +41,6 @@ EXTENSIONS = {
         # "port": 35424,
     },
     "dock": {"enabled": False, "listener": "unix:/tmp/skybrushd-dock.sock"},
-    "flockctrl": {
-        "id_format": "{0:02}",
-        "connections": {
-            "wireless": "default",
-            # "wireless": "local",
-            # "wireless": "192.168.1.0/24",
-            "radio": "default",
-        },
-        "enabled": False,
-    },
     "frontend": {},
     "gps": {
         "connection": "gpsd",

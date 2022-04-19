@@ -208,17 +208,6 @@ python-versions = ">=3.7"
 colorama = {version = "*", markers = "platform_system == \"Windows\""}
 
 [[package]]
-name = "click-man"
-version = "0.4.1"
-description = "Generate man pages for click based CLI applications"
-category = "dev"
-optional = false
-python-versions = "*"
-
-[package.dependencies]
-click = "*"
-
-[[package]]
 name = "colorama"
 version = "0.4.4"
 description = "Cross-platform colored terminal text."
@@ -283,7 +272,7 @@ name = "cryptography"
 version = "36.0.2"
 description = "cryptography is a package which provides cryptographic recipes and primitives to Python developers."
 category = "main"
-optional = false
+optional = true
 python-versions = ">=3.6"
 
 [package.dependencies]
@@ -378,7 +367,7 @@ reference = "collmot"
 
 [[package]]
 name = "flockwave-ext"
-version = "1.14.2"
+version = "1.14.3"
 description = "Generic extension manager for Skybrush-related projects"
 category = "main"
 optional = false
@@ -826,7 +815,7 @@ name = "paramiko"
 version = "2.10.3"
 description = "SSH2 protocol library"
 category = "main"
-optional = false
+optional = true
 python-versions = "*"
 
 [package.dependencies]
@@ -976,7 +965,7 @@ name = "pynacl"
 version = "1.5.0"
 description = "Python binding to the Networking and Cryptography (NaCl) library"
 category = "main"
-optional = false
+optional = true
 python-versions = ">=3.6"
 
 [package.dependencies]
@@ -1075,11 +1064,11 @@ cp2110 = ["hidapi"]
 
 [[package]]
 name = "pytest"
-version = "6.2.5"
+version = "7.1.1"
 description = "pytest: simple powerful testing with Python"
 category = "dev"
 optional = false
-python-versions = ">=3.6"
+python-versions = ">=3.7"
 
 [package.dependencies]
 atomicwrites = {version = ">=1.0", markers = "sys_platform == \"win32\""}
@@ -1089,10 +1078,10 @@ iniconfig = "*"
 packaging = "*"
 pluggy = ">=0.12,<2.0"
 py = ">=1.8.2"
-toml = "*"
+tomli = ">=1.0.0"
 
 [package.extras]
-testing = ["argcomplete", "hypothesis (>=3.56)", "mock", "nose", "requests", "xmlschema"]
+testing = ["argcomplete", "hypothesis (>=3.56)", "mock", "nose", "pygments (>=2.7.2)", "requests", "xmlschema"]
 
 [[package]]
 name = "pytest-cov"
@@ -1268,7 +1257,7 @@ name = "scp"
 version = "0.14.4"
 description = "scp module for paramiko"
 category = "main"
-optional = false
+optional = true
 python-versions = "*"
 
 [package.dependencies]
@@ -1281,6 +1270,28 @@ description = "Python 2 and 3 compatibility utilities"
 category = "main"
 optional = false
 python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*"
+
+[[package]]
+name = "skybrush-ext-flockctrl"
+version = "1.0.1"
+description = "Support for flockctrl-based drones in Skybrush Server"
+category = "main"
+optional = true
+python-versions = ">=3.8,<4.0"
+
+[package.dependencies]
+bidict = ">=0.22.0"
+colour = ">=0.1.5"
+flockwave-flockctrl = ">=2.1.1,<3.0.0"
+paramiko = ">=2.10.3,<3.0.0"
+scp = ">=0.14.4"
+trio = ">=0.20.0"
+trio-parallel = ">=1.0.0,<2.0.0"
+
+[package.source]
+type = "legacy"
+url = "https://pypi.collmot.com/simple"
+reference = "collmot"
 
 [[package]]
 name = "skybrush-ext-sidekick"
@@ -1379,7 +1390,7 @@ name = "trio-parallel"
 version = "1.0.0"
 description = "CPU parallelism for Trio"
 category = "main"
-optional = false
+optional = true
 python-versions = ">=3.6"
 
 [package.dependencies]
@@ -1464,13 +1475,14 @@ docs = ["sphinx", "jaraco.packaging (>=9)", "rst.linker (>=1.9)"]
 testing = ["pytest (>=6)", "pytest-checkdocs (>=2.4)", "pytest-flake8", "pytest-cov", "pytest-enabler (>=1.0.1)", "jaraco.itertools", "func-timeout", "pytest-black (>=0.3.7)", "pytest-mypy (>=0.9.1)"]
 
 [extras]
-flockctrl = ["flockwave-flockctrl"]
+all = ["skybrush-ext-flockctrl", "skybrush-ext-sidekick"]
+collmot = ["skybrush-ext-flockctrl"]
 pro = ["skybrush-ext-sidekick"]
 
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.8"
-content-hash = "c4b4f5e9a7709ca73df3c29f250b87ef87e84a72ae04595a50c691dd0fe2cec6"
+content-hash = "451565bded159c077342278444426d343b9b4abb052954d3329622f39f227eb1"
 
 [metadata.files]
 adrenaline = [
@@ -1605,10 +1617,6 @@ click = [
     {file = "click-8.1.2-py3-none-any.whl", hash = "sha256:24e1a4a9ec5bf6299411369b208c1df2188d9eb8d916302fe6bf03faed227f1e"},
     {file = "click-8.1.2.tar.gz", hash = "sha256:479707fe14d9ec9a0757618b7a100a0ae4c4e236fac5b7f80ca68028141a1a72"},
 ]
-click-man = [
-    {file = "click-man-0.4.1.tar.gz", hash = "sha256:d255c14ecee52afa915228f7dc87603ddb571c3d7d1a2eb219244e440fa88bbb"},
-    {file = "click_man-0.4.1-py3-none-any.whl", hash = "sha256:bb4ed0cdbded7494ead67b2c805b9170a5ebd5e0a280fed1079d3adece52fa00"},
-]
 colorama = [
     {file = "colorama-0.4.4-py2.py3-none-any.whl", hash = "sha256:9f47eda37229f68eee03b24b9748937c7dc3868f906e8ba69fbcbdd3bc5dc3e2"},
     {file = "colorama-0.4.4.tar.gz", hash = "sha256:5941b2b48a20143d2267e95b1c2a7603ce057ee39fd88e7329b0c292aa16869b"},
@@ -1715,8 +1723,8 @@ flockwave-conn = [
     {file = "flockwave_conn-4.0.1-py3-none-any.whl", hash = "md5:0e66d52fbad4e345b70dc47356df3eb0"},
 ]
 flockwave-ext = [
-    {file = "flockwave-ext-1.14.2.tar.gz", hash = "sha256:32de8954a4fd719a8f50f0ceaa7e638a64004035d97bb55d519af5ebbd7f9560"},
-    {file = "flockwave_ext-1.14.2-py3-none-any.whl", hash = "sha256:d49abbd6bdc910265afdbd598dcb462936f9e6a85d3298e3f134d05deb804b98"},
+    {file = "flockwave-ext-1.14.3.tar.gz", hash = "sha256:c2b3cf66039a2adfe80edf2b80f8b46a8969b87d4d4f571eb7757ed0c867b6b8"},
+    {file = "flockwave_ext-1.14.3-py3-none-any.whl", hash = "sha256:db97249a675dac2497d6064b632aafa5b75bb07f7c46afa6de62336b17520583"},
 ]
 flockwave-flockctrl = [
     {file = "flockwave-flockctrl-2.1.1.tar.gz", hash = "md5:4c8e3eeb5d24355f72f94b74ded4b411"},
@@ -2076,8 +2084,8 @@ pyserial = [
     {file = "pyserial-3.5.tar.gz", hash = "sha256:3c77e014170dfffbd816e6ffc205e9842efb10be9f58ec16d3e8675b4925cddb"},
 ]
 pytest = [
-    {file = "pytest-6.2.5-py3-none-any.whl", hash = "sha256:7310f8d27bc79ced999e760ca304d69f6ba6c6649c0b60fb0e04a4a77cacc134"},
-    {file = "pytest-6.2.5.tar.gz", hash = "sha256:131b36680866a76e6781d13f101efb86cf674ebb9762eb70d3082b6f29889e89"},
+    {file = "pytest-7.1.1-py3-none-any.whl", hash = "sha256:92f723789a8fdd7180b6b06483874feca4c48a5c76968e03bb3e7f806a1869ea"},
+    {file = "pytest-7.1.1.tar.gz", hash = "sha256:841132caef6b1ad17a9afde46dc4f6cfa59a05f9555aae5151f73bdf2820ca63"},
 ]
 pytest-cov = [
     {file = "pytest-cov-3.0.0.tar.gz", hash = "sha256:e7f0f5b1617d2210a2cabc266dfe2f4c75a8d32fb89eafb7ad9d06f6d076d470"},
@@ -2151,6 +2159,10 @@ scp = [
 six = [
     {file = "six-1.16.0-py2.py3-none-any.whl", hash = "sha256:8abb2f1d86890a2dfb989f9a77cfcfd3e47c2a354b01111771326f8aa26e0254"},
     {file = "six-1.16.0.tar.gz", hash = "sha256:1e61c37477a1626458e36f7b1d82aa5c9b094fa4802892072e49de9c60c4c926"},
+]
+skybrush-ext-flockctrl = [
+    {file = "skybrush-ext-flockctrl-1.0.1.tar.gz", hash = "md5:8dd60b26d8ab4fe15ee020d9a7864d45"},
+    {file = "skybrush_ext_flockctrl-1.0.1-py3-none-any.whl", hash = "md5:9774d592b73adb1044e518877cdb4094"},
 ]
 skybrush-ext-sidekick = [
     {file = "skybrush-ext-sidekick-1.0.0.tar.gz", hash = "md5:af6e5c760f5dd8b51b4658e85b8f37dc"},

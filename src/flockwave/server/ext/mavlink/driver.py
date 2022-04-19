@@ -1,4 +1,4 @@
-"""Driver class for FlockCtrl-based drones."""
+"""Driver class for MAVLink-based drones."""
 
 from __future__ import annotations
 

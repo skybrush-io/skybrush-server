@@ -1,6 +1,6 @@
 from abc import abstractmethod, ABCMeta
 from datetime import date, timedelta
-from math import inf
+from math import inf, isfinite
 from typing import cast, Any, Dict, Mapping, Optional, Tuple
 
 from flockwave.ext.errors import ApplicationExit, NotSupportedError
@@ -115,6 +115,17 @@ class License(metaclass=ABCMeta):
                     "label": "Restricted to MAC address",
                     "secondaryLabel": formatted_mac_addresses,
                     "parameters": {"addresses": allowed_mac_addresses},
+                }
+            )
+
+        num_drones = self.get_maximum_drone_count()
+        if isfinite(num_drones) and num_drones >= 0:
+            restrictions.append(
+                {
+                    "type": "drones",
+                    "label": "Maximum number of drones",
+                    "secondaryLabel": str(num_drones),
+                    "parameters": {"maxCount": num_drones},
                 }
             )
 
@@ -313,9 +324,17 @@ def enforce_license_limits(license: Optional[License], app) -> None:
     app.object_registry.size_limit = num_drones
 
 
-def show_license_information(license: Optional[License], logger) -> None:
+def show_license_information(
+    license: Optional[License], logger, *, with_restrictions: bool = False
+) -> None:
     """Shows detailed information about the current license in the application
     logs at startup.
+
+    Parameters:
+        license: the currenet license
+        logger: the logger to print the information to
+        with_restrictions: whether to also log additional restrictions related
+            to the license
     """
     if license is None:
         return
@@ -323,6 +342,14 @@ def show_license_information(license: Optional[License], logger) -> None:
     licensee = license.get_licensee()
     if licensee:
         logger.info(f"Licensed to {licensee}")
+
+    if with_restrictions:
+        for restriction in license.json.get("restrictions", ()):
+            if isinstance(restriction, dict):
+                labels = [
+                    str(restriction.get(key, "")) for key in ("label", "secondaryLabel")
+                ]
+                logger.info(": ".join(label for label in labels if label))
 
     days_left = license.get_days_left_until_expiry()
     if days_left >= NEVER_EXPIRES:
@@ -355,7 +382,10 @@ def load(app, configuration, logger):
 
     # License factories must raise an ApplicationExit exception if they have
     # found a license and it is not valid
-    license_factories = [CLSLicense.get_license, PyArmorLicense.get_license]
+    license_factories = [
+        CLSLicense.get_license,
+        PyArmorLicense.get_license,
+    ]
 
     for factory in license_factories:
         try:
@@ -371,7 +401,7 @@ def load(app, configuration, logger):
         raise ApplicationExit("License expired or is not valid for this machine")
 
     enforce_license_limits(license, app)
-    show_license_information(license, logger)
+    show_license_information(license, logger, with_restrictions=True)
 
     app.message_hub.register_message_handler(handle_LCN_INF, "LCN-INF")
 

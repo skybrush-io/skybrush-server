@@ -95,16 +95,24 @@ class DefaultLightController(ModularLightController):
     for a virtual UAV.
     """
 
+    _light_program_player: Optional[Player]
+    _light_program_start_time: Optional[float]
+
+    _where_are_you_duration_ms: float
+    _where_are_you_start_time: Optional[float]
+
+    _override: Optional[Color]
+
     def __init__(self, owner=None):
         super().__init__(self._create_default_modules())
 
         self.owner = owner
 
-        self._light_program_player = None  # type: Optional[Player]
-        self._light_program_start_time = None  # type: Optional[float]
+        self._light_program_player = None
+        self._light_program_start_time = None
 
-        self._where_are_you_duration_ms = 1000  # type: Optional[float]
-        self._where_are_you_start_time = None  # type: Optional[float]
+        self._where_are_you_duration_ms = 1000
+        self._where_are_you_start_time = None
 
         self._override = None
 

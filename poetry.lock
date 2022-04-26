@@ -812,7 +812,7 @@ pyparsing = ">=2.0.2,<3.0.5 || >3.0.5"
 
 [[package]]
 name = "paramiko"
-version = "2.10.3"
+version = "2.10.4"
 description = "SSH2 protocol library"
 category = "main"
 optional = true
@@ -945,7 +945,7 @@ test = ["pytest (>=4.0.1,<5.0.0)", "pytest-cov (>=2.6.0,<3.0.0)", "pytest-runner
 
 [[package]]
 name = "pyledctrl"
-version = "3.2.1"
+version = "4.0.0"
 description = "Compiler to convert LED light show scripts to bytecode format"
 category = "main"
 optional = false
@@ -953,12 +953,11 @@ python-versions = ">=3.7,<4.0"
 
 [package.extras]
 cli = ["click (>=8.0.0,<9.0.0)", "tqdm (>=4.47.0,<5.0.0)"]
-sunlite = ["lxml (>=4.5.2,<5.0.0)"]
 
 [package.source]
 type = "legacy"
-url = "https://pypi.collmot.com/simple"
-reference = "collmot"
+url = "https://pypi.fury.io/skybrush"
+reference = "fury"
 
 [[package]]
 name = "pynacl"
@@ -1064,7 +1063,7 @@ cp2110 = ["hidapi"]
 
 [[package]]
 name = "pytest"
-version = "7.1.1"
+version = "7.1.2"
 description = "pytest: simple powerful testing with Python"
 category = "dev"
 optional = false
@@ -1482,7 +1481,7 @@ pro = ["skybrush-ext-sidekick"]
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.8"
-content-hash = "451565bded159c077342278444426d343b9b4abb052954d3329622f39f227eb1"
+content-hash = "abb122981dc0ca1378a70afa9da454640d456dabf4545255b8e805747a55afcc"
 
 [metadata.files]
 adrenaline = [
@@ -1959,8 +1958,8 @@ packaging = [
     {file = "packaging-21.3.tar.gz", hash = "sha256:dd47c42927d89ab911e606518907cc2d3a1f38bbd026385970643f9c5b8ecfeb"},
 ]
 paramiko = [
-    {file = "paramiko-2.10.3-py2.py3-none-any.whl", hash = "sha256:ac6593479f2b47a9422eca076b22cff9f795495e6733a64723efc75dd8c92101"},
-    {file = "paramiko-2.10.3.tar.gz", hash = "sha256:ddb1977853aef82804b35d72a0e597b244fa326c404c350bd00c5b01dbfee71a"},
+    {file = "paramiko-2.10.4-py2.py3-none-any.whl", hash = "sha256:3c9ed6084f4b671ab66dc3c729092d32d96c3258f1426071301cb33654b09027"},
+    {file = "paramiko-2.10.4.tar.gz", hash = "sha256:3d2e650b6812ce6d160abff701d6ef4434ec97934b13e95cf1ad3da70ffb5c58"},
 ]
 passlib = [
     {file = "passlib-1.7.4-py2.py3-none-any.whl", hash = "sha256:aa6bca462b8d8bda89c70b382f0c298a20b5560af6cbfa2dce410c0a2fb669f1"},
@@ -2007,8 +2006,8 @@ pyjwt = [
     {file = "PyJWT-1.7.1.tar.gz", hash = "sha256:8d59a976fb773f3e6a39c85636357c4f0e242707394cadadd9814f5cbaa20e96"},
 ]
 pyledctrl = [
-    {file = "pyledctrl-3.2.1-py3-none-any.whl", hash = "md5:da95ddc3f91b8268330c4f4531d92823"},
-    {file = "pyledctrl-3.2.1.tar.gz", hash = "md5:2940fcbae4543b6b3a945607616bd5e6"},
+    {file = "pyledctrl-4.0.0-py3-none-any.whl", hash = "sha256:ff0adf8540a1a307d035edfa6231f99bad5f3458665f8403c625cb55e9d56a0b"},
+    {file = "pyledctrl-4.0.0.tar.gz", hash = "sha256:3beadb45b04e73c4851a282ad43a1e6e3eb311e4fb1e7fccd6f23e9bb8a3b475"},
 ]
 pynacl = [
     {file = "PyNaCl-1.5.0-cp36-abi3-macosx_10_10_universal2.whl", hash = "sha256:401002a4aaa07c9414132aaed7f6836ff98f59277a234704ff66878c2ee4a0d1"},
@@ -2084,8 +2083,8 @@ pyserial = [
     {file = "pyserial-3.5.tar.gz", hash = "sha256:3c77e014170dfffbd816e6ffc205e9842efb10be9f58ec16d3e8675b4925cddb"},
 ]
 pytest = [
-    {file = "pytest-7.1.1-py3-none-any.whl", hash = "sha256:92f723789a8fdd7180b6b06483874feca4c48a5c76968e03bb3e7f806a1869ea"},
-    {file = "pytest-7.1.1.tar.gz", hash = "sha256:841132caef6b1ad17a9afde46dc4f6cfa59a05f9555aae5151f73bdf2820ca63"},
+    {file = "pytest-7.1.2-py3-none-any.whl", hash = "sha256:13d0e3ccfc2b6e26be000cb6568c832ba67ba32e719443bfe725814d3c42433c"},
+    {file = "pytest-7.1.2.tar.gz", hash = "sha256:a06a0425453864a270bc45e71f783330a7428defb4230fb5e6a731fde06ecd45"},
 ]
 pytest-cov = [
     {file = "pytest-cov-3.0.0.tar.gz", hash = "sha256:e7f0f5b1617d2210a2cabc266dfe2f4c75a8d32fb89eafb7ad9d06f6d076d470"},

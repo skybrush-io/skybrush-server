@@ -1,7 +1,0 @@
-#!/bin/bash
-
-pushd "`dirname $0`"/.. >/dev/null
-SCRIPT_ROOT="`pwd`"
-popd >/dev/null
-
-PYTHONPATH="$SCRIPT_ROOT"/lib exec python3 -m skybrushd "$@"

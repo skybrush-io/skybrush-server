@@ -1,12 +1,10 @@
 from abc import abstractmethod, ABCMeta
 from datetime import date, timedelta
 from math import inf, isfinite
-from typing import cast, Any, Dict, Mapping, Optional, Tuple
+from typing import Any, Dict, Mapping, Optional, Tuple
 
 from flockwave.ext.errors import ApplicationExit, NotSupportedError
 from flockwave.networking import get_link_layer_address_mapping
-
-import json
 
 __all__ = ("load",)
 
@@ -246,71 +244,6 @@ class CLSLicense(DictBasedLicense):
             raise RuntimeError("no license")
 
 
-class PyArmorLicense(License):
-    """License class for PyArmor-based licenses."""
-
-    @classmethod
-    def get_license(cls):
-        try:
-            from pytransform import get_license_info, get_expired_days
-
-            return cls(get_license_info(), get_expired_days())
-        except ImportError:
-            return None
-
-    def __init__(self, license_info: Dict[str, Any], expired_days: int = -1):
-        """Constructor.
-
-        Do not use directly; use the `get_license()` class method instead.
-        """
-        # PyArmor returns 1 if the license expires today and never returns zero
-        # so we need to subtract 1
-        self._expired_days = (expired_days - 1) if expired_days > 0 else NEVER_EXPIRES
-        self._license_info = license_info
-
-    def get_allowed_mac_addresses(self) -> Optional[Tuple[str]]:
-        addresses = self._get_conditions().get("mac")
-
-        # An earlier bug in cmtool sometimes added empty MAC addresses to the
-        # license; we fix it here
-        if addresses:
-            return tuple(address for address in addresses if address)
-        else:
-            return None
-
-    def get_days_left_until_expiry(self) -> int:
-        return self._expired_days
-
-    def get_id(self) -> str:
-        return self._license_info.get("CODE") or ""
-
-    def get_licensee(self) -> str:
-        parsed = self._parse_license_info()
-        return str(parsed.get("licensee", ""))
-
-    def get_maximum_drone_count(self) -> float:
-        return self._get_conditions().get("drones", inf)
-
-    def _get_conditions(self) -> Dict[str, Any]:
-        parsed = self._parse_license_info()
-        return parsed.get("cond", {})
-
-    def _parse_license_info(self) -> Dict[str, Any]:
-        if not hasattr(self, "_parsed_license_info"):
-            data = self._license_info.get("DATA")
-            if data:
-                try:
-                    data = json.loads(data)
-                    if not isinstance(data, dict):
-                        data = None
-                except Exception:
-                    data = None
-
-            self._parsed_license_info = data or {}
-
-        return cast(Dict[str, Any], self._parsed_license_info)
-
-
 def get_license() -> Optional[License]:
     """Returns the currently loaded license, or `None` if there is no license
     associated to the app.
@@ -384,7 +317,6 @@ def load(app, configuration, logger):
     # found a license and it is not valid
     license_factories = [
         CLSLicense.get_license,
-        PyArmorLicense.get_license,
     ]
 
     for factory in license_factories:

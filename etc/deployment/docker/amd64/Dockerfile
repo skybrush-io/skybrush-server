@@ -32,7 +32,6 @@ RUN .venv/bin/pip install -r requirements-main.txt
 # Now we can copy the application itself
 COPY src/flockwave ./src/flockwave/
 COPY src/skybrush ./src/skybrush/
-COPY bin ./bin/
 
 # Clean up __pycache__ files
 RUN find . | grep -E "(__pycache__|\.pyc$)" | xargs rm -rf

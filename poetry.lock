@@ -746,6 +746,18 @@ optional = false
 python-versions = ">=3.7"
 
 [[package]]
+name = "mido"
+version = "1.2.10"
+description = "MIDI Objects for Python"
+category = "main"
+optional = true
+python-versions = "*"
+
+[package.extras]
+dev = ["check-manifest (>=0.35)", "flake8 (>=3.4.1)", "pytest (>=3.2.2)", "sphinx (>=1.6.3)", "tox (>=2.8.2)"]
+ports = ["python-rtmidi (>=1.1.0)"]
+
+[[package]]
 name = "msgpack"
 version = "1.0.3"
 description = "MessagePack (de)serializer."
@@ -760,18 +772,6 @@ description = "Portable network interface information."
 category = "main"
 optional = false
 python-versions = "*"
-
-[[package]]
-name = "oscpy"
-version = "0.6.0"
-description = "A modern and efficient OSC Client/Server implementation"
-category = "main"
-optional = false
-python-versions = "*"
-
-[package.extras]
-ci = ["coveralls", "pytest-rerunfailures"]
-dev = ["pytest (>=3.6)", "wheel", "pytest-cov", "pycodestyle"]
 
 [[package]]
 name = "outcome"
@@ -1116,6 +1116,14 @@ optional = false
 python-versions = ">=3.5"
 
 [[package]]
+name = "python-rtmidi"
+version = "1.4.9"
+description = "A Python binding for the RtMidi C++ library implemented using Cython."
+category = "main"
+optional = true
+python-versions = "*"
+
+[[package]]
 name = "pyudev"
 version = "0.23.2"
 description = "A libudev binding"
@@ -1276,15 +1284,20 @@ reference = "collmot"
 
 [[package]]
 name = "skybrush-ext-timecode"
-version = "0.1.0"
+version = "1.0.1"
 description = "SMPTE timecode support for Skybrush Server"
 category = "main"
-optional = false
+optional = true
 python-versions = ">=3.8,<4.0"
 
+[package.dependencies]
+mido = ">=1.2.10,<2.0.0"
+python-rtmidi = ">=1.4.9,<2.0.0"
+
 [package.source]
-type = "file"
-url = "../skybrush-ext-timecode/dist/skybrush_ext_timecode-0.1.0-py3-none-any.whl"
+type = "legacy"
+url = "https://pypi.collmot.com/simple"
+reference = "collmot"
 
 [[package]]
 name = "sniffio"
@@ -1455,14 +1468,14 @@ docs = ["sphinx", "jaraco.packaging (>=9)", "rst.linker (>=1.9)"]
 testing = ["pytest (>=6)", "pytest-checkdocs (>=2.4)", "pytest-flake8", "pytest-cov", "pytest-enabler (>=1.0.1)", "jaraco.itertools", "func-timeout", "pytest-black (>=0.3.7)", "pytest-mypy (>=0.9.1)"]
 
 [extras]
-all = ["skybrush-ext-flockctrl", "skybrush-ext-sidekick"]
-collmot = ["skybrush-ext-flockctrl"]
-pro = ["skybrush-ext-sidekick"]
+all = ["skybrush-ext-flockctrl", "skybrush-ext-sidekick", "skybrush-ext-timecode"]
+collmot = ["skybrush-ext-flockctrl", "skybrush-ext-timecode"]
+pro = ["skybrush-ext-sidekick", "skybrush-ext-timecode"]
 
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.8"
-content-hash = "31b3e2e44865bee0df79092842b90d5c67153bec105b999dd5ca87d877f767f1"
+content-hash = "717e245ce7833547fa2f2a618f5f864df5948a992f4bcfdd5eb9ff4ee287598e"
 
 [metadata.files]
 adrenaline = [
@@ -1856,6 +1869,10 @@ markupsafe = [
     {file = "MarkupSafe-2.1.1-cp39-cp39-win_amd64.whl", hash = "sha256:46d00d6cfecdde84d40e572d63735ef81423ad31184100411e6e3388d405e247"},
     {file = "MarkupSafe-2.1.1.tar.gz", hash = "sha256:7f91197cc9e48f989d12e4e6fbc46495c446636dfc81b9ccf50bb0ec74b91d4b"},
 ]
+mido = [
+    {file = "mido-1.2.10-py2.py3-none-any.whl", hash = "sha256:0e618232063e0a220249da4961563c7636fea00096cfb3e2b87a4231f0ac1a9e"},
+    {file = "mido-1.2.10.tar.gz", hash = "sha256:17b38a8e4594497b850ec6e78b848eac3661706bfc49d484a36d91335a373499"},
+]
 msgpack = [
     {file = "msgpack-1.0.3-cp310-cp310-macosx_10_9_universal2.whl", hash = "sha256:96acc674bb9c9be63fa8b6dabc3248fdc575c4adc005c440ad02f87ca7edd079"},
     {file = "msgpack-1.0.3-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:2c3ca57c96c8e69c1a0d2926a6acf2d9a522b41dc4253a8945c4c6cd4981a4e3"},
@@ -1923,10 +1940,6 @@ netifaces = [
     {file = "netifaces-0.11.0-cp39-cp39-manylinux_2_5_i686.manylinux1_i686.whl", hash = "sha256:841aa21110a20dc1621e3dd9f922c64ca64dd1eb213c47267a2c324d823f6c8f"},
     {file = "netifaces-0.11.0-cp39-cp39-manylinux_2_5_x86_64.manylinux1_x86_64.whl", hash = "sha256:e76c7f351e0444721e85f975ae92718e21c1f361bda946d60a214061de1f00a1"},
     {file = "netifaces-0.11.0.tar.gz", hash = "sha256:043a79146eb2907edf439899f262b3dfe41717d34124298ed281139a8b93ca32"},
-]
-oscpy = [
-    {file = "oscpy-0.6.0-py2.py3-none-any.whl", hash = "sha256:88de3f67bb21fa094f8b782641158bc763a0b96a74f8d7d26556ada6eb5b363a"},
-    {file = "oscpy-0.6.0.tar.gz", hash = "sha256:0728a5a7266732c9d64630063d384911d5d6ae474416b79b78d4905773fb6d33"},
 ]
 outcome = [
     {file = "outcome-1.1.0-py2.py3-none-any.whl", hash = "sha256:c7dd9375cfd3c12db9801d080a3b63d4b0a261aa996c4c13152380587288d958"},
@@ -2079,6 +2092,21 @@ python-json-logger = [
     {file = "python-json-logger-2.0.2.tar.gz", hash = "sha256:202a4f29901a4b8002a6d1b958407eeb2dd1d83c18b18b816f5b64476dde9096"},
     {file = "python_json_logger-2.0.2-py3-none-any.whl", hash = "sha256:99310d148f054e858cd5f4258794ed6777e7ad2c3fd7e1c1b527f1cba4d08420"},
 ]
+python-rtmidi = [
+    {file = "python-rtmidi-1.4.9.tar.gz", hash = "sha256:bfeb4ed99d0cccf6fa2837566907652ded7adc1c03b69f2160c9de4082301302"},
+    {file = "python_rtmidi-1.4.9-cp36-cp36m-macosx_10_6_intel.whl", hash = "sha256:8f7e154681c5d6ed7228ce8639708592da758ef4c0f575f7020854e07ca6478b"},
+    {file = "python_rtmidi-1.4.9-cp36-cp36m-win32.whl", hash = "sha256:6f495672ec76700400d4dff6f8848dbd52ca60301ed6011a6a1b3a9e95a7a07e"},
+    {file = "python_rtmidi-1.4.9-cp36-cp36m-win_amd64.whl", hash = "sha256:4d75788163327f6ac1f898c29e3b4527da83dbc5bab5a7e614b6a4385fde3231"},
+    {file = "python_rtmidi-1.4.9-cp37-cp37m-macosx_10_9_x86_64.whl", hash = "sha256:d201516bb1c64511e7e4de50533f6b828072113e3c26f3f5b657f11b90252073"},
+    {file = "python_rtmidi-1.4.9-cp37-cp37m-win32.whl", hash = "sha256:0f5409e1b2e92cfe377710a0ea5c450c58fda8b52ec4bf4baf517aa731d9f6a6"},
+    {file = "python_rtmidi-1.4.9-cp37-cp37m-win_amd64.whl", hash = "sha256:3d4b7fdb477d8036d51cce281b303686114ae676f1c83693db963ab01db11cf5"},
+    {file = "python_rtmidi-1.4.9-cp38-cp38-macosx_10_9_x86_64.whl", hash = "sha256:5dad7a28035eea9e24aaab4fcb756cd2b78c5b14835aa64750cb4062f77ec169"},
+    {file = "python_rtmidi-1.4.9-cp38-cp38-win32.whl", hash = "sha256:7d27d0a70e85d991f1451f286416cf5ef4514292b027155bf91dcae0b8c0d5d2"},
+    {file = "python_rtmidi-1.4.9-cp38-cp38-win_amd64.whl", hash = "sha256:69907663e0f167fcf3fc1632a792419d0d9d00550f94dca39370ebda3bc999db"},
+    {file = "python_rtmidi-1.4.9-cp39-cp39-macosx_10_9_x86_64.whl", hash = "sha256:04bd95dd86fef3fe8d72838f719d31875f107a842127024bfe276617961eed5d"},
+    {file = "python_rtmidi-1.4.9-cp39-cp39-win32.whl", hash = "sha256:2286ab096a5603430ab1e1a664fe4d96acc40f9443f44c27e911dfad85ea3ac8"},
+    {file = "python_rtmidi-1.4.9-cp39-cp39-win_amd64.whl", hash = "sha256:54d40cb794a6b079105bfb923ab0b4d5f041e9eef5dc5cce25480e4c3e3fc2f6"},
+]
 pyudev = [
     {file = "pyudev-0.23.2-py3-none-any.whl", hash = "sha256:50d94bef0669f9aabd323a2259be67e8d49b9ebab9eae27b2cf8262767f9a2ae"},
     {file = "pyudev-0.23.2.tar.gz", hash = "sha256:32ae3585b320a51bc283e0a04000fd8a25599edb44541e2f5034f6afee5d15cc"},
@@ -2128,7 +2156,8 @@ skybrush-ext-sidekick = [
     {file = "skybrush_ext_sidekick-1.0.0-py3-none-any.whl", hash = "md5:c82b486ba9aa294192fd6866e0f9bb3e"},
 ]
 skybrush-ext-timecode = [
-    {file = "skybrush_ext_timecode-0.1.0-py3-none-any.whl", hash = "sha256:1f576dd267ce25dd59136cf25237a59911f9109c0d3e95e21d3610a85e210d3e"},
+    {file = "skybrush-ext-timecode-1.0.1.tar.gz", hash = "md5:173eaa9676ebdc3282a6559cc65226dd"},
+    {file = "skybrush_ext_timecode-1.0.1-py3-none-any.whl", hash = "md5:1af2bb209ea550e7f0add1375bc6de3a"},
 ]
 sniffio = [
     {file = "sniffio-1.2.0-py3-none-any.whl", hash = "sha256:471b71698eac1c2112a40ce2752bb2f4a4814c22a54a3eed3676bc0f5ca9f663"},

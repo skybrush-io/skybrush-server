@@ -58,7 +58,6 @@ aio-usb-hotplug = "^5.0.0"
 pyserial = "^3.4"
 compose = "^1.1.1"
 adrenaline = "^1.0.0"
-oscpy = ">=0.6.0"
 httpx = ">=0.18.2"
 igrf-model = "^1.1.1"
 

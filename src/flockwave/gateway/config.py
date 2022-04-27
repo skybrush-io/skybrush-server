@@ -41,7 +41,6 @@ WORKER_CONFIG = {
         "http_server": {"host": "", "port": "@PORT@"},
         "show": {},
         "socketio": {},
-        "smpte_timecode": {"connection": "midi:IAC Driver Bus 1"},
         "system_clock": {},
         "virtual_uavs": {
             "arm_after_boot": True,

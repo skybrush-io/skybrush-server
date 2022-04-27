@@ -97,7 +97,6 @@ EXTENSIONS = {
         "default_start_method": "rc"  # set to "auto" if you typically start shows automatically and not via a remote controller
     },
     "socketio": {},
-    # "smpte_timecode": {"connection": "midi:IAC Driver Bus 1"},
     "ssdp": {},
     "system_clock": {},
     "tcp": {},
@@ -120,11 +119,3 @@ EXTENSIONS = {
         # "route": "/webui",
     },
 }
-
-# smpte_timecode seems to have some problems on a Mac - it consumes 15% CPU
-# even when idle, and it starts throwing messages like this on the console
-# after a while if there is no MIDI device:
-#
-# MidiInCore::initialize: error creating OS-X MIDI client object (-50)
-if on_mac:
-    EXTENSIONS.pop("smpte_timecode", None)

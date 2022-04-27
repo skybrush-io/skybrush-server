@@ -269,7 +269,7 @@ python-versions = "*"
 
 [[package]]
 name = "cryptography"
-version = "36.0.2"
+version = "37.0.0"
 description = "cryptography is a package which provides cryptographic recipes and primitives to Python developers."
 category = "main"
 optional = true
@@ -284,7 +284,7 @@ docstest = ["pyenchant (>=1.6.11)", "twine (>=1.12.0)", "sphinxcontrib-spelling 
 pep8test = ["black", "flake8", "flake8-import-order", "pep8-naming"]
 sdist = ["setuptools_rust (>=0.11.4)"]
 ssh = ["bcrypt (>=3.1.5)"]
-test = ["pytest (>=6.2.0)", "pytest-cov", "pytest-subtests", "pytest-xdist", "pretend", "iso8601", "pytz", "hypothesis (>=1.11.4,!=3.79.2)"]
+test = ["pytest (>=6.2.0)", "pytest-benchmark", "pytest-cov", "pytest-subtests", "pytest-xdist", "pretend", "iso8601", "pytz", "hypothesis (>=1.11.4,!=3.79.2)"]
 
 [[package]]
 name = "distlib"
@@ -296,26 +296,26 @@ python-versions = "*"
 
 [[package]]
 name = "flockwave-app-framework"
-version = "2.4.0"
+version = "2.4.1"
 description = "Generic app framework for CLI based apps in the Skybrush suite"
 category = "main"
 optional = false
 python-versions = ">=3.7,<4.0"
 
 [package.dependencies]
-flockwave-conn = {version = ">=2.11.3,<5.0.0", optional = true, markers = "extra == \"daemon\""}
+flockwave-conn = {version = ">=2.11.3,<6.0.0", optional = true, markers = "extra == \"daemon\""}
 flockwave-ext = {version = ">=1.5.0,<2.0.0", optional = true, markers = "extra == \"daemon\""}
 json5 = ">=0.9.6"
 trio = ">=0.17.0"
 
 [package.extras]
-daemon = ["flockwave-conn (>=2.11.3,<5.0.0)", "flockwave-ext (>=1.5.0,<2.0.0)"]
+daemon = ["flockwave-conn (>=2.11.3,<6.0.0)", "flockwave-ext (>=1.5.0,<2.0.0)"]
 console = ["urwid-uikit (>=2.0.0,<3.0.0)"]
 
 [package.source]
 type = "legacy"
-url = "https://pypi.collmot.com/simple"
-reference = "collmot"
+url = "https://pypi.fury.io/skybrush"
+reference = "fury"
 
 [[package]]
 name = "flockwave-async"
@@ -336,7 +336,7 @@ reference = "fury"
 
 [[package]]
 name = "flockwave-conn"
-version = "4.0.1"
+version = "5.0.0"
 description = "Connection objects for various data sources"
 category = "main"
 optional = false
@@ -347,23 +347,20 @@ blinker = ">=1.4,<2.0"
 flockwave-async = ">=1.0.0,<2.0.0"
 flockwave-net = {version = ">=3.0.0,<4.0.0", extras = ["async"]}
 flockwave-parsers = ">=2.0.0,<3.0.0"
-mido = {version = ">=1.2.9,<2.0.0", optional = true, markers = "extra == \"midi\""}
 netifaces = ">=0.10.9"
 pyserial = {version = ">=3.4,<4.0", optional = true, markers = "extra == \"serial\""}
-python-rtmidi = {version = ">=1.4.1,<2.0.0", optional = true, markers = "extra == \"midi\""}
 tinyrpc = {version = ">=1.0.4,<2.0.0", extras = ["msgpack"], optional = true, markers = "extra == \"rpc\""}
 trio = ">=0.18.0"
 trio-util = ">=0.5.0"
 
 [package.extras]
-midi = ["mido (>=1.2.9,<2.0.0)", "python-rtmidi (>=1.4.1,<2.0.0)"]
 serial = ["pyserial (>=3.4,<4.0)"]
 rpc = ["tinyrpc[msgpack] (>=1.0.4,<2.0.0)"]
 
 [package.source]
 type = "legacy"
-url = "https://pypi.collmot.com/simple"
-reference = "collmot"
+url = "https://pypi.fury.io/skybrush"
+reference = "fury"
 
 [[package]]
 name = "flockwave-ext"
@@ -418,8 +415,8 @@ ntrip = ["trio (>=0.19)"]
 
 [package.source]
 type = "legacy"
-url = "https://pypi.collmot.com/simple"
-reference = "collmot"
+url = "https://pypi.fury.io/skybrush"
+reference = "fury"
 
 [[package]]
 name = "flockwave-logger"
@@ -437,8 +434,8 @@ python-json-logger = ">=2.0.2,<3.0.0"
 
 [package.source]
 type = "legacy"
-url = "https://pypi.collmot.com/simple"
-reference = "collmot"
+url = "https://pypi.fury.io/skybrush"
+reference = "fury"
 
 [[package]]
 name = "flockwave-mavlink"
@@ -487,8 +484,8 @@ rpc = ["tinyrpc (>=1.0.4,<2.0.0)"]
 
 [package.source]
 type = "legacy"
-url = "https://pypi.collmot.com/simple"
-reference = "collmot"
+url = "https://pypi.fury.io/skybrush"
+reference = "fury"
 
 [[package]]
 name = "flockwave-spec"
@@ -747,18 +744,6 @@ description = "Safely add untrusted strings to HTML/XML markup."
 category = "main"
 optional = false
 python-versions = ">=3.7"
-
-[[package]]
-name = "mido"
-version = "1.2.10"
-description = "MIDI Objects for Python"
-category = "main"
-optional = false
-python-versions = "*"
-
-[package.extras]
-dev = ["check-manifest (>=0.35)", "flake8 (>=3.4.1)", "pytest (>=3.2.2)", "sphinx (>=1.6.3)", "tox (>=2.8.2)"]
-ports = ["python-rtmidi (>=1.1.0)"]
 
 [[package]]
 name = "msgpack"
@@ -1131,14 +1116,6 @@ optional = false
 python-versions = ">=3.5"
 
 [[package]]
-name = "python-rtmidi"
-version = "1.4.9"
-description = "A Python binding for the RtMidi C++ library implemented using Cython."
-category = "main"
-optional = false
-python-versions = "*"
-
-[[package]]
 name = "pyudev"
 version = "0.23.2"
 description = "A libudev binding"
@@ -1473,7 +1450,7 @@ pro = ["skybrush-ext-sidekick"]
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.8"
-content-hash = "fb5f9f1966eb3a3de1f701042759dea62f9cc4576e5e474e44869ec6e4e9ac2a"
+content-hash = "cc088ea083a1c7b8a9fde15fe63f023c6b01138684a1738c12bd21a13ec5cd46"
 
 [metadata.files]
 adrenaline = [
@@ -1676,42 +1653,44 @@ crcmod = [
     {file = "crcmod-1.7.win32-py3.1.msi", hash = "sha256:50586ab48981f11e5b117523d97bb70864a2a1af246cf6e4f5c4a21ef4611cd1"},
 ]
 cryptography = [
-    {file = "cryptography-36.0.2-cp36-abi3-macosx_10_10_universal2.whl", hash = "sha256:4e2dddd38a5ba733be6a025a1475a9f45e4e41139d1321f412c6b360b19070b6"},
-    {file = "cryptography-36.0.2-cp36-abi3-macosx_10_10_x86_64.whl", hash = "sha256:4881d09298cd0b669bb15b9cfe6166f16fc1277b4ed0d04a22f3d6430cb30f1d"},
-    {file = "cryptography-36.0.2-cp36-abi3-manylinux_2_12_x86_64.manylinux2010_x86_64.whl", hash = "sha256:ea634401ca02367c1567f012317502ef3437522e2fc44a3ea1844de028fa4b84"},
-    {file = "cryptography-36.0.2-cp36-abi3-manylinux_2_17_aarch64.manylinux2014_aarch64.manylinux_2_24_aarch64.whl", hash = "sha256:7be666cc4599b415f320839e36367b273db8501127b38316f3b9f22f17a0b815"},
-    {file = "cryptography-36.0.2-cp36-abi3-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:8241cac0aae90b82d6b5c443b853723bcc66963970c67e56e71a2609dc4b5eaf"},
-    {file = "cryptography-36.0.2-cp36-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:7b2d54e787a884ffc6e187262823b6feb06c338084bbe80d45166a1cb1c6c5bf"},
-    {file = "cryptography-36.0.2-cp36-abi3-manylinux_2_24_x86_64.whl", hash = "sha256:c2c5250ff0d36fd58550252f54915776940e4e866f38f3a7866d92b32a654b86"},
-    {file = "cryptography-36.0.2-cp36-abi3-musllinux_1_1_aarch64.whl", hash = "sha256:ec6597aa85ce03f3e507566b8bcdf9da2227ec86c4266bd5e6ab4d9e0cc8dab2"},
-    {file = "cryptography-36.0.2-cp36-abi3-musllinux_1_1_x86_64.whl", hash = "sha256:ca9f686517ec2c4a4ce930207f75c00bf03d94e5063cbc00a1dc42531511b7eb"},
-    {file = "cryptography-36.0.2-cp36-abi3-win32.whl", hash = "sha256:f64b232348ee82f13aac22856515ce0195837f6968aeaa94a3d0353ea2ec06a6"},
-    {file = "cryptography-36.0.2-cp36-abi3-win_amd64.whl", hash = "sha256:53e0285b49fd0ab6e604f4c5d9c5ddd98de77018542e88366923f152dbeb3c29"},
-    {file = "cryptography-36.0.2-pp37-pypy37_pp73-manylinux_2_12_x86_64.manylinux2010_x86_64.whl", hash = "sha256:32db5cc49c73f39aac27574522cecd0a4bb7384e71198bc65a0d23f901e89bb7"},
-    {file = "cryptography-36.0.2-pp37-pypy37_pp73-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:d2b3d199647468d410994dbeb8cec5816fb74feb9368aedf300af709ef507e3e"},
-    {file = "cryptography-36.0.2-pp37-pypy37_pp73-manylinux_2_24_x86_64.whl", hash = "sha256:da73d095f8590ad437cd5e9faf6628a218aa7c387e1fdf67b888b47ba56a17f0"},
-    {file = "cryptography-36.0.2-pp38-pypy38_pp73-macosx_10_10_x86_64.whl", hash = "sha256:0a3bf09bb0b7a2c93ce7b98cb107e9170a90c51a0162a20af1c61c765b90e60b"},
-    {file = "cryptography-36.0.2-pp38-pypy38_pp73-manylinux_2_12_x86_64.manylinux2010_x86_64.whl", hash = "sha256:8897b7b7ec077c819187a123174b645eb680c13df68354ed99f9b40a50898f77"},
-    {file = "cryptography-36.0.2-pp38-pypy38_pp73-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:82740818f2f240a5da8dfb8943b360e4f24022b093207160c77cadade47d7c85"},
-    {file = "cryptography-36.0.2-pp38-pypy38_pp73-manylinux_2_24_x86_64.whl", hash = "sha256:1f64a62b3b75e4005df19d3b5235abd43fa6358d5516cfc43d87aeba8d08dd51"},
-    {file = "cryptography-36.0.2-pp38-pypy38_pp73-win_amd64.whl", hash = "sha256:e167b6b710c7f7bc54e67ef593f8731e1f45aa35f8a8a7b72d6e42ec76afd4b3"},
-    {file = "cryptography-36.0.2.tar.gz", hash = "sha256:70f8f4f7bb2ac9f340655cbac89d68c527af5bb4387522a8413e841e3e6628c9"},
+    {file = "cryptography-37.0.0-cp36-abi3-macosx_10_10_universal2.whl", hash = "sha256:d97479d943d549d4a78f044b0620a7d349191ed40933ffabff1cc5875e20682c"},
+    {file = "cryptography-37.0.0-cp36-abi3-macosx_10_10_x86_64.whl", hash = "sha256:d886b2c9f8d1ab0916673bc3c89dd04fc6e6591861872c9f08402b0ab2843b82"},
+    {file = "cryptography-37.0.0-cp36-abi3-manylinux_2_12_x86_64.manylinux2010_x86_64.whl", hash = "sha256:ebdc9c4b3577bb76b0defebe4ef8b866da5228a1c53fbbf394b7677fe292fee9"},
+    {file = "cryptography-37.0.0-cp36-abi3-manylinux_2_17_aarch64.manylinux2014_aarch64.manylinux_2_24_aarch64.whl", hash = "sha256:db1b9516e3072e0342287e06779bec84118bd780f794c8c07bd5da142a526103"},
+    {file = "cryptography-37.0.0-cp36-abi3-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:d426093df7f00de859bad45d6a09fdab9b8e4c6e46ea897dd0a302b94c7f6871"},
+    {file = "cryptography-37.0.0-cp36-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:57273f69b334c6d30f4d27abc7fb9c919ef4c6193af64420572808302bb45768"},
+    {file = "cryptography-37.0.0-cp36-abi3-manylinux_2_24_x86_64.whl", hash = "sha256:bc54780dd8f7236874ac29fc155c5cf811f7d910e5f0575932a38bdaac3b5146"},
+    {file = "cryptography-37.0.0-cp36-abi3-musllinux_1_1_aarch64.whl", hash = "sha256:183d6a540659c6a729c08971f09f3fb1044c89dd5af9d6f18da824a071f5445d"},
+    {file = "cryptography-37.0.0-cp36-abi3-musllinux_1_1_x86_64.whl", hash = "sha256:2dfd682771c04c7e85a4b4ea6aa1682a3fd6f4d9845468fa6ba512b80a560a8d"},
+    {file = "cryptography-37.0.0-cp36-abi3-win32.whl", hash = "sha256:2d3d8a69d262ba27923466194bef637150aef286b11b160e087992206ac32f0c"},
+    {file = "cryptography-37.0.0-cp36-abi3-win_amd64.whl", hash = "sha256:710b9041fb97cc576e288b5f96583578ed352dd60608a402045405c388522b94"},
+    {file = "cryptography-37.0.0-pp37-pypy37_pp73-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:bf893131cd79dc8eaf4940b3aa2f4a68eba050471f5deacfaedea6aab04f574f"},
+    {file = "cryptography-37.0.0-pp37-pypy37_pp73-manylinux_2_24_x86_64.whl", hash = "sha256:d119feb387ce2df9bfb92e5785df9094325cfa974e2e6aa08c8e4a8b56786afe"},
+    {file = "cryptography-37.0.0-pp38-pypy38_pp73-macosx_10_10_x86_64.whl", hash = "sha256:1af4f31870ef2180aba1c04f6d957461a570c8cabcc4b5ac7fabf2b4a0364ea0"},
+    {file = "cryptography-37.0.0-pp38-pypy38_pp73-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:4c52cb32ea0b9798234823d37c93cab8004c574b2d224f048cd5829d0639387b"},
+    {file = "cryptography-37.0.0-pp38-pypy38_pp73-manylinux_2_24_x86_64.whl", hash = "sha256:e86734f28656f6fd5993ab32bd2d2680c3b8341d6f875faf5212bc78715db2a4"},
+    {file = "cryptography-37.0.0-pp38-pypy38_pp73-win_amd64.whl", hash = "sha256:eee79c6c16949ed817c8cf288e6e124c4b8996e3312d9e7884c71cf9bdda212e"},
+    {file = "cryptography-37.0.0-pp39-pypy39_pp73-macosx_10_10_x86_64.whl", hash = "sha256:5c2517a2c58213ee62b36ee9ece4a710179ddb07db90e31d7619e7ea472c9dc3"},
+    {file = "cryptography-37.0.0-pp39-pypy39_pp73-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:8921428ca6403d7eb52ee0e728e8b02601060a5791f6d64c8a3a12b5722064af"},
+    {file = "cryptography-37.0.0-pp39-pypy39_pp73-manylinux_2_24_x86_64.whl", hash = "sha256:0234bdb18620ed16bf186f0591aea0bbc321ecaf59c859d5f5cbe7b646d8377e"},
+    {file = "cryptography-37.0.0-pp39-pypy39_pp73-win_amd64.whl", hash = "sha256:cab59c774125596fa72f1decc5805894313b40f370a7c75597e37f0211027944"},
+    {file = "cryptography-37.0.0.tar.gz", hash = "sha256:5a761fc1ff0eae360a80656bea462c3163dfaa8093b2fa0f72af929217b14a97"},
 ]
 distlib = [
     {file = "distlib-0.3.4-py2.py3-none-any.whl", hash = "sha256:6564fe0a8f51e734df6333d08b8b94d4ea8ee6b99b5ed50613f731fd4089f34b"},
     {file = "distlib-0.3.4.zip", hash = "sha256:e4b58818180336dc9c529bfb9a0b58728ffc09ad92027a3f30b7cd91e3458579"},
 ]
 flockwave-app-framework = [
-    {file = "flockwave-app-framework-2.4.0.tar.gz", hash = "md5:4e703ad3d69ff0b20c61e6f71e2d958d"},
-    {file = "flockwave_app_framework-2.4.0-py3-none-any.whl", hash = "md5:127dec449ec04bc57bf4b8bf1b8907b9"},
+    {file = "flockwave-app-framework-2.4.1.tar.gz", hash = "sha256:05187b491379863f028544eb4b038503d17bb2397421e267803427055b3e9daa"},
+    {file = "flockwave_app_framework-2.4.1-py3-none-any.whl", hash = "sha256:204f0d1b2ed71db1f982405bf51f6fce349d82d739e31469e2b98fd2536db643"},
 ]
 flockwave-async = [
     {file = "flockwave-async-1.3.1.tar.gz", hash = "sha256:1981ce4582ccc815b73fe41142fc869c718e76eaca726456c2e468edece0ad14"},
     {file = "flockwave_async-1.3.1-py3-none-any.whl", hash = "sha256:7e3d46e85f68941c3abd5e9b63ceec30b896ceedd5074e0eb6d99818f8557cad"},
 ]
 flockwave-conn = [
-    {file = "flockwave-conn-4.0.1.tar.gz", hash = "md5:1982873635c4dba4787bd8f191500b36"},
-    {file = "flockwave_conn-4.0.1-py3-none-any.whl", hash = "md5:0e66d52fbad4e345b70dc47356df3eb0"},
+    {file = "flockwave-conn-5.0.0.tar.gz", hash = "sha256:3b125d7539568fc59b8afc8604a4cd640b70fb23e45a5f2ed6c9b2e6514d5ab4"},
+    {file = "flockwave_conn-5.0.0-py3-none-any.whl", hash = "sha256:2eba2ad0f3c7ecc5db8856c289ef13947c86e80cb65231d081b022ef10244bb6"},
 ]
 flockwave-ext = [
     {file = "flockwave-ext-1.14.3.tar.gz", hash = "sha256:c2b3cf66039a2adfe80edf2b80f8b46a8969b87d4d4f571eb7757ed0c867b6b8"},
@@ -1722,12 +1701,12 @@ flockwave-flockctrl = [
     {file = "flockwave_flockctrl-2.1.1-py3-none-any.whl", hash = "md5:1bf8ed3fde9bcedb435dbf5c847d8c5f"},
 ]
 flockwave-gps = [
-    {file = "flockwave-gps-2.2.0.tar.gz", hash = "md5:913d01de1fa043e26793c046922332a7"},
-    {file = "flockwave_gps-2.2.0-py3-none-any.whl", hash = "md5:7d2f10ed74644f05ffb50937bd2314a3"},
+    {file = "flockwave-gps-2.2.0.tar.gz", hash = "sha256:04bc995747995ba90d20aa4d1c486a42766f18fde2aa294a51ace49d7e1f4ca5"},
+    {file = "flockwave_gps-2.2.0-py3-none-any.whl", hash = "sha256:618ba4e0108bcafad09aa7b324eae1d78bf2da5071f33783fc2cd0e9a1b880d8"},
 ]
 flockwave-logger = [
-    {file = "flockwave-logger-1.8.0.tar.gz", hash = "md5:02d5fa953c9a5b957dbc1820e71edb06"},
-    {file = "flockwave_logger-1.8.0-py3-none-any.whl", hash = "md5:f2028fb3b2628ce972d9db233529a68d"},
+    {file = "flockwave-logger-1.8.0.tar.gz", hash = "sha256:ffd1f2cd104be79747b6a6ca8620dce2bcf822c893936edf6d42e3b9a28b4661"},
+    {file = "flockwave_logger-1.8.0-py3-none-any.whl", hash = "sha256:6990f2761043bbd7a651c696611af0594fc6d958fcfdf82d0184965e1fa8a017"},
 ]
 flockwave-mavlink = [
     {file = "flockwave-mavlink-0.1.0.tar.gz", hash = "sha256:49481f6f3affecc97224dfb3bdf8ae9b29897c41abea63224690123ab6b4c959"},
@@ -1738,8 +1717,8 @@ flockwave-net = [
     {file = "flockwave_net-3.0.1-py3-none-any.whl", hash = "sha256:58af9099fed7cd45acf1648332259532bf37e29208dfb32b716db24c5ad7676b"},
 ]
 flockwave-parsers = [
-    {file = "flockwave-parsers-2.0.1.tar.gz", hash = "md5:ae9dc623ae0e553ca2daa0be6ecccc9d"},
-    {file = "flockwave_parsers-2.0.1-py3-none-any.whl", hash = "md5:e3d000905186b992a20e1a75c20a7a14"},
+    {file = "flockwave-parsers-2.0.1.tar.gz", hash = "sha256:ecea350a39e8ea89f7834cdc271962a6f5f1117b8106cde01b21cdeb95ebcb68"},
+    {file = "flockwave_parsers-2.0.1-py3-none-any.whl", hash = "sha256:9c4e652d21ffc3b2a799024b8b1c947e08fd327671c27522a0ad1948fd6def4e"},
 ]
 flockwave-spec = [
     {file = "flockwave-spec-1.60.0.tar.gz", hash = "sha256:c6cd7e36caec366657faf3b8b04b90cf11829cdc85fd17a7fdccd9733a55b380"},
@@ -1864,10 +1843,6 @@ markupsafe = [
     {file = "MarkupSafe-2.1.1-cp39-cp39-win32.whl", hash = "sha256:d4306c36ca495956b6d568d276ac11fdd9c30a36f1b6eb928070dc5360b22e1c"},
     {file = "MarkupSafe-2.1.1-cp39-cp39-win_amd64.whl", hash = "sha256:46d00d6cfecdde84d40e572d63735ef81423ad31184100411e6e3388d405e247"},
     {file = "MarkupSafe-2.1.1.tar.gz", hash = "sha256:7f91197cc9e48f989d12e4e6fbc46495c446636dfc81b9ccf50bb0ec74b91d4b"},
-]
-mido = [
-    {file = "mido-1.2.10-py2.py3-none-any.whl", hash = "sha256:0e618232063e0a220249da4961563c7636fea00096cfb3e2b87a4231f0ac1a9e"},
-    {file = "mido-1.2.10.tar.gz", hash = "sha256:17b38a8e4594497b850ec6e78b848eac3661706bfc49d484a36d91335a373499"},
 ]
 msgpack = [
     {file = "msgpack-1.0.3-cp310-cp310-macosx_10_9_universal2.whl", hash = "sha256:96acc674bb9c9be63fa8b6dabc3248fdc575c4adc005c440ad02f87ca7edd079"},
@@ -2091,21 +2066,6 @@ python-dotenv = [
 python-json-logger = [
     {file = "python-json-logger-2.0.2.tar.gz", hash = "sha256:202a4f29901a4b8002a6d1b958407eeb2dd1d83c18b18b816f5b64476dde9096"},
     {file = "python_json_logger-2.0.2-py3-none-any.whl", hash = "sha256:99310d148f054e858cd5f4258794ed6777e7ad2c3fd7e1c1b527f1cba4d08420"},
-]
-python-rtmidi = [
-    {file = "python-rtmidi-1.4.9.tar.gz", hash = "sha256:bfeb4ed99d0cccf6fa2837566907652ded7adc1c03b69f2160c9de4082301302"},
-    {file = "python_rtmidi-1.4.9-cp36-cp36m-macosx_10_6_intel.whl", hash = "sha256:8f7e154681c5d6ed7228ce8639708592da758ef4c0f575f7020854e07ca6478b"},
-    {file = "python_rtmidi-1.4.9-cp36-cp36m-win32.whl", hash = "sha256:6f495672ec76700400d4dff6f8848dbd52ca60301ed6011a6a1b3a9e95a7a07e"},
-    {file = "python_rtmidi-1.4.9-cp36-cp36m-win_amd64.whl", hash = "sha256:4d75788163327f6ac1f898c29e3b4527da83dbc5bab5a7e614b6a4385fde3231"},
-    {file = "python_rtmidi-1.4.9-cp37-cp37m-macosx_10_9_x86_64.whl", hash = "sha256:d201516bb1c64511e7e4de50533f6b828072113e3c26f3f5b657f11b90252073"},
-    {file = "python_rtmidi-1.4.9-cp37-cp37m-win32.whl", hash = "sha256:0f5409e1b2e92cfe377710a0ea5c450c58fda8b52ec4bf4baf517aa731d9f6a6"},
-    {file = "python_rtmidi-1.4.9-cp37-cp37m-win_amd64.whl", hash = "sha256:3d4b7fdb477d8036d51cce281b303686114ae676f1c83693db963ab01db11cf5"},
-    {file = "python_rtmidi-1.4.9-cp38-cp38-macosx_10_9_x86_64.whl", hash = "sha256:5dad7a28035eea9e24aaab4fcb756cd2b78c5b14835aa64750cb4062f77ec169"},
-    {file = "python_rtmidi-1.4.9-cp38-cp38-win32.whl", hash = "sha256:7d27d0a70e85d991f1451f286416cf5ef4514292b027155bf91dcae0b8c0d5d2"},
-    {file = "python_rtmidi-1.4.9-cp38-cp38-win_amd64.whl", hash = "sha256:69907663e0f167fcf3fc1632a792419d0d9d00550f94dca39370ebda3bc999db"},
-    {file = "python_rtmidi-1.4.9-cp39-cp39-macosx_10_9_x86_64.whl", hash = "sha256:04bd95dd86fef3fe8d72838f719d31875f107a842127024bfe276617961eed5d"},
-    {file = "python_rtmidi-1.4.9-cp39-cp39-win32.whl", hash = "sha256:2286ab096a5603430ab1e1a664fe4d96acc40f9443f44c27e911dfad85ea3ac8"},
-    {file = "python_rtmidi-1.4.9-cp39-cp39-win_amd64.whl", hash = "sha256:54d40cb794a6b079105bfb923ab0b4d5f041e9eef5dc5cce25480e4c3e3fc2f6"},
 ]
 pyudev = [
     {file = "pyudev-0.23.2-py3-none-any.whl", hash = "sha256:50d94bef0669f9aabd323a2259be67e8d49b9ebab9eae27b2cf8262767f9a2ae"},

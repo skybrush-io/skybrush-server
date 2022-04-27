@@ -48,6 +48,7 @@ flockwave-parsers = {version = "^2.0.1", source = "fury"}
 flockwave-spec = {version = "^1.60.0", source = "fury"}
 skybrush-ext-flockctrl = {version = "^1.0.1", source = "collmot", optional = true}
 skybrush-ext-sidekick = {version = "^1.0.0", source = "collmot", optional = true}
+skybrush-ext-timecode = {version = "^1.0.0", source = "collmot", optional = true}
 pyledctrl = {version = "^4.0.0", source = "fury"}
 aiocflib = "^2.2.0"
 appdirs = "^1.4.4"
@@ -70,9 +71,9 @@ pyinstaller = {version = "^4.0", extras = ["encryption"]}
 pynsist = "^2.7"
 
 [tool.poetry.extras]
-all = ["skybrush-ext-flockctrl", "skybrush-ext-sidekick"]
-collmot = ["skybrush-ext-flockctrl"]
-pro = ["skybrush-ext-sidekick"]
+all = ["skybrush-ext-flockctrl", "skybrush-ext-sidekick", "skybrush-ext-timecode"]
+collmot = ["skybrush-ext-flockctrl", "skybrush-ext-timecode"]
+pro = ["skybrush-ext-sidekick", "skybrush-ext-timecode"]
 
 [tool.poetry.scripts]
 skybrushd = "flockwave.server.launcher:start"

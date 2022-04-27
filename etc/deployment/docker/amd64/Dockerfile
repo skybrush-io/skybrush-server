@@ -20,10 +20,6 @@ COPY requirements-main.txt ./
 # Create a virtual environment
 RUN python -m venv .venv
 
-# Remove rtmidi-related dependencies from the requirements; we don't need MIDI
-# stuff in the container
-RUN sed -i -e 's/^python-rtmidi.*//' requirements-main.txt
-
 # Run the build script
 ENV PIP_NO_CACHE_DIR=1
 RUN .venv/bin/pip install wheel

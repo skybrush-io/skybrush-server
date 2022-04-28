@@ -123,7 +123,10 @@ class VirtualUAVProviderExtension(UAVExtension):
 
         # Get hold of the 'radiation' extension and associate it to all our
         # UAVs
-        radiation_ext = self.app.extension_manager.import_api("radiation")
+        try:
+            radiation_ext = self.app.extension_manager.import_api("radiation")
+        except Exception:
+            radiation_ext = None
         for uav in self.uavs:
             uav.radiation_ext = radiation_ext
 

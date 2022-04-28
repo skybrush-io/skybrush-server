@@ -10,10 +10,6 @@ locally, create a configuration file containing this:
     del EXTENSIONS["extension_to_disable"]
 """
 
-import platform
-
-on_mac = platform.system().lower() == "darwin"
-
 # Label that is used to identify the server in SSDP discovery requests
 SERVER_NAME = "Skybrush server"
 
@@ -24,7 +20,7 @@ COMMAND_EXECUTION_MANAGER = {"timeout": 90}
 EXTENSIONS = {
     "auth": {},
     "auth_basic": {"enabled": False},
-    "beacon": {"enabled": False},
+    "beacon": {},
     "console_status": {},
     "crazyflie": {
         "id_format": "{0:02}",
@@ -37,8 +33,6 @@ EXTENSIONS = {
     },
     "debug": {
         "enabled": False,
-        # "host": "localhost",
-        # "port": 35424,
     },
     "dock": {"enabled": False, "listener": "unix:/tmp/skybrushd-dock.sock"},
     "frontend": {},
@@ -66,11 +60,6 @@ EXTENSIONS = {
         "system_id": 254,
     },
     "missions": {},
-    "radiation": {
-        "enabled": False,
-        "sources": [{"lat": 47.473703, "lon": 19.061739, "intensity": 50000}],
-        "background_intensity": 10,
-    },
     "rc": {"enabled": False},
     "rc_udp": {"enabled": False},
     "rtk": {

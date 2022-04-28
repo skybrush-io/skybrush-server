@@ -26,9 +26,6 @@ async def run(app, configuration, logger):
 
         if port is not None:
             on_message = setup_debugging_server(app, stack, debug_clients=True)
-
-            # (host or None) is needed below because an empty string as the
-            # hostname is not okay on Linux
             await run_debug_port(host or "", port, on_message=on_message, log=log)
         else:
             await sleep_forever()

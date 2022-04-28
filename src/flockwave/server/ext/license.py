@@ -122,8 +122,8 @@ class License(metaclass=ABCMeta):
                 {
                     "type": "drones",
                     "label": "Maximum number of drones",
-                    "secondaryLabel": str(num_drones),
-                    "parameters": {"maxCount": num_drones},
+                    "secondaryLabel": str(int(num_drones)),
+                    "parameters": {"maxCount": int(num_drones)},
                 }
             )
 

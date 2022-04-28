@@ -34,7 +34,6 @@ EXTENSIONS = {
     "debug": {
         "enabled": False,
     },
-    "dock": {"enabled": False, "listener": "unix:/tmp/skybrushd-dock.sock"},
     "frontend": {},
     "gps": {
         "connection": "gpsd",

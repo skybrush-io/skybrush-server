@@ -1,59 +1,48 @@
-# Skybrush Backend Server Installation Guide
+# Skybrush Server
 
-## Linux
+Skybrush Server is the server component behind the Skybrush ecosystem; it handles
+communication channels to drones and provides an abstraction layer on top of them
+so frontend apps (like Skybrush Live) do not need to know what type of drones
+they are communicating with.
 
-1. Install `pipenv`.
+The server also provides additional facilities like clocks, RTK correction
+sources, weather providers and so on. It is extensible via extension modules
+that can be loaded automatically at startup or dynamically while the server is
+running. In fact, most of the functionality in the server is implemented in the
+form of extensions; see the `flockwave.server.ext` module in the source code
+for the list of built-in extensions. You may also develop your own extensions to
+extend the functionality of the server.
 
-2. I said install `pipenv`. :) Really. It manages a separate virtual environment
-   for a given Python project so it has nearly zero dependencies on the system
-   Python. You won't pollute the system Python with the dependencies of the
-   Skybrush backend server and everyone will be happier.
+## Installation
 
-3. Check out the source code of the backend server.
+1. Install `poetry`. `poetry` will manage a separate virtual environment for this
+   project to keep things nicely separated. You won't pollute the system Python
+   with the dependencies of the Skybrush server and everyone will be happier.
+   See https://python-poetry.org/ for installation instructions.
 
-4. Run `pipenv install`.
+2. Check out the source code of the server.
 
-5. Run `pipenv run start`.
+3. Run `poetry install` to install all the dependencies and the server itself
+   in a separate virtualenv. The virtualenv will be created in a folder named
+   `.venv` in the project folder.
 
-If you want a single-file executable that includes a bundled Python interpreter
-and all the dependencies, you can create one with PyInstaller:
+4. Run `poetry run skybrushd` to start the server.
 
-1. Run `pipenv install --dev`.
+## Documentation
 
-2. Run `pipenv run pyinstaller skybrushd.spec`.
+- [User guide](https://doc.collmot.com/public/skybrush-live-doc/latest/)
 
-PyInstaller will create a single-file distribution in `dist/skybrushd`.
+## License
 
-## Docker
+Skybrush Server is free software: you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free Software
+Foundation, either version 3 of the License, or (at your option) any later
+version.
 
-You can build a Docker container on Linux with the following command line:
+Skybrush Server is distributed in the hope that it will be useful, but WITHOUT
+ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
+more details.
 
-```sh
-$ docker build -t docker.collmot.com/skybrush-server:latest \
-    -f etc/deployment/docker/amd64/Dockerfile \
-    --build-arg GIT_ACCESS_TOKEN_USERNAME=username \
-	--build-arg GIT_ACCESS_TOKEN_PASSWORD=password .
-```
-
-Make sure you replace the username and the password in the command line with a
-personal access token that you can set up on the web user interface of
-`git.collmot.com`. This is needed so Docker can access the source code of
-several of our Python modules during the build process.
-
-To test the container, run this:
-
-```sh
-$ docker run -p 5000:5000 -p 4242:4242/udp --rm docker.collmot.com/skybrush-server:latest
-```
-
-You may also need to map additional ports depending on your use-case; port 5000 is the
-Skybrush server itself, while UDP port 4242 is the one where our drones communicate
-with each other.
-
-The configuration of the server in the Docker container may be overridden
-by creating a folder and placing a file named `skybrush.cfg` in it, and then
-mounting the folder at the `/data` path in the container:
-
-```sh
-$ docker run -p 5000:5000 -p 4242:4242/udp -v /path/to/folder:/data --rm docker.collmot.com/skybrush-server:latest
-```
+You should have received a copy of the GNU General Public License along with
+this program. If not, see <https://www.gnu.org/licenses/>.

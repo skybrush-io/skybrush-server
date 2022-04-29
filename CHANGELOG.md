@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- The source code of the server is now licensed under the GNU General Public
+  License, version 3 or later.
+
 ### Fixed
 
 - License module now prints the maximum number of drones if there is such a

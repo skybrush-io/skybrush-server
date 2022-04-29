@@ -24,6 +24,7 @@ from typing import (
     FrozenSet,
     Iterable,
     Iterator,
+    List,
     Optional,
     Sequence,
     Tuple,
@@ -82,6 +83,8 @@ class MAVLinkNetwork:
     log: Logger
     manager: CommunicationManager[MAVLinkMessageSpecification, Any]
 
+    _connections: List[Connection]
+    _statustext_targets: FrozenSet[str]
     _uav_addresses: Dict[MAVLinkUAV, Any]
     _uavs: Dict[str, MAVLinkUAV]
 
@@ -112,7 +115,7 @@ class MAVLinkNetwork:
         system_id: int = 255,
         id_formatter: Callable[[str, str], str] = "{0}".format,
         packet_loss: float = 0,
-        statustext_targets: FrozenSet[str] = None,
+        statustext_targets: Optional[FrozenSet[str]] = None,
         routing: Optional[Dict[str, int]] = None,
     ):
         """Constructor.
@@ -806,7 +809,7 @@ class MAVLinkNetwork:
         if not self._connections:
             return
 
-        def register_by_index(alias: Channel, index: Optional[int]) -> str:
+        def register_by_index(alias: str, index: Optional[int]) -> str:
             if index is None or index < 0 or index >= len(connection_names):
                 # No such channel, just fall back to the primary one
                 index = 0

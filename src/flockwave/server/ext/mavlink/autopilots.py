@@ -495,6 +495,8 @@ class ArduPilot(Autopilot):
         24: ("zigzag",),
         25: ("system ID",),
         26: ("heli autorotate", "autorotate"),
+        27: ("auto RTH",),
+        28: ("turtle",),
     }
 
     _geofence_actions = {

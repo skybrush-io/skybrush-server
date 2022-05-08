@@ -29,7 +29,7 @@ class WGS84(object):
     ECCENTRICITY = (FLATTENING * (2 - FLATTENING)) ** 0.5
 
     #: Square of the eccentricity of Earth in the WGS ellipsoid model
-    ECCENTRICITY_SQUARED = ECCENTRICITY ** 2
+    ECCENTRICITY_SQUARED = ECCENTRICITY**2
 
     #: Polar radius of Earth in the WGS ellipsoid model
     POLAR_RADIUS_IN_METERS = EQUATORIAL_RADIUS_IN_METERS * (1 - FLATTENING)

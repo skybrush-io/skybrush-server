@@ -87,7 +87,7 @@ class Poly4D:
         for poly, scale in all_polys_and_scales:
             # Rescale the argument of the parametric curve to the [0; 1] range
             if self.duration != 1:
-                poly = [x * (self.duration ** i) for i, x in enumerate(poly)]
+                poly = [x * (self.duration**i) for i, x in enumerate(poly)]
 
             # Encode polynomial coefficients in Bernstein form
             format, data = self._encode_polynomial_compressed(poly, scale)

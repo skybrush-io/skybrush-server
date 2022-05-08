@@ -556,7 +556,7 @@ class DeviceTreePath(object):
     style.
     """
 
-    def __init__(self, path=u"/"):
+    def __init__(self, path="/"):
         """Constructor.
 
         Parameters:
@@ -583,17 +583,17 @@ class DeviceTreePath(object):
         Returns:
             str: the path, formatted as a string
         """
-        return u"/".join(self._parts)
+        return "/".join(self._parts)
 
     @path.setter
     def path(self, value):
-        parts = value.split(u"/")
-        if parts[0] != u"":
+        parts = value.split("/")
+        if parts[0] != "":
             raise ValueError("path must start with a slash")
-        if parts[-1] == u"":
+        if parts[-1] == "":
             parts.pop()
         try:
-            parts.index(u"", 1)
+            parts.index("", 1)
         except ValueError:
             # This is okay, this is what we wanted
             pass
@@ -823,7 +823,7 @@ class DeviceTreeSubscriptionManager:
         tree: DeviceTree,
         *,
         client_registry: Optional["ClientRegistry"],
-        message_hub: "MessageHub"
+        message_hub: "MessageHub",
     ):
         """Constructor.
 
@@ -1016,7 +1016,7 @@ class DeviceTreeSubscriptionManager:
                 the path filter.
         """
         if path_filter is None:
-            path_filter = (u"/",)
+            path_filter = ("/",)
 
         result = Counter()
         for path in path_filter:

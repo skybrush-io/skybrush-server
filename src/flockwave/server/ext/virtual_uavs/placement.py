@@ -178,7 +178,7 @@ def place_drones_on_grid(
         spacing = spacing, spacing
 
     if rows is None:
-        rows = int(floor(n ** 0.5))
+        rows = int(floor(n**0.5))
 
     result = []
     x, y = 0, 0

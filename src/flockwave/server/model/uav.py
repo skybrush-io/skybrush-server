@@ -399,6 +399,33 @@ class UAVDriver(metaclass=ABCMeta):
         """Constructor."""
         self.app = None
 
+    def enter_low_power_mode(
+        self, uavs: List[UAV], transport: Optional[TransportOptions] = None
+    ):
+        """Asks the driver to send a signal to the given UAVs to enter low-power
+        mode. Each of the UAVs are assumed to be managed by this driver.
+
+        Typically, you don't need to override this method when implementing
+        a driver; override ``_enter_low_power_mode_single()`` and
+        optionally ``_enter_low_power_mode_broadcast()`` instead.
+
+        Parameters:
+            uavs: the UAVs to address with this request.
+            transport: transport options for sending the signal
+
+        Returns:
+            dict mapping UAVs to the corresponding results (which may also be
+            errors or awaitables; it is the responsibility of the caller to
+            evaluate errors and wait for awaitables)
+        """
+        return self._send_signal(
+            uavs,
+            "low-power mode request",
+            self._enter_low_power_mode_single,
+            getattr(self, "_enter_low_power_mode_broadcast", None),
+            transport=transport,
+        )
+
     def get_parameter(self, uavs: List[UAV], name: str) -> Dict[UAV, Any]:
         """Asks the driver to retrieve the current value of a parameter from
         the given UAVs.
@@ -449,6 +476,34 @@ class UAVDriver(metaclass=ABCMeta):
         """
         return self._send_signal(
             uavs, "version info request", self._request_version_info_single
+        )
+
+    def resume_from_low_power_mode(
+        self, uavs: List[UAV], transport: Optional[TransportOptions] = None
+    ):
+        """Asks the driver to send a signal to the given UAVs to resume normal
+        operation from low-power mode. Each of the UAVs are assumed to be
+        managed by this driver.
+
+        Typically, you don't need to override this method when implementing
+        a driver; override ``_resume_from_low_power_mode_single()`` and
+        optionally ``_resume_from_low_power_mode_broadcast()`` instead.
+
+        Parameters:
+            uavs: the UAVs to address with this request.
+            transport: transport options for sending the signal
+
+        Returns:
+            dict mapping UAVs to the corresponding results (which may also be
+            errors or awaitables; it is the responsibility of the caller to
+            evaluate errors and wait for awaitables)
+        """
+        return self._send_signal(
+            uavs,
+            "wakeup request",
+            self._resume_from_low_power_mode_single,
+            getattr(self, "_resume_from_low_power_mode_broadcast", None),
+            transport=transport,
         )
 
     def send_command(self, uavs: List[UAV], command: str, args=None, kwds=None):
@@ -551,10 +606,9 @@ class UAVDriver(metaclass=ABCMeta):
             uavs: the UAVs to address with this request
 
         Returns:
-            Dict[UAV,object]: dict mapping UAVs to the corresponding results
-                (which may also be errors or awaitables; it is the
-                responsibility of the caller to evaluate errors and wait for
-                awaitables)
+            dict mapping UAVs to the corresponding results (which may also be
+            errors or awaitables; it is the responsibility of the caller to
+            evaluate errors and wait for awaitables)
         """
         return self._send_signal(
             uavs,
@@ -581,10 +635,9 @@ class UAVDriver(metaclass=ABCMeta):
             transport: transport options for sending the signal
 
         Returns:
-            Dict[UAV,object]: dict mapping UAVs to the corresponding results
-                (which may also be errors or awaitables; it is the
-                responsibility of the caller to evaluate errors and wait for
-                awaitables)
+            dict mapping UAVs to the corresponding results (which may also be
+            errors or awaitables; it is the responsibility of the caller to
+            evaluate errors and wait for awaitables)
         """
         return self._send_signal(
             uavs,
@@ -609,10 +662,9 @@ class UAVDriver(metaclass=ABCMeta):
             transport: transport options for sending the signal
 
         Returns:
-            Dict[UAV,object]: dict mapping UAVs to the corresponding results
-                (which may also be errors or awaitables; it is the
-                responsibility of the caller to evaluate errors and wait for
-                awaitables)
+            dict mapping UAVs to the corresponding results (which may also be
+            errors or awaitables; it is the responsibility of the caller to
+            evaluate errors and wait for awaitables)
         """
         return self._send_signal(
             uavs,
@@ -645,10 +697,9 @@ class UAVDriver(metaclass=ABCMeta):
             transport: transport options for sending the signal
 
         Returns:
-            Dict[UAV,object]: dict mapping UAVs to the corresponding results
-                (which may also be errors or awaitables; it is the
-                responsibility of the caller to evaluate errors and wait for
-                awaitables)
+            dict mapping UAVs to the corresponding results (which may also be
+            errors or awaitables; it is the responsibility of the caller to
+            evaluate errors and wait for awaitables)
         """
         return self._send_signal(
             uavs,
@@ -675,7 +726,7 @@ class UAVDriver(metaclass=ABCMeta):
         optionally ``_send_motor_start_stop_signal_broadcast()`` instead.
 
         Parameters:
-            uavs (List[UAV]): the UAVs to address with this request.
+            uavs: the UAVs to address with this request.
             start: whether the motors should be started (`True`) or stopped
                 (`False`)
             force: whether to force the execution of the command even if it is
@@ -683,10 +734,9 @@ class UAVDriver(metaclass=ABCMeta):
             transport: transport options for sending the signal
 
         Returns:
-            Dict[UAV,object]: dict mapping UAVs to the corresponding results
-                (which may also be errors or awaitables; it is the
-                responsibility of the caller to evaluate errors and wait for
-                awaitables)
+            dict mapping UAVs to the corresponding results (which may also be
+            errors or awaitables; it is the responsibility of the caller to
+            evaluate errors and wait for awaitables)
         """
         return self._send_signal(
             uavs,
@@ -713,15 +763,15 @@ class UAVDriver(metaclass=ABCMeta):
         ``_send_reset_signal_broadcast()`` instead.
 
         Parameters:
+            uavs: the UAVs to address with this request.
             component: the component to reset. ``None`` or an empty string means
                 to reset the entire UAV.
             transport: transport options for sending the signal
 
         Returns:
-            Dict[UAV,object]: dict mapping UAVs to the corresponding results
-                (which may also be errors or awaitables; it is the
-                responsibility of the caller to evaluate errors and wait for
-                awaitables)
+            dict mapping UAVs to the corresponding results (which may also be
+            errors or awaitables; it is the responsibility of the caller to
+            evaluate errors and wait for awaitables)
         """
         return self._send_signal(
             uavs,
@@ -743,14 +793,13 @@ class UAVDriver(metaclass=ABCMeta):
         optionally ``_send_return_to_home_signal_broadcast()`` instead.
 
         Parameters:
-            uavs (List[UAV]): the UAVs to address with this request.
+            uavs: the UAVs to address with this request.
             transport: transport options for sending the signal
 
         Returns:
-            Dict[UAV,object]: dict mapping UAVs to the corresponding results
-                (which may also be errors or awaitables; it is the
-                responsibility of the caller to evaluate errors and wait for
-                awaitables)
+            dict mapping UAVs to the corresponding results (which may also be
+            errors or awaitables; it is the responsibility of the caller to
+            evaluate errors and wait for awaitables)
         """
         return self._send_signal(
             uavs,
@@ -775,10 +824,9 @@ class UAVDriver(metaclass=ABCMeta):
             transport: transport options for sending the signal
 
         Returns:
-            Dict[UAV,object]: dict mapping UAVs to the corresponding results
-                (which may also be errors or awaitables; it is the
-                responsibility of the caller to evaluate errors and wait for
-                awaitables)
+            dict mapping UAVs to the corresponding results (which may also be
+            errors or awaitables; it is the responsibility of the caller to
+            evaluate errors and wait for awaitables)
         """
         return self._send_signal(
             uavs,
@@ -931,6 +979,31 @@ class UAVDriver(metaclass=ABCMeta):
 
         return result
 
+    def _enter_low_power_mode_single(
+        self, uav: UAV, *, transport: Optional[TransportOptions] = None
+    ) -> None:
+        """Asks the driver to request a single UAV to switch to low-power mode.
+
+        May return an awaitable if sending the request takes a longer time.
+
+        The function follows the "samurai principle", i.e. "return victorious,
+        or not at all". It means that if it returns, the operation succeeded.
+        Raise an exception if the operation cannot be executed for any reason;
+        a RuntimeError is typically sufficient.
+
+        Parameters:
+            uav: the UAV to address with this request.
+
+        Raises:
+            NotImplementedError: if the operation is not supported by the
+                driver yet, but there are plans to implement it
+            NotSupportedError: if the operation is not supported by the
+                driver and will not be supported in the future either
+        """
+        # Default is NotSupportedError because it is not that common for UAVs
+        # to support low-power mode
+        raise NotSupportedError
+
     def _get_parameter_single(self, uav: UAV, name: str) -> Any:
         """Asks the driver to retrieve the value of a parameter with the given
         name from a single UAV managed by this driver.
@@ -949,6 +1022,32 @@ class UAVDriver(metaclass=ABCMeta):
                 driver and will not be supported in the future either
         """
         raise NotImplementedError
+
+    def _resume_from_low_power_mode_single(
+        self, uav: UAV, *, transport: Optional[TransportOptions] = None
+    ) -> None:
+        """Asks the driver to resume normal operation for a a single UAV that is
+        now in low-power mode.
+
+        May return an awaitable if sending the request takes a longer time.
+
+        The function follows the "samurai principle", i.e. "return victorious,
+        or not at all". It means that if it returns, the operation succeeded.
+        Raise an exception if the operation cannot be executed for any reason;
+        a RuntimeError is typically sufficient.
+
+        Parameters:
+            uav: the UAV to address with this request.
+
+        Raises:
+            NotImplementedError: if the operation is not supported by the
+                driver yet, but there are plans to implement it
+            NotSupportedError: if the operation is not supported by the
+                driver and will not be supported in the future either
+        """
+        # Default is NotSupportedError because it is not that common for UAVs
+        # to support low-power mode
+        raise NotSupportedError
 
     def _request_preflight_report_single(self, uav: UAV) -> PreflightCheckInfo:
         """Asks the driver to return a detailed report about the results of the

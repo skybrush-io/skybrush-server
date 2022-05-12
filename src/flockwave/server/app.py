@@ -8,7 +8,7 @@ from trio import (
     BrokenResourceError,
     move_on_after,
 )
-from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence, Tuple
+from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence, Tuple, Union
 
 from flockwave.app_framework import DaemonApp
 from flockwave.app_framework.configurator import AppConfigurator, Configuration
@@ -84,9 +84,17 @@ UAV_COMMAND_HANDLERS: Dict[
         "send_light_or_sound_emission_signal",
         {"duration": divide_by(1000), "transport": TransportOptions.from_json},
     ),
+    "UAV-SLEEP": (
+        "enter_low_power_mode",
+        {"transport": TransportOptions.from_json},
+    ),
     "UAV-TAKEOFF": ("send_takeoff_signal", {"transport": TransportOptions.from_json}),
     "UAV-TEST": ("test_component", None),
     "UAV-VER": ("request_version_info", None),
+    "UAV-WAKEUP": (
+        "resume_from_low_power_mode",
+        {"transport": TransportOptions.from_json},
+    ),
 }
 
 #: Constant for a dummy UAV command handler that does nothing
@@ -571,7 +579,9 @@ class SkybrushServer(DaemonApp):
         return response
 
     def find_uav_by_id(
-        self, uav_id: str, response: Optional[FlockwaveResponse] = None
+        self,
+        uav_id: str,
+        response: Optional[Union[FlockwaveResponse, FlockwaveNotification]] = None,
     ) -> Optional[UAV]:
         """Finds the UAV with the given ID in the object registry or registers
         a failure in the given response object if there is no UAV with the
@@ -754,7 +764,9 @@ class SkybrushServer(DaemonApp):
         )
 
     def _find_connection_by_id(
-        self, connection_id: str, response: Optional[FlockwaveResponse] = None
+        self,
+        connection_id: str,
+        response: Optional[Union[FlockwaveResponse, FlockwaveNotification]] = None,
     ) -> Optional[ConnectionRegistryEntry]:
         """Finds the connection with the given ID in the connection registry
         or registers a failure in the given response object if there is no
@@ -778,7 +790,9 @@ class SkybrushServer(DaemonApp):
         )
 
     def _find_object_by_id(
-        self, object_id: str, response: Optional[FlockwaveResponse] = None
+        self,
+        object_id: str,
+        response: Optional[Union[FlockwaveResponse, FlockwaveNotification]] = None,
     ) -> Optional[ModelObject]:
         """Finds the object with the given ID in the object registry or registers
         a failure in the given response object if there is no object with the
@@ -1073,10 +1087,12 @@ def handle_UAV_LIST(message: FlockwaveMessage, sender: Client, hub: MessageHub):
     "UAV-PREFLT",
     "UAV-RST",
     "UAV-RTH",
+    "UAV-SLEEP",
     "UAV-SIGNAL",
     "UAV-TAKEOFF",
     "UAV-TEST",
     "UAV-VER",
+    "UAV-WAKEUP",
 )
 async def handle_UAV_operations(
     message: FlockwaveMessage, sender: Client, hub: MessageHub

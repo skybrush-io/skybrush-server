@@ -287,6 +287,11 @@ class CrazyradioScannerTask:
 
         async with aclosing(gen):
             async for targets in gen:
+                # TODO(ntamas): we have a problem here; suspended Crazyflie
+                # drones appear in the scan, but then their task bails out
+                # immediately with a communication timeout when we try to
+                # initialize the connection. This should be fixed so we handle
+                # suspended drones gracefully.
                 result = await self._conn.scan(targets)
                 self.__class__.last_invocation_failed = False
 

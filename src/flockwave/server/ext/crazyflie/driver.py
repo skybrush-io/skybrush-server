@@ -414,6 +414,16 @@ class CrazyflieDriver(UAVDriver):
     handle_command_param = create_parameter_command_handler()
     handle_command_version = create_version_command_handler()
 
+    async def _enter_low_power_mode_single(
+        self, uav: "CrazyflieUAV", *, transport: Optional[TransportOptions]
+    ) -> None:
+        await uav.enter_low_power_mode()
+
+    async def _resume_from_low_power_mode_single(
+        self, uav: "CrazyflieUAV", *, transport: Optional[TransportOptions]
+    ) -> None:
+        await uav.resume_from_low_power_mode()
+
     def _request_preflight_report_single(
         self, uav: "CrazyflieUAV"
     ) -> PreflightCheckInfo:
@@ -504,7 +514,7 @@ class CrazyflieUAV(UAVBase):
 
     driver: CrazyflieDriver
     notify_updated: Callable[[], None]
-    notify_shutdown_or_reboot: Callable[[], None]
+    notify_shutdown_suspend_or_reboot: Callable[[], None]
     send_log_message_to_gcs: Callable[[str], None]
     uri: Optional[str]
 
@@ -519,7 +529,7 @@ class CrazyflieUAV(UAVBase):
 
         self.uri = None
         self.notify_updated = nop
-        self.notify_shutdown_or_reboot = nop
+        self.notify_shutdown_suspend_or_reboot = nop
         self.send_log_message_to_gcs = nop
 
         self._crazyflie = None
@@ -565,6 +575,13 @@ class CrazyflieUAV(UAVBase):
         attract attention.
         """
         await self._get_crazyflie().led_ring.flash()
+
+    async def enter_low_power_mode(self) -> None:
+        """Sends the UAV to a low-power mode where only the radio chip is
+        listening for incoming packets.
+        """
+        await self._get_crazyflie().suspend()
+        self.notify_shutdown_suspend_or_reboot()
 
     def forget_last_uploaded_show(self) -> None:
         """Forgets the last uploaded show to this drone so it does not get
@@ -823,7 +840,11 @@ class CrazyflieUAV(UAVBase):
     async def reboot(self):
         """Reboots the UAV."""
         await self._get_crazyflie().reboot()
-        self.notify_shutdown_or_reboot()
+        self.notify_shutdown_suspend_or_reboot()
+
+    async def resume_from_low_power_mode(self) -> None:
+        """Wakes up the UAV if it has been sent to a low-power mode earlier."""
+        await self._get_crazyflie().resume()
 
     async def reupload_last_show(self) -> None:
         """Uploads the last show that was uploaded to this drone again."""
@@ -902,10 +923,10 @@ class CrazyflieUAV(UAVBase):
         await cf.commander.stop()
         await cf.high_level_commander.stop()
 
-    async def shutdown(self):
+    async def shutdown(self) -> None:
         """Shuts down the UAV."""
         await self._get_crazyflie().shutdown()
-        self.notify_shutdown_or_reboot()
+        self.notify_shutdown_suspend_or_reboot()
 
     async def start_drone_show(self, delay: float = 0):
         """Instructs the UAV to start the pre-programmed drone show in drone
@@ -1388,7 +1409,9 @@ class CrazyflieHandlerTask:
                     return
 
                 nursery: Nursery = await enter(open_nursery())  # type: ignore
-                self._uav.notify_shutdown_or_reboot = nursery.cancel_scope.cancel
+                self._uav.notify_shutdown_suspend_or_reboot = (
+                    nursery.cancel_scope.cancel
+                )
                 nursery.start_soon(self._uav.process_console_messages)
                 nursery.start_soon(
                     self._uav.process_drone_show_status_messages, self._status_interval
@@ -1425,7 +1448,7 @@ class CrazyflieHandlerTask:
                         pass
                     return
         finally:
-            self._uav.notify_shutdown_or_reboot = nop
+            self._uav.notify_shutdown_suspend_or_reboot = nop
 
     async def _feed_fake_position(self) -> None:
         """Background task that feeds a fake position to the UAV as if it was

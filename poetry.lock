@@ -41,7 +41,7 @@ pyusb = ">=1.1.0,<2.0.0"
 
 [[package]]
 name = "aiocflib"
-version = "2.5.1"
+version = "2.5.2"
 description = "Python async API for Crazyflie drones"
 category = "main"
 optional = false
@@ -1009,7 +1009,7 @@ pyobjc-framework-Cocoa = ">=8.5"
 
 [[package]]
 name = "pyparsing"
-version = "3.0.8"
+version = "3.0.9"
 description = "pyparsing module - Classes and methods to define and execute parsing grammars"
 category = "dev"
 optional = false
@@ -1490,7 +1490,7 @@ pro = ["skybrush-ext-sidekick", "skybrush-ext-timecode"]
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.8"
-content-hash = "0e17bfa1c80b5be6c760f604c68610e5ff8d03685694edb557e65f904a37ed94"
+content-hash = "36916e4de4f3cafb26f60bffe6f5068a09e03bf358e4fa6e60db0e6819f30232"
 
 [metadata.files]
 adrenaline = [
@@ -1506,8 +1506,8 @@ aio-usb-hotplug = [
     {file = "aio_usb_hotplug-5.0.0-py3-none-any.whl", hash = "sha256:d268b5960b05ca3d431f976816276345bd47d4b45e92c09701a12d42ae90215d"},
 ]
 aiocflib = [
-    {file = "aiocflib-2.5.1-py3-none-any.whl", hash = "sha256:bc4f7984adbf974214e937fff5e05cbc8ccab2ae9ade6abf87c76e5655576c43"},
-    {file = "aiocflib-2.5.1.tar.gz", hash = "sha256:567bbb2ce5831c178c61f2ce0d102db4be49dd07c27ca88bbb2fb76f94209a97"},
+    {file = "aiocflib-2.5.2-py3-none-any.whl", hash = "sha256:3f2d240ed84d49af29fe294f2ee3e286c9d847778438cca8662cc20fc7e25688"},
+    {file = "aiocflib-2.5.2.tar.gz", hash = "sha256:5ece936501e5eb9d6b428f68a2e2077b559db97f79098519437737a3701ab4ec"},
 ]
 aiofiles = [
     {file = "aiofiles-0.8.0-py3-none-any.whl", hash = "sha256:7a973fc22b29e9962d0897805ace5856e6a566ab1f0c8e5c91ff6c866519c937"},
@@ -2055,8 +2055,8 @@ pyobjc-framework-systemconfiguration = [
     {file = "pyobjc_framework_SystemConfiguration-8.5-cp36-abi3-macosx_11_0_universal2.whl", hash = "sha256:356090d6c985efd700479c5f7d2be0038702820fd6693e26161808bcc08f25df"},
 ]
 pyparsing = [
-    {file = "pyparsing-3.0.8-py3-none-any.whl", hash = "sha256:ef7b523f6356f763771559412c0d7134753f037822dad1b16945b7b846f7ad06"},
-    {file = "pyparsing-3.0.8.tar.gz", hash = "sha256:7bf433498c016c4314268d95df76c81b842a4cb2b276fa3312cfb1e1d85f6954"},
+    {file = "pyparsing-3.0.9-py3-none-any.whl", hash = "sha256:5026bae9a10eeaefb61dab2f09052b9f4307d44aee4eda64b309723d8d206bbc"},
+    {file = "pyparsing-3.0.9.tar.gz", hash = "sha256:2b020ecf7d21b687f219b71ecad3631f644a47f01403fa1d1036b0c6416d70fb"},
 ]
 pyrsistent = [
     {file = "pyrsistent-0.18.1-cp310-cp310-macosx_10_9_universal2.whl", hash = "sha256:df46c854f490f81210870e509818b729db4488e1f30f2a1ce1698b2295a878d1"},

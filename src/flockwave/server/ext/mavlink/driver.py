@@ -682,6 +682,30 @@ class MAVLinkDriver(UAVDriver):
 
         return response
 
+    async def _enter_low_power_mode_broadcast(
+        self, *, transport: Optional[TransportOptions] = None
+    ) -> None:
+        channel = transport_options_to_channel(transport)
+        await self.broadcast_command_long_with_retries(
+            MAVCommand.PREFLIGHT_REBOOT_SHUTDOWN,
+            param1=2,  # shutdown autopilot
+            channel=channel,
+        )
+
+    async def _enter_low_power_mode_single(
+        self, uav: "MAVLinkUAV", *, transport: Optional[TransportOptions]
+    ) -> None:
+        # Effectively the same as shutdown, but without the attempt to stop the
+        # motors (so drones where the motors are running will not be affected)
+        channel = transport_options_to_channel(transport)
+        if not await self.send_command_long(
+            uav,
+            MAVCommand.PREFLIGHT_REBOOT_SHUTDOWN,
+            2,  # shutdown autopilot
+            channel=channel,
+        ):
+            raise RuntimeError("Failed to request low-power mode from autopilot")
+
     async def _get_parameter_single(self, uav: "MAVLinkUAV", name: str) -> float:
         return await uav.get_parameter(name)
 
@@ -690,6 +714,32 @@ class MAVLinkDriver(UAVDriver):
 
     def _request_version_info_single(self, uav: "MAVLinkUAV") -> VersionInfo:
         return uav.get_version_info()
+
+    async def _resume_from_low_power_mode_broadcast(
+        self, *, transport: Optional[TransportOptions] = None
+    ) -> None:
+        # This is not supported by standard MAVLink so it relies on a custom
+        # protocol extension
+        channel = transport_options_to_channel(transport)
+        await self.broadcast_command_long_with_retries(
+            MAVCommand.PREFLIGHT_REBOOT_SHUTDOWN,
+            param1=127,  # resume autopilot
+            channel=channel,
+        )
+
+    async def _resume_from_low_power_mode_single(
+        self, uav: "MAVLinkUAV", *, transport: Optional[TransportOptions]
+    ) -> None:
+        # This is not supported by standard MAVLink so it relies on a custom
+        # protocol extension
+        channel = transport_options_to_channel(transport)
+        if not await self.send_command_long(
+            uav,
+            MAVCommand.PREFLIGHT_REBOOT_SHUTDOWN,
+            127,  # resume autopilot
+            channel=channel,
+        ):
+            raise RuntimeError("Failed to wake up autopilot from low-power mode")
 
     async def _send_fly_to_target_signal_single(
         self, uav: "MAVLinkUAV", target: GPSCoordinate

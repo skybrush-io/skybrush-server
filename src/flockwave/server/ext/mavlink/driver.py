@@ -726,6 +726,8 @@ class MAVLinkDriver(UAVDriver):
             param1=127,  # resume autopilot
             channel=channel,
         )
+        # TODO(ntamas): shall we notify all the UAVs that they are about to
+        # be resumed (i.e. _notify_rebooted_by_us())?
 
     async def _resume_from_low_power_mode_single(
         self, uav: "MAVLinkUAV", *, transport: Optional[TransportOptions]
@@ -740,6 +742,7 @@ class MAVLinkDriver(UAVDriver):
             channel=channel,
         ):
             raise RuntimeError("Failed to wake up autopilot from low-power mode")
+        uav._notify_rebooted_by_us()
 
     async def _send_fly_to_target_signal_single(
         self, uav: "MAVLinkUAV", target: GPSCoordinate
@@ -841,7 +844,7 @@ class MAVLinkDriver(UAVDriver):
                 channel=channel,
             )
             # TODO(ntamas): shall we notify all the UAVs that they are about to
-            # be rebooted (i.e. _notify_rebooted_by_us())
+            # be rebooted (i.e. _notify_rebooted_by_us())?
         else:
             # No per-component resets are implemented yet
             raise RuntimeError(f"Resetting {component!r} is not supported")

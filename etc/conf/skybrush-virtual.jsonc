@@ -1,0 +1,35 @@
+// This is an example configuration file for Skybrush Server that configures
+// the server with a single virtual drone.
+//
+// The file is essentially a JSON file, but C-style comments are allowed, and
+// lines starting with a hash are ignored.
+
+{
+  "EXTENSIONS": {
+    // Make the server listen on all interfaces so it can be connected to from
+    // other machines
+    "http_server": {
+      "host": ""
+    },
+
+    // RTK extension configuration
+    "rtk": {
+      // Add all serial ports as potential RTK data sources with baud rates 9600
+      // and 57600
+      "add_serial_ports": [9600, 57600]
+    },
+
+    // Add virtual drone provider
+    "virtual_uavs": {
+      "enabled": true,
+	  "count": 1,
+	  "id_format": "{0:03}",
+
+	  // Home position of the drone, in lon-lat-AMSL format
+	  "origin": [18.915125, 47.486305, 215],
+
+	  // Initial heading of the drone, in degrees, North = 0, East = 90 and so on
+	  "orientation": 59
+    }
+  }
+}

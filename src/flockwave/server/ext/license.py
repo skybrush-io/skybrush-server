@@ -1,5 +1,5 @@
 from abc import abstractmethod, ABCMeta
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from math import inf, isfinite
 from typing import Any, Dict, Mapping, Optional, Tuple
 
@@ -31,13 +31,16 @@ class License(metaclass=ABCMeta):
         """
         raise NotImplementedError
 
-    @abstractmethod
     def get_days_left_until_expiry(self) -> int:
         """Returns the number of days left until the expiry of the license;
         returns at least 20 years if the license never expires. Returns zero
         if the license expires today.
         """
-        raise NotImplementedError
+        expiry_date = self.get_expiry_date()
+        if expiry_date is None:
+            return NEVER_EXPIRES
+        else:
+            return (expiry_date - date.today()).days
 
     @abstractmethod
     def get_id(self) -> str:
@@ -57,15 +60,12 @@ class License(metaclass=ABCMeta):
         """
         raise NotImplementedError
 
+    @abstractmethod
     def get_expiry_date(self) -> Optional[date]:
         """Returns the date on which the license expires (but is still valid),
         or `None` if the license never expires.
         """
-        days_left = self.get_days_left_until_expiry()
-        if days_left >= NEVER_EXPIRES:
-            return None
-        else:
-            return date.today() + timedelta(days=days_left)
+        raise NotImplementedError
 
     def is_valid(self) -> bool:
         """Returns whether the license is valid."""
@@ -139,8 +139,8 @@ class DummyLicense(License):
     def get_allowed_mac_addresses(self):
         return None
 
-    def get_days_left_until_expiry(self) -> int:
-        return 42
+    def get_expiry_date(self) -> Optional[date]:
+        return date.today() + timedelta(days=42)
 
     def get_id(self) -> str:
         return "test-1"
@@ -193,9 +193,15 @@ class DictBasedLicense(License):
         else:
             return None
 
-    def get_days_left_until_expiry(self) -> int:
-        # TODO(ntamas)
-        return 10000
+    def get_expiry_date(self) -> Optional[date]:
+        expiry = self._license_info.get("expiry")
+        if expiry is None:
+            return None
+
+        try:
+            return datetime.strptime(expiry, "%Y-%m-%d").date()
+        except ValueError:
+            raise ValueError(f"invalid expiry date: {expiry!r}")
 
     def get_id(self) -> str:
         try:
@@ -313,8 +319,6 @@ def handle_LCN_INF(message, sender, hub):
 def load(app, configuration, logger):
     global license
 
-    # License factories must raise an ApplicationExit exception if they have
-    # found a license and it is not valid
     license_factories = [
         CLSLicense.get_license,
     ]

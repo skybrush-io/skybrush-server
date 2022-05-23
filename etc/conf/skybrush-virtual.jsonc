@@ -22,14 +22,14 @@
     // Add virtual drone provider
     "virtual_uavs": {
       "enabled": true,
-	  "count": 1,
-	  "id_format": "{0:03}",
+      "count": 1,
+      "id_format": "{0:03}",
 
-	  // Home position of the drone, in lon-lat-AMSL format
-	  "origin": [18.915125, 47.486305, 215],
+      // Home position of the drone, in lon-lat-AMSL format
+      "origin": [18.915125, 47.486305, 215],
 
-	  // Initial heading of the drone, in degrees, North = 0, East = 90 and so on
-	  "orientation": 59
+      // Initial heading of the drone, in degrees, North = 0, East = 90 and so on
+      "orientation": 59
     }
   }
 }

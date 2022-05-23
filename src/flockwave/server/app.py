@@ -504,17 +504,15 @@ class SkybrushServer(DaemonApp):
 
         # Sort the UAVs being targeted by drivers. If `transport` is a
         # TransportOptions object and it indicates that we should ignore the
-        # UAV IDs, get hold of all registered UAV drivers instead
-        uavs_by_drivers: Dict[UAVDriver, List[UAV]]
+        # UAV IDs, get hold of all registered UAV drivers as well and extend
+        # the uavs_by_drivers dict
+        uavs_by_drivers = self.sort_uavs_by_drivers(uav_ids, response)
         if transport and isinstance(transport, dict) and transport.get("ignoreIds"):
-            # TODO(ntamas): we are currently violating the specs here; if the
-            # message contained UAV IDs, we must provide _some_ kind of
-            # response for them. Also, we do not have legitimate ways to
-            # communicate an error back from a driver if the driver has no
-            # associated UAVs.
-            uavs_by_drivers = dict((driver, []) for driver in self.uav_driver_registry)
-        else:
-            uavs_by_drivers = self.sort_uavs_by_drivers(uav_ids, response)
+            # TODO(ntamas): we do not have legitimate ways to communicate an
+            # error back from a driver if the driver has no associated UAVs.
+            for driver in self.uav_driver_registry:
+                if driver not in uavs_by_drivers:
+                    uavs_by_drivers[driver] = []
 
         # Find the method to invoke on the driver
         method_name, transformer = UAV_COMMAND_HANDLERS.get(message_type, NULL_HANDLER)

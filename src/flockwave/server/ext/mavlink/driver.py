@@ -116,6 +116,7 @@ class MAVLinkDriver(UAVDriver):
 
     broadcast_packet: PacketBroadcasterFn
     log: Logger
+    mandatory_custom_mode: Optional[int]
     run_in_background: Callable[[Callable], None]
     send_packet: PacketSenderFn
 

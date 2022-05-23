@@ -10,6 +10,7 @@ from typing import (
     Dict,
     Generic,
     Iterable,
+    Iterator,
     Optional,
     TypeVar,
     TYPE_CHECKING,
@@ -151,7 +152,7 @@ class RegistryBase(Generic[T], Registry[T]):
         """Returns the number of entries in the registry."""
         return len(self._entries)
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[T]:
         """Iterates over the entries in the registry in the same order as the
         IDs returned by the `ids` property.
         """

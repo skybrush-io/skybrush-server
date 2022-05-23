@@ -12,6 +12,7 @@ from trio_util import periodic
 from typing import Any, Callable, Dict, List, NoReturn, Optional, Union
 
 from flockwave.concurrency import delayed
+from flockwave.ext.manager import ExtensionAPIProxy
 from flockwave.gps.vectors import (
     FlatEarthCoordinate,
     GPSCoordinate,
@@ -135,6 +136,8 @@ class VirtualUAV(UAVBase):
     max_velocity_xy: float
     max_velocity_z: float
     takeoff_altitude: float
+
+    radiation_ext: Optional[ExtensionAPIProxy] = None
 
     def __init__(self, *args, use_battery_percentage: bool, **kwds):
         self.use_battery_percentage = use_battery_percentage

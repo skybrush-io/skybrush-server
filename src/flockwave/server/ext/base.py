@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import Generic, Optional, TYPE_CHECKING, TypeVar
 
 from flockwave.ext.base import ExtensionBase
 
 if TYPE_CHECKING:
     from flockwave.server.app import SkybrushServer  # noqa
+    from flockwave.server.model.uav import UAVDriver
 
 __all__ = ("UAVExtension",)
 
@@ -18,7 +19,10 @@ class Extension(ExtensionBase["SkybrushServer"]):
     pass
 
 
-class UAVExtension(Extension):
+D = TypeVar("D", bound="UAVDriver")
+
+
+class UAVExtension(Extension, Generic[D]):
     """Base class for extensions that intend to provide support for a
     specific type of UAVs.
 
@@ -27,9 +31,7 @@ class UAVExtension(Extension):
     ``configure_driver()`` method to configure the driver.
     """
 
-    def __init__(self):
-        super().__init__()
-        self._driver = None
+    _driver: Optional[D] = None
 
     def create_device_tree_mutation_context(self):
         """Returns a context that can be used in a ``with`` statement to
@@ -45,9 +47,11 @@ class UAVExtension(Extension):
 
     def configure(self, configuration):
         super().configure(configuration)
-        self.configure_driver(self.driver, configuration)
 
-    def configure_driver(self, driver, configuration):
+        if self.driver is not None:
+            self.configure_driver(self.driver, configuration)
+
+    def configure_driver(self, driver: D, configuration):
         """Configures the driver that will manage the UAVs created by
         this extension.
 
@@ -56,20 +60,20 @@ class UAVExtension(Extension):
         server application.
 
         Parameters:
-            driver (UAVDriver): the driver to configure
+            driver: the driver to configure
             configuration (dict): the configuration dictionary of the
                 extension
         """
         pass
 
-    def _create_driver(self):
+    def _create_driver(self) -> Optional[D]:
         """Creates the driver object that the extension will use. It is
         not required to associate the driver to the current application;
         the extension will do it.
 
         Returns:
-            Optional[UAVDriver]: the driver that the extension will use,
-                or ``None`` if the extension does not need a driver
+            the driver that the extension will use, or ``None`` if the extension
+            does not need a driver
         """
         return None
 
@@ -77,13 +81,18 @@ class UAVExtension(Extension):
         """Updates the driver object in the extension when the associated
         app has changed.
         """
+        if self._driver:
+            old_app: Optional["SkybrushServer"] = self._driver.app
+            if old_app:
+                old_app.uav_driver_registry.remove(self._driver)
+
         app = self.app
-        if app is None:
-            self._driver = None
-        else:
-            self._driver = self._create_driver()
-            if self._driver is not None:
-                self._driver.app = app
+        self._driver = self._create_driver() if app else None
+
+        if self._driver is not None:
+            assert app is not None
+            self._driver.app = app
+            app.uav_driver_registry.add(self._driver)
 
     @property
     def driver(self):

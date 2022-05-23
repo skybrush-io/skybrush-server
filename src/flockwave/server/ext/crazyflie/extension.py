@@ -23,7 +23,7 @@ from .scanning import CrazyradioScannerTask
 __all__ = ("construct", "schema")
 
 
-class CrazyflieDronesExtension(UAVExtension):
+class CrazyflieDronesExtension(UAVExtension[CrazyflieDriver]):
     """Extension that adds support for Crazyflie drones."""
 
     log: Logger
@@ -36,7 +36,9 @@ class CrazyflieDronesExtension(UAVExtension):
             cache=Path(self.app.dirs.user_cache_dir) / "ext" / "crazyflie",
         )
 
-    def configure_driver(self, driver, configuration: Dict[str, Any]) -> None:
+    def configure_driver(
+        self, driver: CrazyflieDriver, configuration: Dict[str, Any]
+    ) -> None:
         """Configures the driver that will manage the UAVs created by
         this extension.
 

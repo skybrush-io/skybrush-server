@@ -39,7 +39,7 @@ CONNECTION_PRESETS = {
 DEFAULT_ROUTING = {"rtk": 0}
 
 
-class MAVLinkDronesExtension(UAVExtension):
+class MAVLinkDronesExtension(UAVExtension[MAVLinkDriver]):
     """Extension that adds support for drone flocks using the MAVLink
     protocol.
     """
@@ -60,7 +60,7 @@ class MAVLinkDronesExtension(UAVExtension):
     def _create_driver(self):
         return MAVLinkDriver()
 
-    def configure_driver(self, driver, configuration):
+    def configure_driver(self, driver: MAVLinkDriver, configuration):
         """Configures the driver that will manage the UAVs created by
         this extension.
 

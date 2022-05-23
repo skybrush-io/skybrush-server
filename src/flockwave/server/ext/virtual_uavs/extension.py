@@ -2,7 +2,7 @@ from colour import Color
 from functools import partial
 from random import uniform
 from trio import open_nursery, sleep, sleep_forever
-from typing import Callable
+from typing import Callable, List
 
 from flockwave.gps.vectors import (
     FlatEarthCoordinate,
@@ -20,38 +20,31 @@ from .placement import place_drones
 __all__ = ("construct", "dependencies")
 
 
-class VirtualUAVProviderExtension(UAVExtension):
-    """Extension that creates one or more virtual UAVs in the server.
-
-    Virtual UAVs circle around a given point in a given radius, with constant
-    angular velocity. They are able to respond to landing and takeoff
-    requests, and also handle the following commands:
-
-    * Sending ``yo`` to a UAV makes it respond with either ``yo!``, ``yo?``
-      or ``yo.``, with a mean delay of 500 milliseconds.
-
-    * Sending ``timeout`` to a UAV makes it register the command but never
-      finish its execution. Useful for testing the timeout and cancellation
-      mechanism of the command execution manager of the server.
-    """
+class VirtualUAVProviderExtension(UAVExtension[VirtualUAVDriver]):
+    """Extension that creates one or more virtual UAVs in the server."""
 
     _driver: VirtualUAVDriver
+
+    _delay: float = 1
+    """Number of seconds that must pass between two consecutive
+    simulated status updates to the UAVs.
+    """
+
+    uavs: List["VirtualUAV"]
+    """The list of virtual UAVs managed by this extension."""
 
     def __init__(self):
         """Constructor."""
         super().__init__()
-        self._delay = 1
-
-        self.radiation = None
         self.uavs = []
-        self.uavs_armed_after_boot = False
-        self.uav_ids = []
 
     def _create_driver(self):
         return VirtualUAVDriver()
 
     def configure(self, configuration):
         super().configure(configuration)
+
+        assert self.app is not None
 
         # Get the number of UAVs to create and the format of the IDs
         count = configuration.get("count", 0)
@@ -113,12 +106,12 @@ class VirtualUAVProviderExtension(UAVExtension):
             headings = [trans.orientation] * len(home_positions)
 
         # Generate IDs for the UAVs and then create them
-        self.uav_ids = [
+        uav_ids = [
             make_valid_object_id(id_format.format(index)) for index in range(count)
         ]
         self.uavs = [
             self._driver.create_uav(id, home=trans.to_gps(home), heading=heading)
-            for id, home, heading in zip(self.uav_ids, home_positions, headings)
+            for id, home, heading in zip(uav_ids, home_positions, headings)
         ]
 
         # Get hold of the 'radiation' extension and associate it to all our
@@ -130,7 +123,7 @@ class VirtualUAVProviderExtension(UAVExtension):
         for uav in self.uavs:
             uav.radiation_ext = radiation_ext
 
-    def configure_driver(self, driver, configuration):
+    def configure_driver(self, driver: VirtualUAVDriver, configuration):
         # Set whether the virtual drones should be armed after boot
         driver.uavs_armed_after_boot = bool(configuration.get("arm_after_boot"))
         driver.use_battery_percentages = bool(

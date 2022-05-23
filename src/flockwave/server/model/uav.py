@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from abc import ABCMeta, abstractproperty
-from typing import Any, Callable, Dict, Iterable, List, Optional, Union
+from typing import Any, Callable, Dict, Iterable, List, Optional, Union, TYPE_CHECKING
 
 from flockwave.gps.vectors import GPSCoordinate, PositionXYZ, VelocityNED, VelocityXYZ
 from flockwave.server.errors import NotSupportedError
@@ -19,6 +19,9 @@ from .mixins import TimestampLike, TimestampMixin
 from .object import ModelObject, register
 from .preflight import PreflightCheckInfo
 from .utils import as_base64, scaled_by
+
+if TYPE_CHECKING:
+    from flockwave.server.app import SkybrushServer
 
 __all__ = (
     "is_uav",
@@ -377,11 +380,10 @@ class UAVDriver(metaclass=ABCMeta):
     It is the responsibility of the implementor of these methods to ensure
     that all the UAVs that appeared in the input UAV list are also mentioned
     in the dictionary that is returned from the method.
-
-    Attributes:
-        app (SkybrushServer): the Skybrush server application that hosts
-            the driver
     """
+
+    app: "SkybrushServer"
+    """The Skybrush server application that hosts the driver."""
 
     @staticmethod
     def _execute(func, *args, **kwds):
@@ -397,7 +399,7 @@ class UAVDriver(metaclass=ABCMeta):
 
     def __init__(self):
         """Constructor."""
-        self.app = None
+        self.app = None  # type: ignore
 
     def enter_low_power_mode(
         self, uavs: List[UAV], transport: Optional[TransportOptions] = None
@@ -925,57 +927,61 @@ class UAVDriver(metaclass=ABCMeta):
         result = {}
 
         # Determine whether we need to broadcast this signal
-        is_broadcast = False
-        if broadcaster and "transport" in kwds:
-            transport = kwds.get("transport")
-            if isinstance(transport, TransportOptions):
-                is_broadcast = bool(getattr(transport, "broadcast", False))
-
-        if is_broadcast:
-            # We need to broadcast and we know that we have a separate function
-            # for broadcasting
-            try:
-                outcome = broadcaster(**kwds)
-            except NotImplementedError:
-                outcome = NotImplementedError(
-                    f"Broadcasting {signal_name} not implemented yet"
-                )
-            except NotSupportedError as ex:
-                outcome = NotSupportedError(
-                    str(ex) or f"Broadcasting {signal_name} not supported"
-                )
-            except RuntimeError as ex:
-                outcome = RuntimeError(
-                    f"Error while broadcasting {signal_name}: {str(ex)}"
-                )
-            except Exception as ex:
-                log.exception(ex)
-                outcome = ex.__class__(
-                    f"Unexpected error while broadcasting {signal_name}: {ex!r}"
-                )
-            return outcome
-
+        transport = kwds.get("transport")
+        if transport:
+            should_broadcast = TransportOptions.is_broadcast(transport)
         else:
-            # We need to send this command one by one to all the UAVs
-            for uav in uavs:
+            should_broadcast = False
+
+        if should_broadcast:
+            # We need to broadcast. Do we have a separate function for broadcasting?
+            if broadcaster is not None:
                 try:
-                    outcome = handler(uav, **kwds)
+                    outcome = broadcaster(**kwds)
                 except NotImplementedError:
-                    outcome = NotImplementedError(f"{signal_name} not implemented yet")
+                    outcome = NotImplementedError(
+                        f"Broadcasting {signal_name} not implemented yet"
+                    )
                 except NotSupportedError as ex:
                     outcome = NotSupportedError(
-                        str(ex) or f"{signal_name} not supported"
+                        str(ex) or f"Broadcasting {signal_name} not supported"
                     )
                 except RuntimeError as ex:
                     outcome = RuntimeError(
-                        f"Error while sending {signal_name}: {str(ex)}"
+                        f"Error while broadcasting {signal_name}: {str(ex)}"
                     )
                 except Exception as ex:
                     log.exception(ex)
                     outcome = ex.__class__(
-                        f"Unexpected error while sending {signal_name}: {ex!r}"
+                        f"Unexpected error while broadcasting {signal_name}: {ex!r}"
                     )
-                result[uav] = outcome
+                return outcome
+
+            # No separate function for broadcasting. Can we replace the call
+            # with unicast calls?
+            elif TransportOptions.should_ignore_ids(transport):
+                # No, because we must ignore whatever IDs were submitted. In
+                # this case we should return a "not supported" error
+                return NotSupportedError(f"Broadcasting {signal_name} not supported")
+
+            # Fallthrough, continuing with unicast messages
+
+        # We need to send this command one by one to all the UAVs
+        for uav in uavs:
+            try:
+                outcome = handler(uav, **kwds)
+            except NotImplementedError:
+                outcome = NotImplementedError(f"{signal_name} not implemented yet")
+            except NotSupportedError as ex:
+                outcome = NotSupportedError(str(ex) or f"{signal_name} not supported")
+            except RuntimeError as ex:
+                outcome = RuntimeError(f"Error while sending {signal_name}: {str(ex)}")
+            except Exception as ex:
+                log.exception(ex)
+                outcome = ex.__class__(
+                    f"Unexpected error while sending {signal_name}: {ex!r}"
+                )
+            result[uav] = outcome
 
         return result
 

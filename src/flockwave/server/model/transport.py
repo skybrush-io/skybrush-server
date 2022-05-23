@@ -44,3 +44,16 @@ class TransportOptions(metaclass=ModelMeta):
             return isinstance(index, (int, float)) and index > 0
         else:
             return False
+
+    @classmethod
+    def should_ignore_ids(cls, transport: Any) -> bool:
+        """Returns whether the given object is a transport options object (with
+        type checking) and whether it indicates that we should ignore the UAV
+        IDs submitted in a particular message.
+
+        This function is safe to be called with any type of object.
+        """
+        if isinstance(transport, cls):
+            return bool(getattr(transport, "ignoreIds", False))
+        else:
+            return False

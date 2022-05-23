@@ -46,6 +46,7 @@ from .registries import (
     ConnectionRegistry,
     ConnectionRegistryEntry,
     ObjectRegistry,
+    UAVDriverRegistry,
     find_in_registry,
 )
 from .version import __version__ as server_version
@@ -102,32 +103,40 @@ NULL_HANDLER = (None, None)
 
 
 class SkybrushServer(DaemonApp):
-    """Main application object for the Flockwave server.
+    """Main application object for the Skybrush server."""
 
-    Attributes:
-        channel_type_registry (ChannelTypeRegistry): central registry for
-            types of communication channels that the server can handle and
-            manage. Types of communication channels include Socket.IO
-            streams, TCP or UDP sockets and so on.
-        client_registry (ClientRegistry): central registry for the clients
-            that are currently connected to the server
-        command_execution_manager (CommandExecutionManager): object that
-            manages the asynchronous execution of commands on remote UAVs
-            (i.e. commands that cannot be executed immediately in a
-            synchronous manner)
-        device_tree (DeviceTree): a tree-like data structure that contains
-            a first-level node for every UAV and then contains additional
-            nodes in each UAV subtree for the devices and channels of the
-            UAV
-        message_hub (MessageHub): central messaging hub via which one can
-            send Flockwave messages
-        object_registry (ObjectRegistry): central registry for the objects
-            known to the server
-        world (World): a representation of the "world" in which the flock
-            of UAVs live. By default, the world is empty but extensions may
-            extend it with objects.
+    channel_type_registry: ChannelTypeRegistry
+    """Central registry for types of communication channels that the server can
+    handle and manage. Types of communication channels include Socket.IO
+    streams, TCP or UDP sockets and so on.
+    """
 
-    See also the attributes inherited from DaemonApp_.
+    client_registry: ClientRegistry
+    """Registry for the clients that are currently connected to the server."""
+
+    command_execution_manager: CommandExecutionManager
+    """Object that manages the asynchronous execution of commands on remote UAVs
+    (i.e. commands that cannot be executed immediately in a synchronous manner)
+    """
+
+    device_tree: DeviceTree
+    """Tree-like data structure that contains a first-level node for every UAV
+    and then contains additional nodes in each UAV subtree for the devices and
+    channels of the UAV.
+    """
+
+    message_hub: MessageHub
+    """Central messaging hub via which one can send Flockwave messages."""
+
+    object_registry: ObjectRegistry
+    """Central registry for the objects known to the server."""
+
+    uav_driver_registry: UAVDriverRegistry
+    """Registry for UAV drivers that are currently registered in the server."""
+
+    world: World
+    """A representation of the "world" in which the flock of UAVs live. By
+    default, the world is empty but extensions may extend it with objects.
     """
 
     def cancel_async_operations(
@@ -491,9 +500,21 @@ class SkybrushServer(DaemonApp):
         parameters = dict(message.body)
         message_type = parameters.pop("type")
         uav_ids: Sequence[str] = parameters.pop("ids", ())
+        transport: Any = parameters.get("transport")
 
-        # Sort the UAVs being targeted by drivers
-        uavs_by_drivers = self.sort_uavs_by_drivers(uav_ids, response)
+        # Sort the UAVs being targeted by drivers. If `transport` is a
+        # TransportOptions object and it indicates that we should ignore the
+        # UAV IDs, get hold of all registered UAV drivers instead
+        uavs_by_drivers: Dict[UAVDriver, List[UAV]]
+        if transport and isinstance(transport, dict) and transport.get("ignoreIds"):
+            # TODO(ntamas): we are currently violating the specs here; if the
+            # message contained UAV IDs, we must provide _some_ kind of
+            # response for them. Also, we do not have legitimate ways to
+            # communicate an error back from a driver if the driver has no
+            # associated UAVs.
+            uavs_by_drivers = dict((driver, []) for driver in self.uav_driver_registry)
+        else:
+            uavs_by_drivers = self.sort_uavs_by_drivers(uav_ids, response)
 
         # Find the method to invoke on the driver
         method_name, transformer = UAV_COMMAND_HANDLERS.get(message_type, NULL_HANDLER)
@@ -719,6 +740,9 @@ class SkybrushServer(DaemonApp):
         self.connection_registry.removed.connect(
             self._on_connection_removed, sender=self.connection_registry
         )
+
+        # Create an object that keeps track of registered UAV drivers
+        self.uav_driver_registry = UAVDriverRegistry()
 
         # Create a message hub that will handle incoming and outgoing
         # messages

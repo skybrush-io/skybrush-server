@@ -48,7 +48,7 @@ def get_geofence_configuration_from_show_specification(
 
     # Parse polygons and rally points
     polygons = geofence.get("polygons", ())
-    rally_points = geofence.get("rally_points", ())
+    rally_points = geofence.get("rallyPoints", ())
 
     if polygons or rally_points:
         coordinate_system = get_coordinate_system_from_show_specification(show)

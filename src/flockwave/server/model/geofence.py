@@ -44,26 +44,26 @@ class GeofencePolygon:
 class GeofenceAction(Enum):
     """Actions that a UAV can take when hitting the geofence."""
 
-    #: Report the geofence violation but do nothing
     REPORT = "report"
+    """Report the geofence violation but do nothing."""
 
-    #: Attempt to return to the launch site with smart collision avoidance
     SMART_RETURN = "smartReturn"
+    """Attempt to return to the launch site with smart collision avoidance."""
 
-    #: Attempt to return to the launch site without collision avoidance
     RETURN = "return"
+    """Attempt to return to the launch site without collision avoidance."""
 
-    #: Attempt to land in-place with collision avoidance
     SMART_LAND = "smartLand"
+    """Attempt to land in-place with collision avoidance."""
 
-    #: Attempt to land in-place without collision avoidance
     LAND = "land"
+    """Attempt to land in-place without collision avoidance."""
 
-    #: Stop and hover in-place
     STOP = "stop"
+    """Stop and hover in-place."""
 
-    #: Shut down immediately
-    HALT = "halt"
+    SHUT_DOWN = "shutDown"
+    """Shut down immediately."""
 
 
 @dataclass
@@ -72,33 +72,37 @@ class GeofenceStatus:
     MAVLink-enabled device.
     """
 
-    #: Whether the geofence is enabled globally
     enabled: bool = False
+    """Whether the geofence is enabled globally."""
 
-    #: Actions to take when the geofence is breached, in the order the UAV
-    #: will try them
     actions: List[GeofenceAction] = field(default_factory=list)
+    """Actions to take when the geofence is breached, in the order the UAV
+    will try them.
+    """
 
-    #: Minimum altitude that the drone must maintain; `None` means no
-    #: minimum altitude requirement
     min_altitude: Optional[float] = None
+    """Minimum altitude that the drone must maintain; `None` means no
+    minimum altitude requirement.
+    """
 
-    #: Maximum altitude that the drone is allowed to fly to; `None` means no
-    #: maximum altitude limit
     max_altitude: Optional[float] = None
+    """Maximum altitude that the drone is allowed to fly to; `None` means no
+    maximum altitude limit.
+    """
 
-    #: Maximum distance that the drone is allowed to fly from its home
-    #: position; `None` means no distance limit
     max_distance: Optional[float] = None
+    """Maximum distance that the drone is allowed to fly from its home position;
+    `None` means no distance limit.
+    """
 
-    #: Inclusion and exclusion polygons in the geofence
     polygons: List[GeofencePolygon] = field(default_factory=list)
+    """Inclusion and exclusion polygons in the geofence."""
 
-    #: Inclusion and exclusion circles in the geofence
     circles: List[GeofenceCircle] = field(default_factory=list)
+    """Inclusion and exclusion circles in the geofence."""
 
-    #: Rally points in the geofence
     rally_points: List[GeofencePoint] = field(default_factory=list)
+    """Rally points in the geofence."""
 
     def clear_areas(self) -> None:
         """Clears the configured areas (polygons and circles) of the geofence."""
@@ -132,28 +136,38 @@ class GeofenceConfigurationRequest:
     - selectively turning on/off certain geofence types
     """
 
-    #: Whether the geofence should be enabled; `None` means not to change it
     enabled: Optional[bool] = None
+    """Whether the geofence should be enabled; `None` means not to change it"""
 
-    #: Minimum altitude that the drone must maintain; `None` means not to
-    #: change the minimum altitude requirement
     min_altitude: Optional[float] = None
+    """Minimum altitude that the drone must maintain; `None` means not to
+    change the minimum altitude requirement.
+    """
 
-    #: Maximum altitude that the drone is allowed to fly to; `None` means not
-    #: to change the maximum altitude limit
     max_altitude: Optional[float] = None
+    """Maximum altitude that the drone is allowed to fly to; `None` means not
+    to change the maximum altitude limit.
+    """
 
-    #: Maximum distance that the drone is allowed to fly from its home
-    #: position; `None` means not to change the distance limit
     max_distance: Optional[float] = None
+    """Maximum distance that the drone is allowed to fly from its home
+    position; `None` means not to change the distance limit.
+    """
 
-    #: Inclusion and exclusion polygons in the geofence; `None` means not to
-    #: update the polygons
     polygons: Optional[List[GeofencePolygon]] = None
+    """Inclusion and exclusion polygons in the geofence; `None` means not to
+    update the polygons.
+    """
 
-    #: Rally points in the geofence; `None` means not to update the rally
-    #: points
     rally_points: List[GeofencePoint] = field(default_factory=list)
+    """Rally points in the geofence; `None` means not to update the rally
+    points.
+    """
+
+    action: Optional[GeofenceAction] = None
+    """The action to take if the vehicle hits the geofence; `None` means not to
+    update the current geofence action.
+    """
 
 
 _geofence_action_descriptions = {
@@ -163,14 +177,17 @@ _geofence_action_descriptions = {
     GeofenceAction.SMART_LAND: "smart land",
     GeofenceAction.LAND: "land",
     GeofenceAction.STOP: "stop",
-    GeofenceAction.HALT: "shut down",
+    GeofenceAction.SHUT_DOWN: "shut down",
 }
 
 
 def format_geofence_action(action: GeofenceAction) -> str:
     """Formats the name of the given geofence action."""
     try:
-        return _geofence_action_descriptions.get(GeofenceAction(action))
+        return (
+            _geofence_action_descriptions.get(GeofenceAction(action))
+            or "unknown action"
+        )
     except Exception:
         return f"unknown action {action!r}"
 

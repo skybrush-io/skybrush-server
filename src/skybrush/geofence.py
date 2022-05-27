@@ -9,6 +9,7 @@ from flockwave.gps.vectors import (
     FlatEarthToGPSCoordinateTransformation,
 )
 from flockwave.server.model.geofence import (
+    GeofenceAction,
     GeofenceConfigurationRequest,
     GeofencePolygon,
 )
@@ -45,6 +46,14 @@ def get_geofence_configuration_from_show_specification(
     # the ArduCopter default
     if result.min_altitude is None:
         result.min_altitude = -10
+
+    # Parse geofence action
+    action = geofence.get("action")
+    if action:
+        try:
+            result.action = GeofenceAction(action)
+        except ValueError:
+            raise RuntimeError(f"unknown geofence action: {action!r}")
 
     # Parse polygons and rally points
     polygons = geofence.get("polygons", ())

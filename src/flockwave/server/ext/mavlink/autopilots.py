@@ -123,7 +123,9 @@ class Autopilot(metaclass=ABCMeta):
                 the geofence configuration on the autopilot (but it supports
                 geofences)
             NotSupportedError: if the autopilot does not support updating the
-                geofence
+                geofence or if the configuration request contains something that
+                the drone is not capable of doing (e.g., smart landing on a
+                drone that does not support collective collision avoidance)
         """
         raise NotImplementedError
 
@@ -630,13 +632,29 @@ class ArduPilot(Autopilot):
             await uav.set_parameter("FENCE_ENABLE", int(bool(configuration.enabled)))
 
         if configuration.polygons is not None:
-            # Generic stuff comes here
+            # Update geofence polygons
             manager = GeofenceManager.for_uav(uav)
             await manager.set_geofence_areas(configuration.polygons)
 
         if configuration.rally_points is not None:
-            # TODO(ntamas): update rally points
-            pass
+            if configuration.rally_points:
+                raise NotImplementedError("rally points not supported yet")
+
+        if configuration.action is not None:
+            # Update geofence action
+            action_map = {
+                GeofenceAction.LAND: 2,  # always land
+                GeofenceAction.REPORT: 0,  # report only
+                GeofenceAction.RETURN: 1,  # RTH or land
+                GeofenceAction.STOP: 4,  # brake or land
+            }
+            mapped_action = action_map.get(configuration.action)
+            if mapped_action is not None:
+                await uav.set_parameter("FENCE_ACTION", int(mapped_action))
+            else:
+                raise NotSupportedError(
+                    f"geofence action {configuration.action!r} not supported on ArduPilot"
+                )
 
     def decode_param_from_wire_representation(
         self, value: Union[int, float], type: MAVParamType

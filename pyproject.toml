@@ -50,7 +50,7 @@ skybrush-ext-dock = {version = "^1.0.0", source = "collmot", optional = true}
 skybrush-ext-flockctrl = {version = "^1.0.1", source = "collmot", optional = true}
 skybrush-ext-sidekick = {version = "^1.0.0", source = "collmot", optional = true}
 skybrush-ext-timecode = {version = "^1.0.0", source = "collmot", optional = true}
-pyledctrl = {version = "^4.0.0", source = "fury"}
+pyledctrl = {version = "^4.0.1", source = "fury"}
 aiocflib = "^2.5.2"
 appdirs = "^1.4.4"
 crcmod = "^1.7"

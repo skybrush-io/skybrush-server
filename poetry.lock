@@ -899,7 +899,7 @@ hook_testing = ["pytest (>=2.7.3)", "execnet (>=1.5.0)", "psutil"]
 
 [[package]]
 name = "pyinstaller-hooks-contrib"
-version = "2022.5"
+version = "2022.6"
 description = "Community maintained hooks for PyInstaller"
 category = "dev"
 optional = false
@@ -920,7 +920,7 @@ test = ["pytest (>=4.0.1,<5.0.0)", "pytest-cov (>=2.6.0,<3.0.0)", "pytest-runner
 
 [[package]]
 name = "pyledctrl"
-version = "4.0.0"
+version = "4.0.1"
 description = "Compiler to convert LED light show scripts to bytecode format"
 category = "main"
 optional = false
@@ -1489,7 +1489,7 @@ pro = ["skybrush-ext-sidekick", "skybrush-ext-timecode"]
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.8"
-content-hash = "ea834864afa9bcc28c67a9878de472dbe0c14113e0bbee4b1e1be57f60e70b46"
+content-hash = "00a4f2e7dd9a45b83e68e5344e11f3c2fcae1ac9cb7456f5e3d67499099fc16c"
 
 [metadata.files]
 adrenaline = [
@@ -2000,16 +2000,16 @@ pyinstaller = [
     {file = "pyinstaller-4.5.1.tar.gz", hash = "sha256:30733baaf8971902286a0ddf77e5499ac5f7bf8e7c39163e83d4f8c696ef265e"},
 ]
 pyinstaller-hooks-contrib = [
-    {file = "pyinstaller-hooks-contrib-2022.5.tar.gz", hash = "sha256:90a05207ceea2f8c166f12c3add46e24c0ed6a78234e5f99320f8683d56e0dec"},
-    {file = "pyinstaller_hooks_contrib-2022.5-py2.py3-none-any.whl", hash = "sha256:d0ff4c13eda0104db6eb43c60641c19cdf2bc2d6a2a1f0855d26629c3dacc8b7"},
+    {file = "pyinstaller-hooks-contrib-2022.6.tar.gz", hash = "sha256:9dc611cf6667301e95384b4a0631b032bbffa16a0688f4cfa014d0c1e751d276"},
+    {file = "pyinstaller_hooks_contrib-2022.6-py2.py3-none-any.whl", hash = "sha256:e38bf9266c57be19647762ee63b012683beb6919c6bc2ecdc66ca174edec44a0"},
 ]
 pyjwt = [
     {file = "PyJWT-1.7.1-py2.py3-none-any.whl", hash = "sha256:5c6eca3c2940464d106b99ba83b00c6add741c9becaec087fb7ccdefea71350e"},
     {file = "PyJWT-1.7.1.tar.gz", hash = "sha256:8d59a976fb773f3e6a39c85636357c4f0e242707394cadadd9814f5cbaa20e96"},
 ]
 pyledctrl = [
-    {file = "pyledctrl-4.0.0-py3-none-any.whl", hash = "sha256:ff0adf8540a1a307d035edfa6231f99bad5f3458665f8403c625cb55e9d56a0b"},
-    {file = "pyledctrl-4.0.0.tar.gz", hash = "sha256:3beadb45b04e73c4851a282ad43a1e6e3eb311e4fb1e7fccd6f23e9bb8a3b475"},
+    {file = "pyledctrl-4.0.1-py3-none-any.whl", hash = "sha256:d608c85746b0aa6d1a31e5fdef8ca0495cf64fa4335cd016a91816ab93025c5f"},
+    {file = "pyledctrl-4.0.1.tar.gz", hash = "sha256:6644dbd568b6b1cfc49690d80c7259988aeb582c2d0a6a41a4c3dafee1956591"},
 ]
 pynacl = [
     {file = "PyNaCl-1.5.0-cp36-abi3-macosx_10_10_universal2.whl", hash = "sha256:401002a4aaa07c9414132aaed7f6836ff98f59277a234704ff66878c2ee4a0d1"},

@@ -578,7 +578,6 @@ class ArduPilot(Autopilot):
 
         except Exception:
             if not started:
-                raise
                 raise RuntimeError("Failed to start compass calibration")
             else:
                 try:

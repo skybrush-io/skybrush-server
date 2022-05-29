@@ -79,6 +79,8 @@ class MAVCommand(IntEnum):
 
     # ArduPilot-specific commands
     DO_START_MAG_CAL = 42424
+    DO_ACCEPT_MAG_CAL = 42425
+    DO_CANCEL_MAG_CAL = 42426
 
 
 class MAVComponent(IntEnum):

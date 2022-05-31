@@ -750,6 +750,11 @@ class ArduPilot(Autopilot):
 
     @property
     def supports_repositioning(self) -> bool:
+        # ArduCopter supports MAV_CMD_DO_REPOSITION since ArduCopter 4.1.0,
+        # BUT it does not accept NaN in the altitude field. PX4 accepts NaN
+        # and we rely on this to express our intention to use the current
+        # altitude, so we cannot return True here until ArduCopter gains a
+        # similar feature.
         return False
 
     @property

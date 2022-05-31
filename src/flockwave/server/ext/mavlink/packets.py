@@ -145,7 +145,7 @@ class DroneShowStatusFlag(IntFlag):
     HAS_GEOFENCE = 1 << 3
     HAS_AUTHORIZATION_TO_START = 1 << 2
     IS_GPS_TIME_BAD = 1 << 1
-    UNUSED_4 = 1 << 0
+    GEOFENCE_BREACHED = 1 << 0
 
 
 _stage_descriptions = {
@@ -302,6 +302,12 @@ class DroneShowStatus:
         as we are receiving invalid timestamps from the GPS.
         """
         return bool(self.flags & DroneShowStatusFlag.IS_GPS_TIME_BAD)
+
+    @property
+    def is_geofence_breached(self) -> bool:
+        """Returns whether at least one of the geofences is breached, even if
+        the drone is configured not to act on them (i.e. report only)."""
+        return bool(self.flags & DroneShowStatusFlag.GEOFENCE_BREACHED)
 
     @property
     def is_misplaced_before_takeoff(self) -> bool:

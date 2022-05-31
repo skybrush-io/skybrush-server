@@ -966,6 +966,8 @@ class MAVLinkUAV(UAVBase):
     driver: MAVLinkDriver
     notify_updated: Callable[[], None]
 
+    _last_skybrush_status_info: Optional[DroneShowStatus] = None
+
     def __init__(self, *args, **kwds):
         super().__init__(*args, **kwds)
 
@@ -1005,6 +1007,10 @@ class MAVLinkUAV(UAVBase):
         #: records may be cleared when we don't detect a heartbeat from the
         #: drone any more
         self._last_messages = defaultdict(MAVLinkMessageRecord)
+
+        #: Stores the last Skybrush-specific status packet received from the
+        #: UAV if it ever sent one
+        self._last_skybrush_status_info = None
 
         #: Stores the MAVLink network ID of the drone (not part of the MAVLink
         #: messages; used by us to track which MAVLink network of ours the
@@ -1408,6 +1414,8 @@ class MAVLinkUAV(UAVBase):
         this UAV.
         """
         data = DroneShowStatus.from_mavlink_message(message)
+
+        self._last_skybrush_status_info = data
 
         self._gps_fix.num_satellites = data.num_satellites
         self._gps_fix.type = data.gps_fix
@@ -2114,8 +2122,10 @@ class MAVLinkUAV(UAVBase):
         message.
 
         The error codes managed by this function are disjoint from the error
-        codes managed by `_update_errors_from_sys_status_and_heartbeat()`.
-        Make sure to keep it this way.
+        codes managed by `_update_errors_from_sys_status_and_heartbeat()`,
+        except for FlockwaveErrorCode.GEOFENCE_VIOLATION_WARNING, which is
+        handled in `_update_errors_from_sys_status_and_heartbeat()`. See a
+        detailed explanation in the source code there.
         """
         errors: Dict[int, bool] = {
             FlockwaveErrorCode.TIMESYNC_ERROR: status.has_timesync_error,
@@ -2183,6 +2193,19 @@ class MAVLinkUAV(UAVBase):
             heartbeat.base_mode, heartbeat.custom_mode
         )
 
+        # The geofence status is a bit of a mess. ArduCopter and PX4 both report
+        # geofence violations by marking the geofence sensor as "present,
+        # enabled but not healthy". However, if the geofence action is set to
+        # "report only" in ArduCopter, it does _not_ consider the geofence
+        # sensor as enabled and we never get notifications about geofence
+        # breaches (apart from the "Fence breached" STATUSTEXT message, which
+        # we ignore because there is no corresponding "Breach resolved" message
+        # so we don't know for how long we should mark the geofence breached).
+        # That's why our Skybrush-specific status packet contains a bit to
+        # indicate geofence breaches even if the geofence mode is set to
+        # "report only" -- but it means that we have _two_ sources to check to
+        # determine the error code to use for the geofence.
+
         errors = {
             FlockwaveErrorCode.AUTOPILOT_INIT_FAILED: (
                 heartbeat.system_status == MAVState.UNINIT
@@ -2211,7 +2234,15 @@ class MAVLinkUAV(UAVBase):
                 has_geofence_error and are_motors_running
             ),
             FlockwaveErrorCode.GEOFENCE_VIOLATION_WARNING: (
-                has_geofence_error and not are_motors_running
+                # Geofence error reported from SYS_STATUS...
+                (has_geofence_error and not are_motors_running)
+                # ...or no error reported from SYS_STATUS, but a geofence breach
+                # was reported in the Skybrush-specific status packet
+                or (
+                    not has_geofence_error
+                    and self._last_skybrush_status_info
+                    and self._last_skybrush_status_info.is_geofence_breached
+                )
             ),
             FlockwaveErrorCode.RC_SIGNAL_LOST_WARNING: has_rc_error,
             FlockwaveErrorCode.BATTERY_CRITICAL: has_battery_error,

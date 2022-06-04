@@ -48,6 +48,7 @@ flockwave-parsers = {version = "^2.0.1", source = "fury"}
 flockwave-spec = {version = "^1.62.0", source = "fury"}
 skybrush-ext-dock = {version = "^1.0.0", source = "collmot", optional = true}
 skybrush-ext-flockctrl = {version = "^1.0.1", source = "collmot", optional = true}
+skybrush-ext-map-cache = {version = ">=0.2.1", source = "collmot", optional = true}
 skybrush-ext-sidekick = {version = "^1.0.0", source = "collmot", optional = true}
 skybrush-ext-timecode = {version = "^1.0.0", source = "collmot", optional = true}
 pyledctrl = {version = "^4.0.1", source = "fury"}
@@ -70,9 +71,9 @@ pytest-cov = "^3.0.0"
 pytest-trio = ">=0.6.0"
 
 [tool.poetry.extras]
-all = ["skybrush-ext-dock", "skybrush-ext-flockctrl", "skybrush-ext-sidekick", "skybrush-ext-timecode"]
-collmot = ["skybrush-ext-dock", "skybrush-ext-flockctrl", "skybrush-ext-timecode"]
-pro = ["skybrush-ext-sidekick", "skybrush-ext-timecode"]
+all = ["skybrush-ext-dock", "skybrush-ext-flockctrl", "skybrush-ext-map-cache", "skybrush-ext-sidekick", "skybrush-ext-timecode"]
+collmot = ["skybrush-ext-dock", "skybrush-ext-flockctrl", "skybrush-ext-map-cache", "skybrush-ext-timecode"]
+pro = ["skybrush-ext-map-cache", "skybrush-ext-sidekick", "skybrush-ext-timecode"]
 
 [tool.poetry.scripts]
 skybrushd = "flockwave.server.launcher:start"

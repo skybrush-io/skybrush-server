@@ -2,8 +2,10 @@
     {% for tag in tags %}
         {% if tag == "experimental" %}
             <span class="badge badge-warning">{{ tag }}</span>
-        {% else %}
+        {% elif tag == "pro" %}
             <span class="badge badge-primary">{{ tag }}</span>
+        {% else %}
+            <span class="badge badge-secondary">{{ tag }}</span>
         {% endif %}
     {% endfor %}
 {%- endmacro %}

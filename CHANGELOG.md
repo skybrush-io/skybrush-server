@@ -14,6 +14,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   running Live (and the server) is offline. Requires a license for Skybrush
   Live Pro.
 
+### Changed
+
+- On ArduPilot drones, the FENCE_TYPE parameter is now adjusted automatically
+  when a geofence is uploaded. Earlier versions did not touch the FENCE_TYPE
+  parameter even if the geofence configuration request contained limits for
+  fence types that were not enabled before in the FENCE_TYPE bitmask.
+
 ## [2.2.0] - 2022-05-27
 
 ### Added

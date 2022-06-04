@@ -42,11 +42,6 @@ def get_geofence_configuration_from_show_specification(
     result.max_distance = optional_float(geofence.get("maxDistance"))
     result.min_altitude = optional_float(geofence.get("minAltitude"))
 
-    # We need a minimum altitude anyway, so if we don't have one, let's assume
-    # the ArduCopter default
-    if result.min_altitude is None:
-        result.min_altitude = -10
-
     # Parse geofence action
     action = geofence.get("action")
     if action:

@@ -23,7 +23,7 @@ from .enums import (
     MAVSysStatusSensor,
 )
 from .errors import UnknownFlightModeError
-from .geofence import GeofenceManager
+from .geofence import GeofenceManager, GeofenceType
 from .types import MAVLinkFlightModeNumbers, MAVLinkMessage
 from .utils import (
     decode_param_from_wire_representation,
@@ -608,32 +608,46 @@ class ArduPilot(Autopilot):
     async def configure_geofence(
         self, uav, configuration: GeofenceConfigurationRequest
     ) -> None:
+        fence_type = GeofenceType.OFF
+
         if configuration.min_altitude is not None:
             # Update the minimum altitude limit; note that ArduCopter supports
             # only the [-100; 100] range.
             min_altitude = float(clamp(configuration.min_altitude, -100, 100))
             await uav.set_parameter("FENCE_ALT_MIN", min_altitude)
+            fence_type |= GeofenceType.FLOOR
+        else:
+            # Assume that the minimum altitude limit is disabled
+            pass
 
         if configuration.max_altitude is not None:
             # Update the maximum altitude limit; note that ArduCopter supports
             # only the [10; 1000] range.
             max_altitude = float(clamp(configuration.max_altitude, 10, 1000))
             await uav.set_parameter("FENCE_ALT_MAX", max_altitude)
+            fence_type |= GeofenceType.ALTITUDE
+        else:
+            # Assume that the maximum altitude limit is disabled
+            pass
 
         if configuration.max_distance is not None:
             # Update the maximum distance; note that ArduCopter supports only
             # the [30; 10000] range.
             max_altitude = float(clamp(configuration.max_distance, 30, 10000))
             await uav.set_parameter("FENCE_RADIUS", max_altitude)
-
-        if configuration.enabled is not None:
-            # Update whether the fence is enabled or disabled
-            await uav.set_parameter("FENCE_ENABLE", int(bool(configuration.enabled)))
+            fence_type |= GeofenceType.CIRCLE
+        else:
+            # Assume that the distance limit is disabled
+            pass
 
         if configuration.polygons is not None:
             # Update geofence polygons
             manager = GeofenceManager.for_uav(uav)
             await manager.set_geofence_areas(configuration.polygons)
+            fence_type |= GeofenceType.POLYGON
+        else:
+            # Assume that the polygon fence is disabled
+            pass
 
         if configuration.rally_points is not None:
             if configuration.rally_points:
@@ -654,6 +668,22 @@ class ArduPilot(Autopilot):
                 raise NotSupportedError(
                     f"geofence action {configuration.action!r} not supported on ArduPilot"
                 )
+        else:
+            # Assume that we do not need to change the geofence action
+            pass
+
+        # Update the type of the geofence
+        await uav.set_parameter("FENCE_TYPE", int(fence_type))
+
+        if configuration.enabled is None:
+            # Infer whether the fence should be enabled or disabled based on
+            # fence_type
+            fence_enabled = bool(fence_type)
+        else:
+            fence_enabled = bool(configuration.enabled)
+
+        # Update whether the fence is enabled or disabled
+        await uav.set_parameter("FENCE_ENABLE", int(fence_enabled))
 
     def decode_param_from_wire_representation(
         self, value: Union[int, float], type: MAVParamType

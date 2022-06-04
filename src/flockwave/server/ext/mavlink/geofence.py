@@ -34,7 +34,8 @@ class GeofenceType(IntFlag):
     ALTITUDE = 1
     CIRCLE = 2
     POLYGON = 4
-    ALL = ALTITUDE | CIRCLE | POLYGON
+    FLOOR = 8
+    ALL = ALTITUDE | CIRCLE | POLYGON | FLOOR
 
 
 class GeofenceManager:

@@ -27,7 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Show specifications may now contain a preferred geofence action.
 
-- ArduPilot-based drones can now configured the geofence action on the drone
+- ArduPilot-based drones can now configure the geofence action on the drone
   based on the action submitted in the show specification.
 
 ## [2.1.0] - 2022-05-19

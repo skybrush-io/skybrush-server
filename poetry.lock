@@ -344,7 +344,7 @@ reference = "fury"
 
 [[package]]
 name = "flockwave-ext"
-version = "1.14.4"
+version = "1.15.0"
 description = "Generic extension manager for Skybrush-related projects"
 category = "main"
 optional = false
@@ -1338,7 +1338,7 @@ pro = ["skybrush-ext-map-cache", "skybrush-ext-sidekick", "skybrush-ext-timecode
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.8"
-content-hash = "3033b9b49344b3f2caa2f42c0285f7e38031db70d21b961bdde32a1fdd804f28"
+content-hash = "3bbbc1b929c520dca9d6ebdb831f8a4f20ae3dbc379f692ffaa17aea9fab4049"
 
 [metadata.files]
 adrenaline = [
@@ -1573,8 +1573,8 @@ flockwave-conn = [
     {file = "flockwave_conn-5.0.0-py3-none-any.whl", hash = "sha256:2eba2ad0f3c7ecc5db8856c289ef13947c86e80cb65231d081b022ef10244bb6"},
 ]
 flockwave-ext = [
-    {file = "flockwave-ext-1.14.4.tar.gz", hash = "sha256:7dc1139f443259106b6ff0416c0810fb0871bcb2c00725c995c6c3fefc42a5ac"},
-    {file = "flockwave_ext-1.14.4-py3-none-any.whl", hash = "sha256:58d1ac20f5cc10aceb5a7f62f1d31147d8cb6447ed16489add98a2a7cd1c293c"},
+    {file = "flockwave-ext-1.15.0.tar.gz", hash = "sha256:f14be614f4239ee5e002aca07105d13e62e8eb7a427bcde029bd1dfa560f8640"},
+    {file = "flockwave_ext-1.15.0-py3-none-any.whl", hash = "sha256:d5e9068bc59a7091953cbeb62263ef5fe527ce5344075432ef21fc4cf8ab334e"},
 ]
 flockwave-flockctrl = [
     {file = "flockwave-flockctrl-2.1.1.tar.gz", hash = "md5:4c8e3eeb5d24355f72f94b74ded4b411"},

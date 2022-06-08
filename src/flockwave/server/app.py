@@ -785,6 +785,10 @@ class SkybrushServer(DaemonApp):
             message_hub=self.message_hub,
         )
 
+        # Ask the extension manager to scan the entry points for user-defined
+        # extensions and plugins
+        self.extension_manager.rescan()
+
     def _find_connection_by_id(
         self,
         connection_id: str,

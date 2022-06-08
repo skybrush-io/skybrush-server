@@ -151,7 +151,7 @@ python-versions = "*"
 
 [[package]]
 name = "bitstruct"
-version = "8.14.1"
+version = "8.15.1"
 description = "This module performs conversions between Python values and C bit field structs represented as Python byte strings."
 category = "dev"
 optional = false
@@ -227,7 +227,7 @@ test = ["nose"]
 
 [[package]]
 name = "compose"
-version = "1.3.1"
+version = "1.4.1"
 description = "The classic ``compose``, with all the Pythonic features."
 category = "main"
 optional = false
@@ -1153,7 +1153,7 @@ reference = "collmot"
 
 [[package]]
 name = "skybrush-ext-map-cache"
-version = "0.2.1"
+version = "0.3.0"
 description = "Offline map caching for Skybrush Server"
 category = "main"
 optional = true
@@ -1250,7 +1250,7 @@ python-versions = ">=3.7"
 
 [[package]]
 name = "trio"
-version = "0.20.0"
+version = "0.21.0"
 description = "A friendly Python library for async concurrency and I/O"
 category = "main"
 optional = false
@@ -1338,7 +1338,7 @@ pro = ["skybrush-ext-map-cache", "skybrush-ext-sidekick", "skybrush-ext-timecode
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.8"
-content-hash = "46398254c2aa0667755d3f92d3eb12c9fd90ecb53c6c41f3c4fec3cf3b7d7ebf"
+content-hash = "3033b9b49344b3f2caa2f42c0285f7e38031db70d21b961bdde32a1fdd804f28"
 
 [metadata.files]
 adrenaline = [
@@ -1404,7 +1404,7 @@ bitstring = [
     {file = "bitstring-3.1.9.tar.gz", hash = "sha256:a5848a3f63111785224dca8bb4c0a75b62ecdef56a042c8d6be74b16f7e860e7"},
 ]
 bitstruct = [
-    {file = "bitstruct-8.14.1.tar.gz", hash = "sha256:d38131bd447b6af5b8f464c4878797c87a5d9da1c95b9357e071c424fde5f055"},
+    {file = "bitstruct-8.15.1.tar.gz", hash = "sha256:6fa6adbfb8f3b8cb68c21b13aa65d23eb2c3ac32419ab926f3fd1fff717a9125"},
 ]
 blinker = [
     {file = "blinker-1.4.tar.gz", hash = "sha256:471aee25f3992bd325afa3772f1063dbdbbca947a041b8b89466dc00d606f8b6"},
@@ -1482,10 +1482,10 @@ colour = [
     {file = "colour-0.1.5.tar.gz", hash = "sha256:af20120fefd2afede8b001fbef2ea9da70ad7d49fafdb6489025dae8745c3aee"},
 ]
 compose = [
-    {file = "compose-1.3.1-py2.py30-none-any.whl", hash = "sha256:5b004946d53e3b2ae32cf7f4ddf2569a99a09efb6b8a2604cda5be9aac895ce2"},
-    {file = "compose-1.3.1-py35-none-any.whl", hash = "sha256:3c0b6862e24bc5f77532b5108acac50809d2e96bbc24ed6b39cde2cfd46d18da"},
-    {file = "compose-1.3.1-py38-none-any.whl", hash = "sha256:63f69528c3d4476e38d8f3eaabe2eb22d90b13c8cb4295ecc51ece8ddd3330d2"},
-    {file = "compose-1.3.1.tar.gz", hash = "sha256:c1bb422ffbba4fd4760e4185c0a09977ae719866e5dfa3b0bd06337aa081ee41"},
+    {file = "compose-1.4.1-py2.py30-none-any.whl", hash = "sha256:4bd63d7cab05a9daf9683fedfd3c091fc73632453fa1e5605e0ef99fec4cdfdf"},
+    {file = "compose-1.4.1-py35-none-any.whl", hash = "sha256:f63c4be0f19a4490de09da107b74df322200a7fc8a9f3d268ff62c2bbd0daa73"},
+    {file = "compose-1.4.1-py38-none-any.whl", hash = "sha256:56833936487aba9d9b0de4a67a66f2af874b002eb6f70141c6e1ab46b1fb8149"},
+    {file = "compose-1.4.1.tar.gz", hash = "sha256:c8983a94c119186551b622567a83eceaad35c72411d73ea780642d42d4baaa5c"},
 ]
 coverage = [
     {file = "coverage-6.4.1-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:f1d5aa2703e1dab4ae6cf416eb0095304f49d004c39e9db1d86f57924f43006b"},
@@ -1989,8 +1989,8 @@ skybrush-ext-flockctrl = [
     {file = "skybrush_ext_flockctrl-1.0.1-py3-none-any.whl", hash = "md5:9774d592b73adb1044e518877cdb4094"},
 ]
 skybrush-ext-map-cache = [
-    {file = "skybrush-ext-map-cache-0.2.1.tar.gz", hash = "md5:4e62fef4149e023a7f7be260810c02f1"},
-    {file = "skybrush_ext_map_cache-0.2.1-py3-none-any.whl", hash = "md5:72941747957012ee1b14bf043b13292d"},
+    {file = "skybrush-ext-map-cache-0.3.0.tar.gz", hash = "md5:64d6e538eced86a8f08d3762df12f08a"},
+    {file = "skybrush_ext_map_cache-0.3.0-py3-none-any.whl", hash = "md5:a7d50a4680599b9bcd9bd74c96769da3"},
 ]
 skybrush-ext-sidekick = [
     {file = "skybrush-ext-sidekick-1.0.0.tar.gz", hash = "md5:af6e5c760f5dd8b51b4658e85b8f37dc"},
@@ -2020,8 +2020,8 @@ tomli = [
     {file = "tomli-2.0.1.tar.gz", hash = "sha256:de526c12914f0c550d15924c62d72abc48d6fe7364aa87328337a31007fe8a4f"},
 ]
 trio = [
-    {file = "trio-0.20.0-py3-none-any.whl", hash = "sha256:fb2d48e4eab0dfb786a472cd514aaadc71e3445b203bc300bad93daa75d77c1a"},
-    {file = "trio-0.20.0.tar.gz", hash = "sha256:670a52d3115d0e879e1ac838a4eb999af32f858163e3a704fe4839de2a676070"},
+    {file = "trio-0.21.0-py3-none-any.whl", hash = "sha256:4dc0bf9d5cc78767fc4516325b6d80cc0968705a31d0eec2ecd7cdda466265b0"},
+    {file = "trio-0.21.0.tar.gz", hash = "sha256:523f39b7b69eef73501cebfe1aafd400a9aad5b03543a0eded52952488ff1c13"},
 ]
 trio-parallel = [
     {file = "trio-parallel-1.0.0.tar.gz", hash = "sha256:7be741cf1ab925c97a5f6f334aee469c3e9c98124a0229b4ed2bfe8563940c13"},

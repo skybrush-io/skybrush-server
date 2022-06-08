@@ -11,6 +11,7 @@ from typing import ClassVar, Iterator, Optional
 
 from flockwave.server.model import default_id_generator
 from flockwave.server.registries.base import RegistryBase
+from flockwave.server.registries.errors import RegistryFull
 from flockwave.server.registries.objects import ObjectRegistry
 from flockwave.server.types import Disposer
 
@@ -131,7 +132,12 @@ class MissionRegistry(RegistryBase[Mission]):
                 mission._id = mission_id
                 mission.type = type
                 self._entries[mission_id] = mission
-                self._object_registry.add(mission)
+                try:
+                    self._object_registry.add(mission)
+                except RegistryFull:
+                    raise RuntimeError(
+                        "server reached the total number of allowed objects"
+                    ) from None
                 self.mission_added.send(self, mission=mission)
                 return mission
 

@@ -8,6 +8,7 @@ from flockwave.gps.rtcm.packets import RTCMPacket, RTCMV3StationaryAntennaPacket
 from flockwave.gps.rtcm.parsers import create_rtcm_parser
 from flockwave.gps.vectors import ECEFToGPSCoordinateTransformation
 
+from flockwave.server.registries.errors import RegistryFull
 from flockwave.server.utils.generic import overridden
 
 if TYPE_CHECKING:
@@ -54,24 +55,30 @@ class RTKBeaconManager:
             # When switching RTK presets, it may happen that the new beacon is
             # created _before_ the previous beacon is removed so we need to use
             # a counter to ensure that the IDs are unique
-            beacon = stack.enter_context(
-                beacon_api.use(self.BEACON_ID_TEMPLATE.format(next(self._counter)))
-            )
-            beacon.basic_properties.name = "RTK base"
-
-            stack.enter_context(
-                signal_api.use(
-                    {signal: partial(self._on_rtk_packet_received, beacon=beacon)}
+            try:
+                beacon = stack.enter_context(
+                    beacon_api.use(self.BEACON_ID_TEMPLATE.format(next(self._counter)))
                 )
-            )
+            except RegistryFull:
+                # This may happen if the user reaches the license limits
+                beacon = None
 
-            watchdog = stack.enter_context(
-                Watchdog(
-                    self.timeout, partial(self._on_beacon_timed_out, beacon)
-                ).use_soon(nursery)
-            )
+            if beacon:
+                beacon.basic_properties.name = "RTK base"
 
-            stack.enter_context(overridden(self, _watchdog=watchdog))
+                stack.enter_context(
+                    signal_api.use(
+                        {signal: partial(self._on_rtk_packet_received, beacon=beacon)}
+                    )
+                )
+
+                watchdog = stack.enter_context(
+                    Watchdog(
+                        self.timeout, partial(self._on_beacon_timed_out, beacon)
+                    ).use_soon(nursery)
+                )
+
+                stack.enter_context(overridden(self, _watchdog=watchdog))
 
             yield
 

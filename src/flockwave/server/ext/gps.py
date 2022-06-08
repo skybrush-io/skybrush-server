@@ -31,6 +31,7 @@ from flockwave.networking import format_socket_address
 from flockwave.parsers import create_line_parser
 from flockwave.server.errors import NotSupportedError
 from flockwave.server.model import ConnectionPurpose
+from flockwave.server.registries.errors import RegistryFull
 from flockwave.spec.ids import make_valid_object_id
 
 from flockwave.server.utils.generic import overridden
@@ -236,6 +237,11 @@ class GPSExtension(UAVExtension):
     _id_format: str
     """Format string that defines how to derive globally registered beacon IDs."""
 
+    _last_warning_for_beacon_id: Optional[str]
+    """ID of the beacon for which the last warning was printed. Suppresses
+    additional warnings for this beacon.
+    """
+
     _main_connection: Optional[Connection]
     """The "main" connection object of the extension."""
 
@@ -248,6 +254,7 @@ class GPSExtension(UAVExtension):
         self._connection_to_beacon_ids = defaultdict(set)
         self._connection_to_connection_id = {}
         self._device_to_beacon_id = {}
+        self._last_warning_for_beacon_id = None
         self._main_connection = None
 
     def configure(self, configuration):
@@ -360,19 +367,29 @@ class GPSExtension(UAVExtension):
                 # here. In case we did, let's just exit gracefully.
                 return
 
-            beacon = self._beacon_context_stack.enter_context(
-                self._beacon_api.use(beacon_id)
-            )
-            assert beacon is not None
+            try:
+                beacon = self._beacon_context_stack.enter_context(
+                    self._beacon_api.use(beacon_id)
+                )
+            except RegistryFull:
+                if self.log and self._last_warning_for_beacon_id != beacon_id:
+                    self.log.warn(
+                        "Cannot register beacon for GPS; no more slots in object registry"
+                    )
+                    self._last_warning_for_beacon_id = beacon_id
+                return
 
-        self._connection_to_beacon_ids[source].add(beacon_id)
+        if beacon is not None:
+            self._connection_to_beacon_ids[source].add(beacon_id)
 
-        if "position" in message:
-            beacon.update_status(
-                position=message["position"], heading=message["heading"], active=True
-            )
-        elif "name" in message:
-            beacon.basic_properties.name = message["name"]
+            if "position" in message:
+                beacon.update_status(
+                    position=message["position"],
+                    heading=message["heading"],
+                    active=True,
+                )
+            elif "name" in message:
+                beacon.basic_properties.name = message["name"]
 
     async def run(self, app: "SkybrushServer", configuration, log):
         self._beacon_api = app.import_api("beacon")

@@ -21,6 +21,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   parameter even if the geofence configuration request contained limits for
   fence types that were not enabled before in the FENCE_TYPE bitmask.
 
+### Fixed
+
+- The RTK and the GPS extensions do not crash any more when trying to register a
+  new beacon and the object registry is full (typically when the license limits
+  are hit).
+
 ## [2.2.0] - 2022-05-27
 
 ### Added

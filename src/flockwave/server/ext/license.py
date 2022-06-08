@@ -1,7 +1,7 @@
 from abc import abstractmethod, ABCMeta
 from datetime import date, datetime, timedelta
 from math import inf, isfinite
-from typing import Any, Dict, Mapping, Optional, Tuple
+from typing import Any, Dict, FrozenSet, Mapping, Optional, Tuple
 
 from flockwave.ext.errors import ApplicationExit, NotSupportedError
 from flockwave.networking import get_link_layer_address_mapping
@@ -16,6 +16,9 @@ NEVER_EXPIRES = 20 * 365
 
 #: Global variable holding the current license
 license = None  # type: Optional[License]
+
+#: Empty set used by the default implementation of License.get_features
+_EMPTY_SET = frozenset()
 
 
 class License(metaclass=ABCMeta):
@@ -43,6 +46,14 @@ class License(metaclass=ABCMeta):
             return (expiry_date - date.today()).days
 
     @abstractmethod
+    def get_features(self) -> FrozenSet[str]:
+        """Returns the list of additional features that the license provides
+        access for. Features are simple string identifiers; it is up to the
+        host application to interpret them as appropriate.
+        """
+        return _EMPTY_SET
+
+    @abstractmethod
     def get_id(self) -> str:
         """Returns a unique ID of the license."""
         raise NotImplementedError
@@ -66,6 +77,10 @@ class License(metaclass=ABCMeta):
         or `None` if the license never expires.
         """
         raise NotImplementedError
+
+    def has_feature(self, feature: str) -> bool:
+        """Returns whether the license provides access to the given feature."""
+        return feature in self.get_features()
 
     def is_valid(self) -> bool:
         """Returns whether the license is valid."""
@@ -94,6 +109,8 @@ class License(metaclass=ABCMeta):
         expiry_date = self.get_expiry_date()
         if expiry_date is not None:
             result["expiryDate"] = expiry_date.strftime("%Y-%m-%d")
+
+        # ######################################################################
 
         restrictions = []
 
@@ -129,6 +146,20 @@ class License(metaclass=ABCMeta):
 
         if restrictions:
             result["restrictions"] = restrictions
+
+        # ######################################################################
+
+        features = []
+        if self.has_feature("pro"):
+            features.append(
+                {
+                    "type": "pro",
+                    "label": "Skybrush Server Pro features",
+                }
+            )
+
+        if features:
+            result["features"] = features
 
         return result
 
@@ -170,11 +201,18 @@ class DictBasedLicense(License):
     - ``expiresAt`` - POSIX timestamp in seconds when the license will expire.
       The license is perpetual if this key is missing.
 
+    - ``features`` - additional features provided by the license. This is an
+      unordered set of strings; interpreting the strings is up to the host
+      application.
+
     The condition dictionary can have the following keys:
 
     - ``mac`` - list of MAC addresses that the license is valid for
 
     - ``drones`` - maximum number of drones that can be used simultaneously"""
+
+    _license_info: Mapping[str, Any]
+    _features: FrozenSet[str]
 
     def __init__(self, license_info: Mapping[str, Any]):
         """Constructor.
@@ -182,6 +220,7 @@ class DictBasedLicense(License):
         Do not use directly; use one of the subclasses instead.
         """
         self._license_info = license_info
+        self._update_features()
 
     def get_allowed_mac_addresses(self) -> Optional[Tuple[str]]:
         addresses = self._get_conditions().get("mac")
@@ -202,6 +241,9 @@ class DictBasedLicense(License):
             return datetime.strptime(expiry, "%Y-%m-%d").date()
         except ValueError:
             raise ValueError(f"invalid expiry date: {expiry!r}")
+
+    def get_features(self) -> FrozenSet[str]:
+        return self._features
 
     def get_id(self) -> str:
         try:
@@ -231,6 +273,10 @@ class DictBasedLicense(License):
             return self._license_info["cond"]
         except KeyError:
             return {}
+
+    def _update_features(self) -> None:
+        features = self._license_info.get("features")
+        self._features = frozenset(str(f) for f in features) if features else _EMPTY_SET
 
 
 class CLSLicense(DictBasedLicense):

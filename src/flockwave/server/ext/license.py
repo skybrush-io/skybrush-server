@@ -1,12 +1,13 @@
 from abc import abstractmethod, ABCMeta
 from datetime import date, datetime, timedelta
+from functools import partial, wraps
 from math import inf, isfinite
 from typing import Any, Dict, FrozenSet, Mapping, Optional, Tuple
 
-from flockwave.ext.errors import ApplicationExit, NotSupportedError
+from flockwave.ext.errors import ApplicationExit, NotLoadableError, NotSupportedError
 from flockwave.networking import get_link_layer_address_mapping
 
-__all__ = ("load",)
+__all__ = ("load", "only_with_feature", "unload")
 
 
 #: Symbolic constant to return from get_days_left_until_expiry() if the license
@@ -304,6 +305,17 @@ def get_license() -> Optional[License]:
     return license
 
 
+def has_feature(*args: str) -> bool:
+    """Returns whether the currently loaded license is valid and possesses _any_
+    of the given features in the arguments.
+
+    Returns ``False`` if no license is loaded, or if a license is loaded but the
+    function has no arguments.
+    """
+    license = get_license()
+    return license is not None and any(license.has_feature(feature) for feature in args)
+
+
 def enforce_license_limits(license: Optional[License], app) -> None:
     num_drones = license.get_maximum_drone_count() if license else inf
     app.object_registry.size_limit = num_drones
@@ -388,6 +400,50 @@ def load(app, configuration, logger):
     app.message_hub.register_message_handler(handle_LCN_INF, "LCN-INF")
 
 
+def only_with_feature(*features: str, sync: bool = False):
+    """Decorator factory that creates a decorator that restricts the execution
+    of a function to the case when the currently loaded license is valid and
+    has a given feature (or one of the provided features).
+
+    For technical reasons, you need to specify explicitly whether you are
+    providing the decorator with a sync or an async function.
+    """
+    feature_str = ", ".join(features)
+    if len(features) > 1:
+        message = f"This extension requires the following entitlements in your license: {feature_str}"
+    else:
+        message = (
+            f"This extension requires the {feature_str!r} entitlement in your license"
+        )
+    permitted = partial(has_feature, *features)
+
+    if sync:
+
+        def decorator(func):
+            @wraps(func)
+            def decorated(*args, **kwds):
+                if not permitted():
+                    raise NotLoadableError(message)
+                return func(*args, **kwds)
+
+            return decorated
+
+        return decorator
+
+    else:
+
+        def async_decorator(func):
+            @wraps(func)
+            async def decorated(*args, **kwds):
+                if not permitted():
+                    raise NotLoadableError(message)
+                return await func(*args, **kwds)
+
+            return decorated
+
+        return async_decorator
+
+
 def unload(app):
     if not app.extension_manager.shutting_down:
         raise NotSupportedError("License manager cannot be unloaded")
@@ -401,5 +457,5 @@ def unload(app):
 
 
 description = "License management"
-exports = {"get_license": get_license}
+exports = {"get_license": get_license, "has_feature": has_feature}
 schema = {}

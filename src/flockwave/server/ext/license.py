@@ -410,10 +410,10 @@ def only_with_feature(*features: str, sync: bool = False):
     """
     feature_str = ", ".join(features)
     if len(features) > 1:
-        message = f"This extension requires the following entitlements in your license: {feature_str}"
+        message = f"This extension requires a license with the following entitlements: {feature_str}"
     else:
         message = (
-            f"This extension requires the {feature_str!r} entitlement in your license"
+            f"This extension requires a license with the {feature_str!r} entitlement"
         )
     permitted = partial(has_feature, *features)
 

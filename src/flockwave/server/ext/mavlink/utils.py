@@ -1,4 +1,3 @@
-from binascii import hexlify
 from logging import ERROR, WARNING, INFO, DEBUG
 from typing import Optional, List, Union
 
@@ -164,7 +163,9 @@ def mavlink_version_number_to_semver(
         version.append(f"-rc.{prerelease - 192}")
 
     if custom and not official:
-        version.append("+" + hexlify(bytes(custom).rstrip(b"\x00")).decode("utf-8"))
+        version.append(
+            "+" + bytes(custom).rstrip(b"\x00").decode("utf-8", errors="ignore")
+        )
 
     return "".join(version)
 

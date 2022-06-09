@@ -27,6 +27,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   new beacon and the object registry is full (typically when the license limits
   are hit).
 
+- Fixed the decoding of the git commit hash in ArduPilot version numbers.
+
 ## [2.2.0] - 2022-05-27
 
 ### Added

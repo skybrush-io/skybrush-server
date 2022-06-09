@@ -689,7 +689,7 @@ class MAVLinkDriver(UAVDriver):
         channel = transport_options_to_channel(transport)
         await self.broadcast_command_long_with_retries(
             MAVCommand.PREFLIGHT_REBOOT_SHUTDOWN,
-            param1=2,  # shutdown autopilot
+            param1=126,  # request low power mode
             channel=channel,
         )
 
@@ -702,7 +702,7 @@ class MAVLinkDriver(UAVDriver):
         if not await self.send_command_long(
             uav,
             MAVCommand.PREFLIGHT_REBOOT_SHUTDOWN,
-            2,  # shutdown autopilot
+            126,  # request low power mode
             channel=channel,
         ):
             raise RuntimeError("Failed to request low-power mode from autopilot")

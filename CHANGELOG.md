@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [2.3.0] - 2022-06-09
 
 ### Added
 
@@ -16,10 +16,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- On ArduPilot drones, the FENCE_TYPE parameter is now adjusted automatically
-  when a geofence is uploaded. Earlier versions did not touch the FENCE_TYPE
+- On ArduPilot drones, the ``FENCE_TYPE`` parameter is now adjusted automatically
+  when a geofence is uploaded. Earlier versions did not touch the ``FENCE_TYPE``
   parameter even if the geofence configuration request contained limits for
-  fence types that were not enabled before in the FENCE_TYPE bitmask.
+  fence types that were not enabled before in the ``FENCE_TYPE`` bitmask.
 
 ### Fixed
 

@@ -1153,7 +1153,7 @@ reference = "collmot"
 
 [[package]]
 name = "skybrush-ext-map-cache"
-version = "0.3.0"
+version = "0.3.1"
 description = "Offline map caching for Skybrush Server"
 category = "main"
 optional = true
@@ -1166,7 +1166,7 @@ reference = "collmot"
 
 [[package]]
 name = "skybrush-ext-sidekick"
-version = "1.0.0"
+version = "1.0.1"
 description = "Skybrush Sidekick support for Skybrush Server"
 category = "main"
 optional = true
@@ -1179,7 +1179,7 @@ reference = "collmot"
 
 [[package]]
 name = "skybrush-ext-timecode"
-version = "1.0.1"
+version = "1.0.2"
 description = "SMPTE timecode support for Skybrush Server"
 category = "main"
 optional = true
@@ -1338,7 +1338,7 @@ pro = ["skybrush-ext-map-cache", "skybrush-ext-sidekick", "skybrush-ext-timecode
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.8"
-content-hash = "47b0d94428d82499cc2125df3163f90af09c46a67ffb5fbe02999c0099772952"
+content-hash = "b2d921e33dcdd86ec264b24729c24fc92980e52f3d5cdf7a5178976e92dfc4e5"
 
 [metadata.files]
 adrenaline = [
@@ -1989,16 +1989,16 @@ skybrush-ext-flockctrl = [
     {file = "skybrush_ext_flockctrl-1.0.1-py3-none-any.whl", hash = "md5:9774d592b73adb1044e518877cdb4094"},
 ]
 skybrush-ext-map-cache = [
-    {file = "skybrush-ext-map-cache-0.3.0.tar.gz", hash = "md5:64d6e538eced86a8f08d3762df12f08a"},
-    {file = "skybrush_ext_map_cache-0.3.0-py3-none-any.whl", hash = "md5:a7d50a4680599b9bcd9bd74c96769da3"},
+    {file = "skybrush-ext-map-cache-0.3.1.tar.gz", hash = "md5:8969765d089010cb3417328b80da6e03"},
+    {file = "skybrush_ext_map_cache-0.3.1-py3-none-any.whl", hash = "md5:86b9cff9a76279534c004cada42b0039"},
 ]
 skybrush-ext-sidekick = [
-    {file = "skybrush-ext-sidekick-1.0.0.tar.gz", hash = "md5:af6e5c760f5dd8b51b4658e85b8f37dc"},
-    {file = "skybrush_ext_sidekick-1.0.0-py3-none-any.whl", hash = "md5:c82b486ba9aa294192fd6866e0f9bb3e"},
+    {file = "skybrush-ext-sidekick-1.0.1.tar.gz", hash = "md5:367448e56d9caa79a47879161d9e106b"},
+    {file = "skybrush_ext_sidekick-1.0.1-py3-none-any.whl", hash = "md5:6e5d3a716b114024d4869991212b0e60"},
 ]
 skybrush-ext-timecode = [
-    {file = "skybrush-ext-timecode-1.0.1.tar.gz", hash = "md5:173eaa9676ebdc3282a6559cc65226dd"},
-    {file = "skybrush_ext_timecode-1.0.1-py3-none-any.whl", hash = "md5:1af2bb209ea550e7f0add1375bc6de3a"},
+    {file = "skybrush-ext-timecode-1.0.2.tar.gz", hash = "md5:c1bb56bef88366d3a545ab3276e4e50e"},
+    {file = "skybrush_ext_timecode-1.0.2-py3-none-any.whl", hash = "md5:3cadd2b2a66c0cca98c855e11aa1ebb7"},
 ]
 sniffio = [
     {file = "sniffio-1.2.0-py3-none-any.whl", hash = "sha256:471b71698eac1c2112a40ce2752bb2f4a4814c22a54a3eed3676bc0f5ca9f663"},

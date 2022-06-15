@@ -170,9 +170,19 @@ async def _to_json(
     try:
         result = await func(*args)
     except Exception as ex:
-        if not isinstance(ex, NotSupportedError) and log:
-            log.exception(ex)
-        return {"error": str(ex)}
+        message: str
+        if isinstance(ex, NotSupportedError):
+            # handled silently
+            message = "Operation not supported"
+        elif isinstance(ex, OSError):
+            message = ex.strerror
+            if log:
+                log.error(ex.strerror)
+        else:
+            message = str(ex)
+            if log:
+                log.exception(ex)
+        return {"error": message}
 
     return {"result": on_success} if result is None else {"result": result}
 

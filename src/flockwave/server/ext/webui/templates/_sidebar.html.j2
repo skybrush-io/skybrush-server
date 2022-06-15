@@ -79,7 +79,7 @@ async function saveConfiguration() {
     const { result, error } = await ky.post("{{ url_for('.save_configuration') }}").json();
     if (error !== undefined) {
         _onConfigurationSaveError();
-        alert("Failed to save configuration.");
+        alert("Failed to save configuration: " + (error || "unknown error"));
     } else if (!result) {
         _onConfigurationSaveError();
         alert("Failed to save configuration.");

@@ -341,8 +341,10 @@ class CrazyflieDriver(UAVDriver):
         self, uav: "CrazyflieUAV", command: Optional[str] = None
     ) -> str:
         if command is None:
-            return "Run 'show clear' to clear the last uploaded show"
-        elif command == "clear":
+            raise RuntimeError(
+                "Missing subcommand; run 'show remove' to remove the current show."
+            )
+        elif command in ("clear", "remove"):
             if uav.has_previously_uploaded_show:
                 uav.forget_last_uploaded_show()
                 await uav.reboot()
@@ -350,7 +352,7 @@ class CrazyflieDriver(UAVDriver):
             else:
                 return "No show was recently uploaded to this drone."
         else:
-            raise RuntimeError(f"Unknown command: {command}, expected 'clear'")
+            raise RuntimeError(f"Unknown subcommand: {command!r}")
 
     async def handle_command_stop(self, uav: "CrazyflieUAV") -> str:
         """Stops the motors of the UAV immediately."""

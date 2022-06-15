@@ -314,7 +314,7 @@ class MAVLinkDriver(UAVDriver):
             raise RuntimeError(
                 "Missing subcommand; add 'remove' to remove the current show."
             )
-        elif command == "remove":
+        elif command in ("clear", "remove"):
             await uav.remove_show()
             return "Show removed."
         else:

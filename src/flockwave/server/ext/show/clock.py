@@ -36,7 +36,8 @@ class ShowClock(ClockBase):
                 to the internal clock of the server.
 
         Returns:
-            the number of seconds since the scheduled start of the show
+            the number of clock ticks since the scheduled start of the show,
+            assuming 10 ticks per second
         """
         if self._start_time is None:
             return 0.0
@@ -59,6 +60,7 @@ class ShowClock(ClockBase):
         if self._start_time == value:
             return
 
+        old_value = self._start_time
         running = self.running
 
         self._start_time = value
@@ -69,7 +71,12 @@ class ShowClock(ClockBase):
             else:
                 self.stopped.send(self)
         else:
-            self.changed.send(self)
+            if old_value is not None and value is not None:
+                delta = (old_value - value) * self.ticks_per_second
+            else:
+                # should not happen
+                delta = 0.0
+            self.changed.send(self, delta=delta)
 
     @property
     def ticks_per_second(self) -> int:

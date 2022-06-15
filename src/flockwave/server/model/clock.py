@@ -4,27 +4,26 @@ from abc import ABC, abstractmethod, abstractproperty
 from blinker import Signal
 from datetime import datetime, timezone
 from time import time
-from typing import Optional, Union
+from typing import ClassVar, Optional, Union
 
 __all__ = ("Clock", "ClockBase", "StoppableClockBase")
 
 
 class Clock(ABC):
-    """Interface specification for clock objects.
+    """Interface specification for clock objects."""
 
-    Attributes:
-        started (Signal): signal that is sent when the clock is started
-        stopped (Signal): signal that is sent when the clock is stopped
-        changed (Signal): signal that is sent when the clock is adjusted
-            manually. It carries a single keyword argument named 'delta'
-            that contains the number of ticks with which the clock was
-            adjusted. It is positive if the clock was adjusted forward and
-            negative if the clock was adjusted backward.
+    started: ClassVar[Signal] = Signal()
+    """Signal that is sent when the clock is started."""
+
+    stopped: ClassVar[Signal] = Signal()
+    """Signal that is sent when the clock is stopped."""
+
+    changed: ClassVar[Signal] = Signal()
+    """Signal that is sent when the clock is adjusted. The signal will have a
+    keyword argument named ``delta`` that contains the number of clock ticks
+    that the clock was adjusted with. The argument is positive if the clock was
+    adjusted forward and negative if the clock was adjusted backward.
     """
-
-    started = Signal()
-    stopped = Signal()
-    changed = Signal()
 
     @abstractproperty
     def epoch(self) -> Optional[float]:

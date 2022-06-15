@@ -8,9 +8,8 @@ from contextlib import ExitStack
 from trio import sleep_forever
 from typing import Any, Dict, Iterable, Optional, TYPE_CHECKING
 
+from flockwave.server.registries import ClockRegistry, find_in_registry
 from flockwave.server.utils.generic import overridden
-
-from ..registries import ClockRegistry, find_in_registry
 
 if TYPE_CHECKING:
     from flockwave.server.message_hub import MessageHub
@@ -18,7 +17,7 @@ if TYPE_CHECKING:
     from flockwave.server.model.messages import FlockwaveMessage, FlockwaveResponse
 
 message_hub: Optional["MessageHub"] = None
-registry: Optional["ClockRegistry"] = None
+registry: Optional[ClockRegistry] = None
 
 exports: Dict[str, Any] = {
     "register_clock": None,
@@ -82,7 +81,7 @@ def find_clock_by_id(
     )
 
 
-def on_clock_changed(sender, clock):
+def on_clock_changed(sender, clock: "Clock") -> None:
     """Handler called when one of the clocks managed by the clock
     registry has changed. Creates and sends a ``CLK-INF`` notification for the
     clock that has changed.

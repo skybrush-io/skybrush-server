@@ -14,12 +14,17 @@ class ShowClock(ClockBase):
     of the drone show.
     """
 
+    _start_time: Optional[float]
+    """The scheduled start time of the show, expressed as the number of seconds
+    elapsed since the UNIX epoch. ``None`` if no start time was set yet.
+    """
+
     def __init__(self):
         """Constructor."""
         super().__init__(id="show", epoch=None)
         self._start_time = None
 
-    def ticks_given_time(self, now):
+    def ticks_given_time(self, now: float) -> float:
         """Returns the number of clock ticks elapsed since the scheduled start
         of the show. If the current time is before the scheduled start, returns
         a negative number.
@@ -27,11 +32,11 @@ class ShowClock(ClockBase):
         Returns zero if there is no scheduled start time yet.
 
         Parameters:
-            now (float): the number of seconds elapsed since the Unix epoch,
-                according to the internal clock of the server.
+            now: the number of seconds elapsed since the Unix epoch, according
+                to the internal clock of the server.
 
         Returns:
-            float: the number of seconds since the scheduled start of the show
+            the number of seconds since the scheduled start of the show
         """
         if self._start_time is None:
             return 0.0
@@ -39,7 +44,7 @@ class ShowClock(ClockBase):
             return (now - self._start_time) * 10
 
     @property
-    def running(self):
+    def running(self) -> bool:
         return self._start_time is not None
 
     @property
@@ -67,5 +72,5 @@ class ShowClock(ClockBase):
             self.changed.send(self)
 
     @property
-    def ticks_per_second(self):
+    def ticks_per_second(self) -> int:
         return 10

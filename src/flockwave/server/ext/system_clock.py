@@ -17,25 +17,25 @@ class SystemClock(ClockBase):
         super().__init__(id="system", epoch=0)
 
     @property
-    def running(self):
+    def running(self) -> bool:
         return True
 
-    def ticks_given_time(self, now):
+    def ticks_given_time(self, now: float) -> float:
         """Returns the number of clock ticks elapsed since the Unix epoch,
         assuming that the server clock reports that the current time is
         the one given in the 'now' argument.
 
         Parameters:
-            now (float): the number of seconds elapsed since the Unix epoch,
+            now: the number of seconds elapsed since the Unix epoch,
                 according to the internal clock of the server.
 
         Returns:
-            float: the number of clock ticks elapsed
+            the number of clock ticks elapsed
         """
         return now
 
     @property
-    def ticks_per_second(self):
+    def ticks_per_second(self) -> int:
         return 1
 
 

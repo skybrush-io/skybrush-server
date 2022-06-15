@@ -17,20 +17,20 @@ __all__ = ()
 class VirtualClock(ClockBase):
     """Virtual clock that always stays at its epoch."""
 
-    def ticks_given_time(self, now):
+    def ticks_given_time(self, now: float) -> float:
         """Returns zero unconditionally.
 
         Returns:
-            float: zero, no matter what the current time is
+            zero, no matter what the current time is
         """
         return 0.0
 
     @property
-    def running(self):
+    def running(self) -> bool:
         return False
 
     @property
-    def ticks_per_second(self):
+    def ticks_per_second(self) -> int:
         return 10
 
 

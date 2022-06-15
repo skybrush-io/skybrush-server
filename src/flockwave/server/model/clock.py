@@ -1,15 +1,15 @@
 """Clock-related model objects."""
 
-from abc import ABCMeta, abstractmethod, abstractproperty
+from abc import ABC, abstractmethod, abstractproperty
 from blinker import Signal
 from datetime import datetime, timezone
 from time import time
-
+from typing import Optional, Union
 
 __all__ = ("Clock", "ClockBase", "StoppableClockBase")
 
 
-class Clock(metaclass=ABCMeta):
+class Clock(ABC):
     """Interface specification for clock objects.
 
     Attributes:
@@ -27,7 +27,7 @@ class Clock(metaclass=ABCMeta):
     changed = Signal()
 
     @abstractproperty
-    def epoch(self):
+    def epoch(self) -> Optional[float]:
         """The epoch of the clock, expressed as the number of seconds from
         the Unix epoch to the epoch of the clock, in UTC, or ``None`` if
         the clock has no epoch or an unknown epoch.
@@ -35,7 +35,7 @@ class Clock(metaclass=ABCMeta):
         raise NotImplementedError
 
     @abstractproperty
-    def id(self):
+    def id(self) -> str:
         """The identifier of the clock."""
         raise NotImplementedError
 
@@ -75,7 +75,7 @@ class Clock(metaclass=ABCMeta):
                 expressed as the number of seconds elapsed since the Unix epoch
 
         Returns:
-            float: the timestamp of the clock
+            the timestamp of the clock
         """
         raise NotImplementedError
 
@@ -90,28 +90,36 @@ class Clock(metaclass=ABCMeta):
 class ClockBase(Clock):
     """Abstract base class for clock objects."""
 
-    def __init__(self, id, epoch=None):
+    _epoch: Optional[float]
+    """The epoch of the clock, expressed as the number of seconds from the Unix
+    epoch to the epoch of the clock, in UTC, or ``None`` if the clock has no
+    epoch or an unknown epoch.
+    """
+
+    _id: str
+    """The identifier of the clock."""
+
+    def __init__(self, id: str, epoch: Optional[float] = None):
         """Constructor.
 
         Creates a new clock with the given ID and the given epoch.
 
         Parameters:
-            id (str): the identifier of the clock
-            epoch (Optional[float]): the epoch of the clock, expressed as
-                the number of seconds from the Unix epoch to the epoch of
-                the clock, in UTC, or ``None`` if the clock has no epoch or
-                an unknown epoch.
+            id: the identifier of the clock
+            epoch: the epoch of the clock, expressed as the number of seconds
+                from the Unix epoch to the epoch of the clock, in UTC, or
+                ``None`` if the clock has no epoch or an unknown epoch.
         """
         self._epoch = epoch
         self._id = id
 
     @property
-    def epoch(self):
+    def epoch(self) -> Optional[float]:
         """The epoch of the clock."""
         return self._epoch
 
     @property
-    def id(self):
+    def id(self) -> str:
         """The identifier of the clock."""
         return self._id
 
@@ -135,15 +143,15 @@ class ClockBase(Clock):
             result["ticksPerSecond"] = self.ticks_per_second
         return result
 
-    def _format_epoch(self, epoch):
+    def _format_epoch(self, epoch: Optional[float]) -> Optional[Union[str, datetime]]:
         """Returns a formatted copy of the epoch value as it should appear
         in the JSON output.
 
         Parameters:
-            epoch (Optional[float]): the epoch value to format
+            epoch: the epoch value to format
 
         Returns:
-            str or datetime: the formatted version of the epoch
+            the formatted version of the epoch
         """
         if epoch is None:
             return None
@@ -158,7 +166,13 @@ class StoppableClockBase(ClockBase):
     started.
     """
 
-    def __init__(self, id, epoch=None):
+    _running: bool
+    """Whether the clock is running."""
+
+    _ticks_per_second: int
+    """Number of clock ticks per second."""
+
+    def __init__(self, id: str, epoch: Optional[float] = None):
         """Constructor.
 
         Creates a new stoppable clock with the given ID and the given epoch.
@@ -176,12 +190,12 @@ class StoppableClockBase(ClockBase):
         self._ticks_per_second = 1
 
     @property
-    def running(self):
+    def running(self) -> bool:
         """Returns whether the clock is running."""
         return self._running
 
     @running.setter
-    def running(self, value):
+    def running(self, value: bool):
         """Sets whether the clock is running."""
         if self._running == value:
             return
@@ -193,23 +207,23 @@ class StoppableClockBase(ClockBase):
         else:
             self.stopped.send(self)
 
-    def start(self):
+    def start(self) -> None:
         """Starts the clock if it was not running yet."""
         self.running = True
 
-    def stop(self):
+    def stop(self) -> None:
         """Stops the clock if it was running."""
         self.running = False
 
     @property
-    def ticks_per_second(self):
+    def ticks_per_second(self) -> int:
         """Returns the number of clock ticks per second (in wall clock
         time).
         """
         return self._ticks_per_second
 
     @ticks_per_second.setter
-    def ticks_per_second(self, value):
+    def ticks_per_second(self, value: int) -> None:
         value = int(value)
         if value <= 0:
             raise ValueError("ticks per second must be positive")

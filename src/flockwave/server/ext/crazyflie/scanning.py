@@ -5,14 +5,27 @@ of a Crazyflie address space for Crazyflie drones.
 from errno import ENODEV
 from functools import partial
 from time import monotonic
-from trio import Event, MemorySendChannel, move_on_after, sleep
-from typing import AsyncIterable, Callable, ClassVar, Iterable, List, Optional, Union
+from trio import Event, move_on_after, sleep
+from trio.abc import ReceiveChannel, SendChannel
+from typing import (
+    TYPE_CHECKING,
+    AsyncIterable,
+    Callable,
+    ClassVar,
+    Iterable,
+    List,
+    Optional,
+    Tuple,
+    Union,
+)
 
 from flockwave.concurrency import aclosing
 from flockwave.server.utils import longest_common_prefix
 
 from .connection import CrazyradioConnection
 
+if TYPE_CHECKING:
+    from aiocflib.utils.addressing import RadioAddressSpace
 
 __all__ = ("CrazyradioScannerTask",)
 
@@ -55,9 +68,7 @@ class Scheduler:
         async for item in self._run(addresses):
             yield item
 
-    async def _run(
-        self, addresses: AddressListGetter
-    ) -> AsyncIterable[Optional[List[str]]]:
+    def _run(self, addresses: AddressListGetter) -> AsyncIterable[Optional[List[str]]]:
         raise NotImplementedError
 
     def wake_up(self) -> None:
@@ -142,6 +153,11 @@ class DefaultScheduler(Scheduler):
         self._speedup_counter = 10
 
 
+ScannerTaskEvent = Tuple["RadioAddressSpace", int, Callable[[], None]]
+ScannerTaskSendChannel = SendChannel[ScannerTaskEvent]
+ScannerTaskReceiveChannel = ReceiveChannel[ScannerTaskEvent]
+
+
 class CrazyradioScannerTask:
     """Class responsible for handling a single Crazyradio connection from the
     time it is opened to the time it is closed.
@@ -151,7 +167,7 @@ class CrazyradioScannerTask:
 
     @classmethod
     async def create_and_run(
-        cls, conn: CrazyradioConnection, channel: MemorySendChannel, *args, **kwds
+        cls, conn: CrazyradioConnection, channel: ScannerTaskSendChannel, *args, **kwds
     ):
         """Creates and runs a new connection handler for the given radio
         connection.
@@ -239,7 +255,7 @@ class CrazyradioScannerTask:
             for address in to_delete:
                 del self._priorities[address]
 
-    async def run(self, channel: MemorySendChannel) -> None:
+    async def run(self, channel: ScannerTaskSendChannel) -> None:
         """Implementation of the task itself.
 
         Parameters:
@@ -279,7 +295,7 @@ class CrazyradioScannerTask:
                         f"Task scanning {address_space} stopped unexpectedly."
                     )
 
-    async def _run(self, channel: MemorySendChannel) -> None:
+    async def _run(self, channel: ScannerTaskSendChannel) -> None:
         self._excluded = set()
 
         scheduler = DefaultScheduler()
@@ -296,7 +312,7 @@ class CrazyradioScannerTask:
                 self.__class__.last_invocation_failed = False
 
                 for target in result:
-                    target = target.to_uri()
+                    target = target.to_uri(index=self._conn.crazyradio_index)
                     address_space = self._conn.address_space
 
                     try:

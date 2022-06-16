@@ -100,6 +100,13 @@ class CrazyradioConnection(TaskConnectionBase):
         """
         return self._crazyflie_address_space
 
+    @property
+    def crazyradio_index(self) -> int:
+        """Returns the index of the Crazyradio dongle associated with this
+        connection.
+        """
+        return self._crazyradio_index
+
     async def broadcast(self, port: CRTPPort, data: bytes) -> None:
         """Broadcasts a CRTP packet to all Crazyflie drones in the range of the
         connection.

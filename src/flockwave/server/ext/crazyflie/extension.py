@@ -7,6 +7,7 @@ from logging import Logger
 from pathlib import Path
 from struct import Struct
 from trio import open_memory_channel, open_nursery
+from trio.abc import ReceiveChannel, SendChannel
 from typing import Any, Callable, Dict, List, Optional
 
 from flockwave.connections.factory import create_connection
@@ -18,7 +19,7 @@ from .crtp_extensions import DRONE_SHOW_PORT, DroneShowCommand, FenceAction
 from .driver import CrazyflieDriver
 from .fence import FenceConfiguration
 from .led_lights import CrazyflieLEDLightConfigurationManager, LightConfiguration
-from .scanning import CrazyradioScannerTask
+from .scanning import CrazyradioScannerTask, ScannerTaskEvent
 
 __all__ = ("construct", "schema")
 
@@ -113,6 +114,8 @@ class CrazyflieDronesExtension(UAVExtension[CrazyflieDriver]):
         connection_config = configuration.get("connections", [])
 
         # Create a channel that will be used to create new UAVs as needed
+        new_uav_rx_channel: ReceiveChannel[ScannerTaskEvent]
+        new_uav_tx_channel: SendChannel[ScannerTaskEvent]
         new_uav_tx_channel, new_uav_rx_channel = open_memory_channel(0)
 
         # We need a nursery that will be the parent of all tasks that handle
@@ -173,6 +176,8 @@ class CrazyflieDronesExtension(UAVExtension[CrazyflieDriver]):
 
                     # Run a background task that scans the radio connection and
                     # attempts to find newly booted Crazyflie drones
+                    # TODO(ntamas): spread the scanning events in time so
+                    # only one radio is scanning at a time
                     task = partial(
                         CrazyradioScannerTask.create_and_run,
                         log=self.log,

@@ -72,6 +72,8 @@ class ScheduledTakeoffManager:
     network.
     """
 
+    _config: Optional[DroneShowConfiguration]
+
     def __init__(self, network: "MAVLinkNetwork"):
         """Constructor.
 
@@ -79,14 +81,14 @@ class ScheduledTakeoffManager:
             network: the network whose automatic takeoff process this object
                 manages
         """
-        self._config = None  # type: Optional[DroneShowConfiguration]
+        self._config = None
         self._limiter = CapacityLimiter(5)
         self._network = network
         self._parking_lot = ParkingLot()
         self._uavs_to_update = set()
         self._uavs_last_updated_at = WeakKeyDictionary()
 
-    def notify_config_changed(self, config):
+    def notify_config_changed(self, config: DroneShowConfiguration):
         """Notifies the manager that the scheduled takeoff configuration has
         changed.
         """
@@ -129,6 +131,8 @@ class ScheduledTakeoffManager:
 
                     # Figure out what the desired takeoff time and the auth flag
                     # should be
+                    # TODO(ntamas): this could be cached; the desired takeoff
+                    # configuration should depend on 'config' only
                     takeoff_config = self._get_desired_takeoff_configuration(config)
 
                     # Broadcast a packet that contains the desired takeoff time
@@ -217,9 +221,6 @@ class ScheduledTakeoffManager:
 
         Parameters:
             uav: the UAV to configure
-            limiter: a capacity limiter that is used to ensure that the number
-                of UAVs that are being configured in parallel does not exceed a
-                limit that the network can handle
         """
         try:
             async with self._limiter:  # type: ignore
@@ -269,8 +270,9 @@ class ScheduledTakeoffManager:
     # drone. If the start has not been authorized, we clear the scheduled
     # start time of the drone.
 
+    @staticmethod
     def _get_desired_takeoff_configuration(
-        self, config: DroneShowConfiguration
+        config: DroneShowConfiguration,
     ) -> TakeoffConfiguration:
         """Returns the desired start time in seconds and the desired state
         of the takeoff authorization flag on all the UAVs.
@@ -281,10 +283,11 @@ class ScheduledTakeoffManager:
         desired_auth_flag = config.authorized_to_start
 
         if config.start_method == StartMethod.AUTO:
-            if config.start_time is not None:
+            takeoff_time = config.calculate_start_time_as_unix_timestamp()
+            if takeoff_time is not None:
                 # User configured a start time so we want to set that
                 return TakeoffConfiguration(
-                    takeoff_time=int(config.start_time), authorized=desired_auth_flag
+                    takeoff_time=int(takeoff_time), authorized=desired_auth_flag
                 )
             else:
                 # User did not configure a start time so we want to clear what
@@ -308,6 +311,8 @@ class ScheduledTakeoffManager:
             return TakeoffConfiguration(authorized=False)
 
     async def _update_start_time_on_uav_inner(self, uav) -> None:
+        assert self._config is not None
+
         takeoff_config = self._get_desired_takeoff_configuration(self._config)
 
         desired_auth_flag = takeoff_config.authorized

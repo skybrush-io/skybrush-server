@@ -1,9 +1,15 @@
 """Formatting-related utility functions."""
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Callable, Sequence, TypeVar, Union
 
-__all__ = ("format_list_nicely", "format_number_nicely", "format_uav_ids_nicely")
+__all__ = (
+    "format_list_nicely",
+    "format_number_nicely",
+    "format_uav_ids_nicely",
+    "format_timedelta_nicely",
+    "format_timestamp_nicely",
+)
 
 T = TypeVar("T")
 
@@ -39,8 +45,28 @@ def format_number_nicely(value: float) -> str:
     return f"{value:.7f}".rstrip("0").rstrip(".")
 
 
+def format_timedelta_nicely(delta: Union[float, timedelta]) -> str:
+    """Formats a Python timedelta object or a float containing seconds; the
+    result will be separated into hours, minutes and seconds.
+    """
+    dt = delta.total_seconds() if isinstance(delta, timedelta) else delta
+    sign = "-" if dt < 0 else ""
+    minutes, seconds = divmod(abs(dt), 60)
+    minutes = int(minutes)
+    hours, minutes = divmod(minutes, 60)
+    seconds = round(seconds, 3)
+    maybe_zero = "0" if seconds < 10 else ""
+    if seconds.is_integer():
+        seconds = int(seconds)
+        return f"{sign}{hours:02}:{minutes:02}:{maybe_zero}{seconds}"
+    else:
+        return f"{sign}{hours:02}:{minutes:02}:{maybe_zero}{seconds:.3}"
+
+
 def format_timestamp_nicely(timestamp: Union[float, datetime]) -> str:
-    """Formats a UNIX timestamp or a Python datetime object nicely."""
+    """Formats a UNIX timestamp or a Python datetime object nicely, including
+    the date part of the timestamp as well.
+    """
     dt = (
         timestamp
         if isinstance(timestamp, datetime)

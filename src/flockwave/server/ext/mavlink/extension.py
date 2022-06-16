@@ -24,6 +24,7 @@ from .types import (
 
 if TYPE_CHECKING:
     from flockwave.server.app import SkybrushServer
+    from flockwave.server.ext.show.clock import ShowClock
 
 __all__ = ("construct", "dependencies")
 
@@ -118,6 +119,7 @@ class MAVLinkDronesExtension(UAVExtension[MAVLinkDriver]):
                 signals.use(
                     {
                         "rtk:packet": self._on_rtk_correction_packet,
+                        "show:clock_changed": self._on_show_clock_changed,
                         "show:config_updated": self._on_show_configuration_changed,
                         "show:lights_updated": self._on_show_light_configuration_changed,
                     }
@@ -127,11 +129,12 @@ class MAVLinkDronesExtension(UAVExtension[MAVLinkDriver]):
             # Forward the current start configuration for the drones in this network.
             # Note that this can be called only if self._networks has been set
             # up so we cannot do it outside the exit stack
-            self._update_show_configuration_in_networks(app=app)
+            self._update_show_configuration_in_networks()
+            self._update_show_start_time_in_networks()
 
             # Also forward the current lights configuration for the drones in
             # this network.
-            self._update_show_light_configuration_in_networks(app=app)
+            self._update_show_light_configuration_in_networks()
 
             try:
                 async with self.use_nursery() as nursery:
@@ -253,6 +256,12 @@ class MAVLinkDronesExtension(UAVExtension[MAVLinkDriver]):
                         f"Failed to enqueue RTK correction packet to network {name!r}"
                     )
 
+    def _on_show_clock_changed(self, sender) -> None:
+        """Handler that is called when the show clock is started, stopped or
+        adjusted.
+        """
+        self._update_show_start_time_in_networks()
+
     def _on_show_configuration_changed(self, sender, config) -> None:
         """Handler that is called when the user changes the start time or start
         method of the drones in the `show` extension.
@@ -331,19 +340,14 @@ class MAVLinkDronesExtension(UAVExtension[MAVLinkDriver]):
             spec, target, wait_for_response, wait_for_one_of, channel
         )
 
-    def _update_show_configuration_in_networks(self, config=None, app=None) -> None:
+    def _update_show_configuration_in_networks(self, config=None) -> None:
         """Updates the start method of the drones managed by this extension,
         based on the given configuration object from the `show` extension. If
         the configuration object is `None`, retrieves it from the `show`
         extension itself.
         """
         if config is None:
-            if app is None:
-                raise RuntimeError(
-                    "'app' kwarg must be provided if 'config' is missing"
-                )
-
-            config = app.import_api("show").get_configuration()
+            config = self.app.import_api("show").get_configuration()
 
         for name, network in self._networks.items():
             try:
@@ -353,21 +357,30 @@ class MAVLinkDronesExtension(UAVExtension[MAVLinkDriver]):
                     f"Failed to update start configuration of drones in network {name!r}"
                 )
 
-    def _update_show_light_configuration_in_networks(
-        self, config=None, app=None
-    ) -> None:
+    def _update_show_start_time_in_networks(self) -> None:
+        """Updates the scheduled start times of the drones managed by this
+        extension, based on the start time extracted from the show clock.
+        """
+        clock: Optional["ShowClock"] = self.app.import_api("show").get_clock()
+        if not clock:
+            return
+
+        for name, network in self._networks.items():
+            try:
+                network.notify_show_clock_start_time_changed(clock.start_time)
+            except Exception:
+                self.log.warn(
+                    f"Failed to update start time of drones in network {name!r}"
+                )
+
+    def _update_show_light_configuration_in_networks(self, config=None) -> None:
         """Updates the current LED light settings of the drones managed by this
         extension, based on the given configuration object from the `show`
         extension. If the configuration object is `None`, retrieves it from the
         `show` extension itself.
         """
         if config is None:
-            if app is None:
-                raise RuntimeError(
-                    "'app' kwarg must be provided if 'config' is missing"
-                )
-
-            config = app.import_api("show").get_light_configuration()
+            config = self.app.import_api("show").get_light_configuration()
 
         for name, network in self._networks.items():
             try:

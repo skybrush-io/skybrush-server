@@ -2,8 +2,9 @@
 of the show, or the elapsed time into the show if it is already running.
 """
 
+from contextlib import contextmanager
 from time import time
-from typing import Any, Optional, Tuple
+from typing import Any, Iterator, Optional, Tuple
 
 from flockwave.server.model import Clock, ClockBase
 
@@ -101,9 +102,9 @@ class ClockSynchronizationHandler:
     dynamically when the enabled / disabled state or the primary clock changes.
     """
 
-    _primary_ticks_for_zero_secondary_ticks: float = 0
-    """Tick count displayed on the primary clock that should correspond to zero
-    ticks on the secondary clock.
+    _primary_seconds_for_zero_secondary_seconds: float = 0
+    """Number of seconds on the primary clock that should correspond to zero
+    seconds on the secondary clock.
     """
 
     @property
@@ -140,38 +141,55 @@ class ClockSynchronizationHandler:
         self._secondary_clock = value
         self._update_secondary_clock()
 
+    def disable(self) -> None:
+        """Disables the synchronization mechanism, but does not make any changes
+        to the configuration of the secondary clock.
+        """
+        self._primary_clock = None
+        self._primary_seconds_for_zero_secondary_seconds = 0.0
+        self._subscribe_to_or_unsubscribe_from_primary_clock()
+        self._enabled = False
+
     def disable_and_stop(self) -> None:
         """Disables the synchronization mechanism and stops the secondary
         clock.
         """
-        self._primary_clock = None
-        self._primary_ticks_for_zero_secondary_ticks = 0.0
-        self._subscribe_to_or_unsubscribe_from_primary_clock()
-        self._update_secondary_clock()
-
-        # Force-stop the secondary clock because the previous
-        # _update_secondary_clock() call had no effect if we were already
-        # disabled
+        self.disable()
         if self._secondary_clock:
             self._secondary_clock.start_time = None
 
-        # Record that we are indeed disabled now
-        self._enabled = False
-
-    def synchronize_to(self, clock: Clock, ticks: float) -> None:
+    def synchronize_to(self, clock: Clock, seconds: float) -> None:
         """Enables the synchronization mechanism and attaches it to the given
         primary clock.
 
         Parameters:
             clock: the primary clock to synchronize to
-            ticks: the number of ticks on the primary clock that should belong
-                to zero ticks in the secondary clock
+            seconds: the number of seconds on the primary clock that should
+                belong to zero seconds in the secondary clock
         """
         self._enabled = True
         self._primary_clock = clock
-        self._primary_ticks_for_zero_secondary_ticks = ticks
+        self._primary_seconds_for_zero_secondary_seconds = seconds
         self._subscribe_to_or_unsubscribe_from_primary_clock()
         self._update_secondary_clock()
+
+    @contextmanager
+    def use_secondary_clock(self, clock: ShowClock) -> Iterator[None]:
+        """Context manager that assigns the given clock as a secondary clock
+        to the synchronization object when entering the context and that
+        detaches the clock when exiting the context.
+        """
+        if self.secondary_clock is not None:
+            raise RuntimeError(
+                "no secondary clock must be attached to the synchronization "
+                "handler yet"
+            )
+
+        self.secondary_clock = clock
+        try:
+            yield
+        finally:
+            self.secondary_clock = None
 
     def _calculate_desired_state_of_secondary_clock(
         self, now: float
@@ -190,10 +208,10 @@ class ClockSynchronizationHandler:
             return (False, 0)
 
         ticks_on_primary = self._primary_clock.ticks_given_time(now)
-        primary_tick_diff = (
-            ticks_on_primary - self._primary_ticks_for_zero_secondary_ticks
+        time_diff_sec = (
+            ticks_on_primary / self._primary_clock.ticks_per_second
+            - self._primary_seconds_for_zero_secondary_seconds
         )
-        time_diff_sec = primary_tick_diff / self._primary_clock.ticks_per_second
         return (self._primary_clock.running, time_diff_sec)
 
     def _on_primary_clock_changed(self, sender: Any = None, **kwds):

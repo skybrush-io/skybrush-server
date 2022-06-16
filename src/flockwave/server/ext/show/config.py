@@ -7,7 +7,11 @@ from enum import Enum
 from typing import Any, Dict, List, Optional, TypeVar
 
 from flockwave.server.tasks.led_lights import LightConfiguration
-from flockwave.server.utils import format_timestamp_nicely, format_uav_ids_nicely
+from flockwave.server.utils.formatting import (
+    format_timedelta_nicely,
+    format_timestamp_nicely,
+    format_uav_ids_nicely,
+)
 
 __all__ = ("LightConfiguration", "DroneShowConfiguration", "StartMethod")
 
@@ -44,8 +48,17 @@ class DroneShowConfiguration:
     start_method: StartMethod
     """The start method of the show (RC or automatic with countdown)."""
 
-    start_time: Optional[float]
-    """The start time of the show; ``None`` if unscheduled."""
+    start_time_on_clock: Optional[float]
+    """The start time of the show, in seconds elapsed since the epoch of the
+    associated clock; ``None`` if unscheduled.
+    """
+
+    clock: Optional[str]
+    """Identifier of the clock that the start time refers to. ``None`` means
+    that the start time is a UNIX timestamp, otherwise it must refer to an
+    existing clock in the system and the start time is interpreted as
+    _seconds_ relative to the epoch of the existing clock.
+    """
 
     uav_ids: List[Optional[str]]
     """The list of UAV IDs participating in the show."""
@@ -53,7 +66,8 @@ class DroneShowConfiguration:
     def __init__(self):
         """Constructor."""
         self.authorized_to_start = False
-        self.start_time = None
+        self.clock = None
+        self.start_time_on_clock = None
         self.start_method = StartMethod.RC
         self.uav_ids = []
 
@@ -77,11 +91,16 @@ class DroneShowConfiguration:
             fmt_start_method = ""
             uav_ids_relevant = False
 
-        if self.start_time is None:
+        if self.start_time_on_clock is None:
             fmt_start_time = ""
         else:
-            fmt_start_time = format_timestamp_nicely(self.start_time)
-            fmt_start_time = f" at {fmt_start_time}"
+            if self.clock:
+                # Clock is synchronized to some other internal clock
+                fmt_start_time = format_timedelta_nicely(self.start_time_on_clock)
+                fmt_start_time = f" at {fmt_start_time} on clock {self.clock!r}"
+            else:
+                fmt_start_time = format_timestamp_nicely(self.start_time_on_clock)
+                fmt_start_time = f" at {fmt_start_time}"
 
         if uav_ids_relevant:
             uav_ids = [id for id in self.uav_ids or () if id is not None]
@@ -98,16 +117,38 @@ class DroneShowConfiguration:
             return f"{fmt_uav_count} to start{fmt_start_method}{fmt_start_time}, not authorized"
 
     @property
+    def is_synced_to_custom_clock(self) -> bool:
+        """Returns whether the show configuration specifies that the show start
+        should be synced to a custom, internal clock.
+        """
+        return self.clock is not None and self.start_time_on_clock is not None
+
+    @property
     def json(self) -> Dict[str, Any]:
         """Returns the JSON representation of the configuration object."""
         return {
             "start": {
                 "authorized": bool(self.authorized_to_start),
-                "time": self.start_time,
+                "clock": self.clock,
+                "time": self.start_time_on_clock,
                 "method": str(self.start_method.value),
                 "uavIds": self.uav_ids,
             }
         }
+
+    def calculate_start_time_as_unix_timestamp(self) -> Optional[float]:
+        """Calculates the desired start time of the show as a UNIX timestamp,
+        even if the show start is synchronized to an internal clock and not to
+        UNIX time.
+        """
+        if self.start_time_on_clock is None:
+            return None
+        elif not self.clock:
+            # start_time_on_clock _is_ UNIX time
+            return self.start_time_on_clock
+        else:
+            # TODO(ntamas)
+            return None
 
     def update_from_json(self, obj: Dict[str, Any]) -> None:
         """Updates the configuration object from its JSON representation."""
@@ -124,10 +165,10 @@ class DroneShowConfiguration:
             if "time" in start_conditions:
                 start_time = start_conditions["time"]
                 if start_time is None:
-                    self.start_time = None
+                    self.start_time_on_clock = None
                     changed = True
                 elif isinstance(start_time, (int, float)):
-                    self.start_time = float(start_time)
+                    self.start_time_on_clock = float(start_time)
                     changed = True
 
             if "method" in start_conditions:
@@ -140,6 +181,13 @@ class DroneShowConfiguration:
                     item is None or isinstance(item, str) for item in uav_ids
                 ):
                     self.uav_ids = uav_ids
+                    changed = True
+
+            if "clock" in start_conditions:
+                clock = start_conditions["clock"]
+                if clock is None or isinstance(clock, str):
+                    # Make sure that an empty string is mapped to None
+                    self.clock = clock if clock else None
                     changed = True
 
         if changed:

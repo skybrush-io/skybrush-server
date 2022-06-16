@@ -73,6 +73,15 @@ class ScheduledTakeoffManager:
     """
 
     _config: Optional[DroneShowConfiguration]
+    """The configuration of the show to start, including the start method,
+    the clock that the start is synchronized to, the start time according to
+    the given clock, and the list of UAVs to start.
+    """
+
+    _start_time: Optional[float]
+    """The start time of the show, expressed as the number of seconds since
+    the UNIX epoch.
+    """
 
     def __init__(self, network: "MAVLinkNetwork"):
         """Constructor.
@@ -85,21 +94,26 @@ class ScheduledTakeoffManager:
         self._limiter = CapacityLimiter(5)
         self._network = network
         self._parking_lot = ParkingLot()
+        self._start_time = None
         self._uavs_to_update = set()
         self._uavs_last_updated_at = WeakKeyDictionary()
 
-    def notify_config_changed(self, config: DroneShowConfiguration):
+    def notify_config_changed(self, config: DroneShowConfiguration) -> None:
         """Notifies the manager that the scheduled takeoff configuration has
         changed.
         """
         self._config = config
         self._parking_lot.unpark_all()
+        self._trigger_uav_updates_soon()
 
-        # Ensure that the new configuration gets propagated to the UAVs as
-        # soon as possible by clearing the timestamps; otherwise the manager
-        # would not try an UAV if it was updated recently in the last three
-        # seconds
-        self._uavs_last_updated_at.clear()
+    def notify_start_time_changed(self, start_time: Optional[float]) -> None:
+        """Notifies the manager that the scheduled start time of the show has
+        been changed. This is typically a side effect of the user adjusting the
+        start time manually, but it may also be related to the adjustment of
+        some other clock that the show clock is synchronized to.
+        """
+        self._start_time = start_time
+        self._trigger_uav_updates_soon()
 
     async def run(self) -> None:
         """Background task that checks the scheduled start times on the UAVs
@@ -133,7 +147,9 @@ class ScheduledTakeoffManager:
                     # should be
                     # TODO(ntamas): this could be cached; the desired takeoff
                     # configuration should depend on 'config' only
-                    takeoff_config = self._get_desired_takeoff_configuration(config)
+                    takeoff_config = self._get_desired_takeoff_configuration(
+                        config, self._start_time
+                    )
 
                     # Broadcast a packet that contains the desired takeoff time
                     # and the auth flag. If it fails, well, it does not matter
@@ -212,6 +228,16 @@ class ScheduledTakeoffManager:
                 async for uav in queue:
                     nursery.start_soon(self._update_start_time_on_uav, uav)
 
+    def _trigger_uav_updates_soon(self) -> None:
+        """Ensures that new configurations get propagated to the UAVs as
+        soon as possible.
+
+        This is achived by clearing the "last updated" timestamps of the UAVs;
+        otherwise the manager would not try to update a UAV if it was updated
+        recently in the last three seconds
+        """
+        self._uavs_last_updated_at.clear()
+
     async def _update_start_time_on_uav(self, uav) -> None:
         """Background task updates the desired start time and automatic takeoff
         authorization on a single UAV.
@@ -272,7 +298,7 @@ class ScheduledTakeoffManager:
 
     @staticmethod
     def _get_desired_takeoff_configuration(
-        config: DroneShowConfiguration,
+        config: DroneShowConfiguration, start_time: Optional[float]
     ) -> TakeoffConfiguration:
         """Returns the desired start time in seconds and the desired state
         of the takeoff authorization flag on all the UAVs.
@@ -283,15 +309,15 @@ class ScheduledTakeoffManager:
         desired_auth_flag = config.authorized_to_start
 
         if config.start_method == StartMethod.AUTO:
-            takeoff_time = config.calculate_start_time_as_unix_timestamp()
-            if takeoff_time is not None:
-                # User configured a start time so we want to set that
+            if start_time is not None:
+                # User has a show clock and the show clock has a scheduled
+                # start time so we want to use that
                 return TakeoffConfiguration(
-                    takeoff_time=int(takeoff_time), authorized=desired_auth_flag
+                    takeoff_time=int(start_time), authorized=desired_auth_flag
                 )
             else:
-                # User did not configure a start time so we want to clear what
-                # there is on the drone
+                # User has no show clock or the show clock is stopped, so we
+                # want to clear what there is on the drone
                 return TakeoffConfiguration(authorized=desired_auth_flag)
 
         elif config.start_method == StartMethod.RC:
@@ -313,7 +339,9 @@ class ScheduledTakeoffManager:
     async def _update_start_time_on_uav_inner(self, uav) -> None:
         assert self._config is not None
 
-        takeoff_config = self._get_desired_takeoff_configuration(self._config)
+        takeoff_config = self._get_desired_takeoff_configuration(
+            self._config, self._start_time
+        )
 
         desired_auth_flag = takeoff_config.authorized
         desired_takeoff_time = takeoff_config.takeoff_time_in_legacy_format

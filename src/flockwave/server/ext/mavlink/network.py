@@ -407,6 +407,12 @@ class MAVLinkNetwork:
         """
         self._scheduled_takeoff_manager.notify_config_changed(config)
 
+    def notify_show_clock_start_time_changed(self, start_time: Optional[float]) -> None:
+        """Notifies the network that the show clock was started, stopped or
+        adjusted in the system.
+        """
+        self._scheduled_takeoff_manager.notify_start_time_changed(start_time)
+
     async def send_heartbeat(self, target: MAVLinkUAV) -> Optional[MAVLinkMessage]:
         """Sends a heartbeat targeted to the given UAV.
 

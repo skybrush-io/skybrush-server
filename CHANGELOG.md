@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Shows can now be started automatically based on any arbitrary registered
+  clock in the server. The primary use-case is to start a show based on an
+  external MIDI timecode.
+
 ### Fixed
 
 - Fixed automatic scanning for Crazyflie drones when multiple Crazyradios are

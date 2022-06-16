@@ -9,9 +9,10 @@ from typing import Any, Dict, Optional
 
 from flockwave.concurrency import CancellableTaskGroup
 from flockwave.server.ext.base import Extension
+from flockwave.server.model.clock import Clock
 from flockwave.server.tasks import wait_for_dict_items, wait_until
 
-from .clock import ShowClock
+from .clock import ClockSynchronizationHandler, ShowClock
 from .config import DroneShowConfiguration, LightConfiguration, StartMethod
 from .logging import ShowUploadLoggingMiddleware
 
@@ -32,6 +33,7 @@ class DroneShowExtension(Extension):
     log: Logger
 
     _clock: Optional[ShowClock]
+    _clock_sync: ClockSynchronizationHandler
     _nursery: Optional[Nursery]
     _show_tasks: Optional[CancellableTaskGroup]
 
@@ -42,11 +44,13 @@ class DroneShowExtension(Extension):
         self._nursery = None
         self._show_tasks = None
 
+        self._clock_sync = ClockSynchronizationHandler()
         self._config = DroneShowConfiguration()
         self._lights = LightConfiguration()
 
     def exports(self) -> Dict[str, Any]:
         return {
+            "get_clock": self._get_clock,
             "get_configuration": self._get_configuration,
             "get_light_configuration": self._get_light_configuration,
         }
@@ -63,7 +67,18 @@ class DroneShowExtension(Extension):
 
     def handle_SHOW_SETCFG(self, message, sender, hub):
         try:
-            self._config.update_from_json(message.body.get("configuration", {}))
+            config = message.body.get("configuration", {})
+
+            # If the "config" object contains a key named "start", and it has
+            # no sub-key named "clock", it means that we are working with an
+            # older version of Skybrush Live that did not have support for
+            # MIDI timecode. In this case, we assume that the clock is explciitly
+            # set to None
+            if isinstance(config, dict) and "start" in config:
+                if isinstance(config["start"], dict) and "clock" not in config["start"]:
+                    config["start"]["clock"] = None
+
+            self._config.update_from_json(config)
             return hub.acknowledge(message)
         except Exception as ex:
             return hub.acknowledge(message, outcome=False, reason=str(ex))
@@ -104,6 +119,21 @@ class DroneShowExtension(Extension):
                         self._on_lights_updated, sender=self._lights  # type: ignore
                     )
                 )
+                stack.enter_context(
+                    self._clock.started.connected_to(
+                        self._on_show_clock_changed, sender=self._clock  # type: ignore
+                    )
+                )
+                stack.enter_context(
+                    self._clock.stopped.connected_to(
+                        self._on_show_clock_changed, sender=self._clock  # type: ignore
+                    )
+                )
+                stack.enter_context(
+                    self._clock.changed.connected_to(
+                        self._on_show_clock_changed, sender=self._clock  # type: ignore
+                    )
+                )
                 stack.enter_context(app.import_api("clocks").use_clock(self._clock))
                 stack.enter_context(app.message_hub.use_message_handlers(handlers))
                 stack.enter_context(
@@ -111,7 +141,12 @@ class DroneShowExtension(Extension):
                         ShowUploadLoggingMiddleware(self.log)
                     )
                 )
+                stack.enter_context(self._clock_sync.use_secondary_clock(self._clock))
                 await sleep_forever()
+
+    def _get_clock(self) -> Optional[ShowClock]:
+        """Returns a reference to the show clock."""
+        return self._clock
 
     def _get_configuration(self) -> DroneShowConfiguration:
         """Returns a copy of the current drone show configuration."""
@@ -125,8 +160,9 @@ class DroneShowExtension(Extension):
         """Handler that is called when the configuration of the start settings
         of the show was updated from any source.
         """
-        if self._clock is not None:
-            self._clock.start_time = self._config.start_time
+        assert self.app is not None
+
+        self._sync_show_clock_to(self._config.clock, self._config.start_time_on_clock)
 
         if self._show_tasks is not None:
             self._show_tasks.cancel_all()
@@ -149,6 +185,14 @@ class DroneShowExtension(Extension):
         updated_signal = self.app.import_api("signals").get("show:lights_updated")
         updated_signal.send(self, config=self._lights.clone())
 
+    def _on_show_clock_changed(self, sender) -> None:
+        """Handler that is called when the show clock is started, stopped or
+        adjusted.
+        """
+        assert self.app is not None
+        changed_signal = self.app.import_api("signals").get("show:clock_changed")
+        changed_signal.send(self)
+
     @property
     def _should_run_countdown(self) -> bool:
         """Returns whether the extension should run the clock countdown, given
@@ -160,6 +204,39 @@ class DroneShowExtension(Extension):
             and self._clock.start_time is not None
             and self._config.start_method is StartMethod.AUTO
         )
+
+    def _sync_show_clock_to(
+        self, clock_id: Optional[str], time: Optional[float]
+    ) -> None:
+        """Configures the clock synchronization handler such that it syncs the
+        show clock to the clock with the given ID, assuming that the show clock
+        must reach zero when the clock with the given ID reaches the given
+        time, in seconds.
+
+        When the clock ID is ``None``, assumes that the given time is an absolute
+        start time expressed as the number of seconds since the UNIX epoch.
+        """
+        primary_clock: Optional[Clock]
+
+        if self.app is None:
+            self._clock_sync.disable_and_stop()
+
+        elif clock_id is None:
+            self._clock_sync.disable()
+            if self._clock is not None:
+                self._clock.start_time = time
+
+        else:
+            registry = self.app.import_api("clocks").registry
+            try:
+                primary_clock = registry.find_by_id(clock_id)
+            except KeyError:
+                primary_clock = None
+
+            if primary_clock and time is not None:
+                self._clock_sync.synchronize_to(primary_clock, time)
+            else:
+                self._clock_sync.disable_and_stop()
 
     async def _start_show_when_needed(self) -> None:
         assert self.app is not None

@@ -185,7 +185,7 @@ class DroneShowExtension(Extension):
         updated_signal = self.app.import_api("signals").get("show:lights_updated")
         updated_signal.send(self, config=self._lights.clone())
 
-    def _on_show_clock_changed(self, sender) -> None:
+    def _on_show_clock_changed(self, sender, *, delta: Optional[float] = None) -> None:
         """Handler that is called when the show clock is started, stopped or
         adjusted.
         """

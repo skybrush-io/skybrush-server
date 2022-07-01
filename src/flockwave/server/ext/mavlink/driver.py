@@ -1873,8 +1873,12 @@ class MAVLinkUAV(UAVBase):
         async with aclosing(MAVFTP.for_uav(self)) as ftp:
             await ftp.put(data, "/collmot/show.skyb")
 
-        # Ask drone to reload show file
-        await self.reload_show()
+        # We give some time for the filesystem to flush caches etc before
+        # asking the drone to reload the show file. There were some reports
+        # that sometimes the show file was read only partially, and I suspect
+        # this could have been because the filesystem was not flushed fully
+        # to the SD card before we tried to reload the show. We could not debug
+        # it properly as it happened very rarely.
 
         # Encode latitude and longitude of show origin
         # TODO(ntamas): this is not entirely accurate due to the back-and-forth
@@ -1922,6 +1926,10 @@ class MAVLinkUAV(UAVBase):
 
         # Configure and enable geofence
         await self.configure_geofence(geofence)
+
+        # Ask drone to reload show file now that we are done with everything
+        # else
+        await self.reload_show()
 
     def _configure_data_streams_soon(self, force: bool = False) -> None:
         """Schedules a call to configure the data streams that we want to receive

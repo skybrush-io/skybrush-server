@@ -1861,7 +1861,7 @@ class MAVLinkUAV(UAVBase):
         geofence = get_geofence_configuration_from_show_specification(show)
         rth_plan = get_rth_plan_from_show_specification(show)
 
-        async with SkybrushBinaryShowFile.create_in_memory(version=1) as show_file:
+        async with SkybrushBinaryShowFile.create_in_memory() as show_file:
             await show_file.add_trajectory(trajectory)
             await show_file.add_light_program(light_program)
             if rth_plan:

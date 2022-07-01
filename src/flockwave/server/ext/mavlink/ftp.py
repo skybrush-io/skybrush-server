@@ -1,7 +1,6 @@
 """Implementation of the MAVFTP protocol on top of a MAVLink connection."""
 
 from contextlib import asynccontextmanager
-from crcmod import mkCrcFun as make_crc_function
 from dataclasses import dataclass
 from enum import Enum, IntEnum
 from functools import partial
@@ -14,6 +13,7 @@ from trio import fail_after, move_on_after, TooSlowError, wrap_file
 from typing import Awaitable, Callable, Iterable, Optional, Union
 
 from flockwave.concurrency import aclosing
+from skybrush.utils import crc32_mavftp as crc32
 
 from .types import MAVLinkMessage, spec
 
@@ -22,9 +22,6 @@ __all__ = ("MAVFTP",)
 
 #: Type specification for FTP paths that are accepted by MAVFTP
 FTPPath = Union[str, bytes]
-
-#: CRC32 function used by ArduPilot's MAVFTP implementation
-crc32 = make_crc_function(0x104C11DB7, initCrc=0, rev=True, xorOut=0)
 
 #: Maximum number of bytes allowed in a single read/write operation
 _MAVFTP_CHUNK_SIZE = 239

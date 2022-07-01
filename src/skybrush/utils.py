@@ -1,9 +1,15 @@
+from crcmod import mkCrcFun as make_crc_function
 from typing import Optional, List, Sequence, Tuple
 
-__all__ = ("BoundingBoxCalculator", "Point", "encode_variable_length_integer")
+__all__ = (
+    "BoundingBoxCalculator",
+    "Point",
+    "crc32_mavftp",
+    "encode_variable_length_integer",
+)
 
-#: Type specification for a single point in a trajectory
 Point = Tuple[float, float, float]
+"""Type specification for a single point in a trajectory"""
 
 
 class BoundingBoxCalculator:
@@ -85,3 +91,9 @@ def encode_variable_length_integer(value: int) -> bytes:
         else:
             data.append(value)
             return bytes(data)
+
+
+crc32_mavftp = make_crc_function(0x104C11DB7, initCrc=0, rev=True, xorOut=0)
+"""CRC32 function used by ArduPilot's MAVFTP implementation and the Skybrush
+binary file format.
+"""

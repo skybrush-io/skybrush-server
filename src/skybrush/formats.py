@@ -1,6 +1,6 @@
 """Classes representing various Skybrush show file formats."""
 
-from enum import IntEnum
+from enum import IntEnum, IntFlag
 from functools import partial
 from io import BytesIO, SEEK_END
 from itertools import count
@@ -26,12 +26,20 @@ from flockwave.concurrency import aclosing
 
 from .rth_plan import RTHAction, RTHPlan, RTHPlanEntry
 from .trajectory import TrajectorySegment, TrajectorySpecification
-from .utils import encode_variable_length_integer, Point
+from .utils import crc32_mavftp as crc32, encode_variable_length_integer, Point
 
 __all__ = ("SkybrushBinaryShowFile",)
 
 
-_SKYBRUSH_BINARY_FILE_HEADER = b"skyb"
+_SKYBRUSH_BINARY_FILE_MARKER: bytes = b"skyb"
+_SKYBRUSH_BINARY_FILE_HEADER: List[bytes] = [
+    # Version 0 -- never existed
+    b"",
+    # Version 1 header
+    b"skyb\x01",
+    # Version 2 header with CRC feature bit
+    b"skyb\x02\x01\x00\x00\x00\x00",
+]
 
 
 async def _read_exactly(
@@ -99,19 +107,42 @@ class SkybrushBinaryFileBlock:
         return self._contents  # type: ignore
 
 
+class SkybrushBinaryFileFeatures(IntFlag):
+    """Feature flags used in the header of Skybrush binary show files from
+    version 2 onwards.
+    """
+
+    NONE = 0
+    CRC32 = 1
+
+
 class SkybrushBinaryShowFile:
     """Class representing a Skybrush binary show file, backed by a
     file-like object.
     """
 
-    _header_struct = Struct("<BH")
+    _checksum_validated: bool = False
+    """Whether the checksum of the file has already been validated."""
+
+    _features: SkybrushBinaryFileFeatures = SkybrushBinaryFileFeatures.NONE
+    """The optional features (checksum etc) added to this binary show file."""
+
+    _start_of_crc_bytes: Optional[int] = None
+    """Byte index of the CRC bytes in the show file, `None` if not known yet
+    or if the show has no CRC bytes.
+    """
+
+    _start_of_first_block: Optional[int] = None
+    """Byte index of the first block in the show file, `None` if not known yet."""
+
+    _header_struct: ClassVar[Struct] = Struct("<BH")
 
     @classmethod
-    def create_in_memory(cls, version: int = 1):
+    def create_in_memory(cls, version: int = 2):
         return cls.from_bytes(data=None, version=version)
 
     @classmethod
-    def from_bytes(cls, data: Optional[bytes] = None, *, version: int = 1):
+    def from_bytes(cls, data: Optional[bytes] = None, *, version: int = 2):
         """Creates an in-memory Skybrush binary show file.
 
         Parameters:
@@ -121,7 +152,10 @@ class SkybrushBinaryShowFile:
                 created anew; ignored when `data` is not `None`
         """
         if not data:
-            data = _SKYBRUSH_BINARY_FILE_HEADER + bytes([version])
+            if version >= 1 and version < len(_SKYBRUSH_BINARY_FILE_HEADER):
+                data = _SKYBRUSH_BINARY_FILE_HEADER[version]
+            else:
+                raise RuntimeError(f"Unsupported version number: {version}")
         return cls(BytesIO(data))
 
     def __init__(self, fp: IO[bytes]):
@@ -133,7 +167,9 @@ class SkybrushBinaryShowFile:
         if isinstance(fp, BytesIO):
             self._buffer = fp
 
+        self._checksum_validated = False
         self._fp = wrap_file(fp)
+        self._features = SkybrushBinaryFileFeatures.NONE
         self._version = None
         self._start_of_first_block = None
 
@@ -150,11 +186,23 @@ class SkybrushBinaryShowFile:
         """
         if self._start_of_first_block is None:
             await self._fp.seek(0)
-            self._version = await self._expect_header()
-            self._start_of_first_block = await self._fp.tell()
 
-            if self._version != 1:
+            self._version = await self._expect_header()
+            if self._version == 1:
+                self._features = SkybrushBinaryFileFeatures.NONE
+            elif self._version == 2:
+                feature_flags = await self._fp.read(1)
+                self._features = SkybrushBinaryFileFeatures(feature_flags[0])
+            else:
                 raise RuntimeError("only version 1 files are supported")
+
+            if self._features & SkybrushBinaryFileFeatures.CRC32:
+                self._start_of_crc_bytes = await self._fp.tell()
+                await self._fp.read(4)
+            else:
+                self._start_of_crc_bytes = None
+
+            self._start_of_first_block = await self._fp.tell()
         else:
             await self._fp.seek(self._start_of_first_block)
 
@@ -167,7 +215,7 @@ class SkybrushBinaryShowFile:
             the Skybrush binary file schema version
         """
         header = await self._fp.read(4)
-        if header != _SKYBRUSH_BINARY_FILE_HEADER:
+        if header != _SKYBRUSH_BINARY_FILE_MARKER:
             raise RuntimeError(f"expected Skybrush binary file header, got {header!r}")
 
         version = await self._fp.read(1)
@@ -264,7 +312,7 @@ class SkybrushBinaryShowFile:
         )
 
     async def blocks(
-        self, rewind: Optional[bool] = None
+        self, rewind: Optional[bool] = None, validate: Optional[bool] = None
     ) -> AsyncIterable[SkybrushBinaryFileBlock]:
         """Iterates over the blocks found in the file.
 
@@ -272,6 +320,9 @@ class SkybrushBinaryShowFile:
             rewind: whether to rewind the stream to the beginning before
                 iterating. `None` means to rewind if and only if the stream is
                 seekable.
+            validate: whether to validate the checksum of the file before
+                iterating. `None` means to validate if and only if it has not
+                been validated before at least once.
         """
         seekable: bool = self._fp.seekable()  # type: ignore
 
@@ -280,6 +331,12 @@ class SkybrushBinaryShowFile:
 
         if rewind:
             await self._rewind()
+
+        if validate is None:
+            validate = not self._checksum_validated
+
+        if validate:
+            await self.validate_checksum()
 
         while True:
             data = await self._fp.read(self._header_struct.size)
@@ -306,6 +363,29 @@ class SkybrushBinaryShowFile:
                 if not block.consumed:
                     await block.read()
 
+    @property
+    def features(self) -> SkybrushBinaryFileFeatures:
+        """Returns the feature flags of the file."""
+        if self._version is None:
+            raise RuntimeError("version header was not read yet")
+        return self._features
+
+    async def finalize(self) -> None:
+        """Finalizes the file by updating its CRC block (if any)."""
+        if not self._version:
+            if not self._fp.seekable():
+                raise RuntimeError(
+                    "version number not known yet and the binary show file is not seekable"
+                )
+
+            pos = await self._fp.tell()
+            try:
+                await self._rewind()
+            finally:
+                await self._fp.seek(pos)
+
+        await self._update_crc32()
+
     def get_buffer(self) -> IO[bytes]:
         """Returns the underlying buffer of the file if it is backed by an
         in-memory buffer.
@@ -318,14 +398,17 @@ class SkybrushBinaryShowFile:
     def get_contents(self) -> bytes:
         """Returns the contents of the underlying in-memory buffer of the file
         if it is backed by an in-memory buffer.
+
+        Parameters:
+            finalize: whether to finalize the contents before returning the
+                result
         """
         if not self._buffer:
             raise RuntimeError("file is not backed by an in-memory buffer")
-
         return self._buffer.getvalue()
 
     async def read_all_blocks(
-        self, rewind: Optional[bool] = None
+        self, rewind: Optional[bool] = None, validate: Optional[bool] = None
     ) -> List[SkybrushBinaryFileBlock]:
         """Reads and returns all the blocks found in the file.
 
@@ -333,8 +416,11 @@ class SkybrushBinaryShowFile:
             rewind: whether to rewind the stream to the beginning before
                 iterating. `None` means to rewind if and only if the stream is
                 seekable.
+            validate: whether to validate the checksum of the file before
+                iterating. `None` means to validate if and only if it has not
+                been validated before at least once.
         """
-        gen = self.blocks(rewind=rewind)
+        gen = self.blocks(rewind=rewind, validate=validate)
         blocks: List[SkybrushBinaryFileBlock] = []
 
         async with aclosing(gen):
@@ -343,12 +429,93 @@ class SkybrushBinaryShowFile:
 
         return blocks
 
+    async def validate_checksum(self) -> None:
+        """Validates the checksum of the file. Assumes that the file is
+        seekable.
+
+        No-op if the file header declares that the file has no checksum.
+
+        Raises:
+            RuntimeError: if the checksum of the file does not match the
+                expected value
+        """
+        if not self.features & SkybrushBinaryFileFeatures.CRC32:
+            return
+
+        expected_crc = await self._get_expected_crc32()
+
+        assert self._start_of_crc_bytes is not None
+
+        position: int = await self._fp.tell()
+        try:
+            await self._fp.seek(self._start_of_crc_bytes)
+            observed_crc: bytes = await _read_exactly(self._fp, 4)
+        finally:
+            await self._fp.seek(position)
+
+        if observed_crc != expected_crc:
+            expected = expected_crc.hex()
+            observed = observed_crc.hex()
+            raise RuntimeError(f"CRC error, expected {expected}, got {observed}")
+
+        self._checksum_validated = True
+
     @property
     def version(self) -> int:
         """Returns the version number of the file."""
         if self._version is None:
             raise RuntimeError("version header was not read yet")
         return self._version
+
+    async def _get_expected_crc32(self) -> bytes:
+        """Returns the expected CRC32 checksum of the file as bytes, in little
+        endian format, or all-zeros if the file header declares that the file
+        needs no checksum.
+        """
+        if not self.features & SkybrushBinaryFileFeatures.CRC32:
+            return b"\x00\x00\x00\x00"
+
+        if not self._fp.seekable():
+            raise RuntimeError("binary show file is not seekable")
+
+        assert self._start_of_crc_bytes is not None
+
+        position: int = await self._fp.tell()
+        try:
+            expected_crc = 0
+
+            header = await _read_exactly(self._fp, self._start_of_crc_bytes, offset=0)
+            expected_crc = crc32(header, expected_crc)
+
+            await _read_exactly(self._fp, 4)  # skip old CRC, assume zeros
+            expected_crc = crc32(b"\x00\x00\x00\x00", expected_crc)
+
+            while True:
+                block = await self._fp.read(4096)
+                if block:
+                    expected_crc = crc32(block, expected_crc)
+                if len(block) < 4096:
+                    break
+        finally:
+            await self._fp.seek(position)
+
+        return expected_crc.to_bytes(4, "little", signed=False)
+
+    async def _update_crc32(self) -> None:
+        """Updates the CRC32 checksum of the file if it has one."""
+        if not self.features & SkybrushBinaryFileFeatures.CRC32:
+            return
+
+        expected_crc = await self._get_expected_crc32()
+
+        assert self._start_of_crc_bytes is not None
+
+        position: int = await self._fp.tell()
+        try:
+            await self._fp.seek(self._start_of_crc_bytes)
+            await self._fp.write(expected_crc)
+        finally:
+            await self._fp.seek(position)
 
 
 class SegmentEncoder:

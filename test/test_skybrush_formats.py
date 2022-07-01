@@ -5,14 +5,29 @@ from skybrush.rth_plan import RTHAction, RTHPlan, RTHPlanEntry
 from skybrush.formats import (
     RTHPlanEncoder,
     SkybrushBinaryFileBlock,
+    SkybrushBinaryFileFeatures,
     SkybrushBinaryShowFile,
     SkybrushBinaryFormatBlockType,
 )
 
 
-SIMPLE_SKYB_FILE = (
-    # Header
+SIMPLE_SKYB_FILE_V1 = (
+    # Header, version 1
     b"skyb\x01"
+    # Trajectory block starts here
+    b"\x01$\x00\n\x00\x00\x00\x00\x00\x00\x00\x00\x10\x10'\xe8\x03"
+    b"\x01\x10'\xe8\x03\x04\x10'\xe8\x03\x05\x10'\x00\x00\x00\x00"
+    b"\x10\x10'\x00\x00"
+    # Comment block starts here
+    b"\x03\x13\x00this is a test file"
+)
+
+
+SIMPLE_SKYB_FILE_V2 = (
+    # Header, version 2, feature flags
+    b"skyb\x02\x01"
+    # Checksum
+    b"(\xda\xd0\x83"
     # Trajectory block starts here
     b"\x01$\x00\n\x00\x00\x00\x00\x00\x00\x00\x00\x10\x10'\xe8\x03"
     b"\x01\x10'\xe8\x03\x04\x10'\xe8\x03\x05\x10'\x00\x00\x00\x00"
@@ -140,11 +155,12 @@ def too_large_plan() -> RTHPlan:
 
 
 class TestSkybrushBinaryFileFormat:
-    async def test_reading_blocks(self):
-        async with SkybrushBinaryShowFile.from_bytes(SIMPLE_SKYB_FILE) as f:
+    async def test_reading_blocks_version_1(self):
+        async with SkybrushBinaryShowFile.from_bytes(SIMPLE_SKYB_FILE_V1) as f:
             blocks = await f.read_all_blocks()
 
             assert f.version == 1
+            assert not f.features
             assert len(blocks) == 2
 
             assert blocks[0].type == SkybrushBinaryFormatBlockType.TRAJECTORY
@@ -159,8 +175,34 @@ class TestSkybrushBinaryFileFormat:
             data = await blocks[1].read()
             assert data == (b"this is a test file")
 
-    async def test_adding_blocks(self):
-        async with SkybrushBinaryShowFile.create_in_memory() as f:
+    async def test_reading_blocks_version_2(self):
+        async with SkybrushBinaryShowFile.from_bytes(SIMPLE_SKYB_FILE_V2) as f:
+            blocks = await f.read_all_blocks()
+
+            assert f.version == 2
+            assert f.features == SkybrushBinaryFileFeatures.CRC32
+            assert len(blocks) == 2
+
+            assert blocks[0].type == SkybrushBinaryFormatBlockType.TRAJECTORY
+            data = await blocks[0].read()
+            assert data == (
+                b"\n\x00\x00\x00\x00\x00\x00\x00\x00\x10\x10'\xe8\x03"
+                b"\x01\x10'\xe8\x03\x04\x10'\xe8\x03\x05\x10'\x00\x00\x00\x00"
+                b"\x10\x10'\x00\x00"
+            )
+
+            assert blocks[1].type == SkybrushBinaryFormatBlockType.COMMENT
+            data = await blocks[1].read()
+            assert data == (b"this is a test file")
+
+    async def test_reading_blocks_version_2_invalid_crc(self):
+        data = SIMPLE_SKYB_FILE_V2[:6] + b"\x00" + SIMPLE_SKYB_FILE_V2[7:]
+        with raises(RuntimeError, match="CRC error"):
+            async with SkybrushBinaryShowFile.from_bytes(data) as f:
+                await f.read_all_blocks()
+
+    async def test_adding_blocks_version_1(self):
+        async with SkybrushBinaryShowFile.create_in_memory(version=1) as f:
             await f.add_block(
                 SkybrushBinaryFormatBlockType.TRAJECTORY,
                 b"\n\x00\x00\x00\x00\x00\x00\x00\x00\x10\x10'\xe8\x03"
@@ -168,7 +210,20 @@ class TestSkybrushBinaryFileFormat:
                 b"\x10\x10'\x00\x00",
             )
             await f.add_comment("this is a test file")
-            assert f.get_contents()
+            await f.finalize()
+            assert f.get_contents() == SIMPLE_SKYB_FILE_V1
+
+    async def test_adding_blocks_version_2_with_checksum(self):
+        async with SkybrushBinaryShowFile.create_in_memory(version=2) as f:
+            await f.add_block(
+                SkybrushBinaryFormatBlockType.TRAJECTORY,
+                b"\n\x00\x00\x00\x00\x00\x00\x00\x00\x10\x10'\xe8\x03"
+                b"\x01\x10'\xe8\x03\x04\x10'\xe8\x03\x05\x10'\x00\x00\x00\x00"
+                b"\x10\x10'\x00\x00",
+            )
+            await f.add_comment("this is a test file")
+            await f.finalize()
+            assert f.get_contents() == SIMPLE_SKYB_FILE_V2
 
     async def test_adding_block_that_is_too_large(self):
         async with SkybrushBinaryShowFile.create_in_memory() as f:
@@ -191,6 +246,7 @@ class TestSkybrushBinaryFileFormat:
     async def test_adding_rth_plan_block(self, plan: RTHPlan):
         async with SkybrushBinaryShowFile.create_in_memory() as f:
             await f.add_rth_plan(plan)
+            await f.finalize()
             contents = f.get_contents()
 
         blocks: List[SkybrushBinaryFileBlock] = []

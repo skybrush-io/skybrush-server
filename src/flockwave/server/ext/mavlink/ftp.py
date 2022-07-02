@@ -10,7 +10,16 @@ from pathlib import PurePosixPath
 from random import randint
 from struct import Struct
 from trio import fail_after, move_on_after, TooSlowError, wrap_file
-from typing import Awaitable, Callable, Iterable, Optional, Union
+from typing import (
+    AsyncIterable,
+    AsyncIterator,
+    Awaitable,
+    Callable,
+    Iterable,
+    Iterator,
+    Optional,
+    Union,
+)
 
 from flockwave.concurrency import aclosing
 from skybrush.utils import crc32_mavftp as crc32
@@ -381,20 +390,33 @@ class MAVFTPSession:
 class MAVFTP:
     """A single MAVFTP connection to a PixHawk over a MAVLink connection."""
 
+    _closed: bool
+    """Stores whether the MAVFTP connection is closed already."""
+
+    _closing: bool
+    """Stores whether the MAVFTP connection is being closed."""
+
+    _sender: Callable[[MAVFTPMessage], Awaitable[None]]
+    """A function that can be called to send a MAVFTP message associated to
+    this MAVFTP object.
+    """
+
+    _seq: Iterator[int]
+    """An iterator yielding sequence numbers for the connection."""
+
     @classmethod
     def for_uav(cls, uav):
         """Constructs a MAVFTP connection object to the given UAV."""
         sender = partial(uav.driver.send_packet, target=uav)
         return cls(sender)
 
-    def __init__(self, sender: Callable):
+    def __init__(self, sender: Callable[[MAVFTPMessage], Awaitable[None]]):
         """Constructor."""
         self._closed = False
         self._closing = False
 
         self._path = PurePosixPath("/")
         self._seq = islice(cycle(range(65536)), randint(0, 65535), None)
-        self._sessions = {}
         self._sender = sender
 
     async def aclose(self) -> None:
@@ -420,8 +442,8 @@ class MAVFTP:
 
     async def crc32(self, path: FTPPath):
         """Calculates the unsigned CRC32 checksum of a file on the PixHawk."""
-        path = self._resolve(path)
-        message = MAVFTPMessage(MAVFTPOpCode.CALC_FILE_CRC32, data=path)
+        posix_path = self._resolve(path)
+        message = MAVFTPMessage(MAVFTPOpCode.CALC_FILE_CRC32, data=posix_path)
         reply = await self._send_and_wait(message)
         return int.from_bytes(reply.data, byteorder="little")
 
@@ -470,7 +492,7 @@ class MAVFTP:
                 if len(chunk) < bytes_requested:
                     got_eof = True
 
-    async def ls(self, path: FTPPath = ".") -> Iterable[ListingEntry]:
+    async def ls(self, path: FTPPath = ".") -> AsyncIterable[ListingEntry]:
         """Lists the contents of a directory on the PixHawk.
 
         Yields:
@@ -527,7 +549,10 @@ class MAVFTP:
 
         remote_path = self._resolve(remote_path)
         if parents:
-            await self.mkdir(remote_path.parent(), parents=True)
+            await self.mkdir(
+                str(PurePosixPath(remote_path.decode("utf-8"))),
+                parents=True,
+            )
 
         message = MAVFTPMessage(MAVFTPOpCode.CREATE_FILE, data=remote_path)
         reply = await self._send_and_wait(message)
@@ -558,7 +583,7 @@ class MAVFTP:
         await self._send_and_wait(message)
 
     @asynccontextmanager
-    async def _open_session(self, session_id: int) -> MAVFTPSession:
+    async def _open_session(self, session_id: int) -> AsyncIterator[MAVFTPSession]:
         """Context manager that creates a new MAVFTP session for file uploads or
         downloads and closes the session when the context is exited.
         """
@@ -567,10 +592,11 @@ class MAVFTP:
             yield session
 
     def _parents_of(self, path: FTPPath) -> Iterable[FTPPath]:
-        for path in reversed(PurePosixPath(path.decode("utf-8")).parents):
-            yield self._to_ftp_path(path)
+        path_as_str = path if isinstance(path, str) else path.decode("utf-8")
+        for parent_path in reversed(PurePosixPath(path_as_str).parents):
+            yield self._to_ftp_path(parent_path)
 
-    def _resolve(self, name: FTPPath = ".") -> PurePosixPath:
+    def _resolve(self, name: FTPPath = ".") -> bytes:
         """Resolves a relative or absolute path name with the current path of
         this connection and returns an appropriate POSIX path object.
         """
@@ -609,7 +635,7 @@ class MAVFTP:
             TooSlowError: if the UAV failed to respond either with an ACK or a
                 NAK in time.
         """
-        message = message.encode(next(self._seq)).ljust(251, b"\x00")
+        encoded_message = message.encode(next(self._seq)).ljust(251, b"\x00")
         expected_seq_no = next(self._seq)
         sender = self._sender
 
@@ -617,7 +643,9 @@ class MAVFTP:
             try:
                 with fail_after(timeout):
                     reply = await sender(
-                        spec.file_transfer_protocol(target_network=0, payload=message),
+                        spec.file_transfer_protocol(
+                            target_network=0, payload=encoded_message
+                        ),
                         wait_for_response=spec.file_transfer_protocol(
                             partial(MAVFTPMessage.matches_sequence_no, expected_seq_no)
                         ),

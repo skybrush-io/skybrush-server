@@ -412,6 +412,6 @@ class MissionManagementExtension(Extension):
 
 
 construct = MissionManagementExtension
-description = "Basic facilities for planning and uploading missions."
+description = "Basic facilities for planning and uploading missions"
 schema = {}
 tags = "experimental"

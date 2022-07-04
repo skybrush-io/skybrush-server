@@ -89,8 +89,6 @@ class CrazyflieDriver(UAVDriver):
             and returning the preferred UAV identifier
         status_interval: number of seconds that should pass between consecutive
             status requests sent to a drone
-        use_fake_position: whether to feed a fake position into the positioning
-            system of the connected drones, strictly for testing purposes
     """
 
     app: "SkybrushServer"
@@ -99,7 +97,6 @@ class CrazyflieDriver(UAVDriver):
     log: Logger
     fence_config: FenceConfiguration
     status_interval: float = 0.5
-    use_fake_position: Optional[Tuple[float, float, float]] = None
     use_test_mode: bool = False
 
     _cache_folder: Optional[str]
@@ -128,7 +125,6 @@ class CrazyflieDriver(UAVDriver):
         self.debug = False
         self.fence_config = FenceConfiguration()
         self.id_format = id_format
-        self.use_fake_position = None
         self.use_test_mode = False
 
         self._cache_folder = str(cache.resolve()) if cache else None
@@ -865,7 +861,6 @@ class CrazyflieUAV(UAVBase):
                 debug=self.driver.debug,
                 log=self.driver.log,
                 status_interval=self.driver.status_interval,
-                use_fake_position=self.driver.use_fake_position,
             ).run()
         finally:
             if disposer:
@@ -1327,7 +1322,6 @@ class CrazyflieHandlerTask:
     _log: Logger
     _status_interval: float
     _uav: CrazyflieUAV
-    _use_fake_position: Optional[Tuple[float, float, float]]
 
     def __init__(
         self,
@@ -1335,7 +1329,6 @@ class CrazyflieHandlerTask:
         log: Logger,
         debug: bool = False,
         status_interval: float = 0.5,
-        use_fake_position: Optional[Tuple[float, float, float]] = None,
     ):
         """Constructor.
 
@@ -1344,15 +1337,11 @@ class CrazyflieHandlerTask:
             debug: whether to log the communication with the UAV on the console
             status_interval: number of seconds that should pass between consecutive
                 status requests sent to a drone
-            use_fake_position: whether to feed a fake position to the UAV as if
-                it was received from an external positioning system. Strictly
-                for debugging purposes.
         """
         self._log = log
         self._uav = uav
         self._debug = bool(debug)
         self._status_interval = float(status_interval)
-        self._use_fake_position = use_fake_position
 
     async def run(self) -> None:
         """Executes the task that handles communication with the associated
@@ -1424,9 +1413,6 @@ class CrazyflieHandlerTask:
                 )
                 nursery.start_soon(self._uav.process_log_messages)
 
-                if self._use_fake_position:
-                    nursery.start_soon(self._feed_fake_position)
-
                 await self._reupload_last_show_if_needed()
 
                 # We need to set up the flight mode here after a bit of delay,
@@ -1455,16 +1441,6 @@ class CrazyflieHandlerTask:
                     return
         finally:
             self._uav.notify_shutdown_suspend_or_reboot = nop
-
-    async def _feed_fake_position(self) -> None:
-        """Background task that feeds a fake position to the UAV as if it was
-        coming from an external positioning system.
-        """
-        assert self._uav._crazyflie is not None
-        async for _ in periodic(0.2):
-            if self._use_fake_position:
-                x, y, z = self._use_fake_position
-                await self._uav._crazyflie._localization.send_external_position(x, y, z)
 
     async def _reupload_last_show_if_needed(self) -> None:
         try:

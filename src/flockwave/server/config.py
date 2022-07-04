@@ -59,7 +59,7 @@ EXTENSIONS = {
         "system_id": 254,
     },
     "missions": {},
-    "motion_capture": {"enabled": False},
+    "motion_capture": {"enabled": False, "frame_rate": 10},
     "rc": {"enabled": False},
     "rc_udp": {"enabled": False},
     "rtk": {

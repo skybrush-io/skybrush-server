@@ -374,7 +374,7 @@ class MAVFTPSession:
             offset: the byte offset to write the data at
 
         Returns:
-            the number of bytes written
+            the number of bytes written; always equal to ``len(data)``
         """
         self._ensure_open()
         message = MAVFTPMessage(

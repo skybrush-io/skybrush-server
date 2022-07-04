@@ -9,7 +9,9 @@ to UAVs. UAV drivers can subscribe to this signal to provide support for
 forwarding mocap data to UAVs.
 """
 
-from typing import Dict, Optional, Tuple, TYPE_CHECKING
+from dataclasses import dataclass
+from time import time
+from typing import List, Optional, Tuple, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from flockwave.server.app import SkybrushServer
@@ -23,16 +25,40 @@ Attitude = Tuple[float, float, float, float]
 conventions; i.e., the order of items is ``(w, x, y, z)``.
 """
 
-Pose = Tuple[Position, Optional[Attitude]]
+Pose = Tuple[Optional[Position], Optional[Attitude]]
 """Type alias for full pose data, which consists of a 3D position of the
-rigid body and an optional attitude quaternion, if known.
+rigid body and an attitude quaternion. The position may be omitted if tracking
+was lost for the rigid body. The attitude may also be omitted if it is not known.
 """
 
-MotionCaptureFrame = Dict[str, Pose]
-"""Type alias for a single frame posted to the ``motion_capture:frame``
-signal handler. A frame is a mapping from rigid body names to the corresponding
-pose objects.
+MotionCaptureFrameEntry = Tuple[str, Pose]
+"""Type alias for an entry in a motion capture frame, containing a name and a
+pose object.
 """
+
+
+@dataclass(frozen=True)
+class MotionCaptureFrame:
+    """A single frame posted to the ``motion_capture:frame`` signal handler,
+    containing a timestamp and an array of rigid body names and pose
+    information.
+    """
+
+    timestamp: float
+    """The timestamp when the frame was obtained."""
+
+    items: List[MotionCaptureFrameEntry]
+    """The rigid bodies in this frame, each represented by a name-pose pair."""
+
+
+def create_frame(timestamp: Optional[float] = None) -> MotionCaptureFrame:
+    """Creates a new motion capture frame object with the given timestamp.
+    This function must be called by concrete mocap system extensions to create
+    a new MotionCaptureFrame_ object.
+    """
+    if timestamp is None:
+        timestamp = time()
+    return MotionCaptureFrame(timestamp=timestamp, items=[])
 
 
 def load(app: "SkybrushServer"):
@@ -41,6 +67,6 @@ def load(app: "SkybrushServer"):
 
 dependencies = ("signals",)
 description = "Basic support for motion capture systems"
-exports = {}
+exports = {"create_frame": create_frame}
 schema = {}
 tags = ("experimental",)

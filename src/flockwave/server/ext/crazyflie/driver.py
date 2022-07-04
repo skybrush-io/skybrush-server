@@ -18,6 +18,7 @@ from typing import (
     Any,
     AsyncIterator,
     Callable,
+    Dict,
     Optional,
     Sequence,
     Tuple,
@@ -101,6 +102,9 @@ class CrazyflieDriver(UAVDriver):
     use_fake_position: Optional[Tuple[float, float, float]] = None
     use_test_mode: bool = False
 
+    _cache_folder: Optional[str]
+    _uav_ids_by_address_space: Dict[Any, Dict[int, str]]
+
     def __init__(
         self,
         app=None,
@@ -120,7 +124,7 @@ class CrazyflieDriver(UAVDriver):
         """
         super().__init__()
 
-        self.app = app
+        self.app = app  # type: ignore
         self.debug = False
         self.fence_config = FenceConfiguration()
         self.id_format = id_format

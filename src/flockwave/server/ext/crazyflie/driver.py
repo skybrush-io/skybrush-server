@@ -19,6 +19,8 @@ from typing import (
     AsyncIterator,
     Callable,
     Dict,
+    Iterable,
+    List,
     Optional,
     Sequence,
     Tuple,
@@ -100,6 +102,7 @@ class CrazyflieDriver(UAVDriver):
     use_test_mode: bool = False
 
     _cache_folder: Optional[str]
+    _address_space_by_uav_id: Dict[str, Any]
     _uav_ids_by_address_space: Dict[Any, Dict[int, str]]
 
     def __init__(
@@ -128,6 +131,7 @@ class CrazyflieDriver(UAVDriver):
         self.use_test_mode = False
 
         self._cache_folder = str(cache.resolve()) if cache else None
+        self._address_space_by_uav_id = {}
         self._uav_ids_by_address_space = defaultdict(dict)
 
     def _create_uav(self, formatted_id: str) -> "CrazyflieUAV":
@@ -176,6 +180,7 @@ class CrazyflieDriver(UAVDriver):
                 self.id_format.format(index, address_space)
             )
             self._uav_ids_by_address_space[address_space][index] = formatted_id
+            self._address_space_by_uav_id[formatted_id] = address_space
 
         try:
             uav = cast(
@@ -415,6 +420,19 @@ class CrazyflieDriver(UAVDriver):
     handle_command_motoroff = handle_command_stop
     handle_command_param = create_parameter_command_handler()
     handle_command_version = create_version_command_handler()
+
+    def sort_uav_ids_by_address_spaces(
+        self, ids: Iterable[str]
+    ) -> Dict[Any, List[str]]:
+        """Given a list of UAV IDs, returns a dictionary that maps address
+        spaces to the UAV IDs accessible through these address spaces.
+        """
+        result: Dict[Any, List[str]] = defaultdict(list)
+        for uav_id in ids:
+            address_space = self._address_space_by_uav_id.get(uav_id)
+            if address_space is not None:
+                result[address_space].append(uav_id)
+        return dict(result)
 
     async def _enter_low_power_mode_single(
         self, uav: "CrazyflieUAV", *, transport: Optional[TransportOptions]

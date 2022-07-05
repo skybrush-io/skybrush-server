@@ -9,6 +9,7 @@ from .formatting import (
 )
 from .generic import (
     bind,
+    chunks,
     clamp,
     color_to_rgb565,
     color_to_rgb8_triplet,
@@ -33,6 +34,7 @@ from .system_time import get_current_unix_timestamp_msec
 
 __all__ = (
     "bind",
+    "chunks",
     "clamp",
     "color_to_rgb565",
     "color_to_rgb8_triplet",

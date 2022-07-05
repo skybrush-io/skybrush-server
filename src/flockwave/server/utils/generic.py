@@ -5,18 +5,18 @@ from contextlib import contextmanager
 from datetime import datetime
 from functools import partial
 from inspect import Parameter, signature
-from itertools import tee
+from itertools import islice, tee
 from operator import mul
 from typing import (
     Any,
     Callable,
     Iterable,
+    Iterator,
     Optional,
     Sequence,
     Tuple,
     TypeVar,
 )
-
 
 __all__ = (
     "bind",
@@ -76,6 +76,14 @@ def bind(func, args=None, kwds=None, *, partial=False):
         return partial(func, *args)
     else:
         return partial(func, *args, **kwds)
+
+
+def chunks(it: Iterable[T], size: int) -> Iterator[Tuple[T]]:
+    """Takes an iterator or iterable and returns an iterator that yields chunks
+    of at most the given size from the input.
+    """
+    it = iter(it)
+    return iter(lambda: tuple(islice(it, size)), ())
 
 
 def clamp(value: T, lo: T, hi: T) -> T:

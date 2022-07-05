@@ -13,6 +13,15 @@ from flockwave.connections.base import TaskConnectionBase
 
 __all__ = ("CrazyradioConnection", "parse_radio_uri")
 
+BroadcasterFunction = Callable[[int, int, bytes], None]
+"""Type alias for a function that _enqueues_ a call to the ``broadcast()``
+function of the CrazyradioConnection class.
+
+Note that this is a synchronous variant; ``broadcast()`` itself is asynchronous,
+but functions of this type simply ensure that ``broadcast()`` is called in the
+near future.
+"""
+
 
 class CrazyradioConnection(TaskConnectionBase):
     """Connection object that manages a permanent connection to several Crazyflie
@@ -107,17 +116,21 @@ class CrazyradioConnection(TaskConnectionBase):
         """
         return self._crazyradio_index
 
-    async def broadcast(self, port: CRTPPort, data: bytes) -> None:
+    async def broadcast(
+        self, port: CRTPPort, channel: int = 0, data: bytes = b""
+    ) -> None:
         """Broadcasts a CRTP packet to all Crazyflie drones in the range of the
         connection.
 
         No-op if the radio is not connected yet or is not connected any more.
 
         Parameters:
+            port: the CRTP port to send the packet to
+            channel: the CRTP channel to send the packet to
             packet: the packet to broadcast
         """
         if self._broadcaster:
-            await self._broadcaster.send_packet(port=port, data=data)
+            await self._broadcaster.send_packet(port=port, channel=channel, data=data)
 
     def notify_error(self) -> None:
         """Notifies the connection that an error happened while using the radio

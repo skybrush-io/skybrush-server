@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from struct import Struct
-from typing import Callable, Optional
+from typing import Optional
 
 from flockwave.server.tasks.led_lights import (
     LEDLightConfigurationManagerBase,
@@ -14,6 +14,8 @@ from flockwave.server.ext.crazyflie.crtp_extensions import (
     DroneShowCommand,
 )
 
+from .connection import BroadcasterFunction
+
 __all__ = ("CrazyflieLEDLightConfigurationManager",)
 
 
@@ -25,9 +27,9 @@ class CrazyflieLEDLightConfigurationManager(LEDLightConfigurationManagerBase[byt
     are controlled by commands from the GCS.
     """
 
-    _broadcaster: Callable[[int, bytes], None]
+    _broadcaster: BroadcasterFunction
 
-    def __init__(self, broadcaster: Callable[[int, bytes], None]):
+    def __init__(self, broadcaster: BroadcasterFunction):
         """Constructor."""
         super().__init__()
         self._broadcaster = broadcaster
@@ -48,4 +50,4 @@ class CrazyflieLEDLightConfigurationManager(LEDLightConfigurationManagerBase[byt
         )
 
     async def _send_light_control_packet(self, packet: bytes) -> None:
-        self._broadcaster(DRONE_SHOW_PORT, packet)
+        self._broadcaster(DRONE_SHOW_PORT, 0, packet)

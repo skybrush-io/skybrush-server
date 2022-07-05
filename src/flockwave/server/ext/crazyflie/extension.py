@@ -8,13 +8,14 @@ from pathlib import Path
 from struct import Struct
 from trio import open_memory_channel, open_nursery
 from trio.abc import ReceiveChannel, SendChannel
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 from flockwave.connections.factory import create_connection
 from flockwave.server.ext.base import UAVExtension
 from flockwave.server.model import ConnectionPurpose
 
-from .connection import CrazyradioConnection
+
+from .connection import BroadcasterFunction, CrazyradioConnection
 from .crtp_extensions import DRONE_SHOW_PORT, DroneShowCommand, FenceAction
 from .driver import CrazyflieDriver
 from .fence import FenceConfiguration
@@ -197,7 +198,7 @@ class CrazyflieDronesExtension(UAVExtension[CrazyflieDriver]):
         sender,
         delay: Optional[float],
         *,
-        broadcaster: Callable[[int, bytes], None],
+        broadcaster: BroadcasterFunction,
     ) -> None:
         if delay is not None:
             delay = int(delay * 1000)
@@ -210,7 +211,7 @@ class CrazyflieDronesExtension(UAVExtension[CrazyflieDriver]):
         else:
             data = Struct("<Bh").pack(DroneShowCommand.START, delay)
 
-        broadcaster(DRONE_SHOW_PORT, data)
+        broadcaster(DRONE_SHOW_PORT, 0, data)
 
     def _on_show_light_configuration_changed(
         self,

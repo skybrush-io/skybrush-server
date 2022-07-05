@@ -8,19 +8,23 @@ from pathlib import Path
 from struct import Struct
 from trio import open_memory_channel, open_nursery
 from trio.abc import ReceiveChannel, SendChannel
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, TYPE_CHECKING
 
 from flockwave.connections.factory import create_connection
 from flockwave.server.ext.base import UAVExtension
 from flockwave.server.model import ConnectionPurpose
-
 
 from .connection import BroadcasterFunction, CrazyradioConnection
 from .crtp_extensions import DRONE_SHOW_PORT, DroneShowCommand, FenceAction
 from .driver import CrazyflieDriver
 from .fence import FenceConfiguration
 from .led_lights import CrazyflieLEDLightConfigurationManager, LightConfiguration
+from .mocap import CrazyflieMocapFrameHandler
 from .scanning import CrazyradioScannerTask, ScannerTaskEvent
+
+if TYPE_CHECKING:
+    from flockwave.server.ext.motion_capture import MotionCaptureFrame
+
 
 __all__ = ("construct", "schema")
 
@@ -140,6 +144,11 @@ class CrazyflieDronesExtension(UAVExtension[CrazyflieDriver]):
                     # Create a dedicated LED manager for the connection
                     led_manager = CrazyflieLEDLightConfigurationManager(broadcaster)
 
+                    # Create a dedicated mocap frame handler for the connection
+                    mocap_frame_handler = CrazyflieMocapFrameHandler(
+                        self._driver, broadcaster
+                    )
+
                     # Register the radio connection in the connection registry
                     stack.enter_context(
                         app.connection_registry.use(
@@ -150,11 +159,15 @@ class CrazyflieDronesExtension(UAVExtension[CrazyflieDriver]):
                         )
                     )
 
-                    # Let the connection know when the light configuration of
-                    # the show changes
+                    # Subscribe to the signals that we are interested in:
+                    # mocap frames, show countdown and LED configuration changes
                     stack.enter_context(
                         signals.use(
                             {
+                                "motion_capture:frame": partial(
+                                    self._on_motion_capture_frame_received,
+                                    handler=mocap_frame_handler,
+                                ),
                                 "show:countdown": partial(
                                     self._on_show_countdown_notification,
                                     broadcaster=broadcaster,
@@ -192,6 +205,15 @@ class CrazyflieDronesExtension(UAVExtension[CrazyflieDriver]):
                         # uav might be None if the user hits the license limit
                         if uav:
                             nursery.start_soon(uav.run, disposer)
+
+    def _on_motion_capture_frame_received(
+        self,
+        sender,
+        *,
+        frame: "MotionCaptureFrame",
+        handler: CrazyflieMocapFrameHandler,
+    ) -> None:
+        handler.notify_frame(frame)
 
     def _on_show_countdown_notification(
         self,

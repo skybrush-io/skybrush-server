@@ -111,7 +111,7 @@ def get_address(in_subnet_of: Optional[str] = None) -> str:
     return get_socket_address(sock)
 
 
-def get_ssdp_location(address) -> Optional[str]:
+def get_ssdp_location(address, host, port) -> Optional[str]:
     """Returns the SSDP location descriptor of the TCP channel.
 
     Parameters:
@@ -119,11 +119,8 @@ def get_ssdp_location(address) -> Optional[str]:
             interfaces, this address is used to pick a reported address that
             is in the same subnet as the given address
     """
-    global sock
-    return (
-        format_socket_address(sock, format="tcp://{host}:{port}", in_subnet_of=address)
-        if sock
-        else None
+    return format_socket_address(
+        (host, port), format="tcp://{host}:{port}", in_subnet_of=address
     )
 
 
@@ -203,7 +200,7 @@ async def run(app, configuration, logger):
                 "tcp",
                 factory=TCPChannel,
                 address=get_address,
-                ssdp_location=get_ssdp_location,
+                ssdp_location=partial(get_ssdp_location, host=host, port=port),
             )
         )
 

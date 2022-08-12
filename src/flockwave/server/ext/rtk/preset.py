@@ -15,13 +15,32 @@ from .types import GPSPacket
 
 __all__ = ("RTKConfigurationPreset",)
 
-#: Type specification for a GPS packet filter function
 GPSPacketFilter = Callable[[GPSPacket], bool]
+"""Type specification for a GPS packet filter function."""
 
-#: Allowed packet formats in RTK streams. "auto" attempts to parse RTCM3, UBX
-#: and NMEA messages. "ubx" attempts to parse RTCM3 and UBX messages.
-#: "rtcm3" is RTCM3-only, and "rtcm2" is RTCM2-only.
-ALLOWED_FORMATS = set("auto rtcm2 rtcm3 ubx".split())
+ALLOWED_FORMATS: List[str] = "auto rtcm2 rtcm3 ubx".split()
+"""Allowed packet formats in RTK streams. "auto" attempts to parse RTCM3, UBX
+and NMEA messages. "ubx" attempts to parse RTCM3 and UBX messages.
+"rtcm3" is RTCM3-only, and "rtcm2" is RTCM2-only.
+
+Do not use a set here; the order represents the order in which the options
+should appear in the configuration UI.
+"""
+
+
+def describe_format(format: str) -> str:
+    """Returns a human-readable description of a format from the
+    ``ALLOWED_FORMATS`` set.
+    """
+    if format == "auto":
+        return "Detect automatically"
+    if format == "rtcm2":
+        return "RTCM2"
+    if format == "rtcm3":
+        return "RTCM3 only"
+    if format == "ubx":
+        return "U-Blox and RTCM3"
+    return format
 
 
 @dataclass

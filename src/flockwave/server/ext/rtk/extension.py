@@ -37,7 +37,7 @@ from flockwave.server.utils.serial import (
 
 from .beacon_manager import RTKBeaconManager
 from .clock_sync import GPSClockSynchronizationValidator
-from .preset import RTKConfigurationPreset
+from .preset import RTKConfigurationPreset, ALLOWED_FORMATS, describe_format
 from .registry import RTKPresetRegistry
 from .statistics import RTKStatistics
 
@@ -771,6 +771,19 @@ def get_schema():
                             "type": "string",
                             "description": "Human-readable title used on the user interface",
                         },
+                        "format": {
+                            "title": "Message format",
+                            "type": "string",
+                            "enum": ALLOWED_FORMATS,
+                            "default": "auto",
+                            "options": {
+                                "enum_titles": [
+                                    describe_format(fmt) for fmt in ALLOWED_FORMATS
+                                ]
+                            },
+                            "required": False,
+                            "propertyOrder": 2000,
+                        },
                         "filter": {
                             "type": "object",
                             "title": "Message filter",
@@ -797,7 +810,7 @@ def get_schema():
                                 },
                             },
                             "required": False,
-                            "propertyOrder": 2000,
+                            "propertyOrder": 3000,
                         },
                     },
                 },

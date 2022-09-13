@@ -37,7 +37,57 @@ schema = {
                 "and attitude information more frequently than this threshold."
             ),
             "default": 10,
-        }
+        },
+        "mapping": {
+            "type": "object",
+            "title": "Name mapping",
+            "description": (
+                "Describe how the names of the rigid bodies from mocap "
+                "systems should be mapped to UAV IDs in Skybrush. Any name that "
+                "passes all rules will be accepted; use an explicit rejection "
+                "rule if needed."
+            ),
+            "properties": {
+                "rules": {
+                    "type": "array",
+                    "format": "table",
+                    "title": "Rules",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "type": {
+                                "type": "string",
+                                "title": "Type",
+                                "enum": [
+                                    "accept",
+                                    "reject",
+                                    "strip_prefix",
+                                    "strip_suffix",
+                                    "regex",
+                                ],
+                                "options": {
+                                    "enum_titles": [
+                                        "Accept",
+                                        "Strip prefix",
+                                        "Strip suffix",
+                                        "Regex match",
+                                        "Reject",
+                                    ]
+                                },
+                                "default": "strip_prefix",
+                                "propertyOrder": 0,
+                            },
+                            "value": {
+                                "type": "string",
+                                "title": "Value",
+                                "default": "",
+                                "propertyOrder": 1000,
+                            },
+                        },
+                    },
+                },
+            },
+        },
     }
 }
 tags = ("experimental",)

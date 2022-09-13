@@ -2,9 +2,10 @@ from async_generator import aclosing
 from time import monotonic, time
 from trio import sleep
 from trio_util import RepeatedEvent
-from typing import AsyncIterator, Optional, TYPE_CHECKING
+from typing import AsyncIterator, List, Optional, TYPE_CHECKING
 
-from .frame import MotionCaptureFrame
+from .frame import MotionCaptureFrame, MotionCaptureFrameItem
+from .mapping import NameRemapping
 
 if TYPE_CHECKING:
     from flockwave.server.app import SkybrushServer
@@ -92,8 +93,17 @@ async def run(app: "SkybrushServer", configuration):
     signal = app.import_api("signals").get("motion_capture:frame")
     try:
         limiter = FrameRateLimiter(fps_limit)
+        name_remapping = NameRemapping.from_configuration(configuration)
         async with aclosing(limiter.iter_frames()) as gen:
             async for frame in gen:
+                matched_items: List[MotionCaptureFrameItem] = []
+                for item in frame.items:
+                    remapped_name = name_remapping(item.name)
+                    if remapped_name is not None:
+                        item.name = remapped_name
+                        matched_items.append(item)
+
+                frame.items = matched_items
                 signal.send(frame=frame)
     finally:
         limiter = None

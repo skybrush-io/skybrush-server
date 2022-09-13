@@ -6,7 +6,7 @@ from .types import Attitude, Position
 __all__ = ("MotionCaptureFrame", "MotionCaptureFrameItem")
 
 
-@dataclass(frozen=True)
+@dataclass
 class MotionCaptureFrameItem:
     """An item in a motion capture frame, containing a name, an optional 3D
     position and an optional attitude quaternion. The position may be omitted if
@@ -25,7 +25,7 @@ class MotionCaptureFrameItem:
     """The attitude information in the pose data"""
 
 
-@dataclass(frozen=True)
+@dataclass
 class MotionCaptureFrame:
     """A single frame posted to the ``motion_capture:frame`` signal handler,
     containing a timestamp and an array of rigid body names and pose

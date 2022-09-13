@@ -3,7 +3,7 @@
 from appdirs import AppDirs
 from collections import defaultdict
 from inspect import isawaitable
-from flockwave.connections.base import ConnectionState
+from os import environ
 from trio import (
     BrokenResourceError,
     move_on_after,
@@ -12,7 +12,9 @@ from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence, Tupl
 
 from flockwave.app_framework import DaemonApp
 from flockwave.app_framework.configurator import AppConfigurator, Configuration
+from flockwave.connections.base import ConnectionState
 from flockwave.gps.vectors import GPSCoordinate
+from flockwave.server.ports import set_base_port
 from flockwave.server.utils import divide_by
 from flockwave.server.utils.packaging import is_packaged
 from flockwave.server.utils.system_time import (
@@ -979,6 +981,18 @@ class SkybrushServer(DaemonApp):
         # Process the configuration options
         cfg = config.get("COMMAND_EXECUTION_MANAGER", {})
         self.command_execution_manager.timeout = cfg.get("timeout", 90)
+
+        # Override the base port if needed
+        port_from_env: Optional[str] = environ.get("PORT")
+        port: Optional[int] = config.get("PORT")
+        if port_from_env:
+            try:
+                port = int(port_from_env)
+            except ValueError:
+                pass
+        if port is not None:
+            print("Setting base port to", port)
+            set_base_port(port)
 
         # Force-load the ext_manager and the licensing extension
         cfg = config.setdefault("EXTENSIONS", {})

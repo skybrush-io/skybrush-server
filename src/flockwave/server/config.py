@@ -13,6 +13,9 @@ locally, create a configuration file containing this:
 # Label that is used to identify the server in SSDP discovery requests
 SERVER_NAME = "Skybrush server"
 
+# Base port from which the port numbers used by the server are derived
+PORT = 5000
+
 # Configure the command execution manager
 COMMAND_EXECUTION_MANAGER = {"timeout": 90}
 

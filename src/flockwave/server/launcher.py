@@ -3,8 +3,11 @@
 import click
 import dotenv
 import logging
+import os
 import sys
 import trio
+
+from typing import Optional
 
 from flockwave import logger
 
@@ -24,6 +27,13 @@ from .version import __version__
     "-d", "--debug/--no-debug", default=False, help="Start the server in debug mode"
 )
 @click.option(
+    "-p",
+    "--port",
+    metavar="PORT",
+    default=None,
+    help="Oveerride the base port number of the server. Takes precedence over the PORT environment variable.",
+)
+@click.option(
     "-q", "--quiet/--no-quiet", default=False, help="Start the server in quiet mode"
 )
 @click.option(
@@ -32,7 +42,13 @@ from .version import __version__
     default="fancy",
     help="Specify the style of the logging output",
 )
-def start(config, debug, quiet, log_style):
+def start(
+    config: str,
+    port: Optional[int] = None,
+    debug: bool = False,
+    quiet: bool = False,
+    log_style: str = "fancy",
+):
     """Start the Skybrush server."""
     # Set up the logging format
     logger.install(
@@ -60,6 +76,10 @@ def start(config, debug, quiet, log_style):
 
     # Load environment variables from .env
     dotenv.load_dotenv(verbose=debug)
+
+    # Override port number from command line if needed
+    if port is not None:
+        os.environ["PORT"] = str(port)
 
     # Note the lazy import; this is to ensure that the logging is set up by the
     # time we start configuring the app.

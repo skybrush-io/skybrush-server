@@ -7,12 +7,11 @@ from typing import Dict, Optional, Tuple
 __all__ = ("get_base_port", "get_port_number_for_service")
 
 
-#: Base port number. Port numbers of services defined with a relative port
-#: number are derived by adding the relative port number to the base port.
 BASE_PORT: int = 5000
+"""Base port number. Port numbers of services defined with a relative port
+number are derived by adding the relative port number to the base port.
+"""
 
-#: Dictionary mapping registered Skybrush-related services to the corresponding
-#: absolute or relative port numbers.
 SERVICE_MAP: Dict[str, Tuple[str, int]] = {
     "http": ("relative", 0),
     "tcp": ("relative", 1),
@@ -21,6 +20,14 @@ SERVICE_MAP: Dict[str, Tuple[str, int]] = {
     "rcin": ("relative", 3),
     "ssdp": ("absolute", 1900),
 }
+"""Dictionary mapping registered Skybrush-related services to the corresponding
+absolute or relative port numbers.
+"""
+
+_BASE_PORT_USED: bool = False
+"""Stores whether the base port was already used by ``get_port_number_for_service()``
+to derive the port number of a service that uses a relative port number.
+"""
 
 
 def get_base_port() -> int:
@@ -51,6 +58,8 @@ def get_port_number_for_service(service: str, base_port: Optional[int] = None) -
     Raises:
         ValueError: if the service is not known in the service map
     """
+    global _BASE_PORT_USED
+
     try:
         port_type, value = SERVICE_MAP[service]
     except KeyError:
@@ -58,7 +67,8 @@ def get_port_number_for_service(service: str, base_port: Optional[int] = None) -
 
     if port_type == "relative":
         if base_port is None:
-            base_port = BASE_PORT
+            base_port = get_base_port()
+            _BASE_PORT_USED = True
         port = value + base_port
     elif port_type == "absolute":
         # nothing to do
@@ -67,3 +77,29 @@ def get_port_number_for_service(service: str, base_port: Optional[int] = None) -
         raise ValueError(f"invalid port type: {port_type!r}")
 
     return port
+
+
+def set_base_port(value: int) -> None:
+    """Sets the base port of the server. This must be done early during the
+    startup process, _before_ ``get_port_number_for_service()`` is invoked
+    for any service that uses a relative port number.
+
+    Raises:
+        RuntimeError: whent trying to set the base port after the old value was
+            already used for deriving the port number of a service that uses a
+            relative port number
+    """
+    global BASE_PORT, _BASE_PORT_USED
+
+    if _BASE_PORT_USED:
+        raise RuntimeError(
+            "base port cannot be set as it was already used to derive the "
+            "port number of a service"
+        )
+
+    if value <= 0 or value >= 32768:
+        raise RuntimeError(
+            "invalid port number; must be positive and smaller than 32768"
+        )
+
+    BASE_PORT = value

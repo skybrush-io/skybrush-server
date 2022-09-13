@@ -28,16 +28,24 @@ Attitude = Tuple[float, float, float, float]
 conventions; i.e., the order of items is ``(w, x, y, z)``.
 """
 
-Pose = Tuple[Optional[Position], Optional[Attitude]]
-"""Type alias for full pose data, which consists of a 3D position of the
-rigid body and an attitude quaternion. The position may be omitted if tracking
-was lost for the rigid body. The attitude may also be omitted if it is not known.
-"""
 
-MotionCaptureFrameEntry = Tuple[str, Pose]
-"""Type alias for an entry in a motion capture frame, containing a name and a
-pose object.
-"""
+@dataclass(frozen=True)
+class MotionCaptureFrameEntry:
+    """An entry in a motion capture frame, containing a name, an optional 3D
+    position and an optional attitude quaternion. The position may be omitted if
+    tracking was lost for the rigid body. The attitude may also be omitted if
+    it is not known. (Typically, the attitude is also omitted if the position
+    is omitted).
+    """
+
+    name: str
+    """The name of the rigid body"""
+
+    position: Optional[Position] = None
+    """The position information in the pose data"""
+
+    attitude: Optional[Attitude] = None
+    """The attitude information in the pose data"""
 
 
 @dataclass(frozen=True)

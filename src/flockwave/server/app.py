@@ -991,7 +991,6 @@ class SkybrushServer(DaemonApp):
             except ValueError:
                 pass
         if port is not None:
-            print("Setting base port to", port)
             set_base_port(port)
 
         # Force-load the ext_manager and the licensing extension

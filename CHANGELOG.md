@@ -5,13 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [2.5.0] - 2022-09-14
 
 ### Added
 
 - The base port number of the server can now be overridden by the `-p` command
   line switch, the `PORT` environment variable and the `PORT` configuration
   key, in this order of precedence (`-p` being the highest priority).
+
+- Added a `motion_capture` extension that can be used as a base to add support
+  for external motion capture systems for indoor drones.
+
+- MAVLink extension now generates a CRC32 checksum into the uploaded `.skyb`
+  files so the drones have one additional tool at their disposal to check the
+  integrity of the uploaded file.
 
 ## [2.4.0] - 2022-06-26
 

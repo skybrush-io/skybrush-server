@@ -978,7 +978,7 @@ class MessageHub:
             MessageValidationError: if the message could not have been decoded
         """
         try:
-            return FlockwaveMessage.from_json(message)  # type: ignore
+            return FlockwaveMessage.from_json(message, validate=False)  # type: ignore
         except ValidationError:
             # We should not re-raise directly from here because on Python 3.x
             # we would get a very long stack trace that includes the original

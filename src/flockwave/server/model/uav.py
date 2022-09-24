@@ -675,6 +675,33 @@ class UAVDriver(metaclass=ABCMeta):
             getattr(self, "_send_landing_signal_broadcast", None),
             transport=transport,
         )
+    
+    def send_rc_signal(
+        self, uavs: List[UAV], transport: Optional[TransportOptions] = None
+    ):
+        """Asks the driver to send a landing signal to the given UAVs, each
+        of which are assumed to be managed by this driver.
+
+        Typically, you don't need to override this method when implementing
+        a driver; override ``_send_rc_signal_single()`` and optionally
+        ``_send_rc_signal_broadcast()`` instead.
+
+        Parameters:
+            uavs: the UAVs to address with this request.
+            transport: transport options for sending the signal
+
+        Returns:
+            dict mapping UAVs to the corresponding results (which may also be
+            errors or awaitables; it is the responsibility of the caller to
+            evaluate errors and wait for awaitables)
+        """
+        return self._send_signal(
+            uavs,
+            "RC signal",
+            self._send_rc_signal_single,
+            getattr(self, "_send_rc_signal_broadcast", None),
+            transport=transport,
+        )
 
     def send_light_or_sound_emission_signal(
         self,
@@ -746,6 +773,43 @@ class UAVDriver(metaclass=ABCMeta):
             self._send_motor_start_stop_signal_single,
             getattr(self, "_send_motor_start_stop_signal_broadcast", None),
             start=start,
+            force=force,
+            transport=transport,
+        )
+    
+    def send_mode_signal(
+        self,
+        uavs: List[UAV],
+        num: int = 5,
+        force: bool = False,
+        transport: Optional[TransportOptions] = None,
+    ):
+        """Asks the driver to send a signal to start or stop the motors of the
+        given UAVs, each of which are assumed to be managed by this driver.
+
+        Typically, you don't need to override this method when implementing
+        a driver; override ``_send_motor_start_stop_signal_single()`` and
+        optionally ``_send_motor_start_stop_signal_broadcast()`` instead.
+
+        Parameters:
+            uavs: the UAVs to address with this request.
+            start: whether the motors should be started (`True`) or stopped
+                (`False`)
+            force: whether to force the execution of the command even if it is
+                unsafe (e.g., stopping the motors while airborne)
+            transport: transport options for sending the signal
+
+        Returns:
+            dict mapping UAVs to the corresponding results (which may also be
+            errors or awaitables; it is the responsibility of the caller to
+            evaluate errors and wait for awaitables)
+        """
+        return self._send_signal(
+            uavs,
+            "mode change signal",
+            self._send_mode_signal_single,
+            getattr(self, "_send_mode_signal_broadcast", None),
+            num=num,
             force=force,
             transport=transport,
         )

@@ -73,7 +73,7 @@ pygame.init()
 # Initialize the joysticks.
 pygame.joystick.init()
 
-cancellables = []
+cancellables = None
 
 __all__ = ("MAVLinkDriver",)
 
@@ -815,13 +815,18 @@ class MAVLinkDriver(UAVDriver):
             param3=float(0),
             channel=channel,
         )
-        for cancel in cancellables:
-            cancel.cancel()
-        cancellables.append(self.app.run_in_background(self.send_rc, uav, channel, cancellable=True))
+        global cancellables
+        if cancellables:
+            cancellables.cancel()
+            cancellables = None
+            return
+        cancellables = self.app.run_in_background(self.send_rc, uav, channel, cancellable=True) 
 
     
     async def send_rc(self, uav, channel, cancel_scope):
         with cancel_scope:
+            global cancellables
+            k = 0
             while True:
                 #
                 # EVENT PROCESSING STEP
@@ -842,6 +847,9 @@ class MAVLinkDriver(UAVDriver):
                 joystick_count = pygame.joystick.get_count()
                 if joystick_count < 1:
                     print(joystick_count)
+                    if cancellables:
+                        cancellables.cancel()
+                        cancellables = None
                     break
                 # # For each joystick:
                 # for i in range(joystick_count):
@@ -862,6 +870,9 @@ class MAVLinkDriver(UAVDriver):
                     chan8_raw = 0,)
                     for i in range(1000):
                         await self.send_packet(message, uav, channel=channel)
+                    if cancellables:
+                        cancellables.cancel()
+                        cancellables = None
                     break
                     
                 # Usually axis run in pairs, up/down for one, and left/right for
@@ -883,7 +894,18 @@ class MAVLinkDriver(UAVDriver):
                     chan8_raw = 0,
                 )
                 await self.send_packet(message, uav, channel=channel)
-    
+                if k < 500:
+                    color = 'red'
+                elif (k >= 500) and (k < 1000):
+                    color = 'black'
+                else:
+                    k = 0
+                k = k + 1
+                await uav.set_led_color(Color(color), channel=channel, duration=0.1)
+                msg = "rc_cancel"
+                uav.update_status(debug=msg.encode("utf-8"))
+                uav.notify_updated()
+
     async def _send_mode_signal_single(
         self, uav: "MAVLinkUAV", num: int  = 5, force: bool = False, *, transport=None
     ) -> None:

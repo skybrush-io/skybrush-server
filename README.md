@@ -16,7 +16,6 @@ extend the functionality of the server.
 ## Custom mapping
 Custom mapping for a specific joystick can be set by modifying the following lines in the code.
 https://github.com/sb-fork/skybrush-server/blob/b50bc20f05bfac0967394b6f42948e2d99956ed5/src/flockwave/server/ext/mavlink/driver.py#L886
-https://github.com/sb-fork/skybrush-server/blob/b50bc20f05bfac0967394b6f42948e2d99956ed5/src/flockwave/server/ext/mavlink/driver.py#L862
 ```
 The mapping is as follows:
 

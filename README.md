@@ -13,6 +13,26 @@ form of extensions; see the `flockwave.server.ext` module in the source code
 for the list of built-in extensions. You may also develop your own extensions to
 extend the functionality of the server.
 
+## Custom mapping
+Custom mapping for a specific joystick can be set by modifying the following lines in the code.
+https://github.com/sb-fork/skybrush-server/blob/b50bc20f05bfac0967394b6f42948e2d99956ed5/src/flockwave/server/ext/mavlink/driver.py#L886
+https://github.com/sb-fork/skybrush-server/blob/b50bc20f05bfac0967394b6f42948e2d99956ed5/src/flockwave/server/ext/mavlink/driver.py#L862
+```
+The mapping is as follows:
+
+message = spec.rc_channels_override(
+   chan1_raw = (Roll)
+   chan2_raw = (Pitch)
+   chan3_raw = (Throttle)
+   chan4_raw = (Yaw),
+   chan5_raw = 0,
+   chan6_raw = 0,
+   chan7_raw = 0,
+   chan8_raw = 0,
+)
+``` 
+
+
 ## Installation
 
 1. Install `poetry`. `poetry` will manage a separate virtual environment for this

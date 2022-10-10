@@ -22,7 +22,7 @@ class VirtualBattery:
         self,
         min_voltage: float = 9,
         max_voltage: float = 12.6,
-        discharge_time: float = 600,
+        discharge_time: float = 1200,
         initial_charge: Optional[float] = 1,
         report_percentage: bool = True,
     ):

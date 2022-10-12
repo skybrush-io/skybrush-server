@@ -93,7 +93,9 @@ async def run(app: "SkybrushServer", configuration):
     signal = app.import_api("signals").get("motion_capture:frame")
     try:
         limiter = FrameRateLimiter(fps_limit)
-        name_remapping = NameRemapping.from_configuration(configuration)
+        name_remapping = NameRemapping.from_configuration(
+            configuration.get("mapping", {})
+        )
         async with aclosing(limiter.iter_frames()) as gen:
             async for frame in gen:
                 matched_items: List[MotionCaptureFrameItem] = []

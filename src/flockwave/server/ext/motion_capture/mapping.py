@@ -55,18 +55,18 @@ class NameRemappingRule:
         )
 
     def __post_init__(self):
-        if type is NameRemappingRuleType.ACCEPT:
+        if self.type is NameRemappingRuleType.ACCEPT:
             self._func = identity
-        elif type is NameRemappingRuleType.REJECT:
+        elif self.type is NameRemappingRuleType.REJECT:
             self._func = constant(None)
-        elif type is NameRemappingRuleType.STRIP_PREFIX:
+        elif self.type is NameRemappingRuleType.STRIP_PREFIX:
             self._func = strip_prefix(self.value)
-        elif type is NameRemappingRuleType.STRIP_SUFFIX:
+        elif self.type is NameRemappingRuleType.STRIP_SUFFIX:
             self._func = strip_suffix(self.value)
-        elif type is NameRemappingRuleType.REGEX:
+        elif self.type is NameRemappingRuleType.REGEX:
             self._func = matches_regex(self.value)
         else:
-            return constant(None)
+            self._func = constant(None)
 
     def apply(self, name: str) -> Optional[str]:
         """Applies this rule to the given name.

@@ -846,7 +846,7 @@ class CrazyflieUAV(UAVBase):
                     light=status.light,
                     position_xyz=self._position,
                     debug=message,
-                    heading=status.yaw,
+                    heading=status.yaw / 10,
                 )
                 self.notify_updated()
 

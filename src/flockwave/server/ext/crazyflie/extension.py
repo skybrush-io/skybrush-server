@@ -57,6 +57,7 @@ class CrazyflieDronesExtension(UAVExtension[CrazyflieDriver]):
         driver.id_format = configuration.get("id_format", "{0}")
         driver.log = self.log
         driver.status_interval = float(configuration.get("status_interval", 0.5))
+        driver.takeoff_altitude = float(configuration.get("takeoff_altitude", 1.0))
         driver.use_test_mode = bool(configuration.get("testing", False))
 
     async def run(self, app, configuration):
@@ -321,6 +322,13 @@ schema = {
             "default": 0.5,
             "title": "Interval between status packets",
             "description": "Length of the time interval between two consecutive attempts to retrieve status information from a Crazyflie show drone. E.g., 0.5 = 0.5 seconds = two status reports per second.",
+        },
+        "takeoff_altitude": {
+            "type": "number",
+            "minimum": 0.1,
+            "default": 1.0,
+            "title": "Takeoff altitude",
+            "description": "Altitude that a drone should take off to when receiving a takeoff command without a specified altitude, in meters.",
         },
         "testing": {
             "type": "boolean",

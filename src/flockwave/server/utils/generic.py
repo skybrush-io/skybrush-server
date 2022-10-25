@@ -5,7 +5,7 @@ from contextlib import contextmanager
 from datetime import datetime
 from functools import partial
 from inspect import Parameter, signature
-from itertools import islice, tee
+from itertools import islice
 from operator import mul
 from typing import (
     Any,
@@ -125,19 +125,40 @@ def color_to_rgb8_triplet(color: Color) -> Tuple[int, int, int]:
 T = TypeVar("T")
 
 
-def consecutive_pairs(iterable: Iterable[T]) -> Iterable[Tuple[T, T]]:
-    """Given an iterable, returns a generator that generates consecutive
-    pairs of items from the iterable.
+def consecutive_pairs(
+    iterable: Iterable[T], cyclic: bool = False
+) -> Iterable[Tuple[T, T]]:
+    """Given an iterable, returns a generator that generates consecutive pairs
+    of objects from the iterable.
 
     Parameters:
         iterable: the iterable
 
     Yields:
         pairs of consecutive items from the iterable
+        cyclic (bool): whether the iterable should be considered "cyclic".
+            If this argument is ``True``, the function will yield a pair
+            consisting of the last element of the iterable paired with
+            the first one at the end.
     """
-    a, b = tee(iterable)
-    next(b, None)
-    return zip(a, b)
+    it = iter(iterable)
+    try:
+        prev = next(it)
+    except StopIteration:
+        return
+
+    first = prev if cyclic else None
+    try:
+        while True:
+            curr = next(it)
+            yield prev, curr
+            prev = curr
+    except StopIteration:
+        pass
+
+    if cyclic:
+        assert first is not None  # to help the type inference
+        yield prev, first
 
 
 def constant(x: Any) -> Callable[..., Any]:

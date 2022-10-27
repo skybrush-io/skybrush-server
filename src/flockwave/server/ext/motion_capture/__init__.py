@@ -68,10 +68,10 @@ schema = {
                                 "options": {
                                     "enum_titles": [
                                         "Accept",
+                                        "Reject",
                                         "Strip prefix",
                                         "Strip suffix",
                                         "Regex match",
-                                        "Reject",
                                     ]
                                 },
                                 "default": "strip_prefix",

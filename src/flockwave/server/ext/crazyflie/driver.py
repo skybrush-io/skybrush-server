@@ -91,6 +91,8 @@ class CrazyflieDriver(UAVDriver):
             and returning the preferred UAV identifier
         status_interval: number of seconds that should pass between consecutive
             status requests sent to a drone
+        takeoff_altitude: altitude that a UAV should take off to when receiving
+            a takeoff command
     """
 
     app: "SkybrushServer"
@@ -99,6 +101,7 @@ class CrazyflieDriver(UAVDriver):
     log: Logger
     fence_config: FenceConfiguration
     status_interval: float = 0.5
+    takeoff_altitude: float = 1
     use_test_mode: bool = False
 
     _cache_folder: Optional[str]
@@ -514,7 +517,7 @@ class CrazyflieDriver(UAVDriver):
         if uav.is_in_drone_show_mode:
             await uav.start_drone_show()
         else:
-            await uav.takeoff(altitude=1, relative=True)
+            await uav.takeoff(altitude=self.takeoff_altitude, relative=True)
 
 
 class CrazyflieUAV(UAVBase):
@@ -846,7 +849,7 @@ class CrazyflieUAV(UAVBase):
                     light=status.light,
                     position_xyz=self._position,
                     debug=message,
-                    heading=status.yaw,
+                    heading=status.yaw / 10,
                 )
                 self.notify_updated()
 

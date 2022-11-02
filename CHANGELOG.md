@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Crazyflie takeoff altitude is now configurable from the extension.
 
-- Virtual UAV bttery discharge time adjusted so we can simulate longer shows.
+- Virtual UAV battery discharge time adjusted so we can simulate longer shows.
 
 ### Fixed
 

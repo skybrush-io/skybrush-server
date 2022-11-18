@@ -317,14 +317,13 @@ class MissionManagementExtension(Extension):
         try:
             mission_type, _ = self._get_mission_type_and_id_from_request(message)
             parameters = self._get_parameters_from_request(message)
+            maybe_plan = mission_type.create_plan(parameters)
+            if isawaitable(maybe_plan):
+                plan = cast(MissionPlan, await maybe_plan)
+            else:
+                plan = cast(MissionPlan, maybe_plan)
         except RuntimeError as ex:
             return hub.reject(message, reason=str(ex))
-
-        maybe_plan = mission_type.create_plan(parameters)
-        if isawaitable(maybe_plan):
-            plan = cast(MissionPlan, await maybe_plan)
-        else:
-            plan = cast(MissionPlan, maybe_plan)
 
         return {"result": plan}
 

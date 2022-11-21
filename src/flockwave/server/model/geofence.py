@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Iterable, List, Optional
+from typing import Dict, Iterable, List, Optional
 
 from flockwave.gps.vectors import GPSCoordinate
 
@@ -170,8 +170,8 @@ class GeofenceConfigurationRequest:
     """
 
 
-_geofence_action_descriptions = {
-    GeofenceAction.REPORT.value: "report",
+_geofence_action_descriptions: Dict[GeofenceAction, str] = {
+    GeofenceAction.REPORT: "report",
     GeofenceAction.SMART_RETURN: "smart return",
     GeofenceAction.RETURN: "return",
     GeofenceAction.SMART_LAND: "smart land",

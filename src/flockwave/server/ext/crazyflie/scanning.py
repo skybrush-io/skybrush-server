@@ -167,11 +167,17 @@ class CrazyradioScannerTask:
 
     @classmethod
     async def create_and_run(
-        cls, conn: CrazyradioConnection, channel: ScannerTaskSendChannel, *args, **kwds
+        cls,
+        conn: CrazyradioConnection,
+        channel: ScannerTaskSendChannel,
+        initial_delay: float = 0,
+        *args,
+        **kwds,
     ):
         """Creates and runs a new connection handler for the given radio
         connection.
         """
+        await sleep(initial_delay)
         try:
             await CrazyradioScannerTask(conn, *args, **kwds).run(channel)
         finally:

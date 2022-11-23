@@ -133,6 +133,7 @@ class CrazyflieDronesExtension(UAVExtension[CrazyflieDriver]):
                 )
 
                 # Register all the connections and ask the app to supervise them
+                num_connections = len(connection_config)
                 for index, spec in enumerate(connection_config):
                     connection = create_connection(spec)
                     if hasattr(connection, "assign_nursery"):
@@ -187,12 +188,11 @@ class CrazyflieDronesExtension(UAVExtension[CrazyflieDriver]):
 
                     # Run a background task that scans the radio connection and
                     # attempts to find newly booted Crazyflie drones
-                    # TODO(ntamas): spread the scanning events in time so
-                    # only one radio is scanning at a time
                     task = partial(
                         CrazyradioScannerTask.create_and_run,
                         log=self.log,
                         channel=new_uav_tx_channel,
+                        initial_delay=(index / num_connections),
                     )
                     nursery.start_soon(partial(app.supervise, connection, task=task))
 

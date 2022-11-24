@@ -519,6 +519,15 @@ class CrazyflieDriver(UAVDriver):
         else:
             await uav.takeoff(altitude=self.takeoff_altitude, relative=True)
 
+    async def _set_parameter_single(
+        self, uav: "CrazyflieUAV", name: str, value: Any
+    ) -> None:
+        try:
+            value_as_float = float(value)
+        except ValueError:
+            raise RuntimeError("parameter value must be numeric")
+        await uav.set_parameter(name, value_as_float)
+
 
 class CrazyflieUAV(UAVBase):
     """Subclass for UAVs created by the driver for Crazyflie drones.
@@ -889,7 +898,14 @@ class CrazyflieUAV(UAVBase):
 
     async def set_parameter(self, name: str, value: float) -> None:
         """Sets the value of a parameter on the Crazyflie."""
-        await self._get_crazyflie().param.set(name, value)
+        # If the value is also an integer, cast it into an integer. This is
+        # because aiocflib is totally happy with sending a float parameter when
+        # you provide it as an int, but not the other way round
+        if isinstance(value, float) and value.is_integer():
+            value_as_int_or_float = int(value)
+        else:
+            value_as_int_or_float = value
+        await self._get_crazyflie().param.set(name, value_as_int_or_float)
 
     @asynccontextmanager
     async def set_and_restore_parameter(

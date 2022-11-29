@@ -87,8 +87,10 @@ async def run(app: "SkybrushServer", configuration):
     global limiter
 
     fps_limit: Optional[float] = configuration.get("frame_rate", 10)
-    if not isinstance(fps_limit, float) or fps_limit <= 0:
+    if not isinstance(fps_limit, (int, float)) or fps_limit <= 0:
         fps_limit = None
+    else:
+        fps_limit = float(fps_limit)
 
     signal = app.import_api("signals").get("motion_capture:frame")
     try:

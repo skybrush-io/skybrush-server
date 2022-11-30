@@ -445,8 +445,12 @@ class ChangeSpeedMissionCommand(MissionCommand):
         return {
             "type": MissionItemType.CHANGE_SPEED.value,
             "parameters": {
-                "velocity_xy": round(self.velocity_xy, ndigits=3),
-                "velocity_z": round(self.velocity_z, ndigits=3),
+                "velocity_xy": "null"
+                if self.velocity_xy is None
+                else round(self.velocity_xy, ndigits=3),
+                "velocity_z": "null"
+                if self.velocity_z is None
+                else round(self.velocity_z, ndigits=3),
             },
         }
 

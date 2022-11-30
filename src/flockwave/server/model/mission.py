@@ -74,7 +74,7 @@ class Heading:
     mode: HeadingMode
     """The heading mode to use."""
 
-    value: Optional[float] = None
+    value: Optional[float]
     """Optional fixed heading in [deg]."""
 
     rate: Optional[float] = None

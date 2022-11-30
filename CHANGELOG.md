@@ -7,9 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Added mission commands to supplement mission item parsing in industrial
+  projects
+
 ### Fixed
 
 - Fixed mass parameter upload for Crazyflie drones
+
+- Fixed geofence action descriptions
 
 ## [2.6.0] - 2022-11-20
 

@@ -22,6 +22,7 @@ __all__ = (
     "MissionCommand",
     "ChangeAltitudeMissionCommand",
     "ChangeHeadingMissionCommand",
+    "ChangeSpeedMissionCommand",
     "GoToMissionCommand",
     "LandMissionCommand",
     "ReturnToHomeMissionCommand",
@@ -136,6 +137,9 @@ class MissionItemType(Enum):
 
     CHANGE_HEADING = "changeHeading"
     """Command to change the heading (yaw) of the UAV."""
+
+    CHANGE_SPEED = "changeSpeed"
+    """Command to change the horizontal and/or vertical speed of the UAV."""
 
     GO_TO = "goTo"
     """Command to go to a desired position in 2D or 3D space."""
@@ -262,6 +266,24 @@ def _get_payload_action_from_parameters(
         raise RuntimeError(f"payload action {action_str!r} not handled yet")
 
     return (name, action)
+
+
+def _get_speed_from_parameters(
+    params: Dict[str, Any]
+) -> Tuple[Optional[float], Optional[float]]:
+    velocity_xy = params.get("velocity_xy")
+    if velocity_xy is not None and (
+        not isinstance(velocity_xy, (int, float)) or velocity_xy <= 0
+    ):
+        raise RuntimeError("velocity_xy must be a positive number")
+
+    velocity_z = params.get("velocity_z")
+    if velocity_z is not None and (
+        not isinstance(velocity_z, (int, float)) or velocity_z <= 0
+    ):
+        raise RuntimeError("velocity_z must be a positive number")
+
+    return (velocity_xy, velocity_z)
 
 
 def _validate_mission_item(
@@ -394,6 +416,43 @@ class ChangeHeadingMissionCommand(MissionCommand):
     @property
     def type(self) -> MissionItemType:
         return MissionItemType.CHANGE_HEADING
+
+
+@dataclass
+class ChangeSpeedMissionCommand(MissionCommand):
+    """Mission command that instructs the drone to change its horizontal and/or
+    vertical speed for the consecutive waypoints"""
+
+    velocity_xy: Optional[float]
+    """The horizontal speed to set optionally in [m/s]."""
+
+    velocity_z: Optional[float]
+    """The vertical speed to set optionally in [m/s]."""
+
+    @classmethod
+    def from_json(cls, obj: MissionItem):
+        _validate_mission_item(
+            obj, expected_type=MissionItemType.CHANGE_SPEED, expect_params=True
+        )
+        params = obj["parameters"]
+        assert params is not None
+        velocity_xy, velocity_z = _get_speed_from_parameters(params)
+
+        return cls(velocity_xy=velocity_xy, velocity_z=velocity_z)
+
+    @property
+    def json(self) -> MissionItem:
+        return {
+            "type": MissionItemType.CHANGE_SPEED.value,
+            "parameters": {
+                "velocity_xy": self.velocity_xy,
+                "velocity_z": self.velocity_z,
+            },
+        }
+
+    @property
+    def type(self) -> MissionItemType:
+        return MissionItemType.CHANGE_SPEED
 
 
 @dataclass
@@ -603,6 +662,8 @@ def generate_mission_command_from_mission_item(item: MissionItem) -> MissionComm
         command = ChangeAltitudeMissionCommand.from_json(item)
     elif type == MissionItemType.CHANGE_HEADING:
         command = ChangeHeadingMissionCommand.from_json(item)
+    elif type == MissionItemType.CHANGE_SPEED:
+        command = ChangeSpeedMissionCommand.from_json(item)
     elif type == MissionItemType.GO_TO:
         command = GoToMissionCommand.from_json(item)
     elif type == MissionItemType.LAND:

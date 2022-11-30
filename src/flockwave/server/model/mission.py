@@ -52,7 +52,7 @@ class Altitude:
         """Returns a JSON representation of altitude."""
         return {
             "reference": self.reference.value,
-            "value": self.value,
+            "value": round(self.value, ndigits=3),
         }
 
 
@@ -86,7 +86,7 @@ class Heading:
         """Returns a JSON representation of heading."""
         return {
             "mode": self.mode.value,
-            "value": self.value or 0,
+            "value": round(self.value or 0, ndigits=1),
         }
 
 
@@ -445,8 +445,8 @@ class ChangeSpeedMissionCommand(MissionCommand):
         return {
             "type": MissionItemType.CHANGE_SPEED.value,
             "parameters": {
-                "velocity_xy": self.velocity_xy,
-                "velocity_z": self.velocity_z,
+                "velocity_xy": round(self.velocity_xy, ndigits=3),
+                "velocity_z": round(self.velocity_z, ndigits=3),
             },
         }
 
@@ -492,8 +492,8 @@ class GoToMissionCommand(MissionCommand):
         retval = {
             "type": MissionItemType.GO_TO.value,
             "parameters": {
-                "lat": self.latitude,
-                "lot": self.longitude,
+                "lat": round(self.latitude, ndigits=7),
+                "lon": round(self.longitude, ndigits=7),
             },
         }
         if self.altitude is not None:

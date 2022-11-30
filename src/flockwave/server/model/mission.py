@@ -75,9 +75,9 @@ class Heading:
     """The heading mode to use."""
 
     value: Optional[float] = None
-    """Optinal fixed heading in [deg]."""
+    """Optional fixed heading in [deg]."""
 
-    rate: Optional[float] = 30
+    rate: Optional[float] = None
     """Optional heading change rate in [deg/s]."""
 
     @property
@@ -331,7 +331,7 @@ class ChangeAltitudeMissionCommand(MissionCommand):
     altitude: Altitude
     """The altitude reference and value to set."""
 
-    velocity_z: Optional[float] = 2
+    velocity_z: Optional[float] = None
     """Vertical velocity when changing altitude in [m/s]."""
 
     @classmethod
@@ -451,7 +451,7 @@ class GoToMissionCommand(MissionCommand):
 class LandMissionCommand(MissionCommand):
     """Mission command that instructs the drone to land in place."""
 
-    velocity_z: Optional[float] = 2
+    velocity_z: Optional[float] = None
     """Vertical velocity while landing in [m/s]."""
 
     @classmethod
@@ -477,10 +477,10 @@ class ReturnToHomeMissionCommand(MissionCommand):
     coordinate.
     """
 
-    velocity_xy: Optional[float] = 2
+    velocity_xy: Optional[float] = None
     """Horizontal velocity while returning to home in [m/s]."""
 
-    velocity_z: Optional[float] = 2
+    velocity_z: Optional[float] = None
     """Vertical velocity while returning to home in [m/s]."""
 
     @classmethod
@@ -546,7 +546,7 @@ class TakeoffMissionCommand(MissionCommand):
     altitude: Altitude
     """The altitude reference and value to takeoff to."""
 
-    velocity_z: Optional[float] = 2
+    velocity_z: Optional[float] = None
     """Vertical velocity while taking off in [m/s]."""
 
     @classmethod

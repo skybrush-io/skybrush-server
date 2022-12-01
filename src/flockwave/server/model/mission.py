@@ -271,17 +271,17 @@ def _get_payload_action_from_parameters(
 def _get_speed_from_parameters(
     params: Dict[str, Any]
 ) -> Tuple[Optional[float], Optional[float]]:
-    velocity_xy = params.get("velocity_xy")
+    velocity_xy = params.get("velocityXY")
     if velocity_xy is not None and (
         not isinstance(velocity_xy, (int, float)) or velocity_xy <= 0
     ):
-        raise RuntimeError("velocity_xy must be a positive number")
+        raise RuntimeError("velocityXY must be a positive number")
 
-    velocity_z = params.get("velocity_z")
+    velocity_z = params.get("velocityZ")
     if velocity_z is not None and (
         not isinstance(velocity_z, (int, float)) or velocity_z <= 0
     ):
-        raise RuntimeError("velocity_z must be a positive number")
+        raise RuntimeError("velocityZ must be a positive number")
 
     return (velocity_xy, velocity_z)
 
@@ -445,10 +445,10 @@ class ChangeSpeedMissionCommand(MissionCommand):
         return {
             "type": MissionItemType.CHANGE_SPEED.value,
             "parameters": {
-                "velocity_xy": "null"
+                "velocityXY": "null"
                 if self.velocity_xy is None
                 else round(self.velocity_xy, ndigits=3),
-                "velocity_z": "null"
+                "velocityZ": "null"
                 if self.velocity_z is None
                 else round(self.velocity_z, ndigits=3),
             },

@@ -51,3 +51,20 @@ class LandImmediatelyMissionType(MissionType[LandImmediatelyMission]):
 
     def create_plan(self, parameters: Dict[str, Any]) -> MissionPlan:
         return MissionPlan.EMPTY
+
+    def get_parameter_schema(self) -> Dict[str, Any]:
+        return {
+            "type": "object",
+            "properties": {
+                "delay": {
+                    "description": "Number of seconds to wait before landing.",
+                    "type": "number",
+                    "inclusiveMinimum": 0,
+                    "default": 0,
+                }
+            },
+            "required": [],
+        }
+
+    def get_plan_parameter_schema(self) -> Dict[str, Any]:
+        return {}

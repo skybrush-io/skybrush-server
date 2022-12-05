@@ -89,6 +89,7 @@ class MissionManagementExtension(Extension):
                         "X-MSN-PARAM": self._handle_MSN_PARAM,
                         "X-MSN-PLAN": self._handle_MSN_PLAN,
                         "X-MSN-SCHED": self._handle_MSN_SCHED,
+                        "X-MSN-SCHEMA": self._handle_MSN_SCHEMA,
                         "X-MSN-START": self._handle_MSN_START,
                     }
                 )
@@ -357,6 +358,32 @@ class MissionManagementExtension(Extension):
             )
 
         return hub.acknowledge(message)
+
+    async def _handle_MSN_SCHEMA(
+        self, message: FlockwaveMessage, sender: Client, hub: MessageHub
+    ):
+        """Handles an incoming request to return the JSON schema associated
+        with the general and planning parameters of a given mission.
+        """
+        try:
+            mission_type, _ = self._get_mission_type_and_id_from_request(message)
+
+            maybe_mission_schema = mission_type.get_parameter_schema()
+            if isawaitable(maybe_mission_schema):
+                mission_schema = cast(Dict[str, Any], await maybe_mission_schema)
+            else:
+                mission_schema = cast(Dict[str, Any], maybe_mission_schema)
+
+            maybe_plan_schema = mission_type.get_plan_parameter_schema()
+            if isawaitable(maybe_plan_schema):
+                plan_schema = cast(Dict[str, Any], await maybe_plan_schema)
+            else:
+                plan_schema = cast(Dict[str, Any], maybe_plan_schema)
+
+        except RuntimeError as ex:
+            return hub.reject(message, reason=str(ex))
+
+        return {"result": {"mission": mission_schema, "plan": plan_schema}}
 
     async def _handle_MSN_START(
         self, message: FlockwaveMessage, sender: Client, hub: MessageHub

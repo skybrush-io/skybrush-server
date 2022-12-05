@@ -521,13 +521,33 @@ class MissionType(Generic[T], metaclass=ABCMeta):
     def create_plan(
         self, parameters: Dict[str, Any]
     ) -> Union[MissionPlan, Awaitable[MissionPlan]]:
-        """Creates a new mission plan with the given parameters.
+        """Creates a new mission plan with the given planning parameters.
 
         Parameters:
-            parameters: the parameters of the mission
+            parameters: the parameters of the mission plan
 
         Returns:
             a mission plan or an awaitable that resolves to a mission plan in
             an asynchronous manner
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_parameter_schema(self) -> Dict[str, Any]:
+        """Returns the JSON schema associated with general mission parameters.
+
+        Returns:
+            JSON schema of general mission parameters
+
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_plan_parameter_schema(self) -> Dict[str, Any]:
+        """Returns the JSON schema associated with mission plannig parameters.
+
+        Returns:
+            JSON schema of mission planning parameters
+
         """
         raise NotImplementedError

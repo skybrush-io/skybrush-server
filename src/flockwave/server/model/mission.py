@@ -5,7 +5,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Dict, List, Optional, Sequence, Tuple, TypedDict
+from typing import Any, Dict, List, Optional, Sequence, Tuple, TypedDict, Union
 
 
 __all__ = (
@@ -27,6 +27,7 @@ __all__ = (
     "LandMissionCommand",
     "ReturnToHomeMissionCommand",
     "SetPayloadMissionCommand",
+    "SetParameterMissionCommand",
     "TakeoffMissionCommand",
     # functions
     "generate_mission_command_from_mission_item",
@@ -152,6 +153,9 @@ class MissionItemType(Enum):
 
     SET_PAYLOAD = "setPayload"
     """Command to set a given payload to a desired state."""
+
+    SET_PARAMETER = "setParameter"
+    """Command to set an arbitrary autopilot parameter to a desired value."""
 
     TAKEOFF = "takeoff"
     """Command to takeoff."""
@@ -603,6 +607,49 @@ class SetPayloadMissionCommand(MissionCommand):
 
 
 @dataclass
+class SetParameterMissionCommand(MissionCommand):
+    """Mission command that instructs the drone to set an autopilot parameter
+    to the given value.
+    """
+
+    name: str
+    """The name of the parameter to set."""
+
+    value: Union[str, int, float]
+    """The value of the parameter to set."""
+
+    @classmethod
+    def from_json(cls, obj: MissionItem):
+        _validate_mission_item(
+            obj, expected_type=MissionItemType.SET_PARAMETER, expect_params=True
+        )
+        params = obj["parameters"]
+        assert params is not None
+
+        name = params.get("name")
+        if not isinstance(name, str) or not name:
+            raise RuntimeError("parameter name must be a valid string")
+        value = params.get("value")
+        if not isinstance(value, (str, int, float)):
+            raise RuntimeError(
+                "parameter value must be present as a string or a number"
+            )
+
+        return cls(name=name, value=value)
+
+    @property
+    def json(self) -> MissionItem:
+        return {
+            "type": MissionItemType.SET_PARAMETER.value,
+            "parameters": {"name": self.name, "value": self.value},
+        }
+
+    @property
+    def type(self) -> MissionItemType:
+        return MissionItemType.SET_PARAMETER
+
+
+@dataclass
 class TakeoffMissionCommand(MissionCommand):
     """Mission command that instructs the drone to take off."""
 
@@ -676,6 +723,8 @@ def generate_mission_command_from_mission_item(item: MissionItem) -> MissionComm
         command = ReturnToHomeMissionCommand.from_json(item)
     elif type == MissionItemType.SET_PAYLOAD:
         command = SetPayloadMissionCommand.from_json(item)
+    elif type == MissionItemType.SET_PARAMETER:
+        command = SetParameterMissionCommand.from_json(item)
     elif type == MissionItemType.TAKEOFF:
         command = TakeoffMissionCommand.from_json(item)
     else:

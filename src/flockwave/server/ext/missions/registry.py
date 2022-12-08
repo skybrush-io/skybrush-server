@@ -7,6 +7,7 @@ be used by clients.
 from blinker import Signal
 from contextlib import contextmanager
 from functools import partial
+from jsonschema.validators import validator_for
 from typing import ClassVar, Iterator, Optional
 
 from flockwave.server.model import default_id_generator
@@ -131,6 +132,17 @@ class MissionRegistry(RegistryBase[Mission]):
                 mission: Mission = mission_type.create_mission()
                 mission._id = mission_id
                 mission.type = type
+                schema = mission_type.get_parameter_schema()
+                if schema:
+                    try:
+                        validator = validator_for(schema)
+                        validator.check_schema(schema)
+                    except Exception as ex:
+                        raise RuntimeError(f"Mission parameter schema error: {ex}")
+                    mission.parameter_validator = validator(schema)
+                else:
+                    mission.parameter_validator = None
+
                 self._entries[mission_id] = mission
                 try:
                     self._object_registry.add(mission)

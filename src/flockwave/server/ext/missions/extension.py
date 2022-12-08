@@ -7,6 +7,7 @@ from __future__ import annotations
 from contextlib import ExitStack
 from functools import partial
 from inspect import isawaitable
+from jsonschema import validate
 from trio import open_nursery
 from typing import Any, Dict, Iterable, Optional, Tuple, cast, overload
 
@@ -318,6 +319,15 @@ class MissionManagementExtension(Extension):
         try:
             mission_type, _ = self._get_mission_type_and_id_from_request(message)
             parameters = self._get_parameters_from_request(message)
+            maybe_plan_schema = mission_type.get_plan_parameter_schema()
+            if isawaitable(maybe_plan_schema):
+                plan_schema = cast(Dict[str, Any], await maybe_plan_schema)
+            else:
+                plan_schema = cast(Dict[str, Any], maybe_plan_schema)
+            try:
+                validate(parameters, schema=plan_schema)
+            except Exception as ex:
+                raise RuntimeError(f"Plan parameter validation error: {ex}")
             maybe_plan = mission_type.create_plan(parameters)
             if isawaitable(maybe_plan):
                 plan = cast(MissionPlan, await maybe_plan)

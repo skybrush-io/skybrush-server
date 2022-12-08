@@ -25,10 +25,9 @@ class LandImmediatelyMission(Mission):
         await sleep(30)
 
     def _update_parameters(self, parameters: Dict[str, Any]) -> None:
-        delay: float = parameters.get("delay", 0.0)
-        if not isinstance(delay, (int, float)):
-            raise RuntimeError("delay must be numeric")
-        self.delay = float(delay)
+        delay = parameters.get("delay")
+        if delay is not None:
+            self.delay = delay
 
 
 class LandImmediatelyMissionType(MissionType[LandImmediatelyMission]):
@@ -63,7 +62,7 @@ class LandImmediatelyMissionType(MissionType[LandImmediatelyMission]):
                     "default": 0,
                 }
             },
-            "required": [],
+            "additionalProperties": False,
         }
 
     def get_plan_parameter_schema(self) -> Dict[str, Any]:

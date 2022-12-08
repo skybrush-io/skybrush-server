@@ -5,6 +5,7 @@ from logging import Logger
 from blinker import Signal
 from dataclasses import dataclass
 from datetime import datetime
+from jsonschema import Validator, ValidationError
 from time import time
 from trio import Cancelled
 from typing import (
@@ -31,9 +32,9 @@ class Mission(ModelObject):
     """Representation of a single mission on the server.
 
     A mission consists of a _type_, an associated set of _parameters_, an
-    optional _mission plan_ (generated from the type and the parameters), and a
-    set of drones that the server is allowed to control while the mission is
-    running.
+    optional _mission plan_ (generated from the type and planning parameters),
+    and a set of drones that the server is allowed to control while the mission
+    is running.
 
     This is an abstract superclass that is meant to serve as a base implementation
     for "real" missions. You will need to override at least the ``run()`` method
@@ -47,6 +48,9 @@ class Mission(ModelObject):
     """The type of the mission. Must be one of the identifiers from the mission
     type registry.
     """
+
+    parameter_validator: Optional[Validator] = None
+    """The JSON schema validator of the mission parameters."""
 
     state: MissionState = MissionState.NEW
     """The state of the mission."""
@@ -342,9 +346,13 @@ class Mission(ModelObject):
         parameters, update the internal `_update_parameters()` method instead.
 
         Raises:
-            RuntimeError: if the mission is not in the ``NEW`` state
+            RuntimeError: if the mission is not in the ``NEW`` state or if
+                mission parameters cannot be validated according to mission
+                parameter schema
+
         """
         self._ensure_new()
+        self._validate_parameters(parameters)
         self._update_parameters(parameters)
         self.notify_updated()
 
@@ -443,6 +451,24 @@ class Mission(ModelObject):
         """
         pass
 
+    def _validate_parameters(self, parameters: Dict[str, Any]) -> None:
+        """Validates one or more parameters of the mission according to the
+        mission parameter validator defined automatically from the parameter
+        schema of the given mission type.
+
+        Args:
+            parameters: the parameters to validate
+
+        Raises:
+            RuntimeError: on validation errors
+        """
+        if self.parameter_validator is None:
+            return
+        try:
+            self.parameter_validator.validate(parameters)
+        except ValidationError as ex:
+            raise RuntimeError(f"Mission parameter validation error: {ex}")
+
 
 @dataclass
 class MissionPlan:
@@ -536,6 +562,8 @@ class MissionType(Generic[T], metaclass=ABCMeta):
     def get_parameter_schema(self) -> Dict[str, Any]:
         """Returns the JSON schema associated with general mission parameters.
 
+        If you do not intend to use a schema, simply return an empty dictionary.
+
         Returns:
             JSON schema of general mission parameters
 
@@ -545,6 +573,8 @@ class MissionType(Generic[T], metaclass=ABCMeta):
     @abstractmethod
     def get_plan_parameter_schema(self) -> Dict[str, Any]:
         """Returns the JSON schema associated with mission plannig parameters.
+
+        If you do not intend to use a schema, simply return an empty dictionary.
 
         Returns:
             JSON schema of mission planning parameters

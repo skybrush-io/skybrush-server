@@ -13,6 +13,7 @@ from .show import (
     get_home_position_from_show_specification,
     get_rth_plan_from_show_specification,
     get_trajectory_from_show_specification,
+    is_coordinate_system_in_show_specification_geodetic,
 )
 from .trajectory import TrajectorySpecification
 
@@ -25,6 +26,7 @@ __all__ = (
     "get_light_program_from_show_specification",
     "get_rth_plan_from_show_specification",
     "get_trajectory_from_show_specification",
+    "is_coordinate_system_in_show_specification_geodetic",
     "SkybrushBinaryShowFile",
     "TrajectoryPlayer",
     "TrajectorySpecification",

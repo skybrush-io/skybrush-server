@@ -11,6 +11,7 @@ __all__ = (
     "get_group_index_from_show_specification",
     "get_home_position_from_show_specification",
     "get_trajectory_from_show_specification",
+    "is_coordinate_system_in_show_specification_geodetic",
     "ShowSpecification",
 )
 
@@ -91,3 +92,15 @@ def get_rth_plan_from_show_specification(show: ShowSpecification) -> Optional[RT
     """
     encoded_plan = show.get("rthPlan")
     return RTHPlan.from_json(encoded_plan) if encoded_plan is not None else None
+
+
+def is_coordinate_system_in_show_specification_geodetic(
+    show: ShowSpecification,
+) -> bool:
+    """Check if the coordinate system stored in the show specification is
+    geodetic."""
+    coordinate_system = show.get("coordinateSystem")
+    if isinstance(coordinate_system, str) and coordinate_system == "geodetic":
+        return True
+
+    return False

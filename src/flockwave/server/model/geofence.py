@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Dict, Iterable, List, Optional
+from typing import Any, Dict, Iterable, List, Optional
 
 from flockwave.gps.vectors import GPSCoordinate
 
@@ -35,10 +35,19 @@ class GeofenceCircle:
 
 @dataclass
 class GeofencePolygon:
-    """Geofence inclusion or exclusion n the form of a polygon."""
+    """Geofence inclusion or exclusion in the form of a polygon."""
 
     points: List[GeofencePoint] = field(default_factory=list)
     is_inclusion: bool = True
+
+    @property
+    def json(self) -> Dict[str, Any]:
+        """Returns the JSON representation of a geofence polygon
+        in absolute (geodetic) coordinates."""
+        return {
+            "isInclusion": self.is_inclusion,
+            "points": [point.json for point in self.points],
+        }
 
 
 class GeofenceAction(Enum):
@@ -159,7 +168,7 @@ class GeofenceConfigurationRequest:
     update the polygons.
     """
 
-    rally_points: List[GeofencePoint] = field(default_factory=list)
+    rally_points: Optional[List[GeofencePoint]] = None
     """Rally points in the geofence; `None` means not to update the rally
     points.
     """
@@ -168,6 +177,31 @@ class GeofenceConfigurationRequest:
     """The action to take if the vehicle hits the geofence; `None` means not to
     update the current geofence action.
     """
+
+    @property
+    def json(self) -> Dict[str, Any]:
+        """Returns a JSON representation of the geofence configuration in
+        absolute (geodetic) coordinates."""
+        return {
+            "version": 1,
+            "enabled": self.enabled,
+            "maxAltitude": None
+            if self.max_altitude is None
+            else round(self.max_altitude, ndigits=3),
+            "minAltitude": None
+            if self.min_altitude is None
+            else round(self.min_altitude, ndigits=3),
+            "maxDistance": None
+            if self.max_altitude is None
+            else round(self.max_altitude, ndigits=3),
+            "action": None if self.action is None else self.action.value,
+            "polygons": None
+            if self.polygons is None
+            else [polygon.json for polygon in self.polygons],
+            "rallyPoints": None
+            if self.rally_points is None
+            else [point.json for point in self.rally_points],
+        }
 
 
 _geofence_action_descriptions: Dict[GeofenceAction, str] = {

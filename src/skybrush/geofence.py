@@ -2,11 +2,12 @@
 Skybrush-related geofence specifications, until we find a better place for them.
 """
 
-from typing import Dict
+from typing import Dict, List, Optional, Sequence, Union
 
 from flockwave.gps.vectors import (
     FlatEarthCoordinate,
     FlatEarthToGPSCoordinateTransformation,
+    GPSCoordinate,
 )
 from flockwave.server.model.geofence import (
     GeofenceAction,
@@ -15,7 +16,10 @@ from flockwave.server.model.geofence import (
 )
 from flockwave.server.utils import optional_float
 
-from .show import get_coordinate_system_from_show_specification
+from .show import (
+    get_coordinate_system_from_show_specification,
+    is_coordinate_system_in_show_specification_geodetic,
+)
 
 __all__ = ("get_geofence_configuration_from_show_specification",)
 
@@ -55,30 +59,54 @@ def get_geofence_configuration_from_show_specification(
     rally_points = geofence.get("rallyPoints", ())
 
     if polygons or rally_points:
-        coordinate_system = get_coordinate_system_from_show_specification(show)
-    else:
-        coordinate_system = None
+        if is_coordinate_system_in_show_specification_geodetic(show):
+            coordinate_system = None
+        else:
+            coordinate_system = get_coordinate_system_from_show_specification(show)
 
-    if polygons:
-        assert coordinate_system is not None
-        result.polygons = [
-            _parse_polygon(polygon, coordinate_system) for polygon in polygons
-        ]
+        if polygons:
+            result.polygons = [
+                _parse_polygon(polygon, coordinate_system) for polygon in polygons
+            ]
 
-    # TODO(ntamas): parse rally points
+        if rally_points:
+            result.rally_points = _parse_points(rally_points, coordinate_system)
 
     return result
 
 
+def _parse_points(
+    points: Sequence[List[Union[int, float]]],
+    coordinate_system: Optional[FlatEarthToGPSCoordinateTransformation],
+) -> List[GPSCoordinate]:
+    """Parses a list of points from the geofence specification using the given
+    optional local-to-global coordinate system and returns the parsed points.
+
+    Parameters:
+        points: the point specification to parse
+        coordinate_system: the local-to-global coordinate system or `None` if
+            the points are defined in geodetic coordinates
+    """
+    return [
+        GPSCoordinate.from_json(point[:2])  # [lat, lon] in [deg1e-7]
+        if coordinate_system is None
+        else coordinate_system.to_gps(
+            FlatEarthCoordinate(point[0], point[1], 0)
+        )  # [x, y] local coordinates as float
+        for point in points
+    ]
+
+
 def _parse_polygon(
-    polygon: Dict, coordinate_system: FlatEarthToGPSCoordinateTransformation
+    polygon: Dict, coordinate_system: Optional[FlatEarthToGPSCoordinateTransformation]
 ) -> GeofencePolygon:
-    """Parses a polygon from the geofence specification using the given
+    """Parses a polygon from the geofence specification using the given optional
     local-to-global coordinate system and returns the parsed polygon.
 
     Parameters:
         polygon: the polygon specification to parse
-        coordinate_system: the local-to-global coordinate system
+        coordinate_system: the local-to-global coordinate system or `None` if
+            the polygon is defined in geodetic coordinates
     """
     is_inclusion = bool(polygon.get("isInclusion", False))
     points = polygon.get("points", ())
@@ -86,9 +114,6 @@ def _parse_polygon(
     if points and points[0] == points[-1]:
         points.pop()
 
-    points = [
-        coordinate_system.to_gps(FlatEarthCoordinate(point[0], point[1], 0))
-        for point in points
-    ]
+    points = _parse_points(points, coordinate_system)
 
     return GeofencePolygon(points, is_inclusion=is_inclusion)

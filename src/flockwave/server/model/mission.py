@@ -7,6 +7,10 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Any, Dict, List, Optional, Sequence, Tuple, TypedDict, Union
 
+from skybrush.geofence import get_geofence_configuration_from_show_specification
+
+from .geofence import GeofenceConfigurationRequest
+
 
 __all__ = (
     # mission items
@@ -29,6 +33,7 @@ __all__ = (
     "SetPayloadMissionCommand",
     "SetParameterMissionCommand",
     "TakeoffMissionCommand",
+    "UpdateGeofenceMissionCommand",
     # functions
     "generate_mission_command_from_mission_item",
     "generate_mission_commands_from_mission_items",
@@ -159,6 +164,9 @@ class MissionItemType(Enum):
 
     TAKEOFF = "takeoff"
     """Command to takeoff."""
+
+    UPDATE_GEOFENCE = "updateGeofence"
+    """Command to update geofence settings."""
 
 
 class PayloadAction(Enum):
@@ -449,10 +457,10 @@ class ChangeSpeedMissionCommand(MissionCommand):
         return {
             "type": MissionItemType.CHANGE_SPEED.value,
             "parameters": {
-                "velocityXY": "null"
+                "velocityXY": None
                 if self.velocity_xy is None
                 else round(self.velocity_xy, ndigits=3),
-                "velocityZ": "null"
+                "velocityZ": None
                 if self.velocity_z is None
                 else round(self.velocity_z, ndigits=3),
             },
@@ -686,6 +694,45 @@ class TakeoffMissionCommand(MissionCommand):
         return MissionItemType.TAKEOFF
 
 
+@dataclass
+class UpdateGeofenceMissionCommand(MissionCommand):
+    """Mission command that updates geofence settings for the drone."""
+
+    geofence: GeofenceConfigurationRequest
+    """Geofence related configuration object."""
+
+    @classmethod
+    def from_json(cls, obj: MissionItem):
+        _validate_mission_item(
+            obj,
+            expected_type=MissionItemType.UPDATE_GEOFENCE,
+            expect_params=True,
+        )
+        params = obj["parameters"]
+        assert params is not None
+
+        # we need a "geofence" and a "coordinateSystem" entry, where the latter
+        # can be "geodetic" or a complete JSON representation of a
+        # FlatEarthToGPSCoordinateTransformation
+        geofence = get_geofence_configuration_from_show_specification(params)
+
+        return cls(geofence=geofence)
+
+    @property
+    def json(self) -> MissionItem:
+        return {
+            "type": MissionItemType.UPDATE_GEOFENCE.value,
+            "parameters": {
+                "geofence": self.geofence.json,
+                "coordinateSystem": "geodetic",
+            },
+        }
+
+    @property
+    def type(self) -> MissionItemType:
+        return MissionItemType.UPDATE_GEOFENCE
+
+
 ################################################################################
 # FUNCTIONS
 
@@ -727,6 +774,8 @@ def generate_mission_command_from_mission_item(item: MissionItem) -> MissionComm
         command = SetParameterMissionCommand.from_json(item)
     elif type == MissionItemType.TAKEOFF:
         command = TakeoffMissionCommand.from_json(item)
+    elif type == MissionItemType.UPDATE_GEOFENCE:
+        command = UpdateGeofenceMissionCommand.from_json(item)
     else:
         raise RuntimeError(f"Unhandled mission type: {type!r}")
 

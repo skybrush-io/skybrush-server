@@ -56,6 +56,33 @@ def get_server_configuration_as_json(
     if compact:
         app.configurator.minimize_configuration(config, defaults)
 
+        # minimize_configuration() leaves empty dicts for extensions that are
+        # currently loaded but all their settings are identical to the defaults.
+        # We can safely remove those extension that are loaded only because
+        # other extensions depend on them.
+        if "EXTENSIONS" in config:
+            ext_configs = config["EXTENSIONS"]
+            default_ext_configs = defaults["EXTENSIONS"]
+
+            leaf_exts = app.extension_manager.loaded_leaf_extensions
+
+            for key in list(ext_configs.keys()):
+                value = ext_configs[key]
+                if isinstance(value, dict) and key not in leaf_exts:
+                    should_delete = not value
+                    if not should_delete:
+                        # If the extension is disabled, but it was also disabled
+                        # in the defaults, and there are no other changes, we can
+                        # remove it from the dict
+                        if value == {"enabled": False}:
+                            if (
+                                key not in default_ext_configs
+                                or not default_ext_configs[key].get("enabled", True)
+                            ):
+                                should_delete = True
+                    if should_delete:
+                        del ext_configs[key]
+
     return config
 
 

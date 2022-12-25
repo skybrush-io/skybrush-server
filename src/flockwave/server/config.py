@@ -38,6 +38,7 @@ EXTENSIONS = {
     "debug": {
         "enabled": False,
     },
+    "ext_manager": {},
     "frontend": {},
     "gps": {
         "connection": "gpsd",

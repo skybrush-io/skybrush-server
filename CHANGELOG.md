@@ -12,6 +12,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The server is now aware of `systemd` on Linux systems and can be started as
   a `systemd` service with `Type=notify`.
 
+### Fixed
+
+- Fixed a bug in the "Save" button of the web UI that derives a minimal
+  configuration file containing all the differences from the server defaults.
+
 ## [2.7.0] - 2022-12-19
 
 ### Added

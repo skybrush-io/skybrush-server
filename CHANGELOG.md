@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- RTK presets can now be designated as auto-selectable; the first such preset
+  will be used automatically when the server starts.
+
 ## [2.7.1] - 2022-12-25
 
 ### Added

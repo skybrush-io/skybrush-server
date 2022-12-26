@@ -50,31 +50,38 @@ class RTKConfigurationPreset:
     every received packet.
     """
 
-    #: The unique ID of the preset
     id: str
+    """The unique ID of the preset"""
 
-    #: A human-readable title of the preset
     title: Optional[str] = None
+    """A human-readable title of the preset"""
 
-    #: Format of the GPS messages arriving in this configuration
     format: str = "auto"
+    """Format of the GPS messages arriving in this configuration"""
 
-    #: List of source connections where this preset collects messages from
     sources: List[str] = field(default_factory=list)
+    """List of source connections where this preset collects messages from"""
 
-    #: Optional data to send on the connection before starting to read the
-    #: RTCM messages. Can be used for source-specific initialization.
     init: Optional[bytes] = None
+    """Optional data to send on the connection before starting to read the
+    RTCM messages. Can be used for source-specific initialization.
+    """
 
-    #: List of filters that the messages from the sources must pass through
     filter: Optional[GPSPacketFilter] = None
+    """List of filters that the messages from the sources must pass through"""
 
-    #: Whether this preset was generated dynamically at runtime
     dynamic: bool = False
+    """Whether this preset was generated dynamically at runtime"""
 
-    #: Whether switching to this preset will automatically start a survey
-    #: attempt on the remote device (if the device supports survey).
     auto_survey: bool = False
+    """Whether switching to this preset will automatically start a survey
+    attempt on the remote device (if the device supports survey).
+    """
+
+    auto_select: bool = False
+    """Whether this preset will automatically be selected after loading the
+    extension if the user has not made an explicit selection yet.
+    """
 
     @classmethod
     def from_json(cls, spec, *, id: str):
@@ -114,6 +121,7 @@ class RTKConfigurationPreset:
 
         result.filter = create_filter_function(**spec.get("filter", {}))
         result.auto_survey = bool(spec.get("auto_survey"))
+        result.auto_select = bool(spec.get("auto_select"))
 
         return result
 

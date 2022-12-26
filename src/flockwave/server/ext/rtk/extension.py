@@ -376,6 +376,12 @@ class RTKExtension(Extension):
                 )
             )
 
+            # If we have a preset that should be selected at startup, do it now
+            for preset in self._presets:
+                if preset.auto_select:
+                    self._request_preset_switch_later(preset)
+                    break
+
             async with self.use_nursery():
                 async for message, args in rx_queue:
                     if message == "set_preset":
@@ -811,6 +817,13 @@ def get_schema():
                             },
                             "required": False,
                             "propertyOrder": 3000,
+                        },
+                        "auto_select": {
+                            "type": "boolean",
+                            "title": "Select automatically at startup",
+                            "default": False,
+                            "propertyOrder": 2500,
+                            "format": "checkbox",
                         },
                     },
                 },

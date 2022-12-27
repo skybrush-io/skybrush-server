@@ -62,6 +62,13 @@ class AntennaInformation:
             ),
         )
 
+    @property
+    def age(self) -> float:
+        """Returns the age of the last observation of the antenna position, in
+        seconds.
+        """
+        return monotonic() - self._antenna_position_timestamp
+
     def clear(self) -> None:
         self.station_id = None
         self.descriptor = None
@@ -136,7 +143,7 @@ class MessageObservations:
 
     @property
     def age_of_last_observation(self) -> float:
-        """Returns the age of the last observation of this message."""
+        """Returns the age of the last observation of this message, in seconds."""
         return monotonic() - self._last_observed_at
 
     @property
@@ -333,6 +340,23 @@ class RTKStatistics:
         self._antenna_information = AntennaInformation()
         self._survey_status = SurveyStatus()
         self.clear()
+
+    def are_corrections_ok(
+        self, *, min_satellite_count: int = 8, max_age: float = 8
+    ) -> bool:
+        """Returns whether the current statistics object indicates that
+        RTK corrections are being received correctly from the base station.
+
+        Parameters:
+            min_satellite_count: minimum number of satellites for which we would
+                like to have correction data
+            max_age: maximum number of seconds that may pass without up-to-date
+                antenna position information
+        """
+        return (
+            self._antenna_information.age <= max_age
+            and len(self._satellite_cnrs.entries) >= min_satellite_count
+        )
 
     def clear(self) -> None:
         """Clears the contents of the RTK statistics object."""

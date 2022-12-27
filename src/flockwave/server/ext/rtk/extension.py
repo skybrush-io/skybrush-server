@@ -225,6 +225,13 @@ class RTKExtension(Extension):
         """
         return self._current_preset
 
+    def exports(self) -> Dict[str, Any]:
+        return {
+            "are_corrections_ok": self._are_corrections_ok,
+            "get_current_preset": self._get_current_preset,
+            "get_statistics": self._get_statistics,
+        }
+
     def find_preset_by_id(
         self, preset_id: str, response: Optional[FlockwaveResponse] = None
     ) -> Optional[RTKConfigurationPreset]:
@@ -392,6 +399,41 @@ class RTKExtension(Extension):
     def survey_settings(self) -> RTKSurveySettings:
         """Returns the current survey settings of the RTK extension."""
         return self._survey_settings
+
+    def _are_corrections_ok(
+        self, *, min_satellite_count: int = 8, max_age: float = 8
+    ) -> bool:
+        """Returns whether the current status of the extension indicates that
+        RTK corrections are being received correctly from the base station.
+
+        This function is exported to other extensions via the exports object.
+
+        Parameters:
+            min_satellite_count: minimum number of satellites for which we would
+                like to have correction data
+            max_age: maximum number of seconds that may pass without up-to-date
+                antenna position information
+        """
+        return (
+            self._get_current_preset() is not None
+            and self._get_statistics().are_corrections_ok(
+                min_satellite_count=min_satellite_count, max_age=max_age
+            )
+        )
+
+    def _get_current_preset(self) -> Optional[RTKConfigurationPreset]:
+        """Returns the current RTK configuration preset.
+
+        This function is exported to other extensions via the exports object.
+        """
+        return self._current_preset
+
+    def _get_statistics(self) -> RTKStatistics:
+        """Returns the statistics of the RTK messages being received.
+
+        This function is exported to other extensions via the exports object.
+        """
+        return self._statistics
 
     async def _request_preset_switch(
         self, value: Optional[RTKConfigurationPreset]

@@ -12,6 +12,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - RTK presets can now be designated as auto-selectable; the first such preset
   will be used automatically when the server starts.
 
+- The RTK extension now exposes methods that allow other extensions to retrieve
+  the status of RTK corrections being received from the base station.
+
 ## [2.7.1] - 2022-12-25
 
 ### Added

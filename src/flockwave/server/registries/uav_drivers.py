@@ -15,7 +15,7 @@ __all__ = ("UAVDriverRegistry",)
 log = base_log.getChild("registries.uav_drivers")
 
 
-class UAVDriverRegistry(RegistryBase):
+class UAVDriverRegistry(RegistryBase[UAVDriver]):
     """Registry that holds all the registered UAV drivers that the server
     knows about.
     """

@@ -13,7 +13,7 @@ from flockwave.server.registries.base import RegistryBase
 URIOrCallableReturningURI = Union[str, Callable[[str], Optional[str]]]
 
 
-class UPnPServiceRegistry(RegistryBase):
+class UPnPServiceRegistry(RegistryBase[URIOrCallableReturningURI]):
     """Registry that contains information about the UPnP services that the
     server provides.
     """

@@ -11,7 +11,7 @@ from .base import RegistryBase
 from ..model.authentication import AuthenticationMethod
 
 
-class AuthenticationMethodRegistry(RegistryBase):
+class AuthenticationMethodRegistry(RegistryBase[AuthenticationMethod]):
     """Registry that contains the authentication methods that are supported
     by the server.
 

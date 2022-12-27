@@ -17,7 +17,7 @@ __all__ = ("ConnectionRegistry",)
 log = base_log.getChild("registries.connections")
 
 
-class ConnectionRegistry(RegistryBase):
+class ConnectionRegistry(RegistryBase["ConnectionRegistryEntry"]):
     """Registry that contains information about all the connections to
     external data sources that are managed by the server.
 
@@ -96,7 +96,7 @@ class ConnectionRegistry(RegistryBase):
 
         return entry
 
-    def remove(self, name: str) -> None:
+    def remove(self, name: str) -> Optional["ConnectionRegistryEntry"]:
         """Removes an entry from the set of connections.
 
         This function is a no-op if there is no such connection.
@@ -225,7 +225,7 @@ class ConnectionRegistryEntry:
     @property
     def id(self) -> str:
         """The ID of the connection; proxied to the info object."""
-        return self.info.id
+        return self.info.id or ""
 
     @property
     def json(self):

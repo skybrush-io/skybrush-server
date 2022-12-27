@@ -40,7 +40,7 @@ class ChannelTypeDescriptor(_ChannelTypeDescriptor):
         return locator
 
 
-class ChannelTypeRegistry(RegistryBase):
+class ChannelTypeRegistry(RegistryBase[ChannelTypeDescriptor]):
     """Registry that contains information about all the communication channel
     types that the server can handle.
 

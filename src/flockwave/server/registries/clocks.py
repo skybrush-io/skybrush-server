@@ -13,7 +13,7 @@ from ..model.clock import Clock
 from .base import RegistryBase
 
 
-class ClockRegistry(RegistryBase):
+class ClockRegistry(RegistryBase[Clock]):
     """Registry that contains information about all the clocks and timers
     managed by the server.
 

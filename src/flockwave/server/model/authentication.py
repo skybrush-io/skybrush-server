@@ -66,7 +66,7 @@ class AuthenticationMethod(metaclass=ABCMeta):
         raise NotImplementedError
 
     @abstractmethod
-    def authenticate(self, client: Client, data: str) -> None:
+    def authenticate(self, client: Client, data: str) -> AuthenticationResult:
         """Handles an authentication request from a client.
 
         Parameters:
@@ -74,7 +74,7 @@ class AuthenticationMethod(metaclass=ABCMeta):
             data: the data that was sent in this request
 
         Returns:
-            AuthenticationResult: response to the authentication request
+            response to the authentication request
         """
         raise NotImplementedError
 

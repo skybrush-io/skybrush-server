@@ -20,7 +20,7 @@ from os import getenv
 from random import random
 from time import mktime, monotonic
 from trio import sleep
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable, Dict, Iterable, List, Optional
 from wsgiref.handlers import format_date_time
 
 import platform
@@ -126,7 +126,7 @@ class Sockets:
             self.receiver = None
 
 
-def get_service_uri(service_id: str, address=None) -> Optional[str]:
+def get_service_uri(service_id: str, address: str) -> Optional[str]:
     """Returns the location URI of the UPnP service that belongs to the given
     registered Skybrush service ID.
 
@@ -273,7 +273,11 @@ def is_valid_service(service: str) -> bool:
     return channel and channel.get_ssdp_location() is not None
 
 
-def prepare_response(headers=None, extra=None, prefix=None):
+def prepare_response(
+    headers: Optional[Iterable[str]] = None,
+    extra: Optional[Dict[str, str]] = None,
+    prefix: Optional[str] = None,
+):
     """Prepares a response to send.
 
     Parameters:
@@ -287,7 +291,9 @@ def prepare_response(headers=None, extra=None, prefix=None):
             to the response.
         prefix (str): prefix line to add in front of the response.
     """
-    response = [prefix]
+    response: List[str] = []
+    if prefix:
+        response.append(prefix)
 
     if headers:
         for header_name in headers:
@@ -317,7 +323,7 @@ def load(app, configuration, logger):
     registry = UPnPServiceRegistry()
 
     # Set up the functions to export
-    exports.update(  # type: ignore
+    exports.update(
         {
             "register_service": registry.add,
             "registry": registry,

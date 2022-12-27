@@ -825,6 +825,13 @@ def get_schema():
                             "propertyOrder": 2500,
                             "format": "checkbox",
                         },
+                        "auto_survey": {
+                            "type": "boolean",
+                            "title": "Start survey automatically when selected",
+                            "default": False,
+                            "propertyOrder": 2750,
+                            "format": "checkbox",
+                        },
                     },
                 },
             },

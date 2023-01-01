@@ -2,7 +2,7 @@ from logging import Logger
 from trio import sleep
 from typing import Any, Dict, Optional
 
-from .model import Mission, MissionPlan, MissionType
+from .model import Mission, MissionType
 
 __all__ = ("LandImmediatelyMissionType",)
 
@@ -39,7 +39,7 @@ class LandImmediatelyMissionType(MissionType[LandImmediatelyMission]):
 
     @property
     def description(self) -> str:
-        return "This mission lands all associated UAVs as soon as possible."
+        return "Lands all associated UAVs as soon as possible."
 
     @property
     def name(self) -> str:
@@ -47,9 +47,6 @@ class LandImmediatelyMissionType(MissionType[LandImmediatelyMission]):
 
     def create_mission(self) -> LandImmediatelyMission:
         return LandImmediatelyMission()
-
-    def create_plan(self, parameters: Dict[str, Any]) -> MissionPlan:
-        return MissionPlan.EMPTY
 
     def get_parameter_schema(self) -> Dict[str, Any]:
         return {

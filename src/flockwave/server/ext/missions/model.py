@@ -20,6 +20,7 @@ from typing import (
     TypeVar,
 )
 
+from flockwave.server.errors import NotSupportedError
 from flockwave.server.model.object import ModelObject
 from flockwave.server.utils import maybe_round
 
@@ -483,7 +484,7 @@ class MissionPlan:
     """
 
     payload: Any = None
-    """The actual mission description. For Skybrush shows, this can be the
+    """The description of the mission. For Skybrush shows, this can be the
     JSON representation of the show. For ArduPilot-style missions, this can be
     a string in the standard textual mission format supported by Mission Planner
     or QGroundControl.
@@ -493,7 +494,8 @@ class MissionPlan:
 
     EMPTY: ClassVar["MissionPlan"]
     """Default, "empty" mission plan that can be returned if no specific plan
-    can be created for a mission. Useful for self-organized missions.
+    can be created for a mission but you still want to report the mission as
+    plannable in advance.
     """
 
     @property
@@ -543,7 +545,6 @@ class MissionType(Generic[T], metaclass=ABCMeta):
         """
         raise NotImplementedError
 
-    @abstractmethod
     def create_plan(
         self, parameters: Dict[str, Any]
     ) -> Union[MissionPlan, Awaitable[MissionPlan]]:
@@ -555,29 +556,58 @@ class MissionType(Generic[T], metaclass=ABCMeta):
         Returns:
             a mission plan or an awaitable that resolves to a mission plan in
             an asynchronous manner
+
+        Raises:
+            NotSupportedError: if the mission type does not support creating a
+                mission plan
         """
-        raise NotImplementedError
+        raise NotSupportedError("This mission type does not support planning")
 
     @abstractmethod
     def get_parameter_schema(self) -> Dict[str, Any]:
         """Returns the JSON schema associated with general mission parameters.
 
         If you do not intend to use a schema, simply return an empty dictionary.
+        Note that an empty dictionary is not a valid JSON schema; if you want to
+        declare that you need no parameters, return ``{ "type": "object" }``
+        instead.
 
         Returns:
             JSON schema of general mission parameters
-
         """
         raise NotImplementedError
 
     @abstractmethod
     def get_plan_parameter_schema(self) -> Dict[str, Any]:
-        """Returns the JSON schema associated with mission plannig parameters.
+        """Returns the JSON schema associated with mission planning parameters.
 
-        If you do not intend to use a schema, simply return an empty dictionary.
+        If you do not intend to use a schema or to support planning at all,
+        simply return an empty dictionary. Note that an empty dictionary is not
+        a valid JSON schema; if you want to declare that you need no parameters,
+        return ``{ "type": "object" }``
 
         Returns:
             JSON schema of mission planning parameters
-
         """
         raise NotImplementedError
+
+    def supports_planning(self) -> bool:
+        """Returns whether the mission type supports returning a mission plan
+        before the mission is executed, to be used by the ground station to
+        inform the user what is going to happen during the mission.
+
+        The default implementation of this property calls `create_plan()`
+        and checks whether a `NotSupportedError` exception is raised or not.
+        If `create_plan()` takes a long time in a subclass, you should override
+        this function and return early on your own without calling `create_plan()`.
+        """
+        try:
+            self.create_plan({})
+        except NotSupportedError:
+            return False
+        except Exception:
+            # Probably okay, it's just that the parameter schema does not match
+            # what the function expects
+            return True
+        else:
+            return True

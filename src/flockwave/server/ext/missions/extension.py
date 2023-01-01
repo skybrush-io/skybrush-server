@@ -53,24 +53,46 @@ class MissionManagementExtension(Extension):
         }
 
     def find_mission_by_id(
-        self, mission_id: str, response: Optional[FlockwaveResponse] = None
+        self, id: str, response: Optional[FlockwaveResponse] = None
     ) -> Optional[Mission]:
-        """Finds the UAV with the given ID in the object registry or registers
-        a failure in the given response object if there is no UAV with the
-        given ID.
+        """Finds the mission with the given ID in the mission registry or
+        registers a failure in the given response object if there is no mission
+        with the given ID.
 
         Parameters:
-            uav_id: the ID of the UAV to find
+            id: the ID of the mission to find
             response: the response in which the failure can be registered
 
         Returns:
-            the UAV with the given ID or ``None`` if there is no such UAV
+            the mission with the given ID or ``None`` if there is no such mission
         """
         return find_in_registry(
             self._mission_registry,
-            mission_id,
+            id,
             response=response,
             failure_reason="No such mission",
+        )
+
+    def find_mission_type_by_id(
+        self, id: str, response: Optional[FlockwaveResponse] = None
+    ) -> Optional[MissionType]:
+        """Finds the mission type with the given ID in the mission type registry
+        or registers a failure in the given response object if there is no
+        mission type with the given ID.
+
+        Parameters:
+            id: the ID of the mission type to find
+            response: the response in which the failure can be registered
+
+        Returns:
+            the mission type with the given ID or ``None`` if there is no such
+            mission type
+        """
+        return find_in_registry(
+            self._mission_type_registry,
+            id,
+            response=response,
+            failure_reason="No such mission type",
         )
 
     async def run(self):
@@ -90,8 +112,10 @@ class MissionManagementExtension(Extension):
                         "X-MSN-PARAM": self._handle_MSN_PARAM,
                         "X-MSN-PLAN": self._handle_MSN_PLAN,
                         "X-MSN-SCHED": self._handle_MSN_SCHED,
-                        "X-MSN-SCHEMA": self._handle_MSN_SCHEMA,
                         "X-MSN-START": self._handle_MSN_START,
+                        "X-MSN-TYPE-INF": self._handle_MSN_TYPE_INF,
+                        "X-MSN-TYPE-LIST": self._handle_MSN_TYPE_LIST,
+                        "X-MSN-TYPE-SCHEMA": self._handle_MSN_TYPE_SCHEMA,
                     }
                 )
             )
@@ -369,32 +393,6 @@ class MissionManagementExtension(Extension):
 
         return hub.acknowledge(message)
 
-    async def _handle_MSN_SCHEMA(
-        self, message: FlockwaveMessage, sender: Client, hub: MessageHub
-    ):
-        """Handles an incoming request to return the JSON schema associated
-        with the general and planning parameters of a given mission.
-        """
-        try:
-            mission_type, _ = self._get_mission_type_and_id_from_request(message)
-
-            maybe_mission_schema = mission_type.get_parameter_schema()
-            if isawaitable(maybe_mission_schema):
-                mission_schema = cast(Dict[str, Any], await maybe_mission_schema)
-            else:
-                mission_schema = cast(Dict[str, Any], maybe_mission_schema)
-
-            maybe_plan_schema = mission_type.get_plan_parameter_schema()
-            if isawaitable(maybe_plan_schema):
-                plan_schema = cast(Dict[str, Any], await maybe_plan_schema)
-            else:
-                plan_schema = cast(Dict[str, Any], maybe_plan_schema)
-
-        except RuntimeError as ex:
-            return hub.reject(message, reason=str(ex))
-
-        return {"result": {"mission": mission_schema, "plan": plan_schema}}
-
     async def _handle_MSN_START(
         self, message: FlockwaveMessage, sender: Client, hub: MessageHub
     ):
@@ -417,6 +415,71 @@ class MissionManagementExtension(Extension):
 
         return hub.acknowledge(message)
 
+    def _handle_MSN_TYPE_INF(
+        self, message: FlockwaveMessage, sender: Client, hub: MessageHub
+    ):
+        """Handles an incoming request to return the name and description of
+        one or more mission types.
+
+        Schemas are not included as they tend to be large; use MSN-TYPE-SCHEMA
+        for that.
+        """
+        items = {}
+
+        body = {"items": items, "type": "X-MSN-TYPE-INF"}
+        response = hub.create_response_or_notification(
+            body=body, in_response_to=message
+        )
+
+        for id in message.body.get("ids", ()):
+            mission_type = self.find_mission_type_by_id(id, response)
+            if not mission_type:
+                continue
+
+            features = []
+            if mission_type.supports_planning():
+                features.append("plan")
+
+            items[id] = {
+                "id": id,
+                "name": mission_type.name,
+                "description": mission_type.description,
+                "features": features,
+            }
+
+        return response
+
+    def _handle_MSN_TYPE_LIST(
+        self, message: FlockwaveMessage, sender: Client, hub: MessageHub
+    ):
+        """Handles an incoming request to return the IDs of all registered
+        mission types.
+        """
+        return {"ids": list(self._mission_type_registry.ids)}
+
+    def _handle_MSN_TYPE_SCHEMA(
+        self, message: FlockwaveMessage, sender: Client, hub: MessageHub
+    ):
+        """Handles an incoming request to return the JSON schemas associated
+        with the general and planning parameters of one or more mission types.
+        """
+        items = {}
+
+        body = {"items": items, "type": "X-MSN-TYPE-SCHEMA"}
+        response = hub.create_response_or_notification(
+            body=body, in_response_to=message
+        )
+
+        for id in message.body.get("ids", ()):
+            mission_type = self.find_mission_type_by_id(id, response)
+            if mission_type:
+                items[id] = {
+                    "mission": mission_type.get_parameter_schema(),
+                    "plan": mission_type.get_plan_parameter_schema(),
+                }
+
+        return response
+
     def _get_mission_from_request_by_id(self, message: FlockwaveMessage) -> Mission:
         id = message.body.get("id") or ""
         mission = self.find_mission_by_id(id)
@@ -427,16 +490,9 @@ class MissionManagementExtension(Extension):
     def _get_mission_type_and_id_from_request(
         self, message: FlockwaveMessage
     ) -> Tuple[MissionType, str]:
-        id = message.body.get("id")
-        try:
-            mission_type = (
-                self._mission_type_registry.find_by_id(id)
-                if isinstance(id, str)
-                else None
-            )
-        except KeyError:
-            mission_type = None
-        if id is None or mission_type is None:
+        id = message.body.get("id") or ""
+        mission_type = self.find_mission_type_by_id(id)
+        if mission_type is None:
             raise RuntimeError("No such mission type")
         return mission_type, id
 

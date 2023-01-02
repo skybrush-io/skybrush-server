@@ -231,16 +231,15 @@ class MessageHub:
             message: the notification to broadcast.
 
         Returns:
-            Request: the request object that identifies this message in the
-                outbound message queue. It can be used to wait until the message
-                is delivered
+            the request object that identifies this message in the outbound
+            message queue. It can be used to wait until the message is delivered
         """
         assert isinstance(
             message, FlockwaveNotification
         ), "only notifications may be broadcast"
 
         request = Request(message)
-        await self._queue_tx.send(request)
+        await self._queue_tx.send(request)  # type: ignore
         return request
 
     @property
@@ -308,10 +307,10 @@ class MessageHub:
         """Creates a new Flockwave notification to be sent by the server.
 
         Parameters:
-            body (object): the body of the notification.
+            body: the body of the notification.
 
         Returns:
-            FlockwaveNotification: a notification object
+            a notification object
         """
         return self._message_builder.create_notification(body)
 
@@ -806,18 +805,15 @@ class MessageHub:
         sent only to the given client.
 
         Parameters:
-            message (FlockwaveMessage): the message to send.
-            to (Optional[Union[str, Client]]): the Client_ object that
-                represents the recipient of the message, or the ID of the
-                client. ``None`` means to send the message to all connected
-                clients.
-            in_response_to (Optional[FlockwaveMessage]): the message that
-                the message being sent responds to.
+            message: the message to send.
+            to: the Client_ object that represents the recipient of the message,
+                or the ID of the client. ``None`` means to send the message to
+                all connected clients.
+            in_response_to: the message that the message being sent responds to.
 
         Returns:
-            Request: the request object that identifies this message in the
-                outbound message queue. It can be used to wait until the message
-                is delivered
+            the request object that identifies this message in the outbound
+            message queue. It can be used to wait until the message is delivered
         """
         if not isinstance(message, FlockwaveMessage):
             message = self.create_response_or_notification(
@@ -831,7 +827,7 @@ class MessageHub:
             return await self.broadcast_message(message)
 
         request = Request(message, to=to, in_response_to=in_response_to)
-        await self._queue_tx.send(request)
+        await self._queue_tx.send(request)  # type: ignore
         return request
 
     def unregister_message_handler(
@@ -968,11 +964,10 @@ class MessageHub:
         message schema.
 
         Parameters:
-            message (dict): the incoming, raw message
+            message: the incoming, raw message
 
         Returns:
-            message (FlockwaveMessage): the validated message as a Python
-                FlockwaveMessage_ object
+            the validated message as a Python FlockwaveMessage_ object
 
         Raises:
             MessageValidationError: if the message could not have been decoded
@@ -1091,18 +1086,15 @@ class MessageHub:
         """Sends a response to a message from this message hub.
 
         Parameters:
-            message (FlockwaveResponse or object): the response, or the body
-                of the response. When it is a FlockwaveResponse_ object, the
-                function will check whether the response indeed refers to
-                the given message (in the ``in_response_to`` parameter).
-                When it is any other object, it will be wrapped in a
-                FlockwaveResponse_ object first. In both cases, the type
-                of the message body will be filled from the type of the
-                original message if it is not given.
-            to (Client):  a Client_ object that represents the intended
-                recipient of the message.
-            in_response_to (FlockwaveMessage): the message that the given
-                object is responding to
+            message: the response, or the body of the response. When it is a
+                FlockwaveResponse_ object, the function will check whether the
+                response indeed refers to the given message (in the
+                ``in_response_to`` parameter). When it is any other object, it
+                will be wrapped in a FlockwaveResponse_ object first. In both
+                cases, the type of the message body will be filled from the type
+                of the original message if it is not given.
+            to: the intended recipient of the message.
+            in_response_to: the message that the given object is responding to
 
         Returns:
             the response that was sent back to the client, or `None` if the

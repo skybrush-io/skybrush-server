@@ -63,6 +63,9 @@ class _MAVLinkMessageSpecificationFactory:
         self._cache = {}
 
     def __getattr__(self, name):
+        if name.startswith("_"):
+            raise AttributeError
+
         name = name.upper()
         func = self._cache.get(name)
         if not func:

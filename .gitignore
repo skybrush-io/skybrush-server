@@ -9,6 +9,7 @@
 .eggs/
 build/
 dist/
+doc/build/
 htmlcov/
 tmp/
 .venv/

@@ -2,7 +2,7 @@
 
 from appdirs import AppDirs
 from collections import defaultdict
-from inspect import isawaitable
+from inspect import isawaitable, isasyncgen
 from os import environ
 from trio import (
     BrokenResourceError,
@@ -586,13 +586,11 @@ class SkybrushServer(DaemonApp):
                     for uav, result in results.items():
                         if isinstance(result, Exception):
                             response.add_error(uav.id, str(result))
-                        elif isawaitable(result):
-                            receipt = await cmd_manager.new(
-                                result, client_to_notify=sender.id
-                            )
+                        elif isawaitable(result) or isasyncgen(result):
+                            receipt = cmd_manager.new(client_to_notify=sender.id)
                             response.add_receipt(uav.id, receipt)
                             response.when_sent(
-                                cmd_manager.mark_as_clients_notified, receipt.id
+                                cmd_manager.mark_as_clients_notified, receipt.id, result
                             )
                         else:
                             response.add_result(uav.id, result)
@@ -721,6 +719,10 @@ class SkybrushServer(DaemonApp):
         # Create an object that keeps track of commands being executed
         # asynchronously on remote UAVs
         self.command_execution_manager = CommandExecutionManager()
+        self.command_execution_manager.progress_updated.connect(
+            self._on_command_execution_progress_updated,
+            sender=self.command_execution_manager,
+        )
         self.command_execution_manager.expired.connect(
             self._on_command_execution_timeout, sender=self.command_execution_manager
         )
@@ -890,6 +892,23 @@ class SkybrushServer(DaemonApp):
         else:
             body["result"] = status.result
 
+        message = self.message_hub.create_response_or_notification(body)
+        for client_id in status.clients_to_notify:
+            self.message_hub.enqueue_message(message, to=client_id)
+
+    def _on_command_execution_progress_updated(
+        self, sender: CommandExecutionManager, status: CommandExecutionStatus
+    ) -> None:
+        """Handler called when the progress of the execution of a remote
+        asynchronous command is updated. Dispatches an appropriate
+        ``ASYNC-ST`` message.
+
+        Parameters:
+            sender: the command execution manager
+            status: the status object corresponding to the command whose
+                execution has just finished.
+        """
+        body = {"type": "ASYNC-ST", "id": status.id, "progress": status.progress.json}
         message = self.message_hub.create_response_or_notification(body)
         for client_id in status.clients_to_notify:
             self.message_hub.enqueue_message(message, to=client_id)

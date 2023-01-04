@@ -4,7 +4,7 @@ from .builders import CommandExecutionStatusBuilder, FlockwaveMessageBuilder
 from .channel import CommunicationChannel
 from .client import Client
 from .clock import Clock, ClockBase, StoppableClockBase
-from .commands import CommandExecutionStatus
+from .commands import CommandExecutionStatus, Progress
 from .connection import ConnectionPurpose, ConnectionInfo, ConnectionStatus
 from .devices import (
     ChannelNode,
@@ -61,4 +61,5 @@ __all__ = (
     "CommunicationChannel",
     "PassiveUAVDriver",
     "Weather",
+    "Progress",
 )

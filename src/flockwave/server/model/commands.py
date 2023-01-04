@@ -2,13 +2,43 @@
 UAVs.
 """
 
-from flockwave.spec.schema import get_complex_object_schema
 from time import time
-from typing import Any, Callable, Optional, Set
+from trio import CancelScope, current_time
+from typing import Any, Dict, Optional, Set
+
+from flockwave.spec.schema import get_complex_object_schema
 
 from .metamagic import ModelMeta
 
-__all__ = ("CommandExecutionStatus",)
+__all__ = ("CommandExecutionStatus", "Progress")
+
+
+class Progress(metaclass=ModelMeta):
+    """Progress object that may be yielded from command handlers implemented
+    as async iterators.
+    """
+
+    message: Optional[str]
+    percentage: Optional[int]
+
+    class __meta__:
+        schema = get_complex_object_schema("progress")
+
+    def __init__(
+        self, *, percentage: Optional[int] = None, message: Optional[str] = None
+    ):
+        self.message = message
+        self.percentage = percentage
+
+    @property
+    def json(self) -> Dict[str, Any]:
+        """Returns the JSON representation of the progress object."""
+        result = {}
+        if self.message is not None:
+            result["message"] = str(self.message)
+        if self.percentage is not None:
+            result["percentage"] = int(self.percentage)
+        return result
 
 
 class CommandExecutionStatus(metaclass=ModelMeta):
@@ -27,9 +57,11 @@ class CommandExecutionStatus(metaclass=ModelMeta):
     sent: Optional[float]
     finished: Optional[float]
     cancelled: Optional[float]
+    progress: Optional[Progress]
 
+    _cancel_scope: CancelScope
+    _cancelled_by_user: bool
     _clients_to_notify: Set[str]
-    _on_cancelled: Optional[Callable[[], None]]
 
     def __init__(self, id: str):
         """Constructor.
@@ -45,9 +77,11 @@ class CommandExecutionStatus(metaclass=ModelMeta):
         self.sent = None
         self.finished = None
         self.cancelled = None
+        self.progress = None
 
+        self._cancel_scope = CancelScope()
+        self._cancelled_by_user = False
         self._clients_to_notify = set()
-        self._on_cancelled = None
 
     def add_client_to_notify(self, client_id: str) -> None:
         """Appends the ID of a client to notify to the list of clients
@@ -69,15 +103,26 @@ class CommandExecutionStatus(metaclass=ModelMeta):
         """
         return self.cancelled is None and self.finished is None
 
-    def mark_as_cancelled(self) -> None:
-        """Marks the command as being cancelled with the current timestamp if
-        it has not been marked as cancelled yet and it has not finished
-        either. Otherwise this function is a no-op.
+    @property
+    def was_cancelled_by_user(self) -> bool:
+        """Returns whether the command execution was cancelled by the user."""
+        return self.cancelled is not None and self._cancelled_by_user
+
+    def mark_as_cancelled(self, *, by_user: bool = True) -> bool:
+        """Marks the command as being cancelled now if it has not been marked as
+        cancelled yet and it has not finished either. Otherwise this function
+        is a no-op.
+
+        Returns:
+            whether the command was indeed marked as cancelled now
         """
         if self.is_in_progress:
             self.cancelled = time()
-        if self._on_cancelled:
-            self._on_cancelled()
+            self._cancelled_by_user = bool(by_user)
+            self._cancel_scope.cancel()
+            return True
+        else:
+            return False
 
     def mark_as_clients_notified(self) -> None:
         """Marks that the receipt ID of the command was sent to the client that
@@ -110,13 +155,10 @@ class CommandExecutionStatus(metaclass=ModelMeta):
         if self.sent is None:
             self.sent = time()
 
-    def when_cancelled(self, func: Callable[[], None]) -> None:
-        """Registers the given function to be called when the command execution
-        is cancelled.
-
-        Overrides any previously registered function when called multiple times.
-
-        Parameters:
-            func: the function to call.
+    def set_deadline_from_now(self, duration: float) -> None:
+        """Sets the deadline of the execution of the command to the given number
+        of seconds from now.
         """
-        self._on_cancelled = func
+        if not self.is_in_progress:
+            raise RuntimeError("command execution has finished already")
+        self._cancel_scope.deadline = current_time() + duration

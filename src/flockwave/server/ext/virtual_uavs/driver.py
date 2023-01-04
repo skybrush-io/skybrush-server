@@ -25,6 +25,7 @@ from flockwave.server.command_handlers import (
     create_parameter_command_handler,
     create_version_command_handler,
 )
+from flockwave.server.model.commands import Progress
 from flockwave.server.model.gps import GPSFixType
 from flockwave.server.model.preflight import PreflightCheckResult, PreflightCheckInfo
 from flockwave.server.model.uav import VersionInfo, UAVBase, UAVDriver
@@ -920,18 +921,19 @@ class VirtualUAVDriver(UAVDriver):
         """Throws a synchronous exception."""
         raise RuntimeError("Sync exception raised")
 
-    async def handle_command_progress(self, uav: VirtualUAV) -> str:
+    async def handle_command_progress(self, uav: VirtualUAV):
         """Dummy command that can be used to test progress reports sent
         during the execution of a command.
 
         The execution of this command takes five seconds. A progress report
         is sent every 500 milliseconds.
-
-        TODO: no progress reports are sent yet
         """
-        for _ in range(10):
+        for i in range(10):
+            yield Progress(percentage=i * 10)
             await sleep(0.5)
-        return "Result."
+
+        yield Progress(percentage=100)
+        yield "Result."
 
     async def handle_command_timeout(self, uav: VirtualUAV) -> None:
         """Dummy command that does not respond in a reasonable amount of time.

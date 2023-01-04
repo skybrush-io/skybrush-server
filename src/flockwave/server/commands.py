@@ -3,23 +3,32 @@ remote UAVs.
 """
 
 from blinker import Signal
-from inspect import isawaitable
+from inspect import isasyncgen, isawaitable
 from time import time
 from trio import (
-    current_time,
     open_memory_channel,
     open_nursery,
-    CancelScope,
     Nursery,
     TooSlowError,
 )
 from trio.abc import ReceiveChannel, SendChannel
 from trio_util import periodic
-from typing import Any, Awaitable, Optional, Union, Tuple
+from typing import (
+    cast,
+    Any,
+    AsyncIterator,
+    Awaitable,
+    Optional,
+    Union,
+    Tuple,
+    TypeVar,
+)
+
+from flockwave.concurrency import aclosing
 
 from .logger import log as base_log
 from .model.builders import CommandExecutionStatusBuilder
-from .model.commands import CommandExecutionStatus
+from .model.commands import CommandExecutionStatus, Progress
 from .registries.base import RegistryBase
 
 __all__ = ("CommandExecutionManager",)
@@ -28,7 +37,9 @@ log = base_log.getChild("commands")
 
 
 ReceiptLike = Union[CommandExecutionStatus, str]
-Result = Union[Any, Awaitable[Any]]
+Result = Union[Any, Awaitable[Any], AsyncIterator[Any]]
+
+T = TypeVar("T")
 
 
 class CommandExecutionManager(RegistryBase[CommandExecutionStatus]):
@@ -42,30 +53,35 @@ class CommandExecutionManager(RegistryBase[CommandExecutionStatus]):
 
       - Detects when a command execution has timed out and cleans up the
         list of pending CommandExecutionStatus_ objects periodically.
-
-    Attributes:
-        cancelled (Signal): signal that is emitted when an asynchronous
-            command has been cancelled by the user. The signal conveys the
-            status object that corresponds to the cancelled command.
-        expired (Signal): signal that is emitted when one or more
-            asynchronous commands have timed out and the corresponding
-            status objects are now considered as expired. The signal
-            conveys the *list* of status objects that have expired.
-        finished (Signal): signal that is emitted when the execution of an
-            asynchronous command finishes. The signal conveys the status
-            object that corresponds to the finished command.
-        timeout (float): the number of seconds that must pass since
-            the start of a command to consider the command as having
-            timed out. The status items corresponding to these commands
-            will be removed from the execution manager at the next
-            invocation of ``cleanup()``.
     """
 
     cancelled = Signal()
+    """Signal that is emitted when an asynchronous command has been cancelled
+    by the user. The signal conveys the status object that corresponds to
+    the cancelled command.
+    """
+
     expired = Signal()
+    """Signal that is emitted when one or more asynchronous commands have timed
+    out and the corresponding status objects are now considered as expired. The
+    signal conveys the *list* of status objects that have expired.
+    """
+
     finished = Signal()
+    """Signal that is emitted when the execution of an asynchronous command
+    finishes. The signal conveys the status object that corresponds to the
+    finished command.
+    """
+
+    progress_updated = Signal()
+    """Signal that is emitted when the progress information of the execution of
+    an asynchronous command is updated.
+    """
 
     timeout: float
+    """The number of seconds that must pass since the start of a command to
+    consider the command as having timed out.
+    """
 
     _tx_queue: SendChannel[Tuple[Result, CommandExecutionStatus]]
     _rx_queue: ReceiveChannel[Tuple[Result, CommandExecutionStatus]]
@@ -79,7 +95,7 @@ class CommandExecutionManager(RegistryBase[CommandExecutionStatus]):
         """
         super().__init__()
         self._builder = CommandExecutionStatusBuilder()
-        self._tx_queue, self._rx_queue = open_memory_channel(0)
+        self._tx_queue, self._rx_queue = open_memory_channel(256)
         self.timeout = timeout
 
     def cancel(self, receipt_id: ReceiptLike) -> None:
@@ -99,8 +115,8 @@ class CommandExecutionManager(RegistryBase[CommandExecutionStatus]):
             )
             return
 
-        command.mark_as_cancelled()
-        self.cancelled.send(self, status=command)
+        if command.mark_as_cancelled(by_user=True):
+            self.cancelled.send(self, status=command)
 
     def is_valid_receipt_id(self, receipt_id: ReceiptLike) -> bool:
         """Returns whether the given receipt ID is valid and corresponds to an
@@ -115,52 +131,54 @@ class CommandExecutionManager(RegistryBase[CommandExecutionStatus]):
         """
         return self._get_command_from_id(receipt_id) is not None
 
-    def mark_as_clients_notified(self, receipt_id: ReceiptLike) -> None:
+    def mark_as_clients_notified(self, receipt_id: ReceiptLike, result: Result) -> None:
         """Marks that the asynchronous command with the given receipt identifier
-        was passed back to the client that originally initiated the request.
+        was passed back to the client that originally initiated the request,
+        and forwards the command to the execution task.
 
         Parameters:
             receipt_id: the receipt identifier of the command, or the execution
                 status object of the command itself.
+            result: the result to return to the client in the response packet.
+                May also be an awaitable object that will eventually provide
+                the result of the command.
 
         Throws:
             ValueError: if the given receipt belongs to a different manager
         """
         command = self._get_command_from_id(receipt_id)
         if command is None:
-            # Request has probably expired in the meanwhile
+            # Request probably expired in the meanwhile
             log.warn(f"Expired receipt marked as dispatched: {receipt_id}")
             return
 
         command.mark_as_clients_notified()
+        self._tx_queue.send_nowait((result, command))  # type: ignore
 
-        self._send_finished_signal_if_needed(command)
-
-    async def new(
-        self, result: Result, client_to_notify: Optional[str] = None
-    ) -> CommandExecutionStatus:
+    def new(self, client_to_notify: Optional[str] = None) -> CommandExecutionStatus:
         """Registers the execution of a new asynchronous command in the
         command manager.
 
-        Parameters:
-            result: the result to return to the client in the response packet.
-                May also be an awaitable object that will eventually provide
-                the result of the command.
+        Note that the execution of the command will not start yet; it is up to
+        the caller to mark it as ready for execution when the ID of the
+        receipt in the status object has been sent back to the client.
 
         Returns:
-            CommandExecutionStatus: a newly created CommandExecutionStatus_
-                object for the asynchronous command
+            a newly created CommandExecutionStatus_ object for the asynchronous
+            command
         """
-        receipt = self._builder.create_status_object()
-        receipt.mark_as_sent()
+        status = self._builder.create_status_object()
+        status.mark_as_sent()
+        status.set_deadline_from_now(self.timeout)
 
         if client_to_notify:
-            receipt.add_client_to_notify(client_to_notify)
+            status.add_client_to_notify(client_to_notify)
 
-        self._entries[receipt.id] = receipt
-        await self._tx_queue.send((result, receipt))
-
-        return receipt
+        # status object gets stored in self._entries here. Execution will
+        # continue in the task that receives the (result, status) tuple and
+        # that task will be responsible for removing it.
+        self._entries[status.id] = status
+        return status
 
     async def run(self, cleanup_period: float = 1) -> None:
         """Runs the background tasks related to the command execution
@@ -176,15 +194,6 @@ class CommandExecutionManager(RegistryBase[CommandExecutionStatus]):
             nursery.start_soon(self._run_cleanup, cleanup_period, name="cleanup_task")
             nursery.start_soon(self._run_execution, nursery, name="executor_task")
 
-    def _cancelled_by_user(self, receipt_id: str) -> None:
-        """Marks the asynchronous command with the given receipt identifier
-        as having been cancelled by the user.
-
-        Parameters:
-            receipt_id: the receipt identifier of the command that timed out
-        """
-        self._entries.pop(receipt_id, None)
-
     def _cleanup(self) -> None:
         """Runs a cleanup process on the dictionary containing the commands
         currently in progress, removing items that have expired and those
@@ -199,9 +208,7 @@ class CommandExecutionManager(RegistryBase[CommandExecutionStatus]):
         to_remove = [
             key
             for key, status in commands.items()
-            if status.finished is not None
-            or status.cancelled is not None
-            or status.created_at < expiry
+            if not status.is_in_progress or status.created_at < expiry
         ]
         if to_remove:
             expired = [commands.pop(key) for key in to_remove]
@@ -225,12 +232,12 @@ class CommandExecutionManager(RegistryBase[CommandExecutionStatus]):
             the command execution status object belonging to the given receipt ID.
         """
         if isinstance(receipt_id, CommandExecutionStatus):
-            receipt = self._entries.get(receipt_id.id)
-            if receipt is not None and receipt != receipt_id:
+            status = self._entries.get(receipt_id.id)
+            if status is not None and status != receipt_id:
                 raise ValueError("receipt does not belong to this manager")
         else:
-            receipt = self._entries.get(receipt_id)
-        return receipt
+            status = self._entries.get(receipt_id)
+        return status
 
     async def _run_cleanup(self, seconds: float = 1) -> None:
         """Runs the cleanup process periodically in an infinite loop.
@@ -250,42 +257,68 @@ class CommandExecutionManager(RegistryBase[CommandExecutionStatus]):
         command receipts.
         """
         while True:
-            result, receipt = await self._rx_queue.receive()
-            if isawaitable(result):
+            result, status = await self._rx_queue.receive()
+
+            # At this point, the status object should still be in
+            # self._entries. We will remove it either now (if result is
+            # not async), or at the end of the self._wait_for() task.
+
+            if isawaitable(result) or isasyncgen(result):
+                # Function returned an awaitable or an async generator, so we
+                # will receive a result at some unspecified point in the
+                # future. We need to set up a timeout and wait for it.
+                #
                 # We need to construct the cancel scope here, not inside
                 # self._wait_for, otherwise we would not take into account the
                 # time it takes for the nursery to start the execution
-                scope = CancelScope(deadline=current_time() + self.timeout)  # type: ignore
-                receipt.when_cancelled(scope.cancel)
                 nursery.start_soon(
                     self._wait_for,
                     result,
-                    receipt.id,
-                    scope,
-                    name=f"async_operation:{receipt.id}",
+                    status,
+                    name=f"async_operation:{status.id}",
                 )
             else:
-                self._finish(receipt.id, result)
+                status.mark_as_finished(result)
+                self._finish(status)
 
-    def _finish(self, receipt_id: ReceiptLike, result: Any = None) -> None:
-        """Marks the asynchronous command with the given receipt identifier
-        as finished, optionally adding the given object as a result.
+    def _finish(self, status: CommandExecutionStatus) -> None:
+        """Finishes the lifecycle of the given status object, removing it from
+        the ``_entries`` map. Dispatches appropriate signals depending on the
+        final state of the object.
 
         Parameters:
-            receipt_id: the receipt identifier of the command that was finished
-            result: the result of the command; ``None`` if the command needs no
-                response. May also be an instance of an exception; this will be
-                handled appropriately.
+            status: the command execution status object
         """
-        command = self._get_command_from_id(receipt_id)
-        if command is None:
+        if status.id not in self._entries:
             # Request has probably expired in the meanwhile. This should happen
             # only in rare cases as we cancel the awaitables when needed.
-            log.warn("Received response for expired receipt: {0}".format(receipt_id))
+            log.warn(f"Execution of task finished with expired receipt: {status.id}")
             return
 
-        command.mark_as_finished(result)
-        self._send_finished_signal_if_needed(command)
+        del self._entries[status.id]
+
+        # Check whether the cancel scope of the command was cancelled
+        if status._cancel_scope.cancelled_caught:
+            if status.cancelled is not None:
+                # Cancellation came from the user, we have already added a
+                # timestamp and sent the cancelled signal. Nothing to do now.
+                pass
+            else:
+                # Cancellation due to timeout; remember the current timestamp as
+                # it was not set yet, and send a cancelled signal
+                status.mark_as_cancelled(by_user=False)
+                self._send_cancelled_signal_if_needed(status)
+        else:
+            self._send_finished_signal_if_needed(status)
+
+    def _send_cancelled_signal_if_needed(self, command: CommandExecutionStatus) -> None:
+        """Sends the 'cancelled' signal for the given command if it has been
+        marked as **client notified** (meaning that the clients were notified
+        about the corresponding receipt IDs) and as **cancelled** (meaning that
+        the execution of the command was cancelled.
+        """
+        if command.client_notified and command.cancelled:
+            self.expired.send(self, statuses=[command])
 
     def _send_finished_signal_if_needed(self, command: CommandExecutionStatus) -> None:
         """Sends the 'finished' signal for the given command if it has been
@@ -297,49 +330,58 @@ class CommandExecutionManager(RegistryBase[CommandExecutionStatus]):
         if command.client_notified and command.finished:
             self.finished.send(self, status=command)
 
-    def _timeout(self, receipt_id: str) -> None:
-        """Marks the asynchronous command with the given receipt identifier
-        as having timed out.
-
-        Parameters:
-            receipt_id: the receipt identifier of the command that timed out
-        """
-        command = self._entries.pop(receipt_id, None)
-        if command:
-            self.expired.send(self, statuses=[command])
-
     async def _wait_for(
-        self, awaitable: Awaitable[Any], receipt_id: str, scope: CancelScope
+        self,
+        async_obj: Union[Awaitable[Any], AsyncIterator[Any]],
+        status: CommandExecutionStatus,
     ) -> None:
-        """Waits for the result of the given awaitable and updates the
-        command execution receipt with the given ID when the result is
-        retrieved from the awaitable.
+        try:
+            with status._cancel_scope:
+                try:
+                    if isawaitable(async_obj):
+                        result = await async_obj
+                    else:
+                        result = await self._wait_for_iterator(
+                            cast(AsyncIterator[Any], async_obj), status
+                        )
+                except RuntimeError as ex:
+                    # this is okay, samurai principle
+                    result = ex
+                except TooSlowError as ex:
+                    # this is okay as well
+                    result = ex
+                except Exception as ex:
+                    # this might not be okay, let's log it
+                    log.exception("Unexpected exception caught")
+                    result = ex
+
+                # We can get here only if the user did not cancel the execution and
+                # we have not timed out either. In this case we can safely mark the
+                # command as finished
+                status.mark_as_finished(result)
+
+        finally:
+            self._finish(status)
+
+    async def _wait_for_iterator(
+        self, it: AsyncIterator[T], status: CommandExecutionStatus
+    ) -> Union[Optional[T], Exception]:
+        """Waits for yielded progress updates from an async iterator and updates
+        the command execution receipt with the progress information and the
+        returned result from the iterator.
 
         Parameters:
-            awaitable: the awaitable to wait for
-            receipt_id: the receipt corresponding to the awaitable; this receipt
-                will be updated when the awaitable finishes
-            scope: the cancellation scope that can be used to terminate the
-                awaitable earlier
+            it: the async iterator to process
+            status: the status object that is to be manipulated when the
+                async generator finishes or the execution times out
         """
-        try:
-            with scope:
-                result = await awaitable
-        except RuntimeError as ex:
-            # this is okay, samurai principle
-            result = ex
-        except TooSlowError as ex:
-            # this is okay as well
-            result = ex
-        except Exception as ex:
-            # this might not be okay, let's log it
-            log.exception("Unexpected exception caught")
-            result = ex
-
-        if scope.cancelled_caught:
-            if scope.deadline > current_time():
-                self._cancelled_by_user(receipt_id)
-            else:
-                self._timeout(receipt_id)
-        else:
-            self._finish(receipt_id, result)
+        result = None
+        async with aclosing(it) as gen:
+            async for item in gen:
+                if isinstance(item, Progress):
+                    status.set_deadline_from_now(self.timeout)
+                    status.progress = item
+                    self.progress_updated.send(self, status=status)
+                else:
+                    result = item
+        return result

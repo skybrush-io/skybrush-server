@@ -372,7 +372,7 @@ reference = "fury"
 
 [[package]]
 name = "flockwave-flockctrl"
-version = "2.1.1"
+version = "2.2.0"
 description = "flockctrl protocol parser and encoder for Skybrush"
 category = "main"
 optional = true
@@ -1677,8 +1677,8 @@ flockwave-ext = [
     {file = "flockwave_ext-1.17.0-py3-none-any.whl", hash = "sha256:d0b9fbd9b2209374b29ca2fc6dc626806fa044e7a2520522952f990b21010690"},
 ]
 flockwave-flockctrl = [
-    {file = "flockwave-flockctrl-2.1.1.tar.gz", hash = "sha256:41cf538202920ffb6f8b1cc48003a77d98054e98ed3cddae388be25db297fd0b"},
-    {file = "flockwave_flockctrl-2.1.1-py3-none-any.whl", hash = "sha256:dd3997098d783507bc30ff1801c56b9df2f5a927d21ff3dd760f541761078d37"},
+    {file = "flockwave_flockctrl-2.2.0-py3-none-any.whl", hash = "sha256:6aba5f461acb213b834a3304b57d6b8e2fc401c8442cb633b0c9f24769f8ae3c"},
+    {file = "flockwave_flockctrl-2.2.0.tar.gz", hash = "sha256:3b0031a4d775bda5747426bfa24c900844cdcb0fec34bec04f891deead9dd7f7"},
 ]
 flockwave-gps = [
     {file = "flockwave-gps-2.2.0.tar.gz", hash = "sha256:04bc995747995ba90d20aa4d1c486a42766f18fde2aa294a51ace49d7e1f4ca5"},

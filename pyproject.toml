@@ -68,6 +68,7 @@ coverage = {extras = ["toml"], version = "^6.0.2"}
 pytest = "^7.1.1"
 pytest-cov = "^3.0.0"
 pytest-trio = ">=0.6.0"
+pdoc = "^12.3.0"
 
 [tool.poetry.extras]
 all = ["skybrush-ext-dock", "skybrush-ext-flockctrl", "skybrush-ext-map-cache", "skybrush-ext-sidekick", "skybrush-ext-timecode"]
@@ -78,6 +79,3 @@ pro = ["skybrush-ext-map-cache", "skybrush-ext-sidekick", "skybrush-ext-timecode
 skybrushd = "flockwave.server.launcher:start"
 skybrush-gateway = "flockwave.gateway.launcher:start"
 skybrush-proxy = "flockwave.proxy.launcher:start"
-
-[tool.poetry.group.dev.dependencies]
-pdoc = "^12.3.0"

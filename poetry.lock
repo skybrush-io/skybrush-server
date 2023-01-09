@@ -372,7 +372,7 @@ reference = "fury"
 
 [[package]]
 name = "flockwave-flockctrl"
-version = "2.2.0"
+version = "2.3.0"
 description = "flockctrl protocol parser and encoder for Skybrush"
 category = "main"
 optional = true
@@ -1174,7 +1174,7 @@ reference = "collmot"
 
 [[package]]
 name = "skybrush-ext-flockctrl"
-version = "2.1.0"
+version = "2.3.0"
 description = "Support for flockctrl-based drones in Skybrush Server"
 category = "main"
 optional = true
@@ -1183,7 +1183,7 @@ python-versions = ">=3.8,<4.0"
 [package.dependencies]
 bidict = ">=0.22.0"
 colour = ">=0.1.5"
-flockwave-flockctrl = ">=2.1.1,<3.0.0"
+flockwave-flockctrl = ">=2.3.0,<3.0.0"
 paramiko = ">=2.10.3,<3.0.0"
 scp = ">=0.14.4"
 trio = ">=0.20.0"
@@ -1402,7 +1402,7 @@ pro = ["skybrush-ext-map-cache", "skybrush-ext-sidekick", "skybrush-ext-timecode
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.8"
-content-hash = "c033884d3aa48f447ea6e833757b1b56bd943ef9f45f3a03ea539807aaea10aa"
+content-hash = "091f97e8b6999dada0f462df0990c68f6214a0e87e227726254339b23673cbc4"
 
 [metadata.files]
 adrenaline = [
@@ -1677,8 +1677,8 @@ flockwave-ext = [
     {file = "flockwave_ext-1.17.0-py3-none-any.whl", hash = "sha256:d0b9fbd9b2209374b29ca2fc6dc626806fa044e7a2520522952f990b21010690"},
 ]
 flockwave-flockctrl = [
-    {file = "flockwave_flockctrl-2.2.0-py3-none-any.whl", hash = "sha256:6aba5f461acb213b834a3304b57d6b8e2fc401c8442cb633b0c9f24769f8ae3c"},
-    {file = "flockwave_flockctrl-2.2.0.tar.gz", hash = "sha256:3b0031a4d775bda5747426bfa24c900844cdcb0fec34bec04f891deead9dd7f7"},
+    {file = "flockwave_flockctrl-2.3.0-py3-none-any.whl", hash = "sha256:ccc3b780d78a3f0597abd22d23ec7032e128b6fee400b046f526c3c5daf4019b"},
+    {file = "flockwave_flockctrl-2.3.0.tar.gz", hash = "sha256:60ed8aa949c2d4197f32377952ae68a30be462a7d45878f8ff9cbd55debc2f73"},
 ]
 flockwave-gps = [
     {file = "flockwave-gps-2.2.0.tar.gz", hash = "sha256:04bc995747995ba90d20aa4d1c486a42766f18fde2aa294a51ace49d7e1f4ca5"},
@@ -2104,8 +2104,8 @@ skybrush-ext-dock = [
     {file = "skybrush_ext_dock-1.0.0-py3-none-any.whl", hash = "sha256:55d0d99e6dd9239f047c3efee27267fff01e7e627fb8addba61b880f0efda082"},
 ]
 skybrush-ext-flockctrl = [
-    {file = "skybrush_ext_flockctrl-2.1.0-py3-none-any.whl", hash = "sha256:3675faa31b8b1a3d10fbf3dbd5ea1f1bdd1cec534285e775f854fb0e64712479"},
-    {file = "skybrush_ext_flockctrl-2.1.0.tar.gz", hash = "sha256:217363d82d7b99c04d1f170a2f73ce9c2ef2d2ce7cfbe4e35d6643c9afad82d8"},
+    {file = "skybrush_ext_flockctrl-2.3.0-py3-none-any.whl", hash = "sha256:71447a3c5f9b87203b12e3bcc32c3188a789fc3e6124b691ef0c1137649cdafb"},
+    {file = "skybrush_ext_flockctrl-2.3.0.tar.gz", hash = "sha256:e81fa8f5ecd3368d53ee6dd2a68e623475ac4534504a19d3cbcf40704922741a"},
 ]
 skybrush-ext-map-cache = [
     {file = "skybrush-ext-map-cache-0.3.1.tar.gz", hash = "sha256:9f99803c6f6eba2d25ee0bd4d8c175ec6e4cd881c1df700afff0763f791db060"},

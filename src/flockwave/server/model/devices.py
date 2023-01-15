@@ -629,7 +629,7 @@ class DeviceTree(object):
         subscribers about all modifications.
 
         The mutator object returned by this function should be used as a
-        context manager as follows::
+        context manager as follows:
 
             with tree.create_mutator() as mutator:
                 mutator.update(some_channel, new_value)

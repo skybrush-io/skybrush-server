@@ -6,19 +6,23 @@ signal that other extensions can subscribe to if they are interested in the
 values of the RC channels.
 """
 
-from typing import Any, ClassVar, List, Sequence
+from logging import Logger
+
+from typing import Any, ClassVar, List, Optional, Sequence
 
 
-#: Signal that this extension emits in order to notify subscribers about the
-#: new channel values
 rc_changed_signal: Any = None
+"""Signal that this extension emits in order to notify subscribers about the
+new channel values.
+"""
 
-#: Stores whether the extension is in debug mode
 debug: bool = False
+"""Stores whether the extension is in debug mode"""
+
+logger: Optional[Logger] = None
+"""Logger instance used by the extension"""
 
 
-#: Object that contains the current values of the RC channels. Must _not_ be
-#: modified by other extensions.
 class RCState(Sequence[int]):
     """Object holding the current values of the RC channels as well as the
     number of valid channels.
@@ -31,15 +35,16 @@ class RCState(Sequence[int]):
     mdoe switch. The remaining channels have no specific semantics.
     """
 
-    #: Maximum number of channels supported by this object
     MAX_CHANNEL_COUNT: ClassVar[int] = 18
+    """Maximum number of channels supported by this object"""
 
-    #: Raw channel values as a list, exposed for performance. If you use this
-    #: property directly, do NOT modify the list or assign a new instance to it.
     channels: List[int]
+    """Raw channel values as a list, exposed for performance. If you use this
+    property directly, do NOT modify the list or assign a new instance to it.
+    """
 
-    #: Number of channels
     num_channels: int
+    """Number of channels that are actually used from the raw `channels` list."""
 
     def __init__(self):
         """Constructor."""
@@ -80,12 +85,14 @@ class RCState(Sequence[int]):
             self.num_channels = num_values
 
 
-#: Singleton instance of RCState
 rc = RCState()
+"""Singleton instance of RCState"""
 
 
-def load(app, configuration):
-    global rc_changed_signal, debug
+def load(app, configuration, log):
+    global rc_changed_signal, debug, logger
+
+    logger = log
 
     signals = app.import_api("signals")
     rc_changed_signal = signals.get("rc:changed")
@@ -96,12 +103,13 @@ def load(app, configuration):
 
 
 def unload():
-    global rc_changed_signal, debug
+    global rc_changed_signal, debug, logger
 
     if debug:
         rc_changed_signal.disconnect(print_debug_info)
 
     rc_changed_signal = None
+    logger = None
 
 
 def notify(values: Sequence[int]):
@@ -115,7 +123,8 @@ def notify(values: Sequence[int]):
 
 
 def print_debug_info(sender: RCState) -> None:
-    print("RC channels changed:", repr(sender.channels))
+    if logger:
+        logger.info(f"RC channels changed: {sender.channels!r}")
 
 
 dependencies = ("signals",)

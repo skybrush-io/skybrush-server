@@ -4,7 +4,6 @@ RC channel values for a (virtual or real) RC transmitter.
 
 from __future__ import annotations
 
-from functools import partial
 from logging import Logger
 from typing import Any, Callable, Sequence, Optional, Tuple, TYPE_CHECKING
 
@@ -16,9 +15,10 @@ from flockwave.server.ports import get_port_number_for_service
 if TYPE_CHECKING:
     from flockwave.server.app import SkybrushServer
 
-#: Type specification for decoder functions that take a raw packet and return a
-#: list of RC channel values
 Decoder = Callable[[bytes], Sequence[int]]
+"""Type specification for decoder functions that take a raw packet and return a
+list of RC channel values
+"""
 
 
 async def run(app: SkybrushServer, configuration, log):
@@ -51,17 +51,17 @@ async def run(app: SkybrushServer, configuration, log):
     rc = app.import_api("rc")
     connection = create_connection(f"udp-listen://{host}:{port}")
 
-    with app.connection_registry.use(connection, name="UDP RC input"):
-        await app.supervise(
+    async def handler(connection):
+        await handle_udp_datagrams(
             connection,
-            task=partial(
-                handle_udp_datagrams,
-                log=log,
-                address=formatted_address,
-                decoder=decoder,
-                on_changed=rc.notify,
-            ),
+            log=log,
+            address=formatted_address,
+            decoder=decoder,
+            on_changed=rc.notify,
         )
+
+    with app.connection_registry.use(connection, name="UDP RC input"):
+        await app.supervise(connection, task=handler)
 
 
 def parse_range(value: Any) -> Optional[Tuple[int, int]]:

@@ -394,7 +394,7 @@ class MissionCommand(ABC):
 
     # TODO: use Python 3.10+ and field(kw_only=True) and then default base value
     # can be added instead of explicit id=None arguemnt in child classes
-    id: InitVar[str]
+    id: InitVar[Optional[str]]
     """The unique identifier of the mission command. Set it to None to
     initialize with a random string."""
 

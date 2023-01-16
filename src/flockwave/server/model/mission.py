@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from collections import Counter
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, InitVar
 from enum import Enum
 from typing import Any, Dict, List, Optional, Sequence, Tuple, TypedDict, Union
 
@@ -388,15 +388,18 @@ def _validate_mission_item(
         raise RuntimeError("parameters must be a valid dict")
 
 
+@dataclass
 class MissionCommand(ABC):
     """Abstract superclass for mission commands."""
 
-    id: str
-    """The unique identifier of the mission command."""
+    # TODO: use Python 3.10+ and field(kw_only=True) and then default base value
+    # can be added instead of explicit id=None arguemnt in child classes
+    id: InitVar[str]
+    """The unique identifier of the mission command. Set it to None to
+    initialize with a random string."""
 
-    def __post_init__(self):
-        if self.id is None:
-            self.id = default_id_generator()
+    def __post_init__(self, id: str) -> None:
+        self.id = default_id_generator() if id is None else id
 
     @classmethod
     @abstractmethod

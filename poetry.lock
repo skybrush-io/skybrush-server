@@ -1174,7 +1174,7 @@ reference = "collmot"
 
 [[package]]
 name = "skybrush-ext-flockctrl"
-version = "2.5.0"
+version = "2.6.0"
 description = "Support for flockctrl-based drones in Skybrush Server"
 category = "main"
 optional = true
@@ -1402,7 +1402,7 @@ pro = ["skybrush-ext-map-cache", "skybrush-ext-sidekick", "skybrush-ext-timecode
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.8"
-content-hash = "9b95699931bbca9879f8692bf7efd7de49c0154b41277151fa37d9cf61e3dc5c"
+content-hash = "31fd5f74e3815cba6d9e497266ec9863bc037908c9c702df33fa97bdf1f1933a"
 
 [metadata.files]
 adrenaline = [
@@ -2104,8 +2104,8 @@ skybrush-ext-dock = [
     {file = "skybrush_ext_dock-1.0.0-py3-none-any.whl", hash = "sha256:55d0d99e6dd9239f047c3efee27267fff01e7e627fb8addba61b880f0efda082"},
 ]
 skybrush-ext-flockctrl = [
-    {file = "skybrush_ext_flockctrl-2.5.0-py3-none-any.whl", hash = "sha256:7cba9d07e158756418cdb44c297d7a5b25f0e0d392d8f039b4386cc72771f11f"},
-    {file = "skybrush_ext_flockctrl-2.5.0.tar.gz", hash = "sha256:e1878cde28480a74fdd837e16e8b27e9246b05c946659b4202e6d1352f4fbb78"},
+    {file = "skybrush_ext_flockctrl-2.6.0-py3-none-any.whl", hash = "sha256:de75d418668c935ac13cc9104b83b2212a3179aade79dcffa49965dcd66f0133"},
+    {file = "skybrush_ext_flockctrl-2.6.0.tar.gz", hash = "sha256:cc52d9e08c4b00b796a1c3f0471c60c5d54f4f459bd45690adb24d5829a91366"},
 ]
 skybrush-ext-map-cache = [
     {file = "skybrush-ext-map-cache-0.3.1.tar.gz", hash = "sha256:9f99803c6f6eba2d25ee0bd4d8c175ec6e4cd881c1df700afff0763f791db060"},

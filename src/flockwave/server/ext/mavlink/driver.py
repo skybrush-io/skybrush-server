@@ -25,6 +25,7 @@ from flockwave.server.command_handlers import (
 )
 from flockwave.server.errors import NotSupportedError
 from flockwave.server.model.battery import BatteryInfo
+from flockwave.server.model.devices import DeviceTreeMutator
 from flockwave.server.model.geofence import GeofenceConfigurationRequest, GeofenceStatus
 from flockwave.server.model.gps import GPSFix
 from flockwave.server.model.preflight import PreflightCheckInfo, PreflightCheckResult
@@ -115,6 +116,7 @@ class MAVLinkDriver(UAVDriver):
     """
 
     broadcast_packet: PacketBroadcasterFn
+    create_device_tree_mutator: Callable[[], DeviceTreeMutator]
     log: Logger
     mandatory_custom_mode: Optional[int]
     run_in_background: Callable[[Callable], None]
@@ -128,10 +130,10 @@ class MAVLinkDriver(UAVDriver):
         """
         super().__init__()
 
-        self.app = app
+        self.app = app  # type: ignore
 
         self.broadcast_packet = None  # type: ignore
-        self.create_device_tree_mutator = None
+        self.create_device_tree_mutator = None  # type: ignore
         self.log = None  # type: ignore
         self.mandatory_custom_mode = None
         self.run_in_background = None  # type: ignore

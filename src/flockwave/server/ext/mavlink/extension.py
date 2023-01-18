@@ -24,6 +24,7 @@ from .types import (
 
 if TYPE_CHECKING:
     from flockwave.server.app import SkybrushServer
+    from flockwave.server.ext.rc import RCState
     from flockwave.server.ext.show.clock import ShowClock
 
 __all__ = ("construct", "dependencies")
@@ -37,7 +38,7 @@ CONNECTION_PRESETS = {
 }
 
 #: Default routing configuration for networks
-DEFAULT_ROUTING = {"rtk": 0}
+DEFAULT_ROUTING = {"rtk": 0, "rc": 0}
 
 
 class MAVLinkDronesExtension(UAVExtension[MAVLinkDriver]):
@@ -118,6 +119,7 @@ class MAVLinkDronesExtension(UAVExtension[MAVLinkDriver]):
             stack.enter_context(
                 signals.use(
                     {
+                        "rc:changed": self._on_rc_channels_changed,
                         "rtk:packet": self._on_rtk_correction_packet,
                         "show:clock_changed": self._on_show_clock_changed,
                         "show:config_updated": self._on_show_configuration_changed,
@@ -235,6 +237,34 @@ class MAVLinkDronesExtension(UAVExtension[MAVLinkDriver]):
             key: MAVLinkNetworkSpecification.from_json(value, id=key)
             for key, value in network_specs.items()
         }
+
+    def _on_rc_channels_changed(self, sender: "RCState"):
+        """Handles the event when the RC channel values changed."""
+        if not self._networks:
+            return
+
+        if sender.lost:
+            # Cancel all previous RC overrides. For channels <= 8, zero means
+            # "release back to RC radio". For channels > 8, 65534 means
+            # "release back to rC radio" as zero would mean "ignore"
+            channels = [0] * 8 + [65534] * 10
+        else:
+            # Get scaled PWM values to send
+            channels = sender.get_scaled_channel_values_int(out_of_range=0)
+            if sender.num_channels < 18:
+                # Ignore channels for which the sender has no real value.
+                # 65535 in MAVLink RC_CHANNELS_OVERRIDE packets means "ignore"
+                num_missing = 18 - sender.num_channels
+                channels[sender.num_channels :] = [65535] * num_missing
+
+        for name, network in self._networks.items():
+            try:
+                network.enqueue_rc_override_packet(channels)
+            except Exception:
+                if self.log:
+                    self.log.warn(
+                        f"Failed to enqueue RC override packet to network {name!r}"
+                    )
 
     def _on_rtk_correction_packet(self, sender, packet: bytes):
         """Handles an RTK correction packet that the server wishes to forward
@@ -433,13 +463,20 @@ schema = {
             "type": "object",
             "title": "Message routing",
             "properties": {
+                "rc": {
+                    "type": "integer",
+                    "title": "RC override",
+                    "description": "Index of the connection where RC override messages are routed to (zero-based)",
+                    "default": 0,
+                    "minimum": 0,
+                },
                 "rtk": {
                     "type": "integer",
                     "title": "RTK messages",
                     "description": "Index of the connection where RTK correction messages are routed to (zero-based)",
                     "default": 0,
                     "minimum": 0,
-                }
+                },
             },
         },
         "statustext_targets": {

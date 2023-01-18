@@ -44,7 +44,9 @@ class RCState(Sequence[int]):
     """
 
     num_channels: int
-    """Number of channels that are actually used from the raw `channels` list."""
+    """Number of channels that are actually used from the raw `channels` list.
+    Zero means that RC reception is assumed to be lost.
+    """
 
     def __init__(self):
         """Constructor."""
@@ -59,15 +61,72 @@ class RCState(Sequence[int]):
     def __len__(self):
         return len(self.channels)
 
-    def get_scaled_channel_value(self, index: int) -> float:
-        """Returns the value of the given RC channel, scaled into the [0; 1]
+    def get_scaled_channel_value(
+        self, index: int, min: float = 0, span: float = 1, out_of_range: float = -1
+    ) -> float:
+        """Returns the value of the given RC channel, scaled into a given
         range.
+
+        Parameters:
+            min: the minimum value in the output range
+            span: the length of the output range
+            out_of_range: the value to return for invalid RC channel values
         """
         raw_value = self.channels[index]
         if raw_value < 0 or raw_value > 65535:
-            return -1
+            return out_of_range
         else:
-            return raw_value / 65535
+            return min + span * (raw_value / 65535)
+
+    def get_scaled_channel_values(
+        self, min: float = 0, span: float = 1, out_of_range: float = -1
+    ) -> List[float]:
+        """Returns the value of all RC channels, scaled into a given
+        range.
+
+        Parameters:
+            min: the minimum value in the output range
+            span: the length of the output range
+            out_of_range: the value to return for invalid RC channel values
+        """
+        result: List[float] = []
+
+        for raw_value in self.channels:
+            if raw_value < 0 or raw_value > 65535:
+                result.append(out_of_range)
+            else:
+                result.append(min + span * (raw_value / 65535))
+
+        return result
+
+    def get_scaled_channel_values_int(
+        self, min: int = 1000, span: int = 1000, out_of_range: int = 0
+    ) -> List[int]:
+        """Returns the value of all RC channels, scaled into a given
+        range, as integers.
+
+        The defaults are set up so the output is suitable for PWM intervals in
+        microseconds.
+
+        Parameters:
+            min: the minimum value in the output range
+            span: the length of the output range
+            out_of_range: the value to return for invalid RC channel values
+        """
+        result: List[int] = []
+
+        for raw_value in self.channels:
+            if raw_value < 0 or raw_value > 65535:
+                result.append(out_of_range)
+            else:
+                result.append(min + round(span * (raw_value / 65535)))
+
+        return result
+
+    @property
+    def lost(self) -> bool:
+        """Returns whether the RC connection is assumed to be lost."""
+        return self.num_channels <= 0
 
     def reset(self) -> None:
         """Invalidates all RC channels."""
@@ -122,6 +181,16 @@ def notify(values: Sequence[int]):
     rc_changed_signal.send(rc)
 
 
+def notify_rc_lost():
+    """Function that is to be called by extensions implementing support for
+    a particular RC protocol when they wish to report that RC connection was
+    lost and all RC channels should be reset to invalid values.
+    """
+    global rc
+    rc.reset()
+    rc_changed_signal.send(rc)
+
+
 def print_debug_info(sender: RCState) -> None:
     if logger:
         logger.info(f"RC channels changed: {sender.channels!r}")
@@ -129,6 +198,6 @@ def print_debug_info(sender: RCState) -> None:
 
 dependencies = ("signals",)
 description = "RC transmitter support"
-exports = {"notify": notify}
+exports = {"notify": notify, "notify_rc_lost": notify_rc_lost}
 schema = {}
 tags = "experimental"

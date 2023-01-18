@@ -181,7 +181,7 @@ def notify(values: Sequence[int]):
     rc_changed_signal.send(rc)
 
 
-def notify_rc_lost():
+def notify_lost():
     """Function that is to be called by extensions implementing support for
     a particular RC protocol when they wish to report that RC connection was
     lost and all RC channels should be reset to invalid values.
@@ -198,6 +198,6 @@ def print_debug_info(sender: RCState) -> None:
 
 dependencies = ("signals",)
 description = "RC transmitter support"
-exports = {"notify": notify, "notify_rc_lost": notify_rc_lost}
+exports = {"notify": notify, "notify_lost": notify_lost}
 schema = {}
 tags = "experimental"

@@ -5,6 +5,7 @@ RC channel values for a (virtual or real) RC transmitter.
 from __future__ import annotations
 
 from logging import Logger
+from trio import fail_after, TooSlowError
 from typing import Any, Callable, Sequence, Optional, Tuple, TYPE_CHECKING
 
 from flockwave.connections import create_connection
@@ -58,6 +59,7 @@ async def run(app: SkybrushServer, configuration, log):
             address=formatted_address,
             decoder=decoder,
             on_changed=rc.notify,
+            on_lost=rc.notify_lost,
         )
 
     with app.connection_registry.use(connection, name="UDP RC input"):
@@ -126,20 +128,40 @@ async def handle_udp_datagrams(
     address: str,
     decoder: Decoder,
     on_changed: Callable[[Sequence[int]], None],
+    on_lost: Callable[[], None],
+    timeout: float = 1,
 ) -> None:
     log.info(f"Listening for UDP RC input on {address}")
 
+    connected = False
+
     try:
         while True:
-            data, _ = await connection.read()
-            try:
-                channels = decoder(data)
-            except Exception:
-                # probably dropping malformed packet
-                pass
+            if connected:
+                try:
+                    with fail_after(timeout):
+                        data, _ = await connection.read()
+                except TooSlowError:
+                    connected = False
+                    log.warn("UDP RC input lost")
+                    on_lost()
+                    data = None
             else:
-                on_changed(channels)
+                data, _ = await connection.read()
+                connected = True
+                log.info("UDP RC connection established")
+
+            if data:
+                try:
+                    channels = decoder(data)
+                except Exception:
+                    # probably dropping malformed packet
+                    pass
+                else:
+                    on_changed(channels)
     finally:
+        if connected:
+            on_lost()
         log.info(f"UDP RC input closed on {address}")
 
 

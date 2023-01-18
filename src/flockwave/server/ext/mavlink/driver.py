@@ -967,6 +967,7 @@ class MAVLinkUAV(UAVBase):
 
     driver: MAVLinkDriver
     notify_updated: Callable[[], None]
+    send_log_message_to_gcs: Callable[[str], None]
 
     _last_skybrush_status_info: Optional[DroneShowStatus] = None
 
@@ -1039,7 +1040,7 @@ class MAVLinkUAV(UAVBase):
         self._velocity = VelocityNED()
 
         self.notify_updated = None  # type: ignore
-        self.send_log_message_to_gcs = None
+        self.send_log_message_to_gcs = None  # type: ignore
 
         self._reset_mavlink_version()
 

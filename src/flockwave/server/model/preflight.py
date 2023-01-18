@@ -40,7 +40,7 @@ _numeric_preflight_check_results = bidict(
 
 
 class PreflightCheckItem(metaclass=ModelMeta):
-    """Class representing a single item in a detailed preflight check rpeort."""
+    """Class representing a single item in a detailed preflight check report."""
 
     class __meta__:
         schema = get_complex_object_schema("preflightCheckItem")

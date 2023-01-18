@@ -15,6 +15,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The RTK extension now exposes methods that allow other extensions to retrieve
   the status of RTK corrections being received from the base station.
 
+- RC simulation with UDP packets now has a configurable timeout after which the
+  RC connection is assumed to be lost.
+
 ## [2.7.1] - 2022-12-25
 
 ### Added

@@ -36,6 +36,12 @@ async def run(app: SkybrushServer, configuration, log):
         log.error("Bytes per RC channel must be 1 or 2, disabling extension")
         return
 
+    timeout = float(configuration.get("timeout", 1))
+    if timeout < 0:
+        timeout = 0
+    if timeout == 0:
+        timeout = float("inf")
+
     value_range = parse_range(configuration.get("range"))
 
     decoder = (
@@ -60,6 +66,7 @@ async def run(app: SkybrushServer, configuration, log):
             decoder=decoder,
             on_changed=rc.notify,
             on_lost=rc.notify_lost,
+            timeout=timeout,
         )
 
     with app.connection_registry.use(connection, name="UDP RC input"):
@@ -223,6 +230,17 @@ schema = {
             "maxItems": 2,
             "items": {"type": "integer"},
             "required": False,
+        },
+        "timeout": {
+            "title": "Timeout",
+            "type": "number",
+            "minimum": 0,
+            "default": 1,
+            "description": (
+                "Number of seconds that must pass without receiving a UDP "
+                "packet to consider the RC connection as lost. Zero means "
+                "to disable the timeout."
+            ),
         },
     }
 }

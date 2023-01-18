@@ -27,18 +27,23 @@ class Channel:
     and the RTK traffic should be sent on.
     """
 
-    #: Constant to denote packets that we wish to send on the primary channel of the
-    #: network (typically wifi). This will be added as an alias to the first
-    #: connection in each network.
     PRIMARY: ClassVar[str] = "_primary"
+    """Constant to denote packets that we wish to send on the primary channel of the
+    network (typically wifi). This will be added as an alias to the first
+    connection in each network.
+    """
 
-    #: Constant to denote packets that we wish to send on the secondary channel of the
-    #: network (typically a long-range radio). This will be added as an alias to the second
-    #: connection in each network.
     SECONDARY: ClassVar[str] = "_secondary"
+    """Constant to denote packets that we wish to send on the secondary channel of the
+    network (typically a long-range radio). This will be added as an alias to the second
+    connection in each network.
+    """
 
-    #: Alias of the channel that should be used for sending RTK connections
     RTK: ClassVar[str] = "_rtk"
+    """Alias of the channel that should be used for sending RTK connections"""
+
+    RC: ClassVar[str] = "_rc"
+    """Alias of the channel that should be used for sending RC overrides"""
 
 
 def get_mavlink_factory(

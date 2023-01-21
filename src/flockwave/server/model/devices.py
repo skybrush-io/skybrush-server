@@ -5,10 +5,25 @@ from __future__ import annotations
 from blinker import Signal
 from builtins import str
 from collections import defaultdict
+from enum import Enum
 from itertools import islice
-from typing import overload, Counter, Dict, Iterable, Optional, Tuple, TYPE_CHECKING
+from typing import (
+    cast,
+    overload,
+    Any,
+    Counter,
+    Dict,
+    Generic,
+    Iterable,
+    Optional,
+    Tuple,
+    Type,
+    TypeVar,
+    TYPE_CHECKING,
+    Union,
+)
 
-from flockwave.spec.schema import get_enum_from_schema, get_complex_object_schema
+from flockwave.spec.schema import get_complex_object_schema
 
 from .client import Client
 from .errors import ClientNotSubscribedError, NoSuchPathError
@@ -31,12 +46,13 @@ __all__ = (
     "DeviceTreeSubscriptionManager",
 )
 
-ChannelOperation = get_enum_from_schema("channelOperation", "ChannelOperation")
-ChannelType = get_enum_from_schema("channelType", "ChannelType")
-DeviceClass = get_enum_from_schema("deviceClass", "DeviceClass")
-DeviceTreeNodeType = get_enum_from_schema("deviceTreeNodeType", "DeviceTreeNodeType")
 
-_channel_type_mapping = {
+class ChannelOperation(Enum):
+    READ = "read"
+    WRITE = "write"
+
+
+_channel_type_mapping: Dict[Type, str] = {
     int: "number",
     float: "number",
     str: "string",
@@ -45,30 +61,74 @@ _channel_type_mapping = {
 }
 
 
-def _channel_type_from_object(cls, obj):
-    """Converts a Python type object to a corresponding channel type
-    object. Also accepts ChannelType objects as input, in which case
-    the object is returned as is.
+class ChannelType(Enum):
+    AUDIO = "audio"
+    BOOLEAN = "boolean"
+    BYTES = "bytes"
+    CARTESIAN = "cartesian"
+    COLOR = "color"
+    DURATION = "duration"
+    GPS = "gps"
+    NUMBER = "number"
+    OBJECT = "object"
+    STRING = "string"
+    TIME = "time"
+    VIDEO = "video"
 
-    Parameters:
-        obj (Union[ChannelType, type]): the type object to convert to
-            a ChannelType
+    @classmethod
+    def from_object(cls, obj: Union["ChannelType", Type]):
+        """Converts a Python type object to a corresponding channel type
+        object. Also accepts ChannelType objects as input, in which case
+        the object is returned as is.
 
-    Returns:
-        ChannelType: the appropriate channel type corresponding to the
-            Python type
-    """
-    if isinstance(obj, ChannelType):
-        return obj
-    else:
-        try:
-            name = _channel_type_mapping[obj]
-        except KeyError:
-            raise TypeError("{0!r} cannot be converted to a " "ChannelType".format(obj))
-        return cls[name]
+        Parameters:
+            obj: the type object to convert to a ChannelType
+
+        Returns:
+            ChannelType: the appropriate channel type corresponding to the
+                Python type
+        """
+        if isinstance(obj, ChannelType):
+            return obj
+        else:
+            try:
+                name = _channel_type_mapping[obj]
+            except KeyError:
+                raise TypeError(f"{obj!r} cannot be converted to a ChannelType")
+            return cls(name)
 
 
-ChannelType.from_object = classmethod(_channel_type_from_object)
+class DeviceClass(Enum):
+    ACCELEROMETER = "accelerometer"
+    ACTUATOR = "actuator"
+    ALTIMETER = "altimeter"
+    BATTERY = "battery"
+    CAMERA = "camera"
+    CPU = "cpu"
+    CPU_CORE = "cpuCore"
+    GPS = "gps"
+    GROUP = "group"
+    GYROSCOPE = "gyroscope"
+    LED = "led"
+    MAGNETOMETER = "magnetometer"
+    MICROPHONE = "microphone"
+    MISC = "misc"
+    PYRO = "pyro"
+    RADIO = "radio"
+    RC = "rc"
+    ROTOR = "rotor"
+    SENSOR = "sensor"
+    SPEAKER = "speaker"
+
+
+class DeviceTreeNodeType(Enum):
+    ROOT = "root"
+    OBJECT = "object"
+    DEVICE = "device"
+    CHANNEL = "channel"
+
+
+C = TypeVar("C", bound="DeviceTreeNodeBase")
 
 
 class DeviceTreeNodeBase(metaclass=ModelMeta):
@@ -80,8 +140,21 @@ class DeviceTreeNodeBase(metaclass=ModelMeta):
     children: Dict[str, "DeviceTreeNodeBase"]
 
     _subscribers: Optional[Counter[Client]]
+    """Mapping that maps clients to the number of times they are subscribed to
+    this node in the tree. Created lazily; ``None`` means that the mapping was
+    not created yet.
+    """
+
     _parent: Optional["DeviceTreeNodeBase"]
+    """The parent of this node; ``None`` if this node is the root of the device
+    tree.
+    """
+
     _path: Optional[str]
+    """The path string of this node, listing the names of all the nodes leading
+    to this node from the root. Calculated lazily; ``None`` means that the
+    path string was not calculated yet.
+    """
 
     def __init__(self):
         """Constructor."""
@@ -89,7 +162,7 @@ class DeviceTreeNodeBase(metaclass=ModelMeta):
         self._parent = None
         self._path = None
 
-    def collect_channel_values(self):
+    def collect_channel_values(self) -> Dict[str, Any]:
         """Creates a Python dictionary that maps the IDs of the children of
         this node as follows:
 
@@ -100,7 +173,7 @@ class DeviceTreeNodeBase(metaclass=ModelMeta):
             ``node.collect_channel_values()``, recursively
 
         Returns:
-            dict: a Python dictionary constructed as described above
+            a Python dictionary constructed as described above
         """
         return dict(
             (key, child.collect_channel_values())
@@ -173,9 +246,9 @@ class DeviceTreeNodeBase(metaclass=ModelMeta):
         parent of this node or any of its parents change.
 
         Returns:
-            str: a string representation of the path leading to this node
-                from the root node. Resolving this path from the tree root
-                should result in exactly this node.
+            a string representation of the path leading to this node from the
+            root node. Resolving this path from the tree root should result in
+            exactly this node.
         """
         if self._path is None:
             self._path = self._validate_path()
@@ -234,14 +307,14 @@ class DeviceTreeNodeBase(metaclass=ModelMeta):
             queue.extend(node.iterchildren())
 
     @property
-    def tree(self):
+    def tree(self) -> Optional[DeviceTree]:
         """Returns the tree that this node is a part of."""
         node = self
         while node is not None and not isinstance(node, RootNode):
             node = node._parent
         return node if node is None else node.tree
 
-    def _add_child(self, id: str, node: "DeviceTreeNodeBase") -> "DeviceTreeNodeBase":
+    def _add_child(self, id: str, node: C) -> C:
         """Adds the given node as a child node to this node.
 
         Parameters:
@@ -283,7 +356,7 @@ class DeviceTreeNodeBase(metaclass=ModelMeta):
                 child._dispose()
             self.children = {}
 
-    def _remove_child(self, node: "DeviceTreeNodeBase") -> "DeviceTreeNodeBase":
+    def _remove_child(self, node: C) -> C:
         """Removes the given child node from this node.
 
         Parameters:
@@ -297,14 +370,17 @@ class DeviceTreeNodeBase(metaclass=ModelMeta):
         """
         for id, child_node in self.iterchildren():
             if child_node is node:
-                return self._remove_child_by_id(id)
+                return cast(C, self._remove_child_by_id(id))
         raise ValueError("the given node is not a child of this node")
 
-    def _remove_child_by_id(self, id: str) -> None:
+    def _remove_child_by_id(self, id: str) -> "DeviceTreeNodeBase":
         """Removes the child node with the given ID from this node.
 
         Parameters:
             id: the ID of the node to remove
+
+        Returns:
+            the node that was removed
 
         Throws:
             ValueError: if there is no such child with the given ID
@@ -315,6 +391,7 @@ class DeviceTreeNodeBase(metaclass=ModelMeta):
             raise ValueError("no child exists with the given ID: {0!r}".format(id))
         node._parent = None
         node._path = None
+        return node
 
     def _subscribe(self, client: Client) -> None:
         """Subscribes the given client object to this node and its subtree.
@@ -368,41 +445,48 @@ class DeviceTreeNodeBase(metaclass=ModelMeta):
             raise KeyError(client)
 
 
-class ChannelNode(DeviceTreeNodeBase):
-    """Class representing a device node in a Flockwave device tree.
+T = TypeVar("T")
 
-    Attributes:
-        value (object): the value of the channel. Modifying this property
-            will modify the value but _not_ notify any interested parties
-            that the channel value was modified. Use the context manager
-            returned by the ``create_mutator()`` method of the device tree
-            instead if you want to notify interested parties about your
-            modifications.
+
+class ChannelNode(DeviceTreeNodeBase, Generic[T]):
+    """Class representing a device node in a Flockwave device tree."""
+
+    value: T
+    """The value of the channel. Modifying this property will modify the value but
+    _not_ notify any interested parties that the channel value was modified. Use
+    the context manager returned by the ``create_mutator()`` method of the
+    device tree instead if you want to notify interested parties about your
+    modifications.
     """
 
-    def __init__(self, channel_type, operations=None, unit: Optional[str] = None):
+    def __init__(
+        self,
+        channel_type: ChannelType,
+        initial_value: T,
+        *,
+        operations: Optional[Iterable[ChannelOperation]] = None,
+        unit: Optional[str] = None,
+    ):
         """Constructor.
 
         Parameters:
-            channel_type (ChannelType): the type of the channel
-            operations (List[ChannelOperation]): the allowed operations of
-                the channel. Defaults to ``[ChannelOperation.read]`` if
-                set to ``None``.
-            unit: the unit in which the value of the channel
-                is expressed.
+            channel_type: the type of the channel
+            operations: the allowed operations of the channel. Defaults to
+                ``[ChannelOperation.READ]`` if set to ``None``.
+            unit: the unit in which the value of the channel is expressed.
         """
         super().__init__()
 
         if operations is None:
-            operations = [ChannelOperation.read]
+            operations = [ChannelOperation.READ]
 
-        self.type = DeviceTreeNodeType.channel
+        self.type = DeviceTreeNodeType.CHANNEL
         self.subtype = channel_type
         self.operations = list(operations)
         self.unit = unit
-        self.value = None
+        self.value = initial_value
 
-    def collect_channel_values(self):
+    def collect_channel_values(self) -> T:
         """Returns the value of the channel itself."""
         return self.value
 
@@ -419,40 +503,56 @@ class ChannelNode(DeviceTreeNodeBase):
 class DeviceNode(DeviceTreeNodeBase):
     """Class representing a device node in a Flockwave device tree."""
 
-    def __init__(self, device_class=DeviceClass.misc):
+    def __init__(self, device_class: DeviceClass = DeviceClass.MISC):
         """Constructor."""
-        super(DeviceNode, self).__init__()
-        self.type = DeviceTreeNodeType.device
+        super().__init__()
+        self.type = DeviceTreeNodeType.DEVICE
         self.device_class = device_class
 
-    def add_channel(self, id, type, unit=None):
+    def add_channel(
+        self,
+        id: str,
+        type: Union[Type, ChannelType],
+        *,
+        initial_value: Any = None,
+        unit: Optional[str] = None,
+    ) -> ChannelNode:
         """Adds a new channel with the given identifier to this device
         node.
 
         Parameters:
-            id (str): the identifier of the channel being added.
-            type (ChannelType): the type of the channel
-            unit (Optional[str]): the unit in which the values of the
-                channel are expressed
+            id: the identifier of the channel being added.
+            type: the type of the channel
+            unit: the unit in which the values of the channel are expressed
 
         Returns:
-            ChannelNode: the channel node that was added.
+            the channel node that was added.
         """
+        if (
+            initial_value is None
+            and isinstance(type, __builtins__["type"])
+            and type != object
+        ):
+            initial_value = type()  # type: ignore
+
         channel_type = ChannelType.from_object(type)
-        node = ChannelNode(channel_type=channel_type, unit=unit)
+        node = ChannelNode(channel_type, initial_value, unit=unit)
         return self._add_child(id, node)
 
-    def add_device(self, id):
+    def add_device(
+        self, id: str, device_class: DeviceClass = DeviceClass.MISC
+    ) -> DeviceNode:
         """Adds a new device with the given identifier as a sub-device
         to this device node.
 
         Parameters:
-            id (str): the identifier of the device being added.
+            id: the identifier of the device being added.
+            device_class: the class of the device being added
 
         Returns:
-            DeviceNode: the device tree node that was added.
+            the device tree node that was added.
         """
-        return self._add_child(id, DeviceNode())
+        return self._add_child(id, DeviceNode(device_class))
 
     @property
     def device_class(self):
@@ -467,15 +567,15 @@ class DeviceNode(DeviceTreeNodeBase):
 class RootNode(DeviceTreeNodeBase):
     """Class representing the root node in a Flockwave device tree."""
 
-    def __init__(self, tree):
+    def __init__(self, tree: DeviceTree):
         """Constructor.
 
         Parameters:
-            tree (DeviceTree): the tree that this node will be placed in
+            tree: the tree that this node will be placed in
         """
-        super(RootNode, self).__init__()
+        super().__init__()
         self._tree = tree
-        self.type = DeviceTreeNodeType.root
+        self.type = DeviceTreeNodeType.ROOT
 
     def add_child(self, id: str, node: ObjectNode) -> ObjectNode:
         """Adds a new child node with the given ID to this root node.
@@ -486,7 +586,7 @@ class RootNode(DeviceTreeNodeBase):
                 children.
 
         Returns:
-            ObjectNode: the node that was added
+            the node that was added
 
         Throws:
             ValueError: if another node with the same ID already exists for
@@ -514,7 +614,7 @@ class RootNode(DeviceTreeNodeBase):
         Returns:
             the node that was removed
         """
-        return self._remove_child_by_id(id)
+        return cast(ObjectNode, self._remove_child_by_id(id))
 
     @DeviceTreeNodeBase.tree.getter
     def tree(self):
@@ -530,22 +630,25 @@ class ObjectNode(DeviceTreeNodeBase):
 
     def __init__(self):
         """Constructor."""
-        super(ObjectNode, self).__init__()
-        self.type = DeviceTreeNodeType.object
+        super().__init__()
+        self.type = DeviceTreeNodeType.OBJECT
 
-    def add_device(self, id):
+    def add_device(
+        self, id: str, device_class: DeviceClass = DeviceClass.MISC
+    ) -> DeviceNode:
         """Adds a new device with the given identifier to this node.
 
         Parameters:
-            id (str): the identifier of the device being added.
+            id: the identifier of the device being added.
+            device_class: the class of the device being added.
 
         Returns:
-            DeviceNode: the device tree node that was added.
+            the device tree node that was added.
         """
-        return self._add_child(id, DeviceNode())
+        return self._add_child(id, DeviceNode(device_class))
 
 
-class DeviceTreePath(object):
+class DeviceTreePath:
     """A path in a device tree from its root to one of its nodes. Leaf and
     branch nodes are both allowed.
 
@@ -556,7 +659,7 @@ class DeviceTreePath(object):
     style.
     """
 
-    def __init__(self, path="/"):
+    def __init__(self, path: Union[str, "DeviceTreePath"] = "/"):
         """Constructor.
 
         Parameters:
@@ -568,25 +671,25 @@ class DeviceTreePath(object):
         else:
             self.path = path
 
-    def iterparts(self):
+    def iterparts(self) -> Iterable[str]:
         """Returns a generator that iterates over the parts of the path.
 
         Yields:
-            str: the parts of the path
+            the parts of the path
         """
         return islice(self._parts, 1, None)
 
     @property
-    def path(self):
+    def path(self) -> str:
         """The path, formatted as a string.
 
         Returns:
-            str: the path, formatted as a string
+            the path, formatted as a string
         """
         return "/".join(self._parts)
 
     @path.setter
-    def path(self, value):
+    def path(self, value: str) -> None:
         parts = value.split("/")
         if parts[0] != "":
             raise ValueError("path must start with a slash")
@@ -601,11 +704,11 @@ class DeviceTreePath(object):
             raise ValueError("path must not contain an empty component")
         self._parts = parts
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.path
 
 
-class DeviceTree(object):
+class DeviceTree:
     """A device tree of an object that lists the devices and channels that
     the object provides.
 
@@ -646,7 +749,7 @@ class DeviceTree(object):
     @property
     def json(self):
         """The JSON representation of the device tree."""
-        return self._root.json
+        return self._root.json  # type: ignore
 
     @property
     def root(self):
@@ -898,25 +1001,27 @@ class DeviceTreeSubscriptionManager:
             self._collect_subscriptions(client, path, child, result)
             path._parts.pop()
 
-    def _find_device_tree_node_by_path(self, path, response=None):
+    def _find_device_tree_node_by_path(
+        self, path: Union[str, DeviceTreePath], response=None
+    ) -> Optional[DeviceTreeNodeBase]:
         """Finds a node in the global device tree based on a device tree
         path or registers a failure in the given response object if there
         is no such entry in the registry.
 
         Parameters:
-            path (Union[str,DeviceTreePath]): the path to find
+            path: the path to find
             response (Optional[FlockwaveResponse]): the response in which
                 the failure can be registered
 
         Returns:
-            Optional[DeviceTreeNodeBase]: the device tree node at the given
-                path or ``None`` if there is no such path
+            the device tree node at the given path or ``None`` if there is no
+            such path
         """
         try:
             return self._tree.resolve(path)
         except NoSuchPathError:
             if hasattr(response, "add_error"):
-                response.add_error(path, "No such device tree path")
+                response.add_error(path, "No such device tree path")  # type: ignore
             return None
 
     def _notify_subscriber(self, subscriber, channel_values):

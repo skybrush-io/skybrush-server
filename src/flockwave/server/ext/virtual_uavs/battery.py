@@ -4,6 +4,7 @@ from random import random
 from typing import Optional
 
 from flockwave.server.model.battery import BatteryInfo
+from flockwave.server.model.devices import ObjectNode
 from flockwave.server.utils import clamp
 
 __all__ = ("VirtualBattery",)
@@ -117,7 +118,7 @@ class VirtualBattery:
         """Recharges the battery to the maximum voltage."""
         self.voltage = self._max
 
-    def discharge(self, dt: float, load: float, *, mutator=None):
+    def discharge(self, dt: float, load: float, *, mutator=None) -> None:
         """Simulates the discharge of the battery over the given time
         period.
 
@@ -137,7 +138,7 @@ class VirtualBattery:
         if mutator is not None:
             mutator.update(self._voltage_channel, self.voltage)
 
-    def register_in_device_tree(self, node):
+    def register_in_device_tree(self, node: ObjectNode) -> None:
         """Registers the battery in the given device tree node of a UAV."""
         device = node.add_device("battery")
         self._voltage_channel = device.add_channel("voltage", type=float, unit="V")

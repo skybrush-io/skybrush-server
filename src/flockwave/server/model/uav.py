@@ -153,13 +153,13 @@ class UAVBase(UAV):
         self._initialize_device_tree_node(self._device_tree_node)
 
     @property
-    def device_tree_node(self):
+    def device_tree_node(self) -> ObjectNode:
         """Returns the ObjectNode object that represents the root of the
         device tree corresponding to the UAV.
 
         Returns:
-            ObjectNode: the node in the device tree where the subtree of the
-                devices and channels of the UAV is rooted
+            the node in the device tree where the subtree of the devices and
+            channels of the UAV is rooted
         """
         return self._device_tree_node
 
@@ -187,7 +187,7 @@ class UAVBase(UAV):
         """
         return self._status
 
-    def _initialize_device_tree_node(self, node) -> None:
+    def _initialize_device_tree_node(self, node: ObjectNode) -> None:
         """Initializes the device tree node of the UAV when it is
         constructed.
 
@@ -196,8 +196,7 @@ class UAVBase(UAV):
         UAV.
 
         Parameters:
-            node (ObjectNode): the tree node whose subtree this call should
-                initialize
+            node: the tree node whose subtree this call should initialize
         """
         pass
 

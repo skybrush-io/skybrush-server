@@ -26,6 +26,7 @@ from flockwave.server.command_handlers import (
     create_version_command_handler,
 )
 from flockwave.server.model.commands import Progress
+from flockwave.server.model.devices import ObjectNode
 from flockwave.server.model.gps import GPSFixType
 from flockwave.server.model.preflight import PreflightCheckResult, PreflightCheckInfo
 from flockwave.server.model.uav import VersionInfo, UAVBase, UAVDriver
@@ -763,7 +764,7 @@ class VirtualUAV(UAVBase):
 
         self.state = VirtualUAVState.TAKEOFF
 
-    def _initialize_device_tree_node(self, node) -> None:
+    def _initialize_device_tree_node(self, node: ObjectNode) -> None:
         self.battery = VirtualBattery(report_percentage=self.use_battery_percentage)
         self.battery.register_in_device_tree(node)
 

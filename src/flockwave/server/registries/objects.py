@@ -5,7 +5,7 @@ server knows.
 from blinker import Signal
 from contextlib import contextmanager
 from math import inf
-from typing import Callable, Iterable, Iterator, Optional, Type, Union
+from typing import cast, Callable, Iterable, Iterator, Optional, Type, TypeVar, Union
 
 from flockwave.server.model import ModelObject
 
@@ -13,6 +13,9 @@ from .base import RegistryBase
 from .errors import RegistryFull
 
 __all__ = ("ObjectRegistry",)
+
+
+T = TypeVar("T", bound="ModelObject")
 
 
 class ObjectRegistry(RegistryBase[ModelObject]):
@@ -73,9 +76,7 @@ class ObjectRegistry(RegistryBase[ModelObject]):
         self._entries[object.id] = object
         self.added.send(self, object=object)
 
-    def add_if_missing(
-        self, id: str, factory: Callable[[str], ModelObject]
-    ) -> ModelObject:
+    def add_if_missing(self, id: str, factory: Callable[[str], T]) -> T:
         """Checks whether an object with the given ID already exists in the
         registry, and if not, creates it with a factory function and then adds
         it to the registry.
@@ -91,7 +92,7 @@ class ObjectRegistry(RegistryBase[ModelObject]):
         """
         if not self.contains(id):
             self.add(factory(id))
-        return self.find_by_id(id)
+        return cast(T, self.find_by_id(id))
 
     def ids_by_type(self, cls: Union[str, Type[ModelObject]]) -> Iterable[str]:
         """Returns an iterable that iterates over all the identifiers in the

@@ -115,10 +115,12 @@ class DeviceClass(Enum):
     MISC = "misc"
     PYRO = "pyro"
     RADIO = "radio"
+    RANGEFINDER = "rangefinder"
     RC = "rc"
     ROTOR = "rotor"
     SENSOR = "sensor"
     SPEAKER = "speaker"
+    SPRAYER = "sprayer"
 
 
 class DeviceTreeNodeType(Enum):

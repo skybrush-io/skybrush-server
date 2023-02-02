@@ -526,7 +526,10 @@ class MAVFTP:
             for parent in self._parents_of(path):
                 await self.mkdir(parent, parents=False, exist_ok=True)
 
-        message = MAVFTPMessage(MAVFTPOpCode.CREATE_DIRECTORY, data=b"/" + path)
+        if not path.startswith(b"@"):
+            path = b"/" + path
+
+        message = MAVFTPMessage(MAVFTPOpCode.CREATE_DIRECTORY, data=path)
         try:
             await self._send_and_wait(message)
         except OperationNotAcknowledgedError as ex:

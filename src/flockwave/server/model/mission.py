@@ -23,6 +23,7 @@ __all__ = (
     "MissionItem",
     "MissionItemBundle",
     "MissionItemType",
+    "MissionResumeParams",
     "PayloadAction",
     # mission commands
     "MissionCommand",
@@ -106,6 +107,19 @@ class HeadingMode(Enum):
     """Heading is set to track next waypoint."""
 
 
+class MissionResumeParams(TypedDict):
+    """Representation of a resume point from which a given mission should be
+    continued from."""
+
+    id: Optional[str]
+    """Optional unique identifier of the mission item where operation should be
+    resumed."""
+
+    ratio: Optional[float]
+    """Optional ratio along the given mission item in the [0-1] range where
+    operation should be resumed (eligible for mission items containing motion)."""
+
+
 class MissionItem(TypedDict):
     """Representation of a mission item in a format that comes directly from
     Skybrush Live.
@@ -136,6 +150,10 @@ class MissionItemBundle(TypedDict):
 
     items: List[MissionItem]
     """The list of mission items in the bundle."""
+
+    resume: Optional[MissionResumeParams]
+    """The optional resume point of the mission. If not defined, mission is
+    assumed to start from the beginning."""
 
 
 class MissionItemType(Enum):
@@ -398,7 +416,7 @@ class MissionCommand(ABC):
     """The unique identifier of the mission command. Set it to None to
     initialize with a random string."""
 
-    def __post_init__(self, id: str) -> None:
+    def __post_init__(self, id: Optional[str]) -> None:
         self.id = default_id_generator() if id is None else id
 
     @classmethod
@@ -433,8 +451,15 @@ class MissionCommandBundle:
     commands: List[MissionCommand] = field(default_factory=list)
     """The list of mission commands in the bundle."""
 
+    resume_item_id: Optional[str] = None
+    """The optional ID of a mission command where the mission should be resumed."""
+
+    resume_item_ratio: Optional[float] = None
+    """The optional ratio along a mission command in the range of [0-1] where
+    the mission should be resumed. Eligible for mission commands with motion."""
+
     def __post_init__(self):
-        self.check_ids()
+        self.check_validity()
 
     @classmethod
     def from_json(cls, bundle: MissionItemBundle):
@@ -463,17 +488,43 @@ class MissionCommandBundle:
         for item in items:
             commands.append(_generate_mission_command_from_mission_item(item))
 
-        return cls(version=1, name=bundle.get("name"), commands=commands)
+        resume = bundle.get("resume")
+        if resume is not None:
+            resume_item_id = resume.get("id")
+            resume_item_ratio = resume.get("ratio")
+        else:
+            resume_item_id = None
+            resume_item_ratio = None
 
-    def check_ids(self):
-        """Checks whether ids in the bundle are unique.
+        return cls(
+            version=1,
+            name=bundle.get("name"),
+            commands=commands,
+            resume_item_id=resume_item_id,
+            resume_item_ratio=resume_item_ratio,
+        )
+
+    def check_validity(self):
+        """Checks whether ids and resume parameters are valid.
 
         Raises:
-            RuntimeError if ids are not unique.
+            RuntimeError if ids are not unique or resume parameters are not
+            valid.
         """
         counter = Counter(command.id for command in self.commands)
         if any(value > 1 for value in counter.values()):
             raise RuntimeError("mission item ids are not unique")
+
+        if self.resume_item_id is not None and all(
+            self.resume_item_id != command.id for command in self.commands
+        ):
+            raise RuntimeError("resume item id does not point to a valid command id")
+
+        if self.resume_item_ratio is not None:
+            if self.resume_item_ratio < 0 or self.resume_item_ratio > 1:
+                raise RuntimeError("resume item ratio must be in the range of [0-1].")
+            if self.resume_item_id is None:
+                raise RuntimeError("no resume item id defined for resume item ratio")
 
     @property
     def json(self) -> MissionItemBundle:
@@ -481,15 +532,20 @@ class MissionCommandBundle:
         bundle format.
 
         Raises:
-            RuntimeError if ids of commands are not unique.
+            RuntimeError if ids of commands are not unique or if resume
+            parameters are not valid
 
         """
-        self.check_ids()
+        self.check_validity()
 
         return {
             "version": 1,
             "name": self.name,
             "items": [command.json for command in self.commands],
+            "resume": {
+                "id": self.resume_item_id,
+                "ratio": self.resume_item_ratio,
+            },
         }
 
 

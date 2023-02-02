@@ -642,14 +642,14 @@ reference = "fury"
 
 [[package]]
 name = "flockwave-flockctrl"
-version = "2.5.1"
+version = "2.6.0"
 description = "flockctrl protocol parser and encoder for Skybrush"
 category = "main"
 optional = true
 python-versions = ">=3.7,<4.0"
 files = [
-    {file = "flockwave_flockctrl-2.5.1-py3-none-any.whl", hash = "sha256:14a911994e79bf9673d5448d11c6f61606a171ac80dd4ec21fd4331f06c9750d"},
-    {file = "flockwave_flockctrl-2.5.1.tar.gz", hash = "sha256:1220660eaf0186d5b2303041565ee248b6860ddda44cb8ccac9a55ef930759c3"},
+    {file = "flockwave_flockctrl-2.6.0-py3-none-any.whl", hash = "sha256:514e32fa93287621a48d7f04d842254f86ceac78bfbecf2aac5035ed004997ed"},
+    {file = "flockwave_flockctrl-2.6.0.tar.gz", hash = "sha256:d22ce111c2fd5fefabafa5b81215122e0547378eea7fcb0663768c8d73a42e16"},
 ]
 
 [package.dependencies]
@@ -1897,20 +1897,20 @@ reference = "collmot"
 
 [[package]]
 name = "skybrush-ext-flockctrl"
-version = "2.7.1"
+version = "2.8.0"
 description = "Support for flockctrl-based drones in Skybrush Server"
 category = "main"
 optional = true
 python-versions = ">=3.8,<4.0"
 files = [
-    {file = "skybrush_ext_flockctrl-2.7.1-py3-none-any.whl", hash = "sha256:e0f6285354cef2bd531bdb2d5414793ea66955351831fafe4dd79b106f67f72b"},
-    {file = "skybrush_ext_flockctrl-2.7.1.tar.gz", hash = "sha256:cfc759994ae38cb43884467d1b83730357003dca7cbc59c5ec2d0fbdc889328d"},
+    {file = "skybrush_ext_flockctrl-2.8.0-py3-none-any.whl", hash = "sha256:4040be61180d53ac9c8e54429f09bb82ed366a6066551f00318413de01e87dc6"},
+    {file = "skybrush_ext_flockctrl-2.8.0.tar.gz", hash = "sha256:7ae70a3d264f659d6b0729968ba06c2fed389b2ac7422478cef8d5d862e27c50"},
 ]
 
 [package.dependencies]
 bidict = ">=0.22.0"
 colour = ">=0.1.5"
-flockwave-flockctrl = ">=2.5.1,<3.0.0"
+flockwave-flockctrl = ">=2.6.0,<3.0.0"
 paramiko = ">=2.10.3,<3.0.0"
 scp = ">=0.14.4"
 trio = ">=0.20.0"
@@ -2192,4 +2192,4 @@ pro = ["skybrush-ext-map-cache", "skybrush-ext-sidekick", "skybrush-ext-timecode
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.8"
-content-hash = "d8c974a9889470102ddf3c88f3cd75fa653f6cae5356da97f23aa4a7ec3bf724"
+content-hash = "7f0bf0f91002a9251554709b1caf1c993c27727b00c7986ccafb916277b0faf0"

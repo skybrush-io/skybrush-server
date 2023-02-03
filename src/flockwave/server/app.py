@@ -290,7 +290,11 @@ class SkybrushServer(DaemonApp):
         return response
 
     def create_DEV_SUB_message_for(
-        self, client: Client, paths: Iterable[str], in_response_to: FlockwaveMessage
+        self,
+        client: Client,
+        paths: Iterable[str],
+        lazy: bool,
+        in_response_to: FlockwaveMessage,
     ) -> FlockwaveMessage:
         """Creates a DEV-SUB response for the given message and subscribes
         the given client to the given paths.
@@ -313,7 +317,7 @@ class SkybrushServer(DaemonApp):
 
         for path in paths:
             try:
-                manager.subscribe(client, path)
+                manager.subscribe(client, path, lazy)
             except NoSuchPathError:
                 response.add_error(path, "No such device tree path")
             else:
@@ -1067,7 +1071,10 @@ def handle_DEV_LISTSUB(message: FlockwaveMessage, sender: Client, hub: MessageHu
 @app.message_hub.on("DEV-SUB")
 def handle_DEV_SUB(message: FlockwaveMessage, sender: Client, hub: MessageHub):
     return app.create_DEV_SUB_message_for(
-        client=sender, paths=message.body["paths"], in_response_to=message
+        client=sender,
+        paths=message.body["paths"],
+        lazy=bool(message.body.get("lazy")),
+        in_response_to=message,
     )
 
 

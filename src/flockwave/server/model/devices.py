@@ -40,6 +40,7 @@ __all__ = (
     "ChannelType",
     "DeviceClass",
     "DeviceTree",
+    "DeviceTreePath",
     "DeviceNode",
     "DeviceTreeNodeType",
     "ObjectNode",
@@ -665,8 +666,8 @@ class DeviceTreePath:
         """Constructor.
 
         Parameters:
-            path (Union[str, DeviceTreePath]): the string representation of
-                the path, or another path object to clone.
+            path: the string representation of the path, or another path object
+                to clone.
         """
         if isinstance(path, DeviceTreePath):
             self._parts = list(path._parts)
@@ -728,7 +729,7 @@ class DeviceTree:
         self._root = RootNode(self)
         self._object_registry = None
 
-    def create_mutator(self):
+    def create_mutator(self) -> "DeviceTreeMutator":
         """Creates a mutator object that provides additional methods to
         modify the values of the channels in the device tree and also notify
         subscribers about all modifications.
@@ -741,7 +742,7 @@ class DeviceTree:
         """
         return DeviceTreeMutator(self, self._on_channel_nodes_updated)
 
-    def dispose(self):
+    def dispose(self) -> None:
         """Disposes of this tree when it is not needed any more. No further
         operations should be performed on a tree after you have called
         ``dispose()`` on it.
@@ -758,16 +759,16 @@ class DeviceTree:
         """The root node of the device tree."""
         return self._root
 
-    def resolve(self, path):
+    def resolve(self, path: Union[str, DeviceTreePath]) -> DeviceTreeNodeBase:
         """Resolves the given path in the tree and returns the node that
         corresponds to the given path.
 
         Parameters:
-            path (Union[str, DeviceTreePath]): the path to resolve. Strings
-                will be converted to a DeviceTreePath_ automatically.
+            path: the path to resolve. Strings will be converted to a
+                DeviceTreePath_ automatically.
 
         Returns:
-            DeviceTreeNode: the node at the given path in the tree
+            the node at the given path in the tree
 
         Throws:
             NoSuchPathError: if the given path cannot be resolved in the tree
@@ -784,7 +785,7 @@ class DeviceTree:
 
         return node
 
-    def traverse_dfs(self):
+    def traverse_dfs(self) -> Iterable[Tuple[Optional[str], DeviceTreeNodeBase]]:
         """Returns a generator that yields all the nodes in the tree in
         depth-first order.
 
@@ -1074,13 +1075,13 @@ class DeviceTreeSubscriptionManager:
         for subscriber, message in messages_by_subscribers.items():
             self._notify_subscriber(subscriber, message)
 
-    def create_DEV_INF_message_for(self, paths, in_response_to=None):
+    def create_DEV_INF_message_for(self, paths: Iterable[str], in_response_to=None):
         """Creates a DEV-INF message that contains information regarding
         the current values of the channels in the subtrees of the device
         tree matched by the given device tree paths.
 
         Parameters:
-            paths (iterable): list of device tree paths
+            paths: list of device tree paths
             in_response_to (Optional[FlockwaveMessage]): the message that the
                 constructed message will respond to. ``None`` means that the
                 constructed message will be a notification.
@@ -1133,7 +1134,9 @@ class DeviceTreeSubscriptionManager:
 
         return result
 
-    def subscribe(self, client, path):
+    def subscribe(
+        self, client: Client, path: Union[str, DeviceTreePath], lazy: bool = False
+    ) -> None:
         """Subscribes the given client to the given device tree path.
 
         The same client may be subscribed to the same node multiple times;
@@ -1141,16 +1144,22 @@ class DeviceTreeSubscriptionManager:
         that the client stops receiving notifications.
 
         Parameters:
-            path (Union[str, DeviceTreePath]): the path to resolve. Strings
-                will be converted to a DeviceTreePath_ automatically.
-            client (Client): the client to subscribe
+            path: the path to resolve. Strings will be converted to a
+                DeviceTreePath_ automatically.
+            client: the client to subscribe
+            lazy: whether the client is allowed to subscribe to paths that do
+                not exist yet.
 
         Throws:
             NoSuchPathError: if the given path cannot be resolved in the tree
         """
+        if lazy:
+            raise NotImplementedError("lazy subscriptions not implemented yet")
         self._tree.resolve(path)._subscribe(client)
 
-    def unsubscribe(self, client, path, force=False):
+    def unsubscribe(
+        self, client: Client, path: Union[str, DeviceTreePath], force: bool = False
+    ) -> None:
         """Unsubscribes the given client from the given device tree path.
 
         The same client may be subscribed to the same node multiple times;
@@ -1161,10 +1170,10 @@ class DeviceTreeSubscriptionManager:
         subscribed before.
 
         Parameters:
-            path (Union[str, DeviceTreePath]): the path to resolve. Strings
-                will be converted to a DeviceTreePath_ automatically.
-            client (Client): the client to unsubscribe
-            force (bool): whether to force an unsubscription of the client
+            path: the path to resolve. Strings will be converted to a
+                DeviceTreePath_ automatically.
+            client: the client to unsubscribe
+            force: whether to force an unsubscription of the client
                 even if it is subscribed multiple times. Setting this
                 argument to ``True`` will suppress ClientNotSubscribedError_
                 exceptions if the client is not subscribed.

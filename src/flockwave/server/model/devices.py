@@ -12,9 +12,11 @@ from typing import (
     overload,
     Any,
     Counter,
+    DefaultDict,
     Dict,
     Generic,
     Iterable,
+    List,
     Optional,
     Tuple,
     Type,
@@ -714,15 +716,22 @@ class DeviceTreePath:
 class DeviceTree:
     """A device tree of an object that lists the devices and channels that
     the object provides.
-
-    Attributes:
-        channel_nodes_updated (Signal): signal that is dispatched by the
-            tree when the values of some of the channel nodes in the tree
-            have been updated. Updates are detected only if they are made
-            in the context of a DeviceTreeMutator_.
     """
 
     channel_nodes_updated = Signal()
+    """Signal that is dispatched by the tree when the _values_ of some of the
+    channel nodes in the tree have been updated. Updates are detected only if
+    they are made in the context of a DeviceTreeMutator_.
+    """
+
+    structure_changed = Signal()
+    """Signal that is dispatched by the tree when the _structure_ of the tree
+    changed.
+
+    Right now we assume that the device trees of UAVs do not change, so we
+    dispatch this signal only when a new UAV is added to the tree or when a
+    UAV is removed.
+    """
 
     def __init__(self):
         """Constructor. Creates an empty device tree."""
@@ -850,6 +859,7 @@ class DeviceTree:
         node = object.device_tree_node
         if node:
             self.root.add_child(object.id, node)
+            self.structure_changed.send(self)
 
     def _on_object_removed(self, sender, object: ModelObject):
         """Handler called when an object is deregistered from the server.
@@ -860,6 +870,7 @@ class DeviceTree:
         """
         if object.id in getattr(self.root, "children", ()):
             self.root.remove_child_by_id(object.id)
+            self.structure_changed.send(self)
 
 
 class DeviceTreeMutator:
@@ -924,6 +935,11 @@ class DeviceTreeSubscriptionManager:
     _client_registry: Optional["ClientRegistry"]
     _message_hub: "MessageHub"
 
+    _pending_subscriptions: DefaultDict[Client, List[DeviceTreePath]]
+    """Dictionary mapping clients to device tree paths that they want to
+    subscribe to but the paths do not exist yet.
+    """
+
     def __init__(
         self,
         tree: DeviceTree,
@@ -942,9 +958,12 @@ class DeviceTreeSubscriptionManager:
         self._tree.channel_nodes_updated.connect(
             self._on_channel_nodes_updated, sender=self._tree
         )
-
+        self._tree.structure_changed.connect(
+            self._on_device_tree_structure_changed, sender=self._tree
+        )
         self._client_registry = None
         self._message_hub = message_hub
+        self._pending_subscriptions = defaultdict(list)
 
         self.client_registry = client_registry
 
@@ -981,7 +1000,11 @@ class DeviceTreeSubscriptionManager:
         return self._message_hub
 
     def _collect_subscriptions(
-        self, client: Client, path: DeviceTreePath, node, result: Counter
+        self,
+        client: Client,
+        path: DeviceTreePath,
+        node: DeviceTreeNodeBase,
+        result: Counter,
     ) -> None:
         """Finds all the subscriptions of the given client in the subtree
         of the given tree node (including the node itself) and adds tem to
@@ -1027,14 +1050,13 @@ class DeviceTreeSubscriptionManager:
                 response.add_error(path, "No such device tree path")  # type: ignore
             return None
 
-    def _notify_subscriber(self, subscriber, channel_values):
+    def _notify_subscriber(self, subscriber: Client, channel_values: Any) -> None:
         """Notifies a single subscriber about the change in channel values
         in the subtree of a node that the subscriber is subscribed to.
 
         Parameters:
-            subscriber (Client): the client that has to be notified
-            node (DeviceTreeNode): the node that the client is subscribed to
-            channel_values (object): object containing the channel values
+            subscriber: the client that has to be notified
+            channel_values: object containing the channel values
                 of all the channels in the subtree of the node, organized
                 in exactly the same way as the tree itself is organized
                 under the node
@@ -1048,8 +1070,9 @@ class DeviceTreeSubscriptionManager:
         """Handler called when a client disconnected from the server."""
         for _, node in self._tree.traverse_dfs():
             node._unsubscribe(client, force=True)
+        self._pending_subscriptions.pop(client, None)
 
-    def _on_channel_nodes_updated(self, sender, nodes):
+    def _on_channel_nodes_updated(self, sender: DeviceTree, nodes):
         """Handler called when some channel nodes were updated in the
         associated device tree.
         """
@@ -1074,6 +1097,24 @@ class DeviceTreeSubscriptionManager:
         # Now we can send the messages
         for subscriber, message in messages_by_subscribers.items():
             self._notify_subscriber(subscriber, message)
+
+    def _on_device_tree_structure_changed(self, sender: DeviceTree):
+        found: List[DeviceTreePath] = []
+
+        for client, paths in self._pending_subscriptions.items():
+            found.clear()
+            for path in paths:
+                try:
+                    node = sender.resolve(path)
+                except NoSuchPathError:
+                    pass
+                else:
+                    found.append(path)
+                    node._subscribe(client)
+
+            if found:
+                for path in found:
+                    paths.remove(path)
 
     def create_DEV_INF_message_for(self, paths: Iterable[str], in_response_to=None):
         """Creates a DEV-INF message that contains information regarding
@@ -1153,9 +1194,13 @@ class DeviceTreeSubscriptionManager:
         Throws:
             NoSuchPathError: if the given path cannot be resolved in the tree
         """
-        if lazy:
-            raise NotImplementedError("lazy subscriptions not implemented yet")
-        self._tree.resolve(path)._subscribe(client)
+        try:
+            self._tree.resolve(path)._subscribe(client)
+        except NoSuchPathError:
+            if lazy:
+                self._pending_subscriptions[client].append(DeviceTreePath(path))
+            else:
+                raise
 
     def unsubscribe(
         self, client: Client, path: Union[str, DeviceTreePath], force: bool = False

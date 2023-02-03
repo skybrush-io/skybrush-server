@@ -2,7 +2,7 @@
 
 from http.client import parse_headers
 from io import BytesIO
-from trio import MultiError, open_nursery, sleep_forever
+from trio import open_nursery, sleep_forever
 from typing import Tuple
 
 from flockwave.app_framework import DaemonApp
@@ -75,20 +75,14 @@ class SkybrushProxyServer(DaemonApp):
     """Main application object for the Skybrush proxy server."""
 
     async def run(self) -> None:
-        # Helper function to ignore KeyboardInterrupt exceptions even if
-        # they are wrapped in a Trio MultiError
-        def ignore_keyboard_interrupt(exc):
-            return None if isinstance(exc, KeyboardInterrupt) else exc
-
         self.local_connection_factory = create_connection_factory(
             self.config.get("LOCAL_SERVER")
         )
         remote_connection = create_connection(self.config.get("REMOTE_SERVER"))
 
-        with MultiError.catch(ignore_keyboard_interrupt):
-            async with open_nursery() as nursery:
-                # nursery.start_soon(self.process_request_queue)
-                nursery.start_soon(self.supervise_remote_connection, remote_connection)
+        async with open_nursery() as nursery:
+            # nursery.start_soon(self.process_request_queue)
+            nursery.start_soon(self.supervise_remote_connection, remote_connection)
 
     async def run_local_connection(self, conn: Connection) -> None:
         while True:

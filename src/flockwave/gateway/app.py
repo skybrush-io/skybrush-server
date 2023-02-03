@@ -3,7 +3,7 @@
 import logging
 
 from copy import deepcopy
-from trio import current_time, MultiError, Nursery, open_nursery, sleep
+from trio import current_time, Nursery, open_nursery, sleep
 from typing import Any, Optional, Tuple, Union
 from urllib.parse import urlparse, urlunparse
 
@@ -63,15 +63,9 @@ class SkybrushGatewayServer(DaemonApp):
             return f"{scheme}://{host}:{port}"
 
     async def run(self) -> None:
-        # Helper function to ignore KeyboardInterrupt exceptions even if
-        # they are wrapped in a Trio MultiError
-        def ignore_keyboard_interrupt(exc):
-            return None if isinstance(exc, KeyboardInterrupt) else exc
-
-        with MultiError.catch(ignore_keyboard_interrupt):
-            async with open_nursery() as nursery:
-                nursery.start_soon(self.worker_manager.run)
-                await self._serve(nursery)
+        async with open_nursery() as nursery:
+            nursery.start_soon(self.worker_manager.run)
+            await self._serve(nursery)
 
     def validate_jwt_token(self, token: str) -> None:
         secret = self.config.get("JWT_SECRET")

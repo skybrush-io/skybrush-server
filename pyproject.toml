@@ -27,7 +27,7 @@ blinker = "^1.4"
 jsonschema = "^4.0.3"
 python-baseconv = "^1.2.2"
 pynmea2 = "^1.15.0"
-trio = ">=0.21.0"
+trio = "0.21.0"
 quart = ">=0.18.0"
 quart-trio = ">=0.10.0"
 trio-util = ">=0.5.0"
@@ -45,7 +45,7 @@ flockwave-logger = {version = "^1.8.0", source = "fury"}
 flockwave-mavlink = {version = ">=0.1.0", source = "fury"}
 flockwave-net = {extras = ["async"], version = "^4.0.0", source = "fury"}
 flockwave-parsers = {version = "^2.0.1", source = "fury"}
-flockwave-spec = {version = "^1.65.0", source = "fury"}
+flockwave-spec = {version = "^1.66.0", source = "fury"}
 skybrush-ext-dock = {version = "^1.0.0", source = "collmot", optional = true}
 skybrush-ext-flockctrl = {version = "^2.8.0", source = "collmot", optional = true}
 skybrush-ext-map-cache = {version = "^1.0.0", source = "collmot", optional = true}

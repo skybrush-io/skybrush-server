@@ -344,6 +344,27 @@ def _get_longitude_from_parameters(params: Dict[str, Any]) -> float:
         raise RuntimeError("longitude must be a number")
     return float(lon)
 
+def _get_marker_from_parameters(
+    params: Dict[str, Any]) -> Tuple[Marker, str]:
+    
+    marker_str = params.get("marker")
+    if not isinstance(marker_str, str) or not marker_str:
+        raise RuntimeError("marker type must be a valid string")
+    if marker_str == "start":
+        marker = Marker.MISSION_STARTED
+    elif marker_str == "end":
+        marker = Marker.MISSION_ENDED
+    elif marker_str == "custom":
+        marker=Marker.CUSTOM
+    else:
+        raise RuntimeError(f"marker type {marker_str!r} not handled yet")
+    
+    message = params.get("message")
+    if not isinstance(message, (str, None)):
+        raise RuntimeError("message must be a valid string or None")
+
+    return (marker, message)
+
 
 def _get_payload_action_from_parameters(
     params: Dict[str, Any]
@@ -779,11 +800,15 @@ class MarkerMissionCommand(MissionCommand):
     @classmethod
     def from_json(cls, obj: MissionItem):
         _validate_mission_item(
-            obj, expected_type=MissionItemType.MARKER, expect_params=False
+            obj, expected_type=MissionItemType.MARKER, expect_params=True
         )
         id = obj.get("id")
+        params = obj["parameters"]
+        assert params is not None
 
-        return cls(id=id)
+        marker, message = _get_marker_from_parameters(params)
+
+        return cls(id=id, marker=marker, message=message)
 
     @property
     def json(self) -> MissionItem:

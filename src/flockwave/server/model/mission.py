@@ -344,9 +344,9 @@ def _get_longitude_from_parameters(params: Dict[str, Any]) -> float:
         raise RuntimeError("longitude must be a number")
     return float(lon)
 
-def _get_marker_from_parameters(
-    params: Dict[str, Any]) -> Tuple[Marker, str]:
-    
+
+def _get_marker_from_parameters(params: Dict[str, Any]) -> Tuple[Marker, str]:
+
     marker_str = params.get("marker")
     if not isinstance(marker_str, str) or not marker_str:
         raise RuntimeError("marker type must be a valid string")
@@ -355,10 +355,10 @@ def _get_marker_from_parameters(
     elif marker_str == "end":
         marker = Marker.MISSION_ENDED
     elif marker_str == "custom":
-        marker=Marker.CUSTOM
+        marker = Marker.CUSTOM
     else:
         raise RuntimeError(f"marker type {marker_str!r} not handled yet")
-    
+
     message = params.get("message")
     if message is not None and not isinstance(message, str):
         raise RuntimeError("message must be a valid string or None")

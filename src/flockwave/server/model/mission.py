@@ -20,6 +20,7 @@ __all__ = (
     "AltitudeReference",
     "Heading",
     "HeadingMode",
+    "Marker",
     "MissionItem",
     "MissionItemBundle",
     "MissionItemType",
@@ -33,6 +34,7 @@ __all__ = (
     "ChangeSpeedMissionCommand",
     "GoToMissionCommand",
     "LandMissionCommand",
+    "MarkerMissionCommand",
     "ReturnToHomeMissionCommand",
     "SetPayloadMissionCommand",
     "SetParameterMissionCommand",
@@ -174,6 +176,9 @@ class MissionItemType(Enum):
     LAND = "land"
     """Command to land the UAV."""
 
+    MARKER = "marker"
+    """Marker that notifies the GCS when the given mission item has been reached."""
+
     RETURN_TO_HOME = "returnToHome"
     """Command to return to home."""
 
@@ -188,6 +193,19 @@ class MissionItemType(Enum):
 
     UPDATE_GEOFENCE = "updateGeofence"
     """Command to update geofence settings."""
+
+
+class Marker(Enum):
+    """Predefined Marker types for the `MARKER` mission item type."""
+
+    MISSION_STARTED = "start"
+    """Notify GCS that the net mission has started."""
+
+    MISSION_ENDED = "end"
+    """Notify GCS that the net mission has ended."""
+
+    CUSTOM = "custom"
+    """Set up a user-defined marker for the GCS."""
 
 
 class PayloadAction(Enum):
@@ -242,6 +260,8 @@ def _generate_mission_command_from_mission_item(item: MissionItem) -> MissionCom
         command = GoToMissionCommand.from_json(item)
     elif type == MissionItemType.LAND:
         command = LandMissionCommand.from_json(item)
+    elif type == MissionItemType.MARKER:
+        command = MarkerMissionCommand.from_json(item)
     elif type == MissionItemType.RETURN_TO_HOME:
         command = ReturnToHomeMissionCommand.from_json(item)
     elif type == MissionItemType.SET_PAYLOAD:
@@ -744,6 +764,41 @@ class LandMissionCommand(MissionCommand):
     @property
     def type(self) -> MissionItemType:
         return MissionItemType.LAND
+
+
+@dataclass
+class MarkerMissionCommand(MissionCommand):
+    """Mission command that serves as a predefined notification to the GCS."""
+
+    marker: Marker
+    """The type of marker to send."""
+
+    message: Optional[str] = None
+    """Optional message attached to the marker."""
+
+    @classmethod
+    def from_json(cls, obj: MissionItem):
+        _validate_mission_item(
+            obj, expected_type=MissionItemType.MARKER, expect_params=False
+        )
+        id = obj.get("id")
+
+        return cls(id=id)
+
+    @property
+    def json(self) -> MissionItem:
+        return {
+            "id": self.id,
+            "type": MissionItemType.MARKER.value,
+            "parameters": {
+                "marker": self.marker.value,
+                "message": self.message,
+            },
+        }
+
+    @property
+    def type(self) -> MissionItemType:
+        return MissionItemType.MARKER
 
 
 @dataclass

@@ -9,6 +9,7 @@ import weakref
 
 from contextlib import ExitStack
 from functools import partial
+from json import JSONDecodeError
 from logging import Logger
 from trio import (
     aclose_forcefully,
@@ -150,6 +151,10 @@ async def handle_connection(stream, *, limit):
             except ClosedResourceError:
                 # This is okay.
                 pass
+            except JSONDecodeError as ex:
+                # Parse error, probably trying to connect via WebSocket.
+                if log:
+                    log.error(f"Parse error: {ex}")
 
 
 async def handle_connection_safely(stream: SocketStream, *, limit: CapacityLimiter):

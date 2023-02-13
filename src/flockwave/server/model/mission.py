@@ -360,7 +360,7 @@ def _get_marker_from_parameters(
         raise RuntimeError(f"marker type {marker_str!r} not handled yet")
     
     message = params.get("message")
-    if not isinstance(message, (str, None)):
+    if message is not None and not isinstance(message, str):
         raise RuntimeError("message must be a valid string or None")
 
     return (marker, message)

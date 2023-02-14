@@ -204,6 +204,13 @@ class UAVBase(UAV):
         """Clears the error codes of the UAV."""
         return self.update_status(errors=())
 
+    def clear_errors_up_to_and_including(self, code: int) -> None:
+        """Clears all the error codes of the UAV that are less than or equal
+        to the given error code.
+        """
+        if self._status.errors:
+            self.update_status(errors=(x for x in self._status.errors if x > code))
+
     def convert_agl_to_amsl(
         self, altitude: float, *, current_agl: Optional[float] = None
     ) -> float:

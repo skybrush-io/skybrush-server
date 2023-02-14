@@ -1454,6 +1454,26 @@ class MAVLinkUAV(UAVBase):
         # Store a copy of the heartbeat
         self._store_message(message)
 
+        # Determine whether the heartbeat indicates that it makes sense trying
+        # to initiate communication with the UAV. Heartbeats that indicate that
+        # the UAV is powering down or is completely powered down will not trigger
+        # further communication with the UAV.
+        can_communicate = (
+            message.system_status != MAVState.FLIGHT_TERMINATION
+            and message.system_status != MAVState.BOOT
+        )
+
+        # If the heartbeat indicates that we might not be able to communicate
+        # with the drone yet (maybe the heartbeat is sent by the wifi module on
+        # behalf of the drone while the FC is off), let's not initiate
+        # communication but just keep track of whatever we've found in the
+        # heartbeat
+        if not can_communicate:
+            self._update_errors_from_inactive_state()
+            self.update_status(mode="off")
+            self.notify_updated()
+            return
+
         if not self._is_connected:
             # We assume that the autopilot type stays the same even if we lost
             # contact with the drone or if it was rebooted
@@ -2145,7 +2165,24 @@ class MAVLinkUAV(UAVBase):
         }
         self.ensure_errors(errors)
 
-    def _update_errors_from_sys_status_and_heartbeat(self):
+    def _update_errors_from_inactive_state(self) -> None:
+        """Updates the error codes in the case when we received a heartbeat
+        message that seems to indicate that the drone cannot communicate now.
+
+        Either this function or `_update_errors_from_sys_status_and_heartbeat()`
+        will be called for a heartbeat packet but not both. The policy is that
+        we clear error codes with a severity less than a "real" error and then
+        mark the drone as "sleeping". This way we won't lose genuine error
+        codes that happened while the drone was still awake.
+        """
+        self.clear_errors_up_to_and_including(FlockwaveErrorCode.UNSPECIFIED_WARNING)
+        errors = {
+            FlockwaveErrorCode.AUTOPILOT_INIT_FAILED: False,
+            FlockwaveErrorCode.SLEEPING: True,
+        }
+        self.ensure_errors(errors)  # type: ignore
+
+    def _update_errors_from_sys_status_and_heartbeat(self) -> None:
         """Updates the error codes based on the most recent HEARTBEAT and
         SYS_STATUS messages. We need both to have an accurate picture of what is
         going on, hence a separate function that is called from both message
@@ -2219,6 +2256,7 @@ class MAVLinkUAV(UAVBase):
         # determine the error code to use for the geofence.
 
         errors = {
+            FlockwaveErrorCode.SLEEPING: False,
             FlockwaveErrorCode.AUTOPILOT_INIT_FAILED: (
                 heartbeat.system_status == MAVState.UNINIT
             ),
@@ -2281,7 +2319,7 @@ class MAVLinkUAV(UAVBase):
             self._preflight_status.result = PreflightCheckResult.PASS
 
         # Update the error flags as needed
-        self.ensure_errors(errors)
+        self.ensure_errors(errors)  # type: ignore
 
     def _was_probably_rebooted_after_reconnection(self) -> bool:
         """Returns whether the UAV was probably rebooted recently, _assuming_

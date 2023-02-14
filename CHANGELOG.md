@@ -5,7 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [2.9.4] - 2023-02-13
+## [2.10.0] - 2023-02-14
+
+### Added
+
+- MAVLink-based drones are now marked as being in "sleep mode" if the heartbeat
+  indicates that the flight controller is not running. You will not see this
+  with the stock ArduPilot firmware, but if you use our own `mavesp8266` fork
+  in your wifi module, you can configure the `mavesp8266` to be able to control
+  power to the flight controller and it will generate heartbeats _on behalf of_
+  the flight controller if the flight controller itself is powered down. This
+  allows you to make full use of the "sleep" and "resume" buttons on the
+  Skybrush Live UI with MAVLink-based drones, provided that you use our
+  `mavesp8266` fork or implement similar functionality in the firmware of your
+  wifi-to-serial bridge.
 
 ### Fixed
 

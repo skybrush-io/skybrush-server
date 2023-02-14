@@ -774,14 +774,14 @@ reference = "fury"
 
 [[package]]
 name = "flockwave-spec"
-version = "1.66.0"
+version = "1.67.0"
 description = "JSON-Schema specification of the Flockwave protocol"
 category = "main"
 optional = false
 python-versions = ">=3.7,<4.0"
 files = [
-    {file = "flockwave-spec-1.66.0.tar.gz", hash = "sha256:501f3b74256e8070b59e1c4ffbf93a15b1210af45f772d988c81fcb63a6217d5"},
-    {file = "flockwave_spec-1.66.0-py3-none-any.whl", hash = "sha256:54559d473830cec7d903d002da74d1245cc8e41c6e9dd4e9fa39359301d6949e"},
+    {file = "flockwave-spec-1.67.0.tar.gz", hash = "sha256:86b4889bea4239bfd7139bea2168865bdea6a39c65c53311127a97e77b25d88a"},
+    {file = "flockwave_spec-1.67.0-py3-none-any.whl", hash = "sha256:d4a46eabad3d4fd6de1d590c16a29d6b7323a67d3c4d7d7cdef13c48f387d9fe"},
 ]
 
 [package.dependencies]
@@ -1709,14 +1709,14 @@ cli = ["click (>=5.0)"]
 
 [[package]]
 name = "python-json-logger"
-version = "2.0.4"
+version = "2.0.5"
 description = "A python library adding a json log formatter"
 category = "main"
 optional = false
-python-versions = ">=3.5"
+python-versions = ">=3.6"
 files = [
-    {file = "python-json-logger-2.0.4.tar.gz", hash = "sha256:764d762175f99fcc4630bd4853b09632acb60a6224acb27ce08cd70f0b1b81bd"},
-    {file = "python_json_logger-2.0.4-py3-none-any.whl", hash = "sha256:3b03487b14eb9e4f77e4fc2a023358b5394b82fd89cecf5586259baed57d8c6f"},
+    {file = "python-json-logger-2.0.5.tar.gz", hash = "sha256:3853e0b73e6c1ba4b1f2543066b24950bf1c21ed104f297a7bff8c74532a6ab2"},
+    {file = "python_json_logger-2.0.5-py3-none-any.whl", hash = "sha256:f389ccb0a8fd26f84c294dc627a999daf58f759b457ee022f698098f6547288d"},
 ]
 
 [[package]]
@@ -1848,14 +1848,14 @@ paramiko = "*"
 
 [[package]]
 name = "setuptools"
-version = "67.2.0"
+version = "67.3.1"
 description = "Easily download, build, install, upgrade, and uninstall Python packages"
 category = "main"
 optional = false
 python-versions = ">=3.7"
 files = [
-    {file = "setuptools-67.2.0-py3-none-any.whl", hash = "sha256:16ccf598aab3b506593c17378473978908a2734d7336755a8769b480906bec1c"},
-    {file = "setuptools-67.2.0.tar.gz", hash = "sha256:b440ee5f7e607bb8c9de15259dba2583dd41a38879a7abc1d43a71c59524da48"},
+    {file = "setuptools-67.3.1-py3-none-any.whl", hash = "sha256:23c86b4e44432bfd8899384afc08872ec166a24f48a3f99f293b0a557e6a6b5d"},
+    {file = "setuptools-67.3.1.tar.gz", hash = "sha256:daec07fd848d80676694d6bf69c009d28910aeece68a38dbe88b7e1bb6dba12e"},
 ]
 
 [package.extras]
@@ -1897,14 +1897,14 @@ reference = "collmot"
 
 [[package]]
 name = "skybrush-ext-flockctrl"
-version = "2.10.0"
+version = "2.10.1"
 description = "Support for flockctrl-based drones in Skybrush Server"
 category = "main"
 optional = true
 python-versions = ">=3.8,<4.0"
 files = [
-    {file = "skybrush_ext_flockctrl-2.10.0-py3-none-any.whl", hash = "sha256:b9376535b22bf9c7721cc285b3fe76ccfb761f2167ac73cb71d03e1472479de7"},
-    {file = "skybrush_ext_flockctrl-2.10.0.tar.gz", hash = "sha256:9a65efb80f25ec59ec60032c014e9614d390333f4dba8f297166c92da93bb34b"},
+    {file = "skybrush_ext_flockctrl-2.10.1-py3-none-any.whl", hash = "sha256:11af3ed438219ef33040deb169bd2e4386d8038e4b56dec6a14d9049bef3ea28"},
+    {file = "skybrush_ext_flockctrl-2.10.1.tar.gz", hash = "sha256:fae097ba68baa00bce79365f67487bac04f63cefc95997c83ff120fb301c644c"},
 ]
 
 [package.dependencies]
@@ -2192,4 +2192,4 @@ pro = ["skybrush-ext-map-cache", "skybrush-ext-sidekick", "skybrush-ext-timecode
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.8"
-content-hash = "ad33810ddb117ca093b572603d0768748974e6f686a08241554d2b3975f9b949"
+content-hash = "578cf9f6c1aae478d286503aabaf525350524081d6cee37da3922215b85f3d29"

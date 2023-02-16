@@ -204,9 +204,6 @@ class Marker(Enum):
     MISSION_ENDED = "end"
     """Notify GCS that the net mission has ended."""
 
-    CUSTOM = "custom"
-    """Set up a user-defined marker for the GCS."""
-
 
 class PayloadAction(Enum):
     """Payload action types."""
@@ -345,7 +342,7 @@ def _get_longitude_from_parameters(params: Dict[str, Any]) -> float:
     return float(lon)
 
 
-def _get_marker_from_parameters(params: Dict[str, Any]) -> Tuple[Marker, str]:
+def _get_marker_from_parameters(params: Dict[str, Any]) -> Tuple[Marker, float]:
 
     marker_str = params.get("marker")
     if not isinstance(marker_str, str) or not marker_str:
@@ -354,16 +351,16 @@ def _get_marker_from_parameters(params: Dict[str, Any]) -> Tuple[Marker, str]:
         marker = Marker.MISSION_STARTED
     elif marker_str == "end":
         marker = Marker.MISSION_ENDED
-    elif marker_str == "custom":
-        marker = Marker.CUSTOM
     else:
         raise RuntimeError(f"marker type {marker_str!r} not handled yet")
 
-    message = params.get("message")
-    if message is not None and not isinstance(message, str):
-        raise RuntimeError("message must be a valid string or None")
+    ratio = params.get("ratio")
+    if not isinstance(ratio, (int, float)):
+        raise RuntimeError("ratio must be a number")
+    if ratio < 0 or ratio > 1:
+        raise RuntimeError("ratio must be between 0 and 1")
 
-    return (marker, message)
+    return (marker, ratio)
 
 
 def _get_payload_action_from_parameters(
@@ -789,13 +786,15 @@ class LandMissionCommand(MissionCommand):
 
 @dataclass
 class MarkerMissionCommand(MissionCommand):
-    """Mission command that serves as a predefined notification to the GCS."""
+    """Mission command that serves as a predefined notification to the GCS about
+    the completion type and completion ratio of a given state in the mission."""
 
     marker: Marker
     """The type of marker to send."""
 
-    message: Optional[str] = None
-    """Optional message attached to the marker."""
+    ratio: float
+    """total-distance ratio of the net mission at the marker location. Serves
+    as a helper to be used with resumed or multi-drone missions."""
 
     @classmethod
     def from_json(cls, obj: MissionItem):
@@ -806,9 +805,9 @@ class MarkerMissionCommand(MissionCommand):
         params = obj["parameters"]
         assert params is not None
 
-        marker, message = _get_marker_from_parameters(params)
+        marker, ratio = _get_marker_from_parameters(params)
 
-        return cls(id=id, marker=marker, message=message)
+        return cls(id=id, marker=marker, ratio=ratio)
 
     @property
     def json(self) -> MissionItem:
@@ -817,7 +816,7 @@ class MarkerMissionCommand(MissionCommand):
             "type": MissionItemType.MARKER.value,
             "parameters": {
                 "marker": self.marker.value,
-                "message": self.message,
+                "ratio": self.ratio,
             },
         }
 

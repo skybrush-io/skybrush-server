@@ -643,14 +643,14 @@ reference = "fury"
 
 [[package]]
 name = "flockwave-flockctrl"
-version = "2.7.0"
+version = "2.8.0"
 description = "flockctrl protocol parser and encoder for Skybrush"
 category = "main"
 optional = true
 python-versions = ">=3.7,<4.0"
 files = [
-    {file = "flockwave_flockctrl-2.7.0-py3-none-any.whl", hash = "sha256:f26fc52864a15714a12e1e1a3af00007669ffb837c14aa83a513a217af137cd9"},
-    {file = "flockwave_flockctrl-2.7.0.tar.gz", hash = "sha256:1cc5b37e85e2f4478e518bced1073ba6e0ddacf09eb98e9e9826de3a23ae5a31"},
+    {file = "flockwave_flockctrl-2.8.0-py3-none-any.whl", hash = "sha256:a35df67fb2f89a340a6844d72cc0b53a9ee1fc6fc000c25da443c8abf3a207fb"},
+    {file = "flockwave_flockctrl-2.8.0.tar.gz", hash = "sha256:cabd0790f4846845a0c0dd94a98283a1147c83d0884de62ad56d0137729cd6d4"},
 ]
 
 [package.dependencies]
@@ -1898,20 +1898,20 @@ reference = "collmot"
 
 [[package]]
 name = "skybrush-ext-flockctrl"
-version = "2.11.0"
+version = "2.12.0"
 description = "Support for flockctrl-based drones in Skybrush Server"
 category = "main"
 optional = true
 python-versions = ">=3.8,<4.0"
 files = [
-    {file = "skybrush_ext_flockctrl-2.11.0-py3-none-any.whl", hash = "sha256:62daad45eca6f8af8f8fe8bc276d2cbdc4ea8b51c857fdbd22931251efc4f37a"},
-    {file = "skybrush_ext_flockctrl-2.11.0.tar.gz", hash = "sha256:18c8b79b716ba6dc2e65bc711ea9bb7d743ab428d7217f3050f8e6db56236a97"},
+    {file = "skybrush_ext_flockctrl-2.12.0-py3-none-any.whl", hash = "sha256:0ba53a9d2037da618132fb2d5e5b6ee643b6a7a79a50930a298284015fc15ad7"},
+    {file = "skybrush_ext_flockctrl-2.12.0.tar.gz", hash = "sha256:1b3986e68e42e0a25891ef2d5ecdc596994b721c39519b0420aa703688ec6120"},
 ]
 
 [package.dependencies]
 bidict = ">=0.22.0"
 colour = ">=0.1.5"
-flockwave-flockctrl = ">=2.7.0,<3.0.0"
+flockwave-flockctrl = ">=2.8.0,<3.0.0"
 paramiko = ">=2.10.3,<3.0.0"
 scp = ">=0.14.4"
 trio = ">=0.21.0"
@@ -2193,4 +2193,4 @@ pro = ["skybrush-ext-map-cache", "skybrush-ext-sidekick", "skybrush-ext-timecode
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.8"
-content-hash = "9453b6bcaddfed241f44b37cb58172a85106f0f45449ca3bd32830beda6bbed4"
+content-hash = "2e81ba21db2d39db89fabe861d320cdd4c5decad75fb0a424d14642e9fcbc10d"

@@ -360,7 +360,7 @@ class MissionManagementExtension(Extension):
             else:
                 plan = cast(MissionPlan, maybe_plan)
         except RuntimeError as ex:
-            self.log.warn(f"Runtime error: {ex}")
+            self.log.warn(f"Mission plan error: {ex}")
             return hub.reject(message, reason=str(ex))
 
         return {"result": plan}

@@ -7,7 +7,7 @@ from __future__ import annotations
 from contextlib import ExitStack
 from functools import partial
 from inspect import isawaitable
-from jsonschema import validate
+from jsonschema import validate, ValidationError
 from trio import open_nursery
 from typing import Any, Dict, Iterable, Optional, Tuple, cast, overload
 
@@ -350,14 +350,17 @@ class MissionManagementExtension(Extension):
                 plan_schema = cast(Dict[str, Any], maybe_plan_schema)
             try:
                 validate(parameters, schema=plan_schema)
-            except Exception as ex:
-                raise RuntimeError(f"Plan parameter validation error: {ex}")
+            except ValidationError as ex:
+                raise RuntimeError(
+                    f"Plan parameter validation error {list(ex.relative_path)}: {ex.message}"
+                )
             maybe_plan = mission_type.create_plan(parameters)
             if isawaitable(maybe_plan):
                 plan = cast(MissionPlan, await maybe_plan)
             else:
                 plan = cast(MissionPlan, maybe_plan)
         except RuntimeError as ex:
+            self.log.warn(f"Runtime error: {ex}")
             return hub.reject(message, reason=str(ex))
 
         return {"result": plan}

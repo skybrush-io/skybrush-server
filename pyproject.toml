@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "flockwave-server"
-version = "2.10.2"
+version = "2.10.3"
 description = "Skybrush server component"
 authors = ["Tamas Nepusz <tamas@collmot.com>", "Gabor Vasarhelyi <vasarhelyi@collmot.com>"]
 license = "GPL-3.0-or-later"

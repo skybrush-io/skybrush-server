@@ -10,6 +10,7 @@ from flockwave.server.model.geofence import (
     GeofenceConfigurationRequest,
     GeofenceStatus,
 )
+from flockwave.server.model.safety import SafetyConfigurationRequest
 from flockwave.server.utils import clamp
 
 from .enums import (
@@ -126,6 +127,23 @@ class Autopilot(metaclass=ABCMeta):
                 geofence or if the configuration request contains something that
                 the drone is not capable of doing (e.g., smart landing on a
                 drone that does not support collective collision avoidance)
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    async def configure_safety(
+        self, uav, configuration: SafetyConfigurationRequest
+    ) -> None:
+        """Updates the safety configuration on the autopilot to match the
+        given configuration object.
+
+        Raises:
+            NotImplementedError: if we have not implemented support for updating
+                the safety configuration on the autopilot (but it supports
+                safety features)
+            NotSupportedError: if the autopilot does not support updating the
+                safety or if the configuration request contains something that
+                the drone is not capable of doing
         """
         raise NotImplementedError
 
@@ -255,6 +273,11 @@ class UnknownAutopilot(Autopilot):
 
     async def configure_geofence(
         self, uav, configuration: GeofenceConfigurationRequest
+    ) -> None:
+        raise NotSupportedError
+
+    async def configure_safety(
+        self, uav, configuration: SafetyConfigurationRequest
     ) -> None:
         raise NotSupportedError
 
@@ -393,6 +416,11 @@ class PX4(Autopilot):
 
     async def configure_geofence(
         self, uav, configuration: GeofenceConfigurationRequest
+    ) -> None:
+        raise NotImplementedError
+
+    async def configure_safety(
+        self, uav, configuration: SafetyConfigurationRequest
     ) -> None:
         raise NotImplementedError
 
@@ -684,6 +712,26 @@ class ArduPilot(Autopilot):
 
         # Update whether the fence is enabled or disabled
         await uav.set_parameter("FENCE_ENABLE", int(fence_enabled))
+
+    async def configure_safety(
+        self, uav, configuration: SafetyConfigurationRequest
+    ) -> None:
+        if configuration.low_battery_voltage is not None:
+            await uav.set_parameter("BATT_LOW_VOLT", configuration.low_battery_voltage)
+        if configuration.critical_battery_voltage is not None:
+            await uav.set_parameter(
+                "BATT_CRT_VOLT", configuration.critical_battery_voltage
+            )
+        if configuration.return_to_home_altitude is not None:
+            await uav.set_parameter(
+                "RTL_ALT",
+                int(configuration.return_to_home_altitude * 100),  # [m] -> [cm]
+            )
+        if configuration.return_to_home_speed is not None:
+            await uav.set_parameter(
+                "RTL_SPEED",
+                int(configuration.return_to_home_speed * 100),  # [m/s] -> [cm/s]
+            )
 
     def decode_param_from_wire_representation(
         self, value: Union[int, float], type: MAVParamType

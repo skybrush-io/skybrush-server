@@ -9,9 +9,11 @@ from enum import Enum
 from typing import Any, Dict, List, Optional, Sequence, Tuple, TypedDict, Union
 
 from skybrush.geofence import get_geofence_configuration_from_show_specification
+from skybrush.safety import get_safety_configuration_from_show_specification
 
 from .geofence import GeofenceConfigurationRequest
 from .identifiers import default_id_generator
+from .safety import SafetyConfigurationRequest
 
 
 __all__ = (
@@ -40,6 +42,7 @@ __all__ = (
     "SetParameterMissionCommand",
     "TakeoffMissionCommand",
     "UpdateGeofenceMissionCommand",
+    "UpdateSafetyMissionCommand",
 )
 
 ################################################################################
@@ -194,6 +197,9 @@ class MissionItemType(Enum):
     UPDATE_GEOFENCE = "updateGeofence"
     """Command to update geofence settings."""
 
+    UPDATE_SAFETY = "updateSafety"
+    """Command to update safety settings."""
+
 
 class Marker(Enum):
     """Predefined Marker types for the `MARKER` mission item type."""
@@ -269,6 +275,8 @@ def _generate_mission_command_from_mission_item(item: MissionItem) -> MissionCom
         command = TakeoffMissionCommand.from_json(item)
     elif type == MissionItemType.UPDATE_GEOFENCE:
         command = UpdateGeofenceMissionCommand.from_json(item)
+    elif type == MissionItemType.UPDATE_SAFETY:
+        command = UpdateSafetyMissionCommand.from_json(item)
     else:
         raise RuntimeError(f"Unhandled mission type: {type!r}")
 
@@ -1023,3 +1031,41 @@ class UpdateGeofenceMissionCommand(MissionCommand):
     @property
     def type(self) -> MissionItemType:
         return MissionItemType.UPDATE_GEOFENCE
+
+
+@dataclass
+class UpdateSafetyMissionCommand(MissionCommand):
+    """Mission command that updates safety settings for the drone."""
+
+    safety: SafetyConfigurationRequest
+    """Safety related configuration object."""
+
+    @classmethod
+    def from_json(cls, obj: MissionItem):
+        _validate_mission_item(
+            obj,
+            expected_type=MissionItemType.UPDATE_SAFETY,
+            expect_params=True,
+        )
+        id = obj.get("id")
+        params = obj["parameters"]
+        assert params is not None
+
+        # we need a "safety" entry
+        safety = get_safety_configuration_from_show_specification(params)
+
+        return cls(id=id, safety=safety)
+
+    @property
+    def json(self) -> MissionItem:
+        return {
+            "id": self.id,
+            "type": MissionItemType.UPDATE_SAFETY.value,
+            "parameters": {
+                "safety": self.safety.json,
+            },
+        }
+
+    @property
+    def type(self) -> MissionItemType:
+        return MissionItemType.UPDATE_SAFETY

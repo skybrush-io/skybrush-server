@@ -29,6 +29,7 @@ from flockwave.server.model.devices import DeviceTreeMutator
 from flockwave.server.model.geofence import GeofenceConfigurationRequest, GeofenceStatus
 from flockwave.server.model.gps import GPSFix
 from flockwave.server.model.preflight import PreflightCheckInfo, PreflightCheckResult
+from flockwave.server.model.safety import SafetyConfigurationRequest
 from flockwave.server.model.transport import TransportOptions
 from flockwave.server.model.uav import VersionInfo, UAVBase, UAVDriver
 from flockwave.server.utils import color_to_rgb8_triplet, to_uppercase_string
@@ -1114,6 +1115,10 @@ class MAVLinkUAV(UAVBase):
     ) -> None:
         """Configures the geofence on the UAV."""
         return await self._autopilot.configure_geofence(self, configuration)
+
+    async def configure_safety(self, configuration: SafetyConfigurationRequest) -> None:
+        """Configures the safety features on the UAV."""
+        return await self._autopilot.configure_safety(self, configuration)
 
     def get_age_of_message(self, type: int, now: Optional[float] = None) -> float:
         """Returns the number of seconds elapsed since we have last seen a

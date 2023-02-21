@@ -590,14 +590,14 @@ reference = "fury"
 
 [[package]]
 name = "flockwave-conn"
-version = "6.0.0"
+version = "6.1.0"
 description = "Connection objects for various data sources"
 category = "main"
 optional = false
 python-versions = ">=3.7,<4.0"
 files = [
-    {file = "flockwave-conn-6.0.0.tar.gz", hash = "sha256:e860bd8ccbb7037a3c7c923d202da9b81963436506700cce34b3632a460bfae5"},
-    {file = "flockwave_conn-6.0.0-py3-none-any.whl", hash = "sha256:bdc33294ed6ede2400b1f22edc8ee05cfbb5b34ee80869b2eab6b2d0a55cb3e8"},
+    {file = "flockwave-conn-6.1.0.tar.gz", hash = "sha256:260c7e0b83c25fa2b12d17fc68bff80a27cd1445c9b7f18cb1bfd35a29c44393"},
+    {file = "flockwave_conn-6.1.0-py3-none-any.whl", hash = "sha256:8edfddd1c2916ceb86ad4ebe9afc06a15c7105cb04d8c80828b6a718ae8684a0"},
 ]
 
 [package.dependencies]
@@ -622,14 +622,14 @@ reference = "fury"
 
 [[package]]
 name = "flockwave-ext"
-version = "1.18.0"
+version = "1.19.0"
 description = "Generic extension manager for Skybrush-related projects"
 category = "main"
 optional = false
 python-versions = ">=3.7,<4.0"
 files = [
-    {file = "flockwave-ext-1.18.0.tar.gz", hash = "sha256:7e8cf88b29314285f849276b75796911a44e75f9f196cdc6861fc4b3083e67fb"},
-    {file = "flockwave_ext-1.18.0-py3-none-any.whl", hash = "sha256:8bdad3e9bc38c424744e0153e22d7a3db2834ff0f7c2a53a6c20c55b41a6e9bd"},
+    {file = "flockwave-ext-1.19.0.tar.gz", hash = "sha256:252032b42345e989877301ebfe15d440fa70a86d7dd76276b0e2b4facc2bdd7f"},
+    {file = "flockwave_ext-1.19.0-py3-none-any.whl", hash = "sha256:a19c1a6f34aadefb2092f0059c890320b00f0ce28f10eacbee585735f46cb62c"},
 ]
 
 [package.dependencies]
@@ -730,14 +730,14 @@ reference = "fury"
 
 [[package]]
 name = "flockwave-net"
-version = "4.0.0"
+version = "4.0.1"
 description = "Networking related functions for apps based on the Flockwave framework"
 category = "main"
 optional = false
 python-versions = ">=3.7,<4.0"
 files = [
-    {file = "flockwave-net-4.0.0.tar.gz", hash = "sha256:44cf82795f735963d5940092983c5a2de83e81cc2141cdc2a9399d40fc4c2ee3"},
-    {file = "flockwave_net-4.0.0-py3-none-any.whl", hash = "sha256:007acedfb7e5e4690dcda1b99d34df0f81b722d0ea60f9d570895cd220c2177f"},
+    {file = "flockwave-net-4.0.1.tar.gz", hash = "sha256:3bdc185110643c1e830ccc897f945e07c309bdc0ae8f6d0884b8be80d07e0a75"},
+    {file = "flockwave_net-4.0.1-py3-none-any.whl", hash = "sha256:ad25dc01173aca3bfc2551cb4b121ec9a3bee9db13827d7501db03f1a1abb645"},
 ]
 
 [package.dependencies]
@@ -1849,14 +1849,14 @@ paramiko = "*"
 
 [[package]]
 name = "setuptools"
-version = "67.3.2"
+version = "67.3.3"
 description = "Easily download, build, install, upgrade, and uninstall Python packages"
 category = "main"
 optional = false
 python-versions = ">=3.7"
 files = [
-    {file = "setuptools-67.3.2-py3-none-any.whl", hash = "sha256:bb6d8e508de562768f2027902929f8523932fcd1fb784e6d573d2cafac995a48"},
-    {file = "setuptools-67.3.2.tar.gz", hash = "sha256:95f00380ef2ffa41d9bba85d95b27689d923c93dfbafed4aecd7cf988a25e012"},
+    {file = "setuptools-67.3.3-py3-none-any.whl", hash = "sha256:9d3de8591bd6f6522594406fa46a6418eabd0562dacb267f8556675762801514"},
+    {file = "setuptools-67.3.3.tar.gz", hash = "sha256:ed4e75fafe103c79b692f217158ba87edf38d31004b9dbc1913debb48793c828"},
 ]
 
 [package.extras]
@@ -2193,4 +2193,4 @@ pro = ["skybrush-ext-map-cache", "skybrush-ext-sidekick", "skybrush-ext-timecode
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.8"
-content-hash = "2e81ba21db2d39db89fabe861d320cdd4c5decad75fb0a424d14642e9fcbc10d"
+content-hash = "e00ba6b957d9aa2b50c0f1f8ca7f551c34aa31b19f9aee2cac5cd1d2867574c2"

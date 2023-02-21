@@ -145,7 +145,7 @@ class MissionSchedulerTask(MissionRegistryRelatedTaskBase):
         self._unschedule_mission(mission)
 
     async def _run(self, stack: ExitStack):
-        scheduler = Scheduler(allow_late_submissions=False)
+        scheduler = Scheduler(allow_late_start=False)
         stack.enter_context(overridden(self, scheduler=scheduler))
         await scheduler.run()
 

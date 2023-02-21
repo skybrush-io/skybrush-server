@@ -80,6 +80,7 @@ def unload(app: "SkybrushServer"):
     global handler, log
 
     if handler is not None:
+        handler.close()
         getLogger().removeHandler(handler)
         handler = None
 

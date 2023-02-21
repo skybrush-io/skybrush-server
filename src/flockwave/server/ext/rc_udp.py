@@ -150,7 +150,7 @@ async def handle_udp_datagrams(
                         data, _ = await connection.read()
                 except TooSlowError:
                     connected = False
-                    log.warn("UDP RC input lost")
+                    log.warning("UDP RC input lost")
                     on_lost()
                     data = None
             else:

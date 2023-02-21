@@ -585,7 +585,7 @@ class ArduPilot(Autopilot):
                         uav, MAVCommand.DO_CANCEL_MAG_CAL
                     )
                 except Exception:
-                    uav.driver.log.warn(
+                    uav.driver.log.warning(
                         "Failed to cancel compass calibration",
                         extra={"id": log_id_for_uav(uav)},
                     )

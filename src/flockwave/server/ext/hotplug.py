@@ -17,7 +17,7 @@ async def run(app, configuration, log):
             async for event in gen:
                 signal.send(event=event)
     except NoBackendError:
-        log.warn("No suitable backend found for scanning the USB bus")
+        log.warning("No suitable backend found for scanning the USB bus")
         # TODO(ntamas):add hints about what to do. On macOS, one needs to
         # install libusb from Homebrew, and add /opt/homebrew/lib to
         # the DYLD_LIBRARY_PATH

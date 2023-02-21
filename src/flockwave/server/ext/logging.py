@@ -29,20 +29,20 @@ def load(app: "SkybrushServer", configuration: Dict[str, Any], log: Logger):
     try:
         formatter = styles[format_str]
     except KeyError:
-        log.warn(f"Unknown log format: {format_str!r}, assuming tabular")
+        log.warning(f"Unknown log format: {format_str!r}, assuming tabular")
         formatter = styles["tabular"]
 
     size_limit_str = str(configuration.get("size", "0"))
     try:
         size_limit = int(size_limit_str)
     except ValueError:
-        log.warn(
+        log.warning(
             f"Invalid maximum log file size: {size_limit_str!r}, assuming unlimited"
         )
         size_limit = 0
 
     if size_limit < 0:
-        log.warn("Negative log file size limits are not allowed, assuming unlimited")
+        log.warning("Negative log file size limits are not allowed, assuming unlimited")
         size_limit = 0
 
     keep_str = str(configuration.get("keep", 0))
@@ -52,7 +52,7 @@ def load(app: "SkybrushServer", configuration: Dict[str, Any], log: Logger):
         backup_count = -1
 
     if backup_count < 0:
-        log.warn(
+        log.warning(
             f"Invalid backup count: {keep_str!r}, assuming that all logs should be kept"
         )
         backup_count = 0

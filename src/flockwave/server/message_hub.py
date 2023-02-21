@@ -1047,7 +1047,9 @@ class MessageHub:
             try:
                 client = self._client_registry[to]
             except KeyError:
-                log.warn("Client is gone; not sending message", extra={"id": str(to)})
+                log.warning(
+                    "Client is gone; not sending message", extra={"id": str(to)}
+                )
                 if done:
                     done()
                 return
@@ -1069,7 +1071,9 @@ class MessageHub:
             try:
                 await client.channel.send(message)
             except ClosedResourceError:
-                log.warn("Client is gone; not sending message", extra={"id": client.id})
+                log.warning(
+                    "Client is gone; not sending message", extra={"id": client.id}
+                )
             except Exception:
                 log.exception(
                     "Error while sending message to client", extra={"id": client.id}

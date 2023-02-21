@@ -85,10 +85,10 @@ class CrazyflieDronesExtension(UAVExtension[CrazyflieDriver]):
                     await stack.enter_async_context(SharedCrazyradio(index))
                     num_radios += 1
                 except NotFoundError:
-                    self.log.warn(f"Could not acquire Crazyradio #{index}")
+                    self.log.warning(f"Could not acquire Crazyradio #{index}")
                 except OSError as ex:
                     if ex.errno == EACCES:
-                        self.log.warn(
+                        self.log.warning(
                             f"Permission denied while trying to access Crazyradio #{index}. Do you have the permissions to work with USB devices?"
                         )
                     else:

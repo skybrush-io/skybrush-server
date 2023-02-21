@@ -35,7 +35,7 @@ class RTKCorrectionPacketEncoder:
 
             if len(slices) > 4:
                 if self._log:
-                    self._log.warn(
+                    self._log.warning(
                         f"Dropping oversized RTCM packet: {len(packet)} bytes"
                     )
                 return

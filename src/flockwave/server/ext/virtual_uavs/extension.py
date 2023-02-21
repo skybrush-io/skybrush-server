@@ -59,7 +59,7 @@ class VirtualUAVProviderExtension(UAVExtension[VirtualUAVDriver]):
         # Get the center of the home positions
         if "origin" not in configuration and "center" in configuration:
             if self.log:
-                self.log.warn("'center' is deprecated; use 'origin' instead")
+                self.log.warning("'center' is deprecated; use 'origin' instead")
             configuration["origin"] = configuration.pop("center")
 
         # Create a transformation from flat Earth to GPS

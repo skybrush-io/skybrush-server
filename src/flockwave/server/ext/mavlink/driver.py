@@ -229,19 +229,19 @@ class MAVLinkDriver(UAVDriver):
 
         if sent < tried:
             if sent > 1:
-                self.log.warn(
+                self.log.warning(
                     "Tried to send broadcast command {tried} times but only {sent} were successful"
                 )
             elif sent > 0:
-                self.log.warn(
+                self.log.warning(
                     "Tried to send broadcast command {tried} times but only one was successful"
                 )
             elif tried > 1:
-                self.log.warn(
+                self.log.warning(
                     "Tried to send broadcast command {tried} times but none were successful"
                 )
             else:
-                self.log.warn("Failed to send broadcast command")
+                self.log.warning("Failed to send broadcast command")
 
     def create_uav(self, id: str) -> "MAVLinkUAV":
         """Creates a new UAV that is to be managed by this driver.
@@ -1646,7 +1646,7 @@ class MAVLinkUAV(UAVBase):
 
         if self._was_probably_rebooted_after_reconnection():
             if not self._first_connection:
-                self.driver.log.warn(
+                self.driver.log.warning(
                     f"UAV {self.id} might have been rebooted; reconfiguring"
                 )
 
@@ -1868,7 +1868,7 @@ class MAVLinkUAV(UAVBase):
                     failed.append(message)
 
             for message in failed:
-                self.driver.log.warn(
+                self.driver.log.warning(
                     f"Failed to reset data stream rate(s) for message(s) {message}",
                     extra={"id": log_id_for_uav(self)},
                 )
@@ -1995,7 +1995,7 @@ class MAVLinkUAV(UAVBase):
         # realize again that it is not receiving status updates from the drone
         # and will attempt to configure again.
         if not success:
-            self.driver.log.warn(
+            self.driver.log.warning(
                 "Failed to configure data stream rates",
                 extra={"id": log_id_for_uav(self)},
             )
@@ -2019,7 +2019,7 @@ class MAVLinkUAV(UAVBase):
             )
 
             if not success:
-                self.driver.log.warn(
+                self.driver.log.warning(
                     f"Failed to configure data stream rate for message {message_id}",
                     extra={"id": log_id_for_uav(self)},
                 )
@@ -2070,7 +2070,7 @@ class MAVLinkUAV(UAVBase):
         try:
             await self.set_mode(self.driver.mandatory_custom_mode)
         except TooSlowError:
-            self.driver.log.warn(
+            self.driver.log.warning(
                 "Failed to configure custom mode; no response in time",
                 extra={"id": log_id_for_uav(self)},
             )
@@ -2106,14 +2106,14 @@ class MAVLinkUAV(UAVBase):
                 self, MAVCommand.REQUEST_AUTOPILOT_CAPABILITIES, param1=1
             )
         except TooSlowError:
-            self.driver.log.warn(
+            self.driver.log.warning(
                 "Failed to request autopilot capabilities; no confirmation received in time",
                 extra={"id": log_id_for_uav(self)},
             )
             return
 
         if not success:
-            self.driver.log.warn(
+            self.driver.log.warning(
                 "UAV rejected to send autopilot capabilities",
                 extra={"id": log_id_for_uav(self)},
             )

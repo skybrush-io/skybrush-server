@@ -220,7 +220,7 @@ class CommunicationManager(Generic[PacketType, AddressType]):
             queue.send_nowait((packet, address))
         except WouldBlock:
             if self.log:
-                self.log.warn(
+                self.log.warning(
                     "Dropping outbound broadcast packet; outbound message queue is full"
                 )
 
@@ -243,7 +243,7 @@ class CommunicationManager(Generic[PacketType, AddressType]):
             queue.send_nowait((packet, destination))
         except WouldBlock:
             if self.log:
-                self.log.warn(
+                self.log.warning(
                     "Dropping outbound packet; outbound message queue is full"
                 )
 
@@ -388,12 +388,12 @@ class CommunicationManager(Generic[PacketType, AddressType]):
 
             if channel_created:
                 if address:
-                    self.log.warn(
+                    self.log.warning(
                         f"Connection at {address} down, trying to reopen...",
                         extra=log_extra,
                     )
                 else:
-                    self.log.warn(
+                    self.log.warning(
                         "Connection down, trying to reopen...", extra=log_extra
                     )
 
@@ -497,11 +497,13 @@ class CommunicationManager(Generic[PacketType, AddressType]):
 
         if not sent and not is_broadcast:
             if entries:
-                self.log.warn(
+                self.log.warning(
                     f"Dropping outbound message, all channels broken for: {name!r}"
                 )
             else:
-                self.log.warn(f"Dropping outbound message, no such channel: {name!r}")
+                self.log.warning(
+                    f"Dropping outbound message, no such channel: {name!r}"
+                )
 
 
 CommunicationManager.BROADCAST = BROADCAST

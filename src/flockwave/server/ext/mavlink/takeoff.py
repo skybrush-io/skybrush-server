@@ -211,7 +211,7 @@ class ScheduledTakeoffManager:
                                     # Okay, doesn't matter, we'll try again in the next
                                     # iteration
                                     if log:
-                                        log.warn(
+                                        log.warning(
                                             "Cannot schedule UAV for an update, will try later",
                                             extra={
                                                 "id": f"{self._network.id}:{uav.id}"
@@ -254,7 +254,7 @@ class ScheduledTakeoffManager:
         except TooSlowError:
             log = self._network.log
             if log:
-                log.warn(
+                log.warning(
                     f"UAV {uav.id} did not respond to a start time configuration request"
                 )
         except Exception:
@@ -269,7 +269,7 @@ class ScheduledTakeoffManager:
             except KeyError:
                 log = self._network.log
                 if log:
-                    log.warn(
+                    log.warning(
                         f"UAV {uav.id} missing from _uavs_to_update, might be a bug"
                     )
 

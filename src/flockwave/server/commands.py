@@ -109,7 +109,7 @@ class CommandExecutionManager(RegistryBase[CommandExecutionStatus]):
         command = self._get_command_from_id(receipt_id)
         if command is None:
             # Request has probably expired in the meanwhile
-            log.warn(
+            log.warning(
                 "Received cancellation request for non-existent receipt: "
                 "{0}".format(receipt_id)
             )
@@ -149,7 +149,7 @@ class CommandExecutionManager(RegistryBase[CommandExecutionStatus]):
         command = self._get_command_from_id(receipt_id)
         if command is None:
             # Request probably expired in the meanwhile
-            log.warn(f"Expired receipt marked as dispatched: {receipt_id}")
+            log.warning(f"Expired receipt marked as dispatched: {receipt_id}")
             return
 
         command.mark_as_clients_notified()
@@ -292,7 +292,7 @@ class CommandExecutionManager(RegistryBase[CommandExecutionStatus]):
         if status.id not in self._entries:
             # Request has probably expired in the meanwhile. This should happen
             # only in rare cases as we cancel the awaitables when needed.
-            log.warn(f"Execution of task finished with expired receipt: {status.id}")
+            log.warning(f"Execution of task finished with expired receipt: {status.id}")
             return
 
         del self._entries[status.id]

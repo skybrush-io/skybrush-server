@@ -183,7 +183,7 @@ async def handle_message(message, sender, *, socket):
     request = Request(message, sender)
     if request.has_error:
         if log:
-            log.warn("Malformed SSDP request received")
+            log.warning("Malformed SSDP request received")
         return
     elif request.command == "M-SEARCH" and request.path == "*":
         await handle_m_search(request, socket=socket)
@@ -192,7 +192,7 @@ async def handle_message(message, sender, *, socket):
         pass
     else:
         if log:
-            log.warn("Unknown SSDP command: {0.command}".format(request))
+            log.warning("Unknown SSDP command: {0.command}".format(request))
 
 
 async def handle_m_search(request, *, socket):
@@ -425,7 +425,7 @@ async def receive_ssdp_messages(multicast_group, port, *, sender):
         if error.errno == EADDRNOTAVAIL:
             # This may happen with ad-hoc wifi on macOS
             if log:
-                log.warn(f"Cannot join multicast group {multicast_group}")
+                log.warning(f"Cannot join multicast group {multicast_group}")
         else:
             raise
 

@@ -373,7 +373,7 @@ class GPSExtension(UAVExtension):
                 )
             except RegistryFull:
                 if self.log and self._last_warning_for_beacon_id != beacon_id:
-                    self.log.warn(
+                    self.log.warning(
                         "Cannot register beacon for GPS; no more slots in object registry"
                     )
                     self._last_warning_for_beacon_id = beacon_id

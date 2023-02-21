@@ -250,7 +250,7 @@ class DroneShowExtension(Extension):
 
         delay = int(self._clock.seconds * 1000)
         if delay >= 1:
-            self.log.warn(f"Started show with a delay of {delay} ms")
+            self.log.warning(f"Started show with a delay of {delay} ms")
         else:
             self.log.info("Started show accurately")
 
@@ -305,13 +305,15 @@ class DroneShowExtension(Extension):
             with fail_after(5):
                 results = await wait_for_dict_items(results)
         except TooSlowError:
-            self.log.warn(f"Failed to send {what} to {len(results)} UAVs in 5 seconds")
+            self.log.warning(
+                f"Failed to send {what} to {len(results)} UAVs in 5 seconds"
+            )
             return
 
         failed = [key for key, value in results.items() if isinstance(value, Exception)]
         if failed:
             failed = ", ".join([getattr(uav, "id", "-no-id-") for uav in failed])
-            self.log.warn(f"Failed to send {what} to {failed}")
+            self.log.warning(f"Failed to send {what} to {failed}")
 
 
 construct = DroneShowExtension

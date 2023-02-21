@@ -38,7 +38,7 @@ class _Alarm:
         try:
             self._queue_tx.send_nowait("event")
         except WouldBlock:
-            log.warn("Clock event dropped, this should not have happened")
+            log.warning("Clock event dropped, this should not have happened")
 
     async def _run(self, edge_triggered: bool):
         clock, seconds = self._clock, self._seconds

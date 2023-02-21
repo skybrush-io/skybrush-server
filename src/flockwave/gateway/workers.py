@@ -204,7 +204,7 @@ class WorkerManager:
         try:
             code = await process.wait()
             if code:
-                log.warn(f"{worker} exited with code {code}")
+                log.warning(f"{worker} exited with code {code}")
             else:
                 log.info(f"{worker} exited.")
         except Exception as ex:

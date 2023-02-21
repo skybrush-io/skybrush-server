@@ -830,7 +830,7 @@ class CrazyflieUAV(UAVBase):
             except TimeoutError:
                 status = None
             except Exception:
-                self.driver.log.warn(
+                self.driver.log.warning(
                     "Malformed drone show status packet received, ignoring"
                 )
                 status = None
@@ -1493,13 +1493,13 @@ class CrazyflieHandlerTask:
         except TimeoutError:
             # This is normal, it comes from aiocflib when the Crazyflie is
             # turned off again
-            self._log.warn(
+            self._log.warning(
                 "Failed to re-upload previously uploaded show to possibly "
                 "rebooted drone due to a communication timeout",
                 extra={"id": self._uav.id},
             )
         except Exception as ex:
-            self._log.warn(
+            self._log.warning(
                 "Failed to re-upload previously uploaded show to possibly rebooted drone",
                 extra={"id": self._uav.id},
             )

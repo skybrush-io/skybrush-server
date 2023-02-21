@@ -55,7 +55,7 @@ class ConsoleStatusExtension(Extension):
             return
 
         if platform.system() == "Windows":
-            log.warn("Extension not supported on this platform")
+            log.warning("Extension not supported on this platform")
             return
 
         # Lazy import -- FdStream not available on Windows

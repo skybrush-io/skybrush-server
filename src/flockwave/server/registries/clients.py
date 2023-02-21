@@ -143,14 +143,16 @@ class ClientRegistry(RegistryBase[Client]):
             channel_type = self._client_id_to_channel_type.pop(client_id)
         except KeyError:
             # This should not happen
-            log.warn("Cannot find channel type for client ID {0!r}".format(client_id))
+            log.warning(
+                "Cannot find channel type for client ID {0!r}".format(client_id)
+            )
             return
 
         try:
             self._entries_by_channel_type[channel_type].remove(client_id)
         except KeyError:
             # This should not happen
-            log.warn(
+            log.warning(
                 "Cannot remove channel type index entry for "
                 "client ID {0!r}".format(client_id)
             )

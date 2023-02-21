@@ -308,7 +308,7 @@ class Mission(ModelObject):
         except Cancelled:
             # Scheduler cancelled the execution of the mission
             if log:
-                log.warn("Mission cancelled", extra={"id": self.id})
+                log.warning("Mission cancelled", extra={"id": self.id})
             self.state = MissionState.CANCELLED
 
             # Cancelled exceptions must be re-raised

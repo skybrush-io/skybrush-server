@@ -117,7 +117,7 @@ class SkybrushGatewayServer(DaemonApp):
     async def _serve(self, nursery: Nursery) -> None:
         address = self._get_listening_address()
         if address is None:
-            log.warn("HTTP server address is not specified in configuration")
+            log.warning("HTTP server address is not specified in configuration")
             return
 
         host, port = address

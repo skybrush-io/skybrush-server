@@ -298,7 +298,7 @@ class MAVLinkNetwork:
             # Warn the user about the simulated packet loss setting
             if self._packet_loss > 0:
                 percentage = round(min(1, self._packet_loss) * 100)
-                log.warn(
+                log.warning(
                     f"Simulating {percentage}% packet loss on MAVLink network {self._id!r}"
                 )
 
@@ -695,7 +695,7 @@ class MAVLinkNetwork:
                         f"Error while handling MAVLink message of type {type}"
                     )
             else:
-                self.log.warn(
+                self.log.warning(
                     f"Unhandled MAVLink message type: {type}",
                     extra=self._log_extra_from_message(message),
                 )
@@ -937,4 +937,6 @@ class MAVLinkNetwork:
                         success = True
 
         if not success:
-            self.log.warn("Failed to update broadcast address to a subnet-specific one")
+            self.log.warning(
+                "Failed to update broadcast address to a subnet-specific one"
+            )

@@ -325,7 +325,7 @@ class CrazyradioScannerTask:
                         index = address_space.index(target)
                     except ValueError:
                         if self._log:
-                            self._log.warn(
+                            self._log.warning(
                                 f"{target} not found in address space; this is most likely a bug"
                             )
                         index = -1

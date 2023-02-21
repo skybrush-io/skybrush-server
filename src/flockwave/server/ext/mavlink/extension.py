@@ -180,7 +180,7 @@ class MAVLinkDronesExtension(UAVExtension[MAVLinkDriver]):
         # Construct the network specifications first
         if "networks" in configuration:
             if "connections" in configuration:
-                self.log.warn(
+                self.log.warning(
                     "Move the 'connections' configuration key inside a network; "
                     + "'connections' ignored when 'networks' is present"
                 )
@@ -262,7 +262,7 @@ class MAVLinkDronesExtension(UAVExtension[MAVLinkDriver]):
                 network.enqueue_rc_override_packet(channels)
             except Exception:
                 if self.log:
-                    self.log.warn(
+                    self.log.warning(
                         f"Failed to enqueue RC override packet to network {name!r}"
                     )
 
@@ -282,7 +282,7 @@ class MAVLinkDronesExtension(UAVExtension[MAVLinkDriver]):
                 network.enqueue_rtk_correction_packet(packet)
             except Exception:
                 if self.log:
-                    self.log.warn(
+                    self.log.warning(
                         f"Failed to enqueue RTK correction packet to network {name!r}"
                     )
 
@@ -383,7 +383,7 @@ class MAVLinkDronesExtension(UAVExtension[MAVLinkDriver]):
             try:
                 network.notify_scheduled_takeoff_config_changed(config)
             except Exception:
-                self.log.warn(
+                self.log.warning(
                     f"Failed to update start configuration of drones in network {name!r}"
                 )
 
@@ -399,7 +399,7 @@ class MAVLinkDronesExtension(UAVExtension[MAVLinkDriver]):
             try:
                 network.notify_show_clock_start_time_changed(clock.start_time)
             except Exception:
-                self.log.warn(
+                self.log.warning(
                     f"Failed to update start time of drones in network {name!r}"
                 )
 
@@ -416,7 +416,7 @@ class MAVLinkDronesExtension(UAVExtension[MAVLinkDriver]):
             try:
                 network.notify_led_light_config_changed(config)
             except Exception:
-                self.log.warn(
+                self.log.warning(
                     f"Failed to update LED light configuration of drones in network {name!r}"
                 )
 

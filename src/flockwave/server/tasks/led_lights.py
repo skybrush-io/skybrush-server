@@ -258,4 +258,4 @@ class LEDLightConfigurationManagerBase(Generic[TPacket], metaclass=ABCMeta):
 
         self._suppress_warnings_until = now + 5
         if log:
-            log.warn(message, *args, **kwds)
+            log.warning(message, *args, **kwds)

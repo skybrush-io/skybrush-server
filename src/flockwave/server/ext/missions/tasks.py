@@ -312,7 +312,7 @@ class MissionSchedulerTask(MissionRegistryRelatedTaskBase):
             self._unschedule_mission(mission)
 
         if is_late and self.log:
-            self.log.warn(
+            self.log.warning(
                 "Mission start time is in the past; mission will not be started",
                 extra={"id": mission.id},
             )
@@ -352,7 +352,7 @@ class MissionUpdateNotifierTask(MissionRegistryRelatedTaskBase):
                     await notify_update(ids)
                 except Exception:
                     if self.log:
-                        self.log.warn(
+                        self.log.warning(
                             f"Failed to broadcast notification for mission {id}"
                         )
 
@@ -366,7 +366,7 @@ class MissionUpdateNotifierTask(MissionRegistryRelatedTaskBase):
             self._update_queue.send_nowait((sender.id,))
         except WouldBlock:
             if self.log:
-                self.log.warn(
+                self.log.warning(
                     f"MSN-INF notification for mission {sender.id} dropped "
                     "because an internal queue is full"
                 )

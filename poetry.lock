@@ -1710,14 +1710,14 @@ cli = ["click (>=5.0)"]
 
 [[package]]
 name = "python-json-logger"
-version = "2.0.6"
+version = "2.0.7"
 description = "A python library adding a json log formatter"
 category = "main"
 optional = false
 python-versions = ">=3.6"
 files = [
-    {file = "python-json-logger-2.0.6.tar.gz", hash = "sha256:ed33182c2b438a366775c25c1219ebbd5bd7f71694c644d6b3b3861e19565ae3"},
-    {file = "python_json_logger-2.0.6-py3-none-any.whl", hash = "sha256:3af8e5b907b4a5b53cae249205ee3a3d3472bd7ad9ddfaec136eec2f2faf4995"},
+    {file = "python-json-logger-2.0.7.tar.gz", hash = "sha256:23e7ec02d34237c5aa1e29a070193a4ea87583bb4e7f8fd06d3de8264c4b2e1c"},
+    {file = "python_json_logger-2.0.7-py3-none-any.whl", hash = "sha256:f380b826a991ebbe3de4d897aeec42760035ac760345e57b812938dc8b35e2bd"},
 ]
 
 [[package]]
@@ -1898,14 +1898,14 @@ reference = "collmot"
 
 [[package]]
 name = "skybrush-ext-flockctrl"
-version = "2.12.0"
+version = "2.13.0"
 description = "Support for flockctrl-based drones in Skybrush Server"
 category = "main"
 optional = true
 python-versions = ">=3.8,<4.0"
 files = [
-    {file = "skybrush_ext_flockctrl-2.12.0-py3-none-any.whl", hash = "sha256:0ba53a9d2037da618132fb2d5e5b6ee643b6a7a79a50930a298284015fc15ad7"},
-    {file = "skybrush_ext_flockctrl-2.12.0.tar.gz", hash = "sha256:1b3986e68e42e0a25891ef2d5ecdc596994b721c39519b0420aa703688ec6120"},
+    {file = "skybrush_ext_flockctrl-2.13.0-py3-none-any.whl", hash = "sha256:4125a6ed5c88e17f06485ad26e32b92ad7daa2e391e33d62d9b0c4a6392c8e4f"},
+    {file = "skybrush_ext_flockctrl-2.13.0.tar.gz", hash = "sha256:93de94fba138b3b8a8cc44ba1b22e5e0b1dc4d2ff953f557fcdd4e1fb9bf8b0a"},
 ]
 
 [package.dependencies]
@@ -2193,4 +2193,4 @@ pro = ["skybrush-ext-map-cache", "skybrush-ext-sidekick", "skybrush-ext-timecode
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.8"
-content-hash = "dd0c03d69e90104c73beba8afa90aed3d11059b92a106806cc6e1e9f3fe0b978"
+content-hash = "b5b8a79b82f4486f6e7b172d4f137cdad34556396239ebbb058868f3b755b9f8"

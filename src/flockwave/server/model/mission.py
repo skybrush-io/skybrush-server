@@ -780,12 +780,25 @@ class LandMissionCommand(MissionCommand):
             obj, expected_type=MissionItemType.LAND, expect_params=False
         )
         id = obj.get("id")
+        params = obj.get("parameters")
+        if params is not None:
+            _, velocity_z = _get_speed_from_parameters(params)
+        else:
+            velocity_z = None
 
-        return cls(id=id)
+        return cls(id=id, velocity_z=velocity_z)
 
     @property
     def json(self) -> MissionItem:
-        return {"id": self.id, "type": MissionItemType.LAND.value, "parameters": {}}
+        return {
+            "id": self.id,
+            "type": MissionItemType.LAND.value,
+            "parameters": {
+                "velocityZ": None
+                if self.velocity_z is None
+                else round(self.velocity_z, ndigits=3)
+            },
+        }
 
     @property
     def type(self) -> MissionItemType:
@@ -974,8 +987,9 @@ class TakeoffMissionCommand(MissionCommand):
         alt = _get_altitude_from_parameters(params)
         if alt is None:
             raise RuntimeError("missing required parameter: 'alt'")
+        _, velocity_z = _get_speed_from_parameters(params)
 
-        return cls(id=id, altitude=alt)
+        return cls(id=id, altitude=alt, velocity_z=velocity_z)
 
     @property
     def json(self) -> MissionItem:
@@ -984,6 +998,9 @@ class TakeoffMissionCommand(MissionCommand):
             "type": MissionItemType.TAKEOFF.value,
             "parameters": {
                 "alt": self.altitude.json,
+                "velocityZ": None
+                if self.velocity_z is None
+                else round(self.velocity_z, ndigits=3),
             },
         }
 

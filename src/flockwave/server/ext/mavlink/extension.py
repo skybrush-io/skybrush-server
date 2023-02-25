@@ -71,7 +71,7 @@ class MAVLinkDronesExtension(UAVExtension[MAVLinkDriver]):
         server application.
 
         Parameters:
-            driver (UAVDriver): the driver to configure
+            driver: the driver to configure
             configuration (dict): the configuration dictionary of the
                 extension
         """

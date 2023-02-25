@@ -77,7 +77,7 @@ if TYPE_CHECKING:
 __all__ = ("CrazyflieDriver",)
 
 
-class CrazyflieDriver(UAVDriver):
+class CrazyflieDriver(UAVDriver["CrazyflieUAV"]):
     """Driver class for Crazyflie drones.
 
     Attributes:
@@ -254,10 +254,13 @@ class CrazyflieDriver(UAVDriver):
             return "Fence disabled"
         elif subcommand == "set":
             try:
-                bounds = [float(x) for x in (x_min, y_min, z_min, x_max, y_max, z_max)]  # type: ignore
+                bounds = [
+                    float(x) for x in (x_min, y_min, z_min, x_max, y_max, z_max)
+                ]  # type: ignore
             except (TypeError, ValueError):
                 raise RuntimeError(
-                    "Invalid fence coordinates; expected xMin, yMin, zMin, xMax, yMax, zMax, separated by spaces"
+                    "Invalid fence coordinates; expected xMin, yMin, zMin, "
+                    "xMax, yMax, zMax, separated by spaces"
                 )
 
             await fence.set_axis_aligned_bounding_box(bounds[:3], bounds[3:])
@@ -406,7 +409,10 @@ class CrazyflieDriver(UAVDriver):
             z_velocity=z_velocity, distance=distance, hover_time=hover_time
         )
 
-        return f"Velocity = {z_velocity} m/s, distance = {distance} m, hover time = {hover_time} s"
+        return (
+            f"Velocity = {z_velocity} m/s, distance = {distance} m, "
+            f"hover time = {hover_time} s"
+        )
 
     async def handle_command___show_upload(self, uav: "CrazyflieUAV", *, show):
         """Handles a drone show upload request for the given UAV.
@@ -1500,7 +1506,8 @@ class CrazyflieHandlerTask:
             )
         except Exception as ex:
             self._log.warning(
-                "Failed to re-upload previously uploaded show to possibly rebooted drone",
+                "Failed to re-upload previously uploaded show to possibly "
+                "rebooted drone",
                 extra={"id": self._uav.id},
             )
             self._log.exception(ex)

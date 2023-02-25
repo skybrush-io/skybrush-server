@@ -832,7 +832,7 @@ class VirtualUAV(UAVBase):
             )
 
 
-class VirtualUAVDriver(UAVDriver):
+class VirtualUAVDriver(UAVDriver[VirtualUAV]):
     """Virtual UAV driver that manages a group of virtual UAVs provided by this
     extension.
     """

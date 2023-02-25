@@ -98,7 +98,7 @@ def transport_options_to_channel(options: Optional[TransportOptions]) -> str:
         return Channel.PRIMARY
 
 
-class MAVLinkDriver(UAVDriver):
+class MAVLinkDriver(UAVDriver["MAVLinkUAV"]):
     """Driver class for MAVLink-based drones.
 
     Attributes:
@@ -231,15 +231,18 @@ class MAVLinkDriver(UAVDriver):
         if sent < tried:
             if sent > 1:
                 self.log.warning(
-                    "Tried to send broadcast command {tried} times but only {sent} were successful"
+                    f"Tried to send broadcast command {tried} times but only "
+                    f"{sent} were successful"
                 )
             elif sent > 0:
                 self.log.warning(
-                    "Tried to send broadcast command {tried} times but only one was successful"
+                    f"Tried to send broadcast command {tried} times but only "
+                    f"one was successful"
                 )
             elif tried > 1:
                 self.log.warning(
-                    "Tried to send broadcast command {tried} times but none were successful"
+                    f"Tried to send broadcast command {tried} times but none "
+                    f"were successful"
                 )
             else:
                 self.log.warning("Failed to send broadcast command")
@@ -1859,7 +1862,8 @@ class MAVLinkUAV(UAVBase):
                     successful.append(message)
                 else:
                     raise RuntimeError(
-                        f"UAV rejected message stream rate of {rate} Hz for message {message}"
+                        f"UAV rejected message stream rate of {rate} Hz for "
+                        f"message {message}"
                     )
             yield
         finally:
@@ -2112,7 +2116,8 @@ class MAVLinkUAV(UAVBase):
             )
         except TooSlowError:
             self.driver.log.warning(
-                "Failed to request autopilot capabilities; no confirmation received in time",
+                "Failed to request autopilot capabilities; no confirmation "
+                "received in time",
                 extra={"id": log_id_for_uav(self)},
             )
             return

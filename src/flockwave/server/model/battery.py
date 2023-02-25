@@ -38,7 +38,10 @@ class BatteryInfo:
     @property
     def json(self):
         if self.voltage is None:
-            result = [0.0]
+            if self.percentage is None:
+                result = [0.0]
+            else:
+                result = [None, self.percentage]
         elif self.percentage is None:
             result = [int(round(self.voltage * 10))]
         else:

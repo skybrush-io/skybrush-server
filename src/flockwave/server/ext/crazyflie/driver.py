@@ -39,6 +39,7 @@ from flockwave.gps.vectors import PositionXYZ, VelocityXYZ
 from flockwave.server.command_handlers import (
     create_color_command_handler,
     create_parameter_command_handler,
+    create_test_command_handler,
     create_version_command_handler,
 )
 from flockwave.server.errors import NotSupportedError
@@ -370,24 +371,6 @@ class CrazyflieDriver(UAVDriver["CrazyflieUAV"]):
         await uav.stop()
         return "Motor stop signal sent"
 
-    async def handle_command_test(
-        self, uav: "CrazyflieUAV", component: Optional[str] = None
-    ) -> str:
-        """Runs a self-test on a component of the UAV."""
-        if component == "motor":
-            # TODO(ntamas): allow this only when the drone is on the ground!
-            await uav.test_component("motor")
-            return "Motor test started"
-        elif component == "battery":
-            # TODO(ntamas): allow this only when the drone is on the ground!
-            await uav.test_component("battery")
-            return "Battery test started"
-        elif component == "led":
-            await uav.test_component("led")
-            return "LED test executed"
-        else:
-            return "Usage: test <battery|led|motor>"
-
     async def handle_command_trick(self, uav: "CrazyflieUAV", *params: str) -> str:
         """Non-public command used for Nina's show as a last resort hack to send
         the drone through the ceiling if the high-level commander is not suitable
@@ -428,6 +411,7 @@ class CrazyflieDriver(UAVDriver["CrazyflieUAV"]):
     handle_command_color = create_color_command_handler()
     handle_command_motoroff = handle_command_stop
     handle_command_param = create_parameter_command_handler()
+    handle_command_test = create_test_command_handler(("battery", "motor", "led"))
     handle_command_version = create_version_command_handler()
 
     def sort_uav_ids_by_address_spaces(

@@ -19,8 +19,10 @@ from flockwave.gps.vectors import GPSCoordinate, VelocityNED
 
 from flockwave.concurrency import aclosing, delayed
 from flockwave.server.command_handlers import (
+    create_calibration_command_handler,
     create_color_command_handler,
     create_parameter_command_handler,
+    create_test_command_handler,
     create_version_command_handler,
 )
 from flockwave.server.errors import NotSupportedError
@@ -271,30 +273,15 @@ class MAVLinkDriver(UAVDriver["MAVLinkUAV"]):
         """
         return int(monotonic() * 1000)
 
+    handle_command_calib = create_calibration_command_handler(
+        ("baro", "compass", "gyro", "level")
+    )
     handle_command_color = create_color_command_handler()
     handle_command_param = create_parameter_command_handler(
         name_validator=to_uppercase_string
     )
+    handle_command_test = create_test_command_handler(("motor", "led"))
     handle_command_version = create_version_command_handler()
-
-    async def handle_command_calib(self, uav, component: Optional[str] = None) -> str:
-        """Calibrates a component of the UAV."""
-        if component == "baro":
-            await uav.calibrate_component("baro")
-            return "Ground pressure calibrated"
-        elif component == "compass":
-            await uav.calibrate_component("compass")
-            return "Compass calibrated"
-        elif component == "gyro":
-            await uav.calibrate_component("gyro")
-            return "Gyroscope calibrated"
-        elif component == "level":
-            await uav.calibrate_component("level")
-            return "Level calibration executed"
-        elif not component:
-            return "Usage: calib <baro|compass|gyro|level>"
-        else:
-            raise NotSupportedError
 
     async def handle_command_mode(self, uav: "MAVLinkUAV", mode: Optional[str] = None):
         """Returns or sets the (custom) flight mode of the UAV.
@@ -343,19 +330,6 @@ class MAVLinkDriver(UAVDriver["MAVLinkUAV"]):
         except Exception as ex:
             self.log.error(str(ex))
             raise
-
-    async def handle_command_test(self, uav, component: Optional[str] = None) -> str:
-        """Runs a self-test on a component of the UAV."""
-        if component == "motor":
-            await uav.test_component("motor")
-            return "Motor test executed"
-        elif component == "led":
-            await uav.test_component("led")
-            return "LED test executed"
-        elif not component:
-            return "Usage: test <led|motor>"
-        else:
-            raise NotSupportedError
 
     async def send_command_int(
         self,

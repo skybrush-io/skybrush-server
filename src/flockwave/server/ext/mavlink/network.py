@@ -640,8 +640,10 @@ class MAVLinkNetwork:
         # listen to the subnet-specific broadcast address only (e.g., 192.168.0.255).
         # Therefore, we need to re-bind the broadcast address of the channel
         # as soon as we have received the first packet from it, based on the
-        # address of that packet and the netmasks of the network interfaces
-        broadcast_address_updated = False
+        # address of that packet and the netmasks of the network interfaces.
+        # The following dict stores whether a link was already switched to its
+        # subnet-specific broadcast address
+        broadcast_address_updated: Dict[str, bool] = defaultdict(bool)
 
         async for connection_id, (message, address) in channel:
             if message.get_srcComponent() != autopilot_component_id:
@@ -653,11 +655,11 @@ class MAVLinkNetwork:
             # self.log.info(repr(message))
 
             # Update the broadcast address to a subnet-specific one if needed
-            if not broadcast_address_updated:
+            if not broadcast_address_updated[connection_id]:
                 await self._update_broadcast_address_of_channel_to_subnet(
                     connection_id, address
                 )
-                broadcast_address_updated = True
+                broadcast_address_updated[connection_id] = True
 
             # Get the message type
             type = message.get_type()
@@ -889,14 +891,14 @@ class MAVLinkNetwork:
         a packet from the given address.
         """
         if isinstance(address, tuple):
-            address, port = address
+            ip, port = address
         else:
             # Not a wireless network
             return
 
-        subnet = None
+        subnets = None
         with move_on_after(timeout):
-            subnets = await to_thread.run_sync(find_interfaces_with_address, address)
+            subnets = await to_thread.run_sync(find_interfaces_with_address, ip)
 
         success = False
         if subnets:
@@ -932,7 +934,7 @@ class MAVLinkNetwork:
                         self.log.info(
                             f"Broadcast address updated to {broadcast_address}:{broadcast_port} "
                             f"({interface})",
-                            extra={"id": self.id},
+                            extra={"id": connection_id},
                         )
                         success = True
 

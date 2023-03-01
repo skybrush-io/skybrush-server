@@ -686,8 +686,12 @@ class VirtualUAV(UAVBase):
             FlockwaveErrorCode.BATTERY_LOW_WARNING, present=self.battery.is_low
         )
 
-        # Update the error code based on whether the motors are running and the
-        # UAV is airborne
+        # Update the error codes when the UAV is still on the ground, based on
+        # whether its motors are running or not
+        self.ensure_error(
+            FlockwaveErrorCode.ON_GROUND,
+            self.state is VirtualUAVState.LANDED and not self.motors_running,
+        )
         self.ensure_error(
             FlockwaveErrorCode.MOTORS_RUNNING_WHILE_ON_GROUND,
             self.state is VirtualUAVState.LANDED and self.motors_running,

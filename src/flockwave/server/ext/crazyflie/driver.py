@@ -540,6 +540,7 @@ class CrazyflieUAV(UAVBase):
     send_log_message_to_gcs: Callable[[str], None]
     uri: Optional[str]
 
+    _airborne: bool
     _armed: bool
     _crazyflie: Optional[Crazyflie]
     _fence: Optional[Fence]
@@ -831,6 +832,7 @@ class CrazyflieUAV(UAVBase):
                     message = f"(test) {message}"
                 message = message.encode("utf-8")
 
+                self._airborne = status.airborne
                 self._armed = status.armed
                 self._battery.charging = status.charging
                 self._battery.voltage = status.battery_voltage
@@ -1169,6 +1171,7 @@ class CrazyflieUAV(UAVBase):
         to the UAV or after re-establishing a connection.
         """
         self._preflight_status = self._create_empty_preflight_status_report()
+        self._airborne = False
         self._armed = True  # Crazyflies typically boot in an armed state
         self._fence_breached = False
         self._battery = BatteryInfo()
@@ -1210,6 +1213,12 @@ class CrazyflieUAV(UAVBase):
         """Updates the set of error codes based on what we know about the current
         state of the drone.
         """
+        self.ensure_error(
+            FlockwaveErrorCode.ON_GROUND,
+            present=not self._airborne
+            and not self._show_execution_stage.is_likely_airborne,
+        )
+
         self.ensure_error(
             FlockwaveErrorCode.PREARM_CHECK_IN_PROGRESS,
             present=(

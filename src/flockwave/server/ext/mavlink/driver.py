@@ -2175,6 +2175,11 @@ class MAVLinkUAV(UAVBase):
         The error codes managed by this function are disjoint from the error
         codes managed by `_update_errors_from_drone_show_status_packet()`.
         Make sure to keep it this way.
+
+        This function does _not_ update the timestamp of the status information;
+        you need to do it on your own by calling `update_status()` after calling
+        this function.
+
         """
         heartbeat = self.get_last_message(MAVMessageType.HEARTBEAT)
         sys_status = self.get_last_message(MAVMessageType.SYS_STATUS)
@@ -2283,6 +2288,11 @@ class MAVLinkUAV(UAVBase):
             FlockwaveErrorCode.LOGGING_DEACTIVATED: has_logging_error,
             FlockwaveErrorCode.DISARMED: are_motor_outputs_disabled,
             FlockwaveErrorCode.PREARM_CHECK_IN_PROGRESS: is_prearm_check_in_progress,
+            # If the motors are not running yet but we are on the ground, ready
+            # to fly, we use an informational flag to let the user know
+            FlockwaveErrorCode.ON_GROUND: (
+                not are_motors_running and heartbeat.system_status == MAVState.STANDBY
+            ),
             # If the motors are running but we are not in the air yet; we use an
             # informational flag to let the user know
             FlockwaveErrorCode.MOTORS_RUNNING_WHILE_ON_GROUND: (

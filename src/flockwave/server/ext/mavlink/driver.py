@@ -2212,6 +2212,7 @@ class MAVLinkUAV(UAVBase):
             | MAVSysStatusSensor.DIFFERENTIAL_PRESSURE
         )
         has_gps_error = not_healthy_sensors & MAVSysStatusSensor.GPS
+        has_proximity_error = not_healthy_sensors & MAVSysStatusSensor.PROXIMITY
         has_motor_error = not_healthy_sensors & (
             MAVSysStatusSensor.MOTOR_OUTPUTS | MAVSysStatusSensor.REVERSE_MOTOR
         )
@@ -2268,6 +2269,7 @@ class MAVLinkUAV(UAVBase):
             FlockwaveErrorCode.ACCELEROMETER_ERROR: has_accel_error,
             FlockwaveErrorCode.PRESSURE_SENSOR_ERROR: has_baro_error,
             FlockwaveErrorCode.GPS_SIGNAL_LOST: has_gps_error,
+            FlockwaveErrorCode.PROXIMITY_ERROR: has_proximity_error,
             FlockwaveErrorCode.MOTOR_MALFUNCTION: has_motor_error,
             FlockwaveErrorCode.GEOFENCE_VIOLATION: (
                 has_geofence_error and are_motors_running

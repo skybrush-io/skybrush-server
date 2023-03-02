@@ -775,14 +775,14 @@ reference = "fury"
 
 [[package]]
 name = "flockwave-spec"
-version = "1.67.0"
+version = "1.68.0"
 description = "JSON-Schema specification of the Flockwave protocol"
 category = "main"
 optional = false
 python-versions = ">=3.7,<4.0"
 files = [
-    {file = "flockwave-spec-1.67.0.tar.gz", hash = "sha256:86b4889bea4239bfd7139bea2168865bdea6a39c65c53311127a97e77b25d88a"},
-    {file = "flockwave_spec-1.67.0-py3-none-any.whl", hash = "sha256:d4a46eabad3d4fd6de1d590c16a29d6b7323a67d3c4d7d7cdef13c48f387d9fe"},
+    {file = "flockwave-spec-1.68.0.tar.gz", hash = "sha256:b5bb2cca27a3576542bf0e09e81593bb97db5fbee3984707bde95cc30df0d41f"},
+    {file = "flockwave_spec-1.68.0-py3-none-any.whl", hash = "sha256:130b7c69e617df5c50e0b609a8ce77a4668c1c01e64dfc8b1b37dff736b38b07"},
 ]
 
 [package.dependencies]
@@ -2193,4 +2193,4 @@ pro = ["skybrush-ext-map-cache", "skybrush-ext-sidekick", "skybrush-ext-timecode
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.8"
-content-hash = "da9bc36769010e55dc64075522cc4e2d05e58e7cc90ddcf798723160f97e4e87"
+content-hash = "3b356f755c125abe49da28e545635c0f0971d881f23ea458b4b9a2dcaa2caa6c"

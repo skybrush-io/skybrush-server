@@ -150,6 +150,22 @@ class PreflightCheckInfo(metaclass=ModelMeta):
                 PreflightCheckResult.OFF,
             )
 
+    @property
+    def passed_without_warnings(self) -> bool:
+        """Returns whether all the preflight checks have passed without warnings
+        or are turned off. Preflight checks with warnings are considered
+        _not_ to have passed.
+
+        Also returns true if there are no preflight checks configured.
+        """
+        if self.in_progress:
+            return False
+        else:
+            return self.result in (
+                PreflightCheckResult.PASS,
+                PreflightCheckResult.OFF,
+            )
+
     def get_result(self, id: str) -> PreflightCheckResult:
         """Returns a single preflight check result for the given individual id."""
         for item in self.items:

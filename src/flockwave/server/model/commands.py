@@ -4,18 +4,22 @@ UAVs.
 
 from time import time
 from trio import CancelScope, current_time
-from typing import Any, Dict, Optional, Set
+from typing import Any, AsyncIterator, Dict, Optional, Set, Union, TypeVar
 
 from flockwave.spec.schema import get_complex_object_schema
 
 from .metamagic import ModelMeta
 
-__all__ = ("CommandExecutionStatus", "Progress")
+__all__ = ("AsyncCommandEvents", "CommandExecutionStatus", "Progress")
+
+
+T = TypeVar("T")
 
 
 class Progress(metaclass=ModelMeta):
     """Progress object that may be yielded from command handlers implemented
-    as async iterators.
+    as an async iterator that yield one or more progress objects, optionally
+    followed by a result object.
     """
 
     message: Optional[str]
@@ -39,6 +43,13 @@ class Progress(metaclass=ModelMeta):
         if self.percentage is not None:
             result["percentage"] = int(self.percentage)
         return result
+
+
+AsyncCommandEvents = AsyncIterator[Union[Progress, T]]
+"""Type alias for the return value of an async iterator that implements a
+command handler with progress reporting and client-to-server messaging
+support.
+"""
 
 
 class CommandExecutionStatus(metaclass=ModelMeta):

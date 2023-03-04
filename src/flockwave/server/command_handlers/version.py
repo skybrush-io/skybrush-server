@@ -1,7 +1,7 @@
 """Factory function to create handlers for the "version" command in UAV drivers."""
 
 from inspect import iscoroutinefunction
-from typing import Callable
+from typing import Awaitable, Callable
 
 from flockwave.server.model.uav import UAV, UAVDriver
 
@@ -21,10 +21,10 @@ async def _version_command_handler(driver: UAVDriver, uav: UAV) -> str:
         return "No version information available"
 
 
-def create_version_command_handler() -> Callable[[UAVDriver, UAV], str]:
+def create_version_command_handler() -> Callable[[UAVDriver, UAV], Awaitable[str]]:
     """Creates a generic async command handler function that allows the user to
     retrieve the version information of the UAV, assuming that the UAV
-    has an async method named `get_version_info()`.
+    has a sync or async method named `get_version_info()`.
 
     Assign the function returned from this factory function to the
     `handle_command_version()` method of a UAVDriver_ subclass to make the

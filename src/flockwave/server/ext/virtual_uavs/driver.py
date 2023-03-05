@@ -30,15 +30,14 @@ from flockwave.server.model.devices import ObjectNode
 from flockwave.server.model.gps import GPSFixType
 from flockwave.server.model.preflight import PreflightCheckResult, PreflightCheckInfo
 from flockwave.server.model.uav import VersionInfo, UAVBase, UAVDriver
-from flockwave.server.utils import color_to_rgb565
-from flockwave.spec.errors import FlockwaveErrorCode
-
-from skybrush import (
+from flockwave.server.show import (
     get_coordinate_system_from_show_specification,
     get_light_program_from_show_specification,
     TrajectoryPlayer,
     TrajectorySpecification,
 )
+from flockwave.server.utils import color_to_rgb565
+from flockwave.spec.errors import FlockwaveErrorCode
 
 from .battery import VirtualBattery
 from .lights import DefaultLightController

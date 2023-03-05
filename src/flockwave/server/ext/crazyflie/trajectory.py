@@ -7,8 +7,8 @@ from enum import IntEnum
 from struct import Struct
 from typing import Sequence, Tuple
 
-from skybrush.formats import SegmentEncoder
-from skybrush.trajectory import TrajectorySpecification
+from flockwave.server.show.formats import SegmentEncoder
+from flockwave.server.show.trajectory import TrajectorySpecification
 
 from .math import get_poly_degree, to_bernstein_form
 

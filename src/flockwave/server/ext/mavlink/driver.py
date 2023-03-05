@@ -37,7 +37,7 @@ from flockwave.server.model.uav import VersionInfo, UAVBase, UAVDriver
 from flockwave.server.utils import color_to_rgb8_triplet, to_uppercase_string
 from flockwave.spec.errors import FlockwaveErrorCode
 
-from skybrush import (
+from flockwave.server.show import (
     get_altitude_reference_from_show_specification,
     get_coordinate_system_from_show_specification,
     get_geofence_configuration_from_show_specification,
@@ -45,7 +45,7 @@ from skybrush import (
     get_rth_plan_from_show_specification,
     get_trajectory_from_show_specification,
 )
-from skybrush.formats import SkybrushBinaryShowFile
+from flockwave.server.show.formats import SkybrushBinaryShowFile
 
 from .autopilots import ArduPilot, Autopilot, UnknownAutopilot
 from .comm import Channel

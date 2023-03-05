@@ -47,17 +47,16 @@ from flockwave.server.model.preflight import PreflightCheckInfo, PreflightCheckR
 from flockwave.server.model.transport import TransportOptions
 from flockwave.server.model.uav import BatteryInfo, UAVBase, UAVDriver, VersionInfo
 from flockwave.server.registries.errors import RegistryFull
-from flockwave.server.utils import color_to_rgb8_triplet, nop, optional_float
-from flockwave.spec.errors import FlockwaveErrorCode
-from flockwave.spec.ids import make_valid_object_id
-
-from skybrush import (
+from flockwave.server.show import (
     get_group_index_from_show_specification,
     get_home_position_from_show_specification,
     get_light_program_from_show_specification,
     get_trajectory_from_show_specification,
     TrajectorySpecification,
 )
+from flockwave.server.utils import color_to_rgb8_triplet, nop, optional_float
+from flockwave.spec.errors import FlockwaveErrorCode
+from flockwave.spec.ids import make_valid_object_id
 
 from .crtp_extensions import (
     DRONE_SHOW_PORT,

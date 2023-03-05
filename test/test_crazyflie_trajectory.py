@@ -8,7 +8,7 @@ from flockwave.server.ext.crazyflie.trajectory import (
     encode_trajectory,
     TrajectoryEncoding,
 )
-from skybrush.trajectory import TrajectorySpecification
+from flockwave.server.show.trajectory import TrajectorySpecification
 
 fixture_dir = Path(str(sys.modules[__name__].__file__)).parent / "fixtures"
 

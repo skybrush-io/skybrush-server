@@ -1,9 +1,9 @@
 from pytest import approx, raises
 from typing import List
 
-from skybrush.player import create_function_for_segment
-from skybrush.trajectory import TrajectorySegment, TrajectorySpecification
-from skybrush.utils import Point
+from flockwave.server.show.player import create_function_for_segment
+from flockwave.server.show.trajectory import TrajectorySegment, TrajectorySpecification
+from flockwave.server.show.utils import Point
 
 
 def test_trajectory_without_version_number():

@@ -22,7 +22,7 @@ from typing import (
 )
 
 from flockwave.concurrency import aclosing
-from skybrush.utils import crc32_mavftp as crc32
+from flockwave.server.show.utils import crc32_mavftp as crc32
 
 from .types import MAVLinkMessage, spec
 

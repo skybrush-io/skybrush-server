@@ -5,6 +5,7 @@ from enum import Enum
 from math import ceil
 from typing import Dict, List, Optional, Sequence, Tuple
 
+from .specification import ShowSpecification
 from .utils import BoundingBoxCalculator
 
 __all__ = ("RTHAction", "RTHPlan", "RTHPlanEntry")
@@ -288,3 +289,11 @@ class RTHPlan(Sequence[RTHPlanEntry]):
 
     def __len__(self) -> int:
         return len(self._entries)
+
+
+def get_rth_plan_from_show_specification(show: ShowSpecification) -> Optional[RTHPlan]:
+    """Returns the RTH plan from the show specification, or `None` if the show
+    specification does not have an RTH plan.
+    """
+    encoded_plan = show.get("rthPlan")
+    return RTHPlan.from_json(encoded_plan) if encoded_plan is not None else None

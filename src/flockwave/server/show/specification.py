@@ -2,7 +2,6 @@ from typing import Dict, Optional, Tuple
 
 from flockwave.gps.vectors import FlatEarthToGPSCoordinateTransformation
 
-from .rth_plan import RTHPlan
 from .trajectory import TrajectorySpecification
 
 __all__ = (
@@ -84,14 +83,6 @@ def get_group_index_from_show_specification(show: ShowSpecification) -> int:
     if group_index < 0 or group_index > 255:
         raise RuntimeError("Group index outside valid range")
     return group_index
-
-
-def get_rth_plan_from_show_specification(show: ShowSpecification) -> Optional[RTHPlan]:
-    """Returns the RTH plan from the show specification, or `None` if the show
-    specification does not have an RTH plan.
-    """
-    encoded_plan = show.get("rthPlan")
-    return RTHPlan.from_json(encoded_plan) if encoded_plan is not None else None
 
 
 def is_coordinate_system_in_show_specification_geodetic(

@@ -1,6 +1,6 @@
 from pytest import raises
 
-from skybrush.utils import (
+from flockwave.server.show.utils import (
     BoundingBoxCalculator,
     crc32_mavftp,
     encode_variable_length_integer,

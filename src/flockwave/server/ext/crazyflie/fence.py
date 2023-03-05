@@ -5,7 +5,7 @@ from aiocflib.crazyflie import Crazyflie
 from struct import Struct
 from typing import Any, Dict, Optional, Sequence
 
-from skybrush.trajectory import TrajectorySpecification
+from flockwave.server.show.trajectory import TrajectorySpecification
 
 from .crtp_extensions import (
     DRONE_SHOW_PORT,

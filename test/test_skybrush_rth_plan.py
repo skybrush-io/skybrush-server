@@ -1,6 +1,6 @@
 from pytest import fixture, raises
 
-from skybrush.rth_plan import RTHAction, RTHPlan, RTHPlanEntry
+from flockwave.server.show.rth_plan import RTHAction, RTHPlan, RTHPlanEntry
 
 
 @fixture

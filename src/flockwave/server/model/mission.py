@@ -8,8 +8,10 @@ from dataclasses import dataclass, field, InitVar
 from enum import Enum
 from typing import Any, Dict, List, Optional, Sequence, Tuple, TypedDict, Union
 
-from skybrush.geofence import get_geofence_configuration_from_show_specification
-from skybrush.safety import get_safety_configuration_from_show_specification
+from flockwave.server.show import (
+    get_geofence_configuration_from_show_specification,
+    get_safety_configuration_from_show_specification,
+)
 
 from .geofence import GeofenceConfigurationRequest
 from .identifiers import default_id_generator
@@ -333,7 +335,6 @@ def _get_longitude_from_parameters(params: Dict[str, Any]) -> float:
 
 
 def _get_marker_from_parameters(params: Dict[str, Any]) -> Tuple[Marker, float]:
-
     marker_str = params.get("marker")
     if not isinstance(marker_str, str) or not marker_str:
         raise RuntimeError("marker type must be a valid string")

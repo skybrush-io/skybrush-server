@@ -16,7 +16,7 @@ from flockwave.server.model.geofence import (
 )
 from flockwave.server.utils import optional_float
 
-from .show import (
+from .specification import (
     get_coordinate_system_from_show_specification,
     is_coordinate_system_in_show_specification_geodetic,
 )

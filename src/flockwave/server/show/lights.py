@@ -13,10 +13,14 @@ def get_light_program_from_show_specification(show: Dict) -> bytes:
     show specification object.
     """
     lights = show.get("lights", None)
+    if not lights:
+        return b"\x00"  # single END cmmand
+
     version = lights.get("version", 0)
     if version is None:
         raise RuntimeError("light program must have a version number")
     if version != 1:
         raise RuntimeError("only version 1 light programs are supported")
+
     light_data = b64decode(lights["data"])
     return light_data

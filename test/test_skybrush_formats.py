@@ -1,8 +1,8 @@
 from pytest import fixture, raises
 from typing import List
 
-from skybrush.rth_plan import RTHAction, RTHPlan, RTHPlanEntry
-from skybrush.formats import (
+from flockwave.server.show.rth_plan import RTHAction, RTHPlan, RTHPlanEntry
+from flockwave.server.show.formats import (
     RTHPlanEncoder,
     SkybrushBinaryFileBlock,
     SkybrushBinaryFileFeatures,

@@ -1,7 +1,7 @@
 from pytest import approx
 
-from skybrush.player import TrajectoryPlayer
-from skybrush.trajectory import TrajectorySpecification
+from flockwave.server.show.player import TrajectoryPlayer
+from flockwave.server.show.trajectory import TrajectorySpecification
 
 
 def test_trajectory_player_empty_trajectory():

@@ -1,7 +1,6 @@
 from pytest import fixture, raises
 from typing import List
 
-from flockwave.server.show.rth_plan import RTHAction, RTHPlan, RTHPlanEntry
 from flockwave.server.show.formats import (
     RTHPlanEncoder,
     SkybrushBinaryFileBlock,
@@ -9,6 +8,7 @@ from flockwave.server.show.formats import (
     SkybrushBinaryShowFile,
     SkybrushBinaryFormatBlockType,
 )
+from flockwave.server.show.rth_plan import RTHAction, RTHPlan, RTHPlanEntry
 
 
 SIMPLE_SKYB_FILE_V1 = (

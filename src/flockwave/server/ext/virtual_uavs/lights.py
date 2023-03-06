@@ -7,9 +7,8 @@ from colour import Color
 from time import monotonic
 from typing import Callable, Iterable, List, Optional, Union
 
-from pyledctrl.player import Player
-
 from flockwave.spec.errors import FlockwaveErrorCode
+from flockwave.server.show import LightPlayer
 
 __all__ = ("LightController", "ModularLightController", "DefaultLightController")
 
@@ -95,7 +94,7 @@ class DefaultLightController(ModularLightController):
     for a virtual UAV.
     """
 
-    _light_program_player: Optional[Player]
+    _light_program_player: Optional[LightPlayer]
     _light_program_start_time: Optional[float]
 
     _where_are_you_duration_ms: float
@@ -125,7 +124,7 @@ class DefaultLightController(ModularLightController):
         """Loads a light program that will be played when `play_light_program()`
         is called.
         """
-        self._light_program_player = Player.from_bytes(light_program)
+        self._light_program_player = LightPlayer.from_bytes(light_program)
 
     @property
     def override(self) -> Optional[Color]:
@@ -177,7 +176,7 @@ class DefaultLightController(ModularLightController):
         of an error, orange in case of a warning, or flashing orange in RTH
         mode.
         """
-        errors = self.owner.errors
+        errors = self.owner.errors if self.owner else []
         if errors:
             max_code = max(errors)
             if max_code >= 128:

@@ -6,17 +6,18 @@ from bisect import bisect
 from math import inf
 from typing import Callable, List, Optional
 
+from pyledctrl.player import Player as LightPlayer
+
 from flockwave.server.utils import constant
 
 from .trajectory import TrajectorySegment, TrajectorySpecification
 from .utils import Point
 
-__all__ = ("TrajectoryPlayer",)
+__all__ = ("TrajectoryPlayer", "LightPlayer")
 
 
-#: Type alias for
-#: Zero point to return for empty trajectories
 ZERO = (0.0, 0.0, 0.0)
+"""All-zero point to return for empty trajectories"""
 
 
 def create_function_for_segment(segment: TrajectorySegment) -> Callable[[float], Point]:

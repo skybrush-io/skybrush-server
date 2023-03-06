@@ -5,7 +5,7 @@ Skybrush-related file formats, until we find a better place for them.
 from .formats import SkybrushBinaryShowFile
 from .geofence import get_geofence_configuration_from_show_specification
 from .lights import get_light_program_from_show_specification
-from .player import TrajectoryPlayer
+from .player import LightPlayer, TrajectoryPlayer
 from .rth_plan import get_rth_plan_from_show_specification
 from .safety import get_safety_configuration_from_show_specification
 from .specification import (
@@ -15,6 +15,7 @@ from .specification import (
     get_home_position_from_show_specification,
     get_trajectory_from_show_specification,
     is_coordinate_system_in_show_specification_geodetic,
+    ShowSpecification,
 )
 from .trajectory import TrajectorySpecification
 
@@ -29,6 +30,8 @@ __all__ = (
     "get_safety_configuration_from_show_specification",
     "get_trajectory_from_show_specification",
     "is_coordinate_system_in_show_specification_geodetic",
+    "LightPlayer",
+    "ShowSpecification",
     "SkybrushBinaryShowFile",
     "TrajectoryPlayer",
     "TrajectorySpecification",

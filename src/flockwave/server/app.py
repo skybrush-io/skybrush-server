@@ -630,6 +630,50 @@ class SkybrushServer(DaemonApp):
         """The number of clients connected to the server."""
         return self.client_registry.num_entries
 
+    def resume_async_operations(
+        self,
+        receipt_ids: Iterable[str],
+        values: Dict[str, Any],
+        in_response_to: FlockwaveMessage,
+    ) -> FlockwaveResponse:
+        """Handles a request to resume one or more pending asynchronous operations,
+        identified by their receipt IDs.
+
+        Parameters:
+            receipt_ids: the receipt IDs of the suspended asynchronous operations
+            values: mapping from receipt IDs to the values to send back into
+                the suspended asynchronous operations
+            in_response_to: the message that the constructed message will
+                respond to
+        """
+        response = self.message_hub.create_response_or_notification(
+            body={}, in_response_to=in_response_to
+        )
+        valid_ids: list[str] = []
+
+        if not isinstance(values, dict):
+            for receipt_id in receipt_ids:
+                response.add_error(receipt_id, "invalid values")
+            return response
+
+        manager = self.command_execution_manager
+
+        for receipt_id in receipt_ids:
+            if manager.is_valid_receipt_id(receipt_id):
+                receipt = manager.find_by_id(receipt_id)
+                if receipt.is_suspended:
+                    valid_ids.append(receipt_id)
+                    response.add_success(receipt_id)
+                else:
+                    response.add_error(receipt_id, "command is not suspended")
+            else:
+                response.add_error(receipt_id, "no such receipt")
+
+        for receipt_id in valid_ids:
+            manager.resume(receipt_id, values.get(receipt_id))
+
+        return response
+
     def request_to_send_SYS_MSG_message(
         self,
         message: str,
@@ -725,6 +769,10 @@ class SkybrushServer(DaemonApp):
         self.command_execution_manager = CommandExecutionManager()
         self.command_execution_manager.progress_updated.connect(
             self._on_command_execution_progress_updated,
+            sender=self.command_execution_manager,
+        )
+        self.command_execution_manager.suspended.connect(
+            self._on_command_execution_suspended,
             sender=self.command_execution_manager,
         )
         self.command_execution_manager.expired.connect(
@@ -913,9 +961,13 @@ class SkybrushServer(DaemonApp):
                 execution has just finished.
         """
         body = {"type": "ASYNC-ST", "id": status.id, "progress": status.progress.json}
+        if status.is_suspended:
+            body["suspended"] = True
         message = self.message_hub.create_response_or_notification(body)
         for client_id in status.clients_to_notify:
             self.message_hub.enqueue_message(message, to=client_id)
+
+    _on_command_execution_suspended = _on_command_execution_progress_updated
 
     def _on_command_execution_timeout(
         self,
@@ -1037,6 +1089,13 @@ app = SkybrushServer("skybrush", PACKAGE_NAME)
 @app.message_hub.on("ASYNC-CANCEL")
 def handle_ASYNC_CANCEL(message: FlockwaveMessage, sender: Client, hub: MessageHub):
     return app.cancel_async_operations(message.get_ids(), in_response_to=message)
+
+
+@app.message_hub.on("ASYNC-RESUME")
+def handle_ASYNC_RESUME(message: FlockwaveMessage, sender: Client, hub: MessageHub):
+    return app.resume_async_operations(
+        message.get_ids(), message.body.get("values") or {}, in_response_to=message
+    )
 
 
 @app.message_hub.on("CONN-INF")

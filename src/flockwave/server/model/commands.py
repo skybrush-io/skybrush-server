@@ -2,10 +2,13 @@
 UAVs.
 """
 
+from contextlib import contextmanager
+from math import inf
 from time import time
 from trio import CancelScope, current_time
-from typing import Any, AsyncIterator, Dict, Optional, Set, Union, TypeVar
+from typing import Any, AsyncIterator, Dict, Iterator, Optional, Set, Union, TypeVar
 
+from flockwave.concurrency import Future
 from flockwave.spec.schema import get_complex_object_schema
 
 from .metamagic import ModelMeta
@@ -16,7 +19,13 @@ __all__ = ("AsyncCommandEvents", "CommandExecutionStatus", "Progress")
 T = TypeVar("T")
 
 
-class Progress(metaclass=ModelMeta):
+MISSING = object()
+"""Placeholder object for the Progress_ constructor so we can distinguish
+between the user explicitly passing in `None` and not specifying anything.
+"""
+
+
+class Progress:
     """Progress object that may be yielded from command handlers implemented
     as an async iterator that yield one or more progress objects, optionally
     followed by a result object.
@@ -24,15 +33,18 @@ class Progress(metaclass=ModelMeta):
 
     message: Optional[str]
     percentage: Optional[int]
-
-    class __meta__:
-        schema = get_complex_object_schema("progress")
+    object: Any
 
     def __init__(
-        self, *, percentage: Optional[int] = None, message: Optional[str] = None
+        self,
+        *,
+        percentage: Optional[int] = None,
+        message: Optional[str] = None,
+        object: Any = MISSING,
     ):
         self.message = message
         self.percentage = percentage
+        self.object = object
 
     @property
     def json(self) -> Dict[str, Any]:
@@ -42,7 +54,32 @@ class Progress(metaclass=ModelMeta):
             result["message"] = str(self.message)
         if self.percentage is not None:
             result["percentage"] = int(self.percentage)
+        if self.object is not MISSING:
+            result["object"] = self.object
         return result
+
+
+class Suspend(Progress):
+    """Suspension request object that may be yielded from command handlers
+    implemented as an async iterator that yield one or more progress objects.
+    Yielding this object will suspend the execution of the command and wait
+    for additional input from the client.
+    """
+
+    message: Optional[str]
+    object: Any
+
+    def __init__(
+        self,
+        *,
+        message: Optional[str] = None,
+        object: Any = MISSING,
+    ):
+        self.message = message
+        self.object = object
+
+    def to_progress(self) -> Progress:
+        return Progress(message=self.message, object=self.object)
 
 
 AsyncCommandEvents = AsyncIterator[Union[Progress, T]]
@@ -73,6 +110,8 @@ class CommandExecutionStatus(metaclass=ModelMeta):
     _cancel_scope: CancelScope
     _cancelled_by_user: bool
     _clients_to_notify: Set[str]
+    _deadline: float
+    _suspension_future: Optional[Future[Any]]
 
     def __init__(self, id: str):
         """Constructor.
@@ -93,6 +132,8 @@ class CommandExecutionStatus(metaclass=ModelMeta):
         self._cancel_scope = CancelScope()
         self._cancelled_by_user = False
         self._clients_to_notify = set()
+        self._deadline = inf
+        self._suspension_future = None
 
     def add_client_to_notify(self, client_id: str) -> None:
         """Appends the ID of a client to notify to the list of clients
@@ -107,12 +148,28 @@ class CommandExecutionStatus(metaclass=ModelMeta):
         """
         return self._clients_to_notify
 
+    def is_expired(self, now: Optional[float]) -> bool:
+        """Returns whether the command execution status has expired, i.e. it
+        is past its deadline.
+        """
+        if now is None:
+            now = current_time()
+        assert now is not None
+        return now > self._deadline
+
     @property
     def is_in_progress(self) -> bool:
         """Returns whether the command is still in progress, i.e. has not
         finished and has not been cancelled yet.
         """
         return self.cancelled is None and self.finished is None
+
+    @property
+    def is_suspended(self) -> bool:
+        """Returns whether the execution of the command is suspended, i.e.
+        waiting for input from the client.
+        """
+        return self._suspension_future is not None
 
     @property
     def was_cancelled_by_user(self) -> bool:
@@ -158,6 +215,24 @@ class CommandExecutionStatus(metaclass=ModelMeta):
                 self.result = result_or_error
             self.finished = time()
 
+    def mark_as_resumed(self, value: Any) -> bool:
+        """Marks the command as being resumed now with the given value if the
+        execution is currently suspended. Otherwise this function is a no-op.
+
+        Returns:
+            whether the command was indeed marked as resumed now
+        """
+        if not self.is_suspended:
+            return False
+
+        assert self._suspension_future is not None
+        try:
+            self._suspension_future.set_result(value)
+            return True
+        except RuntimeError:
+            # future was already marked as done, this is a duplicate
+            return False
+
     def mark_as_sent(self) -> None:
         """Marks the command as being sent to the UAV that will ultimately
         execute it. Also stores the current timestamp if the command has not
@@ -172,4 +247,32 @@ class CommandExecutionStatus(metaclass=ModelMeta):
         """
         if not self.is_in_progress:
             raise RuntimeError("command execution has finished already")
-        self._cancel_scope.deadline = current_time() + duration
+
+        self._deadline = current_time() + duration
+        self._cancel_scope.deadline = self._deadline
+
+    @contextmanager
+    def suspended(self, post_timeout: Optional[float] = None) -> Iterator[Future[Any]]:
+        """Context manager that marks the execution of the command as suspended
+        (waiting for user input) upon entering the context and resumes it when
+        exiting the context.
+
+        Args:
+            post_timeout: optional timeout value to set on the command execution
+                after it has been resumed
+
+        Returns:
+            a future object that the server can (and should) wait for to
+            retrieve the response sent by the client
+        """
+        if self.is_suspended:
+            raise RuntimeError("command execution is already suspended")
+
+        self._suspension_future = Future()
+        self.set_deadline_from_now(inf)
+        try:
+            yield self._suspension_future
+        finally:
+            if post_timeout is not None:
+                self.set_deadline_from_now(post_timeout)
+            self._suspension_future = None

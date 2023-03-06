@@ -25,7 +25,7 @@ from flockwave.server.command_handlers import (
     create_parameter_command_handler,
     create_version_command_handler,
 )
-from flockwave.server.model.commands import Progress
+from flockwave.server.model.commands import Progress, Suspend
 from flockwave.server.model.devices import ObjectNode
 from flockwave.server.model.gps import GPSFixType
 from flockwave.server.model.preflight import PreflightCheckResult, PreflightCheckInfo
@@ -937,6 +937,34 @@ class VirtualUAVDriver(UAVDriver[VirtualUAV]):
             await sleep(0.5)
 
         yield Progress(percentage=100)
+        yield "Result."
+
+    async def handle_command_progress_and_suspend(self, uav: VirtualUAV):
+        """Dummy command that can be used to test progress reports sent
+        during the execution of a command, with suspension support.
+
+        The execution of this command takes five seconds. A progress report
+        is sent every 500 milliseconds. After the fifth progress report, the
+        execution is suspended; the client is expected to send back a truthy
+        value to resume the execution. Sending back a falsy value will make
+        the operation throw an exception.
+        """
+        yield Progress(percentage=0)
+
+        for i in range(5):
+            await sleep(0.5)
+            yield Progress(percentage=(i + 1) * 10)
+
+        value = yield Suspend(
+            message="Send a truthy value back", object={"expected": True}
+        )
+        if not value:
+            raise RuntimeError("falsy value received")
+
+        for i in range(6, 11):
+            await sleep(0.5)
+            yield Progress(percentage=i * 10)
+
         yield "Result."
 
     async def handle_command_timeout(self, uav: VirtualUAV) -> None:

@@ -4,8 +4,8 @@ remote UAVs.
 
 from blinker import Signal
 from inspect import isasyncgen, isawaitable
-from time import time
 from trio import (
+    current_time,
     open_memory_channel,
     open_nursery,
     Nursery,
@@ -16,7 +16,7 @@ from trio_util import periodic
 from typing import (
     cast,
     Any,
-    AsyncIterator,
+    AsyncGenerator,
     Awaitable,
     Optional,
     Union,
@@ -28,7 +28,7 @@ from flockwave.concurrency import aclosing
 
 from .logger import log as base_log
 from .model.builders import CommandExecutionStatusBuilder
-from .model.commands import CommandExecutionStatus, Progress
+from .model.commands import CommandExecutionStatus, Progress, Suspend
 from .registries.base import RegistryBase
 
 __all__ = ("CommandExecutionManager",)
@@ -37,7 +37,7 @@ log = base_log.getChild("commands")
 
 
 ReceiptLike = Union[CommandExecutionStatus, str]
-Result = Union[Any, Awaitable[Any], AsyncIterator[Any]]
+Result = Union[Any, Awaitable[Any], AsyncGenerator[Any, Any]]
 
 T = TypeVar("T")
 
@@ -76,6 +76,16 @@ class CommandExecutionManager(RegistryBase[CommandExecutionStatus]):
     progress_updated = Signal()
     """Signal that is emitted when the progress information of the execution of
     an asynchronous command is updated.
+    """
+
+    resumed = Signal()
+    """Signal that is emitted when the execution of a suspended asynchronous
+    command was resumed.
+    """
+
+    suspended = Signal()
+    """Signal that is emitted when the execution of an asynchronous command was
+    suspended.
     """
 
     timeout: float
@@ -180,6 +190,27 @@ class CommandExecutionManager(RegistryBase[CommandExecutionStatus]):
         self._entries[status.id] = status
         return status
 
+    def resume(self, receipt_id: ReceiptLike, value: Any) -> None:
+        """Resume the execution of a suspended asynchronous command with the
+        given receipt ID.
+
+        Parameters:
+            receipt_id: the receipt identifier of the command that should be
+                resumed
+            value: optional value to pass to the suspended command
+        """
+        command = self._get_command_from_id(receipt_id)
+        if command is None:
+            # Request has probably expired in the meanwhile
+            log.warning(
+                "Received resume request for non-existent receipt: "
+                "{0}".format(receipt_id)
+            )
+            return
+
+        if command.mark_as_resumed(value):
+            self.resumed.send(self, status=command)
+
     async def run(self, cleanup_period: float = 1) -> None:
         """Runs the background tasks related to the command execution
         manager. This method should be launched in a Trio nursery.
@@ -204,11 +235,11 @@ class CommandExecutionManager(RegistryBase[CommandExecutionStatus]):
         ``self.timeout`` seconds ago and it has not finished execution yet.
         """
         commands = self._entries
-        expiry = time() - self.timeout
+        now = current_time()
         to_remove = [
             key
             for key, status in commands.items()
-            if not status.is_in_progress or status.created_at < expiry
+            if not status.is_in_progress or status.is_expired(now)
         ]
         if to_remove:
             expired = [commands.pop(key) for key in to_remove]
@@ -332,7 +363,7 @@ class CommandExecutionManager(RegistryBase[CommandExecutionStatus]):
 
     async def _wait_for(
         self,
-        async_obj: Union[Awaitable[Any], AsyncIterator[Any]],
+        async_obj: Union[Awaitable[Any], AsyncGenerator[Any, Any]],
         status: CommandExecutionStatus,
     ) -> None:
         try:
@@ -341,8 +372,8 @@ class CommandExecutionManager(RegistryBase[CommandExecutionStatus]):
                     if isawaitable(async_obj):
                         result = await async_obj
                     else:
-                        result = await self._wait_for_iterator(
-                            cast(AsyncIterator[Any], async_obj), status
+                        result = await self._wait_for_generator(
+                            cast(AsyncGenerator[Any, Any], async_obj), status
                         )
                 except RuntimeError as ex:
                     # this is okay, samurai principle
@@ -363,8 +394,8 @@ class CommandExecutionManager(RegistryBase[CommandExecutionStatus]):
         finally:
             self._finish(status)
 
-    async def _wait_for_iterator(
-        self, it: AsyncIterator[T], status: CommandExecutionStatus
+    async def _wait_for_generator(
+        self, it: AsyncGenerator[T, Any], status: CommandExecutionStatus
     ) -> Union[Optional[T], Exception]:
         """Waits for yielded progress updates from an async iterator and updates
         the command execution receipt with the progress information and the
@@ -375,13 +406,31 @@ class CommandExecutionManager(RegistryBase[CommandExecutionStatus]):
             status: the status object that is to be manipulated when the
                 async generator finishes or the execution times out
         """
-        result = None
+        result: Optional[T] = None
+
         async with aclosing(it) as gen:
-            async for item in gen:
-                if isinstance(item, Progress):
+            data_from_client: Any = None
+            while True:
+                try:
+                    item = await gen.asend(data_from_client)
+                except StopAsyncIteration:
+                    break
+
+                data_from_client = None
+
+                if isinstance(item, Suspend):
+                    # Operation requested suspension
+                    with status.suspended(post_timeout=self.timeout) as future:
+                        status.progress = item.to_progress()
+                        self.suspended.send(self, status=status)
+                        data_from_client = await future.wait()
+                elif isinstance(item, Progress):
+                    # Operation posted a progress report
                     status.set_deadline_from_now(self.timeout)
                     status.progress = item
                     self.progress_updated.send(self, status=status)
                 else:
+                    # Operation returned a result
                     result = item
+
         return result

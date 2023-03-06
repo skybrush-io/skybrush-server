@@ -780,14 +780,14 @@ reference = "fury"
 
 [[package]]
 name = "flockwave-spec"
-version = "1.68.0"
+version = "1.69.1"
 description = "JSON-Schema specification of the Flockwave protocol"
 category = "main"
 optional = false
 python-versions = ">=3.7,<4.0"
 files = [
-    {file = "flockwave-spec-1.68.0.tar.gz", hash = "sha256:b5bb2cca27a3576542bf0e09e81593bb97db5fbee3984707bde95cc30df0d41f"},
-    {file = "flockwave_spec-1.68.0-py3-none-any.whl", hash = "sha256:130b7c69e617df5c50e0b609a8ce77a4668c1c01e64dfc8b1b37dff736b38b07"},
+    {file = "flockwave-spec-1.69.1.tar.gz", hash = "sha256:c46d38d726f428face1ae073161239de176f6ecb93ca90c4872b20d55f2444d6"},
+    {file = "flockwave_spec-1.69.1-py3-none-any.whl", hash = "sha256:1c4dc0e1f2bf676301dbf8539dd6b895a72d5f2082abda2e0e6d0543ead8f9ca"},
 ]
 
 [package.dependencies]
@@ -1854,14 +1854,14 @@ paramiko = "*"
 
 [[package]]
 name = "setuptools"
-version = "67.4.0"
+version = "67.5.0"
 description = "Easily download, build, install, upgrade, and uninstall Python packages"
 category = "main"
 optional = false
 python-versions = ">=3.7"
 files = [
-    {file = "setuptools-67.4.0-py3-none-any.whl", hash = "sha256:f106dee1b506dee5102cc3f3e9e68137bbad6d47b616be7991714b0c62204251"},
-    {file = "setuptools-67.4.0.tar.gz", hash = "sha256:e5fd0a713141a4a105412233c63dc4e17ba0090c8e8334594ac790ec97792330"},
+    {file = "setuptools-67.5.0-py3-none-any.whl", hash = "sha256:9f0004c0daa3d41ef4465934a89498da3eef994039f48845d6eb8202aa13b2e9"},
+    {file = "setuptools-67.5.0.tar.gz", hash = "sha256:113ff8d482b826d2f3b99f26adb1fe505e526a94a08e68cdf392d1dff9ce0595"},
 ]
 
 [package.extras]
@@ -2198,4 +2198,4 @@ pro = ["skybrush-ext-map-cache", "skybrush-ext-sidekick", "skybrush-ext-timecode
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.8"
-content-hash = "97834b88669f9c2e859dcd3fe314d9b5a748831666227b91220a79cb345b902d"
+content-hash = "913e3ca3e43f2d355c2564b379425e40be56cc3ebb074fb4ae2d861bf301e875"

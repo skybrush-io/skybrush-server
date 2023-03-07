@@ -1854,14 +1854,14 @@ paramiko = "*"
 
 [[package]]
 name = "setuptools"
-version = "67.5.0"
+version = "67.5.1"
 description = "Easily download, build, install, upgrade, and uninstall Python packages"
 category = "main"
 optional = false
 python-versions = ">=3.7"
 files = [
-    {file = "setuptools-67.5.0-py3-none-any.whl", hash = "sha256:9f0004c0daa3d41ef4465934a89498da3eef994039f48845d6eb8202aa13b2e9"},
-    {file = "setuptools-67.5.0.tar.gz", hash = "sha256:113ff8d482b826d2f3b99f26adb1fe505e526a94a08e68cdf392d1dff9ce0595"},
+    {file = "setuptools-67.5.1-py3-none-any.whl", hash = "sha256:1c39d42bda4cb89f7fdcad52b6762e3c309ec8f8715b27c684176b7d71283242"},
+    {file = "setuptools-67.5.1.tar.gz", hash = "sha256:15136a251127da2d2e77ac7a1bc231eb504654f7e3346d93613a13f2e2787535"},
 ]
 
 [package.extras]
@@ -1903,14 +1903,14 @@ reference = "collmot"
 
 [[package]]
 name = "skybrush-ext-flockctrl"
-version = "2.16.0"
+version = "2.17.0"
 description = "Support for flockctrl-based drones in Skybrush Server"
 category = "main"
 optional = true
 python-versions = ">=3.8,<4.0"
 files = [
-    {file = "skybrush_ext_flockctrl-2.16.0-py3-none-any.whl", hash = "sha256:48b317b6242937d25d2a748390e40da4f0698b6bfa6f7319283598ff137947c5"},
-    {file = "skybrush_ext_flockctrl-2.16.0.tar.gz", hash = "sha256:525185704c61248aff8969819b65f84f93855ff4b00d1a73e58d1114f2fb9ad9"},
+    {file = "skybrush_ext_flockctrl-2.17.0-py3-none-any.whl", hash = "sha256:776c50c6b4d8909b0dcfdf27593148d47ad8d37ce08aa25ae2b56ba713541a3f"},
+    {file = "skybrush_ext_flockctrl-2.17.0.tar.gz", hash = "sha256:1a0bff3201d3ed051833f1b325fc207181547ca6a850f8675d583271462bbee8"},
 ]
 
 [package.dependencies]
@@ -2198,4 +2198,4 @@ pro = ["skybrush-ext-map-cache", "skybrush-ext-sidekick", "skybrush-ext-timecode
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.8"
-content-hash = "8128c437e2187c0efedf15d1aab8087051d9739768319628d858cc3ec5b2ea0f"
+content-hash = "12a28aeeda7f6f4978154780001cd44313332c7bc9593ef156fa8c09e671b0ee"

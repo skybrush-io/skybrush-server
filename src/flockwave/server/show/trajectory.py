@@ -167,6 +167,16 @@ class TrajectorySpecification:
         return self.get_padded_bounding_box()
 
     @property
+    def duration(self) -> float:
+        """Returns the total duration of the trajectory in seconds."""
+        points = self._data.get("points")
+        if points:
+            t, _, _ = points[-1]
+            return float(t)
+        else:
+            return 0.0
+
+    @property
     def is_empty(self) -> bool:
         """Returns whether the trajectory is empty (i.e. has no points)."""
         return not bool(self._data.get("points"))

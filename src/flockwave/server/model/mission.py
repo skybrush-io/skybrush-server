@@ -879,7 +879,7 @@ class SetParameterMissionCommand(MissionCommand):
     name: str
     """The name of the parameter to set."""
 
-    value: Union[str, int, float]
+    value: Union[str, int, float, bool]
     """The value of the parameter to set."""
 
     @classmethod
@@ -895,9 +895,9 @@ class SetParameterMissionCommand(MissionCommand):
         if not isinstance(name, str) or not name:
             raise RuntimeError("parameter name must be a valid string")
         value = params.get("value")
-        if not isinstance(value, (str, int, float)):
+        if not isinstance(value, (str, int, float, bool)):
             raise RuntimeError(
-                "parameter value must be present as a string or a number"
+                "parameter value must be present as a string, a number or a bool"
             )
 
         return cls(id=id, name=name, value=value)

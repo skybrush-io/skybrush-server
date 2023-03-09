@@ -127,7 +127,7 @@ def mavlink_nav_command_to_gps_coordinate(message: MAVLinkMessage) -> GPSCoordin
         MAVFrame.GLOBAL_RELATIVE_ALT,
         MAVFrame.GLOBAL_RELATIVE_ALT_INT,
     ):
-        return GPSCoordinate(lat=message.x / 1e7, lon=message.y / 1e7, agl=message.z)
+        return GPSCoordinate(lat=message.x / 1e7, lon=message.y / 1e7, ahl=message.z)
     else:
         raise ValueError(f"unknown coordinate frame: {message.frame}")
 

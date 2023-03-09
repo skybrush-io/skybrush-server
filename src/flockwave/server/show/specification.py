@@ -60,7 +60,7 @@ def get_altitude_reference_from_show_specification(
 ) -> Optional[float]:
     """Returns the altitude above mean sea level where the Z coordinates of the
     show should be referred to, or `None` if the show is to be controlled with
-    relative coordinates (altitude above ground level).
+    relative coordinates (altitude above home level).
     """
     amsl = show.get("amslReference")
     if amsl is None:

@@ -223,18 +223,18 @@ class UAVBase(UAV):
         if self._status.errors:
             self.update_status(errors=(x for x in self._status.errors if x > code))
 
-    def convert_agl_to_amsl(
-        self, altitude: float, *, current_agl: Optional[float] = None
+    def convert_ahl_to_amsl(
+        self, altitude: float, *, current_ahl: Optional[float] = None
     ) -> float:
-        """Converts an altitude given as altitude above ground level to altitude
+        """Converts an altitude given as altitude above home level to altitude
         above mean sea level.
 
-        This function requires the drone to know its current AGL and AMSL so it
-        can calculate an offset between them. Alternatively, if the `current_agl`
-        argument is not `None`, the given value is used as the current AGL.
+        This function requires the drone to know its current AHL and AMSL so it
+        can calculate an offset between them. Alternatively, if the `current_ahl`
+        argument is not `None`, the given value is used as the current AHL.
 
         Returns:
-            the given AGL altitude converted to AMSL
+            the given AHL altitude converted to AMSL
 
         Raises:
             RuntimeError: if the position of the UAV is not known yet
@@ -248,17 +248,17 @@ class UAVBase(UAV):
         pos = self._status.position
         if pos is None:
             raise RuntimeError(
-                "Cannot convert AGL to AMSL, current position not known yet"
+                "Cannot convert AHL to AMSL, current position not known yet"
             )
 
         if pos.amsl is None:
-            raise RuntimeError("Cannot convert AGL to AMSL, current AMSL not known yet")
+            raise RuntimeError("Cannot convert AHL to AMSL, current AMSL not known yet")
 
-        agl = current_agl if current_agl is not None else pos.agl
-        if agl is None:
-            raise RuntimeError("Cannot convert AGL to AMSL, current AGL not known yet")
+        ahl = current_ahl if current_ahl is not None else pos.ahl
+        if ahl is None:
+            raise RuntimeError("Cannot convert AHL to AMSL, current AHL not known yet")
 
-        return altitude - agl + pos.amsl
+        return altitude - ahl + pos.amsl
 
     def ensure_error(self, code: int, present: bool = True) -> None:
         """Ensures that the given error code is present (or not present) in the
@@ -618,7 +618,7 @@ class UAVDriver(Generic[TUAV], metaclass=ABCMeta):
                 result = {uav: self._execute(func, uav, *args, **kwds) for uav in uavs}
         return result
 
-    def send_fly_to_target_signal(self, uavs: List[TUAV], target):
+    def send_fly_to_target_signal(self, uavs: List[TUAV], target: GPSCoordinate):
         """Asks the driver to send a signal to the given UAVs that makes them
         fly to a given target coordinate. Every UAV passed as an argument is
         assumed to be managed by this driver.
@@ -628,6 +628,9 @@ class UAVDriver(Generic[TUAV], metaclass=ABCMeta):
 
         Parameters:
             uavs: the UAVs to address with this request
+            target: the target to fly to; the altitude above
+                home level may be set to `None` to indicate the current
+                altitude of UAVs. Altitude above ground is not supported yet.
 
         Returns:
             dict mapping UAVs to the corresponding results (which may also be
@@ -1115,7 +1118,9 @@ class UAVDriver(Generic[TUAV], metaclass=ABCMeta):
         """
         raise NotImplementedError
 
-    def _send_fly_to_target_signal_single(self, uav: TUAV, target) -> None:
+    def _send_fly_to_target_signal_single(
+        self, uav: TUAV, target: GPSCoordinate
+    ) -> None:
         """Asks the driver to send a "fly to target" signal to a single UAV
         managed by this driver.
 
@@ -1128,9 +1133,9 @@ class UAVDriver(Generic[TUAV], metaclass=ABCMeta):
 
         Parameters:
             uav: the UAV to address with this request.
-            target (GPSCoordinate): the target to fly to; the altitude above
-                ground level may be set to `None` to indicate the current
-                altitude
+            target: the target to fly to; the altitude above
+                home level may be set to `None` to indicate the current
+                altitude. Altitude above ground is not supported yet.
 
         Raises:
             NotImplementedError: if the operation is not supported by the

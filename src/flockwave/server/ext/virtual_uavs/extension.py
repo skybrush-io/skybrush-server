@@ -75,7 +75,7 @@ class VirtualUAVProviderExtension(UAVExtension[VirtualUAVDriver]):
 
         # Place the given number of drones
         home_positions = [
-            FlatEarthCoordinate(x=vec.x, y=vec.y, amsl=origin_amsl, agl=0)
+            FlatEarthCoordinate(x=vec.x, y=vec.y, amsl=origin_amsl, ahl=0)
             for vec in place_drones(
                 count, **configuration.get("takeoff_area", default_takeoff_area)
             )
@@ -93,7 +93,7 @@ class VirtualUAVProviderExtension(UAVExtension[VirtualUAVDriver]):
                     y=p.y + uniform(-position_noise, position_noise),
                     # TODO: add amsl noise if we can be sure that amsl is not None
                     amsl=p.amsl,  # + uniform(-position_noise, position_noise),
-                    agl=p.agl,
+                    ahl=p.ahl,
                 )
                 for p in home_positions
             ]

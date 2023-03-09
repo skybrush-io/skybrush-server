@@ -1174,7 +1174,7 @@ class MAVLinkUAV(UAVBase):
 
     async def fly_to(self, target: GPSCoordinate) -> None:
         """Sends a command to the UAV to reposition it to the given coordinate,
-        where the altitude may be specified in AMSL or AGL.
+        where the altitude may be specified in AMSL or AHL.
         """
         if self._autopilot.supports_repositioning:
             # Implementation of fly_to() with the MAVLink DO_REPOSITION command
@@ -1200,13 +1200,13 @@ class MAVLinkUAV(UAVBase):
 
         if target.amsl is None:
             frame = MAVFrame.GLOBAL_RELATIVE_ALT_INT
-            if target.agl is None:
+            if target.ahl is None:
                 # We cannot simply set Z_IGNORE in the type mask because that
                 # does not work with ArduCopter (it would ignore the whole
                 # position).
-                altitude = self.status.position.agl
+                altitude = self.status.position.ahl
             else:
-                altitude = target.agl
+                altitude = target.ahl
         else:
             frame = MAVFrame.GLOBAL_INT
             altitude = target.amsl
@@ -1244,7 +1244,7 @@ class MAVLinkUAV(UAVBase):
             lat_int=lat,
             lon_int=lon,
             # note that we don't check the altitude in the response because the
-            # position target feedback could come in AMSL or AGL
+            # position target feedback could come in AMSL or AHL
         )
         try:
             await self.driver.send_packet_with_retries(
@@ -1264,7 +1264,7 @@ class MAVLinkUAV(UAVBase):
             altitude = target.amsl
         else:
             altitude = (
-                self.convert_agl_to_amsl(target.agl) if target.agl is not None else nan
+                self.convert_ahl_to_amsl(target.ahl) if target.ahl is not None else nan
             )
 
         lat, lon = int(target.lat * 1e7), int(target.lon * 1e7)
@@ -1279,7 +1279,7 @@ class MAVLinkUAV(UAVBase):
             param4=nan,  # yaw mode
             x=lat,  # latitude
             y=lon,  # longitude
-            z=altitude,  # altitud
+            z=altitude,  # altitude
         )
 
         if not success:
@@ -1493,14 +1493,14 @@ class MAVLinkUAV(UAVBase):
             self._position.lat = message.lat / 1e7
             self._position.lon = message.lon / 1e7
             self._position.amsl = message.alt / 1e3
-            self._position.agl = message.relative_alt / 1e3
+            self._position.ahl = message.relative_alt / 1e3
         else:
             # Some drones, such as the Parrot Bebop 2, use 2^31-1 as latitude
             # and longitude to indicate that no GPS fix has been obtained yet,
             # so treat any values outside the valid latitude range as invalid
             self._position.lat = (
                 self._position.lon
-            ) = self._position.amsl = self._position.agl = 0
+            ) = self._position.amsl = self._position.ahl = 0
 
         self._velocity.x = message.vx / 100
         self._velocity.y = message.vy / 100
@@ -1788,8 +1788,8 @@ class MAVLinkUAV(UAVBase):
         # zeros instead.
         if not self._autopilot.supports_local_frame:
             try:
-                # We assume that we are at zero meters AGL
-                altitude = self.convert_agl_to_amsl(altitude, current_agl=0)
+                # We assume that we are at zero meters AHL
+                altitude = self.convert_ahl_to_amsl(altitude, current_ahl=0)
             except RuntimeError:
                 # No position yet, just send NaN and hope for the best
                 altitude = nan

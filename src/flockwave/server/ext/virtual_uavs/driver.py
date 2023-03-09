@@ -355,17 +355,17 @@ class VirtualUAV(UAVBase):
             self._target_xyz = None
         else:
             # Calculate the real altitude component of the target
-            if value.agl is None:
+            if value.ahl is None:
                 if value.amsl is None or self._home_amsl is None:
                     new_altitude = self._position_xyz.z
                 else:
                     new_altitude = value.amsl - self._home_amsl
             else:
-                new_altitude = value.agl
+                new_altitude = value.ahl
 
             # Update the target and its XYZ representation
             assert self._target is not None
-            self._target.update(agl=new_altitude)
+            self._target.update(ahl=new_altitude)
             flat = self._trans.to_flat_earth(value)
             self._target_xyz = Vector3D(x=flat.x, y=flat.y, z=new_altitude)
 
@@ -383,7 +383,7 @@ class VirtualUAV(UAVBase):
         else:
             x, y, z = value
             amsl = self._home_amsl + z if self._home_amsl is not None else None
-            flat_earth = FlatEarthCoordinate(x=x, y=y, amsl=amsl, agl=z)
+            flat_earth = FlatEarthCoordinate(x=x, y=y, amsl=amsl, ahl=z)
             self.target = self._trans.to_gps(flat_earth)
 
     @property
@@ -655,7 +655,7 @@ class VirtualUAV(UAVBase):
         # Calculate our coordinates in flat Earth
         self._position_flat.x = self._position_xyz.x
         self._position_flat.y = self._position_xyz.y
-        self._position_flat.agl = self._position_xyz.z
+        self._position_flat.ahl = self._position_xyz.z
         self._position_flat.amsl = (
             self._position_xyz.z + self._home_amsl
             if self._home_amsl is not None
@@ -831,7 +831,7 @@ class VirtualUAV(UAVBase):
             # Time is after the start of the trajectory so evaluate it
             x, y, z = self._trajectory_player.position_at(t)
             self.target = self._trajectory_transformation.to_gps(
-                FlatEarthCoordinate(x=x, y=y, agl=z)
+                FlatEarthCoordinate(x=x, y=y, ahl=z)
             )
 
 
@@ -867,7 +867,8 @@ class VirtualUAVDriver(UAVDriver[VirtualUAV]):
         uav.takeoff_altitude = 3
         uav.home = home.copy()
         uav.home.amsl = None
-        uav.home.agl = 0
+        uav.home.agl = None
+        uav.home.ahl = 0
         uav.target = home.copy()
         uav.update_status(heading=heading)
         return uav
@@ -1002,11 +1003,13 @@ class VirtualUAVDriver(UAVDriver[VirtualUAV]):
     def _request_version_info_single(self, uav: VirtualUAV) -> VersionInfo:
         return uav.get_version_info()
 
-    def _send_fly_to_target_signal_single(self, uav: VirtualUAV, target) -> None:
+    def _send_fly_to_target_signal_single(
+        self, uav: VirtualUAV, target: GPSCoordinate
+    ) -> None:
         if uav.state == VirtualUAVState.LANDED:
             uav.takeoff()
-            if target.agl is None and target.amsl is None:
-                target.agl = uav.takeoff_altitude
+            if target.ahl is None and target.amsl is None:
+                target.ahl = uav.takeoff_altitude
 
         uav.stop_trajectory()
         uav.target = target
@@ -1050,7 +1053,7 @@ class VirtualUAVDriver(UAVDriver[VirtualUAV]):
     ) -> None:
         if uav.state == VirtualUAVState.AIRBORNE:
             target = uav.home.copy()
-            target.agl = uav.status.position.agl
+            target.ahl = uav.status.position.ahl
 
             uav.stop_trajectory()
             uav.target = target

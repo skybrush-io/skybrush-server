@@ -7,6 +7,7 @@ from .trajectory import TrajectorySpecification
 __all__ = (
     "get_altitude_reference_from_show_specification",
     "get_coordinate_system_from_show_specification",
+    "get_drone_count_from_show_specification",
     "get_group_index_from_show_specification",
     "get_home_position_from_show_specification",
     "get_trajectory_from_show_specification",
@@ -39,6 +40,22 @@ def get_coordinate_system_from_show_specification(
         return FlatEarthToGPSCoordinateTransformation.from_json(coordinate_system)
     except Exception:
         raise RuntimeError("Invalid or missing coordinate system specification")
+
+
+def get_drone_count_from_show_specification(show: ShowSpecification) -> Optional[int]:
+    """Returns the number of drones in the show from the show specification if
+    known, `None` if not known (which may happen with older versions of
+    Skybrush Live that do not send this information yet).
+    """
+    mission_info = show.get("mission")
+    if not mission_info or not isinstance("mission", dict):
+        return None
+
+    num_drones = mission_info.get("numDrones")
+    if num_drones is None:
+        return None
+
+    return int(num_drones)
 
 
 def get_home_position_from_show_specification(

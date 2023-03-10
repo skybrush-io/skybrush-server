@@ -11,6 +11,7 @@ from .safety import get_safety_configuration_from_show_specification
 from .specification import (
     get_altitude_reference_from_show_specification,
     get_coordinate_system_from_show_specification,
+    get_drone_count_from_show_specification,
     get_group_index_from_show_specification,
     get_home_position_from_show_specification,
     get_trajectory_from_show_specification,
@@ -22,6 +23,7 @@ from .trajectory import TrajectorySpecification
 __all__ = (
     "get_altitude_reference_from_show_specification",
     "get_coordinate_system_from_show_specification",
+    "get_drone_count_from_show_specification",
     "get_geofence_configuration_from_show_specification",
     "get_group_index_from_show_specification",
     "get_home_position_from_show_specification",

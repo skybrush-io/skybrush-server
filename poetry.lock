@@ -670,14 +670,14 @@ reference = "collmot"
 
 [[package]]
 name = "flockwave-gps"
-version = "2.3.0"
+version = "2.3.1"
 description = "GPS and geography related routines and classes"
 category = "main"
 optional = false
 python-versions = ">=3.7,<4.0"
 files = [
-    {file = "flockwave-gps-2.3.0.tar.gz", hash = "sha256:636b00526341c4d13c6eb6057c0be5f8da4f9602dd8599d4ad5c4d002369e49e"},
-    {file = "flockwave_gps-2.3.0-py3-none-any.whl", hash = "sha256:453a76940aa39c9f12bb5598c48e141ce682153d57c25d57c2b7a65a540f90f8"},
+    {file = "flockwave-gps-2.3.1.tar.gz", hash = "sha256:84c2bf726e530806a604b49d007d91fac093d3e153b9b054e57c45bd608c936a"},
+    {file = "flockwave_gps-2.3.1-py3-none-any.whl", hash = "sha256:c89fab10985ca28145010b7aa0f858b7c7e32e26726f34d37a429f42cbce0605"},
 ]
 
 [package.dependencies]
@@ -2208,4 +2208,4 @@ pro = ["skybrush-ext-map-cache", "skybrush-ext-sidekick", "skybrush-ext-timecode
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.8"
-content-hash = "020819c283c00155cbb9bc03847a858834830e07da72d4c89c1f32b8c383a357"
+content-hash = "12a63b9e9814da63f71444b76e7e97b1ce8bd18be1d901302d9fe01cfc43a8ff"

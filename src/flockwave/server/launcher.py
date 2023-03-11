@@ -42,6 +42,7 @@ from .version import __version__
     default="fancy",
     help="Specify the style of the logging output",
 )
+@click.version_option(version=__version__)
 def start(
     config: str,
     port: Optional[int] = None,

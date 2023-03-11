@@ -32,6 +32,7 @@ from .version import __version__
     default="fancy",
     help="Specify the style of the logging output",
 )
+@click.version_option(version=__version__)
 def start(config, debug, quiet, log_style):
     """Start the Skybrush proxy server."""
     # Set up the logging format

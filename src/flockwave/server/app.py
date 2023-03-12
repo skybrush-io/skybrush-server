@@ -302,6 +302,8 @@ class SkybrushServer(DaemonApp):
         Parameters:
             client: the client to subscribe to the given paths
             paths: list of device tree paths to subscribe the client to
+            lazy: whether the client is allowed to subscribe to paths that do
+                not exist yet.
             in_response_to: the message that the constructed message will
                 respond to.
 

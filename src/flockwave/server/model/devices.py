@@ -5,6 +5,7 @@ from __future__ import annotations
 from blinker import Signal
 from builtins import str
 from collections import defaultdict
+from dataclasses import dataclass
 from enum import Enum
 from itertools import islice
 from typing import (
@@ -653,6 +654,7 @@ class ObjectNode(DeviceTreeNodeBase):
         return self._add_child(id, DeviceNode(device_class))
 
 
+@dataclass
 class DeviceTreePath:
     """A path in a device tree from its root to one of its nodes. Leaf and
     branch nodes are both allowed.
@@ -1230,5 +1232,10 @@ class DeviceTreeSubscriptionManager:
         """
         try:
             self._tree.resolve(path)._unsubscribe(client, force)
+        except NoSuchPathError:
+            try:
+                self._pending_subscriptions[client].remove(DeviceTreePath(path))
+            except ValueError:
+                raise ClientNotSubscribedError(client, path)
         except KeyError:
             raise ClientNotSubscribedError(client, path)

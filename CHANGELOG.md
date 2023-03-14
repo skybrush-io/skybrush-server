@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- When setting the clock of the server running on Linux during a connection from
+  a Skybrush Live client, the new date and time is now also written back to the
+  hardware clock of the server if it has one.
+
 ## [2.10.0] - 2023-02-14
 
 ### Added

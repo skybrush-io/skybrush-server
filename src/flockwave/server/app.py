@@ -18,9 +18,9 @@ from flockwave.server.ports import set_base_port
 from flockwave.server.utils import divide_by
 from flockwave.server.utils.packaging import is_packaged
 from flockwave.server.utils.system_time import (
-    can_set_system_time,
+    can_set_system_time_detailed_async,
     get_system_time_msec,
-    set_system_time_msec,
+    set_system_time_msec_async,
 )
 
 from .commands import CommandExecutionManager, CommandExecutionStatus
@@ -1166,19 +1166,22 @@ def handle_SYS_PING(message: FlockwaveMessage, sender: Client, hub: MessageHub):
 
 
 @app.message_hub.on("SYS-TIME")
-def handle_SYS_TIME(message: FlockwaveMessage, sender: Client, hub: MessageHub):
+async def handle_SYS_TIME(message: FlockwaveMessage, sender: Client, hub: MessageHub):
     adjustment = message.body.get("adjustment")
     if adjustment is not None:
         adjustment = float(adjustment)
-        if not can_set_system_time():
-            return hub.acknowledge(message, outcome=False, reason="Permission denied")
+        allowed, reason = await can_set_system_time_detailed_async()
+        if not allowed:
+            return hub.acknowledge(
+                message, outcome=False, reason=f"Permission denied. {reason}"
+            )
 
         if adjustment != 0:
             # This branch is required so the client can test whether time
             # adjustments are supported by sending an adjustment with zero delta
             adjusted_time_msec = get_system_time_msec() + adjustment
             try:
-                set_system_time_msec(adjusted_time_msec)
+                await set_system_time_msec_async(adjusted_time_msec)
             except Exception as ex:
                 return hub.acknowledge(message, outcome=False, reason=str(ex))
 

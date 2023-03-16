@@ -1,6 +1,5 @@
 """Utility functions related to getting or adjusting the system time."""
 
-from os import geteuid
 from pathlib import Path
 from platform import system
 from subprocess import CalledProcessError, run
@@ -39,6 +38,9 @@ def can_set_system_time_detailed() -> Tuple[bool, str]:
         is empty if the user can modify the system time.
     """
     if system() in ("Darwin", "Linux"):
+        # Deferred import because geteuid() is not available on Windows
+        from os import geteuid
+
         # Only root can modify the system time
         if geteuid() != 0:
             return False, "Only the root user can modify the system time."

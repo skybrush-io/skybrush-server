@@ -22,10 +22,10 @@ class ConnectionInfo(TimestampMixin, metaclass=ModelMeta):
         schema = get_complex_object_schema("connectionInfo")
 
     _STATUS_MAPPING = {
-        "CONNECTED": ConnectionStatus.connected,
-        "CONNECTING": ConnectionStatus.connecting,
-        "DISCONNECTED": ConnectionStatus.disconnected,
-        "DISCONNECTING": ConnectionStatus.disconnecting,
+        "CONNECTED": "connected",
+        "CONNECTING": "connecting",
+        "DISCONNECTED": "disconnected",
+        "DISCONNECTING": "disconnecting",
     }
 
     id: Optional[str]

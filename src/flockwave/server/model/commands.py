@@ -20,8 +20,9 @@ T = TypeVar("T")
 
 
 MISSING = object()
-"""Placeholder object for the Progress_ constructor so we can distinguish
-between the user explicitly passing in `None` and not specifying anything.
+"""Placeholder object for the Progress_ and Suspend_ constructor so we can
+distinguish between the user explicitly passing in `None` and not specifying
+anything.
 """
 
 
@@ -58,6 +59,20 @@ class Progress:
             result["object"] = self.object
         return result
 
+    def update(self, percentage: Optional[int] = None, message: Optional[str] = None):
+        """Updates the progress object with a new percentage, a new message or
+        both.
+
+        Args:
+            percentage: the new percentage; `None` if it should be left
+                unmodified
+            message: the new message; `None` if it should be left unmodified
+        """
+        if percentage is not None:
+            self.percentage = percentage
+        if message is not None:
+            self.message = message
+
 
 class Suspend(Progress):
     """Suspension request object that may be yielded from command handlers
@@ -77,6 +92,19 @@ class Suspend(Progress):
     ):
         self.message = message
         self.object = object
+
+    def update(self, message: Optional[str] = None, object: Any = MISSING):
+        """Updates the suspension object with a new percentage, a new object or
+        both.
+
+        Args:
+            message: the new message; `None` if it should be left unmodified
+            object: the new object
+        """
+        if message is not None:
+            self.message = message
+        if object is not MISSING:
+            self.object = object
 
     def to_progress(self) -> Progress:
         return Progress(message=self.message, object=self.object)

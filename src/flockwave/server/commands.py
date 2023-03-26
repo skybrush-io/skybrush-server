@@ -421,7 +421,11 @@ class CommandExecutionManager(RegistryBase[CommandExecutionStatus]):
                 if isinstance(item, Suspend):
                     # Operation requested suspension
                     with status.suspended(post_timeout=self.timeout) as future:
-                        status.progress = item.to_progress()
+                        if status.progress is not None:
+                            status.progress.message = item.message
+                            status.progress.object = item.object
+                        else:
+                            status.progress = item.to_progress()
                         self.suspended.send(self, status=status)
                         data_from_client = await future.wait()
                 elif isinstance(item, Progress):

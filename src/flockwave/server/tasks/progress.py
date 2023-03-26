@@ -1,9 +1,9 @@
 from math import inf
 from trio import fail_after, TooSlowError
 from trio_util import RepeatedEvent
-from typing import AsyncIterator, Optional
+from typing import Any, AsyncIterator, Optional
 
-from flockwave.server.model.commands import Progress
+from flockwave.server.model.commands import Progress, Suspend, MISSING
 
 __all__ = ("ProgressReporter",)
 
@@ -47,12 +47,20 @@ class ProgressReporter:
         ...
         reporter.notify(percentage=30, message="bacon")
         ...
+    ```
+
+    Suspension is also supported; the task feeding the progress reporter with
+    updates can call the `suspend()` method to indicate that the operation was
+    suspended and is waiting for user input. The object provided in the argument
+    of `suspend()` will be forwarded to the client that initiated the operation.
     """
 
     _auto_close: bool
     _done: bool
     _event: RepeatedEvent
     _progress: Progress
+    _suspend: Suspend
+    _suspended: bool
 
     def __init__(self, auto_close: bool = False):
         """Constructor.
@@ -63,9 +71,11 @@ class ProgressReporter:
                 percentage greater than or equal to 100.
         """
         self._progress = Progress()
+        self._suspend = Suspend()
         self._event = RepeatedEvent()
         self._done = False
         self._auto_close = bool(auto_close)
+        self._suspended = False
 
     def close(self) -> None:
         """Closes the progress reporter, terminating async generators returned
@@ -73,6 +83,7 @@ class ProgressReporter:
         post progress updates to this reporter any more.
         """
         self._done = True
+        self._suspended = False
         self._event.set()
 
     @property
@@ -82,17 +93,33 @@ class ProgressReporter:
 
     def notify(self, percentage: Optional[int] = None, message: Optional[str] = None):
         """Posts a new progress percentage and message to the progress reporter.
-        Async generators returned from `updates()` will wake up and yield a new
+        Async generators returned from `updates()` will wake up and yield a
         `Progress` instance.
+
+        When the task is suspended, calling this method will resume the task.
+
+        You may safely call this function multiple times; `updates()` is an
+        async generator and it will always yield the most recent progress or
+        suspension object when it wakes up.
         """
         # TODO(ntamas): convert this into an 'update()' method on the Progress
         # model object
-        if percentage is not None:
-            self._progress.percentage = percentage
-        if message is not None:
-            self._progress.message = message
+        self._suspended = False
+        self._progress.update(percentage, message)
         if self._auto_close and percentage is not None and percentage >= 100:
             self.close()
+        self._event.set()
+
+    def suspend(self, message: Optional[str] = None, object: Any = MISSING):
+        """Posts a suspension notice to the progress reporter. Async generators
+        returned from `updates()` will wake up and yield a `Suspend` instance.
+
+        You may safely call this function multiple times; `updates()` is an
+        async generator and it will always yield the most recent progress or
+        suspension object when it wakes up.
+        """
+        self._suspended = True
+        self._suspend.update(message, object)
         self._event.set()
 
     async def updates(
@@ -121,22 +148,27 @@ class ProgressReporter:
         if self._done:
             return
 
-        if self._progress.message is not None or self._progress.percentage is not None:
+        # Yield initial state
+        if self._suspended:
+            yield self._suspend
+        elif (
+            self._progress.message is not None or self._progress.percentage is not None
+        ):
             yield self._progress
 
+        # Yield subsequent events until the task is done or the progress
+        # reporter is not needed any more
         events = self._event.events()
-
-        if fail_on_timeout:
-            while not self._done:
-                with fail_after(timeout):
+        while not self._done:
+            try:
+                # Timeout does not apply when the task is suspended
+                with fail_after(inf if self._suspended else timeout):
                     await events.__anext__()
-                yield self._progress
-        else:
-            while not self._done:
-                try:
-                    with fail_after(timeout):
-                        await events.__anext__()
-                except TooSlowError:
-                    self.close()
+            except TooSlowError:
+                if fail_on_timeout:
+                    raise
                 else:
-                    yield self._progress
+                    self.close()
+            else:
+                yield self._suspend if self._suspended else self._progress
+                self._suspended = False

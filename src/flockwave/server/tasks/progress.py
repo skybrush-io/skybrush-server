@@ -1,7 +1,7 @@
 from math import inf
 from trio import fail_after, TooSlowError
 from trio_util import RepeatedEvent
-from typing import Any, AsyncIterator, Optional
+from typing import Any, AsyncIterator, Optional, Union
 
 from flockwave.server.model.commands import Progress, Suspend, MISSING
 
@@ -55,12 +55,14 @@ class ProgressReporter:
     of `suspend()` will be forwarded to the client that initiated the operation.
     """
 
-    _auto_close: bool
-    _done: bool
+    _auto_close: bool = False
+    _done: bool = False
+    _error: Optional[Exception] = None
+    _suspended: bool = False
+
     _event: RepeatedEvent
     _progress: Progress
     _suspend: Suspend
-    _suspended: bool
 
     def __init__(self, auto_close: bool = False):
         """Constructor.
@@ -73,9 +75,7 @@ class ProgressReporter:
         self._progress = Progress()
         self._suspend = Suspend()
         self._event = RepeatedEvent()
-        self._done = False
         self._auto_close = bool(auto_close)
-        self._suspended = False
 
     def close(self) -> None:
         """Closes the progress reporter, terminating async generators returned
@@ -90,6 +90,20 @@ class ProgressReporter:
     def done(self) -> bool:
         """Returns whether the `close()` method has already been called."""
         return self._done
+
+    def fail(self, message: Optional[Union[str, Exception]] = None):
+        """Closes the progress reporter and injects an exception into the async
+        generators that are currently waiting for an update in the `updates()`
+        method.
+        """
+        if message is None:
+            message = "Operation failed"
+
+        if isinstance(message, str):
+            message = RuntimeError(message)
+
+        self._error = message
+        self.close()
 
     def notify(self, percentage: Optional[int] = None, message: Optional[str] = None):
         """Posts a new progress percentage and message to the progress reporter.
@@ -146,7 +160,10 @@ class ProgressReporter:
                 progress update and `fail_on_timeout` is set to `True`.
         """
         if self._done:
-            return
+            if self._error:
+                raise self._error
+            else:
+                return
 
         # Yield initial state
         if self._suspended:
@@ -172,3 +189,6 @@ class ProgressReporter:
             else:
                 yield self._suspend if self._suspended else self._progress
                 self._suspended = False
+
+        if self._error:
+            raise self._error

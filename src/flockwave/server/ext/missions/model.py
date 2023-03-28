@@ -38,7 +38,7 @@ class Mission(ModelObject):
     is running.
 
     This is an abstract superclass that is meant to serve as a base implementation
-    for "real" missions. You will need to override at least the ``run()`` method
+    for "real" missions. You will need to override at least the ``_run()`` method
     in subclasses.
     """
 

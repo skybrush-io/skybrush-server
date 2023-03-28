@@ -100,8 +100,6 @@ class MissionRegistry(RegistryBase[Mission]):
         """Constructor.
 
         Parameters:
-            object_registry: the global object registry that the missions will
-                be registered in
             mission_type_registry: registry that associates string identifiers
                 of mission types to the corresponding MissionType_ objects
         """

@@ -5,14 +5,24 @@ server knows.
 from blinker import Signal
 from contextlib import contextmanager
 from math import inf
-from typing import cast, Callable, Iterable, Iterator, Optional, Type, TypeVar, Union
+from typing import (
+    cast,
+    Callable,
+    ClassVar,
+    Iterable,
+    Iterator,
+    Optional,
+    Type,
+    TypeVar,
+    Union,
+)
 
 from flockwave.server.model import ModelObject
 
 from .base import RegistryBase
 from .errors import RegistryFull
 
-__all__ = ("ObjectRegistry",)
+__all__ = ("ObjectRegistry", "ObjectRegistryProxy")
 
 
 T = TypeVar("T", bound="ModelObject")
@@ -211,3 +221,85 @@ class ObjectRegistry(RegistryBase[ModelObject]):
         """
         if len(self._entries) >= self._size_limit:
             raise RegistryFull
+
+
+class ObjectRegistryProxy(RegistryBase[T]):
+    """Mixin class that can be used as a superclass for another registry class
+    to add support for proxying object additions and removals to an
+    ObjectRegistry_ instance.
+    """
+
+    _object_registry: Optional[ObjectRegistry] = None
+    """Object registry where the addition and removal requests will be proxied
+    through; ``None`` if the global object registry has not been assigned
+    to this proxy yet.
+    """
+
+    added: ClassVar[Signal] = Signal(
+        doc="Signal that is emitted when a new object is added to the registry."
+    )
+
+    removed: ClassVar[Signal] = Signal(
+        doc="Signal that is emitted when an object is removed from the registry."
+    )
+
+    def _add(self, object: T) -> T:
+        """Internal method that adds an object to the registry _and_ the
+        associated object registry. This method is not public because not all
+        derived classes may want to expose a method for direct addition. You
+        can provide a public ``add_by_id()`` method in subclasses that simply
+        calls this internal method.
+
+        Returns:
+            the object that was added
+        """
+        assert self._object_registry is not None
+
+        id = object.id
+        self._entries[id] = object
+        try:
+            self._object_registry.add(object)
+        except RegistryFull:
+            raise RuntimeError(
+                "server reached the total number of allowed objects"
+            ) from None
+
+        self.added.send(self, object)
+
+        return object
+
+    def remove_by_id(self, id: str) -> Optional[T]:
+        """Removes the object with the given ID from the registry and the object
+        registry as well.
+
+        This function is a no-op if no object is registered with the given ID.
+
+        Parameters:
+            id: the ID of the object to deregister
+
+        Returns:
+            the object that was deregistered, or ``None`` if no object was
+            registered with the given ID
+        """
+        item = self._entries.pop(id, None)
+        if item:
+            if self._object_registry:
+                self._object_registry.remove(item)
+            self.removed.send(self, item)
+
+    @contextmanager
+    def use_object_registry(self, registry: ObjectRegistry):
+        """Context manager that assigns the given object registry to the mission
+        registry when entering the context and detaches it when exiting the
+        context.
+        """
+        self._object_registry = registry
+        try:
+            yield
+        finally:
+            for item_id in self.ids:
+                try:
+                    self.remove_by_id(item_id)
+                except Exception:
+                    pass
+            self._object_registry = None

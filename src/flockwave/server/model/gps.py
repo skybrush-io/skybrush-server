@@ -30,15 +30,33 @@ class GPSFix:
     """Class representing basic GPS fix information of a single UAV."""
 
     type: GPSFixType = GPSFixType.NO_GPS
+    """GPS fix type."""
+
     num_satellites: Optional[int] = None
+    """Number of satellites."""
+
+    horizontal_accuracy: Optional[float] = None
+    """Horizontal accuracy in meters."""
+
+    vertical_accuracy: Optional[float] = None
+    """Vertical accuracy in meters."""
 
     @property
     def json(self):
-        return (
-            [int(self.type)]
-            if self.num_satellites is None
-            else [int(self.type), int(self.num_satellites)]
-        )
+        retval = [int(self.type)]
+        optionals = [
+            int(self.num_satellites) if self.num_satellites is not None else None,
+            int(round(self.horizontal_accuracy * 1000))
+            if self.horizontal_accuracy is not None
+            else None,
+            int(round(self.vertical_accuracy * 1000))
+            if self.vertical_accuracy is not None
+            else None,
+        ]
+        while optionals and optionals[-1] is None:
+            del optionals[-1]
+
+        return retval + optionals
 
     def update_from(self, other: GPSFixLike) -> None:
         """Updates this GPS fix object from another one. You may also specify a
@@ -48,9 +66,15 @@ class GPSFix:
         if isinstance(other, int):
             self.type = GPSFixType(other)
             self.num_satellites = None
+            self.horizontal_accuracy = None
+            self.vertical_accuracy = None
         elif isinstance(other, GPSFixType):
             self.type = other
             self.num_satellites = None
+            self.horizontal_accuracy = None
+            self.vertical_accuracy = None
         else:
             self.type = other.type
             self.num_satellites = other.num_satellites
+            self.horizontal_accuracy = other.horizontal_accuracy
+            self.vertical_accuracy = other.vertical_accuracy

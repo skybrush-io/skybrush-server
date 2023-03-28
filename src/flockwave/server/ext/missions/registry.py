@@ -4,16 +4,14 @@ register themselves in the mission planner registry so their services can
 be used by clients.
 """
 
-from blinker import Signal
 from contextlib import contextmanager
 from functools import partial
 from jsonschema.validators import validator_for
-from typing import ClassVar, Iterator, Optional
+from typing import Iterator
 
 from flockwave.server.model import default_id_generator
 from flockwave.server.registries.base import RegistryBase
-from flockwave.server.registries.errors import RegistryFull
-from flockwave.server.registries.objects import ObjectRegistry
+from flockwave.server.registries.objects import ObjectRegistryProxy
 from flockwave.server.types import Disposer
 
 from .model import Mission, MissionType
@@ -63,7 +61,7 @@ class MissionTypeRegistry(RegistryBase[MissionType]):
             disposer()
 
 
-class MissionRegistry(RegistryBase[Mission]):
+class MissionRegistry(ObjectRegistryProxy[Mission]):
     """Registry that maps mission identifiers to the state objects of the
     missions themselves.
 
@@ -78,20 +76,6 @@ class MissionRegistry(RegistryBase[Mission]):
     """Registry that associates string identifiers of mission types to the
     corresponding MissionType_ objects.
     """
-
-    _object_registry: Optional[ObjectRegistry] = None
-    """Global object registry of the application that the missions will be
-    registered in; ``None`` if the global object registry has not been assigned
-    to this proxy yet.
-    """
-
-    mission_added: ClassVar[Signal] = Signal(
-        doc="""Signal that is emitted when a new mission is added to the registry."""
-    )
-
-    mission_removed: ClassVar[Signal] = Signal(
-        doc="""Signal that is emitted when a mission is removed from the registry."""
-    )
 
     def __init__(
         self,
@@ -127,61 +111,21 @@ class MissionRegistry(RegistryBase[Mission]):
         while True:
             mission_id = default_id_generator()
             if mission_id not in self._object_registry:
-                mission: Mission = mission_type.create_mission()
-                mission._id = mission_id
-                mission.type = type
-                schema = mission_type.get_parameter_schema()
-                if schema:
-                    try:
-                        validator = validator_for(schema)
-                        validator.check_schema(schema)
-                    except Exception as ex:
-                        raise RuntimeError(f"Mission parameter schema error: {ex}")
-                    mission.parameter_validator = validator(schema)
-                else:
-                    mission.parameter_validator = None
+                break
 
-                self._entries[mission_id] = mission
-                try:
-                    self._object_registry.add(mission)
-                except RegistryFull:
-                    raise RuntimeError(
-                        "server reached the total number of allowed objects"
-                    ) from None
-                self.mission_added.send(self, mission=mission)
-                return mission
+        mission: Mission = mission_type.create_mission()
+        mission._id = mission_id
+        mission.type = type
 
-    def remove_by_id(self, mission_id: str) -> Optional[Mission]:
-        """Removes the mission with the given ID from the registry.
+        schema = mission_type.get_parameter_schema()
+        if schema:
+            try:
+                validator = validator_for(schema)
+                validator.check_schema(schema)
+            except Exception as ex:
+                raise RuntimeError(f"Mission parameter schema error: {ex}")
+            mission.parameter_validator = validator(schema)
+        else:
+            mission.parameter_validator = None
 
-        This function is a no-op if no mission is registered with the given ID.
-
-        Parameters:
-            mission_id: the ID of the mission to deregister
-
-        Returns:
-            the mission that was deregistered, or ``None`` if the mission was not
-            registered
-        """
-        mission = self._entries.pop(mission_id, None)
-        if mission:
-            if self._object_registry:
-                self._object_registry.remove(mission)
-            self.mission_removed.send(self, mission=mission)
-
-    @contextmanager
-    def use_object_registry(self, registry: ObjectRegistry):
-        """Context manager that assigns the given object registry to the mission
-        registry when entering the context and detaches it when exiting the
-        context.
-        """
-        self._object_registry = registry
-        try:
-            yield
-        finally:
-            for mission_id in self.ids:
-                try:
-                    self.remove_by_id(mission_id)
-                except Exception:
-                    pass
-            self._object_registry = None
+        return self._add(mission)

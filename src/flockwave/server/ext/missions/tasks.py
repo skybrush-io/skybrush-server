@@ -66,21 +66,21 @@ class MissionRegistryRelatedTaskBase(metaclass=ABCMeta):
         """
         for mission in self._mission_registry:
             self._subscribe_to_mission(mission)
-        self._mission_registry.mission_added.connect(
+        self._mission_registry.added.connect(
             self._on_mission_added_to_registry, sender=cast(Any, self._mission_registry)
         )
-        self._mission_registry.mission_removed.connect(
+        self._mission_registry.removed.connect(
             self._on_mission_removed_from_registry,
             sender=cast(Any, self._mission_registry),
         )
         try:
             yield
         finally:
-            self._mission_registry.mission_removed.connect(
+            self._mission_registry.removed.connect(
                 self._on_mission_removed_from_registry,
                 sender=cast(Any, self._mission_registry),
             )
-            self._mission_registry.mission_added.connect(
+            self._mission_registry.added.connect(
                 self._on_mission_added_to_registry,
                 sender=cast(Any, self._mission_registry),
             )
@@ -96,16 +96,14 @@ class MissionRegistryRelatedTaskBase(metaclass=ABCMeta):
         """
         pass
 
-    def _on_mission_added_to_registry(
-        self, sender: MissionRegistry, *, mission: Mission
-    ):
+    def _on_mission_added_to_registry(self, sender: MissionRegistry, mission: Mission):
         """Signal handler that is called when a new mission is added to the
         mission registry.
         """
         self._subscribe_to_mission(mission)
 
     def _on_mission_removed_from_registry(
-        self, sender: MissionRegistry, *, mission: Mission
+        self, sender: MissionRegistry, mission: Mission
     ):
         """Signal handler that is called when a mission is removed from the
         mission registry.

@@ -37,4 +37,4 @@ def test_gpsfix():
 def test_uavstatusinfo():
     status = UAVStatusInfo()
 
-    assert status.attitude == None
+    assert status.attitude is None

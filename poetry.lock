@@ -644,14 +644,14 @@ reference = "fury"
 
 [[package]]
 name = "flockwave-flockctrl"
-version = "2.12.0"
+version = "2.13.0"
 description = "flockctrl protocol parser and encoder for Skybrush"
 category = "main"
 optional = true
 python-versions = ">=3.7,<4.0"
 files = [
-    {file = "flockwave_flockctrl-2.12.0-py3-none-any.whl", hash = "sha256:3bd5c2883ce18a13f6338d4e73ce839300a461966115f47b8189b2324f6c126f"},
-    {file = "flockwave_flockctrl-2.12.0.tar.gz", hash = "sha256:4b0dc9932aefdedb3b58317d13ac1c8b023fa048849c060d55cae7d2659bfc9b"},
+    {file = "flockwave_flockctrl-2.13.0-py3-none-any.whl", hash = "sha256:5717ef58545607d79114dc221efaac93c64830c10e50b8ba78baa8635c55bd62"},
+    {file = "flockwave_flockctrl-2.13.0.tar.gz", hash = "sha256:569533360b083b342b420d5e63abbd154b0e3c342b769cde9aebdc5980c36532"},
 ]
 
 [package.dependencies]
@@ -776,14 +776,14 @@ reference = "fury"
 
 [[package]]
 name = "flockwave-spec"
-version = "1.70.1"
+version = "1.71.0"
 description = "JSON-Schema specification of the Flockwave protocol"
 category = "main"
 optional = false
 python-versions = ">=3.7,<4.0"
 files = [
-    {file = "flockwave-spec-1.70.1.tar.gz", hash = "sha256:9d7cf8465aa9199dfc0a90ad583a11d5cc94141cdb7e23557a9072d4d778f57a"},
-    {file = "flockwave_spec-1.70.1-py3-none-any.whl", hash = "sha256:738516e17fa6c1365c41ee88e104b16bcd3150b5349c42003020c21a1b1668ba"},
+    {file = "flockwave-spec-1.71.0.tar.gz", hash = "sha256:99ed801176b8e80446e5c3fff784e81762312f68a8914182b38539def7b69e03"},
+    {file = "flockwave_spec-1.71.0-py3-none-any.whl", hash = "sha256:9d963cdd4bb0a3e98d8ba19b402a660587d4408c1b72fe6929c9c20a6e562e3d"},
 ]
 
 [package.dependencies]
@@ -1928,20 +1928,20 @@ reference = "collmot"
 
 [[package]]
 name = "skybrush-ext-flockctrl"
-version = "2.21.0"
+version = "2.22.0"
 description = "Support for flockctrl-based drones in Skybrush Server"
 category = "main"
 optional = true
 python-versions = ">=3.8,<4.0"
 files = [
-    {file = "skybrush_ext_flockctrl-2.21.0-py3-none-any.whl", hash = "sha256:4a44f709a31afbaf33e1768bb87afb075bb5ebf6a8a46d24d5c3d62facbfd7a1"},
-    {file = "skybrush_ext_flockctrl-2.21.0.tar.gz", hash = "sha256:dabffb116fe4a020cbc5b037d717625e0186ca36e0b7d9da9b6d57f380131561"},
+    {file = "skybrush_ext_flockctrl-2.22.0-py3-none-any.whl", hash = "sha256:2324013a57e60f34b79f0aabbff518e7437221c62d4d6064fd4d522ad69b04e7"},
+    {file = "skybrush_ext_flockctrl-2.22.0.tar.gz", hash = "sha256:27980f48a22ecff8aaaac50fd952579111581d5805b35d5a16c1c5632ebd8f6e"},
 ]
 
 [package.dependencies]
 bidict = ">=0.22.0"
 colour = ">=0.1.5"
-flockwave-flockctrl = ">=2.12.0,<3.0.0"
+flockwave-flockctrl = ">=2.13.0,<3.0.0"
 paramiko = ">=2.10.3,<3.0.0"
 python-slugify = ">=8.0.1,<9.0.0"
 scp = ">=0.14.4"
@@ -2236,4 +2236,4 @@ pro = ["skybrush-ext-map-cache", "skybrush-ext-sidekick", "skybrush-ext-timecode
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.8"
-content-hash = "aa13c154ceb35645df96c914fd2d0bf2d5dbdbb03d549949af757a7605c8a8a6"
+content-hash = "7f4f5142e24b5dab3d44534db241efd67bbf4c411f5154523335cf00781c93a5"

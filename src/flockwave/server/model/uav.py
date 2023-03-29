@@ -22,6 +22,7 @@ from flockwave.server.model.transport import TransportOptions
 from flockwave.server.logger import log as base_log
 from flockwave.spec.schema import get_complex_object_schema
 
+from .attitude import Attitude
 from .battery import BatteryInfo
 from .devices import ObjectNode
 from .gps import GPSFix, GPSFixLike
@@ -65,6 +66,7 @@ class UAVStatusInfo(TimestampMixin, metaclass=ModelMeta):
     errors: List[int]
     gps: GPSFix
     heading: float
+    attitude: Optional[Attitude]
     id: str
     light: int
     mode: str
@@ -91,6 +93,7 @@ class UAVStatusInfo(TimestampMixin, metaclass=ModelMeta):
         self.errors = []
         self.gps = GPSFix()
         self.heading = 0.0
+        self.attitude = None
         self.id = id  # type: ignore
         self.light = 0  # black
         self.mode = ""
@@ -302,6 +305,7 @@ class UAVBase(UAV):
         velocity: Optional[VelocityNED] = None,
         velocity_xyz: Optional[VelocityXYZ] = None,
         heading: Optional[float] = None,
+        attitude: Optional[Attitude] = None,
         mode: Optional[str] = None,
         gps: Optional[GPSFixLike] = None,
         battery: Optional[BatteryInfo] = None,
@@ -327,6 +331,7 @@ class UAVBase(UAV):
                 It will be cloned to ensure that modifying this position object
                 from the caller will not affect the UAV itself.
             heading: the heading of the UAV, in degrees.
+            attitude: the attitude (roll, pitch, yaw) of the UAV, in degrees.
             mode: the flight mode that the UAV is currently operating in
             gps: information about the GPS fix of the UAV
             battery: information about the status of the battery on the UAV.
@@ -349,6 +354,10 @@ class UAVBase(UAV):
             # precision is needed and it saves space in the JSON
             # representation
             self._status.heading = round(heading % 360, 2)
+        if attitude is not None:
+            if self._status.attitude is None:
+                self._status.attitude = Attitude()
+            self._status.attitude.update_from(attitude)
         if velocity is not None:
             self._status.velocity.update_from(velocity, precision=2)
         if velocity_xyz is not None:

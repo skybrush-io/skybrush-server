@@ -314,26 +314,39 @@ schema = {
             "type": "string",
             "default": "{0}",
             "title": "ID format",
-            "description": "Python format string that determines the format of the IDs of the drones created by this extension.",
+            "description": (
+                "Python format string that determines the format of the IDs of "
+                "the drones created by this extension."
+            ),
         },
         "status_interval": {
             "type": "number",
             "minimum": 0.1,
             "default": 0.5,
             "title": "Interval between status packets",
-            "description": "Length of the time interval between two consecutive attempts to retrieve status information from a Crazyflie show drone. E.g., 0.5 = 0.5 seconds = two status reports per second.",
+            "description": (
+                "Length of the time interval between two consecutive attempts "
+                "to retrieve status information from a Crazyflie show drone. "
+                "E.g., 0.5 = 0.5 seconds = two status reports per second."
+            ),
         },
         "takeoff_altitude": {
             "type": "number",
             "minimum": 0.1,
             "default": 1.0,
             "title": "Takeoff altitude",
-            "description": "Altitude that a drone should take off to when receiving a takeoff command without a specified altitude, in meters.",
+            "description": (
+                "Altitude that a drone should take off to when receiving a "
+                "takeoff command without a specified altitude, in meters."
+            ),
         },
         "testing": {
             "type": "boolean",
             "title": "Testing mode",
-            "description": "Tick this checkbox to prevent the Crazyflie drones from starting their motors while testing a show file",
+            "description": (
+                "Tick this checkbox to prevent the Crazyflie drones from "
+                "starting their motors while testing a show file"
+            ),
             "format": "checkbox",
             "propertyOrder": 2000,
         },

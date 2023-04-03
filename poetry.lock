@@ -232,15 +232,18 @@ files = [
 
 [[package]]
 name = "blinker"
-version = "1.5"
+version = "1.6"
 description = "Fast, simple object-to-object and broadcast signaling"
 category = "main"
 optional = false
-python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*"
+python-versions = ">=3.7"
 files = [
-    {file = "blinker-1.5-py2.py3-none-any.whl", hash = "sha256:1eb563df6fdbc39eeddc177d953203f99f097e9bf0e2b8f9f3cf18b6ca425e36"},
-    {file = "blinker-1.5.tar.gz", hash = "sha256:923e5e2f69c155f2cc42dafbbd70e16e3fde24d2d4aa2ab72fbe386238892462"},
+    {file = "blinker-1.6-py3-none-any.whl", hash = "sha256:eeebd5dfc782e1817fe4261ce79936c8c8cefb90d685caf50cec458029f773c1"},
+    {file = "blinker-1.6.tar.gz", hash = "sha256:5874afe21df4bae8885d31a0a6c4b5861910a575eae6176f051fbb9a6571481b"},
 ]
+
+[package.dependencies]
+typing-extensions = "*"
 
 [[package]]
 name = "certifi"
@@ -776,14 +779,14 @@ reference = "fury"
 
 [[package]]
 name = "flockwave-spec"
-version = "1.71.0"
+version = "1.72.0"
 description = "JSON-Schema specification of the Flockwave protocol"
 category = "main"
 optional = false
 python-versions = ">=3.7,<4.0"
 files = [
-    {file = "flockwave-spec-1.71.0.tar.gz", hash = "sha256:99ed801176b8e80446e5c3fff784e81762312f68a8914182b38539def7b69e03"},
-    {file = "flockwave_spec-1.71.0-py3-none-any.whl", hash = "sha256:9d963cdd4bb0a3e98d8ba19b402a660587d4408c1b72fe6929c9c20a6e562e3d"},
+    {file = "flockwave-spec-1.72.0.tar.gz", hash = "sha256:94251b593d06a402bceb284254c8aa5903bfc73c34bc6bd6e58fadc5fe388ca2"},
+    {file = "flockwave_spec-1.72.0-py3-none-any.whl", hash = "sha256:69cdd585e4cbb96b3309793edd86913ed2ac60eb38965ad0dd624693f71c8c84"},
 ]
 
 [package.dependencies]
@@ -2165,6 +2168,18 @@ async-generator = "*"
 trio = ">=0.11.0"
 
 [[package]]
+name = "typing-extensions"
+version = "4.5.0"
+description = "Backported and Experimental Type Hints for Python 3.7+"
+category = "main"
+optional = false
+python-versions = ">=3.7"
+files = [
+    {file = "typing_extensions-4.5.0-py3-none-any.whl", hash = "sha256:fb33085c39dd998ac16d1431ebc293a8b3eedd00fd4a32de0ff79002c19511b4"},
+    {file = "typing_extensions-4.5.0.tar.gz", hash = "sha256:5cb5f4a79139d699607b3ef622a1dedafa84e115ab0024e0d9c044a9479ca7cb"},
+]
+
+[[package]]
 name = "werkzeug"
 version = "2.2.3"
 description = "The comprehensive WSGI web application library."
@@ -2236,4 +2251,4 @@ pro = ["skybrush-ext-map-cache", "skybrush-ext-sidekick", "skybrush-ext-timecode
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.8"
-content-hash = "7f4f5142e24b5dab3d44534db241efd67bbf4c411f5154523335cf00781c93a5"
+content-hash = "26df14a1c2c2dfc98b9a207368c2a91697fad52b2c70bfc4e068747a464401a3"

@@ -96,20 +96,20 @@ class MissionRegistryRelatedTaskBase(metaclass=ABCMeta):
         """
         pass
 
-    def _on_mission_added_to_registry(self, sender: MissionRegistry, mission: Mission):
+    def _on_mission_added_to_registry(self, sender: MissionRegistry, object: Mission):
         """Signal handler that is called when a new mission is added to the
         mission registry.
         """
-        self._subscribe_to_mission(mission)
+        self._subscribe_to_mission(object)
 
     def _on_mission_removed_from_registry(
-        self, sender: MissionRegistry, mission: Mission
+        self, sender: MissionRegistry, object: Mission
     ):
         """Signal handler that is called when a mission is removed from the
         mission registry.
         """
-        self._unsubscribe_from_mission(mission)
-        self._handle_mission_removal(mission)
+        self._unsubscribe_from_mission(object)
+        self._handle_mission_removal(object)
 
     @abstractmethod
     def _subscribe_to_mission(self, mission: Mission):

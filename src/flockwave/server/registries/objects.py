@@ -264,7 +264,7 @@ class ObjectRegistryProxy(RegistryBase[T]):
                 "server reached the total number of allowed objects"
             ) from None
 
-        self.added.send(self, object)
+        self.added.send(self, object=object)
 
         return object
 
@@ -285,7 +285,7 @@ class ObjectRegistryProxy(RegistryBase[T]):
         if item:
             if self._object_registry:
                 self._object_registry.remove(item)
-            self.removed.send(self, item)
+            self.removed.send(self, object=item)
 
     @contextmanager
     def use_object_registry(self, registry: ObjectRegistry):

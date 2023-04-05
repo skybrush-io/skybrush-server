@@ -27,6 +27,7 @@ from flockwave.server.command_handlers import (
 )
 from flockwave.server.errors import NotSupportedError
 from flockwave.server.model.battery import BatteryInfo
+from flockwave.server.model.commands import Progress
 from flockwave.server.model.devices import DeviceTreeMutator
 from flockwave.server.model.geofence import GeofenceConfigurationRequest, GeofenceStatus
 from flockwave.server.model.gps import GPSFix
@@ -1036,15 +1037,19 @@ class MAVLinkUAV(UAVBase):
         self._network_id = network_id
         self._system_id = system_id
 
-    async def calibrate_compass(self) -> None:
+    async def calibrate_compass(self) -> AsyncIterator[Progress]:
         """Calibrates the compass of the UAV.
+
+        Yields:
+            events describing the progress of the calibration
 
         Raises:
             NotSupportedError: if the compass calibration is not supported on
                 the UAV
         """
         try:
-            return await self._autopilot.calibrate_compass(self)
+            async for event in self._autopilot.calibrate_compass(self):
+                yield event
         except NotImplementedError:
             # Turn NotImplementedError from the autopilot into a NotSupportedError
             raise NotSupportedError
@@ -1064,7 +1069,9 @@ class MAVLinkUAV(UAVBase):
         if component == "compass":
             # Compass calibration is a whole different thing so that's handled
             # in a separate function
-            return await self.calibrate_compass()
+            async for event in self.calibrate_compass():
+                yield event
+            return
 
         params = [0] * 7
         if component == "baro":

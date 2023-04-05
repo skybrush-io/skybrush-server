@@ -2,9 +2,10 @@
 
 from abc import ABCMeta, abstractmethod, abstractproperty
 from trio import fail_after, sleep, TooSlowError
-from typing import Dict, Type, Union
+from typing import AsyncIterator, Dict, Type, Union
 
 from flockwave.server.errors import NotSupportedError
+from flockwave.server.model.commands import Progress
 from flockwave.server.model.geofence import (
     GeofenceAction,
     GeofenceConfigurationRequest,
@@ -101,8 +102,11 @@ class Autopilot(metaclass=ABCMeta):
         raise NotImplementedError
 
     @abstractmethod
-    async def calibrate_compass(self, uav) -> None:
+    async def calibrate_compass(self, uav) -> AsyncIterator[Progress]:
         """Calibrates the compass of the UAV.
+
+        Yields:
+            events describing the progress of the calibration
 
         Raises:
             NotImplementedError: if we have not implemented support for
@@ -268,7 +272,7 @@ class UnknownAutopilot(Autopilot):
 
     name = "Unknown autopilot"
 
-    async def calibrate_compass(self, uav) -> None:
+    async def calibrate_compass(self, uav) -> AsyncIterator[Progress]:
         raise NotSupportedError
 
     async def configure_geofence(
@@ -411,7 +415,7 @@ class PX4(Autopilot):
         # anywhere
         return False
 
-    async def calibrate_compass(self, uav) -> None:
+    async def calibrate_compass(self, uav) -> AsyncIterator[Progress]:
         raise NotImplementedError
 
     async def configure_geofence(
@@ -570,7 +574,7 @@ class ArduPilot(Autopilot):
         else:
             return False
 
-    async def calibrate_compass(self, uav) -> None:
+    async def calibrate_compass(self, uav) -> AsyncIterator[Progress]:
         calibration_messages = {
             MAVMessageType.MAG_CAL_PROGRESS: 1,
             MAVMessageType.MAG_CAL_REPORT: 1,
@@ -580,8 +584,10 @@ class ArduPilot(Autopilot):
 
         try:
             async with uav.temporarily_request_messages(calibration_messages):
+                # Reset our internal state object of the compass calibration procedure
+                uav.compass_calibration.reset()
                 # Messages are not handled here but in the MAVLinkNetwork,
-                # which forwards them to the UAV< which in turn refreshes its
+                # which forwards them to the UAV, which in turn refreshes its
                 # state variables in its CompassCalibration object. This is not
                 # nice, but it works.
                 await uav.driver.send_command_long(
@@ -593,45 +599,44 @@ class ArduPilot(Autopilot):
                 )
                 started = True
 
-                # We give ourselves 60 seconds to do the compass calibration.
-                # Anything that goes slower than 60 seconds probably indicates a
-                # problem with the compass of the UAV.
-                with fail_after(timeout):
-                    success = await uav.compass_calibration.wait_until_termination()
+                async for progress in uav.compass_calibration._reporter.updates(
+                    timeout=timeout, fail_on_timeout=False
+                ):
+                    if progress.percentage == 100:
+                        success = True
+                    yield progress
 
         except TooSlowError:
             raise RuntimeError(
                 f"Compass calibration did not finish in {timeout} seconds"
             )
 
+        except RuntimeError:
+            raise
+
         except Exception:
             if not started:
                 raise RuntimeError("Failed to start compass calibration")
-            else:
-                try:
-                    await uav.driver.send_command_long(
-                        uav, MAVCommand.DO_CANCEL_MAG_CAL
-                    )
-                except Exception:
-                    uav.driver.log.warning(
-                        "Failed to cancel compass calibration",
-                        extra={"id": log_id_for_uav(uav)},
-                    )
-                raise RuntimeError("Compass calibration terminated unexpectedly")
+            try:
+                await uav.driver.send_command_long(uav, MAVCommand.DO_CANCEL_MAG_CAL)
+            except Exception:
+                uav.driver.log.warning(
+                    "Failed to cancel compass calibration",
+                    extra={"id": log_id_for_uav(uav)},
+                )
+            raise RuntimeError("Compass calibration terminated unexpectedly")
 
-        if not success:
-            raise RuntimeError("Compass calibration failed")
+        if success:
+            # Wait a bit so the user sees the LED flashes on the drone that indicate a
+            # successful calibration
+            await sleep(1.5)
 
-        # Wait a bit so the user sees the LED flashes on the drone that indicate a
-        # successful calibration
-        await sleep(1.5)
-
-        try:
-            await uav.reboot()
-        except Exception:
-            raise RuntimeError(
-                "Failed to reboot UAV after successful compass calibration"
-            )
+            try:
+                await uav.reboot()
+            except Exception:
+                raise RuntimeError(
+                    "Failed to reboot UAV after successful compass calibration"
+                )
 
     async def configure_geofence(
         self, uav, configuration: GeofenceConfigurationRequest

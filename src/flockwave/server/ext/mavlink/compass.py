@@ -5,6 +5,8 @@ procedure on ArduPilot UAVs.
 from enum import IntEnum
 from trio import sleep
 
+from flockwave.server.tasks import ProgressReporter
+
 from .enums import MagCalStatus
 from .types import MAVLinkMessage
 
@@ -20,7 +22,7 @@ class CompassCalibrationStatus(IntEnum):
 
 class CompassCalibration:
     """Object encapsulating the state of the compass calibration on an
-    ArduPilot UAV.
+    ArduPilot UAV with possibly multiple compasses.
     """
 
     def __init__(self):
@@ -30,10 +32,24 @@ class CompassCalibration:
         self._percentages = []
         self.reset()
 
+    def _get_progress(self):
+        """Returns the average progress of the compass calibration."""
+        percentages = [
+            percentage
+            for status, percentage in zip(self._status, self._percentages)
+            if status != CompassCalibrationStatus.NOT_RUNNING
+        ]
+
+        if percentages:
+            return sum(percentages) / len(percentages)
+        else:
+            return 0
+
     def reset(self):
         """Resets the state of the compass calibration state variable."""
         self._status.clear()
         self._percentages.clear()
+        self._reporter = ProgressReporter(auto_close=True)
 
     @property
     def failed(self) -> bool:
@@ -106,12 +122,24 @@ class CompassCalibration:
             self._percentages[compass_id] = 100
             self._status[compass_id] = CompassCalibrationStatus.SUCCESSFUL
         elif cal_status.is_failure:
-            self._percentages[compass_id] = 0
-            self._status[compass_id] = CompassCalibrationStatus.NOT_RUNNING
-        else:
             # Keep the percentage where it was so we know how much of the
             # calibration went through before it failed
             self._status[compass_id] = CompassCalibrationStatus.FAILED
+        else:
+            self._percentages[compass_id] = 0
+            self._status[compass_id] = CompassCalibrationStatus.NOT_RUNNING
+
+        # report progress of the calibration
+        if not self._reporter.done:
+            if self.successful:
+                self._reporter.notify(100, "Compass calibration successful")
+            elif self.failed:
+                self._reporter.fail("Compass calibration failed")
+            elif self.running:
+                self._reporter.notify(
+                    self._get_progress(),
+                    "Rotate the autopilot around all axes to calibrate compasses...",
+                )
 
     async def wait_until_termination(self) -> bool:
         """Waits until the messages from the autopilot indicate that the

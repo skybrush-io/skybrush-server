@@ -102,6 +102,7 @@ class ProgressReporter:
         if isinstance(message, str):
             message = RuntimeError(message)
 
+        self._progress.update(message=str(message))
         self._error = message
         self.close()
 

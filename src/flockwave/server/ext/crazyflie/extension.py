@@ -21,6 +21,7 @@ from .fence import FenceConfiguration
 from .led_lights import CrazyflieLEDLightConfigurationManager, LightConfiguration
 from .mocap import CrazyflieMocapFrameHandler
 from .scanning import CrazyradioScannerTask, ScannerTaskEvent
+from .types import ControllerType
 
 if TYPE_CHECKING:
     from flockwave.server.ext.motion_capture import MotionCaptureFrame
@@ -59,6 +60,16 @@ class CrazyflieDronesExtension(UAVExtension[CrazyflieDriver]):
         driver.status_interval = float(configuration.get("status_interval", 0.5))
         driver.takeoff_altitude = float(configuration.get("takeoff_altitude", 1.0))
         driver.use_test_mode = bool(configuration.get("testing", False))
+
+        controller_spec = configuration.get("controller")
+        try:
+            preferred_controller = ControllerType.from_json(controller_spec)
+        except ValueError:
+            self.log.warn(
+                f"Unknown preferred controller in configuration: {controller_spec!r}"
+            )
+        else:
+            driver.preferred_controller = preferred_controller
 
     async def run(self, app, configuration):
         from aiocflib.crtp.drivers import init_drivers
@@ -262,6 +273,27 @@ schema = {
             "type": "array",
             "format": "table",
             "items": {"type": "string"},
+        },
+        "controller": {
+            "title": "Controller type",
+            "type": "string",
+            "default": "none",
+            "enum": ["none", "auto", "pid", "mellinger", "indi", "brescianini"],
+            "options": {
+                "enum_titles": [
+                    "Do not change the settings on the drone",
+                    "Let the firmware select automatically",
+                    "Use PID controller",
+                    "Use Mellinger controller",
+                    "Use INDI controller",
+                    "Use Brescianini controller",
+                ],
+            },
+            "description": (
+                "Specifies the controller to select on the drone after a show "
+                "upload. This is an advanced option."
+            ),
+            "propertyOrder": 2000,
         },
         "debug": {
             "type": "boolean",

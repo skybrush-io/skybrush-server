@@ -70,6 +70,7 @@ from .crtp_extensions import (
 )
 from .fence import Fence, FenceConfiguration
 from .trajectory import encode_trajectory, TrajectoryEncoding
+from .types import ControllerType
 
 if TYPE_CHECKING:
     from flockwave.server.app import SkybrushServer
@@ -89,6 +90,8 @@ class CrazyflieDriver(UAVDriver["CrazyflieUAV"]):
             when the drone is registered in the server, or any other object that
             has a ``format()`` method accepting a single integer as an argument
             and returning the preferred UAV identifier
+        preferred_controller: controller type to set on a drone during a show
+            upload; ``None`` if no change is needed
         status_interval: number of seconds that should pass between consecutive
             status requests sent to a drone
         takeoff_altitude: altitude that a UAV should take off to when receiving
@@ -100,6 +103,7 @@ class CrazyflieDriver(UAVDriver["CrazyflieUAV"]):
     id_format: str
     log: Logger
     fence_config: FenceConfiguration
+    preferred_controller: Optional[ControllerType]
     status_interval: float = 0.5
     takeoff_altitude: float = 1
     use_test_mode: bool = False
@@ -406,6 +410,10 @@ class CrazyflieDriver(UAVDriver["CrazyflieUAV"]):
             show: the show data
         """
         await uav.upload_show(show, remember=True)
+        if self.preferred_controller is not None:
+            await uav.set_parameter(
+                "stabilizer.controller", int(self.preferred_controller)
+            )
 
     handle_command_color = create_color_command_handler()
     handle_command_motoroff = handle_command_stop

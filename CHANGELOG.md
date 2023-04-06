@@ -5,11 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- We now distinguish between altitude above _ground level_ (AGL) and altitude
+  above _home level_ (AHL) in the server and also in Skybrush Live. Earlier
+  versions used to call altitude above home level as AGL, this is now fixed and
+  you should be looking for AHL instead of AGL if you want this information.
+  AGL info will be provided only if terrain following is configured on the
+  drone and it knows its own altitude above ground level.
+
+- GPS horizontal and vertical accuracy data is now parsed from MAVLink messages
+  and shown in Skybrush Live.
+
 ## [2.11.0] - 2023-04-05
 
 ### Added
 
-- The Crazyflie exrension can now be configured to select a specific controller
+- The Crazyflie extension can now be configured to select a specific controller
   type on the drones after a show upload.
 
 ## [2.10.2] - 2023-03-24

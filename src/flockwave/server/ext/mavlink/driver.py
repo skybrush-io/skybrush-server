@@ -948,6 +948,15 @@ class MAVLinkUAV(UAVBase):
     notify_updated: Callable[[], None]
     send_log_message_to_gcs: Callable[[str], None]
 
+    _battery: BatteryInfo
+    """Battery status of the drone"""
+
+    _compass_calibration: CompassCalibration
+    """Compass calibration status of the drone"""
+
+    _gps_fix: GPSFix
+    """Current GPS fix status and position accuracy of the drone."""
+
     _last_skybrush_status_info: Optional[DroneShowStatus] = None
 
     def __init__(self, *args, **kwds):
@@ -1529,6 +1538,9 @@ class MAVLinkUAV(UAVBase):
         self._gps_fix.num_satellites = (
             num_sats if num_sats < 255 else None
         )  # 255 = unknown
+        self._gps_fix.horizontal_accuracy = message.h_acc / 100.0
+        self._gps_fix.vertical_accuracy = message.v_acc / 100.0
+
         self.update_status(gps=self._gps_fix)
         self.notify_updated()
 

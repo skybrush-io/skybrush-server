@@ -1063,7 +1063,7 @@ class MAVLinkUAV(UAVBase):
             # Turn NotImplementedError from the autopilot into a NotSupportedError
             raise NotSupportedError
 
-    async def calibrate_component(self, component: str) -> None:
+    async def calibrate_component(self, component: str) -> AsyncIterator[Progress]:
         """Calibrates a component of the UAV.
 
         Parameters:

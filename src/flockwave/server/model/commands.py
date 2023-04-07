@@ -36,6 +36,13 @@ class Progress:
     percentage: Optional[int]
     object: Any
 
+    @classmethod
+    def done(cls, message: Optional[str] = None, *, object: Any = MISSING):
+        """Convenience constructor for a progress message with 100%
+        percentage.
+        """
+        return cls(percentage=100, message=message, object=object)
+
     def __init__(
         self,
         *,

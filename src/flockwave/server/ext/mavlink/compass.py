@@ -4,6 +4,7 @@ procedure on ArduPilot UAVs.
 
 from enum import IntEnum
 from trio import sleep
+from typing import List
 
 from flockwave.server.tasks import ProgressReporter
 
@@ -25,6 +26,12 @@ class CompassCalibration:
     ArduPilot UAV with possibly multiple compasses.
     """
 
+    _percentages: List[int]
+    """Progress percentage for each compass being calibrated."""
+
+    _status: List[CompassCalibrationStatus]
+    """Status value for each compass being calibrated."""
+
     def __init__(self):
         """Constructor."""
         # Stores the calibration status of each compass
@@ -32,7 +39,7 @@ class CompassCalibration:
         self._percentages = []
         self.reset()
 
-    def _get_progress(self):
+    def _get_progress(self) -> float:
         """Returns the average progress of the compass calibration."""
         percentages = [
             percentage
@@ -95,11 +102,11 @@ class CompassCalibration:
         """
         return len(self._status) > 0 and not self.running
 
-    def handle_message_mag_cal_progress(self, message: MAVLinkMessage):
+    def handle_message_mag_cal_progress(self, message: MAVLinkMessage) -> None:
         """Handles a MAG_CAL_PROGRESS message from the autopilot."""
         return self._handle_mag_cal_message(message)
 
-    def handle_message_mag_cal_report(self, message: MAVLinkMessage):
+    def handle_message_mag_cal_report(self, message: MAVLinkMessage) -> None:
         """Handles a MAG_CAL_REPORT message from the autopilot."""
         return self._handle_mag_cal_message(message)
 
@@ -116,7 +123,7 @@ class CompassCalibration:
 
         if cal_status.is_calibrating:
             if hasattr(message, "completion_pct"):
-                self._percentages[compass_id] = message.completion_pct
+                self._percentages[compass_id] = int(message.completion_pct)
             self._status[compass_id] = CompassCalibrationStatus.CALIBRATING
         elif cal_status.is_successful:
             self._percentages[compass_id] = 100
@@ -137,8 +144,8 @@ class CompassCalibration:
                 self._reporter.fail("Compass calibration failed")
             elif self.running:
                 self._reporter.notify(
-                    self._get_progress(),
-                    "Rotate the autopilot around all axes to calibrate compasses...",
+                    int(self._get_progress()),
+                    "Rotate the UAV around all axes to calibrate...",
                 )
 
     async def wait_until_termination(self) -> bool:

@@ -1,7 +1,7 @@
 """Implementations of autopilot-specific functionality."""
 
 from abc import ABCMeta, abstractmethod, abstractproperty
-from trio import fail_after, sleep, TooSlowError
+from trio import sleep, TooSlowError
 from typing import AsyncIterator, Dict, Type, Union
 
 from flockwave.server.errors import NotSupportedError
@@ -626,6 +626,11 @@ class ArduPilot(Autopilot):
                 )
             raise RuntimeError("Compass calibration terminated unexpectedly")
 
+        # Indicate to the user that we are now rebooting the drone, otherwise
+        # it's confusing that the UI shows 100% but the operation is still in
+        # progress
+        yield Progress.done("Rebooting...")
+
         if success:
             # Wait a bit so the user sees the LED flashes on the drone that indicate a
             # successful calibration
@@ -637,6 +642,8 @@ class ArduPilot(Autopilot):
                 raise RuntimeError(
                     "Failed to reboot UAV after successful compass calibration"
                 )
+
+        yield Progress.done("Rebooting...")
 
     async def configure_geofence(
         self, uav, configuration: GeofenceConfigurationRequest

@@ -19,6 +19,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - GPS horizontal and vertical accuracy data is now parsed from MAVLink messages
   and shown in Skybrush Live.
 
+- Compass calibration now shows progress percentage in clients for MAVLink
+  based drones. You might need to update Skybrush Live to see the progress bar.
+
 ## [2.11.0] - 2023-04-05
 
 ### Added

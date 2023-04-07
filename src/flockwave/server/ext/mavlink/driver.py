@@ -1538,8 +1538,12 @@ class MAVLinkUAV(UAVBase):
         self._gps_fix.num_satellites = (
             num_sats if num_sats < 255 else None
         )  # 255 = unknown
-        self._gps_fix.horizontal_accuracy = message.h_acc / 100.0
-        self._gps_fix.vertical_accuracy = message.v_acc / 100.0
+        self._gps_fix.horizontal_accuracy = (
+            message.h_acc / 100.0 if message.h_acc > 0 else None
+        )
+        self._gps_fix.vertical_accuracy = (
+            message.v_acc / 100.0 if message.v_acc > 0 else None
+        )
 
         self.update_status(gps=self._gps_fix)
         self.notify_updated()

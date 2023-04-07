@@ -54,12 +54,21 @@ from .model import (
     FlockwaveNotification,
     FlockwaveResponse,
 )
-from .registries import ChannelTypeRegistry, ClientRegistry, Registry, find_in_registry
+from .registries import ChannelTypeRegistry, ClientRegistry
 from .types import Disposer
+
+# Legacy imports for compatibility reasons. We can get rid of these when the
+# "dock" extension has migrated to the new location in .message_handlers
+from .message_handlers import (
+    create_generic_INF_or_PROPS_message_factory,
+    create_multi_object_message_handler,
+)
 
 __all__ = (
     "ConnectionStatusMessageRateLimiter",
     "UAVMessageRateLimiter",
+    "MessageHandler",
+    "MessageHandlerResponse",
     "MessageHub",
     "RateLimiters",
     "create_generic_INF_or_PROPS_message_factory",
@@ -69,20 +78,21 @@ __all__ = (
 log: Logger = base_log.getChild("message_hub")
 
 
-#: Type specification for objects that we can return from a message handler
-#: function
 MessageHandlerResponse = Union[FlockwaveMessage, bool, dict]
+"""Type specification for objects that we can return from a message handler
+function.
+"""
 
-#: Type specification for message handler functions that take a message, a
-#: client that the message came from, and the message hub, and returns a
-#: response object (a message, a boolean that encodes whether the message was
-#: handled by the handler or not, or a dictionary that is turned into a message)
 MessageHandler = Callable[
     [FlockwaveMessage, Client, "MessageHub"],
     Union[MessageHandlerResponse, Awaitable[MessageHandlerResponse]],
 ]
+"""Type specification for message handler functions that take a message, a
+client that the message came from, and the message hub, and returns a
+response object (a message, a boolean that encodes whether the message was
+handled by the handler or not, or a dictionary that is turned into a message).
+"""
 
-#: Type variable for generics
 T = TypeVar("T")
 
 
@@ -1119,108 +1129,6 @@ class MessageHub:
         if response:
             await self.send_message(response, to=to, in_response_to=in_response_to)
         return response
-
-
-#: Type alias for SOMETHING-INF-style Flockwave message factory functions
-GenericINFMessageFactory = Callable[
-    [MessageHub, Iterable[str], Optional[FlockwaveMessage]],
-    Union[FlockwaveNotification, FlockwaveResponse],
-]
-
-
-def create_generic_INF_or_PROPS_message_factory(
-    type: str,
-    key: str,
-    registry: Registry[T],
-    filter: Optional[Callable[[T], bool]] = None,
-    getter: Optional[Callable[[Any], Any]] = None,
-    description: str = "item",
-) -> GenericINFMessageFactory:
-    """Creates a standard SOMETHING-INF or SOMETHING-PROPS-style Flockwave
-    message factory function.
-
-    The returned factory function takes a message hub, a list of object IDs and
-    an optional source message that the IDs originated from. It must return an
-    object that maps the received object IDs to the corresponding status
-    information, fetched using the specified getter function.
-
-    Parameters:
-        type: the Flockwave type of the message to produce
-        key: the name of the key in the Flockwave message body where the
-            information about the objects will be placed
-        registry: the registry in which the objects are being looked up
-        filter: a predicate that the item from the registry matching a given
-            ID will be called with. Only items for which the predicate returns
-            `True` are allowed to be returned to the user; items for which the
-            predicate returns `False` are treated as nonexistent
-        getter: a function that takes a matched item from the registry and
-            extracts the status information to return
-        description: a textual, human-readable description of the item type
-            being looked up in this function. Used in error messages. Must be
-            lowercase.
-
-    Returns:
-        the message factory function
-    """
-
-    def factory(
-        hub: MessageHub,
-        ids: Iterable[str],
-        in_response_to: Optional[FlockwaveMessage] = None,
-    ) -> Union[FlockwaveNotification, FlockwaveResponse]:
-        statuses = {}
-
-        body: Dict[str, Any] = {"type": type}
-        body[key] = statuses
-        response = hub.create_response_or_notification(
-            body=body, in_response_to=in_response_to
-        )
-
-        for item_id in ids:
-            item = find_in_registry(
-                registry,
-                item_id,
-                predicate=filter,
-                response=response,
-                failure_reason=f"No such {description}",
-            )
-            if item:
-                statuses[item_id] = getter(item) if getter else item  # type: ignore
-
-        return response
-
-    return factory
-
-
-def create_multi_object_message_handler(
-    factory: GenericINFMessageFactory,
-) -> MessageHandler:
-    """Creates a standard SOMETHING-INF-style Flockwave message handler that
-    looks up objects from an object registry by ID and returns some
-    information about them in a response.
-
-    The lookup is performed by a message factory; see
-    `create_generic_INF_or_PROPS_message_factory()` for more information about how to
-    construct it.
-
-    It is assumed that the incoming message contains a single `ids` key that
-    is an array of strings, each array representing an ID of an object to look
-    up. It is also assumed that the response body is shaped like a typical
-    ...-INF message response according to the Flockwave specs.
-
-    Parameters:
-        factory: the message factory to use to construct the response
-
-    Returns:
-        the message handler that can be registered in the message hub.
-    """
-
-    def handler(
-        message: FlockwaveMessage, sender: Client, hub: MessageHub
-    ) -> FlockwaveResponse:
-        return factory(hub, message.get_ids(), in_response_to=message)  # type: ignore
-
-    return handler
 
 
 ##############################################################################

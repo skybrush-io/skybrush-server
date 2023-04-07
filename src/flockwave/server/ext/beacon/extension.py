@@ -6,7 +6,7 @@ from typing import Iterator, Optional
 
 from flockwave.concurrency import AsyncBundler
 from flockwave.server.ext.base import Extension
-from flockwave.server.message_hub import (
+from flockwave.server.message_handlers import (
     create_generic_INF_or_PROPS_message_factory,
     create_multi_object_message_handler,
 )

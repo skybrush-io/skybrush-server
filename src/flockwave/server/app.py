@@ -8,7 +8,7 @@ from trio import (
     BrokenResourceError,
     move_on_after,
 )
-from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence, Tuple, Union
+from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple, Union
 
 from flockwave.app_framework import DaemonApp
 from flockwave.app_framework.configurator import AppConfigurator, Configuration
@@ -29,10 +29,11 @@ from .logger import log
 from .message_hub import (
     BatchMessageRateLimiter,
     ConnectionStatusMessageRateLimiter,
-    UAVMessageRateLimiter,
     MessageHub,
     RateLimiters,
+    UAVMessageRateLimiter,
 )
+from .message_handlers import MessageBodyTransformationSpec, transform_message_body
 from .model.client import Client
 from .model.devices import DeviceTree, DeviceTreeSubscriptionManager
 from .model.errors import ClientNotSubscribedError, NoSuchPathError
@@ -59,9 +60,7 @@ PACKAGE_NAME = __name__.rpartition(".")[0]
 
 
 #: Table that describes the handlers of several UAV-related command requests
-UAV_COMMAND_HANDLERS: Dict[
-    str, Tuple[str, Optional[Dict[str, Callable[[Any], Any]]]]
-] = {
+UAV_COMMAND_HANDLERS: Dict[str, Tuple[str, MessageBodyTransformationSpec]] = {
     "OBJ-CMD": ("send_command", None),
     "PRM-GET": ("get_parameter", None),
     "PRM-SET": ("set_parameter", None),
@@ -251,7 +250,7 @@ class SkybrushServer(DaemonApp):
             object = self._find_object_by_id(object_id, response)
             if object:
                 if object.device_tree_node:
-                    devices[object_id] = object.device_tree_node.json
+                    devices[object_id] = object.device_tree_node.json  # type: ignore
                 else:
                     devices[object_id] = {}
 
@@ -442,7 +441,7 @@ class SkybrushServer(DaemonApp):
         for uav_id in uav_ids:
             uav = self.find_uav_by_id(uav_id, response)
             if uav:
-                statuses[uav_id] = uav.status.json
+                statuses[uav_id] = uav.status.json  # type: ignore
 
         return response
 
@@ -478,6 +477,94 @@ class SkybrushServer(DaemonApp):
 
         if cancel_scope.cancelled_caught:
             await client.channel.close(force=True)
+
+    async def dispatch_to_objects(
+        self,
+        message: FlockwaveMessage,
+        sender: Client,
+        *,
+        method_name: str,
+        transformer=None,
+    ) -> FlockwaveMessage:
+        """Dispatches a message intended for multiple objects in the object
+        registry to the objects themselves.
+
+        Do not use this function for UAVs because they are handled in groups by
+        UAV drivers; use `dispatch_to_uavs()` instead.
+
+        Parameters:
+            message: the message that contains a request that is to be forwarded
+                to multiple model objects in the object registry. The message is
+                expected to have an ``ids`` property that lists the IDs of the
+                objects to dispatch the message to.
+            sender: the client that sent the message
+
+        Returns:
+            a response to the original message that lists the IDs of the objects
+            for which the message has been sent successfully and also the IDs of
+            the objects for which the dispatch failed (in the ``success`` and
+            ``failure`` keys).
+        """
+        cmd_manager = self.command_execution_manager
+
+        # Create the response
+        response = self.message_hub.create_response_or_notification(
+            body={}, in_response_to=message
+        )
+
+        # Process the body
+        parameters = dict(message.body)
+        # message_type = parameters.pop("type")
+        object_ids: Sequence[str] = parameters.pop("ids", ())
+        parameters = transform_message_body(transformer, parameters)
+
+        # Find the method to invoke on the objects
+        # method_name, transformer = OBJECT_COMMAND_HANDLERS.get(
+        #     message_type, NULL_HANDLER
+        # )
+
+        # Look up each object and perform the operation on it
+        for object_id in object_ids:
+            object = self._find_object_by_id(object_id, response)
+            if not object:
+                # Failure registered already by _find_object_by_id()
+                continue
+
+            # Look up the method in the object
+            error, result = None, None
+            try:
+                method = getattr(object, method_name)  # type: ignore
+            except (AttributeError, RuntimeError, TypeError):
+                error = "Operation not supported"
+                method = None
+
+            # Execute the method and catch all runtime errors
+            if method is not None:
+                try:
+                    result = method(**parameters)
+                except NotImplementedError:
+                    error = "Operation not implemented"
+                except NotSupportedError:
+                    error = "Operation not supported"
+                except Exception as ex:
+                    error = "Unexpected error: {0}".format(ex)
+                    log.exception(ex)
+
+            # Update the response
+            if error is not None:
+                response.add_error(object.id, error)
+            elif isinstance(result, Exception):
+                response.add_error(object.id, str(result))
+            elif isawaitable(result) or isasyncgen(result):
+                receipt = cmd_manager.new(client_to_notify=sender.id)
+                response.add_receipt(object.id, receipt)
+                response.when_sent(
+                    cmd_manager.mark_as_clients_notified, receipt.id, result
+                )
+            else:
+                response.add_result(object.id, result)
+
+        return response
 
     async def dispatch_to_uavs(
         self, message: FlockwaveMessage, sender: Client
@@ -527,14 +614,7 @@ class SkybrushServer(DaemonApp):
 
         # Transform the incoming arguments if needed before sending them
         # to the driver method
-        if transformer is not None:
-            if callable(transformer):
-                parameters = transformer(parameters)
-            else:
-                for parameter_name, transformer in transformer.items():
-                    if parameter_name in parameters:
-                        value = parameters[parameter_name]
-                        parameters[parameter_name] = transformer(value)
+        parameters = transform_message_body(transformer, parameters)
 
         # Ask each affected driver to send the message to the UAV
         for driver, uavs in uavs_by_drivers.items():
@@ -962,7 +1042,11 @@ class SkybrushServer(DaemonApp):
             status: the status object corresponding to the command whose
                 execution has just finished.
         """
-        body = {"type": "ASYNC-ST", "id": status.id, "progress": status.progress.json}
+        body = {
+            "type": "ASYNC-ST",
+            "id": status.id,
+            "progress": status.progress.json,  # type: ignore
+        }
         if status.is_suspended:
             body["suspended"] = True
         message = self.message_hub.create_response_or_notification(body)

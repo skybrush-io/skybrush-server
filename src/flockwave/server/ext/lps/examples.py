@@ -1,3 +1,4 @@
+from trio import sleep
 from typing import Any, Dict
 
 from .model import LocalPositioningSystem, LocalPositioningSystemType
@@ -11,7 +12,8 @@ class DummyLocalPositioningSystem(LocalPositioningSystem):
     This LPS instance is mostly for illustrative and testing purposes.
     """
 
-    pass
+    async def calibrate(self) -> None:
+        await sleep(3)
 
 
 class DummyLocalPositioningSystemType(

@@ -98,6 +98,11 @@ class MissionManagementExtension(Extension):
     async def run(self):
         assert self.app is not None
 
+        # TODO(ntamas): replace message handlers with instances created by
+        # create_generic_INF_or_PROPS_message_factory() and
+        # create_multi_object_message_handler() where possible.
+        # See the source of the lps extension for inspiration.
+
         with ExitStack() as stack:
             stack.enter_context(
                 self._mission_type_registry.use("land", LandImmediatelyMissionType())

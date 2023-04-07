@@ -52,6 +52,16 @@ class LocalPositioningSystem(ModelObject):
             "type": self.type,
         }
 
+    async def calibrate(self) -> None:
+        """Performs a calibration of the local positioning system.
+
+        Raises:
+            NotImplementedError: if the local positioning system cannot be
+                calibrated
+            RuntimeError: when an error happens during calibration.
+        """
+        raise NotImplementedError
+
     def notify_updated(self) -> None:
         """Notifies all subscribers to the `on_updated()` event that the state
         of the local positioning system was updated.
@@ -94,6 +104,12 @@ class LocalPositioningSystemType(Generic[T], metaclass=ABCMeta):
             a new LPS instance
         """
         raise NotImplementedError
+
+    def describe(self) -> Dict[str, str]:
+        """Returns a JSON object that can be used to describe this LPS type
+        in JSON messages between the server and the connected clients.
+        """
+        return {"name": self.name, "description": self.description}
 
     @abstractmethod
     def get_configuration_schema(self) -> Dict[str, Any]:

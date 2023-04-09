@@ -2,10 +2,10 @@
 
 from abc import ABCMeta, abstractmethod, abstractproperty
 from trio import sleep, TooSlowError
-from typing import AsyncIterator, Dict, Type, Union
+from typing import AsyncIterator, Dict, Type, Union, TYPE_CHECKING
 
 from flockwave.server.errors import NotSupportedError
-from flockwave.server.model.commands import Progress
+from flockwave.server.model.commands import Progress, Suspend
 from flockwave.server.model.geofence import (
     GeofenceAction,
     GeofenceConfigurationRequest,
@@ -32,6 +32,9 @@ from .utils import (
     encode_param_to_wire_representation,
     log_id_for_uav,
 )
+
+if TYPE_CHECKING:
+    from .driver import MAVLinkUAV
 
 
 class Autopilot(metaclass=ABCMeta):
@@ -102,23 +105,41 @@ class Autopilot(metaclass=ABCMeta):
         raise NotImplementedError
 
     @abstractmethod
-    async def calibrate_compass(self, uav) -> AsyncIterator[Progress]:
-        """Calibrates the compass of the UAV.
+    async def calibrate_accelerometer(
+        self, uav: "MAVLinkUAV"
+    ) -> AsyncIterator[Progress]:
+        """Calibrates the accelerometers of the UAV.
 
         Yields:
             events describing the progress of the calibration
 
         Raises:
             NotImplementedError: if we have not implemented support for
-                calibrating the compass (but it supports compass calibration)
-            NotSupportedError: if the autopilot does not support calibrating the
-                compass
+                calibrating the accelerometers (but it supports accelerometer
+                calibration)
+            NotSupportedError: if the autopilot does not support accelerometer
+                calibration
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    async def calibrate_compass(self, uav: "MAVLinkUAV") -> AsyncIterator[Progress]:
+        """Calibrates the compasses of the UAV.
+
+        Yields:
+            events describing the progress of the calibration
+
+        Raises:
+            NotImplementedError: if we have not implemented support for
+                calibrating compasses (but it supports compass calibration)
+            NotSupportedError: if the autopilot does not support compass
+                calibration
         """
         raise NotImplementedError
 
     @abstractmethod
     async def configure_geofence(
-        self, uav, configuration: GeofenceConfigurationRequest
+        self, uav: "MAVLinkUAV", configuration: GeofenceConfigurationRequest
     ) -> None:
         """Updates the geofence configuration on the autopilot to match the
         given configuration object.
@@ -136,7 +157,7 @@ class Autopilot(metaclass=ABCMeta):
 
     @abstractmethod
     async def configure_safety(
-        self, uav, configuration: SafetyConfigurationRequest
+        self, uav: "MAVLinkUAV", configuration: SafetyConfigurationRequest
     ) -> None:
         """Updates the safety configuration on the autopilot to match the
         given configuration object.
@@ -180,7 +201,7 @@ class Autopilot(metaclass=ABCMeta):
         raise NotImplementedError
 
     @abstractmethod
-    async def get_geofence_status(self, uav) -> GeofenceStatus:
+    async def get_geofence_status(self, uav: "MAVLinkUAV") -> GeofenceStatus:
         """Retrieves a full geofence status object from the drone.
 
         Parameters:
@@ -272,16 +293,21 @@ class UnknownAutopilot(Autopilot):
 
     name = "Unknown autopilot"
 
-    async def calibrate_compass(self, uav) -> AsyncIterator[Progress]:
+    async def calibrate_accelerometer(
+        self, uav: "MAVLinkUAV"
+    ) -> AsyncIterator[Progress]:
+        raise NotSupportedError
+
+    async def calibrate_compass(self, uav: "MAVLinkUAV") -> AsyncIterator[Progress]:
         raise NotSupportedError
 
     async def configure_geofence(
-        self, uav, configuration: GeofenceConfigurationRequest
+        self, uav: "MAVLinkUAV", configuration: GeofenceConfigurationRequest
     ) -> None:
         raise NotSupportedError
 
     async def configure_safety(
-        self, uav, configuration: SafetyConfigurationRequest
+        self, uav: "MAVLinkUAV", configuration: SafetyConfigurationRequest
     ) -> None:
         raise NotSupportedError
 
@@ -293,7 +319,7 @@ class UnknownAutopilot(Autopilot):
     def get_flight_mode_numbers(self, mode: str) -> MAVLinkFlightModeNumbers:
         raise NotSupportedError
 
-    async def get_geofence_status(self, uav) -> GeofenceStatus:
+    async def get_geofence_status(self, uav: "MAVLinkUAV") -> GeofenceStatus:
         raise NotSupportedError
 
     @property
@@ -415,16 +441,21 @@ class PX4(Autopilot):
         # anywhere
         return False
 
-    async def calibrate_compass(self, uav) -> AsyncIterator[Progress]:
+    async def calibrate_accelerometer(
+        self, uav: "MAVLinkUAV"
+    ) -> AsyncIterator[Progress]:
+        raise NotImplementedError
+
+    async def calibrate_compass(self, uav: "MAVLinkUAV") -> AsyncIterator[Progress]:
         raise NotImplementedError
 
     async def configure_geofence(
-        self, uav, configuration: GeofenceConfigurationRequest
+        self, uav: "MAVLinkUAV", configuration: GeofenceConfigurationRequest
     ) -> None:
         raise NotImplementedError
 
     async def configure_safety(
-        self, uav, configuration: SafetyConfigurationRequest
+        self, uav: "MAVLinkUAV", configuration: SafetyConfigurationRequest
     ) -> None:
         raise NotImplementedError
 
@@ -436,7 +467,7 @@ class PX4(Autopilot):
 
         return numbers
 
-    async def get_geofence_status(self, uav) -> GeofenceStatus:
+    async def get_geofence_status(self, uav: "MAVLinkUAV") -> GeofenceStatus:
         raise NotImplementedError
 
     @property
@@ -498,10 +529,7 @@ class ArduPilot(Autopilot):
     _custom_modes = {
         0: ("stab", "stabilize"),
         1: ("acro",),
-        2: (
-            "alt",
-            "alt hold",
-        ),
+        2: ("alt", "alt hold"),
         3: ("auto",),
         4: ("guided",),
         5: ("loiter",),
@@ -512,19 +540,13 @@ class ArduPilot(Autopilot):
         13: ("sport",),
         14: ("flip",),
         15: ("tune",),
-        16: (
-            "pos",
-            "pos hold",
-        ),
+        16: ("pos", "pos hold"),
         17: ("brake",),
         18: ("throw",),
         19: ("avoid ADSB", "avoid"),
         20: ("guided no GPS",),
         21: ("smart RTH",),
-        22: (
-            "flow",
-            "flow hold",
-        ),
+        22: ("flow", "flow hold"),
         23: ("follow",),
         24: ("zigzag",),
         25: ("system ID",),
@@ -541,8 +563,11 @@ class ArduPilot(Autopilot):
         4: (GeofenceAction.STOP, GeofenceAction.LAND),
     }
 
-    #: Maximum allowed duration of a compass calibration, in seconds
+    MAX_ACCELEROMETER_CALIBRATION_DURATION = 120
+    """Maximum allowed duration of an accelerometer calibration, in seconds"""
+
     MAX_COMPASS_CALIBRATION_DURATION = 60
+    """Maximum allowed duration of a compass calibration, in seconds"""
 
     @classmethod
     def describe_custom_mode(cls, base_mode: int, custom_mode: int) -> str:
@@ -574,10 +599,70 @@ class ArduPilot(Autopilot):
         else:
             return False
 
-    async def calibrate_compass(self, uav) -> AsyncIterator[Progress]:
+    async def calibrate_accelerometer(
+        self, uav: "MAVLinkUAV"
+    ) -> AsyncIterator[Progress]:
+        # accelerometer calibration starts with sending a proper preflight
+        # calib command
+        success = await uav.driver.send_command_long(
+            uav, MAVCommand.PREFLIGHT_CALIBRATION, 0, 0, 0, 0, 1
+        )
+        if not success:
+            raise RuntimeError("Failed to start accelerometer calibration")
+
+        success = False
+        timeout = self.MAX_ACCELEROMETER_CALIBRATION_DURATION
+
+        try:
+            async for progress in uav.accelerometer_calibration.updates(
+                timeout=timeout, fail_on_timeout=False
+            ):
+                yield progress
+                if isinstance(progress, Suspend):
+                    # Accel calibration was suspended, but then we got here, so
+                    # the user must have resumed the operation. Let's forward
+                    # the resume instruction to the UAV.
+                    success = await uav.driver.send_command_long(
+                        uav,
+                        MAVCommand.ACCELCAL_VEHICLE_POS,
+                        uav.accelerometer_calibration.next_step,
+                    )
+                    if not success:
+                        raise RuntimeError("Failed to resume accelerometer calibration")
+
+                    uav.accelerometer_calibration.notify_resumed()
+                elif isinstance(progress, Progress):
+                    if progress.percentage == 100:
+                        success = True
+
+        except TooSlowError:
+            raise RuntimeError(
+                f"Accelerometer calibration did not finish in {timeout} seconds"
+            )
+
+        # Indicate to the user that we are now rebooting the drone, otherwise
+        # it's confusing that the UI shows 100% but the operation is still in
+        # progress
+        yield Progress.done("Rebooting...")
+
+        if success:
+            # Wait a bit so the user sees the LED flashes on the drone that indicate a
+            # successful calibration
+            await sleep(1.5)
+
+            try:
+                await uav.reboot()
+            except Exception:
+                raise RuntimeError(
+                    "Failed to reboot UAV after successful accelerometer calibration"
+                )
+
+        yield Progress.done("Calibration successful.")
+
+    async def calibrate_compass(self, uav: "MAVLinkUAV") -> AsyncIterator[Progress]:
         calibration_messages = {
-            MAVMessageType.MAG_CAL_PROGRESS: 1,
-            MAVMessageType.MAG_CAL_REPORT: 1,
+            int(MAVMessageType.MAG_CAL_PROGRESS): 1.0,
+            int(MAVMessageType.MAG_CAL_REPORT): 1.0,
         }
         started, success = False, False
         timeout = self.MAX_COMPASS_CALIBRATION_DURATION
@@ -599,7 +684,7 @@ class ArduPilot(Autopilot):
                 )
                 started = True
 
-                async for progress in uav.compass_calibration._reporter.updates(
+                async for progress in uav.compass_calibration.updates(
                     timeout=timeout, fail_on_timeout=False
                 ):
                     if progress.percentage == 100:
@@ -643,10 +728,10 @@ class ArduPilot(Autopilot):
                     "Failed to reboot UAV after successful compass calibration"
                 )
 
-        yield Progress.done("Rebooting...")
+        yield Progress.done("Calibration successful.")
 
     async def configure_geofence(
-        self, uav, configuration: GeofenceConfigurationRequest
+        self, uav: "MAVLinkUAV", configuration: GeofenceConfigurationRequest
     ) -> None:
         fence_type = GeofenceType.OFF
 
@@ -775,7 +860,7 @@ class ArduPilot(Autopilot):
 
         raise UnknownFlightModeError(mode)
 
-    async def get_geofence_status(self, uav) -> GeofenceStatus:
+    async def get_geofence_status(self, uav: "MAVLinkUAV") -> GeofenceStatus:
         status = GeofenceStatus()
 
         # Generic stuff comes here

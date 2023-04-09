@@ -81,6 +81,7 @@ class MAVCommand(IntEnum):
     DO_START_MAG_CAL = 42424
     DO_ACCEPT_MAG_CAL = 42425
     DO_CANCEL_MAG_CAL = 42426
+    ACCELCAL_VEHICLE_POS = 42429
 
 
 class MAVComponent(IntEnum):
@@ -484,6 +485,50 @@ class MotorTestThrottleType(IntEnum):
     PWM = 1
     PILOT = 2
     CAL = 3
+
+
+_accel_calibration_status_to_action = {
+    1: "Place UAV in a level position",
+    2: "Place UAV on its left side",
+    3: "Place UAV on its right side",
+    4: "Place UAV with its nose down",
+    5: "Place UAV with its nose up",
+    6: "Place UAV upside down",
+    16777215: "Accelerometer calibration successful",
+    16777216: "Accelerometer calibration failed",
+}
+
+
+class AccelCalVehiclePos(IntEnum):
+    """Replica of the `ACCELCAL_VEHICLE_POS` enum of the MAVLink protocol, using
+    proper Python enums.
+    """
+
+    NOT_STARTED = 0
+    PLACE_LEVEL = 1
+    PLACE_LEFT = 2
+    PLACE_RIGHT = 3
+    PLACE_NOSE_DOWN = 4
+    PLACE_NOSE_UP = 5
+    PLACE_UPSIDE_DOWN = 6
+    SUCCESS = 16777215
+    FAILED = 16777216
+
+    @property
+    def is_waiting_for_action(self) -> bool:
+        return self >= 1 and self <= 6
+
+    @property
+    def is_failure(self) -> bool:
+        return self == 16777216
+
+    @property
+    def is_successful(self) -> bool:
+        return self == 16777215
+
+    def as_action(self) -> str:
+        """Converts the calibration command to a human readable message."""
+        return _accel_calibration_status_to_action[self]
 
 
 class MagCalStatus(IntEnum):

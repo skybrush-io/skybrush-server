@@ -3,9 +3,10 @@ procedure on ArduPilot UAVs.
 """
 
 from enum import IntEnum
-from trio import sleep
-from typing import List
+from math import inf
+from typing import AsyncIterator, List
 
+from flockwave.server.model import Progress
 from flockwave.server.tasks import ProgressReporter
 
 from .enums import MagCalStatus
@@ -110,6 +111,14 @@ class CompassCalibration:
         """Handles a MAG_CAL_REPORT message from the autopilot."""
         return self._handle_mag_cal_message(message)
 
+    def updates(
+        self, timeout: float = inf, fail_on_timeout: bool = True
+    ) -> AsyncIterator[Progress]:
+        """Returns an async iterator generating progress messages from the current
+        calibration task.
+        """
+        return self._reporter.updates(timeout=timeout, fail_on_timeout=fail_on_timeout)
+
     def _handle_mag_cal_message(self, message: MAVLinkMessage):
         """Common implementation for the handling of MAG_CAL_PROGRESS and
         MAG_CAL_REPORT messages.
@@ -147,24 +156,6 @@ class CompassCalibration:
                     int(self._get_progress()),
                     "Rotate the UAV around all axes to calibrate...",
                 )
-
-    async def wait_until_termination(self) -> bool:
-        """Waits until the messages from the autopilot indicate that the
-        compass calibration has finished.
-
-        Returns:
-            whether the compass calibration was successful
-        """
-        # First wait until the calibration starts
-        while not self.running:
-            await sleep(0.5)
-
-        # Now wait until the calibration terminates
-        while not self.terminated:
-            await sleep(0.5)
-
-        # Return whether the calibration was successful
-        return self.successful
 
     def _ensure_num_compasses_at_least(self, num_compasses: int) -> None:
         """Ensures that the internal data structures of the compass have

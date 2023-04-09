@@ -26,6 +26,9 @@ anything.
 """
 
 
+C = TypeVar("C", bound="Progress")
+
+
 class Progress:
     """Progress object that may be yielded from command handlers implemented
     as an async iterator that yield one or more progress objects, optionally
@@ -66,7 +69,9 @@ class Progress:
             result["object"] = self.object
         return result
 
-    def update(self, percentage: Optional[int] = None, message: Optional[str] = None):
+    def update(
+        self: C, percentage: Optional[int] = None, message: Optional[str] = None
+    ) -> C:
         """Updates the progress object with a new percentage, a new message or
         both.
 
@@ -74,11 +79,27 @@ class Progress:
             percentage: the new percentage; `None` if it should be left
                 unmodified
             message: the new message; `None` if it should be left unmodified
+
+        Returns:
+            the progress object itself for easy chaining
         """
         if percentage is not None:
             self.percentage = percentage
         if message is not None:
             self.message = message
+        return self
+
+    def __repr__(self) -> str:
+        if self.object is not MISSING:
+            return (
+                f"{self.__class__.__name__}(percentage={self.percentage!r},"
+                f"message={self.message!r}, object={self.object!r})"
+            )
+        else:
+            return (
+                f"{self.__class__.__name__}(percentage={self.percentage!r}, "
+                f"message={self.message!r})"
+            )
 
 
 class Suspend(Progress):
@@ -115,6 +136,15 @@ class Suspend(Progress):
 
     def to_progress(self) -> Progress:
         return Progress(message=self.message, object=self.object)
+
+    def __repr__(self) -> str:
+        if self.object is not MISSING:
+            return (
+                f"{self.__class__.__name__}(message={self.message!r}, "
+                f"object={self.object!r})"
+            )
+        else:
+            return f"{self.__class__.__name__}(message={self.message!r})"
 
 
 AsyncCommandEvents = AsyncIterator[Union[Progress, T]]

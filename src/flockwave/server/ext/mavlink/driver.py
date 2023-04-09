@@ -48,6 +48,7 @@ from flockwave.server.show import (
 )
 from flockwave.server.show.formats import SkybrushBinaryShowFile
 
+from .accelerometer import AccelerometerCalibration
 from .autopilots import ArduPilot, Autopilot, UnknownAutopilot
 from .comm import Channel
 from .compass import CompassCalibration
@@ -275,7 +276,7 @@ class MAVLinkDriver(UAVDriver["MAVLinkUAV"]):
         return int(monotonic() * 1000)
 
     handle_command_calib = create_calibration_command_handler(
-        ("baro", "compass", "gyro", "level")
+        ("accel", "baro", "compass", "gyro", "level")
     )
     handle_command_color = create_color_command_handler()
     handle_command_param = create_parameter_command_handler(
@@ -968,6 +969,9 @@ class MAVLinkUAV(UAVBase):
         #: Battery status of the drone
         self._battery = BatteryInfo()
 
+        #: Accelerometer calibration status of the drone
+        self._accelerometer_calibration = AccelerometerCalibration()
+
         #: Compass calibration status of the drone
         self._compass_calibration = CompassCalibration()
 
@@ -1046,8 +1050,25 @@ class MAVLinkUAV(UAVBase):
         self._network_id = network_id
         self._system_id = system_id
 
+    async def calibrate_accelerometer(self) -> AsyncIterator[Progress]:
+        """Calibrates the accelerometers of the UAV.
+
+        Yields:
+            events describing the progress of the calibration
+
+        Raises:
+            NotSupportedError: if the accelerometer calibration is not supported
+                on the UAV
+        """
+        try:
+            async for event in self._autopilot.calibrate_accelerometer(self):  # type: ignore
+                yield event
+        except NotImplementedError:
+            # Turn NotImplementedError from the autopilot into a NotSupportedError
+            raise NotSupportedError
+
     async def calibrate_compass(self) -> AsyncIterator[Progress]:
-        """Calibrates the compass of the UAV.
+        """Calibrates the compasses of the UAV.
 
         Yields:
             events describing the progress of the calibration
@@ -1057,7 +1078,7 @@ class MAVLinkUAV(UAVBase):
                 the UAV
         """
         try:
-            async for event in self._autopilot.calibrate_compass(self):
+            async for event in self._autopilot.calibrate_compass(self):  # type: ignore
                 yield event
         except NotImplementedError:
             # Turn NotImplementedError from the autopilot into a NotSupportedError
@@ -1068,20 +1089,28 @@ class MAVLinkUAV(UAVBase):
 
         Parameters:
             component: the component to calibrate; currently we support
-                ``baro``, ``compass``, ``gyro`` or ``level``.
+                ``accel``, ``baro``, ``compass``, ``gyro`` or ``level``.
 
         Raises:
             NotSupportedError: if the calibration of the given component is not
                 supported on this UAV
             RuntimeError: if the UAV rejected to calibrate the component
         """
+        if component == "accel":
+            # Acceleration calibration takes a long time, needs user input and
+            # involves progress handling so that's handled in a separate function
+            async for event in self.calibrate_accelerometer():
+                yield event
+            return
+
         if component == "compass":
-            # Compass calibration is a whole different thing so that's handled
-            # in a separate function
+            # Compass calibration takes a long time and involves progress
+            # handling so that's handled in a separate function
             async for event in self.calibrate_compass():
                 yield event
             return
 
+        # all other calibration procedures are handled with a single command
         params = [0] * 7
         if component == "baro":
             params[2] = 1
@@ -1410,6 +1439,14 @@ class MAVLinkUAV(UAVBase):
                 # a protocol error at this point and bail out.
                 self.ensure_error(FlockwaveErrorCode.AUTOPILOT_PROTOCOL_ERROR)
 
+    def handle_message_command_long(self, message: MAVLinkMessage):
+        if message.command == MAVCommand.ACCELCAL_VEHICLE_POS:
+            self.accelerometer_calibration.handle_message_accelcal_vehicle_pos(message)
+        else:
+            # Do not raise an exception here, otherwise it would be an easy way
+            # to crash the extension -- just send an unsupported COMMAND_LONG
+            pass
+
     def handle_message_drone_show_status(self, message: MAVLinkMessage):
         """Handles an incoming drone show specific status message targeted at
         this UAV.
@@ -1582,6 +1619,11 @@ class MAVLinkUAV(UAVBase):
             pass
 
         self._store_message(message)
+
+    @property
+    def accelerometer_calibration(self) -> AccelerometerCalibration:
+        """State object of the accelerometer calibration procedure."""
+        return self._accelerometer_calibration
 
     @property
     def compass_calibration(self) -> CompassCalibration:

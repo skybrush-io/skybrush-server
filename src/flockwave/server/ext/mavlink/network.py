@@ -605,6 +605,7 @@ class MAVLinkNetwork:
             "AUTOPILOT_VERSION": self._handle_message_autopilot_version,
             "BAD_DATA": nop,
             "COMMAND_ACK": nop,
+            "COMMAND_LONG": self._handle_message_command_long,
             "DATA16": self._handle_message_data16,
             "FENCE_STATUS": nop,
             "FILE_TRANSFER_PROTOCOL": nop,
@@ -709,6 +710,14 @@ class MAVLinkNetwork:
         uav = self._find_uav_from_message(message, address)
         if uav:
             uav.handle_message_autopilot_version(message)
+
+    def _handle_message_command_long(
+        self, message: MAVLinkMessage, *, connection_id: str, address: Any
+    ):
+        """Handles an incoming MAVLink COMMAND_LONG message."""
+        uav = self._find_uav_from_message(message, address)
+        if uav:
+            uav.handle_message_command_long(message)
 
     def _handle_message_data16(
         self, message: MAVLinkMessage, *, connection_id: str, address: Any

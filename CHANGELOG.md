@@ -22,6 +22,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Compass calibration now shows progress percentage in clients for MAVLink
   based drones. You might need to update Skybrush Live to see the progress bar.
 
+- Added support for accelerometer calibration for MAVLink-based drones.
+
 ## [2.11.0] - 2023-04-05
 
 ### Added

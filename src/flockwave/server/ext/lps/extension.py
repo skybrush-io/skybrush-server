@@ -8,12 +8,12 @@ from trio import sleep_forever
 from typing import Any, Dict, Optional
 
 from flockwave.server.ext.base import Extension
-from flockwave.server.message_hub import MessageHub
 from flockwave.server.message_handlers import (
-    create_generic_INF_or_PROPS_message_factory,
+    create_mapper,
+    create_object_listing_request_handler,
     create_multi_object_message_handler,
 )
-from flockwave.server.model import Client, FlockwaveMessage, FlockwaveResponse
+from flockwave.server.model import FlockwaveResponse
 from flockwave.server.registries import find_in_registry
 
 from .examples import DummyLocalPositioningSystemType
@@ -94,30 +94,44 @@ class LocalPositioningSystemsExtension(Extension):
         assert self.app is not None
 
         handle_many_with = create_multi_object_message_handler
-        handle_LPS_INF = handle_many_with(
-            create_generic_INF_or_PROPS_message_factory(
-                "X-LPS-INF",
-                "status",
+
+        handle_LPS_CALIB = handle_many_with(
+            create_mapper(
+                "X-LPS-CALIB",
                 self._lps_registry,
+                getter=methodcaller("calibrate"),
+                description="local positioning system",
+                cmd_manager=self.app.command_execution_manager,
+            )
+        )
+        handle_LPS_INF = handle_many_with(
+            create_mapper(
+                "X-LPS-INF",
+                self._lps_registry,
+                key="status",
                 getter=attrgetter("json"),
                 description="local positioning system",
             )
         )
+        handle_LPS_LIST = create_object_listing_request_handler(self._lps_registry)
         handle_LPS_TYPE_INF = handle_many_with(
-            create_generic_INF_or_PROPS_message_factory(
+            create_mapper(
                 "X-LPS-TYPE-INF",
-                "items",
                 self._lps_type_registry,
+                key="items",
                 getter=methodcaller("describe"),
                 description="local positioning system type",
                 add_object_id=True,
             )
         )
+        handle_LPS_TYPE_LIST = create_object_listing_request_handler(
+            self._lps_type_registry
+        )
         handle_LPS_TYPE_SCHEMA = handle_many_with(
-            create_generic_INF_or_PROPS_message_factory(
+            create_mapper(
                 "X-LPS-TYPE-SCHEMA",
-                "items",
                 self._lps_type_registry,
+                key="items",
                 getter=methodcaller("get_configuration_schema"),
                 description="local positioning system type",
             )
@@ -131,12 +145,12 @@ class LocalPositioningSystemsExtension(Extension):
             stack.enter_context(
                 self.app.message_hub.use_message_handlers(
                     {
-                        "X-LPS-CALIB": self._handle_LPS_CALIB,
+                        "X-LPS-CALIB": handle_LPS_CALIB,
                         # "X-LPS-CFG": self._handle_LPS_CFG,
                         "X-LPS-INF": handle_LPS_INF,
-                        "X-LPS-LIST": self._handle_LPS_LIST,
+                        "X-LPS-LIST": handle_LPS_LIST,
                         "X-LPS-TYPE-INF": handle_LPS_TYPE_INF,
-                        "X-LPS-TYPE-LIST": self._handle_LPS_TYPE_LIST,
+                        "X-LPS-TYPE-LIST": handle_LPS_TYPE_LIST,
                         "X-LPS-TYPE-SCHEMA": handle_LPS_TYPE_SCHEMA,
                     }
                 )
@@ -153,53 +167,6 @@ class LocalPositioningSystemsExtension(Extension):
                 self.log.info(f"LPS instance registered with ID={lps_ids}")
 
             await sleep_forever()
-
-    async def _handle_LPS_CALIB(
-        self, message: FlockwaveMessage, sender: Client, hub: MessageHub
-    ):
-        """Handles an incoming request to perform a calibration of a local
-        positioning system instance.
-        """
-        assert self.app is not None
-        return await self.app.dispatch_to_objects(
-            message, sender, method_name="calibrate"
-        )
-
-    def _handle_LPS_LIST(
-        self, message: FlockwaveMessage, sender: Client, hub: MessageHub
-    ):
-        """Handles an incoming request to return the IDs of all registered
-        local positioning system (LPS) instances.
-        """
-        return {"ids": list(self._lps_registry.ids)}
-
-    def _handle_LPS_TYPE_LIST(
-        self, message: FlockwaveMessage, sender: Client, hub: MessageHub
-    ):
-        """Handles an incoming request to return the IDs of all registered
-        local positioning system (LPS) types.
-        """
-        return {"ids": list(self._lps_type_registry.ids)}
-
-    def _handle_LPS_TYPE_SCHEMA(
-        self, message: FlockwaveMessage, sender: Client, hub: MessageHub
-    ):
-        """Handles an incoming request to return the JSON schems associated
-        with the parameters of one or more local positioning system (LPS) types.
-        """
-        items = {}
-
-        body = {"items": items, "type": "X-LPS-TYPE-SCHEMA"}
-        response = hub.create_response_or_notification(
-            body=body, in_response_to=message
-        )
-
-        for id in message.body.get("ids", ()):
-            lps_type = self.find_lps_type_by_id(id, response)
-            if lps_type:
-                items[id] = lps_type.get_configuration_schema()
-
-        return response
 
 
 construct = LocalPositioningSystemsExtension

@@ -99,9 +99,8 @@ class MissionManagementExtension(Extension):
         assert self.app is not None
 
         # TODO(ntamas): replace message handlers with instances created by
-        # create_generic_INF_or_PROPS_message_factory() and
-        # create_multi_object_message_handler() where possible.
-        # See the source of the lps extension for inspiration.
+        # create_mapper() and create_multi_object_message_handler() where
+        # possible. See the source of the lps extension for inspiration.
 
         with ExitStack() as stack:
             stack.enter_context(

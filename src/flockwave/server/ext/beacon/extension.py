@@ -7,7 +7,7 @@ from typing import Iterator, Optional
 from flockwave.concurrency import AsyncBundler
 from flockwave.server.ext.base import Extension
 from flockwave.server.message_handlers import (
-    create_generic_INF_or_PROPS_message_factory,
+    create_mapper,
     create_multi_object_message_handler,
 )
 from flockwave.server.model.object import registered
@@ -75,18 +75,18 @@ class BeaconExtension(Extension):
             self.beacons_to_update = AsyncBundler()
 
             # Register message handlers for beacon-related messages
-            create_BCN_INF = create_generic_INF_or_PROPS_message_factory(
+            create_BCN_INF = create_mapper(
                 "BCN-INF",
-                "status",
                 app.object_registry,
+                key="status",
                 filter=is_beacon,
                 getter=attrgetter("status"),
                 description="beacon",
             )
-            create_BCN_PROPS = create_generic_INF_or_PROPS_message_factory(
+            create_BCN_PROPS = create_mapper(
                 "BCN-PROPS",
-                "result",
                 app.object_registry,
+                key="result",
                 filter=is_beacon,
                 getter=attrgetter("basic_properties"),
                 description="beacon",

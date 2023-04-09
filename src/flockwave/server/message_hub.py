@@ -60,7 +60,7 @@ from .types import Disposer
 # Legacy imports for compatibility reasons. We can get rid of these when the
 # "dock" extension has migrated to the new location in .message_handlers
 from .message_handlers import (
-    create_generic_INF_or_PROPS_message_factory,
+    create_mapper as create_generic_INF_or_PROPS_message_factory,
     create_multi_object_message_handler,
 )
 

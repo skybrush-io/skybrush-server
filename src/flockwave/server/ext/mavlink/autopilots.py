@@ -610,7 +610,7 @@ class ArduPilot(Autopilot):
         if not success:
             raise RuntimeError("Failed to start accelerometer calibration")
 
-        success = False
+        successful_calibration = False
         timeout = self.MAX_ACCELEROMETER_CALIBRATION_DURATION
 
         try:
@@ -633,19 +633,19 @@ class ArduPilot(Autopilot):
                     uav.accelerometer_calibration.notify_resumed()
                 elif isinstance(progress, Progress):
                     if progress.percentage == 100:
-                        success = True
+                        successful_calibration = True
 
         except TooSlowError:
             raise RuntimeError(
                 f"Accelerometer calibration did not finish in {timeout} seconds"
             )
 
-        # Indicate to the user that we are now rebooting the drone, otherwise
-        # it's confusing that the UI shows 100% but the operation is still in
-        # progress
-        yield Progress.done("Rebooting...")
+        if successful_calibration:
+            # Indicate to the user that we are now rebooting the drone, otherwise
+            # it's confusing that the UI shows 100% but the operation is still in
+            # progress
+            yield Progress.done("Rebooting...")
 
-        if success:
             # Wait a bit so the user sees the LED flashes on the drone that indicate a
             # successful calibration
             await sleep(1.5)
@@ -657,7 +657,7 @@ class ArduPilot(Autopilot):
                     "Failed to reboot UAV after successful accelerometer calibration"
                 )
 
-        yield Progress.done("Calibration successful.")
+        yield Progress.done("Acceelerometer calibration successful.")
 
     async def calibrate_compass(self, uav: "MAVLinkUAV") -> AsyncIterator[Progress]:
         calibration_messages = {
@@ -711,12 +711,12 @@ class ArduPilot(Autopilot):
                 )
             raise RuntimeError("Compass calibration terminated unexpectedly")
 
-        # Indicate to the user that we are now rebooting the drone, otherwise
-        # it's confusing that the UI shows 100% but the operation is still in
-        # progress
-        yield Progress.done("Rebooting...")
-
         if success:
+            # Indicate to the user that we are now rebooting the drone, otherwise
+            # it's confusing that the UI shows 100% but the operation is still in
+            # progress
+            yield Progress.done("Rebooting...")
+
             # Wait a bit so the user sees the LED flashes on the drone that indicate a
             # successful calibration
             await sleep(1.5)
@@ -728,7 +728,7 @@ class ArduPilot(Autopilot):
                     "Failed to reboot UAV after successful compass calibration"
                 )
 
-        yield Progress.done("Calibration successful.")
+        yield Progress.done("Compass calibration successful.")
 
     async def configure_geofence(
         self, uav: "MAVLinkUAV", configuration: GeofenceConfigurationRequest

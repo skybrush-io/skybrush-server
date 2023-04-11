@@ -112,7 +112,7 @@ def create_gps_connection_and_format(
     try:
         format_enum = MessageFormat(format)
     except Exception:
-        raise NotSupportedError("{0!r} format is suported at the moment".format(format))
+        raise NotSupportedError(f"{format!r} format is not supported yet") from None
 
     return create_connection(connection), format_enum
 

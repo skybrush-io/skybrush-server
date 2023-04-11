@@ -61,13 +61,13 @@ def create_parameter_command_handler(
             try:
                 name = name_validator(name)
             except Exception:
-                raise RuntimeError(f"Invalid parameter name: {name}")
+                raise RuntimeError(f"Invalid parameter name: {name}") from None
 
         if value is not None:
             try:
                 value = float(value)
             except ValueError:
-                raise RuntimeError(f"Invalid parameter value: {value}")
+                raise RuntimeError(f"Invalid parameter value: {value}") from None
             if value.is_integer():
                 value = int(value)
             if not hasattr(uav, "set_parameter"):
@@ -77,7 +77,7 @@ def create_parameter_command_handler(
             try:
                 await uav.set_parameter(name, value)  # type: ignore
             except KeyError:
-                raise RuntimeError(f"No such parameter: {name}")
+                raise RuntimeError(f"No such parameter: {name}") from None
 
         if not hasattr(uav, "get_parameter"):
             raise NotSupportedError(
@@ -87,7 +87,7 @@ def create_parameter_command_handler(
         try:
             value = await uav.get_parameter(name, fetch=True)  # type: ignore
         except KeyError:
-            raise RuntimeError(f"No such parameter: {name}")
+            raise RuntimeError(f"No such parameter: {name}") from None
 
         if isinstance(value, (int, float)):
             value = format_number_nicely(value)

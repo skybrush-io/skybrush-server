@@ -39,7 +39,9 @@ def get_coordinate_system_from_show_specification(
     try:
         return FlatEarthToGPSCoordinateTransformation.from_json(coordinate_system)
     except Exception:
-        raise RuntimeError("Invalid or missing coordinate system specification")
+        raise RuntimeError(
+            "Invalid or missing coordinate system specification"
+        ) from None
 
 
 def get_drone_count_from_show_specification(show: ShowSpecification) -> Optional[int]:

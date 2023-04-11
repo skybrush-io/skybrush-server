@@ -27,7 +27,7 @@ def test_empty_trajectory():
     assert test_spec.takeoff_time == 0
 
     with raises(ValueError):
-        test_spec.bounding_box
+        _ = test_spec.bounding_box
     with raises(ValueError):
         test_spec.get_padded_bounding_box()
     with raises(ValueError):

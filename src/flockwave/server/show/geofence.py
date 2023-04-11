@@ -52,7 +52,7 @@ def get_geofence_configuration_from_show_specification(
         try:
             result.action = GeofenceAction(action)
         except ValueError:
-            raise RuntimeError(f"unknown geofence action: {action!r}")
+            raise RuntimeError(f"unknown geofence action: {action!r}") from None
 
     # Parse polygons and rally points
     polygons = geofence.get("polygons", ())

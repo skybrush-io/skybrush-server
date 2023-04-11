@@ -212,14 +212,12 @@ class CrazyradioScannerTask:
         found a drone that is still turned on.
         """
         if min_priority > 0:
-            addresses = set(k for k, v in self._priorities.items() if v >= min_priority)
+            addresses = {k for k, v in self._priorities.items() if v >= min_priority}
         else:
             addresses = set(self._conn.address_space)
 
         addresses -= self._excluded
-        result = sorted(
-            list(addresses), key=self._get_priority_of_address, reverse=True
-        )
+        result = sorted(addresses, key=self._get_priority_of_address, reverse=True)
         self._update_priorities()
 
         return result

@@ -75,7 +75,7 @@ class CrazyradioConnection(TaskConnectionBase):
         try:
             self._crazyradio_index = int(host)
         except ValueError:
-            raise RuntimeError("Radio index must be integer")
+            raise RuntimeError("Radio index must be integer") from None
 
         self._crazyflie_address_space = RadioAddressSpace.from_uri(
             f"bradio://{host}{path}", length=length

@@ -92,9 +92,7 @@ class License(metaclass=ABCMeta):
         # Check MAC address restriction
         allowed_mac_addresses = self.get_allowed_mac_addresses()
         if allowed_mac_addresses:
-            all_mac_addresses = {
-                addr for addr in get_link_layer_address_mapping().values()
-            }
+            all_mac_addresses = set(get_link_layer_address_mapping().values())
             if not any(addr in all_mac_addresses for addr in allowed_mac_addresses):
                 return False
 
@@ -241,7 +239,7 @@ class DictBasedLicense(License):
         try:
             return datetime.strptime(expiry, "%Y-%m-%d").date()
         except ValueError:
-            raise ValueError(f"invalid expiry date: {expiry!r}")
+            raise ValueError(f"invalid expiry date: {expiry!r}") from None
 
     def get_features(self) -> FrozenSet[str]:
         return self._features

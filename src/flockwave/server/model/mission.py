@@ -290,7 +290,7 @@ def _get_altitude_from_parameters(params: Dict[str, Any]) -> Optional[Altitude]:
     try:
         reference = AltitudeReference(reference)
     except ValueError:
-        raise RuntimeError(f"altitude reference unknown: {reference!r}")
+        raise RuntimeError(f"altitude reference unknown: {reference!r}") from None
 
     return Altitude(value=value, reference=reference)
 
@@ -315,7 +315,7 @@ def _get_heading_from_parameters(params: Dict[str, Any]) -> Heading:
     try:
         mode = HeadingMode(mode)
     except ValueError:
-        raise RuntimeError(f"heading mode unknown: {mode!r}")
+        raise RuntimeError(f"heading mode unknown: {mode!r}") from None
 
     return Heading(value=value, mode=mode)
 
@@ -423,7 +423,7 @@ def _validate_mission_item(
     try:
         type = MissionItemType(type)
     except ValueError:
-        raise RuntimeError(f"unknown mission item type: {type!r}")
+        raise RuntimeError(f"unknown mission item type: {type!r}") from None
     if expected_type is not None and type != expected_type:
         raise RuntimeError(f"Mission type mismatch: {type!r}!={expected_type!r}")
 

@@ -601,7 +601,7 @@ class UAVDriver(Generic[TUAV], metaclass=ABCMeta):
             ("handle_generic_command", True, False),
         ]
 
-        for func_name, generic, multi in handlers:
+        for func_name, generic, multi in handlers:  # noqa: B007
             func = getattr(self, func_name, None)
             if func is not None:
                 break

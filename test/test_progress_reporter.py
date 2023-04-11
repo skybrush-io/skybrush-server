@@ -53,8 +53,8 @@ async def test_progress_reporter(nursery, autojump_clock):
     assert index == len(expected_seq)
     assert reporter.done
 
-    async for progress in reporter.updates():
-        assert False, "should not ever get here"
+    async for _ in reporter.updates():
+        raise AssertionError("should not ever get here")
 
     assert reporter.done
 
@@ -123,7 +123,7 @@ async def test_progress_reporter_timeout(nursery, autojump_clock):
     assert not reporter.done
 
     with raises(TooSlowError):
-        async for progress in reporter.updates(timeout=5):
+        async for _ in reporter.updates(timeout=5):
             pass
 
 

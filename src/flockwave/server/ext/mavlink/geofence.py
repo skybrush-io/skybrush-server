@@ -245,21 +245,21 @@ class GeofenceManager:
             else:
                 # We need to send the item with the given index to the drone
                 command, kwds = items[index]
-                params = dict(
-                    seq=index,
-                    command=command,
-                    mission_type=mission_type,
-                    param1=0,
-                    param2=0,
-                    param3=0,
-                    param4=0,
-                    x=0,
-                    y=0,
-                    z=0,
-                    frame=MAVFrame.GLOBAL,
-                    current=0,
-                    autocontinue=0,
-                )
+                params = {
+                    "seq": index,
+                    "command": command,
+                    "mission_type": mission_type,
+                    "param1": 0,
+                    "param2": 0,
+                    "param3": 0,
+                    "param4": 0,
+                    "x": 0,
+                    "y": 0,
+                    "z": 0,
+                    "frame": MAVFrame.GLOBAL,
+                    "current": 0,
+                    "autocontinue": 0,
+                }
                 params.update(kwds)
                 message = spec.mission_item_int(**params)
                 should_resend = False

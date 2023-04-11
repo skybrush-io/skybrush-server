@@ -93,8 +93,9 @@ class RTKBeaconManager:
         interested in it. The packet is used to update the position of the
         RTK beacon.
         """
+        encoded = packet
         try:
-            for packet in self._parser(packet):
+            for packet in self._parser(encoded):
                 if isinstance(packet, RTCMV3StationaryAntennaPacket):
                     beacon.update_status(
                         position=self._trans.to_gps(packet.position),  # type: ignore

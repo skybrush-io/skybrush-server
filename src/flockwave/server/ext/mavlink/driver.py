@@ -916,7 +916,7 @@ class MAVLinkDriver(UAVDriver["MAVLinkUAV"]):
         try:
             value_as_float = float(value)
         except ValueError:
-            raise RuntimeError("parameter value must be numeric")
+            raise RuntimeError("parameter value must be numeric") from None
         await uav.set_parameter(name, value_as_float)
 
 
@@ -1065,7 +1065,7 @@ class MAVLinkUAV(UAVBase):
                 yield event
         except NotImplementedError:
             # Turn NotImplementedError from the autopilot into a NotSupportedError
-            raise NotSupportedError
+            raise NotSupportedError from None
 
     async def calibrate_compass(self) -> AsyncIterator[Progress]:
         """Calibrates the compasses of the UAV.
@@ -1082,7 +1082,7 @@ class MAVLinkUAV(UAVBase):
                 yield event
         except NotImplementedError:
             # Turn NotImplementedError from the autopilot into a NotSupportedError
-            raise NotSupportedError
+            raise NotSupportedError from None
 
     async def calibrate_component(self, component: str) -> AsyncIterator[Progress]:
         """Calibrates a component of the UAV.
@@ -1747,7 +1747,9 @@ class MAVLinkUAV(UAVBase):
             try:
                 base_mode, mode, submode = self._autopilot.get_flight_mode_numbers(mode)
             except NotSupportedError:
-                raise ValueError("setting flight modes by name is not supported")
+                raise ValueError(
+                    "setting flight modes by name is not supported"
+                ) from None
         else:
             raise TypeError("flight mode must be numeric or string")
 

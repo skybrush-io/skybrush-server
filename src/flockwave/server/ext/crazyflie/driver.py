@@ -213,7 +213,7 @@ class CrazyflieDriver(UAVDriver["CrazyflieUAV"]):
         try:
             z_num = optional_float(z)
         except ValueError:
-            raise RuntimeError("Invalid number found in input")
+            raise RuntimeError("Invalid number found in input") from None
 
         if z_num is None:
             current = uav.status.position_xyz
@@ -265,7 +265,7 @@ class CrazyflieDriver(UAVDriver["CrazyflieUAV"]):
                 raise RuntimeError(
                     "Invalid fence coordinates; expected xMin, yMin, zMin, "
                     "xMax, yMax, zMax, separated by spaces"
-                )
+                ) from None
 
             await fence.set_axis_aligned_bounding_box(bounds[:3], bounds[3:])
             return "Fence activated"
@@ -288,7 +288,7 @@ class CrazyflieDriver(UAVDriver["CrazyflieUAV"]):
         try:
             coords = optional_float(x), optional_float(y), optional_float(z)
         except ValueError:
-            raise RuntimeError("Invalid number found in input")
+            raise RuntimeError("Invalid number found in input") from None
 
         x_num, y_num, z_num = coords
         x_num, y_num, z_num = await uav.go_to(x_num, y_num, z_num)
@@ -337,7 +337,7 @@ class CrazyflieDriver(UAVDriver["CrazyflieUAV"]):
             coords = optional_float(x), optional_float(y), optional_float(z)
             multiplier_num = optional_float(multiplier)
         except ValueError:
-            raise RuntimeError("Invalid number found in input")
+            raise RuntimeError("Invalid number found in input") from None
 
         if multiplier_num is None:
             multiplier_num = 1
@@ -522,7 +522,7 @@ class CrazyflieDriver(UAVDriver["CrazyflieUAV"]):
         try:
             value_as_float = float(value)
         except ValueError:
-            raise RuntimeError("parameter value must be numeric")
+            raise RuntimeError("parameter value must be numeric") from None
         await uav.set_parameter(name, value_as_float)
 
 
@@ -1040,7 +1040,7 @@ class CrazyflieUAV(UAVBase):
             if ex.errno == EIO:
                 raise RuntimeError(
                     "IO error while uploading light program; is it too large?"
-                )
+                ) from None
             else:
                 raise
 
@@ -1052,7 +1052,7 @@ class CrazyflieUAV(UAVBase):
             if ex.errno == EIO:
                 raise RuntimeError(
                     "IO error while uploading trajectory; is it too large?"
-                )
+                ) from None
             else:
                 raise
 
@@ -1294,7 +1294,9 @@ class CrazyflieUAV(UAVBase):
         try:
             memory = await cf.mem.find(MemoryType.APP)
         except ValueError:
-            raise RuntimeError("Light programs are not supported on this drone")
+            raise RuntimeError(
+                "Light programs are not supported on this drone"
+            ) from None
         addr = await write_with_checksum(memory, 0, data, only_if_changed=True)
         await cf.run_command(
             port=DRONE_SHOW_PORT,
@@ -1323,7 +1325,7 @@ class CrazyflieUAV(UAVBase):
         try:
             trajectory_memory = await cf.mem.find(MemoryType.TRAJECTORY)
         except ValueError:
-            raise RuntimeError("Trajectories are not supported on this drone")
+            raise RuntimeError("Trajectories are not supported on this drone") from None
 
         supports_fence = await self.fence.is_supported() if self.fence else False
         if not supports_fence:

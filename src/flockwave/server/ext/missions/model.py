@@ -468,7 +468,7 @@ class Mission(ModelObject):
         try:
             self.parameter_validator.validate(parameters)
         except ValidationError as ex:
-            raise RuntimeError(f"Mission parameter validation error: {ex}")
+            raise RuntimeError(f"Mission parameter validation error: {ex}") from None
 
 
 @dataclass

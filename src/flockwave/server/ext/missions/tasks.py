@@ -87,7 +87,7 @@ class MissionRegistryRelatedTaskBase(metaclass=ABCMeta):
             for mission in self._mission_registry:
                 self._unsubscribe_from_mission(mission)
 
-    def _handle_mission_removal(self, mission: Mission):
+    def _handle_mission_removal(self, mission: Mission):  # noqa: B027
         """Callback method that is called when a mission is removed from the
         mission registry.
 

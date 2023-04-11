@@ -67,7 +67,7 @@ class RTHPlanEntry:
         try:
             action = RTHAction(data.get("action"))
         except Exception:
-            raise ValueError("invalid action found in RTH plan entry")
+            raise ValueError("invalid action found in RTH plan entry") from None
 
         if action is RTHAction.LAND:
             return cls(time=int(time), action=action)

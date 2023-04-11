@@ -118,7 +118,7 @@ def create_mavlink_message(link, _type: str, *args, **kwds) -> MAVLinkMessage:
     try:
         func = getattr(link, f"{_type.lower()}_encode")
     except AttributeError:
-        raise ValueError(f"unknown MAVLink message type: {_type}")
+        raise ValueError(f"unknown MAVLink message type: {_type}") from None
     return func(*args, **kwds)
 
 

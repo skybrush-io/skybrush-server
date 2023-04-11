@@ -123,7 +123,7 @@ class MissionRegistry(ObjectRegistryProxy[Mission]):
                 validator = validator_for(schema)
                 validator.check_schema(schema)
             except Exception as ex:
-                raise RuntimeError(f"Mission parameter schema error: {ex}")
+                raise RuntimeError(f"Mission parameter schema error: {ex}") from None
             mission.parameter_validator = validator(schema)
         else:
             mission.parameter_validator = None

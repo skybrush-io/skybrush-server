@@ -427,7 +427,7 @@ class CommunicationManager(Generic[PacketType, AddressType]):
 
     async def _send_message_to_all_channels(self, message):
         for entries in self._entries_by_name.values():
-            for index, entry in enumerate(entries):
+            for _index, entry in enumerate(entries):
                 channel = entry.channel
                 address = getattr(channel, "broadcast_address", NO_BROADCAST_ADDRESS)
                 if address is not NO_BROADCAST_ADDRESS:

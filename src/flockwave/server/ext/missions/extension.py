@@ -357,14 +357,15 @@ class MissionManagementExtension(Extension):
             except ValidationError as ex:
                 raise RuntimeError(
                     f"Plan parameter validation error {list(ex.relative_path)}: {ex.message}"
-                )
+                ) from None
             maybe_plan = mission_type.create_plan(parameters)
             if isawaitable(maybe_plan):
                 plan = cast(MissionPlan, await maybe_plan)
             else:
                 plan = cast(MissionPlan, maybe_plan)
         except RuntimeError as ex:
-            self.log.warning(f"Mission plan error: {ex}")
+            if self.log:
+                self.log.warning(f"Mission plan error: {ex}")
             return hub.reject(message, reason=str(ex))
 
         return {"result": plan}

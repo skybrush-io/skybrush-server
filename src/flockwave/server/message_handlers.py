@@ -316,9 +316,9 @@ def transform_message_body(
     if callable(transformer):
         return transformer(body)
 
-    for parameter_name, transformer in transformer.items():
+    for parameter_name, func in transformer.items():
         if parameter_name in body:
             value = body[parameter_name]
-            body[parameter_name] = transformer(value)
+            body[parameter_name] = func(value)
 
     return body

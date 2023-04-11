@@ -641,7 +641,7 @@ class ArduPilot(Autopilot):
         except TooSlowError:
             raise RuntimeError(
                 f"Accelerometer calibration did not finish in {timeout} seconds"
-            )
+            ) from None
 
         if successful_calibration:
             # Indicate to the user that we are now rebooting the drone, otherwise
@@ -658,7 +658,7 @@ class ArduPilot(Autopilot):
             except Exception:
                 raise RuntimeError(
                     "Failed to reboot UAV after successful accelerometer calibration"
-                )
+                ) from None
 
         yield Progress.done("Acceelerometer calibration successful.")
 
@@ -698,14 +698,14 @@ class ArduPilot(Autopilot):
         except TooSlowError:
             raise RuntimeError(
                 f"Compass calibration did not finish in {timeout} seconds"
-            )
+            ) from None
 
         except RuntimeError:
             raise
 
         except Exception:
             if not started:
-                raise RuntimeError("Failed to start compass calibration")
+                raise RuntimeError("Failed to start compass calibration") from None
             try:
                 await uav.driver.send_command_long(uav, MAVCommand.DO_CANCEL_MAG_CAL)
             except Exception:
@@ -713,7 +713,7 @@ class ArduPilot(Autopilot):
                     "Failed to cancel compass calibration",
                     extra={"id": log_id_for_uav(uav)},
                 )
-            raise RuntimeError("Compass calibration terminated unexpectedly")
+            raise RuntimeError("Compass calibration terminated unexpectedly") from None
 
         if success:
             # Indicate to the user that we are now rebooting the drone, otherwise
@@ -730,7 +730,7 @@ class ArduPilot(Autopilot):
             except Exception:
                 raise RuntimeError(
                     "Failed to reboot UAV after successful compass calibration"
-                )
+                ) from None
 
         yield Progress.done("Compass calibration successful.")
 
@@ -885,7 +885,7 @@ class ArduPilot(Autopilot):
         status.max_distance = float(value)
 
         value = await uav.get_parameter("FENCE_ACTION")
-        status.actions = list(self._geofence_actions.get(value, ()))
+        status.actions = list(self._geofence_actions.get(int(value), ()))
 
         return status
 

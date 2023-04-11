@@ -47,7 +47,7 @@ def create_calibration_command_handler(
         if component not in supported:
             raise NotSupportedError
 
-        calibrate_component = getattr(uav, "calibrate_component")
+        calibrate_component = uav.calibrate_component
         if calibrate_component is None:
             raise RuntimeError("Component calibration not supported")
 

@@ -92,7 +92,7 @@ class Fence:
         try:
             memory = await cf.mem.find(MEM_TYPE_FENCE)  # type: ignore
         except ValueError:
-            raise RuntimeError("Fences are not supported on this drone")
+            raise RuntimeError("Fences are not supported on this drone") from None
 
         data = Struct("<Bffffff").pack(
             FenceType.AXIS_ALIGNED_BOUNDING_BOX,

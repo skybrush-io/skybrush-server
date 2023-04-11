@@ -360,7 +360,7 @@ async def run(app, configuration, logger):
     )
 
     # Set up the extension context
-    context = dict(app=app, label=label, log=logger, registry=registry)
+    context = {"app": app, "label": label, "log": logger, "registry": registry}
 
     # Set up the socket pair that we will use to send and receive SSDP messages
     sender = create_socket(socket.SOCK_DGRAM)

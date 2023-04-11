@@ -188,7 +188,7 @@ class TestRTHPlan:
 
         plan.clear()
         with raises(ValueError):
-            plan.bounding_box
+            _ = plan.bounding_box
 
     def test_rth_plan_propose_scaling_factor(self, plan: RTHPlan):
         # Scaling factor will be 2 because one of the points has a target > 32.5m

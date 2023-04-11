@@ -98,7 +98,9 @@ class ChannelType(Enum):
             try:
                 name = _channel_type_mapping[obj]
             except KeyError:
-                raise TypeError(f"{obj!r} cannot be converted to a ChannelType")
+                raise TypeError(
+                    f"{obj!r} cannot be converted to a ChannelType"
+                ) from None
             return cls(name)
 
 
@@ -181,10 +183,9 @@ class DeviceTreeNodeBase(metaclass=ModelMeta):
         Returns:
             a Python dictionary constructed as described above
         """
-        return dict(
-            (key, child.collect_channel_values())
-            for key, child in self.children.items()
-        )
+        return {
+            key: child.collect_channel_values() for key, child in self.children.items()
+        }
 
     def count_subscriptions_of(self, client: Client) -> int:
         """Count how many times the given client is subscribed to changes
@@ -394,7 +395,7 @@ class DeviceTreeNodeBase(metaclass=ModelMeta):
         try:
             node = self.children.pop(id)
         except KeyError:
-            raise ValueError("no child exists with the given ID: {0!r}".format(id))
+            raise ValueError(f"no child exists with the given ID: {id!r}") from None
         node._parent = None
         node._path = None
         return node
@@ -792,7 +793,7 @@ class DeviceTree:
             try:
                 node = node.children[part]
             except (KeyError, AttributeError):
-                raise NoSuchPathError(path)
+                raise NoSuchPathError(path) from None
 
         return node
 
@@ -1236,6 +1237,6 @@ class DeviceTreeSubscriptionManager:
             try:
                 self._pending_subscriptions[client].remove(DeviceTreePath(path))
             except ValueError:
-                raise ClientNotSubscribedError(client, path)
+                raise ClientNotSubscribedError(client, path) from None
         except KeyError:
-            raise ClientNotSubscribedError(client, path)
+            raise ClientNotSubscribedError(client, path) from None

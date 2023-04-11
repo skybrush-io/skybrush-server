@@ -78,7 +78,7 @@ class AuthenticationMethod(metaclass=ABCMeta):
         """
         raise NotImplementedError
 
-    def cancel(self, client: Client) -> None:
+    def cancel(self, client: Client) -> None:  # noqa: B027
         """Cancels the current authentication session of the given client.
 
         This method is relevant only for multi-step authentication methods.

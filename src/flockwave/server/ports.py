@@ -63,7 +63,7 @@ def get_port_number_for_service(service: str, base_port: Optional[int] = None) -
     try:
         port_type, value = SERVICE_MAP[service]
     except KeyError:
-        raise ValueError(f"no such service: {service!r}")
+        raise ValueError(f"no such service: {service!r}") from None
 
     if port_type == "relative":
         if base_port is None:

@@ -63,7 +63,7 @@ def place_drones(n: int, *, type: str, **kwds):
     try:
         func = _registry[type]
     except KeyError:
-        raise RuntimeError(f"no such takeoff area shape: {type}")
+        raise RuntimeError(f"no such takeoff area shape: {type}") from None
     return func(n, **kwds)
 
 

@@ -78,3 +78,7 @@ pro = ["skybrush-ext-map-cache", "skybrush-ext-sidekick", "skybrush-ext-timecode
 skybrushd = "flockwave.server.launcher:start"
 skybrush-gateway = "flockwave.gateway.launcher:start"
 skybrush-proxy = "flockwave.proxy.launcher:start"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"

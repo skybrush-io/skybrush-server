@@ -602,6 +602,9 @@ class ArduPilot(Autopilot):
     async def calibrate_accelerometer(
         self, uav: "MAVLinkUAV"
     ) -> AsyncIterator[Progress]:
+        # Reset our internal state object of the accelerometer calibration procedure
+        uav.accelerometer_calibration.reset()
+
         # accelerometer calibration starts with sending a proper preflight
         # calib command
         success = await uav.driver.send_command_long(
@@ -671,6 +674,7 @@ class ArduPilot(Autopilot):
             async with uav.temporarily_request_messages(calibration_messages):
                 # Reset our internal state object of the compass calibration procedure
                 uav.compass_calibration.reset()
+
                 # Messages are not handled here but in the MAVLinkNetwork,
                 # which forwards them to the UAV, which in turn refreshes its
                 # state variables in its CompassCalibration object. This is not

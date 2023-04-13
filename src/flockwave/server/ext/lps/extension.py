@@ -16,7 +16,6 @@ from flockwave.server.message_handlers import (
 from flockwave.server.model import FlockwaveResponse
 from flockwave.server.registries import find_in_registry
 
-from .examples import DummyLocalPositioningSystemType
 from .model import LocalPositioningSystem, LocalPositioningSystemType
 from .registry import LocalPositioningSystemRegistry, LocalPositioningSystemTypeRegistry
 
@@ -44,7 +43,9 @@ class LocalPositioningSystemsExtension(Extension):
 
     def exports(self) -> Dict[str, Any]:
         return {
+            "create_and_use_lps": self._lps_registry.create_and_use,
             "find_lps_by_id": self.find_lps_by_id,
+            "find_lps_type_by_id": self.find_lps_type_by_id,
             "use_lps_type": self._lps_type_registry.use,
         }
 
@@ -52,7 +53,7 @@ class LocalPositioningSystemsExtension(Extension):
         self, id: str, response: Optional[FlockwaveResponse] = None
     ) -> Optional[LocalPositioningSystem]:
         """Finds the local positioning system (LPS) with the given ID in the
-        LPS type registry or registers a failure in the given response object if
+        LPS registry or registers a failure in the given response object if
         there is no LPS instance the given ID.
 
         Parameters:
@@ -155,16 +156,6 @@ class LocalPositioningSystemsExtension(Extension):
                     }
                 )
             )
-
-            stack.enter_context(
-                self._lps_type_registry.use("dummy", DummyLocalPositioningSystemType())
-            )
-
-            stack.enter_context(self._lps_registry.create_and_use("dummy"))
-
-            lps_ids = list(self._lps_registry.ids)
-            if self.log:
-                self.log.info(f"LPS instance registered with ID={lps_ids}")
 
             await sleep_forever()
 

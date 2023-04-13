@@ -5,7 +5,7 @@ of local positioning systems need to register these in the LPS registry.
 
 from contextlib import contextmanager
 from functools import partial
-from typing import Iterator
+from typing import Iterator, Optional
 
 from flockwave.server.model import default_id_generator
 from flockwave.server.registries.base import RegistryBase
@@ -91,7 +91,7 @@ class LocalPositioningSystemRegistry(ObjectRegistryProxy[LocalPositioningSystem]
         super().__init__()
         self._lps_type_registry = lps_type_registry
 
-    def create(self, type: str) -> LocalPositioningSystem:
+    def create(self, type: str, id: Optional[str] = None) -> LocalPositioningSystem:
         """Creates a new local positioning system (LPS) of the given type, adds
         it to the registry and returns the corresponding state object.
 
@@ -102,6 +102,8 @@ class LocalPositioningSystemRegistry(ObjectRegistryProxy[LocalPositioningSystem]
 
         Parameters:
             type: the identifier of the type of the LPS
+            id: a preferred identifier for the local positioning system;
+                ``None`` means to generate a random identifier
 
         Raises:
             KeyError: if the given LPS type is not registered
@@ -115,10 +117,15 @@ class LocalPositioningSystemRegistry(ObjectRegistryProxy[LocalPositioningSystem]
 
         lps_type = self._lps_type_registry.find_by_id(type)
 
-        while True:
-            lps_id = default_id_generator()
-            if lps_id not in self._object_registry:
-                break
+        if id is None:
+            while True:
+                lps_id = default_id_generator()
+                if lps_id not in self._object_registry:
+                    break
+        else:
+            lps_id = id
+            if lps_id in self._object_registry:
+                raise ValueError(f"object ID already taken: {id!r}")
 
         lps: LocalPositioningSystem = lps_type.create()
         lps._id = lps_id
@@ -127,13 +134,22 @@ class LocalPositioningSystemRegistry(ObjectRegistryProxy[LocalPositioningSystem]
         return self._add(lps)
 
     @contextmanager
-    def create_and_use(self, type: str) -> Iterator[LocalPositioningSystem]:
+    def create_and_use(
+        self, type: str, id: Optional[str] = None
+    ) -> Iterator[LocalPositioningSystem]:
         """Context manager that creates a new local positioning system (LPS)
         instance of the given type, adds it to the registry and yields the
         LPS instance. Automatically removes the LPS instance when the context
         is exited.
+
+        Args:
+            id: a preferred identifier for the local positioning system;
+                ``None`` means to generate a random identifier
+
+        Yields:
+            the created local positioning system instance
         """
-        lps = self.create(type)
+        lps = self.create(type, id)
         try:
             yield lps
         finally:

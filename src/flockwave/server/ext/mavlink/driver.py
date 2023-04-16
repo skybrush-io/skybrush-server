@@ -1993,9 +1993,10 @@ class MAVLinkUAV(UAVBase):
                     "AMSL-based control is not supported in this firmware"
                 )
 
+            orientation = coordinate_system.orientation % 360
             await self.set_parameter("SHOW_ORIGIN_LAT", encoded_lat)
             await self.set_parameter("SHOW_ORIGIN_LNG", encoded_lon)
-            await self.set_parameter("SHOW_ORIENTATION", coordinate_system.orientation)
+            await self.set_parameter("SHOW_ORIENTATION", orientation)
 
         # Configure and enable geofence
         await self.configure_geofence(geofence)

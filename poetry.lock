@@ -149,22 +149,22 @@ files = [
 
 [[package]]
 name = "attrs"
-version = "22.2.0"
+version = "23.1.0"
 description = "Classes Without Boilerplate"
 category = "main"
 optional = false
-python-versions = ">=3.6"
+python-versions = ">=3.7"
 files = [
-    {file = "attrs-22.2.0-py3-none-any.whl", hash = "sha256:29e95c7f6778868dbd49170f98f8818f78f3dc5e0e37c0b1f474e3561b240836"},
-    {file = "attrs-22.2.0.tar.gz", hash = "sha256:c9227bfc2f01993c03f68db37d1d15c9690188323c067c641f1a35ca58185f99"},
+    {file = "attrs-23.1.0-py3-none-any.whl", hash = "sha256:1f28b4522cdc2fb4256ac1a020c78acf9cba2c6b461ccd2c126f3aa8e8335d04"},
+    {file = "attrs-23.1.0.tar.gz", hash = "sha256:6279836d581513a26f1bf235f9acd333bc9115683f14f7e8fae46c98fc50e015"},
 ]
 
 [package.extras]
-cov = ["attrs[tests]", "coverage-enable-subprocess", "coverage[toml] (>=5.3)"]
-dev = ["attrs[docs,tests]"]
-docs = ["furo", "myst-parser", "sphinx", "sphinx-notfound-page", "sphinxcontrib-towncrier", "towncrier", "zope.interface"]
-tests = ["attrs[tests-no-zope]", "zope.interface"]
-tests-no-zope = ["cloudpickle", "cloudpickle", "hypothesis", "hypothesis", "mypy (>=0.971,<0.990)", "mypy (>=0.971,<0.990)", "pympler", "pympler", "pytest (>=4.3.0)", "pytest (>=4.3.0)", "pytest-mypy-plugins", "pytest-mypy-plugins", "pytest-xdist[psutil]", "pytest-xdist[psutil]"]
+cov = ["attrs[tests]", "coverage[toml] (>=5.3)"]
+dev = ["attrs[docs,tests]", "pre-commit"]
+docs = ["furo", "myst-parser", "sphinx", "sphinx-notfound-page", "sphinxcontrib-towncrier", "towncrier", "zope-interface"]
+tests = ["attrs[tests-no-zope]", "zope-interface"]
+tests-no-zope = ["cloudpickle", "hypothesis", "mypy (>=1.1.1)", "pympler", "pytest (>=4.3.0)", "pytest-mypy-plugins", "pytest-xdist[psutil]"]
 
 [[package]]
 name = "bcrypt"
@@ -220,30 +220,27 @@ test = ["hypothesis", "pytest", "pytest-benchmark[histogram]", "pytest-cov", "py
 
 [[package]]
 name = "bitstring"
-version = "4.0.1"
+version = "4.0.2"
 description = "Simple construction, analysis and modification of binary data."
 category = "main"
 optional = false
 python-versions = ">=3.7"
 files = [
-    {file = "bitstring-4.0.1-py3-none-any.whl", hash = "sha256:4a27cdefd95eb535c4b79e0afcdb5532ba1dba0aaed98a31ad98f46b1e0d5bd9"},
-    {file = "bitstring-4.0.1.tar.gz", hash = "sha256:7719f08f6df89ce28453a5e580d4a8ec1d1bda892dbb033466da0ccd9bdcb706"},
+    {file = "bitstring-4.0.2-py3-none-any.whl", hash = "sha256:f93893791e8a6ecb02adcc5c191aaa964a06a9e1449e326cfb4f49ff5198e588"},
+    {file = "bitstring-4.0.2.tar.gz", hash = "sha256:a391db8828ac4485dd5ce72c80b27ebac3e7b989631359959e310cd9729723b2"},
 ]
 
 [[package]]
 name = "blinker"
-version = "1.6.1"
+version = "1.6.2"
 description = "Fast, simple object-to-object and broadcast signaling"
 category = "main"
 optional = false
 python-versions = ">=3.7"
 files = [
-    {file = "blinker-1.6.1-py3-none-any.whl", hash = "sha256:8fa2dc7c28c15c8ddfd8b3a21834790984c7e4a89b336dc3f45eeb70e0c5a407"},
-    {file = "blinker-1.6.1.tar.gz", hash = "sha256:2ddfa223483ce8f24ecd2723e0e27cd4388ef19bef1d76b09a3dae93033db231"},
+    {file = "blinker-1.6.2-py3-none-any.whl", hash = "sha256:c3d739772abb7bc2860abf5f2ec284223d9ad5c76da018234f6f50d6f31ab1f0"},
+    {file = "blinker-1.6.2.tar.gz", hash = "sha256:4afd3de66ef3a9f8067559fb7a1cbe555c17dcbe15971b05d1b625c3e7abe213"},
 ]
-
-[package.dependencies]
-typing-extensions = ">=4.2"
 
 [[package]]
 name = "certifi"
@@ -488,31 +485,31 @@ files = [
 
 [[package]]
 name = "cryptography"
-version = "40.0.1"
+version = "40.0.2"
 description = "cryptography is a package which provides cryptographic recipes and primitives to Python developers."
 category = "main"
 optional = true
 python-versions = ">=3.6"
 files = [
-    {file = "cryptography-40.0.1-cp36-abi3-macosx_10_12_universal2.whl", hash = "sha256:918cb89086c7d98b1b86b9fdb70c712e5a9325ba6f7d7cfb509e784e0cfc6917"},
-    {file = "cryptography-40.0.1-cp36-abi3-macosx_10_12_x86_64.whl", hash = "sha256:9618a87212cb5200500e304e43691111570e1f10ec3f35569fdfcd17e28fd797"},
-    {file = "cryptography-40.0.1-cp36-abi3-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:3a4805a4ca729d65570a1b7cac84eac1e431085d40387b7d3bbaa47e39890b88"},
-    {file = "cryptography-40.0.1-cp36-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:63dac2d25c47f12a7b8aa60e528bfb3c51c5a6c5a9f7c86987909c6c79765554"},
-    {file = "cryptography-40.0.1-cp36-abi3-manylinux_2_28_aarch64.whl", hash = "sha256:0a4e3406cfed6b1f6d6e87ed243363652b2586b2d917b0609ca4f97072994405"},
-    {file = "cryptography-40.0.1-cp36-abi3-manylinux_2_28_x86_64.whl", hash = "sha256:1e0af458515d5e4028aad75f3bb3fe7a31e46ad920648cd59b64d3da842e4356"},
-    {file = "cryptography-40.0.1-cp36-abi3-musllinux_1_1_aarch64.whl", hash = "sha256:d8aa3609d337ad85e4eb9bb0f8bcf6e4409bfb86e706efa9a027912169e89122"},
-    {file = "cryptography-40.0.1-cp36-abi3-musllinux_1_1_x86_64.whl", hash = "sha256:cf91e428c51ef692b82ce786583e214f58392399cf65c341bc7301d096fa3ba2"},
-    {file = "cryptography-40.0.1-cp36-abi3-win32.whl", hash = "sha256:650883cc064297ef3676b1db1b7b1df6081794c4ada96fa457253c4cc40f97db"},
-    {file = "cryptography-40.0.1-cp36-abi3-win_amd64.whl", hash = "sha256:a805a7bce4a77d51696410005b3e85ae2839bad9aa38894afc0aa99d8e0c3160"},
-    {file = "cryptography-40.0.1-pp38-pypy38_pp73-macosx_10_12_x86_64.whl", hash = "sha256:cd033d74067d8928ef00a6b1327c8ea0452523967ca4463666eeba65ca350d4c"},
-    {file = "cryptography-40.0.1-pp38-pypy38_pp73-manylinux_2_28_aarch64.whl", hash = "sha256:d36bbeb99704aabefdca5aee4eba04455d7a27ceabd16f3b3ba9bdcc31da86c4"},
-    {file = "cryptography-40.0.1-pp38-pypy38_pp73-manylinux_2_28_x86_64.whl", hash = "sha256:32057d3d0ab7d4453778367ca43e99ddb711770477c4f072a51b3ca69602780a"},
-    {file = "cryptography-40.0.1-pp38-pypy38_pp73-win_amd64.whl", hash = "sha256:f5d7b79fa56bc29580faafc2ff736ce05ba31feaa9d4735048b0de7d9ceb2b94"},
-    {file = "cryptography-40.0.1-pp39-pypy39_pp73-macosx_10_12_x86_64.whl", hash = "sha256:7c872413353c70e0263a9368c4993710070e70ab3e5318d85510cc91cce77e7c"},
-    {file = "cryptography-40.0.1-pp39-pypy39_pp73-manylinux_2_28_aarch64.whl", hash = "sha256:28d63d75bf7ae4045b10de5413fb1d6338616e79015999ad9cf6fc538f772d41"},
-    {file = "cryptography-40.0.1-pp39-pypy39_pp73-manylinux_2_28_x86_64.whl", hash = "sha256:6f2bbd72f717ce33100e6467572abaedc61f1acb87b8d546001328d7f466b778"},
-    {file = "cryptography-40.0.1-pp39-pypy39_pp73-win_amd64.whl", hash = "sha256:cc3a621076d824d75ab1e1e530e66e7e8564e357dd723f2533225d40fe35c60c"},
-    {file = "cryptography-40.0.1.tar.gz", hash = "sha256:2803f2f8b1e95f614419926c7e6f55d828afc614ca5ed61543877ae668cc3472"},
+    {file = "cryptography-40.0.2-cp36-abi3-macosx_10_12_universal2.whl", hash = "sha256:8f79b5ff5ad9d3218afb1e7e20ea74da5f76943ee5edb7f76e56ec5161ec782b"},
+    {file = "cryptography-40.0.2-cp36-abi3-macosx_10_12_x86_64.whl", hash = "sha256:05dc219433b14046c476f6f09d7636b92a1c3e5808b9a6536adf4932b3b2c440"},
+    {file = "cryptography-40.0.2-cp36-abi3-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:4df2af28d7bedc84fe45bd49bc35d710aede676e2a4cb7fc6d103a2adc8afe4d"},
+    {file = "cryptography-40.0.2-cp36-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:0dcca15d3a19a66e63662dc8d30f8036b07be851a8680eda92d079868f106288"},
+    {file = "cryptography-40.0.2-cp36-abi3-manylinux_2_28_aarch64.whl", hash = "sha256:a04386fb7bc85fab9cd51b6308633a3c271e3d0d3eae917eebab2fac6219b6d2"},
+    {file = "cryptography-40.0.2-cp36-abi3-manylinux_2_28_x86_64.whl", hash = "sha256:adc0d980fd2760c9e5de537c28935cc32b9353baaf28e0814df417619c6c8c3b"},
+    {file = "cryptography-40.0.2-cp36-abi3-musllinux_1_1_aarch64.whl", hash = "sha256:d5a1bd0e9e2031465761dfa920c16b0065ad77321d8a8c1f5ee331021fda65e9"},
+    {file = "cryptography-40.0.2-cp36-abi3-musllinux_1_1_x86_64.whl", hash = "sha256:a95f4802d49faa6a674242e25bfeea6fc2acd915b5e5e29ac90a32b1139cae1c"},
+    {file = "cryptography-40.0.2-cp36-abi3-win32.whl", hash = "sha256:aecbb1592b0188e030cb01f82d12556cf72e218280f621deed7d806afd2113f9"},
+    {file = "cryptography-40.0.2-cp36-abi3-win_amd64.whl", hash = "sha256:b12794f01d4cacfbd3177b9042198f3af1c856eedd0a98f10f141385c809a14b"},
+    {file = "cryptography-40.0.2-pp38-pypy38_pp73-macosx_10_12_x86_64.whl", hash = "sha256:142bae539ef28a1c76794cca7f49729e7c54423f615cfd9b0b1fa90ebe53244b"},
+    {file = "cryptography-40.0.2-pp38-pypy38_pp73-manylinux_2_28_aarch64.whl", hash = "sha256:956ba8701b4ffe91ba59665ed170a2ebbdc6fc0e40de5f6059195d9f2b33ca0e"},
+    {file = "cryptography-40.0.2-pp38-pypy38_pp73-manylinux_2_28_x86_64.whl", hash = "sha256:4f01c9863da784558165f5d4d916093737a75203a5c5286fde60e503e4276c7a"},
+    {file = "cryptography-40.0.2-pp38-pypy38_pp73-win_amd64.whl", hash = "sha256:3daf9b114213f8ba460b829a02896789751626a2a4e7a43a28ee77c04b5e4958"},
+    {file = "cryptography-40.0.2-pp39-pypy39_pp73-macosx_10_12_x86_64.whl", hash = "sha256:48f388d0d153350f378c7f7b41497a54ff1513c816bcbbcafe5b829e59b9ce5b"},
+    {file = "cryptography-40.0.2-pp39-pypy39_pp73-manylinux_2_28_aarch64.whl", hash = "sha256:c0764e72b36a3dc065c155e5b22f93df465da9c39af65516fe04ed3c68c92636"},
+    {file = "cryptography-40.0.2-pp39-pypy39_pp73-manylinux_2_28_x86_64.whl", hash = "sha256:cbaba590180cba88cb99a5f76f90808a624f18b169b90a4abb40c1fd8c19420e"},
+    {file = "cryptography-40.0.2-pp39-pypy39_pp73-win_amd64.whl", hash = "sha256:7a38250f433cd41df7fcb763caa3ee9362777fdb4dc642b9a349721d2bf47404"},
+    {file = "cryptography-40.0.2.tar.gz", hash = "sha256:c33c0d32b8594fa647d2e01dbccc303478e16fdd7cf98652d5b3ed11aa5e5c99"},
 ]
 
 [package.dependencies]
@@ -626,14 +623,14 @@ reference = "fury"
 
 [[package]]
 name = "flockwave-ext"
-version = "1.19.2"
+version = "1.19.3"
 description = "Generic extension manager for Skybrush-related projects"
 category = "main"
 optional = false
 python-versions = ">=3.7,<4.0"
 files = [
-    {file = "flockwave-ext-1.19.2.tar.gz", hash = "sha256:ba872e109a63b8c5e3ed0e4238d6cfc558c66f38dc8e71c01a8816cd95120080"},
-    {file = "flockwave_ext-1.19.2-py3-none-any.whl", hash = "sha256:bee17c16f160542ee7fc72889a89dc80110f7d8bdbb74b9c39d9f6caf82f5b5b"},
+    {file = "flockwave-ext-1.19.3.tar.gz", hash = "sha256:67ad56850cdcf4c3d27dc0323fb48c4e509b52b91d2e0878890d929ebd2e4381"},
+    {file = "flockwave_ext-1.19.3-py3-none-any.whl", hash = "sha256:371c41b9135114c3906d213fa9b379c560f8d7968d6616bbc7378d50d4cb950f"},
 ]
 
 [package.dependencies]
@@ -779,14 +776,14 @@ reference = "fury"
 
 [[package]]
 name = "flockwave-spec"
-version = "1.72.0"
+version = "1.73.0"
 description = "JSON-Schema specification of the Flockwave protocol"
 category = "main"
 optional = false
 python-versions = ">=3.7,<4.0"
 files = [
-    {file = "flockwave-spec-1.72.0.tar.gz", hash = "sha256:94251b593d06a402bceb284254c8aa5903bfc73c34bc6bd6e58fadc5fe388ca2"},
-    {file = "flockwave_spec-1.72.0-py3-none-any.whl", hash = "sha256:69cdd585e4cbb96b3309793edd86913ed2ac60eb38965ad0dd624693f71c8c84"},
+    {file = "flockwave-spec-1.73.0.tar.gz", hash = "sha256:8b2fbc5d8761632cdcbf5f4ca6ce99cb9f1e9b3fdf7fd42d35cb339d240b4105"},
+    {file = "flockwave_spec-1.73.0-py3-none-any.whl", hash = "sha256:42d31e4bea86c07ab56871a3331176f286123b91cb1a1537b5993375fa7e11c2"},
 ]
 
 [package.dependencies]
@@ -961,14 +958,14 @@ files = [
 
 [[package]]
 name = "importlib-metadata"
-version = "6.3.0"
+version = "6.4.1"
 description = "Read metadata from Python packages"
 category = "main"
 optional = false
 python-versions = ">=3.7"
 files = [
-    {file = "importlib_metadata-6.3.0-py3-none-any.whl", hash = "sha256:8f8bd2af397cf33bd344d35cfe7f489219b7d14fc79a3f854b75b8417e9226b0"},
-    {file = "importlib_metadata-6.3.0.tar.gz", hash = "sha256:23c2bcae4762dfb0bbe072d358faec24957901d75b6c4ab11172c0c982532402"},
+    {file = "importlib_metadata-6.4.1-py3-none-any.whl", hash = "sha256:63ace321e24167d12fbb176b6015f4dbe06868c54a2af4f15849586afb9027fd"},
+    {file = "importlib_metadata-6.4.1.tar.gz", hash = "sha256:eb1a7933041f0f85c94cd130258df3fb0dec060ad8c1c9318892ef4192c47ce1"},
 ]
 
 [package.dependencies]
@@ -1311,14 +1308,14 @@ attrs = ">=19.2.0"
 
 [[package]]
 name = "packaging"
-version = "23.0"
+version = "23.1"
 description = "Core utilities for Python packages"
 category = "dev"
 optional = false
 python-versions = ">=3.7"
 files = [
-    {file = "packaging-23.0-py3-none-any.whl", hash = "sha256:714ac14496c3e68c99c29b00845f7a2b85f3bb6f1078fd9f72fd20f0570002b2"},
-    {file = "packaging-23.0.tar.gz", hash = "sha256:b6ad297f8907de0fa2fe1ccbd26fdaf387f5f47c7275fedf8cce89f99446cf97"},
+    {file = "packaging-23.1-py3-none-any.whl", hash = "sha256:994793af429502c4ea2ebf6bf664629d07c1a9fe974af92966e4b8d2df7edc61"},
+    {file = "packaging-23.1.tar.gz", hash = "sha256:a392980d2b6cffa644431898be54b0045151319d1e7ec34f0cfed48767dd334f"},
 ]
 
 [[package]]
@@ -1532,58 +1529,58 @@ files = [
 
 [[package]]
 name = "pyobjc-core"
-version = "9.0.1"
+version = "9.1"
 description = "Python<->ObjC Interoperability Module"
 category = "main"
 optional = false
 python-versions = ">=3.7"
 files = [
-    {file = "pyobjc-core-9.0.1.tar.gz", hash = "sha256:5ce1510bb0bdff527c597079a42b2e13a19b7592e76850be7960a2775b59c929"},
-    {file = "pyobjc_core-9.0.1-cp310-cp310-macosx_10_9_universal2.whl", hash = "sha256:b614406d46175b1438a9596b664bf61952323116704d19bc1dea68052a0aad98"},
-    {file = "pyobjc_core-9.0.1-cp311-cp311-macosx_10_9_universal2.whl", hash = "sha256:bd397e729f6271c694fb70df8f5d3d3c9b2f2b8ac02fbbdd1757ca96027b94bb"},
-    {file = "pyobjc_core-9.0.1-cp37-cp37m-macosx_10_9_x86_64.whl", hash = "sha256:d919934eaa6d1cf1505ff447a5c2312be4c5651efcb694eb9f59e86f5bd25e6b"},
-    {file = "pyobjc_core-9.0.1-cp38-cp38-macosx_10_9_x86_64.whl", hash = "sha256:67d67ca8b164f38ceacce28a18025845c3ec69613f3301935d4d2c4ceb22e3fd"},
-    {file = "pyobjc_core-9.0.1-cp38-cp38-macosx_11_0_universal2.whl", hash = "sha256:39d11d71f6161ac0bd93cffc8ea210bb0178b56d16a7408bf74283d6ecfa7430"},
-    {file = "pyobjc_core-9.0.1-cp39-cp39-macosx_10_9_universal2.whl", hash = "sha256:25be1c4d530e473ed98b15063b8d6844f0733c98914de6f09fe1f7652b772bbc"},
+    {file = "pyobjc-core-9.1.tar.gz", hash = "sha256:d1cffe00954040ad587daefd45cc0761fdb4f2b2fa0a3ae71f1057be4df03cb4"},
+    {file = "pyobjc_core-9.1-cp310-cp310-macosx_10_9_universal2.whl", hash = "sha256:89e7373a16a3720f535fd3d9b3f3386a3045f5172465d41dbaf6a5232f16c04c"},
+    {file = "pyobjc_core-9.1-cp311-cp311-macosx_10_9_universal2.whl", hash = "sha256:911fd247f01a5caf27986bc7f8fdf7c1dfc6c9eb9e452b9d83c6285990e477d2"},
+    {file = "pyobjc_core-9.1-cp37-cp37m-macosx_10_9_x86_64.whl", hash = "sha256:ea28c8cee4fa145e3c5785e27c6565f6c11c35acea405e605a63009a10e29c4a"},
+    {file = "pyobjc_core-9.1-cp38-cp38-macosx_10_9_x86_64.whl", hash = "sha256:bfa9f812a357bd3c2056b8b7385677d188767d23b8e6cbd70ba62e4a60cb2a88"},
+    {file = "pyobjc_core-9.1-cp38-cp38-macosx_11_0_universal2.whl", hash = "sha256:0f1a97953d3f4c8d7eeeb8ee4a98c01916db39f329e4706fd10b31af4e14e96e"},
+    {file = "pyobjc_core-9.1-cp39-cp39-macosx_10_9_universal2.whl", hash = "sha256:5a928e8878833bf10a37f26a87c8de469b3b9575d69302bd56d181034cdcdab6"},
 ]
 
 [[package]]
 name = "pyobjc-framework-cocoa"
-version = "9.0.1"
+version = "9.1"
 description = "Wrappers for the Cocoa frameworks on macOS"
 category = "main"
 optional = false
 python-versions = ">=3.7"
 files = [
-    {file = "pyobjc-framework-Cocoa-9.0.1.tar.gz", hash = "sha256:a8b53b3426f94307a58e2f8214dc1094c19afa9dcb96f21be12f937d968b2df3"},
-    {file = "pyobjc_framework_Cocoa-9.0.1-cp310-cp310-macosx_10_9_universal2.whl", hash = "sha256:5f94b0f92a62b781e633e58f09bcaded63d612f9b1e15202f5f372ea59e4aebd"},
-    {file = "pyobjc_framework_Cocoa-9.0.1-cp311-cp311-macosx_10_9_universal2.whl", hash = "sha256:f062c3bb5cc89902e6d164aa9a66ffc03638645dd5f0468b6f525ac997c86e51"},
-    {file = "pyobjc_framework_Cocoa-9.0.1-cp37-cp37m-macosx_10_9_x86_64.whl", hash = "sha256:0b374c0a9d32ba4fc5610ab2741cb05a005f1dfb82a47dbf2dbb2b3a34b73ce5"},
-    {file = "pyobjc_framework_Cocoa-9.0.1-cp38-cp38-macosx_10_9_x86_64.whl", hash = "sha256:8928080cebbce91ac139e460d3dfc94c7cb6935be032dcae9c0a51b247f9c2d9"},
-    {file = "pyobjc_framework_Cocoa-9.0.1-cp38-cp38-macosx_11_0_universal2.whl", hash = "sha256:9d2bd86a0a98d906f762f5dc59f2fc67cce32ae9633b02ff59ac8c8a33dd862d"},
-    {file = "pyobjc_framework_Cocoa-9.0.1-cp39-cp39-macosx_10_9_universal2.whl", hash = "sha256:2a41053cbcee30e1e8914efa749c50b70bf782527d5938f2bc2a6393740969ce"},
+    {file = "pyobjc-framework-Cocoa-9.1.tar.gz", hash = "sha256:8c95aadc8f4c307a791c60785a4e922d0f3b0a3fb4e28d25608c69638b2ad3d8"},
+    {file = "pyobjc_framework_Cocoa-9.1-cp310-cp310-macosx_10_9_universal2.whl", hash = "sha256:405fc4d3965ab8ff13621350502d6ecadf2a8da4d8682d50816c4f8bdc9abed0"},
+    {file = "pyobjc_framework_Cocoa-9.1-cp311-cp311-macosx_10_9_universal2.whl", hash = "sha256:e8760543276ab72950c3f32b8570afd0adec8e077940bcc1d0c05b87b7c5ba2e"},
+    {file = "pyobjc_framework_Cocoa-9.1-cp37-cp37m-macosx_10_9_x86_64.whl", hash = "sha256:e48dd82b0c4ada1afdc7ef7a9b3ee69f583946fc085089dc396bf8515644c3c8"},
+    {file = "pyobjc_framework_Cocoa-9.1-cp38-cp38-macosx_10_9_x86_64.whl", hash = "sha256:fc0822518a9c63f886626b50a1c186d1d22c9c4fabddad067bb9f52ec1fa9a10"},
+    {file = "pyobjc_framework_Cocoa-9.1-cp38-cp38-macosx_11_0_universal2.whl", hash = "sha256:69407ab40d31971acd3c39a4cc1d4d82258e26b9fcd7cf6377a3d1ff5b96203c"},
+    {file = "pyobjc_framework_Cocoa-9.1-cp39-cp39-macosx_10_9_universal2.whl", hash = "sha256:f9d14c15c5061d6b12d7c65e844aa1c76f38bcec6dac368170a8e26938c9275b"},
 ]
 
 [package.dependencies]
-pyobjc-core = ">=9.0.1"
+pyobjc-core = ">=9.1"
 
 [[package]]
 name = "pyobjc-framework-systemconfiguration"
-version = "9.0.1"
+version = "9.1"
 description = "Wrappers for the framework SystemConfiguration on macOS"
 category = "main"
 optional = false
 python-versions = ">=3.7"
 files = [
-    {file = "pyobjc-framework-SystemConfiguration-9.0.1.tar.gz", hash = "sha256:0d328f3908b272d987aeaf56913dd4acf35bdb85a0a783cd3907c60e39b75bf3"},
-    {file = "pyobjc_framework_SystemConfiguration-9.0.1-cp36-abi3-macosx_10_9_universal2.whl", hash = "sha256:903bef65bea55d351792b642101795425148692ec0863b18724e2def12da7681"},
-    {file = "pyobjc_framework_SystemConfiguration-9.0.1-cp36-abi3-macosx_10_9_x86_64.whl", hash = "sha256:d33a781ca04fb64e437c08e0d06be472e9e7c1f755d8459718fedc56b768f16a"},
-    {file = "pyobjc_framework_SystemConfiguration-9.0.1-cp36-abi3-macosx_11_0_universal2.whl", hash = "sha256:0a0f6b63dacdb118c15975119fb5f3edf116fdf79a1d1f71f32877facbd80e7b"},
+    {file = "pyobjc-framework-SystemConfiguration-9.1.tar.gz", hash = "sha256:a37c5df1efd81e9d59dcbefe58fcbbbb536da78e6cf4d61a7fb4590ea586c991"},
+    {file = "pyobjc_framework_SystemConfiguration-9.1-cp36-abi3-macosx_10_9_universal2.whl", hash = "sha256:097a2cd0f460629233fa96bddf86f1345f4f34e4868fbb7d65303b226c6e5759"},
+    {file = "pyobjc_framework_SystemConfiguration-9.1-cp36-abi3-macosx_10_9_x86_64.whl", hash = "sha256:ab44f9c07664f57aec029c8fbb28ff0e5dc5e2e5d8e2a59ae138b60fb167af95"},
+    {file = "pyobjc_framework_SystemConfiguration-9.1-cp36-abi3-macosx_11_0_universal2.whl", hash = "sha256:04e5678753b32a049cbdf856deb54f43ff9dd2aa8ef0cf8d5dafb28518a1deff"},
 ]
 
 [package.dependencies]
-pyobjc-core = ">=9.0.1"
-pyobjc-framework-Cocoa = ">=9.0.1"
+pyobjc-core = ">=9.1"
+pyobjc-framework-Cocoa = ">=9.1"
 
 [[package]]
 name = "pyrsistent"
@@ -1639,14 +1636,14 @@ cp2110 = ["hidapi"]
 
 [[package]]
 name = "pytest"
-version = "7.3.0"
+version = "7.3.1"
 description = "pytest: simple powerful testing with Python"
 category = "dev"
 optional = false
 python-versions = ">=3.7"
 files = [
-    {file = "pytest-7.3.0-py3-none-any.whl", hash = "sha256:933051fa1bfbd38a21e73c3960cebdad4cf59483ddba7696c48509727e17f201"},
-    {file = "pytest-7.3.0.tar.gz", hash = "sha256:58ecc27ebf0ea643ebfdf7fb1249335da761a00c9f955bcd922349bcb68ee57d"},
+    {file = "pytest-7.3.1-py3-none-any.whl", hash = "sha256:3799fa815351fea3a5e96ac7e503a96fa51cc9942c3753cda7651b93c1cfa362"},
+    {file = "pytest-7.3.1.tar.gz", hash = "sha256:434afafd78b1d78ed0addf160ad2b77a30d35d4bdf8af234fe621919d9ed15e3"},
 ]
 
 [package.dependencies]
@@ -2149,18 +2146,6 @@ async-generator = "*"
 trio = ">=0.11.0"
 
 [[package]]
-name = "typing-extensions"
-version = "4.5.0"
-description = "Backported and Experimental Type Hints for Python 3.7+"
-category = "main"
-optional = false
-python-versions = ">=3.7"
-files = [
-    {file = "typing_extensions-4.5.0-py3-none-any.whl", hash = "sha256:fb33085c39dd998ac16d1431ebc293a8b3eedd00fd4a32de0ff79002c19511b4"},
-    {file = "typing_extensions-4.5.0.tar.gz", hash = "sha256:5cb5f4a79139d699607b3ef622a1dedafa84e115ab0024e0d9c044a9479ca7cb"},
-]
-
-[[package]]
 name = "werkzeug"
 version = "2.2.3"
 description = "The comprehensive WSGI web application library."
@@ -2232,4 +2217,4 @@ pro = ["skybrush-ext-map-cache", "skybrush-ext-sidekick", "skybrush-ext-timecode
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.8"
-content-hash = "b757e84394fa5715d9671f4e8fa3fa4fef5407e17e13dcb06c9490b2a6677044"
+content-hash = "b7aba7bd061631ae09580b6a46d6500c9af8ab244d5ff1ef397e98ead3938ac2"

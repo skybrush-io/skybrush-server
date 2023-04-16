@@ -50,7 +50,7 @@ def get_drone_count_from_show_specification(show: ShowSpecification) -> Optional
     Skybrush Live that do not send this information yet).
     """
     mission_info = show.get("mission")
-    if not mission_info or not isinstance("mission", dict):
+    if not mission_info or not isinstance(mission_info, dict):
         return None
 
     num_drones = mission_info.get("numDrones")

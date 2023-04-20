@@ -709,10 +709,19 @@ class CrazyflieUAV(UAVBase):
                 in meters
             velocity: the desired takeoff velocity, in meters per second
         """
-        # TODO(ntamas): launch this in a separate background task and return
-        # early with the result
-        # TODO(ntamas): figure out how much time the landing will take
-        # approximately and shut down the motors at the end
+        # Let's try to make sure that the transition takes at least three
+        # seconds. Otherwise, when landing from a low altitude (say, 30 cm),
+        # the transition duration will be too low, the drone won't have time
+        # to speed up, and then it will cut power to the motors mid-air.
+        if altitude < self._position.z:
+            delta_height = self._position.z - altitude
+            dt = delta_height / velocity
+            if dt < 3:
+                dt = 3
+                velocity = delta_height / dt
+                if velocity < 0.1:
+                    velocity = 0.1
+
         await self._get_crazyflie().high_level_commander.land(
             altitude, velocity=velocity
         )

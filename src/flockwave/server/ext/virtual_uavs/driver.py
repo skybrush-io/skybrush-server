@@ -23,8 +23,10 @@ from flockwave.gps.vectors import (
 from flockwave.server.command_handlers import (
     create_color_command_handler,
     create_parameter_command_handler,
+    create_test_command_handler,
     create_version_command_handler,
 )
+from flockwave.server.errors import NotSupportedError
 from flockwave.server.model.commands import Progress, Suspend
 from flockwave.server.model.devices import ObjectNode
 from flockwave.server.model.gps import GPSFixType
@@ -385,6 +387,30 @@ class VirtualUAV(UAVBase):
             amsl = self._home_amsl + z if self._home_amsl is not None else None
             flat_earth = FlatEarthCoordinate(x=x, y=y, amsl=amsl, ahl=z)
             self.target = self._trans.to_gps(flat_earth)
+
+    async def test_component(self, component: str) -> None:
+        """Tests a component of the UAV.
+
+        Parameters:
+            component: the component to test; currently we support ``motor`` and
+                ``led``
+        """
+        if component == "motor":
+            self.start_motors()
+            await sleep(3)
+            self.stop_motors()
+        elif component == "led":
+            color_sequence = [
+                Color(name)
+                for name in "red lime blue yellow cyan magenta white".split()
+            ]
+            for index, color in enumerate(color_sequence):
+                if index > 0:
+                    await sleep(1)
+                self.set_led_color(color)
+                yield Progress(percentage=(index + 1) * (100 / len(color_sequence)))
+        else:
+            raise NotSupportedError
 
     @property
     def user_defined_error(self) -> Optional[int]:
@@ -967,6 +993,8 @@ class VirtualUAVDriver(UAVDriver[VirtualUAV]):
             yield Progress(percentage=i * 10)
 
         yield "Result."
+
+    handle_command_test = create_test_command_handler(("motor", "led"))
 
     async def handle_command_timeout(self, uav: VirtualUAV) -> None:
         """Dummy command that does not respond in a reasonable amount of time.

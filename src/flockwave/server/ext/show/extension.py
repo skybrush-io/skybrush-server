@@ -12,7 +12,7 @@ from flockwave.server.ext.base import Extension
 from flockwave.server.model.clock import Clock
 from flockwave.server.tasks import wait_for_dict_items, wait_until
 
-from .clock import ClockSynchronizationHandler, ShowClock
+from .clock import ClockSynchronizationHandler, ShowClock, ShowEndClock
 from .config import DroneShowConfiguration, LightConfiguration, StartMethod
 from .logging import ShowUploadLoggingMiddleware
 
@@ -34,6 +34,9 @@ class DroneShowExtension(Extension):
 
     _clock: Optional[ShowClock]
     _clock_sync: ClockSynchronizationHandler
+    _end_clock: Optional[ShowEndClock]
+    _end_clock_sync: ClockSynchronizationHandler
+
     _nursery: Optional[Nursery]
     _show_tasks: Optional[CancellableTaskGroup]
 
@@ -41,10 +44,14 @@ class DroneShowExtension(Extension):
         super().__init__()
 
         self._clock = None
+        self._clock_sync = ClockSynchronizationHandler()
+
+        self._end_clock = None
+        self._end_clock_sync = ClockSynchronizationHandler()
+
         self._nursery = None
         self._show_tasks = None
 
-        self._clock_sync = ClockSynchronizationHandler()
         self._config = DroneShowConfiguration()
         self._lights = LightConfiguration()
 
@@ -72,7 +79,7 @@ class DroneShowExtension(Extension):
             # If the "config" object contains a key named "start", and it has
             # no sub-key named "clock", it means that we are working with an
             # older version of Skybrush Live that did not have support for
-            # MIDI timecode. In this case, we assume that the clock is explciitly
+            # MIDI timecode. In this case, we assume that the clock is explicitly
             # set to None
             if isinstance(config, dict) and "start" in config:
                 if isinstance(config["start"], dict) and "clock" not in config["start"]:
@@ -92,6 +99,8 @@ class DroneShowExtension(Extension):
 
     async def run(self, app, configuration, logger):
         self._clock = ShowClock()
+        self._end_clock = ShowEndClock()
+
         handlers = {
             "SHOW-CFG": self.handle_SHOW_CFG,
             "SHOW-LIGHTS": self.handle_SHOW_LIGHTS,
@@ -135,6 +144,7 @@ class DroneShowExtension(Extension):
                     )
                 )
                 stack.enter_context(app.import_api("clocks").use_clock(self._clock))
+                stack.enter_context(app.import_api("clocks").use_clock(self._end_clock))
                 stack.enter_context(app.message_hub.use_message_handlers(handlers))
                 stack.enter_context(
                     app.message_hub.use_request_middleware(
@@ -142,6 +152,9 @@ class DroneShowExtension(Extension):
                     )
                 )
                 stack.enter_context(self._clock_sync.use_secondary_clock(self._clock))
+                stack.enter_context(
+                    self._end_clock_sync.use_secondary_clock(self._end_clock)
+                )
                 await sleep_forever()
 
     def _get_clock(self) -> Optional[ShowClock]:
@@ -162,7 +175,9 @@ class DroneShowExtension(Extension):
         """
         assert self.app is not None
 
-        self._sync_show_clock_to(self._config.clock, self._config.start_time_on_clock)
+        self._sync_show_clocks_to(
+            self._config.clock, self._config.start_time_on_clock, self._config.duration
+        )
 
         if self._show_tasks is not None:
             self._show_tasks.cancel_all()
@@ -205,8 +220,8 @@ class DroneShowExtension(Extension):
             and self._config.start_method is StartMethod.AUTO
         )
 
-    def _sync_show_clock_to(
-        self, clock_id: Optional[str], time: Optional[float]
+    def _sync_show_clocks_to(
+        self, clock_id: Optional[str], time: Optional[float], duration: Optional[float]
     ) -> None:
         """Configures the clock synchronization handler such that it syncs the
         show clock to the clock with the given ID, assuming that the show clock
@@ -215,16 +230,30 @@ class DroneShowExtension(Extension):
 
         When the clock ID is ``None``, assumes that the given time is an absolute
         start time expressed as the number of seconds since the UNIX epoch.
+
+        Args:
+            clock_id: ID of the clock to synchronize the show clock to, or
+                ``None`` if we must synchronize to absolute time
+            time: timestamp to synchronize the start to
+            duration: expected duration of the show, in seconds
         """
         primary_clock: Optional[Clock]
 
+        end_time = time if time is not None else None
+        if end_time is not None and duration is not None:
+            end_time += duration
+
         if self.app is None:
             self._clock_sync.disable_and_stop()
+            self._end_clock_sync.disable_and_stop()
 
         elif clock_id is None:
             self._clock_sync.disable()
+            self._end_clock_sync.disable()
             if self._clock is not None:
-                self._clock.start_time = time
+                self._clock.reference_time = time
+            if self._end_clock is not None:
+                self._end_clock.reference_time = end_time
 
         else:
             registry = self.app.import_api("clocks").registry
@@ -235,8 +264,13 @@ class DroneShowExtension(Extension):
 
             if primary_clock and time is not None:
                 self._clock_sync.synchronize_to(primary_clock, time)
+                if end_time is not None:
+                    self._end_clock_sync.synchronize_to(primary_clock, end_time)
+                else:
+                    self._end_clock_sync.disable_and_stop()
             else:
                 self._clock_sync.disable_and_stop()
+                self._end_clock_sync.disable_and_stop()
 
     async def _start_show_when_needed(self) -> None:
         assert self.app is not None

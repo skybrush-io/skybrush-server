@@ -45,6 +45,9 @@ class DroneShowConfiguration:
     authorized_to_start: bool
     """Whether the show is authorized to start."""
 
+    duration: Optional[float]
+    """Duration of the show, if known. ``None`` means unknown duration."""
+
     start_method: StartMethod
     """The start method of the show (RC or automatic with countdown)."""
 
@@ -67,6 +70,7 @@ class DroneShowConfiguration:
         """Constructor."""
         self.authorized_to_start = False
         self.clock = None
+        self.duration = None
         self.start_time_on_clock = None
         self.start_method = StartMethod.RC
         self.uav_ids = []
@@ -126,7 +130,7 @@ class DroneShowConfiguration:
     @property
     def json(self) -> Dict[str, Any]:
         """Returns the JSON representation of the configuration object."""
-        return {
+        result: Dict[str, Any] = {
             "start": {
                 "authorized": bool(self.authorized_to_start),
                 "clock": self.clock,
@@ -135,6 +139,9 @@ class DroneShowConfiguration:
                 "uavIds": self.uav_ids,
             }
         }
+        if self.duration is not None:
+            result["duration"] = self.duration
+        return result
 
     def calculate_start_time_as_unix_timestamp(self) -> Optional[float]:
         """Calculates the desired start time of the show as a UNIX timestamp,
@@ -189,6 +196,14 @@ class DroneShowConfiguration:
                     # Make sure that an empty string is mapped to None
                     self.clock = clock if clock else None
                     changed = True
+
+        if "duration" in obj:
+            if obj["duration"] is None:
+                self.duration = None
+                changed = True
+            elif isinstance(obj["duration"], (int, float)) and obj["duration"] >= 0:
+                self.duration = float(obj["duration"])
+                changed = True
 
         if changed:
             self.updated.send(self)

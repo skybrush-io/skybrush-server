@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 from time import time
 from typing import ClassVar, Optional, Union
 
-__all__ = ("Clock", "ClockBase", "StoppableClockBase")
+__all__ = ("Clock", "ClockBase", "StoppableClockBase", "TimeElapsedSinceReferenceClock")
 
 
 class Clock(ABC):
@@ -178,11 +178,10 @@ class StoppableClockBase(ClockBase):
         The clock is stopped by default.
 
         Parameters:
-            id (str): the identifier of the clock
-            epoch (Optional[float]): the epoch of the clock, expressed as
-                the number of seconds from the Unix epoch to the epoch of
-                the clock, in UTC, or ``None`` if the clock has no epoch or
-                an unknown epoch.
+            id: the identifier of the clock
+            epoch: the epoch of the clock, expressed as the number of seconds
+                from the Unix epoch to the epoch of the clock, in UTC, or
+                ``None`` if the clock has no epoch or an unknown epoch.
         """
         super().__init__(id, epoch=epoch)
         self._running = False
@@ -227,3 +226,70 @@ class StoppableClockBase(ClockBase):
         if value <= 0:
             raise ValueError("ticks per second must be positive")
         self._ticks_per_second = value
+
+
+class TimeElapsedSinceReferenceClock(ClockBase):
+    """Clock that shows the number of seconds elapsed since a given reference
+    time instant.
+    """
+
+    _reference_time: Optional[float] = None
+    """The reference time from which we measure the number of seconds elapsed;
+    ``None`` if no reference time was set.
+    """
+
+    def ticks_given_time(self, now: float) -> float:
+        """Returns the number of clock ticks elapsed since the reference time
+        of the clock. Returns a negative number if the current time is before
+        the reference time, or zero if there is no reference time yet.
+
+        Parameters:
+            now: the number of seconds elapsed since the UNIX epoch
+
+        Returns:
+            the number of clock ticks since the reference time, assuming 10
+            ticks per second
+        """
+        return (
+            (now - self._reference_time) * 10
+            if self._reference_time is not None
+            else 0.0
+        )
+
+    @property
+    def running(self) -> bool:
+        return self._reference_time is not None
+
+    @property
+    def reference_time(self) -> Optional[float]:
+        """The reference time, in seconds since the UNIX epoch, or ``None``
+        if no reference time has been specified yet.
+        """
+        return self._reference_time
+
+    @reference_time.setter
+    def reference_time(self, value: Optional[float]):
+        if self._reference_time == value:
+            return
+
+        old_value = self._reference_time
+        running = self.running
+
+        self._reference_time = value
+
+        if self.running != running:
+            if self.running:
+                self.started.send(self)
+            else:
+                self.stopped.send(self)
+        else:
+            if old_value is not None and value is not None:
+                delta = (old_value - value) * self.ticks_per_second
+            else:
+                # should not happen
+                delta = 0.0  # pragma: no cover
+            self.changed.send(self, delta=delta)
+
+    @property
+    def ticks_per_second(self) -> int:
+        return 10

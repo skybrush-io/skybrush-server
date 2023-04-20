@@ -6,83 +6,45 @@ from contextlib import contextmanager
 from time import time
 from typing import Any, Iterator, Optional, Tuple
 
-from flockwave.server.model import Clock, ClockBase
+from flockwave.server.model.clock import (
+    Clock,
+    TimeElapsedSinceReferenceClock,
+)
 
-__all__ = ("ShowClock",)
+__all__ = ("ShowClock", "ShowEndClock")
 
 
-class ShowClock(ClockBase):
+class ShowClock(TimeElapsedSinceReferenceClock):
     """Clock that shows the number of seconds elapsed since the scheduled start
     of the drone show.
-    """
-
-    _start_time: Optional[float]
-    """The scheduled start time of the show, expressed as the number of seconds
-    elapsed since the UNIX epoch. ``None`` if no start time was set yet.
     """
 
     def __init__(self):
         """Constructor."""
         super().__init__(id="show", epoch=None)
-        self._start_time = None
-
-    def ticks_given_time(self, now: float) -> float:
-        """Returns the number of clock ticks elapsed since the scheduled start
-        of the show. If the current time is before the scheduled start, returns
-        a negative number.
-
-        Returns zero if there is no scheduled start time yet.
-
-        Parameters:
-            now: the number of seconds elapsed since the Unix epoch, according
-                to the internal clock of the server.
-
-        Returns:
-            the number of clock ticks since the scheduled start of the show,
-            assuming 10 ticks per second
-        """
-        if self._start_time is None:
-            return 0.0
-        else:
-            return (now - self._start_time) * 10
-
-    @property
-    def running(self) -> bool:
-        return self._start_time is not None
 
     @property
     def start_time(self) -> Optional[float]:
         """The scheduled start time, in seconds since the UNIX epoch, or ``None``
         if no start time has been scheduled yet.
+
+        Same as the reference time; kept for compatibility purposes only.
         """
-        return self._start_time
+        return self.reference_time
 
     @start_time.setter
     def start_time(self, value: Optional[float]):
-        if self._start_time == value:
-            return
+        self.reference_time = value
 
-        old_value = self._start_time
-        running = self.running
 
-        self._start_time = value
+class ShowEndClock(TimeElapsedSinceReferenceClock):
+    """Clock that shows the number of seconds elapsed since the scheduled end
+    of the drone show.
+    """
 
-        if self.running != running:
-            if self.running:
-                self.started.send(self)
-            else:
-                self.stopped.send(self)
-        else:
-            if old_value is not None and value is not None:
-                delta = (old_value - value) * self.ticks_per_second
-            else:
-                # should not happen
-                delta = 0.0  # pragma: no cover
-            self.changed.send(self, delta=delta)
-
-    @property
-    def ticks_per_second(self) -> int:
-        return 10
+    def __init__(self):
+        """Constructor."""
+        super().__init__(id="end_of_show", epoch=None)
 
 
 class ClockSynchronizationHandler:
@@ -95,7 +57,7 @@ class ClockSynchronizationHandler:
     _enabled: bool = False
 
     _primary_clock: Optional[Clock] = None
-    _secondary_clock: Optional[ShowClock] = None
+    _secondary_clock: Optional[TimeElapsedSinceReferenceClock] = None
 
     _subscribed_clock: Optional[Clock] = None
     """The clock whose signals the handler is currently subscribed to. Updated
@@ -123,7 +85,7 @@ class ClockSynchronizationHandler:
         return self._primary_clock
 
     @property
-    def secondary_clock(self) -> Optional[ShowClock]:
+    def secondary_clock(self) -> Optional[TimeElapsedSinceReferenceClock]:
         """The secondary clock; ``None`` means that it has not been assigned
         yet.
 
@@ -134,7 +96,7 @@ class ClockSynchronizationHandler:
         return self._secondary_clock
 
     @secondary_clock.setter
-    def secondary_clock(self, value: Optional[ShowClock]) -> None:
+    def secondary_clock(self, value: Optional[TimeElapsedSinceReferenceClock]) -> None:
         if self._secondary_clock == value:
             return
 
@@ -156,7 +118,7 @@ class ClockSynchronizationHandler:
         """
         self.disable()
         if self._secondary_clock:
-            self._secondary_clock.start_time = None
+            self._secondary_clock.reference_time = None
 
     def synchronize_to(self, clock: Clock, seconds: float) -> None:
         """Enables the synchronization mechanism and attaches it to the given
@@ -174,7 +136,9 @@ class ClockSynchronizationHandler:
         self._update_secondary_clock()
 
     @contextmanager
-    def use_secondary_clock(self, clock: ShowClock) -> Iterator[None]:
+    def use_secondary_clock(
+        self, clock: TimeElapsedSinceReferenceClock
+    ) -> Iterator[None]:
         """Context manager that assigns the given clock as a secondary clock
         to the synchronization object when entering the context and that
         detaches the clock when exiting the context.
@@ -265,8 +229,8 @@ class ClockSynchronizationHandler:
         ) = self._calculate_desired_state_of_secondary_clock(now)
 
         if time_on_secondary_clock is None:
-            start_time = None
+            reference_time = None
         else:
-            start_time = now - time_on_secondary_clock
+            reference_time = now - time_on_secondary_clock
 
-        self._secondary_clock.start_time = start_time if should_run else None
+        self._secondary_clock.reference_time = reference_time if should_run else None

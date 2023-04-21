@@ -10,6 +10,7 @@
 build/
 dist/
 doc/build/
+doc/skybrush-server-docs-*.zip
 htmlcov/
 tmp/
 .venv/

@@ -667,14 +667,14 @@ reference = "collmot"
 
 [[package]]
 name = "flockwave-gps"
-version = "2.3.1"
+version = "2.3.2"
 description = "GPS and geography related routines and classes"
 category = "main"
 optional = false
 python-versions = ">=3.7,<4.0"
 files = [
-    {file = "flockwave-gps-2.3.1.tar.gz", hash = "sha256:84c2bf726e530806a604b49d007d91fac093d3e153b9b054e57c45bd608c936a"},
-    {file = "flockwave_gps-2.3.1-py3-none-any.whl", hash = "sha256:c89fab10985ca28145010b7aa0f858b7c7e32e26726f34d37a429f42cbce0605"},
+    {file = "flockwave-gps-2.3.2.tar.gz", hash = "sha256:a194a7f4e003c17ab22744b130d89fbd17d02da86e3377cece612bcdbaa3aa2d"},
+    {file = "flockwave_gps-2.3.2-py3-none-any.whl", hash = "sha256:14d4f7effd509c4aae7df729f30d118b1c07496ff5a74cbab599de41182d1533"},
 ]
 
 [package.dependencies]
@@ -958,14 +958,14 @@ files = [
 
 [[package]]
 name = "importlib-metadata"
-version = "6.4.1"
+version = "6.6.0"
 description = "Read metadata from Python packages"
 category = "main"
 optional = false
 python-versions = ">=3.7"
 files = [
-    {file = "importlib_metadata-6.4.1-py3-none-any.whl", hash = "sha256:63ace321e24167d12fbb176b6015f4dbe06868c54a2af4f15849586afb9027fd"},
-    {file = "importlib_metadata-6.4.1.tar.gz", hash = "sha256:eb1a7933041f0f85c94cd130258df3fb0dec060ad8c1c9318892ef4192c47ce1"},
+    {file = "importlib_metadata-6.6.0-py3-none-any.whl", hash = "sha256:43dd286a2cd8995d5eaef7fee2066340423b818ed3fd70adf0bad5f1fac53fed"},
+    {file = "importlib_metadata-6.6.0.tar.gz", hash = "sha256:92501cdf9cc66ebd3e612f1b4f0c0765dfa42f0fa38ffb319b6bd84dd675d705"},
 ]
 
 [package.dependencies]
@@ -1438,14 +1438,14 @@ files = [
 
 [[package]]
 name = "pygments"
-version = "2.15.0"
+version = "2.15.1"
 description = "Pygments is a syntax highlighting package written in Python."
 category = "dev"
 optional = false
 python-versions = ">=3.7"
 files = [
-    {file = "Pygments-2.15.0-py3-none-any.whl", hash = "sha256:77a3299119af881904cd5ecd1ac6a66214b6e9bed1f2db16993b54adede64094"},
-    {file = "Pygments-2.15.0.tar.gz", hash = "sha256:f7e36cffc4c517fbc252861b9a6e4644ca0e5abadf9a113c72d1358ad09b9500"},
+    {file = "Pygments-2.15.1-py3-none-any.whl", hash = "sha256:db2db3deb4b4179f399a09054b023b6a586b76499d36965813c71aa8ed7b5fd1"},
+    {file = "Pygments-2.15.1.tar.gz", hash = "sha256:8ace4d3c1dd481894b2005f560ead0f9f19ee64fe983366be1a21e171d12775c"},
 ]
 
 [package.extras]
@@ -1529,58 +1529,58 @@ files = [
 
 [[package]]
 name = "pyobjc-core"
-version = "9.1"
+version = "9.1.1"
 description = "Python<->ObjC Interoperability Module"
 category = "main"
 optional = false
 python-versions = ">=3.7"
 files = [
-    {file = "pyobjc-core-9.1.tar.gz", hash = "sha256:d1cffe00954040ad587daefd45cc0761fdb4f2b2fa0a3ae71f1057be4df03cb4"},
-    {file = "pyobjc_core-9.1-cp310-cp310-macosx_10_9_universal2.whl", hash = "sha256:89e7373a16a3720f535fd3d9b3f3386a3045f5172465d41dbaf6a5232f16c04c"},
-    {file = "pyobjc_core-9.1-cp311-cp311-macosx_10_9_universal2.whl", hash = "sha256:911fd247f01a5caf27986bc7f8fdf7c1dfc6c9eb9e452b9d83c6285990e477d2"},
-    {file = "pyobjc_core-9.1-cp37-cp37m-macosx_10_9_x86_64.whl", hash = "sha256:ea28c8cee4fa145e3c5785e27c6565f6c11c35acea405e605a63009a10e29c4a"},
-    {file = "pyobjc_core-9.1-cp38-cp38-macosx_10_9_x86_64.whl", hash = "sha256:bfa9f812a357bd3c2056b8b7385677d188767d23b8e6cbd70ba62e4a60cb2a88"},
-    {file = "pyobjc_core-9.1-cp38-cp38-macosx_11_0_universal2.whl", hash = "sha256:0f1a97953d3f4c8d7eeeb8ee4a98c01916db39f329e4706fd10b31af4e14e96e"},
-    {file = "pyobjc_core-9.1-cp39-cp39-macosx_10_9_universal2.whl", hash = "sha256:5a928e8878833bf10a37f26a87c8de469b3b9575d69302bd56d181034cdcdab6"},
+    {file = "pyobjc-core-9.1.1.tar.gz", hash = "sha256:4b6cb9053b5fcd3c0e76b8c8105a8110786b20f3403c5643a688c5ec51c55c6b"},
+    {file = "pyobjc_core-9.1.1-cp310-cp310-macosx_10_9_universal2.whl", hash = "sha256:4bd07049fd9fe5b40e4b7c468af9cf942508387faf383a5acb043d20627bad2c"},
+    {file = "pyobjc_core-9.1.1-cp311-cp311-macosx_10_9_universal2.whl", hash = "sha256:1a8307527621729ff2ab67860e7ed84f76ad0da881b248c2ef31e0da0088e4ba"},
+    {file = "pyobjc_core-9.1.1-cp37-cp37m-macosx_10_9_x86_64.whl", hash = "sha256:083004d28b92ccb483a41195c600728854843b0486566aba2d6e63eef51f80e6"},
+    {file = "pyobjc_core-9.1.1-cp38-cp38-macosx_10_9_x86_64.whl", hash = "sha256:d61e9517d451bc062a7fae8b3648f4deba4fa54a24926fa1cf581b90ef4ced5a"},
+    {file = "pyobjc_core-9.1.1-cp38-cp38-macosx_11_0_universal2.whl", hash = "sha256:1626909916603a3b04c07c721cf1af0e0b892cec85bb3db98d05ba024f1786fc"},
+    {file = "pyobjc_core-9.1.1-cp39-cp39-macosx_10_9_universal2.whl", hash = "sha256:2dde96462b52e952515d142e2afbb6913624a02c13582047e06211e6c3993728"},
 ]
 
 [[package]]
 name = "pyobjc-framework-cocoa"
-version = "9.1"
+version = "9.1.1"
 description = "Wrappers for the Cocoa frameworks on macOS"
 category = "main"
 optional = false
 python-versions = ">=3.7"
 files = [
-    {file = "pyobjc-framework-Cocoa-9.1.tar.gz", hash = "sha256:8c95aadc8f4c307a791c60785a4e922d0f3b0a3fb4e28d25608c69638b2ad3d8"},
-    {file = "pyobjc_framework_Cocoa-9.1-cp310-cp310-macosx_10_9_universal2.whl", hash = "sha256:405fc4d3965ab8ff13621350502d6ecadf2a8da4d8682d50816c4f8bdc9abed0"},
-    {file = "pyobjc_framework_Cocoa-9.1-cp311-cp311-macosx_10_9_universal2.whl", hash = "sha256:e8760543276ab72950c3f32b8570afd0adec8e077940bcc1d0c05b87b7c5ba2e"},
-    {file = "pyobjc_framework_Cocoa-9.1-cp37-cp37m-macosx_10_9_x86_64.whl", hash = "sha256:e48dd82b0c4ada1afdc7ef7a9b3ee69f583946fc085089dc396bf8515644c3c8"},
-    {file = "pyobjc_framework_Cocoa-9.1-cp38-cp38-macosx_10_9_x86_64.whl", hash = "sha256:fc0822518a9c63f886626b50a1c186d1d22c9c4fabddad067bb9f52ec1fa9a10"},
-    {file = "pyobjc_framework_Cocoa-9.1-cp38-cp38-macosx_11_0_universal2.whl", hash = "sha256:69407ab40d31971acd3c39a4cc1d4d82258e26b9fcd7cf6377a3d1ff5b96203c"},
-    {file = "pyobjc_framework_Cocoa-9.1-cp39-cp39-macosx_10_9_universal2.whl", hash = "sha256:f9d14c15c5061d6b12d7c65e844aa1c76f38bcec6dac368170a8e26938c9275b"},
+    {file = "pyobjc-framework-Cocoa-9.1.1.tar.gz", hash = "sha256:345c32b6d1f3db45f635e400f2d0d6c0f0f7349d45ec823f76fc1df43d13caeb"},
+    {file = "pyobjc_framework_Cocoa-9.1.1-cp310-cp310-macosx_10_9_universal2.whl", hash = "sha256:9176a4276f3b4b4758e9b9ca10698be5341ceffaeaa4fa055133417179e6bc37"},
+    {file = "pyobjc_framework_Cocoa-9.1.1-cp311-cp311-macosx_10_9_universal2.whl", hash = "sha256:5e1e96fb3461f46ff951413515f2029e21be268b0e033db6abee7b64ec8e93d3"},
+    {file = "pyobjc_framework_Cocoa-9.1.1-cp37-cp37m-macosx_10_9_x86_64.whl", hash = "sha256:083b195c496d30c6b9dd86126a6093c4b95e0138e9b052b13e54103fcc0b4872"},
+    {file = "pyobjc_framework_Cocoa-9.1.1-cp38-cp38-macosx_10_9_x86_64.whl", hash = "sha256:a1b3333b1aa045608848bd68bbab4c31171f36aeeaa2fabeb4527c6f6f1e33cd"},
+    {file = "pyobjc_framework_Cocoa-9.1.1-cp38-cp38-macosx_11_0_universal2.whl", hash = "sha256:54c017354671f0d955432986c42218e452ca69906a101c8e7acde8510432303a"},
+    {file = "pyobjc_framework_Cocoa-9.1.1-cp39-cp39-macosx_10_9_universal2.whl", hash = "sha256:10c0075688ce95b92caf59e368585fffdcc98c919bc345067af070222f5d01d2"},
 ]
 
 [package.dependencies]
-pyobjc-core = ">=9.1"
+pyobjc-core = ">=9.1.1"
 
 [[package]]
 name = "pyobjc-framework-systemconfiguration"
-version = "9.1"
+version = "9.1.1"
 description = "Wrappers for the framework SystemConfiguration on macOS"
 category = "main"
 optional = false
 python-versions = ">=3.7"
 files = [
-    {file = "pyobjc-framework-SystemConfiguration-9.1.tar.gz", hash = "sha256:a37c5df1efd81e9d59dcbefe58fcbbbb536da78e6cf4d61a7fb4590ea586c991"},
-    {file = "pyobjc_framework_SystemConfiguration-9.1-cp36-abi3-macosx_10_9_universal2.whl", hash = "sha256:097a2cd0f460629233fa96bddf86f1345f4f34e4868fbb7d65303b226c6e5759"},
-    {file = "pyobjc_framework_SystemConfiguration-9.1-cp36-abi3-macosx_10_9_x86_64.whl", hash = "sha256:ab44f9c07664f57aec029c8fbb28ff0e5dc5e2e5d8e2a59ae138b60fb167af95"},
-    {file = "pyobjc_framework_SystemConfiguration-9.1-cp36-abi3-macosx_11_0_universal2.whl", hash = "sha256:04e5678753b32a049cbdf856deb54f43ff9dd2aa8ef0cf8d5dafb28518a1deff"},
+    {file = "pyobjc-framework-SystemConfiguration-9.1.1.tar.gz", hash = "sha256:69a4b29cdb9fb925fa847a13359f19e8ab3b3417e8768c56373d23f74cb45a44"},
+    {file = "pyobjc_framework_SystemConfiguration-9.1.1-cp36-abi3-macosx_10_9_universal2.whl", hash = "sha256:dfc0059424d1bcb14ef049f661aa13fa23aacf0a43eefc74c1b01465a2b4e2c1"},
+    {file = "pyobjc_framework_SystemConfiguration-9.1.1-cp36-abi3-macosx_10_9_x86_64.whl", hash = "sha256:76c86f0e79b855f26c549d2a03e9c2fc9f1b46c4305050809e55bf93bf06de5d"},
+    {file = "pyobjc_framework_SystemConfiguration-9.1.1-cp36-abi3-macosx_11_0_universal2.whl", hash = "sha256:68af3a05c9690c180c126d633916e8db7652400b54f1ff11d501cd12ee6f6938"},
 ]
 
 [package.dependencies]
-pyobjc-core = ">=9.1"
-pyobjc-framework-Cocoa = ">=9.1"
+pyobjc-core = ">=9.1.1"
+pyobjc-framework-Cocoa = ">=9.1.1"
 
 [[package]]
 name = "pyrsistent"
@@ -1774,14 +1774,14 @@ unidecode = ["Unidecode (>=1.1.1)"]
 
 [[package]]
 name = "pyudev"
-version = "0.24.0"
+version = "0.24.1"
 description = "A libudev binding"
 category = "main"
 optional = false
 python-versions = ">=3.7"
 files = [
-    {file = "pyudev-0.24.0-py3-none-any.whl", hash = "sha256:d22451d9f10b4fef7737a0fa5c5664e7547cf9ae58a79084eb396e0ce9a0e406"},
-    {file = "pyudev-0.24.0.tar.gz", hash = "sha256:b2a3afe1c99ea751f8296652557eac559874da2a1b1ec0625178706ec5a345f3"},
+    {file = "pyudev-0.24.1-py3-none-any.whl", hash = "sha256:da7e977be15fb5eccf8797b8e2176cd5b4f39288707cdcb39d1cabe7c8793e2b"},
+    {file = "pyudev-0.24.1.tar.gz", hash = "sha256:75e54d37218f5ac45b0da1f0fd9cc5e526a3cac3ef1cfad410cf7ab338b01471"},
 ]
 
 [[package]]
@@ -1860,14 +1860,14 @@ paramiko = "*"
 
 [[package]]
 name = "setuptools"
-version = "67.6.1"
+version = "67.7.2"
 description = "Easily download, build, install, upgrade, and uninstall Python packages"
 category = "main"
 optional = false
 python-versions = ">=3.7"
 files = [
-    {file = "setuptools-67.6.1-py3-none-any.whl", hash = "sha256:e728ca814a823bf7bf60162daf9db95b93d532948c4c0bea762ce62f60189078"},
-    {file = "setuptools-67.6.1.tar.gz", hash = "sha256:257de92a9d50a60b8e22abfcbb771571fde0dbf3ec234463212027a4eeecbe9a"},
+    {file = "setuptools-67.7.2-py3-none-any.whl", hash = "sha256:23aaf86b85ca52ceb801d32703f12d77517b2556af839621c641fca11287952b"},
+    {file = "setuptools-67.7.2.tar.gz", hash = "sha256:f104fa03692a2602fa0fec6c6a9e63b6c8a968de13e17c026957dd1f53d80990"},
 ]
 
 [package.extras]
@@ -1909,14 +1909,14 @@ reference = "collmot"
 
 [[package]]
 name = "skybrush-ext-flockctrl"
-version = "2.23.0"
+version = "2.24.0"
 description = "Support for flockctrl-based drones in Skybrush Server"
 category = "main"
 optional = true
 python-versions = ">=3.8,<4.0"
 files = [
-    {file = "skybrush_ext_flockctrl-2.23.0-py3-none-any.whl", hash = "sha256:bc23c424d3ced9ab7a4ab3d83b311f4f20ef2c10bea1cdbed8eb660129674079"},
-    {file = "skybrush_ext_flockctrl-2.23.0.tar.gz", hash = "sha256:0eec49bc86b5d7dc366928eab078389c2431d1a05a22e21a8ef63b92522f5642"},
+    {file = "skybrush_ext_flockctrl-2.24.0-py3-none-any.whl", hash = "sha256:737f41f60911636ef368ebff9ae8df9575cc5d52b573323c51f8160054c75cba"},
+    {file = "skybrush_ext_flockctrl-2.24.0.tar.gz", hash = "sha256:a217748c016acad549d9a1ad625d7392e0773e60264f6d00b8514ef826d47f8c"},
 ]
 
 [package.dependencies]
@@ -2217,4 +2217,4 @@ pro = ["skybrush-ext-map-cache", "skybrush-ext-sidekick", "skybrush-ext-timecode
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.8"
-content-hash = "b7aba7bd061631ae09580b6a46d6500c9af8ab244d5ff1ef397e98ead3938ac2"
+content-hash = "2ba718fd656fa354f0bf828ab620fb965d864e6e3551e8775037f268e7b250c7"

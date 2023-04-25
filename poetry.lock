@@ -667,14 +667,14 @@ reference = "collmot"
 
 [[package]]
 name = "flockwave-gps"
-version = "2.3.2"
+version = "2.3.3"
 description = "GPS and geography related routines and classes"
 category = "main"
 optional = false
 python-versions = ">=3.7,<4.0"
 files = [
-    {file = "flockwave-gps-2.3.2.tar.gz", hash = "sha256:a194a7f4e003c17ab22744b130d89fbd17d02da86e3377cece612bcdbaa3aa2d"},
-    {file = "flockwave_gps-2.3.2-py3-none-any.whl", hash = "sha256:14d4f7effd509c4aae7df729f30d118b1c07496ff5a74cbab599de41182d1533"},
+    {file = "flockwave-gps-2.3.3.tar.gz", hash = "sha256:a00f1ae062e59f4bcf21fe1df4661c4afc3943a9fdfe2fe94720a224604e869f"},
+    {file = "flockwave_gps-2.3.3-py3-none-any.whl", hash = "sha256:bcbec01d602616b0c31d26e68526a333e83464354c88b225bf52579d1fe78c83"},
 ]
 
 [package.dependencies]
@@ -2147,21 +2147,21 @@ trio = ">=0.11.0"
 
 [[package]]
 name = "werkzeug"
-version = "2.2.3"
+version = "2.3.0"
 description = "The comprehensive WSGI web application library."
 category = "main"
 optional = false
-python-versions = ">=3.7"
+python-versions = ">=3.8"
 files = [
-    {file = "Werkzeug-2.2.3-py3-none-any.whl", hash = "sha256:56433961bc1f12533306c624f3be5e744389ac61d722175d543e1751285da612"},
-    {file = "Werkzeug-2.2.3.tar.gz", hash = "sha256:2e1ccc9417d4da358b9de6f174e3ac094391ea1d4fbef2d667865d819dfd0afe"},
+    {file = "Werkzeug-2.3.0-py3-none-any.whl", hash = "sha256:340335057f72974d9281dbaf52c8090a9f9a59ba304ae814bf0656e6559c0020"},
+    {file = "Werkzeug-2.3.0.tar.gz", hash = "sha256:3b6b46926d052b8ebca97c4dc73c12e47bdd07d57ab0600c039c3155450227bc"},
 ]
 
 [package.dependencies]
 MarkupSafe = ">=2.1.1"
 
 [package.extras]
-watchdog = ["watchdog"]
+watchdog = ["watchdog (>=2.3)"]
 
 [[package]]
 name = "wheel"
@@ -2217,4 +2217,4 @@ pro = ["skybrush-ext-map-cache", "skybrush-ext-sidekick", "skybrush-ext-timecode
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.8"
-content-hash = "2ba718fd656fa354f0bf828ab620fb965d864e6e3551e8775037f268e7b250c7"
+content-hash = "39bd2054646fb7a9065ef67414586186786444753c8fc7029004d25351e50ffc"

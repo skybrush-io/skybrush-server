@@ -186,6 +186,11 @@ class MAVLinkDronesExtension(UAVExtension[MAVLinkDriver]):
                 )
             network_specs = configuration["networks"]
         else:
+            self.log.warning(
+                "The top-level 'connections' key in the configuration of the "
+                "MAVLink extension is deprecated; move it under 'networks.mav' "
+                "to get rid of this warning."
+            )
             network_specs = {
                 "mav": {"connections": configuration.get("connections", ())}
             }

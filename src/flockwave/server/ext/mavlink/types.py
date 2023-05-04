@@ -94,7 +94,7 @@ class MAVLinkNetworkSpecification:
     """Parameter specification for a single MAVLink network."""
 
     #: Unique identifier of this MAVLink network that the server can use as a
-    #: priamry key
+    #: primary key
     id: str
 
     #: MAVLink system ID reserved for the ground station (the Skybrush server)

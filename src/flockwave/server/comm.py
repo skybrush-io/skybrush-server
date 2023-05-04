@@ -16,6 +16,7 @@ from typing import (
     Awaitable,
     Callable,
     ClassVar,
+    Dict,
     Generator,
     Generic,
     Iterator,
@@ -108,6 +109,9 @@ class CommunicationManager(Generic[PacketType, AddressType]):
             entry is up and running.
             """
             return self.channel is not None
+
+    _aliases: Dict[str, str]
+    _entries_by_name: Dict[str, List[Entry]]
 
     def __init__(
         self,
@@ -445,7 +449,7 @@ class CommunicationManager(Generic[PacketType, AddressType]):
         if not entries:
             # try with an alias
             name = self._aliases.get(name)
-            entries = self._entries_by_name.get(name)
+            entries = self._entries_by_name.get(name)  # type: ignore
 
         sent = False
         is_broadcast = address is BROADCAST

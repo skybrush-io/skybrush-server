@@ -211,7 +211,7 @@ class MAVLinkDronesExtension(UAVExtension[MAVLinkDriver]):
             "packet_loss": configuration.get("packet_loss", MISSING),
             "routing": configuration.get("routing", DEFAULT_ROUTING),
             "statustext_targets": configuration.get(
-                "statustext_targets", frozenset({"client", "server"})
+                "statustext_targets", ("client", "server")
             ),
             "system_id": configuration.get("system_id", 254),
         }
@@ -435,17 +435,82 @@ dependencies = ("show", "signals")
 description = "Support for drones that use the MAVLink protocol"
 schema = {
     "properties": {
-        "connections": {
-            "title": "Connection URLs",
-            "type": "array",
-            "format": "table",
-            "items": {"type": "string"},
-            "description": (
-                "URLs describing the connections where the server needs to "
-                "listen for incoming MAVLink packets. 'default' means that "
-                "incoming MAVLink packets are expected on UDP port 14550 and "
-                "outbound MAVLink packets are sent to UDP port 14555."
-            ),
+        "networks": {
+            "title": "MAVLink networks",
+            "type": "object",
+            "propertyOrder": 2000,
+            "options": {"disable_properties": False},
+            "additionalProperties": {
+                "type": "object",
+                "properties": {
+                    "connections": {
+                        "title": "Connection URLs",
+                        "type": "array",
+                        "format": "table",
+                        "items": {"type": "string"},
+                        "default": [],
+                        "description": (
+                            "URLs describing the connections where the server needs to "
+                            "listen for incoming MAVLink packets in this network. 'default' "
+                            "means that incoming MAVLink packets are expected on UDP port "
+                            "14550 and outbound MAVLink packets are sent to UDP port 14555."
+                        ),
+                    },
+                    "id_format": {
+                        "type": "string",
+                        "title": "ID format",
+                        "description": (
+                            "Python format string that determines the format of the IDs of "
+                            "the drones created in this network. Overrides the global ID format "
+                            "defined at the top level."
+                        ),
+                    },
+                    "system_id": {
+                        "title": "System ID",
+                        "description": "MAVLink system ID of the server in this network; typically IDs from 251 to 254 are reserved for ground stations.",
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 255,
+                        "default": 254,
+                    },
+                    "routing": {
+                        "type": "object",
+                        "title": "Message routing",
+                        "properties": {
+                            "rc": {
+                                "type": "integer",
+                                "title": "RC override",
+                                "description": "Index of the connection where RC override messages are routed to (zero-based)",
+                                "default": 0,
+                                "minimum": 0,
+                            },
+                            "rtk": {
+                                "type": "integer",
+                                "title": "RTK messages",
+                                "description": "Index of the connection where RTK correction messages are routed to (zero-based)",
+                                "default": 0,
+                                "minimum": 0,
+                            },
+                        },
+                    },
+                    "statustext_targets": {
+                        "type": "array",
+                        "title": "STATUSTEXT message handling",
+                        "items": {
+                            "type": "string",
+                            "enum": ["client", "server"],
+                            "options": {
+                                "enum_titles": [
+                                    "Forward STATUSTEXT messages to Skybrush clients",
+                                    "Log STATUSTEXT messages in the server log",
+                                ]
+                            },
+                        },
+                        "default": ["client", "server"],
+                        "uniqueItems": True,
+                    },
+                },
+            },
         },
         "custom_mode": {
             "type": "integer",
@@ -462,59 +527,6 @@ schema = {
             ),
             "default": 127,
         },
-        "id_format": {
-            "type": "string",
-            "default": "{0:02}",
-            "title": "ID format",
-            "description": "Python format string that determines the format of the IDs of the drones created by this extension.",
-        },
-        "routing": {
-            "type": "object",
-            "title": "Message routing",
-            "properties": {
-                "rc": {
-                    "type": "integer",
-                    "title": "RC override",
-                    "description": "Index of the connection where RC override messages are routed to (zero-based)",
-                    "default": 0,
-                    "minimum": 0,
-                },
-                "rtk": {
-                    "type": "integer",
-                    "title": "RTK messages",
-                    "description": "Index of the connection where RTK correction messages are routed to (zero-based)",
-                    "default": 0,
-                    "minimum": 0,
-                },
-            },
-        },
-        "statustext_targets": {
-            "type": "array",
-            "title": "STATUSTEXT message handling",
-            "items": {
-                "type": "string",
-                "enum": ["client", "server"],
-                "options": {
-                    "enum_titles": [
-                        "Forward STATUSTEXT messages to Skybrush clients",
-                        "Log STATUSTEXT messages in the server log",
-                    ]
-                },
-            },
-            "default": ["client", "server"],
-            "uniqueItems": True,
-        },
-        "system_id": {
-            "title": "System ID",
-            "description": "MAVLink system ID of the server; typically IDs from 251 to 254 are reserved for ground stations.",
-            "type": "integer",
-            "minimum": 1,
-            "maximum": 255,
-            "default": 254,
-        },
-        # connections
-        # routing
-        # networks is an advanced setting and is not included here
         # packet_loss is an advanced setting and is not included here
     }
 }

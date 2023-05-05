@@ -93,43 +93,54 @@ spec = _MAVLinkMessageSpecificationFactory()
 class MAVLinkNetworkSpecification:
     """Parameter specification for a single MAVLink network."""
 
-    #: Unique identifier of this MAVLink network that the server can use as a
-    #: primary key
     id: str
+    """Unique identifier of this MAVLink network that the server can use as a
+    primary key.
+    """
 
-    #: MAVLink system ID reserved for the ground station (the Skybrush server)
     system_id: int = 255
+    """MAVLink system ID reserved for the ground station (the Skybrush server)."""
 
-    #: Python format string that receives the MAVLink system ID of a drone
-    #: and the network ID, and returns its preferred formatted identifier that
-    #: is used when the drone is registered in the server
     id_format: str = "{1}{0}"
+    """Python format string that receives the MAVLink system ID of a drone
+    and the network ID, and returns its preferred formatted identifier that
+    is used when the drone is registered in the server.
+    """
 
-    #: The connections that the MAVLink network will consist of. A MAVLink
-    #: network may have one or more connections where MAVLink messages are
-    #: received and sent, but a system ID appearing on one of the networks
-    #: identifies the _same_ device as the same system ID on another network.
-    #: In most cases, one link is the primary one and the rest are used as
-    #: "backups".
-    #:
-    #: The list may contain any values that are accepted by the
-    #: `create_connection()` function.
+    id_offset: int = 0
+    """Offset to add to the system IDs of drones in the same network before
+    they are sent to the ID formatter function.
+    """
+
     connections: List[str] = field(default_factory=list)
+    """The connections that the MAVLink network will consist of. A MAVLink
+    network may have one or more connections where MAVLink messages are
+    received and sent, but a system ID appearing on one of the networks
+    identifies the _same_ device as the same system ID on another network.
+    In most cases, one link is the primary one and the rest are used as
+    "backups".
 
-    #: Specifies where certain types of packets should be routed if the
-    #: network has multiple connections
+    The list may contain any values that are accepted by the
+    `create_connection()` function.
+    """
+
     routing: Dict[str, int] = field(default_factory=dict)
+    """Specifies where certain types of packets should be routed if the
+    network has multiple connections.
+    """
 
-    #: Specifies where to send the contents of MAVLink status text messages
-    #: originating from this network. This property must be a set containing
-    #: 'server' to forward the messages to the server log and/or 'client' to
-    #: forward the messages to the connected clients in SYS-MSG messages.
     statustext_targets: FrozenSet[str] = field(default_factory=frozenset)
+    """Specifies where to send the contents of MAVLink status text messages
+    originating from this network. This property must be a set containing
+    'server' to forward the messages to the server log and/or 'client' to
+    forward the messages to the connected clients in SYS-MSG messages.
+    """
 
-    #: Whether to simulate packet loss in this network by randomly dropping
-    #: received and sent messages. Zero means the normal behaviour, otherwise
-    #: it is interpreted as the probability of a lost MAVLink message.
     packet_loss: float = 0
+    """Whether to simulate packet loss in this network by randomly dropping
+    received and sent messages. Zero means the normal behaviour, otherwise
+    it is interpreted as the probability of a lost MAVLink message.
+    """
 
     @classmethod
     def from_json(cls, obj, id: Optional[str] = None) -> "MAVLinkNetworkSpecification":
@@ -143,6 +154,9 @@ class MAVLinkNetworkSpecification:
 
         if "id_format" in obj:
             result.id_format = obj["id_format"]
+
+        if "id_offset" in obj:
+            result.id_offset = int(obj["id_offset"])
 
         if "connections" in obj:
             result.connections = obj["connections"]

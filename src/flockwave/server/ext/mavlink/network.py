@@ -87,7 +87,25 @@ class MAVLinkNetwork:
     _connections: List[Connection]
     _statustext_targets: FrozenSet[str]
     _uav_addresses: Dict[MAVLinkUAV, Any]
-    _uavs: Dict[str, MAVLinkUAV]
+
+    _id: str
+    """ID of the network."""
+
+    _id_formatter: Callable[[int, str], str]
+    """Formatter function that is called with the system ID of a UAV and the
+    network ID and returns the final ID that should be assigned to the UAV in
+    Skybrush.
+    """
+
+    _uav_system_id_offset: int = 0
+    """Offset to add to the system ID of each UAV in the network before it is
+    sent to the ID formatter that derives the final ID in Skybrush.
+    """
+
+    _uavs: Dict[int, MAVLinkUAV]
+    """Dictionary mapping MAVLink system IDs in the network to the corresponding
+    UAVs.
+    """
 
     @classmethod
     def from_specification(cls, spec: MAVLinkNetworkSpecification):
@@ -101,6 +119,7 @@ class MAVLinkNetwork:
             packet_loss=spec.packet_loss,
             statustext_targets=spec.statustext_targets,
             routing=spec.routing,
+            uav_system_id_offset=spec.id_offset,
         )
 
         for connection_spec in spec.connections:
@@ -113,11 +132,12 @@ class MAVLinkNetwork:
         self,
         id: str,
         *,
-        system_id: int = 255,
-        id_formatter: Callable[[str, str], str] = "{0}".format,
+        system_id: int = 254,
+        id_formatter: Callable[[int, str], str] = "{0}".format,
         packet_loss: float = 0,
         statustext_targets: Optional[FrozenSet[str]] = None,
         routing: Optional[Dict[str, int]] = None,
+        uav_system_id_offset: int = 0,
     ):
         """Constructor.
 
@@ -145,6 +165,8 @@ class MAVLinkNetwork:
                 use for sending that particular packet type. Not including a
                 particular packet type in the dictionary will let the system
                 choose the link on its own.
+            uav_system_id_offset: offset to add to the system ID of each UAV
+                before it is sent to the formatter function
         """
         self.log = None  # type: ignore
 
@@ -161,6 +183,7 @@ class MAVLinkNetwork:
             frozenset(statustext_targets) if statustext_targets else frozenset()
         )
         self._system_id = max(min(int(system_id), 255), 1)
+        self._uav_system_id_offset = int(uav_system_id_offset)
 
         self._connections = []
         self._uavs = {}
@@ -545,11 +568,11 @@ class MAVLinkNetwork:
         """
         return self._uavs.values() if self._uavs else []
 
-    def _create_uav(self, system_id: str) -> MAVLinkUAV:
+    def _create_uav(self, system_id: int) -> MAVLinkUAV:
         """Creates a new UAV with the given system ID in this network and
         registers it in the UAV registry.
         """
-        uav_id = self._id_formatter(system_id, self.id)
+        uav_id = self._id_formatter(system_id + self._uav_system_id_offset, self.id)
 
         self._uavs[system_id] = uav = self.driver.create_uav(uav_id)
         uav.assign_to_network_and_system_id(self.id, system_id)
@@ -572,7 +595,7 @@ class MAVLinkNetwork:
             the UAV belonging to the system ID of the message or `None` if the
             message was a broadcast message
         """
-        system_id = message.get_srcSystem()
+        system_id: int = message.get_srcSystem()
         if system_id == 0:
             return None
         else:

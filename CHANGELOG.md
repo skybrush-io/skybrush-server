@@ -7,10 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- When working with MAVLink networks, you can now specify an offset that is
+  added to the system ID before the final Skybrush ID of the drone is derived.
+  This can be used to achieve continuous numbering if you have multiple
+  networks with, say, 250 drones per network.
+
 ### Fixed
 
 - Fixed a bug in the handling of NTRIP servers when the server responds with
   chunked transfer encoding.
+
+### Deprecated
+
+- The top-level `connections` key of the MAVLink extension configuration object
+  is deprecated. Define a MAVLink network first under the `networks` key with
+  a unique ID and move the `connections` key there when migrating old config
+  files.
 
 ## [2.12.2] - 2023-04-24
 

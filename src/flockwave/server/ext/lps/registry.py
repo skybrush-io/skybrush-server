@@ -131,6 +131,11 @@ class LocalPositioningSystemRegistry(ObjectRegistryProxy[LocalPositioningSystem]
         lps._id = lps_id
         lps.type = type
 
+        # Fill in the human-readable name of the LPS from the name of the
+        # LPS type and the ID if we haven't assigned a name
+        if not lps.name:
+            lps.name = f"{lps_type.name} {lps_id}"
+
         return self._add(lps)
 
     @contextmanager

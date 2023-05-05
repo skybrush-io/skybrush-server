@@ -31,6 +31,9 @@ class LocalPositioningSystem(ModelObject):
     registry.
     """
 
+    name: str = ""
+    """The name of the LPS that is to be displayed on user interfaces."""
+
     on_updated: ClassVar[Signal] = Signal(
         doc="Signal that is emitted when the state of the local positioning "
         "system changes in any way that clients might be interested in."
@@ -49,6 +52,7 @@ class LocalPositioningSystem(ModelObject):
         """Returns the JSON representation of the local positioning system."""
         return {
             "id": self.id,
+            "name": self.name,
             "type": self.type,
         }
 

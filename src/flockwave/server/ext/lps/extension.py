@@ -14,6 +14,7 @@ from flockwave.server.message_handlers import (
     create_multi_object_message_handler,
 )
 from flockwave.server.model import FlockwaveResponse
+from flockwave.server.model.object import registered
 from flockwave.server.registries import find_in_registry
 
 from .model import LocalPositioningSystem, LocalPositioningSystemType
@@ -142,6 +143,7 @@ class LocalPositioningSystemsExtension(Extension):
             stack.enter_context(
                 self._lps_registry.use_object_registry(self.app.object_registry)
             )
+            stack.enter_context(registered("lps", LocalPositioningSystem))
 
             stack.enter_context(
                 self.app.message_hub.use_message_handlers(

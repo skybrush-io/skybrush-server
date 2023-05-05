@@ -2,6 +2,7 @@
 MAVLink protocol.
 """
 
+from collections import OrderedDict
 from contextlib import ExitStack
 from functools import partial
 from logging import Logger
@@ -83,12 +84,12 @@ class MAVLinkDronesExtension(UAVExtension[MAVLinkDriver]):
         driver.send_packet = self._send_packet
 
     async def run(self, app, configuration):
-        networks = {
-            network_id: MAVLinkNetwork.from_specification(spec)
+        networks = OrderedDict(
+            (network_id, MAVLinkNetwork.from_specification(spec))
             for network_id, spec in self._get_network_specifications_from_configuration(
                 configuration
             ).items()
-        }
+        )
 
         # Get a handle to the signals extension that we will need
         signals = app.import_api("signals")
@@ -237,11 +238,12 @@ class MAVLinkDronesExtension(UAVExtension[MAVLinkDriver]):
                     for value in spec["connections"]
                 ]
 
-        # Return the network specifications
-        return {
-            key: MAVLinkNetworkSpecification.from_json(value, id=key)
-            for key, value in network_specs.items()
-        }
+        # Return the network specifications, ordered by ID. This is to ensure
+        # that integer network indices are handed out in a consistent manner.
+        return OrderedDict(
+            (key, MAVLinkNetworkSpecification.from_json(network_specs[key], id=key))
+            for key in sorted(network_specs.keys())
+        )
 
     def _on_rc_channels_changed(self, sender: "RCState"):
         """Handles the event when the RC channel values changed."""

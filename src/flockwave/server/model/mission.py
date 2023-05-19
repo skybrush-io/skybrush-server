@@ -645,17 +645,16 @@ class ChangeSpeedMissionCommand(MissionCommand):
 
     @property
     def json(self) -> MissionItem:
+        parameters = {}
+        if self.velocity_xy is not None:
+            parameters["velocityXY"] = round(self.velocity_xy, ndigits=3)
+        if self.velocity_z is not None:
+            parameters["velocityZ"] = round(self.velocity_z, ndigits=3)
+
         return {
             "id": self.id,
             "type": MissionItemType.CHANGE_SPEED.value,
-            "parameters": {
-                "velocityXY": None
-                if self.velocity_xy is None
-                else round(self.velocity_xy, ndigits=3),
-                "velocityZ": None
-                if self.velocity_z is None
-                else round(self.velocity_z, ndigits=3),
-            },
+            "parameters": parameters,
         }
 
     @property
@@ -698,18 +697,18 @@ class GoToMissionCommand(MissionCommand):
 
     @property
     def json(self) -> MissionItem:
-        retval = {
-            "id": self.id,
-            "type": MissionItemType.GO_TO.value,
-            "parameters": {
-                "lat": round(self.latitude, ndigits=7),
-                "lon": round(self.longitude, ndigits=7),
-            },
+        parameters = {
+            "lat": round(self.latitude, ndigits=7),
+            "lon": round(self.longitude, ndigits=7),
         }
         if self.altitude is not None:
-            retval["parameters"]["alt"] = self.altitude.json
+            parameters["alt"] = self.altitude.json
 
-        return retval  # type: ignore
+        return {
+            "id": self.id,
+            "type": MissionItemType.GO_TO.value,
+            "parameters": parameters,
+        }
 
     @property
     def type(self) -> MissionItemType:
@@ -739,14 +738,14 @@ class LandMissionCommand(MissionCommand):
 
     @property
     def json(self) -> MissionItem:
+        parameters = {}
+        if self.velocity_z is not None:
+            parameters["velocityZ"] = round(self.velocity_z, ndigits=3)
+
         return {
             "id": self.id,
             "type": MissionItemType.LAND.value,
-            "parameters": {
-                "velocityZ": None
-                if self.velocity_z is None
-                else round(self.velocity_z, ndigits=3)
-            },
+            "parameters": parameters,
         }
 
     @property
@@ -942,15 +941,16 @@ class TakeoffMissionCommand(MissionCommand):
 
     @property
     def json(self) -> MissionItem:
+        parameters = {
+            "alt": self.altitude.json,
+        }
+        if self.velocity_z is not None:
+            parameters["velocityZ"] = round(self.velocity_z, ndigits=3)
+
         return {
             "id": self.id,
             "type": MissionItemType.TAKEOFF.value,
-            "parameters": {
-                "alt": self.altitude.json,
-                "velocityZ": None
-                if self.velocity_z is None
-                else round(self.velocity_z, ndigits=3),
-            },
+            "parameters": parameters,
         }
 
     @property

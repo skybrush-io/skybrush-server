@@ -19,6 +19,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed a bug in the handling of NTRIP servers when the server responds with
   chunked transfer encoding.
 
+- When reloading the `offline_maps` extension, the app now simply asks the user
+  to restart the entire application instead of printing a cryptic error message
+  to the console.
+
 ### Deprecated
 
 - The top-level `connections` key of the MAVLink extension configuration object

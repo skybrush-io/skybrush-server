@@ -17,7 +17,9 @@
         <tr style="cursor: pointer; {{ "" if true or extension.loaded else "opacity: 0.5" }}"
             onclick="window.location.href='{{ url_for('.show_extension_details', name=extension.name) }}'">
             <td class="align-baseline text-right" style="width: 24px">
-                {% if extension.loaded %}
+                {% if extension.restart_requested %}
+                <span class="text-primary" data-feather="refresh-cw"></span>
+                {% elif extension.loaded %}
                 <span class="text-success" data-feather="check"></span>
                 {% else %}
                 <span class="text-danger" data-feather="x"></span>

@@ -53,6 +53,11 @@
     {{ tags.inline_list(extension.tags) }}
   </dd>
   {% endif %}
+
+  {% if extension.restart_requested %}
+  <dt class="col-sm-2">Restart requested</dt>
+  <dd class="col-sm-10">yes</dd>
+  {% endif %}
 </dl>
 
 <div class="sticky-top pt-1 pb-4">

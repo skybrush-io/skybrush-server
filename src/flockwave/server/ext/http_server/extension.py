@@ -12,13 +12,14 @@ from heapq import heapify, heappush
 from hypercorn.config import Config as HyperConfig
 from hypercorn.trio import serve
 from pathlib import Path
-from quart import abort, Blueprint, redirect, request, url_for
+from quart import abort, Blueprint, Quart, redirect, request, url_for
 from quart_trio import QuartTrio
 from trio import current_time, sleep
-from typing import Iterable, Optional
+from typing import Iterable, List, Optional
 
 import logging
 
+from flockwave.ext.manager import ExtensionManager
 from flockwave.networking import can_bind_to_tcp_address, format_socket_address
 from flockwave.server.ports import get_port_number_for_service
 from flockwave.server.types import Disposer
@@ -32,8 +33,9 @@ PACKAGE_NAME = __name__.rpartition(".")[0]
 
 ############################################################################
 
-proposed_index_pages = []
-quart_app = None
+proposed_index_pages: List["ProposedIndexPage"] = []
+quart_app: Optional[Quart] = None
+ext_manager: Optional[ExtensionManager] = None
 
 ############################################################################
 
@@ -115,10 +117,17 @@ def mount(
         a function that can be called to unmount the application. Unmounting
         of blueprints is not supported yet.
     """
-    global exports, quart_app
+    global ext_manager, exports, quart_app
 
     if isinstance(app, Blueprint):
-        quart_app.register_blueprint(app, url_prefix=path)
+        # Blueprints can only be registered if the app has not served its first
+        # request yet
+        assert quart_app is not None
+        if quart_app.got_first_request:
+            if ext_manager:
+                ext_manager.request_host_app_restart("http_server")
+        else:
+            quart_app.register_blueprint(app, url_prefix=path)
     else:
         return exports["asgi_app"].add(app, scopes=scopes, path=path, priority=priority)
 
@@ -203,21 +212,23 @@ def proposed_index_page(route: str, priority: int = 0):
 
 def load(app, configuration):
     """Loads the extension."""
-    global exports
+    global exports, ext_manager
 
     address = (
         configuration.get("host", "localhost"),
         configuration.get("port", get_port_number_for_service("http")),
     )
+    ext_manager = app.extension_manager
 
     exports.update(address=address, asgi_app=create_app())
 
 
 def unload(app):
     """Unloads the extension."""
-    global exports, quart_app
+    global exports, ext_manager, quart_app
 
     quart_app = None
+    ext_manager = None
     exports.update(address=None, asgi_app=None)
 
 

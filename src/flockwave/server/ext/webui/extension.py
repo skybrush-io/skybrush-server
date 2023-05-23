@@ -77,6 +77,7 @@ class ExtensionInfo:
     tags: List[str] = field(default_factory=list)
     dependencies: List[str] = field(default_factory=list)
     dependents: List[str] = field(default_factory=list)
+    restart_requested: bool = False
 
     @classmethod
     def for_extension(
@@ -85,6 +86,7 @@ class ExtensionInfo:
         result = cls(name=name, loaded=ext_manager.is_loaded(name))
         result.description = ext_manager.get_description_of_extension(name) or ""
         result.tags = sorted(ext_manager.get_tags_of_extension(name))
+        result.restart_requested = ext_manager.was_app_restart_requested_by(name)
 
         if details:
             result.dependencies = sorted(
@@ -205,10 +207,15 @@ def fail_if_not_localhost() -> None:
 
 @blueprint.context_processor
 def inject_debug_variable() -> Dict[str, Any]:
-    """Injects the `can_save_config` and `debug` variables into all template contexts."""
+    """Injects the `can_save_config`, `debug` and `restart_requested` variables
+    into all template contexts.
+    """
     return {
         "can_save_config": can_save_server_configuration(app),
         "debug": is_debugging(),
+        "restart_requested": (
+            app.extension_manager.app_restart_requested if app else False
+        ),
     }
 
 

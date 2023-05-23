@@ -743,6 +743,11 @@ class SkybrushServer(DaemonApp):
             "skybrush.server.ext"
         )
 
+        # Log requests to restart an extension
+        self.extension_manager.restart_requested.connect(
+            self._on_restart_requested, sender=self.extension_manager
+        )
+
         # Create an object that can be used to get hold of commonly used
         # directories within the app
         self.dirs = AppDirs("Skybrush Server", "CollMot Robotics")
@@ -1049,6 +1054,15 @@ class SkybrushServer(DaemonApp):
         except BrokenResourceError:
             # App is probably shutting down, this is OK.
             pass
+
+    def _on_restart_requested(self, sender, name: str) -> None:
+        """Handler called when an extension requests the server to restart
+        itself.
+        """
+        self.log.warning(
+            "The server should be restarted in order for the changes to take effect",
+            extra={"id": name},
+        )
 
     def _process_configuration(self, config: Configuration) -> Optional[int]:
         # Process the configuration options

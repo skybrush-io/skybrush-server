@@ -2,6 +2,8 @@
     {% for tag in tags %}
         {% if tag == "experimental" %}
             <span class="badge badge-warning">{{ tag }}</span>
+        {% elif tag == "restart requested" %}
+            <span class="badge badge-warning">{{ tag }}</span>
         {% elif tag == "pro" %}
             <span class="badge badge-primary">{{ tag }}</span>
         {% else %}

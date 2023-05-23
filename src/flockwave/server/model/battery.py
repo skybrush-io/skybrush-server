@@ -4,7 +4,9 @@ __all__ = ("BatteryInfo",)
 
 
 class BatteryInfo:
-    """Class representing the battery information of a single UAV."""
+    """Class representing the battery information of a single device
+    (typically a UAV).
+    """
 
     def __init__(self):
         self._charging = False

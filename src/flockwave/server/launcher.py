@@ -70,8 +70,8 @@ def start(
         log_handler = logging.getLogger(logger_name)
         log_handler.setLevel(logging.ERROR)
 
-    # Also silence informational messages from charset_normalizer
-    for logger_name in ("charset_normalizer",):
+    # Also silence informational messages from charset_normalizer and httpx
+    for logger_name in ("charset_normalizer", "httpcore", "httpx"):
         log_handler = logging.getLogger(logger_name)
         log_handler.setLevel(logging.WARN)
 

@@ -2,17 +2,79 @@
 
 from abc import ABCMeta, abstractmethod, abstractproperty
 from blinker import Signal
+from dataclasses import dataclass
 from typing import (
     Any,
     ClassVar,
     Dict,
     Generic,
+    List,
+    Optional,
+    Tuple,
     TypeVar,
 )
 
+from flockwave.server.model.battery import BatteryInfo
 from flockwave.server.model.object import ModelObject
 
 __all__ = ("LocalPositioningSystem", "LocalPositioningSystemType")
+
+
+@dataclass
+class Anchor:
+    """Representation of a single anchor in a local positioning system (LPS)."""
+
+    id: str
+    """The ID of the anchor. Must be unique within a local positioning system,
+    but two local positioning systems may have anchors with the same ID.
+    """
+
+    active: bool = True
+    """Whether the anchor is active (i.e. online)."""
+
+    position: Optional[Tuple[float, float, float]] = None
+    """The position of the anchor in the coordinate system of the local
+    positioning system, if known. ``None`` if not known or not applicable.
+    """
+
+    battery: Optional[BatteryInfo] = None
+    """The battery information of the anchor; specifies its voltage, percentage
+    and whether it is charging or not. ``None`` if the anchor has no battery.
+    """
+
+    def activate(self) -> bool:
+        """Marks the given anchor as active.
+
+        Returns:
+            whether the anchor was inactive before this method call
+        """
+        if not self.active:
+            self.active = True
+            return True
+        else:
+            return False
+
+    def deactivate(self) -> bool:
+        """Marks the given anchor as inactive.
+
+        Returns:
+            whether the anchor was active before this method call
+        """
+        if self.active:
+            self.active = False
+            return True
+        else:
+            return False
+
+    @property
+    def json(self) -> Dict[str, Any]:
+        """Returns the JSON representation of the anchor."""
+        return {
+            "id": self.id,
+            "active": bool(self.active),
+            "position": self.position,
+            "battery": self.battery,
+        }
 
 
 class LocalPositioningSystem(ModelObject):
@@ -34,10 +96,20 @@ class LocalPositioningSystem(ModelObject):
     name: str = ""
     """The name of the LPS that is to be displayed on user interfaces."""
 
+    errors: List[int]
+    """The list of error codes corresponding to the local positioning system."""
+
+    anchors: List[Anchor]
+    """The list of anchors corresponding to the local positioning system."""
+
     on_updated: ClassVar[Signal] = Signal(
         doc="Signal that is emitted when the state of the local positioning "
         "system changes in any way that clients might be interested in."
     )
+
+    def __init__(self) -> None:
+        self.errors = []
+        self.anchors = []
 
     @property
     def device_tree_node(self) -> None:
@@ -54,6 +126,8 @@ class LocalPositioningSystem(ModelObject):
             "id": self.id,
             "name": self.name,
             "type": self.type,
+            "errors": self.errors,
+            "anchors": self.anchors,
         }
 
     async def calibrate(self) -> None:

@@ -34,7 +34,7 @@ class _Alarm:
 
             await self._run(edge_triggered)
 
-    def _on_clock_event(self, sender):
+    def _on_clock_event(self, sender, **kwds):
         try:
             self._queue_tx.send_nowait("event")
         except WouldBlock:

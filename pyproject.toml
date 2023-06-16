@@ -44,9 +44,9 @@ flockwave-logger = {version = "^1.9.0", source = "fury"}
 flockwave-mavlink = {version = ">=0.1.0", source = "fury"}
 flockwave-net = {extras = ["async"], version = "^4.0.1", source = "fury"}
 flockwave-parsers = {version = "^2.0.1", source = "fury"}
-flockwave-spec = {version = "^1.73.0", source = "fury"}
+flockwave-spec = {version = "^1.74.0", source = "fury"}
 skybrush-ext-dock = {version = "^1.0.0", source = "collmot", optional = true}
-skybrush-ext-flockctrl = {version = "^2.25.0", source = "collmot", optional = true}
+skybrush-ext-flockctrl = {version = "^2.26.0", source = "collmot", optional = true}
 skybrush-ext-map-cache = {version = "^1.0.0", source = "collmot", optional = true}
 skybrush-ext-sidekick = {version = "^1.0.1", source = "collmot", optional = true}
 skybrush-ext-timecode = {version = "^1.0.2", source = "collmot", optional = true}
@@ -62,7 +62,7 @@ adrenaline = "^1.1.0"
 httpx = ">=0.18.2"
 igrf-model = "^1.1.1"
 
-[tool.poetry.dev-dependencies]
+[tool.poetry.group.dev.dependencies]
 coverage = {extras = ["toml"], version = "^7.1.0"}
 pytest = "^7.2.1"
 pytest-cov = "^4.0.0"

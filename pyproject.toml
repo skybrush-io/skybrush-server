@@ -9,6 +9,10 @@ packages = [
 ]
 
 [[tool.poetry.source]]
+name = "PyPI"
+priority = "primary"
+
+[[tool.poetry.source]]
 name = "collmot"
 url = "https://pypi.collmot.com/simple/"
 priority = "explicit"
@@ -16,7 +20,7 @@ priority = "explicit"
 [[tool.poetry.source]]
 name = "fury"
 url = "https://pypi.fury.io/skybrush/"
-priority = "explicit"
+priority = "supplemental"
 
 [tool.poetry.dependencies]
 python = "^3.8"

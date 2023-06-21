@@ -169,6 +169,12 @@ class RTKExtension(Extension):
         else:
             self._dynamic_serial_port_filters = []
 
+        self._survey_settings.accuracy = (
+            int(configuration.get("survey_accuracy", 100)) / 100.0
+        )
+
+        self._survey_settings.duration = int(configuration.get("survey_duration", 60))
+
         self._survey_settings.message_set = (
             RTKMessageSet.MSM7
             if configuration.get("use_high_precision", True)
@@ -971,6 +977,28 @@ def get_schema():
                 ),
                 "default": True,
                 "format": "checkbox",
+            },
+            "survey_accuracy": {
+                "type": "number",
+                "minValue": 1,
+                "title": "Desired accuracy of RTK surveys [cm]",
+                "description": (
+                    "Desired accuracy of RTK surveys for locally connected base "
+                    "stations that need auto-configuration, in centimeters. "
+                    "Supported for base stations using uBlox chipsets."
+                ),
+                "default": 100,
+            },
+            "survey_duration": {
+                "type": "integer",
+                "minValue": 0,
+                "title": "Minimum duration of RTK surveys [s]",
+                "description": (
+                    "Minimum duration of RTK surveys for locally connected base "
+                    "stations that need auto-configuration, in seconds. Supported "
+                    "for base stations using uBlox chipsets."
+                ),
+                "default": 60,
             },
             "use_high_precision": {
                 "type": "boolean",

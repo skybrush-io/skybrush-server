@@ -134,10 +134,20 @@ def format_gps_time_of_week(value: int) -> str:
 class DroneShowStatusFlag(IntFlag):
     """Status flags used in the Skybrush-specific drone show status packet."""
 
+    # Flags from now on come from the third flag byte in the status packet;
+    # six most significant bits only.
+    IS_FAR_FROM_EXPECTED_POSITION = 1 << 17
+
+    # Flags from now on come from the second flag byte in the status packet;
+    # four most significant bits only.
+
     IS_MISPLACED_BEFORE_TAKEOFF = 1 << 11
     UNUSED_1 = 1 << 10
     UNUSED_2 = 1 << 9
     UNUSED_3 = 1 << 8
+
+    # Flags from now on come from the first flag byte in the status packet
+
     HAS_SHOW_FILE = 1 << 7
     HAS_START_TIME = 1 << 6
     HAS_ORIGIN = 1 << 5
@@ -146,6 +156,10 @@ class DroneShowStatusFlag(IntFlag):
     HAS_AUTHORIZATION_TO_START = 1 << 2
     IS_GPS_TIME_BAD = 1 << 1
     GEOFENCE_BREACHED = 1 << 0
+
+    # Dummy member to be used as a default value
+
+    OFF = 0
 
 
 _stage_descriptions = {
@@ -213,7 +227,7 @@ class DroneShowStatus:
     elapsed_time: int = 0
 
     #: Various status flags
-    flags: DroneShowStatusFlag = 0
+    flags: DroneShowStatusFlag = DroneShowStatusFlag.OFF
 
     #: Stage of the drone show execution
     stage: DroneShowExecutionStage = DroneShowExecutionStage.OFF
@@ -231,7 +245,7 @@ class DroneShowStatus:
     TYPE = 0x5B
 
     #: Structure of Skybrush-specific DATA16 show status packets
-    _struct = Struct("<iHBBBxh")
+    _struct = Struct("<iHBBBBh")
 
     @classmethod
     def from_bytes(cls, data: bytes):
@@ -242,12 +256,20 @@ class DroneShowStatus:
         if len(data) < 12:
             data = data.ljust(12, b"\x00")
 
-        start_time, light, flags, flags2, gps_health, elapsed_time = cls._struct.unpack(
-            data[:12]
-        )
+        (
+            start_time,
+            light,
+            flags,
+            flags2,
+            gps_health,
+            flags3,
+            elapsed_time,
+        ) = cls._struct.unpack(data[:12])
 
-        # merge flags and flags2 into one byte. lower 4 bits of flags2 is the
-        # execution stage
+        # Merge flags, flags2 and flags3 into one byte. Lower 4 bits of flags2
+        # is the execution stage. Lower 2 bits of flags3 is the boot count
+        # modulo 4.
+        flags |= (flags3 & 0xFC) << 10
         flags |= (flags2 & 0xF0) << 4
         stage = flags2 & 0x0F
 
@@ -302,6 +324,13 @@ class DroneShowStatus:
         as we are receiving invalid timestamps from the GPS.
         """
         return bool(self.flags & DroneShowStatusFlag.IS_GPS_TIME_BAD)
+
+    @property
+    def is_far_from_expected_position(self) -> bool:
+        """Returns whether the drone seems to be far from its expected position,
+        typically during a show.
+        """
+        return bool(self.flags & DroneShowStatusFlag.IS_FAR_FROM_EXPECTED_POSITION)
 
     @property
     def is_geofence_breached(self) -> bool:

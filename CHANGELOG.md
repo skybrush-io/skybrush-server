@@ -9,8 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- The defualt accuracy and minimum duration of RTK surveys can now be configured
+- The default accuracy and minimum duration of RTK surveys can now be configured
   in the `rtk` extension.
+
+- MAVLink drones running a recent version of the Skybrush firmware (based on
+  ArduCopter 4.3.7 or later) now report when they deviate significantly from
+  their planned trajectory during a show.
 
 ## [2.14.0] - 2023-06-16
 

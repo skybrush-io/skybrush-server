@@ -2353,6 +2353,10 @@ class MAVLinkUAV(UAVBase):
                     and self._last_skybrush_status_info.is_geofence_breached
                 )
             ),
+            FlockwaveErrorCode.DRIFT_FROM_DESIRED_POSITION: (
+                self._last_skybrush_status_info
+                and self._last_skybrush_status_info.is_far_from_expected_position
+            ),
             FlockwaveErrorCode.RC_SIGNAL_LOST_WARNING: has_rc_error,
             FlockwaveErrorCode.BATTERY_CRITICAL: has_battery_error,
             FlockwaveErrorCode.LOGGING_DEACTIVATED: has_logging_error,

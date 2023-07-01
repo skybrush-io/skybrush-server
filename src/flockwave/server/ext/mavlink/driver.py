@@ -69,7 +69,7 @@ from .enums import (
     PositionTargetTypemask,
 )
 from .ftp import MAVFTP
-from .packets import create_led_control_packet, DroneShowStatus
+from .packets import create_led_control_packet, DroneShowExecutionStage, DroneShowStatus
 from .types import MAVLinkMessage, PacketBroadcasterFn, PacketSenderFn, spec
 from .utils import log_id_for_uav, mavlink_version_number_to_semver
 
@@ -2313,8 +2313,21 @@ class MAVLinkUAV(UAVBase):
         # "report only" -- but it means that we have _two_ sources to check to
         # determine the error code to use for the geofence.
 
+        show_stage = (
+            self._last_skybrush_status_info.stage
+            if self._last_skybrush_status_info
+            else DroneShowExecutionStage.UNKNOWN
+        )
+
+        # We do not use the LANDED error code yet because the current versions
+        # of the Skybrush firmware report "LANDED" for a long time after landing,
+        # which means that we would get an all-blue display in Live after a
+        # successful show.
+
         errors = {
             FlockwaveErrorCode.SLEEPING: False,
+            FlockwaveErrorCode.LANDING: show_stage is DroneShowExecutionStage.LANDING,
+            FlockwaveErrorCode.TAKEOFF: show_stage is DroneShowExecutionStage.TAKEOFF,
             FlockwaveErrorCode.AUTOPILOT_INIT_FAILED: (
                 heartbeat.system_status == MAVState.UNINIT
             ),

@@ -16,6 +16,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ArduCopter 4.3.7 or later) now report when they deviate significantly from
   their planned trajectory during a show.
 
+- MAVLink drones report the takeoff and landing stages as informational messages
+  during the execution of a show.
+
 ## [2.14.0] - 2023-06-16
 
 ### Changed

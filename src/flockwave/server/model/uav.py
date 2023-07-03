@@ -386,6 +386,9 @@ class UAVBase(UAV):
 TUAV = TypeVar("TUAV", bound="UAV")
 """Type variable that represents a UAV object."""
 
+TResult = TypeVar("TResult")
+"""Type variable that represents some unspecified result object."""
+
 
 class UAVDriver(Generic[TUAV], metaclass=ABCMeta):
     """Interface specification for UAV drivers that are responsible for
@@ -451,7 +454,7 @@ class UAVDriver(Generic[TUAV], metaclass=ABCMeta):
             errors or awaitables; it is the responsibility of the caller to
             evaluate errors and wait for awaitables)
         """
-        return self._send_signal(
+        return self._dispatch_request(
             uavs,
             "low-power mode request",
             self._enter_low_power_mode_single,
@@ -459,7 +462,7 @@ class UAVDriver(Generic[TUAV], metaclass=ABCMeta):
             transport=transport,
         )
 
-    def get_parameter(self, uavs: List[TUAV], name: str) -> Dict[TUAV, Any]:
+    def get_parameter(self, uavs: List[TUAV], name: str):
         """Asks the driver to retrieve the current value of a parameter from
         the given UAVs.
 
@@ -471,13 +474,11 @@ class UAVDriver(Generic[TUAV], metaclass=ABCMeta):
             errors or awaitables; it is the responsibility of the caller to
             evaluate errors and wait for awaitables)
         """
-        return self._send_signal(
+        return self._dispatch_request(
             uavs, "parameter retrieval", self._get_parameter_single, name=name
         )
 
-    def request_preflight_report(
-        self, uavs: List[TUAV]
-    ) -> Dict[TUAV, PreflightCheckInfo]:
+    def request_preflight_report(self, uavs: List[TUAV]):
         """Asks the driver to request a detailed report about the status of
         preflight checks on the given UAVs.
 
@@ -489,13 +490,13 @@ class UAVDriver(Generic[TUAV], metaclass=ABCMeta):
             errors or awaitables; it is the responsibility of the caller to
             evaluate errors and wait for awaitables)
         """
-        return self._send_signal(
+        return self._dispatch_request(
             uavs,
             "preflight report request",
             self._request_preflight_report_single,
         )
 
-    def request_version_info(self, uavs: List[TUAV]) -> Dict[TUAV, VersionInfo]:
+    def request_version_info(self, uavs: List[TUAV]):
         """Asks the driver to request detailed version information from the
         given UAVs.
 
@@ -507,7 +508,7 @@ class UAVDriver(Generic[TUAV], metaclass=ABCMeta):
             errors or awaitables; it is the responsibility of the caller to
             evaluate errors and wait for awaitables)
         """
-        return self._send_signal(
+        return self._dispatch_request(
             uavs, "version info request", self._request_version_info_single
         )
 
@@ -531,7 +532,7 @@ class UAVDriver(Generic[TUAV], metaclass=ABCMeta):
             errors or awaitables; it is the responsibility of the caller to
             evaluate errors and wait for awaitables)
         """
-        return self._send_signal(
+        return self._dispatch_request(
             uavs,
             "wakeup request",
             self._resume_from_low_power_mode_single,
@@ -646,7 +647,7 @@ class UAVDriver(Generic[TUAV], metaclass=ABCMeta):
             errors or awaitables; it is the responsibility of the caller to
             evaluate errors and wait for awaitables)
         """
-        return self._send_signal(
+        return self._dispatch_request(
             uavs,
             "fly to target signal",
             self._send_fly_to_target_signal_single,
@@ -675,7 +676,7 @@ class UAVDriver(Generic[TUAV], metaclass=ABCMeta):
             errors or awaitables; it is the responsibility of the caller to
             evaluate errors and wait for awaitables)
         """
-        return self._send_signal(
+        return self._dispatch_request(
             uavs,
             "position hold signal",
             self._send_hover_signal_single,
@@ -702,7 +703,7 @@ class UAVDriver(Generic[TUAV], metaclass=ABCMeta):
             errors or awaitables; it is the responsibility of the caller to
             evaluate errors and wait for awaitables)
         """
-        return self._send_signal(
+        return self._dispatch_request(
             uavs,
             "landing signal",
             self._send_landing_signal_single,
@@ -737,7 +738,7 @@ class UAVDriver(Generic[TUAV], metaclass=ABCMeta):
             errors or awaitables; it is the responsibility of the caller to
             evaluate errors and wait for awaitables)
         """
-        return self._send_signal(
+        return self._dispatch_request(
             uavs,
             "light or sound emission signal",
             self._send_light_or_sound_emission_signal_single,
@@ -774,7 +775,7 @@ class UAVDriver(Generic[TUAV], metaclass=ABCMeta):
             errors or awaitables; it is the responsibility of the caller to
             evaluate errors and wait for awaitables)
         """
-        return self._send_signal(
+        return self._dispatch_request(
             uavs,
             "motor start signal" if start else "motor stop signal",
             self._send_motor_start_stop_signal_single,
@@ -809,7 +810,7 @@ class UAVDriver(Generic[TUAV], metaclass=ABCMeta):
             errors or awaitables; it is the responsibility of the caller to
             evaluate errors and wait for awaitables)
         """
-        return self._send_signal(
+        return self._dispatch_request(
             uavs,
             "reset signal",
             self._send_reset_signal_single,
@@ -837,7 +838,7 @@ class UAVDriver(Generic[TUAV], metaclass=ABCMeta):
             errors or awaitables; it is the responsibility of the caller to
             evaluate errors and wait for awaitables)
         """
-        return self._send_signal(
+        return self._dispatch_request(
             uavs,
             "return to home signal",
             self._send_return_to_home_signal_single,
@@ -864,7 +865,7 @@ class UAVDriver(Generic[TUAV], metaclass=ABCMeta):
             errors or awaitables; it is the responsibility of the caller to
             evaluate errors and wait for awaitables)
         """
-        return self._send_signal(
+        return self._dispatch_request(
             uavs,
             "shutdown signal",
             self._send_shutdown_signal_single,
@@ -878,7 +879,7 @@ class UAVDriver(Generic[TUAV], metaclass=ABCMeta):
         *,
         scheduled: bool = False,
         transport: Optional[TransportOptions] = None,
-    ) -> Dict[TUAV, object]:
+    ):
         """Asks the driver to send a takeoff signal to the given UAVs, each
         of which are assumed to be managed by this driver.
 
@@ -897,7 +898,7 @@ class UAVDriver(Generic[TUAV], metaclass=ABCMeta):
             errors or awaitables; it is the responsibility of the caller to
             evaluate errors and wait for awaitables)
         """
-        return self._send_signal(
+        return self._dispatch_request(
             uavs,
             "takeoff signal",
             self._send_takeoff_signal_single,
@@ -906,7 +907,7 @@ class UAVDriver(Generic[TUAV], metaclass=ABCMeta):
             transport=transport,
         )
 
-    def set_parameter(self, uavs: List[TUAV], name: str, value: Any) -> Dict[TUAV, Any]:
+    def set_parameter(self, uavs: List[TUAV], name: str, value: Any):
         """Asks the driver to set the value of a parameter on the given UAVs.
 
         Typically, you don't need to override this method when implementing
@@ -917,7 +918,7 @@ class UAVDriver(Generic[TUAV], metaclass=ABCMeta):
             errors or awaitables; it is the responsibility of the caller to
             evaluate errors and wait for awaitables)
         """
-        return self._send_signal(
+        return self._dispatch_request(
             uavs,
             "parameter upload",
             self._set_parameter_single,
@@ -952,11 +953,39 @@ class UAVDriver(Generic[TUAV], metaclass=ABCMeta):
         """
         pass
 
-    def _send_signal(
-        self, uavs: List[TUAV], signal_name: str, handler, broadcaster=None, **kwds
-    ) -> Union[Any, Dict[TUAV, Any]]:
+    def _dispatch_request(
+        self,
+        uavs: List[TUAV],
+        request_name: str,
+        handler: Callable[..., TResult],
+        broadcaster: Optional[Callable[..., TResult]] = None,
+        **kwds,
+    ) -> Union[TResult, Exception, Dict[TUAV, Union[Exception, TResult]]]:
         """Common implementation for the body of several ``send_*_signal()``
-        methods in this class.
+        and similar methods in this class.
+
+        The primary purpose of this function is to handle the most common case
+        when a single operation has to be performed for a list of UAVs. The
+        function assumes that there is a dedicated _handler_ function (either
+        sync or async) that can perform the operation for a _single_ UAV, and
+        optionally another, _broadcaster_ function that can perform the operation
+        by broadcasting a message to all affected UAVs. The results from the
+        individual handlers are then merged into a dictionary consisting of
+        results (for UAVs with sync handlers) and awaitables (for UAVs with
+        async handlers).
+
+        Arguments:
+            uavs: the list of UAVs to dispatch the request to
+            request_name: name of the request (operation) for logging purposes,
+                also to be used in error messages
+            handler: the handler function that can perform the operation for a
+                single UAV
+            broadcaster: the broadcaster function that can perform the operation
+                by broadcasting a message
+
+        Returns:
+            dictionary mapping UAVs to the corresponding result objects or
+            awaitables, or a single result object if broadacsting was used
         """
         result = {}
 
@@ -974,20 +1003,20 @@ class UAVDriver(Generic[TUAV], metaclass=ABCMeta):
                     outcome = broadcaster(**kwds)
                 except NotImplementedError:
                     outcome = NotImplementedError(
-                        f"Broadcasting {signal_name} not implemented yet"
+                        f"Broadcasting {request_name} not implemented yet"
                     )
                 except NotSupportedError as ex:
                     outcome = NotSupportedError(
-                        str(ex) or f"Broadcasting {signal_name} not supported"
+                        str(ex) or f"Broadcasting {request_name} not supported"
                     )
                 except RuntimeError as ex:
                     outcome = RuntimeError(
-                        f"Error while broadcasting {signal_name}: {str(ex)}"
+                        f"Error while broadcasting {request_name}: {str(ex)}"
                     )
                 except Exception as ex:
                     log.exception(ex)
                     outcome = ex.__class__(
-                        f"Unexpected error while broadcasting {signal_name}: {ex!r}"
+                        f"Unexpected error while broadcasting {request_name}: {ex!r}"
                     )
                 return outcome
 
@@ -996,7 +1025,7 @@ class UAVDriver(Generic[TUAV], metaclass=ABCMeta):
             elif TransportOptions.should_ignore_ids(transport):
                 # No, because we must ignore whatever IDs were submitted. In
                 # this case we should return a "not supported" error
-                return NotSupportedError(f"Broadcasting {signal_name} not supported")
+                return NotSupportedError(f"Broadcasting {request_name} not supported")
 
             # Fallthrough, continuing with unicast messages
 
@@ -1005,15 +1034,15 @@ class UAVDriver(Generic[TUAV], metaclass=ABCMeta):
             try:
                 outcome = handler(uav, **kwds)
             except NotImplementedError:
-                outcome = NotImplementedError(f"{signal_name} not implemented yet")
+                outcome = NotImplementedError(f"{request_name} not implemented yet")
             except NotSupportedError as ex:
-                outcome = NotSupportedError(str(ex) or f"{signal_name} not supported")
+                outcome = NotSupportedError(str(ex) or f"{request_name} not supported")
             except RuntimeError as ex:
-                outcome = RuntimeError(f"Error while sending {signal_name}: {str(ex)}")
+                outcome = RuntimeError(f"Error while sending {request_name}: {str(ex)}")
             except Exception as ex:
                 log.exception(ex)
                 outcome = ex.__class__(
-                    f"Unexpected error while sending {signal_name}: {ex!r}"
+                    f"Unexpected error while sending {request_name}: {ex!r}"
                 )
             result[uav] = outcome
 
@@ -1304,7 +1333,7 @@ class UAVDriver(Generic[TUAV], metaclass=ABCMeta):
 
     def _send_return_to_home_signal_single(
         self, uav: TUAV, *, transport: Optional[TransportOptions] = None
-    ):
+    ) -> None:
         """Asks the driver to send a return-to-home signal to a single UAV
         managed by this driver.
 
@@ -1329,7 +1358,7 @@ class UAVDriver(Generic[TUAV], metaclass=ABCMeta):
 
     def _send_shutdown_signal_single(
         self, uav: TUAV, *, transport: Optional[TransportOptions] = None
-    ):
+    ) -> None:
         """Asks the driver to send a shutdown signal to a single UAV managed
         by this driver.
 
@@ -1354,7 +1383,7 @@ class UAVDriver(Generic[TUAV], metaclass=ABCMeta):
 
     def _send_takeoff_signal_single(
         self, uav: TUAV, *, transport: Optional[TransportOptions] = None
-    ):
+    ) -> None:
         """Asks the driver to send a takeoff signal to a single UAV managed
         by this driver.
 
@@ -1440,7 +1469,7 @@ class PassiveUAVDriver(UAVDriver[PassiveUAV]):
         assert self.app is not None
         return self.app.object_registry.add_if_missing(id, factory=self._create_uav)
 
-    def _send_signal(
+    def _dispatch_request(
         self, uavs: Iterable[UAV], signal_name: str, handler, broadcaster=None, **kwds
     ) -> Dict[UAV, Any]:
         error = RuntimeError("{0} not supported".format(signal_name))

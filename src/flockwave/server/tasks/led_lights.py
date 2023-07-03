@@ -1,9 +1,17 @@
 from abc import ABCMeta, abstractmethod
 from blinker import Signal
+from contextlib import asynccontextmanager
 from enum import Enum
 from logging import Logger
-from trio import BrokenResourceError, Event, current_time, move_on_after, sleep
-from typing import Generic, Optional, Tuple, TypeVar
+from trio import (
+    BrokenResourceError,
+    Event,
+    current_time,
+    move_on_after,
+    open_nursery,
+    sleep,
+)
+from typing import AsyncIterator, Generic, Optional, Tuple, TypeVar
 
 __all__ = ("LEDLightConfigurationManagerBase",)
 
@@ -22,11 +30,11 @@ class LightEffectType(Enum):
     on the drones.
     """
 
-    #: GCS is not controlling the LED lights on the drones
     OFF = "off"
+    """GCS is not controlling the LED lights on the drones"""
 
-    #: GCS is asking the drones to use a solid LED light
     SOLID = "solid"
+    """GCS is asking the drones to use a solid LED light"""
 
 
 class LightConfiguration:
@@ -123,7 +131,6 @@ class LEDLightConfigurationManagerBase(Generic[TPacket], metaclass=ABCMeta):
 
     message_interval: float
     message_interval_in_rapid_mode: float
-    rapid_mode_interval: float
 
     rapid_mode_duration: float
 
@@ -211,7 +218,7 @@ class LEDLightConfigurationManagerBase(Generic[TPacket], metaclass=ABCMeta):
             else:
                 await self._rapid_mode_triggered.wait()
 
-            # Fall back to normal mode 5 seconds after the last configuration
+            # Fall back to normal mode a few seconds after the last configuration
             # change
             if (
                 self._rapid_mode
@@ -221,8 +228,22 @@ class LEDLightConfigurationManagerBase(Generic[TPacket], metaclass=ABCMeta):
                 self._rapid_mode = False
                 self._rapid_mode_triggered = Event()
 
+    @asynccontextmanager
+    async def use(self) -> AsyncIterator[None]:
+        """Context manager that runs the tasks related to the show manager while
+        the exeecution is in the context.
+        """
+        async with open_nursery() as nursery:
+            nursery.start_soon(self.run)
+            try:
+                yield
+            finally:
+                nursery.cancel_scope.cancel()
+
     @abstractmethod
-    def _create_light_control_packet(self, config: LightConfiguration) -> TPacket:
+    def _create_light_control_packet(
+        self, config: LightConfiguration
+    ) -> Optional[TPacket]:
         """Creates a light control packet that must be sent to the group of
         drones managed by this extension, assuming the given light
         configuration on the GCS.

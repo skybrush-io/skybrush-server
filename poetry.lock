@@ -513,13 +513,13 @@ test-randomorder = ["pytest-randomly"]
 
 [[package]]
 name = "exceptiongroup"
-version = "1.1.1"
+version = "1.1.2"
 description = "Backport of PEP 654 (exception groups)"
 optional = false
 python-versions = ">=3.7"
 files = [
-    {file = "exceptiongroup-1.1.1-py3-none-any.whl", hash = "sha256:232c37c63e4f682982c8b6459f33a8981039e5fb8756b2074364e5055c498c9e"},
-    {file = "exceptiongroup-1.1.1.tar.gz", hash = "sha256:d484c3090ba2889ae2928419117447a14daf3c1231d5e30d0aae34f354f01785"},
+    {file = "exceptiongroup-1.1.2-py3-none-any.whl", hash = "sha256:e346e69d186172ca7cf029c8c1d16235aa0e04035e5750b4b95039e65204328f"},
+    {file = "exceptiongroup-1.1.2.tar.gz", hash = "sha256:12c3e887d6485d16943a309616de20ae5582633e0a2eda17f4e10fd61c1e8af5"},
 ]
 
 [package.extras]
@@ -922,13 +922,13 @@ files = [
 
 [[package]]
 name = "importlib-metadata"
-version = "6.6.0"
+version = "6.7.0"
 description = "Read metadata from Python packages"
 optional = false
 python-versions = ">=3.7"
 files = [
-    {file = "importlib_metadata-6.6.0-py3-none-any.whl", hash = "sha256:43dd286a2cd8995d5eaef7fee2066340423b818ed3fd70adf0bad5f1fac53fed"},
-    {file = "importlib_metadata-6.6.0.tar.gz", hash = "sha256:92501cdf9cc66ebd3e612f1b4f0c0765dfa42f0fa38ffb319b6bd84dd675d705"},
+    {file = "importlib_metadata-6.7.0-py3-none-any.whl", hash = "sha256:cb52082e659e97afc5dac71e79de97d8681de3aa07ff18578330904a9d18e5b5"},
+    {file = "importlib_metadata-6.7.0.tar.gz", hash = "sha256:1aaf550d4f73e5d6783e7acb77aec43d49da8017410afae93822cc9cca98c4d4"},
 ]
 
 [package.dependencies]
@@ -937,7 +937,7 @@ zipp = ">=0.5"
 [package.extras]
 docs = ["furo", "jaraco.packaging (>=9)", "jaraco.tidelift (>=1.4)", "rst.linker (>=1.9)", "sphinx (>=3.5)", "sphinx-lint"]
 perf = ["ipython"]
-testing = ["flake8 (<5)", "flufl.flake8", "importlib-resources (>=1.3)", "packaging", "pyfakefs", "pytest (>=6)", "pytest-black (>=0.3.7)", "pytest-checkdocs (>=2.4)", "pytest-cov", "pytest-enabler (>=1.3)", "pytest-flake8", "pytest-mypy (>=0.9.1)", "pytest-perf (>=0.9.2)"]
+testing = ["flufl.flake8", "importlib-resources (>=1.3)", "packaging", "pyfakefs", "pytest (>=6)", "pytest-black (>=0.3.7)", "pytest-checkdocs (>=2.4)", "pytest-cov", "pytest-enabler (>=1.3)", "pytest-mypy (>=0.9.1)", "pytest-perf (>=0.9.2)", "pytest-ruff"]
 
 [[package]]
 name = "importlib-resources"
@@ -1342,13 +1342,13 @@ files = [
 
 [[package]]
 name = "pluggy"
-version = "1.0.0"
+version = "1.2.0"
 description = "plugin and hook calling mechanisms for python"
 optional = false
-python-versions = ">=3.6"
+python-versions = ">=3.7"
 files = [
-    {file = "pluggy-1.0.0-py2.py3-none-any.whl", hash = "sha256:74134bbf457f031a36d68416e1509f34bd5ccc019f0bcc952c7b909d06b37bd3"},
-    {file = "pluggy-1.0.0.tar.gz", hash = "sha256:4224373bacce55f955a878bf9cfa763c1e360858e330072059e10bad68531159"},
+    {file = "pluggy-1.2.0-py3-none-any.whl", hash = "sha256:c2fd55a7d7a3863cba1a013e4e2414658b1d07b6bc57b3919e0c63c9abb99849"},
+    {file = "pluggy-1.2.0.tar.gz", hash = "sha256:d12f0c4b579b15f5e054301bb226ee85eeeba08ffec228092f8defbaa3a4c4b3"},
 ]
 
 [package.extras]
@@ -1569,13 +1569,13 @@ cp2110 = ["hidapi"]
 
 [[package]]
 name = "pytest"
-version = "7.3.2"
+version = "7.4.0"
 description = "pytest: simple powerful testing with Python"
 optional = false
 python-versions = ">=3.7"
 files = [
-    {file = "pytest-7.3.2-py3-none-any.whl", hash = "sha256:cdcbd012c9312258922f8cd3f1b62a6580fdced17db6014896053d47cddf9295"},
-    {file = "pytest-7.3.2.tar.gz", hash = "sha256:ee990a3cc55ba808b80795a79944756f315c67c12b56abd3ac993a7b8c17030b"},
+    {file = "pytest-7.4.0-py3-none-any.whl", hash = "sha256:78bf16451a2eb8c7a2ea98e32dc119fd2aa758f1d5d66dbf0a59d69a3969df32"},
+    {file = "pytest-7.4.0.tar.gz", hash = "sha256:b4bf8c45bd59934ed84001ad51e11b4ee40d40a1229d2c79f9c592b0a3f6bd8a"},
 ]
 
 [package.dependencies]
@@ -1660,32 +1660,32 @@ files = [
 
 [[package]]
 name = "python-rtmidi"
-version = "1.5.2"
+version = "1.5.4"
 description = "A Python binding for the RtMidi C++ library implemented using Cython."
 optional = true
-python-versions = "*"
+python-versions = ">=3.7"
 files = [
-    {file = "python-rtmidi-1.5.2.tar.gz", hash = "sha256:cf1e7fa6c7a57b1fdb5168d1ea833eb4f8c85c33a1aca0cea2fa0e8d7aebe62f"},
-    {file = "python_rtmidi-1.5.2-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:146b8c0a0e2a2a177247ae19b90a2f624cec6d8373f47d2d6019b2746432e183"},
-    {file = "python_rtmidi-1.5.2-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:f3828215f652695651430cd2c59d63e132076a27be23dccb248b283a2c260031"},
-    {file = "python_rtmidi-1.5.2-cp310-cp310-manylinux_2_28_aarch64.whl", hash = "sha256:3b1bd9ff5d83355045d461fe02235463524d1cb0f12de7e115bd8be6199b20fe"},
-    {file = "python_rtmidi-1.5.2-cp310-cp310-manylinux_2_28_x86_64.whl", hash = "sha256:ee20b495e5923b72bc1be351a6c0208fdb2f26f336f382cd0b77ab0acb7bb34c"},
-    {file = "python_rtmidi-1.5.2-cp310-cp310-win_amd64.whl", hash = "sha256:77ecd1906d83570a5b3d6dd935d09f265b4b99802145a4a9cb2ea0295db2f6e5"},
-    {file = "python_rtmidi-1.5.2-cp311-cp311-macosx_10_9_x86_64.whl", hash = "sha256:1b77c5b5cfcb6a903a2ce860a749f0c41ea0d634faa72f89ea9bf62b8a96587d"},
-    {file = "python_rtmidi-1.5.2-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:7076db7c40fed27a8ca3165271072ad8ccccb5dd077f797dd1bb6e3e5b0f0232"},
-    {file = "python_rtmidi-1.5.2-cp311-cp311-manylinux_2_28_aarch64.whl", hash = "sha256:674a48a3d2e23f36f5572fec46fbb3791eeb5c7ba4d8d34570ef8f3aba52d653"},
-    {file = "python_rtmidi-1.5.2-cp311-cp311-manylinux_2_28_x86_64.whl", hash = "sha256:4cee85ee1bce781609a7e65e5b85dda9d5682002024daaca9abb71add8aea74c"},
-    {file = "python_rtmidi-1.5.2-cp311-cp311-win_amd64.whl", hash = "sha256:eae9c6e4e34751f6577584183baa8cba5250e2087656d285ee81e7f105f24e14"},
-    {file = "python_rtmidi-1.5.2-cp38-cp38-macosx_10_9_x86_64.whl", hash = "sha256:3a9a77df213e29d4e50ed79b19281683deb966e4c999f62680d35d521796e33d"},
-    {file = "python_rtmidi-1.5.2-cp38-cp38-macosx_11_0_arm64.whl", hash = "sha256:eb0e5cee15806157a0dfcfbe3bbd6397f46b45f33e1b151a73d85ac20f22b642"},
-    {file = "python_rtmidi-1.5.2-cp38-cp38-manylinux_2_28_aarch64.whl", hash = "sha256:f587bcff441d194cb7c653979c773f539666ed92e19917ca9c7eee3a98a2d50b"},
-    {file = "python_rtmidi-1.5.2-cp38-cp38-manylinux_2_28_x86_64.whl", hash = "sha256:7ed56dda66316ed77ec5eeb5b6787fb7af5c6b226bec7931490c77cd8fe9eed6"},
-    {file = "python_rtmidi-1.5.2-cp38-cp38-win_amd64.whl", hash = "sha256:705c9866f200e71879af2d6bf3aa11d312a88612421a816a82468cc528c9e2f4"},
-    {file = "python_rtmidi-1.5.2-cp39-cp39-macosx_10_9_x86_64.whl", hash = "sha256:d1bea8ce5cda70edd172d2cc6364926448e3bff6024debed08983ecae4ef28d9"},
-    {file = "python_rtmidi-1.5.2-cp39-cp39-macosx_11_0_arm64.whl", hash = "sha256:3cd43c1d9d31cf78ff450273ddbd6c12153a96961f0359c9caaecd41b4c7b231"},
-    {file = "python_rtmidi-1.5.2-cp39-cp39-manylinux_2_28_aarch64.whl", hash = "sha256:3da38b7682b3e614d455ea34b3d4b408e11b98508587159d9e5903ade4cf08ee"},
-    {file = "python_rtmidi-1.5.2-cp39-cp39-manylinux_2_28_x86_64.whl", hash = "sha256:299935b29f3d82e22c7070a4507c5ece7a8aadc1cb67fe021e4db2c2e10ae840"},
-    {file = "python_rtmidi-1.5.2-cp39-cp39-win_amd64.whl", hash = "sha256:f07d59af0c5156ba9e1b2d9ea8e55a4cfe990afd4e37ca905ff99d8ec75c5507"},
+    {file = "python_rtmidi-1.5.4-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:b4d5e5883af24c7f8eaeae080828e996eed95f1b6d42def12148c4f45156b462"},
+    {file = "python_rtmidi-1.5.4-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:32a9c7a4e671954a8d8c6eef8166f340c73a76e3db14ac1cdb6c8b0984ccd90c"},
+    {file = "python_rtmidi-1.5.4-cp310-cp310-manylinux_2_28_aarch64.whl", hash = "sha256:0e1ae45801512f3fc6183c72980b6cdee4f4755274323000c30be822789ff7d3"},
+    {file = "python_rtmidi-1.5.4-cp310-cp310-manylinux_2_28_x86_64.whl", hash = "sha256:8fbb95f785ea0682e1a2e30fccf18e05e3a152b6527c68829b6e2eabd4e657f0"},
+    {file = "python_rtmidi-1.5.4-cp310-cp310-win_amd64.whl", hash = "sha256:201ede931bc3c1be76654c26660bb4232b19b7a39971c075912cafc421308843"},
+    {file = "python_rtmidi-1.5.4-cp311-cp311-macosx_10_9_x86_64.whl", hash = "sha256:d844099e62b26cc7c1295b0e0ce13466a947aabe00628963238a07759eb6ca11"},
+    {file = "python_rtmidi-1.5.4-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:2862391236f692a55451a476097b4a2bd05eabbc257a6e7b64e969a599ed7486"},
+    {file = "python_rtmidi-1.5.4-cp311-cp311-manylinux_2_28_aarch64.whl", hash = "sha256:60b9a92ab049f5c5d44af8fc4e6502f044a608b1fe9a33889e4b94e3df4cf17c"},
+    {file = "python_rtmidi-1.5.4-cp311-cp311-manylinux_2_28_x86_64.whl", hash = "sha256:56d369f29b70d7c838919b3c02bc819baa5a20a9149acaf2a3a248eb83e43c1c"},
+    {file = "python_rtmidi-1.5.4-cp311-cp311-win_amd64.whl", hash = "sha256:79373aa56729c566c377f639e1d7b145c1d27cd9d593da8fceb09219f8a00d77"},
+    {file = "python_rtmidi-1.5.4-cp38-cp38-macosx_10_9_x86_64.whl", hash = "sha256:5a6d17cbe27f01cf33c52576f9e7ab9f250ae4e3f6df9f9252da83e623732973"},
+    {file = "python_rtmidi-1.5.4-cp38-cp38-macosx_11_0_arm64.whl", hash = "sha256:c05622151bbd714bbb39a98101d656ac26bb6a0af769256f22ddd323862bdb54"},
+    {file = "python_rtmidi-1.5.4-cp38-cp38-manylinux_2_28_aarch64.whl", hash = "sha256:3d0cf60664b909ef9b8a7186be336d36e134e3a02b166b0a3262a75e5d458f71"},
+    {file = "python_rtmidi-1.5.4-cp38-cp38-manylinux_2_28_x86_64.whl", hash = "sha256:649ce2acaf59da0e8be730d6441fc06659a7a7f8b4c1d70c9362685f06573447"},
+    {file = "python_rtmidi-1.5.4-cp38-cp38-win_amd64.whl", hash = "sha256:7bd2a90456276bc785de5f4da047e52f25758dfa76e5933ac3e14099f2954ff5"},
+    {file = "python_rtmidi-1.5.4-cp39-cp39-macosx_10_9_x86_64.whl", hash = "sha256:aa917ad102323ffdfa5bf8e39af4baf4c7ea84452b920da35bbb45a24a311b0e"},
+    {file = "python_rtmidi-1.5.4-cp39-cp39-macosx_11_0_arm64.whl", hash = "sha256:b2ca4034589bae698b0cca501a0caa4983009cf3250d200b22908b6a68d9e180"},
+    {file = "python_rtmidi-1.5.4-cp39-cp39-manylinux_2_28_aarch64.whl", hash = "sha256:e5fcd4b132c3bf13f51296ff40f5325eb2d92c9badc4ee197b21ad3e9bf8acb4"},
+    {file = "python_rtmidi-1.5.4-cp39-cp39-manylinux_2_28_x86_64.whl", hash = "sha256:49e1d3e801289b68855c632f10ae9d1f8a604b6064619a7bd2cadd58dbe7a8f1"},
+    {file = "python_rtmidi-1.5.4-cp39-cp39-win_amd64.whl", hash = "sha256:57985fc7470eff883d81fd563f5084725e9c92999320364363923b1eb6fd045e"},
+    {file = "python_rtmidi-1.5.4.tar.gz", hash = "sha256:b0b5064280db6b78a262fa9417031b224b5275905bd0e2e171c7d0fbe14544fd"},
 ]
 
 [[package]]
@@ -1934,13 +1934,13 @@ files = [
 
 [[package]]
 name = "tblib"
-version = "1.7.0"
+version = "2.0.0"
 description = "Traceback serialization library."
 optional = true
-python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*"
+python-versions = ">=3.7"
 files = [
-    {file = "tblib-1.7.0-py2.py3-none-any.whl", hash = "sha256:289fa7359e580950e7d9743eab36b0691f0310fce64dee7d9c31065b8f723e23"},
-    {file = "tblib-1.7.0.tar.gz", hash = "sha256:059bd77306ea7b419d4f76016aef6d7027cc8a0785579b5aad198803435f882c"},
+    {file = "tblib-2.0.0-py3-none-any.whl", hash = "sha256:9100bfa016b047d5b980d66e7efed952fbd20bd85b56110aaf473cb97d18709a"},
+    {file = "tblib-2.0.0.tar.gz", hash = "sha256:a6df30f272c08bf8be66e0775fad862005d950a6b8449b94f7c788731d70ecd7"},
 ]
 
 [[package]]

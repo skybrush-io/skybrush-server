@@ -257,8 +257,14 @@ class MAVParamType(IntEnum):
         elif self is MAVParamType.REAL64:
             return float(value)
         else:
-            encoded = _mav_param_type_structs[self].pack(value)
-            return _mav_param_type_structs[MAVParamType.REAL32].unpack(encoded)[0]
+            # Some Python versions seem to throw an exception when trying to
+            # pack a float-storing-an-integer with an integer format string, so
+            # we cast value into an integer if it is a float but we know that
+            # it stores an integral value
+            if isinstance(value, float) and value.is_integer():
+                value = int(value)
+            encoded = _mav_param_type_structs[self].pack(value)  # type: ignore
+            return _mav_param_type_structs[MAVParamType.REAL32].unpack(encoded)[0]  # type: ignore
 
     def decode_float(self, value: float) -> Union[int, float]:
         """Decodes the given value by interpreting it as this MAVLink parameter
@@ -272,8 +278,11 @@ class MAVParamType(IntEnum):
         elif self is MAVParamType.REAL64:
             return float(value)
         else:
-            encoded = _mav_param_type_structs[MAVParamType.REAL32].pack(value)
-            return _mav_param_type_structs[self].unpack(encoded)[0]
+            encoded = _mav_param_type_structs[MAVParamType.REAL32].pack(value)  # type: ignore
+            result = _mav_param_type_structs[self].unpack(encoded)[0]  # type: ignore
+            if isinstance(result, float) and result.is_integer():
+                result = int(result)
+            return result
 
 
 class MAVProtocolCapability(IntFlag):

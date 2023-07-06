@@ -77,6 +77,9 @@ HEARTBEAT_SPEC = (
 )
 
 
+Matchers = Dict[str, List[Tuple[Optional[int], MAVLinkMessageMatcher, Future]]]
+
+
 class MAVLinkNetwork:
     """Representation of a MAVLink network."""
 
@@ -96,6 +99,14 @@ class MAVLinkNetwork:
     network ID and returns the final ID that should be assigned to the UAV in
     Skybrush.
     """
+
+    _matchers: Matchers
+    """Dictionary mapping MAVLink message types to lists of tuples consisting
+    of an optional MAVLink system ID, a MAVLink message matching criterion and a
+    future that will be resolved when a MAVLink message matching the criterion
+     is received from the given MAVLink system ID (or any system ID if no
+     system ID was specified).
+     """
 
     _uav_system_id_offset: int = 0
     """Offset to add to the system ID of each UAV in the network before it is
@@ -169,13 +180,13 @@ class MAVLinkNetwork:
                 before it is sent to the formatter function
         """
         self.log = None  # type: ignore
+        self._matchers = None  # type: ignore
 
         self._id = id
         self._id_formatter = id_formatter
         self._led_light_configuration_manager = MAVLinkLEDLightConfigurationManager(
             self
         )
-        self._matchers = None
         self._packet_loss = max(float(packet_loss), 0.0)
         self._routing = dict(routing or {})
         self._scheduled_takeoff_manager = ScheduledTakeoffManager(self)
@@ -338,7 +349,7 @@ class MAVLinkNetwork:
             # Set up a dictionary that will map from MAVLink message types that
             # we are waiting for to lists of corresponding (predicate, future)
             # pairs
-            matchers = defaultdict(list)
+            matchers: Matchers = defaultdict(list)
 
             # Override some of our properties with the values we were called with
             stack.enter_context(
@@ -492,7 +503,7 @@ class MAVLinkNetwork:
         spec: MAVLinkMessageSpecification,
         target: MAVLinkUAV,
         wait_for_response: Optional[Tuple[str, MAVLinkMessageMatcher]] = None,
-        wait_for_one_of: Optional[Dict[str, MAVLinkMessageMatcher]] = None,
+        wait_for_one_of: Optional[Dict[str, MAVLinkMessageSpecification]] = None,
         channel: Optional[str] = None,
     ) -> Optional[MAVLinkMessage]:
         """Sends a message to the given UAV and optionally waits for a matching

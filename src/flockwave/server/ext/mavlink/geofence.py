@@ -3,7 +3,16 @@
 from enum import IntFlag
 from functools import partial, singledispatch
 from trio import fail_after, TooSlowError
-from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    Iterable,
+    List,
+    Optional,
+    Tuple,
+    Union,
+)
 
 from flockwave.logger import Logger
 from flockwave.server.model.geofence import (
@@ -43,6 +52,17 @@ class GeofenceManager:
     MAVLink connection.
     """
 
+    _sender: Callable
+    """A function that can be called to send a MAVLink message over the
+    connection associated to this MAVFTP object.
+
+    It must be API-compatible with the `send_packet()` method of the MAVLinkUAV_
+    object.
+    """
+
+    _log: Optional[Logger]
+    """Logger that the manager object can use to log messages."""
+
     @classmethod
     def for_uav(cls, uav):
         """Constructs a MAVFTP connection object to the given UAV."""
@@ -50,7 +70,11 @@ class GeofenceManager:
         log = uav.driver.log
         return cls(sender, log=log)
 
-    def __init__(self, sender, log: Optional[Logger] = None):
+    def __init__(
+        self,
+        sender: Callable,
+        log: Optional[Logger] = None,
+    ):
         """Constructor.
 
         Parameters:

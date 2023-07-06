@@ -30,6 +30,7 @@ from flockwave.server.errors import NotSupportedError
 from flockwave.server.model.commands import Progress, Suspend
 from flockwave.server.model.devices import ObjectNode
 from flockwave.server.model.gps import GPSFixType
+from flockwave.server.model.log import FlightLog, FlightLogKind, FlightLogMetadata
 from flockwave.server.model.preflight import PreflightCheckResult, PreflightCheckInfo
 from flockwave.server.model.uav import VersionInfo, UAVBase, UAVDriver
 from flockwave.server.show import (
@@ -861,6 +862,23 @@ class VirtualUAV(UAVBase):
             )
 
 
+_LOGS: Dict[str, FlightLog] = {
+    "1": FlightLog.create(
+        id="1",
+        kind=FlightLogKind.TEXT,
+        body="test flight log 1",
+        timestamp=1688328000,
+    ),
+    "2": FlightLog.create(
+        id="2",
+        kind=FlightLogKind.TEXT,
+        body="test flight log 2",
+        timestamp=1688328900,
+    ),
+}
+"""Fake logs for the virtual UAVs"""
+
+
 class VirtualUAVDriver(UAVDriver[VirtualUAV]):
     """Virtual UAV driver that manages a group of virtual UAVs provided by this
     extension.
@@ -1021,6 +1039,19 @@ class VirtualUAVDriver(UAVDriver[VirtualUAV]):
     handle_command_color = create_color_command_handler()
     handle_command_param = create_parameter_command_handler()
     handle_command_version = create_version_command_handler()
+
+    async def get_log(self, uav: VirtualUAV, log_id: str) -> FlightLog:
+        # Simulate a bit of delay to make it more realistic
+        await sleep(0.5)
+        try:
+            return _LOGS[log_id]
+        except KeyError:
+            raise RuntimeError(f"no such log: {log_id}") from None
+
+    async def _get_log_list_single(self, uav: VirtualUAV) -> List[FlightLogMetadata]:
+        # Simulate a bit of delay to make it more realistic
+        await sleep(0.2)
+        return [log.get_metadata() for log in _LOGS.values()]
 
     async def _get_parameter_single(self, uav: VirtualUAV, name: str) -> Any:
         return await uav.get_parameter(name)

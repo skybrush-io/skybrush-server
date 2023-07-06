@@ -18,7 +18,6 @@ from typing import (
 
 from flockwave.gps.vectors import GPSCoordinate, PositionXYZ, VelocityNED, VelocityXYZ
 from flockwave.server.errors import NotSupportedError
-from flockwave.server.model.transport import TransportOptions
 from flockwave.server.logger import log as base_log
 from flockwave.spec.schema import get_complex_object_schema
 
@@ -26,10 +25,12 @@ from .attitude import Attitude
 from .battery import BatteryInfo
 from .devices import ObjectNode
 from .gps import GPSFix, GPSFixLike
+from .log import FlightLog, FlightLogMetadata
 from .metamagic import ModelMeta
 from .mixins import TimestampLike, TimestampMixin
 from .object import ModelObject, register
 from .preflight import PreflightCheckInfo
+from .transport import TransportOptions
 from .utils import as_base64, scaled_by
 
 if TYPE_CHECKING:
@@ -460,6 +461,31 @@ class UAVDriver(Generic[TUAV], metaclass=ABCMeta):
             self._enter_low_power_mode_single,
             getattr(self, "_enter_low_power_mode_broadcast", None),
             transport=transport,
+        )
+
+    def get_log(self, uav: TUAV, log_id: str) -> FlightLog:
+        """Asks the driver to retrieve the log with the given ID from the
+        given UAV.
+
+        Returns:
+            the log contents along with its metadata
+        """
+        raise NotImplementedError
+
+    def get_log_list(self, uavs: List[TUAV]):
+        """Asks the driver to retrieve the list of available logs from the
+        given UAVs.
+
+        Typically, you don't need to override this method when implementing
+        a driver; override ``_get_log_list_single()`` instead.
+
+        Returns:
+            dict mapping UAVs to the corresponding results (which may also be
+            errors or awaitables; it is the responsibility of the caller to
+            evaluate errors and wait for awaitables)
+        """
+        return self._dispatch_request(
+            uavs, "log listing request", self._get_log_list_single
         )
 
     def get_parameter(self, uavs: List[TUAV], name: str):
@@ -1072,6 +1098,25 @@ class UAVDriver(Generic[TUAV], metaclass=ABCMeta):
         # Default is NotSupportedError because it is not that common for UAVs
         # to support low-power mode
         raise NotSupportedError
+
+    def _get_log_list_single(self, uav: TUAV) -> List[FlightLogMetadata]:
+        """Asks the driver to retrieve the list of flight logs from a single
+        UAV managed by this driver.
+
+        May return an awaitable if preparing the result takes a longer time.
+
+        The function follows the "samurai principle", i.e. "return victorious,
+        or not at all". It means that if it returns, the operation succeeded.
+        Raise an exception if the operation cannot be executed for any reason;
+        a RuntimeError is typically sufficient.
+
+        Raises:
+            NotImplementedError: if the operation is not supported by the
+                driver yet, but there are plans to implement it
+            NotSupportedError: if the operation is not supported by the
+                driver and will not be supported in the future either
+        """
+        raise NotImplementedError
 
     def _get_parameter_single(self, uav: TUAV, name: str) -> Any:
         """Asks the driver to retrieve the value of a parameter with the given

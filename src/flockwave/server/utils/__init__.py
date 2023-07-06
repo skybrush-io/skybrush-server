@@ -28,6 +28,7 @@ from .generic import (
     optional_float,
     optional_int,
     overridden,
+    rename_keys,
     to_uppercase_string,
 )
 from .system_time import get_current_unix_timestamp_msec
@@ -59,5 +60,6 @@ __all__ = (
     "optional_float",
     "optional_int",
     "overridden",
+    "rename_keys",
     "to_uppercase_string",
 )

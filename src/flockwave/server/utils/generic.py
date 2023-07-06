@@ -10,6 +10,7 @@ from operator import mul
 from typing import (
     Any,
     Callable,
+    Dict,
     Iterable,
     Iterator,
     Optional,
@@ -38,6 +39,7 @@ __all__ = (
     "optional_float",
     "optional_int",
     "overridden",
+    "rename_keys",
     "to_uppercase_string",
 )
 
@@ -359,6 +361,34 @@ def overridden(obj: Any, **kwds):
                     setattr(obj, name, originals[name])
                 else:
                     delattr(obj, name)
+
+
+K = TypeVar("K")
+V = TypeVar("V")
+
+
+def rename_keys(
+    mapping: Dict[K, K], *, copy: bool = False
+) -> Callable[[Dict[K, V]], Dict[K, V]]:
+    """Factory function that creates a mapper function that renames keys in
+    a dictionary.
+    """
+    if not copy:
+
+        def in_place_mapper(input: Dict[K, V]) -> Dict[K, V]:
+            for old, new in mapping.items():
+                if old in input:
+                    input[new] = input.pop(old)
+            return input
+
+        return in_place_mapper
+
+    else:
+
+        def mapper(input: Dict[K, V]) -> Dict[K, V]:
+            return {mapping.get(k, k): v for k, v in input.items()}
+
+        return mapper
 
 
 def to_uppercase_string(value: Any) -> str:

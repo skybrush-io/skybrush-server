@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Optional
+from typing import Any, Optional
 
 from flockwave.server.model.metamagic import ModelMeta
 from flockwave.spec.schema import get_complex_object_schema
@@ -7,7 +7,7 @@ from flockwave.spec.schema import get_complex_object_schema
 from .utils import enum_to_json
 
 
-__all__ = ("LogMessage",)
+__all__ = ("LogMessage", "FlightLog", "FlightLogKind", "FlightLogMetadata")
 
 
 class Severity(Enum):
@@ -42,3 +42,86 @@ class LogMessage(metaclass=ModelMeta):
             self.sender = sender
         if timestamp is not None:
             self.timestamp = timestamp
+
+
+class FlightLogKind(Enum):
+    """Supported flight log types."""
+
+    UNKNOWN = "unknown"
+    TEXT = "text"
+    ARDUPILOT = "ardupilot"
+    ULOG = "ulog"
+    FLOCKCTRL = "flockctrl"
+
+
+class FlightLogMetadata(metaclass=ModelMeta):
+    """Class representing the metadata of a flight log of a UAV that can be
+    sent in a LOG-INF message.
+    """
+
+    class __meta__:
+        schema = get_complex_object_schema("flightLogMetadata")
+        mappers = {"kind": enum_to_json(FlightLogKind)}
+
+    id: str
+    kind: FlightLogKind = FlightLogKind.UNKNOWN
+    size: Optional[int] = None
+    timestamp: Optional[int] = None
+
+    @classmethod
+    def create(
+        cls,
+        id: str,
+        kind: FlightLogKind = FlightLogKind.UNKNOWN,
+        size: Optional[int] = None,
+        timestamp: Optional[int] = None,
+    ):
+        result = cls()
+        result.id = str(id)
+        result.kind = kind
+        result.size = size
+        result.timestamp = timestamp
+        return result
+
+
+class FlightLog(metaclass=ModelMeta):
+    """Class representing a flight log of a UAV that can be sent in a
+    LOG-DATA message.
+    """
+
+    class __meta__:
+        schema = get_complex_object_schema("flightLog")
+        mappers = {"kind": enum_to_json(FlightLogKind)}
+
+    id: str
+    kind: FlightLogKind = FlightLogKind.UNKNOWN
+    size: Optional[int] = None
+    timestamp: Optional[int] = None
+    body: Any
+
+    @classmethod
+    def create(
+        cls,
+        id: str,
+        kind: FlightLogKind = FlightLogKind.UNKNOWN,
+        body: Any = "",
+        size: Optional[int] = None,
+        timestamp: Optional[int] = None,
+    ):
+        result = cls()
+        result.id = str(id)
+        result.kind = kind
+        result.body = body
+        result.size = size
+        result.timestamp = timestamp
+
+        if size is None and kind is FlightLogKind.TEXT and isinstance(body, str):
+            result.size = len(body)
+
+        return result
+
+    def get_metadata(self) -> FlightLogMetadata:
+        """Converts the log object into its metadata only."""
+        return FlightLogMetadata.create(
+            id=self.id, kind=self.kind, size=self.size, timestamp=self.timestamp
+        )

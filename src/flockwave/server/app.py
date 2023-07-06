@@ -25,7 +25,7 @@ from flockwave.app_framework.configurator import AppConfigurator, Configuration
 from flockwave.connections.base import ConnectionState
 from flockwave.gps.vectors import GPSCoordinate
 from flockwave.server.ports import set_base_port
-from flockwave.server.utils import divide_by
+from flockwave.server.utils import divide_by, rename_keys
 from flockwave.server.utils.packaging import is_packaged
 from flockwave.server.utils.system_time import (
     can_set_system_time_detailed_async,
@@ -71,6 +71,8 @@ PACKAGE_NAME = __name__.rpartition(".")[0]
 
 #: Table that describes the handlers of several UAV-related command requests
 UAV_COMMAND_HANDLERS: Dict[str, Tuple[str, MessageBodyTransformationSpec]] = {
+    "LOG-DATA": ("get_log", rename_keys({"logId": "log_id"})),
+    "LOG-INF": ("get_log_list", None),
     "OBJ-CMD": ("send_command", None),
     "PRM-GET": ("get_parameter", None),
     "PRM-SET": ("set_parameter", None),
@@ -1310,7 +1312,19 @@ def handle_UAV_LIST(message: FlockwaveMessage, sender: Client, hub: MessageHub):
     return {"ids": list(app.object_registry.ids_by_type(UAV))}
 
 
+@app.message_hub.on("LOG-DATA")
+async def handle_single_uav_operations(
+    message: FlockwaveMessage, sender: Client, hub: MessageHub
+):
+    if message.get_type() == "LOG-DATA":
+        id_property = "uavId"
+    else:
+        id_property = "id"
+    return await app.dispatch_to_uav(message, sender, id_property=id_property)
+
+
 @app.message_hub.on(
+    "LOG-INF",
     "OBJ-CMD",
     "PRM-GET",
     "PRM-SET",

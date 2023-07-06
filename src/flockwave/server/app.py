@@ -8,7 +8,17 @@ from trio import (
     BrokenResourceError,
     move_on_after,
 )
-from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple, Union
+from typing import (
+    Any,
+    DefaultDict,
+    Dict,
+    Iterable,
+    List,
+    Optional,
+    Sequence,
+    Tuple,
+    Union,
+)
 
 from flockwave.app_framework import DaemonApp
 from flockwave.app_framework.configurator import AppConfigurator, Configuration
@@ -478,6 +488,94 @@ class SkybrushServer(DaemonApp):
         if cancel_scope.cancelled_caught:
             await client.channel.close(force=True)
 
+    async def dispatch_to_uav(
+        self, message: FlockwaveMessage, sender: Client, *, id_property: str = "id"
+    ) -> FlockwaveMessage:
+        """Dispatches a message intended for a single UAV to the appropriate
+        UAV driver.
+
+        Parameters:
+            message: the message that contains a request that is to be forwarded
+                to a single UAV. The message is expected to have an ``id``
+                property that contains the ID of the UAV to dispatch the message
+                to. The name of the property can be overridden with the
+                ``id_property`` parameter.
+            sender: the client that sent the message
+            id_property: name of the property in the message that contains the
+                ID of the UAV to dispatch the message to
+
+        Returns:
+            a response to the original message that contains exactly one of the
+            following three keys: ``result`` for the result of a successful
+            message dispatch, ``error`` for a message dispatch that threw an
+            error, or ``receipt`` if calling the message handler returned an
+            awaitable
+        """
+        # Create the response
+        response = self.message_hub.create_response_or_notification(
+            body={}, in_response_to=message
+        )
+
+        # Process the body
+        parameters = dict(message.body)
+        message_type = parameters.pop("type")
+        uav_id: Optional[str] = parameters.pop(id_property, None)
+        uav: Optional[UAV] = None
+        error: Optional[str] = None
+        result: Any = None
+
+        try:
+            if uav_id is None:
+                raise RuntimeError("message must contain a UAV ID")
+
+            # Find the driver of the UAV
+            uav = self.find_uav_by_id(uav_id)
+            if uav is None:
+                raise RuntimeError("no such UAV")
+
+            # Find the method to invoke on the driver
+            method_name, transformer = UAV_COMMAND_HANDLERS.get(
+                message_type, NULL_HANDLER
+            )
+
+            # Transform the incoming arguments if needed before sending them
+            # to the driver method
+            parameters = transform_message_body(transformer, parameters)
+
+            # Look up the method in the driver
+            try:
+                method = getattr(uav.driver, method_name)  # type: ignore
+            except (AttributeError, RuntimeError, TypeError):
+                raise RuntimeError("Operation not supported") from None
+
+            # Execute the method and catch all runtime errors
+            result = method(uav, **parameters)
+        except NotImplementedError:
+            error = "Operation not implemented"
+        except NotSupportedError:
+            error = "Operation not supported"
+        except RuntimeError as ex:
+            error = str(ex)
+        except Exception as ex:
+            error = "Unexpected error: {0}".format(ex)
+            log.exception(ex)
+
+        # Update the response
+        if error is not None:
+            response.body["error"] = error
+        elif isinstance(result, Exception):
+            response.body["error"] = str(result)
+        elif isawaitable(result) or isasyncgen(result):
+            assert uav is not None
+            cmd_manager = self.command_execution_manager
+            receipt = cmd_manager.new(client_to_notify=sender.id)
+            response.body["receipt"] = receipt.id
+            response.when_sent(cmd_manager.mark_as_clients_notified, receipt.id, result)
+        else:
+            response.body["result"] = result
+
+        return response
+
     async def dispatch_to_uavs(
         self, message: FlockwaveMessage, sender: Client
     ) -> FlockwaveMessage:
@@ -496,8 +594,6 @@ class SkybrushServer(DaemonApp):
             the UAVs for which the dispatch failed (in the ``success`` and
             ``failure`` keys).
         """
-        cmd_manager = self.command_execution_manager
-
         # Create the response
         response = self.message_hub.create_response_or_notification(
             body={}, in_response_to=message
@@ -585,6 +681,7 @@ class SkybrushServer(DaemonApp):
                         if isinstance(result, Exception):
                             response.add_error(uav.id, str(result))
                         elif isawaitable(result) or isasyncgen(result):
+                            cmd_manager = self.command_execution_manager
                             receipt = cmd_manager.new(client_to_notify=sender.id)
                             response.add_receipt(uav.id, receipt)
                             response.when_sent(
@@ -729,7 +826,7 @@ class SkybrushServer(DaemonApp):
         Returns:
             mapping of UAV drivers to the UAVs that were selected by the given UAV IDs
         """
-        result = defaultdict(list)
+        result: DefaultDict[UAVDriver, List[UAV]] = defaultdict(list)
         for uav_id in uav_ids:
             uav = self.find_uav_by_id(uav_id, response)
             if uav:
@@ -990,7 +1087,7 @@ class SkybrushServer(DaemonApp):
         # need to sort them by the clients that originated these requests
         # so we can dispatch individual ASYNC-TIMEOUT messages to each of
         # them
-        receipt_ids_by_clients = defaultdict(list)
+        receipt_ids_by_clients: DefaultDict[str, List[str]] = defaultdict(list)
         for status in statuses:
             receipt_id = status.id
             for client in status.clients_to_notify:
@@ -1233,7 +1330,7 @@ def handle_UAV_LIST(message: FlockwaveMessage, sender: Client, hub: MessageHub):
     "UAV-VER",
     "UAV-WAKEUP",
 )
-async def handle_UAV_operations(
+async def handle_multi_uav_operations(
     message: FlockwaveMessage, sender: Client, hub: MessageHub
 ):
     return await app.dispatch_to_uavs(message, sender)

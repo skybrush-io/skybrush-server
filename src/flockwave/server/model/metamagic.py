@@ -7,8 +7,7 @@ a JSON schema description.
 
 from contextlib import contextmanager
 from dataclasses import dataclass
-from flockwave.spec.schema import ref_resolver as flockwave_schema_ref_resolver
-from jsonschema import RefResolver
+from flockwave.spec.schema import Schema
 from jsonschema.validators import validator_for
 from typing import Any, Callable, Dict, Optional, Tuple
 
@@ -24,8 +23,6 @@ MapperPair = Tuple[Mapper, Mapper]
 """Pair of mapper functions, one to convert from JSON and the other one to
 convert to JSON.
 """
-
-Resolver = RefResolver
 
 
 @dataclass
@@ -63,52 +60,46 @@ class PropertyInfo:
 
 def collect_properties(
     schema: Any,
-    resolver: Resolver,
     mappers: Dict[str, MapperPair],
     result: Optional[Dict[str, PropertyInfo]] = None,
 ) -> Dict[str, PropertyInfo]:
     """Collects information about all the properties defined on a JSON
-        schema.
-    m
-        Parameters:
-            schema: the JSON schema
-            resolver: reference resolver for the JSON schema. Must be a callable
-                that can be called with a single reference and that returns the
-                corresponding JSON sub-schema
-            mappers: dictionary that maps property names to pairs of converter
-                functions to be used when deserializing and serializing the
-                property
-            result: dictionary to extend with the property information. ``None``
-                means to construct and return a new dictionary.
+    schema.
 
-        Returns:
-            dictionary mapping property names to PropertyInfo_ objects. Identical to
-            the ``result`` parameter if it was a dict.
+    Parameters:
+        schema: the JSON schema
+        resolver: reference resolver for the JSON schema. Must be a callable
+            that can be called with a single reference and that returns the
+            corresponding JSON sub-schema
+        mappers: dictionary that maps property names to pairs of converter
+            functions to be used when deserializing and serializing the
+            property
+        result: dictionary to extend with the property information. ``None``
+            means to construct and return a new dictionary.
+
+    Returns:
+        dictionary mapping property names to PropertyInfo_ objects. Identical to
+        the ``result`` parameter if it was a dict.
     """
     if result is None:
         result = {}
 
-    # Handle '$ref' keyword
-    if "$ref" in schema:
-        with resolver.resolving(schema["$ref"]) as subschema:
-            return collect_properties(subschema, resolver, mappers, result)
-
     # Handle 'allOf' keyword
     if "allOf" in schema:
         for subschema in schema["allOf"]:
-            collect_properties(subschema, resolver, mappers, result)
+            collect_properties(subschema, mappers, result)
         return result
 
     # Handle 'anyOf' keyword
     if "anyOf" in schema:
         for subschema in schema["anyOf"]:
-            collect_properties(subschema, resolver, mappers, result)
+            collect_properties(subschema, mappers, result)
         return result
 
     # Handle 'oneOf' keyword
     if "oneOf" in schema:
         for subschema in schema["oneOf"]:
-            collect_properties(subschema, resolver, mappers, result)
+            collect_properties(subschema, mappers, result)
         return result
 
     # Warn that we don't support NOT
@@ -125,7 +116,7 @@ def collect_properties(
     return result
 
 
-class ModelMetaHelpers(object):
+class ModelMetaHelpers:
     """Helper methods for the ModelMeta_ metaclass. These are defined here
     and not in ModelMeta_ to ensure that they do not appear as methods of
     the classes that ModelMeta_ constructs.
@@ -333,7 +324,7 @@ class ModelMetaHelpers(object):
         dct["update_from"] = update_from
 
     @staticmethod
-    def add_validator_method(dct, schema, resolver):
+    def add_validator_method(dct, schema):
         """Adds a ``validate()`` method to the given class dictionary that
         validates the class instance against a JSON schema.
 
@@ -345,16 +336,13 @@ class ModelMetaHelpers(object):
             dct (dict): the class dictionary
             schema (dict): the JSON schema that the class instances must be
                 validated against
-            resolver (object): a JSON reference resolver that will be used
-                to resolve JSON references. ``None`` means to use the
-                default resolver from ``jsonschema``.
         """
         orig_validator = dct.get("validate", None)
         if orig_validator is not None and not callable(orig_validator):
             raise TypeError("validate() method must be callable")
 
         json_schema_validator_class = validator_for(schema)
-        json_schema_validator = json_schema_validator_class(schema, resolver=resolver)
+        json_schema_validator = json_schema_validator_class(schema)
 
         def validate(self, *args, **kwds):
             """Validates this class instance against its JSON schema.
@@ -407,7 +395,7 @@ class ModelMetaHelpers(object):
             return {}
 
     @classmethod
-    def find_schema_and_resolver(cls, dct, bases) -> Tuple[Any, Optional[Resolver]]:
+    def find_schema(cls, dct, bases) -> Optional[Schema]:
         """Finds the JSON schema that the class being constructed must
         adhere to. This is done by looking up the ``schema`` attribute
         in the class dictionary. If no such attribute is found, one of
@@ -421,25 +409,16 @@ class ModelMetaHelpers(object):
             bases (list of type): list of the base classes
 
         Returns:
-            (object, object): a pair where the first object is the JSON
-                schema of the class to be constructed or ``None`` if the
-                class does not need schema validation, and the second
-                object is the JSON schema resolver to use or ``None`` if
-                the default JSON schema resolver should be used
+            the JSON schema of the class to be constructed or ``None`` if the
+            class does not need schema validation
         """
         bases_have_schema = ModelMetaHelpers.bases_have_schema(bases)
 
         dct = dct.get("__meta__")
         schema = getattr(dct, "schema", None)
 
-        if schema is not None:
-            handlers = {"http": flockwave_schema_ref_resolver}
-            resolver = RefResolver.from_schema(schema, handlers=handlers)
-        else:
-            resolver = None
-
         if schema is not None or bases_have_schema:
-            return schema, resolver
+            return schema
         else:
             raise TypeError(
                 "Model classes must either have a 'schema' "
@@ -473,18 +452,17 @@ class ModelMeta(type):
             dct (dict): namespace of the class body
         """
         bases_have_schema = ModelMetaHelpers.bases_have_schema(bases)
-        schema, resolver = ModelMetaHelpers.find_schema_and_resolver(dct, bases)
+        schema = ModelMetaHelpers.find_schema(dct, bases)
         mappers = ModelMetaHelpers.find_property_mappers(dct, bases)
         if schema is not None:
-            assert resolver is not None
             if not bases_have_schema:
                 ModelMetaHelpers.add_json_property(dct)
                 ModelMetaHelpers.add_special_methods(dct)
-                property_info = collect_properties(schema, resolver, mappers)
+                property_info = collect_properties(schema, mappers)
                 ModelMetaHelpers.add_proxy_properties(dct, property_info)
                 ModelMetaHelpers.add_clone_method(dct)
                 ModelMetaHelpers.add_update_from_method(dct)
                 ModelMetaHelpers.add_suppressed_validation_context_manager(dct)
                 ModelMetaHelpers.mark_metaclass(dct)
-            ModelMetaHelpers.add_validator_method(dct, schema, resolver)
+            ModelMetaHelpers.add_validator_method(dct, schema)
         return type.__new__(cls, clsname, bases, dct)

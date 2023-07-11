@@ -1,9 +1,12 @@
 """Representation of the outside world in which the flock of UAVs live."""
 
+from flockwave.gps.vectors import GPSCoordinate
+from typing import Any, List, Tuple
+
 __all__ = ("World",)
 
 
-class World(object):
+class World:
     """Representation of the outside world in which the flock of UAVs live.
 
     The world is essentially a spatial index containing arbitrary objects.
@@ -13,6 +16,8 @@ class World(object):
     TODO: no spatial index yet, but there will be if needed
     """
 
+    _items: List[Tuple[GPSCoordinate, Any]]
+
     def __init__(self):
         """Constructor.
 
@@ -20,12 +25,11 @@ class World(object):
         """
         self._items = []
 
-    def add(self, obj, location):
+    def add(self, obj: Any, location: GPSCoordinate) -> None:
         """Adds the given object at the given location.
 
         Parameters:
-            obj (object): the object to add
-            location (GPSCoordinate): the location to add the object to.
-                Altitudes will be ignored.
+            obj: the object to add
+            location: the location to add the object to. Altitudes will be ignored.
         """
         self._items.append((location, obj))

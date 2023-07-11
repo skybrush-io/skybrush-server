@@ -1,3 +1,5 @@
+import struct
+
 from pytest import fixture, raises
 from typing import List
 
@@ -278,7 +280,7 @@ class TestRTHPlanEncoder:
 
     async def test_encoding_basic_plan_with_invalid_scale(self, plan: RTHPlan):
         encoder = RTHPlanEncoder(scale=1)
-        with raises(Exception):
+        with raises(struct.error):
             encoder.encode(plan)
 
     async def test_encoding_plan_with_negative_step_duration(self):

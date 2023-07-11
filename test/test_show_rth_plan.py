@@ -140,7 +140,7 @@ class TestRTHPlanEntry:
         ]
 
         for item in invalids:
-            with raises(Exception):
+            with raises(ValueError):
                 RTHPlanEntry.from_json(item)
 
 
@@ -228,5 +228,5 @@ class TestRTHPlan:
         invalids = [{}, {"version": 1}]
 
         for item in invalids:
-            with raises(Exception):
+            with raises(RuntimeError):
                 RTHPlan.from_json(item)

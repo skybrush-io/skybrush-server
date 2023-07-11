@@ -5,23 +5,27 @@ properties for themselves and validate themselves automatically based on
 a JSON schema description.
 """
 
-import jsonschema
-
 from contextlib import contextmanager
 from dataclasses import dataclass
 from flockwave.spec.schema import ref_resolver as flockwave_schema_ref_resolver
+from jsonschema import RefResolver
+from jsonschema.validators import validator_for
 from typing import Any, Callable, Dict, Optional, Tuple
 
 __all__ = ("ModelMeta",)
 
 
-#: Type specification for a mapper function that converts a property to its
-#: JSON representation or vice versa
 Mapper = Callable[[Any], Any]
+"""Type specification for a mapper function that converts a property to its
+JSON representation or vice versa.
+"""
 
-#: Pair of mapper functions, one to convert from JSON and the other one to
-#: convert to JSON
 MapperPair = Tuple[Mapper, Mapper]
+"""Pair of mapper functions, one to convert from JSON and the other one to
+convert to JSON.
+"""
+
+Resolver = RefResolver
 
 
 @dataclass
@@ -57,24 +61,29 @@ class PropertyInfo:
         )
 
 
-def collect_properties(schema, resolver, mappers, result=None):
+def collect_properties(
+    schema: Any,
+    resolver: Resolver,
+    mappers: Dict[str, MapperPair],
+    result: Optional[Dict[str, PropertyInfo]] = None,
+) -> Dict[str, PropertyInfo]:
     """Collects information about all the properties defined on a JSON
-    schema.
+        schema.
+    m
+        Parameters:
+            schema: the JSON schema
+            resolver: reference resolver for the JSON schema. Must be a callable
+                that can be called with a single reference and that returns the
+                corresponding JSON sub-schema
+            mappers: dictionary that maps property names to pairs of converter
+                functions to be used when deserializing and serializing the
+                property
+            result: dictionary to extend with the property information. ``None``
+                means to construct and return a new dictionary.
 
-    Parameters:
-        schema (object): the JSON schema
-        resolver (jsonschema.RefResolver): reference resolver for the
-            JSON schema
-        mappers (dict): dictionary that maps property names to pairs of
-            converter functions to be used when deserializing and serializing
-            the property
-        result (dict or None): dictionary to extend with the property
-            information. ``None`` means to construct and return a new
-            dictionary.
-
-    Returns:
-        dict: dictionary mapping property names to PropertyInfo_ objects.
-            Identical to the ``result`` parameter if it was a dict.
+        Returns:
+            dictionary mapping property names to PropertyInfo_ objects. Identical to
+            the ``result`` parameter if it was a dict.
     """
     if result is None:
         result = {}
@@ -211,7 +220,7 @@ class ModelMetaHelpers(object):
 
         if property_info.mappers is None:
 
-            def getter(self):
+            def getter(self):  # type: ignore
                 try:
                     return self._json[name]
                 except KeyError:
@@ -344,7 +353,7 @@ class ModelMetaHelpers(object):
         if orig_validator is not None and not callable(orig_validator):
             raise TypeError("validate() method must be callable")
 
-        json_schema_validator_class = jsonschema.validators.validator_for(schema)
+        json_schema_validator_class = validator_for(schema)
         json_schema_validator = json_schema_validator_class(schema, resolver=resolver)
 
         def validate(self, *args, **kwds):
@@ -364,7 +373,7 @@ class ModelMetaHelpers(object):
         dct["validate"] = validate
 
     @staticmethod
-    def bases_have_schema(bases):
+    def bases_have_schema(bases) -> bool:
         """Returns whether any of the given base classes uses ModelMeta_ as
         its metaclass.
 
@@ -372,8 +381,8 @@ class ModelMetaHelpers(object):
             bases (List[type]): list of the base classes
 
         Returns:
-            bool: whether at least one of the base classes uses ModelMeta_
-                as its metaclass
+            whether at least one of the base classes uses ModelMeta_ as its
+            metaclass
         """
         return any(getattr(base, "__metaclass_is_ModelMeta__", False) for base in bases)
 
@@ -398,7 +407,7 @@ class ModelMetaHelpers(object):
             return {}
 
     @classmethod
-    def find_schema_and_resolver(cls, dct, bases):
+    def find_schema_and_resolver(cls, dct, bases) -> Tuple[Any, Optional[Resolver]]:
         """Finds the JSON schema that the class being constructed must
         adhere to. This is done by looking up the ``schema`` attribute
         in the class dictionary. If no such attribute is found, one of
@@ -422,22 +431,12 @@ class ModelMetaHelpers(object):
 
         dct = dct.get("__meta__")
         schema = getattr(dct, "schema", None)
-        resolver = getattr(dct, "ref_resolver", None)
 
         if schema is not None:
-            if resolver is None:
-                resolver = jsonschema.RefResolver.from_schema(
-                    schema, handlers={"http": flockwave_schema_ref_resolver}
-                )
-            elif not isinstance(resolver, jsonschema.RefResolver):
-                if callable(resolver):
-                    resolver = jsonschema.RefResolver.from_schema(
-                        schema, handlers={"http": resolver}
-                    )
-                else:
-                    resolver = jsonschema.RefResolver.from_schema(
-                        schema, handlers=resolver
-                    )
+            handlers = {"http": flockwave_schema_ref_resolver}
+            resolver = RefResolver.from_schema(schema, handlers=handlers)
+        else:
+            resolver = None
 
         if schema is not None or bases_have_schema:
             return schema, resolver
@@ -477,6 +476,7 @@ class ModelMeta(type):
         schema, resolver = ModelMetaHelpers.find_schema_and_resolver(dct, bases)
         mappers = ModelMetaHelpers.find_property_mappers(dct, bases)
         if schema is not None:
+            assert resolver is not None
             if not bases_have_schema:
                 ModelMetaHelpers.add_json_property(dct)
                 ModelMetaHelpers.add_special_methods(dct)

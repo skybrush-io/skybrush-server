@@ -31,6 +31,7 @@ from flockwave.server.model.commands import Progress
 from flockwave.server.model.devices import DeviceTreeMutator
 from flockwave.server.model.geofence import GeofenceConfigurationRequest, GeofenceStatus
 from flockwave.server.model.gps import GPSFix
+from flockwave.server.model.log import FlightLog, FlightLogMetadata
 from flockwave.server.model.preflight import PreflightCheckInfo, PreflightCheckResult
 from flockwave.server.model.safety import SafetyConfigurationRequest
 from flockwave.server.model.transport import TransportOptions
@@ -69,6 +70,7 @@ from .enums import (
     PositionTargetTypemask,
 )
 from .ftp import MAVFTP
+from .log_download import MAVLinkLogDownloader
 from .packets import create_led_control_packet, DroneShowExecutionStage, DroneShowStatus
 from .types import MAVLinkMessage, PacketBroadcasterFn, PacketSenderFn, spec
 from .utils import log_id_for_uav, mavlink_version_number_to_semver
@@ -689,6 +691,24 @@ class MAVLinkDriver(UAVDriver["MAVLinkUAV"]):
         ):
             raise RuntimeError("Failed to request low-power mode from autopilot")
 
+    async def get_log(
+        self, uav: "MAVLinkUAV", log_id: str
+    ) -> AsyncIterator[Union[Progress, Optional[FlightLog]]]:
+        try:
+            log_number = int(log_id)
+        except ValueError:
+            raise RuntimeError(f"Invalid log ID: {log_id!r}") from None
+
+        async for maybe_log_or_progress in uav.log_downloader.get_log(log_number):
+            if maybe_log_or_progress is None:
+                raise RuntimeError("No log with the given ID: {log_number!r}")
+            else:
+                print(repr(maybe_log_or_progress))
+                yield maybe_log_or_progress
+
+    async def _get_log_list_single(self, uav: "MAVLinkUAV") -> List[FlightLogMetadata]:
+        return await uav.log_downloader.get_log_list()
+
     async def _get_parameter_single(self, uav: "MAVLinkUAV", name: str) -> float:
         return await uav.get_parameter(name)
 
@@ -949,16 +969,35 @@ class MAVLinkUAV(UAVBase):
     notify_updated: Callable[[], None]
     send_log_message_to_gcs: Callable[[str], None]
 
+    _accelerometer_calibration: Optional[AccelerometerCalibration] = None
+    """Accelerometer calibration status of the drone, constructed lazily.
+
+    Use the `accelerometer_calibration` getter to access this property; this
+    will ensure that the accelerometer calibration status object is created
+    on-demand.
+    """
+
     _battery: BatteryInfo
     """Battery status of the drone"""
 
-    _compass_calibration: CompassCalibration
-    """Compass calibration status of the drone"""
+    _compass_calibration: Optional[CompassCalibration] = None
+    """Compass calibration status of the drone, constructed lazily.
+
+    Use the `compass_calibration` getter to access this property; this will
+    ensure that the compass calibration status object is created on-demand.
+    """
 
     _gps_fix: GPSFix
     """Current GPS fix status and position accuracy of the drone."""
 
     _last_skybrush_status_info: Optional[DroneShowStatus] = None
+
+    _log_downloader: Optional[MAVLinkLogDownloader] = None
+    """Log downloader for the drone, constructed lazily.
+
+    Use the `log_downloader` getter to access this property; this will
+    ensure that the log downloader object is created on-demand.
+    """
 
     def __init__(self, *args, **kwds):
         super().__init__(*args, **kwds)
@@ -968,12 +1007,6 @@ class MAVLinkUAV(UAVBase):
 
         #: Battery status of the drone
         self._battery = BatteryInfo()
-
-        #: Accelerometer calibration status of the drone
-        self._accelerometer_calibration = AccelerometerCalibration()
-
-        #: Compass calibration status of the drone
-        self._compass_calibration = CompassCalibration()
 
         #: Stores whether we are currently configuring the data stream rates
         #: for the drone. Used to avoid multiple parallel configuration attempts.
@@ -1585,6 +1618,12 @@ class MAVLinkUAV(UAVBase):
         self.update_status(gps=self._gps_fix)
         self.notify_updated()
 
+    def handle_message_log_data(self, message: MAVLinkMessage):
+        self.log_downloader.handle_message_log_data(message)
+
+    def handle_message_log_entry(self, message: MAVLinkMessage):
+        self.log_downloader.handle_message_log_entry(message)
+
     def handle_message_mag_cal_progress(self, message: MAVLinkMessage):
         self.compass_calibration.handle_message_mag_cal_progress(message)
 
@@ -1623,17 +1662,28 @@ class MAVLinkUAV(UAVBase):
     @property
     def accelerometer_calibration(self) -> AccelerometerCalibration:
         """State object of the accelerometer calibration procedure."""
+        if self._accelerometer_calibration is None:
+            self._accelerometer_calibration = AccelerometerCalibration()
         return self._accelerometer_calibration
 
     @property
     def compass_calibration(self) -> CompassCalibration:
         """State object of the compass calibration procedure."""
+        if self._compass_calibration is None:
+            self._compass_calibration = CompassCalibration()
         return self._compass_calibration
 
     @property
     def is_connected(self) -> bool:
         """Returns whether the UAV is connected to the network."""
         return self._is_connected
+
+    @property
+    def log_downloader(self) -> MAVLinkLogDownloader:
+        """State object of the log download procedure."""
+        if self._log_downloader is None:
+            self._log_downloader = MAVLinkLogDownloader.for_uav(self)
+        return self._log_downloader
 
     @property
     def mavlink_version(self) -> int:

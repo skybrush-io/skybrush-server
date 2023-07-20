@@ -1,5 +1,6 @@
+from heapq import heappush, heappop
 from logging import ERROR, WARNING, INFO, DEBUG
-from typing import Optional, List, Union
+from typing import Optional, List, Tuple, Union
 
 from flockwave.gps.vectors import GPSCoordinate
 from flockwave.server.model.log import Severity
@@ -180,3 +181,115 @@ def python_log_level_from_mavlink_severity(severity: int) -> int:
         return DEBUG
     else:
         return _mavlink_severity_to_python_log_level[severity]
+
+
+class ChunkAssembler:
+    """Helper object to assemble a downloaded file from its chunks. This class
+    is used by the log downloader at the moment and may be used with the MAVFTP
+    downloader in the future if we implement bursty reads.
+    """
+
+    # NOTE: this class has a copy in `cmtool`. If you fix a bug here, consider
+    # fixing it in the copy in `cmtool` as well.
+
+    _num_flushed: int = 0
+    """Number of bytes already flushed to the disk because all the chunks up
+    to (and not including) this byte were already received successfully.
+    """
+
+    _num_pending: int = 0
+    """Number of bytes in the pending queue."""
+
+    _size: int
+    """Size of the file being downloaded."""
+
+    _pending: List[Tuple[int, bytes]]
+    """Pending chunks that were received but not flushed to the disk yet
+    because there are gaps in front of them.
+    """
+
+    def __init__(self, size: int):
+        """Constructor."""
+        self._size = size
+        self._pending = []
+        self._num_flushed = 0
+        self._num_pending = 0
+
+    def add_chunk(self, offset: int, data: bytes) -> Optional[bytes]:
+        """Adds a new chunk to the chunk assembler, starting at the given
+        offset.
+
+        Arguments:
+            offset: the offset where the given chunk begins in the file
+            data: the chunk itself
+
+        Returns:
+            an optional non-empty byte string that may be flushed to the
+            disk locally
+        """
+        if offset < self._num_flushed:
+            data = data[self._num_flushed - offset :]
+            offset = self._num_flushed
+
+        if not data:
+            return
+
+        if offset == self._num_flushed:
+            # This is the next chunk so we can store it straight away
+            self._num_flushed += len(data)
+            if not self._pending or self._pending[0][0] > self._num_flushed:
+                return data
+
+            to_return: List[bytes] = [data]
+            while self._pending:
+                top = self._pending[0]
+                if top[0] > self._num_flushed:
+                    break
+
+                if top[0] < self._num_flushed:
+                    data = top[1][self._num_flushed - top[0] :]
+                else:
+                    data = top[1]
+
+                self._num_flushed += len(data)
+                to_return.append(data)
+
+                item = heappop(self._pending)
+                self._num_pending -= len(item[1])
+
+            return b"".join(to_return)
+        else:
+            # There is a gap so store this chunk in self._pending
+            heappush(self._pending, (offset, data))
+            self._num_pending += len(data)
+
+    def get_next_range(self) -> Tuple[int, int]:
+        """Returns the offset and size of the next range to fetch from the
+        file with a bursted read.
+        """
+        end = self._pending[0][0] if self._pending else self._size
+        return self._num_flushed, end - self._num_flushed
+
+    @property
+    def done(self) -> bool:
+        """Returns whether there are no more chunks to fetch."""
+        return self._num_flushed >= self._size
+
+    @property
+    def num_flushed(self) -> int:
+        """Returns the total number of bytes already flushed to disk."""
+        return self._num_flushed
+
+    @property
+    def num_flushed_and_queued(self) -> int:
+        """Returns the total number of bytes already flushed to disk or
+        sitting in the queue.
+        """
+        return self._num_flushed + self._num_pending
+
+    @property
+    def percentage(self) -> float:
+        """Returns the percentage of the expected data that has already been
+        flushed to disk or sitting in the queue, rounded to one decimal digit.
+        """
+        return round(100.0 * (self._num_flushed + self._num_pending) / self._size, 1)

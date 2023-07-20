@@ -650,6 +650,8 @@ class MAVLinkNetwork:
             "HOME_POSITION": nop,
             "HWSTATUS": nop,
             "LOCAL_POSITION_NED": nop,  # maybe later?
+            "LOG_DATA": self._handle_message_log_data,
+            "LOG_ENTRY": self._handle_message_log_entry,
             "MAG_CAL_PROGRESS": self._handle_message_mag_cal_progress,
             "MAG_CAL_REPORT": self._handle_message_mag_cal_report,
             "MEMINFO": nop,
@@ -701,6 +703,10 @@ class MAVLinkNetwork:
 
             # Resolve all futures that are waiting for this message
             for system_id, params, future in self._matchers[type]:
+                # Check system ID early on and skip if it does not match
+                if system_id is not None and message.get_srcSystem() != system_id:
+                    continue
+
                 if future.done():
                     # This may happen if we get multiple matching messages in
                     # quick succession before the task waiting for the result
@@ -708,8 +714,6 @@ class MAVLinkNetwork:
                     # have to ignore the message, otherwise we would be resolving
                     # the future twice
                     continue
-                if system_id is not None and message.get_srcSystem() != system_id:
-                    matched = False
                 elif callable(params):
                     matched = params(message)
                 elif params is None:
@@ -787,6 +791,22 @@ class MAVLinkNetwork:
         uav = self._find_uav_from_message(message, address)
         if uav:
             uav.handle_message_heartbeat(message)
+
+    def _handle_message_log_data(
+        self, message: MAVLinkMessage, *, connection_id: str, address: Any
+    ):
+        """Handles an incoming MAVLink LOG_DATA message."""
+        uav = self._find_uav_from_message(message, address)
+        if uav:
+            uav.handle_message_log_data(message)
+
+    def _handle_message_log_entry(
+        self, message: MAVLinkMessage, *, connection_id: str, address: Any
+    ):
+        """Handles an incoming MAVLink LOG_ENTRY message."""
+        uav = self._find_uav_from_message(message, address)
+        if uav:
+            uav.handle_message_log_entry(message)
 
     def _handle_message_mag_cal_progress(
         self, message: MAVLinkMessage, *, connection_id: str, address: Any

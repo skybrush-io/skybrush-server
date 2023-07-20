@@ -1,3 +1,4 @@
+from base64 import b64encode
 from enum import Enum
 from typing import Any, Optional
 
@@ -52,6 +53,9 @@ class FlightLogKind(Enum):
     ARDUPILOT = "ardupilot"
     ULOG = "ulog"
     FLOCKCTRL = "flockctrl"
+
+    def is_binary(self) -> bool:
+        return self in (FlightLogKind.ARDUPILOT, FlightLogKind.ULOG)
 
 
 class FlightLogMetadata(metaclass=ModelMeta):
@@ -119,6 +123,21 @@ class FlightLog(metaclass=ModelMeta):
             result.size = len(body)
 
         return result
+
+    @classmethod
+    def create_from_metadata(cls, metadata: FlightLogMetadata, body: Any = ""):
+        encoded_body = (
+            b64encode(body).decode("ascii")
+            if isinstance(body, bytes) and metadata.kind.is_binary
+            else body
+        )
+        return cls.create(
+            id=metadata.id,
+            kind=metadata.kind,
+            size=len(body) if isinstance(body, (str, bytes)) else metadata.size,
+            timestamp=metadata.timestamp,
+            body=encoded_body,
+        )
 
     def get_metadata(self) -> FlightLogMetadata:
         """Converts the log object into its metadata only."""

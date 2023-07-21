@@ -762,8 +762,8 @@ class ArduPilot(Autopilot):
         if configuration.max_distance is not None:
             # Update the maximum distance; note that ArduCopter supports only
             # the [30; 10000] range.
-            max_altitude = float(clamp(configuration.max_distance, 30, 10000))
-            await uav.set_parameter("FENCE_RADIUS", max_altitude)
+            max_distance = float(clamp(configuration.max_distance, 30, 10000))
+            await uav.set_parameter("FENCE_RADIUS", max_distance)
             fence_type |= GeofenceType.CIRCLE
         else:
             # Assume that the distance limit is disabled

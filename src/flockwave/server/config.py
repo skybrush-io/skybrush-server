@@ -55,6 +55,7 @@ EXTENSIONS = {
     "lps": {"enabled": False},
     "logging": {"keep": 7, "format": "tabular", "size": 1000000},
     "magnetic_field": {},
+    "map_cache": {},  # used to trigger auto-loading when the license is installed
     "mavlink": {
         "enabled": False,
         "id_format": "{0:02}",
@@ -87,6 +88,8 @@ EXTENSIONS = {
     "show": {
         "default_start_method": "rc"  # set to "auto" if you typically start shows automatically and not via a remote controller
     },
+    "sidekick": {},  # used to trigger auto-loading when the license is installed
+    "smpte_timecode": {},  # used to trigger auto-loading when the license is installed
     "socketio": {},
     "ssdp": {},
     "system_clock": {},

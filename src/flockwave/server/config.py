@@ -52,7 +52,7 @@ EXTENSIONS = {
     "insomnia": {"keep_display_on": False},
     "kp_index": {"source": "potsdam"},
     "license": {},
-    "lps": {"enabled": False},
+    "lps": {"enabled": "avoid"},
     "logging": {"keep": 7, "format": "tabular", "size": 1000000},
     "magnetic_field": {},
     "map_cache": {},  # used to trigger auto-loading when the license is installed
@@ -69,8 +69,8 @@ EXTENSIONS = {
         },
     },
     "missions": {},
-    "motion_capture": {"enabled": False, "frame_rate": 10},
-    "rc": {"enabled": False},
+    "motion_capture": {"enabled": "avoid", "frame_rate": 10},
+    "rc": {"enabled": "avoid"},
     "rc_udp": {"enabled": False},
     "rtk": {
         "presets": {

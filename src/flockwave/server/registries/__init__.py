@@ -6,7 +6,6 @@ objects (connections, UAVs, timers and so on). The server will typically
 contain a separate registry for each type of object.
 """
 
-from .auth_methods import AuthenticationMethodRegistry
 from .base import Registry, RegistryBase, find_in_registry
 from .channels import ChannelTypeRegistry
 from .clients import ClientRegistry
@@ -20,7 +19,6 @@ __all__ = (
     "Registry",
     "RegistryBase",
     "find_in_registry",
-    "AuthenticationMethodRegistry",
     "ClientRegistry",
     "ClockRegistry",
     "ConnectionRegistry",

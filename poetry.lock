@@ -216,13 +216,13 @@ files = [
 
 [[package]]
 name = "certifi"
-version = "2023.5.7"
+version = "2023.7.22"
 description = "Python package for providing Mozilla's CA Bundle."
 optional = false
 python-versions = ">=3.6"
 files = [
-    {file = "certifi-2023.5.7-py3-none-any.whl", hash = "sha256:c6c2e98f5c7869efca1f8916fed228dd91539f9f1b444c314c06eef02980c716"},
-    {file = "certifi-2023.5.7.tar.gz", hash = "sha256:0f0d56dc5a6ad56fd4ba36484d6cc34451e1c6548c61daad8c320169f91eddc7"},
+    {file = "certifi-2023.7.22-py3-none-any.whl", hash = "sha256:92d6037539857d8206b8f6ae472e8b77db8058fec5937a1ef3f54304089edbb9"},
+    {file = "certifi-2023.7.22.tar.gz", hash = "sha256:539cc1d13202e33ca466e88b2807e29f4c13049d6d87031a3c110744495cb082"},
 ]
 
 [[package]]
@@ -560,17 +560,17 @@ reference = "fury"
 
 [[package]]
 name = "flockwave-async"
-version = "1.4.0"
+version = "1.4.2"
 description = "Asynchronous utility functions and classes, mostly for Trio"
 optional = false
 python-versions = ">=3.7,<4.0"
 files = [
-    {file = "flockwave-async-1.4.0.tar.gz", hash = "sha256:0da2221833e0e8e8f8a4d807ac2c90da2156cad980e4786626e720cdcb6051a2"},
-    {file = "flockwave_async-1.4.0-py3-none-any.whl", hash = "sha256:ca831a67078be6eb59aec63f667da27da331b50f708655aff4ed76cb67621e4d"},
+    {file = "flockwave-async-1.4.2.tar.gz", hash = "sha256:0c7ae26791bf64e07af531c33317073f93758bb7a8cb5e7c32e8a38d9c1edc44"},
+    {file = "flockwave_async-1.4.2-py3-none-any.whl", hash = "sha256:2d288065e8d2b8fdc07c98c09b7abec712b97fb674b0c8175e5becba27416651"},
 ]
 
 [package.dependencies]
-trio = ">=0.18.0"
+trio = ">=0.21.0"
 trio-util = ">=0.7.0"
 
 [package.source]
@@ -1133,18 +1133,30 @@ files = [
 
 [[package]]
 name = "mido"
-version = "1.2.10"
+version = "1.3.0"
 description = "MIDI Objects for Python"
 optional = true
-python-versions = "*"
+python-versions = "~=3.7"
 files = [
-    {file = "mido-1.2.10-py2.py3-none-any.whl", hash = "sha256:0e618232063e0a220249da4961563c7636fea00096cfb3e2b87a4231f0ac1a9e"},
-    {file = "mido-1.2.10.tar.gz", hash = "sha256:17b38a8e4594497b850ec6e78b848eac3661706bfc49d484a36d91335a373499"},
+    {file = "mido-1.3.0-py3-none-any.whl", hash = "sha256:a710a274c8a1a3fd481f526d174a16e117b5e58d719ad92937a67fb6167a9432"},
+    {file = "mido-1.3.0.tar.gz", hash = "sha256:84282e3ace34bca3f984220db2dbcb98245cfeafb854260c02e000750dca86aa"},
 ]
 
+[package.dependencies]
+packaging = ">=23.1,<24.0"
+
 [package.extras]
-dev = ["check-manifest (>=0.35)", "flake8 (>=3.4.1)", "pytest (>=3.2.2)", "sphinx (>=1.6.3)", "tox (>=2.8.2)"]
-ports = ["python-rtmidi (>=1.1.0)"]
+build-docs = ["sphinx (>=4.3.2,<4.4.0)", "sphinx-rtd-theme (>=1.2.2,<1.3.0)"]
+check-manifest = ["check-manifest (>=0.49)"]
+dev = ["mido[build-docs]", "mido[check-manifest]", "mido[lint-code]", "mido[lint-reuse]", "mido[release]", "mido[test]"]
+lint-code = ["flake8 (>=5.0.4,<5.1.0)"]
+lint-reuse = ["reuse (>=1.1.2,<1.2.0)"]
+ports-all = ["mido[ports-pygame]", "mido[ports-rtmidi-python]", "mido[ports-rtmidi]"]
+ports-pygame = ["PyGame (>=2.5,<3.0)"]
+ports-rtmidi = ["python-rtmidi (>=1.5.4,<1.6.0)"]
+ports-rtmidi-python = ["rtmidi-python (>=0.2.2,<0.3.0)"]
+release = ["twine (>=4.0.2,<4.1.0)"]
+test-code = ["pytest (>=7.4.0,<7.5.0)"]
 
 [[package]]
 name = "msgpack"
@@ -2315,4 +2327,4 @@ pro = ["skybrush-ext-map-cache", "skybrush-ext-sidekick", "skybrush-ext-timecode
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.9"
-content-hash = "5156a0620fa87832b6096b8e3abae3782e37435b2a8d66ac4a7daa1eafc86e7a"
+content-hash = "215cfb60606a7af33d5e543ae61cdce53fbdc140859886cfc7ee84e368496577"

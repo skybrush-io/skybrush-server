@@ -21,6 +21,7 @@ COMMAND_EXECUTION_MANAGER = {"timeout": 90}
 
 # Declare the list of extensions to load
 EXTENSIONS = {
+    "audit_log": {"enabled": "avoid"},
     "auth": {},
     "auth_basic": {"enabled": False},
     "beacon": {},

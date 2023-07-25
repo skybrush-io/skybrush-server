@@ -9,7 +9,6 @@ contain a separate registry for each type of object.
 from .base import Registry, RegistryBase, find_in_registry
 from .channels import ChannelTypeRegistry
 from .clients import ClientRegistry
-from .clocks import ClockRegistry
 from .connections import ConnectionRegistry, ConnectionRegistryEntry
 from .objects import ObjectRegistry
 from .uav_drivers import UAVDriverRegistry
@@ -20,7 +19,6 @@ __all__ = (
     "RegistryBase",
     "find_in_registry",
     "ClientRegistry",
-    "ClockRegistry",
     "ConnectionRegistry",
     "ConnectionRegistryEntry",
     "ChannelTypeRegistry",

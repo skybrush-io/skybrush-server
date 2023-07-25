@@ -4,7 +4,6 @@ from contextlib import AsyncExitStack, ExitStack
 from errno import EACCES
 from functools import partial
 from logging import Logger
-from pathlib import Path
 from struct import Struct
 from trio import open_memory_channel, open_nursery
 from trio.abc import ReceiveChannel, SendChannel
@@ -39,9 +38,7 @@ class CrazyflieDronesExtension(UAVExtension[CrazyflieDriver]):
 
     def _create_driver(self) -> CrazyflieDriver:
         assert self.app is not None
-        return CrazyflieDriver(
-            cache=Path(self.app.dirs.user_cache_dir) / "ext" / "crazyflie",
-        )
+        return CrazyflieDriver(cache=self.get_cache_dir())
 
     def configure_driver(
         self, driver: CrazyflieDriver, configuration: Dict[str, Any]

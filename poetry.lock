@@ -610,13 +610,13 @@ reference = "fury"
 
 [[package]]
 name = "flockwave-ext"
-version = "1.22.0"
+version = "1.23.0"
 description = "Generic extension manager for Skybrush-related projects"
 optional = false
 python-versions = ">=3.9,<4.0"
 files = [
-    {file = "flockwave-ext-1.22.0.tar.gz", hash = "sha256:cca36328729545d2ce1358e9cc0d7edcfd0f0b4b45a4b20c023d48689f83ca2e"},
-    {file = "flockwave_ext-1.22.0-py3-none-any.whl", hash = "sha256:ad43662774e159b0230aad78ddc76b0bf827c05c1ef4b7ffeb4ef5b196450478"},
+    {file = "flockwave-ext-1.23.0.tar.gz", hash = "sha256:e66d85ec6e949b32797fc15cfcaa3670986edd2463a8baf154280a012521fb92"},
+    {file = "flockwave_ext-1.23.0-py3-none-any.whl", hash = "sha256:d459ebc2bbbd6f971e33d4c7dba5d6a995e2ee0fb1e0f7651ca591d10af47482"},
 ]
 
 [package.dependencies]
@@ -2327,4 +2327,4 @@ pro = ["skybrush-ext-map-cache", "skybrush-ext-sidekick", "skybrush-ext-timecode
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.9"
-content-hash = "ad6c6eae2fa48ab3651048759aa6b744f46b7460d9a741d7862997e682ed6e0b"
+content-hash = "04da34368ff817a1a4e84bc70466c0af7af9e675291b0092792d92dc10e30094"

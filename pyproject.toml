@@ -48,7 +48,7 @@ flockwave-conn = { extras = [
     "rpc",
     "serial",
 ], source = "fury", version = "^6.1.0" }
-flockwave-ext = { version = "^1.22.0", source = "fury" }
+flockwave-ext = { version = "^1.23.0", source = "fury" }
 flockwave-flockctrl = { version = "^2.14.0", source = "collmot", optional = true }
 flockwave-gps = { version = "^2.3.3", source = "fury" }
 flockwave-logger = { version = "^1.9.0", source = "fury" }
@@ -72,6 +72,7 @@ compose = "^1.1.1"
 adrenaline = "^1.1.0"
 httpx = ">=0.18.2"
 igrf-model = "^1.1.1"
+deprecated = "^1.2.14"
 
 [tool.poetry.group.dev.dependencies]
 coverage = { extras = ["toml"], version = "^7.1.0" }

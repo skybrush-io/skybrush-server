@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from deprecated.sphinx import versionadded
+from pathlib import Path
 from typing import Generic, Optional, TYPE_CHECKING, TypeVar
 
 from flockwave.ext.base import ExtensionBase
@@ -16,7 +18,41 @@ __all__ = ("UAVExtension",)
 class Extension(ExtensionBase["SkybrushServer"]):
     """Base class for extensions in the server application."""
 
-    pass
+    @versionadded(version="2.15.0")
+    def get_cache_dir(self, name: Optional[str] = None) -> Path:
+        """Returns the full path of a directory that the extension may use to
+        store cached data.
+
+        Args:
+            name: name of the cache directory; will be the same as the name
+                of the extension when omitted
+
+        Returns:
+            full path of a cache directory dedicated to the extension
+        """
+        return (
+            Path(self.app.dirs.user_cache_dir)
+            / "ext"
+            / (name or self.name or "_unnamed")
+        )
+
+    @versionadded(version="2.15.0")
+    def get_data_dir(self, name: Optional[str] = None) -> Path:
+        """Returns the full path of a directory that the extension may use to
+        store persistent data.
+
+        Args:
+            name: name of the data directory; will be the same as the name
+                of the extension when omitted
+
+        Returns:
+            full path of a data directory dedicated to the extension
+        """
+        return (
+            Path(self.app.dirs.user_data_dir)
+            / "ext"
+            / (name or self.name or "_unnamed")
+        )
 
 
 D = TypeVar("D", bound="UAVDriver")

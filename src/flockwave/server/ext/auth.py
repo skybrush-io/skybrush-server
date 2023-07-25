@@ -13,7 +13,7 @@ from flockwave.server.registries.base import RegistryBase
 
 from .base import Extension
 
-from typing import Any, Optional, TYPE_CHECKING
+from typing import Any, Iterator, Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from flockwave.server.app import SkybrushServer
@@ -71,17 +71,20 @@ class AuthenticationMethodRegistry(RegistryBase[AuthenticationMethod]):
         return self._entries.pop(method_id, None)
 
     @contextmanager
-    def use(self, method: AuthenticationMethod):
+    def use(self, method: AuthenticationMethod) -> Iterator[AuthenticationMethod]:
         """Temporarily adds a new authentication method to the registry, hands
         control back to the caller in a context, and then removes the method
         when the caller exits the context.
 
         Arguments:
             method: the authentication method to register
+
+        Yields:
+            the authentication method that was registered
         """
         self.add(method)
         try:
-            yield
+            yield method
         finally:
             self.remove(method)
 

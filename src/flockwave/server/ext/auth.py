@@ -8,7 +8,10 @@ from flockwave.server.registries import AuthenticationMethodRegistry
 
 from .base import Extension
 
-from typing import Any, Dict, List
+from typing import Any, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from flockwave.server.app import SkybrushServer
 
 
 class AuthenticationExtension(Extension):
@@ -19,16 +22,18 @@ class AuthenticationExtension(Extension):
     method; see other extensions starting with ``auth_`` for that.
     """
 
+    _registry: AuthenticationMethodRegistry
+    _required: bool = False
+
     def __init__(self):
         super().__init__()
 
         self._registry = AuthenticationMethodRegistry()
-        self._required = False
 
-    def configure(self, configuration):
+    def configure(self, configuration: dict[str, Any]) -> None:
         self._required = bool(configuration.get("required"))
 
-    def exports(self) -> Dict[str, Any]:
+    def exports(self) -> dict[str, Any]:
         return {
             "get_supported_methods": self._get_supported_methods,
             "is_required": self._is_required,
@@ -37,7 +42,7 @@ class AuthenticationExtension(Extension):
             "use": self._registry.use,
         }
 
-    def handle_inf(self, body: Dict[str, Any], client: Client) -> Dict[str, Any]:
+    def handle_inf(self, body: dict[str, Any], client: Client) -> dict[str, Any]:
         """Handles an AUTH-INF message coming from the given client.
 
         Parameters:
@@ -49,7 +54,7 @@ class AuthenticationExtension(Extension):
         """
         return {"methods": self._registry.ids, "required": self._required}
 
-    def handle_req(self, body: Dict[str, Any], client: Client) -> Dict[str, str]:
+    def handle_req(self, body: dict[str, Any], client: Client) -> dict[str, str]:
         """Handles an AUTH-REQ message coming from the given client.
 
         Parameters:
@@ -64,7 +69,7 @@ class AuthenticationExtension(Extension):
             response = AuthenticationResult.failure("Already authenticated")
         elif method and method in self._registry:
             method = self._registry.find_by_id(method)
-            response = method.authenticate(client, body.get("data"))
+            response = method.authenticate(client, body.get("data") or "")
         else:
             response = AuthenticationResult.failure(f"No such method: {method}")
 
@@ -73,7 +78,7 @@ class AuthenticationExtension(Extension):
 
         return response.json
 
-    def handle_whoami(self, body: Dict[str, Any], client: Client) -> Dict[str, str]:
+    def handle_whoami(self, body: dict[str, Any], client: Client) -> dict[str, str]:
         """Handles an AUTH-WHOAMI message coming from the given client.
 
         Parameters:
@@ -85,7 +90,7 @@ class AuthenticationExtension(Extension):
         """
         return {"user": str(client.user or "")}
 
-    async def run(self, app):
+    async def run(self, app: "SkybrushServer") -> None:
         handler_map = {
             "AUTH-INF": self.handle_inf,
             "AUTH-REQ": self.handle_req,
@@ -101,7 +106,7 @@ class AuthenticationExtension(Extension):
                 response = {"type": "ACK-NAK", "reason": str(ex)}
             responder(response)
 
-    def _get_supported_methods(self) -> List[str]:
+    def _get_supported_methods(self) -> list[str]:
         """Returns the list of supported authentication methods."""
         return sorted(self._registry.ids)
 

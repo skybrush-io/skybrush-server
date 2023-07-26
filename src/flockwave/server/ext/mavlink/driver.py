@@ -703,7 +703,6 @@ class MAVLinkDriver(UAVDriver["MAVLinkUAV"]):
             if maybe_log_or_progress is None:
                 raise RuntimeError("No log with the given ID: {log_number!r}")
             else:
-                print(repr(maybe_log_or_progress))
                 yield maybe_log_or_progress
 
     async def _get_log_list_single(self, uav: "MAVLinkUAV") -> List[FlightLogMetadata]:

@@ -10,7 +10,7 @@
     <tbody>
 {% for prefix, task in tasks %}
         <tr>
-            <td><pre class="mb-0">{{ prefix }}{{ task.name }}</pre></td>
+            <td><pre class="mb-0">{{ prefix }}{{ task.name|e }}</pre></td>
         </tr>
 {% endfor %}
     </tbody>

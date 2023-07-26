@@ -381,8 +381,9 @@ class CommunicationManager(Generic[PacketType, AddressType]):
             else:
                 self.log.info("Connection up and running", extra=log_extra)
 
-            async for message in entry.channel:
-                await queue.send((entry.name, message))
+            async with entry.channel:
+                async for message in entry.channel:
+                    await queue.send((entry.name, message))
 
         except Exception as ex:
             has_error = True

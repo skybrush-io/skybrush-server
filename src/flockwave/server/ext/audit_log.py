@@ -6,8 +6,9 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from collections import deque
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, closing
 from dataclasses import dataclass, field
+from datetime import datetime, timedelta
 from functools import partial
 from logging import Logger
 from pathlib import Path
@@ -38,6 +39,13 @@ to the underlying data store before it starts to drop entries.
 """
 
 
+def days_ago(age: float) -> float:
+    """Helper function that returns the timestamp the given number of dayds
+    before the current time.
+    """
+    return (datetime.now() - timedelta(days=age)).timestamp()
+
+
 @dataclass(frozen=True)
 class Entry:
     timestamp: float = field(default_factory=time)
@@ -60,6 +68,16 @@ class Storage(ABC):
     """Interface specification for storage backends of the audit log."""
 
     @abstractmethod
+    async def prune(self, threshold: float) -> Optional[int]:
+        """Removes all the entries from the storage backend whose timestamp
+        is smaller than the given threshold.
+
+        Returns:
+            the number of entries purged; ``None`` if unknown
+        """
+        raise NotImplementedError
+
+    @abstractmethod
     async def put(self, entries: Sequence[Entry]) -> None:
         """Writes the given entries into the storage backend."""
         raise NotImplementedError
@@ -72,6 +90,9 @@ class Storage(ABC):
 
 class NullStorage(Storage):
     """Dummy storage backend that does not store anything."""
+
+    async def prune(self, threshold: float) -> None:
+        pass
 
     async def put(self, entries: Sequence[Entry]) -> None:
         pass
@@ -88,8 +109,14 @@ class InMemoryStorage(Storage):
     def __init__(self) -> None:
         self._entries = []
 
+    async def prune(self, threshold: float) -> int:
+        num_entries = len(self._entries)
+        self._entries = [
+            entry for entry in self._entries if entry.timestamp >= threshold
+        ]
+        return num_entries - len(self._entries)
+
     async def put(self, entries: Sequence[Entry]) -> None:
-        print(f"Flushing {len(entries)} entries to in-memory storage")
         self._entries.extend(entries)
 
     @asynccontextmanager
@@ -112,8 +139,27 @@ class DbStorage(Storage):
     def __init__(self, path: Union[str, Path]):
         self._path = Path(path)
 
+    async def prune(self, threshold: float) -> int:
+        return await to_thread.run_sync(self._prune_sync, threshold)
+
     async def put(self, entries: Sequence[Entry]) -> None:
         await to_thread.run_sync(self._put_sync, entries)
+
+    def _prune_sync(self, threshold: float) -> int:
+        if self._conn:
+            with self._conn:
+                with closing(self._conn.cursor()) as cur:
+                    cur = self._conn.execute(
+                        "SELECT COUNT(*) FROM entries WHERE timestamp < ?", (threshold,)
+                    )
+                    (count,) = cur.fetchone()
+                if count > 0:
+                    self._conn.execute(
+                        "DELETE FROM entries WHERE timestamp < ?", (threshold,)
+                    )
+            return count
+        else:
+            return 0
 
     def _put_sync(self, entries: Sequence[Entry]) -> None:
         if self._conn:
@@ -181,19 +227,23 @@ class AuditLogExtension(Extension):
     it gets enabled automatically if needed.
     """
 
+    max_age_days: float
+    """Maximum age of entries in the audit log, in days."""
+
     _entries: deque[Entry]
     """The entries waiting to be flushed to the storage backend."""
 
-    _parking_lot: ParkingLot
-
     _storage: Storage
     """Storage backend used by the extension."""
+
+    _parking_lot: ParkingLot
 
     def __init__(self):
         super().__init__()
         self._entries = deque(maxlen=MAX_BUFFER_SIZE)
         self._parking_lot = ParkingLot()
         self._storage = NullStorage()
+        self.max_age = 0
 
     def append(self, component: str, type: str, data: Union[str, bytes] = b"") -> None:
         """Appends a new entry to the audit log.
@@ -211,6 +261,19 @@ class AuditLogExtension(Extension):
     def configure(self, configuration: dict[str, Any]) -> None:
         db_path = self.get_data_dir() / "log.db"
         db_path.parent.mkdir(parents=True, exist_ok=True)
+
+        maybe_max_age = configuration.get("max_age")
+        if maybe_max_age is None:
+            self.max_age_days = 365  # default
+        elif (
+            maybe_max_age
+            and isinstance(maybe_max_age, (int, float))
+            and maybe_max_age > 0
+        ):
+            self.max_age_days = float(maybe_max_age)
+        else:
+            self.max_age_days = 0  # unlimited
+
         self._storage = DbStorage(db_path)
 
     def exports(self) -> dict[str, Any]:
@@ -238,6 +301,14 @@ class AuditLogExtension(Extension):
 
         async with self._storage.use(self.log):
             try:
+                if self.max_age_days > 0:
+                    count = await self._storage.prune(days_ago(self.max_age_days))
+                    if count is not None:
+                        if count > 1:
+                            self.log.info(f"Pruned {count} entries from the audit log")
+                        elif count == 1:
+                            self.log.info("Pruned one entry from the audit log")
+
                 while True:
                     while self._entries:
                         await self.flush()
@@ -259,4 +330,18 @@ class AuditLogExtension(Extension):
 
 construct = AuditLogExtension
 description = "Audit log provider for other extensions"
-schema = {}
+schema = {
+    "properties": {
+        "max_age": {
+            "title": "Max age (days)",
+            "description": (
+                "Maximum age of entries in the audit log, in days. Log entries "
+                "older than the given number of days are periodically removed from "
+                "the audit log. Zero means no limit."
+            ),
+            "type": "number",
+            "minimum": 0,
+            "default": 365,
+        }
+    }
+}

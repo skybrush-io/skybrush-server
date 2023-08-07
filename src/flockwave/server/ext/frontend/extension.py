@@ -33,7 +33,12 @@ class FrontPageLink:
     @property
     def url(self) -> str:
         """The URL that the link should point to."""
-        return url_for(self.route)
+        if "://" in self.route:
+            # This is an absolute URL
+            return self.route
+        else:
+            # This is a route reference
+            return url_for(self.route)
 
 
 front_page_links: List[FrontPageLink] = []

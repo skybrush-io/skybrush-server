@@ -49,7 +49,7 @@ flockwave-conn = { extras = [
     "serial",
 ], source = "fury", version = "^6.2.1" }
 flockwave-ext = { version = "^1.24.0", source = "fury" }
-flockwave-flockctrl = { version = "^2.14.0", source = "collmot", optional = true }
+flockwave-flockctrl = { version = "^2.15.0", source = "collmot", optional = true }
 flockwave-gps = { version = "^2.3.3", source = "fury" }
 flockwave-logger = { version = "^1.9.0", source = "fury" }
 flockwave-mavlink = { version = ">=0.1.0", source = "fury" }
@@ -64,7 +64,7 @@ skybrush-ext-timecode = { version = "^1.0.2", source = "collmot", optional = tru
 pyledctrl = { version = "^4.0.1", source = "fury" }
 aiocflib = "^2.6.0"
 appdirs = "^1.4.4"
-crcmod = "^1.7"
+crcmod-plus = "^2.0"
 msgpack = "^1.0.0"
 aio-usb-hotplug = "^5.2.0"
 pyserial = "^3.4"

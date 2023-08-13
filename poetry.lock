@@ -2016,19 +2016,19 @@ reference = "collmot"
 
 [[package]]
 name = "skybrush-ext-flockctrl"
-version = "2.26.2"
+version = "2.27.0"
 description = "Support for flockctrl-based drones in Skybrush Server"
 optional = true
 python-versions = ">=3.8,<4.0"
 files = [
-    {file = "skybrush_ext_flockctrl-2.26.2-py3-none-any.whl", hash = "sha256:c424dfc9ba6ff86809d5522f8cf36845e084c98964765d5d3c3b5c30a88598fd"},
-    {file = "skybrush_ext_flockctrl-2.26.2.tar.gz", hash = "sha256:aa288f79c8396b0dd747dabf29365c1eb28fb7c5028541703eac947fffb56ebf"},
+    {file = "skybrush_ext_flockctrl-2.27.0-py3-none-any.whl", hash = "sha256:75f8b2e7516f9e2a9ca5f4e2e747b6431152d0b15fd9bc8814268bfc1bd72c5c"},
+    {file = "skybrush_ext_flockctrl-2.27.0.tar.gz", hash = "sha256:20af56d7d7424a132779775cd0ede3fa132129e446fa633e60f5cc250d5ca392"},
 ]
 
 [package.dependencies]
 bidict = ">=0.22.0"
 colour = ">=0.1.5"
-flockwave-flockctrl = ">=2.14.0,<3.0.0"
+flockwave-flockctrl = ">=2.15.0,<3.0.0"
 paramiko = ">=2.10.3,<3.0.0"
 python-slugify = ">=8.0.1,<9.0.0"
 scp = ">=0.14.4"
@@ -2376,4 +2376,4 @@ pro = ["skybrush-ext-map-cache", "skybrush-ext-sidekick", "skybrush-ext-timecode
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.9"
-content-hash = "566db40a2561a6119b6871eeda95978bc0774958e7a59ae2b4e13fe73ef03a46"
+content-hash = "7e126d10f47a421a6de12a764c6253153cf9b27229209a398ac516258ebfd5cb"

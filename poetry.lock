@@ -569,13 +569,13 @@ dev = ["PyTest", "PyTest-Cov", "bump2version (<1)", "sphinx (<2)", "tox"]
 
 [[package]]
 name = "exceptiongroup"
-version = "1.1.2"
+version = "1.1.3"
 description = "Backport of PEP 654 (exception groups)"
 optional = false
 python-versions = ">=3.7"
 files = [
-    {file = "exceptiongroup-1.1.2-py3-none-any.whl", hash = "sha256:e346e69d186172ca7cf029c8c1d16235aa0e04035e5750b4b95039e65204328f"},
-    {file = "exceptiongroup-1.1.2.tar.gz", hash = "sha256:12c3e887d6485d16943a309616de20ae5582633e0a2eda17f4e10fd61c1e8af5"},
+    {file = "exceptiongroup-1.1.3-py3-none-any.whl", hash = "sha256:343280667a4585d195ca1cf9cef84a4e178c4b6cf2274caef9859782b567d5e3"},
+    {file = "exceptiongroup-1.1.3.tar.gz", hash = "sha256:097acd85d473d75af5bb98e41b61ff7fe35efe6675e4f9370ec6ec5126d160e9"},
 ]
 
 [package.extras]
@@ -680,13 +680,13 @@ reference = "fury"
 
 [[package]]
 name = "flockwave-flockctrl"
-version = "2.15.0"
+version = "2.16.0"
 description = "flockctrl protocol parser and encoder for Skybrush"
 optional = true
 python-versions = ">=3.7,<4.0"
 files = [
-    {file = "flockwave_flockctrl-2.15.0-py3-none-any.whl", hash = "sha256:79a62b4c521836f56975a0d1646b43a3c55dba2e1bcabdbdcdb1c96dfcd574f5"},
-    {file = "flockwave_flockctrl-2.15.0.tar.gz", hash = "sha256:2e65341d61e35b8eb32026d0a0fef515e7078e8da6b1d414e577e0e7cf60c694"},
+    {file = "flockwave_flockctrl-2.16.0-py3-none-any.whl", hash = "sha256:89faffd329ba5a2cc91cd022b681d174442f934ed32e83a1caf171e58d8b7671"},
+    {file = "flockwave_flockctrl-2.16.0.tar.gz", hash = "sha256:9a5a85c224355717cff3b13850ab3b75f512d8c9d2ee47c76ca02837de3db031"},
 ]
 
 [package.dependencies]
@@ -805,13 +805,13 @@ reference = "fury"
 
 [[package]]
 name = "flockwave-spec"
-version = "1.76.2"
+version = "1.78.0"
 description = "JSON-Schema specification of the Flockwave protocol"
 optional = false
 python-versions = ">=3.9,<4.0"
 files = [
-    {file = "flockwave-spec-1.76.2.tar.gz", hash = "sha256:dc1798d65a19b7de77eb24f8dc3e283e06647f19e3a981aad0f837f4c44a5583"},
-    {file = "flockwave_spec-1.76.2-py3-none-any.whl", hash = "sha256:add372afc1dd9d07da0e96cfe10a4a6c9cc302ef51bad201da155a8ff6ece3d3"},
+    {file = "flockwave-spec-1.78.0.tar.gz", hash = "sha256:fcc3a6583e5dea10c43f45cac80f6cb0c59aafcafaaba0d5a83baa5a0703e4a7"},
+    {file = "flockwave_spec-1.78.0-py3-none-any.whl", hash = "sha256:16c0ccd56429a0b7e241fc1f96c95a84e2a7f4d53f5f3b977fa01b76a9892e1b"},
 ]
 
 [package.dependencies]
@@ -2016,19 +2016,19 @@ reference = "collmot"
 
 [[package]]
 name = "skybrush-ext-flockctrl"
-version = "2.27.0"
+version = "2.28.0"
 description = "Support for flockctrl-based drones in Skybrush Server"
 optional = true
 python-versions = ">=3.8,<4.0"
 files = [
-    {file = "skybrush_ext_flockctrl-2.27.0-py3-none-any.whl", hash = "sha256:75f8b2e7516f9e2a9ca5f4e2e747b6431152d0b15fd9bc8814268bfc1bd72c5c"},
-    {file = "skybrush_ext_flockctrl-2.27.0.tar.gz", hash = "sha256:20af56d7d7424a132779775cd0ede3fa132129e446fa633e60f5cc250d5ca392"},
+    {file = "skybrush_ext_flockctrl-2.28.0-py3-none-any.whl", hash = "sha256:945eed5792c4ea3890661fc980b7c43d7b2ee2e620bc3a071acb46947b074c0a"},
+    {file = "skybrush_ext_flockctrl-2.28.0.tar.gz", hash = "sha256:25c2334a2c19e86dcd0cfb7c24ecf2cf9a0dc58f33dcada3b4da5a4bc9889ad3"},
 ]
 
 [package.dependencies]
 bidict = ">=0.22.0"
 colour = ">=0.1.5"
-flockwave-flockctrl = ">=2.15.0,<3.0.0"
+flockwave-flockctrl = ">=2.16.0,<3.0.0"
 paramiko = ">=2.10.3,<3.0.0"
 python-slugify = ">=8.0.1,<9.0.0"
 scp = ">=0.14.4"
@@ -2240,13 +2240,13 @@ trio = ">=0.11.0"
 
 [[package]]
 name = "werkzeug"
-version = "2.3.6"
+version = "2.3.7"
 description = "The comprehensive WSGI web application library."
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "Werkzeug-2.3.6-py3-none-any.whl", hash = "sha256:935539fa1413afbb9195b24880778422ed620c0fc09670945185cce4d91a8890"},
-    {file = "Werkzeug-2.3.6.tar.gz", hash = "sha256:98c774df2f91b05550078891dee5f0eb0cb797a522c757a2452b9cee5b202330"},
+    {file = "werkzeug-2.3.7-py3-none-any.whl", hash = "sha256:effc12dba7f3bd72e605ce49807bbe692bd729c3bb122a3b91747a6ae77df528"},
+    {file = "werkzeug-2.3.7.tar.gz", hash = "sha256:2b8c0e447b4b9dbcc85dd97b6eeb4dcbaf6c8b6c3be0bd654e25553e0a2157d8"},
 ]
 
 [package.dependencies]
@@ -2376,4 +2376,4 @@ pro = ["skybrush-ext-map-cache", "skybrush-ext-sidekick", "skybrush-ext-timecode
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.9"
-content-hash = "7e126d10f47a421a6de12a764c6253153cf9b27229209a398ac516258ebfd5cb"
+content-hash = "5952c338af7b20ede610ea1c898a315aa113b330abe4c4e71e53431d4bf815f8"

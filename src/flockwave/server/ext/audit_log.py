@@ -11,6 +11,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from functools import partial
 from logging import Logger
+from math import inf
 from pathlib import Path
 from textwrap import dedent
 from time import time
@@ -20,12 +21,16 @@ from typing import (
     Any,
     AsyncIterator,
     Callable,
+    Iterable,
     Optional,
     Sequence,
     Tuple,
     TYPE_CHECKING,
+    TypeVar,
     Union,
 )
+
+from flockwave.server.utils import constant
 
 from .base import Extension
 
@@ -44,6 +49,20 @@ def days_ago(age: float) -> float:
     before the current time.
     """
     return (datetime.now() - timedelta(days=age)).timestamp()
+
+
+T = TypeVar("T")
+
+
+def to_timestamp(
+    value: Union[float, datetime, None], *, default: T = None
+) -> Union[float, T]:
+    if value is None:
+        return default
+    elif isinstance(value, datetime):
+        return value.timestamp()
+    else:
+        return value
 
 
 @dataclass(frozen=True)
@@ -82,6 +101,16 @@ class Storage(ABC):
         """Writes the given entries into the storage backend."""
         raise NotImplementedError
 
+    @abstractmethod
+    async def query(
+        self,
+        component: Union[str, Iterable[str], None] = None,
+        *,
+        min_date: Union[datetime, float, None] = None,
+        max_date: Union[datetime, float, None] = None,
+    ) -> Iterable[Entry]:
+        raise NotImplementedError
+
     @asynccontextmanager
     async def use(self, log: Logger) -> AsyncIterator[None]:
         """Establishes a context within which the storage backend can be used."""
@@ -96,6 +125,15 @@ class NullStorage(Storage):
 
     async def put(self, entries: Sequence[Entry]) -> None:
         pass
+
+    async def query(
+        self,
+        component: Union[str, Iterable[str], None] = None,
+        *,
+        min_date: Union[datetime, float, None] = None,
+        max_date: Union[datetime, float, None] = None,
+    ) -> Iterable[Entry]:
+        return ()
 
 
 class InMemoryStorage(Storage):
@@ -118,6 +156,35 @@ class InMemoryStorage(Storage):
 
     async def put(self, entries: Sequence[Entry]) -> None:
         self._entries.extend(entries)
+
+    async def query(
+        self,
+        component: Union[str, Iterable[str], None] = None,
+        *,
+        min_date: Union[datetime, float, None] = None,
+        max_date: Union[datetime, float, None] = None,
+    ) -> Iterable[Entry]:
+        min_timestamp = to_timestamp(min_date, default=-inf)
+        max_timestamp = to_timestamp(max_date, default=inf)
+
+        if component is None:
+            component_matcher = constant(True)
+        else:
+            if isinstance(component, str):
+                component = (component,)
+            else:
+                component = tuple(component)
+            component_matcher = component.__contains__
+
+        return [
+            entry
+            for entry in self._entries
+            if (
+                entry.timestamp >= min_timestamp
+                and entry.timestamp < max_timestamp
+                and component_matcher(entry.component)
+            )
+        ]
 
     @asynccontextmanager
     async def use(self, log: Logger):
@@ -145,11 +212,20 @@ class DbStorage(Storage):
     async def put(self, entries: Sequence[Entry]) -> None:
         await to_thread.run_sync(self._put_sync, entries)
 
+    async def query(
+        self,
+        component: Union[str, Iterable[str], None] = None,
+        *,
+        min_date: Union[datetime, float, None] = None,
+        max_date: Union[datetime, float, None] = None,
+    ) -> Iterable[Entry]:
+        return await to_thread.run_sync(self._query_sync, component, min_date, max_date)
+
     def _prune_sync(self, threshold: float) -> int:
         if self._conn:
             with self._conn:
                 with closing(self._conn.cursor()) as cur:
-                    cur = self._conn.execute(
+                    cur.execute(
                         "SELECT COUNT(*) FROM entries WHERE timestamp < ?", (threshold,)
                     )
                     (count,) = cur.fetchone()
@@ -169,6 +245,56 @@ class DbStorage(Storage):
                     "VALUES (?, ?, ?, ?)",
                     [entry.to_tuple() for entry in entries],
                 )
+
+    def _query_sync(
+        self,
+        component: Union[str, Iterable[str], None] = None,
+        min_date: Union[datetime, float, None] = None,
+        max_date: Union[datetime, float, None] = None,
+    ) -> Iterable[Entry]:
+        result: list[Entry] = []
+
+        if self._conn:
+            query = "SELECT timestamp, component, type, data FROM entries"
+            conditions: list[str] = []
+            args: list[Any] = []
+
+            if component is not None:
+                components = (
+                    (component,) if isinstance(component, str) else list(component)
+                )
+
+                if len(components) == 0:
+                    condition = "FALSE"
+                elif len(components) == 1:
+                    condition = "component = ?"
+                else:
+                    qmarks = ", ".join("?" for _ in components)
+                    condition = f"component IN ({qmarks})"
+
+                conditions.append(condition)
+                args.extend(components)
+
+            min_timestamp = to_timestamp(min_date)
+            max_timestamp = to_timestamp(max_date)
+
+            if min_timestamp is not None:
+                conditions.append("timestamp >= ?")
+                args.append(min_timestamp)
+
+            if max_timestamp is not None:
+                conditions.append("timestamp < ?")
+                args.append(max_timestamp)
+
+            if conditions:
+                conditions_joined = " AND ".join(conditions)
+                query = f"{query} WHERE {conditions_joined}"
+
+            with self._conn:
+                with closing(self._conn.cursor()) as cur:
+                    result.extend(Entry(*row) for row in cur.execute(query, args))
+
+        return result
 
     @asynccontextmanager
     async def use(self, log: Logger):
@@ -277,7 +403,7 @@ class AuditLogExtension(Extension):
         self._storage = DbStorage(db_path)
 
     def exports(self) -> dict[str, Any]:
-        return {"append": self.append, "flush": self.flush}
+        return {"append": self.append, "flush": self.flush, "query": self.query}
 
     async def flush(self) -> None:
         """Flushes all pending entries to the audit log."""
@@ -293,7 +419,29 @@ class AuditLogExtension(Extension):
         """
         return partial(self.append, component)
 
+    async def query(
+        self,
+        component: Union[str, Iterable[str], None] = None,
+        *,
+        min_date: Union[datetime, float, None] = None,
+        max_date: Union[datetime, float, None] = None,
+    ) -> Iterable[Entry]:
+        """Retrieves all entries from the audit log that match the given search
+        criteria.
+
+        Args:
+            component: the component or components that the log entries must
+                belong to
+            min_date: the earliest date of the matched log entries, inclusive
+            max_date: the latest date of the matched log entries, _exclusive_
+        """
+        return await self._storage.query(
+            component, min_date=min_date, max_date=max_date
+        )
+
     async def run(self):
+        assert self.log is not None
+
         audit_logger = self.get_logger("audit_log")
 
         self._entries.clear()

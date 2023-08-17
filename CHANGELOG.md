@@ -19,6 +19,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - MAVLink drones report the takeoff and landing stages as informational messages
   during the execution of a show.
 
+- Pro users can now load the `flight_report` extension, which can produce
+  tabular reports about the takeoff and landing times of the drones as well as
+  any error conditions, in various formats (HTML, CSV, JSON), for reporting
+  purposes.
+
 ## [2.14.0] - 2023-06-16
 
 ### Changed

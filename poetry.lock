@@ -774,13 +774,13 @@ reference = "fury"
 
 [[package]]
 name = "flockwave-ext"
-version = "1.24.1"
+version = "1.24.2"
 description = "Generic extension manager for Skybrush-related projects"
 optional = false
 python-versions = ">=3.9,<4.0"
 files = [
-    {file = "flockwave-ext-1.24.1.tar.gz", hash = "sha256:698a61ccda8fb56eabdbd0cb82438f1ae58ab205a4b535d3172e870ef63eea57"},
-    {file = "flockwave_ext-1.24.1-py3-none-any.whl", hash = "sha256:d9589b0583e8b8fa4314c2f579c897d8214313a11a7eb59b44589e4ead806b3a"},
+    {file = "flockwave-ext-1.24.2.tar.gz", hash = "sha256:fe58bb7ee837486268f366794676ee00ed074bf8217c397f64547442fcbbdb3b"},
+    {file = "flockwave_ext-1.24.2-py3-none-any.whl", hash = "sha256:cc98e8ffccc3a1bdbc906743208241e46531d0972eba890d71955a730a24d406"},
 ]
 
 [package.dependencies]
@@ -2130,13 +2130,13 @@ reference = "collmot"
 
 [[package]]
 name = "skybrush-ext-flight-report"
-version = "1.0.1"
+version = "1.0.2"
 description = "Flight time and error reports generated automatically from audit logs"
 optional = true
 python-versions = ">=3.9,<4.0"
 files = [
-    {file = "skybrush_ext_flight_report-1.0.1-py3-none-any.whl", hash = "sha256:d7109b1c3c7388f7d1a2ebc71c16bf52b5d83b32fedae9b87290eebfac3bfd29"},
-    {file = "skybrush_ext_flight_report-1.0.1.tar.gz", hash = "sha256:b4449b8306423091e509bd915c730515405106b1cc835b95b1f20bb64d72df11"},
+    {file = "skybrush_ext_flight_report-1.0.2-py3-none-any.whl", hash = "sha256:b18bb215d035e6124ec423be27d17c0b5b03df28cc96c3d77c738a11847534e3"},
+    {file = "skybrush_ext_flight_report-1.0.2.tar.gz", hash = "sha256:475be75b516ca0e30aafab389d98ac2b230b5cb5d41809be2496970447eb3fcb"},
 ]
 
 [package.source]
@@ -2506,4 +2506,4 @@ pro = ["skybrush-ext-flight-report", "skybrush-ext-map-cache", "skybrush-ext-sid
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.9"
-content-hash = "7462150f47ba4fe3ccf0f80f4949f57f0e5cb4ac8e15cd9677b8d0dfbac2e2ac"
+content-hash = "6e375b55ea0f303fae125b685f4232694b9a278d125ee77cc04965b6e74ecfea"

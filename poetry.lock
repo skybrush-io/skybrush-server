@@ -417,13 +417,13 @@ pycparser = "*"
 
 [[package]]
 name = "click"
-version = "8.1.6"
+version = "8.1.7"
 description = "Composable command line interface toolkit"
 optional = false
 python-versions = ">=3.7"
 files = [
-    {file = "click-8.1.6-py3-none-any.whl", hash = "sha256:fa244bb30b3b5ee2cae3da8f55c9e5e0c0e86093306301fb418eb9dc40fbded5"},
-    {file = "click-8.1.6.tar.gz", hash = "sha256:48ee849951919527a045bfe3bf7baa8a959c423134e1a5b98c05c20ba75a1cbd"},
+    {file = "click-8.1.7-py3-none-any.whl", hash = "sha256:ae74fb96c20a0277a1d615f1e4d73c8414f5a98db8b799a7931d1582f3390c28"},
+    {file = "click-8.1.7.tar.gz", hash = "sha256:ca9853ad459e787e2192211578cc907e7594e294c7ccc834310722b41b9ca6de"},
 ]
 
 [package.dependencies]
@@ -2130,13 +2130,13 @@ reference = "collmot"
 
 [[package]]
 name = "skybrush-ext-flight-report"
-version = "1.0.2"
+version = "1.0.3"
 description = "Flight time and error reports generated automatically from audit logs"
 optional = true
 python-versions = ">=3.9,<4.0"
 files = [
-    {file = "skybrush_ext_flight_report-1.0.2-py3-none-any.whl", hash = "sha256:b18bb215d035e6124ec423be27d17c0b5b03df28cc96c3d77c738a11847534e3"},
-    {file = "skybrush_ext_flight_report-1.0.2.tar.gz", hash = "sha256:475be75b516ca0e30aafab389d98ac2b230b5cb5d41809be2496970447eb3fcb"},
+    {file = "skybrush_ext_flight_report-1.0.3-py3-none-any.whl", hash = "sha256:a3f4e5316d455c89b131794edf2739b5f35af8672fc42fa48f34d2e7fde84d2e"},
+    {file = "skybrush_ext_flight_report-1.0.3.tar.gz", hash = "sha256:c31913b874cf231f51790a432a17509e33c62f9ad9fc14b828e509b18a13f271"},
 ]
 
 [package.source]
@@ -2506,4 +2506,4 @@ pro = ["skybrush-ext-flight-report", "skybrush-ext-map-cache", "skybrush-ext-sid
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.9"
-content-hash = "6e375b55ea0f303fae125b685f4232694b9a278d125ee77cc04965b6e74ecfea"
+content-hash = "76c009e4b75351897db4b78aeee66821ca08d5621a79e1ab67678d43f26f31cb"

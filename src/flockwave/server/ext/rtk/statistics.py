@@ -255,7 +255,7 @@ class SurveyStatusFlag(IntFlag):
     #: Indicates that the survey status is supported on the GPS receiver
     SUPPORTED = 1
 
-    #: Indicates that the GPS receiver is Surveyg its own position
+    #: Indicates that the GPS receiver is Surveying its own position
     ACTIVE = 2
 
     #: Indicates that the GPS receiver has a valid estimate of its own position
@@ -267,7 +267,7 @@ class SurveyStatus:
     """Object that stores the status of the current survey procedure."""
 
     #: Stores the estimated accuracy of the surveyed position, in meters; valid
-    #: only if the "known" flag is set
+    #: only if the "valid" flag is set
     accuracy: float = 0.0
 
     #: Status flags

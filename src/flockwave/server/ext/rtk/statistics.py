@@ -125,6 +125,9 @@ class AntennaInformation:
 
 @dataclass
 class MessageObservations:
+    """Simple data class holding statistical information about different
+    RTK messages broadcast by an RTK base."""
+
     entries: Deque[Tuple[float, float]] = field(default_factory=deque)
 
     _last_observed_at: float = field(default_factory=monotonic)
@@ -176,6 +179,9 @@ class MessageObservations:
 
 @dataclass
 class SatelliteCNRs:
+    """Simple data class holding satellite carrier-to-noise values
+    in decibels (dB)."""
+
     entries: Dict[str, float] = field(default_factory=dict)
     _timestamps: LastUpdatedOrderedDict[str, float] = field(
         default_factory=LastUpdatedOrderedDict

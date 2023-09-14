@@ -109,8 +109,7 @@ class AntennaInformation:
         position = getattr(packet, "position", None)
         if position is not None:
             self.position = _ecef_to_gps.to_gps(position)
-            self.position_ecef = position * 1000  # [m] -> [mm]
-            self.position_ecef.round(0)
+            self.position_ecef = position
             self._antenna_position_timestamp = monotonic()
 
     def _forget_old_antenna_position_if_needed(self) -> None:

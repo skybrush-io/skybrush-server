@@ -194,13 +194,14 @@ class RTKExtension(Extension):
                 accuracy = 1
             else:
                 accuracy = float(fixed["accuracy"])  # type: ignore
+
             # Note: RTK extension configuration stores ECEF in meters,
-            # while above flockwave-gps v3.0.0 ECEF json representation is
-            # in millimeters. So we need to convert here from m to mm
+            # while flockwave-gps>=3.0.0 stores ECEF coordinates in JSON in
+            # millimeters. So we need to convert here from m to mm
             # to get it converted back to meters by `update_from_json()`
             self._survey_settings.update_from_json(
                 {
-                    "position": [int(round(p * 1e3)) for p in fixed["position"]],
+                    "position": [int(round(p * 1000)) for p in fixed["position"]],
                     "accuracy": accuracy,
                 }
             )

@@ -125,7 +125,8 @@ class AntennaInformation:
 @dataclass
 class MessageObservations:
     """Simple data class holding statistical information about different
-    RTK messages broadcast by an RTK base."""
+    RTK messages broadcast by an RTK base.
+    """
 
     entries: Deque[Tuple[float, float]] = field(default_factory=deque)
 

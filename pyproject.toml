@@ -84,6 +84,7 @@ pdoc = "^12.3.0"
 
 [tool.poetry.extras]
 all = [
+    "flockwave-flockctrl",
     "skybrush-ext-dock",
     "skybrush-ext-flight-report",
     "skybrush-ext-flockctrl",
@@ -92,6 +93,7 @@ all = [
     "skybrush-ext-timecode",
 ]
 collmot = [
+    "flockwave-flockctrl",
     "skybrush-ext-dock",
     "skybrush-ext-flight-report",
     "skybrush-ext-flockctrl",

@@ -2,34 +2,33 @@
 
 [[package]]
 name = "adrenaline"
-version = "1.1.0"
+version = "2.0.0"
 description = "Keep your OS from sleeping (supports Windows and macOS)"
 optional = false
-python-versions = ">=3.7,<4.0"
+python-versions = ">=3.8,<4.0"
 files = [
-    {file = "adrenaline-1.1.0-py3-none-any.whl", hash = "sha256:be3d4664a63d8a0e2fb1189bcfe87eb53652f89fd96a1fdfdf09e866fb9ea515"},
-    {file = "adrenaline-1.1.0.tar.gz", hash = "sha256:8d3b60aab8f1a3fc04052a4f92bd1883eeb5b7bb3e5b62895836e7ef6ab572ad"},
+    {file = "adrenaline-2.0.0-py3-none-any.whl", hash = "sha256:6f951a2c77ec836c80a049bcfa0d50dbb2baccef6637880de10d682b27948b50"},
+    {file = "adrenaline-2.0.0.tar.gz", hash = "sha256:b535e3d1e929a56d863ea278f5836c985991b38e8446254b0668a3e949b0f399"},
 ]
 
 [package.dependencies]
 jeepney = {version = ">=0.8.0,<0.9.0", markers = "sys_platform == \"linux\""}
 pyobjc-core = {version = ">=9.0.1,<10.0.0", markers = "sys_platform == \"darwin\""}
 pyobjc-framework-Cocoa = {version = ">=9.0.1,<10.0.0", markers = "sys_platform == \"darwin\""}
-setuptools = {version = ">=67,<68", markers = "sys_platform == \"darwin\""}
 
 [[package]]
 name = "aio-net-events"
-version = "5.0.1"
+version = "6.0.0"
 description = "Asynchronous network configuration event detector for Python 3.7 and above"
 optional = false
-python-versions = ">=3.7,<4.0"
+python-versions = ">=3.8,<4.0"
 files = [
-    {file = "aio_net_events-5.0.1-py3-none-any.whl", hash = "sha256:a4dcbf2bde6440f3a50fdaf404c17c123a9711e91e8872106c0dbca4fe4a863d"},
-    {file = "aio_net_events-5.0.1.tar.gz", hash = "sha256:95815d2fa0a9f7324589fd76f59e51125766a89d3e3412430f9f180163d0f5c3"},
+    {file = "aio_net_events-6.0.0-py3-none-any.whl", hash = "sha256:591c685e42829799465f340c4ad634187b5b833b605f237ef2311962b760ea1a"},
+    {file = "aio_net_events-6.0.0.tar.gz", hash = "sha256:bbcfaf54f34276251b4165c89b1a58d81daea55f7dc793a14e8afd9f15734c4b"},
 ]
 
 [package.dependencies]
-anyio = ">=3.7.1,<4.0.0"
+anyio = ">=3.7.1,<5"
 netifaces-plus = ">=0.12.0"
 pyobjc-core = {version = ">=9.2,<10.0", markers = "sys_platform == \"darwin\""}
 pyobjc-framework-Cocoa = {version = ">=9.2,<10.0", markers = "sys_platform == \"darwin\""}
@@ -37,33 +36,33 @@ pyobjc-framework-SystemConfiguration = {version = ">=9.2,<10.0", markers = "sys_
 
 [[package]]
 name = "aio-usb-hotplug"
-version = "5.2.0"
+version = "6.0.0"
 description = "Asynchronous generators yielding detected hotplug events on the USB buses"
 optional = false
-python-versions = ">=3.7,<4.0"
+python-versions = ">=3.8,<4.0"
 files = [
-    {file = "aio_usb_hotplug-5.2.0-py3-none-any.whl", hash = "sha256:77b5c3f89e87ac9e0396a05129be2af7f6aa73aaa9faa1eae5682cbb3aff904c"},
-    {file = "aio_usb_hotplug-5.2.0.tar.gz", hash = "sha256:e7da5d6f8efdc576b23d8f5582c836e60312e1426096aa87fbc78be2a993e9fc"},
+    {file = "aio_usb_hotplug-6.0.0-py3-none-any.whl", hash = "sha256:7fa402ea0e60ed0bebdc38cf61ee0d3095252544bed0c2489fbeb2851f7d0dea"},
+    {file = "aio_usb_hotplug-6.0.0.tar.gz", hash = "sha256:544e9e4289f9c34b71a49054c7b1744291b8f55a1681847aae89a062d95c0b1a"},
 ]
 
 [package.dependencies]
-anyio = ">=3.0.0,<4.0.0"
-pyudev = {version = ">=0.22.0", markers = "sys_platform == \"linux\""}
-pyusb = ">=1.1.0,<2.0.0"
+anyio = ">=3.7.1,<5"
+pyudev = {version = ">=0.24.1", markers = "sys_platform == \"linux\""}
+pyusb = ">=1.2.1,<2.0.0"
 
 [[package]]
 name = "aiocflib"
-version = "2.6.0"
+version = "3.0.0"
 description = "Python async API for Crazyflie drones"
 optional = false
-python-versions = ">=3.7,<4.0"
+python-versions = ">=3.8,<4.0"
 files = [
-    {file = "aiocflib-2.6.0-py3-none-any.whl", hash = "sha256:8ac0005317920283d1852ec36fae2885d965924d015f01d3d7f919564d4d899e"},
-    {file = "aiocflib-2.6.0.tar.gz", hash = "sha256:8ed2c2eba06afbd137279ca2aec9fc6846a994c82bd67e5e8ada1faafdb5245f"},
+    {file = "aiocflib-3.0.0-py3-none-any.whl", hash = "sha256:ce34c41443e4ef83513bffa816cf2f31c5f96d867861dae6b902ff05d26369ea"},
+    {file = "aiocflib-3.0.0.tar.gz", hash = "sha256:2fce4baf72c7d7271a54c61596db19f217f59975bc15376a3e7684eafe21db4f"},
 ]
 
 [package.dependencies]
-anyio = ">=3.2.1,<4.0.0"
+anyio = ">=3.2.1,<5"
 colorama = ">=0.4.3"
 colour = ">=0.1.5"
 hexdump = ">=3.3,<4.0"
@@ -83,24 +82,24 @@ files = [
 
 [[package]]
 name = "anyio"
-version = "3.7.1"
+version = "4.0.0"
 description = "High level compatibility layer for multiple asynchronous event loop implementations"
 optional = false
-python-versions = ">=3.7"
+python-versions = ">=3.8"
 files = [
-    {file = "anyio-3.7.1-py3-none-any.whl", hash = "sha256:91dee416e570e92c64041bd18b900d1d6fa78dff7048769ce5ac5ddad004fbb5"},
-    {file = "anyio-3.7.1.tar.gz", hash = "sha256:44a3c9aba0f5defa43261a8b3efb97891f2bd7d804e0e1f56419befa1adfc780"},
+    {file = "anyio-4.0.0-py3-none-any.whl", hash = "sha256:cfdb2b588b9fc25ede96d8db56ed50848b0b649dca3dd1df0b11f683bb9e0b5f"},
+    {file = "anyio-4.0.0.tar.gz", hash = "sha256:f7ed51751b2c2add651e5747c891b47e26d2a21be5d32d9311dfe9692f3e5d7a"},
 ]
 
 [package.dependencies]
-exceptiongroup = {version = "*", markers = "python_version < \"3.11\""}
+exceptiongroup = {version = ">=1.0.2", markers = "python_version < \"3.11\""}
 idna = ">=2.8"
 sniffio = ">=1.1"
 
 [package.extras]
-doc = ["Sphinx", "packaging", "sphinx-autodoc-typehints (>=1.2.0)", "sphinx-rtd-theme (>=1.2.2)", "sphinxcontrib-jquery"]
-test = ["anyio[trio]", "coverage[toml] (>=4.5)", "hypothesis (>=4.0)", "mock (>=4)", "psutil (>=5.9)", "pytest (>=7.0)", "pytest-mock (>=3.6.1)", "trustme", "uvloop (>=0.17)"]
-trio = ["trio (<0.22)"]
+doc = ["Sphinx (>=7)", "packaging", "sphinx-autodoc-typehints (>=1.2.0)"]
+test = ["anyio[trio]", "coverage[toml] (>=7)", "hypothesis (>=4.0)", "psutil (>=5.9)", "pytest (>=7.0)", "pytest-mock (>=3.6.1)", "trustme", "uvloop (>=0.17)"]
+trio = ["trio (>=0.22)"]
 
 [[package]]
 name = "appdirs"
@@ -745,23 +744,23 @@ reference = "fury"
 
 [[package]]
 name = "flockwave-conn"
-version = "6.2.1"
+version = "6.3.0"
 description = "Connection objects for various data sources"
 optional = false
-python-versions = ">=3.7,<4.0"
+python-versions = ">=3.9,<4.0"
 files = [
-    {file = "flockwave-conn-6.2.1.tar.gz", hash = "sha256:32547b0e397604907627b7ac687e4fb46db669f5be8da0b99e3940aca54d2644"},
-    {file = "flockwave_conn-6.2.1-py3-none-any.whl", hash = "sha256:9555df182282a36d8911c68bf8c68efe64b8db22386f36e07f8072d40f98ea24"},
+    {file = "flockwave-conn-6.3.0.tar.gz", hash = "sha256:ea1cdb0262984a0a6973f1650a0bd8ed0c63243ee417d39fd5c41ad2b910d4ae"},
+    {file = "flockwave_conn-6.3.0-py3-none-any.whl", hash = "sha256:7562ceeed6e2648066680dcc68b07543c301535aee8a38e1b42af2477d21e604"},
 ]
 
 [package.dependencies]
 blinker = ">=1.4,<2.0"
 flockwave-async = ">=1.4.0,<2.0.0"
-flockwave-net = {version = ">=5.0.0,<6.0.0", extras = ["async"]}
+flockwave-net = {version = ">=6.0.0,<7.0.0", extras = ["async"]}
 flockwave-parsers = ">=2.0.0,<3.0.0"
 pyserial = {version = ">=3.5,<4.0", optional = true, markers = "extra == \"serial\""}
 tinyrpc = {version = ">=1.1.7,<2.0.0", extras = ["msgpack"], optional = true, markers = "extra == \"rpc\""}
-trio = ">=0.21.0"
+trio = ">=0.22.0"
 trio-util = ">=0.7.0"
 
 [package.extras]
@@ -877,22 +876,22 @@ reference = "fury"
 
 [[package]]
 name = "flockwave-net"
-version = "5.0.0"
+version = "6.0.0"
 description = "Networking related functions for apps based on the Flockwave framework"
 optional = false
-python-versions = ">=3.7,<4.0"
+python-versions = ">=3.9,<4.0"
 files = [
-    {file = "flockwave-net-5.0.0.tar.gz", hash = "sha256:b9288f22433c11ee5e9651a3f682814905c5a940703a046827d3d144bed58fc0"},
-    {file = "flockwave_net-5.0.0-py3-none-any.whl", hash = "sha256:cecb7ec389f1fa2b89825daf6e5f1e0c30eb846e8867603e453b61a0673414a2"},
+    {file = "flockwave-net-6.0.0.tar.gz", hash = "sha256:6516c06c07e206c5a7c363dde25ff00aae7d8f870689f08d3c28c0dc77b8058b"},
+    {file = "flockwave_net-6.0.0-py3-none-any.whl", hash = "sha256:0f498263748da367565daa9c611a154aa7bea066d7bfd9acf21173969c362cbe"},
 ]
 
 [package.dependencies]
-aio-net-events = {version = ">=5.0.0,<6.0.0", optional = true, markers = "extra == \"async\""}
+aio-net-events = {version = ">=6.0.0,<7.0.0", optional = true, markers = "extra == \"async\""}
 netifaces-plus = ">=0.11.0"
 trio = {version = ">=0.19.0", optional = true, markers = "extra == \"async\""}
 
 [package.extras]
-async = ["aio-net-events (>=5.0.0,<6.0.0)", "trio (>=0.19.0)"]
+async = ["aio-net-events (>=6.0.0,<7.0.0)", "trio (>=0.19.0)"]
 
 [package.source]
 type = "legacy"
@@ -1036,27 +1035,28 @@ socks = ["socksio (==1.*)"]
 
 [[package]]
 name = "hypercorn"
-version = "0.14.3"
+version = "0.14.4"
 description = "A ASGI Server based on Hyper libraries and inspired by Gunicorn"
 optional = false
 python-versions = ">=3.7"
 files = [
-    {file = "Hypercorn-0.14.3-py3-none-any.whl", hash = "sha256:7c491d5184f28ee960dcdc14ab45d14633ca79d72ddd13cf4fcb4cb854d679ab"},
-    {file = "Hypercorn-0.14.3.tar.gz", hash = "sha256:4a87a0b7bbe9dc75fab06dbe4b301b9b90416e9866c23a377df21a969d6ab8dd"},
+    {file = "hypercorn-0.14.4-py3-none-any.whl", hash = "sha256:f956200dbf8677684e6e976219ffa6691d6cf795281184b41dbb0b135ab37b8d"},
+    {file = "hypercorn-0.14.4.tar.gz", hash = "sha256:3fa504efc46a271640023c9b88c3184fd64993f47a282e8ae1a13ccb285c2f67"},
 ]
 
 [package.dependencies]
+exceptiongroup = {version = ">=1.1.0", optional = true, markers = "python_version < \"3.11\" and extra == \"trio\""}
 h11 = "*"
 h2 = ">=3.1.0"
 priority = "*"
-toml = "*"
-trio = {version = ">=0.11.0", optional = true, markers = "extra == \"trio\""}
+tomli = {version = "*", markers = "python_version < \"3.11\""}
+trio = {version = ">=0.22.0", optional = true, markers = "extra == \"trio\""}
 wsproto = ">=0.14.0"
 
 [package.extras]
 docs = ["pydata_sphinx_theme"]
 h3 = ["aioquic (>=0.9.0,<1.0)"]
-trio = ["trio (>=0.11.0)"]
+trio = ["exceptiongroup (>=1.1.0)", "trio (>=0.22.0)"]
 uvloop = ["uvloop"]
 
 [[package]]
@@ -1785,19 +1785,19 @@ testing = ["fields", "hunter", "process-tests", "pytest-xdist", "six", "virtuale
 
 [[package]]
 name = "pytest-trio"
-version = "0.7.0"
+version = "0.8.0"
 description = "Pytest plugin for trio"
 optional = false
-python-versions = ">=3.6"
+python-versions = ">=3.7"
 files = [
-    {file = "pytest-trio-0.7.0.tar.gz", hash = "sha256:c01b741819aec2c419555f28944e132d3c711dae1e673d63260809bf92c30c31"},
+    {file = "pytest-trio-0.8.0.tar.gz", hash = "sha256:8363db6336a79e6c53375a2123a41ddbeccc4aa93f93788651641789a56fb52e"},
+    {file = "pytest_trio-0.8.0-py3-none-any.whl", hash = "sha256:e6a7e7351ae3e8ec3f4564d30ee77d1ec66e1df611226e5618dbb32f9545c841"},
 ]
 
 [package.dependencies]
-async_generator = ">=1.9"
-outcome = "*"
-pytest = ">=3.6"
-trio = ">=0.15.0"
+outcome = ">=1.1.0"
+pytest = ">=7.2.0"
+trio = ">=0.22.0"
 
 [[package]]
 name = "python-baseconv"
@@ -1935,18 +1935,23 @@ version = "0.10.0"
 description = "A Quart extension to provide trio support"
 optional = false
 python-versions = ">=3.7"
-files = [
-    {file = "quart-trio-0.10.0.tar.gz", hash = "sha256:66d4a2f8c3c417741d0e9709e0270edcedfdc26a9daac9e348b374f51c6decf8"},
-    {file = "quart_trio-0.10.0-py3-none-any.whl", hash = "sha256:e22759a5e237f47dfff10a8dad3064d1cb11515c6550bf00f988695a068f7249"},
-]
+files = []
+develop = false
 
 [package.dependencies]
+exceptiongroup = ">=1.0.0"
 hypercorn = {version = ">=0.12.0", extras = ["trio"]}
 quart = ">=0.18"
-trio = ">=0.9.0"
+trio = ">=0.19.0"
 
 [package.extras]
 docs = ["pydata_sphinx_theme"]
+
+[package.source]
+type = "git"
+url = "https://github.com/pgjones/quart-trio.git"
+reference = "5f59170"
+resolved_reference = "5f59170afc8f058c7ddc84817cb21489fa7f50c9"
 
 [[package]]
 name = "referencing"
@@ -2082,22 +2087,6 @@ files = [
 
 [package.dependencies]
 paramiko = "*"
-
-[[package]]
-name = "setuptools"
-version = "67.8.0"
-description = "Easily download, build, install, upgrade, and uninstall Python packages"
-optional = false
-python-versions = ">=3.7"
-files = [
-    {file = "setuptools-67.8.0-py3-none-any.whl", hash = "sha256:5df61bf30bb10c6f756eb19e7c9f3b473051f48db77fddbe06ff2ca307df9a6f"},
-    {file = "setuptools-67.8.0.tar.gz", hash = "sha256:62642358adc77ffa87233bc4d2354c4b2682d214048f500964dbe760ccedf102"},
-]
-
-[package.extras]
-docs = ["furo", "jaraco.packaging (>=9)", "jaraco.tidelift (>=1.4)", "pygments-github-lexers (==0.0.5)", "rst.linker (>=1.9)", "sphinx (>=3.5)", "sphinx-favicon", "sphinx-hoverxref (<2)", "sphinx-inline-tabs", "sphinx-lint", "sphinx-notfound-page (==0.8.3)", "sphinx-reredirects", "sphinxcontrib-towncrier"]
-testing = ["build[virtualenv]", "filelock (>=3.4.0)", "flake8-2020", "ini2toml[lite] (>=0.9)", "jaraco.envs (>=2.2)", "jaraco.path (>=3.2.0)", "pip (>=19.1)", "pip-run (>=8.8)", "pytest (>=6)", "pytest-black (>=0.3.7)", "pytest-checkdocs (>=2.4)", "pytest-cov", "pytest-enabler (>=1.3)", "pytest-mypy (>=0.9.1)", "pytest-perf", "pytest-ruff", "pytest-timeout", "pytest-xdist", "tomli-w (>=1.0.0)", "virtualenv (>=13.0.0)", "wheel"]
-testing-integration = ["build[virtualenv]", "filelock (>=3.4.0)", "jaraco.envs (>=2.2)", "jaraco.path (>=3.2.0)", "pytest", "pytest-enabler", "pytest-xdist", "tomli", "virtualenv (>=13.0.0)", "wheel"]
 
 [[package]]
 name = "six"
@@ -2292,17 +2281,6 @@ wsgi = ["werkzeug"]
 zmq = ["pyzmq"]
 
 [[package]]
-name = "toml"
-version = "0.10.2"
-description = "Python Library for Tom's Obvious, Minimal Language"
-optional = false
-python-versions = ">=2.6, !=3.0.*, !=3.1.*, !=3.2.*"
-files = [
-    {file = "toml-0.10.2-py2.py3-none-any.whl", hash = "sha256:806143ae5bfb6a3c6e736a764057db0e6a0e05e338b5630894a5f779cabb4f9b"},
-    {file = "toml-0.10.2.tar.gz", hash = "sha256:b3bda1d108d5dd99f4a20d24d9c348e91c4db7ab1b749200bded2f839ccbe68f"},
-]
-
-[[package]]
 name = "tomli"
 version = "2.0.1"
 description = "A lil' TOML parser"
@@ -2315,19 +2293,19 @@ files = [
 
 [[package]]
 name = "trio"
-version = "0.21.0"
+version = "0.22.2"
 description = "A friendly Python library for async concurrency and I/O"
 optional = false
 python-versions = ">=3.7"
 files = [
-    {file = "trio-0.21.0-py3-none-any.whl", hash = "sha256:4dc0bf9d5cc78767fc4516325b6d80cc0968705a31d0eec2ecd7cdda466265b0"},
-    {file = "trio-0.21.0.tar.gz", hash = "sha256:523f39b7b69eef73501cebfe1aafd400a9aad5b03543a0eded52952488ff1c13"},
+    {file = "trio-0.22.2-py3-none-any.whl", hash = "sha256:f43da357620e5872b3d940a2e3589aa251fd3f881b65a608d742e00809b1ec38"},
+    {file = "trio-0.22.2.tar.gz", hash = "sha256:3887cf18c8bcc894433420305468388dac76932e9668afa1c49aa3806b6accb3"},
 ]
 
 [package.dependencies]
-async-generator = ">=1.9"
-attrs = ">=19.2.0"
+attrs = ">=20.1.0"
 cffi = {version = ">=1.14", markers = "os_name == \"nt\" and implementation_name != \"pypy\""}
+exceptiongroup = {version = ">=1.0.0rc9", markers = "python_version < \"3.11\""}
 idna = "*"
 outcome = "*"
 sniffio = "*"
@@ -2486,17 +2464,17 @@ h11 = ">=0.9.0,<1"
 
 [[package]]
 name = "zipp"
-version = "3.16.2"
+version = "3.17.0"
 description = "Backport of pathlib-compatible object wrapper for zip files"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "zipp-3.16.2-py3-none-any.whl", hash = "sha256:679e51dd4403591b2d6838a48de3d283f3d188412a9782faadf845f298736ba0"},
-    {file = "zipp-3.16.2.tar.gz", hash = "sha256:ebc15946aa78bd63458992fc81ec3b6f7b1e92d51c35e6de1c3804e73b799147"},
+    {file = "zipp-3.17.0-py3-none-any.whl", hash = "sha256:0e923e726174922dce09c53c59ad483ff7bbb8e572e00c7f7c46b88556409f31"},
+    {file = "zipp-3.17.0.tar.gz", hash = "sha256:84e64a1c28cf7e91ed2078bb8cc8c259cb19b76942096c8d7b84947690cabaf0"},
 ]
 
 [package.extras]
-docs = ["furo", "jaraco.packaging (>=9.3)", "jaraco.tidelift (>=1.4)", "rst.linker (>=1.9)", "sphinx (>=3.5)", "sphinx-lint"]
+docs = ["furo", "jaraco.packaging (>=9.3)", "jaraco.tidelift (>=1.4)", "rst.linker (>=1.9)", "sphinx (<7.2.5)", "sphinx (>=3.5)", "sphinx-lint"]
 testing = ["big-O", "jaraco.functools", "jaraco.itertools", "more-itertools", "pytest (>=6)", "pytest-black (>=0.3.7)", "pytest-checkdocs (>=2.4)", "pytest-cov", "pytest-enabler (>=2.2)", "pytest-ignore-flaky", "pytest-mypy (>=0.9.1)", "pytest-ruff"]
 
 [extras]
@@ -2507,4 +2485,4 @@ pro = ["skybrush-ext-flight-report", "skybrush-ext-map-cache", "skybrush-ext-sid
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.9"
-content-hash = "367567177a0fb0b70d666dad67d28d6c0486344410d533c37ca4cb5b36a96ca4"
+content-hash = "551ce66da2b226db00b7e027e2cc984af6fa0077d10577c11fc9d19d291f4c99"

@@ -32,12 +32,12 @@ jsonschema = "^4.0.3"
 python-baseconv = "^1.2.2"
 pynmea2 = "^1.15.0"
 trio = ">=0.22.0"
-quart = ">=0.18.0"
+quart = ">=0.18.3"
 quart-trio = { git = "https://github.com/pgjones/quart-trio.git", rev = "5f59170" }
 trio-util = ">=0.5.0"
 python-dotenv = ">=0.14.0"
 colour = ">=0.1.5"
-pyjwt = "^1.7.1"
+pyjwt = "^2.8.0"
 hypercorn = { extras = ["trio"], version = ">=0.10.1" }
 passlib = { extras = ["bcrypt"], version = "^1.7.2" }
 flockwave-app-framework = { version = "^2.6.0", extras = [
@@ -80,7 +80,7 @@ coverage = { extras = ["toml"], version = "^7.1.0" }
 pytest = "^7.2.1"
 pytest-cov = "^4.0.0"
 pytest-trio = ">=0.6.0"
-pdoc = "^12.3.0"
+pdoc = "^14.1.0"
 
 [tool.poetry.extras]
 all = [

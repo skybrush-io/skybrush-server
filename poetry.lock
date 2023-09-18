@@ -1932,12 +1932,14 @@ dotenv = ["python-dotenv"]
 
 [[package]]
 name = "quart-trio"
-version = "0.10.0"
+version = "0.10.0.9000"
 description = "A Quart extension to provide trio support"
 optional = false
 python-versions = ">=3.7"
-files = []
-develop = false
+files = [
+    {file = "quart-trio-0.10.0.9000.tar.gz", hash = "sha256:f68e89649c9d9e35b85635f752546ab1f2f1e7fcfa3d1114758e0a71c614b152"},
+    {file = "quart_trio-0.10.0.9000-py3-none-any.whl", hash = "sha256:2d7f3602301a8e0ceda25c738595bef14f4c3485f56907319ada05e1df5e41ef"},
+]
 
 [package.dependencies]
 exceptiongroup = ">=1.0.0"
@@ -1949,10 +1951,9 @@ trio = ">=0.19.0"
 docs = ["pydata_sphinx_theme"]
 
 [package.source]
-type = "git"
-url = "https://github.com/pgjones/quart-trio.git"
-reference = "5f59170"
-resolved_reference = "5f59170afc8f058c7ddc84817cb21489fa7f50c9"
+type = "legacy"
+url = "https://pypi.fury.io/skybrush"
+reference = "fury"
 
 [[package]]
 name = "referencing"
@@ -2486,4 +2487,4 @@ pro = ["skybrush-ext-flight-report", "skybrush-ext-map-cache", "skybrush-ext-sid
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.9"
-content-hash = "0df040fe8bf9f700fe4d48abc6e608057df1f86a80f4924398065db921c58920"
+content-hash = "993c93405348ba62f35a516c911a47d88a58d12d33926503164413694a4a98ef"

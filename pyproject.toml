@@ -33,7 +33,7 @@ python-baseconv = "^1.2.2"
 pynmea2 = "^1.15.0"
 trio = ">=0.22.0"
 quart = ">=0.18.3"
-quart-trio = { git = "https://github.com/pgjones/quart-trio.git", rev = "5f59170" }
+quart-trio = { version = ">=0.10.0.9000", source = "fury" }
 trio-util = ">=0.5.0"
 python-dotenv = ">=0.14.0"
 colour = ">=0.1.5"

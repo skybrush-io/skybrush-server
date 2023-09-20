@@ -519,6 +519,18 @@ schema = {
                         "default": ["client", "server"],
                         "uniqueItems": True,
                     },
+                    "use_broadcast_rate_limiting": {
+                        "type": "boolean",
+                        "title": "Apply rate limiting on broadcast messages",
+                        "description": (
+                            "This is a workaround that should be enabled only if "
+                            "you have a connection without flow control and you "
+                            "are experiencing issues with packet loss, especially "
+                            "for bursty packet streams like RTK corrections."
+                        ),
+                        "default": False,
+                        "format": "checkbox",
+                    },
                 },
             },
         },

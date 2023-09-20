@@ -143,6 +143,15 @@ class MAVLinkNetworkSpecification:
     it is interpreted as the probability of a lost MAVLink message.
     """
 
+    use_broadcast_rate_limiting: bool = False
+    """Whether to apply a small delay between consecutive broadcast packets
+    to work around packet loss issues on links without proper flow control in
+    the chain. Typically you can leave this at ``False``; set it to ``True``
+    only if you have packet loss problems and you suspect that it is due to
+    lack of flow control so slowing down the packet sending rate in bursts would
+    help.
+    """
+
     @classmethod
     def from_json(cls, obj, id: Optional[str] = None) -> "MAVLinkNetworkSpecification":
         """Constructs a MAVLink network specification from its JSON
@@ -177,6 +186,11 @@ class MAVLinkNetworkSpecification:
                     str(x) for x in obj["statustext_targets"]
                 )
 
+        if "use_broadcast_rate_limiting" in obj:
+            result.use_broadcast_rate_limiting = bool(
+                obj["use_broadcast_rate_limiting"]
+            )
+
         return result
 
     @property
@@ -185,10 +199,12 @@ class MAVLinkNetworkSpecification:
         return {
             "id": self.id,
             "id_format": self.id_format,
+            "id_offset": self.id_offset,
             "system_id": self.system_id,
             "connections": self.connections,
             "packet_loss": self.packet_loss,
             "statustext_targets": sorted(self.statustext_targets),
+            "use_broadcast_rate_limiting": bool(self.use_broadcast_rate_limiting),
         }
 
     @staticmethod

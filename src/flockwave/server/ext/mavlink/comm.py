@@ -76,15 +76,23 @@ def get_mavlink_factory(
 
 
 def create_communication_manager(
-    packet_loss: float = 0, system_id: int = 255
+    packet_loss: float = 0,
+    system_id: int = 255,
+    use_broadcast_rate_limiting: bool = False,
 ) -> CommunicationManager[MAVLinkMessageSpecification, Any]:
-    """Creates a communication manager instance for the extension.
+    """Creates a communication manager instance for a single network managed
+    by the extension.
 
     Parameters:
         packet_loss: simulated packet loss probability; zero means normal
             behaviour
         system_id: the system ID to use in MAVLink messages sent by this
             communication manager
+        use_broadcast_rate_limiting: whether to apply a small delay after
+            sending each broadcast packet; this can be used to counteract
+            rate limiting problems if there are any. Typically you can leave
+            this setting at `False` unless you see lots of lost broadcast
+            packets.
     """
     channel_factory = partial(create_mavlink_message_channel, system_id=system_id)
 
@@ -93,10 +101,15 @@ def create_communication_manager(
             partial(create_lossy_channel, loss_probability=packet_loss), channel_factory
         )
 
-    return CommunicationManager(
+    manager = CommunicationManager(
         channel_factory=channel_factory,
         format_address=format_mavlink_channel_address,
     )
+
+    if use_broadcast_rate_limiting:
+        manager.broadcast_delay = 0.005
+
+    return manager
 
 
 def create_mavlink_message(link, _type: str, *args, **kwds) -> MAVLinkMessage:

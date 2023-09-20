@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from errno import ENETDOWN, ENETUNREACH
 from functools import partial
 from logging import Logger
-from trio import BrokenResourceError, open_memory_channel, WouldBlock
+from trio import BrokenResourceError, open_memory_channel, sleep, WouldBlock
 from trio_util import wait_all
 from typing import (
     Any,
@@ -70,19 +70,27 @@ class CommunicationManager(Generic[PacketType, AddressType]):
 
     - provides facilities for adding aliases to connections and for mapping
       a single alias to multiple connections
-
-    Attributes:
-        channel_factory: a callable that takes a Connection_ instance and a
-            logger object, and that constructs a MessageChannel_ object that
-            reads messages from and writes messages to the given connection,
-            using the given logger for logging parsing errors
-        format_address: a callable that takes an address used by this
-            communication manager and formats it into a string so it can be
-            used in log messages. Defaults to `str()`.
     """
 
     channel_factory: Callable[[Connection, Logger], MessageChannel]
+    """Callable that takes a Connection_ instance and a logger object, and that
+    constructs a MessageChannel_ object that reads messages from and writes
+    messages to the given connection, using the given logger for logging
+    parsing errors.
+    """
+
     format_address: Callable[[AddressType], str]
+    """Callable that takes an address used by this communication manager and
+    formats it into a string so it can be used in log messages. Defaults t
+    `str()`.
+    """
+
+    broadcast_delay: float = 0
+    """Number of seconds to wait after each successful broadcast. This is a
+    hack that can be used to work around flow control problems when broadcasting
+    RTK corrections. Typically you should leave this at zero.
+    """
+
     log: Logger
 
     BROADCAST: ClassVar[object]
@@ -353,7 +361,11 @@ class CommunicationManager(Generic[PacketType, AddressType]):
             yield from entries
 
     async def _run(
-        self, *, consumer, supervisor, tasks: List[Callable[..., Awaitable[Any]]]
+        self,
+        *,
+        consumer,
+        supervisor,
+        tasks: Optional[List[Callable[..., Awaitable[Any]]]] = None,
     ) -> None:
         tx_queue, rx_queue = open_memory_channel(0)
 
@@ -448,6 +460,7 @@ class CommunicationManager(Generic[PacketType, AddressType]):
                 channel = entry.channel
                 address = getattr(channel, "broadcast_address", NO_BROADCAST_ADDRESS)
                 if address is not NO_BROADCAST_ADDRESS:
+                    assert channel is not None
                     try:
                         await channel.send((message, address))
                     except Exception:
@@ -491,7 +504,10 @@ class CommunicationManager(Generic[PacketType, AddressType]):
                             )
                             is_broadcast = True
                             if address is not NO_BROADCAST_ADDRESS:
+                                assert entry.channel is not None
                                 await entry.channel.send((message, address))
+                                if self.broadcast_delay > 0:
+                                    await sleep(self.broadcast_delay)
                                 sent = True
                         else:
                             await entry.channel.send((message, address))

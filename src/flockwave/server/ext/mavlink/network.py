@@ -118,6 +118,15 @@ class MAVLinkNetwork:
     UAVs.
     """
 
+    _use_broadcast_rate_limiting: bool = False
+    """Whether to use artificial rate limiting for broadcast packets to work
+    around flow control problems in certain types of links.
+
+    Typically you can leave this at ``False`` unless you have packet loss
+    problems and you suspect that they are due to buffer overflows in the
+    links that the network uses.
+    """
+
     @classmethod
     def from_specification(cls, spec: MAVLinkNetworkSpecification):
         """Creates a MAVLink network from its specification, typically found in
@@ -131,6 +140,7 @@ class MAVLinkNetwork:
             statustext_targets=spec.statustext_targets,
             routing=spec.routing,
             uav_system_id_offset=spec.id_offset,
+            use_broadcast_rate_limiting=spec.use_broadcast_rate_limiting,
         )
 
         for connection_spec in spec.connections:
@@ -149,6 +159,7 @@ class MAVLinkNetwork:
         statustext_targets: Optional[FrozenSet[str]] = None,
         routing: Optional[Dict[str, List[int]]] = None,
         uav_system_id_offset: int = 0,
+        use_broadcast_rate_limiting: bool = False,
     ):
         """Constructor.
 
@@ -195,6 +206,7 @@ class MAVLinkNetwork:
         )
         self._system_id = max(min(int(system_id), 255), 1)
         self._uav_system_id_offset = int(uav_system_id_offset)
+        self._use_broadcast_rate_limiting = bool(use_broadcast_rate_limiting)
 
         self._connections = []
         self._uavs = {}
@@ -326,14 +338,24 @@ class MAVLinkNetwork:
 
             # Create the communication manager
             manager = create_communication_manager(
-                packet_loss=self._packet_loss, system_id=self._system_id
+                packet_loss=self._packet_loss,
+                system_id=self._system_id,
+                use_broadcast_rate_limiting=self._use_broadcast_rate_limiting,
             )
 
             # Warn the user about the simulated packet loss setting
             if self._packet_loss > 0:
                 percentage = round(min(1, self._packet_loss) * 100)
                 log.warning(
-                    f"Simulating {percentage}% packet loss on MAVLink network {self._id!r}"
+                    f"Simulating {percentage}% packet loss",
+                    extra={"id": self._id},
+                )
+
+            # Warn the user when the rate limiting is enabled for broadcasts
+            if self._use_broadcast_rate_limiting:
+                log.info(
+                    "Rate limiting enabled for broadcast packets",
+                    extra={"id": self._id},
                 )
 
             # Register the links with the communication manager. The order is

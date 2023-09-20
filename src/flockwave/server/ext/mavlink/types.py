@@ -10,6 +10,7 @@ from typing import (
     FrozenSet,
     List,
     Optional,
+    Sequence,
     Tuple,
     Union,
 )
@@ -124,7 +125,7 @@ class MAVLinkNetworkSpecification:
     `create_connection()` function.
     """
 
-    routing: Dict[str, int] = field(default_factory=dict)
+    routing: Dict[str, List[int]] = field(default_factory=dict)
     """Specifies where certain types of packets should be routed if the
     network has multiple connections.
     """
@@ -166,7 +167,9 @@ class MAVLinkNetworkSpecification:
 
         if "routing" in obj and isinstance(obj["routing"], dict):
             result.routing.clear()
-            result.routing.update(obj["routing"])
+            result.routing.update(
+                {k: cls._process_routing_entry(v) for k, v in obj["routing"].items()}
+            )
 
         if "statustext_targets" in obj:
             if hasattr("statustext_targets", "__iter__"):
@@ -187,3 +190,15 @@ class MAVLinkNetworkSpecification:
             "packet_loss": self.packet_loss,
             "statustext_targets": sorted(self.statustext_targets),
         }
+
+    @staticmethod
+    def _process_routing_entry(entry: Union[int, str, Sequence[int]]) -> List[int]:
+        """Helper function for processing entries in the ``routing`` configuration
+        key and constructor parameter.
+        """
+        if isinstance(entry, int):
+            return [entry]
+        elif isinstance(entry, str):
+            return [int(x) for x in entry.strip().split()]
+        else:
+            return [int(x) for x in entry]

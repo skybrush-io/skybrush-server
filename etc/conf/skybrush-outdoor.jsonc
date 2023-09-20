@@ -32,7 +32,7 @@
           // corrections and as a fallback for commands. Do _not_ uncomment this
           // line if you use Skybrush Sidekick to manage the radio channel.
           // "connections": ["default", "serial:COM6?baud=57600"],
-          // "routing": {"rtk": 1}
+          // "routing": {"rtk": [1]}
         }
       }
     }

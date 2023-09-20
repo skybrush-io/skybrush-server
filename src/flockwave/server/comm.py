@@ -19,6 +19,7 @@ from typing import (
     Dict,
     Generator,
     Generic,
+    Iterable,
     Iterator,
     List,
     Optional,
@@ -67,6 +68,9 @@ class CommunicationManager(Generic[PacketType, AddressType]):
     - provides a method that can be used to send a message on any of the
       currently open connections
 
+    - provides facilities for adding aliases to connections and for mapping
+      a single alias to multiple connections
+
     Attributes:
         channel_factory: a callable that takes a Connection_ instance and a
             logger object, and that constructs a MessageChannel_ object that
@@ -110,8 +114,13 @@ class CommunicationManager(Generic[PacketType, AddressType]):
             """
             return self.channel is not None
 
-    _aliases: Dict[str, str]
+    _aliases: Dict[str, List[str]]
+    """Mapping from channel aliases to the list of channel IDs that the alias
+    refers to.
+    """
+
     _entries_by_name: Dict[str, List[Entry]]
+    """Mapping from channel identifiers to the corresponding Entry_ object."""
 
     def __init__(
         self,
@@ -159,13 +168,16 @@ class CommunicationManager(Generic[PacketType, AddressType]):
         entry = self.Entry(connection, name=name, can_send=bool(can_send))
         self._entries_by_name[name].append(entry)
 
-    def add_alias(self, alias: str, *, target: str) -> Disposer:
+    def add_alias(self, alias: str, *, targets: Iterable[str]) -> Disposer:
         """Adds the given alias to the connection names recognized by the
         communication manager. Can be used to decide where certain messages
         should be routed to by dynamically assigning the alias to one of the
         "real" connection names.
         """
-        self._aliases[alias] = target
+        if alias in self._aliases:
+            raise RuntimeError(f"Alias already registered: {alias!r}")
+
+        self._aliases[alias] = list(targets)
         return partial(self.remove_alias, alias)
 
     async def broadcast_packet(
@@ -326,11 +338,11 @@ class CommunicationManager(Generic[PacketType, AddressType]):
         await queue.send((packet, destination))
 
     @contextmanager
-    def with_alias(self, alias: str, *, target: str):
+    def with_alias(self, alias: str, *, targets: Iterable[str]):
         """Context manager that registers an alias when entering the context and
         unregisters it when exiting the context.
         """
-        disposer = self.add_alias(alias, target=target)
+        disposer = self.add_alias(alias, targets=targets)
         try:
             yield
         finally:
@@ -449,8 +461,18 @@ class CommunicationManager(Generic[PacketType, AddressType]):
         entries = self._entries_by_name.get(name)
         if not entries:
             # try with an alias
-            name = self._aliases.get(name)
-            entries = self._entries_by_name.get(name)  # type: ignore
+            targets = self._aliases.get(name)
+            if not targets:
+                return
+            elif len(targets) == 1:
+                name = targets[0]
+            else:
+                for target in targets:
+                    if target in self._entries_by_name:
+                        await self._send_message_to_single_channel(
+                            message, (target, address)
+                        )
+                return
 
         sent = False
         is_broadcast = address is BROADCAST

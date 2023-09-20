@@ -24,6 +24,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   any error conditions, in various formats (HTML, CSV, JSON), for reporting
   purposes.
 
+- RTK and RC override messages in the `mavlink` extension can now be routed to
+  multiple connections.
+
 ## [2.14.0] - 2023-06-16
 
 ### Changed

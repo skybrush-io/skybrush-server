@@ -147,7 +147,7 @@ class MAVLinkNetwork:
         id_formatter: Callable[[int, str], str] = "{0}".format,
         packet_loss: float = 0,
         statustext_targets: Optional[FrozenSet[str]] = None,
-        routing: Optional[Dict[str, int]] = None,
+        routing: Optional[Dict[str, List[int]]] = None,
         uav_system_id_offset: int = 0,
     ):
         """Constructor.
@@ -188,7 +188,7 @@ class MAVLinkNetwork:
             self
         )
         self._packet_loss = max(float(packet_loss), 0.0)
-        self._routing = dict(routing or {})
+        self._routing = routing or {}
         self._scheduled_takeoff_manager = ScheduledTakeoffManager(self)
         self._statustext_targets = (
             frozenset(statustext_targets) if statustext_targets else frozenset()
@@ -915,36 +915,59 @@ class MAVLinkNetwork:
         if not self._connections:
             return
 
-        def register_by_index(alias: str, index: Optional[int]) -> str:
-            if index is None or index < 0 or index >= len(connection_names):
-                # No such channel, just fall back to the primary one
+        def register_by_index(
+            alias: str, index: Optional[Union[int, Iterable[int]]]
+        ) -> List[str]:
+            if index is None:
                 index = 0
 
-            target = connection_names[index]
-            stack.enter_context(manager.with_alias(alias, target=target))
+            indices = [index] if isinstance(index, int) else list(index)
 
-            return target
+            # If the list contains a channel that does not exist, replace it
+            # with channel 0 instead. Also filter duplicates.
+            targets = [
+                connection_names[index]
+                for index in sorted(
+                    {
+                        index if index >= 0 and index < len(connection_names) else 0
+                        for index in indices
+                    }
+                )
+            ]
+            stack.enter_context(manager.with_alias(alias, targets=targets))
+
+            return targets
 
         extra = {"id": self.id}
 
         # Register the first connection as the primary
-        channel = register_by_index(Channel.PRIMARY, 0)
-        secondary_channel = register_by_index(Channel.SECONDARY, 1)
-        if channel != secondary_channel:
+        channels = register_by_index(Channel.PRIMARY, 0)
+        secondary_channels = register_by_index(Channel.SECONDARY, 1)
+        if channels != secondary_channels:
             log.info(
-                f"Routing primary traffic to {channel}, falling back to {secondary_channel}",
+                f"Routing primary traffic to {format_channel_ids(channels)}, "
+                f"falling back to {format_channel_ids(secondary_channels)}",
                 extra=extra,
             )
         else:
-            log.info(f"Routing primary traffic to {channel}", extra=extra)
+            log.info(
+                f"Routing primary traffic to {format_channel_ids(channels)}",
+                extra=extra,
+            )
 
         # Register the RTK channel according to the routing setup
-        channel = register_by_index(Channel.RTK, self._routing.get("rtk"))
-        log.info(f"Routing RTK corrections to {channel}", extra=extra)
+        channels = format_channel_ids(
+            register_by_index(Channel.RTK, self._routing.get("rtk"))
+        )
+        if channels:
+            log.info(f"Routing RTK corrections to {channels}", extra=extra)
 
         # Register the RTK channel according to the routing setup
-        channel = register_by_index(Channel.RC, self._routing.get("rc"))
-        log.info(f"Routing RC overrides to {channel}", extra=extra)
+        channels = format_channel_ids(
+            register_by_index(Channel.RC, self._routing.get("rc"))
+        )
+        if channels:
+            log.info(f"Routing RC overrides to {channels}", extra=extra)
 
     async def _update_broadcast_address_of_channel_to_subnet(
         self, connection_id: str, address: Tuple[str, int], timeout: float = 1
@@ -1005,3 +1028,16 @@ class MAVLinkNetwork:
             self.log.warning(
                 "Failed to update broadcast address to a subnet-specific one"
             )
+
+
+@staticmethod
+def format_channel_ids(ids: Sequence[str]) -> str:
+    """Formats a list of communication channel IDs in a way that is suitable for
+    printing in human-readable logs.
+    """
+    parts: List[str] = []
+    for index, id in enumerate(ids):
+        parts.append(id)
+        if index < len(ids) - 1:
+            parts.append(", " if index < len(ids) - 2 else " and ")
+    return "".join(parts)

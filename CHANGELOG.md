@@ -27,6 +27,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - RTK and RC override messages in the `mavlink` extension can now be routed to
   multiple connections.
 
+- Broadcast messages from the `mavlink` extension can now be rate-limited to
+  work around with packet loss issues in connections that cannot cope with
+  bursty transmissions due to lack of flow control. This is a workaround that
+  should be enabled only if you are experincing packet loss problems and you
+  suspect that it is due to lack of flow control.
+
 ## [2.14.0] - 2023-06-16
 
 ### Changed

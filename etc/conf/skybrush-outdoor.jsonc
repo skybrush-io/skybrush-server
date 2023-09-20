@@ -1,4 +1,6 @@
-// This is the main configuration file for Skybrush Server.
+// This is the main configuration file for Skybrush Server, pre-configured
+// for outdoor shows with MAVLink-based drones.
+//
 // The file is essentially a JSON file, but C-style comments are allowed, and
 // lines starting with a hash are ignored.
 

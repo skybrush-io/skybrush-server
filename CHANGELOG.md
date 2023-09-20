@@ -5,16 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## Unrelesaed
+## [2.15.0] - 2023-09-21
 
 ### Added
 
 - The default accuracy and minimum duration of RTK surveys can now be configured
   in the `rtk` extension.
 
-- MAVLink drones running a recent version of the Skybrush firmware (based on
-  ArduCopter 4.3.7 or later) now report when they deviate significantly from
-  their planned trajectory during a show.
+- MAVLink drones running a recent version of the Skybrush firmware (version
+  20230920 or later, or, if you are compiling the firmware directly from our
+  GitHub repo, then any version based on ArduCopter 4.3.7 or later) now report
+  when they deviate significantly from their planned trajectory during a show.
 
 - MAVLink drones report the takeoff and landing stages as informational messages
   during the execution of a show.

@@ -84,12 +84,17 @@ class AntennaInformation:
         """
         if self.position:
             self._forget_old_antenna_position_if_needed()
+
         return {
-            "stationId": self.station_id,
-            "descriptor": self.descriptor,
-            "serialNumber": self.serial_number,
-            "position": self.position,
-            "positionECEF": self.position_ecef,
+            k: v
+            for k, v in (
+                ("stationId", self.station_id),
+                ("descriptor", self.descriptor),
+                ("serialNumber", self.serial_number),
+                ("position", self.position),
+                ("positionECEF", self.position_ecef),
+            )
+            if v is not None
         }
 
     def notify(self, packet: RTCMV3Packet) -> None:

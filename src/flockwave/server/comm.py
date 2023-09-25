@@ -479,6 +479,7 @@ class CommunicationManager(Generic[PacketType, AddressType]):
                 return
             elif len(targets) == 1:
                 name = targets[0]
+                entries = self._entries_by_name.get(name)
             else:
                 for target in targets:
                     if target in self._entries_by_name:

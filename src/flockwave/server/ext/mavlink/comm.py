@@ -172,6 +172,8 @@ def _create_stream_based_mavlink_message_channel(
     writes data to the given stream-based connection, and does the parsing
     of MAVLink messages automatically.
 
+    TCP and serial port based connections are both handled by this function.
+
     The channel will yield pairs of a MAVLinkMessage_ object and an empty string
     as an "address" to make the interface similar to the datagram-based MAVLink
     channels. (In other words, the caller does not have to know whether she is

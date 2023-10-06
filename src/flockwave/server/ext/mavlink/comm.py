@@ -6,7 +6,8 @@ from collections import defaultdict
 from compose import compose
 from functools import partial
 from importlib import import_module
-from typing import Any, Callable, ClassVar, List, Union, Tuple
+from time import time
+from typing import Any, Callable, ClassVar, Dict, List, Optional, Union, Tuple
 
 from flockwave.channels import MessageChannel, create_lossy_channel
 from flockwave.connections import Connection, StreamConnectionBase
@@ -16,6 +17,7 @@ from flockwave.networking import format_socket_address
 from flockwave.server.comm import NO_BROADCAST_ADDRESS, CommunicationManager
 
 from .enums import MAVComponent
+from .signing import MAVLinkSigningConfiguration
 from .types import MAVLinkMessage, MAVLinkMessageSpecification
 
 
@@ -46,19 +48,54 @@ class Channel:
     """Alias of the channel that should be used for sending RC overrides"""
 
 
+def _get_timestamp_for_signing() -> int:
+    """Returns a timestamp based on the system clock that is suitable for using
+    in a MAVLink signing context.
+    """
+    # Offset = 1420070400, i.e. the number of seconds between the current time
+    # and 1st January 2015 GMT. The multiplier converts to units of 10 usec.
+    return max(int((time() - 1420070400) * 100000), 0)
+
+
+MAVLinkFactory = Callable[[], Any]
+
+
+def _allow_all_unsigned_messages(self, msg_id) -> bool:
+    """Callback function for MAVLink connections that allow them to accept
+    all unsigned messages.
+    """
+    return True
+
+
+def _allow_only_basic_unsigned_messages(self, msg_id) -> bool:
+    """Callback function for MAVLink connections that allow them to accept
+    only specific unsigned messages that may originate from sources that do
+    not support MAVLink signing.
+    """
+    return msg_id == 109  # 109 -- RADIO_STATUS
+
+
 def get_mavlink_factory(
     dialect: Union[str, Callable] = "ardupilotmega",
     system_id: int = 255,
     component_id: int = MAVComponent.MISSIONPLANNER,
-):
+    *,
+    link_id: int = 0,
+    signing: MAVLinkSigningConfiguration = MAVLinkSigningConfiguration.DISABLED,
+) -> MAVLinkFactory:
     """Constructs a function that can be called with no arguments and that will
-    construct a new MAVLink parser.
+    construct a new MAVLink parser and message factory.
 
     Parameters:
         dialect: the name of the MAVLink dialect that will be used by the
             parser. When it is a callable, it is returned intact.
         system_id: the source MAVLink system ID
         component_id: the source MAVLink component ID
+        link_id: numeric link ID, used for signing MAVLink messages. Must
+            be configured properly for signing to work; ignored for unsigned
+            channels.
+        signing: whether outbound messages should be signed and inbound messages
+            should be rejectd when unsigned
     """
     if callable(dialect):
         return dialect
@@ -66,18 +103,33 @@ def get_mavlink_factory(
     module = import_module(f"flockwave.protocols.mavlink.dialects.v20.{dialect}")
 
     def factory():
+        """Creates a new MAVLink parser and message factory."""
         # Use robust parsing so we don't freak out if we see some noise on the
         # line
         link = module.MAVLink(None, srcSystem=system_id, srcComponent=component_id)
         link.robust_parsing = True
+
+        if signing.enabled:
+            link.signing.link_id = min(link_id, 255)
+            link.signing.secret_key = signing.key
+            link.signing.timestamp = _get_timestamp_for_signing()
+            link.signing.sign_outgoing = True
+            link.signing.allow_unsigned_callback = (
+                _allow_all_unsigned_messages
+                if signing.allow_unsigned
+                else _allow_only_basic_unsigned_messages
+            )
+
         return link
 
     return factory
 
 
 def create_communication_manager(
+    *,
     packet_loss: float = 0,
     system_id: int = 255,
+    signing: MAVLinkSigningConfiguration = MAVLinkSigningConfiguration.DISABLED,
     use_broadcast_rate_limiting: bool = False,
 ) -> CommunicationManager[MAVLinkMessageSpecification, Any]:
     """Creates a communication manager instance for a single network managed
@@ -88,13 +140,24 @@ def create_communication_manager(
             behaviour
         system_id: the system ID to use in MAVLink messages sent by this
             communication manager
+        signing: specifies how to handle signed MAVLink messages in both the
+            incoming and the outbound direction
         use_broadcast_rate_limiting: whether to apply a small delay after
             sending each broadcast packet; this can be used to counteract
             rate limiting problems if there are any. Typically you can leave
             this setting at `False` unless you see lots of lost broadcast
             packets.
     """
-    channel_factory = partial(create_mavlink_message_channel, system_id=system_id)
+    # Create a dictionary to cache link IDs to existing connections so we can
+    # keep on using the same link ID for the same connection even if it is
+    # closed and re-opened later
+    link_ids: Dict[Connection, int] = {}
+    channel_factory = partial(
+        create_mavlink_message_channel,
+        signing=signing,
+        link_ids=link_ids,
+        system_id=system_id,
+    )
 
     if packet_loss > 0:
         channel_factory = compose(
@@ -141,6 +204,8 @@ def create_mavlink_message_channel(
     *,
     dialect: Union[str, Callable] = "ardupilotmega",
     system_id: int = 255,
+    link_ids: Optional[Dict[Connection, int]] = None,
+    signing: MAVLinkSigningConfiguration = MAVLinkSigningConfiguration.DISABLED,
 ) -> MessageChannel[Tuple[MAVLinkMessage, str]]:
     """Creates a bidirectional Trio-style channel that reads data from and
     writes data to the given connection, and does the parsing of MAVLink
@@ -152,21 +217,48 @@ def create_mavlink_message_channel(
     Parameters:
         connection: the connection to read data from and write data to
         log: the logger on which any error messages and warnings should be logged
+        dialect: the MAVLink dialect to use on the channel
+        system_id: MAVLink source system ID to use on the channel for messages
+            being sent over the link
+        link_id: link identifier, to be used in MAVLink signing. Ignored for
+            unsigned links
+        signing: specifies whether outbound messages should be signed and
+            inbound messages should be checked for a valid signature
     """
-    mavlink_factory = get_mavlink_factory(dialect, system_id)
+    if link_ids is not None:
+        link_id = link_ids.get(connection, -1)
+        if link_id < 0:
+            link_id = link_ids[connection] = len(link_ids)
+    else:
+        link_id = 0
+
+    mavlink_factory: MAVLinkFactory = get_mavlink_factory(
+        dialect, system_id, link_id=link_id, signing=signing
+    )
 
     if isinstance(connection, StreamConnectionBase):
-        return _create_stream_based_mavlink_message_channel(
+        channel = _create_stream_based_mavlink_message_channel(
             connection, log, mavlink_factory=mavlink_factory
         )
     else:
-        return _create_datagram_based_mavlink_message_channel(
+        channel = _create_datagram_based_mavlink_message_channel(
             connection, log, mavlink_factory=mavlink_factory
         )
 
+    if signing.enabled:
+        if signing.allow_unsigned:
+            log.info(
+                f"Configured MAVLink signing on link ID = {link_id}, allowing "
+                f"unsigned incoming messages"
+            )
+        else:
+            log.info(f"Configured MAVLink signing on link ID = {link_id}")
+
+    return channel
+
 
 def _create_stream_based_mavlink_message_channel(
-    connection: Connection, log: Logger, *, mavlink_factory: Callable
+    connection: Connection, log: Logger, *, mavlink_factory: MAVLinkFactory
 ) -> MessageChannel[Tuple[MAVLinkMessage, str]]:
     """Creates a bidirectional Trio-style channel that reads data from and
     writes data to the given stream-based connection, and does the parsing
@@ -217,7 +309,7 @@ def _create_stream_based_mavlink_message_channel(
 
 
 def _create_datagram_based_mavlink_message_channel(
-    connection: Connection, log: Logger, *, mavlink_factory: Callable
+    connection: Connection, log: Logger, *, mavlink_factory: MAVLinkFactory
 ) -> MessageChannel[Tuple[MAVLinkMessage, str]]:
     """Creates a bidirectional Trio-style channel that reads data from and
     writes data to the given datagram-based connection, and does the parsing

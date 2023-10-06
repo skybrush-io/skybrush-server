@@ -14,6 +14,7 @@ from flockwave.server.registries.errors import RegistryFull
 from flockwave.server.utils import optional_int, overridden
 
 from .driver import MAVLinkDriver, MAVLinkUAV
+from .errors import InvalidSigningKeyError
 from .network import MAVLinkNetwork
 from .tasks import check_uavs_alive
 from .types import (
@@ -240,10 +241,19 @@ class MAVLinkDronesExtension(UAVExtension[MAVLinkDriver]):
 
         # Return the network specifications, ordered by ID. This is to ensure
         # that integer network indices are handed out in a consistent manner.
-        return OrderedDict(
-            (key, MAVLinkNetworkSpecification.from_json(network_specs[key], id=key))
-            for key in sorted(network_specs.keys())
-        )
+        result: OrderedDict[str, MAVLinkNetworkSpecification] = OrderedDict()
+        for key in sorted(network_specs.keys()):
+            try:
+                result[key] = MAVLinkNetworkSpecification.from_json(
+                    network_specs[key], id=key
+                )
+            except InvalidSigningKeyError as ex:
+                self.log.warning(
+                    f"Ignoring network. Cause: {ex}",
+                    extra={"id": key},
+                )
+
+        return result
 
     def _on_rc_channels_changed(self, sender: "RCState"):
         """Handles the event when the RC channel values changed."""
@@ -467,7 +477,10 @@ schema = {
                     },
                     "system_id": {
                         "title": "System ID",
-                        "description": "MAVLink system ID of the server in this network; typically IDs from 251 to 254 are reserved for ground stations.",
+                        "description": (
+                            "MAVLink system ID of the server in this network; typically "
+                            "IDs from 251 to 254 are reserved for ground stations."
+                        ),
                         "type": "integer",
                         "minimum": 1,
                         "maximum": 255,
@@ -503,6 +516,43 @@ schema = {
                             },
                         },
                     },
+                    "signing": {
+                        "type": "object",
+                        "title": "Message signing",
+                        "properties": {
+                            "enabled": {
+                                "type": "boolean",
+                                "title": "Enable MAVLink message signing",
+                                "default": False,
+                                "format": "checkbox",
+                                "propertyOrder": -1000,
+                            },
+                            "key": {
+                                "type": "string",
+                                "title": "Signing key",
+                                "default": "",
+                                "description": (
+                                    "The key must be exactly 32 bytes long. It can be "
+                                    "provided in hexadecimal format or as a base64-encoded "
+                                    "string, which is identical to the format being used "
+                                    "in Mission Planner."
+                                ),
+                                "propertyOrder": -500,
+                            },
+                            "sign_outbound": {
+                                "type": "boolean",
+                                "title": "Sign outbound MAVLink messages if signing is enabled",
+                                "default": True,
+                                "format": "checkbox",
+                            },
+                            "allow_unsigned": {
+                                "type": "boolean",
+                                "title": "Accept unsigned incoming messages",
+                                "default": False,
+                                "format": "checkbox",
+                            },
+                        },
+                    },
                     "statustext_targets": {
                         "type": "array",
                         "title": "STATUSTEXT message handling",
@@ -534,6 +584,16 @@ schema = {
                 },
             },
         },
+        "id_format": {
+            "type": "string",
+            "title": "ID format",
+            "description": (
+                "Python format string that determines the format of the IDs of "
+                "the drones created by the extension. May be overridden in each "
+                "network."
+            ),
+            "propertyOrder": 0,
+        },
         "custom_mode": {
             "type": "integer",
             "minimum": 0,
@@ -548,6 +608,7 @@ schema = {
                 "details."
             ),
             "default": 127,
+            "propertyOrder": 5000,
         },
         # packet_loss is an advanced setting and is not included here
     }

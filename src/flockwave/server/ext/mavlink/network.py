@@ -48,6 +48,7 @@ from .enums import MAVAutopilot, MAVComponent, MAVMessageType, MAVState, MAVType
 from .led_lights import MAVLinkLEDLightConfigurationManager
 from .packets import DroneShowStatus
 from .rtk import RTKCorrectionPacketEncoder
+from .signing import MAVLinkSigningConfiguration
 from .takeoff import ScheduledTakeoffManager
 from .types import (
     MAVLinkMessageMatcher,
@@ -104,9 +105,16 @@ class MAVLinkNetwork:
     """Dictionary mapping MAVLink message types to lists of tuples consisting
     of an optional MAVLink system ID, a MAVLink message matching criterion and a
     future that will be resolved when a MAVLink message matching the criterion
-     is received from the given MAVLink system ID (or any system ID if no
-     system ID was specified).
-     """
+    is received from the given MAVLink system ID (or any system ID if no
+    system ID was specified).
+    """
+
+    _routing: Dict[str, List[int]]
+
+    _signing: MAVLinkSigningConfiguration
+    """Object that stores how the MAVLink connections should handle signed
+    messages (in both the inbound and the outbound directions).
+    """
 
     _uav_system_id_offset: int = 0
     """Offset to add to the system ID of each UAV in the network before it is
@@ -139,6 +147,7 @@ class MAVLinkNetwork:
             packet_loss=spec.packet_loss,
             statustext_targets=spec.statustext_targets,
             routing=spec.routing,
+            signing=spec.signing,
             uav_system_id_offset=spec.id_offset,
             use_broadcast_rate_limiting=spec.use_broadcast_rate_limiting,
         )
@@ -158,6 +167,7 @@ class MAVLinkNetwork:
         packet_loss: float = 0,
         statustext_targets: Optional[FrozenSet[str]] = None,
         routing: Optional[Dict[str, List[int]]] = None,
+        signing: MAVLinkSigningConfiguration = MAVLinkSigningConfiguration.DISABLED,
         uav_system_id_offset: int = 0,
         use_broadcast_rate_limiting: bool = False,
     ):
@@ -187,6 +197,8 @@ class MAVLinkNetwork:
                 use for sending that particular packet type. Not including a
                 particular packet type in the dictionary will let the system
                 choose the link on its own.
+            signing: object that specifies whether outgoing messages should be
+                signed and whether incoming unsigned messages are accepted.
             uav_system_id_offset: offset to add to the system ID of each UAV
                 before it is sent to the formatter function
         """
@@ -201,6 +213,7 @@ class MAVLinkNetwork:
         self._packet_loss = max(float(packet_loss), 0.0)
         self._routing = routing or {}
         self._scheduled_takeoff_manager = ScheduledTakeoffManager(self)
+        self._signing = signing
         self._statustext_targets = (
             frozenset(statustext_targets) if statustext_targets else frozenset()
         )
@@ -340,6 +353,7 @@ class MAVLinkNetwork:
             manager = create_communication_manager(
                 packet_loss=self._packet_loss,
                 system_id=self._system_id,
+                signing=self._signing,
                 use_broadcast_rate_limiting=self._use_broadcast_rate_limiting,
             )
 

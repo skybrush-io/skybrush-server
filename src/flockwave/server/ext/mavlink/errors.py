@@ -19,3 +19,9 @@ class UnknownFlightModeError(MAVLinkExtensionError):
     def __init__(self, mode: Union[str, int], message: Optional[str] = None):
         message = message or f"Unknown flight mode: {mode!r}"
         super().__init__(message)
+
+
+class InvalidSigningKeyError(MAVLinkExtensionError):
+    """Error thrown when there is a problem with a MAVLink signing key."""
+
+    pass

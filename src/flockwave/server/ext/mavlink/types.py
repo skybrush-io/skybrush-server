@@ -1,5 +1,7 @@
 """Types commonly used throughout the MAVLink module."""
 
+from __future__ import annotations
+
 from dataclasses import dataclass, field
 from functools import partial
 from typing import (
@@ -14,6 +16,8 @@ from typing import (
     Tuple,
     Union,
 )
+
+from .signing import MAVLinkSigningConfiguration
 
 __all__ = (
     "MAVLinkFlightModeNumbers",
@@ -130,6 +134,11 @@ class MAVLinkNetworkSpecification:
     network has multiple connections.
     """
 
+    signing: MAVLinkSigningConfiguration = MAVLinkSigningConfiguration.DISABLED
+    """Specifies whether MAVLink packets should be signed and whether the
+    connection should accept unsigned MAVLink packets.
+    """
+
     statustext_targets: FrozenSet[str] = field(default_factory=frozenset)
     """Specifies where to send the contents of MAVLink status text messages
     originating from this network. This property must be a set containing
@@ -153,7 +162,7 @@ class MAVLinkNetworkSpecification:
     """
 
     @classmethod
-    def from_json(cls, obj, id: Optional[str] = None) -> "MAVLinkNetworkSpecification":
+    def from_json(cls, obj, id: Optional[str] = None):
         """Constructs a MAVLink network specification from its JSON
         representation.
         """
@@ -180,6 +189,9 @@ class MAVLinkNetworkSpecification:
                 {k: cls._process_routing_entry(v) for k, v in obj["routing"].items()}
             )
 
+        if "signing" in obj and isinstance(obj["signing"], dict):
+            result.signing = MAVLinkSigningConfiguration.from_json(obj["signing"])
+
         if "statustext_targets" in obj:
             if hasattr("statustext_targets", "__iter__"):
                 result.statustext_targets = frozenset(
@@ -203,6 +215,8 @@ class MAVLinkNetworkSpecification:
             "system_id": self.system_id,
             "connections": self.connections,
             "packet_loss": self.packet_loss,
+            "routing": self.routing,
+            "signing": self.signing,
             "statustext_targets": sorted(self.statustext_targets),
             "use_broadcast_rate_limiting": bool(self.use_broadcast_rate_limiting),
         }

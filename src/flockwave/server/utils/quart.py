@@ -1,13 +1,16 @@
 from __future__ import annotations
 
+import os
+
 from datetime import datetime, timedelta
 from pathlib import Path
 from sys import executable
 from typing import Optional
 from zlib import adler32
 
-from jinja2 import BaseLoader, ChoiceLoader, TemplateNotFound
+from jinja2 import BaseLoader, ChoiceLoader, FileSystemLoader, TemplateNotFound
 from quart import Blueprint, Response, current_app, send_file
+from werkzeug.utils import cached_property
 
 from .generic import constant
 from .packaging import is_oxidized
@@ -63,11 +66,19 @@ class PyOxidizerBlueprint(Blueprint):
         # the executable will return this timestamp as their last-modified
         # timestamp
 
-    @Blueprint.jinja_loader.getter
-    def jinja_loader(self):
+    # jinja_loader getter copied from flask.sansio.scaffold as we cannot override
+    # a cached property since Werkzeug 3.x for some reason
+
+    @cached_property
+    def jinja_loader(self) -> BaseLoader:
         package, _, _ = self.import_name.rpartition(".")
         oxidized_loader = PyOxidizerTemplateLoader(package)
-        super_loader = super().jinja_loader
+        if self.template_folder is not None:
+            super_loader = FileSystemLoader(
+                os.path.join(self.root_path, self.template_folder)
+            )
+        else:
+            super_loader = None
         if super_loader:
             return ChoiceLoader([oxidized_loader, super_loader])
         else:
@@ -116,7 +127,7 @@ class PyOxidizerBlueprint(Blueprint):
             stat = path.stat()
             etag = "{}-{}-{}".format(stat.st_mtime, stat.st_size, adler32(bytes(path)))
             response.set_etag(etag)
-            response.last_modified = stat.st_mtime
+            response.last_modified = datetime.fromtimestamp(stat.st_mtime)
 
         if path:
             # Set max age and expiry date for caching

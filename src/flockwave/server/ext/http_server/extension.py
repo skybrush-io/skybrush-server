@@ -123,7 +123,7 @@ def mount(
         # Blueprints can only be registered if the app has not served its first
         # request yet
         assert quart_app is not None
-        if quart_app.got_first_request:
+        if getattr(quart_app, "_got_first_request", False):
             if ext_manager:
                 ext_manager.request_host_app_restart("http_server")
         else:

@@ -33,7 +33,7 @@ python-baseconv = "^1.2.2"
 pynmea2 = "^1.15.0"
 trio = ">=0.22.0"
 quart = ">=0.18.3"
-quart-trio = { version = ">=0.10.0.9000", source = "fury" }
+quart-trio = ">=0.11.0"
 trio-util = ">=0.5.0"
 python-dotenv = ">=0.14.0"
 colour = ">=0.1.5"
@@ -49,7 +49,7 @@ flockwave-conn = { extras = [
     "serial",
 ], source = "fury", version = "^6.3.1" }
 flockwave-ext = { version = "^1.24.2", source = "fury" }
-flockwave-flockctrl = { version = "^2.16.1", source = "collmot", optional = true }
+flockwave-flockctrl = { version = "^2.17.0", source = "collmot", optional = true }
 flockwave-gps = { version = "^3.0.0", source = "fury" }
 flockwave-logger = { version = "^1.9.0", source = "fury" }
 flockwave-mavlink = { version = ">=0.1.0", source = "fury" }
@@ -58,7 +58,7 @@ flockwave-parsers = { version = "^2.0.1", source = "fury" }
 flockwave-spec = { version = "^1.79.1", source = "fury" }
 skybrush-ext-dock = { version = "^1.0.0", source = "collmot", optional = true }
 skybrush-ext-flight-report = { version = "^1.0.3", source = "collmot", optional = true }
-skybrush-ext-flockctrl = { version = "^2.28.0", source = "collmot", optional = true }
+skybrush-ext-flockctrl = { version = "^2.29.0", source = "collmot", optional = true }
 skybrush-ext-map-cache = { version = "^1.0.0", source = "collmot", optional = true }
 skybrush-ext-sidekick = { version = "^1.0.1", source = "collmot", optional = true }
 skybrush-ext-timecode = { version = "^1.0.2", source = "collmot", optional = true }

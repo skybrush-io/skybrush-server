@@ -1066,7 +1066,6 @@ class MAVLinkNetwork:
             )
 
 
-@staticmethod
 def format_channel_ids(ids: Sequence[str]) -> str:
     """Formats a list of communication channel IDs in a way that is suitable for
     printing in human-readable logs.

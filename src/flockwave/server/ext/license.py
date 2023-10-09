@@ -1,4 +1,6 @@
-from abc import abstractmethod, ABCMeta
+from __future__ import annotations
+
+from abc import ABC, abstractmethod
 from datetime import date, datetime, timedelta
 from functools import partial, wraps
 from math import inf, isfinite
@@ -10,19 +12,19 @@ from flockwave.networking import get_link_layer_address_mapping
 __all__ = ("load", "only_with_feature", "unload")
 
 
-#: Symbolic constant to return from get_days_left_until_expiry() if the license
-#: never expires
 NEVER_EXPIRES = 20 * 365
+"""Symbolic constant to return from get_days_left_until_expiry() if the license
+never expires.
+"""
 
+license: Optional[License] = None
+"""Global variable holding the current license."""
 
-#: Global variable holding the current license
-license = None  # type: Optional[License]
-
-#: Empty set used by the default implementation of License.get_features
 _EMPTY_SET = frozenset()
+"""Empty set used by the default implementation of License.get_features"""
 
 
-class License(metaclass=ABCMeta):
+class License(ABC):
     """Abstraction layer to help us with switching to different license managers
     if we want to.
     """
@@ -221,7 +223,7 @@ class DictBasedLicense(License):
         self._license_info = license_info
         self._update_features()
 
-    def get_allowed_mac_addresses(self) -> Optional[Tuple[str]]:
+    def get_allowed_mac_addresses(self) -> Optional[Tuple[str, ...]]:
         addresses = self._get_conditions().get("mac")
 
         # An earlier bug in cmtool sometimes added empty MAC addresses to the

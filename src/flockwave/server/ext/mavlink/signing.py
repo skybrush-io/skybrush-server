@@ -53,15 +53,21 @@ class MAVLinkSigningConfiguration:
                 else:
                     key = b64decode(key_spec_stripped)
             except Exception:
-                raise InvalidSigningKeyError(
-                    f"Signing key {key_spec!r} is not a valid base64-encoded "
-                    f"or hexadecimal string"
-                ) from None
+                if enabled:
+                    raise InvalidSigningKeyError(
+                        f"Signing key {key_spec!r} is not a valid base64-encoded "
+                        f"or hexadecimal string"
+                    ) from None
+                else:
+                    key = b""
 
         if len(key) != 32:
-            raise InvalidSigningKeyError(
-                f"MAVLink signing keys must be 32 bytes long, got {len(key)}"
-            )
+            if enabled:
+                raise InvalidSigningKeyError(
+                    f"MAVLink signing keys must be 32 bytes long, got {len(key)}"
+                )
+            else:
+                key = b""
 
         return cls(
             enabled=enabled,

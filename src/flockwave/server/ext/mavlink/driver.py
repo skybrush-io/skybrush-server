@@ -54,6 +54,7 @@ from .autopilots import ArduPilot, Autopilot, UnknownAutopilot
 from .comm import Channel
 from .compass import CompassCalibration
 from .enums import (
+    ConnectionState,
     GPSFixType,
     MAVCommand,
     MAVDataStream,
@@ -73,7 +74,11 @@ from .ftp import MAVFTP
 from .log_download import MAVLinkLogDownloader
 from .packets import create_led_control_packet, DroneShowExecutionStage, DroneShowStatus
 from .types import MAVLinkMessage, PacketBroadcasterFn, PacketSenderFn, spec
-from .utils import log_id_for_uav, mavlink_version_number_to_semver
+from .utils import (
+    can_communicate_infer_from_heartbeat,
+    log_id_for_uav,
+    mavlink_version_number_to_semver,
+)
 
 __all__ = ("MAVLinkDriver",)
 
@@ -986,6 +991,9 @@ class MAVLinkUAV(UAVBase):
     ensure that the compass calibration status object is created on-demand.
     """
 
+    _connection_state: ConnectionState = ConnectionState.DISCONNECTED
+    """State of the connection to this drone."""
+
     _gps_fix: GPSFix
     """Current GPS fix status and position accuracy of the drone."""
 
@@ -1017,10 +1025,6 @@ class MAVLinkUAV(UAVBase):
 
         #: Current GPS fix status of the drone
         self._gps_fix = GPSFix()
-
-        #: Stores whether we are currently connected to the drone (i.e. received
-        #: a heartbeat recently)
-        self._is_connected = False
 
         #: Stores whether the drone is authorized to perform a scheduled takeoff
         self._is_scheduled_takeoff_authorized = False
@@ -1525,10 +1529,7 @@ class MAVLinkUAV(UAVBase):
         # to initiate communication with the UAV. Heartbeats that indicate that
         # the UAV is powering down or is completely powered down will not trigger
         # further communication with the UAV.
-        can_communicate = (
-            message.system_status != MAVState.FLIGHT_TERMINATION
-            and message.system_status != MAVState.BOOT
-        )
+        can_communicate = can_communicate_infer_from_heartbeat(message)
 
         # If the heartbeat indicates that we might not be able to communicate
         # with the drone yet (maybe the heartbeat is sent by the wifi module on
@@ -1541,14 +1542,8 @@ class MAVLinkUAV(UAVBase):
             self.notify_updated()
             return
 
-        if not self._is_connected:
-            # We assume that the autopilot type stays the same even if we lost
-            # contact with the drone or if it was rebooted
-            if isinstance(self._autopilot, UnknownAutopilot):
-                autopilot_cls = Autopilot.from_heartbeat(message)
-                self._autopilot = autopilot_cls()
-
-            self.notify_reconnection()
+        if self._connection_state is not ConnectionState.CONNECTED:
+            self.notify_reconnection(message)
 
         # Do we already have basic information about the autopilot capabilities?
         # If we don't, ask for them.
@@ -1674,8 +1669,11 @@ class MAVLinkUAV(UAVBase):
 
     @property
     def is_connected(self) -> bool:
-        """Returns whether the UAV is connected to the network."""
-        return self._is_connected
+        """Returns whether the UAV is connected to the ground station and we
+        have seen heartbeats from it recently (even if they indicated that the
+        drone is in a sleep state).
+        """
+        return self._connection_state is not ConnectionState.DISCONNECTED
 
     @property
     def log_downloader(self) -> MAVLinkLogDownloader:
@@ -1701,14 +1699,10 @@ class MAVLinkUAV(UAVBase):
 
     def notify_disconnection(self) -> None:
         """Notifies the UAV state object that we have detected that it has been
-        disconnected from the network.
+        disconnected from the network. In other words, the heartbeats from the
+        drone have ceased arriving.
         """
-        self._is_connected = False
-
-        # Revert to the lowest MAVLink version that we support in case the UAV
-        # was somehow reset and it does not "understand" MAVLink v2 in its new
-        # configuration
-        self._reset_mavlink_version()
+        self._set_connection_state(ConnectionState.DISCONNECTED, None)
 
     def _notify_rebooted_by_us(self) -> None:
         """Notifies the UAV state object that we have rebooted the UAV ourselves
@@ -1733,21 +1727,15 @@ class MAVLinkUAV(UAVBase):
         self._preflight_status.message = message
         self._preflight_status.result = PreflightCheckResult.FAILURE
 
-    def notify_reconnection(self) -> None:
+    def notify_reconnection(self, heartbeat: MAVLinkMessage) -> None:
         """Notifies the UAV state object that it has been reconnected to the
         network.
         """
-        self._is_connected = True
-        # TODO(ntamas): clear a warning flag in the UAV?
-
-        if self._was_probably_rebooted_after_reconnection():
-            if not self._first_connection:
-                self.driver.log.warning(
-                    f"UAV {self.id} might have been rebooted; reconfiguring"
-                )
-
-            self._first_connection = False
-            self._handle_reboot()
+        if can_communicate_infer_from_heartbeat(heartbeat):
+            new_state = ConnectionState.CONNECTED
+        else:
+            new_state = ConnectionState.SLEEPING
+        self._set_connection_state(new_state, heartbeat)
 
     @property
     def preflight_status(self) -> PreflightCheckInfo:
@@ -2242,6 +2230,38 @@ class MAVLinkUAV(UAVBase):
         or `None` if we have not observed such a message yet.
         """
         return self._last_messages.get(message.get_msgId())
+
+    def _set_connection_state(
+        self, value: ConnectionState, heartbeat: Optional[MAVLinkMessage]
+    ) -> None:
+        if self._connection_state is value:
+            return
+
+        self._connection_state = value
+
+        if value is ConnectionState.DISCONNECTED:
+            # Revert to the lowest MAVLink version that we support in case the UAV
+            # was somehow reset and it does not "understand" MAVLink v2 in its new
+            # configuration
+            self._reset_mavlink_version()
+
+        elif value is ConnectionState.CONNECTED:
+            # We assume that the autopilot type stays the same even if we lost
+            # contact with the drone or if it was rebooted. However, if we do not
+            # know the autopilot type yet, we create an instance based on the
+            # heartbeat
+            if isinstance(self._autopilot, UnknownAutopilot) and heartbeat is not None:
+                autopilot_cls = Autopilot.from_heartbeat(heartbeat)
+                self._autopilot = autopilot_cls()
+
+            if self._was_probably_rebooted_after_reconnection():
+                if not self._first_connection:
+                    self.driver.log.warning(
+                        f"UAV {self.id} might have been rebooted; reconfiguring"
+                    )
+
+                self._first_connection = False
+                self._handle_reboot()
 
     def _store_message(self, message: MAVLinkMessage) -> None:
         """Stores the given MAVLink message in the dictionary that maps

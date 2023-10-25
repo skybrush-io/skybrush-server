@@ -5,10 +5,11 @@ from typing import Optional, List, Tuple, Union
 from flockwave.gps.vectors import GPSCoordinate
 from flockwave.server.model.log import Severity
 
-from .enums import MAVFrame, MAVParamType
+from .enums import MAVFrame, MAVParamType, MAVState
 from .types import MAVLinkMessage
 
 __all__ = (
+    "can_communicate_infer_from_heartbeat",
     "decode_param_from_wire_representation",
     "encode_param_to_wire_representation",
     "log_id_for_uav",
@@ -40,6 +41,19 @@ _mavlink_severity_to_flockwave_severity = [
     Severity.INFO,  # MAV_SEVERITY_INFO
     Severity.DEBUG,  # MAV_SEVERITY_DEBUG
 ]
+
+
+def can_communicate_infer_from_heartbeat(message: Optional[MAVLinkMessage]) -> bool:
+    """Decides whether a drone that has sent the given heartbeat message is
+    likely to be able to communicate now. This function is used to distinguish
+    drones in a sleep state from drones where the flight controller is alive.
+    """
+    system_status = getattr(message, "system_status", None)
+    return (
+        system_status is not None
+        and system_status != MAVState.FLIGHT_TERMINATION
+        and system_status != MAVState.BOOT
+    )
 
 
 def decode_param_from_wire_representation(

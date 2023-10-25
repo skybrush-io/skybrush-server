@@ -33,9 +33,7 @@ async def check_uavs_alive(
         timeout: number of seconds to wait after a heartbeat to consider a UAV
             as disconnected
     """
-    state_summaries = defaultdict(
-        _create_state_summary
-    )  # type: Dict[str, List[Optional[int]]]
+    state_summaries: Dict[str, List[Optional[int]]] = defaultdict(_create_state_summary)
 
     # TODO(ntamas): remove UAVs that have been disconnected for a long while?
     async for _ in periodic(delay):
@@ -47,7 +45,10 @@ async def check_uavs_alive(
                     uav.notify_disconnection()
             else:
                 if heartbeat_age < timeout:
-                    uav.notify_reconnection()
+                    # UAV may still be in a sleep state so let's get the heartbeat
+                    # and test it
+                    message = uav.get_last_message(MAVMessageType.HEARTBEAT)
+                    uav.notify_reconnection(message)
 
         if uavs and signal.receivers:
             try:

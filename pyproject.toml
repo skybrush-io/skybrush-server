@@ -55,7 +55,7 @@ flockwave-logger = { version = "^1.9.0", source = "fury" }
 flockwave-mavlink = { version = ">=0.1.0", source = "fury" }
 flockwave-net = { extras = ["async"], version = "^6.0.1", source = "fury" }
 flockwave-parsers = { version = "^2.0.1", source = "fury" }
-flockwave-spec = { version = "^1.79.1", source = "fury" }
+flockwave-spec = { version = "^1.79.3", source = "fury" }
 skybrush-ext-dock = { version = "^1.0.0", source = "collmot", optional = true }
 skybrush-ext-flight-report = { version = "^1.0.3", source = "collmot", optional = true }
 skybrush-ext-flockctrl = { version = "^2.29.0", source = "collmot", optional = true }

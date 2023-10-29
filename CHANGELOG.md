@@ -5,7 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## Unreleased
+## [2.17.0] - 2023-10-29
+
+### Added
+
+- MAVLink `RADIO_STATUS` messages are now parsed if they originate from
+  a component that denotes a UDP-to-UART bridge. It is assumed that these
+  messages come from the `mavesp8266` firmware; the RSSI values in the message
+  are converted into percentages and stored on the server side. Live will be
+  updated soon to display the RSSI values.
 
 ### Fixed
 

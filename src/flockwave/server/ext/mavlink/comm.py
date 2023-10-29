@@ -60,14 +60,14 @@ def _get_timestamp_for_signing() -> int:
 MAVLinkFactory = Callable[[], Any]
 
 
-def _allow_all_unsigned_messages(self, msg_id) -> bool:
+def _allow_all_unsigned_messages(self, msg_id: int) -> bool:
     """Callback function for MAVLink connections that allow them to accept
     all unsigned messages.
     """
     return True
 
 
-def _allow_only_basic_unsigned_messages(self, msg_id) -> bool:
+def _allow_only_basic_unsigned_messages(self, msg_id: int) -> bool:
     """Callback function for MAVLink connections that allow them to accept
     only specific unsigned messages that may originate from sources that do
     not support MAVLink signing.

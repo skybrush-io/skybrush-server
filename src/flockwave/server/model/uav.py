@@ -76,6 +76,7 @@ class UAVStatusInfo(TimestampMixin, metaclass=ModelMeta):
     velocity: VelocityNED
     velocityXYZ: Optional[VelocityXYZ]
     battery: BatteryInfo
+    rssi: List[int]
 
     def __init__(
         self, id: Optional[str] = None, timestamp: Optional[TimestampLike] = None
@@ -103,6 +104,7 @@ class UAVStatusInfo(TimestampMixin, metaclass=ModelMeta):
         self.positionXYZ = None
         self.velocityXYZ = None
         self.battery = BatteryInfo()
+        self.rssi = []
 
     @property
     def position_xyz(self) -> Optional[PositionXYZ]:
@@ -298,6 +300,22 @@ class UAVBase(UAV):
             for code, present in codes.items():
                 self.ensure_error(code, present)
 
+    def update_rssi(self, *, index: int, value: Optional[int] = None) -> None:
+        """Updates the RSSI value of the UAV for the channel with the given
+        index.
+
+        Parameters:
+            index: the index of the channe;
+            value: the new RSSI value in the range 0-100; -1 means "unknown",
+                and so is ``None``.
+        """
+        value = min(100, max(-1, int(value))) if value is not None else -1
+        rssi = self._status.rssi
+        if len(rssi) <= index:
+            rssi.extend([-1] * (index - len(rssi) + 1))
+        rssi[index] = value
+        self._status.update_timestamp()
+
     def update_status(
         self,
         *,
@@ -313,6 +331,7 @@ class UAVBase(UAV):
         light: Optional[int] = None,
         errors: Optional[Union[int, Iterable[int]]] = None,
         debug: Optional[bytes] = None,
+        rssi: Optional[Union[int, Iterable[int]]] = None,
     ):
         """Updates the status information of the UAV.
 
@@ -343,6 +362,8 @@ class UAVBase(UAV):
             errors: the error code or error codes of the UAV; use an empty list
                 or tuple if the UAV has no errors
             debug: additional debug information to store
+            rssi: the measured RSSI values for each of the channels the UAV is
+                accessible on.
         """
         if position is not None:
             self._status.position.update_from(position, precision=7)
@@ -377,6 +398,12 @@ class UAVBase(UAV):
             else:
                 errors = sorted(code for code in errors if code > 0)
             self._status.errors = errors
+        if rssi is not None:
+            if isinstance(rssi, int):
+                rssi = [rssi]
+            else:
+                rssi = list(rssi)
+            self._status.rssi = rssi
         if gps is not None:
             self._status.gps.update_from(gps)
         if debug is not None:

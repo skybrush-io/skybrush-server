@@ -1,7 +1,8 @@
 from enum import Enum, IntEnum, IntFlag
-from flockwave.server.model.gps import GPSFixType as OurGPSFixType
 from struct import Struct
 from typing import Union
+
+from flockwave.server.model.gps import GPSFixType as OurGPSFixType
 
 __all__ = ("MAVComponent",)
 
@@ -107,11 +108,15 @@ class MAVComponent(IntEnum):
     """Replica of the `MAV_COMPONENT` enum of the MAVLink protocol, using proper
     Python enums.
 
-    Not all values are listed here, only the ones that we do actually use.
+    Not all values are listed here, only the ones that we do actually use or
+    might use in the near future.
     """
 
     AUTOPILOT1 = 1
+    TELEMETRY_RADIO = 68
     MISSIONPLANNER = 190
+    UDP_BRIDGE = 240
+    UART_BRIDGE = 241
 
 
 class MAVDataStream(IntEnum):

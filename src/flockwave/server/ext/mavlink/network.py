@@ -700,6 +700,7 @@ class MAVLinkNetwork:
             "PARAM_VALUE": nop,
             "POSITION_TARGET_GLOBAL_INT": nop,
             "POWER_STATUS": nop,
+            "RADIO_STATUS": self._handle_message_radio_status,
             "STATUSTEXT": self._handle_message_statustext,
             "SYS_STATUS": self._handle_message_sys_status,
             "TIMESYNC": self._handle_message_timesync,
@@ -707,6 +708,7 @@ class MAVLinkNetwork:
         }
 
         autopilot_component_id = MAVComponent.AUTOPILOT1
+        udp_bridge_id = MAVComponent.UDP_BRIDGE
 
         # Many third-party MAVLink-based drones do not respond to broadcast
         # messages sent to them with an IP address of 255.255.255.255 as they
@@ -719,13 +721,24 @@ class MAVLinkNetwork:
         broadcast_address_updated: Dict[str, bool] = defaultdict(bool)
 
         async for connection_id, (message, address) in channel:
-            if message.get_srcComponent() != autopilot_component_id:
-                # We do not handle messages from any other component but an
-                # autopilot
-                continue
-
             # Uncomment this for debugging
             # self.log.info(repr(message))
+
+            # SiK radios use system ID = 51 and component ID = 68
+            # (MAV_COMP_ID_TELEMETRY_RADIO)
+            # mavesp8266 uses the correct system ID and component ID = 0xf0
+            # (MAV_COMP_ID_UDP_BRIDGE)
+
+            # Get the source component and the message type
+            src_component = message.get_srcComponent()
+            type = message.get_type()
+
+            # Determine whether we should process this message
+            should_process = src_component == autopilot_component_id or (
+                src_component == udp_bridge_id and type == "RADIO_STATUS"
+            )
+            if not should_process:
+                continue
 
             # Update the broadcast address to a subnet-specific one if needed
             if not broadcast_address_updated[connection_id]:
@@ -733,9 +746,6 @@ class MAVLinkNetwork:
                     connection_id, address
                 )
                 broadcast_address_updated[connection_id] = True
-
-            # Get the message type
-            type = message.get_type()
 
             # Resolve all futures that are waiting for this message
             for system_id, params, future in self._matchers[type]:
@@ -859,6 +869,14 @@ class MAVLinkNetwork:
         uav = self._find_uav_from_message(message, address)
         if uav:
             uav.handle_message_mag_cal_report(message)
+
+    def _handle_message_radio_status(
+        self, message: MAVLinkMessage, *, connection_id: str, address: Any
+    ):
+        """Handles an incoming MAVLink RADIO_STATUS message."""
+        uav = self._find_uav_from_message(message, address)
+        if uav:
+            uav.handle_message_radio_status(message)
 
     def _handle_message_statustext(
         self, message: MAVLinkMessage, *, connection_id: str, address: Any

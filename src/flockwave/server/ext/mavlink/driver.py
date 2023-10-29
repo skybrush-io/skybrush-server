@@ -1624,6 +1624,24 @@ class MAVLinkUAV(UAVBase):
     def handle_message_mag_cal_report(self, message: MAVLinkMessage):
         self.compass_calibration.handle_message_mag_cal_report(message)
 
+    def handle_message_radio_status(self, message: MAVLinkMessage):
+        # Limitations:
+        # - Currently we do not account for multiple connections; we alway
+        #   update the RSSI of the first connection
+        # - We handle the conventions of the MAVESP8266 firmware only.
+        #   MAVESP8266 simply uses WiFi.RSSI(), which is a 8-bit signed int
+        #   representing the signal level in dBm. We scale the value to a
+        #   0% - 100% range such that anything less than -100 dBm is 0% and
+        #   anything larger than -50 dBm is 100%.
+        # - In AP mode, the MAVESP8266 firmware transmits 0 as the RSSI value,
+        #   which is interpreted as 0 dBm here and translated to 200%, which then
+        #   gets clamped to 100%.
+
+        # Unsigned-to-signed conversion to work around MAVLink data type issues
+        rssi_dbm = message.rssi if message.rssi <= 127 else message.rssi - 256
+        rssi = min(max(0, int((rssi_dbm + 100) * 2)), 100)
+        self.update_rssi(index=0, value=rssi)
+
     def handle_message_sys_status(self, message: MAVLinkMessage):
         self._store_message(message)
         self._update_errors_from_sys_status_and_heartbeat()

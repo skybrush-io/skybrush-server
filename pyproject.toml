@@ -62,6 +62,7 @@ skybrush-ext-flockctrl = { version = "^2.29.0", source = "collmot", optional = t
 skybrush-ext-map-cache = { version = "^1.0.0", source = "collmot", optional = true }
 skybrush-ext-sidekick = { version = "^1.0.1", source = "collmot", optional = true }
 skybrush-ext-timecode = { version = "^1.0.2", source = "collmot", optional = true }
+skybrush-lib-mission-planning = { version = "^1.0.0", source = "collmot", optional = true }
 pyledctrl = { version = "^4.0.1", source = "fury" }
 aiocflib = "^3.0.0"
 appdirs = "^1.4.4"
@@ -91,6 +92,7 @@ all = [
     "skybrush-ext-map-cache",
     "skybrush-ext-sidekick",
     "skybrush-ext-timecode",
+    "skybrush-lib-mission-planning",
 ]
 collmot = [
     "flockwave-flockctrl",
@@ -99,12 +101,14 @@ collmot = [
     "skybrush-ext-flockctrl",
     "skybrush-ext-map-cache",
     "skybrush-ext-timecode",
+    "skybrush-lib-mission-planning",
 ]
 pro = [
     "skybrush-ext-flight-report",
     "skybrush-ext-map-cache",
     "skybrush-ext-sidekick",
     "skybrush-ext-timecode",
+    "skybrush-lib-mission-planning",
 ]
 
 [tool.poetry.scripts]

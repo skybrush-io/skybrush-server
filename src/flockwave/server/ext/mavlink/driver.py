@@ -1626,7 +1626,7 @@ class MAVLinkUAV(UAVBase):
 
     def handle_message_radio_status(self, message: MAVLinkMessage):
         # Limitations:
-        # - Currently we do not account for multiple connections; we alway
+        # - Currently we do not account for multiple connections; we always
         #   update the RSSI of the first connection
         # - We handle the conventions of the MAVESP8266 firmware only.
         #   MAVESP8266 simply uses WiFi.RSSI(), which is a 8-bit signed int

@@ -58,7 +58,7 @@ flockwave-parsers = { version = "^2.0.1", source = "fury" }
 flockwave-spec = { version = "^1.80.0", source = "fury" }
 skybrush-ext-dock = { version = "^1.0.0", source = "collmot", optional = true }
 skybrush-ext-flight-report = { version = "^1.0.3", source = "collmot", optional = true }
-skybrush-ext-flockctrl = { version = "^2.29.0", source = "collmot", optional = true }
+skybrush-ext-flockctrl = { version = "^2.30.0", source = "collmot", optional = true }
 skybrush-ext-map-cache = { version = "^1.0.0", source = "collmot", optional = true }
 skybrush-ext-sidekick = { version = "^1.0.1", source = "collmot", optional = true }
 skybrush-ext-timecode = { version = "^1.0.2", source = "collmot", optional = true }

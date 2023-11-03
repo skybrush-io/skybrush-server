@@ -137,6 +137,13 @@ class MAVLinkLogDownloader:
     ) -> AsyncIterator[Union[Progress, Optional[FlightLog]]]:
         last_progress_at = current_time()
 
+        # We are requesting at most 512 LOG_DATA messages at once to let the
+        # wifi module also take care of other things while doing the download.
+        # Requesting the entire log at once has caused timeout problems with
+        # mavesp8266. The strategy adopted here is identical to what
+        # QGroundControl is doing
+        MAX_CHUNK_SIZE = 512 * 90
+
         try:
             # Get the size of the log first and create a chunk assembler
             metadata = await self._get_single_log_metadata(log_id, rx)
@@ -150,9 +157,11 @@ class MAVLinkLogDownloader:
             chunks = ChunkAssembler(metadata.size)
             log_data: list[bytes] = []
             while not chunks.done:
-                start, count = chunks.get_next_range()
+                next_range = chunks.get_next_range(max_size=MAX_CHUNK_SIZE)
                 response: Optional[MAVLinkMessage] = await self._send_and_wait(
-                    spec.log_request_data(id=log_id, ofs=start, count=count),
+                    spec.log_request_data(
+                        id=log_id, ofs=next_range.offset, count=next_range.size
+                    ),
                     spec.log_data(),
                 )
 
@@ -171,7 +180,7 @@ class MAVLinkLogDownloader:
                             log_data.append(to_flush)
 
                     response = None
-                    if not chunks.done:
+                    if not chunks.done_with(next_range):
                         with move_on_after(3):
                             response = await rx.receive()
 

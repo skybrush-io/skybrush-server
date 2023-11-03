@@ -1,6 +1,6 @@
 from heapq import heappush, heappop
 from logging import ERROR, WARNING, INFO, DEBUG
-from typing import Optional, Union
+from typing import NamedTuple, Optional, Union
 
 from flockwave.gps.vectors import GPSCoordinate
 from flockwave.server.model.log import Severity
@@ -197,6 +197,26 @@ def python_log_level_from_mavlink_severity(severity: int) -> int:
         return _mavlink_severity_to_python_log_level[severity]
 
 
+class ChunkAssemblerRange(NamedTuple):
+    """A single range returned from a ChunkAssembler_ when it proposes the
+    next range to fetch.
+    """
+
+    offset: int
+    """The offset of the range."""
+
+    size: int
+    """The size of the range."""
+
+    @property
+    def start(self) -> int:
+        return self.offset
+
+    @property
+    def end(self) -> int:
+        return self.offset + self.size
+
+
 class ChunkAssembler:
     """Helper object to assemble a downloaded file from its chunks. This class
     is used by the log downloader at the moment and may be used with the MAVFTP
@@ -277,17 +297,51 @@ class ChunkAssembler:
             heappush(self._pending, (offset, data))
             self._num_pending += len(data)
 
-    def get_next_range(self) -> tuple[int, int]:
+    def get_next_range(self, max_size: int = -1) -> ChunkAssemblerRange:
         """Returns the offset and size of the next range to fetch from the
         file with a bursted read.
+
+        Args:
+            max_size: the maximum size of the next range to return; negative
+                if there is no upper limit
         """
         end = self._pending[0][0] if self._pending else self._size
-        return self._num_flushed, end - self._num_flushed
+        size = end - self._num_flushed
+        if max_size >= 0:
+            size = min(size, max_size)
+        return ChunkAssemblerRange(self._num_flushed, size)
+
+    def shorten_to(self, size: int) -> None:
+        """Shortens the expected length of the file to the given size."""
+        if self._size < size:
+            raise RuntimeError(
+                f"Cannot shorten a file with expected length {self._size} "
+                f"to {size} bytes"
+            )
+        elif self._size == size:
+            return
+
+        self._size = size
+
+        new_pending: list[tuple[int, bytes]] = []
+        for offset, data in self._pending:
+            end = offset + len(data)
+            if end > self._size:
+                data = data[: (self._size - offset)]
+            if data:
+                new_pending.append((offset, data))
+
+        self._pending = new_pending
+        self._num_pending = sum(len(data) for _, data in self._pending)
 
     @property
     def done(self) -> bool:
         """Returns whether there are no more chunks to fetch."""
         return self._num_flushed >= self._size
+
+    def done_with(self, range: ChunkAssemblerRange) -> bool:
+        """Returns whether there are no more chunks to fetch in the given range."""
+        return self._num_flushed >= range.end
 
     @property
     def num_flushed(self) -> int:

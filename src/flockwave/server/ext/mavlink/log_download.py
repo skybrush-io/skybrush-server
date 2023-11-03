@@ -144,6 +144,9 @@ class MAVLinkLogDownloader:
                 yield None
                 return
 
+            if metadata.size is None:
+                raise RuntimeError("unknown log size")
+
             chunks = ChunkAssembler(metadata.size)
             log_data: List[bytes] = []
             while not chunks.done:
@@ -175,7 +178,8 @@ class MAVLinkLogDownloader:
                     now = current_time()
                     if now - last_progress_at > 0.1:
                         yield Progress(
-                            percentage=chunks.percentage, message="Downloading log..."
+                            percentage=round(chunks.percentage),
+                            message="Downloading log...",
                         )
                         last_progress_at = current_time()
 

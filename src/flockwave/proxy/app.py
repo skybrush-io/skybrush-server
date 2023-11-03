@@ -3,7 +3,6 @@
 from http.client import parse_headers
 from io import BytesIO
 from trio import open_nursery, sleep_forever
-from typing import Tuple
 
 from flockwave.app_framework import DaemonApp
 from flockwave.app_framework.configurator import AppConfigurator
@@ -40,7 +39,7 @@ def parse_content_length(headers: bytes) -> int:
 
 async def parse_http_headers_from_connection(
     conn: Connection,
-) -> Tuple[bytes, bytes, bytes]:
+) -> tuple[bytes, bytes, bytes]:
     """Parses the status line and the HTTP headers from the given connection.
 
     Returns:

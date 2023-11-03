@@ -9,7 +9,7 @@ from functools import partial
 from inspect import isawaitable
 from jsonschema import validate, ValidationError
 from trio import open_nursery
-from typing import Any, Dict, Iterable, Optional, Tuple, cast, overload
+from typing import Any, Iterable, Optional, cast, overload
 
 from flockwave.server.ext.base import Extension
 from flockwave.server.message_hub import MessageHub
@@ -46,7 +46,7 @@ class MissionManagementExtension(Extension):
         self._mission_type_registry = MissionTypeRegistry()
         self._mission_registry = MissionRegistry(self._mission_type_registry)
 
-    def exports(self) -> Dict[str, Any]:
+    def exports(self) -> dict[str, Any]:
         return {
             "find_mission_by_id": self.find_mission_by_id,
             "use_mission_type": self._mission_type_registry.use,
@@ -349,9 +349,9 @@ class MissionManagementExtension(Extension):
             parameters = self._get_parameters_from_request(message)
             maybe_plan_schema = mission_type.get_plan_parameter_schema()
             if isawaitable(maybe_plan_schema):
-                plan_schema = cast(Dict[str, Any], await maybe_plan_schema)
+                plan_schema = cast(dict[str, Any], await maybe_plan_schema)
             else:
-                plan_schema = cast(Dict[str, Any], maybe_plan_schema)
+                plan_schema = cast(dict[str, Any], maybe_plan_schema)
             try:
                 validate(parameters, schema=plan_schema)
             except ValidationError as ex:
@@ -497,14 +497,14 @@ class MissionManagementExtension(Extension):
 
     def _get_mission_type_and_id_from_request(
         self, message: FlockwaveMessage
-    ) -> Tuple[MissionType, str]:
+    ) -> tuple[MissionType, str]:
         id = message.body.get("id") or ""
         mission_type = self.find_mission_type_by_id(id)
         if mission_type is None:
             raise RuntimeError("No such mission type")
         return mission_type, id
 
-    def _get_parameters_from_request(self, message: FlockwaveMessage) -> Dict[str, Any]:
+    def _get_parameters_from_request(self, message: FlockwaveMessage) -> dict[str, Any]:
         parameters = message.body.get("parameters", {})
         if not isinstance(parameters, dict):
             raise RuntimeError("Parameters must be a dictionary")

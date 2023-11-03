@@ -2,7 +2,7 @@ from async_generator import aclosing
 from time import monotonic, time
 from trio import sleep
 from trio_util import RepeatedEvent
-from typing import AsyncIterator, List, Optional, TYPE_CHECKING
+from typing import AsyncIterator, Optional, TYPE_CHECKING
 
 from .frame import MotionCaptureFrame, MotionCaptureFrameItem
 from .mapping import NameRemapping
@@ -100,7 +100,7 @@ async def run(app: "SkybrushServer", configuration):
         )
         async with aclosing(limiter.iter_frames()) as gen:
             async for frame in gen:
-                matched_items: List[MotionCaptureFrameItem] = []
+                matched_items: list[MotionCaptureFrameItem] = []
                 for item in frame.items:
                     remapped_name = name_remapping(item.name)
                     if remapped_name is not None:

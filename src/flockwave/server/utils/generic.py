@@ -10,12 +10,10 @@ from operator import mul
 from typing import (
     Any,
     Callable,
-    Dict,
     Iterable,
     Iterator,
     Optional,
     Sequence,
-    Tuple,
     TypeVar,
 )
 
@@ -80,7 +78,7 @@ def bind(func, args=None, kwds=None, *, partial=False):
         return partial(func, *args, **kwds)
 
 
-def chunks(it: Iterable[T], size: int) -> Iterator[Tuple[T]]:
+def chunks(it: Iterable[T], size: int) -> Iterator[tuple[T]]:
     """Takes an iterator or iterable and returns an iterator that yields chunks
     of at most the given size from the input.
     """
@@ -112,7 +110,7 @@ def color_to_rgb565(color: Color) -> int:
     )
 
 
-def color_to_rgb8_triplet(color: Color) -> Tuple[int, int, int]:
+def color_to_rgb8_triplet(color: Color) -> tuple[int, int, int]:
     """Converts a color object into its RGB8 triplet representation.
 
     Parameters:
@@ -129,7 +127,7 @@ T = TypeVar("T")
 
 def consecutive_pairs(
     iterable: Iterable[T], cyclic: bool = False
-) -> Iterable[Tuple[T, T]]:
+) -> Iterable[tuple[T, T]]:
     """Given an iterable, returns a generator that generates consecutive pairs
     of objects from the iterable.
 
@@ -368,14 +366,14 @@ V = TypeVar("V")
 
 
 def rename_keys(
-    mapping: Dict[K, K], *, copy: bool = False
-) -> Callable[[Dict[K, V]], Dict[K, V]]:
+    mapping: dict[K, K], *, copy: bool = False
+) -> Callable[[dict[K, V]], dict[K, V]]:
     """Factory function that creates a mapper function that renames keys in
     a dictionary.
     """
     if not copy:
 
-        def in_place_mapper(input: Dict[K, V]) -> Dict[K, V]:
+        def in_place_mapper(input: dict[K, V]) -> dict[K, V]:
             for old, new in mapping.items():
                 if old in input:
                     input[new] = input.pop(old)
@@ -385,7 +383,7 @@ def rename_keys(
 
     else:
 
-        def mapper(input: Dict[K, V]) -> Dict[K, V]:
+        def mapper(input: dict[K, V]) -> dict[K, V]:
             return {mapping.get(k, k): v for k, v in input.items()}
 
         return mapper

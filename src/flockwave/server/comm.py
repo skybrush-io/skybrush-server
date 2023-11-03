@@ -16,14 +16,11 @@ from typing import (
     Awaitable,
     Callable,
     ClassVar,
-    Dict,
     Generator,
     Generic,
     Iterable,
     Iterator,
-    List,
     Optional,
-    Tuple,
     TypeVar,
 )
 
@@ -122,12 +119,12 @@ class CommunicationManager(Generic[PacketType, AddressType]):
             """
             return self.channel is not None
 
-    _aliases: Dict[str, List[str]]
+    _aliases: dict[str, list[str]]
     """Mapping from channel aliases to the list of channel IDs that the alias
     refers to.
     """
 
-    _entries_by_name: Dict[str, List[Entry]]
+    _entries_by_name: dict[str, list[Entry]]
     """Mapping from channel identifiers to the corresponding Entry_ object."""
 
     def __init__(
@@ -248,7 +245,7 @@ class CommunicationManager(Generic[PacketType, AddressType]):
                     "Dropping outbound broadcast packet; outbound message queue is full"
                 )
 
-    def enqueue_packet(self, packet: PacketType, destination: Tuple[str, AddressType]):
+    def enqueue_packet(self, packet: PacketType, destination: tuple[str, AddressType]):
         """Requests the communication manager to send the given message packet
         to the given destination and return immediately.
 
@@ -326,7 +323,7 @@ class CommunicationManager(Generic[PacketType, AddressType]):
         del self._aliases[alias]
 
     async def send_packet(
-        self, packet: PacketType, destination: Tuple[str, AddressType]
+        self, packet: PacketType, destination: tuple[str, AddressType]
     ) -> None:
         """Requests the communication manager to send the given message packet
         to the given destination.
@@ -365,7 +362,7 @@ class CommunicationManager(Generic[PacketType, AddressType]):
         *,
         consumer,
         supervisor,
-        tasks: Optional[List[Callable[..., Awaitable[Any]]]] = None,
+        tasks: Optional[list[Callable[..., Awaitable[Any]]]] = None,
     ) -> None:
         tx_queue, rx_queue = open_memory_channel(0)
 

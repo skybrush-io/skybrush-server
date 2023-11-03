@@ -8,7 +8,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass, field
 from enum import IntFlag
 from time import monotonic
-from typing import Deque, Dict, Optional, Tuple
+from typing import Deque, Optional
 
 from flockwave.gps.rtcm.packets import (
     RTCMPacket,
@@ -133,7 +133,7 @@ class MessageObservations:
     RTK messages broadcast by an RTK base.
     """
 
-    entries: Deque[Tuple[float, float]] = field(default_factory=deque)
+    entries: Deque[tuple[float, float]] = field(default_factory=deque)
 
     _last_observed_at: float = field(default_factory=monotonic)
     _total_bytes: float = 0
@@ -187,7 +187,7 @@ class SatelliteCNRs:
     """Simple data class holding satellite carrier-to-noise values
     in decibels (dB)."""
 
-    entries: Dict[str, float] = field(default_factory=dict)
+    entries: dict[str, float] = field(default_factory=dict)
     _timestamps: LastUpdatedOrderedDict[str, float] = field(
         default_factory=LastUpdatedOrderedDict
     )

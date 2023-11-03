@@ -8,7 +8,7 @@ from __future__ import annotations
 from blinker import NamedSignal, Signal
 from contextlib import contextmanager, ExitStack
 from logging import Logger
-from typing import Callable, Dict, Iterator, Optional
+from typing import Callable, Iterator, Optional
 
 
 #: Logger that will be used to log unexpected exceptions from signal handlers
@@ -85,7 +85,7 @@ def get_signal(name: str) -> Signal:
 
 
 @contextmanager
-def use_signals(map: Dict[str, Callable]) -> Iterator[None]:
+def use_signals(map: dict[str, Callable]) -> Iterator[None]:
     """Context manager that registers signal handler functions for multiple
     signals when entering the context and unregisters them when exiting the
     context.

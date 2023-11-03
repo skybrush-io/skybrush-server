@@ -15,7 +15,7 @@ from pathlib import Path
 from quart import abort, Blueprint, Quart, redirect, request, url_for
 from quart_trio import QuartTrio
 from trio import current_time, sleep
-from typing import Iterable, List, Optional
+from typing import Iterable, Optional
 
 import logging
 
@@ -33,7 +33,7 @@ PACKAGE_NAME = __name__.rpartition(".")[0]
 
 ############################################################################
 
-proposed_index_pages: List["ProposedIndexPage"] = []
+proposed_index_pages: list["ProposedIndexPage"] = []
 quart_app: Optional[Quart] = None
 ext_manager: Optional[ExtensionManager] = None
 

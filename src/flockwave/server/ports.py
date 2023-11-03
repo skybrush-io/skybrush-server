@@ -2,7 +2,7 @@
 and related applications.
 """
 
-from typing import Dict, Optional, Tuple
+from typing import Optional
 
 __all__ = ("get_base_port", "get_port_number_for_service")
 
@@ -12,7 +12,7 @@ BASE_PORT: int = 5000
 number are derived by adding the relative port number to the base port.
 """
 
-SERVICE_MAP: Dict[str, Tuple[str, int]] = {
+SERVICE_MAP: dict[str, tuple[str, int]] = {
     "http": ("relative", 0),
     "tcp": ("relative", 1),
     "udp": ("relative", 1),

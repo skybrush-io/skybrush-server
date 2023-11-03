@@ -1,5 +1,5 @@
 from crcmod import mkCrcFun as make_crc_function
-from typing import Optional, List, Sequence, Tuple
+from typing import Optional, Sequence
 
 __all__ = (
     "BoundingBoxCalculator",
@@ -8,7 +8,7 @@ __all__ = (
     "encode_variable_length_integer",
 )
 
-Point = Tuple[float, float, float]
+Point = tuple[float, float, float]
 """Type specification for a single point in a trajectory"""
 
 
@@ -17,8 +17,8 @@ class BoundingBoxCalculator:
     set of points.
     """
 
-    _max: Optional[List[float]]
-    _min: Optional[List[float]]
+    _max: Optional[list[float]]
+    _min: Optional[list[float]]
 
     def __init__(self, dim: int = 3):
         """Constructor.
@@ -45,7 +45,7 @@ class BoundingBoxCalculator:
                 self._min[i] = min(self._min[i], point[i])
                 self._max[i] = max(self._max[i], point[i])
 
-    def get_corners(self) -> Tuple[Sequence[float], Sequence[float]]:
+    def get_corners(self) -> tuple[Sequence[float], Sequence[float]]:
         """Returns the opposite corners of the bounding box.
 
         Raises:

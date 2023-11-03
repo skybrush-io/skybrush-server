@@ -3,7 +3,7 @@
 from logging import Logger
 
 from flockwave.server.model import Client, FlockwaveMessage, FlockwaveNotification
-from typing import ClassVar, Iterable, Optional, Set, Tuple
+from typing import ClassVar, Iterable, Optional
 
 __all__ = ("RequestLogMiddleware",)
 
@@ -11,7 +11,7 @@ __all__ = ("RequestLogMiddleware",)
 class RequestLogMiddleware:
     """Middleware that logs incoming requests in the message hub."""
 
-    DEFAULT_EXCLUDED_MESSAGES: ClassVar[Tuple[str, ...]] = (
+    DEFAULT_EXCLUDED_MESSAGES: ClassVar[tuple[str, ...]] = (
         "RTK-STAT",
         "UAV-PREFLT",
         "X-DBG-RESP",
@@ -19,7 +19,7 @@ class RequestLogMiddleware:
     )
     """Default set of excluded messages in this middleware."""
 
-    exclude: Set[str]
+    exclude: set[str]
     """Set of message types to exclude from the log."""
 
     log: Logger

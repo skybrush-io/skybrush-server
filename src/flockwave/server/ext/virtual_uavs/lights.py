@@ -5,7 +5,7 @@ on the UAVs.
 from abc import abstractmethod
 from colour import Color
 from time import monotonic
-from typing import Callable, Iterable, List, Optional, Union
+from typing import Callable, Iterable, Optional, Union
 
 from flockwave.spec.errors import FlockwaveErrorCode
 from flockwave.server.show import LightPlayer
@@ -60,7 +60,7 @@ class ModularLightController(LightController):
     def __init__(self, modules: Optional[Iterable[LightModuleLike]] = None):
         """Constructor."""
         super().__init__()
-        self._modules = []  # type: List[LightModule]
+        self._modules = []  # type: list[LightModule]
 
         for module in modules or []:
             self.add_module(module)
@@ -151,7 +151,7 @@ class DefaultLightController(ModularLightController):
         """
         self._light_program_start_time = None
 
-    def _create_default_modules(self) -> List[LightModuleLike]:
+    def _create_default_modules(self) -> list[LightModuleLike]:
         """Returns the default set of modules to use in this controller."""
         result = [
             constant_color(Colors.WHITE),

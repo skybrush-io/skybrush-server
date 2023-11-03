@@ -9,7 +9,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from flockwave.spec.schema import Schema
 from jsonschema.validators import validator_for
-from typing import Any, Callable, Dict, Optional, Tuple
+from typing import Any, Callable, Dict, Optional
 
 __all__ = ("ModelMeta",)
 
@@ -19,7 +19,7 @@ Mapper = Callable[[Any], Any]
 JSON representation or vice versa.
 """
 
-MapperPair = Tuple[Mapper, Mapper]
+MapperPair = tuple[Mapper, Mapper]
 """Pair of mapper functions, one to convert from JSON and the other one to
 convert to JSON.
 """
@@ -60,9 +60,9 @@ class PropertyInfo:
 
 def collect_properties(
     schema: Any,
-    mappers: Dict[str, MapperPair],
-    result: Optional[Dict[str, PropertyInfo]] = None,
-) -> Dict[str, PropertyInfo]:
+    mappers: dict[str, MapperPair],
+    result: Optional[dict[str, PropertyInfo]] = None,
+) -> dict[str, PropertyInfo]:
     """Collects information about all the properties defined on a JSON
     schema.
 
@@ -366,7 +366,7 @@ class ModelMetaHelpers:
         its metaclass.
 
         Parameters:
-            bases (List[type]): list of the base classes
+            bases (list[type]): list of the base classes
 
         Returns:
             whether at least one of the base classes uses ModelMeta_ as its

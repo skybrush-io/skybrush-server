@@ -13,7 +13,7 @@ from flockwave.gps.vectors import ECEFToGPSCoordinateTransformation, GPSCoordina
 from trio import CancelScope, open_memory_channel, open_nursery, sleep
 from trio.abc import SendChannel
 from trio_util import AsyncBool
-from typing import cast, Any, ClassVar, Dict, Iterator, List, Optional, Union
+from typing import cast, Any, ClassVar, Iterator, Optional, Union
 
 from flockwave.channels import ParserChannel
 from flockwave.connections import Connection, create_connection
@@ -75,11 +75,11 @@ class RTKExtension(Extension):
 
     _clock_sync_validator: GPSClockSynchronizationValidator
     _current_preset: Optional[RTKConfigurationPreset] = None
-    _dynamic_serial_port_configurations: List[SerialPortConfiguration]
-    _dynamic_serial_port_filters: List[str]
+    _dynamic_serial_port_configurations: list[SerialPortConfiguration]
+    _dynamic_serial_port_filters: list[str]
     _exclude_non_rtk_bases: bool = True
     _last_preset_request_from_user: Optional[RTKPresetRequest] = None
-    _presets: List[RTKConfigurationPreset]
+    _presets: list[RTKConfigurationPreset]
     _registry: Optional[RTKPresetRegistry] = None
     _rtk_beacon_manager: RTKBeaconManager
     _rtk_preset_task_cancel_scope: Optional[CancelScope] = None
@@ -101,7 +101,7 @@ class RTKExtension(Extension):
         self._statistics = RTKStatistics()
         self._survey_settings = RTKSurveySettings()
 
-    def configure(self, configuration: Dict[str, Any]) -> None:
+    def configure(self, configuration: dict[str, Any]) -> None:
         """Loads the extension."""
         assert self.log
 
@@ -116,7 +116,7 @@ class RTKExtension(Extension):
         self._dynamic_serial_port_configurations = []
         serial_port_specs = configuration.get("add_serial_ports")
         if serial_port_specs is not None:
-            serial_port_spec_list: List[Union[int, dict]]
+            serial_port_spec_list: list[Union[int, dict]]
             serial_port_specs_iter: Optional[Iterator[Union[int, dict]]] = None
 
             if serial_port_specs is True:
@@ -239,7 +239,7 @@ class RTKExtension(Extension):
         """
         return self._current_preset
 
-    def exports(self) -> Dict[str, Any]:
+    def exports(self) -> dict[str, Any]:
         return {
             "are_corrections_ok": self._are_corrections_ok,
             "get_current_preset": self._get_current_preset,

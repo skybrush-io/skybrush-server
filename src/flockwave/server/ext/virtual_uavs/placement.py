@@ -11,7 +11,7 @@ GPS coordinates using a FlatEarthToGPSCoordinateTransformation_ object.
 
 from functools import partial
 from math import cos, floor, pi, radians, sin
-from typing import Callable, List, Optional, Tuple, Union
+from typing import Callable, Optional, Union
 
 from flockwave.gps.vectors import Vector3D
 
@@ -68,7 +68,7 @@ def place_drones(n: int, *, type: str, **kwds):
 
 
 @register("explicit")
-def place_drones_explicitly(n: int, *, coordinates: List[Vector3D]) -> List[Vector3D]:
+def place_drones_explicitly(n: int, *, coordinates: list[Vector3D]) -> list[Vector3D]:
     """Returns coordinates to place the given number of drones with explicit
     flat Earth coordinates.
 
@@ -105,7 +105,7 @@ def place_drones_explicitly(n: int, *, coordinates: List[Vector3D]) -> List[Vect
 @register("circle")
 def place_drones_on_circle(
     n: int, *, radius: Optional[float] = None, min_distance: float = 5
-) -> List[Vector3D]:
+) -> list[Vector3D]:
     """Returns coordinates to place the given number of drones in a circle.
     The circle will be centered at the origin. The first drone will be placed
     at degree zero (heading North, on the X axis).
@@ -143,9 +143,9 @@ def place_drones_on_circle(
 def place_drones_on_grid(
     n: int,
     *,
-    spacing: Union[float, Tuple[float, float]] = 5,
+    spacing: Union[float, tuple[float, float]] = 5,
     rows: Optional[float] = None,
-) -> List[Vector3D]:
+) -> list[Vector3D]:
     """Returns coordinates to place the given number of drones in a regular
     grid.
 
@@ -192,7 +192,7 @@ def place_drones_on_grid(
 
 
 @register("line")
-def place_drones_on_line(n: int, *, spacing: float = 5) -> List[Vector3D]:
+def place_drones_on_line(n: int, *, spacing: float = 5) -> list[Vector3D]:
     """Returns coordinates to place the given number of drones in a straight
     line along the Y axis.
 

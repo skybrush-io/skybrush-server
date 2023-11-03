@@ -3,7 +3,7 @@
 from aiocflib.crazyflie.mem import write_with_checksum
 from aiocflib.crazyflie import Crazyflie
 from struct import Struct
-from typing import Any, Dict, Optional, Sequence
+from typing import Any, Optional, Sequence
 
 from flockwave.server.show.trajectory import TrajectorySpecification
 
@@ -150,7 +150,7 @@ class FenceConfiguration:
         else:
             await fence.disable()
 
-    def update_from_json(self, obj: Dict[str, Any]) -> None:
+    def update_from_json(self, obj: dict[str, Any]) -> None:
         """Updates a fence configuration from its JSON representation used
         in the configuration object of the extension.
         """

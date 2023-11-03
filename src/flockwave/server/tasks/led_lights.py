@@ -11,7 +11,7 @@ from trio import (
     open_nursery,
     sleep,
 )
-from typing import AsyncIterator, Generic, Optional, Tuple, TypeVar
+from typing import AsyncIterator, Generic, Optional, TypeVar
 
 __all__ = ("LEDLightConfigurationManagerBase",)
 
@@ -22,7 +22,7 @@ TPacket = TypeVar("TPacket")
 
 
 #: Type alias for an RGB color
-RGBColor = Tuple[int, int, int]
+RGBColor = tuple[int, int, int]
 
 
 class LightEffectType(Enum):

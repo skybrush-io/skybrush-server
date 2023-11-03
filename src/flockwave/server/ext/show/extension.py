@@ -5,7 +5,7 @@ from logging import Logger
 from math import inf
 from trio import fail_after, Nursery, open_nursery, sleep_forever, TooSlowError
 from trio_util import periodic
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 from flockwave.concurrency import CancellableTaskGroup
 from flockwave.server.ext.base import Extension
@@ -55,7 +55,7 @@ class DroneShowExtension(Extension):
         self._config = DroneShowConfiguration()
         self._lights = LightConfiguration()
 
-    def exports(self) -> Dict[str, Any]:
+    def exports(self) -> dict[str, Any]:
         return {
             "get_clock": self._get_clock,
             "get_configuration": self._get_configuration,

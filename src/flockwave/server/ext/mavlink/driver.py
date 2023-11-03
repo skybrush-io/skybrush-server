@@ -12,7 +12,7 @@ from logging import Logger
 from math import inf, isfinite
 from time import monotonic
 from trio import fail_after, move_on_after, sleep, TooSlowError
-from typing import Any, AsyncIterator, Callable, Dict, List, Optional, Union
+from typing import Any, AsyncIterator, Callable, Optional, Union
 
 from flockwave.gps.time import datetime_to_gps_time_of_week, gps_time_of_week_to_utc
 from flockwave.gps.vectors import GPSCoordinate, VelocityNED
@@ -710,7 +710,7 @@ class MAVLinkDriver(UAVDriver["MAVLinkUAV"]):
             else:
                 yield maybe_log_or_progress
 
-    async def _get_log_list_single(self, uav: "MAVLinkUAV") -> List[FlightLogMetadata]:
+    async def _get_log_list_single(self, uav: "MAVLinkUAV") -> list[FlightLogMetadata]:
         return await uav.log_downloader.get_log_list()
 
     async def _get_parameter_single(self, uav: "MAVLinkUAV", name: str) -> float:
@@ -796,7 +796,7 @@ class MAVLinkDriver(UAVDriver["MAVLinkUAV"]):
             raise RuntimeError("Landing command failed")
 
     async def _send_light_or_sound_emission_signal_broadcast(
-        self, signals: List[str], duration: int, *, transport=None
+        self, signals: list[str], duration: int, *, transport=None
     ) -> None:
         channel = transport_options_to_channel(transport)
 
@@ -805,7 +805,7 @@ class MAVLinkDriver(UAVDriver["MAVLinkUAV"]):
             await self.broadcast_packet(message, channel=channel)
 
     async def _send_light_or_sound_emission_signal_single(
-        self, uav: "MAVLinkUAV", signals: List[str], duration: int, *, transport=None
+        self, uav: "MAVLinkUAV", signals: list[str], duration: int, *, transport=None
     ) -> None:
         channel = transport_options_to_channel(transport)
 
@@ -1934,7 +1934,7 @@ class MAVLinkUAV(UAVBase):
 
     @asynccontextmanager
     async def temporarily_request_messages(
-        self, messages: Dict[int, float]
+        self, messages: dict[int, float]
     ) -> AsyncIterator[None]:
         """Temporarily requests the UAV to send a given set of messages while
         the execution is in the context, resetting the messages upon exiting
@@ -2298,7 +2298,7 @@ class MAVLinkUAV(UAVBase):
         handled in `_update_errors_from_sys_status_and_heartbeat()`. See a
         detailed explanation in the source code there.
         """
-        errors: Dict[int, bool] = {
+        errors: dict[int, bool] = {
             FlockwaveErrorCode.TIMESYNC_ERROR: status.has_timesync_error,
             FlockwaveErrorCode.FAR_FROM_TAKEOFF_POSITION: status.is_misplaced_before_takeoff,
         }

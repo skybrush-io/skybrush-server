@@ -2,7 +2,7 @@ from colour import Color
 from functools import partial
 from random import uniform
 from trio import open_nursery, sleep, sleep_forever
-from typing import Callable, List
+from typing import Callable
 
 from flockwave.gps.vectors import (
     FlatEarthCoordinate,
@@ -30,7 +30,7 @@ class VirtualUAVProviderExtension(UAVExtension[VirtualUAVDriver]):
     simulated status updates to the UAVs.
     """
 
-    uavs: List["VirtualUAV"]
+    uavs: list["VirtualUAV"]
     """The list of virtual UAVs managed by this extension."""
 
     def __init__(self):

@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Dict, Iterable, List, Optional
+from typing import Any, Iterable, Optional
 
 from flockwave.gps.vectors import GPSCoordinate
 
@@ -37,11 +37,11 @@ class GeofenceCircle:
 class GeofencePolygon:
     """Geofence inclusion or exclusion in the form of a polygon."""
 
-    points: List[GeofencePoint] = field(default_factory=list)
+    points: list[GeofencePoint] = field(default_factory=list)
     is_inclusion: bool = True
 
     @property
-    def json(self) -> Dict[str, Any]:
+    def json(self) -> dict[str, Any]:
         """Returns the JSON representation of a geofence polygon
         in absolute (geodetic) coordinates."""
         return {
@@ -84,7 +84,7 @@ class GeofenceStatus:
     enabled: bool = False
     """Whether the geofence is enabled globally."""
 
-    actions: List[GeofenceAction] = field(default_factory=list)
+    actions: list[GeofenceAction] = field(default_factory=list)
     """Actions to take when the geofence is breached, in the order the UAV
     will try them.
     """
@@ -104,13 +104,13 @@ class GeofenceStatus:
     `None` means no distance limit.
     """
 
-    polygons: List[GeofencePolygon] = field(default_factory=list)
+    polygons: list[GeofencePolygon] = field(default_factory=list)
     """Inclusion and exclusion polygons in the geofence."""
 
-    circles: List[GeofenceCircle] = field(default_factory=list)
+    circles: list[GeofenceCircle] = field(default_factory=list)
     """Inclusion and exclusion circles in the geofence."""
 
-    rally_points: List[GeofencePoint] = field(default_factory=list)
+    rally_points: list[GeofencePoint] = field(default_factory=list)
     """Rally points in the geofence."""
 
     def clear_areas(self) -> None:
@@ -163,12 +163,12 @@ class GeofenceConfigurationRequest:
     position; `None` means not to change the distance limit.
     """
 
-    polygons: Optional[List[GeofencePolygon]] = None
+    polygons: Optional[list[GeofencePolygon]] = None
     """Inclusion and exclusion polygons in the geofence; `None` means not to
     update the polygons.
     """
 
-    rally_points: Optional[List[GeofencePoint]] = None
+    rally_points: Optional[list[GeofencePoint]] = None
     """Rally points in the geofence; `None` means not to update the rally
     points.
     """
@@ -179,7 +179,7 @@ class GeofenceConfigurationRequest:
     """
 
     @property
-    def json(self) -> Dict[str, Any]:
+    def json(self) -> dict[str, Any]:
         """Returns a JSON representation of the geofence configuration in
         absolute (geodetic) coordinates."""
         return {
@@ -204,7 +204,7 @@ class GeofenceConfigurationRequest:
         }
 
 
-_geofence_action_descriptions: Dict[GeofenceAction, str] = {
+_geofence_action_descriptions: dict[GeofenceAction, str] = {
     GeofenceAction.REPORT: "report",
     GeofenceAction.SMART_RETURN: "smart return",
     GeofenceAction.RETURN: "return",

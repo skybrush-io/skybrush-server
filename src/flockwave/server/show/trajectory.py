@@ -4,7 +4,7 @@ Skybrush-related trajectories, until we find a better place for them.
 
 from dataclasses import dataclass
 from math import ceil, inf
-from typing import Dict, Iterable, List, Sequence, Tuple
+from typing import Dict, Iterable, Sequence
 
 from .utils import BoundingBoxCalculator, Point
 
@@ -23,7 +23,7 @@ class TrajectorySegment:
     duration: float
     """The total duration of the segment."""
 
-    points: List[Point]
+    points: list[Point]
     """The control points of the segment, including the start and end point."""
 
     @property
@@ -53,7 +53,7 @@ class TrajectorySegment:
 
     def split_at(
         self, fraction: float
-    ) -> Tuple["TrajectorySegment", "TrajectorySegment"]:
+    ) -> tuple["TrajectorySegment", "TrajectorySegment"]:
         """Splits the segment into two pieces at the given relative fraction.
 
         Parameters:
@@ -71,8 +71,8 @@ class TrajectorySegment:
             first = self
             second = TrajectorySegment(self.end_time, 0, [self.end])
         else:
-            first_points: List[Point] = []
-            second_points: List[Point] = []
+            first_points: list[Point] = []
+            second_points: list[Point] = []
             first_points, second_points = self._split_helper(fraction, self.points)
             first_duration = self.duration * fraction
             first = TrajectorySegment(self.t, first_duration, first_points)
@@ -104,19 +104,19 @@ class TrajectorySegment:
     @staticmethod
     def _split_helper(
         t: float, points: Sequence[Point]
-    ) -> Tuple[List[Point], List[Point]]:
+    ) -> tuple[list[Point], list[Point]]:
         """Helper function for splitting the segment at a given fraction.
         See https://pomax.github.io/bezierinfo/#splitting for more details.
         """
-        left: List[Point] = []
-        right: List[Point] = []
+        left: list[Point] = []
+        right: list[Point] = []
 
         while True:
             left.append(points[0])
             right.append(points[-1])
             n = len(points)
             if n > 1:
-                new_points: List[Point] = []
+                new_points: list[Point] = []
                 for i in range(n - 1):
                     new_points.append(
                         (
@@ -153,7 +153,7 @@ class TrajectorySpecification:
             raise RuntimeError("only version 1 trajectories are supported")
 
     @property
-    def bounding_box(self) -> Tuple[Point, Point]:
+    def bounding_box(self) -> tuple[Point, Point]:
         """Returns the coordinates of the opposite corners of the axis-aligned
         bounding box of the trajectory.
 
@@ -224,7 +224,7 @@ class TrajectorySpecification:
         """Returns the takeoff time of the drone within the show, in seconds."""
         return float(self._data.get("takeoffTime", 0.0))
 
-    def get_padded_bounding_box(self, margin: float = 0) -> Tuple[Point, Point]:
+    def get_padded_bounding_box(self, margin: float = 0) -> tuple[Point, Point]:
         """Returns the coordinates of the opposite corners of the axis-aligned
         bounding box of the trajectory, optionally padded with the given margin.
 

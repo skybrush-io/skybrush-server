@@ -8,7 +8,6 @@ from abc import ABCMeta, abstractproperty
 from contextlib import contextmanager
 from typing import (
     Callable,
-    Dict,
     Iterator,
     Optional,
     Type,
@@ -23,7 +22,7 @@ log = base_log.getChild("object")
 
 __all__ = ("ModelObject", "register", "registered", "unregister")
 
-_type_registry: Dict[str, Type["ModelObject"]] = {}
+_type_registry: dict[str, Type["ModelObject"]] = {}
 
 if TYPE_CHECKING:
     from .devices import ObjectNode

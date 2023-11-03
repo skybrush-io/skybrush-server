@@ -15,7 +15,7 @@ from operator import attrgetter
 from quart import abort, make_response, redirect, render_template, request, url_for
 from trio import sleep_forever
 from trio.lowlevel import current_root_task
-from typing import Any, Awaitable, Callable, Dict, List, Optional, Tuple, TYPE_CHECKING
+from typing import Any, Awaitable, Callable, Optional, TYPE_CHECKING
 
 from flockwave.ext.errors import NotSupportedError
 from flockwave.server.utils import overridden
@@ -74,9 +74,9 @@ class ExtensionInfo:
     name: str
     description: str = ""
     loaded: bool = False
-    tags: List[str] = field(default_factory=list)
-    dependencies: List[str] = field(default_factory=list)
-    dependents: List[str] = field(default_factory=list)
+    tags: list[str] = field(default_factory=list)
+    dependencies: list[str] = field(default_factory=list)
+    dependents: list[str] = field(default_factory=list)
     restart_requested: bool = False
 
     @classmethod
@@ -125,7 +125,7 @@ def only_when_debugging(func: Callable[..., Awaitable[Any]]):
     return decorated
 
 
-def _get_extension_by_name(name: str) -> Tuple[ExtensionInfo, "ExtensionManager"]:
+def _get_extension_by_name(name: str) -> tuple[ExtensionInfo, "ExtensionManager"]:
     extension_manager = app.extension_manager if app else None
     if extension_manager and name in extension_manager.known_extensions:
         try:
@@ -162,7 +162,7 @@ async def _configure_extension_from_request_body_if_needed(
 
 async def _to_json(
     func: Callable[..., Awaitable[Any]], *args, on_success: Any = None
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Calls the given function and returns its result, wrapped in an appropriate
     JSON object. Catches any exceptions raised from the function and also wraps
     them in an appropriate JSON object.
@@ -206,7 +206,7 @@ def fail_if_not_localhost() -> None:
 
 
 @blueprint.context_processor
-def inject_debug_variable() -> Dict[str, Any]:
+def inject_debug_variable() -> dict[str, Any]:
     """Injects the `can_save_config`, `debug` and `restart_requested` variables
     into all template contexts.
     """
@@ -267,7 +267,7 @@ async def list_extensions():
     server and allows the user to load or unload them.
     """
     extension_manager = app.extension_manager if app else None
-    extensions: List[ExtensionInfo] = []
+    extensions: list[ExtensionInfo] = []
 
     if extension_manager:
         for name in extension_manager.known_extensions:
@@ -309,8 +309,8 @@ async def list_threads():
 async def list_tasks():
     """Returns a page that lists all active Trio tasks in the server."""
 
-    tasks: List[Tuple[str, Any]] = []
-    queue: List[Tuple[int, Any]] = [(0, current_root_task())]
+    tasks: list[tuple[str, Any]] = []
+    queue: list[tuple[int, Any]] = [(0, current_root_task())]
     while queue:
         level, task = queue.pop()
         tasks.append(("    " * level, task))

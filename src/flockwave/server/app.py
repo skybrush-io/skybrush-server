@@ -10,13 +10,9 @@ from trio import (
 )
 from typing import (
     Any,
-    DefaultDict,
-    Dict,
     Iterable,
-    List,
     Optional,
     Sequence,
-    Tuple,
     Union,
 )
 
@@ -70,7 +66,7 @@ PACKAGE_NAME = __name__.rpartition(".")[0]
 
 
 #: Table that describes the handlers of several UAV-related command requests
-UAV_COMMAND_HANDLERS: Dict[str, Tuple[str, MessageBodyTransformationSpec]] = {
+UAV_COMMAND_HANDLERS: dict[str, tuple[str, MessageBodyTransformationSpec]] = {
     "LOG-DATA": ("get_log", rename_keys({"logId": "log_id"})),
     "LOG-INF": ("get_log_list", None),
     "OBJ-CMD": ("send_command", None),
@@ -726,7 +722,7 @@ class SkybrushServer(DaemonApp):
     def resume_async_operations(
         self,
         receipt_ids: Iterable[str],
-        values: Dict[str, Any],
+        values: dict[str, Any],
         in_response_to: FlockwaveMessage,
     ) -> FlockwaveResponse:
         """Handles a request to resume one or more pending asynchronous operations,
@@ -816,7 +812,7 @@ class SkybrushServer(DaemonApp):
 
     def sort_uavs_by_drivers(
         self, uav_ids: Iterable[str], response: Optional[FlockwaveResponse] = None
-    ) -> Dict[UAVDriver, List[UAV]]:
+    ) -> dict[UAVDriver, list[UAV]]:
         """Given a list of UAV IDs, returns a mapping that maps UAV drivers
         to the UAVs specified by the IDs.
 
@@ -828,7 +824,7 @@ class SkybrushServer(DaemonApp):
         Returns:
             mapping of UAV drivers to the UAVs that were selected by the given UAV IDs
         """
-        result: DefaultDict[UAVDriver, List[UAV]] = defaultdict(list)
+        result: defaultdict[UAVDriver, list[UAV]] = defaultdict(list)
         for uav_id in uav_ids:
             uav = self.find_uav_by_id(uav_id, response)
             if uav:
@@ -1089,7 +1085,7 @@ class SkybrushServer(DaemonApp):
         # need to sort them by the clients that originated these requests
         # so we can dispatch individual ASYNC-TIMEOUT messages to each of
         # them
-        receipt_ids_by_clients: DefaultDict[str, List[str]] = defaultdict(list)
+        receipt_ids_by_clients: defaultdict[str, list[str]] = defaultdict(list)
         for status in statuses:
             receipt_id = status.id
             for client in status.clients_to_notify:

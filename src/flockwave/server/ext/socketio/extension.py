@@ -15,12 +15,9 @@ from trio import open_nursery, sleep_forever
 from typing import (
     Any,
     Callable,
-    Dict,
     Iterable,
     Iterator,
-    List,
     Optional,
-    Tuple,
     TYPE_CHECKING,
 )
 from urllib.parse import parse_qs
@@ -106,7 +103,7 @@ class SocketIOProtocol(Enum):
 
     channel_id: str
     server_class: Callable
-    expected_engine_io_query_param: List[str]
+    expected_engine_io_query_param: list[str]
 
     def __new__(
         cls, value: str, channel_id: str, server_class: Callable, engine_io_version: int
@@ -125,7 +122,7 @@ class SocketIOProtocol(Enum):
                 return item
         raise ValueError(f"No such SocketIOProtocol: {value!r}")
 
-    def accepts_wsgi_environment(self, environ: Dict[str, Any]) -> bool:
+    def accepts_wsgi_environment(self, environ: dict[str, Any]) -> bool:
         """Returns whether this protocol is able to serve requests with the given
         WSGI environment.
 
@@ -145,8 +142,8 @@ class SocketIOProtocol(Enum):
 
 
 def get_enabled_protocols(
-    configuration: Dict[str, Any], logger: Logger
-) -> List[SocketIOProtocol]:
+    configuration: dict[str, Any], logger: Logger
+) -> list[SocketIOProtocol]:
     """Retrieves the list of enabled Socket.IO protocols from the configuration.
 
     Returns:
@@ -157,7 +154,7 @@ def get_enabled_protocols(
         logger.warn("'protocols' configuration key must be a list, ignoring")
         protocols = None
 
-    result: List[SocketIOProtocol] = []
+    result: list[SocketIOProtocol] = []
     for protocol_code in protocols or ("socketio-v4", "socketio-v5"):
         try:
             protocol = SocketIOProtocol.from_string(protocol_code)
@@ -169,7 +166,6 @@ def get_enabled_protocols(
 
 
 class SocketIOCommunicationHandler:
-
     _app: "SkybrushServer"
     _prefix: str
     _protocol: SocketIOProtocol
@@ -190,7 +186,7 @@ class SocketIOCommunicationHandler:
         return f"{self._prefix}:{client_id}"
 
     def _get_ssdp_location(
-        self, channel_id: str, address: Optional[Tuple[str, int]]
+        self, channel_id: str, address: Optional[tuple[str, int]]
     ) -> Optional[str]:
         """Returns the SSDP location descriptor of the Socket.IO channel
         corresponding to the Socket.IO protocol of this instance.
@@ -266,7 +262,7 @@ class SocketIOCommunicationHandler:
 ############################################################################
 
 
-async def run(app, configuration: Dict[str, Any], logger: Logger):
+async def run(app, configuration: dict[str, Any], logger: Logger):
     # Check whether the user has enabled Socket.IO v4, Socket.IO v5 or both.
     protocols = get_enabled_protocols(configuration, logger)
     if not protocols:

@@ -2,7 +2,7 @@
 
 from abc import ABCMeta, abstractmethod, abstractproperty
 from trio import sleep, TooSlowError
-from typing import AsyncIterator, Dict, Type, Union, TYPE_CHECKING
+from typing import AsyncIterator, Type, Union, TYPE_CHECKING
 
 from flockwave.server.errors import NotSupportedError
 from flockwave.server.model.commands import Progress, Suspend
@@ -994,7 +994,7 @@ class ArduPilotWithSkybrush(ArduPilot):
         return True
 
 
-_autopilot_registry: Dict[int, Type[Autopilot]] = {
+_autopilot_registry: dict[int, Type[Autopilot]] = {
     MAVAutopilot.ARDUPILOTMEGA: ArduPilot,
     MAVAutopilot.PX4: PX4,
 }

@@ -8,12 +8,8 @@ from typing import (
     Any,
     Awaitable,
     Callable,
-    Dict,
-    FrozenSet,
-    List,
     Optional,
     Sequence,
-    Tuple,
     Union,
 )
 
@@ -30,7 +26,7 @@ __all__ = (
 
 #: Type specification for a (base mode, main mode, submode) flight mode triplet
 #: used in MAVLink
-MAVLinkFlightModeNumbers = Tuple[int, int, int]
+MAVLinkFlightModeNumbers = tuple[int, int, int]
 
 
 #: Type specification for messages parsed by the MAVLink parser. Unfortunately
@@ -44,11 +40,11 @@ MAVLinkMessage = Any
 #: be a match, or a callable that takes a MAVLinkMessage and returns `True` if
 #: the message is a match
 MAVLinkMessageMatcher = Optional[
-    Union[Dict[str, Any], Callable[[MAVLinkMessage], bool]]
+    Union[dict[str, Any], Callable[[MAVLinkMessage], bool]]
 ]
 
 #:
-MAVLinkMessageSpecification = Tuple[str, Dict[str, Any]]
+MAVLinkMessageSpecification = tuple[str, dict[str, Any]]
 
 #: Type specification for the broadcast_packet() function of a MAVLinkNetwork object
 PacketBroadcasterFn = Callable[..., Awaitable[None]]
@@ -117,7 +113,7 @@ class MAVLinkNetworkSpecification:
     they are sent to the ID formatter function.
     """
 
-    connections: List[str] = field(default_factory=list)
+    connections: list[str] = field(default_factory=list)
     """The connections that the MAVLink network will consist of. A MAVLink
     network may have one or more connections where MAVLink messages are
     received and sent, but a system ID appearing on one of the networks
@@ -129,7 +125,7 @@ class MAVLinkNetworkSpecification:
     `create_connection()` function.
     """
 
-    routing: Dict[str, List[int]] = field(default_factory=dict)
+    routing: dict[str, list[int]] = field(default_factory=dict)
     """Specifies where certain types of packets should be routed if the
     network has multiple connections.
     """
@@ -139,7 +135,7 @@ class MAVLinkNetworkSpecification:
     connection should accept unsigned MAVLink packets.
     """
 
-    statustext_targets: FrozenSet[str] = field(default_factory=frozenset)
+    statustext_targets: frozenset[str] = field(default_factory=frozenset)
     """Specifies where to send the contents of MAVLink status text messages
     originating from this network. This property must be a set containing
     'server' to forward the messages to the server log and/or 'client' to
@@ -222,7 +218,7 @@ class MAVLinkNetworkSpecification:
         }
 
     @staticmethod
-    def _process_routing_entry(entry: Union[int, str, Sequence[int]]) -> List[int]:
+    def _process_routing_entry(entry: Union[int, str, Sequence[int]]) -> list[int]:
         """Helper function for processing entries in the ``routing`` configuration
         key and constructor parameter.
         """

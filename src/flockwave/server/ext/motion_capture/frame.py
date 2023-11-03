@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import List, Optional
+from typing import Optional
 
 from .types import Attitude, Position
 
@@ -35,7 +35,7 @@ class MotionCaptureFrame:
     timestamp: float
     """The timestamp when the frame was obtained."""
 
-    items: List[MotionCaptureFrameItem]
+    items: list[MotionCaptureFrameItem]
     """The rigid bodies in this frame, each represented by a name-pose pair."""
 
     def add_item(

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from contextlib import ExitStack
 from operator import attrgetter, methodcaller
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 from flockwave.concurrency import AsyncBundler
 from flockwave.server.ext.base import Extension
@@ -50,7 +50,7 @@ class LocalPositioningSystemsExtension(Extension):
         self._lps_type_registry = LocalPositioningSystemTypeRegistry()
         self._lps_registry = LocalPositioningSystemRegistry(self._lps_type_registry)
 
-    def exports(self) -> Dict[str, Any]:
+    def exports(self) -> dict[str, Any]:
         return {
             "create_and_use_lps": self._lps_registry.create_and_use,
             "find_lps_by_id": self.find_lps_by_id,

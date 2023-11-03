@@ -5,7 +5,8 @@ from logging import Logger
 from blinker import Signal
 from dataclasses import dataclass
 from datetime import datetime
-from jsonschema import Validator, ValidationError
+from jsonschema import ValidationError
+from jsonschema.protocols import Validator
 from time import time
 from trio import Cancelled
 from typing import (
@@ -13,7 +14,6 @@ from typing import (
     Any,
     Awaitable,
     ClassVar,
-    Dict,
     Generic,
     Optional,
     Union,
@@ -156,7 +156,7 @@ class Mission(ModelObject):
         return self.started_at is not None
 
     @property
-    def json(self) -> Dict[str, Any]:
+    def json(self) -> dict[str, Any]:
         """Returns the JSON representation of the mission."""
         return {
             "id": self.id,
@@ -171,7 +171,7 @@ class Mission(ModelObject):
         }
 
     @property
-    def parameters(self) -> Dict[str, Any]:
+    def parameters(self) -> dict[str, Any]:
         """Returns the parameters of the mission in the format they should be
         serialized when converting into JSON.
 
@@ -337,7 +337,7 @@ class Mission(ModelObject):
         self.authorize_to_start()
 
     @final
-    def update_parameters(self, parameters: Dict[str, Any]) -> None:
+    def update_parameters(self, parameters: dict[str, Any]) -> None:
         """Updates one or more parameters of the mission.
 
         This function must be called only when the mission is in the ``NEW``
@@ -440,7 +440,7 @@ class Mission(ModelObject):
         """
         raise NotImplementedError
 
-    def _update_parameters(self, parameters: Dict[str, Any]) -> None:
+    def _update_parameters(self, parameters: dict[str, Any]) -> None:
         """Updates one or more parameters of the mission.
 
         This function _assumes_ that the mission is in the ``NEW`` state. It is
@@ -452,7 +452,7 @@ class Mission(ModelObject):
         """
         pass
 
-    def _validate_parameters(self, parameters: Dict[str, Any]) -> None:
+    def _validate_parameters(self, parameters: dict[str, Any]) -> None:
         """Validates one or more parameters of the mission according to the
         mission parameter validator defined automatically from the parameter
         schema of the given mission type.
@@ -546,7 +546,7 @@ class MissionType(Generic[T], metaclass=ABCMeta):
         raise NotImplementedError
 
     def create_plan(
-        self, parameters: Dict[str, Any]
+        self, parameters: dict[str, Any]
     ) -> Union[MissionPlan, Awaitable[MissionPlan]]:
         """Creates a new mission plan with the given planning parameters.
 
@@ -564,7 +564,7 @@ class MissionType(Generic[T], metaclass=ABCMeta):
         raise NotSupportedError("This mission type does not support planning")
 
     @abstractmethod
-    def get_parameter_schema(self) -> Dict[str, Any]:
+    def get_parameter_schema(self) -> dict[str, Any]:
         """Returns the JSON schema associated with general mission parameters.
 
         If you do not intend to use a schema, simply return an empty dictionary.
@@ -578,7 +578,7 @@ class MissionType(Generic[T], metaclass=ABCMeta):
         raise NotImplementedError
 
     @abstractmethod
-    def get_plan_parameter_schema(self) -> Dict[str, Any]:
+    def get_plan_parameter_schema(self) -> dict[str, Any]:
         """Returns the JSON schema associated with mission planning parameters.
 
         If you do not intend to use a schema or to support planning at all,

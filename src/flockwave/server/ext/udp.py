@@ -11,7 +11,7 @@ import trio.socket
 from contextlib import closing, ExitStack
 from functools import partial
 from trio import aclose_forcefully, CapacityLimiter, open_nursery
-from typing import Any, Optional, Tuple
+from typing import Any, Optional
 
 from flockwave.encoders.json import create_json_encoder
 from flockwave.parsers.json import create_json_parser
@@ -103,7 +103,7 @@ def get_ssdp_location(address) -> Optional[str]:
     )
 
 
-async def handle_message(message: Any, sender: Tuple[str, int]) -> None:
+async def handle_message(message: Any, sender: tuple[str, int]) -> None:
     """Handles a single message received from the given sender.
 
     Parameters:
@@ -117,7 +117,7 @@ async def handle_message(message: Any, sender: Tuple[str, int]) -> None:
 
 
 async def handle_message_safely(
-    message: Any, sender: Tuple[str, int], *, limit: CapacityLimiter
+    message: Any, sender: tuple[str, int], *, limit: CapacityLimiter
 ) -> None:
     """Handles a single message received from the given sender, ensuring
     that exceptions do not propagate through and the number of concurrent

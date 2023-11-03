@@ -13,12 +13,9 @@ from typing import (
     Awaitable,
     Callable,
     ClassVar,
-    Dict,
     Iterable,
-    List,
     Optional,
     Sequence,
-    Tuple,
 )
 
 from flockwave.gps.vectors import GPSCoordinate
@@ -40,19 +37,19 @@ class KpIndexData:
     max_timestamp: int
     """Largest UNIX timestamp for which we have a valid Kp-index estimate."""
 
-    _timestamps: List[int]
+    _timestamps: list[int]
     """Sorted list of timestamps; each timestamp refers to
     the midpoint of an interval for which we have a Kp-index estimate.
     """
 
-    _values: List[float]
+    _values: list[float]
     """List of Kp-index values, one value for each timestamp in the timestamp
     array.
     """
 
     @classmethod
     def from_midpoints_and_values(
-        cls, midpoints_and_values: Sequence[Tuple[int, float]]
+        cls, midpoints_and_values: Sequence[tuple[int, float]]
     ):
         """Creates a new dataset from a list of timestamps at interval midpoints,
         and the corresponding Kp-index estimates.
@@ -127,7 +124,7 @@ selected_data_provider: str = ""
 
 #: Mapping from data source names to callables that can be called with a
 #: single timestamp and return the corresponding Kp-index data
-data_providers: Dict[str, Callable[[], Awaitable[KpIndexData]]] = {}
+data_providers: dict[str, Callable[[], Awaitable[KpIndexData]]] = {}
 
 
 async def fetch_kp_index_now() -> None:
@@ -169,7 +166,7 @@ async def _fetch_kp_index_from_noaa() -> KpIndexData:
     """Fetches an up-to-date Kp-index data from the NOAA data source
     and returns it.
     """
-    entries: List[Tuple[int, float]] = []
+    entries: list[tuple[int, float]] = []
 
     url = "https://services.swpc.noaa.gov/text/daily-geomagnetic-indices.txt"
     lines = await _fetch_text_file_from_http(url)
@@ -204,7 +201,7 @@ async def _fetch_kp_index_from_potsdam() -> KpIndexData:
     """Fetches an up-to-date Kp-index data from the GFZ data source in Potsdam
     and returns it.
     """
-    entries: List[Tuple[int, float]] = []
+    entries: list[tuple[int, float]] = []
 
     url = "http://www-app3.gfz-potsdam.de/kp_index/Kp_ap_nowcast.txt"
     lines = await _fetch_text_file_from_http(url)

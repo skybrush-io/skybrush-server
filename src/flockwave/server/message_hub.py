@@ -28,14 +28,11 @@ from typing import (
     AsyncIterator,
     Awaitable,
     Callable,
-    DefaultDict,
     Dict,
     Generic,
     Iterable,
     Iterator,
-    List,
     Optional,
-    Tuple,
     TypeVar,
     Union,
     overload,
@@ -177,14 +174,14 @@ class MessageHub:
     assuming that it is equal to the type of the incoming message.
     """
 
-    _broadcast_methods: Optional[List[Callable[[FlockwaveMessage], Awaitable[None]]]]
+    _broadcast_methods: Optional[list[Callable[[FlockwaveMessage], Awaitable[None]]]]
     _channel_type_registry: Optional[ChannelTypeRegistry]
     _client_registry: Optional[ClientRegistry]
-    _handlers_by_type: DefaultDict[Optional[str], List[MessageHandler]]
+    _handlers_by_type: defaultdict[Optional[str], list[MessageHandler]]
     _log_messages: bool
     _message_builder: FlockwaveMessageBuilder
-    _request_middleware: List[RequestMiddleware]
-    _response_middleware: List[ResponseMiddleware]
+    _request_middleware: list[RequestMiddleware]
+    _response_middleware: list[ResponseMiddleware]
     _queue_rx: MemoryReceiveChannel
     _queue_tx: MemorySendChannel
 
@@ -393,7 +390,7 @@ class MessageHub:
 
     def enqueue_message(
         self,
-        message: Union[FlockwaveMessage, Dict[str, Any]],
+        message: Union[FlockwaveMessage, dict[str, Any]],
         to: Optional[Union[str, Client]] = None,
         in_response_to: Optional[FlockwaveMessage] = None,
     ) -> None:
@@ -437,7 +434,7 @@ class MessageHub:
             )
 
     async def handle_incoming_message(
-        self, message: Dict[str, Any], sender: Client
+        self, message: dict[str, Any], sender: Client
     ) -> bool:
         """Handles an incoming Flockwave message by calling the appropriate
         message handlers.
@@ -503,7 +500,7 @@ class MessageHub:
 
     async def iterate(
         self, *args
-    ) -> AsyncIterator[Tuple[Dict[str, Any], Client, Callable[[Dict], None]]]:
+    ) -> AsyncIterator[tuple[dict[str, Any], Client, Callable[[Dict], None]]]:
         """Returns an async generator that yields triplets consisting of
         the body of an incoming message, its sender and an appropriate function
         that can be used to respond to that message.
@@ -544,7 +541,7 @@ class MessageHub:
 
     def _commit_broadcast_methods(
         self,
-    ) -> List[Callable[[FlockwaveMessage], Awaitable[None]]]:
+    ) -> list[Callable[[FlockwaveMessage], Awaitable[None]]]:
         """Calculates the list of methods to call when the message hub
         wishes to broadcast a message to all the connected clients.
         """
@@ -761,7 +758,7 @@ class MessageHub:
 
     def reject(
         self,
-        message: Optional[Union[Dict[str, Any], FlockwaveMessage]] = None,
+        message: Optional[Union[dict[str, Any], FlockwaveMessage]] = None,
         reason: Optional[str] = None,
     ) -> FlockwaveResponse:
         """Creates a new negative acknowledgment (i.e. rejection) of the given
@@ -801,7 +798,7 @@ class MessageHub:
 
     async def send_message(
         self,
-        message: Union[FlockwaveMessage, Dict[str, Any]],
+        message: Union[FlockwaveMessage, dict[str, Any]],
         to: Optional[Union[str, Client]] = None,
         in_response_to: Optional[FlockwaveMessage] = None,
     ) -> Request:
@@ -921,7 +918,7 @@ class MessageHub:
 
     @contextmanager
     def use_message_handlers(
-        self, handlers: Dict[str, MessageHandler]
+        self, handlers: dict[str, MessageHandler]
     ) -> Iterator[None]:
         """Context manager that registers multiple handler functions, specified
         in a dictionary mapping message types to handlers, and then unregisters
@@ -967,7 +964,7 @@ class MessageHub:
         finally:
             disposer()
 
-    def _decode_incoming_message(self, message: Dict[str, Any]) -> FlockwaveMessage:
+    def _decode_incoming_message(self, message: dict[str, Any]) -> FlockwaveMessage:
         """Decodes an incoming, raw JSON message that has already been
         decoded from the string representation into a dictionary on the
         Python side, but that has not been validated against the Flockwave

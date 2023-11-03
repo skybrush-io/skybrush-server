@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 from datetime import date, datetime, timedelta
 from functools import partial, wraps
 from math import inf, isfinite
-from typing import Any, Dict, FrozenSet, Mapping, Optional, Tuple
+from typing import Any, Mapping, Optional
 
 from flockwave.ext.errors import ApplicationExit, NotLoadableError, NotSupportedError
 from flockwave.networking import get_link_layer_address_mapping
@@ -30,7 +30,7 @@ class License(ABC):
     """
 
     @abstractmethod
-    def get_allowed_mac_addresses(self) -> Optional[Tuple[str]]:
+    def get_allowed_mac_addresses(self) -> Optional[tuple[str]]:
         """Returns a tuple containing the MAC addresses associated to the
         license, or `None` if the license does not have MAC address
         restrictions.
@@ -49,7 +49,7 @@ class License(ABC):
             return (expiry_date - date.today()).days
 
     @abstractmethod
-    def get_features(self) -> FrozenSet[str]:
+    def get_features(self) -> frozenset[str]:
         """Returns the list of additional features that the license provides
         access for. Features are simple string identifiers; it is up to the
         host application to interpret them as appropriate.
@@ -105,7 +105,7 @@ class License(ABC):
         """Returns the JSON representation of this license in the format used
         by the LCN-INF message.
         """
-        result: Dict[str, Any] = {"id": self.get_id(), "licensee": self.get_licensee()}
+        result: dict[str, Any] = {"id": self.get_id(), "licensee": self.get_licensee()}
 
         expiry_date = self.get_expiry_date()
         if expiry_date is not None:
@@ -213,7 +213,7 @@ class DictBasedLicense(License):
     - ``drones`` - maximum number of drones that can be used simultaneously"""
 
     _license_info: Mapping[str, Any]
-    _features: FrozenSet[str]
+    _features: frozenset[str]
 
     def __init__(self, license_info: Mapping[str, Any]):
         """Constructor.
@@ -223,7 +223,7 @@ class DictBasedLicense(License):
         self._license_info = license_info
         self._update_features()
 
-    def get_allowed_mac_addresses(self) -> Optional[Tuple[str, ...]]:
+    def get_allowed_mac_addresses(self) -> Optional[tuple[str, ...]]:
         addresses = self._get_conditions().get("mac")
 
         # An earlier bug in cmtool sometimes added empty MAC addresses to the
@@ -243,7 +243,7 @@ class DictBasedLicense(License):
         except ValueError:
             raise ValueError(f"invalid expiry date: {expiry!r}") from None
 
-    def get_features(self) -> FrozenSet[str]:
+    def get_features(self) -> frozenset[str]:
         return self._features
 
     def get_id(self) -> str:

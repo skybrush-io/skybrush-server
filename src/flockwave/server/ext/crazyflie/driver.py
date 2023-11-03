@@ -18,12 +18,9 @@ from typing import (
     Any,
     AsyncIterator,
     Callable,
-    Dict,
     Iterable,
-    List,
     Optional,
     Sequence,
-    Tuple,
     TYPE_CHECKING,
     cast,
 )
@@ -109,8 +106,8 @@ class CrazyflieDriver(UAVDriver["CrazyflieUAV"]):
     use_test_mode: bool = False
 
     _cache_folder: Optional[str]
-    _address_space_by_uav_id: Dict[str, Any]
-    _uav_ids_by_address_space: Dict[Any, Dict[int, str]]
+    _address_space_by_uav_id: dict[str, Any]
+    _uav_ids_by_address_space: dict[Any, dict[int, str]]
 
     def __init__(
         self,
@@ -423,11 +420,11 @@ class CrazyflieDriver(UAVDriver["CrazyflieUAV"]):
 
     def sort_uav_ids_by_address_spaces(
         self, ids: Iterable[str]
-    ) -> Dict[Any, List[str]]:
+    ) -> dict[Any, list[str]]:
         """Given a list of UAV IDs, returns a dictionary that maps address
         spaces to the UAV IDs accessible through these address spaces.
         """
-        result: Dict[Any, List[str]] = defaultdict(list)
+        result: dict[Any, list[str]] = defaultdict(list)
         for uav_id in ids:
             address_space = self._address_space_by_uav_id.get(uav_id)
             if address_space is not None:
@@ -619,7 +616,7 @@ class CrazyflieUAV(UAVBase):
         """
         self._last_uploaded_show = None
 
-    async def get_home_position(self) -> Optional[Tuple[float, float, float]]:
+    async def get_home_position(self) -> Optional[tuple[float, float, float]]:
         """Returns the current home position of the UAV."""
         x = await self.get_parameter("preflight.homeX", fetch=True)
         y = await self.get_parameter("preflight.homeY", fetch=True)
@@ -647,7 +644,7 @@ class CrazyflieUAV(UAVBase):
         velocity_xy: float = 2,
         velocity_z: float = 0.5,
         min_travel_time: float = 1,
-    ) -> Tuple[float, float, float]:
+    ) -> tuple[float, float, float]:
         """Sends the UAV to a given coordinate.
 
         Parameters:
@@ -926,7 +923,7 @@ class CrazyflieUAV(UAVBase):
             yield
 
     async def set_home_position(
-        self, pos: Optional[Tuple[float, float, float]]
+        self, pos: Optional[tuple[float, float, float]]
     ) -> None:
         """Sets or clears the home position of the UAV.
 
@@ -1323,7 +1320,7 @@ class CrazyflieUAV(UAVBase):
     async def _upload_trajectory_and_fence(
         self,
         trajectory: TrajectorySpecification,
-        home: Optional[Tuple[float, float, float]],
+        home: Optional[tuple[float, float, float]],
         fence_config: FenceConfiguration,
     ) -> None:
         """Uploads the given trajectory data to the Crazyflie drone and applies

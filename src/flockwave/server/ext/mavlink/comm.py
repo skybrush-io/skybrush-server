@@ -7,7 +7,7 @@ from compose import compose
 from functools import partial
 from importlib import import_module
 from time import time
-from typing import Any, Callable, ClassVar, Dict, List, Optional, Union, Tuple
+from typing import Any, Callable, ClassVar, Optional, Union
 
 from flockwave.channels import MessageChannel, create_lossy_channel
 from flockwave.connections import Connection, StreamConnectionBase
@@ -151,7 +151,7 @@ def create_communication_manager(
     # Create a dictionary to cache link IDs to existing connections so we can
     # keep on using the same link ID for the same connection even if it is
     # closed and re-opened later
-    link_ids: Dict[Connection, int] = {}
+    link_ids: dict[Connection, int] = {}
     channel_factory = partial(
         create_mavlink_message_channel,
         signing=signing,
@@ -204,9 +204,9 @@ def create_mavlink_message_channel(
     *,
     dialect: Union[str, Callable] = "ardupilotmega",
     system_id: int = 255,
-    link_ids: Optional[Dict[Connection, int]] = None,
+    link_ids: Optional[dict[Connection, int]] = None,
     signing: MAVLinkSigningConfiguration = MAVLinkSigningConfiguration.DISABLED,
-) -> MessageChannel[Tuple[MAVLinkMessage, str]]:
+) -> MessageChannel[tuple[MAVLinkMessage, str]]:
     """Creates a bidirectional Trio-style channel that reads data from and
     writes data to the given connection, and does the parsing of MAVLink
     messages automatically. The channel will yield MAVLinkMessage_ objects
@@ -259,7 +259,7 @@ def create_mavlink_message_channel(
 
 def _create_stream_based_mavlink_message_channel(
     connection: Connection, log: Logger, *, mavlink_factory: MAVLinkFactory
-) -> MessageChannel[Tuple[MAVLinkMessage, str]]:
+) -> MessageChannel[tuple[MAVLinkMessage, str]]:
     """Creates a bidirectional Trio-style channel that reads data from and
     writes data to the given stream-based connection, and does the parsing
     of MAVLink messages automatically.
@@ -283,13 +283,13 @@ def _create_stream_based_mavlink_message_channel(
     """
     mavlink = mavlink_factory()
 
-    def parser(data: bytes) -> List[Tuple[MAVLinkMessage, Any]]:
+    def parser(data: bytes) -> list[tuple[MAVLinkMessage, Any]]:
         # Parse the MAVLink messages from the buffer. mavlink.parse_buffer()
         # may occasionally return None so make sure we handle that gracefully.
         messages = mavlink.parse_buffer(data) or ()
         return [(message, "") for message in messages]
 
-    def encoder(spec_and_address: Tuple[MAVLinkMessageSpecification, Any]) -> bytes:
+    def encoder(spec_and_address: tuple[MAVLinkMessageSpecification, Any]) -> bytes:
         spec, _ = spec_and_address
 
         type, kwds = spec
@@ -310,7 +310,7 @@ def _create_stream_based_mavlink_message_channel(
 
 def _create_datagram_based_mavlink_message_channel(
     connection: Connection, log: Logger, *, mavlink_factory: MAVLinkFactory
-) -> MessageChannel[Tuple[MAVLinkMessage, str]]:
+) -> MessageChannel[tuple[MAVLinkMessage, str]]:
     """Creates a bidirectional Trio-style channel that reads data from and
     writes data to the given datagram-based connection, and does the parsing
     of MAVLink messages automatically. The channel will yield pairs of
@@ -337,7 +337,7 @@ def _create_datagram_based_mavlink_message_channel(
 
     # Connection is a datagram-based connection so we will be receiving
     # full messages along with the addresses they were sent from
-    def parser(data_and_address: Tuple[bytes, Any]) -> List[Tuple[MAVLinkMessage, Any]]:
+    def parser(data_and_address: tuple[bytes, Any]) -> list[tuple[MAVLinkMessage, Any]]:
         data, address = data_and_address
 
         mavlink = mavlink_by_address[address]
@@ -346,8 +346,8 @@ def _create_datagram_based_mavlink_message_channel(
         return [(message, address) for message in messages]
 
     def encoder(
-        spec_and_address: Tuple[MAVLinkMessageSpecification, Any]
-    ) -> Tuple[bytes, Any]:
+        spec_and_address: tuple[MAVLinkMessageSpecification, Any]
+    ) -> tuple[bytes, Any]:
         spec, address = spec_and_address
 
         type, kwds = spec

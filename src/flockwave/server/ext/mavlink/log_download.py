@@ -9,7 +9,7 @@ from trio import (
     TooSlowError,
 )
 from trio.abc import ReceiveChannel, SendChannel
-from typing import AsyncIterator, Callable, Dict, List, Optional, Union
+from typing import AsyncIterator, Callable, Optional, Union
 
 from flockwave.concurrency import aclosing, Future
 from flockwave.logger import Logger
@@ -58,7 +58,7 @@ class MAVLinkLogDownloader:
     _log_being_downloaded: Optional[int] = None
     """ID of the log that is currently being downloaded."""
 
-    _log_listing_future: Optional[Future[List[FlightLogMetadata]]] = None
+    _log_listing_future: Optional[Future[list[FlightLogMetadata]]] = None
     """Future that resolves when the log listing operation completes."""
 
     _message_channel: Optional[SendChannel[MAVLinkMessage]] = None
@@ -100,7 +100,7 @@ class MAVLinkLogDownloader:
             self._log_being_downloaded = None
             self._message_channel = None
 
-    async def get_log_list(self) -> List[FlightLogMetadata]:
+    async def get_log_list(self) -> list[FlightLogMetadata]:
         """Retrieves the list of logs from the drone.
 
         A single drone supports a single log listing operation only. When you
@@ -148,7 +148,7 @@ class MAVLinkLogDownloader:
                 raise RuntimeError("unknown log size")
 
             chunks = ChunkAssembler(metadata.size)
-            log_data: List[bytes] = []
+            log_data: list[bytes] = []
             while not chunks.done:
                 start, count = chunks.get_next_range()
                 response: Optional[MAVLinkMessage] = await self._send_and_wait(
@@ -190,10 +190,10 @@ class MAVLinkLogDownloader:
 
     async def _get_log_list_inner(
         self, rx: ReceiveChannel[MAVLinkMessage]
-    ) -> List[FlightLogMetadata]:
+    ) -> list[FlightLogMetadata]:
         # Number of logs to download; ``None`` if we do not know it yet
         num_logs: Optional[int] = None
-        logs: Dict[int, FlightLogMetadata] = {}
+        logs: dict[int, FlightLogMetadata] = {}
 
         try:
             while num_logs is None or len(logs) < num_logs:

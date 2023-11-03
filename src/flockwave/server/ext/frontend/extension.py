@@ -6,7 +6,7 @@ from bisect import insort_right
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Iterator, List
+from typing import Iterator
 
 from quart import render_template, url_for
 
@@ -41,7 +41,7 @@ class FrontPageLink:
             return url_for(self.route)
 
 
-front_page_links: List[FrontPageLink] = []
+front_page_links: list[FrontPageLink] = []
 """The list of currently registered front page links."""
 
 

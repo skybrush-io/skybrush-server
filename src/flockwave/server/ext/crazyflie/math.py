@@ -1,7 +1,7 @@
 """Math related functions."""
 
 from functools import lru_cache
-from typing import List, Sequence, Tuple
+from typing import Sequence
 
 __all__ = (
     "get_poly_degree",
@@ -10,7 +10,7 @@ __all__ = (
 
 
 @lru_cache(maxsize=64)
-def pascal_triangle_row(index: int) -> Tuple[int, ...]:
+def pascal_triangle_row(index: int) -> tuple[int, ...]:
     """Returns the given row of the Pascal triangle.
 
     This function is memoized.
@@ -54,7 +54,7 @@ def get_poly_degree(poly: Sequence[float], eps: float = 0.0) -> int:
     return 0
 
 
-def to_bernstein_form(poly: Sequence[float], eps: float = 0.0) -> List[float]:
+def to_bernstein_form(poly: Sequence[float], eps: float = 0.0) -> list[float]:
     """Converts a polynomial given with its coefficients to the corresponding
     coefficients in its Bernstein form.
 

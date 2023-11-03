@@ -8,9 +8,7 @@ from typing import (
     Callable,
     Dict,
     Iterable,
-    List,
     Optional,
-    Tuple,
     Union,
 )
 
@@ -395,12 +393,12 @@ class GeofenceManager:
 
 
 @singledispatch
-def _convert_area_to_mission_items(area: Any) -> List[Tuple[int, Dict]]:
+def _convert_area_to_mission_items(area: Any) -> list[tuple[int, Dict]]:
     raise ValueError(f"Unknown geofence area type: {type(area)!r}")
 
 
 @_convert_area_to_mission_items.register
-def _(area: GeofenceCircle) -> List[Tuple[int, Dict]]:
+def _(area: GeofenceCircle) -> list[tuple[int, Dict]]:
     return [
         (
             (
@@ -418,7 +416,7 @@ def _(area: GeofenceCircle) -> List[Tuple[int, Dict]]:
 
 
 @_convert_area_to_mission_items.register
-def _(area: GeofencePolygon) -> List[Tuple[int, Dict]]:
+def _(area: GeofencePolygon) -> list[tuple[int, Dict]]:
     points = list(area.points)
     if points and points[0] == points[-1]:
         points.pop()

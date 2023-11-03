@@ -4,7 +4,7 @@ Earth's magnetic field using the IGRF13 model.
 
 from datetime import datetime
 from trio import sleep_forever
-from typing import Optional, Tuple
+from typing import Optional
 
 from igrf_model import DateBoundIGRFModel, IGRFModel
 
@@ -15,7 +15,7 @@ from flockwave.server.model.weather import Weather
 last_model: Optional[DateBoundIGRFModel] = None
 """The last model that the extension used."""
 
-model_validity_range: Tuple[float, float] = (-1, -1)
+model_validity_range: tuple[float, float] = (-1, -1)
 """Tuple storing the POSIX timestamp range when the model is considered valid."""
 
 ONE_WEEK = 7 * 24 * 3600

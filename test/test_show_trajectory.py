@@ -1,5 +1,4 @@
 from pytest import approx, raises
-from typing import List
 
 from flockwave.server.show.player import create_function_for_segment
 from flockwave.server.show.trajectory import TrajectorySegment, TrajectorySpecification
@@ -35,7 +34,7 @@ def test_empty_trajectory():
 
 
 def test_trajectory_segment_splitting():
-    points: List[Point] = [(6, 6, 1), (12, 6, 1), (12, 12, 1), (6, 12, 1)]
+    points: list[Point] = [(6, 6, 1), (12, 6, 1), (12, 12, 1), (6, 12, 1)]
     segment = TrajectorySegment(t=5, duration=6, points=points)
 
     # Splitting at the start
@@ -73,7 +72,7 @@ def test_trajectory_segment_splitting():
 
 
 def test_trajectory_segment_splitting_to_max_duration():
-    points: List[Point] = [(6, 6, 1), (12, 6, 1), (12, 12, 1), (6, 12, 1)]
+    points: list[Point] = [(6, 6, 1), (12, 6, 1), (12, 12, 1), (6, 12, 1)]
     segment = TrajectorySegment(t=5, duration=6, points=points)
 
     # Split into two pieces

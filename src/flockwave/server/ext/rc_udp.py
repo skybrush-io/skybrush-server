@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from logging import Logger
 from trio import fail_after, TooSlowError
-from typing import Any, Callable, Sequence, Optional, Tuple, TYPE_CHECKING
+from typing import Any, Callable, Sequence, Optional, TYPE_CHECKING
 
 from flockwave.connections import create_connection
 from flockwave.connections.socket import UDPListenerConnection
@@ -73,7 +73,7 @@ async def run(app: SkybrushServer, configuration, log):
         await app.supervise(connection, task=handler)
 
 
-def parse_range(value: Any) -> Optional[Tuple[int, int]]:
+def parse_range(value: Any) -> Optional[tuple[int, int]]:
     """Parses the 'range' parameter from the configuration and returns the
     lower and upper bound of each channel; the upper bound is exclusive.
     """
@@ -112,7 +112,7 @@ def decode_two_bytes_per_channel_little_endian(data: bytes) -> Sequence[int]:
     return result
 
 
-def rescale(decoder: Decoder, bounds: Tuple[int, int]) -> Decoder:
+def rescale(decoder: Decoder, bounds: tuple[int, int]) -> Decoder:
     min_value, max_value = bounds
     ratio = 65535.0 / (max_value - min_value)
 

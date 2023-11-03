@@ -6,10 +6,8 @@ from abc import ABCMeta, abstractproperty
 from typing import (
     Any,
     Callable,
-    Dict,
     Generic,
     Iterable,
-    List,
     Optional,
     Union,
     TypeVar,
@@ -48,7 +46,7 @@ __all__ = (
 log = base_log.getChild("uav")
 
 
-VersionInfo = Dict[str, str]
+VersionInfo = dict[str, str]
 """Type alias for version information objects returned from UAVDriver, mapping
 component names to version numbers
 """
@@ -64,7 +62,7 @@ class UAVStatusInfo(TimestampMixin, metaclass=ModelMeta):
         mappers = {"heading": scaled_by(10), "debug": as_base64}
 
     debug: bytes
-    errors: List[int]
+    errors: list[int]
     gps: GPSFix
     heading: float
     attitude: Optional[Attitude]
@@ -76,7 +74,7 @@ class UAVStatusInfo(TimestampMixin, metaclass=ModelMeta):
     velocity: VelocityNED
     velocityXYZ: Optional[VelocityXYZ]
     battery: BatteryInfo
-    rssi: List[int]
+    rssi: list[int]
 
     def __init__(
         self, id: Optional[str] = None, timestamp: Optional[TimestampLike] = None
@@ -289,7 +287,7 @@ class UAVBase(UAV):
                 if present:
                     self._status.errors.append(code)
 
-    def ensure_errors(self, codes: Dict[int, bool]) -> None:
+    def ensure_errors(self, codes: dict[int, bool]) -> None:
         """Updates multiple error codes with a single function call.
 
         Parameters:
@@ -464,7 +462,7 @@ class UAVDriver(Generic[TUAV], metaclass=ABCMeta):
         self.app = None  # type: ignore
 
     def enter_low_power_mode(
-        self, uavs: List[TUAV], transport: Optional[TransportOptions] = None
+        self, uavs: list[TUAV], transport: Optional[TransportOptions] = None
     ):
         """Asks the driver to send a signal to the given UAVs to enter low-power
         mode. Each of the UAVs are assumed to be managed by this driver.
@@ -499,7 +497,7 @@ class UAVDriver(Generic[TUAV], metaclass=ABCMeta):
         """
         raise NotImplementedError
 
-    def get_log_list(self, uavs: List[TUAV]):
+    def get_log_list(self, uavs: list[TUAV]):
         """Asks the driver to retrieve the list of available logs from the
         given UAVs.
 
@@ -515,7 +513,7 @@ class UAVDriver(Generic[TUAV], metaclass=ABCMeta):
             uavs, "log listing request", self._get_log_list_single
         )
 
-    def get_parameter(self, uavs: List[TUAV], name: str):
+    def get_parameter(self, uavs: list[TUAV], name: str):
         """Asks the driver to retrieve the current value of a parameter from
         the given UAVs.
 
@@ -531,7 +529,7 @@ class UAVDriver(Generic[TUAV], metaclass=ABCMeta):
             uavs, "parameter retrieval", self._get_parameter_single, name=name
         )
 
-    def request_preflight_report(self, uavs: List[TUAV]):
+    def request_preflight_report(self, uavs: list[TUAV]):
         """Asks the driver to request a detailed report about the status of
         preflight checks on the given UAVs.
 
@@ -549,7 +547,7 @@ class UAVDriver(Generic[TUAV], metaclass=ABCMeta):
             self._request_preflight_report_single,
         )
 
-    def request_version_info(self, uavs: List[TUAV]):
+    def request_version_info(self, uavs: list[TUAV]):
         """Asks the driver to request detailed version information from the
         given UAVs.
 
@@ -566,7 +564,7 @@ class UAVDriver(Generic[TUAV], metaclass=ABCMeta):
         )
 
     def resume_from_low_power_mode(
-        self, uavs: List[TUAV], transport: Optional[TransportOptions] = None
+        self, uavs: list[TUAV], transport: Optional[TransportOptions] = None
     ):
         """Asks the driver to send a signal to the given UAVs to resume normal
         operation from low-power mode. Each of the UAVs are assumed to be
@@ -593,7 +591,7 @@ class UAVDriver(Generic[TUAV], metaclass=ABCMeta):
             transport=transport,
         )
 
-    def send_command(self, uavs: List[TUAV], command: str, args=None, kwds=None):
+    def send_command(self, uavs: list[TUAV], command: str, args=None, kwds=None):
         """Asks the driver to send a direct command to the given UAVs, each
         of which are assumed to be managed by this driver.
 
@@ -627,7 +625,7 @@ class UAVDriver(Generic[TUAV], metaclass=ABCMeta):
                 driver supports keyword arguments)
 
         Returns:
-            Dict[UAV,object]: dict mapping UAVs to the corresponding results.
+            dict[UAV,object]: dict mapping UAVs to the corresponding results.
 
         Raises:
             NotImplementedError: if the operation is not supported by the
@@ -681,7 +679,7 @@ class UAVDriver(Generic[TUAV], metaclass=ABCMeta):
                 result = {uav: self._execute(func, uav, *args, **kwds) for uav in uavs}
         return result
 
-    def send_fly_to_target_signal(self, uavs: List[TUAV], target: GPSCoordinate):
+    def send_fly_to_target_signal(self, uavs: list[TUAV], target: GPSCoordinate):
         """Asks the driver to send a signal to the given UAVs that makes them
         fly to a given target coordinate. Every UAV passed as an argument is
         assumed to be managed by this driver.
@@ -709,7 +707,7 @@ class UAVDriver(Generic[TUAV], metaclass=ABCMeta):
 
     def send_hover_signal(
         self,
-        uavs: List[TUAV],
+        uavs: list[TUAV],
         *,
         transport: Optional[TransportOptions] = None,
     ):
@@ -738,7 +736,7 @@ class UAVDriver(Generic[TUAV], metaclass=ABCMeta):
         )
 
     def send_landing_signal(
-        self, uavs: List[TUAV], transport: Optional[TransportOptions] = None
+        self, uavs: list[TUAV], transport: Optional[TransportOptions] = None
     ):
         """Asks the driver to send a landing signal to the given UAVs, each
         of which are assumed to be managed by this driver.
@@ -766,8 +764,8 @@ class UAVDriver(Generic[TUAV], metaclass=ABCMeta):
 
     def send_light_or_sound_emission_signal(
         self,
-        uavs: List[TUAV],
-        signals: List[str],
+        uavs: list[TUAV],
+        signals: list[str],
         duration: int,
         transport: Optional[TransportOptions] = None,
     ):
@@ -803,7 +801,7 @@ class UAVDriver(Generic[TUAV], metaclass=ABCMeta):
 
     def send_motor_start_stop_signal(
         self,
-        uavs: List[TUAV],
+        uavs: list[TUAV],
         start: bool = False,
         force: bool = False,
         transport: Optional[TransportOptions] = None,
@@ -840,7 +838,7 @@ class UAVDriver(Generic[TUAV], metaclass=ABCMeta):
 
     def send_reset_signal(
         self,
-        uavs: List[TUAV],
+        uavs: list[TUAV],
         *,
         component: Optional[str] = None,
         transport: Optional[TransportOptions] = None,
@@ -873,7 +871,7 @@ class UAVDriver(Generic[TUAV], metaclass=ABCMeta):
         )
 
     def send_return_to_home_signal(
-        self, uavs: List[TUAV], transport: Optional[TransportOptions] = None
+        self, uavs: list[TUAV], transport: Optional[TransportOptions] = None
     ):
         """Asks the driver to send a return-to-home signal to the given
         UAVs, each of which are assumed to be managed by this driver.
@@ -900,7 +898,7 @@ class UAVDriver(Generic[TUAV], metaclass=ABCMeta):
         )
 
     def send_shutdown_signal(
-        self, uavs: List[TUAV], transport: Optional[TransportOptions] = None
+        self, uavs: list[TUAV], transport: Optional[TransportOptions] = None
     ):
         """Asks the driver to send a shutdown signal to the given UAVs, each
         of which are assumed to be managed by this driver.
@@ -928,7 +926,7 @@ class UAVDriver(Generic[TUAV], metaclass=ABCMeta):
 
     def send_takeoff_signal(
         self,
-        uavs: List[TUAV],
+        uavs: list[TUAV],
         *,
         scheduled: bool = False,
         transport: Optional[TransportOptions] = None,
@@ -960,7 +958,7 @@ class UAVDriver(Generic[TUAV], metaclass=ABCMeta):
             transport=transport,
         )
 
-    def set_parameter(self, uavs: List[TUAV], name: str, value: Any):
+    def set_parameter(self, uavs: list[TUAV], name: str, value: Any):
         """Asks the driver to set the value of a parameter on the given UAVs.
 
         Typically, you don't need to override this method when implementing
@@ -1008,12 +1006,12 @@ class UAVDriver(Generic[TUAV], metaclass=ABCMeta):
 
     def _dispatch_request(
         self,
-        uavs: List[TUAV],
+        uavs: list[TUAV],
         request_name: str,
         handler: Callable[..., TResult],
         broadcaster: Optional[Callable[..., TResult]] = None,
         **kwds,
-    ) -> Union[TResult, Exception, Dict[TUAV, Union[Exception, TResult]]]:
+    ) -> Union[TResult, Exception, dict[TUAV, Union[Exception, TResult]]]:
         """Common implementation for the body of several ``send_*_signal()``
         and similar methods in this class.
 
@@ -1126,7 +1124,7 @@ class UAVDriver(Generic[TUAV], metaclass=ABCMeta):
         # to support low-power mode
         raise NotSupportedError
 
-    def _get_log_list_single(self, uav: TUAV) -> List[FlightLogMetadata]:
+    def _get_log_list_single(self, uav: TUAV) -> list[FlightLogMetadata]:
         """Asks the driver to retrieve the list of flight logs from a single
         UAV managed by this driver.
 
@@ -1307,7 +1305,7 @@ class UAVDriver(Generic[TUAV], metaclass=ABCMeta):
     def _send_light_or_sound_emission_signal_single(
         self,
         uav: TUAV,
-        signals: List[str],
+        signals: list[str],
         duration: int,
         *,
         transport: Optional[TransportOptions] = None,
@@ -1543,7 +1541,7 @@ class PassiveUAVDriver(UAVDriver[PassiveUAV]):
 
     def _dispatch_request(
         self, uavs: Iterable[UAV], signal_name: str, handler, broadcaster=None, **kwds
-    ) -> Dict[UAV, Any]:
+    ) -> dict[UAV, Any]:
         error = RuntimeError("{0} not supported".format(signal_name))
         return {uav: error for uav in uavs}
 

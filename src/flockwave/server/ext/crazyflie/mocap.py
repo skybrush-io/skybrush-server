@@ -1,4 +1,4 @@
-from typing import List, Tuple, TYPE_CHECKING
+from typing import TYPE_CHECKING
 
 from aiocflib.crtp.crtpstack import CRTPPort
 from aiocflib.crazyflie.localization import (
@@ -52,8 +52,8 @@ class CrazyflieMocapFrameHandler:
         # the broadcaster; the current solution does not work for multiple
         # Crazyradios in different address spaces yet
 
-        positions: List[Tuple[int, Tuple[float, float, float]]] = []
-        poses: List[Tuple[int, Tuple[float, float, float], QuaternionXYZW]] = []
+        positions: list[tuple[int, tuple[float, float, float]]] = []
+        poses: list[tuple[int, tuple[float, float, float], QuaternionXYZW]] = []
 
         for item in frame.items:
             # TODO(ntamas): currently we assume that the numeric ID of the

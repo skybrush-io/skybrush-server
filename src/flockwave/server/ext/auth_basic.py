@@ -10,7 +10,7 @@ from base64 import b64decode
 from enum import Enum
 from pathlib import Path
 from trio import sleep_forever
-from typing import Callable, Dict, List, Mapping, Optional, Union
+from typing import Callable, Mapping, Optional, Union
 
 from flockwave.server.model.authentication import (
     AuthenticationMethod,
@@ -25,7 +25,7 @@ HashComparator = Callable[[str, str], bool]
 PasswordValidator = Callable[[str, str], bool]
 
 #: Type specification for password validator specification objects
-PasswordValidatorSpecification = Dict[str, str]
+PasswordValidatorSpecification = dict[str, str]
 
 
 class PasswordDataSourceType(Enum):
@@ -174,7 +174,7 @@ def create_validator_from_config(
 class BasicAuthentication(AuthenticationMethod):
     """Implementation of a basic username-password-based authentication method."""
 
-    _validators: List[PasswordValidator]
+    _validators: list[PasswordValidator]
     """List of registered password validators. The username-password pair is
     deemed valid if at least one of the validators accepts it.
     """

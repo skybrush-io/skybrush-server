@@ -1,10 +1,10 @@
-from typing import Any, Dict, FrozenSet, Iterable, Optional, Tuple
+from typing import Any, Iterable, Optional
 
 __all__ = ("describe_serial_port", "list_serial_ports")
 
 
 #: Type specification for dict-style serial port configurations
-SerialPortConfiguration = Dict[str, Any]
+SerialPortConfiguration = dict[str, Any]
 
 #: Type specification for a generic serial port descriptor returned from
 #: `list_serial_ports()`
@@ -100,7 +100,7 @@ def list_serial_ports() -> Iterable[SerialPortDescriptor]:
     return comports()
 
 
-_RTK_BASE_BLACKLIST: FrozenSet[Tuple[int, int]] = frozenset(
+_RTK_BASE_BLACKLIST: frozenset[tuple[int, int]] = frozenset(
     [
         (0x1209, 0x5740),  # ArduCopter generic
         (0x1209, 0x5741),  # Pixhawk1

@@ -4,7 +4,7 @@ trajectory.
 
 from bisect import bisect
 from math import inf
-from typing import Callable, List, Optional
+from typing import Callable, Optional
 
 from pyledctrl.player import Player as LightPlayer
 
@@ -85,8 +85,8 @@ class TrajectoryPlayer:
     _current_segment_end_time: float
     _current_segment_length: float
 
-    _segments: List[TrajectorySegment]
-    _start_times: List[float]
+    _segments: list[TrajectorySegment]
+    _start_times: list[float]
     _takeoff_time: float
     _trajectory: TrajectorySpecification
 

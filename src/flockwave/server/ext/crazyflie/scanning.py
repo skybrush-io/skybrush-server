@@ -13,9 +13,7 @@ from typing import (
     Callable,
     ClassVar,
     Iterable,
-    List,
     Optional,
-    Tuple,
     Union,
 )
 
@@ -51,7 +49,7 @@ class Scheduler:
 
     async def run(
         self, addresses: Union[CrazyradioConnection, AddressListGetter]
-    ) -> AsyncIterable[Optional[List[str]]]:
+    ) -> AsyncIterable[Optional[list[str]]]:
         """Runs the scheduler, yielding lists of addresses to scan, or yielding
         `None` when a full scan is requested.
 
@@ -68,7 +66,7 @@ class Scheduler:
         async for item in self._run(addresses):
             yield item
 
-    def _run(self, addresses: AddressListGetter) -> AsyncIterable[Optional[List[str]]]:
+    def _run(self, addresses: AddressListGetter) -> AsyncIterable[Optional[list[str]]]:
         raise NotImplementedError
 
     def wake_up(self) -> None:
@@ -153,7 +151,7 @@ class DefaultScheduler(Scheduler):
         self._speedup_counter = 10
 
 
-ScannerTaskEvent = Tuple["RadioAddressSpace", int, Callable[[], None]]
+ScannerTaskEvent = tuple["RadioAddressSpace", int, Callable[[], None]]
 ScannerTaskSendChannel = SendChannel[ScannerTaskEvent]
 ScannerTaskReceiveChannel = ReceiveChannel[ScannerTaskEvent]
 
@@ -206,7 +204,7 @@ class CrazyradioScannerTask:
         """
         return self._priorities.get(address, 0)
 
-    def _get_scannable_addresses(self, min_priority: int) -> List[str]:
+    def _get_scannable_addresses(self, min_priority: int) -> list[str]:
         """Returns a list containing all the addresses that should be scanned in
         a single full scan, excluding all the addresses for which we have already
         found a drone that is still turned on.

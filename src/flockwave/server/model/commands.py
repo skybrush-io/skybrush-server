@@ -6,7 +6,7 @@ from contextlib import contextmanager
 from math import inf
 from time import time
 from trio import CancelScope, current_time
-from typing import Any, AsyncIterator, Dict, Iterator, Optional, Set, Union, TypeVar
+from typing import Any, AsyncIterator, Iterator, Optional, Union, TypeVar
 
 from flockwave.concurrency import Future
 from flockwave.spec.schema import get_complex_object_schema
@@ -58,7 +58,7 @@ class Progress:
         self.object = object
 
     @property
-    def json(self) -> Dict[str, Any]:
+    def json(self) -> dict[str, Any]:
         """Returns the JSON representation of the progress object."""
         result = {}
         if self.message is not None:
@@ -174,7 +174,7 @@ class CommandExecutionStatus(metaclass=ModelMeta):
 
     _cancel_scope: CancelScope
     _cancelled_by_user: bool
-    _clients_to_notify: Set[str]
+    _clients_to_notify: set[str]
     _deadline: float
     _suspension_future: Optional[Future[Any]]
 
@@ -207,7 +207,7 @@ class CommandExecutionStatus(metaclass=ModelMeta):
         self._clients_to_notify.add(client_id)
 
     @property
-    def clients_to_notify(self) -> Set[str]:
+    def clients_to_notify(self) -> set[str]:
         """Set of clients to notify when this command finishes
         execution.
         """

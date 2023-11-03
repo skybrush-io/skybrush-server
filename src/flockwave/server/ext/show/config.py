@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from blinker import Signal
 from enum import Enum
-from typing import Any, Dict, List, Optional, TypeVar
+from typing import Any, Optional, TypeVar
 
 from flockwave.server.tasks.led_lights import LightConfiguration
 from flockwave.server.utils.formatting import (
@@ -63,7 +63,7 @@ class DroneShowConfiguration:
     _seconds_ relative to the epoch of the existing clock.
     """
 
-    uav_ids: List[Optional[str]]
+    uav_ids: list[Optional[str]]
     """The list of UAV IDs participating in the show."""
 
     def __init__(self):
@@ -128,9 +128,9 @@ class DroneShowConfiguration:
         return self.clock is not None and self.start_time_on_clock is not None
 
     @property
-    def json(self) -> Dict[str, Any]:
+    def json(self) -> dict[str, Any]:
         """Returns the JSON representation of the configuration object."""
-        result: Dict[str, Any] = {
+        result: dict[str, Any] = {
             "start": {
                 "authorized": bool(self.authorized_to_start),
                 "clock": self.clock,
@@ -157,7 +157,7 @@ class DroneShowConfiguration:
             # TODO(ntamas)
             return None
 
-    def update_from_json(self, obj: Dict[str, Any]) -> None:
+    def update_from_json(self, obj: dict[str, Any]) -> None:
         """Updates the configuration object from its JSON representation."""
         changed = False
 

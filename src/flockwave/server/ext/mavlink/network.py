@@ -20,14 +20,10 @@ from trio_util import periodic
 from typing import (
     Any,
     Callable,
-    Dict,
-    FrozenSet,
     Iterable,
     Iterator,
-    List,
     Optional,
     Sequence,
-    Tuple,
     Union,
 )
 
@@ -78,7 +74,7 @@ HEARTBEAT_SPEC = (
 )
 
 
-Matchers = Dict[str, List[Tuple[Optional[int], MAVLinkMessageMatcher, Future]]]
+Matchers = dict[str, list[tuple[Optional[int], MAVLinkMessageMatcher, Future]]]
 
 
 class MAVLinkNetwork:
@@ -88,9 +84,9 @@ class MAVLinkNetwork:
     log: Logger
     manager: CommunicationManager[MAVLinkMessageSpecification, Any]
 
-    _connections: List[Connection]
-    _statustext_targets: FrozenSet[str]
-    _uav_addresses: Dict[MAVLinkUAV, Any]
+    _connections: list[Connection]
+    _statustext_targets: frozenset[str]
+    _uav_addresses: dict[MAVLinkUAV, Any]
 
     _id: str
     """ID of the network."""
@@ -109,7 +105,7 @@ class MAVLinkNetwork:
     system ID was specified).
     """
 
-    _routing: Dict[str, List[int]]
+    _routing: dict[str, list[int]]
 
     _signing: MAVLinkSigningConfiguration
     """Object that stores how the MAVLink connections should handle signed
@@ -121,7 +117,7 @@ class MAVLinkNetwork:
     sent to the ID formatter that derives the final ID in Skybrush.
     """
 
-    _uavs: Dict[int, MAVLinkUAV]
+    _uavs: dict[int, MAVLinkUAV]
     """Dictionary mapping MAVLink system IDs in the network to the corresponding
     UAVs.
     """
@@ -165,8 +161,8 @@ class MAVLinkNetwork:
         system_id: int = 254,
         id_formatter: Callable[[int, str], str] = "{0}".format,
         packet_loss: float = 0,
-        statustext_targets: Optional[FrozenSet[str]] = None,
-        routing: Optional[Dict[str, List[int]]] = None,
+        statustext_targets: Optional[frozenset[str]] = None,
+        routing: Optional[dict[str, list[int]]] = None,
         signing: MAVLinkSigningConfiguration = MAVLinkSigningConfiguration.DISABLED,
         uav_system_id_offset: int = 0,
         use_broadcast_rate_limiting: bool = False,
@@ -435,7 +431,7 @@ class MAVLinkNetwork:
         """
         await self.manager.broadcast_packet(spec, destination=channel)
 
-    def enqueue_rc_override_packet(self, channels: List[int]) -> None:
+    def enqueue_rc_override_packet(self, channels: list[int]) -> None:
         """Handles a list of a RC channels that the server wishes to forward
         to the drones as RC override.
 
@@ -538,8 +534,8 @@ class MAVLinkNetwork:
         self,
         spec: MAVLinkMessageSpecification,
         target: MAVLinkUAV,
-        wait_for_response: Optional[Tuple[str, MAVLinkMessageMatcher]] = None,
-        wait_for_one_of: Optional[Dict[str, MAVLinkMessageSpecification]] = None,
+        wait_for_response: Optional[tuple[str, MAVLinkMessageMatcher]] = None,
+        wait_for_one_of: Optional[dict[str, MAVLinkMessageSpecification]] = None,
         channel: Optional[str] = None,
     ) -> Optional[MAVLinkMessage]:
         """Sends a message to the given UAV and optionally waits for a matching
@@ -718,7 +714,7 @@ class MAVLinkNetwork:
         # address of that packet and the netmasks of the network interfaces.
         # The following dict stores whether a link was already switched to its
         # subnet-specific broadcast address
-        broadcast_address_updated: Dict[str, bool] = defaultdict(bool)
+        broadcast_address_updated: dict[str, bool] = defaultdict(bool)
 
         async for connection_id, (message, address) in channel:
             # Uncomment this for debugging
@@ -949,7 +945,7 @@ class MAVLinkNetwork:
         """Logs an incoming MAVLink message for debugging purposes."""
         self.log.debug(str(message))
 
-    def _log_extra_from_message(self, message: MAVLinkMessage) -> Dict[str, Any]:
+    def _log_extra_from_message(self, message: MAVLinkMessage) -> dict[str, Any]:
         return {"id": log_id_from_message(message, self.id)}
 
     def _register_connection_aliases(
@@ -971,7 +967,7 @@ class MAVLinkNetwork:
 
         def register_by_index(
             alias: str, index: Optional[Union[int, Iterable[int]]]
-        ) -> List[str]:
+        ) -> list[str]:
             if index is None:
                 index = 0
 
@@ -1024,7 +1020,7 @@ class MAVLinkNetwork:
             log.info(f"Routing RC overrides to {channels}", extra=extra)
 
     async def _update_broadcast_address_of_channel_to_subnet(
-        self, connection_id: str, address: Tuple[str, int], timeout: float = 1
+        self, connection_id: str, address: tuple[str, int], timeout: float = 1
     ) -> None:
         """Updates the broadcast address of the connection with the given ID to the
         subnet-specific broadcast address of the network interface that received
@@ -1088,7 +1084,7 @@ def format_channel_ids(ids: Sequence[str]) -> str:
     """Formats a list of communication channel IDs in a way that is suitable for
     printing in human-readable logs.
     """
-    parts: List[str] = []
+    parts: list[str] = []
     for index, id in enumerate(ids):
         parts.append(id)
         if index < len(ids) - 1:

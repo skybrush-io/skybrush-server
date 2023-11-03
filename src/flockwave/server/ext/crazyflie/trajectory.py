@@ -5,7 +5,7 @@ understood by the Crazyflies.
 from dataclasses import dataclass
 from enum import IntEnum
 from struct import Struct
-from typing import Sequence, Tuple
+from typing import Sequence
 
 from flockwave.server.show.formats import SegmentEncoder
 from flockwave.server.show.trajectory import TrajectorySpecification
@@ -33,10 +33,10 @@ class Poly4D:
     """
 
     duration: float
-    xs: Tuple[float, ...] = (0.0,) * 8
-    ys: Tuple[float, ...] = (0.0,) * 8
-    zs: Tuple[float, ...] = (0.0,) * 8
-    yaws: Tuple[float, ...] = (0.0,) * 8
+    xs: tuple[float, ...] = (0.0,) * 8
+    ys: tuple[float, ...] = (0.0,) * 8
+    zs: tuple[float, ...] = (0.0,) * 8
+    yaws: tuple[float, ...] = (0.0,) * 8
 
     _float_coords_struct = Struct("<ffffffff")
     _duration_struct = Struct("<f")
@@ -118,7 +118,7 @@ class Poly4D:
     @classmethod
     def _encode_polynomial_compressed(
         cls, coeffs: Sequence[float], scale: int = 1000, *, eps: float = 1e-7
-    ) -> Tuple[int, bytes]:
+    ) -> tuple[int, bytes]:
         """Encodes the coefficients of the given polynomial into the compressed
         byte-level representation of the Crazyflie, retuning the chosen
         compression scheme and the raw bytes.

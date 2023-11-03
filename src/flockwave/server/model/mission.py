@@ -6,7 +6,7 @@ from abc import ABC, abstractmethod
 from collections import Counter
 from dataclasses import dataclass, field, InitVar
 from enum import Enum
-from typing import Any, Dict, List, Optional, Sequence, Tuple, TypedDict, Union
+from typing import Any, Optional, Sequence, TypedDict, Union
 
 from flockwave.server.show import (
     get_geofence_configuration_from_show_specification,
@@ -61,7 +61,7 @@ class Altitude:
     """The altitude reference."""
 
     @property
-    def json(self) -> Dict[str, Any]:
+    def json(self) -> dict[str, Any]:
         """Returns a JSON representation of altitude."""
         return {
             "reference": self.reference.value,
@@ -95,7 +95,7 @@ class Heading:
     """Optional heading change rate in [deg/s]."""
 
     @property
-    def json(self) -> Dict[str, Any]:
+    def json(self) -> dict[str, Any]:
         """Returns a JSON representation of heading."""
         return {
             "mode": self.mode.value,
@@ -124,7 +124,7 @@ class MissionItem(TypedDict):
     type: str
     """The type of the mission item."""
 
-    parameters: Optional[Dict[str, Any]]
+    parameters: Optional[dict[str, Any]]
     """The parameters of the mission item; exact parameters are dependent on
     the type of the item.
     """
@@ -141,7 +141,7 @@ class MissionItemBundle(TypedDict):
     name: Optional[str]
     """The name of the mission to upload to the drone."""
 
-    items: List[MissionItem]
+    items: list[MissionItem]
     """The list of mission items in the bundle."""
 
 
@@ -267,7 +267,7 @@ def _generate_mission_command_from_mission_item(item: MissionItem) -> MissionCom
     return command
 
 
-def _get_altitude_from_parameters(params: Dict[str, Any]) -> Optional[Altitude]:
+def _get_altitude_from_parameters(params: dict[str, Any]) -> Optional[Altitude]:
     if "alt" in params:
         # "alt" will be an object with "reference" and "value" as keys
         value_and_reference = params["alt"]
@@ -295,7 +295,7 @@ def _get_altitude_from_parameters(params: Dict[str, Any]) -> Optional[Altitude]:
     return Altitude(value=value, reference=reference)
 
 
-def _get_heading_from_parameters(params: Dict[str, Any]) -> Heading:
+def _get_heading_from_parameters(params: dict[str, Any]) -> Heading:
     if "heading" not in params:
         raise RuntimeError("missing required parameter: 'heading'")
     # "heading" will be an object with "mode" and "value" as keys
@@ -320,21 +320,21 @@ def _get_heading_from_parameters(params: Dict[str, Any]) -> Heading:
     return Heading(value=value, mode=mode)
 
 
-def _get_latitude_from_parameters(params: Dict[str, Any]) -> float:
+def _get_latitude_from_parameters(params: dict[str, Any]) -> float:
     lat = params.get("lat")
     if not isinstance(lat, (int, float)):
         raise RuntimeError("latitude must be a number")
     return float(lat)
 
 
-def _get_longitude_from_parameters(params: Dict[str, Any]) -> float:
+def _get_longitude_from_parameters(params: dict[str, Any]) -> float:
     lon = params.get("lon")
     if not isinstance(lon, (int, float)):
         raise RuntimeError("longitude must be a number")
     return float(lon)
 
 
-def _get_marker_from_parameters(params: Dict[str, Any]) -> Tuple[Marker, float]:
+def _get_marker_from_parameters(params: dict[str, Any]) -> tuple[Marker, float]:
     marker_str = params.get("marker")
     if not isinstance(marker_str, str) or not marker_str:
         raise RuntimeError("marker type must be a valid string")
@@ -355,8 +355,8 @@ def _get_marker_from_parameters(params: Dict[str, Any]) -> Tuple[Marker, float]:
 
 
 def _get_payload_action_from_parameters(
-    params: Dict[str, Any]
-) -> Tuple[str, PayloadAction]:
+    params: dict[str, Any]
+) -> tuple[str, PayloadAction]:
     name = params.get("name")
     if not isinstance(name, str) or not name:
         raise RuntimeError("payload name must be a valid string")
@@ -374,8 +374,8 @@ def _get_payload_action_from_parameters(
 
 
 def _get_speed_from_parameters(
-    params: Dict[str, Any]
-) -> Tuple[Optional[float], Optional[float]]:
+    params: dict[str, Any]
+) -> tuple[Optional[float], Optional[float]]:
     velocity_xy = params.get("velocityXY")
     if velocity_xy is not None and (
         not isinstance(velocity_xy, (int, float)) or velocity_xy <= 0
@@ -477,7 +477,7 @@ class MissionCommandBundle:
     name: Optional[str] = None
     """The name of the mission to upload to the drone."""
 
-    commands: List[MissionCommand] = field(default_factory=list)
+    commands: list[MissionCommand] = field(default_factory=list)
     """The list of mission commands in the bundle."""
 
     def __post_init__(self):
@@ -505,7 +505,7 @@ class MissionCommandBundle:
             raise RuntimeError("only version 1 mission item bundles are supported")
 
         items: Sequence[MissionItem] = bundle.get("items", ())
-        commands: List[MissionCommand] = []
+        commands: list[MissionCommand] = []
 
         for item in items:
             commands.append(_generate_mission_command_from_mission_item(item))

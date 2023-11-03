@@ -11,7 +11,7 @@ from logging import Logger
 from json import dumps
 from trio import open_memory_channel, MemorySendChannel, WouldBlock
 from trio.abc import ReceiveChannel
-from typing import Any, List, Optional, Tuple, TYPE_CHECKING
+from typing import Any, Optional, TYPE_CHECKING
 
 from flockwave.connections import ConnectionState
 from flockwave.server.registries import ConnectionRegistry, ConnectionRegistryEntry
@@ -95,7 +95,7 @@ class ConsoleStatusExtension(Extension):
             async for item in queue_rx:
                 await self._send_status_information(item)
 
-    def _enqueue_status_information(self, info: List[Tuple[str, Any]]) -> None:
+    def _enqueue_status_information(self, info: list[tuple[str, Any]]) -> None:
         """Enqueues a new piece of status information to be sent to the
         frontend as soon as possible.
         """
@@ -108,7 +108,7 @@ class ConsoleStatusExtension(Extension):
         except WouldBlock:
             self.log.info("Dropped status information addressed to console frontend")
 
-    def _get_full_status_information(self) -> List[Tuple[str, Any]]:
+    def _get_full_status_information(self) -> list[tuple[str, Any]]:
         """Gathers the full status information to send from the application
         object and returns it as a list of key-value pairs.
         """
@@ -122,7 +122,7 @@ class ConsoleStatusExtension(Extension):
 
     def _get_status_information_for_entry(
         self, entry: ConnectionRegistryEntry, deleted: bool = False
-    ) -> Tuple[str, Any]:
+    ) -> tuple[str, Any]:
         assert entry.connection is not None
         status = _status_to_string.get(entry.connection.state, "unknown")
         return (f"Connections|{entry.description}", None if deleted else status)

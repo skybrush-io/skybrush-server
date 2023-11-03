@@ -2,7 +2,7 @@
 Skybrush-related geofence specifications, until we find a better place for them.
 """
 
-from typing import Dict, List, Optional, Sequence, Union
+from typing import Dict, Optional, Sequence, Union
 
 from flockwave.gps.vectors import (
     FlatEarthCoordinate,
@@ -76,9 +76,9 @@ def get_geofence_configuration_from_show_specification(
 
 
 def _parse_points(
-    points: Sequence[List[Union[int, float]]],
+    points: Sequence[list[Union[int, float]]],
     coordinate_system: Optional[FlatEarthToGPSCoordinateTransformation],
-) -> List[GPSCoordinate]:
+) -> list[GPSCoordinate]:
     """Parses a list of points from the geofence specification using the given
     optional local-to-global coordinate system and returns the parsed points.
 

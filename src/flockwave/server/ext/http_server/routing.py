@@ -3,7 +3,7 @@
 from bisect import insort_left
 from dataclasses import dataclass
 from functools import partial, total_ordering
-from typing import Any, Callable, FrozenSet, Iterable, Optional
+from typing import Any, Callable, Iterable, Optional
 
 
 __all__ = ("RoutingMiddleware",)
@@ -17,7 +17,7 @@ class Route:
     """
 
     app: Any
-    scopes: Optional[FrozenSet[str]] = None
+    scopes: Optional[frozenset[str]] = None
     path: Optional[str] = None
     priority: int = 0
 

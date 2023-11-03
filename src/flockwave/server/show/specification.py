@@ -1,4 +1,4 @@
-from typing import Dict, Optional, Tuple
+from typing import Dict, Optional
 
 from flockwave.gps.vectors import FlatEarthToGPSCoordinateTransformation
 
@@ -62,7 +62,7 @@ def get_drone_count_from_show_specification(show: ShowSpecification) -> Optional
 
 def get_home_position_from_show_specification(
     show: ShowSpecification,
-) -> Optional[Tuple[float, float, float]]:
+) -> Optional[tuple[float, float, float]]:
     """Returns the home position of the drone from the given show specification
     object. Units are in meters.
     """

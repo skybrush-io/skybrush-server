@@ -5,7 +5,6 @@ from platform import system
 from subprocess import CalledProcessError, run
 from time import time
 from trio import to_thread
-from typing import Tuple
 
 try:
     from time import CLOCK_REALTIME, clock_settime
@@ -29,7 +28,7 @@ def can_set_system_time() -> bool:
     return can_set_system_time_detailed()[0]
 
 
-def can_set_system_time_detailed() -> Tuple[bool, str]:
+def can_set_system_time_detailed() -> tuple[bool, str]:
     """Returns whether the current user is allowed to modify the system time, and
     if not, provides a reason why the current user cannot do that.
 
@@ -76,7 +75,7 @@ def can_set_system_time_detailed() -> Tuple[bool, str]:
     return True, ""
 
 
-async def can_set_system_time_detailed_async() -> Tuple[bool, str]:
+async def can_set_system_time_detailed_async() -> tuple[bool, str]:
     """Returns whether the current user is allowed to modify the system time, and
     if not, provides a reason why the current user cannot do that.
 
@@ -88,8 +87,8 @@ async def can_set_system_time_detailed_async() -> Tuple[bool, str]:
         is empty if the user can modify the system time.
     """
     return await to_thread.run_sync(
-        can_set_system_time_detailed, cancellable=True
-    )  # type: ignore
+        can_set_system_time_detailed, abandon_on_cancel=True
+    )
 
 
 def get_current_unix_timestamp_msec() -> int:
@@ -157,5 +156,5 @@ async def set_system_time_msec_async(timestamp: float) -> None:
             system time
     """
     return await to_thread.run_sync(
-        set_system_time_msec, timestamp, cancellable=True
-    )  # type: ignore
+        set_system_time_msec, timestamp, abandon_on_cancel=True
+    )

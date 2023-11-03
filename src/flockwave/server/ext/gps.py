@@ -15,7 +15,7 @@ from functools import partial
 from json import loads
 from pynmea2 import parse as parse_nmea
 from re import sub
-from typing import Any, Dict, Optional, Set, Tuple, TYPE_CHECKING
+from typing import Any, Optional, TYPE_CHECKING
 
 from flockwave.gps.vectors import GPSCoordinate
 from flockwave.channels import ParserChannel
@@ -43,7 +43,7 @@ if TYPE_CHECKING:
     from flockwave.server.ext.beacon.model import Beacon
 
 #: Type alias for the unified GPS-related message format used by this extension
-GPSMessage = Dict[str, Any]
+GPSMessage = dict[str, Any]
 
 
 class MessageFormat(Enum):
@@ -67,7 +67,7 @@ class MessageFormat(Enum):
 
 def create_gps_connection_and_format(
     connection: str, format: Optional[str] = None
-) -> Tuple[Connection, MessageFormat]:
+) -> tuple[Connection, MessageFormat]:
     """Creates a connection from a connection specification object found
     in the configuration of the extension. The ``connection`` and ``format``
     keys of the configuration object must be passed to this function.
@@ -218,18 +218,18 @@ class GPSExtension(UAVExtension):
     beacons.
     """
 
-    _connection_to_beacon_ids: Dict[Connection, Set[str]]
+    _connection_to_beacon_ids: dict[Connection, set[str]]
     """Object mapping the connection objects to the IDs of the beacons for which
     the connection provided information at least once. Used to mark the beacons
     as inactive when the connection is closed.
     """
 
-    _connection_to_connection_id: Dict[Connection, str]
+    _connection_to_connection_id: dict[Connection, str]
     """Object mapping the connection objects to locally derived connection IDs
     that may be used as parts of beacon IDs.
     """
 
-    _device_to_beacon_id: Dict[str, str]
+    _device_to_beacon_id: dict[str, str]
     """Object mapping `gpsd`-provided device IDs to locally derived beacon IDs
     that may be used as parts of the globally registered beacon IDs.
     """

@@ -7,7 +7,7 @@ from logging import Logger
 from struct import Struct
 from trio import open_memory_channel, open_nursery
 from trio.abc import ReceiveChannel, SendChannel
-from typing import Any, Dict, List, Optional, TYPE_CHECKING
+from typing import Any, Optional, TYPE_CHECKING
 
 from flockwave.connections.factory import create_connection
 from flockwave.server.ext.base import UAVExtension
@@ -41,7 +41,7 @@ class CrazyflieDronesExtension(UAVExtension[CrazyflieDriver]):
         return CrazyflieDriver(cache=self.get_cache_dir())
 
     def configure_driver(
-        self, driver: CrazyflieDriver, configuration: Dict[str, Any]
+        self, driver: CrazyflieDriver, configuration: dict[str, Any]
     ) -> None:
         """Configures the driver that will manage the UAVs created by
         this extension.
@@ -76,7 +76,7 @@ class CrazyflieDronesExtension(UAVExtension[CrazyflieDriver]):
         init_drivers()
 
         connection_config = configuration.get("connections", [])
-        radio_indices: List[int] = []
+        radio_indices: list[int] = []
         for spec in connection_config:
             index = CrazyradioConnection.parse_radio_index_from_uri(spec)
             if index is not None:

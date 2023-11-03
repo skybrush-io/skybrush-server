@@ -9,7 +9,7 @@ from random import random, choice
 from time import monotonic
 from trio import CancelScope, sleep
 from trio_util import periodic
-from typing import Any, Callable, Dict, List, NoReturn, Optional, Union
+from typing import Any, Callable, NoReturn, Optional, Union
 
 from flockwave.concurrency import delayed
 from flockwave.ext.manager import ExtensionAPIProxy
@@ -119,7 +119,7 @@ class VirtualUAV(UAVBase):
     _light_controller: DefaultLightController
     _mission_started_at: Optional[float]
     _motors_running: bool
-    _parameters: Dict[str, str]
+    _parameters: dict[str, str]
     _position_xyz: Vector3D
     _position_flat: FlatEarthCoordinate
     _request_shutdown: Optional[Callable[[], None]]
@@ -134,7 +134,7 @@ class VirtualUAV(UAVBase):
     _velocity_ned: VelocityNED
 
     boots_armed: bool
-    errors: List[int]
+    errors: list[int]
     max_acceleration_xy: float
     max_acceleration_z: float
     max_velocity_xy: float
@@ -862,7 +862,7 @@ class VirtualUAV(UAVBase):
             )
 
 
-_LOGS: Dict[str, FlightLog] = {
+_LOGS: dict[str, FlightLog] = {
     "1": FlightLog.create(
         id="1",
         kind=FlightLogKind.TEXT,
@@ -1048,7 +1048,7 @@ class VirtualUAVDriver(UAVDriver[VirtualUAV]):
         except KeyError:
             raise RuntimeError(f"no such log: {log_id}") from None
 
-    async def _get_log_list_single(self, uav: VirtualUAV) -> List[FlightLogMetadata]:
+    async def _get_log_list_single(self, uav: VirtualUAV) -> list[FlightLogMetadata]:
         # Simulate a bit of delay to make it more realistic
         await sleep(0.2)
         return [log.get_metadata() for log in _LOGS.values()]
@@ -1084,7 +1084,7 @@ class VirtualUAVDriver(UAVDriver[VirtualUAV]):
         uav.land()
 
     def _send_light_or_sound_emission_signal_single(
-        self, uav: VirtualUAV, signals: List[str], duration: float, *, transport
+        self, uav: VirtualUAV, signals: list[str], duration: float, *, transport
     ) -> None:
         if "light" in signals:
             uav.handle_where_are_you(duration)

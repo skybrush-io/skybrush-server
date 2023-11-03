@@ -2,7 +2,7 @@ import re
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import cast, Any, Callable, Dict, Iterable, List, Optional
+from typing import cast, Any, Callable, Iterable, Optional
 
 from flockwave.server.utils.generic import constant, identity
 
@@ -45,7 +45,7 @@ class NameRemappingRule:
     _func: Callable[[str], Optional[str]] = field(init=False)
 
     @classmethod
-    def from_configuration(cls, config: Dict[str, Any]):
+    def from_configuration(cls, config: dict[str, Any]):
         """Creates a name remapping rule object from the format used in the
         configuration of this extension.
         """
@@ -88,11 +88,11 @@ class NameRemapping:
     frames based on a list of rules configured by the user.
     """
 
-    _rules: List[NameRemappingRule]
+    _rules: list[NameRemappingRule]
     """The list of rules in the remapping class."""
 
     @classmethod
-    def from_configuration(cls, config: Dict[str, Any]):
+    def from_configuration(cls, config: dict[str, Any]):
         """Creates a name remapping object from the format used in the configuration
         of this extension.
         """
@@ -101,7 +101,7 @@ class NameRemapping:
             rules = ()
 
         result = cls()
-        for rule_spec in cast(Iterable[Dict[str, Any]], rules):
+        for rule_spec in cast(Iterable[dict[str, Any]], rules):
             result.add_rule(NameRemappingRule.from_configuration(rule_spec))
 
         return result

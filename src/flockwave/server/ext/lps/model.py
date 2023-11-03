@@ -6,11 +6,8 @@ from dataclasses import dataclass
 from typing import (
     Any,
     ClassVar,
-    Dict,
     Generic,
-    List,
     Optional,
-    Tuple,
     TypeVar,
 )
 
@@ -32,7 +29,7 @@ class Anchor:
     active: bool = True
     """Whether the anchor is active (i.e. online)."""
 
-    position: Optional[Tuple[float, float, float]] = None
+    position: Optional[tuple[float, float, float]] = None
     """The position of the anchor in the coordinate system of the local
     positioning system, if known. ``None`` if not known or not applicable.
     """
@@ -67,7 +64,7 @@ class Anchor:
             return False
 
     @property
-    def json(self) -> Dict[str, Any]:
+    def json(self) -> dict[str, Any]:
         """Returns the JSON representation of the anchor."""
         return {
             "id": self.id,
@@ -96,10 +93,10 @@ class LocalPositioningSystem(ModelObject):
     name: str = ""
     """The name of the LPS that is to be displayed on user interfaces."""
 
-    errors: List[int]
+    errors: list[int]
     """The list of error codes corresponding to the local positioning system."""
 
-    anchors: List[Anchor]
+    anchors: list[Anchor]
     """The list of anchors corresponding to the local positioning system."""
 
     on_updated: ClassVar[Signal] = Signal(
@@ -120,7 +117,7 @@ class LocalPositioningSystem(ModelObject):
         return self._id
 
     @property
-    def json(self) -> Dict[str, Any]:
+    def json(self) -> dict[str, Any]:
         """Returns the JSON representation of the local positioning system."""
         return {
             "id": self.id,
@@ -183,14 +180,14 @@ class LocalPositioningSystemType(Generic[T], metaclass=ABCMeta):
         """
         raise NotImplementedError
 
-    def describe(self) -> Dict[str, str]:
+    def describe(self) -> dict[str, str]:
         """Returns a JSON object that can be used to describe this LPS type
         in JSON messages between the server and the connected clients.
         """
         return {"name": self.name, "description": self.description}
 
     @abstractmethod
-    def get_configuration_schema(self) -> Dict[str, Any]:
+    def get_configuration_schema(self) -> dict[str, Any]:
         """Returns the JSON schema associated with general configuration
         parameters of instances of this LPS type.
 

@@ -1,4 +1,5 @@
-from typing import OrderedDict, TypeVar
+from collections import OrderedDict
+from typing import TypeVar
 
 __all__ = ("LastUpdatedOrderedDict",)
 

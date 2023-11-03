@@ -8,7 +8,7 @@ values of the RC channels.
 
 from logging import Logger
 
-from typing import Any, ClassVar, List, Optional, Sequence
+from typing import Any, ClassVar, Optional, Sequence
 
 
 rc_changed_signal: Any = None
@@ -38,7 +38,7 @@ class RCState(Sequence[int]):
     MAX_CHANNEL_COUNT: ClassVar[int] = 18
     """Maximum number of channels supported by this object"""
 
-    channels: List[int]
+    channels: list[int]
     """Raw channel values as a list, exposed for performance. If you use this
     property directly, do NOT modify the list or assign a new instance to it.
     """
@@ -80,7 +80,7 @@ class RCState(Sequence[int]):
 
     def get_scaled_channel_values(
         self, min: float = 0, span: float = 1, out_of_range: float = -1
-    ) -> List[float]:
+    ) -> list[float]:
         """Returns the value of all RC channels, scaled into a given
         range.
 
@@ -89,7 +89,7 @@ class RCState(Sequence[int]):
             span: the length of the output range
             out_of_range: the value to return for invalid RC channel values
         """
-        result: List[float] = []
+        result: list[float] = []
 
         for raw_value in self.channels:
             if raw_value < 0 or raw_value > 65535:
@@ -101,7 +101,7 @@ class RCState(Sequence[int]):
 
     def get_scaled_channel_values_int(
         self, min: int = 1000, span: int = 1000, out_of_range: int = 0
-    ) -> List[int]:
+    ) -> list[int]:
         """Returns the value of all RC channels, scaled into a given
         range, as integers.
 
@@ -113,7 +113,7 @@ class RCState(Sequence[int]):
             span: the length of the output range
             out_of_range: the value to return for invalid RC channel values
         """
-        result: List[int] = []
+        result: list[int] = []
 
         for raw_value in self.channels:
             if raw_value < 0 or raw_value > 65535:

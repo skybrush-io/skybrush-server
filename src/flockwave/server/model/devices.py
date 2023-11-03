@@ -13,13 +13,9 @@ from typing import (
     overload,
     Any,
     Counter,
-    DefaultDict,
-    Dict,
     Generic,
     Iterable,
-    List,
     Optional,
-    Tuple,
     Type,
     TypeVar,
     TYPE_CHECKING,
@@ -56,7 +52,7 @@ class ChannelOperation(Enum):
     WRITE = "write"
 
 
-_channel_type_mapping: Dict[Type, str] = {
+_channel_type_mapping: dict[Type, str] = {
     int: "number",
     float: "number",
     str: "string",
@@ -145,7 +141,7 @@ class DeviceTreeNodeBase(metaclass=ModelMeta):
     class __meta__:
         schema = get_complex_object_schema("deviceTreeNode")
 
-    children: Dict[str, "DeviceTreeNodeBase"]
+    children: dict[str, "DeviceTreeNodeBase"]
 
     _subscribers: Optional[Counter[Client]]
     """Mapping that maps clients to the number of times they are subscribed to
@@ -170,7 +166,7 @@ class DeviceTreeNodeBase(metaclass=ModelMeta):
         self._parent = None
         self._path = None
 
-    def collect_channel_values(self) -> Dict[str, Any]:
+    def collect_channel_values(self) -> dict[str, Any]:
         """Creates a Python dictionary that maps the IDs of the children of
         this node as follows:
 
@@ -204,7 +200,7 @@ class DeviceTreeNodeBase(metaclass=ModelMeta):
         """Returns whether this node has at least one subscriber."""
         return bool(self._subscribers)
 
-    def iterchildren(self) -> Iterable[Tuple[str, "DeviceTreeNodeBase"]]:
+    def iterchildren(self) -> Iterable[tuple[str, "DeviceTreeNodeBase"]]:
         """Iterates over the children of this node.
 
         Yields:
@@ -285,16 +281,16 @@ class DeviceTreeNodeBase(metaclass=ModelMeta):
     @overload
     def traverse_dfs(
         self, own_id: None = None
-    ) -> Iterable[Tuple[Optional[str], "DeviceTreeNodeBase"]]:
+    ) -> Iterable[tuple[Optional[str], "DeviceTreeNodeBase"]]:
         ...
 
     @overload
-    def traverse_dfs(self, own_id: str) -> Iterable[Tuple[str, "DeviceTreeNodeBase"]]:
+    def traverse_dfs(self, own_id: str) -> Iterable[tuple[str, "DeviceTreeNodeBase"]]:
         ...
 
     def traverse_dfs(
         self, own_id: Optional[str] = None
-    ) -> Iterable[Tuple[Optional[str], "DeviceTreeNodeBase"]]:
+    ) -> Iterable[tuple[Optional[str], "DeviceTreeNodeBase"]]:
         """Returns a generator that yields all the nodes in the subtree of
         this node, including the node itself, in depth-first order.
 
@@ -797,7 +793,7 @@ class DeviceTree:
 
         return node
 
-    def traverse_dfs(self) -> Iterable[Tuple[Optional[str], DeviceTreeNodeBase]]:
+    def traverse_dfs(self) -> Iterable[tuple[Optional[str], DeviceTreeNodeBase]]:
         """Returns a generator that yields all the nodes in the tree in
         depth-first order.
 
@@ -938,7 +934,7 @@ class DeviceTreeSubscriptionManager:
     _client_registry: Optional["ClientRegistry"]
     _message_hub: "MessageHub"
 
-    _pending_subscriptions: DefaultDict[Client, List[DeviceTreePath]]
+    _pending_subscriptions: defaultdict[Client, list[DeviceTreePath]]
     """Dictionary mapping clients to device tree paths that they want to
     subscribe to but the paths do not exist yet.
     """
@@ -1102,7 +1098,7 @@ class DeviceTreeSubscriptionManager:
             self._notify_subscriber(subscriber, message)
 
     def _on_device_tree_structure_changed(self, sender: DeviceTree):
-        found: List[DeviceTreePath] = []
+        found: list[DeviceTreePath] = []
 
         for client, paths in self._pending_subscriptions.items():
             found.clear()

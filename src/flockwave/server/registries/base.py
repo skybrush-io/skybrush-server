@@ -7,7 +7,6 @@ from __future__ import annotations
 from abc import ABCMeta, abstractmethod, abstractproperty
 from typing import (
     Callable,
-    Dict,
     Generic,
     Iterable,
     Iterator,
@@ -97,7 +96,7 @@ class RegistryBase(Generic[T], Registry[T]):
     string identifiers.
     """
 
-    _entries: Dict[str, T]
+    _entries: dict[str, T]
 
     def __init__(self):
         """Constructor."""

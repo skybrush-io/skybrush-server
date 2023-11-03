@@ -1,7 +1,7 @@
 """Representation of the outside world in which the flock of UAVs live."""
 
 from flockwave.gps.vectors import GPSCoordinate
-from typing import Any, List, Tuple
+from typing import Any
 
 __all__ = ("World",)
 
@@ -16,7 +16,7 @@ class World:
     TODO: no spatial index yet, but there will be if needed
     """
 
-    _items: List[Tuple[GPSCoordinate, Any]]
+    _items: list[tuple[GPSCoordinate, Any]]
 
     def __init__(self):
         """Constructor.

@@ -5,7 +5,6 @@ related to our extensions that we added to the Crazyflie firmware.
 from dataclasses import dataclass
 from enum import IntEnum, IntFlag
 from struct import Struct
-from typing import Tuple
 
 from aiocflib.crtp.crtpstack import CRTPPort
 
@@ -64,7 +63,7 @@ class FenceAction(IntEnum):
         return cls(index)
 
     @staticmethod
-    def get_valid_string_values_in_config_schema() -> Tuple[str, ...]:
+    def get_valid_string_values_in_config_schema() -> tuple[str, ...]:
         """Returns the valid strings that can be used to represent a fence action
         in the configuration of the extension.
         """
@@ -229,8 +228,8 @@ class DroneShowStatus:
 
     battery_voltage: float = 0.0
     flags: int = 0
-    preflight_checks: Tuple[PreflightCheckStatus, ...] = ()
-    position: Tuple[float, float, float] = (0.0, 0.0, 0.0)
+    preflight_checks: tuple[PreflightCheckStatus, ...] = ()
+    position: tuple[float, float, float] = (0.0, 0.0, 0.0)
     light: int = 0
     show_execution_stage: DroneShowExecutionStage = DroneShowExecutionStage.UNKNOWN
     yaw: float = 0.0

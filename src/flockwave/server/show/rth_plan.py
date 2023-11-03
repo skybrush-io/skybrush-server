@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import Enum
 from math import ceil
-from typing import Dict, List, Optional, Sequence, Tuple
+from typing import Dict, Optional, Sequence
 
 from .specification import ShowSpecification
 from .utils import BoundingBoxCalculator
@@ -28,7 +28,7 @@ class RTHPlanEntry:
     given timestamp.
     """
 
-    target: Tuple[float, ...] = ()
+    target: tuple[float, ...] = ()
     """The target coordinate of the action, if applicable. Ignored if the
     action is ``RTHAction.LAND``
     """
@@ -170,7 +170,7 @@ class RTHPlan(Sequence[RTHPlanEntry]):
     a given timestamp.
     """
 
-    _entries: List[RTHPlanEntry]
+    _entries: list[RTHPlanEntry]
 
     @classmethod
     def from_json(cls, data: Dict):
@@ -198,7 +198,7 @@ class RTHPlan(Sequence[RTHPlanEntry]):
         self._entries = []
 
     @property
-    def bounding_box(self) -> Tuple[Sequence[float], Sequence[float]]:
+    def bounding_box(self) -> tuple[Sequence[float], Sequence[float]]:
         """The axis-aligned bounding box that encapsulates all target points
         of the RTH plan.
         """
@@ -234,7 +234,7 @@ class RTHPlan(Sequence[RTHPlanEntry]):
 
     def get_padded_bounding_box(
         self, margin: float = 0
-    ) -> Tuple[Sequence[float], Sequence[float]]:
+    ) -> tuple[Sequence[float], Sequence[float]]:
         """Returns the coordinates of the opposite corners of the axis-aligned
         bounding box that contains all the target points of the RTH plan,
         optionally padded with the given margin.

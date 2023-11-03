@@ -1,7 +1,7 @@
 """Flockwave message model classes."""
 
 from flockwave.spec.schema import get_message_schema
-from typing import Any, Dict, Iterable, List, Optional, Sequence, Union
+from typing import Any, Iterable, Optional, Sequence, Union
 
 from .commands import CommandExecutionStatus
 from .metamagic import ModelMeta
@@ -16,7 +16,7 @@ class FlockwaveMessage(metaclass=ModelMeta):
     """
 
     id: str
-    body: Dict[str, Any]
+    body: dict[str, Any]
 
     class __meta__:
         schema = get_message_schema()
@@ -58,7 +58,7 @@ class FlockwaveResponse(FlockwaveMessage):
     other message.
     """
 
-    refs: List[str]
+    refs: list[str]
 
     def __init__(self, *args, **kwds):
         self._on_sent = []

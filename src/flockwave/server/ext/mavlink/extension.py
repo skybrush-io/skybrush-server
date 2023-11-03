@@ -6,7 +6,7 @@ from collections import OrderedDict
 from contextlib import ExitStack
 from functools import partial
 from logging import Logger
-from typing import cast, Dict, Optional, TYPE_CHECKING
+from typing import cast, Optional, TYPE_CHECKING
 
 from flockwave.server.ext.base import UAVExtension
 from flockwave.server.model.uav import UAV
@@ -51,7 +51,7 @@ class MAVLinkDronesExtension(UAVExtension[MAVLinkDriver]):
     app: "SkybrushServer"
     log: Logger
 
-    _networks: Dict[str, MAVLinkNetwork]
+    _networks: dict[str, MAVLinkNetwork]
 
     def __init__(self):
         super().__init__()
@@ -178,7 +178,7 @@ class MAVLinkDronesExtension(UAVExtension[MAVLinkDriver]):
 
     def _get_network_specifications_from_configuration(
         self, configuration
-    ) -> Dict[str, MAVLinkNetworkSpecification]:
+    ) -> dict[str, MAVLinkNetworkSpecification]:
         # Construct the network specifications first
         if "networks" in configuration:
             if "connections" in configuration:
@@ -359,7 +359,7 @@ class MAVLinkDronesExtension(UAVExtension[MAVLinkDriver]):
         spec: MAVLinkMessageSpecification,
         target: MAVLinkUAV,
         wait_for_response: Optional[MAVLinkMessageSpecification] = None,
-        wait_for_one_of: Optional[Dict[str, MAVLinkMessageMatcher]] = None,
+        wait_for_one_of: Optional[dict[str, MAVLinkMessageMatcher]] = None,
         channel: Optional[str] = None,
     ) -> Optional[MAVLinkMessage]:
         """Sends a message to the given UAV and optionally waits for a matching

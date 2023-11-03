@@ -5,7 +5,7 @@ server is currently connected to.
 from blinker import Signal
 from collections import defaultdict
 from contextlib import contextmanager
-from typing import Dict, Iterable, Iterator, Set
+from typing import Iterable, Iterator
 
 from flockwave.server.model.client import Client
 from flockwave.server.registries.channels import ChannelTypeRegistry
@@ -49,8 +49,8 @@ class ClientRegistry(RegistryBase[Client]):
 
     channel_type_registry: ChannelTypeRegistry
 
-    _client_id_to_channel_type: Dict[str, str]
-    _entries_by_channel_type: Dict[str, Set[str]]
+    _client_id_to_channel_type: dict[str, str]
+    _entries_by_channel_type: dict[str, set[str]]
 
     def __init__(self, channel_type_registry: ChannelTypeRegistry):
         """Constructor."""

@@ -1,5 +1,5 @@
 from trio import sleep
-from typing import Any, Dict
+from typing import Any
 
 from .model import LocalPositioningSystem, LocalPositioningSystemType
 
@@ -35,5 +35,5 @@ class DummyLocalPositioningSystemType(
     def create(self) -> DummyLocalPositioningSystem:
         return DummyLocalPositioningSystem()
 
-    def get_configuration_schema(self) -> Dict[str, Any]:
+    def get_configuration_schema(self) -> dict[str, Any]:
         return {}

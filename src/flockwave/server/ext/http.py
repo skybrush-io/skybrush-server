@@ -11,7 +11,7 @@ from logging import Logger
 from json import loads
 from quart import abort, Response, request
 from trio import Event, fail_after, sleep_forever, TooSlowError
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Optional
 
 from flockwave.encoders import Encoder
 from flockwave.encoders.json import create_json_encoder
@@ -101,7 +101,7 @@ def ensure_authorization_header_is_present_if_needed() -> None:
     if not request.headers.get("Authorization"):
         auth = app.import_api("auth")
         if auth.is_required():
-            headers: List[Tuple[str, str]] = []
+            headers: list[tuple[str, str]] = []
             for method in auth.get_supported_methods():
                 if method == "basic":
                     headers.append(("WWW-Authenticate", "Basic"))
@@ -111,7 +111,7 @@ def ensure_authorization_header_is_present_if_needed() -> None:
             abort(Response("Unauthorized", 401, headers))
 
 
-def wrap_message_in_envelope(message: Dict[str, Any]) -> Dict[str, Any]:
+def wrap_message_in_envelope(message: dict[str, Any]) -> dict[str, Any]:
     """Ensures that the given message has an envelope and possibly returns a
     new message object that includes the Flockwave envelope.
     """

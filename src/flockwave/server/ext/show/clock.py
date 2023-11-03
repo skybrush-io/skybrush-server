@@ -4,7 +4,7 @@ of the show, or the elapsed time into the show if it is already running.
 
 from contextlib import contextmanager
 from time import time
-from typing import Any, Iterator, Optional, Tuple
+from typing import Any, Iterator, Optional
 
 from flockwave.server.model.clock import (
     Clock,
@@ -157,7 +157,7 @@ class ClockSynchronizationHandler:
 
     def _calculate_desired_state_of_secondary_clock(
         self, now: float
-    ) -> Tuple[bool, Optional[float]]:
+    ) -> tuple[bool, Optional[float]]:
         """Calculates the desired state of the secondary clock, given the
         primary clock. Assumes that the synchronization mechanism is enabled.
 

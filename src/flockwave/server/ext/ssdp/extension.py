@@ -20,7 +20,7 @@ from os import getenv
 from random import random
 from time import mktime, monotonic
 from trio import sleep
-from typing import Any, Callable, Dict, Iterable, List, Optional
+from typing import Any, Callable, Iterable, Optional
 from wsgiref.handlers import format_date_time
 
 import platform
@@ -45,7 +45,7 @@ label = None
 log: Optional[Logger] = None
 registry = None
 
-exports: Dict[str, Optional[Callable[..., Any]]] = {
+exports: dict[str, Optional[Callable[..., Any]]] = {
     "register_service": None,
     "registry": None,
     "unregister_service": None,
@@ -85,7 +85,7 @@ class Request(BaseHTTPRequestHandler):
 
         Parameters:
             data (bytes): the body of the request
-            sender (Tuple[str, int]): the sender of the request
+            sender (tuple[str, int]): the sender of the request
         """
         self.client_address = client_address
         self.rfile = BytesIO(request)
@@ -178,7 +178,7 @@ async def handle_message(message, sender, *, socket):
 
     Parameters:
         message (bytes): the incoming message, waiting to be parsed
-        sender (Tuple[str,int]): the IP address and port of the sender
+        sender (tuple[str,int]): the IP address and port of the sender
     """
     request = Request(message, sender)
     if request.has_error:
@@ -275,7 +275,7 @@ def is_valid_service(service: str) -> bool:
 
 def prepare_response(
     headers: Optional[Iterable[str]] = None,
-    extra: Optional[Dict[str, str]] = None,
+    extra: Optional[dict[str, str]] = None,
     prefix: Optional[str] = None,
 ):
     """Prepares a response to send.
@@ -287,11 +287,11 @@ def prepare_response(
             contains a function for a given header name, the function will be
             executed without arguments and its return value will be added as
             the real value of the header.
-        extra (Dict[str,str]): dictionary mapping additional headers to add
+        extra (dict[str,str]): dictionary mapping additional headers to add
             to the response.
         prefix (str): prefix line to add in front of the response.
     """
-    response: List[str] = []
+    response: list[str] = []
     if prefix:
         response.append(prefix)
 

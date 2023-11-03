@@ -2,7 +2,6 @@ from inspect import isawaitable, isasyncgen
 from typing import (
     Any,
     Callable,
-    Dict,
     Iterable,
     Optional,
     Union,
@@ -39,7 +38,7 @@ GenericMapperMessageFactory = Callable[
 """Type alias for SOMETHING-INF-style Flockwave message factory functions"""
 
 MessageBodyTransformationSpec = Union[
-    Callable[[Any], Any], Dict[str, Callable[[Any], Any]], None
+    Callable[[Any], Any], dict[str, Callable[[Any], Any]], None
 ]
 """Type alias for objects that specify how to transform the body of a
 message before it is forwarded to a command handler function.
@@ -150,7 +149,7 @@ def create_mapper(
     ) -> Union[FlockwaveNotification, FlockwaveResponse]:
         results = {}
 
-        body: Dict[str, Any] = {"type": type}
+        body: dict[str, Any] = {"type": type}
         body[key] = results
         response = hub.create_response_or_notification(
             body=body, in_response_to=in_response_to
@@ -293,8 +292,8 @@ def create_object_listing_request_handler(
 
 
 def transform_message_body(
-    transformer: MessageBodyTransformationSpec, body: Dict[str, Any]
-) -> Dict[str, Any]:
+    transformer: MessageBodyTransformationSpec, body: dict[str, Any]
+) -> dict[str, Any]:
     """Helper function that executes the given transformation specification
     on the given message body.
 

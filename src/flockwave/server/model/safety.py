@@ -1,7 +1,7 @@
 """safety-related data structures and functions for the server."""
 
 from dataclasses import dataclass
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 __all__ = ("SafetyConfigurationRequest",)
 
@@ -42,7 +42,7 @@ class SafetyConfigurationRequest:
     performed. `None` means not to change the return to home speed setting."""
 
     @property
-    def json(self) -> Dict[str, Any]:
+    def json(self) -> dict[str, Any]:
         """Returns a JSON representation of the safety configuration."""
         return {
             "version": 1,

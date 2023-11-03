@@ -4,7 +4,7 @@ import logging
 
 from copy import deepcopy
 from trio import current_time, Nursery, open_nursery, sleep
-from typing import Any, Optional, Tuple, Union
+from typing import Any, Optional, Union
 from urllib.parse import urlparse, urlunparse
 
 from hypercorn.config import Config as HyperConfig
@@ -82,7 +82,7 @@ class SkybrushGatewayServer(DaemonApp):
                 config["EXTENSIONS"]["http_server"]["port"] = port
         return config
 
-    def _get_listening_address(self) -> Optional[Tuple[str, int]]:
+    def _get_listening_address(self) -> Optional[tuple[str, int]]:
         """Returns the hostname and port where the server is listening, or
         `None` if the address is not configured in the configuration file.
         """

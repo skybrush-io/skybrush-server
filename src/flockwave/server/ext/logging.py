@@ -5,7 +5,7 @@ from __future__ import annotations
 from logging import Handler, Logger, getLogger
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
-from typing import Any, Dict, Optional, TYPE_CHECKING
+from typing import Any, Optional, TYPE_CHECKING
 
 from flockwave.logger.formatters import styles
 
@@ -19,7 +19,7 @@ log_dir: Optional[Path] = None
 LOG_FILENAME: str = "skybrushd.log"
 
 
-def load(app: "SkybrushServer", configuration: Dict[str, Any], log: Logger):
+def load(app: "SkybrushServer", configuration: dict[str, Any], log: Logger):
     global handler
 
     log_dir = Path(str(configuration.get("folder", "")) or app.dirs.user_log_dir)

@@ -12,13 +12,10 @@ from typing import (
     Awaitable,
     Callable,
     ClassVar,
-    Dict,
     IO,
     Iterable,
-    List,
     Optional,
     Sequence,
-    Tuple,
     Union,
 )
 
@@ -32,7 +29,7 @@ __all__ = ("SkybrushBinaryShowFile",)
 
 
 _SKYBRUSH_BINARY_FILE_MARKER: bytes = b"skyb"
-_SKYBRUSH_BINARY_FILE_HEADER: List[bytes] = [
+_SKYBRUSH_BINARY_FILE_HEADER: list[bytes] = [
     # Version 0 -- never existed
     b"",
     # Version 1 header
@@ -409,7 +406,7 @@ class SkybrushBinaryShowFile:
 
     async def read_all_blocks(
         self, rewind: Optional[bool] = None, validate: Optional[bool] = None
-    ) -> List[SkybrushBinaryFileBlock]:
+    ) -> list[SkybrushBinaryFileBlock]:
         """Reads and returns all the blocks found in the file.
 
         Parameters:
@@ -421,7 +418,7 @@ class SkybrushBinaryShowFile:
                 been validated before at least once.
         """
         gen = self.blocks(rewind=rewind, validate=validate)
-        blocks: List[SkybrushBinaryFileBlock] = []
+        blocks: list[SkybrushBinaryFileBlock] = []
 
         async with aclosing(gen):
             async for block in gen:
@@ -579,7 +576,7 @@ class SegmentEncoder:
     def iter_encode_multiple_segments(
         self,
         segments: Iterable[TrajectorySegment],
-        chunks: Optional[List[bytes]] = None,
+        chunks: Optional[list[bytes]] = None,
     ) -> Iterable[bytes]:
         """Iteratively encodes a sequence of trajectory segments.
 
@@ -606,7 +603,7 @@ class SegmentEncoder:
 
         return chunks
 
-    def _encode_coordinate_series(self, xs: Sequence[int]) -> Tuple[int, List[bytes]]:
+    def _encode_coordinate_series(self, xs: Sequence[int]) -> tuple[int, list[bytes]]:
         first, *xs = xs
         if all(x == first for x in xs):
             # segment is constant, this is easy
@@ -634,7 +631,7 @@ class SegmentEncoder:
         # TODO(ntamas): convert 4-5-6D curves to 7D ones
         raise NotImplementedError(f"{len(xs)}D curves not implemented yet")
 
-    def _scale_point(self, point: Point) -> Tuple[int, int, int]:
+    def _scale_point(self, point: Point) -> tuple[int, int, int]:
         return (
             round(point[0] * self._scale),
             round(point[1] * self._scale),
@@ -670,14 +667,14 @@ class RTHPlanEncoder:
         self._scale = 1000 / scale
 
     def encode(self, plan: RTHPlan) -> bytes:
-        chunks: List[bytes] = []
+        chunks: list[bytes] = []
 
         # First, add the scaling factor
         chunks.append(bytes([self._scale_orig]))
 
         # Next, figure out the set of unique target points used in the plan,
         # and encode the points
-        points: List[Tuple[int, ...]] = [
+        points: list[tuple[int, ...]] = [
             self._scale_point(entry.target) for entry in plan if entry.target
         ]
         point_index = self._encode_points(points, chunks)
@@ -690,8 +687,8 @@ class RTHPlanEncoder:
     def _encode_plan_entries(
         self,
         entries: Sequence[RTHPlanEntry],
-        point_index: Dict[Tuple[int, ...], int],
-        chunks: List[bytes],
+        point_index: dict[tuple[int, ...], int],
+        chunks: list[bytes],
     ) -> None:
         """Encodes the entries in the given iterable and appends the encoded
         chunks to the given chunk list.
@@ -712,9 +709,9 @@ class RTHPlanEncoder:
     def _encode_plan_entry(
         self,
         entry: RTHPlanEntry,
-        point_index: Dict[Tuple[int, ...], int],
+        point_index: dict[tuple[int, ...], int],
         previous_entry: Optional[RTHPlanEntry],
-        chunks: List[bytes],
+        chunks: list[bytes],
     ) -> None:
         """Encodes a single RTH plan entry and appends the encoded chunk to the
         given chunk list.
@@ -792,8 +789,8 @@ class RTHPlanEncoder:
             chunks.append(encode_int(int(entry.post_delay)))
 
     def _encode_points(
-        self, points: List[Tuple[int, ...]], chunks: List[bytes]
-    ) -> Dict[Tuple[int, ...], int]:
+        self, points: list[tuple[int, ...]], chunks: list[bytes]
+    ) -> dict[tuple[int, ...], int]:
         """Encodes the given list of points into the given chunk list, and
         returns an index that maps the points to their corresponding indices
         in the chunk list.
@@ -807,8 +804,8 @@ class RTHPlanEncoder:
             a dictionary whose keys are the points and the values are the
             indices that they were mapped to in the chunks array
         """
-        result: Dict[Tuple[int, ...], int] = {}
-        point_chunks: List[bytes] = []
+        result: dict[tuple[int, ...], int] = {}
+        point_chunks: list[bytes] = []
         id_generator = count()
 
         if len(points) > 65535:
@@ -825,7 +822,7 @@ class RTHPlanEncoder:
 
         return result
 
-    def _scale_point(self, point: Tuple[float, ...]) -> Tuple[int, ...]:
+    def _scale_point(self, point: tuple[float, ...]) -> tuple[int, ...]:
         if len(point) != 2:
             raise ValueError("each point must be two-dimensional")
         return (

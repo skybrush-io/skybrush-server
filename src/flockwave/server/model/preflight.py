@@ -1,6 +1,6 @@
 from bidict import bidict  # type: ignore
 from enum import Enum
-from typing import Optional, Tuple
+from typing import Optional
 
 from flockwave.server.model.metamagic import ModelMeta
 from flockwave.spec.schema import get_complex_object_schema
@@ -81,7 +81,7 @@ class PreflightCheckInfo(metaclass=ModelMeta):
         self.items.append(PreflightCheckItem(id=id, label=label, result=result))
         self.update_summary()
 
-    def _get_result_from_items(self) -> Tuple[PreflightCheckResult, bool]:
+    def _get_result_from_items(self) -> tuple[PreflightCheckResult, bool]:
         """Returns a single preflight check result summary based on the results
         of the individual items, and whether there is at least one check that
         is still running.

@@ -2,19 +2,19 @@
 
 from logging import Logger
 from time import monotonic
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 from flockwave.gps.vectors import FlatEarthToGPSCoordinateTransformation
 from flockwave.server.model import Client, FlockwaveMessage
 
 
-ShowFingerprint = List[Any]
+ShowFingerprint = list[Any]
 """Typing specification for the fingerprint of a show containing its most
 basic parameters.
 """
 
 
-def get(input: Dict[str, Any], *args: str) -> Any:
+def get(input: dict[str, Any], *args: str) -> Any:
     """Helper function to retrieve deeply nested items from a dict-of-dicts."""
     result: Any = input
     for arg in args:
@@ -74,7 +74,7 @@ class ShowUploadLoggingMiddleware:
 
         return message
 
-    def _extract_show(self, message: FlockwaveMessage) -> Optional[Dict[str, Any]]:
+    def _extract_show(self, message: FlockwaveMessage) -> Optional[dict[str, Any]]:
         """Checks whether the given message is a show upload and extracts the
         show specification out of the message if it is.
         """
@@ -87,7 +87,7 @@ class ShowUploadLoggingMiddleware:
                     return kwds["show"]
 
     @staticmethod
-    def _get_show_fingerprint(show: Dict[str, Any]) -> ShowFingerprint:
+    def _get_show_fingerprint(show: dict[str, Any]) -> ShowFingerprint:
         """Extracts the basic show parameters like the origin and the orientation
         from the upload. These are used to decide whether an upload attempt is
         probably a continuation of an ongoing sequence of requests from the

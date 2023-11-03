@@ -4,7 +4,7 @@ procedure on ArduPilot UAVs.
 
 from enum import IntEnum
 from math import inf
-from typing import AsyncIterator, List
+from typing import AsyncIterator
 
 from flockwave.server.model import Progress
 from flockwave.server.tasks import ProgressReporter
@@ -27,10 +27,10 @@ class CompassCalibration:
     ArduPilot UAV with possibly multiple compasses.
     """
 
-    _percentages: List[int]
+    _percentages: list[int]
     """Progress percentage for each compass being calibrated."""
 
-    _status: List[CompassCalibrationStatus]
+    _status: list[CompassCalibrationStatus]
     """Status value for each compass being calibrated."""
 
     def __init__(self):

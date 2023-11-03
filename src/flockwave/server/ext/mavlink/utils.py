@@ -1,6 +1,6 @@
 from heapq import heappush, heappop
 from logging import ERROR, WARNING, INFO, DEBUG
-from typing import Optional, List, Tuple, Union
+from typing import Optional, Union
 
 from flockwave.gps.vectors import GPSCoordinate
 from flockwave.server.model.log import Severity
@@ -148,7 +148,7 @@ def mavlink_nav_command_to_gps_coordinate(message: MAVLinkMessage) -> GPSCoordin
 
 
 def mavlink_version_number_to_semver(
-    number: int, custom: Optional[List[int]] = None
+    number: int, custom: Optional[list[int]] = None
 ) -> str:
     """Converts a version number found in the MAVLink `AUTOPILOT_VERSION` message
     to a string representation, in semantic version number format.
@@ -217,7 +217,7 @@ class ChunkAssembler:
     _size: int
     """Size of the file being downloaded."""
 
-    _pending: List[Tuple[int, bytes]]
+    _pending: list[tuple[int, bytes]]
     """Pending chunks that were received but not flushed to the disk yet
     because there are gaps in front of them.
     """
@@ -254,7 +254,7 @@ class ChunkAssembler:
             if not self._pending or self._pending[0][0] > self._num_flushed:
                 return data
 
-            to_return: List[bytes] = [data]
+            to_return: list[bytes] = [data]
             while self._pending:
                 top = self._pending[0]
                 if top[0] > self._num_flushed:
@@ -277,7 +277,7 @@ class ChunkAssembler:
             heappush(self._pending, (offset, data))
             self._num_pending += len(data)
 
-    def get_next_range(self) -> Tuple[int, int]:
+    def get_next_range(self) -> tuple[int, int]:
         """Returns the offset and size of the next range to fetch from the
         file with a bursted read.
         """

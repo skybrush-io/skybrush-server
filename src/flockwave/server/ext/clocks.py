@@ -7,7 +7,7 @@ from __future__ import annotations
 from blinker import Signal
 from contextlib import contextmanager, ExitStack
 from trio import sleep_forever
-from typing import Any, Dict, Iterator, Iterable, Optional, TYPE_CHECKING
+from typing import Any, Iterator, Iterable, Optional, TYPE_CHECKING
 
 from flockwave.server.model.clock import Clock
 from flockwave.server.registries.base import RegistryBase, find_in_registry
@@ -20,7 +20,7 @@ if TYPE_CHECKING:
 message_hub: Optional["MessageHub"] = None
 registry: Optional["ClockRegistry"] = None
 
-exports: Dict[str, Any] = {
+exports: dict[str, Any] = {
     "register_clock": None,
     "registry": None,
     "unregister_clock": None,

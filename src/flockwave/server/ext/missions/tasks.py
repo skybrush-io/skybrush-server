@@ -4,7 +4,7 @@ from abc import ABCMeta, abstractmethod
 from contextlib import ExitStack, contextmanager
 from logging import Logger
 from trio import open_memory_channel, MemorySendChannel, WouldBlock
-from typing import Iterable, cast, Any, Awaitable, Callable, Dict, Iterator, Optional
+from typing import Iterable, cast, Any, Awaitable, Callable, Iterator, Optional
 
 from flockwave.concurrency.scheduler import Job, LateSubmissionError, Scheduler
 
@@ -130,7 +130,7 @@ class MissionSchedulerTask(MissionRegistryRelatedTaskBase):
     scheduler: Optional[Scheduler] = None
     """The scheduler that is responsible for starting tasks related to missions."""
 
-    _missions_to_jobs: Dict[Mission, Job]
+    _missions_to_jobs: dict[Mission, Job]
     """Dictionary mapping the scheduled missions to the corresponding job objects
     in the scheduler.
     """

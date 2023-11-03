@@ -1,7 +1,6 @@
 import struct
 
 from pytest import fixture, raises
-from typing import List
 
 from flockwave.server.show.formats import (
     RTHPlanEncoder,
@@ -251,7 +250,7 @@ class TestSkybrushBinaryFileFormat:
             await f.finalize()
             contents = f.get_contents()
 
-        blocks: List[SkybrushBinaryFileBlock] = []
+        blocks: list[SkybrushBinaryFileBlock] = []
         async with SkybrushBinaryShowFile.from_bytes(contents) as f:
             blocks = await f.read_all_blocks()
 

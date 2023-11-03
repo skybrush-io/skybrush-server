@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 from urllib.parse import urlencode
-from typing import Any, Callable, Dict, Iterable, List, Optional, Set, Type
+from typing import Any, Callable, Iterable, Optional, Type
 
 from flockwave.channels.types import Encoder, Parser
 from flockwave.gps.parser import create_gps_parser
@@ -18,7 +18,7 @@ __all__ = ("RTKConfigurationPreset",)
 GPSPacketFilter = Callable[[GPSPacket], bool]
 """Type specification for a GPS packet filter function."""
 
-ALLOWED_FORMATS: List[str] = "auto rtcm2 rtcm3 ubx".split()
+ALLOWED_FORMATS: list[str] = "auto rtcm2 rtcm3 ubx".split()
 """Allowed packet formats in RTK streams. "auto" attempts to parse RTCM3, UBX
 and NMEA messages. "ubx" attempts to parse RTCM3 and UBX messages.
 "rtcm3" is RTCM3-only, and "rtcm2" is RTCM2-only.
@@ -59,7 +59,7 @@ class RTKConfigurationPreset:
     format: str = "auto"
     """Format of the GPS messages arriving in this configuration"""
 
-    sources: List[str] = field(default_factory=list)
+    sources: list[str] = field(default_factory=list)
     """List of source connections where this preset collects messages from"""
 
     init: Optional[bytes] = None
@@ -129,7 +129,7 @@ class RTKConfigurationPreset:
     def from_serial_port(
         cls,
         port,
-        configuration: Dict[str, Any],
+        configuration: dict[str, Any],
         *,
         id: str,
         use_configuration_in_title: bool = True,
@@ -221,11 +221,11 @@ def _is_rtcm_packet(packet: GPSPacket) -> bool:
 
 def _process_rtcm_packet_id_list(
     id_list: Optional[Iterable[str]],
-) -> Optional[Dict[Type[RTCMPacket], Set[int]]]:
+) -> Optional[dict[Type[RTCMPacket], set[int]]]:
     if id_list is None:
         return None
 
-    result: Dict[Type[RTCMPacket], Set[int]] = {
+    result: dict[Type[RTCMPacket], set[int]] = {
         RTCMV2Packet: set(),
         RTCMV3Packet: set(),
     }

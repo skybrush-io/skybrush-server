@@ -23,7 +23,7 @@ async def wait_for_dict_items(obj: DictT) -> DictT:
     return obj
 
 
-async def _wait_safely_and_put(obj: Awaitable[Any], d: Dict[T, Any], key: T):
+async def _wait_safely_and_put(obj: Awaitable[Any], d: dict[T, Any], key: T):
     try:
         d[key] = await obj
     except Exception as ex:

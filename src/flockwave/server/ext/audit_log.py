@@ -24,7 +24,6 @@ from typing import (
     Iterable,
     Optional,
     Sequence,
-    Tuple,
     TYPE_CHECKING,
     TypeVar,
     Union,
@@ -79,7 +78,7 @@ class Entry:
     data: bytes = b""
     """Additional data blob attached to the entry."""
 
-    def to_tuple(self) -> Tuple[float, str, str, bytes]:
+    def to_tuple(self) -> tuple[float, str, str, bytes]:
         return (self.timestamp, self.component, self.type, self.data)
 
 

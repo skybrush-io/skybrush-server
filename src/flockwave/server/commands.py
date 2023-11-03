@@ -20,7 +20,6 @@ from typing import (
     Awaitable,
     Optional,
     Union,
-    Tuple,
     TypeVar,
 )
 
@@ -93,8 +92,8 @@ class CommandExecutionManager(RegistryBase[CommandExecutionStatus]):
     consider the command as having timed out.
     """
 
-    _tx_queue: SendChannel[Tuple[Result, CommandExecutionStatus]]
-    _rx_queue: ReceiveChannel[Tuple[Result, CommandExecutionStatus]]
+    _tx_queue: SendChannel[tuple[Result, CommandExecutionStatus]]
+    _rx_queue: ReceiveChannel[tuple[Result, CommandExecutionStatus]]
 
     def __init__(self, timeout: float = 30):
         """Constructor.

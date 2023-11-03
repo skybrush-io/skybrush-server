@@ -13,6 +13,7 @@ from json import JSONDecodeError
 from logging import Logger
 from trio import (
     aclose_forcefully,
+    BrokenResourceError,
     CapacityLimiter,
     ClosedResourceError,
     Lock,
@@ -148,8 +149,11 @@ async def handle_connection(stream, *, limit):
             try:
                 async for line in channel:
                     nursery.start_soon(handler, line, client)
+            except BrokenResourceError:
+                # This is okay, the other side closed the connection
+                pass
             except ClosedResourceError:
-                # This is okay.
+                # This is okay, we closed the connection
                 pass
             except JSONDecodeError as ex:
                 # Parse error, probably trying to connect via WebSocket.

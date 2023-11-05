@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Fixed issues with reloading extensions that depend on `http_server` and
+  provide their own blueprint.
+
 - Fixed a congestion bug during MAVLink log downloads by not requesting more
   than 512 `LOG_DATA` chunks at a time.
 

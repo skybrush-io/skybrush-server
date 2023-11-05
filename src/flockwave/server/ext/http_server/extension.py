@@ -35,6 +35,7 @@ PACKAGE_NAME = __name__.rpartition(".")[0]
 
 proposed_index_pages: list["ProposedIndexPage"] = []
 quart_app: Optional[Quart] = None
+got_first_request: bool = False
 ext_manager: Optional[ExtensionManager] = None
 
 ############################################################################
@@ -52,7 +53,7 @@ class ProposedIndexPage:
 def create_app():
     """Creates the ASGI web application provided by this extension."""
 
-    global quart_app
+    global quart_app, got_first_request
 
     if quart_app is not None:
         raise RuntimeError("App is already created")
@@ -65,6 +66,14 @@ def create_app():
         quart_app = app = QuartTrio(PACKAGE_NAME, instance_path=cwd, root_path=cwd)
     else:
         quart_app = app = QuartTrio(PACKAGE_NAME)
+
+    # Track whether the first request was processed
+    got_first_request = False
+
+    @app.before_request
+    async def track_first_request():
+        global got_first_request
+        got_first_request = True
 
     # Set up the default index route
     @app.route("/")
@@ -117,13 +126,13 @@ def mount(
         a function that can be called to unmount the application. Unmounting
         of blueprints is not supported yet.
     """
-    global ext_manager, exports, quart_app
+    global ext_manager, exports, quart_app, got_first_request
 
     if isinstance(app, Blueprint):
         # Blueprints can only be registered if the app has not served its first
         # request yet
         assert quart_app is not None
-        if getattr(quart_app, "_got_first_request", False):
+        if got_first_request:
             if ext_manager:
                 ext_manager.request_host_app_restart("http_server")
         else:
@@ -225,10 +234,11 @@ def load(app, configuration):
 
 def unload(app):
     """Unloads the extension."""
-    global exports, ext_manager, quart_app
+    global exports, ext_manager, quart_app, got_first_request
 
     quart_app = None
     ext_manager = None
+    got_first_request = False
     exports.update(address=None, asgi_app=None)
 
 

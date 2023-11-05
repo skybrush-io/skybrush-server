@@ -2233,13 +2233,13 @@ reference = "collmot"
 
 [[package]]
 name = "skybrush-ext-flockctrl"
-version = "2.30.0"
+version = "2.30.1"
 description = "Support for flockctrl-based drones in Skybrush Server"
 optional = true
 python-versions = ">=3.9,<4.0"
 files = [
-    {file = "skybrush_ext_flockctrl-2.30.0-py3-none-any.whl", hash = "sha256:40668486bd5e4a90c730950cf69c01f64a97cafa3c3fea437b42e7a7b89d63c5"},
-    {file = "skybrush_ext_flockctrl-2.30.0.tar.gz", hash = "sha256:c08d1b65ffd57df5d1ca10575f38a9d4d53cc4ea97a8ffc57ef2ae42a4a79cd1"},
+    {file = "skybrush_ext_flockctrl-2.30.1-py3-none-any.whl", hash = "sha256:49f749d1d149a688377d0278ecfe83af7d01420c437c6443906497aa968965c9"},
+    {file = "skybrush_ext_flockctrl-2.30.1.tar.gz", hash = "sha256:459e526b9b54884ff1d068baba50a44c74883e7f7b288b3418c84ed5f66ba4e9"},
 ]
 
 [package.dependencies]
@@ -2249,7 +2249,7 @@ flockwave-flockctrl = ">=2.17.0,<3.0.0"
 paramiko = ">=3.0.0,<4.0.0"
 python-slugify = {version = ">=8.0.1,<9.0.0", extras = ["unidecode"]}
 scp = ">=0.14.4"
-trio = ">=0.21.0"
+trio = ">=0.23.0"
 trio-parallel = ">=1.0.0,<2.0.0"
 
 [package.source]
@@ -2259,14 +2259,17 @@ reference = "collmot"
 
 [[package]]
 name = "skybrush-ext-map-cache"
-version = "1.0.0"
+version = "1.1.0"
 description = "Offline map caching for Skybrush Server"
 optional = true
-python-versions = ">=3.8,<4.0"
+python-versions = ">=3.9,<4.0"
 files = [
-    {file = "skybrush_ext_map_cache-1.0.0-py3-none-any.whl", hash = "sha256:a95c2305722ab605bc16d08fa62f3493a610b944359920d7790b72ba71e39783"},
-    {file = "skybrush_ext_map_cache-1.0.0.tar.gz", hash = "sha256:79bfa5bc8d18a2874342c0f732ab46446547e8485446508bb595843e4b33182b"},
+    {file = "skybrush_ext_map_cache-1.1.0-py3-none-any.whl", hash = "sha256:eb75ed7fe2dfe997ca498930f905f0c59abbe0e123358b976fad5ea7e1a13049"},
+    {file = "skybrush_ext_map_cache-1.1.0.tar.gz", hash = "sha256:ce6cc9b569eb9f848890584b30a4b1f26c4b71940273b1fa2249d38fd122d982"},
 ]
+
+[package.dependencies]
+trio = ">=0.23.0"
 
 [package.source]
 type = "legacy"
@@ -2291,18 +2294,19 @@ reference = "collmot"
 
 [[package]]
 name = "skybrush-ext-timecode"
-version = "1.0.2"
+version = "1.1.0"
 description = "SMPTE timecode support for Skybrush Server"
 optional = true
-python-versions = ">=3.8,<4.0"
+python-versions = ">=3.9,<4.0"
 files = [
-    {file = "skybrush-ext-timecode-1.0.2.tar.gz", hash = "sha256:af33bc8732e2894c2df6bf7db213e66b02d92545eda81f81c7dce4c0a43ac988"},
-    {file = "skybrush_ext_timecode-1.0.2-py3-none-any.whl", hash = "sha256:07a0b3447f687ec0cd5c463de2a69523d9ba2b76960dd2c539d98502797429fd"},
+    {file = "skybrush_ext_timecode-1.1.0-py3-none-any.whl", hash = "sha256:e416551977cb515caa0cc18e114eedbd6b8dffb5eafdf05d19a8d7cb7bee21df"},
+    {file = "skybrush_ext_timecode-1.1.0.tar.gz", hash = "sha256:228fede266391be7c187bb8d499dd5ea1754c245a292d2be4b57ac22132cc42a"},
 ]
 
 [package.dependencies]
 mido = ">=1.2.10,<2.0.0"
 python-rtmidi = ">=1.4.9,<2.0.0"
+trio = ">=0.23.0"
 
 [package.source]
 type = "legacy"
@@ -2637,4 +2641,4 @@ pro = ["skybrush-ext-flight-report", "skybrush-ext-map-cache", "skybrush-ext-sid
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.9"
-content-hash = "a42310de10b0c1f2b86aa902edb557977bdef90727418baa85c8345e7411ecd5"
+content-hash = "6d9d55a56e5aa919bea169693047266e2a55287c7e39ef593587b96c530c52bf"

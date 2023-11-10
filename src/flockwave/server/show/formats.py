@@ -859,27 +859,20 @@ class YawSetpointEncoder:
     _header_struct: ClassVar[Struct] = Struct("<Bh")
 
     def encode(self, setpoints: YawSetpointList) -> bytes:
-        # minimal error checking
-        if len(setpoints.setpoints) * 4 > 65535 - 3:
-            raise ValueError("too many setpoints in yaw control block")
-
         # First, add header
         chunks: List[bytes] = []
         chunks.append(self.encode_header(setpoints.auto_yaw, setpoints.yaw_offset))
 
         # Next, encode all yaw setpoints
         if not setpoints.auto_yaw:
-            last_yaw = setpoints.yaw_offset
-            last_time = 0
-            for setpoint in setpoints.setpoints:
-                # Note that here we assume that yaw setpoints are rounded to a degree
-                # that calculating relative yaws and durations will not cause integrated
-                # numeric errors
-                duration = setpoint.time - last_time
-                yaw_change = setpoint.angle - last_yaw
-                chunks.append(self.encode_relative_setpoint(duration, yaw_change))
-                last_time = setpoint.time
-                last_yaw = setpoint.angle
+            for setpoint in setpoints.iter_setpoints_as_relative(
+                max_duration=65, max_yaw_change=3200
+            ):
+                chunks.append(
+                    self.encode_relative_setpoint(
+                        setpoint.duration, setpoint.yaw_change
+                    )
+                )
 
         return b"".join(chunks)
 

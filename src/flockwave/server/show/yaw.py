@@ -1,8 +1,10 @@
 from dataclasses import dataclass
+from math import inf
 from operator import attrgetter
-from typing import Sequence, TypeVar, Union
+from typing import Iterable, Sequence, TypeVar, Union
 
 __all__ = (
+    "RelativeYawSetpoint",
     "YawSetpoint",
     "YawSetpointList",
 )
@@ -18,8 +20,19 @@ class YawSetpoint:
     time: float
     """The timestamp associated to the yaw setpoint, in seconds."""
 
-    angle: float
+    yaw: float
     """The yaw angle associated to the yaw setpoint, in degrees."""
+
+
+@dataclass
+class RelativeYawSetpoint:
+    """The simplest representation of a yaw setpoint."""
+
+    duration: float
+    """The duration associated to the yaw setpoint, in seconds."""
+
+    yaw_change: float
+    """The yaw change associated to the yaw setpoint, in degrees."""
 
 
 class YawSetpointList:
@@ -87,6 +100,30 @@ class YawSetpointList:
             setpoints=setpoints, auto_yaw=auto_yaw, auto_yaw_offset=auto_yaw_offset
         )
 
+    def iter_setpoints_as_relative(
+        self, max_duration: float = inf, max_yaw_change: float = inf
+    ) -> Iterable[RelativeYawSetpoint]:
+        if self.setpoints:
+            last_yaw = self.yaw_offset
+            last_time = min(0, self.setpoints[0].time)
+            for setpoint in self.setpoints:
+                duration = setpoint.time - last_time
+                yaw_change = setpoint.yaw - last_yaw
+                # We need to split too long or too "turny" setpoints
+                num_splits = max(
+                    duration // max_duration, abs(yaw_change) // max_yaw_change
+                )
+                ratio = 1 / (num_splits + 1)
+                while num_splits >= 0:
+                    yield RelativeYawSetpoint(
+                        duration * ratio,
+                        yaw_change * ratio,
+                    )
+                    num_splits -= 1
+                # store last setpoint attributes
+                last_time = setpoint.time
+                last_yaw = setpoint.yaw
+
     @property
     def yaw_offset(self) -> float:
         """Returns the yaw offset associated to self."""
@@ -96,4 +133,4 @@ class YawSetpointList:
         if not self.setpoints:
             return 0
 
-        return self.setpoints[0].angle
+        return self.setpoints[0].yaw

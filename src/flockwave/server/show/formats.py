@@ -876,13 +876,7 @@ class YawSetpointEncoder:
                 # that calculating relative yaws and durations will not cause integrated
                 # numeric errors
                 duration = setpoint.time - last_time
-                if duration < 0 or duration > 65535:
-                    raise ValueError("setpoint duration mismatch in yaw control block")
                 yaw_change = setpoint.angle - last_yaw
-                if abs(yaw_change) > 32767:
-                    raise ValueError(
-                        "setpoint yaw change is too large in yaw control block"
-                    )
                 chunks.append(self.encode_relative_setpoint(duration, yaw_change))
                 last_time = setpoint.time
                 last_yaw = setpoint.angle
@@ -915,5 +909,9 @@ class YawSetpointEncoder:
             )
 
         yaw_change_ddeg = round(yaw_change * 10)  # [deg] -> [1e-1 deg]
+        if abs(yaw_change_ddeg) > 32767:
+            raise RuntimeError(
+                f"relative yaw setpoint must be smaller than 3276.8 deg, got {yaw_change_ddeg / 10} deg"
+            )
 
         return self._setpoint_struct.pack(duration_ms, yaw_change_ddeg)

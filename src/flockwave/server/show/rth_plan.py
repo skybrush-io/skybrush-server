@@ -49,7 +49,7 @@ class RTHPlanEntry:
     """
 
     @classmethod
-    def from_json(cls, data: Dict):
+    def from_json(cls, data: dict):
         """Constructs an RTH plan entry from its JSON representation typically
         used in show specifications.
         """

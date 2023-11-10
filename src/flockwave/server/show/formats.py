@@ -27,6 +27,7 @@ from flockwave.concurrency import aclosing
 from .rth_plan import RTHAction, RTHPlan, RTHPlanEntry
 from .trajectory import TrajectorySegment, TrajectorySpecification
 from .utils import crc32_mavftp as crc32, encode_variable_length_integer, Point
+from .yaw import YawSetpointList
 
 __all__ = ("SkybrushBinaryShowFile",)
 
@@ -64,6 +65,7 @@ class SkybrushBinaryFormatBlockType(IntEnum):
     LIGHT_PROGRAM = 2
     COMMENT = 3
     RTH_PLAN = 4
+    YAW_CONTROL = 5
 
 
 class SkybrushBinaryFileBlock:
@@ -281,7 +283,7 @@ class SkybrushBinaryShowFile:
 
     async def add_trajectory(self, trajectory: TrajectorySpecification) -> None:
         """Adds a new trajectory block to the end of the Skybrush file
-        with the given trajeectory.
+        with the given trajectory.
 
         Parameters:
             trajectory: the trajectory to add
@@ -309,6 +311,20 @@ class SkybrushBinaryShowFile:
 
         return await self.add_block(
             SkybrushBinaryFormatBlockType.TRAJECTORY, b"".join(chunks)
+        )
+
+    async def add_yaw_setpoints(self, setpoints: YawSetpointList) -> None:
+        """Adds a yaw control block to the end of the Skybrush file
+        with the given yaw setpoints.
+
+        Parameters:
+            setpoints: the yaw setpoint list to add
+        """
+
+        encoder = YawSetpointEncoder()
+
+        return await self.add_block(
+            SkybrushBinaryFormatBlockType.YAW_CONTROL, encoder.encode(setpoints)
         )
 
     async def blocks(
@@ -557,7 +573,7 @@ class SegmentEncoder:
         duration = floor(segment.duration * 1000)
         if duration < 0 or duration > 65535:
             raise RuntimeError(
-                f"trajectory segment too long, got {duration} msec, max is 65535"
+                f"trajectory segment must be in the range 0-65535 msec, got {duration} msec"
             )
 
         xs, ys, zs = zip(*(self._scale_point(point) for point in segment.points))
@@ -832,3 +848,66 @@ class RTHPlanEncoder:
             round(point[0] * self._scale),
             round(point[1] * self._scale),
         )
+
+
+class YawSetpointEncoder:
+    """Encoder class for yaw setpoints in the Skybrush binary show file
+    format.
+    """
+
+    _setpoint_struct: ClassVar[Struct] = Struct("<Hh")
+    _header_struct: ClassVar[Struct] = Struct("<Bh")
+
+    def encode(self, setpoints: YawSetpointList) -> bytes:
+        # minimal error checking
+        if len(setpoints.setpoints) * 4 > 65535 - 3:
+            raise ValueError("too many setpoints in yaw control block")
+
+        # First, add header
+        chunks: List[bytes] = []
+        chunks.append(self.encode_header(setpoints.auto_yaw, setpoints.yaw_offset))
+
+        # Next, encode all yaw setpoints
+        if not setpoints.auto_yaw:
+            last_yaw = setpoints.yaw_offset
+            last_time = 0
+            for setpoint in setpoints.setpoints:
+                # Note that here we assume that yaw setpoints are rounded to a degree
+                # that calculating relative yaws and durations will not cause integrated
+                # numeric errors
+                duration = setpoint.time - last_time
+                yaw_change = setpoint.angle - last_yaw
+                chunks.append(self.encode_relative_setpoint(duration, yaw_change))
+                last_time = setpoint.time
+                last_yaw = setpoint.angle
+
+        return b"".join(chunks)
+
+    def encode_header(self, auto_yaw: bool, yaw_offset: float) -> bytes:
+        """Encodes the header of the yaw control block.
+
+        Args:
+            auto_yaw: whether auto yawing is used
+            yaw_offset: the yaw offset / starting yaw to use, in degrees
+        """
+        flags = int(auto_yaw)
+        yaw_offset_ddeg = round(yaw_offset * 10)  # [deg] -> [1e-1 deg]
+
+        return self._header_struct.pack(flags, yaw_offset_ddeg)
+
+    def encode_relative_setpoint(self, duration: float, yaw_change: float) -> bytes:
+        """Encodes the yaw and duration of a relative yaw setpoint.
+
+        Args:
+            duration: the duration of the yaw setpoint, in seconds
+            yaw_change: the yaw change of the setpoint, in degrees
+        """
+        duration_ms = floor(duration * 1000)  # [s] -> [ms]
+        if duration_ms < 0 or duration > 65535:
+            raise RuntimeError(
+                f"yaw setpoint duration must be in the range 0-65535 msec, got {duration_ms} msec"
+            )
+
+        yaw_change_ddeg = round(yaw_change * 10)  # [deg] -> [1e-1 deg]
+
+        return self._setpoint_struct.pack(duration_ms, yaw_change_ddeg)

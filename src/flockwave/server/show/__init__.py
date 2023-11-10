@@ -15,6 +15,7 @@ from .specification import (
     get_group_index_from_show_specification,
     get_home_position_from_show_specification,
     get_trajectory_from_show_specification,
+    get_yaw_setpoints_from_show_specification,
     is_coordinate_system_in_show_specification_geodetic,
     ShowSpecification,
 )
@@ -31,6 +32,7 @@ __all__ = (
     "get_rth_plan_from_show_specification",
     "get_safety_configuration_from_show_specification",
     "get_trajectory_from_show_specification",
+    "get_yaw_setpoints_from_show_specification",
     "is_coordinate_system_in_show_specification_geodetic",
     "LightPlayer",
     "ShowSpecification",

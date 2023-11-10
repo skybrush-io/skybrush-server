@@ -46,6 +46,7 @@ from flockwave.server.show import (
     get_light_program_from_show_specification,
     get_rth_plan_from_show_specification,
     get_trajectory_from_show_specification,
+    get_yaw_setpoints_from_show_specification,
 )
 from flockwave.server.show.formats import SkybrushBinaryShowFile
 
@@ -1982,12 +1983,15 @@ class MAVLinkUAV(UAVBase):
         trajectory = get_trajectory_from_show_specification(show)
         geofence = get_geofence_configuration_from_show_specification(show)
         rth_plan = get_rth_plan_from_show_specification(show)
+        yaw_setpoints = get_yaw_setpoints_from_show_specification(show)
 
         async with SkybrushBinaryShowFile.create_in_memory() as show_file:
             await show_file.add_trajectory(trajectory)
             await show_file.add_light_program(light_program)
             if rth_plan:
                 await show_file.add_rth_plan(rth_plan)
+            if yaw_setpoints:
+                await show_file.add_yaw_setpoints(yaw_setpoints)
             await show_file.finalize()
             data = show_file.get_contents()
 

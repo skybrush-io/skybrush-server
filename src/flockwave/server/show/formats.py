@@ -890,8 +890,12 @@ class YawSetpointEncoder:
             auto_yaw: whether auto yawing is used
             yaw_offset: the yaw offset / starting yaw to use, in degrees
         """
-        flags = int(auto_yaw)
+        flags = int(bool(auto_yaw))
         yaw_offset_ddeg = round(yaw_offset * 10)  # [deg] -> [1e-1 deg]
+        if abs(yaw_offset_ddeg) > 32767:
+            raise RuntimeError(
+                f"yaw offset must be smaller than 3276.8 deg, got {yaw_offset_ddeg / 10} deg"
+            )
 
         return self._header_struct.pack(flags, yaw_offset_ddeg)
 

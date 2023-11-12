@@ -26,13 +26,13 @@ class YawSetpoint:
 
 @dataclass
 class RelativeYawSetpoint:
-    """The simplest representation of a yaw setpoint."""
+    """The simplest representation of a relative yaw setpoint."""
 
     duration: float
-    """The duration associated to the yaw setpoint, in seconds."""
+    """The duration associated to the relative yaw setpoint, in seconds."""
 
     yaw_change: float
-    """The yaw change associated to the yaw setpoint, in degrees."""
+    """The yaw change associated to the relative yaw setpoint, in degrees."""
 
 
 class YawSetpointList:
@@ -126,7 +126,7 @@ class YawSetpointList:
 
     @property
     def yaw_offset(self) -> float:
-        """Returns the yaw offset associated to self."""
+        """Returns the yaw offset associated to the yaw setpoint list."""
         if self.auto_yaw:
             return self.auto_yaw_offset
 

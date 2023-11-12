@@ -294,7 +294,7 @@ class SkybrushBinaryShowFile:
                 "Trajectory covers too large an area for a Skybrush binary show file"
             )
 
-        chunks = [bytes([scaling_factor])]  # MSB means whether to use yaw, but we won't
+        chunks = [bytes([scaling_factor])]  # MSB is reserved as zero
         encoder = SegmentEncoder(scaling_factor)
 
         # TODO(ntamas): replace this with SegmentEncoder.encode_multiple_segments()

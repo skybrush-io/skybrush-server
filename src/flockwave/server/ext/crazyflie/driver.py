@@ -1053,6 +1053,9 @@ class CrazyflieUAV(UAVBase):
             else:
                 raise
 
+        # TODO: support yaw control for Crazyflie drones as well
+        # yaw_setpoints = get_yaw_setpoints_from_show_specification(show)
+
         try:
             await self._upload_trajectory_and_fence(
                 trajectory, home, fence_config=self.driver.fence_config

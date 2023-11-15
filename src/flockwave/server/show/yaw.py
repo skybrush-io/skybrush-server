@@ -1,7 +1,7 @@
 from dataclasses import dataclass
-from math import inf
+from math import ceil, inf
 from operator import attrgetter
-from typing import Iterable, Sequence, TypeVar, Union
+from typing import Iterable, Optional, Sequence, TypeVar, Union
 
 __all__ = (
     "RelativeYawSetpoint",
@@ -65,9 +65,21 @@ class YawSetpointList:
     def from_json(cls, data: dict):
         """Constructs a yaw setpoint list from its JSON representation typically
         used in show specifications.
+
+        Args:
+            data: the JSON dictionary to import
+
+        Returns:
+            the yaw setpoint list created from its JSON representation
+
+        Raises:
+            RuntimeError on parsing errors
         """
 
-        version: int = data.get("version", 0)
+        version: Optional[int] = data.get("version")
+
+        if version is None:
+            raise ValueError("Version is required")
 
         if version != 1:
             raise ValueError("Only version 1 of yaw control is supported")
@@ -111,7 +123,9 @@ class YawSetpointList:
                 yaw_change = setpoint.yaw - last_yaw
                 # We need to split too long or too "turny" setpoints
                 num_splits = max(
-                    duration // max_duration, abs(yaw_change) // max_yaw_change
+                    ceil(duration / max_duration) - 1,
+                    ceil(abs(yaw_change) / max_yaw_change) - 1,
+                    0,
                 )
                 ratio = 1 / (num_splits + 1)
                 while num_splits >= 0:

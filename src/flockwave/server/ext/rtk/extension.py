@@ -16,7 +16,7 @@ from trio_util import AsyncBool
 from typing import cast, Any, ClassVar, Iterator, Optional, Union
 
 from flockwave.channels import ParserChannel
-from flockwave.connections import Connection, create_connection
+from flockwave.connections import create_connection, RWConnection
 from flockwave.gps.enums import GNSSType
 from flockwave.gps.rtk import RTKMessageSet, RTKSurveySettings
 from flockwave.gps.ubx.rtk_config import UBXRTKBaseConfigurator
@@ -653,16 +653,16 @@ class RTKExtension(Extension):
                         )
 
     async def _run_single_connection_for_preset(
-        self, connection: Connection, *, preset: RTKConfigurationPreset
+        self, connection: RWConnection[bytes, bytes], *, preset: RTKConfigurationPreset
     ) -> None:
         """Task that reads messages from a single connection related to an
         RTK preset.
         """
         assert self.app is not None
 
-        channel = ParserChannel(connection, parser=preset.create_parser())  # type: ignore
+        channel = ParserChannel(connection, parser=preset.create_gps_parser())  # type: ignore
         signal = self.app.import_api("signals").get(self.RTK_PACKET_SIGNAL)
-        encoder = preset.create_encoder()
+        encoder = preset.create_rtcm_encoder()
 
         async with channel:
             async for packet in channel:

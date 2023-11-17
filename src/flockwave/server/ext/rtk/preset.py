@@ -188,11 +188,7 @@ class RTKConfigurationPreset:
         else:
             return False
 
-    def create_encoder(self) -> Encoder[RTCMPacket, bytes]:
-        """Creates an RTCM message encoder for this preset."""
-        return create_rtcm_encoder("rtcm2" if self.format == "rtcm2" else "rtcm3")
-
-    def create_parser(self) -> Parser[bytes, GPSPacket]:
+    def create_gps_parser(self) -> Parser[bytes, GPSPacket]:
         """Creates a GPS message parser for this preset."""
         if self.format == "auto":
             formats = ["rtcm3", "ubx", "nmea"]
@@ -205,6 +201,10 @@ class RTKConfigurationPreset:
         else:
             raise ValueError(f"unknown format: {self.format}")
         return create_gps_parser(formats)
+
+    def create_rtcm_encoder(self) -> Encoder[RTCMPacket, bytes]:
+        """Creates an RTCM message encoder for this preset."""
+        return create_rtcm_encoder("rtcm2" if self.format == "rtcm2" else "rtcm3")
 
     @property
     def json(self) -> Any:

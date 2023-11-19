@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- The server can now be made aware of its own location with the `location`
+  extension, and the `rtk` extension will use the location when connecting to
+  an NTRIP server to send NMEA GGA messages periodically. This enables the use
+  of NTRIP VRS servers (Virtual Reference Stations) where a country-wide
+  network of base stations are used to provide RTK corrections at any arbitrary
+  coordinate within the coverage area of the network.
+
 ### Fixed
 
 - Fixed issues with reloading extensions that depend on `http_server` and

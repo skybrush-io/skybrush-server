@@ -50,7 +50,7 @@ flockwave-conn = { extras = [
 ], source = "fury", version = "^6.3.2" }
 flockwave-ext = { version = "^1.24.3", source = "fury" }
 flockwave-flockctrl = { version = "^2.17.0", source = "collmot", optional = true }
-flockwave-gps = { version = "^3.1.0", source = "fury" }
+flockwave-gps = { version = "^3.2.0", source = "fury" }
 flockwave-logger = { version = "^1.9.0", source = "fury" }
 flockwave-mavlink = { version = ">=0.1.0", source = "fury" }
 flockwave-net = { extras = ["async"], version = "^6.0.1", source = "fury" }

@@ -6,20 +6,22 @@ from __future__ import annotations
 
 from contextlib import ExitStack
 from dataclasses import dataclass, field
+from datetime import datetime
 from fnmatch import fnmatch
 from functools import partial
 from time import monotonic
-from flockwave.gps.vectors import ECEFToGPSCoordinateTransformation, GPSCoordinate
 from trio import CancelScope, open_memory_channel, open_nursery, sleep
 from trio.abc import SendChannel
-from trio_util import AsyncBool
+from trio_util import AsyncBool, periodic
 from typing import cast, Any, ClassVar, Iterator, Optional, Union
 
 from flockwave.channels import ParserChannel
 from flockwave.connections import create_connection, RWConnection
 from flockwave.gps.enums import GNSSType
+from flockwave.gps.nmea.packet import create_nmea_packet
 from flockwave.gps.rtk import RTKMessageSet, RTKSurveySettings
 from flockwave.gps.ubx.rtk_config import UBXRTKBaseConfigurator
+from flockwave.gps.vectors import ECEFToGPSCoordinateTransformation
 from flockwave.server.ext.base import Extension
 from flockwave.server.message_hub import MessageHub
 from flockwave.server.model import ConnectionPurpose
@@ -27,6 +29,7 @@ from flockwave.server.model.log import Severity
 from flockwave.server.model.messages import FlockwaveMessage, FlockwaveResponse
 from flockwave.server.registries import find_in_registry
 from flockwave.server.utils import overridden
+from flockwave.server.utils.formatting import format_gps_coordinate
 from flockwave.server.utils.serial import (
     SerialPortConfiguration,
     SerialPortDescriptor,
@@ -59,11 +62,6 @@ class RTKPresetRequest:
     def touch(self) -> None:
         """Updates the timestamp of the request to the current timestamp."""
         self.timestamp = monotonic()
-
-
-def format_gps_coordinate(coord: GPSCoordinate) -> str:
-    """Formats a GPS coordinate in a way commonly used in this extension."""
-    return f"{coord.lat:.7f}°, {coord.lon:.7f}°"
 
 
 class RTKExtension(Extension):
@@ -662,15 +660,81 @@ class RTKExtension(Extension):
 
         channel = ParserChannel(connection, parser=preset.create_gps_parser())  # type: ignore
         signal = self.app.import_api("signals").get(self.RTK_PACKET_SIGNAL)
-        encoder = preset.create_rtcm_encoder()
+        get_location = self.app.import_api("location").get_location
+        nmea_encoder = preset.create_nmea_encoder()
+        rtcm_encoder = preset.create_rtcm_encoder()
+        maybe_vrs = "NTRIPConnection" in str(connection.__class__)
 
-        async with channel:
+        async def handle_incoming_packets():
+            """Handles incoming RTK correction packets from the connection."""
             async for packet in channel:
                 self._clock_sync_validator.notify(packet)
                 self._statistics.notify(packet)
                 if preset.accepts(packet):
-                    encoded = encoder(packet)
+                    encoded = rtcm_encoder(packet)  # type: ignore
                     signal.send(packet=encoded)
+
+        async def generate_vrs_packets():
+            """Generates messages that have to be provided if the connection is
+            a virtual reference station (VRS).
+            """
+            if not callable(get_location):
+                return
+
+            async for _ in periodic(5):
+                location = get_location()
+                if location is None or location.position is None:
+                    continue
+
+                lat = location.position.lat
+                lon = location.position.lon
+                alt = location.position.amsl
+                if alt is None:
+                    alt = 0.0
+
+                lat_dms, lat_min = divmod(lat, 1)
+                lat_dms = abs(lat_dms + lat_min * 0.6) * 100
+
+                lon_dms, lon_min = divmod(lon, 1)
+                lon_dms = abs(lon_dms + lon_min * 0.6) * 100
+
+                message = create_nmea_packet(
+                    "GP",
+                    "GGA",
+                    (
+                        # Time in HHMMSS format
+                        datetime.utcnow().strftime("%H%M%S"),
+                        # Latitude and latitude sign
+                        f"{lat_dms:07.2f}",
+                        "N" if lat >= 0 else "S",
+                        # Longitude and longitude sign
+                        f"{lon_dms:08.2f}",
+                        "E" if lon >= 0 else "W",
+                        # Fix type, number of satellites, HDOP
+                        "1",
+                        "10",
+                        "1",
+                        # Altitude
+                        f"{alt:.2f}",
+                        "M",
+                        # Height of geoid
+                        "0",
+                        "M",
+                        # Age of RTK corrections, station ID
+                        "0.0",
+                        "0",
+                    ),
+                )
+                data = nmea_encoder(message)
+                await connection.write(data)
+
+        async with channel:
+            if maybe_vrs:
+                async with open_nursery() as nursery:
+                    nursery.start_soon(generate_vrs_packets)
+                    nursery.start_soon(handle_incoming_packets)
+            else:
+                await handle_incoming_packets()
 
     def _on_gps_clock_sync_state_changed(self, sender, in_sync: bool) -> None:
         """Handler called when the extension detects that the GPS clock is
@@ -805,7 +869,7 @@ class RTKExtension(Extension):
 
 
 construct = RTKExtension
-dependencies = ("beacon", "ntrip", "signals")
+dependencies = ("beacon", "location", "ntrip", "signals")
 description = "Support for RTK base stations and external RTK correction sources"
 optional_dependencies = {
     "hotplug": "detects when new USB devices are plugged in and updates the RTK sources automatically",

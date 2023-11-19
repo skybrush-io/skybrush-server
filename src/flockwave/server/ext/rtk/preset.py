@@ -3,6 +3,8 @@ from urllib.parse import urlencode
 from typing import Any, Callable, Iterable, Optional, Type
 
 from flockwave.channels.types import Encoder, Parser
+from flockwave.gps.encoder import create_gps_encoder
+from flockwave.gps.nmea import NMEAPacket
 from flockwave.gps.parser import create_gps_parser
 from flockwave.gps.rtcm import create_rtcm_encoder
 from flockwave.gps.rtcm.packets import RTCMPacket, RTCMV2Packet, RTCMV3Packet
@@ -201,6 +203,13 @@ class RTKConfigurationPreset:
         else:
             raise ValueError(f"unknown format: {self.format}")
         return create_gps_parser(formats)
+
+    def create_nmea_encoder(self) -> Encoder[NMEAPacket, bytes]:
+        """Creates an NMEA message encoder for this preset, used for injecting
+        NMEA GGA messages into NTRIP streams of VRS (Virtual Reference Station)
+        networks.
+        """
+        return create_gps_encoder("nmea")
 
     def create_rtcm_encoder(self) -> Encoder[RTCMPacket, bytes]:
         """Creates an RTCM message encoder for this preset."""

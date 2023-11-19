@@ -3,7 +3,10 @@
 from datetime import datetime, timedelta
 from typing import Callable, Sequence, TypeVar, Union
 
+from flockwave.gps.vectors import GPSCoordinate
+
 __all__ = (
+    "format_gps_coordinate",
     "format_list_nicely",
     "format_number_nicely",
     "format_uav_ids_nicely",
@@ -12,6 +15,16 @@ __all__ = (
 )
 
 T = TypeVar("T")
+
+
+def format_gps_coordinate(coord: GPSCoordinate) -> str:
+    """Formats a GPS coordinate in a huamn-readable way."""
+    if coord.amsl is not None:
+        return f"{coord.lat:.7f}°, {coord.lon:.7f}°, {coord.amsl:.1f}m AMSL"
+    elif coord.agl is not None:
+        return f"{coord.lat:.7f}°, {coord.lon:.7f}°, {coord.amsl:.1f}m AGL"
+    else:
+        return f"{coord.lat:.7f}°, {coord.lon:.7f}°"
 
 
 def format_list_nicely(

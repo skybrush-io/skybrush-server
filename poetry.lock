@@ -52,22 +52,22 @@ pyusb = ">=1.2.1,<2.0.0"
 
 [[package]]
 name = "aiocflib"
-version = "3.0.0"
+version = "4.0.0"
 description = "Python async API for Crazyflie drones"
 optional = false
 python-versions = ">=3.8,<4.0"
 files = [
-    {file = "aiocflib-3.0.0-py3-none-any.whl", hash = "sha256:ce34c41443e4ef83513bffa816cf2f31c5f96d867861dae6b902ff05d26369ea"},
-    {file = "aiocflib-3.0.0.tar.gz", hash = "sha256:2fce4baf72c7d7271a54c61596db19f217f59975bc15376a3e7684eafe21db4f"},
+    {file = "aiocflib-4.0.0-py3-none-any.whl", hash = "sha256:137cbbeb70846e460591e156da5a351c65a23b2277be540acd59acacdab922f9"},
+    {file = "aiocflib-4.0.0.tar.gz", hash = "sha256:e07b3178e7e6e161251c68b9efde23a2380285cf22b9616af0318f31291031d7"},
 ]
 
 [package.dependencies]
-anyio = ">=3.2.1,<5"
-colorama = ">=0.4.3"
-colour = ">=0.1.5"
+anyio = ">=4.1.0,<5.0.0"
+colorama = ">=0.4.6,<0.5.0"
+colour = ">=0.1.5,<0.2.0"
 hexdump = ">=3.3,<4.0"
-outcome = ">=1.0.1,<2.0.0"
-pyusb = ">=1.0.2,<2.0.0"
+outcome = ">=1.3.0.post0,<2.0.0"
+pyusb = ">=1.2.1,<2.0.0"
 
 [[package]]
 name = "aiofiles"
@@ -2634,4 +2634,4 @@ pro = ["skybrush-ext-flight-report", "skybrush-ext-map-cache", "skybrush-ext-sid
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.9"
-content-hash = "f88173edf2e84202e8d3cda8f0bfc2ca8e12bed14d90556685c110aab4ebf0b2"
+content-hash = "aa67b425669b89c3b5f0e6d57acbd52d0984d5216d80c9651b7265fb80557f87"

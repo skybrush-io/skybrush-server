@@ -65,8 +65,8 @@
 <button class="btn btn-primary sb-btn-reload">
   <span data-feather="refresh-cw"></span> Reload
 </button>
-<button class="btn btn-primary sb-btn-save-and-reload" style="display: none">
-  <span data-feather="refresh-cw"></span> Save and reload
+<button class="btn btn-primary sb-btn-apply-and-reload" style="display: none">
+  <span data-feather="refresh-cw"></span> Apply and reload
 </button>
 <button class="btn btn-danger sb-btn-unload">
   <span data-feather="trash-2"></span> Unload
@@ -124,7 +124,7 @@ function updateButtons() {
     button.disabled = !isValid;
   }
 
-  buttons = document.querySelectorAll(".sb-btn-save-and-reload");
+  buttons = document.querySelectorAll(".sb-btn-apply-and-reload");
   for (let button of buttons) {
     button.style.display = !isDirty ? "none" : "inline-block";
     button.disabled = !isValid;
@@ -325,7 +325,7 @@ for (let button of buttons) {
   button.addEventListener('click', reload);
 }
 
-buttons = document.querySelectorAll(".sb-btn-save-and-reload");
+buttons = document.querySelectorAll(".sb-btn-apply-and-reload");
 for (let button of buttons) {
   button.addEventListener('click', reload);
 }

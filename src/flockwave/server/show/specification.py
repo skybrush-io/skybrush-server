@@ -3,6 +3,7 @@ from typing import Dict, Optional
 from flockwave.gps.vectors import FlatEarthToGPSCoordinateTransformation
 
 from .trajectory import TrajectorySpecification
+from .yaw import YawSetpointList
 
 __all__ = (
     "get_altitude_reference_from_show_specification",
@@ -11,6 +12,7 @@ __all__ = (
     "get_group_index_from_show_specification",
     "get_home_position_from_show_specification",
     "get_trajectory_from_show_specification",
+    "get_yaw_setpoints_from_show_specification",
     "is_coordinate_system_in_show_specification_geodetic",
     "ShowSpecification",
 )
@@ -102,6 +104,24 @@ def get_group_index_from_show_specification(show: ShowSpecification) -> int:
     if group_index < 0 or group_index > 255:
         raise RuntimeError("Group index outside valid range")
     return group_index
+
+
+def get_yaw_setpoints_from_show_specification(
+    show: ShowSpecification,
+) -> Optional[YawSetpointList]:
+    """Returns the yaw control block from the show specification, or `None` if the show
+    specification does not have a yaw control block.
+    """
+    yaw_control = show.get("yawControl")
+
+    if yaw_control:
+        retval = YawSetpointList.from_json(yaw_control)
+        if not retval.auto_yaw and not retval.setpoints:
+            retval = None
+    else:
+        retval = None
+
+    return retval
 
 
 def is_coordinate_system_in_show_specification_geodetic(

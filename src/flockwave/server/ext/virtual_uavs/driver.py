@@ -333,6 +333,9 @@ class VirtualUAV(UAVBase):
 
                 # Start the light program
                 self._light_controller.play_light_program()
+
+                # TODO: add yaw control player
+
         elif self._state is VirtualUAVState.AIRBORNE:
             if old_state is not VirtualUAVState.TAKEOFF:
                 # Stop following the trajectory, just in case

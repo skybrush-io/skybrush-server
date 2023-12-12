@@ -8,8 +8,10 @@ from flockwave.server.show.formats import (
     SkybrushBinaryFileFeatures,
     SkybrushBinaryShowFile,
     SkybrushBinaryFormatBlockType,
+    YawSetpointEncoder,
 )
 from flockwave.server.show.rth_plan import RTHAction, RTHPlan, RTHPlanEntry
+from flockwave.server.show.yaw import YawSetpointList
 
 
 SIMPLE_SKYB_FILE_V1 = (
@@ -28,13 +30,15 @@ SIMPLE_SKYB_FILE_V2 = (
     # Header, version 2, feature flags
     b"skyb\x02\x01"
     # Checksum
-    b"(\xda\xd0\x83"
+    b"\x93\x96\xe5\xdd"
     # Trajectory block starts here
     b"\x01$\x00\n\x00\x00\x00\x00\x00\x00\x00\x00\x10\x10'\xe8\x03"
     b"\x01\x10'\xe8\x03\x04\x10'\xe8\x03\x05\x10'\x00\x00\x00\x00"
     b"\x10\x10'\x00\x00"
     # Comment block starts here
     b"\x03\x13\x00this is a test file"
+    # Yaw control block starts here
+    b"\x05\x03\x00\x01\x08\x02"
 )
 
 
@@ -182,7 +186,7 @@ class TestSkybrushBinaryFileFormat:
 
             assert f.version == 2
             assert f.features == SkybrushBinaryFileFeatures.CRC32
-            assert len(blocks) == 2
+            assert len(blocks) == 3
 
             assert blocks[0].type == SkybrushBinaryFormatBlockType.TRAJECTORY
             data = await blocks[0].read()
@@ -195,6 +199,10 @@ class TestSkybrushBinaryFileFormat:
             assert blocks[1].type == SkybrushBinaryFormatBlockType.COMMENT
             data = await blocks[1].read()
             assert data == (b"this is a test file")
+
+            assert blocks[2].type == SkybrushBinaryFormatBlockType.YAW_CONTROL
+            data = await blocks[2].read()
+            assert data == (b"\x01\x08\x02")
 
     async def test_reading_blocks_version_2_invalid_crc(self):
         data = SIMPLE_SKYB_FILE_V2[:6] + b"\x00" + SIMPLE_SKYB_FILE_V2[7:]
@@ -223,6 +231,10 @@ class TestSkybrushBinaryFileFormat:
                 b"\x10\x10'\x00\x00",
             )
             await f.add_comment("this is a test file")
+            await f.add_block(
+                SkybrushBinaryFormatBlockType.YAW_CONTROL,
+                b"\x01\x08\x02",
+            )
             await f.finalize()
             assert f.get_contents() == SIMPLE_SKYB_FILE_V2
 
@@ -307,3 +319,25 @@ class TestRTHPlanEncoder:
         plan.add_entry(entry)
         with raises(ValueError, match="unknown RTH action: no-such-action"):
             RTHPlanEncoder(scale=100).encode(plan)
+
+
+@fixture
+def setpoints() -> YawSetpointList:
+    return YawSetpointList(setpoints=[(10, 30), (20, 90), (25, -90)])
+
+
+ENCODED_YAW_SETPOINTS = (
+    # Yaw control block header
+    b"\x00\x2c\x01"  # auto_yaw=0, yaw_offset=300
+    # Relative yaw setpoints
+    b"\x10\x27\x00\x00"  # dt=10000, dy=0
+    b"\x10\x27\x58\x02"  # dt=10000, dy=600
+    b"\x88\x13\xf8\xf8"  # dt=5000, dy=-1800
+)
+
+
+class TestYawSetpointEncoder:
+    async def test_encoding_basic(self, setpoints: YawSetpointList):
+        encoder = YawSetpointEncoder()
+        data = encoder.encode(setpoints)
+        assert data == ENCODED_YAW_SETPOINTS

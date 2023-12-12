@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- MAVLink drones now support yaw setpoints during a show, provided that the
+  onboard firmware supports yaw setpoints in the show data. This feature is
+  experimental and has only been tested in simulator yet.
+
+### Fixed
+
+- Fixed a crash in the Crazyflie extension with newer versions of `anyio`.
+
 ## [2.17.2]
 
 ### Added

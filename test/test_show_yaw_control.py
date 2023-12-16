@@ -1,9 +1,6 @@
-from pytest import approx, raises
-from typing import List
+from pytest import raises
 
-from flockwave.server.show.player import create_function_for_segment
 from flockwave.server.show.yaw import RelativeYawSetpoint, YawSetpoint, YawSetpointList
-from flockwave.server.show.utils import Point
 
 
 def test_yaw_setpoints_without_version_number():

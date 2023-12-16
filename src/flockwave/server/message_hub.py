@@ -1026,7 +1026,7 @@ class MessageHub:
                 for func in self._broadcast_methods:
                     try:
                         await func(message)
-                    except ClosedResourceError:
+                    except (BrokenResourceError, ClosedResourceError):
                         # client is probably gone; no problem
                         pass
                     except Exception:
@@ -1077,7 +1077,7 @@ class MessageHub:
             # Message passed through all middleware
             try:
                 await client.channel.send(message)
-            except ClosedResourceError:
+            except (BrokenResourceError, ClosedResourceError):
                 log.warning(
                     "Client is gone; not sending message", extra={"id": client.id}
                 )

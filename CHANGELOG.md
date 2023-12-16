@@ -17,6 +17,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Fixed a crash in the Crazyflie extension with newer versions of `anyio`.
 
+- Fixed a rare rounding error that caused an exception during show uploading
+  due to an overflow.
+
 ## [2.17.2]
 
 ### Added

@@ -648,13 +648,22 @@ class SegmentEncoder:
         raise NotImplementedError(f"{len(xs)}D curves not implemented yet")
 
     def _scale_point(self, point: Point) -> tuple[int, int, int]:
+        # We always need to round with int() here, we cannot use round(). The
+        # reason is that the scaling factor was determined in a way that it is
+        # guaranteed that we fit into 2 bytes with the values rounded with
+        # int() but it is not guaranteed if we round with round(). Example:
+        # an extremum of 131070 yields a scaling factor of 4, so
+        # self._scale = 0.25. In this case, round(131070 * self._scale) = 32768,
+        # which does not fit.
         return (
-            round(point[0] * self._scale),
-            round(point[1] * self._scale),
-            round(point[2] * self._scale),
+            int(point[0] * self._scale),
+            int(point[1] * self._scale),
+            int(point[2] * self._scale),
         )
 
     def _scale_yaw(self, yaw: float) -> int:
+        # We can safely use round() here as this part won't suffer from the same
+        # problems as the one outlined in _scale_points()
         yaw = round((yaw % 360) * 10)
         return yaw - 3600 if yaw >= 3600 else yaw
 
@@ -841,9 +850,17 @@ class RTHPlanEncoder:
     def _scale_point(self, point: tuple[float, ...]) -> tuple[int, ...]:
         if len(point) != 2:
             raise ValueError("each point must be two-dimensional")
+
+        # We always need to round with int() here, we cannot use round(). The
+        # reason is that the scaling factor was determined in a way that it is
+        # guaranteed that we fit into 2 bytes with the values rounded with
+        # int() but it is not guaranteed if we round with round(). Example:
+        # an extremum of 131070 yields a scaling factor of 4, so
+        # self._scale = 0.25. In this case, round(131070 * self._scale) = 32768,
+        # which does not fit.
         return (
-            round(point[0] * self._scale),
-            round(point[1] * self._scale),
+            int(point[0] * self._scale),
+            int(point[1] * self._scale),
         )
 
 
@@ -857,7 +874,7 @@ class YawSetpointEncoder:
 
     def encode(self, setpoints: YawSetpointList) -> bytes:
         # First, add header
-        chunks: List[bytes] = []
+        chunks: list[bytes] = []
         chunks.append(self.encode_header(setpoints.auto_yaw, setpoints.yaw_offset))
 
         # Next, encode all yaw setpoints

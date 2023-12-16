@@ -5,13 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [2.17.3] - 2023-12-16
 
 ### Added
 
 - MAVLink drones now support yaw setpoints during a show, provided that the
   onboard firmware supports yaw setpoints in the show data. This feature is
-  experimental and has only been tested in simulator yet.
+  experimental and has only been tested in simulator yet. We will publish more
+  details about yaw control when the feature has been introduced fully through
+  the entire Skybrush software stack.
 
 ### Fixed
 
@@ -20,7 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed a rare rounding error that caused an exception during show uploading
   due to an overflow.
 
-## [2.17.2]
+## [2.17.2] - 2023-12-01
 
 ### Added
 

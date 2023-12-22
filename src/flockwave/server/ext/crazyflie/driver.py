@@ -132,6 +132,7 @@ class CrazyflieDriver(UAVDriver["CrazyflieUAV"]):
         self.debug = False
         self.fence_config = FenceConfiguration()
         self.id_format = id_format
+        self.preferred_controller = None
         self.use_test_mode = False
 
         self._cache_folder = str(cache.resolve()) if cache else None

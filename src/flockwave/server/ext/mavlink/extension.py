@@ -475,6 +475,17 @@ schema = {
                             "defined at the top level."
                         ),
                     },
+                    "id_offset": {
+                        "type": "number",
+                        "title": "ID offset",
+                        "default": 0,
+                        "description": (
+                            "Offset to add to the numeric ID of each drone within the network "
+                            "to derive its final ID. You can use it to map multiple networks "
+                            "with the same MAVLink ID range to different Skybrush ID ranges. "
+                            "Leave it at zero if you only have one MAVLink network."
+                        ),
+                    },
                     "system_id": {
                         "title": "System ID",
                         "description": (

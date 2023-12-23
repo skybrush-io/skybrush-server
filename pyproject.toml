@@ -67,7 +67,7 @@ pyledctrl = { version = "^4.1.0", source = "fury" }
 aiocflib = "^4.0.1"
 appdirs = "^1.4.4"
 crcmod-plus = "^2.1.0"
-msgpack = "^1.0.7"
+msgpack = "1.0.5"   # last version supported by pyodide
 aio-usb-hotplug = "^6.0.0"
 pyserial = "^3.5"
 compose = "^1.5.0"

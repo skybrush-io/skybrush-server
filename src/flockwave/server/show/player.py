@@ -100,7 +100,10 @@ class TrajectoryPlayer:
 
         self._takeoff_time = self._trajectory.takeoff_time
 
-        self._segments = list(self._trajectory.iter_segments())
+        # TODO: self._trajectory.takeoff_time taken into account later, hence we
+        # now have absolute=False. We could probably refactor this to use
+        # absolute=True and simplify the logic.
+        self._segments = list(self._trajectory.iter_segments(absolute=False))
         self._num_segments = len(self._segments)
         self._start_times = [
             segment.start_time + self._takeoff_time for segment in self._segments

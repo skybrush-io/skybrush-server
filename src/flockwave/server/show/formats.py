@@ -294,7 +294,10 @@ class SkybrushBinaryShowFile:
         chunks = [bytes([scaling_factor])]  # MSB is reserved as zero
         encoder = SegmentEncoder(scaling_factor)
 
-        segments = trajectory.iter_segments(max_length=65)
+        # .skyb files need absolute timestamps so we need to add a constant
+        # segment in front if the takeoff time is nonzero; that's why we have
+        # absolute=True here
+        segments = trajectory.iter_segments(max_length=65, absolute=True)
         chunks.extend(encoder.iter_encode_multiple_segments(segments))
 
         return await self.add_block(

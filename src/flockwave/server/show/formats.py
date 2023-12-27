@@ -294,17 +294,8 @@ class SkybrushBinaryShowFile:
         chunks = [bytes([scaling_factor])]  # MSB is reserved as zero
         encoder = SegmentEncoder(scaling_factor)
 
-        # TODO(ntamas): replace this with SegmentEncoder.encode_multiple_segments()
-        # once we have a test case in place for that
-        first = True
-        for segment in trajectory.iter_segments(max_length=65):
-            if first:
-                # Encode the start point of the trajectory
-                chunks.append(encoder.encode_point(segment.start))
-                first = False
-
-            # Encode the segment without its start point
-            chunks.append(encoder.encode_segment(segment))
+        segments = trajectory.iter_segments(max_length=65)
+        chunks.extend(encoder.iter_encode_multiple_segments(segments))
 
         return await self.add_block(
             SkybrushBinaryFormatBlockType.TRAJECTORY, b"".join(chunks)

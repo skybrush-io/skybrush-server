@@ -3,8 +3,9 @@ Skybrush-related trajectories, until we find a better place for them.
 """
 
 from dataclasses import dataclass
+from itertools import chain
 from math import ceil, inf
-from typing import Dict, Iterable, Sequence
+from typing import Iterable, Optional, Sequence
 
 from .utils import BoundingBoxCalculator, Point
 
@@ -138,7 +139,7 @@ class TrajectorySpecification:
     client during a show upload.
     """
 
-    def __init__(self, data: Dict):
+    def __init__(self, data: dict):
         """Constructor.
 
         Parameters:
@@ -168,7 +169,10 @@ class TrajectorySpecification:
 
     @property
     def duration(self) -> float:
-        """Returns the total duration of the trajectory in seconds."""
+        """Returns the total duration of the trajectory in seconds, _excluding_
+        the time spent on the ground before takeoff. In other words, the returned
+        duration is the time elapsed between the takeoff and the landing.
+        """
         points = self._data.get("points")
         if points:
             t, _, _ = points[-1]
@@ -251,13 +255,39 @@ class TrajectorySpecification:
 
         return bbox.get_corners()  # type: ignore
 
-    def iter_segments(self, max_length: float = inf) -> Iterable[TrajectorySegment]:
-        points = self._data.get("points")
-        if not points:
+    def iter_segments(
+        self, max_length: float = inf, absolute: bool = False
+    ) -> Iterable[TrajectorySegment]:
+        """Iterates over the segments of the trajectory.
+
+        Args:
+            max_length: maximum allowed length of a single segment, in seconds.
+                Segments longer than this will be split as needed.
+            absolute: whether to use absolute timestamps in the returned
+                segments. When ``False``, the timestamp in each segment will be
+                relative to the takeoff time of the trajectory. When ``True``,
+                timestamps will be expressed relative to T=0 and an optional
+                constant segment will be inserted in front of the first segment
+                if the takeoff time is positive.
+        """
+        point_iter: Optional[
+            Iterable[tuple[float, Point, list[Point]]]
+        ] = self._data.get("points")
+        if not point_iter:
             return
 
-        prev_t, start = None, None
-        for point in points:
+        prev_t: Optional[float] = None
+        start: Optional[Point] = None
+
+        if absolute:
+            time_offset = self.takeoff_time
+            if time_offset > 0:
+                # We need to add a stationary segment
+                point_iter = chain([(-time_offset, self.home_position, [])], point_iter)
+        else:
+            time_offset = 0.0
+
+        for point in point_iter:
             t, point, control = point
             if prev_t is None:
                 # This is the first keyframe so we simply make sure that there
@@ -276,14 +306,15 @@ class TrajectorySpecification:
                     raise ValueError(f"time should not stand still at t = {t}")
                 else:
                     points = [start, *control, point]  # type: ignore
-                    segment = TrajectorySegment(t=prev_t, duration=dt, points=points)
+                    segment = TrajectorySegment(
+                        t=prev_t + time_offset, duration=dt, points=points
+                    )
                     if dt > max_length:
                         yield from segment.split_to_max_duration(max_length)
                     else:
                         yield segment
 
-            prev_t = t
-            start = point
+            prev_t, start = t, point
 
     def propose_scaling_factor(self) -> int:
         """Proposes a scaling factor to use in a Skybrush binary show file when

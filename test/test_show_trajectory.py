@@ -103,3 +103,120 @@ def test_trajectory_segment_splitting_to_max_duration():
     # Split with invalid duration
     with raises(ValueError, match="must be positive"):
         list(segment.split_to_max_duration(-2))
+
+
+class TestTrajectorySpecification:
+    spec_json = {
+        "version": 1,
+        "points": [
+            [0, [10, 20, 0], []],
+            [5, [10, 20, 20], [[10, 20, 0], [10, 20, 20]]],
+            [15, [20, 20, 20], [[10, 20, 20], [20, 20, 20]]],
+            [25, [20, 10, 20], [[20, 20, 20], [20, 10, 20]]],
+            [30, [20, 10, 0], [[20, 10, 20], [20, 10, 0]]],
+        ],
+        "takeoffTime": 7,
+    }
+    spec = TrajectorySpecification(spec_json)
+    empty_spec = TrajectorySpecification({"version": 1})
+
+    def test_bounding_box(self):
+        assert self.spec.bounding_box == ((10, 10, 0), (20, 20, 20))
+        with raises(ValueError, match="empty"):
+            _ = self.empty_spec.bounding_box
+
+    def test_duration(self):
+        assert self.empty_spec.duration == 0
+        assert self.spec.duration == 30
+
+    def test_get_padded_bounding_box(self):
+        assert self.spec.get_padded_bounding_box(0) == self.spec.bounding_box
+        assert self.spec.get_padded_bounding_box(5) == ((5, 5, -5), (25, 25, 25))
+        with raises(ValueError, match="empty"):
+            self.empty_spec.get_padded_bounding_box()
+
+    def test_home_position(self):
+        assert self.empty_spec.home_position == (0.0, 0.0, 0.0)
+        assert self.spec.home_position == (10.0, 20.0, 0.0)
+
+    def test_is_empty(self):
+        assert self.empty_spec.is_empty
+        assert not self.spec.is_empty
+
+    def test_iter_segments(self):
+        segments = list(self.spec.iter_segments())
+        assert len(segments) == 4
+        assert segments[0] == TrajectorySegment(
+            t=0,
+            duration=5,
+            points=[[10, 20, 0], [10, 20, 0], [10, 20, 20], [10, 20, 20]],  # type: ignore
+        )
+        assert segments[1] == TrajectorySegment(
+            t=5,
+            duration=10,
+            points=[[10, 20, 20], [10, 20, 20], [20, 20, 20], [20, 20, 20]],  # type: ignore
+        )
+        assert segments[2] == TrajectorySegment(
+            t=15,
+            duration=10,
+            points=[[20, 20, 20], [20, 20, 20], [20, 10, 20], [20, 10, 20]],  # type: ignore
+        )
+        assert segments[3] == TrajectorySegment(
+            t=25,
+            duration=5,
+            points=[[20, 10, 20], [20, 10, 20], [20, 10, 0], [20, 10, 0]],  # type: ignore
+        )
+
+    def test_iter_segments_absolute_time(self):
+        segments = list(self.spec.iter_segments(absolute=True))
+        assert len(segments) == 5
+        assert segments[0] == TrajectorySegment(
+            t=0,
+            duration=7,
+            points=[(10, 20, 0), [10, 20, 0]],  # type: ignore
+        )
+        assert segments[1] == TrajectorySegment(
+            t=7,
+            duration=5,
+            points=[[10, 20, 0], [10, 20, 0], [10, 20, 20], [10, 20, 20]],  # type: ignore
+        )
+        assert segments[2] == TrajectorySegment(
+            t=12,
+            duration=10,
+            points=[[10, 20, 20], [10, 20, 20], [20, 20, 20], [20, 20, 20]],  # type: ignore
+        )
+        assert segments[3] == TrajectorySegment(
+            t=22,
+            duration=10,
+            points=[[20, 20, 20], [20, 20, 20], [20, 10, 20], [20, 10, 20]],  # type: ignore
+        )
+        assert segments[4] == TrajectorySegment(
+            t=32,
+            duration=5,
+            points=[[20, 10, 20], [20, 10, 20], [20, 10, 0], [20, 10, 0]],  # type: ignore
+        )
+
+    def test_propose_scaling_factor(self):
+        assert self.empty_spec.propose_scaling_factor() == 1
+        assert self.spec.propose_scaling_factor() == 1
+
+        from copy import deepcopy
+
+        large_spec_json = deepcopy(self.spec_json)
+        for record in large_spec_json["points"]:
+            record[1] = [x * 10 for x in record[1]]
+
+        # Largest coordinate will be 20 * 10 = 200m, which is 200000 mm.
+        # We need a scaling factor of 7 because 200000 // 6 > 32767 but
+        # 200000 // 7 < 32767
+        assert TrajectorySpecification(large_spec_json).propose_scaling_factor() == 7
+
+    def test_takeoff_time(self):
+        assert self.empty_spec.takeoff_time == 0.0
+        assert self.spec.takeoff_time == 7.0
+
+    def test_errors(self):
+        with raises(RuntimeError, match="must have a version number"):
+            TrajectorySpecification({})
+        with raises(RuntimeError, match="version 1"):
+            TrajectorySpecification({"version": 66})

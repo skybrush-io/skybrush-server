@@ -556,13 +556,33 @@ class SegmentEncoder:
     def encode_point(self, point: Point, yaw: float = 0.0) -> bytes:
         """Encodes the X, Y and Z coordinates of a point, followed by the given
         yaw coordinate.
+
+        Args:
+            point: the point to encode
+            yaw: an optional yaw value to encode. Currently ignored; we have
+                migrated to using separate yaw control blocks.
+
+        Returns:
+            the encoded representation of the point
         """
         x, y, z = self._scale_point(point)
         yaw = self._scale_yaw(yaw)
         return self._point_struct.pack(x, y, z, yaw)
 
     def encode_segment(self, segment: TrajectorySegment) -> bytes:
-        """Encodes the control points and the end point of the given segment."""
+        """Encodes the control points and the end point of the given segment.
+
+        Note that the start point of the segment is assumed to be identical to
+        the end point of the previous segment, therefore the start point will
+        not be encoded.
+
+        Args:
+            segment: the segment to encode
+
+        Returns:
+            the encoded representation of the control points and the end point
+            of the segment
+        """
         if not segment.has_control_points:
             # This is easier
             pass
@@ -589,14 +609,34 @@ class SegmentEncoder:
 
         return b"".join(parts)
 
+    def encode_multiple_segments(self, segments: Iterable[TrajectorySegment]) -> bytes:
+        """Encodes the start point, the control points and the end point of multiple
+        segments that constitute a continuous curve.
+
+        It is assumed that the start point of each segment is identical to the
+        end point of the previous segment, therefore we will only encode the
+        start point of the first segment.
+
+        Args:
+            segments: the segments to encode
+
+        Returns:
+            the encoded representation of the segments
+        """
+        return b"".join(self.iter_encode_multiple_segments(segments))
+
     def iter_encode_multiple_segments(
         self,
         segments: Iterable[TrajectorySegment],
-        chunks: Optional[list[bytes]] = None,
     ) -> Iterable[bytes]:
-        """Iteratively encodes a sequence of trajectory segments.
+        """Iteratively encodes an iterable of trajectory segments that are
+        assumed to constitute a continuous curve.
 
-        Parameters:
+        It is assumed that the start point of each segment is identical to the
+        end point of the previous segment, therefore we will only encode the
+        start point of the first segment.
+
+        Args:
             segments: the segments to encode
 
         Yields:
@@ -605,8 +645,6 @@ class SegmentEncoder:
             the last point of each segment is the same as the first point of the
             next segment so the encoding does not lose information).
         """
-        chunks = chunks or []
-
         first = True
         for segment in segments:
             if first:
@@ -616,8 +654,6 @@ class SegmentEncoder:
 
             # Encode the segment without its start point
             yield self.encode_segment(segment)
-
-        return chunks
 
     def _encode_coordinate_series(self, xs: Sequence[int]) -> tuple[int, list[bytes]]:
         first, *xs = xs

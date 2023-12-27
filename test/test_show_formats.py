@@ -4,6 +4,7 @@ from pytest import fixture, raises
 
 from flockwave.server.show.formats import (
     RTHPlanEncoder,
+    SegmentEncoder,
     SkybrushBinaryFileBlock,
     SkybrushBinaryFileFeatures,
     SkybrushBinaryShowFile,
@@ -11,6 +12,7 @@ from flockwave.server.show.formats import (
     YawSetpointEncoder,
 )
 from flockwave.server.show.rth_plan import RTHAction, RTHPlan, RTHPlanEntry
+from flockwave.server.show.trajectory import TrajectorySegment
 from flockwave.server.show.yaw import YawSetpointList
 
 
@@ -157,6 +159,108 @@ def too_large_plan() -> RTHPlan:
     plan.add_entry(entry)
 
     return plan
+
+
+class TestSegmentEncoder:
+    def test_encode_point(self):
+        encoder = SegmentEncoder()
+        assert (
+            encoder.encode_point((10, 20, 30), yaw=45)
+            == b"\x10\x27\x20\x4e\x30\x75\xc2\x01"
+        )
+
+        encoder = SegmentEncoder(scale=5)
+        assert (
+            encoder.encode_point((10, 20, 30), yaw=45)
+            == b"\xd0\x07\xa0\x0f\x70\x17\xc2\x01"
+        )
+
+    def test_encode_segment(self):
+        encoder = SegmentEncoder(scale=5)
+
+        # Constant segment, start point not encoded
+        segment = TrajectorySegment(t=15, duration=20, points=[(10, 20, 30)])
+        assert encoder.encode_segment(segment) == b"\x00\x20\x4e"
+
+        # Linear segment along Z only, start point and XY coords not encoded
+        segment = TrajectorySegment(
+            t=15, duration=20, points=[(10, 20, 20), (10, 20, 30)]
+        )
+        assert encoder.encode_segment(segment) == b"\x10\x20\x4e\x70\x17"
+
+        # Linear segment along XYZ, start point not encoded
+        segment = TrajectorySegment(
+            t=15, duration=20, points=[(5, 10, 20), (10, 20, 30)]
+        )
+        assert (
+            encoder.encode_segment(segment) == b"\x15\x20\x4e\xd0\x07\xa0\x0f\x70\x17"
+        )
+
+        # Cubic Bezier segment along XYZ, start point not encoded
+        segment = TrajectorySegment(
+            t=15,
+            duration=15,
+            points=[(5, 10, 20), (5, 10, 20), (10, 20, 30), (10, 20, 30)],
+        )
+        assert (
+            encoder.encode_segment(segment)
+            == b"\x2a\x98\x3a\xe8\x03\xd0\x07\xd0\x07\xd0\x07\xa0\x0f\xa0\x0f\xa0\x0f\x70\x17\x70\x17"
+        )
+
+    def test_encode_long_segment_error(self):
+        encoder = SegmentEncoder(scale=5)
+
+        # Too long segment
+        segment = TrajectorySegment(
+            t=15, duration=66, points=[(5, 10, 20), (10, 20, 30)]
+        )
+        with raises(RuntimeError, match="trajectory segment must be"):
+            encoder.encode_segment(segment)
+
+    def test_encode_multiple_segments(self):
+        encoder = SegmentEncoder()
+        segments = [
+            TrajectorySegment(
+                t=0,
+                duration=5,
+                points=[(10, 20, 0), (10, 20, 0), (10, 20, 20), (10, 20, 20)],
+            ),
+            TrajectorySegment(
+                t=5,
+                duration=10,
+                points=[(10, 20, 20), (10, 20, 20), (20, 20, 20), (20, 20, 20)],
+            ),
+            TrajectorySegment(
+                t=15,
+                duration=10,
+                points=[(20, 20, 20), (20, 20, 20), (20, 10, 20), (20, 10, 20)],
+            ),
+            TrajectorySegment(
+                t=25,
+                duration=5,
+                points=[(20, 10, 20), (20, 10, 20), (20, 10, 0), (20, 10, 0)],
+            ),
+        ]
+
+        assert encoder.encode_multiple_segments([]) == b""
+        assert encoder.encode_multiple_segments(segments[:1]) == (
+            # Start point: (10, 20, 0), yaw = 0
+            b"\x10' N\x00\x00\x00\x00"
+            # First segment: cubic Bezier, changing in Z only
+            b" \x88\x13\x00\x00 N N"
+        )
+        assert encoder.encode_multiple_segments(segments) == (
+            # Start point: (10, 20, 0), yaw = 0
+            b"\x10' N\x00\x00\x00\x00"
+            # First segment: cubic Bezier, changing in Z only
+            b" \x88\x13\x00\x00 N N"
+            # Second segment: cubic Bezier, changing in X only
+            b"\x02\x10'\x10' N N"
+            # Third segment: cubic Bezier, changing in Y only
+            b"\x08\x10' N\x10'\x10'"
+            # Fourth segment: cubic Bezier, changing in Z only
+            b" \x88\x13 N\x00\x00\x00\x00"
+        )
 
 
 class TestSkybrushBinaryFileFormat:

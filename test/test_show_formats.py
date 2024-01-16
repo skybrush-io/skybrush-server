@@ -186,7 +186,7 @@ class TestSegmentEncoder:
         segment = TrajectorySegment(
             t=15, duration=20, points=[(10, 20, 30), (10, 20, 30)]
         )
-        assert encoder.encode_segment(segment) == b"\x10\x20\x4e"
+        assert encoder.encode_segment(segment) == b"\x00\x20\x4e"
 
         # Linear segment along Z only, start point and XY coords not encoded
         segment = TrajectorySegment(

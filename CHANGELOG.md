@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.17.5] - 2024-01-16
+
+### Fixed
+
+- Added missing "ID offset" field to MAVLink extension configuration schema so
+  ID offsets can now be adjusted from the UI if you have multiple MAVLink
+  networks.
+
+- Fixed encoding bug in `.skyb` format when the takeoff time was non-zero.
+
 ## [2.17.3] - 2023-12-16
 
 ### Added

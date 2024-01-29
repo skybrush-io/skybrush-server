@@ -9,10 +9,12 @@ from enum import Enum
 from typing import Any, Optional, Sequence, TypedDict, Union
 
 from flockwave.server.show import (
+    get_flight_area_configuration_from_show_specification,
     get_geofence_configuration_from_show_specification,
     get_safety_configuration_from_show_specification,
 )
 
+from .flight_area import FlightAreaConfigurationRequest
 from .geofence import GeofenceConfigurationRequest
 from .identifiers import default_id_generator
 from .safety import SafetyConfigurationRequest
@@ -42,6 +44,7 @@ __all__ = (
     "SetPayloadMissionCommand",
     "SetParameterMissionCommand",
     "TakeoffMissionCommand",
+    "UpdateFlightAreaMissionCommand",
     "UpdateGeofenceMissionCommand",
     "UpdateSafetyMissionCommand",
 )
@@ -178,6 +181,9 @@ class MissionItemType(Enum):
     TAKEOFF = "takeoff"
     """Command to takeoff."""
 
+    UPDATE_FLIGHT_AREA = "updateFlightArea"
+    """Command to update the flight area."""
+
     UPDATE_GEOFENCE = "updateGeofence"
     """Command to update geofence settings."""
 
@@ -257,6 +263,8 @@ def _generate_mission_command_from_mission_item(item: MissionItem) -> MissionCom
         command = SetParameterMissionCommand.from_json(item)
     elif type == MissionItemType.TAKEOFF:
         command = TakeoffMissionCommand.from_json(item)
+    elif type == MissionItemType.UPDATE_FLIGHT_AREA:
+        command = UpdateFlightAreaMissionCommand.from_json(item)
     elif type == MissionItemType.UPDATE_GEOFENCE:
         command = UpdateGeofenceMissionCommand.from_json(item)
     elif type == MissionItemType.UPDATE_SAFETY:
@@ -956,6 +964,47 @@ class TakeoffMissionCommand(MissionCommand):
     @property
     def type(self) -> MissionItemType:
         return MissionItemType.TAKEOFF
+
+
+@dataclass
+class UpdateFlightAreaMissionCommand(MissionCommand):
+    """Mission command that updates the flight area for the drone."""
+
+    flight_area: FlightAreaConfigurationRequest
+    """Flight area related configuration object."""
+
+    @classmethod
+    def from_json(cls, obj: MissionItem):
+        _validate_mission_item(
+            obj,
+            expected_type=MissionItemType.UPDATE_FLIGHT_AREA,
+            expect_params=True,
+        )
+        id = obj.get("id")
+        params = obj["parameters"]
+        assert params is not None
+
+        # we need a "flightArea" and a "coordinateSystem" entry, where the latter
+        # can be "geodetic" or a complete JSON representation of a
+        # FlatEarthToGPSCoordinateTransformation
+        flight_area = get_flight_area_configuration_from_show_specification(params)
+
+        return cls(id=id, flight_area=flight_area)
+
+    @property
+    def json(self) -> MissionItem:
+        return {
+            "id": self.id,
+            "type": MissionItemType.UPDATE_FLIGHT_AREA.value,
+            "parameters": {
+                "flightArea": self.flight_area.json,
+                "coordinateSystem": "geodetic",
+            },
+        }
+
+    @property
+    def type(self) -> MissionItemType:
+        return MissionItemType.UPDATE_FLIGHT_AREA
 
 
 @dataclass

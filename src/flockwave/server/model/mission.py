@@ -82,7 +82,8 @@ class AltitudeReference(Enum):
     MSL = "msl"
     """Altitude reference is mean sea level."""
 
-    # TODO: add ground / terrain
+    GROUND = "ground"
+    """Altitude reference is the ground altitude."""
 
 
 @dataclass

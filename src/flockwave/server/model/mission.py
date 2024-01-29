@@ -35,6 +35,7 @@ __all__ = (
     "MissionCommand",
     "MissionCommandBundle",
     "ChangeAltitudeMissionCommand",
+    "ChangeFlightModeMissionCommand",
     "ChangeHeadingMissionCommand",
     "ChangeSpeedMissionCommand",
     "GoToMissionCommand",
@@ -154,6 +155,9 @@ class MissionItemType(Enum):
     CHANGE_ALTITUDE = "changeAltitude"
     """Command to change the altitude."""
 
+    CHANGE_FLIGHT_MODE = "changeFlightMode"
+    """Command to change the flight mode."""
+
     CHANGE_HEADING = "changeHeading"
     """Command to change the heading (yaw) of the UAV."""
 
@@ -245,6 +249,8 @@ def _generate_mission_command_from_mission_item(item: MissionItem) -> MissionCom
 
     if type == MissionItemType.CHANGE_ALTITUDE:
         command = ChangeAltitudeMissionCommand.from_json(item)
+    elif type == MissionItemType.CHANGE_FLIGHT_MODE:
+        command = ChangeFlightModeMissionCommand.from_json(item)
     elif type == MissionItemType.CHANGE_HEADING:
         command = ChangeHeadingMissionCommand.from_json(item)
     elif type == MissionItemType.CHANGE_SPEED:
@@ -589,6 +595,47 @@ class ChangeAltitudeMissionCommand(MissionCommand):
     @property
     def type(self) -> MissionItemType:
         return MissionItemType.CHANGE_ALTITUDE
+
+
+@dataclass
+class ChangeFlightModeMissionCommand(MissionCommand):
+    """Mission command that instructs the drone to change its flight mode."""
+
+    mode: str
+    """The flight mode to set."""
+
+    sub_mode: Optional[str] = None
+    """The flight mode subtype to set."""
+
+    @classmethod
+    def from_json(cls, obj: MissionItem):
+        _validate_mission_item(
+            obj, expected_type=MissionItemType.CHANGE_FLIGHT_MODE, expect_params=True
+        )
+        id = obj.get("id")
+        params = obj["parameters"]
+        assert params is not None
+        mode = params.get("mode")
+        if mode is None:
+            raise RuntimeError("missing required parameter: 'mode'")
+        sub_mode = params.get("subMode")
+
+        return cls(id=id, mode=mode, sub_mode=sub_mode)
+
+    @property
+    def json(self) -> MissionItem:
+        parameters = {"mode": self.mode}
+        if self.sub_mode is not None:
+            parameters["subMode"] = self.sub_mode
+        return {
+            "id": self.id,
+            "type": MissionItemType.CHANGE_FLIGHT_MODE.value,
+            "parameters": parameters,
+        }
+
+    @property
+    def type(self) -> MissionItemType:
+        return MissionItemType.CHANGE_FLIGHT_MODE
 
 
 @dataclass

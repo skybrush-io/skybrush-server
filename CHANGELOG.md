@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Added flight area definition mission command, primarily for adaptive swarming missions
+- Added flight area definition and flight mode change mission commands, primarily for adaptive swarming missions
 
 ## [2.17.5] - 2024-01-16
 

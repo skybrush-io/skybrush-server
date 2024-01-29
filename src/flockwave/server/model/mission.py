@@ -214,16 +214,14 @@ class PayloadAction(Enum):
     TURN_ON = "on"
     """Turn on the payload."""
 
-    # TODO: add support for these below later on
+    TRIGGER = "trigger"
+    """Trigger the payload once."""
 
-    # TRIGGER = "trigger"
-    # """Trigger the payload once."""
+    TRIGGER_AT_INTERVAL = "triggerInterval"
+    """Trigger the payload repeatedly at given time intervals."""
 
-    # TRIGGER_AT_INTERVAL = "interval"
-    # """Trigger the payload repeatedly at given time intervals."""
-
-    # TRIGGER_AT_DISTANCE = "distance"
-    # """Trigger the payload repeatedly at given distance travelled."""
+    TRIGGER_AT_DISTANCE = "triggerDistance"
+    """Trigger the payload repeatedly at given distance travelled."""
 
 
 ################################################################################
@@ -370,21 +368,24 @@ def _get_marker_from_parameters(params: dict[str, Any]) -> tuple[Marker, float]:
 
 def _get_payload_action_from_parameters(
     params: dict[str, Any]
-) -> tuple[str, PayloadAction]:
+) -> tuple[str, PayloadAction, Optional[float]]:
     name = params.get("name")
     if not isinstance(name, str) or not name:
         raise RuntimeError("payload name must be a valid string")
+
     action_str = params.get("action")
     if not isinstance(action_str, str) or not action_str:
         raise RuntimeError("payload action must be a valid string")
-    if action_str == "on":
-        action = PayloadAction.TURN_ON
-    elif action_str == "off":
-        action = PayloadAction.TURN_OFF
-    else:
-        raise RuntimeError(f"payload action {action_str!r} not handled yet")
+    try:
+        action = PayloadAction(action_str)
+    except ValueError as ex:
+        raise RuntimeError from ex
 
-    return (name, action)
+    value = params.get("value")
+    if value is not None and not isinstance(value, (int, float)):
+        raise RuntimeError("value must be a number")
+
+    return (name, action, value)
 
 
 def _get_speed_from_parameters(
@@ -895,6 +896,11 @@ class SetPayloadMissionCommand(MissionCommand):
     action: PayloadAction
     """The action to perform on the payload."""
 
+    value: Optional[float] = None
+    """Optional parameter of the payload action to perform; in case of "trigger at interval"
+    payload action the value must be the time interval in seconds; In case of "trigger at distance"
+    payload action the value must be the distance in meters."""
+
     @classmethod
     def from_json(cls, obj: MissionItem):
         _validate_mission_item(
@@ -904,19 +910,29 @@ class SetPayloadMissionCommand(MissionCommand):
         params = obj["parameters"]
         assert params is not None
 
-        name, action = _get_payload_action_from_parameters(params)
+        name, action, value = _get_payload_action_from_parameters(params)
 
-        return cls(id=id, name=name, action=action)
+        return cls(id=id, name=name, action=action, value=value)
 
     @property
     def json(self) -> MissionItem:
+        parameters = {
+            "name": self.name,
+            "action": self.action.value,
+        }
+        if self.action in [
+            PayloadAction.TRIGGER_AT_DISTANCE,
+            PayloadAction.TRIGGER_AT_INTERVAL,
+        ]:
+            if self.value is None:
+                raise RuntimeError(
+                    f"Payload action {self.action.value!r} must have a value."
+                )
+            parameters["value"] = self.value
         return {
             "id": self.id,
             "type": MissionItemType.SET_PAYLOAD.value,
-            "parameters": {
-                "name": self.name,
-                "action": self.action.value,
-            },
+            "parameters": parameters,
         }
 
     @property

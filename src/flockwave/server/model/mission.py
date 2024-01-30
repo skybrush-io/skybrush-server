@@ -606,9 +606,6 @@ class ChangeFlightModeMissionCommand(MissionCommand):
     mode: str
     """The flight mode to set."""
 
-    sub_mode: Optional[str] = None
-    """The flight mode subtype to set."""
-
     @classmethod
     def from_json(cls, obj: MissionItem):
         _validate_mission_item(
@@ -620,19 +617,17 @@ class ChangeFlightModeMissionCommand(MissionCommand):
         mode = params.get("mode")
         if mode is None:
             raise RuntimeError("missing required parameter: 'mode'")
-        sub_mode = params.get("subMode")
 
-        return cls(id=id, mode=mode, sub_mode=sub_mode)
+        return cls(id=id, mode=mode)
 
     @property
     def json(self) -> MissionItem:
-        parameters = {"mode": self.mode}
-        if self.sub_mode is not None:
-            parameters["subMode"] = self.sub_mode
         return {
             "id": self.id,
             "type": MissionItemType.CHANGE_FLIGHT_MODE.value,
-            "parameters": parameters,
+            "parameters": {
+                "mode": self.mode,
+            },
         }
 
     @property

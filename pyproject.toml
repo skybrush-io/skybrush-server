@@ -75,6 +75,7 @@ adrenaline = "^3.0.0"
 httpx = ">=0.26.0"
 igrf-model = "^1.1.3"
 deprecated = "^1.2.14"
+unidecode = "^1.3.8"
 
 [tool.poetry.group.dev.dependencies]
 coverage = { extras = ["toml"], version = "^7.4.0" }

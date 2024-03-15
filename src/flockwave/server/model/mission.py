@@ -119,12 +119,20 @@ class HeadingMode(Enum):
 
 
 class MissionItem(TypedDict):
-    """Representation of a mission item in a format that comes directly from
-    Skybrush Live.
+    """Representation of a mission item in a format that comes/goes directly
+    from/to Skybrush Live.
     """
 
     id: Optional[str]
     """The (optional) unique identifier of the mission item."""
+
+    participants: Optional[list[int]]
+    """Optional restriction of the item to numbered parts/participants of a
+    multi-UAV mission.
+
+    The value of `None` can refer to a single-UAV mission item or an item
+    that is valid for any UAVs. Participant IDs must be nonnegative.
+    """
 
     type: str
     """The type of the mission item."""
@@ -137,7 +145,11 @@ class MissionItem(TypedDict):
 
 class MissionItemBundle(TypedDict):
     """Representation of an ordered collection of mission items submitted from
-    Skybrush Live.
+    or sent to Skybrush Live.
+
+    The bundle can hold single- or multi-UAV missions. In case of multi-UAV
+    missions, the `participants` variable of each item must hold the information
+    that it applies to all or only specific participants of the mission.
     """
 
     version: int
@@ -407,6 +419,31 @@ def _get_speed_from_parameters(
     return (velocity_xy, velocity_z)
 
 
+def _parse_mission_item(
+    item: MissionItem,
+) -> tuple[Optional[str], Optional[list[int]], dict[str, Any]]:
+    """Parses a mission item."""
+    id = item.get("id")
+    participants = item.get("participants")
+    params = item.get("parameters") or {}
+
+    return id, participants, params
+
+
+def _prepare_mission_item(
+    id: Optional[str],
+    participants: Optional[list[int]],
+    type: MissionItemType,
+    params: dict[str, Any],
+) -> MissionItem:
+    """Prepares a mission item."""
+    retval = {"id": id, "type": type.value, "parameters": params}
+    if participants is not None:
+        retval["participants"] = participants
+
+    return retval  # type: ignore
+
+
 def _validate_mission_item(
     item: Any,
     expected_type: Optional[MissionItemType] = None,
@@ -432,6 +469,21 @@ def _validate_mission_item(
     if id is not None and not isinstance(id, str):
         raise RuntimeError("mission item ID must be a string")
 
+    # check optional participant IDs
+    participants = item.get("participants")
+    if participants is not None:
+        if not isinstance(participants, list):
+            raise RuntimeError("mission item participants must be a list")
+        elif any(
+            not isinstance(participant_id, int) or participant_id < 0
+            for participant_id in participants
+        ):
+            raise RuntimeError(
+                "mission item participant IDs must be nonnegative integers"
+            )
+        elif len(set(participants)) != len(participants):
+            raise RuntimeError("mission item participant IDs must be unique")
+
     # check required type
     if "type" not in item:
         raise RuntimeError("mission item must have a type")
@@ -456,10 +508,16 @@ class MissionCommand(ABC):
     """Abstract superclass for mission commands."""
 
     # TODO: use Python 3.10+ and field(kw_only=True) and then default base value
-    # can be added instead of explicit id=None arguemnt in child classes
+    # can be added instead of explicit id=None argument in child classes
     id: InitVar[Optional[str]]
-    """The unique identifier of the mission command. Set it to None to
+    """The unique identifier of the mission command. Set it to `None` to
     initialize with a random string."""
+
+    # TODO: use Python 3.10+ and field(kw_only=True) and then default base value
+    # can be added instead of explicit participants=None argument in child classes
+    participants: Optional[list[int]]
+    """Optional restriction of the command to specific participants
+    of a multi-UAV mission. Set it to `None` to work with no restrictions."""
 
     def __post_init__(self, id: Optional[str]) -> None:
         self.id = default_id_generator() if id is None else id
@@ -575,24 +633,21 @@ class ChangeAltitudeMissionCommand(MissionCommand):
         _validate_mission_item(
             obj, expected_type=MissionItemType.CHANGE_ALTITUDE, expect_params=True
         )
-        id = obj.get("id")
-        params = obj["parameters"]
-        assert params is not None
+        id, participants, params = _parse_mission_item(obj)
         alt = _get_altitude_from_parameters(params)
         if alt is None:
             raise RuntimeError("missing required parameter: 'alt'")
 
-        return cls(id=id, altitude=alt)
+        return cls(id=id, participants=participants, altitude=alt)
 
     @property
     def json(self) -> MissionItem:
-        return {
-            "id": self.id,
-            "type": MissionItemType.CHANGE_ALTITUDE.value,
-            "parameters": {
-                "alt": self.altitude.json,
-            },
-        }
+        return _prepare_mission_item(
+            self.id,
+            self.participants,
+            MissionItemType.CHANGE_ALTITUDE,
+            {"alt": self.altitude.json},
+        )
 
     @property
     def type(self) -> MissionItemType:
@@ -611,24 +666,21 @@ class ChangeFlightModeMissionCommand(MissionCommand):
         _validate_mission_item(
             obj, expected_type=MissionItemType.CHANGE_FLIGHT_MODE, expect_params=True
         )
-        id = obj.get("id")
-        params = obj["parameters"]
-        assert params is not None
+        id, participants, params = _parse_mission_item(obj)
         mode = params.get("mode")
         if mode is None:
             raise RuntimeError("missing required parameter: 'mode'")
 
-        return cls(id=id, mode=mode)
+        return cls(id=id, participants=participants, mode=mode)
 
     @property
     def json(self) -> MissionItem:
-        return {
-            "id": self.id,
-            "type": MissionItemType.CHANGE_FLIGHT_MODE.value,
-            "parameters": {
-                "mode": self.mode,
-            },
-        }
+        return _prepare_mission_item(
+            self.id,
+            self.participants,
+            MissionItemType.CHANGE_FLIGHT_MODE,
+            {"mode": self.mode},
+        )
 
     @property
     def type(self) -> MissionItemType:
@@ -650,22 +702,19 @@ class ChangeHeadingMissionCommand(MissionCommand):
         _validate_mission_item(
             obj, expected_type=MissionItemType.CHANGE_HEADING, expect_params=True
         )
-        id = obj.get("id")
-        params = obj["parameters"]
-        assert params is not None
+        id, participants, params = _parse_mission_item(obj)
         heading = _get_heading_from_parameters(params)
 
-        return cls(id=id, heading=heading)
+        return cls(id=id, participants=participants, heading=heading)
 
     @property
     def json(self) -> MissionItem:
-        return {
-            "id": self.id,
-            "type": MissionItemType.CHANGE_HEADING.value,
-            "parameters": {
-                "heading": self.heading.json,
-            },
-        }
+        return _prepare_mission_item(
+            self.id,
+            self.participants,
+            MissionItemType.CHANGE_HEADING,
+            {"heading": self.heading.json},
+        )
 
     @property
     def type(self) -> MissionItemType:
@@ -688,12 +737,15 @@ class ChangeSpeedMissionCommand(MissionCommand):
         _validate_mission_item(
             obj, expected_type=MissionItemType.CHANGE_SPEED, expect_params=True
         )
-        id = obj.get("id")
-        params = obj["parameters"]
-        assert params is not None
+        id, participants, params = _parse_mission_item(obj)
         velocity_xy, velocity_z = _get_speed_from_parameters(params)
 
-        return cls(id=id, velocity_xy=velocity_xy, velocity_z=velocity_z)
+        return cls(
+            id=id,
+            participants=participants,
+            velocity_xy=velocity_xy,
+            velocity_z=velocity_z,
+        )
 
     @property
     def json(self) -> MissionItem:
@@ -703,11 +755,12 @@ class ChangeSpeedMissionCommand(MissionCommand):
         if self.velocity_z is not None:
             parameters["velocityZ"] = round(self.velocity_z, ndigits=3)
 
-        return {
-            "id": self.id,
-            "type": MissionItemType.CHANGE_SPEED.value,
-            "parameters": parameters,
-        }
+        return _prepare_mission_item(
+            self.id,
+            self.participants,
+            MissionItemType.CHANGE_SPEED,
+            parameters,
+        )
 
     @property
     def type(self) -> MissionItemType:
@@ -738,14 +791,14 @@ class GoToMissionCommand(MissionCommand):
         _validate_mission_item(
             obj, expected_type=MissionItemType.GO_TO, expect_params=True
         )
-        id = obj.get("id")
-        params = obj["parameters"]
-        assert params is not None
+        id, participants, params = _parse_mission_item(obj)
         lat = _get_latitude_from_parameters(params)
         lon = _get_longitude_from_parameters(params)
         alt = _get_altitude_from_parameters(params)
 
-        return cls(id=id, latitude=lat, longitude=lon, altitude=alt)
+        return cls(
+            id=id, participants=participants, latitude=lat, longitude=lon, altitude=alt
+        )
 
     @property
     def json(self) -> MissionItem:
@@ -756,11 +809,12 @@ class GoToMissionCommand(MissionCommand):
         if self.altitude is not None:
             parameters["alt"] = self.altitude.json
 
-        return {
-            "id": self.id,
-            "type": MissionItemType.GO_TO.value,
-            "parameters": parameters,
-        }
+        return _prepare_mission_item(
+            self.id,
+            self.participants,
+            MissionItemType.GO_TO,
+            parameters,
+        )
 
     @property
     def type(self) -> MissionItemType:
@@ -779,14 +833,13 @@ class LandMissionCommand(MissionCommand):
         _validate_mission_item(
             obj, expected_type=MissionItemType.LAND, expect_params=False
         )
-        id = obj.get("id")
-        params = obj.get("parameters")
-        if params is not None:
+        id, participants, params = _parse_mission_item(obj)
+        if params:
             _, velocity_z = _get_speed_from_parameters(params)
         else:
             velocity_z = None
 
-        return cls(id=id, velocity_z=velocity_z)
+        return cls(id=id, participants=participants, velocity_z=velocity_z)
 
     @property
     def json(self) -> MissionItem:
@@ -794,11 +847,12 @@ class LandMissionCommand(MissionCommand):
         if self.velocity_z is not None:
             parameters["velocityZ"] = round(self.velocity_z, ndigits=3)
 
-        return {
-            "id": self.id,
-            "type": MissionItemType.LAND.value,
-            "parameters": parameters,
-        }
+        return _prepare_mission_item(
+            self.id,
+            self.participants,
+            MissionItemType.LAND,
+            parameters,
+        )
 
     @property
     def type(self) -> MissionItemType:
@@ -822,24 +876,22 @@ class MarkerMissionCommand(MissionCommand):
         _validate_mission_item(
             obj, expected_type=MissionItemType.MARKER, expect_params=True
         )
-        id = obj.get("id")
-        params = obj["parameters"]
-        assert params is not None
-
+        id, participants, params = _parse_mission_item(obj)
         marker, ratio = _get_marker_from_parameters(params)
 
-        return cls(id=id, marker=marker, ratio=ratio)
+        return cls(id=id, participants=participants, marker=marker, ratio=ratio)
 
     @property
     def json(self) -> MissionItem:
-        return {
-            "id": self.id,
-            "type": MissionItemType.MARKER.value,
-            "parameters": {
+        return _prepare_mission_item(
+            self.id,
+            self.participants,
+            MissionItemType.MARKER,
+            {
                 "marker": self.marker.value,
                 "ratio": self.ratio,
             },
-        }
+        )
 
     @property
     def type(self) -> MissionItemType:
@@ -863,17 +915,28 @@ class ReturnToHomeMissionCommand(MissionCommand):
         _validate_mission_item(
             obj, expected_type=MissionItemType.RETURN_TO_HOME, expect_params=False
         )
-        id = obj.get("id")
+        id, participants, params = _parse_mission_item(obj)
+        if params:
+            velocity_xy, velocity_z = _get_speed_from_parameters(params)
+        else:
+            velocity_xy = None
+            velocity_z = None
 
-        return cls(id=id)
+        return cls(
+            id=id,
+            participants=participants,
+            velocity_xy=velocity_xy,
+            velocity_z=velocity_z,
+        )
 
     @property
     def json(self) -> MissionItem:
-        return {
-            "id": self.id,
-            "type": MissionItemType.RETURN_TO_HOME.value,
-            "parameters": {},
-        }
+        return _prepare_mission_item(
+            self.id,
+            self.participants,
+            MissionItemType.RETURN_TO_HOME,
+            {},
+        )
 
     @property
     def type(self) -> MissionItemType:
@@ -902,13 +965,12 @@ class SetPayloadMissionCommand(MissionCommand):
         _validate_mission_item(
             obj, expected_type=MissionItemType.SET_PAYLOAD, expect_params=True
         )
-        id = obj.get("id")
-        params = obj["parameters"]
-        assert params is not None
-
+        id, participants, params = _parse_mission_item(obj)
         name, action, value = _get_payload_action_from_parameters(params)
 
-        return cls(id=id, name=name, action=action, value=value)
+        return cls(
+            id=id, participants=participants, name=name, action=action, value=value
+        )
 
     @property
     def json(self) -> MissionItem:
@@ -925,11 +987,13 @@ class SetPayloadMissionCommand(MissionCommand):
                     f"Payload action {self.action.value!r} must have a value."
                 )
             parameters["value"] = self.value
-        return {
-            "id": self.id,
-            "type": MissionItemType.SET_PAYLOAD.value,
-            "parameters": parameters,
-        }
+
+        return _prepare_mission_item(
+            self.id,
+            self.participants,
+            MissionItemType.SET_PAYLOAD,
+            parameters,
+        )
 
     @property
     def type(self) -> MissionItemType:
@@ -953,10 +1017,7 @@ class SetParameterMissionCommand(MissionCommand):
         _validate_mission_item(
             obj, expected_type=MissionItemType.SET_PARAMETER, expect_params=True
         )
-        id = obj.get("id")
-        params = obj["parameters"]
-        assert params is not None
-
+        id, participants, params = _parse_mission_item(obj)
         name = params.get("name")
         if not isinstance(name, str) or not name:
             raise RuntimeError("parameter name must be a valid string")
@@ -966,15 +1027,16 @@ class SetParameterMissionCommand(MissionCommand):
                 "parameter value must be present as a string, a number or a bool"
             )
 
-        return cls(id=id, name=name, value=value)
+        return cls(id=id, participants=participants, name=name, value=value)
 
     @property
     def json(self) -> MissionItem:
-        return {
-            "id": self.id,
-            "type": MissionItemType.SET_PARAMETER.value,
-            "parameters": {"name": self.name, "value": self.value},
-        }
+        return _prepare_mission_item(
+            self.id,
+            self.participants,
+            MissionItemType.SET_PARAMETER,
+            {"name": self.name, "value": self.value},
+        )
 
     @property
     def type(self) -> MissionItemType:
@@ -996,15 +1058,15 @@ class TakeoffMissionCommand(MissionCommand):
         _validate_mission_item(
             obj, expected_type=MissionItemType.TAKEOFF, expect_params=True
         )
-        id = obj.get("id")
-        params = obj["parameters"]
-        assert params is not None
+        id, participants, params = _parse_mission_item(obj)
         alt = _get_altitude_from_parameters(params)
         if alt is None:
             raise RuntimeError("missing required parameter: 'alt'")
         _, velocity_z = _get_speed_from_parameters(params)
 
-        return cls(id=id, altitude=alt, velocity_z=velocity_z)
+        return cls(
+            id=id, participants=participants, altitude=alt, velocity_z=velocity_z
+        )
 
     @property
     def json(self) -> MissionItem:
@@ -1014,11 +1076,12 @@ class TakeoffMissionCommand(MissionCommand):
         if self.velocity_z is not None:
             parameters["velocityZ"] = round(self.velocity_z, ndigits=3)
 
-        return {
-            "id": self.id,
-            "type": MissionItemType.TAKEOFF.value,
-            "parameters": parameters,
-        }
+        return _prepare_mission_item(
+            self.id,
+            self.participants,
+            MissionItemType.TAKEOFF,
+            parameters,
+        )
 
     @property
     def type(self) -> MissionItemType:
@@ -1039,27 +1102,25 @@ class UpdateFlightAreaMissionCommand(MissionCommand):
             expected_type=MissionItemType.UPDATE_FLIGHT_AREA,
             expect_params=True,
         )
-        id = obj.get("id")
-        params = obj["parameters"]
-        assert params is not None
-
+        id, participants, params = _parse_mission_item(obj)
         # we need a "flightArea" and a "coordinateSystem" entry, where the latter
         # can be "geodetic" or a complete JSON representation of a
         # FlatEarthToGPSCoordinateTransformation
         flight_area = get_flight_area_configuration_from_show_specification(params)
 
-        return cls(id=id, flight_area=flight_area)
+        return cls(id=id, participants=participants, flight_area=flight_area)
 
     @property
     def json(self) -> MissionItem:
-        return {
-            "id": self.id,
-            "type": MissionItemType.UPDATE_FLIGHT_AREA.value,
-            "parameters": {
+        return _prepare_mission_item(
+            self.id,
+            self.participants,
+            MissionItemType.UPDATE_FLIGHT_AREA,
+            {
                 "flightArea": self.flight_area.json,
                 "coordinateSystem": "geodetic",
             },
-        }
+        )
 
     @property
     def type(self) -> MissionItemType:
@@ -1080,27 +1141,25 @@ class UpdateGeofenceMissionCommand(MissionCommand):
             expected_type=MissionItemType.UPDATE_GEOFENCE,
             expect_params=True,
         )
-        id = obj.get("id")
-        params = obj["parameters"]
-        assert params is not None
-
+        id, participants, params = _parse_mission_item(obj)
         # we need a "geofence" and a "coordinateSystem" entry, where the latter
         # can be "geodetic" or a complete JSON representation of a
         # FlatEarthToGPSCoordinateTransformation
         geofence = get_geofence_configuration_from_show_specification(params)
 
-        return cls(id=id, geofence=geofence)
+        return cls(id=id, participants=participants, geofence=geofence)
 
     @property
     def json(self) -> MissionItem:
-        return {
-            "id": self.id,
-            "type": MissionItemType.UPDATE_GEOFENCE.value,
-            "parameters": {
+        return _prepare_mission_item(
+            self.id,
+            self.participants,
+            MissionItemType.UPDATE_GEOFENCE,
+            {
                 "geofence": self.geofence.json,
                 "coordinateSystem": "geodetic",
             },
-        }
+        )
 
     @property
     def type(self) -> MissionItemType:
@@ -1121,24 +1180,21 @@ class UpdateSafetyMissionCommand(MissionCommand):
             expected_type=MissionItemType.UPDATE_SAFETY,
             expect_params=True,
         )
-        id = obj.get("id")
-        params = obj["parameters"]
-        assert params is not None
-
-        # we need a "safety" entry
+        id, participants, params = _parse_mission_item(obj)
         safety = get_safety_configuration_from_show_specification(params)
 
-        return cls(id=id, safety=safety)
+        return cls(id=id, participants=participants, safety=safety)
 
     @property
     def json(self) -> MissionItem:
-        return {
-            "id": self.id,
-            "type": MissionItemType.UPDATE_SAFETY.value,
-            "parameters": {
+        return _prepare_mission_item(
+            self.id,
+            self.participants,
+            MissionItemType.UPDATE_SAFETY,
+            {
                 "safety": self.safety.json,
             },
-        }
+        )
 
     @property
     def type(self) -> MissionItemType:

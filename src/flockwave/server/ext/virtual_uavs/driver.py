@@ -78,39 +78,6 @@ class VirtualUAV(UAVBase):
     be given a new target position (and a new altitude), in which case it will
     approach the new target with a reasonable maximum velocity. No attempts are
     made to make the acceleration realistic.
-
-    Attributes:
-        error (int): the simulated error code of the UAV; zero if there is
-            no error.
-        has_user_defined_error (bool): whether the UAV currently has at least
-            one user-defined (simulated) non-zero error code
-        home (GPSCoordinate): the home coordinate of the UAV and the origin
-            of the flat Earth transformation that the UAV uses. Altitude
-            component is used to define the cruise altitude where a take-off
-            attempt will stop.
-        max_acceleration_xy (float): the maximum acceleration of the UAV in
-            the X-Y plane (parallel to the surface of the Earth), in m/s2.
-            To simplify the simulation a bit, the virtual UAVs are capable
-            of infinite deceleration.
-        max_acceleration_z (float): the maximum acceleration of the UAV in
-            the X-Y plane (parallel to the surface of the Earth), in m/s2.
-            To simplify the simulation a bit, the virtual UAVs are capable
-            of infinite deceleration.
-        max_velocity_xy (float): the maximum velocity of the UAV along the
-            X-Y plane (parallel to the surface of the Earth), in m/s.
-        max_velocity_z (float): the maximum ascent rate of the UAV along
-            the Z axis (perpendicular to the surface of the Earth), in m/s.
-        position (GPSCoordinate): the current position of the center of the
-            circle that the UAV traverses; altitude is given as relative to
-            home.
-        state (VirtualUAVState): the state of the UAV
-        target (GPSCoordinate): the target coordinates of the UAV; altitude
-            must be given as relative to home. Note that this is not the
-            coordinate that the UAV will reach; this is the coordinate of
-            the center of the circle that the UAV will traverse when it
-            reaches its destination.
-        use_battery_percentage (bool): whether the virtual battery of the UAV
-            reports percentages (True) or only voltages (False)
     """
 
     _version: int
@@ -124,22 +91,57 @@ class VirtualUAV(UAVBase):
     _position_flat: FlatEarthCoordinate
     _request_shutdown: Optional[Callable[[], None]]
     _shutdown_reason: Optional[str]
-    _state: VirtualUAVState
-    _target: Optional[GPSCoordinate]
-    _target_xyz: Optional[Vector3D]
     _trajectory_transformation: Optional[FlatEarthToGPSCoordinateTransformation]
     _trans: FlatEarthToGPSCoordinateTransformation
-    _user_defined_error: Optional[int]
     _velocity_xyz: Vector3D
     _velocity_ned: VelocityNED
 
+    _state: VirtualUAVState
+    """The state of the UAV."""
+
+    _target: Optional[GPSCoordinate]
+    """The target coordinates of the UAV, in geodetic coordinates."""
+
+    _target_xyz: Optional[Vector3D]
+    """The target coordinates of the UAV, in topocentric coordinates."""
+
+    _user_defined_error: Optional[int]
+    """User defined simulated error code, if any."""
+
     boots_armed: bool
+    """Whether the drone boots in an armed state."""
+
     errors: list[int]
+    """List of simulated error codes of the UAV."""
+
     max_acceleration_xy: float
+    """The maximum acceleration of the UAV in the X-Y plane (parallel to the
+    surface of the Earth), in m/s/s. To simplify the simulation a bit, the
+    virtual UAVs are capable of infinite deceleration.
+    """
+
     max_acceleration_z: float
+    """The maximum acceleration of the UAV in the Z direction (perpendicular to
+    the surface of the Earth), in m/s/s. To simplify the simulation a bit, the
+    virtual UAVs are capable of infinite deceleration.
+    """
+
     max_velocity_xy: float
+    """The maximum velocity of the UAV along the X-Y plane (parallel to the
+    surface of the Earth), in m/s.
+    """
+
     max_velocity_z: float
+    """The maximum velocity of the UAV along the Z direction (perpendicular to
+    the surface of the Earth), in m/s.
+    """
+
     takeoff_altitude: float
+
+    use_battery_percentage: bool
+    """Whether the virtual battery of the UAV reports percentages (True) or only
+    voltages (False).
+    """
 
     radiation_ext: Optional[ExtensionAPIProxy] = None
 
@@ -392,7 +394,7 @@ class VirtualUAV(UAVBase):
             flat_earth = FlatEarthCoordinate(x=x, y=y, amsl=amsl, ahl=z)
             self.target = self._trans.to_gps(flat_earth)
 
-    async def test_component(self, component: str) -> None:
+    async def test_component(self, component: str):
         """Tests a component of the UAV.
 
         Parameters:
@@ -412,7 +414,9 @@ class VirtualUAV(UAVBase):
                 if index > 0:
                     await sleep(1)
                 self.set_led_color(color)
-                yield Progress(percentage=(index + 1) * (100 / len(color_sequence)))
+                yield Progress(
+                    percentage=int((index + 1) * (100 / len(color_sequence)))
+                )
         else:
             raise NotSupportedError
 

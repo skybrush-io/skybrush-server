@@ -2275,6 +2275,22 @@ url = "https://pypi.collmot.com/simple"
 reference = "collmot"
 
 [[package]]
+name = "skybrush-ext-firmware-update"
+version = "0.2.0"
+description = "OTA firmware update support for Skybrush Server"
+optional = true
+python-versions = ">=3.9,<4.0"
+files = [
+    {file = "skybrush_ext_firmware_update-0.2.0-py3-none-any.whl", hash = "sha256:ec02da996dc4a16fab6df505b46563dc04f0727b941db3d5ade3f66fc076f2ed"},
+    {file = "skybrush_ext_firmware_update-0.2.0.tar.gz", hash = "sha256:6bf5d1e0df0c547b7551433d1a940e4ac0f4b0b22ba08e0de4be7627f5e92389"},
+]
+
+[package.source]
+type = "legacy"
+url = "https://pypi.collmot.com/simple"
+reference = "collmot"
+
+[[package]]
 name = "skybrush-ext-flight-report"
 version = "1.0.3"
 description = "Flight time and error reports generated automatically from audit logs"
@@ -2689,10 +2705,10 @@ testing = ["big-O", "jaraco.functools", "jaraco.itertools", "more-itertools", "p
 
 [extras]
 all = ["flockwave-flockctrl", "skybrush-ext-dock", "skybrush-ext-flight-report", "skybrush-ext-flockctrl", "skybrush-ext-map-cache", "skybrush-ext-sidekick", "skybrush-ext-timecode", "skybrush-lib-mission-planning"]
-collmot = ["flockwave-flockctrl", "skybrush-ext-dock", "skybrush-ext-flight-report", "skybrush-ext-flockctrl", "skybrush-ext-map-cache", "skybrush-ext-timecode", "skybrush-lib-mission-planning"]
+collmot = ["flockwave-flockctrl", "skybrush-ext-dock", "skybrush-ext-firmware-update", "skybrush-ext-flight-report", "skybrush-ext-flockctrl", "skybrush-ext-map-cache", "skybrush-ext-timecode", "skybrush-lib-mission-planning"]
 pro = ["skybrush-ext-flight-report", "skybrush-ext-map-cache", "skybrush-ext-sidekick", "skybrush-ext-timecode", "skybrush-lib-mission-planning"]
 
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.9"
-content-hash = "d0b653b76666578392e6d110a1dda5b3c5a9a8141278fbb62aabb7eb57c7891b"
+content-hash = "50113e4fdd0879dca770a7163d133444817239bdfe8ed63b1075174a3bd01cb3"

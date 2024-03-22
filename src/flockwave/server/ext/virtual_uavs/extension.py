@@ -1,8 +1,11 @@
+from __future__ import annotations
+
 from colour import Color
+from contextlib import contextmanager
 from functools import partial
 from random import uniform
 from trio import open_nursery, sleep, sleep_forever
-from typing import Callable
+from typing import Callable, Iterator
 
 from flockwave.gps.vectors import (
     FlatEarthCoordinate,
@@ -14,6 +17,7 @@ from flockwave.server.registries.errors import RegistryFull
 from ..base import UAVExtension
 
 from .driver import VirtualUAV, VirtualUAVDriver
+from .fw_upload import FIRMWARE_UPDATE_TARGET_ID
 from .placement import place_drones
 
 
@@ -184,6 +188,18 @@ class VirtualUAVProviderExtension(UAVExtension[VirtualUAVDriver]):
         with signals.use({"show:lights_updated": self._on_lights_updated}):
             await sleep_forever()
 
+    @staticmethod
+    @contextmanager
+    def use_firmware_update_support(api) -> Iterator[None]:
+        """Enhancer context manager that adds support for remote firmware updates
+        to virtual UAVs.
+        """
+        target = api.create_target(
+            id=FIRMWARE_UPDATE_TARGET_ID, name="Virtual UAV firmware"
+        )
+        with api.use_target(target):
+            yield
+
     async def worker(self, app, configuration, logger):
         """Main background task of the extension that updates the state of
         the UAVs periodically.
@@ -204,3 +220,4 @@ class VirtualUAVProviderExtension(UAVExtension[VirtualUAVDriver]):
 construct = VirtualUAVProviderExtension
 dependencies = ("signals",)
 description = "Simulated, non-realistic UAVs for testing or demonstration purposes"
+enhancers = {"firmware_update": VirtualUAVProviderExtension.use_firmware_update_support}

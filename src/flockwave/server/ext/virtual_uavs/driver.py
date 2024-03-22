@@ -4,8 +4,9 @@ from __future__ import annotations
 
 from colour import Color
 from enum import Enum
+from hashlib import sha1 as firmware_hash
 from math import atan2, cos, hypot, sin
-from random import random, choice
+from random import random, randint, choice
 from time import monotonic
 from trio import CancelScope, sleep
 from trio_util import periodic
@@ -43,6 +44,7 @@ from flockwave.server.utils import color_to_rgb565
 from flockwave.spec.errors import FlockwaveErrorCode
 
 from .battery import VirtualBattery
+from .fw_upload import FIRMWARE_UPDATE_TARGET_ID
 from .lights import DefaultLightController
 
 
@@ -80,7 +82,6 @@ class VirtualUAV(UAVBase):
     made to make the acceleration realistic.
     """
 
-    _version: int
     _armed: bool
     _autopilot_initializing: bool
     _light_controller: DefaultLightController
@@ -107,6 +108,14 @@ class VirtualUAV(UAVBase):
 
     _user_defined_error: Optional[int]
     """User defined simulated error code, if any."""
+
+    _version: int
+    """Simulated version number of the UAV, used in the output of the `version`
+    command.
+    """
+
+    _version_hash: bytes = b"\x00" * 32
+    """Hash of the last (simulated) firmware that was uploaded to the drone."""
 
     boots_armed: bool
     """Whether the drone boots in an armed state."""
@@ -240,6 +249,12 @@ class VirtualUAV(UAVBase):
             present=self._autopilot_initializing,
         )
 
+    def can_handle_firmware_update_target(self, target_id: str) -> bool:
+        """Returns whether the virtual UAV can handle uploads with the given
+        target.
+        """
+        return target_id == FIRMWARE_UPDATE_TARGET_ID
+
     @property
     def elapsed_time_in_mission(self) -> Optional[float]:
         """Returns the number of seconds elapsed in the execution of the current
@@ -260,7 +275,26 @@ class VirtualUAV(UAVBase):
     def get_version_info(self) -> VersionInfo:
         from flockwave.server.version import __version__ as server_version
 
-        return {"server": server_version, "firmware": str(self._version)}
+        return {
+            "server": server_version,
+            "firmware": f"v{self._version}-{self._version_hash[:4].hex()}",
+        }
+
+    async def handle_firmware_update(self, target_id: str, blob: bytes):
+        assert self.can_handle_firmware_update_target(target_id)
+
+        new_hash = firmware_hash(blob).digest()
+
+        # Calculate the hash of the received blob and wait for a random time
+        # interval between 3 and 5 seconds, posting a fake progress update
+        # periodically
+        iterations = randint(30, 50)
+        for i in range(iterations):
+            await sleep(0.1)
+            yield Progress(percentage=100 * i // iterations)
+
+        yield Progress(percentage=100)
+        self._version_hash = new_hash
 
     @property
     def has_trajectory(self) -> bool:

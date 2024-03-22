@@ -7,6 +7,7 @@ from typing import (
     Union,
     TypeVar,
     TYPE_CHECKING,
+    overload,
 )
 
 from .model import (
@@ -29,6 +30,7 @@ __all__ = (
     "MessageBodyTransformationSpec",
 )
 
+C = TypeVar("C")
 T = TypeVar("T")
 
 GenericMapperMessageFactory = Callable[
@@ -60,13 +62,43 @@ with no arguments.
 """
 
 
+@overload
+def create_mapper(
+    type: str,
+    registry_or_registry_getter: RegistryOrRegistryGetter[T],
+    *,
+    context_getter: Callable[[Optional[FlockwaveMessage]], C],
+    key: str = "result",
+    filter: Optional[Callable[[T], bool]] = None,
+    getter: Optional[Callable[[T, C], Any]] = None,
+    description: str = "item",
+    add_object_id: bool = False,
+    cmd_manager: Optional["CommandExecutionManager"] = None,
+) -> GenericMapperMessageFactory: ...
+
+
+@overload
 def create_mapper(
     type: str,
     registry_or_registry_getter: RegistryOrRegistryGetter[T],
     *,
     key: str = "result",
     filter: Optional[Callable[[T], bool]] = None,
-    getter: Optional[Callable[[Any], Any]] = None,
+    getter: Optional[Union[Callable[[T], Any], Callable[[T, C], Any]]] = None,
+    description: str = "item",
+    add_object_id: bool = False,
+    cmd_manager: Optional["CommandExecutionManager"] = None,
+) -> GenericMapperMessageFactory: ...
+
+
+def create_mapper(
+    type: str,
+    registry_or_registry_getter: RegistryOrRegistryGetter[T],
+    *,
+    context_getter: Optional[Callable[[Optional[FlockwaveMessage]], C]] = None,
+    key: str = "result",
+    filter: Optional[Callable[[T], bool]] = None,
+    getter: Optional[Union[Callable[[T], Any], Callable[[T, C], Any]]] = None,
     description: str = "item",
     add_object_id: bool = False,
     cmd_manager: Optional["CommandExecutionManager"] = None,
@@ -126,7 +158,11 @@ def create_mapper(
             only argument, and extracts or calculates the piece of information
             to return. It may also have side effects and may simply return
             `True` or `None` or something similar if the primary goal is to
-            perform a side effect.
+            perform a side effect. The getter must have one or two arguments.
+            When it has one argument only, it is called with the matched object
+            only. When it has two arguments, the second argument is a _context_
+            object that is extracted directly from the incoming message
+            _before_ any of the objects are matched.
         description: a textual, human-readable description of the item type
             being looked up in this function. Used in error messages. Must be
             lowercase.
@@ -140,6 +176,7 @@ def create_mapper(
         the message handler function
     """
     registry_is_deferred = callable(registry_or_registry_getter)
+    has_context = context_getter is not None
 
     def factory(
         hub: "MessageHub",
@@ -161,6 +198,17 @@ def create_mapper(
             else registry_or_registry_getter
         )
 
+        # Determine the context if needed
+        context_error = None
+        if has_context:
+            assert context_getter is not None
+            try:
+                context = context_getter(in_response_to)
+            except Exception as ex:
+                context_error = ex
+        else:
+            context = None
+
         # Look up each object and perform the operation on them
         for object_id in ids:
             object = find_in_registry(
@@ -176,10 +224,14 @@ def create_mapper(
 
             # Execute the getter (if any) and catch all runtime errors
             error, result = None, None
-            if getter is not None:
-                result = getter(object)
-            else:
+            if getter is None:
                 result = object
+            elif not has_context:
+                result = getter(object)  # type: ignore
+            elif context_error:
+                result = context_error
+            else:
+                result = getter(object, context)  # type: ignore
 
             # If the returned result was an exception, convert it to an error
             if isinstance(result, Exception):
@@ -256,37 +308,52 @@ def create_multi_object_message_handler(
 
 def create_object_listing_request_handler(
     registry_or_registry_getter: RegistryOrRegistryGetter[T],
+    predicate: Optional[Callable[[T], bool]] = None,
 ) -> "MessageHandler":
-    """Creates a standard SOMETHING-INF or SOMETHING-PROPS-style Flockwave
-    message factory function.
-
-    The returned factory function takes a message hub, a list of object IDs and
-    an optional source message that the IDs originated from. It must return an
-    object that maps the received object IDs to the corresponding status
-    information, fetched using the specified getter function.
+    """Creates a standard SOMETHING-LIST-style Flockwave message factory
+    function that lists the IDs of all objects from a registry, optionally
+    filtered by a predicate.
 
     Parameters:
-        type: the Flockwave type of the message to produce
         registry_or_registry_getter: the registry from which the object IDs are
             to be listed, or a callable that returns a registry when invoked
             with no arguments
+        predicate: predicate that will be called for each object in the registry
+            to decide whether its ID should be returned or not. `None` if no
+            filtering is needed
 
     Returns:
         the message factory function
     """
     registry_is_deferred = callable(registry_or_registry_getter)
 
-    def handler(
-        message: FlockwaveMessage,
-        sender: "Client",
-        hub: "MessageHub",
-    ):
-        registry: Registry[T] = (
-            registry_or_registry_getter()  # type: ignore
-            if registry_is_deferred
-            else registry_or_registry_getter
-        )
-        return {"ids": list(registry.ids)}
+    if predicate is not None:
+        # Filtered case
+        def handler(
+            message: FlockwaveMessage,
+            sender: "Client",
+            hub: "MessageHub",
+        ):
+            registry: Registry[T] = (
+                registry_or_registry_getter()  # type: ignore
+                if registry_is_deferred
+                else registry_or_registry_getter
+            )
+            return {"ids": list(registry.ids_matching(predicate))}
+
+    else:
+        # Unfiltered case
+        def handler(
+            message: FlockwaveMessage,
+            sender: "Client",
+            hub: "MessageHub",
+        ):
+            registry: Registry[T] = (
+                registry_or_registry_getter()  # type: ignore
+                if registry_is_deferred
+                else registry_or_registry_getter
+            )
+            return {"ids": list(registry.ids)}
 
     return handler
 

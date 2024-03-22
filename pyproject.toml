@@ -48,7 +48,7 @@ flockwave-conn = { extras = [
     "rpc",
     "serial",
 ], source = "fury", version = "^7.0.0" }
-flockwave-ext = { version = "^1.24.3", source = "fury" }
+flockwave-ext = { version = "^1.25.0", source = "fury" }
 flockwave-flockctrl = { version = "^2.17.0", source = "collmot", optional = true }
 flockwave-gps = { version = "^3.2.0", source = "fury" }
 flockwave-logger = { version = "^1.9.0", source = "fury" }

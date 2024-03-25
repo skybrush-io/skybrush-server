@@ -978,13 +978,13 @@ reference = "fury"
 
 [[package]]
 name = "flockwave-spec"
-version = "1.80.0"
+version = "1.81.1"
 description = "JSON-Schema specification of the Flockwave protocol"
 optional = false
 python-versions = ">=3.9,<4.0"
 files = [
-    {file = "flockwave-spec-1.80.0.tar.gz", hash = "sha256:0619ac7176d6fa58a32a4e7abfea664ae554628bb49c116fd2aaeff786363a8b"},
-    {file = "flockwave_spec-1.80.0-py3-none-any.whl", hash = "sha256:1710723c1e1a53822689bfe4da410b2cb8c84be5c8f7c1a833cfe7196c423330"},
+    {file = "flockwave-spec-1.81.1.tar.gz", hash = "sha256:c14613ed8261c33650c6668498f02fc3619031d713b549e96888247689dc089c"},
+    {file = "flockwave_spec-1.81.1-py3-none-any.whl", hash = "sha256:9f887dfed37d5bb3253f2a081b2d497be46e1af897e33dfd6a1459d8c75048f5"},
 ]
 
 [package.dependencies]
@@ -2276,13 +2276,13 @@ reference = "collmot"
 
 [[package]]
 name = "skybrush-ext-firmware-update"
-version = "0.2.0"
+version = "0.3.0"
 description = "OTA firmware update support for Skybrush Server"
 optional = true
 python-versions = ">=3.9,<4.0"
 files = [
-    {file = "skybrush_ext_firmware_update-0.2.0-py3-none-any.whl", hash = "sha256:ec02da996dc4a16fab6df505b46563dc04f0727b941db3d5ade3f66fc076f2ed"},
-    {file = "skybrush_ext_firmware_update-0.2.0.tar.gz", hash = "sha256:6bf5d1e0df0c547b7551433d1a940e4ac0f4b0b22ba08e0de4be7627f5e92389"},
+    {file = "skybrush_ext_firmware_update-0.3.0-py3-none-any.whl", hash = "sha256:a0e8ef660a9cc8df5314a685b8c0bf08a3779a73d44b3698b213cb9b10aad3b4"},
+    {file = "skybrush_ext_firmware_update-0.3.0.tar.gz", hash = "sha256:a29e64fe56fb4b7b4b8f994ec0286d803b08a74eace064a47e7943f89e90cdcc"},
 ]
 
 [package.source]
@@ -2711,4 +2711,4 @@ pro = ["skybrush-ext-flight-report", "skybrush-ext-map-cache", "skybrush-ext-sid
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.9"
-content-hash = "50113e4fdd0879dca770a7163d133444817239bdfe8ed63b1075174a3bd01cb3"
+content-hash = "9e302df1dd7c951693f6d139e9f24ddf7b4ab56a727605221eb28ad5c5dbcf78"

@@ -44,10 +44,10 @@ class MAVLinkSigningConfiguration:
         if isinstance(key_spec, bytes):
             key = key_spec
         else:
-            key_spec_stripped = sub("[- :]", "", key_spec.strip()).lower()
+            key_spec_stripped = sub("[- :]", "", key_spec.strip())
             try:
                 if len(key_spec_stripped) == 64 and match(
-                    "^[0-9a-f]*$", key_spec_stripped
+                    "^[0-9a-fA-F]*$", key_spec_stripped
                 ):
                     key = bytes.fromhex(key_spec_stripped)
                 else:

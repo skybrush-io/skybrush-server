@@ -73,10 +73,10 @@ def _parse_points(
             the points are defined in geodetic coordinates
     """
     return [
-        GPSCoordinate.from_json(point[:2])  # [lat, lon] in [deg1e-7]
-        if coordinate_system is None
-        else coordinate_system.to_gps(
-            FlatEarthCoordinate(point[0], point[1], 0)
+        (
+            GPSCoordinate.from_json(point[:2])  # [lat, lon] in [deg1e-7]
+            if coordinate_system is None
+            else coordinate_system.to_gps(FlatEarthCoordinate(point[0], point[1], 0))
         )  # [x, y] local coordinates as float
         for point in points
     ]

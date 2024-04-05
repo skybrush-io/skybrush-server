@@ -47,9 +47,11 @@ async def run(app: SkybrushServer, configuration, log):
     decoder = (
         decode_one_byte_per_channel
         if bytes_per_channel == 1
-        else decode_two_bytes_per_channel_big_endian
-        if endianness == "big"
-        else decode_two_bytes_per_channel_little_endian
+        else (
+            decode_two_bytes_per_channel_big_endian
+            if endianness == "big"
+            else decode_two_bytes_per_channel_little_endian
+        )
     )
 
     if value_range is not None:
@@ -118,11 +120,15 @@ def rescale(decoder: Decoder, bounds: tuple[int, int]) -> Decoder:
 
     def scaled_decoder(data: bytes) -> Sequence[int]:
         return [
-            0
-            if value < min_value
-            else 65535
-            if value > max_value
-            else int(round(value - min_value) * ratio)
+            (
+                0
+                if value < min_value
+                else (
+                    65535
+                    if value > max_value
+                    else int(round(value - min_value) * ratio)
+                )
+            )
             for value in decoder(data)
         ]
 

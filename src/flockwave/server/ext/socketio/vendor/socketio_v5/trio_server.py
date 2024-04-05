@@ -319,9 +319,7 @@ class TrioServer(server.Server):
         return (
             callback_args[0]
             if len(callback_args[0]) > 1
-            else callback_args[0][0]
-            if len(callback_args[0]) == 1
-            else None
+            else callback_args[0][0] if len(callback_args[0]) == 1 else None
         )
 
     async def close_room(self, room, namespace=None):

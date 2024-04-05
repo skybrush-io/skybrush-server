@@ -281,12 +281,12 @@ class DeviceTreeNodeBase(metaclass=ModelMeta):
     @overload
     def traverse_dfs(
         self, own_id: None = None
-    ) -> Iterable[tuple[Optional[str], "DeviceTreeNodeBase"]]:
-        ...
+    ) -> Iterable[tuple[Optional[str], "DeviceTreeNodeBase"]]: ...
 
     @overload
-    def traverse_dfs(self, own_id: str) -> Iterable[tuple[str, "DeviceTreeNodeBase"]]:
-        ...
+    def traverse_dfs(
+        self, own_id: str
+    ) -> Iterable[tuple[str, "DeviceTreeNodeBase"]]: ...
 
     def traverse_dfs(
         self, own_id: Optional[str] = None

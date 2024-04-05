@@ -46,16 +46,24 @@ class SafetyConfigurationRequest:
         """Returns a JSON representation of the safety configuration."""
         return {
             "version": 1,
-            "lowBatteryVoltage": None
-            if self.low_battery_voltage is None
-            else round(self.low_battery_voltage, ndigits=3),
-            "criticalBatteryVoltage": None
-            if self.critical_battery_voltage is None
-            else round(self.critical_battery_voltage, ndigits=3),
-            "returnToHomeAltitude": None
-            if self.return_to_home_altitude is None
-            else round(self.return_to_home_altitude, ndigits=3),
-            "returnToHomeSpeed": None
-            if self.return_to_home_speed is None
-            else round(self.return_to_home_speed, ndigits=3),
+            "lowBatteryVoltage": (
+                None
+                if self.low_battery_voltage is None
+                else round(self.low_battery_voltage, ndigits=3)
+            ),
+            "criticalBatteryVoltage": (
+                None
+                if self.critical_battery_voltage is None
+                else round(self.critical_battery_voltage, ndigits=3)
+            ),
+            "returnToHomeAltitude": (
+                None
+                if self.return_to_home_altitude is None
+                else round(self.return_to_home_altitude, ndigits=3)
+            ),
+            "returnToHomeSpeed": (
+                None
+                if self.return_to_home_speed is None
+                else round(self.return_to_home_speed, ndigits=3)
+            ),
         }

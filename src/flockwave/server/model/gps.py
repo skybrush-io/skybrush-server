@@ -46,12 +46,16 @@ class GPSFix:
         retval = [int(self.type)]
         optionals = [
             int(self.num_satellites) if self.num_satellites is not None else None,
-            int(round(self.horizontal_accuracy * 1000))
-            if self.horizontal_accuracy is not None
-            else None,
-            int(round(self.vertical_accuracy * 1000))
-            if self.vertical_accuracy is not None
-            else None,
+            (
+                int(round(self.horizontal_accuracy * 1000))
+                if self.horizontal_accuracy is not None
+                else None
+            ),
+            (
+                int(round(self.vertical_accuracy * 1000))
+                if self.vertical_accuracy is not None
+                else None
+            ),
         ]
         while optionals and optionals[-1] is None:
             del optionals[-1]

@@ -50,9 +50,11 @@ class MAVLinkLEDLightConfigurationManager(
             config.color[0],
             config.color[1],
             config.color[2],
-            30000  # drone will switch back to normal mode after 30 sec
-            if is_active
-            else 0,  # submitting zero duration turns off any effect that we have
+            (
+                30000  # drone will switch back to normal mode after 30 sec
+                if is_active
+                else 0
+            ),  # submitting zero duration turns off any effect that we have
             1 if is_active else 0,
         )
         return create_led_control_packet(data, broadcast=True)

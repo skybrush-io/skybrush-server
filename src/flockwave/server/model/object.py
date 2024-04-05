@@ -61,13 +61,11 @@ class ModelObject(metaclass=ABCMeta):
 @overload
 def register(
     type: str,
-) -> Callable[[Type[T]], Type[T]]:
-    ...
+) -> Callable[[Type[T]], Type[T]]: ...
 
 
 @overload
-def register(type: str, cls: Type[T]) -> None:
-    ...
+def register(type: str, cls: Type[T]) -> None: ...
 
 
 def register(

@@ -1579,9 +1579,9 @@ class MAVLinkUAV(UAVBase):
             # Some drones, such as the Parrot Bebop 2, use 2^31-1 as latitude
             # and longitude to indicate that no GPS fix has been obtained yet,
             # so treat any values outside the valid latitude range as invalid
-            self._position.lat = (
-                self._position.lon
-            ) = self._position.amsl = self._position.ahl = 0
+            self._position.lat = self._position.lon = self._position.amsl = (
+                self._position.ahl
+            ) = 0
 
         self._velocity.x = message.vx / 100
         self._velocity.y = message.vy / 100

@@ -84,7 +84,7 @@ EXTENSIONS = {
         },
         "add_serial_ports": True,
         # "gnss_types": "all",  # or a list like ["gps", "glonass"]
-        "use_high_precision": True  # set to false if the rover cannot handle high-precision MSM RTK messages
+        "use_high_precision": True,  # set to false if the rover cannot handle high-precision MSM RTK messages
         # "exclude_serial_ports": ["*ttyAMA*"
     },
     "show": {

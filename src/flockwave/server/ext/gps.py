@@ -274,9 +274,9 @@ class GPSExtension(UAVExtension):
         try:
             await connection.wait_until_connected()
             if connection not in self._connection_to_connection_id:
-                self._connection_to_connection_id[
-                    connection
-                ] = self._derive_id_for_connection(connection)
+                self._connection_to_connection_id[connection] = (
+                    self._derive_id_for_connection(connection)
+                )
             return await self._handle_gps_messages(connection, format.create_parser())
         except Exception as ex:
             if self.log:
@@ -420,9 +420,11 @@ class GPSExtension(UAVExtension):
                 app.connection_registry.use(
                     connection,
                     "GPS",
-                    "GPS listener"
-                    if isinstance(connection, ListenerConnection)
-                    else "GPS link",
+                    (
+                        "GPS listener"
+                        if isinstance(connection, ListenerConnection)
+                        else "GPS link"
+                    ),
                     purpose=ConnectionPurpose.gps,  # type: ignore
                 )
             )

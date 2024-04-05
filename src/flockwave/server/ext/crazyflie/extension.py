@@ -206,7 +206,11 @@ class CrazyflieDronesExtension(UAVExtension[CrazyflieDriver]):
 
                 # Wait for newly detected UAVs and spawn a task for each of them
                 async with new_uav_rx_channel:
-                    async for address_space, address_index, disposer in new_uav_rx_channel:
+                    async for (
+                        address_space,
+                        address_index,
+                        disposer,
+                    ) in new_uav_rx_channel:
                         uav = self._driver.get_or_create_uav(
                             address_space, address_index
                         )

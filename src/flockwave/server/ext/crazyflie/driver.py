@@ -952,9 +952,9 @@ class CrazyflieUAV(UAVBase):
             port=DRONE_SHOW_PORT,
             command=DroneShowCommand.TRIGGER_GCS_LIGHT_EFFECT,
             data=Struct("<BBBB").pack(
-                GCSLightEffectType.SOLID
-                if color
-                else GCSLightEffectType.OFF,  # effect ID
+                (
+                    GCSLightEffectType.SOLID if color else GCSLightEffectType.OFF
+                ),  # effect ID
                 red,
                 green,
                 blue,

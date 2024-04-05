@@ -270,9 +270,9 @@ class TrajectorySpecification:
                 constant segment will be inserted in front of the first segment
                 if the takeoff time is positive.
         """
-        point_iter: Optional[
-            Iterable[tuple[float, Point, list[Point]]]
-        ] = self._data.get("points")
+        point_iter: Optional[Iterable[tuple[float, Point, list[Point]]]] = (
+            self._data.get("points")
+        )
         if not point_iter:
             return
 

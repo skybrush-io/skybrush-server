@@ -67,13 +67,19 @@ class FlightAreaConfigurationRequest:
         absolute (geodetic) coordinates."""
         return {
             "version": 1,
-            "maxAltitude": None
-            if self.max_altitude is None
-            else round(self.max_altitude, ndigits=3),
-            "minAltitude": None
-            if self.min_altitude is None
-            else round(self.min_altitude, ndigits=3),
-            "polygons": None
-            if self.polygons is None
-            else [polygon.json for polygon in self.polygons],
+            "maxAltitude": (
+                None
+                if self.max_altitude is None
+                else round(self.max_altitude, ndigits=3)
+            ),
+            "minAltitude": (
+                None
+                if self.min_altitude is None
+                else round(self.min_altitude, ndigits=3)
+            ),
+            "polygons": (
+                None
+                if self.polygons is None
+                else [polygon.json for polygon in self.polygons]
+            ),
         }

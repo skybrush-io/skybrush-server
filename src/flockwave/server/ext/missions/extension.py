@@ -148,16 +148,14 @@ class MissionManagementExtension(Extension):
     @overload
     def _create_MSN_INF_message_for(
         self, mission_ids: Iterable[str]
-    ) -> FlockwaveNotification:
-        ...
+    ) -> FlockwaveNotification: ...
 
     @overload
     def _create_MSN_INF_message_for(
         self,
         mission_ids: Iterable[str],
         in_response_to: FlockwaveMessage,
-    ) -> FlockwaveResponse:
-        ...
+    ) -> FlockwaveResponse: ...
 
     def _create_MSN_INF_message_for(
         self,

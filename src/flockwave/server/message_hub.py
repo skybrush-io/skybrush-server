@@ -324,14 +324,12 @@ class MessageHub:
     @overload
     def create_response_or_notification(
         self, body: Any, in_response_to: None = None
-    ) -> FlockwaveNotification:
-        ...
+    ) -> FlockwaveNotification: ...
 
     @overload
     def create_response_or_notification(
         self, body: Any, in_response_to: FlockwaveMessage
-    ) -> FlockwaveResponse:
-        ...
+    ) -> FlockwaveResponse: ...
 
     def create_response_or_notification(
         self, body: Any, in_response_to: Optional[FlockwaveMessage] = None

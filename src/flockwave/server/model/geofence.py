@@ -185,22 +185,32 @@ class GeofenceConfigurationRequest:
         return {
             "version": 1,
             "enabled": self.enabled,
-            "maxAltitude": None
-            if self.max_altitude is None
-            else round(self.max_altitude, ndigits=3),
-            "minAltitude": None
-            if self.min_altitude is None
-            else round(self.min_altitude, ndigits=3),
-            "maxDistance": None
-            if self.max_altitude is None
-            else round(self.max_altitude, ndigits=3),
+            "maxAltitude": (
+                None
+                if self.max_altitude is None
+                else round(self.max_altitude, ndigits=3)
+            ),
+            "minAltitude": (
+                None
+                if self.min_altitude is None
+                else round(self.min_altitude, ndigits=3)
+            ),
+            "maxDistance": (
+                None
+                if self.max_altitude is None
+                else round(self.max_altitude, ndigits=3)
+            ),
             "action": None if self.action is None else self.action.value,
-            "polygons": None
-            if self.polygons is None
-            else [polygon.json for polygon in self.polygons],
-            "rallyPoints": None
-            if self.rally_points is None
-            else [point.json for point in self.rally_points],
+            "polygons": (
+                None
+                if self.polygons is None
+                else [polygon.json for polygon in self.polygons]
+            ),
+            "rallyPoints": (
+                None
+                if self.rally_points is None
+                else [point.json for point in self.rally_points]
+            ),
         }
 
 

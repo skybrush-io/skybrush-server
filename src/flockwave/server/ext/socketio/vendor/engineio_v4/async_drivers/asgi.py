@@ -101,9 +101,11 @@ class ASGIApp:
             if event["type"] == "lifespan.startup":
                 if self.on_startup:
                     try:
-                        await self.on_startup() if asyncio.iscoroutinefunction(
-                            self.on_startup
-                        ) else self.on_startup()
+                        (
+                            await self.on_startup()
+                            if asyncio.iscoroutinefunction(self.on_startup)
+                            else self.on_startup()
+                        )
                     except Exception:
                         await send({"type": "lifespan.startup.failed"})
                         return
@@ -111,9 +113,11 @@ class ASGIApp:
             elif event["type"] == "lifespan.shutdown":
                 if self.on_shutdown:
                     try:
-                        await self.on_shutdown() if asyncio.iscoroutinefunction(
-                            self.on_shutdown
-                        ) else self.on_shutdown()
+                        (
+                            await self.on_shutdown()
+                            if asyncio.iscoroutinefunction(self.on_shutdown)
+                            else self.on_shutdown()
+                        )
                     except Exception:
                         await send({"type": "lifespan.shutdown.failed"})
                         return

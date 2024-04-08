@@ -1007,6 +1007,15 @@ class MAVLinkUAV(UAVBase):
     ensure that the log downloader object is created on-demand.
     """
 
+    _network_id = ""
+    """Stores the MAVLink network ID of the drone (not part of the MAVLink
+    messages; used by us to track which MAVLink network of ours the
+    drone belongs to).
+    """
+
+    _system_id = 0
+    """MAVLink system ID of the drone. Zero if unspecified or unknown."""
+
     def __init__(self, *args, **kwds):
         super().__init__(*args, **kwds)
 
@@ -1044,11 +1053,6 @@ class MAVLinkUAV(UAVBase):
         #: UAV if it ever sent one
         self._last_skybrush_status_info = None
 
-        #: Stores the MAVLink network ID of the drone (not part of the MAVLink
-        #: messages; used by us to track which MAVLink network of ours the
-        #: drone belongs to)
-        self._network_id = None
-
         #: Status of the preflight checks on the drone
         self._preflight_status = PreflightCheckInfo()
 
@@ -1061,9 +1065,6 @@ class MAVLinkUAV(UAVBase):
         #: Scheduled takeoff time of the drone, as a GPS time-of-week timestamp,
         #: in seconds
         self._scheduled_takeoff_time_gps_time_of_week = None
-
-        #: MAVLink system ID of the drone
-        self._system_id = None
 
         #: Current velocity of the drone in NED coordinate system, m/sec
         self._velocity = VelocityNED()
@@ -1079,10 +1080,12 @@ class MAVLinkUAV(UAVBase):
         it is assumed to have a component ID of 1 (primary autopilot). We are
         not talking to any other component of a MAVLink system yet.
         """
-        if self._network_id is not None:
+        if self._network_id:
             raise RuntimeError(
                 f"This UAV is already a member of MAVLink network {self._network_id}"
             )
+        elif not network_id:
+            raise RuntimeError("MAVLink network ID may not be empty")
 
         self._network_id = network_id
         self._system_id = system_id

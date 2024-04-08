@@ -236,7 +236,7 @@ class DroneShowStatus:
     light: int = 0
 
     #: Current GPS fix
-    gps_fix: GPSFixType = OurGPSFixType.NO_GPS
+    gps_fix: OurGPSFixType = OurGPSFixType.NO_GPS
 
     #: Number of satellites seen
     num_satellites: int = 0

@@ -30,7 +30,7 @@ from flockwave.server.model.battery import BatteryInfo
 from flockwave.server.model.commands import Progress
 from flockwave.server.model.devices import DeviceTreeMutator
 from flockwave.server.model.geofence import GeofenceConfigurationRequest, GeofenceStatus
-from flockwave.server.model.gps import GPSFix
+from flockwave.server.model.gps import GPSFix, GPSFixType as OurGPSFixType
 from flockwave.server.model.log import FlightLog, FlightLogMetadata
 from flockwave.server.model.preflight import PreflightCheckInfo, PreflightCheckResult
 from flockwave.server.model.safety import SafetyConfigurationRequest
@@ -1492,8 +1492,7 @@ class MAVLinkUAV(UAVBase):
 
         self._last_skybrush_status_info = data
 
-        self._gps_fix.num_satellites = data.num_satellites
-        self._gps_fix.type = data.gps_fix
+        self._update_gps_fix_type_and_satellite_count(data.gps_fix, data.num_satellites)
 
         gps_start_time = data.start_time if data.start_time >= 0 else None
         if gps_start_time != self._scheduled_takeoff_time_gps_time_of_week:
@@ -1599,15 +1598,15 @@ class MAVLinkUAV(UAVBase):
 
     def handle_message_gps_raw_int(self, message: MAVLinkMessage):
         num_sats = message.satellites_visible
-        self._gps_fix.type = GPSFixType(message.fix_type).to_ours()
-        self._gps_fix.num_satellites = (
-            num_sats if num_sats < 255 else None
-        )  # 255 = unknown
+
         self._gps_fix.horizontal_accuracy = (
             message.h_acc / 100.0 if message.h_acc > 0 else None
         )
         self._gps_fix.vertical_accuracy = (
             message.v_acc / 100.0 if message.v_acc > 0 else None
+        )
+        self._update_gps_fix_type_and_satellite_count(
+            GPSFixType(message.fix_type).to_ours(), num_sats if num_sats < 255 else None
         )
 
         self.update_status(gps=self._gps_fix)
@@ -2492,6 +2491,16 @@ class MAVLinkUAV(UAVBase):
 
         # Update the error flags as needed
         self.ensure_errors(errors)  # type: ignore
+
+    def _update_gps_fix_type_and_satellite_count(
+        self, type: OurGPSFixType, num_satellites: Optional[int]
+    ) -> None:
+        """Updates the GPS fix and the number of satellites in the internal
+        GPSFix_ object that is then later used to update the status object of
+        the UAV.
+        """
+        self._gps_fix.type = type
+        self._gps_fix.num_satellites = num_satellites
 
     def _was_probably_rebooted_after_reconnection(self) -> bool:
         """Returns whether the UAV was probably rebooted recently, _assuming_

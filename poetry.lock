@@ -2704,11 +2704,11 @@ docs = ["furo", "jaraco.packaging (>=9.3)", "jaraco.tidelift (>=1.4)", "rst.link
 testing = ["big-O", "jaraco.functools", "jaraco.itertools", "more-itertools", "pytest (>=6)", "pytest-checkdocs (>=2.4)", "pytest-cov", "pytest-enabler (>=2.2)", "pytest-ignore-flaky", "pytest-mypy", "pytest-ruff (>=0.2.1)"]
 
 [extras]
-all = ["flockwave-flockctrl", "skybrush-ext-dock", "skybrush-ext-flight-report", "skybrush-ext-flockctrl", "skybrush-ext-map-cache", "skybrush-ext-sidekick", "skybrush-ext-timecode", "skybrush-lib-mission-planning"]
+all = ["flockwave-flockctrl", "skybrush-ext-dock", "skybrush-ext-firmware-update", "skybrush-ext-flight-report", "skybrush-ext-flockctrl", "skybrush-ext-map-cache", "skybrush-ext-sidekick", "skybrush-ext-timecode", "skybrush-lib-mission-planning"]
 collmot = ["flockwave-flockctrl", "skybrush-ext-dock", "skybrush-ext-firmware-update", "skybrush-ext-flight-report", "skybrush-ext-flockctrl", "skybrush-ext-map-cache", "skybrush-ext-timecode", "skybrush-lib-mission-planning"]
 pro = ["skybrush-ext-flight-report", "skybrush-ext-map-cache", "skybrush-ext-sidekick", "skybrush-ext-timecode", "skybrush-lib-mission-planning"]
 
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.9"
-content-hash = "2ef8bbc5fe7d7a3e36a5f3db356e498d5ca4a4a406180b16932e2b098141b650"
+content-hash = "6519c7bba4880e871181824b9aaa2ae42234673f8ff885cbc5661cbb9cca6c69"

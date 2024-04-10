@@ -97,7 +97,7 @@ class UniqueIdGenerator(Generic[T]):
 
 
 def create_object_id_generator_for_ints(
-    formatter: Union[str, Callable[[int], str]] = "{0}"
+    formatter: Union[str, Callable[[int], str]] = "{0}",
 ) -> UniqueIdGenerator[int]:
     """Creates an ID generator object that generates IDs for UAVs given a
     formatter or format string.

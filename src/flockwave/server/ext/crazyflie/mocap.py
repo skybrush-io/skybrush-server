@@ -35,7 +35,7 @@ class CrazyflieMocapFrameHandler:
         driver: "CrazyflieDriver",
         broadcaster: BroadcasterFunction,
         *,
-        send_pose: bool = True
+        send_pose: bool = True,
     ):
         """Constructor."""
         self._broadcaster = broadcaster

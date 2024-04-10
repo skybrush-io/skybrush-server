@@ -131,7 +131,12 @@ async def fetch_kp_index_now() -> None:
     """Fetches and stores an up-to-date Kp-index data from the configured data
     source, updating the validity timestamp.
     """
-    global data_lock, data_providers, data_valid_until, last_data, selected_data_provider
+    global \
+        data_lock, \
+        data_providers, \
+        data_valid_until, \
+        last_data, \
+        selected_data_provider
 
     # if another task is already updating the Kp-index, exit now and do not
     # do anything

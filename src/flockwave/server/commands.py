@@ -119,8 +119,7 @@ class CommandExecutionManager(RegistryBase[CommandExecutionStatus]):
         if command is None:
             # Request has probably expired in the meanwhile
             log.warning(
-                "Received cancellation request for non-existent receipt: "
-                "{0}".format(receipt_id)
+                f"Received cancellation request for non-existent receipt: {receipt_id}"
             )
             return
 
@@ -202,8 +201,7 @@ class CommandExecutionManager(RegistryBase[CommandExecutionStatus]):
         if command is None:
             # Request has probably expired in the meanwhile
             log.warning(
-                "Received resume request for non-existent receipt: "
-                "{0}".format(receipt_id)
+                f"Received resume request for non-existent receipt: {receipt_id}"
             )
             return
 

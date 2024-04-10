@@ -346,7 +346,7 @@ def _create_datagram_based_mavlink_message_channel(
         return [(message, address) for message in messages]
 
     def encoder(
-        spec_and_address: tuple[MAVLinkMessageSpecification, Any]
+        spec_and_address: tuple[MAVLinkMessageSpecification, Any],
     ) -> tuple[bytes, Any]:
         spec, address = spec_and_address
 

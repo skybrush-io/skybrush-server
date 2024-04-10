@@ -153,8 +153,7 @@ class ClientRegistry(RegistryBase[Client]):
         except KeyError:
             # This should not happen
             log.warning(
-                "Cannot remove channel type index entry for "
-                "client ID {0!r}".format(client_id)
+                f"Cannot remove channel type index entry for client ID {client_id!r}"
             )
 
         log.info("Client disconnected", extra={"id": client_id})

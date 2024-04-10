@@ -191,26 +191,32 @@ class ClockSynchronizationHandler:
 
         if self._subscribed_clock:
             self._subscribed_clock.started.disconnect(
-                self._on_primary_clock_changed, sender=self._subscribed_clock  # type: ignore
+                self._on_primary_clock_changed,
+                sender=self._subscribed_clock,
             )
             self._subscribed_clock.stopped.disconnect(
-                self._on_primary_clock_changed, sender=self._subscribed_clock  # type: ignore
+                self._on_primary_clock_changed,
+                sender=self._subscribed_clock,
             )
             self._subscribed_clock.changed.disconnect(
-                self._on_primary_clock_changed, sender=self._subscribed_clock  # type: ignore
+                self._on_primary_clock_changed,
+                sender=self._subscribed_clock,
             )
 
         self._subscribed_clock = target_clock
 
         if self._subscribed_clock:
             self._subscribed_clock.started.connect(
-                self._on_primary_clock_changed, sender=self._subscribed_clock  # type: ignore
+                self._on_primary_clock_changed,
+                sender=self._subscribed_clock,
             )
             self._subscribed_clock.stopped.connect(
-                self._on_primary_clock_changed, sender=self._subscribed_clock  # type: ignore
+                self._on_primary_clock_changed,
+                sender=self._subscribed_clock,
             )
             self._subscribed_clock.changed.connect(
-                self._on_primary_clock_changed, sender=self._subscribed_clock  # type: ignore
+                self._on_primary_clock_changed,
+                sender=self._subscribed_clock,
             )
 
     def _update_secondary_clock(self) -> None:

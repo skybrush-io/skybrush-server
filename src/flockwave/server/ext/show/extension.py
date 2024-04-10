@@ -120,27 +120,32 @@ class DroneShowExtension(Extension):
             with ExitStack() as stack:
                 stack.enter_context(
                     self._config.updated.connected_to(
-                        self._on_config_updated, sender=self._config  # type: ignore
+                        self._on_config_updated,
+                        sender=self._config,
                     )
                 )
                 stack.enter_context(
                     self._lights.updated.connected_to(
-                        self._on_lights_updated, sender=self._lights  # type: ignore
+                        self._on_lights_updated,
+                        sender=self._lights,
                     )
                 )
                 stack.enter_context(
                     self._clock.started.connected_to(
-                        self._on_show_clock_changed, sender=self._clock  # type: ignore
+                        self._on_show_clock_changed,
+                        sender=self._clock,
                     )
                 )
                 stack.enter_context(
                     self._clock.stopped.connected_to(
-                        self._on_show_clock_changed, sender=self._clock  # type: ignore
+                        self._on_show_clock_changed,
+                        sender=self._clock,
                     )
                 )
                 stack.enter_context(
                     self._clock.changed.connected_to(
-                        self._on_show_clock_changed, sender=self._clock  # type: ignore
+                        self._on_show_clock_changed,
+                        sender=self._clock,
                     )
                 )
                 stack.enter_context(app.import_api("clocks").use_clock(self._clock))

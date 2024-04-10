@@ -390,7 +390,7 @@ def _get_marker_from_parameters(params: dict[str, Any]) -> tuple[Marker, float]:
 
 
 def _get_payload_action_from_parameters(
-    params: dict[str, Any]
+    params: dict[str, Any],
 ) -> tuple[str, PayloadAction, Optional[float]]:
     name = params.get("name")
     if not isinstance(name, str) or not name:
@@ -412,7 +412,7 @@ def _get_payload_action_from_parameters(
 
 
 def _get_speed_from_parameters(
-    params: dict[str, Any]
+    params: dict[str, Any],
 ) -> tuple[Optional[float], Optional[float]]:
     velocity_xy = params.get("velocityXY")
     if velocity_xy is not None and (

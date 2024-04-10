@@ -10,7 +10,7 @@ __all__ = ("create_parameter_command_handler",)
 
 
 def create_parameter_command_handler(
-    name_validator: Optional[Callable[[str], str]] = None
+    name_validator: Optional[Callable[[str], str]] = None,
 ) -> Callable[..., Awaitable[str]]:
     """Creates a generic async command handler function that allows the user to
     retrieve or set the value of a parameter of a UAV, assuming that the UAV

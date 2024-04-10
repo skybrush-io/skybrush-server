@@ -256,9 +256,7 @@ class CrazyflieDriver(UAVDriver["CrazyflieUAV"]):
             return "Fence disabled"
         elif subcommand == "set":
             try:
-                bounds = [
-                    float(x) for x in (x_min, y_min, z_min, x_max, y_max, z_max)
-                ]  # type: ignore
+                bounds = [float(x) for x in (x_min, y_min, z_min, x_max, y_max, z_max)]  # type: ignore
             except (TypeError, ValueError):
                 raise RuntimeError(
                     "Invalid fence coordinates; expected xMin, yMin, zMin, "

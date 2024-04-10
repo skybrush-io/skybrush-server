@@ -109,7 +109,9 @@ class PyOxidizerBlueprint(Blueprint):
 
         # Do not use a with block to close data; it must be kept open until
         # the request handler ends
-        response: Response = await send_file(data, attachment_filename=Path(filename).name)  # type: ignore
+        response: Response = await send_file(
+            data, attachment_filename=Path(filename).name
+        )
 
         # Check whether the file is represented by a physical file on the disk
         try:

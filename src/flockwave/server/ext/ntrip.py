@@ -24,7 +24,7 @@ class NTRIPConnection(ConnectionBase, RWConnection[bytes, bytes]):
         username: Optional[str] = None,
         password: Optional[str] = None,
         version: Optional[int] = None,
-        **kwds
+        **kwds,
     ):
         """Constructor.
 

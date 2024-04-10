@@ -1976,7 +1976,10 @@ class MAVLinkUAV(UAVBase):
             for message in successful:
                 try:
                     await self.driver.send_command_long(
-                        self, MAVCommand.SET_MESSAGE_INTERVAL, message, 0  # off
+                        self,
+                        MAVCommand.SET_MESSAGE_INTERVAL,
+                        message,
+                        0,  # off
                     )
                 except Exception:
                     failed.append(message)
@@ -2361,8 +2364,7 @@ class MAVLinkUAV(UAVBase):
         not_healthy_sensors = sensor_mask & (
             # Python has no proper bitwise negation on unsigned integers
             # so we use XOR instead
-            sys_status.onboard_control_sensors_health
-            ^ 0xFFFFFFFF
+            sys_status.onboard_control_sensors_health ^ 0xFFFFFFFF
         )
 
         has_gyro_error = not_healthy_sensors & (

@@ -5,7 +5,11 @@ from enum import IntEnum
 from typing import Optional, Union
 
 
-__all__ = ("GPSFix", "GPSFixType")
+__all__ = ("GPSFix", "GPSFixType", "ScaledLatLonPair")
+
+
+ScaledLatLonPair = tuple[int, int]
+"""Type specification for a latitude and longitude pair stored in [1e-7 deg]"""
 
 
 class GPSFixType(IntEnum):

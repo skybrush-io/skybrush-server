@@ -48,7 +48,12 @@ def bundle() -> MissionCommandBundle:
             ),
             ReturnToHomeMissionCommand(id=None, participants=None),
             LandMissionCommand(id=None, participants=None),
-        ]
+        ],
+        start_positions=[
+            (470000000, 190000000),
+            (470010000, 190000000),
+            (470020000, 190000000),
+        ],
     )
 
 
@@ -70,4 +75,5 @@ def test_invalid_participants(command):
 
 
 def test_mission_command_bundle(bundle):
+    assert bundle.participants == [0, 1]
     assert bundle == MissionCommandBundle.from_json(bundle.json)

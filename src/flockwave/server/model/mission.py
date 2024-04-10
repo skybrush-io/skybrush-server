@@ -6,6 +6,7 @@ from abc import ABC, abstractmethod
 from collections import Counter
 from dataclasses import dataclass, field, InitVar
 from enum import Enum
+from itertools import chain
 from typing import Any, Optional, Sequence, TypedDict, Union
 
 from flockwave.server.show import (
@@ -16,6 +17,7 @@ from flockwave.server.show import (
 
 from .flight_area import FlightAreaConfigurationRequest
 from .geofence import GeofenceConfigurationRequest
+from .gps import ScaledLatLonPair
 from .identifiers import default_id_generator
 from .safety import SafetyConfigurationRequest
 
@@ -150,6 +152,11 @@ class MissionItemBundle(TypedDict):
     The bundle can hold single- or multi-UAV missions. In case of multi-UAV
     missions, the `participants` variable of each item must hold the information
     that it applies to all or only specific participants of the mission.
+
+    In case of multi-UAV missions, the `startPositions` variable must hold
+    information about the starting position of the UAVs in the mission,
+    implicitely defining the exact number of UAVs in the mission.
+
     """
 
     version: int
@@ -160,6 +167,9 @@ class MissionItemBundle(TypedDict):
 
     items: list[MissionItem]
     """The list of mission items in the bundle."""
+
+    startPositions: Optional[list[ScaledLatLonPair]]
+    """Optional list of start positions of the UAVs in the mission."""
 
 
 class MissionItemType(Enum):
@@ -554,6 +564,9 @@ class MissionCommandBundle:
     commands: list[MissionCommand] = field(default_factory=list)
     """The list of mission commands in the bundle."""
 
+    start_positions: Optional[list[ScaledLatLonPair]] = None
+    """The starting positions of the UAVs in the mission."""
+
     def __post_init__(self):
         self.check_validity()
 
@@ -588,6 +601,7 @@ class MissionCommandBundle:
             version=1,
             name=bundle.get("name"),
             commands=commands,
+            start_positions=bundle.get("startPositions"),
         )
 
     def check_validity(self):
@@ -599,6 +613,19 @@ class MissionCommandBundle:
         counter = Counter(command.id for command in self.commands)
         if any(value > 1 for value in counter.values()):
             raise RuntimeError("mission item ids are not unique")
+
+        num_participants = len(self.participants)
+        if num_participants > 1 and self.start_positions is None:
+            raise RuntimeError(
+                "multi-UAV missions must contain starting positions for UAVs"
+            )
+        elif (
+            self.start_positions is not None
+            and len(self.start_positions) < num_participants
+        ):
+            raise RuntimeError(
+                "not enough start positions for multi-UAV mission participants"
+            )
 
     @property
     def json(self) -> MissionItemBundle:
@@ -615,7 +642,28 @@ class MissionCommandBundle:
             "version": 1,
             "name": self.name,
             "items": [command.json for command in self.commands],
+            "startPositions": self.start_positions,
         }
+
+    @property
+    def participants(self) -> list[int]:
+        """Returns all unique partipant IDs stored in this mission command bundle.
+
+        Note that mission commands might not contain explicit participant IDs if
+        they refer to all UAVs in the mission, so this participant list cannot be
+        used for inferring information about the number of UAVs in the mission.
+        """
+        return sorted(
+            set(
+                chain(
+                    *[
+                        command.participants
+                        for command in self.commands
+                        if command.participants is not None
+                    ]
+                )
+            )
+        )
 
 
 @dataclass

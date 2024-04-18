@@ -22,6 +22,48 @@ class PreflightCheckResult(Enum):
     FAILURE = "failure"
     ERROR = "error"
 
+    @property
+    def failed(self) -> bool:
+        """Returns whether the preflight check has failed, including
+        "soft" failures that may resolve themselves on their own.
+        """
+        return self in (
+            self.SOFT_FAILURE,
+            self.FAILURE,
+            self.ERROR,
+        )
+
+    @property
+    def failed_conclusively(self) -> bool:
+        """Returns whether the preflight check failed conclusively, i.e. it is
+        unlikely that the problem indicated by the preflight check would
+        resolve itself without human intervention.
+        """
+        return self in (self.FAILURE, self.ERROR)
+
+    @property
+    def passed(self) -> bool:
+        """Returns whether the preflight check has passed or is turned off.
+        Preflight checks with warnings are considered to have passed.
+        """
+        return self in (
+            self.PASS,
+            self.WARNING,
+            self.OFF,
+        )
+
+    @property
+    def passed_without_warnings(self) -> bool:
+        """Returns whether the preflight check has passed without warnings
+        or is turned off. Preflight checks with warnings are considered
+        _not_ to have passed.
+
+        """
+        return self in (
+            self.PASS,
+            self.OFF,
+        )
+
 
 #: Ordering of preflight check results; used when summarizing the results of a
 #: preflight checklist into a single result value. Larger values take precedence
@@ -107,11 +149,7 @@ class PreflightCheckInfo(metaclass=ModelMeta):
         """Returns whether at least one preflight check has failed, including
         "soft" failures that may resolve themselves on their own.
         """
-        return self.result in (
-            PreflightCheckResult.SOFT_FAILURE,
-            PreflightCheckResult.FAILURE,
-            PreflightCheckResult.ERROR,
-        )
+        return self.result.failed
 
     @property
     def failed_conclusively(self) -> bool:
@@ -119,7 +157,7 @@ class PreflightCheckInfo(metaclass=ModelMeta):
         unlikely that the problems indicated by the preflight checks would
         resolve themselves without human intervention.
         """
-        return self.result in (PreflightCheckResult.FAILURE, PreflightCheckResult.ERROR)
+        return self.result.failed_conclusively
 
     @property
     def has_items(self) -> bool:
@@ -144,11 +182,7 @@ class PreflightCheckInfo(metaclass=ModelMeta):
         if self.in_progress:
             return False
         else:
-            return self.result in (
-                PreflightCheckResult.PASS,
-                PreflightCheckResult.WARNING,
-                PreflightCheckResult.OFF,
-            )
+            return self.result.passed
 
     @property
     def passed_without_warnings(self) -> bool:
@@ -161,10 +195,7 @@ class PreflightCheckInfo(metaclass=ModelMeta):
         if self.in_progress:
             return False
         else:
-            return self.result in (
-                PreflightCheckResult.PASS,
-                PreflightCheckResult.OFF,
-            )
+            return self.result.passed_without_warnings
 
     def get_result(self, id: str) -> PreflightCheckResult:
         """Returns a single preflight check result for the given individual id."""

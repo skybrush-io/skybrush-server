@@ -328,13 +328,13 @@ files = [
 
 [[package]]
 name = "bitstring"
-version = "4.2.1"
+version = "4.2.2"
 description = "Simple construction, analysis and modification of binary data."
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "bitstring-4.2.1-py3-none-any.whl", hash = "sha256:9ae5d89072b065d640d645d37c0efcd27284b2f79f1c48cc1cd38b54e1932b4f"},
-    {file = "bitstring-4.2.1.tar.gz", hash = "sha256:8abb5a661588c764bacf1a23d64c7bb57517d2841e3e6f54fb8c057119e0540d"},
+    {file = "bitstring-4.2.2-py3-none-any.whl", hash = "sha256:8b784373e78e953879c8192589e1ecbcda8f111841633a2aaf88d2b073fd6c35"},
+    {file = "bitstring-4.2.2.tar.gz", hash = "sha256:b40b01d911eebaea6efff40d826580806dced5e04b9d3cbad6aebf9422f4b643"},
 ]
 
 [package.dependencies]
@@ -852,13 +852,13 @@ reference = "fury"
 
 [[package]]
 name = "flockwave-flockctrl"
-version = "2.20.0"
+version = "3.0.0"
 description = "flockctrl protocol parser and encoder for Skybrush"
 optional = true
 python-versions = ">=3.9,<4.0"
 files = [
-    {file = "flockwave_flockctrl-2.20.0-py3-none-any.whl", hash = "sha256:9b0a15e2fb711b39807915963a05ee86b61cbcdf85cbd64bc98aa00fdd23de71"},
-    {file = "flockwave_flockctrl-2.20.0.tar.gz", hash = "sha256:dc7db55536e4e4a01db841ea30867a1baffc6798b42c765e8a897fe61598b294"},
+    {file = "flockwave_flockctrl-3.0.0-py3-none-any.whl", hash = "sha256:1002b72ff92b327327d7a400c6eb084e2dde73cb14c608bb4ab250effc17ffc1"},
+    {file = "flockwave_flockctrl-3.0.0.tar.gz", hash = "sha256:6049b9a612d855f074a0b6945d3a65a76c71c5a9d51992371412e0ee9168bea0"},
 ]
 
 [package.dependencies]
@@ -1992,13 +1992,13 @@ unidecode = ["Unidecode (>=1.1.1)"]
 
 [[package]]
 name = "pyudev"
-version = "0.24.1"
+version = "0.24.3"
 description = "A libudev binding"
 optional = false
 python-versions = ">=3.7"
 files = [
-    {file = "pyudev-0.24.1-py3-none-any.whl", hash = "sha256:da7e977be15fb5eccf8797b8e2176cd5b4f39288707cdcb39d1cabe7c8793e2b"},
-    {file = "pyudev-0.24.1.tar.gz", hash = "sha256:75e54d37218f5ac45b0da1f0fd9cc5e526a3cac3ef1cfad410cf7ab338b01471"},
+    {file = "pyudev-0.24.3-py3-none-any.whl", hash = "sha256:e8246f0a014fe370119ba2bc781bfbe62c0298d0d6b39c94e83102a8a3f56960"},
+    {file = "pyudev-0.24.3.tar.gz", hash = "sha256:2e945427a21674893bb97632401db62139d91cea1ee96137cc7b07ad22198fc7"},
 ]
 
 [[package]]
@@ -2307,19 +2307,19 @@ reference = "collmot"
 
 [[package]]
 name = "skybrush-ext-flockctrl"
-version = "2.33.2"
+version = "3.0.0"
 description = "Support for flockctrl-based drones in Skybrush Server"
 optional = true
 python-versions = ">=3.9,<4.0"
 files = [
-    {file = "skybrush_ext_flockctrl-2.33.2-py3-none-any.whl", hash = "sha256:6aac56855ef9dd3a124d0a58bd456fc56c6606e8089e167d84b738adef74519a"},
-    {file = "skybrush_ext_flockctrl-2.33.2.tar.gz", hash = "sha256:91091cc1e8271c21f1ed557f9325c8dd4d6b68b261b574f34b801ebcb8b3c7ed"},
+    {file = "skybrush_ext_flockctrl-3.0.0-py3-none-any.whl", hash = "sha256:06751d605b1f23a0bb7faf760a1dcd75a1973f48b6027b7095962bd4e8891613"},
+    {file = "skybrush_ext_flockctrl-3.0.0.tar.gz", hash = "sha256:7277ade26b43d70c2dac56ed08b0b20d72b5f515b0beb0fbdbf073b0c4011f36"},
 ]
 
 [package.dependencies]
 bidict = ">=0.22.0"
 colour = ">=0.1.5"
-flockwave-flockctrl = ">=2.20.0,<3.0.0"
+flockwave-flockctrl = ">=3.0.0,<4.0.0"
 paramiko = ">=3.0.0,<4.0.0"
 python-slugify = {version = ">=8.0.1,<9.0.0", extras = ["unidecode"]}
 scp = ">=0.14.4"
@@ -2501,13 +2501,13 @@ files = [
 
 [[package]]
 name = "trio"
-version = "0.25.0"
+version = "0.25.1"
 description = "A friendly Python library for async concurrency and I/O"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "trio-0.25.0-py3-none-any.whl", hash = "sha256:e6458efe29cc543e557a91e614e2b51710eba2961669329ce9c862d50c6e8e81"},
-    {file = "trio-0.25.0.tar.gz", hash = "sha256:9b41f5993ad2c0e5f62d0acca320ec657fdb6b2a2c22b8c7aed6caf154475c4e"},
+    {file = "trio-0.25.1-py3-none-any.whl", hash = "sha256:e42617ba091e7b2e50c899052e83a3c403101841de925187f61e7b7eaebdf3fb"},
+    {file = "trio-0.25.1.tar.gz", hash = "sha256:9f5314f014ea3af489e77b001861c535005c3858d38ec46b6b071ebfa339d7fb"},
 ]
 
 [package.dependencies]
@@ -2689,18 +2689,18 @@ h11 = ">=0.9.0,<1"
 
 [[package]]
 name = "zipp"
-version = "3.18.1"
+version = "3.18.2"
 description = "Backport of pathlib-compatible object wrapper for zip files"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "zipp-3.18.1-py3-none-any.whl", hash = "sha256:206f5a15f2af3dbaee80769fb7dc6f249695e940acca08dfb2a4769fe61e538b"},
-    {file = "zipp-3.18.1.tar.gz", hash = "sha256:2884ed22e7d8961de1c9a05142eb69a247f120291bc0206a00a7642f09b5b715"},
+    {file = "zipp-3.18.2-py3-none-any.whl", hash = "sha256:dce197b859eb796242b0622af1b8beb0a722d52aa2f57133ead08edd5bf5374e"},
+    {file = "zipp-3.18.2.tar.gz", hash = "sha256:6278d9ddbcfb1f1089a88fde84481528b07b0e10474e09dcfe53dad4069fa059"},
 ]
 
 [package.extras]
 docs = ["furo", "jaraco.packaging (>=9.3)", "jaraco.tidelift (>=1.4)", "rst.linker (>=1.9)", "sphinx (>=3.5)", "sphinx-lint"]
-testing = ["big-O", "jaraco.functools", "jaraco.itertools", "more-itertools", "pytest (>=6)", "pytest-checkdocs (>=2.4)", "pytest-cov", "pytest-enabler (>=2.2)", "pytest-ignore-flaky", "pytest-mypy", "pytest-ruff (>=0.2.1)"]
+testing = ["big-O", "jaraco.functools", "jaraco.itertools", "jaraco.test", "more-itertools", "pytest (>=6,!=8.1.*)", "pytest-checkdocs (>=2.4)", "pytest-cov", "pytest-enabler (>=2.2)", "pytest-ignore-flaky", "pytest-mypy", "pytest-ruff (>=0.2.1)"]
 
 [extras]
 all = ["flockwave-flockctrl", "skybrush-ext-dock", "skybrush-ext-firmware-update", "skybrush-ext-flight-report", "skybrush-ext-flockctrl", "skybrush-ext-map-cache", "skybrush-ext-sidekick", "skybrush-ext-timecode", "skybrush-lib-mission-planning"]
@@ -2710,4 +2710,4 @@ pro = ["skybrush-ext-flight-report", "skybrush-ext-map-cache", "skybrush-ext-sid
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.9"
-content-hash = "a1fe7a1e3f972b9696b6841c37639460e9e45bf3d88bacc765ac0fbe86d5a2ff"
+content-hash = "3668cbab8d6b2bf54ae3fed5ef43a1df05d4d3c2b6d15e30781390a6af93a080"

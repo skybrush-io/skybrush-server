@@ -168,7 +168,7 @@ class MissionItemBundle(TypedDict):
     items: list[MissionItem]
     """The list of mission items in the bundle."""
 
-    startPositions: Optional[list[ScaledLatLonPair]]
+    startPositions: Optional[list[Optional[ScaledLatLonPair]]]
     """Optional list of start positions of the UAVs in the mission."""
 
 

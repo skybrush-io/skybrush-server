@@ -27,6 +27,12 @@ def get_safety_configuration_from_show_specification(
     if version != 1:
         raise RuntimeError("only version 1 safety specifications are supported")
 
+    percentage = optional_float(safety.get("lowBatteryPercentage"))
+    if percentage is not None and (percentage < 0 or percentage > 100):
+        raise RuntimeError(
+            f"Low battery percentage must be between 0 and 100, got {percentage}"
+        )
+    result.low_battery_percentage = percentage
     result.low_battery_voltage = optional_float(safety.get("lowBatteryVoltage"))
     result.critical_battery_voltage = optional_float(
         safety.get("criticalBatteryVoltage")

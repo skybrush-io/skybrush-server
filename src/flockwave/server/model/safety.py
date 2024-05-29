@@ -24,6 +24,11 @@ class SafetyConfigurationRequest:
 
     """
 
+    low_battery_percentage: Optional[float] = None
+    """Low battery percentage in [%] under which a low battery failsafe action is
+    triggered. Value should be in the [0-100]`range. None` means not to change
+    the low battery percentage setting."""
+
     low_battery_voltage: Optional[float] = None
     """Low battery voltage in [V] under which a low battery failsafe action is
     triggered. `None` means not to change the low battery voltage setting."""
@@ -46,6 +51,11 @@ class SafetyConfigurationRequest:
         """Returns a JSON representation of the safety configuration."""
         return {
             "version": 1,
+            "lowBatteryPercentage": (
+                None
+                if self.low_battery_percentage is None
+                else round(self.low_battery_percentage, ndigits=3)
+            ),
             "lowBatteryVoltage": (
                 None
                 if self.low_battery_voltage is None

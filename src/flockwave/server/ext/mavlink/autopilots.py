@@ -817,6 +817,11 @@ class ArduPilot(Autopilot):
     async def configure_safety(
         self, uav, configuration: SafetyConfigurationRequest
     ) -> None:
+        if configuration.low_battery_percentage is not None:
+            capacity = await uav.get_parameter("BATT_CAPACITY")
+            await uav.set_parameter(
+                "BATT_LOW_MAH", capacity * configuration.low_battery_percentage / 100
+            )
         if configuration.low_battery_voltage is not None:
             await uav.set_parameter("BATT_LOW_VOLT", configuration.low_battery_voltage)
         if configuration.critical_battery_voltage is not None:

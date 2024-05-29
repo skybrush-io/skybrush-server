@@ -1,9 +1,49 @@
 """safety-related data structures and functions for the server."""
 
 from dataclasses import dataclass
+from enum import Enum
 from typing import Any, Optional
 
 __all__ = ("SafetyConfigurationRequest",)
+
+
+class LowBatteryThresholdType(Enum):
+    """Low battery threshold types."""
+
+    OFF = "off"
+    """Low battery threshold checking is switched off."""
+
+    VOLTAGE = "voltage"
+    """Low battery threshold is defined as a voltage value in [V]."""
+
+    PERCENTAGE = "percentage"
+    """Low battery threshold is defined as a percentage value in [%]."""
+
+
+@dataclass
+class LowBatteryThreshold:
+    """Object representing low battery threshold settings."""
+
+    type: LowBatteryThresholdType = LowBatteryThresholdType.OFF
+    """The low battery threshold type."""
+
+    value: float = 0.0
+    """The low battery threshold value, defined in [V] or [%],
+    depending on the low battery threshold type."""
+
+    @classmethod
+    def from_json(cls, obj: Any):
+        """Constructs a low battery threshold configuration from its
+        JSON representation.
+        """
+        return cls(
+            type=obj.get("type", LowBatteryThresholdType.OFF), value=obj.get("value", 0)
+        )
+
+    @property
+    def json(self) -> dict[str, Any]:
+        """Returns a JSON representation of the low battery threshold configuration."""
+        return {"type": self.type.value, "value": round(self.value, ndigits=3)}
 
 
 @dataclass
@@ -24,14 +64,11 @@ class SafetyConfigurationRequest:
 
     """
 
-    low_battery_percentage: Optional[float] = None
-    """Low battery percentage in [%] under which a low battery failsafe action is
-    triggered. Value should be in the [0-100]`range. None` means not to change
-    the low battery percentage setting."""
-
-    low_battery_voltage: Optional[float] = None
-    """Low battery voltage in [V] under which a low battery failsafe action is
-    triggered. `None` means not to change the low battery voltage setting."""
+    low_battery_threshold: Optional[LowBatteryThreshold] = None
+    """Low battery threshold settings, defining a voltage or percentage value
+    under which a low battery failsafe action is triggered, or explicitely
+    disabling the low battery failsafe settings. `None` means not to change
+    the low battery voltage setting."""
 
     critical_battery_voltage: Optional[float] = None
     """Critically low battery voltage in [V] under which a critical battery
@@ -50,16 +87,11 @@ class SafetyConfigurationRequest:
     def json(self) -> dict[str, Any]:
         """Returns a JSON representation of the safety configuration."""
         return {
-            "version": 1,
-            "lowBatteryPercentage": (
+            "version": 2,
+            "lowBatteryThreshold": (
                 None
-                if self.low_battery_percentage is None
-                else round(self.low_battery_percentage, ndigits=3)
-            ),
-            "lowBatteryVoltage": (
-                None
-                if self.low_battery_voltage is None
-                else round(self.low_battery_voltage, ndigits=3)
+                if self.low_battery_threshold is None
+                else self.low_battery_threshold.json
             ),
             "criticalBatteryVoltage": (
                 None

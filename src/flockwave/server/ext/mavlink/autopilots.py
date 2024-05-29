@@ -11,7 +11,10 @@ from flockwave.server.model.geofence import (
     GeofenceConfigurationRequest,
     GeofenceStatus,
 )
-from flockwave.server.model.safety import SafetyConfigurationRequest
+from flockwave.server.model.safety import (
+    LowBatteryThresholdType,
+    SafetyConfigurationRequest,
+)
 from flockwave.server.utils import clamp
 
 from .enums import (
@@ -817,13 +820,33 @@ class ArduPilot(Autopilot):
     async def configure_safety(
         self, uav, configuration: SafetyConfigurationRequest
     ) -> None:
-        if configuration.low_battery_percentage is not None:
-            capacity = await uav.get_parameter("BATT_CAPACITY")
-            await uav.set_parameter(
-                "BATT_LOW_MAH", capacity * configuration.low_battery_percentage / 100
-            )
-        if configuration.low_battery_voltage is not None:
-            await uav.set_parameter("BATT_LOW_VOLT", configuration.low_battery_voltage)
+        if configuration.low_battery_threshold is not None:
+            if configuration.low_battery_threshold.type == LowBatteryThresholdType.OFF:
+                await uav.set_parameter("BATT_LOW_MAH", 0)
+                await uav.set_parameter("BATT_LOW_VOLT", 0)
+            elif (
+                configuration.low_battery_threshold.type
+                == LowBatteryThresholdType.VOLTAGE
+            ):
+                await uav.set_parameter(
+                    "BATT_LOW_VOLT", configuration.low_battery_threshold.value
+                )
+                await uav.set_parameter("BATT_LOW_MAH", 0)
+            elif (
+                configuration.low_battery_threshold.type
+                == LowBatteryThresholdType.PERCENTAGE
+            ):
+                capacity = await uav.get_parameter("BATT_CAPACITY")
+                await uav.set_parameter(
+                    "BATT_LOW_MAH",
+                    capacity * configuration.low_battery_threshold.value / 100,
+                )
+                await uav.set_parameter("BATT_LOW_VOLT", 0)
+            else:
+                raise RuntimeError(
+                    f"Unknown low battery threshold type: {configuration.low_battery_threshold.type!r}"
+                )
+
         if configuration.critical_battery_voltage is not None:
             await uav.set_parameter(
                 "BATT_CRT_VOLT", configuration.critical_battery_voltage

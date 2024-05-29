@@ -4,7 +4,11 @@ Skybrush-related safety specifications, until we find a better place for them.
 
 from typing import Dict
 
-from flockwave.server.model.safety import SafetyConfigurationRequest
+from flockwave.server.model.safety import (
+    LowBatteryThreshold,
+    LowBatteryThresholdType,
+    SafetyConfigurationRequest,
+)
 from flockwave.server.utils import optional_float
 
 __all__ = ("get_safety_configuration_from_show_specification",)
@@ -24,16 +28,24 @@ def get_safety_configuration_from_show_specification(
     version = safety.get("version", 0)
     if version is None:
         raise RuntimeError("safety specification must have a version number")
-    if version != 1:
-        raise RuntimeError("only version 1 safety specifications are supported")
+    if version not in [1, 2]:
+        raise RuntimeError("only version 1 or 2 safety specifications are supported")
 
-    percentage = optional_float(safety.get("lowBatteryPercentage"))
-    if percentage is not None and (percentage < 0 or percentage > 100):
-        raise RuntimeError(
-            f"Low battery percentage must be between 0 and 100, got {percentage}"
-        )
-    result.low_battery_percentage = percentage
-    result.low_battery_voltage = optional_float(safety.get("lowBatteryVoltage"))
+    if version == 1:
+        voltage = optional_float(safety.get("lowBatteryVoltage"))
+        if voltage is not None:
+            result.low_battery_threshold = LowBatteryThreshold(
+                type=LowBatteryThresholdType.VOLTAGE, value=voltage
+            )
+        else:
+            result.low_battery_threshold = None
+    elif version == 2:
+        threshold = safety.get("LowBatteryThreshold")
+        if threshold is not None:
+            result.low_battery_threshold = LowBatteryThreshold.from_json(threshold)
+        else:
+            result.low_battery_threshold = None
+
     result.critical_battery_voltage = optional_float(
         safety.get("criticalBatteryVoltage")
     )

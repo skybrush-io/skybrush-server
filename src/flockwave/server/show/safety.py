@@ -40,7 +40,7 @@ def get_safety_configuration_from_show_specification(
         else:
             result.low_battery_threshold = None
     elif version == 2:
-        threshold = safety.get("LowBatteryThreshold")
+        threshold = safety.get("lowBatteryThreshold")
         if threshold is not None:
             result.low_battery_threshold = LowBatteryThreshold.from_json(threshold)
         else:

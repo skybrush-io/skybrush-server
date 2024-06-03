@@ -37,7 +37,8 @@ class LowBatteryThreshold:
         JSON representation.
         """
         return cls(
-            type=obj.get("type", LowBatteryThresholdType.OFF), value=obj.get("value", 0)
+            type=LowBatteryThresholdType(obj.get("type")),
+            value=obj.get("value"),
         )
 
     @property

@@ -28,7 +28,7 @@ python = "^3.9"
 bidict = ">=0.22.1"
 click = "^8.1.7"
 blinker = "^1.7.0"
-jsonschema = "^4.22.0"
+jsonschema = "4.17.3"
 python-baseconv = "^1.2.2"
 pynmea2 = "^1.19.0"
 trio = ">=0.24.0"
@@ -59,7 +59,7 @@ flockwave-spec = { version = "^1.82.0", source = "fury" }
 skybrush-ext-dock = { version = "^1.0.0", source = "collmot", optional = true }
 skybrush-ext-firmware-update = { version = "^0.3.0", source = "collmot", optional = true }
 skybrush-ext-flight-report = { version = "^1.0.3", source = "collmot", optional = true }
-skybrush-ext-flockctrl = { version = "^3.1.0", source = "collmot", optional = true }
+skybrush-ext-flockctrl = { version = "^3.2.0", source = "collmot", optional = true }
 skybrush-ext-map-cache = { version = "^1.1.0", source = "collmot", optional = true }
 skybrush-ext-sidekick = { version = "^1.0.1", source = "collmot", optional = true }
 skybrush-ext-timecode = { version = "^1.1.0", source = "collmot", optional = true }

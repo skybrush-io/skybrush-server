@@ -754,13 +754,13 @@ dotenv = ["python-dotenv"]
 
 [[package]]
 name = "flockwave-app-framework"
-version = "3.0.0"
+version = "3.0.1"
 description = "Generic app framework for CLI based apps in the Skybrush suite"
 optional = false
 python-versions = ">=3.9,<4.0"
 files = [
-    {file = "flockwave-app-framework-3.0.0.tar.gz", hash = "sha256:4c922070c5e802dfb5de5b55155b48a2ab56b96e904c208a4901908758ac6736"},
-    {file = "flockwave_app_framework-3.0.0-py3-none-any.whl", hash = "sha256:f5d3d04a34880aff686951ec4593c07124e2e1fd1d4723a91f70adc1a939832b"},
+    {file = "flockwave-app-framework-3.0.1.tar.gz", hash = "sha256:54cd3eee04e1b272146aa22c85d08acf590b3536ccccf2f3c646c2f27b541bb2"},
+    {file = "flockwave_app_framework-3.0.1-py3-none-any.whl", hash = "sha256:f3fd3c286d38e8dedf62057adf7485904f074b9b5efffcd992b7af65810d16de"},
 ]
 
 [package.dependencies]
@@ -2562,13 +2562,13 @@ trio = ">=0.11.0"
 
 [[package]]
 name = "typing-extensions"
-version = "4.12.1"
+version = "4.12.2"
 description = "Backported and Experimental Type Hints for Python 3.8+"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "typing_extensions-4.12.1-py3-none-any.whl", hash = "sha256:6024b58b69089e5a89c347397254e35f1bf02a907728ec7fee9bf0fe837d203a"},
-    {file = "typing_extensions-4.12.1.tar.gz", hash = "sha256:915f5e35ff76f56588223f15fdd5938f9a1cf9195c0de25130c627e4d597f6d1"},
+    {file = "typing_extensions-4.12.2-py3-none-any.whl", hash = "sha256:04e5ca0351e0f3f85c6853954072df659d0d13fac324d0072316b67d7794700d"},
+    {file = "typing_extensions-4.12.2.tar.gz", hash = "sha256:1a7ead55c7e559dd4dee8856e3a88b41225abfe1ce8df57b7c13915fe121ffb8"},
 ]
 
 [[package]]
@@ -2715,4 +2715,4 @@ pro = ["skybrush-ext-flight-report", "skybrush-ext-map-cache", "skybrush-ext-sid
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.9"
-content-hash = "edf0d584c552c9c5c5de362ff7779bc828c67c4cde6ce5ede52a55abaa17ffac"
+content-hash = "ce480ad09b4544a0a4894962b9ea0a477185fb54145ba6063ff7ef2977339645"

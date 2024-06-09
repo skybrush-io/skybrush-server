@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from collections.abc import Mapping
 from datetime import date, datetime, timedelta
 from functools import partial, wraps
 from math import inf, isfinite
-from typing import Any, Mapping, Optional
+from typing import Any, Optional
 
 from flockwave.ext.errors import ApplicationExit, NotLoadableError, NotSupportedError
 from flockwave.networking import get_link_layer_address_mapping
@@ -287,11 +288,7 @@ class CLSLicense(DictBasedLicense):
     def get_license(cls):
         from cls import license
 
-        if (
-            hasattr(license, "__getitem__")
-            and hasattr(license, "__len__")
-            and len(license) > 0
-        ):
+        if isinstance(license, Mapping) and len(license) > 0:
             return cls(license)
         else:
             raise RuntimeError("no license")

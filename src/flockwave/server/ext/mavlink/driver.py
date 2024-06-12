@@ -450,6 +450,7 @@ class MAVLinkDriver(UAVDriver["MAVLinkUAV"]):
         timeout: Optional[float] = None,
         retries: Optional[int] = None,
         channel: str = Channel.PRIMARY,
+        allow_in_progress: bool = False,
     ) -> bool:
         """Sends a MAVLink command to a given UAV and waits for an acknowlegment.
 
@@ -469,6 +470,8 @@ class MAVLinkDriver(UAVDriver["MAVLinkUAV"]):
                 initial attempt); `None` means to use the default retry count
                 for the driver.
             channel: the channel to send the command on
+            allow_in_progress: whether to treat MAVResult.IN_PROGRESS as a
+                result value indicating success.
 
         Returns:
             True if the command was sent successfully and a positive acknowledgment
@@ -545,7 +548,9 @@ class MAVLinkDriver(UAVDriver["MAVLinkUAV"]):
         if result == MAVResult.UNSUPPORTED:
             raise NotSupportedError
 
-        return result == MAVResult.ACCEPTED
+        return result == MAVResult.ACCEPTED or (
+            allow_in_progress and result == MAVResult.IN_PROGRESS
+        )
 
     async def send_command_long_without_ack(
         self,
@@ -1167,8 +1172,15 @@ class MAVLinkUAV(UAVBase):
         else:
             raise NotSupportedError
 
+        # In ArduCopter 4.5 (and maybe in other versions), the baro calibration
+        # returns MAVResult.IN_PROGRESS if there is an airspeed sensor, which
+        # we need to treat as a successful calibration.
+
         success = await self.driver.send_command_long(
-            self, MAVCommand.PREFLIGHT_CALIBRATION, *params
+            self,
+            MAVCommand.PREFLIGHT_CALIBRATION,
+            *params,
+            allow_in_progress=(component == "baro"),
         )
 
         if not success:

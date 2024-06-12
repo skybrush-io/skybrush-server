@@ -347,6 +347,10 @@ class MAVResult(IntEnum):
     UNSUPPORTED = 3
     FAILED = 4
     IN_PROGRESS = 5
+    CANCELLED = 6
+    COMMAND_LONG_ONLY = 7
+    COMMAND_INT_ONLY = 8
+    COMMAND_UNSUPPORTED_MAV_FRAME = 9
 
 
 class MAVState(IntEnum):

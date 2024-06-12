@@ -11,6 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Low battery threshold in safety configuration can now be given as percentage as well
 
+### Fixed
+
+- MAVLink pressure sensor calibration messages may now also return "in progress" to consider them successful.
 
 ## [2.18.1] - 2024-04-05
 

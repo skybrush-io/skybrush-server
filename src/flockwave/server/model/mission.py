@@ -44,8 +44,8 @@ __all__ = (
     "LandMissionCommand",
     "MarkerMissionCommand",
     "ReturnToHomeMissionCommand",
-    "SetPayloadMissionCommand",
     "SetParameterMissionCommand",
+    "SetPayloadMissionCommand",
     "TakeoffMissionCommand",
     "UpdateFlightAreaMissionCommand",
     "UpdateGeofenceMissionCommand",
@@ -90,23 +90,20 @@ class AltitudeReference(Enum):
 
 @dataclass
 class Heading:
-    """Representation of a heading change action."""
+    """Representation of a heading specification."""
 
     mode: HeadingMode
     """The heading mode to use."""
 
-    value: Optional[float]
-    """Optional fixed heading in [deg]."""
-
-    rate: Optional[float] = None
-    """Optional heading change rate in [deg/s]."""
+    value: float = 0
+    """Heading used in absolute heading mode, in [deg]."""
 
     @property
     def json(self) -> dict[str, Any]:
         """Returns a JSON representation of heading."""
         return {
             "mode": self.mode.value,
-            "value": round(self.value or 0, ndigits=1),
+            "value": round(self.value, ndigits=1),
         }
 
 
@@ -409,6 +406,16 @@ def _get_payload_action_from_parameters(
         raise RuntimeError("value must be a number")
 
     return (name, action, value)
+
+
+def _get_rate_from_parameters(
+    params: dict[str, Any],
+) -> Optional[float]:
+    rate = params.get("rate")
+    if rate is not None and (not isinstance(rate, (int, float)) or rate <= 0):
+        raise RuntimeError("rate must be a positive number")
+
+    return rate
 
 
 def _get_speed_from_parameters(
@@ -752,16 +759,21 @@ class ChangeHeadingMissionCommand(MissionCommand):
         )
         id, participants, params = _parse_mission_item(obj)
         heading = _get_heading_from_parameters(params)
+        rate = _get_rate_from_parameters(params)
 
-        return cls(id=id, participants=participants, heading=heading)
+        return cls(id=id, participants=participants, heading=heading, rate=rate)
 
     @property
     def json(self) -> MissionItem:
+        parameters = {"heading": self.heading.json}
+        if self.rate is not None:
+            parameters["rate"] = round(self.rate, ndigits=3)
+
         return _prepare_mission_item(
             self.id,
             self.participants,
             MissionItemType.CHANGE_HEADING,
-            {"heading": self.heading.json},
+            parameters,
         )
 
     @property

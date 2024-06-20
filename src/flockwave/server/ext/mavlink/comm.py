@@ -7,7 +7,7 @@ from compose import compose
 from functools import partial
 from importlib import import_module
 from time import time
-from typing import Any, Callable, ClassVar, Optional, Union
+from typing import Any, ClassVar, Optional, TYPE_CHECKING
 
 from flockwave.channels import MessageChannel, create_lossy_channel
 from flockwave.connections import Connection, StreamConnectionBase
@@ -19,6 +19,9 @@ from flockwave.server.comm import NO_BROADCAST_ADDRESS, CommunicationManager
 from .enums import MAVComponent
 from .signing import MAVLinkSigningConfiguration
 from .types import MAVLinkMessage, MAVLinkMessageSpecification
+
+if TYPE_CHECKING:
+    from flockwave.protocols.mavlink.types import MAVLinkFactory, MAVLinkInterface
 
 
 __all__ = ("create_communication_manager",)
@@ -48,7 +51,7 @@ class Channel:
     """Alias of the channel that should be used for sending RC overrides"""
 
 
-def _get_timestamp_for_signing() -> int:
+def _get_initial_timestamp_for_signing() -> int:
     """Returns a timestamp based on the system clock that is suitable for using
     in a MAVLink signing context.
     """
@@ -57,17 +60,14 @@ def _get_timestamp_for_signing() -> int:
     return max(int((time() - 1420070400) * 100000), 0)
 
 
-MAVLinkFactory = Callable[[], Any]
-
-
-def _allow_all_unsigned_messages(self, msg_id: int) -> bool:
+def _allow_all_unsigned_messages(mav: MAVLinkInterface, msg_id: int) -> bool:
     """Callback function for MAVLink connections that allow them to accept
     all unsigned messages.
     """
     return True
 
 
-def _allow_only_basic_unsigned_messages(self, msg_id: int) -> bool:
+def _allow_only_basic_unsigned_messages(mav: MAVLinkInterface, msg_id: int) -> bool:
     """Callback function for MAVLink connections that allow them to accept
     only specific unsigned messages that may originate from sources that do
     not support MAVLink signing.
@@ -76,7 +76,7 @@ def _allow_only_basic_unsigned_messages(self, msg_id: int) -> bool:
 
 
 def get_mavlink_factory(
-    dialect: Union[str, Callable] = "ardupilotmega",
+    dialect: str = "ardupilotmega",
     system_id: int = 255,
     component_id: int = MAVComponent.MISSIONPLANNER,
     *,
@@ -87,8 +87,7 @@ def get_mavlink_factory(
     construct a new MAVLink parser and message factory.
 
     Parameters:
-        dialect: the name of the MAVLink dialect that will be used by the
-            parser. When it is a callable, it is returned intact.
+        dialect: the name of the MAVLink dialect that will be used by the parser
         system_id: the source MAVLink system ID
         component_id: the source MAVLink component ID
         link_id: numeric link ID, used for signing MAVLink messages. Must
@@ -97,22 +96,21 @@ def get_mavlink_factory(
         signing: whether outbound messages should be signed and inbound messages
             should be rejectd when unsigned
     """
-    if callable(dialect):
-        return dialect
-
     module = import_module(f"flockwave.protocols.mavlink.dialects.v20.{dialect}")
 
-    def factory():
+    def factory() -> MAVLinkInterface:
         """Creates a new MAVLink parser and message factory."""
         # Use robust parsing so we don't freak out if we see some noise on the
         # line
-        link = module.MAVLink(None, srcSystem=system_id, srcComponent=component_id)
+        link: MAVLinkInterface = module.MAVLink(
+            None, srcSystem=system_id, srcComponent=component_id
+        )
         link.robust_parsing = True
 
         if signing.enabled:
             link.signing.link_id = min(link_id, 255)
             link.signing.secret_key = signing.key
-            link.signing.timestamp = _get_timestamp_for_signing()
+            link.signing.timestamp = _get_initial_timestamp_for_signing()
             link.signing.sign_outgoing = True
             link.signing.allow_unsigned_callback = (
                 _allow_all_unsigned_messages
@@ -175,7 +173,9 @@ def create_communication_manager(
     return manager
 
 
-def create_mavlink_message(link, _type: str, *args, **kwds) -> MAVLinkMessage:
+def create_mavlink_message(
+    link: MAVLinkInterface, _type: str, *args, **kwds
+) -> MAVLinkMessage:
     """Creates a MAVLink message from the methods of a MAVLink object received
     from the low-level `pymavlink` library.
 
@@ -202,7 +202,7 @@ def create_mavlink_message_channel(
     connection: Connection,
     log: Logger,
     *,
-    dialect: Union[str, Callable] = "ardupilotmega",
+    dialect: str = "ardupilotmega",
     system_id: int = 255,
     link_ids: Optional[dict[Connection, int]] = None,
     signing: MAVLinkSigningConfiguration = MAVLinkSigningConfiguration.DISABLED,
@@ -370,7 +370,7 @@ def _create_datagram_based_mavlink_message_channel(
     return channel
 
 
-def _notify_mavlink_packet_sent(mavlink, packet: bytes) -> None:
+def _notify_mavlink_packet_sent(mavlink: MAVLinkInterface, packet: bytes) -> None:
     # Bookkeeping copied from the MAVLink.send() method
     mavlink.seq = (mavlink.seq + 1) % 256
     mavlink.total_packets_sent += 1

@@ -3,11 +3,18 @@ from __future__ import annotations
 from base64 import b64encode, b64decode
 from dataclasses import dataclass
 from re import match, sub
-from typing import ClassVar
+from typing import Callable, ClassVar, TYPE_CHECKING
+from wrapt import ObjectProxy
 
 from .errors import InvalidSigningKeyError
 
-__all__ = ("MAVLinkSigningConfiguration",)
+if TYPE_CHECKING:
+    from flockwave.protocols.mavlink.types import (
+        MAVLinkInterface,
+        MAVLinkSigningInterface,
+    )
+
+__all__ = ("MAVLinkSigningConfiguration", "SignatureTimestampSynchronizer")
 
 
 @dataclass(frozen=True)
@@ -88,3 +95,76 @@ class MAVLinkSigningConfiguration:
 
 
 MAVLinkSigningConfiguration.DISABLED = MAVLinkSigningConfiguration()
+
+
+class SignatureTimestampSynchronizer:
+    """Helper object to synchronize MAVLink signing timestamps between
+    multiple MAVLinkSigning_ objects.
+
+    This object keeps track of a common timestamp that is only ever allowed to
+    move forward. MAVLinkSigning_ objects can be wrapped by a special-purpose
+    object proxy instance that overrides the `timestamp` property with a getter
+    and setter that returns and updates the common timestamp instead of the
+    individual timestamp of the MAVLinkSigning_ object.
+    """
+
+    _timestamp: int
+    """Common timestamp for each of the MAVLinkSigning_ objects wrapped by
+    this synchronizer instance.
+    """
+
+    class TimestampProxy(ObjectProxy):
+        def __init__(
+            self,
+            wrapped: MAVLinkSigningInterface,
+            getter: Callable[[], int],
+            updater: Callable[[int], None],
+        ):
+            self._self_getter = getter
+            self._self_updater = updater
+            super().__init__(wrapped)
+
+        @property
+        def timestamp(self) -> int:
+            return self._self_getter()
+
+        @timestamp.setter
+        def timestamp(self, value: int) -> None:
+            return self._self_updater(value)
+
+    def __init__(self, initial: int = 0):
+        """Constructor.
+
+        Arguments:
+            initial: the initial timestamp to use by the synchronizer
+        """
+        self._timestamp = initial
+
+    def _get_timestamp(self) -> int:
+        """Returns the timestamp in this object."""
+        return self._timestamp
+
+    def _update_timestamp(self, value: int) -> None:
+        """Updates the timestamp in this object if it is smaller than the given
+        value. Leaves the timestamp intact otherwise.
+        """
+        if self._timestamp < value:
+            self._timestamp = value
+
+    @property
+    def timestamp(self) -> int:
+        return self._get_timestamp()
+
+    def patch(self, mavlink: MAVLinkInterface) -> None:
+        """Patches a MAVLink object to use a synchronized signature timestamp."""
+        mavlink.signing = self.wrap(mavlink.signing)
+
+    def wrap(self, signing_state) -> MAVLinkSigningInterface:
+        """Wraps an existing MAVLinkSigning_ object with an object proxy that
+        overrides the timestamp to correspond to the common timestamp in this
+        timestamp synchronizer class.
+        """
+        self._update_timestamp(signing_state.timestamp)
+        return self.TimestampProxy(
+            signing_state, self._get_timestamp, self._update_timestamp
+        )

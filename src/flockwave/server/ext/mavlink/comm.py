@@ -19,7 +19,7 @@ from flockwave.networking import format_socket_address
 from flockwave.server.comm import NO_BROADCAST_ADDRESS, CommunicationManager
 
 from .enums import MAVComponent
-from .signing import MAVLinkSigningConfiguration
+from .signing import MAVLinkSigningConfiguration, SignatureTimestampSynchronizer
 from .types import MAVLinkMessage, MAVLinkMessageSpecification
 
 if TYPE_CHECKING:
@@ -335,7 +335,36 @@ def _create_datagram_based_mavlink_message_channel(
     #    boundaries do not align with the packet boundaries of the transport
     #    medium (e.g., UDP packets). Therefore, we need to keep track of partially
     #    parsed MAVLink messages between datagrams.
-    mavlink_by_address = defaultdict(mavlink_factory)
+    #
+    # There are still some unexpected issues with this approach, though. Each
+    # drone is accessible via _two_ addresses: its own unicast address and the
+    # broadcast address. The broadcast address uses a common sequence number for
+    # all destinations. The unicast address uses its own sequence number. On the
+    # drone's side there is no way to distiguish between the two, so a broadcast
+    # packet followed by a unicast packet (or vice versa) will introduce gaps
+    # in the sequence numbering, making the drone overestimate the packet loss
+    # on the link.
+    #
+    # Broadcast vs unicast packets also cause problems with MAVLink packet
+    # signing as their timestamp counters are not synchronized by default.
+    # Since all the MAVLink objects constructed here will use the same link ID
+    # in the signatures, they need to behave as a "hivemind" -- their timestamp
+    # counters must be synchronized such that whenever one of the counters is
+    # incremented, the remaining timestamps must also be incremented.
+
+    signature_timestamp_synchronizer = SignatureTimestampSynchronizer()
+
+    def create_mavlink_object() -> MAVLinkInterface:
+        """Factory that creates a MAVLink object with the ``mavlink_factory``
+        and also ensures that all objects created from this function have the
+        same MAVLinkSigning_ internal object to ensure synchronization of
+        timestamps with the same link ID.
+        """
+        mavlink = mavlink_factory()
+        signature_timestamp_synchronizer.patch(mavlink)
+        return mavlink
+
+    mavlink_by_address = defaultdict(create_mavlink_object)
 
     # Connection is a datagram-based connection so we will be receiving
     # full messages along with the addresses they were sent from

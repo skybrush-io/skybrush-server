@@ -2,6 +2,8 @@
 UAV and the ground station via some communication link.
 """
 
+from __future__ import annotations
+
 from collections import defaultdict
 from compose import compose
 from functools import partial

@@ -1158,13 +1158,13 @@ files = [
 
 [[package]]
 name = "importlib-metadata"
-version = "7.2.1"
+version = "8.0.0"
 description = "Read metadata from Python packages"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "importlib_metadata-7.2.1-py3-none-any.whl", hash = "sha256:ffef94b0b66046dd8ea2d619b701fe978d9264d38f3998bc4c27ec3b146a87c8"},
-    {file = "importlib_metadata-7.2.1.tar.gz", hash = "sha256:509ecb2ab77071db5137c655e24ceb3eee66e7bbc6574165d0d114d9fc4bbe68"},
+    {file = "importlib_metadata-8.0.0-py3-none-any.whl", hash = "sha256:15584cf2b1bf449d98ff8a6ff1abef57bf20f3ac6454f431736cd3e660921b2f"},
+    {file = "importlib_metadata-8.0.0.tar.gz", hash = "sha256:188bd24e4c346d3f0a933f275c2fec67050326a856b9a359881d7c2a697e8812"},
 ]
 
 [package.dependencies]
@@ -1651,13 +1651,13 @@ totp = ["cryptography"]
 
 [[package]]
 name = "pdoc"
-version = "14.5.0"
+version = "14.5.1"
 description = "API Documentation for Python Projects"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "pdoc-14.5.0-py3-none-any.whl", hash = "sha256:9a8a84e19662610c0620fbe9f2e4174e3b090f8b601ed46348786ebb7517c508"},
-    {file = "pdoc-14.5.0.tar.gz", hash = "sha256:79f534dc8a6494638dd6056b78e17a654df7ed34cc92646553ce3a7ba5a4fa4a"},
+    {file = "pdoc-14.5.1-py3-none-any.whl", hash = "sha256:fda6365a06e438b43ca72235b58a2e2ecd66445fcc444313f6ebbde4b0abd94b"},
+    {file = "pdoc-14.5.1.tar.gz", hash = "sha256:4ddd9c5123a79f511cedffd7231bf91a6e0bd0968610f768342ec5d00b5eefee"},
 ]
 
 [package.dependencies]
@@ -2322,13 +2322,13 @@ reference = "collmot"
 
 [[package]]
 name = "skybrush-ext-flockctrl"
-version = "3.3.0"
+version = "3.3.1"
 description = "Support for flockctrl-based drones in Skybrush Server"
 optional = true
 python-versions = ">=3.9,<4.0"
 files = [
-    {file = "skybrush_ext_flockctrl-3.3.0-py3-none-any.whl", hash = "sha256:208479d92c4732d2fc5510d21549299140de89844e68ca52bb318c0023afc7b7"},
-    {file = "skybrush_ext_flockctrl-3.3.0.tar.gz", hash = "sha256:be8ced9114394d7c65907870eaa5930d337722bd78bbff5f663c95b9fc3f7526"},
+    {file = "skybrush_ext_flockctrl-3.3.1-py3-none-any.whl", hash = "sha256:37ebda9f68e684c8c721672ded6e7446870ca0df2f97052c54ecba5cea6d8183"},
+    {file = "skybrush_ext_flockctrl-3.3.1.tar.gz", hash = "sha256:aa4090867cf5de817ccf16151c9a41ca66b04b8b7cd80354a1e891615963d64a"},
 ]
 
 [package.dependencies]
@@ -2725,4 +2725,4 @@ pro = ["skybrush-ext-flight-report", "skybrush-ext-map-cache", "skybrush-ext-sid
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.9"
-content-hash = "91387239315dd80e27d96c88d5f710cd97ad93f78d9e4c6ecf02429069b13b8a"
+content-hash = "86d65d283796af72227d6248f3f0050ee391ee7f162e125bf0c6b46bca60b731"

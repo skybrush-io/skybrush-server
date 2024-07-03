@@ -51,6 +51,7 @@ from flockwave.server.show import (
     get_trajectory_from_show_specification,
     TrajectorySpecification,
 )
+from flockwave.server.types import GCSLogMessageSender
 from flockwave.server.utils import color_to_rgb8_triplet, nop, optional_float
 from flockwave.spec.errors import FlockwaveErrorCode
 from flockwave.spec.ids import make_valid_object_id
@@ -540,7 +541,7 @@ class CrazyflieUAV(UAVBase):
     driver: CrazyflieDriver
     notify_updated: Callable[[], None]
     notify_shutdown_suspend_or_reboot: Callable[[], None]
-    send_log_message_to_gcs: Callable[[str], None]
+    send_log_message_to_gcs: GCSLogMessageSender
     uri: Optional[str]
 
     _airborne: bool

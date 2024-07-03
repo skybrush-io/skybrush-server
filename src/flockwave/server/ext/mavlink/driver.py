@@ -36,6 +36,7 @@ from flockwave.server.model.preflight import PreflightCheckInfo, PreflightCheckR
 from flockwave.server.model.safety import SafetyConfigurationRequest
 from flockwave.server.model.transport import TransportOptions
 from flockwave.server.model.uav import VersionInfo, UAVBase, UAVDriver
+from flockwave.server.types import GCSLogMessageSender
 from flockwave.server.utils import color_to_rgb8_triplet, to_uppercase_string
 from flockwave.spec.errors import FlockwaveErrorCode
 
@@ -49,6 +50,7 @@ from flockwave.server.show import (
     get_yaw_setpoints_from_show_specification,
 )
 from flockwave.server.show.formats import SkybrushBinaryShowFile
+from flockwave.server.utils.generic import nop
 
 from .accelerometer import AccelerometerCalibration
 from .autopilots import ArduPilot, Autopilot, UnknownAutopilot
@@ -980,7 +982,7 @@ class MAVLinkUAV(UAVBase):
 
     driver: MAVLinkDriver
     notify_updated: Callable[[], None]
-    send_log_message_to_gcs: Callable[[str], None]
+    send_log_message_to_gcs: GCSLogMessageSender
 
     _accelerometer_calibration: Optional[AccelerometerCalibration] = None
     """Accelerometer calibration status of the drone, constructed lazily.
@@ -1081,7 +1083,7 @@ class MAVLinkUAV(UAVBase):
         self._velocity = VelocityNED()
 
         self.notify_updated = None  # type: ignore
-        self.send_log_message_to_gcs = None  # type: ignore
+        self.send_log_message_to_gcs = nop
 
         self._reset_mavlink_version()
 

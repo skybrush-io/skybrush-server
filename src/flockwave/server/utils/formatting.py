@@ -7,6 +7,8 @@ from flockwave.gps.vectors import GPSCoordinate
 
 __all__ = (
     "format_gps_coordinate",
+    "format_latitude_for_nmea_gga_message",
+    "format_longitude_for_nmea_gga_message",
     "format_list_nicely",
     "format_number_nicely",
     "format_uav_ids_nicely",
@@ -25,6 +27,34 @@ def format_gps_coordinate(coord: GPSCoordinate) -> str:
         return f"{coord.lat:.7f}°, {coord.lon:.7f}°, {coord.amsl:.1f}m AGL"
     else:
         return f"{coord.lat:.7f}°, {coord.lon:.7f}°"
+
+
+def format_latitude_for_nmea_gga_message(lat: float) -> tuple[str, str]:
+    """Formats a latitude in a way that is suitable for NMEA GGA messages.
+
+    Args:
+        lat: the latitude
+
+    Returns:
+        the formatted coordinate and the sign (North or South)
+    """
+    sign = "S" if lat < 0 else "N"
+    deg, min_frac = divmod(abs(lat), 1)
+    return f"{int(deg):02}{min_frac * 60:07.4f}", sign
+
+
+def format_longitude_for_nmea_gga_message(lon: float) -> tuple[str, str]:
+    """Formats a longitude in a way that is suitable for NMEA GGA messages.
+
+    Args:
+        lon: the longitude
+
+    Returns:
+        the formatted coordinate and the sign (East or West)
+    """
+    sign = "W" if lon < 0 else "E"
+    deg, min_frac = divmod(abs(lon), 1)
+    return f"{int(deg):03}{min_frac * 60:07.4f}", sign
 
 
 def format_list_nicely(

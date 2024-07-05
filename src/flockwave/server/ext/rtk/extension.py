@@ -29,7 +29,11 @@ from flockwave.server.model.log import Severity
 from flockwave.server.model.messages import FlockwaveMessage, FlockwaveResponse
 from flockwave.server.registries import find_in_registry
 from flockwave.server.utils import overridden
-from flockwave.server.utils.formatting import format_gps_coordinate
+from flockwave.server.utils.formatting import (
+    format_gps_coordinate,
+    format_latitude_for_nmea_gga_message,
+    format_longitude_for_nmea_gga_message,
+)
 from flockwave.server.utils.serial import (
     SerialPortConfiguration,
     SerialPortDescriptor,
@@ -688,9 +692,9 @@ class RTKExtension(Extension):
                 if location is None or location.position is None:
                     continue
 
-                lat = location.position.lat
-                lon = location.position.lon
-                alt = location.position.amsl
+                lat: float = location.position.lat
+                lon: float = location.position.lon
+                alt: Optional[float] = location.position.amsl
                 if alt is None:
                     alt = 0.0
 
@@ -707,11 +711,9 @@ class RTKExtension(Extension):
                         # Time in HHMMSS format
                         datetime.utcnow().strftime("%H%M%S"),
                         # Latitude and latitude sign
-                        f"{lat_dms:07.2f}",
-                        "N" if lat >= 0 else "S",
+                        *format_latitude_for_nmea_gga_message(lat),
                         # Longitude and longitude sign
-                        f"{lon_dms:08.2f}",
-                        "E" if lon >= 0 else "W",
+                        *format_longitude_for_nmea_gga_message(lon),
                         # Fix type, number of satellites, HDOP
                         "1",
                         "10",

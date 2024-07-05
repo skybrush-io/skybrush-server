@@ -15,6 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - MAVLink pressure sensor calibration messages may now also return "in progress" to consider them successful.
 
+- Fixed a bug in the formatting of NMEA GGA messages for remote RTK stations that require the base station coordinates.
+
 ## [2.18.1] - 2024-04-05
 
 ### Fixed

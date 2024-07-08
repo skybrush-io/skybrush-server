@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## Unreleased
+## [2.19.0] - 2024-07-08
 
 ### Added
 
@@ -16,6 +16,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - MAVLink pressure sensor calibration messages may now also return "in progress" to consider them successful.
 
 - Fixed a bug in the formatting of NMEA GGA messages for remote RTK stations that require the base station coordinates.
+
+- MAVLink signature timestamps are now synchronized between broadcast and unicast streams of the same network.
 
 ## [2.18.1] - 2024-04-05
 

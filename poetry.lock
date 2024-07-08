@@ -353,13 +353,13 @@ files = [
 
 [[package]]
 name = "certifi"
-version = "2024.6.2"
+version = "2024.7.4"
 description = "Python package for providing Mozilla's CA Bundle."
 optional = false
 python-versions = ">=3.6"
 files = [
-    {file = "certifi-2024.6.2-py3-none-any.whl", hash = "sha256:ddc6c8ce995e6987e7faf5e3f1b02b302836a0e5d98ece18392cb1a36c72ad56"},
-    {file = "certifi-2024.6.2.tar.gz", hash = "sha256:3cd43f1c6fa7dedc5899d69d3ad0398fd018ad1a17fba83ddaf78aa46c747516"},
+    {file = "certifi-2024.7.4-py3-none-any.whl", hash = "sha256:c198e21b1289c2ab85ee4e67bb4b4ef3ead0892059901a8d5b622f24a1101e90"},
+    {file = "certifi-2024.7.4.tar.gz", hash = "sha256:5a1e7645bc0ec61a09e26c36f6106dd4cf40c6db3a1fb6352b0244e7fb057c7b"},
 ]
 
 [[package]]
@@ -937,13 +937,13 @@ reference = "fury"
 
 [[package]]
 name = "flockwave-net"
-version = "7.0.1"
+version = "7.0.2"
 description = "Networking related functions for apps based on the Flockwave framework"
 optional = false
 python-versions = ">=3.9,<4.0"
 files = [
-    {file = "flockwave-net-7.0.1.tar.gz", hash = "sha256:e4fa3ec63a4be8504473a90156ef53abacef5f4eb7fa9af07f8efe0c36c5d510"},
-    {file = "flockwave_net-7.0.1-py3-none-any.whl", hash = "sha256:cd81e5b66b0abfa3148a4a6b6d5ad28622c787c0cffd1e8a1a5107c731fd0268"},
+    {file = "flockwave-net-7.0.2.tar.gz", hash = "sha256:90d305922fa016f6c753c4af1e3deb6744cbf5c75e5e596503219fb99ce2afd5"},
+    {file = "flockwave_net-7.0.2-py3-none-any.whl", hash = "sha256:73386441a957aea5bca26eca6906acf550157df9f83ef3c619b683014476a020"},
 ]
 
 [package.dependencies]
@@ -2516,13 +2516,13 @@ files = [
 
 [[package]]
 name = "trio"
-version = "0.25.1"
+version = "0.26.0"
 description = "A friendly Python library for async concurrency and I/O"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "trio-0.25.1-py3-none-any.whl", hash = "sha256:e42617ba091e7b2e50c899052e83a3c403101841de925187f61e7b7eaebdf3fb"},
-    {file = "trio-0.25.1.tar.gz", hash = "sha256:9f5314f014ea3af489e77b001861c535005c3858d38ec46b6b071ebfa339d7fb"},
+    {file = "trio-0.26.0-py3-none-any.whl", hash = "sha256:bb9c1b259591af941fccfbabbdc65bc7ed764bd2db76428454c894cd5e3d2032"},
+    {file = "trio-0.26.0.tar.gz", hash = "sha256:67c5ec3265dd4abc7b1d1ab9ca4fe4c25b896f9c93dac73713778adab487f9c4"},
 ]
 
 [package.dependencies]
@@ -2725,4 +2725,4 @@ pro = ["skybrush-ext-flight-report", "skybrush-ext-map-cache", "skybrush-ext-sid
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.9"
-content-hash = "86d65d283796af72227d6248f3f0050ee391ee7f162e125bf0c6b46bca60b731"
+content-hash = "d247432a6f92b15e64b5f9d6864aad07e02b57cd512289fe4ab24f460ac4f3f6"

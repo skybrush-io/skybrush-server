@@ -9,7 +9,13 @@ from dataclasses import dataclass
 from errno import EADDRNOTAVAIL, ENETDOWN, ENETUNREACH, errorcode
 from functools import partial
 from logging import Logger
-from trio import BrokenResourceError, open_memory_channel, sleep, WouldBlock
+from trio import (
+    BrokenResourceError,
+    ClosedResourceError,
+    open_memory_channel,
+    sleep,
+    WouldBlock,
+)
 from trio_util import wait_all
 from typing import (
     Any,
@@ -409,7 +415,7 @@ class CommunicationManager(Generic[PacketType, AddressType]):
         except Exception as ex:
             has_error = True
 
-            if not isinstance(ex, BrokenResourceError):
+            if not isinstance(ex, (BrokenResourceError, ClosedResourceError)):
                 self.log.exception(ex)
 
             if channel_created:

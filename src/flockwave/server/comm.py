@@ -6,7 +6,7 @@ link (e.g., standard 802.11 wifi).
 from collections import defaultdict
 from contextlib import contextmanager
 from dataclasses import dataclass
-from errno import ENETDOWN, ENETUNREACH
+from errno import EADDRNOTAVAIL, ENETDOWN, ENETUNREACH, errorcode
 from functools import partial
 from logging import Logger
 from trio import BrokenResourceError, open_memory_channel, sleep, WouldBlock
@@ -516,13 +516,14 @@ class CommunicationManager(Generic[PacketType, AddressType]):
                         if ex.errno in (
                             ENETDOWN,
                             ENETUNREACH,
+                            EADDRNOTAVAIL,
                             WSAENETDOWN,
                             WSAENETUNREACH,
                             WSAESERVERUNREACH,
                         ):
                             # This is okay
                             self.log.error(
-                                "Network is down or unreachable",
+                                f"Network is down or unreachable ({errorcode.get(ex.errno, ex.errno)})",
                                 extra={"id": name or "", "telemetry": "ignore"},
                             )
                         else:

@@ -5,19 +5,36 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.19.1] - 2024-07-11
+
+### Added
+
+- Added support for parsing MSM5 and MSM6 RTK correction messages so you can
+  now see the carrier-to-noise ratio in the RTK dialog box of Skybrush Live if
+  your base station provides MSM5 or MSM6 messages.
+
+### Fixed
+
+- Fixed a bug in the decoder of chunked transfer encoding when using RTK
+  corrections from NTRIP servers.
+
 ## [2.19.0] - 2024-07-08
 
 ### Added
 
-- Low battery threshold in safety configuration can now be given as percentage as well
+- Low battery threshold in safety configuration can now be given as percentage
+  as well
 
 ### Fixed
 
-- MAVLink pressure sensor calibration messages may now also return "in progress" to consider them successful.
+- MAVLink pressure sensor calibration messages may now also return "in
+  progress" to consider them successful.
 
-- Fixed a bug in the formatting of NMEA GGA messages for remote RTK stations that require the base station coordinates.
+- Fixed a bug in the formatting of NMEA GGA messages for remote RTK stations
+  that require the base station coordinates.
 
-- MAVLink signature timestamps are now synchronized between broadcast and unicast streams of the same network.
+- MAVLink signature timestamps are now synchronized between broadcast and
+  unicast streams of the same network.
 
 ## [2.18.1] - 2024-04-05
 
@@ -30,9 +47,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Added flight area definition and flight mode change mission commands, primarily for adaptive swarming missions
+- Added flight area definition and flight mode change mission commands,
+  primarily for adaptive swarming missions
 
-- Added ground altitude reference for mission items and new payload action types for camera based missions
+- Added ground altitude reference for mission items and new payload action
+  types for camera based missions
 
 ## [2.17.5] - 2024-01-16
 

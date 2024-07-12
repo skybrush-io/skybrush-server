@@ -802,19 +802,19 @@ reference = "fury"
 
 [[package]]
 name = "flockwave-conn"
-version = "7.1.0"
+version = "7.2.0"
 description = "Connection objects for various data sources"
 optional = false
 python-versions = ">=3.9,<4.0"
 files = [
-    {file = "flockwave-conn-7.1.0.tar.gz", hash = "sha256:1702a76370c1bd26c4c67f20ad167f40b348f39f2407678c87cc2f743dbbd9b9"},
-    {file = "flockwave_conn-7.1.0-py3-none-any.whl", hash = "sha256:03a19e5932e674931ec25beb23836df1354b7b85f378f285c294de89e4c897fa"},
+    {file = "flockwave-conn-7.2.0.tar.gz", hash = "sha256:4c7491a5c1c22893ec00984a16999e563d822d58f606fcc70cd3fdeacebcb952"},
+    {file = "flockwave_conn-7.2.0-py3-none-any.whl", hash = "sha256:797a6a4e5d098299f0384bd99e85ea73d1581d9594d840951eb926c0e5439794"},
 ]
 
 [package.dependencies]
 blinker = ">=1.4,<2.0"
 flockwave-async = ">=1.4.0,<2.0.0"
-flockwave-net = {version = ">=7.0.0,<8.0.0", extras = ["async"]}
+flockwave-net = {version = ">=7.0.3,<8.0.0", extras = ["async"]}
 flockwave-parsers = ">=2.0.0,<3.0.0"
 hexdump = ">=3.3,<4.0"
 pyserial = {version = ">=3.5,<4.0", optional = true, markers = "extra == \"serial\""}
@@ -2725,4 +2725,4 @@ pro = ["skybrush-ext-flight-report", "skybrush-ext-map-cache", "skybrush-ext-sid
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.9"
-content-hash = "db31b5421e4e3da6f92396d5024588d6d1ec7f8533886ea934dedc1052bb6aed"
+content-hash = "c6be3ef0f2e71970757d8e33e58c0decd9d1aa668a04dd63ef08f49161c3ace1"

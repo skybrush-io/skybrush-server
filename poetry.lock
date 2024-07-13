@@ -2286,13 +2286,13 @@ reference = "collmot"
 
 [[package]]
 name = "skybrush-ext-firmware-update"
-version = "0.3.0"
+version = "0.4.0"
 description = "OTA firmware update support for Skybrush Server"
 optional = true
 python-versions = ">=3.9,<4.0"
 files = [
-    {file = "skybrush_ext_firmware_update-0.3.0-py3-none-any.whl", hash = "sha256:a0e8ef660a9cc8df5314a685b8c0bf08a3779a73d44b3698b213cb9b10aad3b4"},
-    {file = "skybrush_ext_firmware_update-0.3.0.tar.gz", hash = "sha256:a29e64fe56fb4b7b4b8f994ec0286d803b08a74eace064a47e7943f89e90cdcc"},
+    {file = "skybrush_ext_firmware_update-0.4.0-py3-none-any.whl", hash = "sha256:8aa40235b606f408809a6a729ab6bba51a18ff0d0ffcb8de7124143135dc2ad6"},
+    {file = "skybrush_ext_firmware_update-0.4.0.tar.gz", hash = "sha256:e0406613d8545ac960e257c85a83a605beb3949965ab2225ac4e8714c7558774"},
 ]
 
 [package.source]
@@ -2722,4 +2722,4 @@ pro = ["skybrush-ext-flight-report", "skybrush-ext-map-cache", "skybrush-ext-sid
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.9"
-content-hash = "ff5b41bcaa8cc31908407d1c04f22b3a9de82cf1d6cc5a4457eef0375f39c231"
+content-hash = "de9ebbd621105e3123227d346ed70c828a8d19b0f5c24f07e44d41c75906341c"

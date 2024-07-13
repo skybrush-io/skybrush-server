@@ -754,13 +754,13 @@ dotenv = ["python-dotenv"]
 
 [[package]]
 name = "flockwave-app-framework"
-version = "3.0.1"
+version = "3.1.1"
 description = "Generic app framework for CLI based apps in the Skybrush suite"
 optional = false
 python-versions = ">=3.9,<4.0"
 files = [
-    {file = "flockwave-app-framework-3.0.1.tar.gz", hash = "sha256:54cd3eee04e1b272146aa22c85d08acf590b3536ccccf2f3c646c2f27b541bb2"},
-    {file = "flockwave_app_framework-3.0.1-py3-none-any.whl", hash = "sha256:f3fd3c286d38e8dedf62057adf7485904f074b9b5efffcd992b7af65810d16de"},
+    {file = "flockwave-app-framework-3.1.1.tar.gz", hash = "sha256:9aba34b0da5346b721f94fe9831e29162cca0bdcbf678494265983d9041fbcff"},
+    {file = "flockwave_app_framework-3.1.1-py3-none-any.whl", hash = "sha256:1ee9c0b44f70cf2830c55e989a74b4c3afa123c4b5ae060d3c596a147ca87ec7"},
 ]
 
 [package.dependencies]
@@ -768,6 +768,7 @@ exceptiongroup = ">=1.1.3,<2.0.0"
 flockwave-conn = {version = ">=7.0.0,<8.0.0", optional = true, markers = "extra == \"daemon\""}
 flockwave-ext = {version = ">=1.24.2,<2.0.0", optional = true, markers = "extra == \"daemon\""}
 json5 = ">=0.9.14"
+tomli = {version = ">=2.0.1,<3.0.0", markers = "python_version < \"3.11\""}
 trio = ">=0.24.0"
 
 [package.extras]
@@ -2721,4 +2722,4 @@ pro = ["skybrush-ext-flight-report", "skybrush-ext-map-cache", "skybrush-ext-sid
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.9"
-content-hash = "864af108bff35292fcc53166d431aca032f5129d56c0d9b24f527f8181512d46"
+content-hash = "ff5b41bcaa8cc31908407d1c04f22b3a9de82cf1d6cc5a4457eef0375f39c231"

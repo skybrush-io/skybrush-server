@@ -11,6 +11,7 @@ import warnings
 from typing import Optional
 
 from flockwave import logger
+from flockwave.app_framework.hacks import install_unraisable_hook
 
 from .logger import log
 from .utils.packaging import is_packaged
@@ -53,6 +54,9 @@ def start(
     log_style: str = "fancy",
 ):
     """Start the Skybrush server."""
+    # Silence some irrelevant exceptions when exiting the app
+    install_unraisable_hook()
+
     # Set up the logging format
     logger.install(
         level=logging.DEBUG if debug else logging.WARN if quiet else logging.INFO,

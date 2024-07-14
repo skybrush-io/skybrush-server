@@ -2318,20 +2318,20 @@ reference = "collmot"
 
 [[package]]
 name = "skybrush-ext-flockctrl"
-version = "3.4.0"
+version = "3.5.0"
 description = "Support for flockctrl-based drones in Skybrush Server"
 optional = true
 python-versions = ">=3.9,<4.0"
 files = [
-    {file = "skybrush_ext_flockctrl-3.4.0-py3-none-any.whl", hash = "sha256:4f3859232e177f32bad802aeeeae1c65d38037a43945ecf6d14b8cd52a968899"},
-    {file = "skybrush_ext_flockctrl-3.4.0.tar.gz", hash = "sha256:a57205d679ceedaacb57f296346ea6cf5b4f8f6d3064c59452ea62b557d2437d"},
+    {file = "skybrush_ext_flockctrl-3.5.0-py3-none-any.whl", hash = "sha256:f57866357827e26d11d2e58583090eb4acb3509df9954bdf9937b0f0cbdc8e76"},
+    {file = "skybrush_ext_flockctrl-3.5.0.tar.gz", hash = "sha256:e5f78981f98bf6ada3e51eb384434b093418b2e48bae18ae8d93f07769a78ecb"},
 ]
 
 [package.dependencies]
 bidict = ">=0.22.0"
 colour = ">=0.1.5"
-flockwave-conn = ">=7.2.0,<8.0.0"
-flockwave-flockctrl = ">=3.1.0,<4.0.0"
+flockwave-conn = ">=7.2.1,<8.0.0"
+flockwave-flockctrl = ">=3.1.1,<4.0.0"
 paramiko = ">=3.0.0,<4.0.0"
 python-slugify = {version = ">=8.0.1,<9.0.0", extras = ["unidecode"]}
 scp = ">=0.14.4"
@@ -2722,4 +2722,4 @@ pro = ["skybrush-ext-flight-report", "skybrush-ext-map-cache", "skybrush-ext-sid
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.9"
-content-hash = "de9ebbd621105e3123227d346ed70c828a8d19b0f5c24f07e44d41c75906341c"
+content-hash = "f2a9b028b25b70d3a9d53308023ee4282b24ccb4ce7e03b3b41b670fabbb6fd1"

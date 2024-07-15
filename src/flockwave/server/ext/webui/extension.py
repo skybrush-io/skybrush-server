@@ -30,6 +30,7 @@ from .utils import (
 if TYPE_CHECKING:
     from flockwave.ext.manager import ExtensionManager
     from flockwave.server.app import SkybrushServer
+    from semver import Version
 
 
 __all__ = ("index", "run")
@@ -78,6 +79,7 @@ class ExtensionInfo:
     dependencies: list[str] = field(default_factory=list)
     dependents: list[str] = field(default_factory=list)
     restart_requested: bool = False
+    version: Optional[Version] = None
 
     @classmethod
     def for_extension(
@@ -87,6 +89,7 @@ class ExtensionInfo:
         result.description = ext_manager.get_description_of_extension(name) or ""
         result.tags = sorted(ext_manager.get_tags_of_extension(name))
         result.restart_requested = ext_manager.was_app_restart_requested_by(name)
+        result.version = ext_manager.get_version_of_extension(name)
 
         if details:
             result.dependencies = sorted(

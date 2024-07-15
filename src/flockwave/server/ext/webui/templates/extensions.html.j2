@@ -8,6 +8,7 @@
         <tr>
             <th></th>
             <th>Name</th>
+            <th>Version</th>
             <th>Description</th>
             <th></th>
         </tr>
@@ -27,6 +28,9 @@
             </td>
             <td class="align-baseline">
                 <pre class="mb-0">{{ prefix }}{{ extension.name }}</pre>
+            </td>
+            <td class="align-baseline">
+                {{ extension.version or "" }}
             </td>
             <td class="align-baseline">
                 {{ extension.description }}

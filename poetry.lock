@@ -835,17 +835,19 @@ reference = "fury"
 
 [[package]]
 name = "flockwave-ext"
-version = "1.25.1"
+version = "1.26.0"
 description = "Generic extension manager for Skybrush-related projects"
 optional = false
 python-versions = ">=3.9,<4.0"
 files = [
-    {file = "flockwave-ext-1.25.1.tar.gz", hash = "sha256:5f3b03a5238d27f43c4a6d14499f65380f1ee2c8c0d1239366a6c5660ad65266"},
-    {file = "flockwave_ext-1.25.1-py3-none-any.whl", hash = "sha256:759ee6a2c059ecde9ea98502b399fe4ce462c7732f6b759245311615fd3565f2"},
+    {file = "flockwave-ext-1.26.0.tar.gz", hash = "sha256:82cc88be112192b51654b82ea8eb873a694ef4fc4c9466b65adb99618e3372df"},
+    {file = "flockwave_ext-1.26.0-py3-none-any.whl", hash = "sha256:710485f64efa2b90cd24e638fb9542ec04b524ccd6ef63e4fdbe2f35901fc9e3"},
 ]
 
 [package.dependencies]
 blinker = ">=1.6.2,<2.0.0"
+importlib-metadata = ">=8.0.0,<9.0.0"
+semver = ">=3.0.2,<4.0.0"
 trio = ">=0.21.0"
 
 [package.source]
@@ -2214,6 +2216,17 @@ files = [
 paramiko = "*"
 
 [[package]]
+name = "semver"
+version = "3.0.2"
+description = "Python helper for Semantic Versioning (https://semver.org)"
+optional = false
+python-versions = ">=3.7"
+files = [
+    {file = "semver-3.0.2-py3-none-any.whl", hash = "sha256:b1ea4686fe70b981f85359eda33199d60c53964284e0cfb4977d243e37cf4bf4"},
+    {file = "semver-3.0.2.tar.gz", hash = "sha256:6253adb39c70f6e51afed2fa7152bcd414c411286088fb4b9effb133885ab4cc"},
+]
+
+[[package]]
 name = "shapely"
 version = "2.0.5"
 description = "Manipulation and analysis of geometric objects"
@@ -2722,4 +2735,4 @@ pro = ["skybrush-ext-flight-report", "skybrush-ext-map-cache", "skybrush-ext-sid
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.9"
-content-hash = "f2a9b028b25b70d3a9d53308023ee4282b24ccb4ce7e03b3b41b670fabbb6fd1"
+content-hash = "04a24cc35e2673e5eb8a8e1d1fba5585dfa14105116ceb9f27f26ee011a86e23"

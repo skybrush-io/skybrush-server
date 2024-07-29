@@ -55,9 +55,10 @@ def test_iter_yaw_setpoints():
 
     assert test_spec.auto_yaw is False
     assert test_spec.auto_yaw_offset == 0
-    for delta, expected in zip(
-        test_spec.iter_setpoints_as_relative(max_duration=5, max_yaw_change=30),
-        expected_result,
-        strict=True,
-    ):
+
+    observed_result = list(
+        test_spec.iter_setpoints_as_relative(max_duration=5, max_yaw_change=30)
+    )
+    assert len(observed_result) == len(expected_result)
+    for delta, expected in zip(observed_result, expected_result):
         assert delta == expected

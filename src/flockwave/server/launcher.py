@@ -23,8 +23,7 @@ from .version import __version__
     "-c",
     "--config",
     type=click.Path(resolve_path=True),
-    help="Name of the configuration file to load; defaults to "
-    "skybrush.cfg in the current directory",
+    help="Name of the configuration file to load",
 )
 @click.option(
     "-d", "--debug/--no-debug", default=False, help="Start the server in debug mode"

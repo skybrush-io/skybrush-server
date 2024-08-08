@@ -10,7 +10,6 @@ from functools import partial
 from inspect import isawaitable
 from itertools import chain
 from logging import Logger
-from jsonschema import ValidationError
 from time import monotonic
 from trio import (
     BrokenResourceError,
@@ -53,6 +52,7 @@ from .model import (
 )
 from .registries import ChannelTypeRegistry, ClientRegistry
 from .types import Disposer
+from .utils.validation import ValidationError
 
 # Legacy imports for compatibility reasons. We can get rid of these when the
 # "dock" extension has migrated to the new location in .message_handlers

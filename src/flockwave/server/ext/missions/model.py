@@ -5,8 +5,6 @@ from logging import Logger
 from blinker import Signal
 from dataclasses import dataclass
 from datetime import datetime
-from jsonschema import ValidationError
-from jsonschema.protocols import Validator
 from time import time
 from trio import Cancelled
 from typing import (
@@ -23,6 +21,7 @@ from typing import (
 from flockwave.server.errors import NotSupportedError
 from flockwave.server.model.object import ModelObject
 from flockwave.server.utils import maybe_round
+from flockwave.server.utils.validation import Validator, ValidationError
 
 from .types import MissionState
 
@@ -371,7 +370,7 @@ class Mission(ModelObject):
         self._ensure_not_started_yet()
         timestamp = (
             start_time
-            if start_time is None or isinstance(start_time, float)
+            if start_time is None or isinstance(start_time, (int, float))
             else start_time.timestamp()
         )
 
@@ -466,7 +465,7 @@ class Mission(ModelObject):
         if self.parameter_validator is None:
             return
         try:
-            self.parameter_validator.validate(parameters)
+            self.parameter_validator(parameters)
         except ValidationError as ex:
             raise RuntimeError(f"Mission parameter validation error: {ex}") from None
 

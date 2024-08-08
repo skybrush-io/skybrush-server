@@ -7,9 +7,10 @@ a JSON schema description.
 
 from contextlib import contextmanager
 from dataclasses import dataclass
-from flockwave.spec.schema import Schema
-from jsonschema.validators import validator_for
 from typing import Any, Callable, Dict, Optional
+
+from flockwave.server.utils.validation import cached_validator_for
+from flockwave.spec.schema import Schema
 
 __all__ = ("ModelMeta",)
 
@@ -341,17 +342,15 @@ class ModelMetaHelpers:
         if orig_validator is not None and not callable(orig_validator):
             raise TypeError("validate() method must be callable")
 
-        json_schema_validator_class = validator_for(schema)
-        json_schema_validator = json_schema_validator_class(schema)
+        json_schema_validator = cached_validator_for(schema)
 
         def validate(self, *args, **kwds):
             """Validates this class instance against its JSON schema.
 
             Throws:
-                jsonschema.ValidationError: if the class instance does not
-                    match its schema
+                ValidationError: if the class instance does not match its schema
             """
-            json_schema_validator.validate(self._json)
+            json_schema_validator(self._json)
             if orig_validator is not None:
                 return orig_validator(*args, **kwds)
 

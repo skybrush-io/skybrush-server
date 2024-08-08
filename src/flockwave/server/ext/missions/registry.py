@@ -6,13 +6,13 @@ be used by clients.
 
 from contextlib import contextmanager
 from functools import partial
-from jsonschema.validators import validator_for
 from typing import Iterator
 
 from flockwave.server.model import default_id_generator
 from flockwave.server.registries.base import RegistryBase
 from flockwave.server.registries.objects import ObjectRegistryProxy
 from flockwave.server.types import Disposer
+from flockwave.server.utils.validation import cached_validator_for
 
 from .model import Mission, MissionType
 
@@ -120,11 +120,10 @@ class MissionRegistry(ObjectRegistryProxy[Mission]):
         schema = mission_type.get_parameter_schema()
         if schema:
             try:
-                validator = validator_for(schema)
-                validator.check_schema(schema)
+                validator = cached_validator_for(schema)
             except Exception as ex:
                 raise RuntimeError(f"Mission parameter schema error: {ex}") from None
-            mission.parameter_validator = validator(schema)
+            mission.parameter_validator = validator
         else:
             mission.parameter_validator = None
 

@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- Fixed the parsing of horizontal and vertical position uncertainty values from
+  MAVLink `GPS_RAW_INT` messages. Earlier versions were overestimating the
+  uncertainty by a factor of 10. Thanks to Jake1999 for reporting the issue.
+
 ## [2.19.1] - 2024-07-11
 
 ### Added

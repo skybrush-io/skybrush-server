@@ -1623,10 +1623,10 @@ class MAVLinkUAV(UAVBase):
         num_sats = message.satellites_visible
 
         self._gps_fix.horizontal_accuracy = (
-            message.h_acc / 100.0 if message.h_acc > 0 else None
+            message.h_acc / 1000.0 if message.h_acc > 0 else None
         )
         self._gps_fix.vertical_accuracy = (
-            message.v_acc / 100.0 if message.v_acc > 0 else None
+            message.v_acc / 1000.0 if message.v_acc > 0 else None
         )
         self._update_gps_fix_type_and_satellite_count(
             GPSFixType(message.fix_type).to_ours(), num_sats if num_sats < 255 else None

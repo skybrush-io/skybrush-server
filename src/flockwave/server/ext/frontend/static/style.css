@@ -81,3 +81,8 @@ body {
   text-decoration: none;
   transform: translateY(1px);
 }
+
+.button-bar .button-disabled {
+  opacity: 0.5;
+  filter: grayscale(1);
+}

@@ -17,7 +17,7 @@
           {%- if links %}
           <div class="button-bar">
             {%- for link in links %}
-              <a href="{{ link.url }}" class="button">{{ link.title }}</a>
+              <a href="{{ link.url }}" class="button{{ '' if link.url != '#' else ' button-disabled' }}">{{ link.title }}</a>
             {% endfor -%}
           </div>
           {% endif -%}

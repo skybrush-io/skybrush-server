@@ -38,7 +38,11 @@ class FrontPageLink:
             return self.route
         else:
             # This is a route reference
-            return url_for(self.route)
+            try:
+                return url_for(self.route)
+            except Exception:
+                # This can happen for invalid route references
+                return "#"
 
 
 front_page_links: list[FrontPageLink] = []

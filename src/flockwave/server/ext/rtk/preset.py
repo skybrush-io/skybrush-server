@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 from urllib.parse import urlencode
-from typing import Any, Callable, Iterable, Optional, Type
+from typing import Any, Callable, Iterable, Optional, Sequence, Type
 
 from flockwave.channels.types import Encoder, Parser
 from flockwave.gps.encoder import create_gps_encoder
@@ -20,7 +20,7 @@ __all__ = ("RTKConfigurationPreset",)
 GPSPacketFilter = Callable[[GPSPacket], bool]
 """Type specification for a GPS packet filter function."""
 
-ALLOWED_FORMATS: list[str] = "auto rtcm2 rtcm3 ubx".split()
+ALLOWED_FORMATS: Sequence[str] = "auto rtcm2 rtcm3 ubx".split()
 """Allowed packet formats in RTK streams. "auto" attempts to parse RTCM3, UBX
 and NMEA messages. "ubx" attempts to parse RTCM3 and UBX messages.
 "rtcm3" is RTCM3-only, and "rtcm2" is RTCM2-only.

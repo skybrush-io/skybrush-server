@@ -59,7 +59,7 @@ class AntennaInformation:
                 RTCMV3StationaryAntennaPacket,
                 RTCMV3AntennaDescriptorPacket,
                 RTCMV3ExtendedAntennaDescriptorPacket,
-            ),
+            ),  # type: ignore
         )
 
     @property

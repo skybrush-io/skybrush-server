@@ -105,7 +105,13 @@ class RTKConfigurationPreset:
     """
 
     @classmethod
-    def from_json(cls, spec, *, id: str):
+    def from_json(
+        cls,
+        spec,
+        *,
+        id: str,
+        type: RTKConfigurationPresetType = RTKConfigurationPresetType.BUILTIN,
+    ):
         """Creates an RTK configuration preset object from its JSON
         representation used in configuration files.
 
@@ -114,8 +120,14 @@ class RTKConfigurationPreset:
             id: the ID of the preset, used when the preset is registered in a
                 registry. It is also used as a fallback when no title is
                 specified for the preset.
+            type: the type of the preset. Typically BUILTIN for presets that are
+                added in the configuration of the extension and USER for presets
+                that are stored in a separate configuration file meant for
+                presets defined by the user
         """
-        result = cls(id=id, title=str(spec["title"] if "title" in spec else id))
+        result = cls(
+            id=id, title=str(spec["title"] if "title" in spec else id), type=type
+        )
 
         if "format" in spec:
             result.format = str(spec["format"])

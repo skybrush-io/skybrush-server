@@ -4,11 +4,13 @@ and forwards the corrections to the UAVs managed by the server.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from contextlib import ExitStack
 from dataclasses import dataclass, field
 from datetime import datetime
 from fnmatch import fnmatch
 from functools import partial
+import json
 from time import monotonic
 from trio import CancelScope, open_memory_channel, open_nursery, sleep
 from trio.abc import SendChannel
@@ -44,7 +46,12 @@ from flockwave.server.utils.serial import (
 
 from .beacon_manager import RTKBeaconManager
 from .clock_sync import GPSClockSynchronizationValidator
-from .preset import RTKConfigurationPreset, ALLOWED_FORMATS, describe_format
+from .preset import (
+    RTKConfigurationPreset,
+    ALLOWED_FORMATS,
+    RTKConfigurationPresetType,
+    describe_format,
+)
 from .registry import RTKPresetRegistry
 from .statistics import RTKStatistics
 
@@ -108,12 +115,9 @@ class RTKExtension(Extension):
         assert self.log
 
         self._id_format = configuration.get("id_format", "rtk:{0}")
+
         self._presets = []
-        for id, spec in configuration.get("presets", {}).items():
-            try:
-                self._presets.append(RTKConfigurationPreset.from_json(spec, id=id))
-            except Exception:
-                self.log.error(f"Ignoring invalid RTK configuration {id!r}")
+        self._load_presets_from(configuration.get("presets", {}))
 
         self._dynamic_serial_port_configurations = []
         serial_port_specs = configuration.get("add_serial_ports")
@@ -365,6 +369,8 @@ class RTKExtension(Extension):
     async def run(self, app, configuration, logger):
         hotplug_event = app.import_api("signals").get("hotplug:event")
 
+        self._load_user_presets()
+
         with ExitStack() as stack:
             tx_queue, rx_queue = open_memory_channel(0)
 
@@ -450,6 +456,65 @@ class RTKExtension(Extension):
         This function is exported to other extensions via the exports object.
         """
         return self._statistics
+
+    def _load_presets_from(
+        self,
+        obj: Union[dict[str, Any], Sequence[Any]],
+        *,
+        type: RTKConfigurationPresetType = RTKConfigurationPresetType.BUILTIN,
+    ):
+        """Loads RTK configuration presets from the given object, which must be
+        a dictionary or a sequence.
+
+        When the object is a dictionary, it is assumed that it maps preset IDs
+        to the JSON descriptions of the presets themselves. The JSON descriptions
+        do not need to contain an ID (and if they do, they are ignored). When
+        the object is a list, it is assumed that each entry is a JSON
+        description of the preset and the description contains a key named
+        ``id``, which serves as the ID of the preset.
+        """
+        assert self.log
+
+        if isinstance(obj, dict):
+            for id, spec in obj.items():
+                try:
+                    preset = RTKConfigurationPreset.from_json(spec, id=id, type=type)
+                except Exception:
+                    self.log.error(f"Ignoring invalid RTK configuration {id!r}")
+                    continue
+
+                self._presets.append(preset)
+
+        elif isinstance(obj, Sequence):
+            for spec in obj:
+                id = spec.get("id")
+                if id is None:
+                    self.log.error("Skipping preset with no ID")
+                    continue
+
+                try:
+                    preset = RTKConfigurationPreset.from_json(spec, id=id, type=type)
+                except Exception:
+                    self.log.error(f"Ignoring invalid RTK configuration {id!r}")
+                    continue
+
+                self._presets.append(preset)
+
+    def _load_user_presets(self) -> None:
+        assert self.log
+
+        user_presets = {}
+        user_preset_file = self.get_data_dir() / "presets.json"
+        if user_preset_file.exists():
+            with user_preset_file.open() as fp:
+                try:
+                    user_presets = json.load(fp)
+                except Exception:
+                    self.log.error(
+                        f"Parse error while reading user presets from {str(user_preset_file)!r}"
+                    )
+
+        self._load_presets_from(user_presets, type=RTKConfigurationPresetType.USER)
 
     async def _request_preset_switch(
         self, value: Optional[RTKConfigurationPreset]

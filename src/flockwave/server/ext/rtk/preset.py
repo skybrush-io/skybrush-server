@@ -1,4 +1,5 @@
 from dataclasses import dataclass, field
+from enum import Enum
 from urllib.parse import urlencode
 from typing import Any, Callable, Iterable, Optional, Sequence, Type
 
@@ -45,6 +46,24 @@ def describe_format(format: str) -> str:
     return format
 
 
+class RTKConfigurationPresetType(Enum):
+    """Type of RTK configuration presets."""
+
+    BUILTIN = "builtin"
+    """BUilt-in configuration presets specified in the main configuration file."""
+
+    DYNAMIC = "dynamic"
+    """Dynamic configuration presets created by the extension automatically
+    based on hardware detection. Presets created for serial ports are of this
+    type.
+    """
+
+    USER = "user"
+    """User-specified presets in a separate configuration file of the extension.
+    These presets can be created, modified or removed by the user.
+    """
+
+
 @dataclass
 class RTKConfigurationPreset:
     """Data class representing an RTK configuration preset consisting of one or
@@ -57,6 +76,9 @@ class RTKConfigurationPreset:
 
     title: Optional[str] = None
     """A human-readable title of the preset"""
+
+    type: RTKConfigurationPresetType = RTKConfigurationPresetType.BUILTIN
+    """Type of the preset."""
 
     format: str = "auto"
     """Format of the GPS messages arriving in this configuration"""
@@ -71,9 +93,6 @@ class RTKConfigurationPreset:
 
     filter: Optional[GPSPacketFilter] = None
     """List of filters that the messages from the sources must pass through"""
-
-    dynamic: bool = False
-    """Whether this preset was generated dynamically at runtime"""
 
     auto_survey: bool = False
     """Whether switching to this preset will automatically start a survey
@@ -159,7 +178,7 @@ class RTKConfigurationPreset:
         )
         title = f"{label} ({spec})" if spec else label
 
-        result = cls(id=id, title=title)
+        result = cls(id=id, title=title, type=RTKConfigurationPresetType.DYNAMIC)
         result.format = "auto"
         result.auto_survey = True
 
@@ -216,12 +235,24 @@ class RTKConfigurationPreset:
         return create_rtcm_encoder("rtcm2" if self.format == "rtcm2" else "rtcm3")
 
     @property
+    def dynamic(self) -> bool:
+        """Returns whether the preset is dynamic. For backward compatibility
+        purposes only.
+        """
+        return self.type is RTKConfigurationPresetType.DYNAMIC
+
+    @property
     def json(self) -> Any:
         """Returns a JSON object representing this preset, in a format suitable
         for an RTK-INF message. Not all the fields are included, only the ones
         that are mandated by the RTK-INF message specification.
         """
-        return {"title": self.title, "format": self.format, "sources": self.sources}
+        return {
+            "id": self.id,
+            "title": self.title,
+            "format": self.format,
+            "sources": self.sources,
+        }
 
 
 def _is_rtcm_packet(packet: GPSPacket) -> bool:

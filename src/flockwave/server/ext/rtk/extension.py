@@ -816,7 +816,6 @@ class RTKExtension(Extension):
                         id=preset_id,
                         use_configuration_in_title=has_multiple_configurations,
                     )
-                    preset.dynamic = True
                     to_add.append(preset)
 
         to_remove = [

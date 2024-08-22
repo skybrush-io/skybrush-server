@@ -308,6 +308,9 @@ class RTKExtension(Extension):
             if not isinstance(preset_spec, dict):
                 raise RuntimeError("Preset does not match expected schema")
 
+            if "id" in preset_spec:
+                raise RuntimeError("Preset must not have an ID")
+
             preset: RTKConfigurationPreset = RTKConfigurationPreset.from_json(
                 preset_spec,
                 id=default_id_generator(),

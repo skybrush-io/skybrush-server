@@ -396,12 +396,13 @@ class RTKExtension(Extension):
             stack.enter_context(
                 app.message_hub.use_message_handlers(
                     {
-                        "X-RTK-INF": self.handle_RTK_INF,
-                        "X-RTK-LIST": self.handle_RTK_LIST,
-                        "X-RTK-STAT": self.handle_RTK_STAT,
-                        "X-RTK-SOURCE": self.handle_RTK_SOURCE,
-                        "X-RTK-SURVEY": self.handle_RTK_SURVEY,
-                    }
+                        "RTK-INF": self.handle_RTK_INF,
+                        "RTK-LIST": self.handle_RTK_LIST,
+                        "RTK-STAT": self.handle_RTK_STAT,
+                        "RTK-SOURCE": self.handle_RTK_SOURCE,
+                        "RTK-SURVEY": self.handle_RTK_SURVEY,
+                    },
+                    used_to_be_experimental=True,
                 )
             )
 

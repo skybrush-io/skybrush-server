@@ -916,7 +916,10 @@ class MessageHub:
 
     @contextmanager
     def use_message_handlers(
-        self, handlers: dict[str, MessageHandler]
+        self,
+        handlers: dict[str, MessageHandler],
+        *,
+        used_to_be_experimental: bool = False,
     ) -> Iterator[None]:
         """Context manager that registers multiple handler functions, specified
         in a dictionary mapping message types to handlers, and then unregisters
@@ -927,7 +930,22 @@ class MessageHub:
                 message types to their handler functions. Each handler will be
                 called with the incoming message, the sender and the message
                 hub object.
+            used_to_be_experimental: set this to ``True`` if the messages listed
+                in the handlers dict used to be experimental in the past. In
+                this case, the same message handler will be registered for both
+                the message type specified in the dict as a key _and_ its
+                experimental variant (prefixed with ``X-``). Make sure to
+                implement your message handlers in a way that it responds with
+                the same type as the one used in the request (with or without
+                the ``X-` prefix).
         """
+        if used_to_be_experimental:
+            new_handlers = dict(handlers)
+            for message_type, handler in handlers.items():
+                if f"X-{message_type}" not in new_handlers:
+                    new_handlers[f"X-{message_type}"] = handler
+            handlers = new_handlers
+
         with ExitStack() as stack:
             for message_type, handler in handlers.items():
                 disposer = self.register_message_handler(handler, [message_type])

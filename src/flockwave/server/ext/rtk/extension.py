@@ -311,6 +311,9 @@ class RTKExtension(Extension):
             if "id" in preset_spec:
                 raise RuntimeError("Preset must not have an ID")
 
+            if "type" in preset_spec:
+                raise RuntimeError("Preset must not have a type")
+
             preset: RTKConfigurationPreset = RTKConfigurationPreset.from_json(
                 preset_spec,
                 id=default_id_generator(),

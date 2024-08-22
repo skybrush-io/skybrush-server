@@ -25,6 +25,11 @@ from flockwave.gps.rtk import RTKMessageSet, RTKSurveySettings
 from flockwave.gps.ubx.rtk_config import UBXRTKBaseConfigurator
 from flockwave.gps.vectors import ECEFToGPSCoordinateTransformation
 from flockwave.server.ext.base import Extension
+from flockwave.server.message_handlers import (
+    create_mapper,
+    create_multi_object_message_handler,
+    create_object_listing_request_handler,
+)
 from flockwave.server.message_hub import MessageHub
 from flockwave.server.model import ConnectionPurpose
 from flockwave.server.model.log import Severity
@@ -274,33 +279,6 @@ class RTKExtension(Extension):
             failure_reason="No such RTK preset",
         )
 
-    def handle_RTK_INF(
-        self, message: FlockwaveMessage, sender, hub: MessageHub
-    ) -> FlockwaveResponse:
-        """Handles an incoming RTK-INF message."""
-        presets = {}
-
-        body = {"preset": presets, "type": "X-RTK-INF"}
-        response = hub.create_response_or_notification(
-            body=body, in_response_to=message
-        )
-
-        for preset_id in message.body.get("ids", ()):
-            entry = self.find_preset_by_id(preset_id, response)
-            if entry:
-                presets[preset_id] = entry.json
-
-        return response
-
-    def handle_RTK_LIST(
-        self, message: FlockwaveMessage, sender, hub: MessageHub
-    ) -> FlockwaveResponse:
-        """Handles an incoming RTK-LIST message."""
-        return hub.create_response_or_notification(
-            body={"ids": self._registry.ids if self._registry else []},
-            in_response_to=message,
-        )
-
     def handle_RTK_SOURCE(
         self, message: FlockwaveMessage, sender, hub: MessageHub
     ) -> FlockwaveResponse:
@@ -393,11 +371,20 @@ class RTKExtension(Extension):
 
             self._update_dynamic_presets(first=True)
 
+            # Register message handlers for RTK-related messages
+            create_RTK_INF = create_mapper(
+                "RTK-INF",
+                self._registry,
+                key="preset",
+                description="RTK preset",
+            )
             stack.enter_context(
                 app.message_hub.use_message_handlers(
                     {
-                        "RTK-INF": self.handle_RTK_INF,
-                        "RTK-LIST": self.handle_RTK_LIST,
+                        "RTK-INF": create_multi_object_message_handler(create_RTK_INF),
+                        "RTK-LIST": create_object_listing_request_handler(
+                            self._registry
+                        ),
                         "RTK-STAT": self.handle_RTK_STAT,
                         "RTK-SOURCE": self.handle_RTK_SOURCE,
                         "RTK-SURVEY": self.handle_RTK_SURVEY,

@@ -250,6 +250,23 @@ class RTKExtension(Extension):
         """
         return self._current_preset
 
+    def delete_preset_by_id(self, preset: RTKConfigurationPreset) -> bool:
+        """Deletes the RTK preset with the given ID if it is a user preset.
+
+        Returns:
+            true, unconditionally
+
+        Raises:
+            RuntimeError: if the preset cannot be deleted
+        """
+        assert self._registry is not None
+
+        if preset.type is not RTKConfigurationPresetType.USER:
+            raise RuntimeError("Only user-defined presets can be deleted")
+
+        self._registry.remove(preset)
+        return True
+
     def exports(self) -> dict[str, Any]:
         return {
             "are_corrections_ok": self._are_corrections_ok,
@@ -371,11 +388,17 @@ class RTKExtension(Extension):
 
             self._update_dynamic_presets(first=True)
 
-            # Register message handlers for RTK-related messages
+            # Register message handlers for RTK-related message
             create_RTK_INF = create_mapper(
                 "RTK-INF",
                 self._registry,
                 key="preset",
+                description="RTK preset",
+            )
+            handle_RTK_DEL = create_mapper(
+                "RTK-DEL",
+                self._registry,
+                getter=self.delete_preset_by_id,
                 description="RTK preset",
             )
             stack.enter_context(
@@ -390,6 +413,15 @@ class RTKExtension(Extension):
                         "RTK-SURVEY": self.handle_RTK_SURVEY,
                     },
                     used_to_be_experimental=True,
+                )
+            )
+            stack.enter_context(
+                app.message_hub.use_message_handlers(
+                    {
+                        "X-RTK-DEL": create_multi_object_message_handler(
+                            handle_RTK_DEL
+                        ),
+                    },
                 )
             )
 

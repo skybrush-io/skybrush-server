@@ -227,11 +227,17 @@ def create_mapper(
             if getter is None:
                 result = object
             elif not has_context:
-                result = getter(object)  # type: ignore
+                try:
+                    result = getter(object)  # type: ignore
+                except Exception as ex:
+                    result = ex
             elif context_error:
                 result = context_error
             else:
-                result = getter(object, context)  # type: ignore
+                try:
+                    result = getter(object, context)  # type: ignore
+                except Exception as ex:
+                    result = ex
 
             # If the returned result was an exception, convert it to an error
             if isinstance(result, Exception):

@@ -31,7 +31,7 @@ from flockwave.server.message_handlers import (
     create_object_listing_request_handler,
 )
 from flockwave.server.message_hub import MessageHub
-from flockwave.server.model import ConnectionPurpose
+from flockwave.server.model import ConnectionPurpose, default_id_generator
 from flockwave.server.model.log import Severity
 from flockwave.server.model.messages import FlockwaveMessage, FlockwaveResponse
 from flockwave.server.registries import find_in_registry
@@ -296,6 +296,33 @@ class RTKExtension(Extension):
             failure_reason="No such RTK preset",
         )
 
+    def handle_RTK_NEW(
+        self, message: FlockwaveMessage, sender, hub: MessageHub
+    ) -> FlockwaveResponse:
+        """Handles an incoming RTK-NEW message to create a new RTK preset."""
+        assert self._registry is not None
+
+        try:
+            body = message.body or {}
+            preset_spec = body.get("preset")
+            if not isinstance(preset_spec, dict):
+                raise RuntimeError("Preset does not match expected schema")
+
+            preset: RTKConfigurationPreset = RTKConfigurationPreset.from_json(
+                preset_spec,
+                id=default_id_generator(),
+                type=RTKConfigurationPresetType.USER,
+            )
+            try:
+                self._registry.add(preset)
+            except KeyError:
+                raise RuntimeError(f"Preset ID {preset.id} is already taken") from None
+
+            return hub.create_response_to(message, {"id": preset.id})
+
+        except Exception as ex:
+            return hub.reject(message, str(ex))
+
     def handle_RTK_SOURCE(
         self, message: FlockwaveMessage, sender, hub: MessageHub
     ) -> FlockwaveResponse:
@@ -421,6 +448,7 @@ class RTKExtension(Extension):
                         "X-RTK-DEL": create_multi_object_message_handler(
                             handle_RTK_DEL
                         ),
+                        "X-RTK-NEW": self.handle_RTK_NEW,
                     },
                 )
             )

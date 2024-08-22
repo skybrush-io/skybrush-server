@@ -109,7 +109,7 @@ class RTKConfigurationPreset:
         cls,
         spec,
         *,
-        id: str,
+        id: Optional[str] = None,
         type: RTKConfigurationPresetType = RTKConfigurationPresetType.BUILTIN,
     ):
         """Creates an RTK configuration preset object from its JSON
@@ -119,12 +119,19 @@ class RTKConfigurationPreset:
             spec: the JSON specification in the configuration file
             id: the ID of the preset, used when the preset is registered in a
                 registry. It is also used as a fallback when no title is
-                specified for the preset.
+                specified for the preset. When ``None``, it means that the
+                JSON specification is expected to provide an ID for the preset.
             type: the type of the preset. Typically BUILTIN for presets that are
                 added in the configuration of the extension and USER for presets
                 that are stored in a separate configuration file meant for
                 presets defined by the user
         """
+        if id is None:
+            try:
+                id = str(spec.pop("id"))
+            except KeyError:
+                raise RuntimeError("RTK configuration preset needs an ID") from None
+
         result = cls(
             id=id, title=str(spec["title"] if "title" in spec else id), type=type
         )

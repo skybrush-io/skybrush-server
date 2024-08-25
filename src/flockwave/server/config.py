@@ -44,7 +44,6 @@ EXTENSIONS = {
     "gps": {
         "connection": "gpsd",
         "enabled": False,
-        "format": "auto",
         "id_format": "GPS:{0}",
     },
     "hotplug": {},

@@ -346,7 +346,8 @@ class RTKStatistics:
 
     def __init__(self):
         """Constructor."""
-        self._message_observations = defaultdict(MessageObservations)
+        self._message_observations_rx = defaultdict(MessageObservations)
+        self._message_observations_tx = defaultdict(MessageObservations)
         self._satellite_cnrs = SatelliteCNRs()
         self._antenna_information = AntennaInformation()
         self._survey_status = SurveyStatus()
@@ -372,7 +373,8 @@ class RTKStatistics:
     def clear(self) -> None:
         """Clears the contents of the RTK statistics object."""
         self._antenna_information.clear()
-        self._message_observations.clear()
+        self._message_observations_rx.clear()
+        self._message_observations_tx.clear()
         self._satellite_cnrs.clear()
         self._survey_status.clear()
 
@@ -383,16 +385,25 @@ class RTKStatistics:
         """
         return {
             "antenna": self._antenna_information,
-            "messages": self._message_observations,
+            "messages": self._message_observations_rx,
+            "messages_tx": self._message_observations_tx,
             "cnr": self._satellite_cnrs,
             "survey": self._survey_status,
         }
 
-    def notify(self, packet: GPSPacket) -> None:
-        """Notifies the statistics object about the arrival of a new packet."""
+    def notify(self, packet: GPSPacket, *, forwarded: bool = True) -> None:
+        """Notifies the statistics object about the arrival of a new packet.
+
+        Args:
+            forwarded: whether the packet will be forwarded to other components
+                in the system, such as UAVs provided by extension modules. Can
+                be used to count inbound vs outbound bandwidth separately.
+        """
         if isinstance(packet, (RTCMV2Packet, RTCMV3Packet)):
             type = self._get_rtcm_packet_type(packet)
-            self._message_observations[type].add(packet, monotonic())
+            self._message_observations_rx[type].add(packet, monotonic())
+            if forwarded:
+                self._message_observations_tx[type].add(packet, monotonic())
 
         if SatelliteCNRs.has_satellite_info(packet):
             self._satellite_cnrs.add(packet, monotonic())  # type: ignore

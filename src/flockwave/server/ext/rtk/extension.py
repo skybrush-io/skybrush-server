@@ -51,10 +51,10 @@ from flockwave.server.utils.serial import (
 
 from .beacon_manager import RTKBeaconManager
 from .clock_sync import GPSClockSynchronizationValidator
+from .enums import MessageSet, RTKConfigurationPresetType
 from .preset import (
     RTKConfigurationPreset,
     ALLOWED_FORMATS,
-    RTKConfigurationPresetType,
     describe_format,
 )
 from .registry import RTKPresetRegistry
@@ -95,6 +95,7 @@ class RTKExtension(Extension):
     _last_preset_request_from_user: Optional[RTKPresetRequest] = None
     _presets: list[RTKConfigurationPreset]
     _registry: Optional[RTKPresetRegistry] = None
+    _message_set: MessageSet = MessageSet.FULL
     _rtk_beacon_manager: RTKBeaconManager
     _rtk_preset_task_cancel_scope: Optional[CancelScope] = None
     _rtk_survey_trigger: Optional[AsyncBool] = None
@@ -242,6 +243,13 @@ class RTKExtension(Extension):
             self.log.warning(
                 f"Ignoring invalid GNSS type specification: {gnss_types!r}"
             )
+
+        message_set = configuration.get("message_set")
+        if message_set:
+            try:
+                self._message_set = MessageSet(message_set)
+            except ValueError:
+                self.log.warning(f"Ignoring unknown message set: {message_set!r}")
 
     @property
     def current_preset(self) -> Optional[RTKConfigurationPreset]:
@@ -793,9 +801,12 @@ class RTKExtension(Extension):
         async def handle_incoming_packets():
             """Handles incoming RTK correction packets from the connection."""
             async for packet in channel:
+                accepted = preset.accepts(packet) and self._message_set.accepts(packet)
+
                 self._clock_sync_validator.notify(packet)
-                self._statistics.notify(packet)
-                if preset.accepts(packet):
+                self._statistics.notify(packet, forwarded=accepted)
+
+                if accepted:
                     encoded = rtcm_encoder(packet)  # type: ignore
                     signal.send(packet=encoded)
 
@@ -1160,6 +1171,21 @@ def get_schema():
                 },
                 "uniqueItems": True,
                 "required": False,
+            },
+            "message_set": {
+                "type": "string",
+                "title": "Message set",
+                "description": (
+                    "Specifies the set of messages to forward to UAVs and other "
+                    "components in the server. 'Basic' is the minimal set of "
+                    "RTCM messages that are needed for RTK corrections on the "
+                    "UAVs. 'Full' will forward all messages unconditionally."
+                ),
+                "enum": ["basic", "full"],
+                "options": {
+                    "enum_titles": ["Basic RTCM (for RTK corrections)", "Full"]
+                },
+                "default": "basic",
             },
             "register_beacons": {
                 "type": "boolean",

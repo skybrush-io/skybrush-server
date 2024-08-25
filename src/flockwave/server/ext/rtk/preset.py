@@ -1,5 +1,4 @@
 from dataclasses import dataclass, field
-from enum import Enum
 from urllib.parse import urlencode
 from typing import Any, Callable, Iterable, Optional, Sequence, Type
 
@@ -14,6 +13,7 @@ from flockwave.server.utils.serial import (
     describe_serial_port_configuration,
 )
 
+from .enums import RTKConfigurationPresetType
 from .types import GPSPacket
 
 __all__ = ("RTKConfigurationPreset",)
@@ -44,24 +44,6 @@ def describe_format(format: str) -> str:
     if format == "ubx":
         return "U-Blox and RTCM3"
     return format
-
-
-class RTKConfigurationPresetType(Enum):
-    """Type of RTK configuration presets."""
-
-    BUILTIN = "builtin"
-    """BUilt-in configuration presets specified in the main configuration file."""
-
-    DYNAMIC = "dynamic"
-    """Dynamic configuration presets created by the extension automatically
-    based on hardware detection. Presets created for serial ports are of this
-    type.
-    """
-
-    USER = "user"
-    """User-specified presets in a separate configuration file of the extension.
-    These presets can be created, modified or removed by the user.
-    """
 
 
 @dataclass

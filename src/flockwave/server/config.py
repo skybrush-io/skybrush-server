@@ -83,9 +83,9 @@ EXTENSIONS = {
             # },
         },
         "add_serial_ports": True,
+        "message_set": "basic",
         # "gnss_types": "all",  # or a list like ["gps", "glonass"]
         "use_high_precision": True,  # set to false if the rover cannot handle high-precision MSM RTK messages
-        # "exclude_serial_ports": ["*ttyAMA*"
     },
     "show": {
         "default_start_method": "rc"  # set to "auto" if you typically start shows automatically and not via a remote controller

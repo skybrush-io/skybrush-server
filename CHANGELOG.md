@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- RTK correction message bandwidth is now tracked separately for inbound
+  messages (received from the RTK base) and outbound messages (forwarded to
+  UAVs and other components). You will need a recent version of Live to see
+  both on the Live UI; older versions of Live will keep on showing the inbound
+  bandwidth like before.
+
+### Changed
+
+- RTCM messages in the RTK module are now filtered by default such that only the
+  basic RTCMv3 message set required for RTK corrections are forwarded to the
+  UAVs. You can switch back to the full (unfiltered) message set in the settings
+  of the RTK extension.
+
 ### Fixed
 
 - Fixed the parsing of horizontal and vertical position uncertainty values from

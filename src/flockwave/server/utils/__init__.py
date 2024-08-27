@@ -8,7 +8,6 @@ from .formatting import (
     format_uav_ids_nicely,
 )
 from .generic import (
-    bind,
     chunks,
     clamp,
     color_to_rgb565,
@@ -34,7 +33,6 @@ from .generic import (
 from .system_time import get_current_unix_timestamp_msec
 
 __all__ = (
-    "bind",
     "chunks",
     "clamp",
     "color_to_rgb565",

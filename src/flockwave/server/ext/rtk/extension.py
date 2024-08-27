@@ -7,7 +7,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from contextlib import ExitStack
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from fnmatch import fnmatch
 from functools import partial
 import json
@@ -839,7 +839,7 @@ class RTKExtension(Extension):
                     "GGA",
                     (
                         # Time in HHMMSS format
-                        datetime.utcnow().strftime("%H%M%S"),
+                        datetime.now(timezone.utc).strftime("%H%M%S"),
                         # Latitude and latitude sign
                         *format_latitude_for_nmea_gga_message(lat),
                         # Longitude and longitude sign

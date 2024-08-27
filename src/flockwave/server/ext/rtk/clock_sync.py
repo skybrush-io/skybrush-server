@@ -3,7 +3,7 @@ clock of the computer running the server.
 """
 
 from blinker import Signal
-from datetime import datetime
+from datetime import datetime, timezone
 from struct import Struct
 from typing import ClassVar
 
@@ -80,8 +80,8 @@ class GPSClockSynchronizationValidator:
 
         try:
             struct = self._ubx_nav_timeutc_struct
-            dt = datetime(*struct.unpack(payload[: struct.size]))
-            delta = dt - datetime.utcnow()
+            dt = datetime(*struct.unpack(payload[: struct.size]), tzinfo=timezone.utc)
+            delta = dt - datetime.now(timezone.utc)
         except Exception:
             return
 

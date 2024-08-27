@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import os
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from sys import executable
 from typing import Optional
@@ -136,7 +136,9 @@ class PyOxidizerBlueprint(Blueprint):
             cache_timeout = current_app.get_send_file_max_age(str(path))
             if cache_timeout is not None:
                 response.cache_control.max_age = cache_timeout
-                response.expires = datetime.utcnow() + timedelta(seconds=cache_timeout)
+                response.expires = datetime.now(timezone.utc) + timedelta(
+                    seconds=cache_timeout
+                )
 
         return response
 

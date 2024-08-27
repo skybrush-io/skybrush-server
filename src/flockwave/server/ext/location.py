@@ -5,12 +5,15 @@ of the server in geodetic coordinates.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from functools import partial
 from math import inf
 from typing import Any, ClassVar, Optional
 
 from flockwave.gps.distances import haversine
 from flockwave.gps.vectors import GPSCoordinate
 from flockwave.logger import Logger
+
+from flockwave.server.types import Disposer
 
 
 @dataclass(frozen=True)
@@ -25,9 +28,19 @@ class Location:
     """
 
     accuracy: Optional[float] = None
-    """Estimated accuracy of the location; ``None`` if unknown."""
+    """Estimated accuracy of the location; ``None`` if unknown. Locations
+    without an accuracy value are treated as approximate.
+    """
 
     UNKNOWN: ClassVar[Location]
+
+    def format(self) -> str:
+        """Formats this location as a human-readable string."""
+        if self.position is None:
+            return "unknown"
+
+        approx_marker = " (approximate)" if self.accuracy is None else ""
+        return f"{self.position.format()}{approx_marker}"
 
 
 Location.UNKNOWN = Location()
@@ -92,27 +105,31 @@ def get_location() -> Location:
     return _location
 
 
-def provide_location(key: str, location: Location, priority: int = 0) -> None:
+def provide_location(key: str, location: Location, priority: int = 0) -> Disposer:
     """Callback for other extensions that can provide location information
     for the server itself.
 
-    Arguments:
+    Args:
         key: a unique identifier of the extension or data source that provides
             the location. Earlier submissions with the same key will be
             overwritten.
-        location: the location information provided by the extension or data
-            source.
         priority: the priority of the information. This extension will return
             the location with the highest priority among all locations submitted
             by other data sources.
+
+    Returns:
+        a function that may be used to revoke the location
     """
-    global _location
+    global _location, _location_candidates
 
     _location_candidates[key] = priority, location
 
     if priority >= _location_priority:
         # Best location will change, invalidate the cached location
         _location = None
+        get_location()  # to trigger an update
+
+    return partial(_revoke_location, key)
 
 
 def _log_current_location() -> None:
@@ -123,7 +140,7 @@ def _log_current_location() -> None:
         if _location is None or _location.position is None:
             _log.warn("Server location became unknown")
         else:
-            _log.info("Server location changed to " + _location.position.format())
+            _log.info(f"Server location changed to {_location.format()}")
 
 
 def _reset() -> None:
@@ -135,6 +152,24 @@ def _reset() -> None:
     _location_candidates.clear()
     _location = None
     _location_priority = -inf
+
+
+def _revoke_location(key: str) -> None:
+    """Revokes a location from the location candidates.
+
+    Args:
+        key: the unique identifier of the location to revoke
+    """
+    global _location, _location_candidates
+
+    if key not in _location_candidates:
+        return
+
+    _, revoked_location = _location_candidates.pop(key)
+    if revoked_location is _location:
+        # Best location will change, invalidate the cached location
+        _location = None
+        get_location()  # to trigger an update
 
 
 def _validate_location() -> tuple[Location, float]:
@@ -232,4 +267,3 @@ schema = {
         },
     }
 }
-tags = "experimental"

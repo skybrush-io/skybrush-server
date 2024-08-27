@@ -53,6 +53,7 @@ EXTENSIONS = {
     "kp_index": {"source": "potsdam"},
     "license": {},
     "location": {},
+    "location_from_uavs": {"priority": 0},
     "lps": {"enabled": "avoid"},
     "logging": {"keep": 7, "format": "tabular", "size": 1000000},
     "magnetic_field": {},

@@ -15,6 +15,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   both on the Live UI; older versions of Live will keep on showing the inbound
   bandwidth like before.
 
+- Added a new extension to provide approximate location information for the
+  server based on an arbitrary UAV in the UAV registry. Useful for seeding
+  RTK corrections from virtual reference stations automatically if at least one
+  UAV is seen by the server.
+
 ### Changed
 
 - RTCM messages in the RTK module are now filtered by default such that only the

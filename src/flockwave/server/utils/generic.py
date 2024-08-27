@@ -39,6 +39,7 @@ __all__ = (
     "overridden",
     "rename_keys",
     "to_uppercase_string",
+    "use",
 )
 
 
@@ -394,3 +395,17 @@ def to_uppercase_string(value: Any) -> str:
     uppercase.
     """
     return str(value).upper()
+
+
+@contextmanager
+def use(disposer: Callable[[], None]):
+    """Context manager that receives a disposer function and calls it when
+    exiting the context.
+
+    Typically it should be used with a function that returns a disposer to
+    ensure that the returned disposer is called when exiting the context.
+    """
+    try:
+        yield
+    finally:
+        disposer()

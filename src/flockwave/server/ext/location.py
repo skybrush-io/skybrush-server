@@ -223,7 +223,7 @@ def load(app, configuration: dict[str, Any], log: Logger):
     _fallback_location = _extract_fallback_location_from_configuration(
         configuration.get("fixed")
     )
-    _location_changed_signal = app.import_apI("signals").get("location:changed")
+    _location_changed_signal = app.import_api("signals").get("location:changed")
 
     _reset()
 

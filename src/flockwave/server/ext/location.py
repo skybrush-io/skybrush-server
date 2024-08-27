@@ -9,6 +9,7 @@ from functools import partial
 from math import inf
 from typing import Any, ClassVar, Optional
 
+from blinker import Signal
 from flockwave.gps.distances import haversine
 from flockwave.gps.vectors import GPSCoordinate
 from flockwave.logger import Logger
@@ -55,6 +56,9 @@ _location: Optional[Location] = None
 yet from the candidates submitted by other extensions.
 """
 
+_location_changed_signal: Optional[Signal] = None
+"""Signal to emit when the location chosen by the extension changes."""
+
 _location_priority: float = -inf
 """Priority of the currently chosen best location."""
 
@@ -90,7 +94,7 @@ def get_location() -> Location:
     ephemeral. The identity of the "real" location object in this extension
     may change at any time.
     """
-    global _location, _location_priority, _last_location
+    global _location, _location_priority, _last_location, _location_changed_signal
 
     if _location is None:
         _location, _location_priority = _validate_location()
@@ -101,6 +105,9 @@ def get_location() -> Location:
             _log_current_location()
 
         _last_location = _location
+
+        if _location_changed_signal:
+            _location_changed_signal.send(location=_location)
 
     return _location
 
@@ -210,23 +217,27 @@ def _extract_fallback_location_from_configuration(obj: Any) -> Location:
 
 
 def load(app, configuration: dict[str, Any], log: Logger):
-    global _fallback_location, _log
+    global _fallback_location, _location_changed_signal, _log
 
     _log = log
     _fallback_location = _extract_fallback_location_from_configuration(
         configuration.get("fixed")
     )
+    _location_changed_signal = app.import_apI("signals").get("location:changed")
+
     _reset()
 
 
 def unload():
-    global _log
+    global _log, _location_changed_signal
 
     _reset()
+
+    _location_changed_signal = None
     _log = None
 
 
-dependencies = ()
+dependencies = ("signals",)
 description = "Provides the physical location of the server in geodetic coordinates for other extensions"
 exports = {
     "get_location": get_location,

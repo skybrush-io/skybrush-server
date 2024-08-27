@@ -11,7 +11,6 @@ from typing import Any, ClassVar, Optional
 from flockwave.gps.distances import haversine
 from flockwave.gps.vectors import GPSCoordinate
 from flockwave.logger import Logger
-from flockwave.server.utils.formatting import format_gps_coordinate
 
 
 @dataclass(frozen=True)
@@ -124,10 +123,7 @@ def _log_current_location() -> None:
         if _location is None or _location.position is None:
             _log.warn("Server location became unknown")
         else:
-            _log.info(
-                "Server location changed to "
-                + format_gps_coordinate(_location.position)
-            )
+            _log.info("Server location changed to " + _location.position.format())
 
 
 def _reset() -> None:

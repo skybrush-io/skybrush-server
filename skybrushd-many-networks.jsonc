@@ -1,0 +1,321 @@
+{
+  "EXTENSIONS": {
+    "http_server": {
+      "host": "",
+      "port": 5000
+    },
+    "show": {
+      "default_start_method": "auto"
+    },
+    "mavlink": {
+      "enabled": true,
+      "networks": {
+        "mav1": {
+          "connections": [
+            "udp-listen://192.168.1.2:14550?broadcast_port=14555",
+            "serial:/dev/ttyUSB0?baud=57600"
+          ],
+          "routing": { "rtk": [0, 1] },
+          "signing": {
+            "allow_unsigned": true,
+            "enabled": true,
+            "key": "pretendthisisarealkey",
+            "sign_outbound": true
+          }
+        },
+        "mav2": {
+          "connections": [
+            "udp-listen://192.168.1.2:14650?broadcast_port=14655",
+            "serial:/dev/ttyUSB0?baud=57600"
+          ],
+          "id_offset": 250,
+          "routing": { "rtk": [0, 1] },
+          "signing": {
+            "allow_unsigned": false,
+            "enabled": true,
+            "key": "pretendthisisarealkey",
+            "sign_outbound": true
+          }
+        },
+        "mav3": {
+          "connections": [
+            "udp-listen://192.168.1.2:14750?broadcast_port=14755",
+            "serial:/dev/ttyUSB0?baud=57600"
+          ],
+          "id_offset": 500,
+          "routing": { "rtk": [0, 1] },
+          "signing": {
+            "allow_unsigned": false,
+            "enabled": true,
+            "key": "pretendthisisarealkey",
+            "sign_outbound": true
+          }
+        },
+        "mav4": {
+          "connections": [
+            "udp-listen://192.168.1.2:14850?broadcast_port=14855",
+            "serial:/dev/ttyUSB0?baud=57600"
+          ],
+          "id_offset": 750,
+          "routing": { "rtk": [0, 1] },
+          "signing": {
+            "allow_unsigned": false,
+            "enabled": true,
+            "key": "pretendthisisarealkey",
+            "sign_outbound": true
+          }
+        },
+        "mav5": {
+          "connections": [
+            "udp-listen://192.168.1.2:14950?broadcast_port=14955",
+            "serial:/dev/ttyUSB0?baud=57600"
+          ],
+          "id_offset": 1000,
+          "routing": { "rtk": [0, 1] },
+          "signing": {
+            "allow_unsigned": false,
+            "enabled": true,
+            "key": "pretendthisisarealkey",
+            "sign_outbound": true
+          }
+        },
+        "mav6": {
+          "connections": [
+            "udp-listen://192.168.1.2:15050?broadcast_port=15055",
+            "serial:/dev/ttyUSB0?baud=57600"
+          ],
+          "id_offset": 1250,
+          "routing": { "rtk": [0, 1] },
+          "signing": {
+            "allow_unsigned": false,
+            "enabled": true,
+            "key": "pretendthisisarealkey",
+            "sign_outbound": true
+          }
+        },
+        "mav7": {
+          "connections": [
+            "udp-listen://192.168.1.2:15150?broadcast_port=15155",
+            "serial:/dev/ttyUSB0?baud=57600"
+          ],
+          "id_offset": 1500,
+          "routing": { "rtk": [0, 1] },
+          "signing": {
+            "allow_unsigned": false,
+            "enabled": true,
+            "key": "pretendthisisarealkey",
+            "sign_outbound": true
+          }
+        },
+        "mav8": {
+          "connections": [
+            "udp-listen://192.168.1.2:15250?broadcast_port=15255",
+            "serial:/dev/ttyUSB0?baud=57600"
+          ],
+          "id_offset": 1750,
+          "routing": { "rtk": [0, 1] },
+          "signing": {
+            "allow_unsigned": false,
+            "enabled": true,
+            "key": "pretendthisisarealkey",
+            "sign_outbound": true
+          }
+        },
+        "mav9": {
+          "connections": [
+            "udp-listen://192.168.1.2:15350?broadcast_port=15355",
+            "serial:/dev/ttyUSB0?baud=57600"
+          ],
+          "id_offset": 2000,
+          "routing": { "rtk": [0, 1] },
+          "signing": {
+            "allow_unsigned": false,
+            "enabled": true,
+            "key": "pretendthisisarealkey",
+            "sign_outbound": true
+          }
+        },
+        "mav10": {
+          "connections": [
+            "udp-listen://192.168.1.2:15450?broadcast_port=15455",
+            "serial:/dev/ttyUSB0?baud=57600"
+          ],
+          "id_offset": 2250,
+          "routing": { "rtk": [0, 1] },
+          "signing": {
+            "allow_unsigned": false,
+            "enabled": true,
+            "key": "pretendthisisarealkey",
+            "sign_outbound": true
+          }
+        },
+        "mav11": {
+          "connections": [
+            "udp-listen://192.168.1.2:15550?broadcast_port=15555",
+            "serial:/dev/ttyUSB0?baud=57600"
+          ],
+          "id_offset": 2500,
+          "routing": { "rtk": [0, 1] },
+          "signing": {
+            "allow_unsigned": false,
+            "enabled": true,
+            "key": "pretendthisisarealkey",
+            "sign_outbound": true
+          }
+        },
+        "mav12": {
+          "connections": [
+            "udp-listen://192.168.1.2:15650?broadcast_port=15655",
+            "serial:/dev/ttyUSB0?baud=57600"
+          ],
+          "id_offset": 2750,
+          "routing": { "rtk": [0, 1] },
+          "signing": {
+            "allow_unsigned": false,
+            "enabled": true,
+            "key": "pretendthisisarealkey",
+            "sign_outbound": true
+          }
+        },
+        "mav13": {
+          "connections": [
+            "udp-listen://192.168.1.2:15750?broadcast_port=15755",
+            "serial:/dev/ttyUSB0?baud=57600"
+          ],
+          "id_offset": 3000,
+          "routing": { "rtk": [0, 1] },
+          "signing": {
+            "allow_unsigned": false,
+            "enabled": true,
+            "key": "pretendthisisarealkey",
+            "sign_outbound": true
+          }
+        },
+        "mav14": {
+          "connections": [
+            "udp-listen://192.168.1.2:15850?broadcast_port=15855",
+            "serial:/dev/ttyUSB0?baud=57600"
+          ],
+          "id_offset": 3250,
+          "routing": { "rtk": [0, 1] },
+          "signing": {
+            "allow_unsigned": false,
+            "enabled": true,
+            "key": "pretendthisisarealkey",
+            "sign_outbound": true
+          }
+        },
+        "mav15": {
+          "connections": [
+            "udp-listen://192.168.1.2:15950?broadcast_port=15855",
+            "serial:/dev/ttyUSB0?baud=57600"
+          ],
+          "id_offset": 3500,
+          "routing": { "rtk": [0, 1] },
+          "signing": {
+            "allow_unsigned": false,
+            "enabled": true,
+            "key": "pretendthisisarealkey",
+            "sign_outbound": true
+          }
+        },
+        "mav16": {
+          "connections": [
+            "udp-listen://192.168.1.2:16050?broadcast_port=16055",
+            "serial:/dev/ttyUSB0?baud=57600"
+          ],
+          "id_offset": 3750,
+          "routing": { "rtk": [0, 1] },
+          "signing": {
+            "allow_unsigned": false,
+            "enabled": true,
+            "key": "pretendthisisarealkey",
+            "sign_outbound": true
+          }
+        },
+        "mav17": {
+          "connections": [
+            "udp-listen://192.168.1.2:16150?broadcast_port=16155",
+            "serial:/dev/ttyUSB0?baud=57600"
+          ],
+          "id_offset": 4000,
+          "routing": { "rtk": [0, 1] },
+          "signing": {
+            "allow_unsigned": false,
+            "enabled": true,
+            "key": "pretendthisisarealkey",
+            "sign_outbound": true
+          }
+        },
+        "mav18": {
+          "connections": [
+            "udp-listen://192.168.1.2:16250?broadcast_port=16255",
+            "serial:/dev/ttyUSB0?baud=57600"
+          ],
+          "id_offset": 4250,
+          "routing": { "rtk": [0, 1] },
+          "signing": {
+            "allow_unsigned": false,
+            "enabled": true,
+            "key": "pretendthisisarealkey",
+            "sign_outbound": true
+          }
+        },
+        "mav19": {
+          "connections": [
+            "udp-listen://192.168.1.2:16350?broadcast_port=16355",
+            "serial:/dev/ttyUSB0?baud=57600"
+          ],
+          "id_offset": 4500,
+          "routing": { "rtk": [0, 1] },
+          "signing": {
+            "allow_unsigned": false,
+            "enabled": true,
+            "key": "pretendthisisarealkey",
+            "sign_outbound": true
+          }
+        },
+        "mav20": {
+          "connections": [
+            "udp-listen://192.168.1.2:16450?broadcast_port=16455",
+            "serial:/dev/ttyUSB0?baud=57600"
+          ],
+          "id_offset": 4750,
+          "routing": { "rtk": [0, 1] },
+          "signing": {
+            "allow_unsigned": false,
+            "enabled": true,
+            "key": "pretendthisisarealkey",
+            "sign_outbound": true
+          }
+        },
+        "mav21": {
+          "connections": [
+            "udp-listen://192.168.1.2:16550?broadcast_port=16555",
+            "serial:/dev/ttyUSB0?baud=57600"
+          ],
+          "id_offset": 5000,
+          "routing": { "rtk": [0, 1] },
+          "signing": {
+            "allow_unsigned": false,
+            "enabled": true,
+            "key": "pretendthisisarealkey",
+            "sign_outbound": true
+          }
+        }
+      }
+    },
+    "rtk": {
+      "presets": {
+        "local-rtk": {
+          "source": "serial:/dev/ttyACM0?baud=57600",
+          "title": "Local RTK",
+          "auto_select": true,
+          "auto_survey": true
+        }
+      },
+      "register_beacons": true,
+      "use_high_precision": true
+    }
+  }
+}

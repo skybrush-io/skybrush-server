@@ -4,13 +4,13 @@ and forwards the corrections to the UAVs managed by the server.
 
 from __future__ import annotations
 
+import json
+
 from collections.abc import Sequence
 from contextlib import ExitStack
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
 from fnmatch import fnmatch
 from functools import partial
-import json
 from time import monotonic
 from trio import CancelScope, open_memory_channel, open_nursery, sleep
 from trio.abc import SendChannel
@@ -20,10 +20,10 @@ from typing import cast, Any, ClassVar, Iterator, Optional, Union
 from flockwave.channels import ParserChannel
 from flockwave.connections import create_connection, RWConnection
 from flockwave.gps.enums import GNSSType
-from flockwave.gps.nmea.packet import create_nmea_packet
+from flockwave.gps.formatting import format_gps_coordinate_as_nmea_gga_message
 from flockwave.gps.rtk import RTKMessageSet, RTKSurveySettings
 from flockwave.gps.ubx.rtk_config import UBXRTKBaseConfigurator
-from flockwave.gps.vectors import ECEFToGPSCoordinateTransformation
+from flockwave.gps.vectors import ECEFToGPSCoordinateTransformation, GPSCoordinate
 from flockwave.server.ext.base import Extension
 from flockwave.server.message_handlers import (
     create_mapper,
@@ -36,11 +36,6 @@ from flockwave.server.model.log import Severity
 from flockwave.server.model.messages import FlockwaveMessage, FlockwaveResponse
 from flockwave.server.registries import find_in_registry
 from flockwave.server.utils import overridden
-from flockwave.server.utils.formatting import (
-    format_gps_coordinate,
-    format_latitude_for_nmea_gga_message,
-    format_longitude_for_nmea_gga_message,
-)
 from flockwave.server.utils.serial import (
     SerialPortConfiguration,
     SerialPortDescriptor,
@@ -220,9 +215,7 @@ class RTKExtension(Extension):
 
             position = self._survey_settings.position
             if position is not None:
-                coord = format_gps_coordinate(
-                    ECEFToGPSCoordinateTransformation().to_gps(position)
-                )
+                coord = ECEFToGPSCoordinateTransformation().to_gps(position).format()
                 self.log.info(
                     f"Base station is fixed at {coord} (accuracy: {accuracy}m)"
                 )
@@ -649,8 +642,8 @@ class RTKExtension(Extension):
 
             if self.log:
                 if position is not None:
-                    coord = format_gps_coordinate(
-                        ECEFToGPSCoordinateTransformation().to_gps(position)
+                    coord = (
+                        ECEFToGPSCoordinateTransformation().to_gps(position).format()
                     )
                     self.log.info(
                         f"Configuring RTK base station to fixed coordinate: "
@@ -794,7 +787,6 @@ class RTKExtension(Extension):
         channel = ParserChannel(connection, parser=preset.create_gps_parser())  # type: ignore
         signal = self.app.import_api("signals").get(self.RTK_PACKET_SIGNAL)
         get_location = self.app.import_api("location").get_location
-        nmea_encoder = preset.create_nmea_encoder()
         rtcm_encoder = preset.create_rtcm_encoder()
         maybe_vrs = "NTRIPConnection" in str(connection.__class__)
 
@@ -834,33 +826,10 @@ class RTKExtension(Extension):
                 lon_dms, lon_min = divmod(lon, 1)
                 lon_dms = abs(lon_dms + lon_min * 0.6) * 100
 
-                message = create_nmea_packet(
-                    "GP",
-                    "GGA",
-                    (
-                        # Time in HHMMSS format
-                        datetime.now(timezone.utc).strftime("%H%M%S"),
-                        # Latitude and latitude sign
-                        *format_latitude_for_nmea_gga_message(lat),
-                        # Longitude and longitude sign
-                        *format_longitude_for_nmea_gga_message(lon),
-                        # Fix type, number of satellites, HDOP
-                        "1",
-                        "10",
-                        "1",
-                        # Altitude
-                        f"{alt:.2f}",
-                        "M",
-                        # Height of geoid
-                        "0",
-                        "M",
-                        # Age of RTK corrections, station ID
-                        "0.0",
-                        "0",
-                    ),
+                message = format_gps_coordinate_as_nmea_gga_message(
+                    GPSCoordinate(lat, lon, amsl=alt)
                 )
-                data = nmea_encoder(message)
-                await connection.write(data)
+                await connection.write(message.encode("ascii"))
 
         async with channel:
             if maybe_vrs:

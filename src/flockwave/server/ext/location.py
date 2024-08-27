@@ -130,7 +130,7 @@ def _reset() -> None:
     """Resets the internal state of the extension by clearing all location
     candidates and invalidating the chosen location object.
     """
-    global _location, _location_candidates
+    global _location, _location_candidates, _location_priority
 
     _location_candidates.clear()
     _location = None

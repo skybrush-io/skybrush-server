@@ -123,6 +123,9 @@ skybrushd = "flockwave.server.launcher:start"
 skybrush-gateway = "flockwave.gateway.launcher:start"
 skybrush-proxy = "flockwave.proxy.launcher:start"
 
+[tool.pytest.ini_options]
+trio_mode = 1
+
 [tool.ruff]
 lint.ignore = ["B905", "C901", "E402", "E501"]
 lint.select = ["B", "C", "E", "F", "W"]

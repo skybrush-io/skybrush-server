@@ -1,9 +1,9 @@
 """Application object for the Skybrush server."""
 
-from appdirs import AppDirs
 from collections import defaultdict
 from inspect import isawaitable, isasyncgen
 from os import environ
+from platformdirs import AppDirs
 from trio import (
     BrokenResourceError,
     move_on_after,

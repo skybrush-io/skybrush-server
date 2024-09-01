@@ -30,11 +30,8 @@ class Extension(ExtensionBase["SkybrushServer"]):
         Returns:
             full path of a cache directory dedicated to the extension
         """
-        return (
-            Path(self.app.dirs.user_cache_dir)
-            / "ext"
-            / (name or self.name or "_unnamed")
-        )
+        assert self.app is not None
+        return self.app.dirs.user_cache_path / "ext" / (name or self.name or "_unnamed")
 
     @versionadded(version="2.15.0")
     def get_data_dir(self, name: Optional[str] = None) -> Path:
@@ -48,11 +45,8 @@ class Extension(ExtensionBase["SkybrushServer"]):
         Returns:
             full path of a data directory dedicated to the extension
         """
-        return (
-            Path(self.app.dirs.user_data_dir)
-            / "ext"
-            / (name or self.name or "_unnamed")
-        )
+        assert self.app is not None
+        return self.app.dirs.user_data_path / "ext" / (name or self.name or "_unnamed")
 
 
 D = TypeVar("D", bound="UAVDriver")

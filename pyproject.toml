@@ -60,11 +60,11 @@ flockwave-spec = { version = "^2.0.0", source = "fury", extras = [
 skybrush-ext-dock = { version = "^1.0.0", source = "collmot", optional = true }
 skybrush-ext-firmware-update = { version = "^0.4.0", source = "collmot", optional = true }
 skybrush-ext-flight-report = { version = "^1.0.3", source = "collmot", optional = true }
-skybrush-ext-flockctrl = { version = "^3.7.1", source = "collmot", optional = true }
+skybrush-ext-flockctrl = { version = "^3.8.3", source = "collmot", optional = true }
 skybrush-ext-map-cache = { version = "^1.1.0", source = "collmot", optional = true }
 skybrush-ext-sidekick = { version = "^1.0.1", source = "collmot", optional = true }
 skybrush-ext-timecode = { version = "^1.1.0", source = "collmot", optional = true }
-skybrush-lib-mission-planning = { version = "^2.2.1", source = "collmot", optional = true }
+skybrush-lib-mission-planning = { version = "^2.3.0", source = "collmot", optional = true }
 pyledctrl = { version = "^4.1.0", source = "fury" }
 aiocflib = "^4.0.1"
 crcmod-plus = "^2.1.0"

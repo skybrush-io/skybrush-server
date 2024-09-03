@@ -116,13 +116,13 @@ files = [
 
 [[package]]
 name = "asyncssh"
-version = "2.16.0"
+version = "2.17.0"
 description = "AsyncSSH: Asynchronous SSHv2 client and server library"
 optional = true
 python-versions = ">=3.6"
 files = [
-    {file = "asyncssh-2.16.0-py3-none-any.whl", hash = "sha256:404eaf13ac3a3a93bf5e98b360327bca4d46479e23ff1ff858d63d2ebb3358fd"},
-    {file = "asyncssh-2.16.0.tar.gz", hash = "sha256:4c4e7b0cffac4c0382a364f1ad93072e7d58b2206268f40edc3d3d56587db8f7"},
+    {file = "asyncssh-2.17.0-py3-none-any.whl", hash = "sha256:70bfe4081793255b0115f7a72efd92d5bad8562639302531223bb00188db9747"},
+    {file = "asyncssh-2.17.0.tar.gz", hash = "sha256:3b159c105aa388c1e2245c4faf483f540ada8cad99402281119100166e5edb3c"},
 ]
 
 [package.dependencies]
@@ -377,13 +377,13 @@ files = [
 
 [[package]]
 name = "certifi"
-version = "2024.7.4"
+version = "2024.8.30"
 description = "Python package for providing Mozilla's CA Bundle."
 optional = false
 python-versions = ">=3.6"
 files = [
-    {file = "certifi-2024.7.4-py3-none-any.whl", hash = "sha256:c198e21b1289c2ab85ee4e67bb4b4ef3ead0892059901a8d5b622f24a1101e90"},
-    {file = "certifi-2024.7.4.tar.gz", hash = "sha256:5a1e7645bc0ec61a09e26c36f6106dd4cf40c6db3a1fb6352b0244e7fb057c7b"},
+    {file = "certifi-2024.8.30-py3-none-any.whl", hash = "sha256:922820b53db7a7257ffbda3f597266d435245903d80737e34f8a45ff3e3230d8"},
+    {file = "certifi-2024.8.30.tar.gz", hash = "sha256:bec941d2aa8195e248a60b31ff9f0558284cf01a52591ceda73ea9afffd69fd9"},
 ]
 
 [[package]]
@@ -2340,13 +2340,13 @@ reference = "collmot"
 
 [[package]]
 name = "skybrush-ext-flockctrl"
-version = "3.8.2"
+version = "3.8.3"
 description = "Support for flockctrl-based drones in Skybrush Server"
 optional = true
 python-versions = ">=3.9,<4.0"
 files = [
-    {file = "skybrush_ext_flockctrl-3.8.2-py3-none-any.whl", hash = "sha256:99756f7c3d25db90b95bc9e0bc6608d47886017a6b6e62442de897acbcdd352a"},
-    {file = "skybrush_ext_flockctrl-3.8.2.tar.gz", hash = "sha256:af12804dc2368b155b4897f5352045b95693142914b46befa811a8aa2c67a4ba"},
+    {file = "skybrush_ext_flockctrl-3.8.3-py3-none-any.whl", hash = "sha256:c254b87ac030e5b023854a91f56e05f930f55221ed4a4432961fd347bd303af8"},
+    {file = "skybrush_ext_flockctrl-3.8.3.tar.gz", hash = "sha256:805e0059d7107f4767d6f0ea67c1ab713c62242f961bb7bc5e0b277cf9bd6b7c"},
 ]
 
 [package.dependencies]
@@ -2426,13 +2426,13 @@ reference = "collmot"
 
 [[package]]
 name = "skybrush-lib-mission-planning"
-version = "2.2.1"
+version = "2.3.0"
 description = "Mission planning library for Skybrush"
 optional = true
 python-versions = ">=3.9,<4.0"
 files = [
-    {file = "skybrush_lib_mission_planning-2.2.1-py3-none-any.whl", hash = "sha256:a00764bdd947f4d45697ecfb9594721dc5141563c2ef70ae43a722981d711b53"},
-    {file = "skybrush_lib_mission_planning-2.2.1.tar.gz", hash = "sha256:dc5ccc941ca728fc46a01820dd49e2b4b58a3f7f95bdac83d335b3663e1ca7fc"},
+    {file = "skybrush_lib_mission_planning-2.3.0-py3-none-any.whl", hash = "sha256:ac33be51d0bad9a07b8b2e9a7a75389e0f03a2b0595905ac558a3e8af1bf1a78"},
+    {file = "skybrush_lib_mission_planning-2.3.0.tar.gz", hash = "sha256:8a086cbbb632817ab0f6b0f752dd7b60259ca192a44163e50713377db0bd9ba2"},
 ]
 
 [package.dependencies]
@@ -2769,4 +2769,4 @@ pro = ["skybrush-ext-flight-report", "skybrush-ext-map-cache", "skybrush-ext-sid
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.9"
-content-hash = "1249f565ea8c63731bfac97fdd0acfe1e221150163eab2d320a23446b744c5e9"
+content-hash = "038efc5b8867785dcd57c35a9e8d06634070ed9242b83351f5e5655fcf82d7cd"

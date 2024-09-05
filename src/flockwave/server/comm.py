@@ -28,10 +28,11 @@ from typing import (
     Iterator,
     Optional,
     TypeVar,
+    cast,
 )
 
-from flockwave.channels import MessageChannel
-from flockwave.connections import Connection
+from flockwave.channels import BroadcastMessageChannel, MessageChannel
+from flockwave.connections import Connection, get_connection_capabilities
 
 from .types import Disposer
 
@@ -39,23 +40,72 @@ from .types import Disposer
 __all__ = ("BROADCAST", "CommunicationManager")
 
 
-#: Type variable representing the type of addresses used by a CommunicationManager
-AddressType = TypeVar("AddressType")
+AddressType = TypeVar("AddressType", covariant=True)
+"""Type variable representing the type of addresses used by a CommunicationManager"""
 
-#: Type variable representing the type of packets handled by a CommunicationManager
 PacketType = TypeVar("PacketType")
+"""Type variable representing the type of packets handled by a CommunicationManager"""
 
-#: Marker object used to denote packets that should be broadcast over a
-#: communication channel with no specific destination address
 BROADCAST = object()
-
-#: Marker object used to denote "no broadcast address"
-NO_BROADCAST_ADDRESS = object()
+"""Marker object used to denote packets that should be broadcast over a
+communication channel with no specific destination address.
+"""
 
 #: Special Windows error codes for "network unreachable" condition
 WSAENETDOWN = 10050
 WSAENETUNREACH = 10051
 WSAESERVERUNREACH = 10065
+
+
+@dataclass
+class CommunicationManagerEntry(Generic[PacketType, AddressType]):
+    """A single entry in the communication manager that contains a connection
+    managed by the manager, the associated message channel, and a few
+    additional properties.
+
+    Each entry is permanently assigned to a connection and has a name that
+    uniquely identifies the connection. Besides that, it has an associated
+    MessageChannel_ instance that is not `None` if and only if the connection
+    is up and running.
+    """
+
+    connection: Connection
+    """The connection associated to the entry."""
+
+    name: str
+    """The unique identifier of the connection."""
+
+    can_broadcast: bool = False
+    """Stores whether the connection can be used for broadcasting messages.
+    This is essentially a cache for ``isinstance(channel, BroadcastMessageChannel)``.
+    """
+
+    can_send: bool = True
+    """Stores whether the connection can be used for sending messages."""
+
+    channel: Optional[MessageChannel[tuple[PacketType, AddressType], bytes]] = None
+    """The channel that can be used to send messages on the connection.
+    ``None`` if the connection is closed.
+    """
+
+    def detach_channel(self) -> None:
+        """Detaches the channel associated to this entry."""
+        self.set_channel(None)
+
+    def set_channel(
+        self, channel: Optional[MessageChannel[tuple[PacketType, AddressType], bytes]]
+    ) -> None:
+        """Sets the channel associated to this entry."""
+        if self.channel is not channel:
+            self.channel = channel
+            self.can_broadcast = isinstance(channel, BroadcastMessageChannel)
+
+    @property
+    def is_open(self) -> bool:
+        """Returns whether the communication channel represented by this
+        entry is up and running.
+        """
+        return self.channel is not None
 
 
 class CommunicationManager(Generic[PacketType, AddressType]):
@@ -101,37 +151,15 @@ class CommunicationManager(Generic[PacketType, AddressType]):
     message.
     """
 
-    @dataclass
-    class Entry:
-        """A single entry in the communication manager that contains a connection
-        managed by the manager, the associated message channel, and a few
-        additional properties.
-
-        Each entry is permanently assigned to a connection and has a name that
-        uniquely identifies the connection. Besides that, it has an associated
-        MessageChannel_ instance that is not `None` if and only if the connection
-        is up and running.
-        """
-
-        connection: Connection
-        name: str
-        can_send: bool = True
-        channel: Optional[MessageChannel] = None
-
-        @property
-        def is_open(self) -> bool:
-            """Returns whether the communication channel represented by this
-            entry is up and running.
-            """
-            return self.channel is not None
-
     _aliases: dict[str, list[str]]
     """Mapping from channel aliases to the list of channel IDs that the alias
     refers to.
     """
 
-    _entries_by_name: dict[str, list[Entry]]
-    """Mapping from channel identifiers to the corresponding Entry_ object."""
+    _entries_by_name: dict[
+        str, list[CommunicationManagerEntry[PacketType, AddressType]]
+    ]
+    """Mapping from channel identifiers to the corresponding Entry_ objects."""
 
     def __init__(
         self,
@@ -174,9 +202,12 @@ class CommunicationManager(Generic[PacketType, AddressType]):
             raise RuntimeError("cannot add new connections when the manager is running")
 
         if can_send is None:
-            can_send = bool(getattr(connection, "can_send", True))
+            cap = get_connection_capabilities(connection)
+            can_send = cap["can_send"]
 
-        entry = self.Entry(connection, name=name, can_send=bool(can_send))
+        entry = CommunicationManagerEntry(
+            connection, name=name, can_send=bool(can_send)
+        )
         self._entries_by_name[name].append(entry)
 
     def add_alias(self, alias: str, *, targets: Iterable[str]) -> Disposer:
@@ -359,7 +390,9 @@ class CommunicationManager(Generic[PacketType, AddressType]):
         finally:
             disposer()
 
-    def _iter_entries(self) -> Generator["Entry", None, None]:
+    def _iter_entries(
+        self,
+    ) -> Generator[CommunicationManagerEntry[PacketType, AddressType], None, None]:
         for _, entries in self._entries_by_name.items():
             yield from entries
 
@@ -387,7 +420,13 @@ class CommunicationManager(Generic[PacketType, AddressType]):
         async with tx_queue, rx_queue:
             await wait_all(*tasks)
 
-    async def _run_inbound_link(self, connection, *, entry, queue):
+    async def _run_inbound_link(
+        self,
+        connection,
+        *,
+        entry: CommunicationManagerEntry[PacketType, AddressType],
+        queue,
+    ):
         has_error = False
         channel_created = False
         address = None
@@ -398,7 +437,8 @@ class CommunicationManager(Generic[PacketType, AddressType]):
             address = getattr(connection, "address", None)
             address = self.format_address(address) if address else None
 
-            entry.channel = self.channel_factory(connection, self.log)
+            entry.set_channel(self.channel_factory(connection, self.log))
+            assert entry.channel is not None
 
             channel_created = True
             if address:
@@ -430,7 +470,7 @@ class CommunicationManager(Generic[PacketType, AddressType]):
                     )
 
         finally:
-            entry.channel = None
+            entry.detach_channel()
             if channel_created and not has_error:
                 if address:
                     self.log.info(f"Connection at {address} closed", extra=log_extra)
@@ -457,21 +497,24 @@ class CommunicationManager(Generic[PacketType, AddressType]):
             else:
                 await self._send_message_to_single_channel(message, destination)
 
-    async def _send_message_to_all_channels(self, message):
+    async def _send_message_to_all_channels(self, message: PacketType):
         for entries in self._entries_by_name.values():
             for _index, entry in enumerate(entries):
                 channel = entry.channel
-                address = getattr(channel, "broadcast_address", NO_BROADCAST_ADDRESS)
-                if address is not NO_BROADCAST_ADDRESS:
-                    assert channel is not None
-                    try:
-                        await channel.send((message, address))
-                    except Exception:
-                        # we are going to try all channels so it does not matter
-                        # if a few of them fail for whatever reason
-                        pass
+                if not entry.can_broadcast:
+                    continue
 
-    async def _send_message_to_single_channel(self, message, destination):
+                channel = cast(BroadcastMessageChannel, channel)
+                try:
+                    await channel.broadcast((message, BROADCAST))
+                except Exception:
+                    # we are going to try all channels so it does not matter
+                    # if a few of them fail for whatever reason
+                    pass
+
+    async def _send_message_to_single_channel(
+        self, message: PacketType, destination: tuple[str, AddressType]
+    ):
         name, address = destination
 
         entries = self._entries_by_name.get(name)
@@ -497,24 +540,20 @@ class CommunicationManager(Generic[PacketType, AddressType]):
         if entries:
             for index, entry in enumerate(entries):
                 if entry.is_open and entry.can_send:
+                    channel = entry.channel
                     try:
                         if is_broadcast:
                             # This message should be broadcast on this channel;
                             # let's check if the channel has a broadcast address
-                            address = getattr(
-                                entry.channel,
-                                "broadcast_address",
-                                NO_BROADCAST_ADDRESS,
-                            )
-                            is_broadcast = True
-                            if address is not NO_BROADCAST_ADDRESS:
-                                assert entry.channel is not None
-                                await entry.channel.send((message, address))
+                            if entry.can_broadcast:
+                                channel = cast(BroadcastMessageChannel, channel)
+                                await channel.broadcast((message, BROADCAST))
                                 if self.broadcast_delay > 0:
                                     await sleep(self.broadcast_delay)
                                 sent = True
                         else:
-                            await entry.channel.send((message, address))
+                            assert channel is not None
+                            await channel.send((message, address))
                             sent = True
                         if sent:
                             break

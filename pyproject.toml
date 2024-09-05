@@ -39,14 +39,14 @@ colour = ">=0.1.5"
 pyjwt = "^2.8.0"
 hypercorn = { extras = ["trio"], version = ">=0.16.0" }
 passlib = { extras = ["bcrypt"], version = "^1.7.4" }
-flockwave-app-framework = { version = "^3.1.1", extras = [
+flockwave-app-framework = { version = "^3.1.2", extras = [
     "daemon",
 ], source = "fury" }
 flockwave-async = { version = "^1.4.2", source = "fury" }
 flockwave-conn = { extras = [
     "rpc",
     "serial",
-], source = "fury", version = "^7.2.1" }
+], source = "fury", version = "^8.0.0" }
 flockwave-ext = { version = "^1.26.0", source = "fury" }
 flockwave-flockctrl = { version = "^3.1.0", source = "collmot", optional = true }
 flockwave-gps = { version = "^3.4.0", source = "fury" }
@@ -60,7 +60,7 @@ flockwave-spec = { version = "^2.0.0", source = "fury", extras = [
 skybrush-ext-dock = { version = "^1.0.0", source = "collmot", optional = true }
 skybrush-ext-firmware-update = { version = "^0.4.0", source = "collmot", optional = true }
 skybrush-ext-flight-report = { version = "^1.0.3", source = "collmot", optional = true }
-skybrush-ext-flockctrl = { version = "^3.8.3", source = "collmot", optional = true }
+skybrush-ext-flockctrl = { version = "^3.9.1", source = "collmot", optional = true }
 skybrush-ext-map-cache = { version = "^1.1.0", source = "collmot", optional = true }
 skybrush-ext-sidekick = { version = "^1.0.1", source = "collmot", optional = true }
 skybrush-ext-timecode = { version = "^1.1.0", source = "collmot", optional = true }

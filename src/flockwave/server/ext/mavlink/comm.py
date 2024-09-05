@@ -11,12 +11,22 @@ from importlib import import_module
 from time import time
 from typing import Any, ClassVar, Optional, TYPE_CHECKING
 
-from flockwave.channels import MessageChannel, create_lossy_channel
-from flockwave.connections import Connection, StreamConnectionBase
+from flockwave.channels import (
+    BroadcastMessageChannel,
+    MessageChannel,
+    create_lossy_channel,
+)
+from flockwave.connections import (
+    Connection,
+    RWConnection,
+    StreamConnectionBase,
+)
 from flockwave.logger import Logger
 from flockwave.networking import format_socket_address
 
-from flockwave.server.comm import NO_BROADCAST_ADDRESS, CommunicationManager
+from flockwave.server.comm import (
+    CommunicationManager,
+)
 
 from .enums import MAVComponent
 from .signing import MAVLinkSigningConfiguration, SignatureTimestampSynchronizer
@@ -208,7 +218,7 @@ def create_mavlink_message_channel(
     system_id: int = 255,
     link_ids: Optional[dict[Connection, int]] = None,
     signing: MAVLinkSigningConfiguration = MAVLinkSigningConfiguration.DISABLED,
-) -> MessageChannel[tuple[MAVLinkMessage, str]]:
+) -> MessageChannel[tuple[MAVLinkMessage, str], Any]:
     """Creates a bidirectional Trio-style channel that reads data from and
     writes data to the given connection, and does the parsing of MAVLink
     messages automatically. The channel will yield MAVLinkMessage_ objects
@@ -242,9 +252,13 @@ def create_mavlink_message_channel(
         channel = _create_stream_based_mavlink_message_channel(
             connection, log, mavlink_factory=mavlink_factory
         )
-    else:
+    elif isinstance(connection, RWConnection):
         channel = _create_datagram_based_mavlink_message_channel(
             connection, log, mavlink_factory=mavlink_factory
+        )
+    else:
+        raise RuntimeError(
+            f"Connection type not supported for MAVLink: {connection.__class__!r}"
         )
 
     if signing.enabled:
@@ -260,8 +274,11 @@ def create_mavlink_message_channel(
 
 
 def _create_stream_based_mavlink_message_channel(
-    connection: Connection, log: Logger, *, mavlink_factory: MAVLinkFactory
-) -> MessageChannel[tuple[MAVLinkMessage, str]]:
+    connection: RWConnection[bytes, bytes],
+    log: Logger,
+    *,
+    mavlink_factory: MAVLinkFactory,
+) -> MessageChannel[tuple[MAVLinkMessage, str], bytes]:
     """Creates a bidirectional Trio-style channel that reads data from and
     writes data to the given stream-based connection, and does the parsing
     of MAVLink messages automatically.
@@ -298,21 +315,20 @@ def _create_stream_based_mavlink_message_channel(
         mavlink_version = kwds.pop("_mavlink_version", 2)
 
         message = create_mavlink_message(mavlink, type, **kwds)
-        result = message.pack(mavlink, force_mavlink1=mavlink_version < 2)
+        result: bytes = message.pack(mavlink, force_mavlink1=mavlink_version < 2)
 
         _notify_mavlink_packet_sent(mavlink, result)
 
         return result
 
-    channel = MessageChannel(connection, parser=parser, encoder=encoder)
-    channel.broadcast_address = ""
-
-    return channel
+    return BroadcastMessageChannel(
+        connection, parser=parser, encoder=encoder, broadcast_encoder=encoder
+    )
 
 
 def _create_datagram_based_mavlink_message_channel(
-    connection: Connection, log: Logger, *, mavlink_factory: MAVLinkFactory
-) -> MessageChannel[tuple[MAVLinkMessage, str]]:
+    connection: RWConnection, log: Logger, *, mavlink_factory: MAVLinkFactory
+) -> MessageChannel[tuple[MAVLinkMessage, str], tuple[bytes, Any]]:
     """Creates a bidirectional Trio-style channel that reads data from and
     writes data to the given datagram-based connection, and does the parsing
     of MAVLink messages automatically. The channel will yield pairs of
@@ -393,12 +409,9 @@ def _create_datagram_based_mavlink_message_channel(
 
         return (result, address)
 
-    channel = MessageChannel(connection, parser=parser, encoder=encoder)
-    channel.broadcast_address = getattr(
-        connection, "broadcast_address", NO_BROADCAST_ADDRESS
+    return BroadcastMessageChannel(
+        connection, parser=parser, encoder=encoder, broadcast_encoder=encoder
     )
-
-    return channel
 
 
 def _notify_mavlink_packet_sent(mavlink: MAVLinkInterface, packet: bytes) -> None:

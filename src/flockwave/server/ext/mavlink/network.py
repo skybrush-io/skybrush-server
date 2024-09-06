@@ -27,7 +27,12 @@ from typing import (
     Union,
 )
 
-from flockwave.connections import Connection, create_connection, ListenerConnection
+from flockwave.connections import (
+    Connection,
+    create_connection,
+    ListenerConnection,
+    UDPListenerConnection,
+)
 from flockwave.concurrency import Future, race
 from flockwave.networking import find_interfaces_with_address
 from flockwave.server.comm import CommunicationManager
@@ -1063,16 +1068,20 @@ class MAVLinkNetwork:
                             # Hmmm, let's just assume that the source port of this packet is okay
                             broadcast_port = port
 
-                        entry.channel.broadcast_address = (
-                            str(broadcast_address),
-                            broadcast_port,
-                        )
-                        self.log.info(
-                            f"Broadcast address updated to {broadcast_address}:{broadcast_port} "
-                            f"({interface})",
-                            extra={"id": connection_id},
-                        )
-                        success = True
+                        conn = entry.connection
+                        if isinstance(conn, UDPListenerConnection):
+                            conn.set_user_defined_broadcast_address(
+                                (
+                                    str(broadcast_address),
+                                    broadcast_port,
+                                )
+                            )
+                            self.log.info(
+                                f"Broadcast address updated to {broadcast_address}:{broadcast_port} "
+                                f"({interface})",
+                                extra={"id": connection_id},
+                            )
+                            success = True
 
         if not success:
             self.log.warning(

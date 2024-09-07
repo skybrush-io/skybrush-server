@@ -256,8 +256,6 @@ class MAVLinkDronesExtension(UAVExtension[MAVLinkDriver]):
                     extra={"id": key},
                 )
 
-        print(repr(result))
-
         return result
 
     def _on_rc_channels_changed(self, sender: "RCState"):

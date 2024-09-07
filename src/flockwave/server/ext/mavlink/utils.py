@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from heapq import heappush, heappop
 from logging import ERROR, WARNING, INFO, DEBUG
 from typing import NamedTuple, Optional, Union, TYPE_CHECKING

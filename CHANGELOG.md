@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- MAVLink STATUSTEXT logging levels can now be configured separately for
+  server logs (printed in the console) and client logs (forwarded to connected
+  clients).
+
+### Changed
+
+- MAVLink STATUSTEXT messages with severity equal to INFO or DEBUG are not
+  logged on the server console any more to reduce clutter. You can use the new
+  MAVLink STATUSTEXT logging level configuration option to restore the old
+  behaviour.
+
 ## [2.21.0] - 2024-09-07
 
 ### Changed

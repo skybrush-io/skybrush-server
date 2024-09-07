@@ -353,6 +353,35 @@ class MAVResult(IntEnum):
     COMMAND_UNSUPPORTED_MAV_FRAME = 9
 
 
+class MAVSeverity(IntEnum):
+    """Replica of the `MAV_SEVERITY` enum of the MAVLink protocol, using
+    proper Python enums.
+    """
+
+    NONE = -1
+
+    EMERGENCY = 0
+    ALERT = 1
+    CRITICAL = 2
+    ERROR = 3
+    WARNING = 4
+    NOTICE = 5
+    INFO = 6
+    DEBUG = 7
+
+    ANY = 100
+
+    @classmethod
+    def json_schema(cls, **kwds):
+        return {
+            "type": "string",
+            "enum": [x.name.lower() for x in cls],
+            "options": {"enum_titles": [x.name.capitalize() for x in cls]},
+            "default": MAVSeverity.NOTICE.name,
+            **kwds,
+        }
+
+
 class MAVState(IntEnum):
     """Replica of the `MAV_STATE` enum of the MAVLink protocol, using proper
     Python enums.

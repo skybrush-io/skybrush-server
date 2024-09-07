@@ -55,6 +55,7 @@ from .types import (
     MAVLinkMessageMatcher,
     MAVLinkMessageSpecification,
     MAVLinkNetworkSpecification,
+    MAVLinkStatusTextTargetSpecification,
     spec,
 )
 from .utils import (
@@ -90,7 +91,6 @@ class MAVLinkNetwork:
     manager: CommunicationManager[MAVLinkMessageSpecification, Any]
 
     _connections: list[Connection]
-    _statustext_targets: frozenset[str]
     _uav_addresses: dict[MAVLinkUAV, Any]
 
     _id: str
@@ -116,6 +116,9 @@ class MAVLinkNetwork:
     """Object that stores how the MAVLink connections should handle signed
     messages (in both the inbound and the outbound directions).
     """
+
+    _statustext_targets: MAVLinkStatusTextTargetSpecification
+    """Object specifying how MAVLink STATUSTEXT messages should be handled."""
 
     _uav_system_id_offset: int = 0
     """Offset to add to the system ID of each UAV in the network before it is
@@ -166,7 +169,7 @@ class MAVLinkNetwork:
         system_id: int = 254,
         id_formatter: Callable[[int, str], str] = "{0}".format,
         packet_loss: float = 0,
-        statustext_targets: Optional[frozenset[str]] = None,
+        statustext_targets: MAVLinkStatusTextTargetSpecification = MAVLinkStatusTextTargetSpecification.DEFAULT,
         routing: Optional[dict[str, list[int]]] = None,
         signing: MAVLinkSigningConfiguration = MAVLinkSigningConfiguration.DISABLED,
         uav_system_id_offset: int = 0,
@@ -215,9 +218,7 @@ class MAVLinkNetwork:
         self._routing = routing or {}
         self._scheduled_takeoff_manager = ScheduledTakeoffManager(self)
         self._signing = signing
-        self._statustext_targets = (
-            frozenset(statustext_targets) if statustext_targets else frozenset()
-        )
+        self._statustext_targets = statustext_targets
         self._system_id = max(min(int(system_id), 255), 1)
         self._uav_system_id_offset = int(uav_system_id_offset)
         self._use_broadcast_rate_limiting = bool(use_broadcast_rate_limiting)
@@ -893,23 +894,20 @@ class MAVLinkNetwork:
         if uav and uav._autopilot.is_prearm_error_message(text):
             uav.notify_prearm_failure(uav._autopilot.process_prearm_error_message(text))
 
-        for target in self._statustext_targets:
-            if target == "server":
-                extra = self._log_extra_from_message(message)
-                extra["telemetry"] = "ignore"
-                self.log.log(
-                    python_log_level_from_mavlink_severity(message.severity),
-                    text,
-                    extra=extra,
-                )
-            elif target == "client":
-                if uav:
-                    uav.send_log_message_to_gcs(
-                        text,
-                        severity=flockwave_severity_from_mavlink_severity(
-                            message.severity
-                        ),
-                    )
+        severity: int = message.severity
+        if severity <= self._statustext_targets.server:
+            extra = self._log_extra_from_message(message)
+            extra["telemetry"] = "ignore"
+            self.log.log(
+                python_log_level_from_mavlink_severity(message.severity),
+                text,
+                extra=extra,
+            )
+        if severity <= self._statustext_targets.client and uav is not None:
+            uav.send_log_message_to_gcs(
+                text,
+                severity=flockwave_severity_from_mavlink_severity(message.severity),
+            )
 
     def _handle_message_sys_status(
         self, message: MAVLinkMessage, *, connection_id: str, address: Any

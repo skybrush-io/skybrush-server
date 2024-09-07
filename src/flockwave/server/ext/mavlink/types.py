@@ -8,11 +8,14 @@ from typing import (
     Any,
     Awaitable,
     Callable,
+    ClassVar,
+    Iterable,
     Optional,
     Sequence,
     Union,
 )
 
+from .enums import MAVSeverity
 from .signing import MAVLinkSigningConfiguration
 
 __all__ = (
@@ -82,12 +85,92 @@ class _MAVLinkMessageSpecificationFactory:
                 )
             if len(args) > 1:
                 raise RuntimeError("only one matcher function is supported")
-            return (name, args[0])
+            return (name, args[0])  # type: ignore
         else:
             return (name, kwds)
 
 
 spec = _MAVLinkMessageSpecificationFactory()
+
+
+@dataclass(frozen=True)
+class MAVLinkStatusTextTargetSpecification:
+    """Object that specifies where to send MAVLink STATUSTEXT messages
+    originating from a MAVLink network.
+    """
+
+    server: int = int(MAVSeverity.NOTICE)
+    """Maximum MAVLink severity level of messages to be forwarded to the
+    server. MAVLink messages with a severity smaller than or equal to this
+    value will be printed on the server console. Set to -1 to turn off the
+    forwarding of MAVLink messages to the server console.
+    """
+
+    client: int = int(MAVSeverity.DEBUG)
+    """Maximum MAVLink severity level of messages to be forwarded to the
+    client. MAVLink messages with a severity smaller than or equal to this
+    value will be forwarded to connected clients. Set to -1 to turn off the
+    forwarding of MAVLink messages to the server console.
+    """
+
+    DEFAULT: ClassVar[MAVLinkStatusTextTargetSpecification]
+    """Special instance to denote the case when MAVLink signing is disabled."""
+
+    @classmethod
+    def from_json(cls, obj):
+        """Constructs a MAVLink STATUSTEXT target specification from its JSON
+        representation.
+        """
+        server_level: int = int(MAVSeverity.NOTICE)
+        client_level: int = int(MAVSeverity.DEBUG)
+
+        if isinstance(obj, dict):
+            # New-style representation, keys mapping to severity levels
+            level = cls._severity_from_json(obj.get("server"))
+            if level is not None:
+                server_level = level
+
+            level = cls._severity_from_json(obj.get("client"))
+            if level is not None:
+                client_level = level
+        elif isinstance(obj, Iterable):
+            # Old-style representation, array containing the enabled targets
+            enabled = set(obj)
+            if "server" not in enabled:
+                server_level = -1
+            if "client" not in enabled:
+                client_level = -1
+
+        return cls(server=server_level, client=client_level)
+
+    @staticmethod
+    def _severity_from_json(x: Any) -> Optional[int]:
+        if isinstance(x, int):
+            return x
+        elif isinstance(x, str):
+            return int(getattr(MAVSeverity, x.upper(), None))
+        else:
+            return None
+
+    @staticmethod
+    def _severity_to_json(x: int) -> Union[int, str]:
+        try:
+            severity = MAVSeverity(x)
+        except Exception:
+            return x
+        else:
+            return severity.name.lower()
+
+    @property
+    def json(self):
+        """Returns the JSON representation of the specification."""
+        return {
+            "server": self._severity_to_json(self.server),
+            "client": self._severity_to_json(self.client),
+        }
+
+
+MAVLinkStatusTextTargetSpecification.DEFAULT = MAVLinkStatusTextTargetSpecification()
 
 
 @dataclass
@@ -135,7 +218,9 @@ class MAVLinkNetworkSpecification:
     connection should accept unsigned MAVLink packets.
     """
 
-    statustext_targets: frozenset[str] = field(default_factory=frozenset)
+    statustext_targets: MAVLinkStatusTextTargetSpecification = field(
+        default=MAVLinkStatusTextTargetSpecification.DEFAULT
+    )
     """Specifies where to send the contents of MAVLink status text messages
     originating from this network. This property must be a set containing
     'server' to forward the messages to the server log and/or 'client' to
@@ -189,10 +274,9 @@ class MAVLinkNetworkSpecification:
             result.signing = MAVLinkSigningConfiguration.from_json(obj["signing"])
 
         if "statustext_targets" in obj:
-            if hasattr("statustext_targets", "__iter__"):
-                result.statustext_targets = frozenset(
-                    str(x) for x in obj["statustext_targets"]
-                )
+            result.statustext_targets = MAVLinkStatusTextTargetSpecification.from_json(
+                obj["statustext_targets"]
+            )
 
         if "use_broadcast_rate_limiting" in obj:
             result.use_broadcast_rate_limiting = bool(
@@ -213,7 +297,7 @@ class MAVLinkNetworkSpecification:
             "packet_loss": self.packet_loss,
             "routing": self.routing,
             "signing": self.signing,
-            "statustext_targets": sorted(self.statustext_targets),
+            "statustext_targets": self.statustext_targets,
             "use_broadcast_rate_limiting": bool(self.use_broadcast_rate_limiting),
         }
 

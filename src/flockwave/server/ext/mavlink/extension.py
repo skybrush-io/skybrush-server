@@ -14,6 +14,7 @@ from flockwave.server.registries.errors import RegistryFull
 from flockwave.server.utils import optional_int, overridden
 
 from .driver import MAVLinkDriver, MAVLinkUAV
+from .enums import MAVSeverity
 from .errors import InvalidSigningKeyError
 from .network import MAVLinkNetwork
 from .tasks import check_uavs_alive
@@ -22,6 +23,7 @@ from .types import (
     MAVLinkMessageMatcher,
     MAVLinkMessageSpecification,
     MAVLinkNetworkSpecification,
+    MAVLinkStatusTextTargetSpecification,
 )
 
 if TYPE_CHECKING:
@@ -213,7 +215,7 @@ class MAVLinkDronesExtension(UAVExtension[MAVLinkDriver]):
             "packet_loss": configuration.get("packet_loss", MISSING),
             "routing": configuration.get("routing", DEFAULT_ROUTING),
             "statustext_targets": configuration.get(
-                "statustext_targets", ("client", "server")
+                "statustext_targets", MAVLinkStatusTextTargetSpecification.DEFAULT.json
             ),
             "system_id": configuration.get("system_id", 254),
         }
@@ -253,6 +255,8 @@ class MAVLinkDronesExtension(UAVExtension[MAVLinkDriver]):
                     f"Ignoring network. Cause: {ex}",
                     extra={"id": key},
                 )
+
+        print(repr(result))
 
         return result
 
@@ -566,20 +570,17 @@ schema = {
                         },
                     },
                     "statustext_targets": {
-                        "type": "array",
+                        "type": "object",
                         "title": "STATUSTEXT message handling",
-                        "items": {
-                            "type": "string",
-                            "enum": ["client", "server"],
-                            "options": {
-                                "enum_titles": [
-                                    "Forward STATUSTEXT messages to Skybrush clients",
-                                    "Log STATUSTEXT messages in the server log",
-                                ]
-                            },
+                        "properties": {
+                            "client": MAVSeverity.json_schema(
+                                title="Forward to Skybrush clients above this severity",
+                            ),
+                            "server": MAVSeverity.json_schema(
+                                title="Log in the server log above this severity",
+                            ),
                         },
-                        "default": ["client", "server"],
-                        "uniqueItems": True,
+                        "default": {"client": "debug", "server": "notice"},
                     },
                     "use_broadcast_rate_limiting": {
                         "type": "boolean",

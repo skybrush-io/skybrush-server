@@ -137,9 +137,6 @@ class MAVLinkDriver(UAVDriver["MAVLinkUAV"]):
     run_in_background: Callable[[Callable], None]
     send_packet: PacketSenderFn
 
-    gps_fix_hysteresis: float = 0.0
-    """GPS fix hysteresis time, in seconds."""
-
     def __init__(self, app=None):
         """Constructor.
 
@@ -1007,9 +1004,6 @@ class MAVLinkUAV(UAVBase):
 
     _gps_fix: GPSFix
     """Current GPS fix status and position accuracy of the drone."""
-
-    _last_rtk_fix_at: float = 0.0
-    """Monotonic timestamp containing the time of the last RTK GPS fix."""
 
     _last_skybrush_status_info: Optional[DroneShowStatus] = None
 
@@ -2524,18 +2518,7 @@ class MAVLinkUAV(UAVBase):
         GPSFix_ object that is then later used to update the status object of
         the UAV.
         """
-        old_type = self._gps_fix.type
-
-        now = monotonic()
-        if (
-            old_type < OurGPSFixType.RTK_FLOAT
-            or type >= old_type
-            or now - self._last_rtk_fix_at >= self.driver.gps_fix_hysteresis
-        ):
-            self._gps_fix.type = type
-            if type >= OurGPSFixType.RTK_FLOAT:
-                self._last_rtk_fix_at = now
-
+        self._gps_fix.type = type
         self._gps_fix.num_satellites = num_satellites
 
     def _was_probably_rebooted_after_reconnection(self) -> bool:

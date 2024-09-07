@@ -81,7 +81,6 @@ class MAVLinkDronesExtension(UAVExtension[MAVLinkDriver]):
         """
         driver.broadcast_packet = self._broadcast_packet
         driver.create_device_tree_mutator = self.create_device_tree_mutation_context
-        driver.gps_fix_hysteresis = float(configuration.get("gps_fix_hysteresis", 0.0))
         driver.log = self.log
         driver.mandatory_custom_mode = optional_int(configuration.get("custom_mode"))
         driver.run_in_background = self.run_in_background
@@ -621,8 +620,6 @@ schema = {
             "default": 127,
             "propertyOrder": 5000,
         },
-        # Advanced settings not included here:
-        # - gps_fix_hysteresis
-        # - packet_loss
+        # packet_loss is an advanced setting and is not included here
     }
 }

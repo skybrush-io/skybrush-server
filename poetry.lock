@@ -2284,13 +2284,13 @@ test = ["pytest", "pytest-cov"]
 
 [[package]]
 name = "skybrush-ext-dock"
-version = "1.0.0"
+version = "1.1.0"
 description = "Docking station support for Skybrush Server"
 optional = true
-python-versions = ">=3.8,<4.0"
+python-versions = ">=3.9,<4.0"
 files = [
-    {file = "skybrush-ext-dock-1.0.0.tar.gz", hash = "sha256:7210c8e7250564c71691f77619fd9c19f6f8aebebf7f3ef271a6678477004af1"},
-    {file = "skybrush_ext_dock-1.0.0-py3-none-any.whl", hash = "sha256:55d0d99e6dd9239f047c3efee27267fff01e7e627fb8addba61b880f0efda082"},
+    {file = "skybrush_ext_dock-1.1.0-py3-none-any.whl", hash = "sha256:9e721a32f115cff6c77feded550628277978b6332a0a7c50c575fb244792c8b4"},
+    {file = "skybrush_ext_dock-1.1.0.tar.gz", hash = "sha256:213d580462a2d0958636bb4896ba6241cbd346eb324317165568e57b5d82c5d0"},
 ]
 
 [package.dependencies]
@@ -2764,4 +2764,4 @@ pro = ["skybrush-ext-flight-report", "skybrush-ext-map-cache", "skybrush-ext-sid
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.9"
-content-hash = "d3dd75e1a1e4e4ae761798f7457fb28e44e4d425eea7c1c43a52f2e15d2f7dbd"
+content-hash = "eb81712a689fe32ed6287750151c4f7f3c15f6e4a8604163c0f811fbc81599f2"

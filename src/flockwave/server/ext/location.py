@@ -144,9 +144,9 @@ def _log_current_location() -> None:
     global _location, _log
 
     if _log is not None:
-        if _location is None or _location.position is None:
-            _log.warn("Server location became unknown")
-        else:
+        # Do not show "Server location changed to unknown" messages -- it is
+        # confusing to see the message when the server is shutting down
+        if _location is not None and _location.position is not None:
             _log.info(f"Server location changed to {_location.format()}")
 
 

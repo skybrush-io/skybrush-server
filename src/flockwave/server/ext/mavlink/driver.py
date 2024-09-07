@@ -2149,7 +2149,7 @@ class MAVLinkUAV(UAVBase):
 
             if not success:
                 self.driver.log.warning(
-                    f"Failed to configure data stream rate for message {message_id}",
+                    f"Failed to configure data stream rate for message {message_id}, trying again later",
                     extra={"id": log_id_for_uav(self)},
                 )
 

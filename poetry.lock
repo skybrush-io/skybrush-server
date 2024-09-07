@@ -822,13 +822,13 @@ dotenv = ["python-dotenv"]
 
 [[package]]
 name = "flockwave-app-framework"
-version = "3.1.2"
+version = "3.2.1"
 description = "Generic app framework for CLI based apps in the Skybrush suite"
 optional = false
 python-versions = ">=3.9,<4.0"
 files = [
-    {file = "flockwave-app-framework-3.1.2.tar.gz", hash = "sha256:f02ebff3e54a5ffa3214e3031b0d64c413eb391adc16c467be7b64140a58642c"},
-    {file = "flockwave_app_framework-3.1.2-py3-none-any.whl", hash = "sha256:d4fabdb2d33988bd1d5a9beb6df94c91bb6a9143b833c99b117cc461e4750eaa"},
+    {file = "flockwave-app-framework-3.2.1.tar.gz", hash = "sha256:1f9f5ffee7d3ff5249a9f902e28a16ae832d40e48d9222248718faa09bc9c2f0"},
+    {file = "flockwave_app_framework-3.2.1-py3-none-any.whl", hash = "sha256:90ab2a1713e521e38c0e9d77acc60310420062015e4cb4e355fab1a6f20571da"},
 ]
 
 [package.dependencies]
@@ -2764,4 +2764,4 @@ pro = ["skybrush-ext-flight-report", "skybrush-ext-map-cache", "skybrush-ext-sid
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.9"
-content-hash = "0721fe2a891cd5fc60a0dfcac284fa7e378cdf342b10d8a07e865bd8aabd3d2d"
+content-hash = "ef739c4afaf82ee58b107e7e45ac2d2636ea96cf04cf360fef31acd9d7746aa0"

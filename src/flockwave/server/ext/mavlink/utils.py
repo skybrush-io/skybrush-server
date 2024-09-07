@@ -1,12 +1,15 @@
 from heapq import heappush, heappop
 from logging import ERROR, WARNING, INFO, DEBUG
-from typing import NamedTuple, Optional, Union
+from typing import NamedTuple, Optional, Union, TYPE_CHECKING
 
 from flockwave.gps.vectors import GPSCoordinate
 from flockwave.server.model.log import Severity
 
 from .enums import MAVFrame, MAVParamType, MAVState
 from .types import MAVLinkMessage
+
+if TYPE_CHECKING:
+    from .driver import MAVLinkUAV
 
 __all__ = (
     "can_communicate_infer_from_heartbeat",
@@ -110,21 +113,21 @@ def log_id_from_message(
     """
     system_id, component_id = message.get_srcSystem(), message.get_srcComponent()
     if network_id:
-        return f"{network_id}/{system_id:02x}:{component_id:02x}"
+        return f"{network_id}/{system_id}:{component_id}"
     else:
-        return f"{system_id:02x}:{component_id:02x}"
+        return f"{system_id}:{component_id}"
 
 
-def log_id_for_uav(uav) -> str:
+def log_id_for_uav(uav: MAVLinkUAV) -> str:
     """Returns an identifier for a single UAV that is suitable for displaying in
     the logging output, based on the network and system ID of the UAV.
     """
     network_id = uav.network_id
     system_id = uav.system_id
     if network_id:
-        return f"{network_id}/{system_id:02x}"
+        return f"{network_id}/{system_id}"
     else:
-        return f"{system_id:02x}"
+        return f"{system_id}"
 
 
 def mavlink_nav_command_to_gps_coordinate(message: MAVLinkMessage) -> GPSCoordinate:

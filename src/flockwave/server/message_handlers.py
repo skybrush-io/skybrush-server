@@ -186,7 +186,9 @@ def create_mapper(
     ) -> Union[FlockwaveNotification, FlockwaveResponse]:
         results = {}
 
-        body: dict[str, Any] = {"type": type}
+        body: dict[str, Any] = {
+            "type": (in_response_to.get_type() or type) if in_response_to else type
+        }
         body[key] = results
         response = hub.create_response_or_notification(
             body=body, in_response_to=in_response_to

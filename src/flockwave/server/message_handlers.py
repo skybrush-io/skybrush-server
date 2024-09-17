@@ -84,7 +84,7 @@ def create_mapper(
     *,
     key: str = "result",
     filter: Optional[Callable[[T], bool]] = None,
-    getter: Optional[Union[Callable[[T], Any], Callable[[T, C], Any]]] = None,
+    getter: Optional[Callable[[T], Any]] = None,
     description: str = "item",
     add_object_id: bool = False,
     cmd_manager: Optional["CommandExecutionManager"] = None,
@@ -121,14 +121,20 @@ def create_mapper(
     message, assigned to a key whose value maps the original object IDs to
     the retrieved values.
 
-    More precisely, the returned factory function takes a message hub, a list
-    of object IDs and an optional source message that the IDs originated from.
-    Each object is looked up in the specified registry by ID. The factory then
-    returns a message that contains a message type (specified by the `type`
-    parameter, typically identical to the message being responded to) and
-    _another_, named key (specified by the `key` parameter) whose _value_ maps
-    the received object IDs to the corresponding status information, fetched
-    from the objects themselves using the specified getter function.
+    More precisely, the returned factory function takes four objects:
+
+      - a message hub,
+      - a list of object IDs,
+      - an optional source message that the IDs originated from,
+      - and an optional client object that sent the message
+
+    Each object referred to by the second argument is looked up in the specified
+    registry by ID. The factory then returns a message that contains a message
+    type (specified by the `type` parameter, or copied from the message being
+    responded to) and _another_, named key (specified by the `key` parameter)
+    whose _value_ maps the received object IDs to the corresponding status
+    information, fetched from the objects themselves using the specified
+    getter function.
 
     The returned message may also contain a key named `error`, which maps the IDs
     of the objects for which the retrieval failed to error messages explaining

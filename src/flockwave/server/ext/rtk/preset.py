@@ -251,7 +251,7 @@ class RTKConfigurationPreset:
         return {
             "id": self.id,
             "title": self.title,
-            "type": self.type,
+            "type": self.type.value,
             "format": self.format,
             "sources": self.sources,
         }

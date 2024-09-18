@@ -251,21 +251,25 @@ class RTKExtension(Extension):
         """
         return self._current_preset
 
-    def delete_preset_by_id(self, preset: RTKConfigurationPreset) -> bool:
-        """Deletes the RTK preset with the given ID if it is a user preset.
+    def delete_preset(self, preset: RTKConfigurationPreset) -> bool:
+        """Deletes the RTK preset if it is a user preset.
 
         Returns:
             true, unconditionally
 
         Raises:
-            RuntimeError: if the preset cannot be deleted
+            RuntimeError: if the preset cannot be deleted or it does not exist
+                in the registry
         """
         assert self._registry is not None
 
         if preset.type is not RTKConfigurationPresetType.USER:
             raise RuntimeError("Only user-defined presets can be deleted")
 
-        self._registry.remove(preset)
+        existing = self._registry.remove(preset)
+        if existing is None:
+            raise RuntimeError("Preset does not exist")
+
         return True
 
     def exports(self) -> dict[str, Any]:
@@ -423,7 +427,7 @@ class RTKExtension(Extension):
             self._update_dynamic_presets(first=True)
 
             # Register message handlers for RTK-related message
-            create_RTK_INF = create_mapper(
+            handle_RTK_INF = create_mapper(
                 "RTK-INF",
                 self._registry,
                 key="preset",
@@ -432,13 +436,13 @@ class RTKExtension(Extension):
             handle_RTK_DEL = create_mapper(
                 "RTK-DEL",
                 self._registry,
-                getter=self.delete_preset_by_id,
+                getter=self.delete_preset,
                 description="RTK preset",
             )
             stack.enter_context(
                 app.message_hub.use_message_handlers(
                     {
-                        "RTK-INF": create_multi_object_message_handler(create_RTK_INF),
+                        "RTK-INF": create_multi_object_message_handler(handle_RTK_INF),
                         "RTK-LIST": create_object_listing_request_handler(
                             self._registry
                         ),
@@ -746,7 +750,7 @@ class RTKExtension(Extension):
                                 task=partial(
                                     self._run_single_connection_for_preset,
                                     preset=preset,
-                                ),
+                                ),  # type: ignore
                             )
                         )
                     except Exception:

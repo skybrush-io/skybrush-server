@@ -77,8 +77,8 @@ class SafetyConfigurationRequest:
     battery voltage setting."""
 
     return_to_home_altitude: Optional[float] = None
-    """Altitude in [mAHL] at which return to home operations are performed.
-     `None` means not to change the return to home altitude setting."""
+    """Minimum altitude in [mAHL] above which return to home operations are
+    performed. `None` means not to change the return to home altitude setting."""
 
     return_to_home_speed: Optional[float] = None
     """Horizontal speed in [m/s] at which return to home operations are

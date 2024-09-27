@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 from urllib.parse import urlencode
-from typing import Any, Callable, Iterable, Optional, Sequence, Type
+from typing import Any, Callable, Iterable, Optional, Sequence, Type, TypeVar
 
 from flockwave.channels.types import Encoder, Parser
 from flockwave.gps.encoder import create_gps_encoder
@@ -46,6 +46,9 @@ def describe_format(format: str) -> str:
     return format
 
 
+C = TypeVar("C", bound="RTKConfigurationPreset")
+
+
 @dataclass
 class RTKConfigurationPreset:
     """Data class representing an RTK configuration preset consisting of one or
@@ -89,7 +92,7 @@ class RTKConfigurationPreset:
     @classmethod
     def from_json(
         cls,
-        spec,
+        spec: dict[str, Any],
         *,
         id: Optional[str] = None,
         type: RTKConfigurationPresetType = RTKConfigurationPresetType.BUILTIN,
@@ -117,35 +120,60 @@ class RTKConfigurationPreset:
         result = cls(
             id=id, title=str(spec["title"] if "title" in spec else id), type=type
         )
+        return result.update_from(spec)
 
-        if "format" in spec:
-            result.format = str(spec["format"])
-            if result.format not in ALLOWED_FORMATS:
-                raise ValueError(f"Invalid RTK packet format: {result.format!r}")
+    def update_from(self: C, updates: dict[str, Any]) -> C:
+        """Updates the preset from a JSON specification in the configuration
+        file. The specification can be partial; fields not listed explicitly in
+        the specification are left at their current values.
 
-        if "sources" in spec:
-            sources = spec["sources"]
-        elif "source" in spec:
+        Args:
+            updates: the JSON specification of the updates to apply on the
+                preset
+
+        Returns:
+            the preset itself for easy method chaining
+        """
+        if "title" in updates:
+            self.title = str(updates["title"])
+
+        if "format" in updates:
+            format = str(updates["format"])
+            if format not in ALLOWED_FORMATS:
+                raise ValueError(f"Invalid RTK packet format: {format!r}")
+            self.format = format
+
+        sources: Optional[list[Any]]
+        if "sources" in updates:
+            sources = updates["sources"]
+        elif "source" in updates:
             # source is an alias to sources
-            sources = spec["source"]
+            sources = updates["source"]
         else:
-            sources = []
+            sources = None
 
-        if not isinstance(sources, list):
-            sources = [sources]
+        if sources is not None:
+            if not isinstance(sources, list):
+                sources = [sources]
 
-        for source in sources:
-            result.add_source(source)
+            self.remove_all_sources()
+            for source in sources:
+                self.add_source(source)
 
-        if "init" in spec:
-            init = spec["init"]
-            result.init = init if isinstance(init, bytes) else str(init).encode("utf-8")
+        if "init" in updates:
+            init = updates["init"]
+            self.init = init if isinstance(init, bytes) else str(init).encode("utf-8")
 
-        result.filter = create_filter_function(**spec.get("filter", {}))
-        result.auto_survey = bool(spec.get("auto_survey"))
-        result.auto_select = bool(spec.get("auto_select"))
+        if "filter" in updates:
+            self.filter = create_filter_function(**updates["filter"])
 
-        return result
+        if "auto_survey" in updates:
+            self.auto_survey = bool(updates["auto_survey"])
+
+        if "auto_select" in updates:
+            self.auto_select = bool(updates["auto_select"])
+
+        return self
 
     @classmethod
     def from_serial_port(
@@ -255,6 +283,10 @@ class RTKConfigurationPreset:
             "format": self.format,
             "sources": self.sources,
         }
+
+    def remove_all_sources(self) -> None:
+        """Removes all sources from the RTH preset."""
+        self.sources.clear()
 
 
 def _is_rtcm_packet(packet: GPSPacket) -> bool:

@@ -15,7 +15,7 @@ from time import monotonic
 from trio import CancelScope, open_memory_channel, open_nursery, sleep
 from trio.abc import SendChannel
 from trio_util import AsyncBool, periodic
-from typing import cast, Any, ClassVar, Iterator, Optional, Union
+from typing import Callable, cast, Any, ClassVar, Iterator, Optional, Union
 
 from flockwave.channels import ParserChannel
 from flockwave.connections import create_connection, RWConnection
@@ -433,6 +433,13 @@ class RTKExtension(Extension):
                 key="preset",
                 description="RTK preset",
             )
+            handle_RTK_UPDATE = create_mapper(
+                "RTK-UPDATE",
+                self._registry,
+                context_getter=self._get_updates_from_RTK_UPDATE_message,
+                getter=self.update_preset,
+                description="RTK preset",
+            )
             handle_RTK_DEL = create_mapper(
                 "RTK-DEL",
                 self._registry,
@@ -460,6 +467,9 @@ class RTKExtension(Extension):
                             handle_RTK_DEL
                         ),
                         "X-RTK-NEW": self.handle_RTK_NEW,
+                        "X-RTK-UPDATE": create_multi_object_message_handler(
+                            handle_RTK_UPDATE
+                        ),
                     },
                 )
             )
@@ -475,6 +485,37 @@ class RTKExtension(Extension):
                     if message == "set_preset":
                         preset = cast(Optional[RTKConfigurationPreset], args)
                         await self._perform_preset_switch(preset)
+
+    def update_preset(
+        self,
+        preset: RTKConfigurationPreset,
+        updates: Union[
+            dict[str, Any], Callable[[RTKConfigurationPreset], dict[str, Any]]
+        ],
+    ) -> bool:
+        """Updates the given RTK preset.
+
+        Args:
+            preset: the preset to update. It is assumed to have been retrieved
+                from the preset registry.
+            updates: either a dictionary mapping the fields of the preset to
+                update to their new values, or a function that can be called
+                with the preset and returns such a dictionary. The latter is
+                needed to allow this function to be used by `create_mapper()`
+
+        Returns:
+            true, unconditionally
+        """
+        assert self._registry is not None
+
+        if preset.type is not RTKConfigurationPresetType.USER:
+            raise RuntimeError("Only user-defined presets can be deleted")
+
+        if callable(updates):
+            updates = updates(preset)
+
+        preset.update_from(updates)
+        return True
 
     @property
     def survey_settings(self) -> RTKSurveySettings:
@@ -515,6 +556,28 @@ class RTKExtension(Extension):
         This function is exported to other extensions via the exports object.
         """
         return self._statistics
+
+    def _get_updates_from_RTK_UPDATE_message(
+        self, message: Optional[FlockwaveMessage]
+    ) -> Callable[[RTKConfigurationPreset], dict[str, Any]]:
+        """Helper function for the implementation of the RTK-UPDATE message
+        handler.
+
+        Given an RTK-UPDATE message, extracts the object describing the updates
+        to apply to the individual RTK presets.
+
+        Returns:
+            a function that can be called with an RTK configuration preset
+            being updated and that returns the updates to perform on the preset
+        """
+        assert message is not None
+        updates: dict[str, dict[str, Any]] = message.body.get("updates") or {}
+
+        def update_getter(preset: RTKConfigurationPreset) -> dict[str, Any]:
+            update = updates.get(preset.id) or {}
+            return update
+
+        return update_getter
 
     def _load_presets_from(
         self,

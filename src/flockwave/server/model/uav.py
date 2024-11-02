@@ -525,7 +525,7 @@ class UAVDriver(Generic[TUAV], metaclass=ABCMeta):
                 if isinstance(result, FlightLog):
                     # Write the log to disk
                     os.makedirs(FLIGHT_LOGS_DIR, exist_ok=True)
-                    with open(f"{FLIGHT_LOGS_DIR}/{uav.padded_id}_{log_id}.txt", "w") as f:
+                    with open(f"{FLIGHT_LOGS_DIR}/{uav.padded_id}_{log_id}.log", "w") as f:
                         f.write(result.body)
                 yield result
         return wrapper()

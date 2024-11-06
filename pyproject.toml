@@ -42,7 +42,7 @@ passlib = { extras = ["bcrypt"], version = "^1.7.4" }
 flockwave-app-framework = { version = "^3.2.1", extras = [
     "daemon",
 ], source = "fury" }
-flockwave-async = { version = "^1.4.2", source = "fury" }
+flockwave-async = { version = "^1.4.3", source = "fury" }
 flockwave-conn = { extras = [
     "rpc",
     "serial",

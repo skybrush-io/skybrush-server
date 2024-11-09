@@ -32,6 +32,7 @@ from flockwave.server.model.commands import Progress, Suspend
 from flockwave.server.model.devices import ObjectNode
 from flockwave.server.model.gps import GPSFixType
 from flockwave.server.model.log import FlightLog, FlightLogKind, FlightLogMetadata
+from flockwave.server.model.mission import MissionItemBundle
 from flockwave.server.model.preflight import PreflightCheckResult, PreflightCheckInfo
 from flockwave.server.model.uav import VersionInfo, UAVBase, UAVDriver
 from flockwave.server.show import (
@@ -164,6 +165,7 @@ class VirtualUAV(UAVBase):
         self._autopilot_initializing = False
         self._home_amsl = None
         self._light_controller = DefaultLightController(self)
+        self._mission_items = None
         self._mission_started_at = None
         self._motors_running = False
         self._parameters = {}
@@ -299,6 +301,10 @@ class VirtualUAV(UAVBase):
     @property
     def has_trajectory(self) -> bool:
         return self._trajectory is not None
+
+    @property
+    def has_mission_items(self) -> bool:
+        return self._mission_items is not None
 
     @property
     def has_user_defined_error(self) -> bool:
@@ -493,6 +499,23 @@ class VirtualUAV(UAVBase):
         else:
             if present:
                 self.errors.append(code)
+
+    def handle_mission_upload(self, bundle: MissionItemBundle, format: str) -> None:
+        """Handles the upload of a waypoint based mission.
+
+        Parameters:
+            bundle: the mission bundle
+            format: the mission format
+
+        Raises:
+            RuntimeError: if the drone is not on the ground
+        """
+        if self.state is not VirtualUAVState.LANDED:
+            raise RuntimeError("Cannot upload a mission while the drone is airborne")
+
+        self._mission_items = bundle.get("items", None)
+
+        self.update_status(mode="mission" if self.has_mission_items else "stab")
 
     def handle_show_upload(self, show) -> None:
         """Handles the upload of a full drone show (trajectory + light program).
@@ -1060,6 +1083,21 @@ class VirtualUAVDriver(UAVDriver[VirtualUAV]):
         Can be used on the client side to test response timeouts.
         """
         await sleep(1000000)
+
+    async def handle_command___mission_upload(
+        self, uav: VirtualUAV, bundle: MissionItemBundle, format: str
+    ) -> None:
+        """Handles a drone mission upload request for the given UAV.
+
+        This is a temporary solution until we figure out something that is
+        more sustainable in the long run.
+
+        Parameters:
+            bundle: the mission bundle
+            format: the mission format
+        """
+        uav.handle_mission_upload(bundle, format)
+        await sleep(0.25 + random() * 0.5)
 
     async def handle_command___show_upload(self, uav: VirtualUAV, *, show) -> None:
         """Handles a drone show upload request for the given UAV.

@@ -11,7 +11,7 @@ from typing import Any, Callable, Sequence, Optional, TYPE_CHECKING
 from flockwave.connections import create_connection
 from flockwave.connections.socket import UDPListenerConnection
 from flockwave.networking import format_socket_address
-from flockwave.server.ports import get_port_number_for_service
+from flockwave.server.ports import suggest_port_number_for_service
 
 if TYPE_CHECKING:
     from flockwave.server.app import SkybrushServer
@@ -24,7 +24,7 @@ list of RC channel values
 
 async def run(app: SkybrushServer, configuration, log):
     host = configuration.get("host", "127.0.0.1")
-    port = configuration.get("port", get_port_number_for_service("rcin"))
+    port = configuration.get("port", suggest_port_number_for_service("rcin"))
     formatted_address = format_socket_address((host, port))
 
     endianness = str(configuration.get("endianness", "little")).lower()
@@ -203,7 +203,7 @@ schema = {
             ),
             "minimum": 1,
             "maximum": 65535,
-            "default": get_port_number_for_service("rcin"),
+            "default": suggest_port_number_for_service("rcin"),
             "required": False,
             "propertyOrder": 20,
         },

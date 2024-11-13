@@ -4,7 +4,9 @@ and related applications.
 
 from typing import Optional
 
-__all__ = ("get_base_port", "get_port_number_for_service")
+from deprecated import deprecated
+
+__all__ = ("get_base_port", "suggest_port_number_for_service")
 
 
 BASE_PORT: int = 5000
@@ -21,11 +23,11 @@ SERVICE_MAP: dict[str, tuple[str, int]] = {
     "ssdp": ("absolute", 1900),
 }
 """Dictionary mapping registered Skybrush-related services to the corresponding
-absolute or relative port numbers.
+suggested absolute or relative port numbers.
 """
 
 _BASE_PORT_USED: bool = False
-"""Stores whether the base port was already used by ``get_port_number_for_service()``
+"""Stores whether the base port was already used by ``suggest_port_number_for_service()``
 to derive the port number of a service that uses a relative port number.
 """
 
@@ -37,7 +39,14 @@ def get_base_port() -> int:
     return BASE_PORT
 
 
+@deprecated(reason="use suggest_port_number_for_service")
 def get_port_number_for_service(service: str, base_port: Optional[int] = None) -> int:
+    return suggest_port_number_for_service(service, base_port)
+
+
+def suggest_port_number_for_service(
+    service: str, base_port: Optional[int] = None
+) -> int:
     """Returns a suggested port number for the given Skybrush-related service.
 
     Service names are keys in the `SERVICE_MAP` dictionary. Typical service
@@ -81,7 +90,7 @@ def get_port_number_for_service(service: str, base_port: Optional[int] = None) -
 
 def set_base_port(value: int) -> None:
     """Sets the base port of the server. This must be done early during the
-    startup process, _before_ ``get_port_number_for_service()`` is invoked
+    startup process, _before_ ``suggest_port_number_for_service()`` is invoked
     for any service that uses a relative port number.
 
     Raises:

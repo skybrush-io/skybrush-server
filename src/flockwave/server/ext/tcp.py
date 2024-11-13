@@ -26,7 +26,7 @@ from flockwave.channels import ParserChannel
 from flockwave.encoders.json import create_json_encoder
 from flockwave.parsers.json import create_json_parser
 from flockwave.server.model import Client, CommunicationChannel
-from flockwave.server.ports import get_port_number_for_service
+from flockwave.server.ports import suggest_port_number_for_service
 from flockwave.networking import format_socket_address, get_socket_address
 from flockwave.server.utils import overridden
 from flockwave.server.utils.networking import serve_tcp_and_log_errors
@@ -196,7 +196,7 @@ async def handle_message(message: Any, client, *, limit: CapacityLimiter) -> Non
 async def run(app, configuration, logger):
     """Background task that is active while the extension is loaded."""
     host = configuration.get("host", "")
-    port = configuration.get("port", get_port_number_for_service("tcp"))
+    port = configuration.get("port", suggest_port_number_for_service("tcp"))
     pool_size = configuration.get("pool_size", 1000)
 
     if not host:
@@ -243,7 +243,7 @@ schema = {
             ),
             "minimum": 1,
             "maximum": 65535,
-            "default": get_port_number_for_service("tcp"),
+            "default": suggest_port_number_for_service("tcp"),
             "required": False,
             "propertyOrder": 20,
         },

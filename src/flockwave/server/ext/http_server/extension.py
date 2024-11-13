@@ -21,7 +21,7 @@ import logging
 
 from flockwave.ext.manager import ExtensionManager
 from flockwave.networking import can_bind_to_tcp_address, format_socket_address
-from flockwave.server.ports import get_port_number_for_service
+from flockwave.server.ports import suggest_port_number_for_service
 from flockwave.server.types import Disposer
 from flockwave.server.utils.packaging import is_oxidized
 
@@ -225,7 +225,7 @@ def load(app, configuration):
 
     address = (
         configuration.get("host", "localhost"),
-        configuration.get("port", get_port_number_for_service("http")),
+        configuration.get("port", suggest_port_number_for_service("http")),
     )
     ext_manager = app.extension_manager
 
@@ -351,7 +351,7 @@ schema = {
             ),
             "minimum": 1,
             "maximum": 65535,
-            "default": get_port_number_for_service("http"),
+            "default": suggest_port_number_for_service("http"),
             "required": False,
             "propertyOrder": 20,
         },

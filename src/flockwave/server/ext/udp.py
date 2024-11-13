@@ -21,7 +21,7 @@ from flockwave.networking import (
     get_socket_address,
 )
 from flockwave.server.model import CommunicationChannel
-from flockwave.server.ports import get_port_number_for_service
+from flockwave.server.ports import suggest_port_number_for_service
 from flockwave.server.utils import overridden
 
 app = None
@@ -142,7 +142,7 @@ async def handle_message_safely(
 async def run(app, configuration, logger):
     """Background task that is active while the extension is loaded."""
     host = configuration.get("host", "")
-    port = configuration.get("port", get_port_number_for_service("udp"))
+    port = configuration.get("port", suggest_port_number_for_service("udp"))
 
     address = host, port
     pool_size = configuration.get("pool_size", 1000)
@@ -197,7 +197,7 @@ schema = {
             ),
             "minimum": 1,
             "maximum": 65535,
-            "default": get_port_number_for_service("udp"),
+            "default": suggest_port_number_for_service("udp"),
             "required": False,
             "propertyOrder": 20,
         },

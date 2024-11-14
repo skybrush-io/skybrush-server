@@ -31,7 +31,7 @@ blinker = "^1.7.0"
 python-baseconv = "^1.2.2"
 pynmea2 = "^1.19.0"
 trio = ">=0.24.0"
-quart = ">=0.19.4"
+quart = ">=0.19.9"
 quart-trio = ">=0.11.1"
 trio-util = ">=0.7.0"
 python-dotenv = "^1.0.0"
@@ -80,7 +80,6 @@ unidecode = "^1.3.8"
 wrapt = "^1.16.0"
 cachetools = "^5.4.0"
 platformdirs = "^4.2.2"
-flask = "<3.1.0"
 
 [tool.poetry.group.dev.dependencies]
 coverage = { extras = ["toml"], version = "^7.4.0" }

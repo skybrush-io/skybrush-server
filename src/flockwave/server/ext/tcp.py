@@ -5,6 +5,8 @@ This extension enables the server to communicate with clients by expecting
 requests on a certain TCP port.
 """
 
+from __future__ import annotations
+
 import weakref
 
 from contextlib import ExitStack
@@ -20,18 +22,21 @@ from trio import (
     open_nursery,
     SocketStream,
 )
-from typing import Any, Optional
+from typing import Any, Optional, TYPE_CHECKING
 
 from flockwave.channels import ParserChannel
 from flockwave.encoders.json import create_json_encoder
 from flockwave.parsers.json import create_json_parser
 from flockwave.server.model import Client, CommunicationChannel
-from flockwave.server.ports import suggest_port_number_for_service
+from flockwave.server.ports import suggest_port_number_for_service, use_port
 from flockwave.networking import format_socket_address, get_socket_address
 from flockwave.server.utils import overridden
 from flockwave.server.utils.networking import serve_tcp_and_log_errors
 
-app = None
+if TYPE_CHECKING:
+    from flockwave.server.app import SkybrushServer
+
+app: Optional[SkybrushServer] = None
 encoder = create_json_encoder()
 log: Optional[Logger] = None
 
@@ -142,6 +147,8 @@ async def handle_connection(stream, *, limit):
     handler = partial(handle_message, limit=limit)
     parser = create_json_parser()
 
+    assert app is not None
+
     with app.client_registry.use(client_id, "tcp") as client:
         client.stream = stream
         async with open_nursery() as nursery:
@@ -187,7 +194,7 @@ async def handle_message(message: Any, client, *, limit: CapacityLimiter) -> Non
         client: the client that sent the message
     """
     async with limit:
-        await app.message_hub.handle_incoming_message(message, client)
+        await app.message_hub.handle_incoming_message(message, client)  # type: ignore
 
 
 ############################################################################
@@ -204,6 +211,7 @@ async def run(app, configuration, logger):
 
     with ExitStack() as stack:
         stack.enter_context(overridden(globals(), app=app, log=logger))
+        stack.enter_context(use_port("tcp", port))
         stack.enter_context(
             app.channel_type_registry.use(
                 "tcp",

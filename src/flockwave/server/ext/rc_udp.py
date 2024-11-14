@@ -11,7 +11,7 @@ from typing import Any, Callable, Sequence, Optional, TYPE_CHECKING
 from flockwave.connections import create_connection
 from flockwave.connections.socket import UDPListenerConnection
 from flockwave.networking import format_socket_address
-from flockwave.server.ports import suggest_port_number_for_service
+from flockwave.server.ports import suggest_port_number_for_service, use_port
 
 if TYPE_CHECKING:
     from flockwave.server.app import SkybrushServer
@@ -21,10 +21,13 @@ Decoder = Callable[[bytes], Sequence[int]]
 list of RC channel values
 """
 
+SERVICE: str = "rcin"
+"""Name of the service that we use to derive a default port number."""
+
 
 async def run(app: SkybrushServer, configuration, log):
     host = configuration.get("host", "127.0.0.1")
-    port = configuration.get("port", suggest_port_number_for_service("rcin"))
+    port = configuration.get("port", suggest_port_number_for_service(SERVICE))
     formatted_address = format_socket_address((host, port))
 
     endianness = str(configuration.get("endianness", "little")).lower()
@@ -71,7 +74,10 @@ async def run(app: SkybrushServer, configuration, log):
             timeout=timeout,
         )
 
-    with app.connection_registry.use(connection, name="UDP RC input"):
+    with (
+        use_port(SERVICE, port),
+        app.connection_registry.use(connection, name="UDP RC input"),
+    ):
         await app.supervise(connection, task=handler)
 
 
@@ -203,7 +209,7 @@ schema = {
             ),
             "minimum": 1,
             "maximum": 65535,
-            "default": suggest_port_number_for_service("rcin"),
+            "default": suggest_port_number_for_service(SERVICE),
             "required": False,
             "propertyOrder": 20,
         },

@@ -21,7 +21,7 @@ import logging
 
 from flockwave.ext.manager import ExtensionManager
 from flockwave.networking import can_bind_to_tcp_address, format_socket_address
-from flockwave.server.ports import suggest_port_number_for_service
+from flockwave.server.ports import suggest_port_number_for_service, use_port
 from flockwave.server.types import Disposer
 from flockwave.server.utils.packaging import is_oxidized
 
@@ -30,6 +30,9 @@ from .routing import RoutingMiddleware
 __all__ = ("exports", "load", "unload", "schema")
 
 PACKAGE_NAME = __name__.rpartition(".")[0]
+
+SERVICE: str = "http"
+"""Name of the service that we use to derive a default port number."""
 
 ############################################################################
 
@@ -225,7 +228,7 @@ def load(app, configuration):
 
     address = (
         configuration.get("host", "localhost"),
-        configuration.get("port", suggest_port_number_for_service("http")),
+        configuration.get("port", suggest_port_number_for_service(SERVICE)),
     )
     ext_manager = app.extension_manager
 
@@ -294,7 +297,8 @@ async def run(app, configuration, logger):
         started_at = current_time()
 
         try:
-            await serve(exports["asgi_app"], config)
+            with use_port(SERVICE, port):
+                await serve(exports["asgi_app"], config)
         except Exception as ex:
             print(repr(ex))
             print(getattr(ex, "__cause__", None))

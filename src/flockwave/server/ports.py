@@ -2,19 +2,26 @@
 and related applications.
 """
 
-from typing import Optional
+from contextlib import contextmanager
+from types import MappingProxyType
+from typing import Iterator, Literal, Mapping, Optional
 
 from deprecated import deprecated
 
 __all__ = ("get_base_port", "suggest_port_number_for_service")
 
 
+PortSpec = tuple[Literal["relative", "absolute"], int]
+"""Typing for a single entry in the `SERVICE_MAP` dictionary that tells how to
+determine the preferred port of a service.
+"""
+
 BASE_PORT: int = 5000
 """Base port number. Port numbers of services defined with a relative port
 number are derived by adding the relative port number to the base port.
 """
 
-SERVICE_MAP: dict[str, tuple[str, int]] = {
+SERVICE_MAP: dict[str, PortSpec] = {
     "http": ("relative", 0),
     "tcp": ("relative", 1),
     "udp": ("relative", 1),
@@ -31,12 +38,27 @@ _BASE_PORT_USED: bool = False
 to derive the port number of a service that uses a relative port number.
 """
 
+_registered_ports: dict[str, int] = {}
+"""Dictionary mapping the ports _actually_ registered by extensions for
+individual services.
+
+Extensions are supposed to use the `use_port()` context manager to register a
+port in this dictionary.
+"""
+
 
 def get_base_port() -> int:
     """Returns the base port that is used to derive port numbers for services
     with relative port numbers.
     """
     return BASE_PORT
+
+
+def get_port_map() -> Mapping[str, int]:
+    """Returns a mapping from currently registered service names to the port
+    numbers they use.
+    """
+    return MappingProxyType(_registered_ports)
 
 
 @deprecated(reason="use suggest_port_number_for_service")
@@ -112,3 +134,18 @@ def set_base_port(value: int) -> None:
         )
 
     BASE_PORT = value
+
+
+@contextmanager
+def use_port(service: str, port: int) -> Iterator[None]:
+    """Context manager that registers a port as being used by a service."""
+    global _registered_ports
+
+    if service in _registered_ports:
+        raise RuntimeError(f"service already registered: {service!r}")
+
+    _registered_ports[service] = port
+    try:
+        yield
+    finally:
+        _registered_ports.pop(service, None)

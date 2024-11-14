@@ -20,7 +20,7 @@ from flockwave.app_framework import DaemonApp
 from flockwave.app_framework.configurator import AppConfigurator, Configuration
 from flockwave.connections.base import ConnectionState
 from flockwave.gps.vectors import GPSCoordinate
-from flockwave.server.ports import set_base_port
+from flockwave.server.ports import get_port_map, set_base_port
 from flockwave.server.utils import divide_by, rename_keys
 from flockwave.server.utils.packaging import is_packaged
 from flockwave.server.utils.system_time import (
@@ -804,7 +804,7 @@ class SkybrushServer(DaemonApp):
         """
         self.rate_limiters.request_to_send("UAV-INF", uav_ids)
 
-    async def run(self) -> None:
+    async def run(self) -> int:
         self.run_in_background(self.command_execution_manager.run)
         self.run_in_background(self.message_hub.run)
         self.run_in_background(self.rate_limiters.run)
@@ -1268,6 +1268,11 @@ def handle_OBJ_LIST(message: FlockwaveMessage, sender: Client, hub: MessageHub):
 @app.message_hub.on("SYS-PING")
 def handle_SYS_PING(message: FlockwaveMessage, sender: Client, hub: MessageHub):
     return hub.acknowledge(message)
+
+
+@app.message_hub.on("SYS-PORTS")
+def handle_SYS_PORTS(message: FlockwaveMessage, sender: Client, hub: MessageHub):
+    return {"ports": dict(get_port_map())}
 
 
 @app.message_hub.on("SYS-TIME")

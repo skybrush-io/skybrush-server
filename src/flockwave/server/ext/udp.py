@@ -21,7 +21,7 @@ from flockwave.networking import (
     get_socket_address,
 )
 from flockwave.server.model import CommunicationChannel
-from flockwave.server.ports import suggest_port_number_for_service
+from flockwave.server.ports import suggest_port_number_for_service, use_port
 from flockwave.server.utils import overridden
 
 app = None
@@ -152,6 +152,7 @@ async def run(app, configuration, logger):
 
     with ExitStack() as stack:
         stack.enter_context(overridden(globals(), app=app, log=logger, sock=sock))
+        stack.enter_context(use_port("udp", port))
         stack.enter_context(closing(sock))
         stack.enter_context(
             app.channel_type_registry.use(

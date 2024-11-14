@@ -29,7 +29,7 @@ import socket
 import struct
 
 from flockwave.networking import create_socket
-from flockwave.server.ports import suggest_port_number_for_service
+from flockwave.server.ports import suggest_port_number_for_service, use_port
 from flockwave.server.registries import find_in_registry
 from flockwave.server.utils import overridden
 from flockwave.server.version import __version__ as skybrush_version
@@ -352,8 +352,10 @@ async def run(app, configuration, logger):
     """Loop that listens for incoming messages and calls a handler
     function for each incoming message.
     """
+    SERVICE = "ssdp"
+
     multicast_group = configuration.get("multicast_group", "239.255.255.250")
-    port = configuration.get("port", suggest_port_number_for_service("ssdp"))
+    port = configuration.get("port", suggest_port_number_for_service(SERVICE))
     label = getenv(
         "SKYBRUSH_SSDP_LABEL",
         configuration.get("label", app.config.get("SERVER_NAME")),
@@ -370,7 +372,7 @@ async def run(app, configuration, logger):
     # Timestamp when the last error message was printed
     last_error = monotonic()
 
-    with overridden(globals(), **context), closing(sender):
+    with overridden(globals(), **context), closing(sender), use_port(SERVICE, port):
         while True:
             try:
                 await receive_ssdp_messages(multicast_group, port, sender=sender)

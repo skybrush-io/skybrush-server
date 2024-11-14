@@ -2827,4 +2827,4 @@ pro = ["skybrush-ext-flight-report", "skybrush-ext-map-cache", "skybrush-ext-sid
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.9"
-content-hash = "dcf479ddf3e18d57e8cdc7bba37386402908ed7687f25c5cc8c18a225896cdcf"
+content-hash = "9ec172f10bad864191e45e050582494d52000d9515558c461d1eaa89024081c6"

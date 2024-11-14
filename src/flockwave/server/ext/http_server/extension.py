@@ -255,6 +255,24 @@ async def run(app, configuration, logger):
 
     host, port = address
 
+    # Parse startup delay from configuration. This is a horrible hack, but it
+    # can be used to work around problems with certain setups where the server
+    # responds to incoming HTTP requests _before_ all the extensions had a
+    # chance to load. If one of these extensions wants to register a blueprint
+    # on the HTTP server, the incoming request will prevent the server from
+    # registering the blueprint because blueprints cannot be registered in Flask
+    # after the first request. Increasing the delay gives a chance for the
+    # extensions to load before the HTTP server starts responding to requests.
+    maybe_startup_delay = configuration.get("startup_delay")
+    startup_delay = 0.0
+    if maybe_startup_delay is not None:
+        try:
+            startup_delay = float(maybe_startup_delay)
+            if startup_delay < 0:
+                raise ValueError
+        except ValueError:
+            logger.warn(f"Ignoring invalid startup delay: {maybe_startup_delay!r}")
+
     # Don't show info messages by default (unless the app is in debug mode),
     # show warnings and errors only
     server_log = logger.getChild("hypercorn")
@@ -286,6 +304,9 @@ async def run(app, configuration, logger):
     # Port seems to be available so try to start the "proper" server
     retries = 0
     max_retries = 3
+
+    # Make sure to respect the prescribed startup delay
+    await sleep(startup_delay)
 
     while True:
         logger.info(

@@ -303,7 +303,7 @@ class UAVBase(UAV):
         index.
 
         Parameters:
-            index: the index of the channe;
+            index: the index of the channel
             value: the new RSSI value in the range 0-100; -1 means "unknown",
                 and so is ``None``.
         """

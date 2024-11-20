@@ -48,7 +48,7 @@ flockwave-conn = { extras = [
     "serial",
 ], source = "fury", version = "^8.2.0" }
 flockwave-ext = { version = "^1.26.0", source = "fury" }
-flockwave-flockctrl = { version = "^3.2.2", source = "collmot", optional = true }
+flockwave-flockctrl = { version = "^3.4.0", source = "collmot", optional = true }
 flockwave-gps = { version = "^3.4.0", source = "fury" }
 flockwave-logger = { version = "^2.0.0", source = "fury" }
 flockwave-mavlink = { version = ">=0.3.0", source = "fury" }
@@ -60,7 +60,7 @@ flockwave-spec = { version = "^2.2.0", source = "fury", extras = [
 skybrush-ext-dock = { version = "^1.1.0", source = "collmot", optional = true }
 skybrush-ext-firmware-update = { version = "^0.4.0", source = "collmot", optional = true }
 skybrush-ext-flight-report = { version = "^1.0.3", source = "collmot", optional = true }
-skybrush-ext-flockctrl = { version = "^3.9.2", source = "collmot", optional = true }
+skybrush-ext-flockctrl = { version = "^3.11.0", source = "collmot", optional = true }
 skybrush-ext-map-cache = { version = "^1.1.0", source = "collmot", optional = true }
 skybrush-ext-sidekick = { version = "^1.0.1", source = "collmot", optional = true }
 skybrush-ext-timecode = { version = "^1.1.0", source = "collmot", optional = true }

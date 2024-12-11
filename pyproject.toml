@@ -60,13 +60,13 @@ flockwave-spec = { version = "^2.2.0", source = "fury", extras = [
 skybrush-ext-dock = { version = "^1.1.0", source = "collmot", optional = true }
 skybrush-ext-firmware-update = { version = "^0.4.0", source = "collmot", optional = true }
 skybrush-ext-flight-report = { version = "^1.0.3", source = "collmot", optional = true }
-skybrush-ext-flockctrl = { version = "^3.11.0", source = "collmot", optional = true }
+skybrush-ext-flockctrl = { version = "^3.12.0", source = "collmot", optional = true }
 skybrush-ext-map-cache = { version = "^1.1.0", source = "collmot", optional = true }
 skybrush-ext-sidekick = { version = "^1.0.1", source = "collmot", optional = true }
 skybrush-ext-timecode = { version = "^1.1.0", source = "collmot", optional = true }
 skybrush-lib-mission-planning = { version = "^2.3.1", source = "collmot", optional = true }
 pyledctrl = { version = "^4.1.0", source = "fury" }
-aiocflib = "^4.0.1"
+aiocflib = "^4.1.0"
 crcmod-plus = "^2.1.0"
 msgpack = "^1.0.7"
 aio-usb-hotplug = "^6.0.0"
@@ -84,9 +84,9 @@ platformdirs = "^4.2.2"
 [tool.poetry.group.dev.dependencies]
 coverage = { extras = ["toml"], version = "^7.4.0" }
 pytest = "^8.0.0"
-pytest-cov = "^5.0.0"
+pytest-cov = "^6.0.0"
 pytest-trio = ">=0.8.0"
-pdoc = "^14.3.0"
+pdoc = "^15.0.0"
 
 [tool.poetry.extras]
 all = [

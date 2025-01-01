@@ -312,6 +312,7 @@ class UAVBase(UAV):
         if len(rssi) <= index:
             rssi.extend([-1] * (index - len(rssi) + 1))
         rssi[index] = value
+        self.update_status(rssi=rssi)
         self._status.update_timestamp()
 
     def update_status(

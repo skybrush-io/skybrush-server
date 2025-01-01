@@ -31,7 +31,15 @@ class License(ABC):
     """
 
     @abstractmethod
-    def get_allowed_mac_addresses(self) -> Optional[tuple[str]]:
+    def get_allowed_hardware_ids(self) -> Optional[tuple[str, ...]]:
+        """Returns a tuple containing the hardware IDs associated to the
+        license, or `None` if the license does not have hardware ID
+        restrictions.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_allowed_mac_addresses(self) -> Optional[tuple[str, ...]]:
         """Returns a tuple containing the MAC addresses associated to the
         license, or `None` if the license does not have MAC address
         restrictions.
@@ -99,6 +107,19 @@ class License(ABC):
             if not any(addr in all_mac_addresses for addr in allowed_mac_addresses):
                 return False
 
+        # Check hardware ID restriction
+        allowed_hardware_ids = self.get_allowed_hardware_ids()
+        if allowed_hardware_ids:
+            try:
+                from cls import get_hardware_id
+
+                own_hardware_id = get_hardware_id()
+            except ImportError:
+                return False
+
+            if own_hardware_id not in allowed_hardware_ids:
+                return False
+
         return True
 
     @property
@@ -115,6 +136,26 @@ class License(ABC):
         # ######################################################################
 
         restrictions = []
+
+        allowed_hardware_ids = self.get_allowed_hardware_ids()
+        if allowed_hardware_ids:
+            allowed_short_ids = [id[:8] for id in allowed_hardware_ids]
+            if len(allowed_hardware_ids) > 2:
+                num_extra = len(allowed_hardware_ids) - 2
+                formatted_hardware_ids = (
+                    ", ".join(allowed_short_ids[:2]) + f" and {num_extra} more"
+                )
+            else:
+                formatted_hardware_ids = " and ".join(allowed_short_ids)
+
+            restrictions.append(
+                {
+                    "type": "mac",
+                    "label": "Restricted to hardware ID",
+                    "secondaryLabel": formatted_hardware_ids,
+                    "parameters": {"ids": allowed_hardware_ids},
+                }
+            )
 
         allowed_mac_addresses = self.get_allowed_mac_addresses()
         if allowed_mac_addresses:
@@ -169,6 +210,9 @@ class License(ABC):
 class DummyLicense(License):
     """License class used for testing purposes."""
 
+    def get_allowed_hardware_ids(self):
+        return None
+
     def get_allowed_mac_addresses(self):
         return None
 
@@ -209,6 +253,8 @@ class DictBasedLicense(License):
 
     The condition dictionary can have the following keys:
 
+    - ``hwid`` - list of hardware IDs that hte license is valid for
+
     - ``mac`` - list of MAC addresses that the license is valid for
 
     - ``drones`` - maximum number of drones that can be used simultaneously"""
@@ -224,12 +270,16 @@ class DictBasedLicense(License):
         self._license_info = license_info
         self._update_features()
 
+    def get_allowed_hardware_ids(self) -> tuple[str, ...] | None:
+        hwids = self._get_conditions().get("hwid")
+        return tuple(str(x) for x in hwids) if hwids is not None else None
+
     def get_allowed_mac_addresses(self) -> Optional[tuple[str, ...]]:
         addresses = self._get_conditions().get("mac")
 
         # An earlier bug in cmtool sometimes added empty MAC addresses to the
         # license; we fix it here
-        if addresses:
+        if addresses is not None:
             return tuple(address for address in addresses if address)
         else:
             return None
@@ -336,6 +386,14 @@ def show_license_information(
     licensee = license.get_licensee()
     if licensee:
         logger.info(f"Licensed to {licensee}")
+
+    try:
+        from cls import get_hardware_id
+    except ImportError:
+        # No license manager or it is older than 3.0.0
+        pass
+    else:
+        logger.info(f"Hardware ID: {get_hardware_id()}")
 
     if with_restrictions:
         for restriction in license.json.get("restrictions", ()):

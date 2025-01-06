@@ -1052,9 +1052,18 @@ class MAVLinkNetwork:
                             # We are on localhost, so just keep on using localhost
                             broadcast_address = "127.0.0.1"
 
+                        # Try to figure out the current broadcast address of the channel
+                        # TODO(ntamas): this should be sorted out in the future
                         old_broadcast_address = getattr(
                             entry.channel, "broadcast_address", None
                         )
+                        if old_broadcast_address is None:
+                            connection = getattr(entry, "connection", None)
+                            if connection:
+                                old_broadcast_address = getattr(
+                                    connection, "broadcast_address", None
+                                )
+
                         if (
                             old_broadcast_address
                             and isinstance(old_broadcast_address, tuple)

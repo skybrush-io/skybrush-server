@@ -199,6 +199,12 @@ class MAVLinkDronesExtension(UAVExtension[MAVLinkDriver]):
                 "mav": {"connections": configuration.get("connections", ())}
             }
 
+        # Filter null values from network_specs; these are used to delete
+        # networks from the default configuration
+        network_specs: dict[str, dict] = {
+            k: v for k, v in network_specs.items() if isinstance(v, dict)
+        }
+
         # Determine the default ID format from the configuration
         default_id_format = configuration.get("id_format", None)
         if not default_id_format:

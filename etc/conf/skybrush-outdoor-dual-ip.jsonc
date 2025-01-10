@@ -1,0 +1,49 @@
+/*
+ * This configuration file shows how you can configure two MAVLink networks
+ * if you have more than 250 drones. The networks are assumed to span different
+ * IP networks; the first network is on 192.168.1.0/24 and the second network
+ * is on 192.168.2.0/24. Drones in both networks are accessible on UDP port
+ * 14555 and they send their telemetry data to the GCS on UDP port 14550.
+ *
+ * Furthermore, the configuration file assumes that the IP address of your GCS
+ * is 192.168.1.254 in the first network and 192.168.2.254 in the second network.
+ *
+ * Refer to skybrush-outdoor-dual-udp.jsonc instead if you have a single IP
+ * network and the drones are separated into groups of 250 by their UDP port
+ * numbers.
+ *
+ * Refer to skybrush-outdoor.jsonc if you have a single IP network and not more
+ * than 250 drones.
+ */
+{
+  "EXTENSIONS": {
+    "http_server": {
+      "host": ""
+    },
+    "show": {
+      "default_start_method": "auto"
+    },
+    "mavlink": {
+      "enabled": true,
+      "networks": {
+        "mav": null,
+        "mav1": {
+          "connections": [
+            "udp-listen://192.168.1.254:14550?broadcast_port=14555"
+          ],
+          "routing": { "rtk": [0] }
+        },
+        "mav2": {
+          "connections": [
+            "udp-listen://192.168.2.254:14550?broadcast_port=14555"
+          ],
+          "routing": { "rtk": [0] },
+          "id_offset": 250
+        }
+      }
+    },
+    "rtk": {
+      "add_serial_ports": [9600, 57600]
+    }
+  }
+}

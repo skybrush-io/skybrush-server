@@ -138,6 +138,7 @@ def get_mavlink_factory(
 def create_communication_manager(
     *,
     packet_loss: float = 0,
+    network_id: str = "",
     system_id: int = 255,
     signing: MAVLinkSigningConfiguration = MAVLinkSigningConfiguration.DISABLED,
     use_broadcast_rate_limiting: bool = False,
@@ -166,6 +167,7 @@ def create_communication_manager(
         create_mavlink_message_channel,
         signing=signing,
         link_ids=link_ids,
+        network_id=network_id,
         system_id=system_id,
     )
 
@@ -215,6 +217,7 @@ def create_mavlink_message_channel(
     log: Logger,
     *,
     dialect: str = "ardupilotmega",
+    network_id: str = "",
     system_id: int = 255,
     link_ids: Optional[dict[Connection, int]] = None,
     signing: MAVLinkSigningConfiguration = MAVLinkSigningConfiguration.DISABLED,
@@ -248,6 +251,8 @@ def create_mavlink_message_channel(
         dialect, system_id, link_id=link_id, signing=signing
     )
 
+    log_extra = {"id": network_id}
+
     if isinstance(connection, StreamConnectionBase):
         channel = _create_stream_based_mavlink_message_channel(
             connection, log, mavlink_factory=mavlink_factory
@@ -264,11 +269,15 @@ def create_mavlink_message_channel(
     if signing.enabled:
         if signing.allow_unsigned:
             log.info(
-                f"Configured MAVLink signing on link ID = {link_id}, allowing "
-                f"unsigned incoming messages"
+                f"Configured MAVLink signing with link ID = {link_id}, allowing "
+                f"unsigned incoming messages",
+                extra=log_extra,
             )
         else:
-            log.info(f"Configured MAVLink signing on link ID = {link_id}")
+            log.info(
+                f"Configured MAVLink signing with link ID = {link_id}",
+                extra=log_extra,
+            )
 
     return channel
 

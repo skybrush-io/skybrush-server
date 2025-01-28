@@ -354,6 +354,7 @@ class MAVLinkNetwork:
             # Create the communication manager
             manager = create_communication_manager(
                 packet_loss=self._packet_loss,
+                network_id=self.id,
                 system_id=self._system_id,
                 signing=self._signing,
                 use_broadcast_rate_limiting=self._use_broadcast_rate_limiting,

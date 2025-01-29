@@ -576,6 +576,12 @@ class CommunicationManager(Generic[PacketType, AddressType]):
                                 f"Error while sending message on channel {name}[{index}]",
                                 extra={"id": name or ""},
                             )
+                    except BrokenResourceError:
+                        # Trio translates "broken pipe" error to a BrokenResourceError
+                        self.log.error(
+                            f"Channel {name}[{index}] is broken",
+                            extra={"id": name or ""},
+                        )
                     except Exception:
                         self.log.exception(
                             f"Error while sending message on channel {name}[{index}]",

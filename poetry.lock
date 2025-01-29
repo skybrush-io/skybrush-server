@@ -149,14 +149,14 @@ pywin32 = ["pywin32 (>=227)"]
 
 [[package]]
 name = "attrs"
-version = "24.3.0"
+version = "25.1.0"
 description = "Classes Without Boilerplate"
 optional = false
 python-versions = ">=3.8"
 groups = ["main", "dev"]
 files = [
-    {file = "attrs-24.3.0-py3-none-any.whl", hash = "sha256:ac96cd038792094f438ad1f6ff80837353805ac950cd2aa0e0625ef19850c308"},
-    {file = "attrs-24.3.0.tar.gz", hash = "sha256:8f5c07333d543103541ba7be0e2ce16eeee8130cb0b3f9238ab904ce1e85baff"},
+    {file = "attrs-25.1.0-py3-none-any.whl", hash = "sha256:c75a69e28a550a7e93789579c22aa26b0f5b83b75dc4e08fe092980051e1090a"},
+    {file = "attrs-25.1.0.tar.gz", hash = "sha256:1c97078a80c814273a76b2a298a932eb681c87415c11dee0a6921de7f1b02c3e"},
 ]
 
 [package.extras]
@@ -786,21 +786,21 @@ test-randomorder = ["pytest-randomly"]
 
 [[package]]
 name = "deprecated"
-version = "1.2.15"
+version = "1.2.18"
 description = "Python @deprecated decorator to deprecate old python classes, functions or methods."
 optional = false
 python-versions = "!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,>=2.7"
 groups = ["main"]
 files = [
-    {file = "Deprecated-1.2.15-py2.py3-none-any.whl", hash = "sha256:353bc4a8ac4bfc96800ddab349d89c25dec1079f65fd53acdcc1e0b975b21320"},
-    {file = "deprecated-1.2.15.tar.gz", hash = "sha256:683e561a90de76239796e6b6feac66b99030d2dd3fcf61ef996330f14bbb9b0d"},
+    {file = "Deprecated-1.2.18-py2.py3-none-any.whl", hash = "sha256:bd5011788200372a32418f888e326a09ff80d0214bd961147cfed01b5c018eec"},
+    {file = "deprecated-1.2.18.tar.gz", hash = "sha256:422b6f6d859da6f2ef57857761bfb392480502a64c3028ca9bbe86085d72115d"},
 ]
 
 [package.dependencies]
 wrapt = ">=1.10,<2"
 
 [package.extras]
-dev = ["PyTest", "PyTest-Cov", "bump2version (<1)", "jinja2 (>=3.0.3,<3.1.0)", "setuptools", "sphinx (<2)", "tox"]
+dev = ["PyTest", "PyTest-Cov", "bump2version (<1)", "setuptools", "tox"]
 
 [[package]]
 name = "exceptiongroup"
@@ -911,31 +911,30 @@ reference = "fury"
 
 [[package]]
 name = "flockwave-conn"
-version = "8.2.0"
+version = "8.4.0"
 description = "Connection objects for various data sources"
 optional = false
 python-versions = ">=3.9,<4.0"
 groups = ["main"]
 files = [
-    {file = "flockwave-conn-8.2.0.tar.gz", hash = "sha256:05a3a168f33874a2b95c323aaabae90fefdb01f6ae1eb1facc16f7162cc3f152"},
-    {file = "flockwave_conn-8.2.0-py3-none-any.whl", hash = "sha256:2e21f799fcf564ccc1fbc86d5b939d4923ef9a1a64cb9f7dc6a1cef507a7e6fa"},
+    {file = "flockwave-conn-8.4.0.tar.gz", hash = "sha256:dfc5c150cb7893fa8f8c15a458742d6c072773eada9d5e387cdacf77852c3dda"},
+    {file = "flockwave_conn-8.4.0-py3-none-any.whl", hash = "sha256:543a351b0d417fb1a58eb6960978fe40244dd79145878fe36a0eb163cea3ce82"},
 ]
 
 [package.dependencies]
-blinker = ">=1.4,<2.0"
-flockwave-async = ">=1.4.0,<2.0.0"
-flockwave-net = {version = ">=7.0.3,<8.0.0", extras = ["async"]}
-flockwave-parsers = ">=2.0.0,<3.0.0"
-hexdump = ">=3.3,<4.0"
-pyserial = {version = ">=3.5,<4.0", optional = true, markers = "extra == \"serial\""}
-tinyrpc = {version = ">=1.1.7,<2.0.0", extras = ["msgpack"], optional = true, markers = "extra == \"rpc\""}
+blinker = ">=1.4"
+flockwave-async = ">=1.4.0"
+flockwave-net = {version = ">=7.0.3", extras = ["async"]}
+flockwave-parsers = ">=2.0.0"
+pyserial = {version = ">=3.5", optional = true, markers = "extra == \"serial\""}
+tinyrpc = {version = ">=1.1.7", extras = ["msgpack"], optional = true, markers = "extra == \"rpc\""}
 trio = ">=0.26.2"
 trio-util = ">=0.7.0"
-wrapt = ">=1.16.0,<2.0.0"
+wrapt = ">=1.16.0"
 
 [package.extras]
-rpc = ["tinyrpc[msgpack] (>=1.1.7,<2.0.0)"]
-serial = ["pyserial (>=3.5,<4.0)"]
+rpc = ["tinyrpc[msgpack] (>=1.1.7)"]
+serial = ["pyserial (>=3.5)"]
 
 [package.source]
 type = "legacy"
@@ -2377,14 +2376,14 @@ paramiko = "*"
 
 [[package]]
 name = "semver"
-version = "3.0.2"
+version = "3.0.4"
 description = "Python helper for Semantic Versioning (https://semver.org)"
 optional = false
 python-versions = ">=3.7"
 groups = ["main"]
 files = [
-    {file = "semver-3.0.2-py3-none-any.whl", hash = "sha256:b1ea4686fe70b981f85359eda33199d60c53964284e0cfb4977d243e37cf4bf4"},
-    {file = "semver-3.0.2.tar.gz", hash = "sha256:6253adb39c70f6e51afed2fa7152bcd414c411286088fb4b9effb133885ab4cc"},
+    {file = "semver-3.0.4-py3-none-any.whl", hash = "sha256:9c824d87ba7f7ab4a1890799cec8596f15c1241cb473404ea1cb0c55e4b04746"},
+    {file = "semver-3.0.4.tar.gz", hash = "sha256:afc7d8c584a5ed0a11033af086e8af226a9c0b206f313e0301f8dd7b6b589602"},
 ]
 
 [[package]]
@@ -3026,4 +3025,4 @@ pro = ["skybrush-ext-flight-report", "skybrush-ext-map-cache", "skybrush-ext-sid
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.9.2"
-content-hash = "8ef0f2c81c23803a1317eb77b3d01e3b6d4e238a25d53469c09dade098c1d446"
+content-hash = "f25331bead4dd9c1a79184daba49a9c2f6e5b459f6ed8044cdc385cc4f3245e4"

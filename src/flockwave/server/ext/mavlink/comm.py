@@ -39,6 +39,12 @@ if TYPE_CHECKING:
 __all__ = ("create_communication_manager",)
 
 
+signature_timestamp_synchronizer = SignatureTimestampSynchronizer()
+"""Object to synchronize MAVLink signing timestamps created between different
+MAVLink networks.
+"""
+
+
 class Channel:
     """Enum class to contain string aliases for the channels where the primary
     and the RTK traffic should be sent on.
@@ -129,6 +135,7 @@ def get_mavlink_factory(
                 if signing.allow_unsigned
                 else _allow_only_basic_unsigned_messages
             )
+            signature_timestamp_synchronizer.patch(link)
 
         return link
 
@@ -375,21 +382,11 @@ def _create_datagram_based_mavlink_message_channel(
     # Since all the MAVLink objects constructed here will use the same link ID
     # in the signatures, they need to behave as a "hivemind" -- their timestamp
     # counters must be synchronized such that whenever one of the counters is
-    # incremented, the remaining timestamps must also be incremented.
+    # incremented, the remaining timestamps must also be incremented. Therefore,
+    # we have a singleton timestamp synchronizer object at the top level of this
+    # module that is then patched into each MAVLink object created here.
 
-    signature_timestamp_synchronizer = SignatureTimestampSynchronizer()
-
-    def create_mavlink_object() -> MAVLinkInterface:
-        """Factory that creates a MAVLink object with the ``mavlink_factory``
-        and also ensures that all objects created from this function have the
-        same MAVLinkSigning_ internal object to ensure synchronization of
-        timestamps with the same link ID.
-        """
-        mavlink = mavlink_factory()
-        signature_timestamp_synchronizer.patch(mavlink)
-        return mavlink
-
-    mavlink_by_address = defaultdict(create_mavlink_object)
+    mavlink_by_address = defaultdict(mavlink_factory)
 
     # Connection is a datagram-based connection so we will be receiving
     # full messages along with the addresses they were sent from

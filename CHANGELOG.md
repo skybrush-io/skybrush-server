@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [main]
+
+### Fixed
+
+- MAVLink signing timestamp synchronization now works across all networks
+  instead of having a separate timestamp per network. This seems to work better
+  in multi-network setups.
+
 ## [2.23.7] - 2025-01-20
 
 ### Fixed

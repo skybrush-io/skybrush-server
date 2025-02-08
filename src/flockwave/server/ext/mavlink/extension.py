@@ -2,6 +2,8 @@
 MAVLink protocol.
 """
 
+from __future__ import annotations
+
 from collections import OrderedDict
 from contextlib import ExitStack
 from functools import partial
@@ -30,6 +32,7 @@ if TYPE_CHECKING:
     from flockwave.server.app import SkybrushServer
     from flockwave.server.ext.rc import RCState
     from flockwave.server.ext.show.clock import ShowClock
+    from flockwave.server.ext.show.config import DroneShowConfiguration
 
 __all__ = ("construct", "dependencies")
 
@@ -317,7 +320,9 @@ class MAVLinkDronesExtension(UAVExtension[MAVLinkDriver]):
         """
         self._update_show_start_time_in_networks()
 
-    def _on_show_configuration_changed(self, sender, config) -> None:
+    def _on_show_configuration_changed(
+        self, sender, config: DroneShowConfiguration
+    ) -> None:
         """Handler that is called when the user changes the start time or start
         method of the drones in the `show` extension.
         """
@@ -395,7 +400,9 @@ class MAVLinkDronesExtension(UAVExtension[MAVLinkDriver]):
             spec, target, wait_for_response, wait_for_one_of, channel
         )
 
-    def _update_show_configuration_in_networks(self, config=None) -> None:
+    def _update_show_configuration_in_networks(
+        self, config: Optional[DroneShowConfiguration] = None
+    ) -> None:
         """Updates the start method of the drones managed by this extension,
         based on the given configuration object from the `show` extension. If
         the configuration object is `None`, retrieves it from the `show`
@@ -406,7 +413,7 @@ class MAVLinkDronesExtension(UAVExtension[MAVLinkDriver]):
 
         for name, network in self._networks.items():
             try:
-                network.notify_scheduled_takeoff_config_changed(config)
+                network.notify_scheduled_takeoff_config_changed(config)  # type: ignore
             except Exception:
                 self.log.warning(
                     f"Failed to update start configuration of drones in network {name!r}"

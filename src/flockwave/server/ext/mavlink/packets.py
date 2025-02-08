@@ -4,9 +4,10 @@ from enum import IntEnum, IntFlag
 from functools import lru_cache
 from struct import Struct, pack
 from time import time
-from typing import Optional, Sequence
+from typing import ClassVar, Optional, Sequence
 
 from flockwave.gps.time import unix_to_gps_time_of_week, gps_time_of_week_to_utc
+from flockwave.server.ext.show.config import AuthorizationScope
 from flockwave.server.model.gps import GPSFixType as OurGPSFixType
 
 from .enums import GPSFixType
@@ -15,11 +16,41 @@ from .types import MAVLinkMessage, MAVLinkMessageSpecification, spec
 __all__ = ("DroneShowStatus", "create_led_control_packet")
 
 
-#: Helper constant used when we try to send an empty byte array via MAVLink
 _EMPTY = b"\x00" * 256
+"""Helper constant used when we try to send an empty byte array via MAVLink."""
 
-#: Number of milliseconds in a normal week
 MSEC_IN_WEEK = 604800000
+"""Number of milliseconds in a normal week."""
+
+
+def authorization_scope_to_int(authorization_scope: AuthorizationScope) -> int:
+    """Converts an authorization scope enum value to its integer representation
+    in the Skybrush firmware.
+    """
+    if authorization_scope is AuthorizationScope.NONE:
+        return 0
+    elif authorization_scope is AuthorizationScope.LIVE:
+        return 1
+    elif authorization_scope is AuthorizationScope.REHEARSAL:
+        return 2
+    elif authorization_scope is AuthorizationScope.LIGHTS_ONLY:
+        return 3
+    else:
+        return 0
+
+
+def authorization_scope_from_int(value: int) -> AuthorizationScope:
+    """Converts the integer representation of an authorization scope enum value
+    to the enum itself.
+    """
+    if value == 1:
+        return AuthorizationScope.LIVE
+    elif value == 2:
+        return AuthorizationScope.REHEARSAL
+    elif value == 3:
+        return AuthorizationScope.LIGHTS_ONLY
+    else:
+        return AuthorizationScope.NONE
 
 
 def create_custom_data_packet(type: int, payload: bytes) -> MAVLinkMessageSpecification:
@@ -50,7 +81,7 @@ def create_custom_data_packet(type: int, payload: bytes) -> MAVLinkMessageSpecif
 
 
 def create_start_time_configuration_packet(
-    authorized: bool,
+    authorization_scope: AuthorizationScope,
     start_time: Optional[float] = None,
     should_update_takeoff_time: bool = True,
 ) -> MAVLinkMessageSpecification:
@@ -81,8 +112,9 @@ def create_start_time_configuration_packet(
         msec_until_start = min(max(msec_until_start, -MSEC_IN_WEEK), MSEC_IN_WEEK)
         _, start_time = unix_to_gps_time_of_week(int(start_time))
 
+    scope_value = authorization_scope_to_int(authorization_scope)
     return create_custom_data_packet(
-        type=1, payload=pack("<i?i", start_time, authorized, msec_until_start)
+        type=1, payload=pack("<iBi", start_time, scope_value, msec_until_start)
     )
 
 
@@ -135,19 +167,17 @@ class DroneShowStatusFlag(IntFlag):
     """Status flags used in the Skybrush-specific drone show status packet."""
 
     # Flags from now on come from the third flag byte in the status packet;
-    # six most significant bits only.
+    # four most significant bits only.
     IS_FAR_FROM_EXPECTED_POSITION = 1 << 17
 
     # Flags from now on come from the second flag byte in the status packet;
     # four most significant bits only.
-
     IS_MISPLACED_BEFORE_TAKEOFF = 1 << 11
     UNUSED_1 = 1 << 10
     UNUSED_2 = 1 << 9
     UNUSED_3 = 1 << 8
 
     # Flags from now on come from the first flag byte in the status packet
-
     HAS_SHOW_FILE = 1 << 7
     HAS_START_TIME = 1 << 6
     HAS_ORIGIN = 1 << 5
@@ -158,7 +188,6 @@ class DroneShowStatusFlag(IntFlag):
     GEOFENCE_BREACHED = 1 << 0
 
     # Dummy member to be used as a default value
-
     OFF = 0
 
 
@@ -173,6 +202,7 @@ _stage_descriptions = {
     7: "Landing",
     8: "Landed",
     9: "Error",
+    10: "Running light program",
 }
 
 
@@ -192,6 +222,7 @@ class DroneShowExecutionStage(IntEnum):
     LANDING = 7
     LANDED = 8
     ERROR = 9
+    TESTING_LIGHTS = 10
 
     @property
     def probably_airborne(self) -> bool:
@@ -219,33 +250,37 @@ class DroneShowExecutionStage(IntEnum):
 class DroneShowStatus:
     """Data class representing a Skybrush-specific drone show status object."""
 
-    #: Scheduled start time of the drone show, in GPS seconds of week, negative
-    #: if not set
     start_time: int = -1
+    """Scheduled start time of the drone show, in GPS seconds of week, negative
+    if not set.
+    """
 
-    #: Number of seconds elapsed in the drone show
     elapsed_time: int = 0
+    """Number of seconds elapsed in the drone show."""
 
-    #: Various status flags
     flags: DroneShowStatusFlag = DroneShowStatusFlag.OFF
+    """Various status flags."""
 
-    #: Stage of the drone show execution
     stage: DroneShowExecutionStage = DroneShowExecutionStage.OFF
+    """Stage of the drone show execution."""
 
-    #: Current color of the RGB light, in RGB565 encoding
     light: int = 0
+    """Current color of the RGB light, in RGB565 encoding."""
 
-    #: Current GPS fix
     gps_fix: OurGPSFixType = OurGPSFixType.NO_GPS
+    """Current GPS fix."""
 
-    #: Number of satellites seen
     num_satellites: int = 0
+    """Number of satellites seen."""
 
-    #: Identifier of Skybrush-specific DATA16 show status packets
-    TYPE = 0x5B
+    authorization_scope: AuthorizationScope = AuthorizationScope.NONE
+    """Authorization scope of the scheduled start of the drone show."""
 
-    #: Structure of Skybrush-specific DATA16 show status packets
-    _struct = Struct("<iHBBBBh")
+    TYPE: ClassVar[int] = 0x5B
+    """Identifier of Skybrush-specific DATA16 show status packets."""
+
+    _struct: ClassVar[Struct] = Struct("<iHBBBBh")
+    """Structure of Skybrush-specific DATA16 show status packets."""
 
     @classmethod
     def from_bytes(cls, data: bytes):
@@ -253,7 +288,9 @@ class DroneShowStatus:
         DATA16 packet that has already been truncated to the desired length of
         the packet.
         """
-        if len(data) < 12:
+        data_len = len(data)
+
+        if data_len < 12:
             data = data.ljust(12, b"\x00")
 
         (
@@ -269,9 +306,19 @@ class DroneShowStatus:
         # Merge flags, flags2 and flags3 into one byte. Lower 4 bits of flags2
         # is the execution stage. Lower 2 bits of flags3 is the boot count
         # modulo 4.
-        flags |= (flags3 & 0xFC) << 10
+        flags |= (flags3 & 0xF0) << 10
         flags |= (flags2 & 0xF0) << 4
         stage = flags2 & 0x0F
+
+        if data_len <= 9:
+            # No "flags3" field in the original packet. "flags3" contains the
+            # authorization scope and we need to keep it consistent with the
+            # authorization flag in the "flags" field.
+            if flags & DroneShowStatusFlag.HAS_AUTHORIZATION_TO_START:
+                flags3 |= (0x01) << 2
+
+        # validate the authorization scope
+        scope = authorization_scope_from_int((flags3 & 0x0C) >> 2)
 
         # validate the execution stage
         try:
@@ -287,6 +334,7 @@ class DroneShowStatus:
             stage=stage,
             gps_fix=GPSFixType.to_ours(gps_health & 0x07),
             num_satellites=gps_health >> 3,
+            authorization_scope=scope,
         )
 
     @classmethod

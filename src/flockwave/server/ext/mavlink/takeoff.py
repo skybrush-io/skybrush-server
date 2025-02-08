@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
 from time import time
 from trio import (
@@ -9,12 +11,17 @@ from trio import (
     TooSlowError,
     WouldBlock,
 )
+from trio.abc import ReceiveChannel
 from trio.lowlevel import ParkingLot
 from trio_util import periodic
 from typing import Optional, TYPE_CHECKING
 from weakref import WeakKeyDictionary
 
-from flockwave.server.ext.show.config import DroneShowConfiguration, StartMethod
+from flockwave.server.ext.show.config import (
+    AuthorizationScope,
+    DroneShowConfiguration,
+    StartMethod,
+)
 
 from .packets import create_start_time_configuration_packet
 from .types import MAVLinkMessageSpecification
@@ -22,26 +29,36 @@ from .types import MAVLinkMessageSpecification
 __all__ = ("ScheduledTakeoffManager",)
 
 if TYPE_CHECKING:
+    from .driver import MAVLinkUAV
     from .network import MAVLinkNetwork
 
 
 @dataclass
 class TakeoffConfiguration:
     """Simple value object that encapsulates an optional desired start time as a UNIX
-    timestamp, an authorization flag, and whether the start time should be
+    timestamp, an authorization scope, and whether the start time should be
     updated on the drones or not.
     """
 
-    #: Whether the swarm is authorized to start
-    authorized: bool
+    authorization_scope: AuthorizationScope
+    """The scope of authorization for the start of the show."""
 
-    #: Whether the start time should be updated on the drones according to the
-    #: takeoff_time property
     should_update_takeoff_time: bool = True
+    """Whether the start time should be updated on the drones according to the
+    takeoff_time property.
+    """
 
-    #: The desired takeoff time of the swarm; `None` if the takeoff time should
-    #: be cleared
     takeoff_time: Optional[int] = None
+    """The desired takeoff time of the swarm; `None` if the takeoff time should
+    be cleared.
+    """
+
+    @property
+    def authorized(self) -> bool:
+        """Returns whether the takeoff is authorized (in live, rehearsal or
+        lights-only mode).
+        """
+        return self.authorization_scope is not AuthorizationScope.NONE
 
     @property
     def is_takeoff_in_the_future(self) -> bool:
@@ -62,7 +79,7 @@ class TakeoffConfiguration:
     def create_start_time_configuration_packet(self) -> MAVLinkMessageSpecification:
         return create_start_time_configuration_packet(
             start_time=self.takeoff_time,
-            authorized=self.authorized,
+            authorization_scope=self.authorization_scope,
             should_update_takeoff_time=self.should_update_takeoff_time,
         )
 
@@ -152,7 +169,7 @@ class ScheduledTakeoffManager:
                     )
 
                     # Broadcast a packet that contains the desired takeoff time
-                    # and the auth flag. If it fails, well, it does not matter
+                    # and the auth scope. If it fails, well, it does not matter
                     # because we will check the UAVs one by one as well. We
                     # send this packet only if the start time is in the future.
                     if (
@@ -179,10 +196,10 @@ class ScheduledTakeoffManager:
                             continue
 
                         if (
-                            takeoff_config.authorized
-                            != uav.is_scheduled_takeoff_authorized
+                            takeoff_config.authorization_scope
+                            != uav.scheduled_takeoff_authorization_scope
                         ):
-                            # Auth flag is different so we definitely need an update
+                            # Auth scope is different so we definitely need an update
                             needs_update = True
                         elif takeoff_config.should_update_takeoff_time:
                             # Takeoff time must be cleared (None) or set to a specific
@@ -218,7 +235,9 @@ class ScheduledTakeoffManager:
                                             },
                                         )
 
-    async def _process_uavs_scheduled_for_updates(self, queue) -> None:
+    async def _process_uavs_scheduled_for_updates(
+        self, queue: ReceiveChannel[MAVLinkUAV]
+    ) -> None:
         """Task that reads the queue in which we put the UAVs scheduled for an
         update and processes them one by one by spawning further background
         tasks for it.
@@ -238,7 +257,7 @@ class ScheduledTakeoffManager:
         """
         self._uavs_last_updated_at.clear()
 
-    async def _update_start_time_on_uav(self, uav) -> None:
+    async def _update_start_time_on_uav(self, uav: MAVLinkUAV) -> None:
         """Background task updates the desired start time and automatic takeoff
         authorization on a single UAV.
 
@@ -306,44 +325,45 @@ class ScheduledTakeoffManager:
         Returns a negative start time to indicate that the start time has to be
         left as is for each of the UAVs.
         """
-        desired_auth_flag = config.authorized_to_start
+        desired_auth_scope = config.scope_iff_authorized
 
         if config.start_method == StartMethod.AUTO:
             if start_time is not None:
                 # User has a show clock and the show clock has a scheduled
                 # start time so we want to use that
                 return TakeoffConfiguration(
-                    takeoff_time=int(start_time), authorized=desired_auth_flag
+                    takeoff_time=int(start_time), authorization_scope=desired_auth_scope
                 )
             else:
                 # User has no show clock or the show clock is stopped, so we
                 # want to clear what there is on the drone
-                return TakeoffConfiguration(authorized=desired_auth_flag)
+                return TakeoffConfiguration(authorization_scope=desired_auth_scope)
 
         elif config.start_method == StartMethod.RC:
-            if desired_auth_flag:
+            if desired_auth_scope is not AuthorizationScope.NONE:
                 # User authorized the start so we don't mess around with the
                 # takeoff time, it is the responsibility of the person holding
                 # the RC to set the takeoff time
                 return TakeoffConfiguration(
-                    authorized=True, should_update_takeoff_time=False
+                    authorization_scope=desired_auth_scope,
+                    should_update_takeoff_time=False,
                 )
             else:
                 # User did not authorize the start yet so the start time must
                 # be cleared
-                return TakeoffConfiguration(authorized=False)
+                return TakeoffConfiguration(authorization_scope=desired_auth_scope)
 
         else:
-            return TakeoffConfiguration(authorized=False)
+            return TakeoffConfiguration(authorization_scope=AuthorizationScope.NONE)
 
-    async def _update_start_time_on_uav_inner(self, uav) -> None:
+    async def _update_start_time_on_uav_inner(self, uav: MAVLinkUAV) -> None:
         assert self._config is not None
 
         takeoff_config = self._get_desired_takeoff_configuration(
             self._config, self._start_time
         )
 
-        desired_auth_flag = takeoff_config.authorized
+        desired_auth_scope = takeoff_config.authorization_scope
         desired_takeoff_time = takeoff_config.takeoff_time_in_legacy_format
 
         if (
@@ -351,8 +371,8 @@ class ScheduledTakeoffManager:
         ) and desired_takeoff_time != uav.scheduled_takeoff_time:
             await uav.set_scheduled_takeoff_time(seconds=desired_takeoff_time)
 
-        if desired_auth_flag != uav.is_scheduled_takeoff_authorized:
-            await uav.set_authorization_to_takeoff(desired_auth_flag)
+        if desired_auth_scope != uav.scheduled_takeoff_authorization_scope:
+            await uav.set_authorization_scope(desired_auth_scope)
 
         log = self._network.log
         if log:

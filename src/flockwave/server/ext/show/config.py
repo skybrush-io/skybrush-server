@@ -19,11 +19,11 @@ __all__ = ("LightConfiguration", "DroneShowConfiguration", "StartMethod")
 class StartMethod(Enum):
     """Enumeration holding the possible start methods for a drone show."""
 
-    #: Show starts only with RC
     RC = "rc"
+    """Show starts only with RC."""
 
-    #: Show starts automatically based on GPS time or MIDI timecode
     AUTO = "auto"
+    """Show starts automatically based on GPS time or MIDI timecode."""
 
     def describe(self) -> str:
         """Returns a human-readable description of the start method."""
@@ -32,6 +32,32 @@ class StartMethod(Enum):
             if self is StartMethod.RC
             else "Show starts automatically based on a designated start time"
         )
+
+
+class AuthorizationScope(Enum):
+    """Enumeration describing the possible scopes of an authorization."""
+
+    NONE = "none"
+    """No authorization. Typically this is not used as we have a separate
+    boolean in the show configuration to indicate whether authorization has
+    been granted or not so it makes no sense to grant authorization with this
+    scope. Nevertheless, it is included for sake of completeness.
+    """
+
+    LIVE = "live"
+    """Authorization to perform the full show in a live setting, with audience.
+    All safety settings that are configured to be enabled will be enforced.
+    """
+
+    REHEARSAL = "rehearsal"
+    """Authorization to perform a rehearsal of the show. Safety settings might
+    be turned off or relaxed depending on the configuration of the drones.
+    """
+
+    LIGHTS_ONLY = "lights"
+    """Authorization to perform the show with lights only. Drones will not
+    turn on their motors and will not fly.
+    """
 
 
 C = TypeVar("C", bound="DroneShowConfiguration")
@@ -43,7 +69,15 @@ class DroneShowConfiguration:
     updated = Signal(doc="Signal emitted when the configuration is updated")
 
     authorized_to_start: bool
-    """Whether the show is authorized to start."""
+    """Whether the show is authorized to start (subject to restrictions in
+    ``authorization_scope``)."""
+
+    authorization_scope: AuthorizationScope
+    """Scope of the authorization for the show. ``AuthorizationScope.NONE``
+    implies that `authorized_to_start` is ``False``, but the scope may also be
+    another value if `authorized_to_start` is ``False`` (to make it easier to
+    grant or revoke authorization without changing the scope).
+    """
 
     duration: Optional[float]
     """Duration of the show, if known. ``None`` means unknown duration."""
@@ -69,6 +103,7 @@ class DroneShowConfiguration:
     def __init__(self):
         """Constructor."""
         self.authorized_to_start = False
+        self.authorization_scope = AuthorizationScope.NONE
         self.clock = None
         self.duration = None
         self.start_time_on_clock = None
@@ -114,9 +149,14 @@ class DroneShowConfiguration:
             fmt_uav_count = "UAVs"
 
         if self.authorized_to_start:
-            return (
-                f"{fmt_uav_count} authorized to start{fmt_start_method}{fmt_start_time}"
-            )
+            if self.authorization_scope is AuthorizationScope.REHEARSAL:
+                fmt_scope = " for rehearsal"
+            elif self.authorization_scope is AuthorizationScope.LIGHTS_ONLY:
+                fmt_scope = " with lights only"
+            else:
+                fmt_scope = ""
+
+            return f"{fmt_uav_count} authorized to start{fmt_scope}{fmt_start_method}{fmt_start_time}"
         else:
             return f"{fmt_uav_count} to start{fmt_start_method}{fmt_start_time}, not authorized"
 
@@ -133,6 +173,7 @@ class DroneShowConfiguration:
         result: dict[str, Any] = {
             "start": {
                 "authorized": bool(self.authorized_to_start),
+                "authorizationScope": self.authorization_scope.value,
                 "clock": self.clock,
                 "time": self.start_time_on_clock,
                 "method": str(self.start_method.value),
@@ -141,33 +182,53 @@ class DroneShowConfiguration:
         }
         if self.duration is not None:
             result["duration"] = self.duration
+
         return result
 
-    def calculate_start_time_as_unix_timestamp(self) -> Optional[float]:
-        """Calculates the desired start time of the show as a UNIX timestamp,
-        even if the show start is synchronized to an internal clock and not to
-        UNIX time.
+    @property
+    def scope_iff_authorized(self) -> AuthorizationScope:
+        """Returns the authorization scope if the show is authorized to start,
+        otherwise ``AuthorizationScope.NONE``.
         """
-        if self.start_time_on_clock is None:
-            return None
-        elif not self.clock:
-            # start_time_on_clock _is_ UNIX time
-            return self.start_time_on_clock
-        else:
-            # TODO(ntamas)
-            return None
+        return (
+            self.authorization_scope
+            if self.authorized_to_start
+            else AuthorizationScope.NONE
+        )
 
     def update_from_json(self, obj: dict[str, Any]) -> None:
         """Updates the configuration object from its JSON representation."""
         changed = False
 
+        # Handle start conditions
         start_conditions = obj.get("start")
         if start_conditions:
             if "authorized" in start_conditions:
                 # This is intentional; in order to be on the safe side, we only
                 # accept True for authorization, not any other truthy value
                 self.authorized_to_start = start_conditions["authorized"] is True
+
+                # For sake of compatibility with versions that did not have an
+                # authorizationScope member, force the scope to be LIVE if it
+                # was NONE.
+                if (
+                    self.authorized_to_start
+                    and self.authorization_scope is AuthorizationScope.NONE
+                ):
+                    self.authorization_scope = AuthorizationScope.LIVE
+
                 changed = True
+
+            if "authorizationScope" in start_conditions:
+                authorization_scope = start_conditions["authorizationScope"]
+                if isinstance(authorization_scope, str):
+                    try:
+                        self.authorization_scope = AuthorizationScope(
+                            authorization_scope
+                        )
+                        changed = True
+                    except ValueError:
+                        pass
 
             if "time" in start_conditions:
                 start_time = start_conditions["time"]
@@ -197,12 +258,19 @@ class DroneShowConfiguration:
                     self.clock = clock if clock else None
                     changed = True
 
+        # Handle duration
         if "duration" in obj:
             if obj["duration"] is None:
                 self.duration = None
                 changed = True
             elif isinstance(obj["duration"], (int, float)) and obj["duration"] >= 0:
                 self.duration = float(obj["duration"])
+                changed = True
+
+        # Enforce consistency of authorized_to_start and authorization_scope
+        if self.authorized_to_start:
+            if self.authorization_scope is AuthorizationScope.NONE:
+                self.authorized_to_start = False
                 changed = True
 
         if changed:

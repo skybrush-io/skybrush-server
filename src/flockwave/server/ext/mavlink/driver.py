@@ -26,6 +26,7 @@ from flockwave.server.command_handlers import (
     create_version_command_handler,
 )
 from flockwave.server.errors import NotSupportedError
+from flockwave.server.ext.show.config import AuthorizationScope
 from flockwave.server.model.battery import BatteryInfo
 from flockwave.server.model.commands import Progress
 from flockwave.server.model.devices import DeviceTreeMutator
@@ -36,10 +37,6 @@ from flockwave.server.model.preflight import PreflightCheckInfo, PreflightCheckR
 from flockwave.server.model.safety import SafetyConfigurationRequest
 from flockwave.server.model.transport import TransportOptions
 from flockwave.server.model.uav import VersionInfo, UAVBase, UAVDriver
-from flockwave.server.types import GCSLogMessageSender
-from flockwave.server.utils import color_to_rgb8_triplet, to_uppercase_string
-from flockwave.spec.errors import FlockwaveErrorCode
-
 from flockwave.server.show import (
     get_altitude_reference_from_show_specification,
     get_coordinate_system_from_show_specification,
@@ -50,7 +47,10 @@ from flockwave.server.show import (
     get_yaw_setpoints_from_show_specification,
 )
 from flockwave.server.show.formats import SkybrushBinaryShowFile
+from flockwave.server.types import GCSLogMessageSender
+from flockwave.server.utils import color_to_rgb8_triplet, to_uppercase_string
 from flockwave.server.utils.generic import nop
+from flockwave.spec.errors import FlockwaveErrorCode
 
 from .accelerometer import AccelerometerCalibration
 from .autopilots import ArduPilot, Autopilot, UnknownAutopilot
@@ -75,13 +75,19 @@ from .enums import (
 )
 from .ftp import MAVFTP
 from .log_download import MAVLinkLogDownloader
-from .packets import create_led_control_packet, DroneShowExecutionStage, DroneShowStatus
+from .packets import (
+    authorization_scope_to_int,
+    create_led_control_packet,
+    DroneShowExecutionStage,
+    DroneShowStatus,
+)
 from .types import MAVLinkMessage, PacketBroadcasterFn, PacketSenderFn, spec
 from .utils import (
     can_communicate_infer_from_heartbeat,
     log_id_for_uav,
     mavlink_version_number_to_semver,
 )
+
 
 __all__ = ("MAVLinkDriver",)
 
@@ -1005,6 +1011,13 @@ class MAVLinkUAV(UAVBase):
     _gps_fix: GPSFix
     """Current GPS fix status and position accuracy of the drone."""
 
+    _last_messages: defaultdict[int, MAVLinkMessageRecord]
+    """Stores a mapping of each MAVLink message type received from the drone
+    to the most recent copy of the message of that type. Some of these
+    records may be cleared when we don't detect a heartbeat from the
+    drone any more.
+    """
+
     _last_skybrush_status_info: Optional[DroneShowStatus] = None
 
     _log_downloader: Optional[MAVLinkLogDownloader] = None
@@ -1023,57 +1036,63 @@ class MAVLinkUAV(UAVBase):
     _system_id = 0
     """MAVLink system ID of the drone. Zero if unspecified or unknown."""
 
+    _autopilot: Autopilot
+    """Model of the autopilot used by this drone"""
+
+    _battery: BatteryInfo
+    """Battery status of the drone"""
+
+    _configuring_data_streams: bool = False
+    """Stores whether we are currently configuring the data stream rates for
+    the drone. Used to avoid multiple parallel configuration attempts.
+    """
+
+    _first_connection: bool = True
+    """Stores whether we are connecting to the drone for the first time;
+    used to prevent a "probably rebooted warning" for the first connection.
+    """
+
+    _gps_fix: GPSFix
+    """Current GPS fix status of the drone"""
+
+    _last_data_stream_configuration_attempted_at: Optional[float] = None
+    """Stores the time when we attempted to configure the data streams for
+    the last time. Used to avoid frequent reconfiguration attempts.
+    """
+
+    _last_skybrush_status_info: Optional[DroneShowStatus] = None
+    """The last Skybrush-specific status packet received from the UAV if it ever
+    sent one.
+    """
+
+    _preflight_status: PreflightCheckInfo
+    """The status of the preflight checks on the drone"""
+
+    _position: GPSCoordinate
+    """The current global position of the drone"""
+
+    _scheduled_takeoff_authorization_scope: AuthorizationScope = AuthorizationScope.NONE
+    """The current authorization scope of the scheduled takeoff of the drone."""
+
+    _scheduled_takeoff_time: Optional[int] = None
+    """Scheduled takeoff time of the drone, as a UNIX timestamp, in seconds"""
+
+    _scheduled_takeoff_time_gps_time_of_week: Optional[int] = None
+    """Scheduled takeoff time of the drone, as a GPS time-of-week timestamp,
+    in seconds"""
+
+    _velocity: VelocityNED
+    """Current velocity of the drone in NED coordinate system, m/sec"""
+
     def __init__(self, *args, **kwds):
         super().__init__(*args, **kwds)
 
-        #: Model of the autopilot used by this drone
         self._autopilot = UnknownAutopilot()
-
-        #: Battery status of the drone
         self._battery = BatteryInfo()
-
-        #: Stores whether we are currently configuring the data stream rates
-        #: for the drone. Used to avoid multiple parallel configuration attempts.
-        self._configuring_data_streams = False
-
-        #: Stores whether we are connecting to the drone for the first time;
-        #: used to prevent a "probably rebooted warning" for the first connection
-        self._first_connection = True
-
-        #: Current GPS fix status of the drone
         self._gps_fix = GPSFix()
-
-        #: Stores whether the drone is authorized to perform a scheduled takeoff
-        self._is_scheduled_takeoff_authorized = False
-
-        #: Stores the time when we attempted to schedule a request to configure
-        #: the data streams for the last time
-        self._last_data_stream_configuration_attempted_at = None
-
-        #: Stores a mapping of each MAVLink message type received from the drone
-        #: to the most recent copy of the message of that type. Some of these
-        #: records may be cleared when we don't detect a heartbeat from the
-        #: drone any more
-        self._last_messages = defaultdict(MAVLinkMessageRecord)
-
-        #: Stores the last Skybrush-specific status packet received from the
-        #: UAV if it ever sent one
-        self._last_skybrush_status_info = None
-
-        #: Status of the preflight checks on the drone
+        self._last_messages = defaultdict(MAVLinkMessageRecord)  # type: ignore
         self._preflight_status = PreflightCheckInfo()
-
-        #: Current global position of the drone
         self._position = GPSCoordinate()
-
-        #: Scheduled takeoff time of the drone, as a UNIX timestamp, in seconds
-        self._scheduled_takeoff_time = None
-
-        #: Scheduled takeoff time of the drone, as a GPS time-of-week timestamp,
-        #: in seconds
-        self._scheduled_takeoff_time_gps_time_of_week = None
-
-        #: Current velocity of the drone in NED coordinate system, m/sec
         self._velocity = VelocityNED()
 
         self.notify_updated = None  # type: ignore
@@ -1385,11 +1404,11 @@ class MAVLinkUAV(UAVBase):
             raise RuntimeError("Fly to waypoint command failed")
 
     @property
-    def is_scheduled_takeoff_authorized(self) -> bool:
-        """Returns whether the scheduled takeoff of the UAV is authorized
-        according to the status packets we received from the UAV.
+    def scheduled_takeoff_authorization_scope(self) -> AuthorizationScope:
+        """Returns whether the UAV is authorized to do a scheduled takeoff and
+        if so, what the scope of the authorization is.
         """
-        return self._is_scheduled_takeoff_authorized
+        return self._scheduled_takeoff_authorization_scope
 
     @property
     def scheduled_takeoff_time(self) -> Optional[int]:
@@ -1521,7 +1540,7 @@ class MAVLinkUAV(UAVBase):
                     gps_time_of_week_to_utc(gps_start_time).timestamp()
                 )
 
-        self._is_scheduled_takeoff_authorized = data.has_takeoff_authorization
+        self._scheduled_takeoff_authorization_scope = data.authorization_scope
 
         debug = data.message.encode("utf-8")
 
@@ -1842,11 +1861,11 @@ class MAVLinkUAV(UAVBase):
         """Returns whether the UAV supports scheduled takeoffs."""
         return self._autopilot and self._autopilot.supports_scheduled_takeoff
 
-    async def set_authorization_to_takeoff(self, value: bool = True) -> None:
+    async def set_authorization_scope(self, scope: AuthorizationScope) -> None:
         """Sets or clears whether the UAV has authorization to perform an
         automatic takeoff.
         """
-        await self.set_parameter("SHOW_START_AUTH", 1 if value else 0)
+        await self.set_parameter("SHOW_START_AUTH", authorization_scope_to_int(scope))
 
     async def set_scheduled_takeoff_time(self, seconds: Optional[int]) -> None:
         """Sets the scheduled takeoff time of the UAV to the given timestamp in

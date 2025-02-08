@@ -80,10 +80,30 @@ class DroneShowExtension(Extension):
             # no sub-key named "clock", it means that we are working with an
             # older version of Skybrush Live that did not have support for
             # MIDI timecode. In this case, we assume that the clock is explicitly
-            # set to None
-            if isinstance(config, dict) and "start" in config:
-                if isinstance(config["start"], dict) and "clock" not in config["start"]:
+            # set to None.
+            #
+            # Similarly, if the "start" object contains a key named "authorized"
+            # but no key named "authorizationScope", it means that we are working
+            # with an older version of Skybrush Live that did not have support for
+            # authorization scopes. In this case, we assume that the authorization
+            # scope is set to "live" if the show is authorized to start and
+            # "none" otherwise.
+            if (
+                isinstance(config, dict)
+                and "start" in config
+                and isinstance(config["start"], dict)
+            ):
+                start_settings = config["start"]
+                if "clock" not in start_settings:
                     config["start"]["clock"] = None
+                if (
+                    "authorized" in start_settings
+                    and "authorizationScope" not in start_settings
+                ):
+                    authorized = bool(start_settings["authorized"])
+                    config["start"]["authorizationScope"] = (
+                        "live" if authorized else "none"
+                    )
 
             self._config.update_from_json(config)
             return hub.acknowledge(message)

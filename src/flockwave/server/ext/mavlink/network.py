@@ -6,9 +6,11 @@ connections: a wifi connection and a fallback radio connection. The system ID
 of a MAVLink message received on either of these two connections refers to the
 same device. However, the same system ID in a different MAVLink network may
 refer to a completely different device. The introduction of the concept of
-MAVLink networks in the Skybrush server will allow us in the future to manage
-multiple independent MAVLink-based drone swarms.
+MAVLink networks in the Skybrush server allows us to manage multiple independent
+MAVLink-based drone swarms.
 """
+
+from __future__ import annotations
 
 from collections import defaultdict
 from contextlib import contextmanager, ExitStack
@@ -25,6 +27,7 @@ from typing import (
     Optional,
     Sequence,
     Union,
+    TYPE_CHECKING,
 )
 
 from flockwave.connections import (
@@ -63,6 +66,9 @@ from .utils import (
     python_log_level_from_mavlink_severity,
     log_id_from_message,
 )
+
+if TYPE_CHECKING:
+    from flockwave.server.ext.show.config import DroneShowConfiguration
 
 __all__ = ("MAVLinkNetwork",)
 
@@ -508,7 +514,7 @@ class MAVLinkNetwork:
         """
         self._led_light_configuration_manager.notify_config_changed(config)
 
-    def notify_scheduled_takeoff_config_changed(self, config):
+    def notify_scheduled_takeoff_config_changed(self, config: DroneShowConfiguration):
         """Notifies the network that the automatic start configuration of the
         drones has changed in the system. The network will then update the
         start configuration of each drone.

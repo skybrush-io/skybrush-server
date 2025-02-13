@@ -363,7 +363,7 @@ class MAVLinkDronesExtension(UAVExtension[MAVLinkDriver]):
         except RegistryFull:
             # User reached the license limit, this is okay, we still keep track
             # of the UAV ourselves but it won't appear in the object registry
-            pass
+            self.app.handle_registry_full_error(self, "MAVLink UAV")
 
         self._uavs.append(uav)
 

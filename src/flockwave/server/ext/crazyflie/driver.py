@@ -196,6 +196,7 @@ class CrazyflieDriver(UAVDriver["CrazyflieUAV"]):
                 ),
             )
         except RegistryFull:
+            self.app.handle_registry_full_error(self, "Crazyflie UAV")
             return None
 
         if uav.uri is None:

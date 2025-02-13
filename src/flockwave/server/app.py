@@ -1,6 +1,6 @@
 """Application object for the Skybrush server."""
 
-from collections import defaultdict
+from collections import Counter, defaultdict
 from inspect import isawaitable, isasyncgen
 from os import environ
 from platformdirs import AppDirs
@@ -146,6 +146,11 @@ class SkybrushServer(DaemonApp):
     world: World
     """A representation of the "world" in which the flock of UAVs live. By
     default, the world is empty but extensions may extend it with objects.
+    """
+
+    _registry_full_error_counts: Counter[Any]
+    """Object that counts how many times we did report a registry full error
+    for a given source. This is used to limit the number of warnings we print.
     """
 
     def cancel_async_operations(
@@ -714,6 +719,31 @@ class SkybrushServer(DaemonApp):
             failure_reason="No such UAV",
         )  # type: ignore
 
+    def handle_registry_full_error(self, source: Any, object: str) -> None:
+        """Commomn handler for events when an extension tries to register an
+        object in the object registry and the registry reaches the limits
+        dictated by the license.
+
+        Args:
+            source: the source of the event. This object is simply used by
+                identity to limit the number of warnings we print on the console
+                for a single source.
+            object: the type of the object that the caller attempted to register,
+                in a human-readable form. This will be used in the warning being
+                printed from this function.
+        """
+        cnt = self._registry_full_error_counts[source]
+        if cnt <= 5:
+            self._registry_full_error_counts[source] += 1
+            self.log.warning(
+                f"Error while registering a new {object}: server limits reached",
+            )
+            if cnt == 5:
+                self.log.warning(
+                    f"Further warnings about limits affecting a new {object} "
+                    f"will be suppressed"
+                )
+
     @property
     def num_clients(self) -> int:
         """The number of clients connected to the server."""
@@ -805,6 +835,8 @@ class SkybrushServer(DaemonApp):
         self.rate_limiters.request_to_send("UAV-INF", uav_ids)
 
     async def run(self) -> int:
+        self._registry_full_error_counts = Counter()
+
         self.run_in_background(self.command_execution_manager.run)
         self.run_in_background(self.message_hub.run)
         self.run_in_background(self.rate_limiters.run)

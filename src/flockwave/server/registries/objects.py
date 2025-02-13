@@ -257,12 +257,7 @@ class ObjectRegistryProxy(RegistryBase[T]):
 
         id = object.id
         self._entries[id] = object
-        try:
-            self._object_registry.add(object)
-        except RegistryFull:
-            raise RuntimeError(
-                "server reached the total number of allowed objects"
-            ) from None
+        self._object_registry.add(object)
 
         self.added.send(self, object=object)
 

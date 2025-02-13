@@ -156,8 +156,7 @@ class VirtualUAVProviderExtension(UAVExtension[VirtualUAVDriver]):
         try:
             await self._simulate_uav(uav, spawn)
         except RegistryFull:
-            # This is okay
-            pass
+            self.app.handle_registry_full_error(self, "simulated UAV")
 
     async def _simulate_uav(self, uav: VirtualUAV, spawn: Callable):
         assert self.app is not None

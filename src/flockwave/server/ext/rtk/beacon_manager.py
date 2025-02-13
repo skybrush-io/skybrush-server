@@ -61,6 +61,7 @@ class RTKBeaconManager:
                 )
             except RegistryFull:
                 # This may happen if the user reaches the license limits
+                app.handle_registry_full_error(self, "RTK base station beacon")
                 beacon = None
 
             if beacon:

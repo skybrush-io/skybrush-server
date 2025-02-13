@@ -5,9 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [main]
+## [2.24.0] - 2025-02-13
+
+### Added
+
+- Added the concept of "show authorization scopes", to be used in later
+  versions to allow starting a show in rehearsal mode or with lights only (no
+  movement).
 
 ### Fixed
+
+- A warning message is now printed when the limits imposed on the server by the
+  license manager are reached.
 
 - MAVLink signing timestamp synchronization now works across all networks
   instead of having a separate timestamp per network. This seems to work better

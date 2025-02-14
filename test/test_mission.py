@@ -4,6 +4,7 @@ from flockwave.server.model.mission import (
     Altitude,
     AltitudeReference,
     GoToMissionCommand,
+    HoverMissionCommand,
     LandMissionCommand,
     MissionCommand,
     MissionCommandBundle,
@@ -38,6 +39,11 @@ def bundle() -> MissionCommandBundle:
                 latitude=47.1,
                 longitude=19.1,
                 altitude=Altitude(value=100, reference=AltitudeReference.HOME),
+            ),
+            HoverMissionCommand(
+                id=None,
+                participants=[0, 1],
+                duration=5,
             ),
             GoToMissionCommand(
                 id=None,

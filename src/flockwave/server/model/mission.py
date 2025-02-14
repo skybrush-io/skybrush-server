@@ -41,6 +41,7 @@ __all__ = (
     "ChangeHeadingMissionCommand",
     "ChangeSpeedMissionCommand",
     "GoToMissionCommand",
+    "HoverMissionCommand",
     "LandMissionCommand",
     "MarkerMissionCommand",
     "ReturnToHomeMissionCommand",
@@ -187,6 +188,9 @@ class MissionItemType(Enum):
     GO_TO = "goTo"
     """Command to go to a desired position in 2D or 3D space."""
 
+    HOVER = "hover"
+    """Command to hover at the actual location."""
+
     LAND = "land"
     """Command to land the UAV."""
 
@@ -275,6 +279,8 @@ def _generate_mission_command_from_mission_item(item: MissionItem) -> MissionCom
         command = ChangeSpeedMissionCommand.from_json(item)
     elif type == MissionItemType.GO_TO:
         command = GoToMissionCommand.from_json(item)
+    elif type == MissionItemType.HOVER:
+        command = HoverMissionCommand.from_json(item)
     elif type == MissionItemType.LAND:
         command = LandMissionCommand.from_json(item)
     elif type == MissionItemType.MARKER:
@@ -325,6 +331,16 @@ def _get_altitude_from_parameters(params: dict[str, Any]) -> Optional[Altitude]:
         raise RuntimeError(f"altitude reference unknown: {reference!r}") from None
 
     return Altitude(value=value, reference=reference)
+
+
+def _get_duration_from_parameters(params: dict[str, Any]) -> float:
+    duration = params.get("duration")
+    if not isinstance(duration, (int, float)):
+        raise RuntimeError("duration must be a number")
+    if duration < 0:
+        raise RuntimeError("duration cannot be negative")
+
+    return float(duration)
 
 
 def _get_heading_from_parameters(params: dict[str, Any]) -> Heading:
@@ -879,6 +895,42 @@ class GoToMissionCommand(MissionCommand):
     @property
     def type(self) -> MissionItemType:
         return MissionItemType.GO_TO
+
+
+@dataclass
+class HoverMissionCommand(MissionCommand):
+    """Mission command that instructs the drone to hover at its actual location."""
+
+    duration: float
+    """The desired duration to hover in [s]."""
+
+    @classmethod
+    def from_json(cls, obj: MissionItem):
+        _validate_mission_item(
+            obj, expected_type=MissionItemType.HOVER, expect_params=True
+        )
+        id, participants, params = _parse_mission_item(obj)
+
+        duration = _get_duration_from_parameters(params)
+
+        return cls(id=id, participants=participants, duration=duration)
+
+    @property
+    def json(self) -> MissionItem:
+        parameters = {
+            "duration": round(self.duration, ndigits=6),
+        }
+
+        return _prepare_mission_item(
+            self.id,
+            self.participants,
+            MissionItemType.HOVER,
+            parameters,
+        )
+
+    @property
+    def type(self) -> MissionItemType:
+        return MissionItemType.HOVER
 
 
 @dataclass

@@ -2608,15 +2608,15 @@ reference = "collmot"
 
 [[package]]
 name = "skybrush-lib-mission-planning"
-version = "2.4.0"
+version = "2.4.1"
 description = "Mission planning library for Skybrush"
 optional = true
 python-versions = ">=3.10,<4.0"
 groups = ["main"]
 markers = "extra == \"all\" or extra == \"collmot\" or extra == \"pro\""
 files = [
-    {file = "skybrush_lib_mission_planning-2.4.0-py3-none-any.whl", hash = "sha256:ab214b55e0d9feb870d6229dea10155f7661d346c03b79ca4e2e56dce5fe4271"},
-    {file = "skybrush_lib_mission_planning-2.4.0.tar.gz", hash = "sha256:bd1f5deb68318151f9b4e79954843e6dd98d9a52df69f2c52add262fc1e80513"},
+    {file = "skybrush_lib_mission_planning-2.4.1-py3-none-any.whl", hash = "sha256:da524cca0044a24461d49d75bc9156cadec77b3f2328974823c1b5b1faa57d97"},
+    {file = "skybrush_lib_mission_planning-2.4.1.tar.gz", hash = "sha256:692e01a0ef5c4b96f40ed77ac97add87c58ba33060f9fcc20b9152005645a401"},
 ]
 
 [package.dependencies]
@@ -3034,4 +3034,4 @@ pro = ["skybrush-ext-flight-report", "skybrush-ext-map-cache", "skybrush-ext-sid
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10,<4.0"
-content-hash = "7876100a010780f6048814aa601cdd31916e1d4770b86d7e2c44e239ec5f2ea7"
+content-hash = "2d0e46bb901a4402c99486e830ce740b12011fae983e1005d519306e8dea5a6f"

@@ -64,7 +64,7 @@ skybrush-ext-flockctrl = { version = "^3.14.0", source = "collmot", optional = t
 skybrush-ext-map-cache = { version = "^1.1.0", source = "collmot", optional = true }
 skybrush-ext-sidekick = { version = "^1.0.1", source = "collmot", optional = true }
 skybrush-ext-timecode = { version = "^1.1.0", source = "collmot", optional = true }
-skybrush-lib-mission-planning = { version = "^2.4.0", source = "collmot", optional = true }
+skybrush-lib-mission-planning = { version = "^2.4.1", source = "collmot", optional = true }
 pyledctrl = { version = "^4.1.0", source = "fury" }
 aiocflib = "^4.1.0"
 crcmod-plus = "^2.1.0"

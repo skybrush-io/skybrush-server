@@ -461,6 +461,24 @@ class UAVDriver(Generic[TUAV], metaclass=ABCMeta):
         """Constructor."""
         self.app = None  # type: ignore
 
+    def calibrate_component(self, uavs: list[TUAV], component: str):
+        """Asks the driver to calibrate the given component on the given UAVs.
+
+        Typically, you don't need to override this method when implementing
+        a driver; override ``_calibrate_component_single()`` instead.
+
+        Returns:
+            dict mapping UAVs to the corresponding results (which may also be
+            errors or awaitables; it is the responsibility of the caller to
+            evaluate errors and wait for awaitables)
+        """
+        return self._dispatch_request(
+            uavs,
+            "calibration request",
+            self._calibrate_component_single,
+            component=component,
+        )
+
     def enter_low_power_mode(
         self, uavs: list[TUAV], transport: Optional[TransportOptions] = None
     ):
@@ -1098,6 +1116,32 @@ class UAVDriver(Generic[TUAV], metaclass=ABCMeta):
             result[uav] = outcome
 
         return result
+
+    def _calibrate_component_single(self, uav: TUAV, component: str):
+        """Asks the driver to calibrate a component of a single UAV managed by
+        this driver.
+
+        May return an awaitable if preparing the result takes a longer time.
+
+        The function follows the "samurai principle", i.e. "return victorious,
+        or not at all". It means that if it returns, the operation succeeded.
+        Raise an exception if the operation cannot be executed for any reason;
+        a RuntimeError is typically sufficient.
+
+        Parameters:
+            uav: the UAV to address with this request.
+            component: the component to calibrate.
+
+        Raises:
+            NotImplementedError: if the operation is not supported by the
+                driver yet, but there are plans to implement it
+            NotSupportedError: if the operation is not supported by the
+                driver and will not be supported in the future either
+        """
+        if hasattr(uav, "calibrate_component"):
+            return uav.calibrate_component(component)  # type: ignore
+        else:
+            raise NotSupportedError
 
     def _enter_low_power_mode_single(
         self, uav: TUAV, *, transport: Optional[TransportOptions] = None

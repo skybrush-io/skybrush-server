@@ -11,6 +11,7 @@ from contextlib import ExitStack
 from dataclasses import dataclass, field
 from fnmatch import fnmatch
 from functools import partial
+from pathlib import Path
 from time import monotonic
 from trio import CancelScope, open_memory_channel, open_nursery, sleep
 from trio.abc import SendChannel
@@ -84,6 +85,7 @@ class RTKExtension(Extension):
 
     _clock_sync_validator: GPSClockSynchronizationValidator
     _current_preset: Optional[RTKConfigurationPreset] = None
+    _custom_user_presets_file: str = ""
     _dynamic_serial_port_configurations: list[SerialPortConfiguration]
     _dynamic_serial_port_filters: list[str]
     _exclude_non_rtk_bases: bool = True
@@ -119,6 +121,12 @@ class RTKExtension(Extension):
 
         self._presets = []
         self._load_presets_from(configuration.get("presets", {}))
+
+        self._custom_user_presets_file = str(configuration.get("presets_file", ""))
+        if self._custom_user_presets_file:
+            self.log.info(
+                f"Loading RTK presets from {self._custom_user_presets_file!r}"
+            )
 
         self._dynamic_serial_port_configurations = []
         serial_port_specs = configuration.get("add_serial_ports")
@@ -221,8 +229,7 @@ class RTKExtension(Extension):
                 )
         elif fixed is not None:
             self.log.warning(
-                "Ignoring invalid fixed base station position "
-                f"specification: {fixed!r}"
+                f"Ignoring invalid fixed base station position specification: {fixed!r}"
             )
 
         gnss_types = configuration.get("gnss_types")
@@ -331,6 +338,18 @@ class RTKExtension(Extension):
 
             return hub.create_response_to(message, {"id": preset.id})
 
+        except Exception as ex:
+            return hub.reject(message, str(ex))
+
+    def handle_RTK_SAVE(
+        self, message: FlockwaveMessage, sender, hub: MessageHub
+    ) -> FlockwaveResponse:
+        """Handles an incoming RTK-SAVE message to save all user presets to the
+        configuration file storing the user-defined presets.
+        """
+        try:
+            self._save_user_presets()
+            return hub.acknowledge(message)
         except Exception as ex:
             return hub.reject(message, str(ex))
 
@@ -467,6 +486,7 @@ class RTKExtension(Extension):
                             handle_RTK_DEL
                         ),
                         "X-RTK-NEW": self.handle_RTK_NEW,
+                        "X-RTK-SAVE": self.handle_RTK_SAVE,
                         "X-RTK-UPDATE": create_multi_object_message_handler(
                             handle_RTK_UPDATE
                         ),
@@ -521,6 +541,17 @@ class RTKExtension(Extension):
     def survey_settings(self) -> RTKSurveySettings:
         """Returns the current survey settings of the RTK extension."""
         return self._survey_settings
+
+    @property
+    def user_presets_file(self) -> Path:
+        """Full path of the file that stores the user presets."""
+        try:
+            if self._custom_user_presets_file:
+                return Path(self._custom_user_presets_file)
+        except Exception:
+            pass
+
+        return Path(self.get_data_dir()) / "presets.json"
 
     def _are_corrections_ok(
         self, *, min_satellite_count: int = 8, max_age: float = 8
@@ -626,7 +657,7 @@ class RTKExtension(Extension):
         assert self.log
 
         user_presets = {}
-        user_preset_file = self.get_data_dir() / "presets.json"
+        user_preset_file = self.user_presets_file
         if user_preset_file.exists():
             with user_preset_file.open() as fp:
                 try:
@@ -637,6 +668,27 @@ class RTKExtension(Extension):
                     )
 
         self._load_presets_from(user_presets, type=RTKConfigurationPresetType.USER)
+
+    def _save_user_presets(self) -> None:
+        assert self.log
+        assert self._registry
+
+        user_preset_file = self.user_presets_file
+        user_presets = {
+            preset_id: self._registry.find_by_id(preset_id).json
+            for preset_id in self._registry.ids
+            if self._registry.find_by_id(preset_id).type
+            is RTKConfigurationPresetType.USER
+        }
+
+        with user_preset_file.open("w") as fp:
+            try:
+                json.dump(user_presets, fp, indent=2, sort_keys=True)
+            except Exception:
+                self.log.error(
+                    f"Error while writing user presets to {str(user_preset_file)!r}"
+                )
+                raise
 
     async def _request_preset_switch(
         self, value: Optional[RTKConfigurationPreset]
@@ -1124,6 +1176,10 @@ def get_schema():
                     },
                 },
             },
+            # presets_file intentionally left out; we do not want to allow the
+            # user to mess with the location of the presets file by default,
+            # but it is useful to us in certain deployments. Use it at your
+            # own risk.
             "add_serial_ports": {
                 "title": "Use serial ports automatically",
                 "description": (

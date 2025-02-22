@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.24.5] - 2025-02-22
+
+### Added
+
+- Added handler for `X-RTK-SAVE` that saves the current user-defined presets to
+  the configuration file holding the user-defined presets.
+
+- Added configuration option in the `rtk` extension to allow the user to
+  specify an alternative configuration file for the user-defined presets.
+
 ## [2.24.4] - 2025-02-17
 
 ### Fixed

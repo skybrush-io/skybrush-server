@@ -33,7 +33,7 @@ from .version import __version__
     "--port",
     metavar="PORT",
     default=None,
-    help="Oveerride the base port number of the server. Takes precedence over the PORT environment variable.",
+    help="Override the base port number of the server. Takes precedence over the PORT environment variable.",
 )
 @click.option(
     "-q", "--quiet/--no-quiet", default=False, help="Start the server in quiet mode"

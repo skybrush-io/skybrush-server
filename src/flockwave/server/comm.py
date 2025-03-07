@@ -480,7 +480,7 @@ class CommunicationManager(Generic[PacketType, AddressType]):
     async def _run_outbound_links(self):
         # ephemeris RTK streams send messages in bursts so it's better to have
         # a relatively large queue here
-        tx_queue, rx_queue = open_memory_channel(128)
+        tx_queue, rx_queue = open_memory_channel(256)
         async with tx_queue, rx_queue:
             try:
                 self._outbound_tx_queue = tx_queue

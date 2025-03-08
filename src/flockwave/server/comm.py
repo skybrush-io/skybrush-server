@@ -16,6 +16,7 @@ from trio import (
     sleep,
     WouldBlock,
 )
+from trio.abc import ReceiveChannel, SendChannel
 from trio_util import wait_all
 from typing import (
     Any,
@@ -106,6 +107,10 @@ class CommunicationManagerEntry(Generic[PacketType, AddressType]):
         entry is up and running.
         """
         return self.channel is not None
+
+
+Consumer = Callable[[ReceiveChannel[tuple[str, tuple[PacketType, AddressType]]]], Any]
+"""Type alias for a callable that consumes packets from a communication channel."""
 
 
 class CommunicationManager(Generic[PacketType, AddressType]):
@@ -321,7 +326,7 @@ class CommunicationManager(Generic[PacketType, AddressType]):
                 if entry.channel:
                     yield entry.channel
 
-    async def run(self, *, consumer, supervisor, log, tasks=None):
+    async def run(self, *, consumer: Consumer, supervisor, log: Logger, tasks=None):
         """Runs the communication manager in a separate task, using the
         given supervisor function to ensure that the connections associated to
         the communication manager stay open.
@@ -399,11 +404,13 @@ class CommunicationManager(Generic[PacketType, AddressType]):
     async def _run(
         self,
         *,
-        consumer,
+        consumer: Consumer,
         supervisor,
         tasks: Optional[list[Callable[..., Awaitable[Any]]]] = None,
     ) -> None:
-        tx_queue, rx_queue = open_memory_channel(0)
+        tx_queue, rx_queue = open_memory_channel[
+            tuple[str, tuple[PacketType, AddressType]]
+        ](0)
 
         tasks = [partial(task, self) for task in (tasks or [])]
         tasks.extend(
@@ -425,7 +432,7 @@ class CommunicationManager(Generic[PacketType, AddressType]):
         connection,
         *,
         entry: CommunicationManagerEntry[PacketType, AddressType],
-        queue,
+        queue: SendChannel[tuple[str, tuple[PacketType, AddressType]]],
     ):
         has_error = False
         channel_created = False

@@ -673,7 +673,9 @@ class MAVLinkNetwork:
                 HEARTBEAT_SPEC, destination=Channel.PRIMARY, allow_failure=True
             )
 
-    async def _handle_inbound_messages(self, channel: ReceiveChannel):
+    async def _handle_inbound_messages(
+        self, channel: ReceiveChannel[tuple[str, tuple[MAVLinkMessage, Any]]]
+    ):
         """Handles inbound MAVLink messages from all the communication links
         that the extension manages.
 

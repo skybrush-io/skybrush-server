@@ -276,10 +276,15 @@ class DroneShowStatus:
     authorization_scope: AuthorizationScope = AuthorizationScope.NONE
     """Authorization scope of the scheduled start of the drone show."""
 
+    rtcm_counters: Sequence[Optional[int]] = (None, None)
+    """Number of RTCM messages received from the primary and secondary channels
+    in the last few seconds.
+    """
+
     TYPE: ClassVar[int] = 0x5B
     """Identifier of Skybrush-specific DATA16 show status packets."""
 
-    _struct: ClassVar[Struct] = Struct("<iHBBBBh")
+    _struct: ClassVar[Struct] = Struct("<iHBBBBhBB")
     """Structure of Skybrush-specific DATA16 show status packets."""
 
     @classmethod
@@ -290,8 +295,8 @@ class DroneShowStatus:
         """
         data_len = len(data)
 
-        if data_len < 12:
-            data = data.ljust(12, b"\x00")
+        if data_len < 14:
+            data = data.ljust(14, b"\x00")
 
         (
             start_time,
@@ -301,7 +306,9 @@ class DroneShowStatus:
             gps_health,
             flags3,
             elapsed_time,
-        ) = cls._struct.unpack(data[:12])
+            primary_rtcm_count_plus_one,
+            secondary_rtcm_count_plus_one,
+        ) = cls._struct.unpack(data[:14])
 
         # Merge flags, flags2 and flags3 into one byte. Lower 4 bits of flags2
         # is the execution stage. Lower 2 bits of flags3 is the boot count
@@ -326,6 +333,16 @@ class DroneShowStatus:
         except Exception:
             stage = DroneShowExecutionStage.UNKNOWN
 
+        # process the RTCM counters
+        rtcm_counters = (
+            primary_rtcm_count_plus_one - 1
+            if primary_rtcm_count_plus_one > 0
+            else None,
+            secondary_rtcm_count_plus_one - 1
+            if secondary_rtcm_count_plus_one > 0
+            else None,
+        )
+
         return cls(
             start_time=start_time,
             elapsed_time=elapsed_time,
@@ -335,6 +352,7 @@ class DroneShowStatus:
             gps_fix=GPSFixType.to_ours(gps_health & 0x07),
             num_satellites=gps_health >> 3,
             authorization_scope=scope,
+            rtcm_counters=rtcm_counters,
         )
 
     @classmethod

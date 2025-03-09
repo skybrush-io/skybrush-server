@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [main]
+
+### Added
+
+- RSSI values can now be derived for UAVs from the RTCM message counts reported
+  by newer versions of the Skybrush firmware (currently the development version
+  only). This allows one to track the status of both the primary and the
+  secondary telemetry channel. Live also needs to be updated to the development
+  version to support more than one RSSI measure per drone.
+
 ## [2.24.5] - 2025-02-22
 
 ### Added

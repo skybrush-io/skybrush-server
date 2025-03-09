@@ -51,6 +51,7 @@ from .driver import MAVLinkDriver, MAVLinkUAV
 from .enums import MAVAutopilot, MAVComponent, MAVMessageType, MAVState, MAVType
 from .led_lights import MAVLinkLEDLightConfigurationManager
 from .packets import DroneShowStatus
+from .rssi import RSSIMode
 from .rtk import RTKCorrectionPacketEncoder
 from .signing import MAVLinkSigningConfiguration
 from .takeoff import ScheduledTakeoffManager
@@ -118,6 +119,11 @@ class MAVLinkNetwork:
 
     _routing: dict[str, list[int]]
 
+    _rssi_mode: RSSIMode
+    """Specifies how this network derives RSSI values for the drones in the
+    network.
+    """
+
     _signing: MAVLinkSigningConfiguration
     """Object that stores how the MAVLink connections should handle signed
     messages (in both the inbound and the outbound directions).
@@ -157,6 +163,7 @@ class MAVLinkNetwork:
             packet_loss=spec.packet_loss,
             statustext_targets=spec.statustext_targets,
             routing=spec.routing,
+            rssi_mode=spec.rssi_mode,
             signing=spec.signing,
             uav_system_id_offset=spec.id_offset,
             use_broadcast_rate_limiting=spec.use_broadcast_rate_limiting,
@@ -177,6 +184,7 @@ class MAVLinkNetwork:
         packet_loss: float = 0,
         statustext_targets: MAVLinkStatusTextTargetSpecification = MAVLinkStatusTextTargetSpecification.DEFAULT,
         routing: Optional[dict[str, list[int]]] = None,
+        rssi_mode: RSSIMode = RSSIMode.RADIO_STATUS,
         signing: MAVLinkSigningConfiguration = MAVLinkSigningConfiguration.DISABLED,
         uav_system_id_offset: int = 0,
         use_broadcast_rate_limiting: bool = False,
@@ -207,6 +215,8 @@ class MAVLinkNetwork:
                 use for sending that particular packet type. Not including a
                 particular packet type in the dictionary will let the system
                 choose the link on its own.
+            rssi_mode: specifies how this network will derive RSSI values for
+                the drones in the network
             signing: object that specifies whether outgoing messages should be
                 signed and whether incoming unsigned messages are accepted.
             uav_system_id_offset: offset to add to the system ID of each UAV
@@ -222,6 +232,7 @@ class MAVLinkNetwork:
         )
         self._packet_loss = max(float(packet_loss), 0.0)
         self._routing = routing or {}
+        self._rssi_mode = rssi_mode
         self._scheduled_takeoff_manager = ScheduledTakeoffManager(self)
         self._signing = signing
         self._statustext_targets = statustext_targets
@@ -632,6 +643,7 @@ class MAVLinkNetwork:
 
         self._uavs[system_id] = uav = self.driver.create_uav(uav_id)
         uav.assign_to_network_and_system_id(self.id, system_id)
+        uav._rssi_mode = self._rssi_mode
 
         self.register_uav(uav)
 
@@ -682,6 +694,14 @@ class MAVLinkNetwork:
         Parameters:
             channel: a Trio receive channel that yields inbound MAVLink messages.
         """
+        # We need to respond to RADIO_STATUS messages only if we are parsing the
+        # RSSI values from there, otherwise they can be ignored
+        radio_status_handler = (
+            self._handle_message_radio_status
+            if self._rssi_mode is RSSIMode.RADIO_STATUS
+            else nop
+        )
+
         handlers = {
             "AUTOPILOT_VERSION": self._handle_message_autopilot_version,
             "BAD_DATA": nop,
@@ -711,7 +731,7 @@ class MAVLinkNetwork:
             "PARAM_VALUE": nop,
             "POSITION_TARGET_GLOBAL_INT": nop,
             "POWER_STATUS": nop,
-            "RADIO_STATUS": self._handle_message_radio_status,
+            "RADIO_STATUS": radio_status_handler,
             "STATUSTEXT": self._handle_message_statustext,
             "SYS_STATUS": self._handle_message_sys_status,
             "TIMESYNC": self._handle_message_timesync,

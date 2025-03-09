@@ -81,6 +81,7 @@ from .packets import (
     DroneShowExecutionStage,
     DroneShowStatus,
 )
+from .rssi import RSSIMode, rtcm_counter_to_rssi
 from .types import MAVLinkMessage, PacketBroadcasterFn, PacketSenderFn, spec
 from .utils import (
     can_communicate_infer_from_heartbeat,
@@ -1071,6 +1072,11 @@ class MAVLinkUAV(UAVBase):
     _position: GPSCoordinate
     """The current global position of the drone"""
 
+    _rssi_mode: RSSIMode
+    """Specifies how the RSSI values of the communication channels of the drone
+    should be calculated.
+    """
+
     _scheduled_takeoff_authorization_scope: AuthorizationScope = AuthorizationScope.NONE
     """The current authorization scope of the scheduled takeoff of the drone."""
 
@@ -1093,6 +1099,7 @@ class MAVLinkUAV(UAVBase):
         self._last_messages = defaultdict(MAVLinkMessageRecord)  # type: ignore
         self._preflight_status = PreflightCheckInfo()
         self._position = GPSCoordinate()
+        self._rssi_mode = RSSIMode.NONE
         self._velocity = VelocityNED()
 
         self.notify_updated = None  # type: ignore
@@ -1545,7 +1552,17 @@ class MAVLinkUAV(UAVBase):
         debug = data.message.encode("utf-8")
 
         self._update_errors_from_drone_show_status_packet(data)
-        self.update_status(light=data.light, gps=self._gps_fix, debug=debug)
+
+        updates = {"light": data.light, "gps": self._gps_fix, "debug": debug}
+
+        if self._rssi_mode is RSSIMode.RTCM_COUNTERS:
+            updates["rssi"] = [
+                rtcm_counter_to_rssi(data.rtcm_counters[0]),
+                rtcm_counter_to_rssi(data.rtcm_counters[1]),
+            ]
+
+        self.update_status(**updates)
+
         self.notify_updated()
 
     def handle_message_heartbeat(self, message: MAVLinkMessage):
@@ -1661,9 +1678,15 @@ class MAVLinkUAV(UAVBase):
         self.compass_calibration.handle_message_mag_cal_report(message)
 
     def handle_message_radio_status(self, message: MAVLinkMessage):
+        if self._rssi_mode is not RSSIMode.RADIO_STATUS:
+            return
+
         # Limitations:
         # - Currently we do not account for multiple connections; we always
-        #   update the RSSI of the first connection
+        #   update the RSSI of the first connection. This is fine for the time
+        #   being because we assume that the wifi connection (which provides
+        #   the RSSI value) is the first connection, and the radio connection is
+        #   not supposed to be bi-directional.
         # - We handle the conventions of the MAVESP8266 firmware only.
         #   MAVESP8266 simply uses WiFi.RSSI(), which is a 8-bit signed int
         #   representing the signal level in dBm. We scale the value to a

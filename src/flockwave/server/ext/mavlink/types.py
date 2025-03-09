@@ -16,6 +16,7 @@ from typing import (
 )
 
 from .enums import MAVSeverity
+from .rssi import RSSIMode
 from .signing import MAVLinkSigningConfiguration
 
 __all__ = (
@@ -213,6 +214,11 @@ class MAVLinkNetworkSpecification:
     network has multiple connections.
     """
 
+    rssi_mode: RSSIMode = RSSIMode.RADIO_STATUS
+    """Specifies how the network will derive the RSSI (received signal strength
+    indicator) value of its own drones.
+    """
+
     signing: MAVLinkSigningConfiguration = MAVLinkSigningConfiguration.DISABLED
     """Specifies whether MAVLink packets should be signed and whether the
     connection should accept unsigned MAVLink packets.
@@ -270,6 +276,9 @@ class MAVLinkNetworkSpecification:
                 {k: cls._process_routing_entry(v) for k, v in obj["routing"].items()}
             )
 
+        if "rssi_mode" in obj and isinstance(obj["rssi_mode"], str):
+            result.rssi_mode = RSSIMode(obj["rssi_mode"])
+
         if "signing" in obj and isinstance(obj["signing"], dict):
             result.signing = MAVLinkSigningConfiguration.from_json(obj["signing"])
 
@@ -296,6 +305,7 @@ class MAVLinkNetworkSpecification:
             "connections": self.connections,
             "packet_loss": self.packet_loss,
             "routing": self.routing,
+            "rssi_mode": self.rssi_mode.value,
             "signing": self.signing,
             "statustext_targets": self.statustext_targets,
             "use_broadcast_rate_limiting": bool(self.use_broadcast_rate_limiting),

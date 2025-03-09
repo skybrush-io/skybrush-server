@@ -19,6 +19,7 @@ from .driver import MAVLinkDriver, MAVLinkUAV
 from .enums import MAVSeverity
 from .errors import InvalidSigningKeyError
 from .network import MAVLinkNetwork
+from .rssi import RSSIMode
 from .tasks import check_uavs_alive
 from .types import (
     MAVLinkMessage,
@@ -222,6 +223,7 @@ class MAVLinkDronesExtension(UAVExtension[MAVLinkDriver]):
             "id_format": default_id_format,
             "packet_loss": configuration.get("packet_loss", MISSING),
             "routing": configuration.get("routing", DEFAULT_ROUTING),
+            "rssi_mode": configuration.get("rssi_mode", RSSIMode.RADIO_STATUS.value),
             "statustext_targets": configuration.get(
                 "statustext_targets", MAVLinkStatusTextTargetSpecification.DEFAULT.json
             ),
@@ -455,6 +457,24 @@ class MAVLinkDronesExtension(UAVExtension[MAVLinkDriver]):
                 )
 
 
+RSSI_MODE_SCHEMA = {
+    "type": "string",
+    "enum": [
+        RSSIMode.NONE.value,
+        RSSIMode.RADIO_STATUS.value,
+        RSSIMode.RTCM_COUNTERS.value,
+    ],
+    "title": "RSSI mode",
+    "default": RSSIMode.RADIO_STATUS.value,
+    "options": {
+        "enum_titles": [
+            "No RSSI values",
+            "From RADIO_STATUS messages",
+            "From RTCM counters (Skybrush only)",
+        ]
+    },
+}
+
 construct = MAVLinkDronesExtension
 dependencies = ("show", "signals")
 description = "Support for drones that use the MAVLink protocol"
@@ -542,6 +562,10 @@ schema = {
                             },
                         },
                     },
+                    "rssi_mode": dict(
+                        RSSI_MODE_SCHEMA,
+                        description="Specifies how RSSI values are derived for the drones in this network",
+                    ),
                     "signing": {
                         "type": "object",
                         "title": "Message signing",
@@ -633,6 +657,11 @@ schema = {
             "default": 127,
             "propertyOrder": 5000,
         },
+        "rssi_mode": dict(
+            RSSI_MODE_SCHEMA,
+            description="Specifies how RSSI values are derived for the drones. May be overridden in each network.",
+            propertyOrder=10000,
+        ),
         # packet_loss is an advanced setting and is not included here
     }
 }

@@ -104,7 +104,11 @@ class CommandExecutionManager(RegistryBase[CommandExecutionStatus]):
         """
         super().__init__()
         self._builder = CommandExecutionStatusBuilder()
-        self._tx_queue, self._rx_queue = open_memory_channel(256)
+
+        # Large queue to allow for many commands to be executed in parallel.
+        # The default queue size of 256 was not enough for 500+ drones when the
+        # same command was _unicast_ to all the drones.
+        self._tx_queue, self._rx_queue = open_memory_channel(2048)
         self.timeout = timeout
 
     def cancel(self, receipt_id: ReceiptLike) -> None:

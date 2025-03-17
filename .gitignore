@@ -12,6 +12,7 @@ dist/
 doc/build/
 doc/skybrush-server-docs-*.zip
 htmlcov/
+private/
 tmp/
 .venv/
 .vscode/

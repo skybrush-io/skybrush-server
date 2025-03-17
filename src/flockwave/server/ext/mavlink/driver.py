@@ -655,6 +655,9 @@ class MAVLinkDriver(UAVDriver["MAVLinkUAV"]):
                 initial attempt); `None` means to use the default retry count
                 for the driver.
             channel: the channel to send the packet on
+
+        Raises:
+            TooSlowError: if the UAV failed to respond in time
         """
         if timeout is None or timeout <= 0:
             timeout = self._default_timeout
@@ -1446,16 +1449,34 @@ class MAVLinkUAV(UAVBase):
         encoded_value = self._autopilot.encode_param_to_wire_representation(
             value, param_type
         )
-        await self.driver.send_packet_with_retries(
-            spec.param_set(
-                param_id=param_id,
-                param_value=encoded_value,
-                param_type=param_type,
-            ),
-            target=self,
-            wait_for_response=spec.param_value(param_id=param_id),
-            timeout=0.7,
-        )
+
+        try:
+            # Try to set the new parameter value. In normal circumstances, we
+            # will get a PARAM_VALUE message in response, with the same
+            # parameter ID. However, in ArduPilot, when SERIALx_OPTIONS bit 10
+            # is set for the primary telemetry channel, we will _not_ get
+            # PARAM_VALUE messages, at least not in ArduPilot 4.4. In this case,
+            # we make one final attempt to read the parameter value explicitly.
+            await self.driver.send_packet_with_retries(
+                spec.param_set(
+                    param_id=param_id,
+                    param_value=encoded_value,
+                    param_type=param_type,
+                ),
+                target=self,
+                wait_for_response=spec.param_value(param_id=param_id),
+                timeout=0.7,
+            )
+
+        except TooSlowError:
+            # This is where we try to recover
+            observed_value = await self.get_parameter(name)
+            if value != observed_value:
+                raise RuntimeError(
+                    f"Failed to set parameter {name!r}, "
+                    "tried to set {value!r}, "
+                    "got {observed_value!r}"
+                ) from None
 
     async def test_component(
         self, component: str, *, channel: str = Channel.PRIMARY

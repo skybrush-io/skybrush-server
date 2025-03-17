@@ -37,6 +37,8 @@ class DroneShowExtension(Extension):
     _end_clock: Optional[ShowEndClock]
     _end_clock_sync: ClockSynchronizationHandler
 
+    _log_middleware: Optional[ShowUploadLoggingMiddleware]
+
     _nursery: Optional[Nursery]
     _show_tasks: Optional[CancellableTaskGroup]
 
@@ -49,6 +51,8 @@ class DroneShowExtension(Extension):
         self._end_clock = None
         self._end_clock_sync = ClockSynchronizationHandler()
 
+        self._log_middleware = None
+
         self._nursery = None
         self._show_tasks = None
 
@@ -59,6 +63,7 @@ class DroneShowExtension(Extension):
         return {
             "get_clock": self._get_clock,
             "get_configuration": self._get_configuration,
+            "get_last_uploaded_show_metadata": self._get_last_uploaded_show_metadata,
             "get_light_configuration": self._get_light_configuration,
         }
 
@@ -135,6 +140,7 @@ class DroneShowExtension(Extension):
         async with open_nursery() as self._nursery:
             assert self._nursery is not None
 
+            self._log_middleware = ShowUploadLoggingMiddleware(self.log)
             self._show_tasks = CancellableTaskGroup(self._nursery)
 
             with ExitStack() as stack:
@@ -172,9 +178,7 @@ class DroneShowExtension(Extension):
                 stack.enter_context(app.import_api("clocks").use_clock(self._end_clock))
                 stack.enter_context(app.message_hub.use_message_handlers(handlers))
                 stack.enter_context(
-                    app.message_hub.use_request_middleware(
-                        ShowUploadLoggingMiddleware(self.log)
-                    )
+                    app.message_hub.use_request_middleware(self._log_middleware)
                 )
                 stack.enter_context(self._clock_sync.use_secondary_clock(self._clock))
                 stack.enter_context(
@@ -189,6 +193,10 @@ class DroneShowExtension(Extension):
     def _get_configuration(self) -> DroneShowConfiguration:
         """Returns a copy of the current drone show configuration."""
         return self._config.clone()
+
+    def _get_last_uploaded_show_metadata(self):
+        """Returns the metadata of the last uploaded show."""
+        return self._log_middleware.last_show_metadata if self._log_middleware else None
 
     def _get_light_configuration(self) -> LightConfiguration:
         """Returns a copy of the current LED lgiht configuration."""

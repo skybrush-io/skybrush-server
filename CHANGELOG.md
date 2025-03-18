@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [main]
+## [2.25.0] - 2025-03-18
 
 ### Added
 
@@ -14,6 +14,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   only). This allows one to track the status of both the primary and the
   secondary telemetry channel. Live also needs to be updated to the development
   version to support more than one RSSI measure per drone.
+
+- The `show` extension now exposes the metadata of the last uploaded show to
+  other extensions via its own API.
+
+### Changed
+
+- Increased the sizes of some internal command queues to allow sending unicast
+  commands to hundreds of drones one by one.
+
+### Fixed
+
+- When setting a parameter on MAVLink-based drones, the new value of the
+  parameter is now queried explicitly if no `PARAM_VALUE` response arrives in
+  time. This is necessary to modify parameters on ArduPilot-based drones using
+  telemetry channels where MAVLink routing is disabled.
 
 ## [2.24.5] - 2025-02-22
 

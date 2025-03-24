@@ -30,6 +30,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   time. This is necessary to modify parameters on ArduPilot-based drones using
   telemetry channels where MAVLink routing is disabled.
 
+- Sidekick and other extensions interested in fragmented MAVLink RTK correction
+  packets are now notified only once for each such packet instead of as many
+  times as the number of networks.
+
 ## [2.24.5] - 2025-02-22
 
 ### Added

@@ -419,10 +419,9 @@ class MessageHub:
                 message, in_response_to=in_response_to
             )
         if to is None:
-            assert isinstance(message, FlockwaveNotification), (
-                "broadcast messages cannot be sent in response to a "
-                "particular message"
-            )
+            assert isinstance(
+                message, FlockwaveNotification
+            ), "broadcast messages cannot be sent in response to a particular message"
             return self.enqueue_broadcast_message(message)
         else:
             # Don't return the request here because it is not guaranteed that it
@@ -825,10 +824,9 @@ class MessageHub:
                 message, in_response_to=in_response_to
             )
         if to is None:
-            assert isinstance(message, FlockwaveNotification), (
-                "broadcast messages cannot be sent in response to a "
-                "particular message"
-            )
+            assert isinstance(
+                message, FlockwaveNotification
+            ), "broadcast messages cannot be sent in response to a particular message"
             return await self.broadcast_message(message)
 
         request = Request(message, to=to, in_response_to=in_response_to)

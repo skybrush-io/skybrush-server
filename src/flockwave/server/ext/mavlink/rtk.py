@@ -1,6 +1,7 @@
+from contextlib import contextmanager
 from itertools import cycle
 from logging import Logger
-from typing import Iterable, Optional
+from typing import Callable, Iterable, Optional
 
 from .types import MAVLinkMessageSpecification, spec
 
@@ -53,3 +54,63 @@ class RTKCorrectionPacketEncoder:
             yield spec.gps_rtcm_data(
                 flags=0, len=len(packet), data=packet.ljust(180, b"\x00")
             )
+
+
+class RTKCorrectionPacketSignalManager:
+    """Object whose responsibility is to dispatch signals whenever an RTK
+    correction packet is enqueued for transmission on the MAVLink networks
+    managed by the extension.
+    """
+
+    _rtk_correction_packet_encoder: RTKCorrectionPacketEncoder
+    """Encoder that is responsible for breaking up an RTK correction packet
+    into individual MAVLink packets.
+    """
+
+    _log: Optional[Logger] = None
+    """Logger to use for logging messages."""
+
+    _sender: Optional[Callable[[Iterable[MAVLinkMessageSpecification]], None]]
+
+    def __init__(self):
+        """Constructor."""
+        self._rtk_correction_packet_encoder = RTKCorrectionPacketEncoder()
+        self._sender = None
+
+    def _handle_packet(self, sender, packet: bytes):
+        """Handles an RTK correction packet that the server wishes to forward
+        to the drones in all the networks belonging to the extension.
+
+        Parameters:
+            packet: the raw RTK correction packet to forward to the drones in
+                all the networks belonging to the extension
+        """
+        if not self._sender:
+            return
+
+        messages = list(self._rtk_correction_packet_encoder.encode(packet))
+        if messages:
+            try:
+                self._sender(messages)
+            except Exception:
+                # We do not take responsibility for exceptions thrown in the
+                # signal handlers
+                if self._log:
+                    self._log.exception(
+                        "RTK packet fragment signal handler threw an exception"
+                    )
+
+    @contextmanager
+    def use(self, signals, *, log):
+        rtk_packet_fragments_signal = signals.get("mavlink:rtk_fragments")
+        with signals.use({"rtk:packet": self._handle_packet}):
+            if rtk_packet_fragments_signal:
+                self._sender = lambda messages: rtk_packet_fragments_signal.send(
+                    self, messages=messages
+                )
+            self._log = log
+            try:
+                yield
+            finally:
+                self._log = None
+                self._sender = None

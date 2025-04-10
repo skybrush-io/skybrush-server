@@ -5,7 +5,7 @@ from __future__ import annotations
 from colour import Color
 from enum import Enum
 from hashlib import sha1 as firmware_hash
-from math import atan2, cos, hypot, sin
+from math import atan2, cos, hypot, radians, sin
 from random import random, randint, choice
 from time import monotonic
 from trio import CancelScope, sleep
@@ -758,8 +758,13 @@ class VirtualUAV(UAVBase):
         position = self._trans.to_gps(self._position_flat)
 
         # Calculate the velocity in NED
-        # TODO(ntamas): update the North/East components as well
-        self._velocity_ned.update(down=-self._velocity_xyz.z)
+        s_o = sin(radians(-self._trans.orientation))
+        c_o = cos(radians(-self._trans.orientation))
+        self._velocity_ned.update(
+            north=(c_o * self._velocity_xyz.x) + (-s_o * self._velocity_xyz.y),
+            east=(-s_o * self._velocity_xyz.x) + (-c_o * self._velocity_xyz.y),
+            down=-self._velocity_xyz.z,
+        )
 
         # Discharge the battery
         load = 0.01 if self.state is VirtualUAVState.LANDED else 1.0

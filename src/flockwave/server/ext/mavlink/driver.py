@@ -770,9 +770,10 @@ class MAVLinkDriver(UAVDriver["MAVLinkUAV"]):
         uav._notify_rebooted_by_us()
 
     async def _send_fly_to_target_signal_single(
-        self, uav: "MAVLinkUAV", target: GPSCoordinate
+        self, uav: "MAVLinkUAV", target: GPSCoordinate, transport=None
     ) -> None:
-        await uav.fly_to(target)
+        channel = transport_options_to_channel(transport)
+        await uav.fly_to(target, channel=channel)
 
     async def _send_hover_signal_broadcast(self, *, transport=None) -> None:
         channel = transport_options_to_channel(transport)
@@ -795,7 +796,7 @@ class MAVLinkDriver(UAVDriver["MAVLinkUAV"]):
         self, uav: "MAVLinkUAV", *, transport=None
     ) -> None:
         channel = transport_options_to_channel(transport)
-        await uav.set_mode("guided", channel=channel)
+        await uav.set_mode("pos hold", channel=channel)
 
     async def _send_landing_signal_broadcast(self, *, transport=None) -> None:
         channel = transport_options_to_channel(transport)
@@ -1300,7 +1301,7 @@ class MAVLinkUAV(UAVBase):
         message = create_led_control_packet()
         await self.driver.send_packet(message, self, channel=channel)
 
-    async def fly_to(self, target: GPSCoordinate) -> None:
+    async def fly_to(self, target: GPSCoordinate, channel: str = Channel.PRIMARY) -> None:
         """Sends a command to the UAV to reposition it to the given coordinate,
         where the altitude may be specified in AMSL or AHL.
         """
@@ -1309,6 +1310,9 @@ class MAVLinkUAV(UAVBase):
             await self._fly_to_with_repositioning(target)
         else:
             # Implementation of fly_to() with a guided mode command
+            current_mode = getattr(self.status, "mode", "unknown mode")
+            if current_mode != "guided":
+                await self.set_mode("guided", channel=channel)
             await self._fly_to_in_guided_mode(target)
 
     async def _fly_to_in_guided_mode(self, target: GPSCoordinate) -> None:

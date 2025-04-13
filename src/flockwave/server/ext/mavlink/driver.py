@@ -795,7 +795,7 @@ class MAVLinkDriver(UAVDriver["MAVLinkUAV"]):
         self, uav: "MAVLinkUAV", *, transport=None
     ) -> None:
         channel = transport_options_to_channel(transport)
-        await uav.set_mode("pos hold", channel=channel)
+        await uav.set_mode("guided", channel=channel)
 
     async def _send_landing_signal_broadcast(self, *, transport=None) -> None:
         channel = transport_options_to_channel(transport)

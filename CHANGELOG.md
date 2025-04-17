@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [main]
+
+### Fixed
+
+- The MIDI timecode extension is now more resilient to the disconnection of the
+  MIDI timecode device. Disconnecting a device while the server is running will
+  stop the clock and restart it when the device is connected again.
+
 ## [2.25.1] - 2025-03-24
 
 ### Fixed

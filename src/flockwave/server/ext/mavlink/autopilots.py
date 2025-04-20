@@ -482,10 +482,7 @@ class PX4(Autopilot):
         """Returns whether the autopilot provides reliable battery capacity
         percentages.
         """
-        # TODO(ntamas): PX4 is actually much better at it than ArduPilot;
-        # switch this to True once the user can configure on the UI whether
-        # he wants to see percentages or voltages
-        return False
+        return True
 
     def is_prearm_check_in_progress(
         self, heartbeat: MAVLinkMessage, sys_status: MAVLinkMessage

@@ -28,6 +28,7 @@ from .enums import (
     MAVSysStatusSensor,
 )
 from .errors import UnknownFlightModeError
+from .fw_upload import FirmwareUpdateTarget
 from .geofence import GeofenceManager, GeofenceType
 from .types import MAVLinkFlightModeNumbers, MAVLinkMessage
 from .utils import (
@@ -141,6 +142,13 @@ class Autopilot(ABC):
         raise NotImplementedError
 
     @abstractmethod
+    def can_handle_firmware_update_target(self, target_id: str) -> bool:
+        """Returns whether the UAV can handle firmware uploads with the given
+        target.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
     async def configure_geofence(
         self, uav: "MAVLinkUAV", configuration: GeofenceConfigurationRequest
     ) -> None:
@@ -218,6 +226,31 @@ class Autopilot(ABC):
                 the geofence status from the autopilot (but it supports
                 geofences)
             NotSupportedError: if the autopilot does not support geofences at all
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    async def handle_firmware_update(
+        self, uav: "MAVLinkUAV", target_id: str, blob: bytes
+    ) -> None:
+        """Handles a firmware update request on the UAV.
+
+        This function is called only when the UAV is known to be able to handle
+        a firmware update with the given target ID.
+
+        Args:
+            target_id: the target ID of the firmware update
+            blob: the firmware update blob
+
+        Yields:
+            Progress_ objects to indicate the progress of the firmware update
+
+        Raises:
+            RuntimeError: if there was an error during the firmware update
+            NotImplementedError: if we have not implemented support for
+                firmware updates (but we plan to do so)
+            NotSupportedError: if the autopilot does not support firmware
+                updates
         """
         raise NotImplementedError
 
@@ -308,6 +341,9 @@ class UnknownAutopilot(Autopilot):
     async def calibrate_compass(self, uav: "MAVLinkUAV") -> AsyncIterator[Progress]:
         raise NotSupportedError
 
+    def can_handle_firmware_update_target(self, target_id: str) -> bool:
+        return False
+
     async def configure_geofence(
         self, uav: "MAVLinkUAV", configuration: GeofenceConfigurationRequest
     ) -> None:
@@ -327,6 +363,11 @@ class UnknownAutopilot(Autopilot):
         raise NotSupportedError
 
     async def get_geofence_status(self, uav: "MAVLinkUAV") -> GeofenceStatus:
+        raise NotSupportedError
+
+    async def handle_firmware_update(
+        self, uav: "MAVLinkUAV", target_id: str, blob: bytes
+    ) -> None:
         raise NotSupportedError
 
     @property
@@ -456,6 +497,9 @@ class PX4(Autopilot):
     async def calibrate_compass(self, uav: "MAVLinkUAV") -> AsyncIterator[Progress]:
         raise NotImplementedError
 
+    def can_handle_firmware_update_target(self, target_id: str) -> bool:
+        return False
+
     async def configure_geofence(
         self, uav: "MAVLinkUAV", configuration: GeofenceConfigurationRequest
     ) -> None:
@@ -476,6 +520,11 @@ class PX4(Autopilot):
 
     async def get_geofence_status(self, uav: "MAVLinkUAV") -> GeofenceStatus:
         raise NotImplementedError
+
+    async def handle_firmware_update(
+        self, uav: "MAVLinkUAV", target_id: str, blob: bytes
+    ) -> None:
+        raise NotSupportedError
 
     @property
     def is_battery_percentage_reliable(self) -> bool:
@@ -738,6 +787,9 @@ class ArduPilot(Autopilot):
 
         yield Progress.done("Compass calibration successful.")
 
+    def can_handle_firmware_update_target(self, target_id: str) -> bool:
+        return target_id == FirmwareUpdateTarget.ABIN.value
+
     async def configure_geofence(
         self, uav: "MAVLinkUAV", configuration: GeofenceConfigurationRequest
     ) -> None:
@@ -917,6 +969,11 @@ class ArduPilot(Autopilot):
         status.actions = list(self._geofence_actions.get(int(value), ()))
 
         return status
+
+    async def handle_firmware_update(
+        self, uav: "MAVLinkUAV", target_id: str, blob: bytes
+    ) -> None:
+        raise NotSupportedError
 
     def is_prearm_check_in_progress(
         self, heartbeat: MAVLinkMessage, sys_status: MAVLinkMessage

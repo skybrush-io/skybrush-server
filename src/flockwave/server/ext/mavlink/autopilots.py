@@ -1,6 +1,6 @@
 """Implementations of autopilot-specific functionality."""
 
-from abc import ABCMeta, abstractmethod, abstractproperty
+from abc import ABC, abstractmethod
 from trio import sleep, TooSlowError
 from typing import AsyncIterator, Type, Union, TYPE_CHECKING
 
@@ -40,7 +40,7 @@ if TYPE_CHECKING:
     from .driver import MAVLinkUAV
 
 
-class Autopilot(metaclass=ABCMeta):
+class Autopilot(ABC):
     """Interface specification and generic entry point for autopilot objects."""
 
     name = "Abstract autopilot"
@@ -221,7 +221,8 @@ class Autopilot(metaclass=ABCMeta):
         """
         raise NotImplementedError
 
-    @abstractproperty
+    @property
+    @abstractmethod
     def is_battery_percentage_reliable(self) -> bool:
         """Returns whether the autopilot provides reliable battery capacity
         percentages.
@@ -271,21 +272,24 @@ class Autopilot(metaclass=ABCMeta):
         self.capabilities = capabilities
         return self
 
-    @abstractproperty
+    @property
+    @abstractmethod
     def supports_local_frame(self) -> bool:
         """Returns whether the autopilot understands MAVLink commands sent in
         a local coordinate frame.
         """
         raise NotImplementedError
 
-    @abstractproperty
+    @property
+    @abstractmethod
     def supports_repositioning(self) -> bool:
         """Returns whether the autopilot understands the MAVLink MAV_CMD_DO_REPOSITION
         command.
         """
         raise NotImplementedError
 
-    @abstractproperty
+    @property
+    @abstractmethod
     def supports_scheduled_takeoff(self) -> bool:
         """Returns whether the autopilot supports scheduled takeoffs."""
         raise NotImplementedError

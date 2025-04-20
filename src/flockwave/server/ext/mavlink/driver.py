@@ -969,7 +969,7 @@ class MAVLinkMessageRecord:
     """
 
     message: MAVLinkMessage = None
-    timestamp: float = None
+    timestamp: float = 0
 
     @property
     def age(self) -> float:

@@ -1,5 +1,6 @@
 """Implementation of downloading logs via a MAVLink connection."""
 
+from contextlib import aclosing
 from functools import partial
 from trio import (
     current_time,
@@ -11,7 +12,7 @@ from trio import (
 from trio.abc import ReceiveChannel, SendChannel
 from typing import AsyncIterator, Callable, Optional, Union
 
-from flockwave.concurrency import aclosing, Future
+from flockwave.concurrency import Future
 from flockwave.logger import Logger
 from flockwave.server.model.commands import Progress
 from flockwave.server.model.log import FlightLog, FlightLogKind, FlightLogMetadata

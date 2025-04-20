@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from colour import Color
-from contextlib import asynccontextmanager
+from contextlib import aclosing, asynccontextmanager
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from functools import partial
@@ -17,7 +17,7 @@ from typing import Any, AsyncIterator, Callable, Optional, Union
 from flockwave.gps.time import datetime_to_gps_time_of_week, gps_time_of_week_to_utc
 from flockwave.gps.vectors import GPSCoordinate, VelocityNED
 
-from flockwave.concurrency import aclosing, delayed
+from flockwave.concurrency import delayed
 from flockwave.server.command_handlers import (
     create_calibration_command_handler,
     create_color_command_handler,

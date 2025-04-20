@@ -1,5 +1,6 @@
 """Classes representing various Skybrush show file formats."""
 
+from contextlib import aclosing
 from enum import IntEnum, IntFlag
 from functools import partial
 from io import BytesIO, SEEK_END
@@ -18,8 +19,6 @@ from typing import (
     Sequence,
     Union,
 )
-
-from flockwave.concurrency import aclosing
 
 from .rth_plan import RTHAction, RTHPlan, RTHPlanEntry
 from .trajectory import TrajectorySegment, TrajectorySpecification

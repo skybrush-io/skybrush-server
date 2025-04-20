@@ -2,6 +2,7 @@
 remote UAVs.
 """
 
+from contextlib import aclosing
 from blinker import Signal
 from inspect import isasyncgen, isawaitable
 from trio import (
@@ -22,8 +23,6 @@ from typing import (
     Union,
     TypeVar,
 )
-
-from flockwave.concurrency import aclosing
 
 from .logger import log as base_log
 from .model.builders import CommandExecutionStatusBuilder

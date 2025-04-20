@@ -3,9 +3,8 @@ on and emits a signal whenever a new USB device is plugged in or an existing
 USB device is removed.
 """
 
+from contextlib import aclosing
 from aio_usb_hotplug import HotplugDetector, NoBackendError
-
-from flockwave.concurrency import aclosing
 
 
 async def run(app, configuration, log):

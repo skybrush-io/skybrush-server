@@ -1,6 +1,6 @@
 """Implementation of the MAVFTP protocol on top of a MAVLink connection."""
 
-from contextlib import asynccontextmanager
+from contextlib import aclosing, asynccontextmanager
 from dataclasses import dataclass
 from enum import Enum, IntEnum
 from functools import partial
@@ -21,7 +21,6 @@ from typing import (
     Union,
 )
 
-from flockwave.concurrency import aclosing
 from flockwave.server.show.utils import crc32_mavftp as crc32
 
 from .types import MAVLinkMessage, spec

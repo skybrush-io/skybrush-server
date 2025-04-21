@@ -5,12 +5,13 @@ MAVLink protocol.
 from __future__ import annotations
 
 from collections import OrderedDict
-from contextlib import ExitStack
+from contextlib import ExitStack, contextmanager
 from functools import partial
 from logging import Logger
-from typing import cast, Optional, TYPE_CHECKING
+from typing import Iterator, cast, Optional, TYPE_CHECKING
 
 from flockwave.server.ext.base import UAVExtension
+from flockwave.server.ext.mavlink.fw_upload import FirmwareUpdateTarget
 from flockwave.server.model.uav import UAV
 from flockwave.server.registries.errors import RegistryFull
 from flockwave.server.utils import optional_int, overridden
@@ -175,6 +176,20 @@ class MAVLinkDronesExtension(UAVExtension[MAVLinkDriver]):
             finally:
                 for uav in uavs:
                     app.object_registry.remove(uav)
+
+    @staticmethod
+    @contextmanager
+    def use_firmware_update_support(api) -> Iterator[None]:
+        """Enhancer context manager that adds support for remote firmware updates
+        to virtual UAVs.
+        """
+        with ExitStack() as stack:
+            for target_id in FirmwareUpdateTarget:
+                target = api.create_target(
+                    id=target_id.value, name=target_id.describe()
+                )
+                stack.enter_context(api.use_target(target))
+            yield
 
     async def _broadcast_packet(
         self,
@@ -492,6 +507,7 @@ RSSI_MODE_SCHEMA = {
 construct = MAVLinkDronesExtension
 dependencies = ("show", "signals")
 description = "Support for drones that use the MAVLink protocol"
+enhancers = {"firmware_update": MAVLinkDronesExtension.use_firmware_update_support}
 schema = {
     "properties": {
         "networks": {

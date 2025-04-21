@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from contextlib import aclosing
+from time import monotonic
 from trio import sleep, TooSlowError
 from typing import AsyncIterator, Type, Union, TYPE_CHECKING
 
@@ -30,7 +32,8 @@ from .enums import (
     MAVSysStatusSensor,
 )
 from .errors import UnknownFlightModeError
-from .fw_upload import FirmwareUpdateTarget
+from .ftp import MAVFTP
+from .fw_upload import FirmwareUpdateResult, FirmwareUpdateTarget
 from .geofence import GeofenceManager, GeofenceType
 from .types import MAVLinkFlightModeNumbers, MAVLinkMessage
 from .utils import (
@@ -230,9 +233,9 @@ class Autopilot(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    async def handle_firmware_update(
+    def handle_firmware_update(
         self, uav: MAVLinkUAV, target_id: str, blob: bytes
-    ) -> None:
+    ) -> AsyncIterator[Progress]:
         """Handles a firmware update request on the UAV.
 
         This function is called only when the UAV is known to be able to handle
@@ -966,8 +969,96 @@ class ArduPilot(Autopilot):
 
     async def handle_firmware_update(
         self, uav: MAVLinkUAV, target_id: str, blob: bytes
-    ) -> None:
-        raise NotSupportedError
+    ) -> AsyncIterator[Progress]:
+        assert self.can_handle_firmware_update_target(target_id)
+
+        # TODO(ntamas): validate .abin firmware
+
+        # Upload firmware
+        async with aclosing(MAVFTP.for_uav(uav)) as ftp:
+            async with ftp.put_gen(blob, "/ardupilot.abin") as gen:
+                async for progress in gen:
+                    # Scale progress down to a max of 90% -- the remaining
+                    # 10% will be rebooting and checking the result
+                    percentage = progress.percentage
+                    if percentage is not None:
+                        yield progress.update(percentage=int(percentage * 0.9))
+
+        # Progress is now at 90%. Ask for a reboot to the bootloader
+        yield Progress(percentage=90)
+        await uav.reboot_after_update()
+
+        # Wait until the UAV becomes disconnected, but at least two seconds
+        start = monotonic()
+        while True:
+            await sleep(0.5)
+
+            dt = monotonic() - start
+            if dt >= 2 and not uav.is_connected:
+                break
+            if dt >= 5:
+                raise RuntimeError("UAV failed to reboot after uploading new firmware")
+
+        # We have no way to know when the update is finished, so we pretend
+        # that it is going to take about a minute. We wait for at most two
+        # minutes and update the progress slowly.
+        start = monotonic()
+        while not uav.is_connected:
+            await sleep(0.5)
+
+            dt = monotonic() - start
+            if dt > 120:
+                # We waited for two minutes, so we give up
+                raise RuntimeError("Firmware update timed out")
+            elif dt >= 100:
+                # Pretend a slower percentage update from 98% onwards
+                yield Progress(percentage=99)
+            elif dt >= 80:
+                # Pretend a slower percentage update from 98% onwards
+                yield Progress(percentage=98)
+            else:
+                # Pretend a percentage update of 1% every 10 seconds
+                yield Progress(percentage=90 + int(dt) // 10)
+
+        # Wait 2 more seconds to make sure that the initialization process
+        # has finished on the drone
+        yield Progress(percentage=99)
+        await sleep(2)
+
+        # Check whether the firmware update was successful
+        async with aclosing(MAVFTP.for_uav(uav)) as ftp:
+            async with ftp.ls("/") as gen:
+                entries: list[str] = []
+                async for entry in gen:
+                    entries.append(entry.name.lower())
+
+            if "ardupilot.abin" in entries:
+                result = FirmwareUpdateResult.UNSUPPORTED
+            elif "ardupilot-verify.abin" in entries:
+                result = FirmwareUpdateResult.FAILED_TO_VERIFY
+            elif "ardupilot-verify-failed.abin" in entries:
+                result = FirmwareUpdateResult.INVALID
+            elif "ardupilot-flash.abin" in entries:
+                result = FirmwareUpdateResult.FLASHING_FAILED
+            elif "ardupilot-flashed.abin" in entries:
+                result = FirmwareUpdateResult.SUCCESS
+            else:
+                result = FirmwareUpdateResult.UNSUPPORTED
+
+            if not result.successful:
+                raise RuntimeError(result.describe())
+
+            # Try to delete the firmware file now that it is not needed but do
+            # not raise an error if it fails
+            try:
+                await ftp.rm("/ardupilot-flashed.abin")
+            except Exception:
+                uav.driver.log.warning(
+                    "Failed to delete the firmware file after update",
+                    extra={"id": log_id_for_uav(uav)},
+                )
+
+        yield Progress(percentage=100)
 
     def is_prearm_check_in_progress(
         self, heartbeat: MAVLinkMessage, sys_status: MAVLinkMessage

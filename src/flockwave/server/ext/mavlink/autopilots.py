@@ -251,6 +251,12 @@ class Autopilot(metaclass=ABCMeta):
         custom mode numbers is a return-to-home mode.
         """
         raise NotImplementedError
+    
+    def get_flight_mode_for_position_target_command(self, uav: "MAVLinkUAV") -> str:
+        """Returns the flight mode that should be used for the position target command,
+        as positioning is not supported in all flight modes.
+        """
+        raise NotImplementedError
 
     def process_prearm_error_message(self, text: str) -> str:
         """Preprocesses a prearm error from a MAVLInk STATUSTEXT message,
@@ -504,6 +510,9 @@ class PX4(Autopilot):
         # 0x05 is the "rth" submode of the auto custom main mode
         return bool(base_mode & 1) and custom_mode & 0xFFFF0000 == 0x05040000
 
+    def get_flight_mode_for_position_target_command(self, uav: "MAVLinkUAV") -> str:
+        return uav.status.mode
+    
     def process_prearm_error_message(self, text: str) -> str:
         prefix, sep, suffix = text.partition(":")
         return suffix.strip() if sep else text
@@ -928,6 +937,13 @@ class ArduPilot(Autopilot):
 
     def is_rth_flight_mode(self, base_mode: int, custom_mode: int) -> bool:
         return bool(base_mode & 1) and (custom_mode == 6 or custom_mode == 21)
+
+    async def get_flight_mode_for_position_target_command(self, uav: "MAVLinkUAV") -> str:
+        # ArduPilot does not support sending position target commands in
+        # any other mode than guided or auto
+        if uav.status.mode in ("guided", "auto"):
+            return uav.status.mode
+        return "guided"
 
     def process_prearm_error_message(self, text: str) -> str:
         return text[8:]

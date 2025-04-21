@@ -365,6 +365,7 @@ class MAVLinkDriver(UAVDriver["MAVLinkUAV"]):
         frame: MAVFrame = MAVFrame.GLOBAL,
         timeout: Optional[float] = None,
         retries: Optional[int] = None,
+        channel: str = Channel.PRIMARY,
     ) -> bool:
         """Sends a MAVLink command to a given UAV and waits for an acknowlegment.
         Parameters 5 and 6 are integers; everything else is a float.
@@ -426,6 +427,7 @@ class MAVLinkDriver(UAVDriver["MAVLinkUAV"]):
                         message,
                         target,
                         wait_for_response=("COMMAND_ACK", {"command": command_id}),
+                        channel=channel,
                     )
                     assert response is not None
                     result = response.result
@@ -1307,15 +1309,15 @@ class MAVLinkUAV(UAVBase):
         """
         if self._autopilot.supports_repositioning:
             # Implementation of fly_to() with the MAVLink DO_REPOSITION command
-            await self._fly_to_with_repositioning(target)
+            await self._fly_to_with_repositioning(target, channel=channel)
         else:
-            # Implementation of fly_to() with a guided mode command
-            current_mode = getattr(self.status, "mode", "unknown mode")
-            if current_mode != "guided":
-                await self.set_mode("guided", channel=channel)
-            await self._fly_to_in_guided_mode(target)
+            target_flight_mode = await self._autopilot.get_flight_mode_for_position_target_command(self)
+            if target_flight_mode != self.status.mode:
+                # We need to switch to the target flight mode first
+                await self.set_mode(target_flight_mode, channel=channel)
+            await self._fly_to_with_set_position_target(target, channel=channel)
 
-    async def _fly_to_in_guided_mode(self, target: GPSCoordinate) -> None:
+    async def _fly_to_with_set_position_target(self, target: GPSCoordinate, channel: str) -> None:
         """Implementation of `fly_to()` using a MAVLink
         SET_POSITION_TARGET_GLOBAL_INT guided mode message.
         """
@@ -1380,13 +1382,13 @@ class MAVLinkUAV(UAVBase):
         )
         try:
             await self.driver.send_packet_with_retries(
-                message, self, wait_for_response=response, timeout=0.2, retries=4
+                message, self, wait_for_response=response, timeout=0.2, retries=4, channel=channel
             )
         except TooSlowError:
             # Maybe it's okay anyway, see comment above
             pass
 
-    async def _fly_to_with_repositioning(self, target: GPSCoordinate) -> None:
+    async def _fly_to_with_repositioning(self, target: GPSCoordinate, channel: str) -> None:
         """Implementation of `fly_to()` using a MAVLink DO_REPOSITION command
         with proper confirmation.
         """
@@ -1412,6 +1414,7 @@ class MAVLinkUAV(UAVBase):
             x=lat,  # latitude
             y=lon,  # longitude
             z=altitude,  # altitude
+            channel=channel,
         )
 
         if not success:

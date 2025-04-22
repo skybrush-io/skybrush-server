@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [main]
+
+### Added
+
+- Over-the-air firmware updates are now supported on MAVLink drones running
+  ArduPilot if the bootloader of the drone is capable of flashing the new
+  firmware from an image file uploaded with MAVFTP. Currently not all flight
+  controllers support this; refer to the corresponding page on the
+  [ArduPilot documentation site](https://ardupilot.org/copter/docs/common-install-sdcard.html).
+
 ## [2.25.2] - 2025-04-17
 
 ### Fixed

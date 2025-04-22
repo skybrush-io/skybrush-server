@@ -40,6 +40,7 @@ EXTENSIONS = {
         "enabled": False,
     },
     "ext_manager": {},
+    "firmware_update": {},  # used to trigger auto-loading when the license is installed
     "frontend": {},
     "gps": {
         "connection": "gpsd",

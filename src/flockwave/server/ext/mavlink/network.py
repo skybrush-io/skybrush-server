@@ -492,6 +492,10 @@ class MAVLinkNetwork:
         if not self.manager:
             return
 
+        # Do not send the RTK correction packet if the network has no drones yet
+        if self.num_uavs == 0:
+            return
+
         for message in self._rtk_correction_packet_encoder.encode(packet):
             self.manager.enqueue_broadcast_packet(
                 message, destination=Channel.RTK, allow_failure=True
@@ -516,6 +520,11 @@ class MAVLinkNetwork:
         adjusted in the system.
         """
         self._scheduled_takeoff_manager.notify_start_time_changed(start_time)
+
+    @property
+    def num_uavs(self) -> int:
+        """Returns the number of UAVs in this network."""
+        return len(self._uavs)
 
     async def send_heartbeat(self, target: MAVLinkUAV) -> Optional[MAVLinkMessage]:
         """Sends a heartbeat targeted to the given UAV.

@@ -15,6 +15,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   controllers support this; refer to the corresponding page on the
   [ArduPilot documentation site](https://ardupilot.org/copter/docs/common-install-sdcard.html).
 
+### Changed
+
+- RTK correction packets are not sent on MAVLink networks when the server has
+  not seen a MAVLink heartbeat from at least one drone in that network. This
+  allows one to set up multiple MAVLink networks in the configuration file in
+  advance; the server will send RTK correction packets only to those networks
+  that are actually used.
+
 ## [2.25.2] - 2025-04-17
 
 ### Fixed

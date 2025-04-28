@@ -410,7 +410,7 @@ class CommunicationManager(Generic[PacketType, AddressType]):
     ) -> None:
         tx_queue, rx_queue = open_memory_channel[
             tuple[str, tuple[PacketType, AddressType]]
-        ](0)
+        ](256)
 
         tasks = [partial(task, self) for task in (tasks or [])]
         tasks.extend(

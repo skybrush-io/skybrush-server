@@ -432,14 +432,14 @@ files = [
 
 [[package]]
 name = "certifi"
-version = "2025.1.31"
+version = "2025.4.26"
 description = "Python package for providing Mozilla's CA Bundle."
 optional = false
 python-versions = ">=3.6"
 groups = ["main"]
 files = [
-    {file = "certifi-2025.1.31-py3-none-any.whl", hash = "sha256:ca78db4565a652026a4db2bcdf68f2fb589ea80d0be70e03929ed730746b84fe"},
-    {file = "certifi-2025.1.31.tar.gz", hash = "sha256:3d5da6925056f6f18f119200434a4780a94263f10d1c21d032a6f6b2baa20651"},
+    {file = "certifi-2025.4.26-py3-none-any.whl", hash = "sha256:30350364dfe371162649852c63336a15c70c6510c2ad5015b21c2345311805f3"},
+    {file = "certifi-2025.4.26.tar.gz", hash = "sha256:0a816057ea3cdefcef70270d2c515e4506bbc954f417fa5ade2021213bb8f0c6"},
 ]
 
 [[package]]
@@ -1229,14 +1229,14 @@ test = ["objgraph", "psutil"]
 
 [[package]]
 name = "h11"
-version = "0.14.0"
+version = "0.16.0"
 description = "A pure-Python, bring-your-own-I/O implementation of HTTP/1.1"
 optional = false
-python-versions = ">=3.7"
+python-versions = ">=3.8"
 groups = ["main"]
 files = [
-    {file = "h11-0.14.0-py3-none-any.whl", hash = "sha256:e3fe4ac4b851c468cc8363d500db52c2ead036020723024a109d37346efaa761"},
-    {file = "h11-0.14.0.tar.gz", hash = "sha256:8f19fbbe99e72420ff35c00b27a34cb9937e902a8b810e2c88300c6f0a3b699d"},
+    {file = "h11-0.16.0-py3-none-any.whl", hash = "sha256:63cf8bbe7522de3bf65932fda1d9c2772064ffb3dae62d55932da54b31cb6c86"},
+    {file = "h11-0.16.0.tar.gz", hash = "sha256:4e35b956cf45792e4caa5885e69fba00bdbc6ffafbfa020300e549b208ee5ff1"},
 ]
 
 [[package]]
@@ -1280,19 +1280,19 @@ files = [
 
 [[package]]
 name = "httpcore"
-version = "1.0.8"
+version = "1.0.9"
 description = "A minimal low-level HTTP client."
 optional = false
 python-versions = ">=3.8"
 groups = ["main"]
 files = [
-    {file = "httpcore-1.0.8-py3-none-any.whl", hash = "sha256:5254cf149bcb5f75e9d1b2b9f729ea4a4b883d1ad7379fc632b727cec23674be"},
-    {file = "httpcore-1.0.8.tar.gz", hash = "sha256:86e94505ed24ea06514883fd44d2bc02d90e77e7979c8eb71b90f41d364a1bad"},
+    {file = "httpcore-1.0.9-py3-none-any.whl", hash = "sha256:2d400746a40668fc9dec9810239072b40b4484b640a8c38fd654a024c7a1bf55"},
+    {file = "httpcore-1.0.9.tar.gz", hash = "sha256:6e34463af53fd2ab5d807f399a9b45ea31c3dfa2276f15a2c3f00afff6e176e8"},
 ]
 
 [package.dependencies]
 certifi = "*"
-h11 = ">=0.13,<0.15"
+h11 = ">=0.16"
 
 [package.extras]
 asyncio = ["anyio (>=4.0,<5.0)"]
@@ -1395,14 +1395,14 @@ files = [
 
 [[package]]
 name = "importlib-metadata"
-version = "8.6.1"
+version = "8.7.0"
 description = "Read metadata from Python packages"
 optional = false
 python-versions = ">=3.9"
 groups = ["main"]
 files = [
-    {file = "importlib_metadata-8.6.1-py3-none-any.whl", hash = "sha256:02a89390c1e15fdfdc0d7c6b25cb3e62650d0494005c97d6f148bf5b9787525e"},
-    {file = "importlib_metadata-8.6.1.tar.gz", hash = "sha256:310b41d755445d74569f993ccfc22838295d9fe005425094fad953d7f15c8580"},
+    {file = "importlib_metadata-8.7.0-py3-none-any.whl", hash = "sha256:e5dd1551894c77868a30651cef00984d50e1002d06942a7101d34870c5f02afd"},
+    {file = "importlib_metadata-8.7.0.tar.gz", hash = "sha256:d13b81ad223b890aa16c5471f2ac3056cf76c5f10f82d6f9292f0b415f389000"},
 ]
 
 [package.dependencies]
@@ -1616,6 +1616,26 @@ release = ["twine (>=4.0.2,<4.1.0)"]
 test-code = ["pytest (>=7.4.0,<7.5.0)"]
 
 [[package]]
+name = "minilsap"
+version = "1.0.0"
+description = "Python module to solve the linear sum assignment problem (LSAP) efficiently"
+optional = true
+python-versions = ">=3.10"
+groups = ["main"]
+markers = "extra == \"all\" or extra == \"collmot\" or extra == \"pro\""
+files = [
+    {file = "minilsap-1.0.0-cp310-abi3-macosx_10_9_universal2.whl", hash = "sha256:f9921a6006a77eb82b9de8140c16775c6a183e361dc21a1fd4493cf47314aab7"},
+    {file = "minilsap-1.0.0-cp310-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:f61decd7114ff22b519d1c8782bf8de3baa780954093ed9eda15eeabd30a7145"},
+    {file = "minilsap-1.0.0-cp310-abi3-manylinux_2_5_i686.manylinux1_i686.manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:b7afbeca8df155987f1e766300acde88120e6e5779e313346d18ce1532ff737d"},
+    {file = "minilsap-1.0.0-cp310-abi3-win32.whl", hash = "sha256:e1c23bf7fa7f076da4d3dd4a192159a1397abb339348e745078d7140d955d6cc"},
+    {file = "minilsap-1.0.0-cp310-abi3-win_amd64.whl", hash = "sha256:6b2187e561a6304d3ca528990fe6056d2d9ae04996c7f9bc1096387b2775ae84"},
+    {file = "minilsap-1.0.0.tar.gz", hash = "sha256:6bfb51e757d74f780e8da1f3fde8f74d6ee5c4ae21961f8d250e20020b33f7a9"},
+]
+
+[package.dependencies]
+numpy = ">=1.21.0"
+
+[[package]]
 name = "msgpack"
 version = "1.1.0"
 description = "MessagePack serializer"
@@ -1688,6 +1708,22 @@ files = [
     {file = "msgpack-1.1.0-cp39-cp39-win_amd64.whl", hash = "sha256:4d1b7ff2d6146e16e8bd665ac726a89c74163ef8cd39fa8c1087d4e52d3a2325"},
     {file = "msgpack-1.1.0.tar.gz", hash = "sha256:dd432ccc2c72b914e4cb77afce64aab761c1137cc698be3984eee260bcb2896e"},
 ]
+
+[[package]]
+name = "natsort"
+version = "8.4.0"
+description = "Simple yet flexible natural sorting in Python."
+optional = false
+python-versions = ">=3.7"
+groups = ["main"]
+files = [
+    {file = "natsort-8.4.0-py3-none-any.whl", hash = "sha256:4732914fb471f56b5cce04d7bae6f164a592c7712e1c85f9ef585e197299521c"},
+    {file = "natsort-8.4.0.tar.gz", hash = "sha256:45312c4a0e5507593da193dedd04abb1469253b601ecaf63445ad80f0a1ea581"},
+]
+
+[package.extras]
+fast = ["fastnumbers (>=2.0.0)"]
+icu = ["PyICU (>=1.0.0)"]
 
 [[package]]
 name = "netifaces-plus"
@@ -1769,10 +1805,9 @@ files = [
 name = "numpy"
 version = "2.2.5"
 description = "Fundamental package for array computing in Python"
-optional = true
+optional = false
 python-versions = ">=3.10"
 groups = ["main"]
-markers = "extra == \"all\" or extra == \"collmot\" or extra == \"pro\""
 files = [
     {file = "numpy-2.2.5-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:1f4a922da1729f4c40932b2af4fe84909c7a6e167e6e99f71838ce3a29f3fe26"},
     {file = "numpy-2.2.5-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:b6f91524d31b34f4a5fee24f5bc16dcd1491b668798b6d85585d836c1e633a6a"},
@@ -2589,6 +2624,28 @@ url = "https://pypi.collmot.com/simple"
 reference = "collmot"
 
 [[package]]
+name = "skybrush-ext-studio"
+version = "0.3.0"
+description = "Extension to Skybrush Server for supporting Skybrush Studio inline calls."
+optional = true
+python-versions = ">=3.10,<4.0"
+groups = ["main"]
+markers = "extra == \"all\" or extra == \"collmot\" or extra == \"pro\""
+files = [
+    {file = "skybrush_ext_studio-0.3.0-py3-none-any.whl", hash = "sha256:d5a3ce2c86dd2ca41632c6a4b4abccf6f9cbdbd268c2f76723129049ad9e46ef"},
+    {file = "skybrush_ext_studio-0.3.0.tar.gz", hash = "sha256:2b8cb58a6ca42a0e0cb75c5019cedc7347618ee08081f9f09444b980bfbebe5f"},
+]
+
+[package.dependencies]
+skybrush-studio = {version = ">=4.20.0", extras = ["cmodules"]}
+svgpathtools = ">=1.6.1"
+
+[package.source]
+type = "legacy"
+url = "https://pypi.collmot.com/simple"
+reference = "collmot"
+
+[[package]]
 name = "skybrush-ext-timecode"
 version = "1.1.1"
 description = "SMPTE timecode support for Skybrush Server"
@@ -2633,6 +2690,40 @@ url = "https://pypi.collmot.com/simple"
 reference = "collmot"
 
 [[package]]
+name = "skybrush-studio"
+version = "4.20.0"
+description = "Drone show designer tools and scripting language"
+optional = false
+python-versions = ">=3.10,<4.0"
+groups = ["main"]
+files = [
+    {file = "skybrush_studio-4.20.0-py3-none-any.whl", hash = "sha256:f814b434c9f9d4df29921d94165ad4dda47a25828c5d3e1af927f6d6227c7843"},
+    {file = "skybrush_studio-4.20.0.tar.gz", hash = "sha256:ff4ac0109adb6a7062361cf81bf84c0678ab701f03b16aa7f68600994a33bc9b"},
+]
+
+[package.dependencies]
+jsonref = ">=1.1.0"
+minilsap = {version = ">=1.0.0", optional = true, markers = "extra == \"cmodules\""}
+natsort = ">=8.2.0"
+numpy = ">=2.2.1"
+pyledctrl = ">=4.1.0"
+semver = ">=3.0.2"
+svgpathtools = ">=1.6.1"
+webcolors = ">=24.6"
+
+[package.extras]
+all = ["httpx (>=0.24.1)", "minilsap (>=1.0.0)", "pydantic (>=2.10.5)", "tomli (>=2.2.1)", "tomli-w (>=1.2.0)"]
+cmodules = ["minilsap (>=1.0.0)"]
+labs = ["igraph (>=0.11.4)", "shapely (>=1.8.5)"]
+project = ["pydantic (>=2.10.5)", "tomli (>=2.2.1)", "tomli-w (>=1.2.0)"]
+sharing = ["httpx (>=0.24.1)"]
+
+[package.source]
+type = "legacy"
+url = "https://pypi.collmot.com/simple"
+reference = "collmot"
+
+[[package]]
 name = "sniffio"
 version = "1.3.1"
 description = "Sniff out which async library your code is running under"
@@ -2654,6 +2745,42 @@ groups = ["main", "dev"]
 files = [
     {file = "sortedcontainers-2.4.0-py2.py3-none-any.whl", hash = "sha256:a163dcaede0f1c021485e957a39245190e74249897e2ae4b2aa38595db237ee0"},
     {file = "sortedcontainers-2.4.0.tar.gz", hash = "sha256:25caa5a06cc30b6b83d11423433f65d1f9d76c4c6a0c90e3379eaa43b9bfdb88"},
+]
+
+[[package]]
+name = "svgpathtools"
+version = "1.6.1"
+description = "A collection of tools for manipulating and analyzing SVG Path objects and Bezier curves."
+optional = false
+python-versions = "*"
+groups = ["main"]
+files = [
+    {file = "svgpathtools-1.6.1-py2.py3-none-any.whl", hash = "sha256:24ae4ce64f336f3f9260ef53eccb7bf4b85b1cb18574c41d5034668ffd05e94d"},
+    {file = "svgpathtools-1.6.1.tar.gz", hash = "sha256:cab521a21d1b456aec2f9b04350fe14be6bae1a36a9bc32e3d09a8e0519b9857"},
+]
+
+[package.dependencies]
+numpy = "*"
+svgwrite = "*"
+
+[package.extras]
+all = ["scipy"]
+
+[package.source]
+type = "legacy"
+url = "https://pypi.fury.io/skybrush"
+reference = "fury"
+
+[[package]]
+name = "svgwrite"
+version = "1.4.3"
+description = "A Python library to create SVG drawings."
+optional = false
+python-versions = ">=3.6"
+groups = ["main"]
+files = [
+    {file = "svgwrite-1.4.3-py3-none-any.whl", hash = "sha256:bb6b2b5450f1edbfa597d924f9ac2dd099e625562e492021d7dd614f65f8a22d"},
+    {file = "svgwrite-1.4.3.zip", hash = "sha256:a8fbdfd4443302a6619a7f76bc937fc683daf2628d9b737c891ec08b8ce524c3"},
 ]
 
 [[package]]
@@ -2879,14 +3006,26 @@ files = [
 
 [[package]]
 name = "unidecode"
-version = "1.3.8"
+version = "1.4.0"
 description = "ASCII transliterations of Unicode text"
 optional = false
-python-versions = ">=3.5"
+python-versions = ">=3.7"
 groups = ["main"]
 files = [
-    {file = "Unidecode-1.3.8-py3-none-any.whl", hash = "sha256:d130a61ce6696f8148a3bd8fe779c99adeb4b870584eeb9526584e9aa091fd39"},
-    {file = "Unidecode-1.3.8.tar.gz", hash = "sha256:cfdb349d46ed3873ece4586b96aa75258726e2fa8ec21d6f00a591d98806c2f4"},
+    {file = "Unidecode-1.4.0-py3-none-any.whl", hash = "sha256:c3c7606c27503ad8d501270406e345ddb480a7b5f38827eafe4fa82a137f0021"},
+    {file = "Unidecode-1.4.0.tar.gz", hash = "sha256:ce35985008338b676573023acc382d62c264f307c8f7963733405add37ea2b23"},
+]
+
+[[package]]
+name = "webcolors"
+version = "24.11.1"
+description = "A library for working with the color formats defined by HTML and CSS."
+optional = false
+python-versions = ">=3.9"
+groups = ["main"]
+files = [
+    {file = "webcolors-24.11.1-py3-none-any.whl", hash = "sha256:515291393b4cdf0eb19c155749a096f779f7d909f7cceea072791cb9095b92e9"},
+    {file = "webcolors-24.11.1.tar.gz", hash = "sha256:ecb3d768f32202af770477b8b65f318fa4f566c22948673a977b00d589dd80f6"},
 ]
 
 [[package]]
@@ -3032,11 +3171,11 @@ test = ["big-O", "importlib-resources ; python_version < \"3.9\"", "jaraco.funct
 type = ["pytest-mypy"]
 
 [extras]
-all = ["flockwave-flockctrl", "skybrush-ext-dock", "skybrush-ext-firmware-update", "skybrush-ext-flight-report", "skybrush-ext-flockctrl", "skybrush-ext-map-cache", "skybrush-ext-sidekick", "skybrush-ext-timecode", "skybrush-lib-mission-planning"]
-collmot = ["flockwave-flockctrl", "skybrush-ext-dock", "skybrush-ext-firmware-update", "skybrush-ext-flight-report", "skybrush-ext-flockctrl", "skybrush-ext-map-cache", "skybrush-ext-timecode", "skybrush-lib-mission-planning"]
-pro = ["skybrush-ext-firmware-update", "skybrush-ext-flight-report", "skybrush-ext-map-cache", "skybrush-ext-sidekick", "skybrush-ext-timecode", "skybrush-lib-mission-planning"]
+all = ["flockwave-flockctrl", "skybrush-ext-dock", "skybrush-ext-firmware-update", "skybrush-ext-flight-report", "skybrush-ext-flockctrl", "skybrush-ext-map-cache", "skybrush-ext-sidekick", "skybrush-ext-studio", "skybrush-ext-timecode", "skybrush-lib-mission-planning"]
+collmot = ["flockwave-flockctrl", "skybrush-ext-dock", "skybrush-ext-firmware-update", "skybrush-ext-flight-report", "skybrush-ext-flockctrl", "skybrush-ext-map-cache", "skybrush-ext-studio", "skybrush-ext-timecode", "skybrush-lib-mission-planning"]
+pro = ["skybrush-ext-firmware-update", "skybrush-ext-flight-report", "skybrush-ext-map-cache", "skybrush-ext-sidekick", "skybrush-ext-studio", "skybrush-ext-timecode", "skybrush-lib-mission-planning"]
 
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10,<4.0"
-content-hash = "61625ccedb26e94f4be70ef72a423ba76551774ee386cfe5d0e8c704ff15f9ca"
+content-hash = "aee64a78c596448c6a633a76e78200b20406be1d3808593497fa965a9bcb16d9"

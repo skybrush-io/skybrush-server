@@ -714,7 +714,7 @@ class MAVLinkDriver(UAVDriver["MAVLinkUAV"]):
         ):
             raise RuntimeError("Failed to request low-power mode from autopilot")
 
-    async def get_log(
+    async def _get_log(
         self, uav: "MAVLinkUAV", log_id: str
     ) -> AsyncIterator[Union[Progress, Optional[FlightLog]]]:
         try:

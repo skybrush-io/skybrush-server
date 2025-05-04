@@ -5,6 +5,7 @@ from __future__ import annotations
 from abc import ABCMeta, abstractproperty
 from typing import (
     Any,
+    AsyncIterator,
     Callable,
     Generic,
     Iterable,
@@ -21,6 +22,7 @@ from flockwave.spec.schema import get_complex_object_schema
 
 from .attitude import Attitude
 from .battery import BatteryInfo
+from .commands import Progress
 from .devices import ObjectNode
 from .gps import GPSFix, GPSFixLike
 from .log import FlightLog, FlightLogMetadata
@@ -30,6 +32,8 @@ from .object import ModelObject, register
 from .preflight import PreflightCheckInfo
 from .transport import TransportOptions
 from .utils import as_base64, scaled_by
+
+import os
 
 if TYPE_CHECKING:
     from flockwave.server.app import SkybrushServer
@@ -42,6 +46,8 @@ __all__ = (
     "UAVDriver",
     "UAVStatusInfo",
 )
+
+FLIGHT_LOGS_DIR = "flight_logs"
 
 log = base_log.getChild("uav")
 
@@ -192,6 +198,13 @@ class UAVBase(UAV):
         time.
         """
         return self._id
+
+    @property
+    def padded_id(self) -> str:
+        """Returns the ID of the UAV, padded with zeros to ensure it has at least
+        3 characters.
+        """
+        return self._id.zfill(3)
 
     @property
     def status(self) -> UAVStatusInfo:
@@ -507,6 +520,17 @@ class UAVDriver(Generic[TUAV], metaclass=ABCMeta):
         )
 
     def get_log(self, uav: TUAV, log_id: str) -> FlightLog:
+        async def wrapper():
+            async for result in self._get_log(uav, log_id):
+                if isinstance(result, FlightLog):
+                    # Write the log to disk
+                    os.makedirs(FLIGHT_LOGS_DIR, exist_ok=True)
+                    with open(f"{FLIGHT_LOGS_DIR}/{uav.padded_id}_{log_id}.log", "w") as f:
+                        f.write(result.body)
+                yield result
+        return wrapper()
+    
+    def _get_log(self, uav: TUAV, log_id: str) -> AsyncIterator[Union[Progress, Optional[FlightLog]]]:
         """Asks the driver to retrieve the log with the given ID from the
         given UAV.
 

@@ -71,7 +71,7 @@ skybrush-ext-flockctrl = { version = "^3.14.0", source = "collmot", optional = t
 skybrush-ext-map-cache = { version = "^1.1.0", source = "collmot", optional = true }
 skybrush-ext-sidekick = { version = "^1.0.1", source = "collmot", optional = true }
 skybrush-ext-studio = { version = ">=0.3.0", source = "collmot", optional = true }
-skybrush-ext-timecode = { version = "^1.1.1", source = "collmot", optional = true }
+skybrush-ext-timecode = { version = "^1.2.0", source = "collmot", optional = true }
 skybrush-lib-mission-planning = { version = "^2.4.1", source = "collmot", optional = true }
 skybrush-studio = { source = "collmot" }
 pyledctrl = { version = "^4.1.0", source = "fury" }

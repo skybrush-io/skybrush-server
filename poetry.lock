@@ -2627,19 +2627,19 @@ reference = "collmot"
 
 [[package]]
 name = "skybrush-ext-studio"
-version = "0.3.0"
+version = "0.4.0"
 description = "Extension to Skybrush Server for supporting Skybrush Studio inline calls."
 optional = true
 python-versions = ">=3.10,<4.0"
 groups = ["main"]
 markers = "extra == \"all\" or extra == \"collmot\" or extra == \"pro\""
 files = [
-    {file = "skybrush_ext_studio-0.3.0-py3-none-any.whl", hash = "sha256:d5a3ce2c86dd2ca41632c6a4b4abccf6f9cbdbd268c2f76723129049ad9e46ef"},
-    {file = "skybrush_ext_studio-0.3.0.tar.gz", hash = "sha256:2b8cb58a6ca42a0e0cb75c5019cedc7347618ee08081f9f09444b980bfbebe5f"},
+    {file = "skybrush_ext_studio-0.4.0-py3-none-any.whl", hash = "sha256:0cbc6a087404359586b8c5716a43639b5c68a7f3c96f83482290cab5c5894826"},
+    {file = "skybrush_ext_studio-0.4.0.tar.gz", hash = "sha256:02179b283bc8185e0e9219b6659775041ca8fda066466d77df9cf38172337458"},
 ]
 
 [package.dependencies]
-skybrush-studio = {version = ">=4.20.0", extras = ["cmodules"]}
+skybrush-studio = {version = ">=4.20.1", extras = ["cmodules"]}
 svgpathtools = ">=1.6.1"
 
 [package.source]
@@ -2693,14 +2693,14 @@ reference = "collmot"
 
 [[package]]
 name = "skybrush-studio"
-version = "4.20.0"
+version = "4.20.1"
 description = "Drone show designer tools and scripting language"
 optional = false
 python-versions = ">=3.10,<4.0"
 groups = ["main"]
 files = [
-    {file = "skybrush_studio-4.20.0-py3-none-any.whl", hash = "sha256:f814b434c9f9d4df29921d94165ad4dda47a25828c5d3e1af927f6d6227c7843"},
-    {file = "skybrush_studio-4.20.0.tar.gz", hash = "sha256:ff4ac0109adb6a7062361cf81bf84c0678ab701f03b16aa7f68600994a33bc9b"},
+    {file = "skybrush_studio-4.20.1-py3-none-any.whl", hash = "sha256:66e52a6f168b7e215385ab37601646db7d45fb4ff3af1dee42eb1833d589ac49"},
+    {file = "skybrush_studio-4.20.1.tar.gz", hash = "sha256:1d798ea70bfc636e4966752854dc59be329f9f26226aa4c4217321aa70547335"},
 ]
 
 [package.dependencies]
@@ -3180,4 +3180,4 @@ pro = ["skybrush-ext-firmware-update", "skybrush-ext-flight-report", "skybrush-e
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10,<4.0"
-content-hash = "818fe9fd64ef4069d6a3e7ff06aa8a62e19e2a1ab2c74b416c5cc19b96c128bc"
+content-hash = "ca5cacb30509873a8ecea76d1e0e7372c6ed6c6c78afecc380d4aefd4de01e1a"

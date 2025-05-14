@@ -3,8 +3,8 @@ name = "flockwave-server"
 version = "2.26.2"
 description = "Skybrush server component"
 authors = [
-    { name = "Tamas Nepusz", email = "tamas@collmot.com" },
-    { name = "Gabor Vasarhelyi", email = "vasarhelyi@collmot.com" },
+  { name = "Tamas Nepusz", email = "tamas@collmot.com" },
+  { name = "Gabor Vasarhelyi", email = "vasarhelyi@collmot.com" },
 ]
 license = "GPL-3.0-or-later"
 requires-python = ">=3.10,<4.0"
@@ -47,12 +47,12 @@ pyjwt = "^2.8.0"
 hypercorn = { extras = ["trio"], version = ">=0.16.0" }
 passlib = { extras = ["bcrypt"], version = "^1.7.4" }
 flockwave-app-framework = { version = "^3.2.1", extras = [
-    "daemon",
+  "daemon",
 ], source = "fury" }
 flockwave-async = { version = "^2.0.0", source = "fury" }
 flockwave-conn = { extras = [
-    "rpc",
-    "serial",
+  "rpc",
+  "serial",
 ], source = "fury", version = "^9.0.0" }
 flockwave-ext = { version = "^1.26.0", source = "fury" }
 flockwave-flockctrl = { version = "^4.0.0", source = "collmot", optional = true }
@@ -62,7 +62,7 @@ flockwave-mavlink = { version = ">=0.3.0", source = "fury" }
 flockwave-net = { extras = ["async"], version = "^8.0.0", source = "fury" }
 flockwave-parsers = { version = "^3.0.0", source = "fury" }
 flockwave-spec = { version = "^2.3.0", source = "fury", extras = [
-    "validation",
+  "validation",
 ] }
 skybrush-ext-dock = { version = "^1.1.0", source = "collmot", optional = true }
 skybrush-ext-firmware-update = { version = "^0.5.0", source = "collmot", optional = true }
@@ -70,7 +70,7 @@ skybrush-ext-flight-report = { version = "^1.0.3", source = "collmot", optional 
 skybrush-ext-flockctrl = { version = "^3.14.0", source = "collmot", optional = true }
 skybrush-ext-map-cache = { version = "^1.1.0", source = "collmot", optional = true }
 skybrush-ext-sidekick = { version = "^1.0.1", source = "collmot", optional = true }
-skybrush-ext-studio = { version = ">=0.5.0", source = "collmot", optional = true }
+skybrush-ext-studio = { version = ">=0.7.0", source = "collmot", optional = true }
 skybrush-ext-timecode = { version = "^1.2.0", source = "collmot", optional = true }
 skybrush-lib-mission-planning = { version = "^2.4.1", source = "collmot", optional = true }
 skybrush-studio = { source = "collmot" }
@@ -99,36 +99,36 @@ pdoc = "^15.0.0"
 
 [tool.poetry.extras]
 all = [
-    "flockwave-flockctrl",
-    "skybrush-ext-dock",
-    "skybrush-ext-firmware-update",
-    "skybrush-ext-flight-report",
-    "skybrush-ext-flockctrl",
-    "skybrush-ext-map-cache",
-    "skybrush-ext-sidekick",
-    "skybrush-ext-studio",
-    "skybrush-ext-timecode",
-    "skybrush-lib-mission-planning",
+  "flockwave-flockctrl",
+  "skybrush-ext-dock",
+  "skybrush-ext-firmware-update",
+  "skybrush-ext-flight-report",
+  "skybrush-ext-flockctrl",
+  "skybrush-ext-map-cache",
+  "skybrush-ext-sidekick",
+  "skybrush-ext-studio",
+  "skybrush-ext-timecode",
+  "skybrush-lib-mission-planning",
 ]
 collmot = [
-    "flockwave-flockctrl",
-    "skybrush-ext-dock",
-    "skybrush-ext-firmware-update",
-    "skybrush-ext-flight-report",
-    "skybrush-ext-flockctrl",
-    "skybrush-ext-map-cache",
-    "skybrush-ext-studio",
-    "skybrush-ext-timecode",
-    "skybrush-lib-mission-planning",
+  "flockwave-flockctrl",
+  "skybrush-ext-dock",
+  "skybrush-ext-firmware-update",
+  "skybrush-ext-flight-report",
+  "skybrush-ext-flockctrl",
+  "skybrush-ext-map-cache",
+  "skybrush-ext-studio",
+  "skybrush-ext-timecode",
+  "skybrush-lib-mission-planning",
 ]
 pro = [
-    "skybrush-ext-firmware-update",
-    "skybrush-ext-flight-report",
-    "skybrush-ext-map-cache",
-    "skybrush-ext-sidekick",
-    "skybrush-ext-studio",
-    "skybrush-ext-timecode",
-    "skybrush-lib-mission-planning",
+  "skybrush-ext-firmware-update",
+  "skybrush-ext-flight-report",
+  "skybrush-ext-map-cache",
+  "skybrush-ext-sidekick",
+  "skybrush-ext-studio",
+  "skybrush-ext-timecode",
+  "skybrush-lib-mission-planning",
 ]
 
 [tool.pytest.ini_options]

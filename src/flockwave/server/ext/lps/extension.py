@@ -199,4 +199,4 @@ class LocalPositioningSystemsExtension(Extension):
 construct = LocalPositioningSystemsExtension
 description = "Basic facilities for local positioning systems"
 schema = {}
-tags = "experimental"
+tags = ("experimental", "indoor")

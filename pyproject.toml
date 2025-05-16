@@ -73,7 +73,7 @@ skybrush-ext-sidekick = { version = "^1.0.1", source = "collmot", optional = tru
 skybrush-ext-studio = { version = ">=0.7.0", source = "collmot", optional = true }
 skybrush-ext-timecode = { version = "^1.2.0", source = "collmot", optional = true }
 skybrush-lib-mission-planning = { version = "^2.4.1", source = "collmot", optional = true }
-skybrush-studio = { source = "collmot" }
+skybrush-studio = { version = ">=4.21.0", source = "collmot", optional = true }
 pyledctrl = { version = "^4.1.0", source = "fury" }
 aiocflib = "^4.1.0"
 crcmod-plus = "^2.1.0"

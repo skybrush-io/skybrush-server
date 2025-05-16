@@ -93,7 +93,7 @@ files = [
 name = "annotated-types"
 version = "0.7.0"
 description = "Reusable constraint types to use with typing.Annotated"
-optional = false
+optional = true
 python-versions = ">=3.8"
 groups = ["main"]
 files = [
@@ -1730,7 +1730,7 @@ files = [
 name = "natsort"
 version = "8.4.0"
 description = "Simple yet flexible natural sorting in Python."
-optional = false
+optional = true
 python-versions = ">=3.7"
 groups = ["main"]
 files = [
@@ -1822,7 +1822,7 @@ files = [
 name = "numpy"
 version = "2.2.5"
 description = "Fundamental package for array computing in Python"
-optional = false
+optional = true
 python-versions = ">=3.10"
 groups = ["main"]
 files = [
@@ -2034,7 +2034,7 @@ markers = {main = "os_name == \"nt\" and implementation_name != \"pypy\" or extr
 name = "pydantic"
 version = "2.11.4"
 description = "Data validation using Python type hints"
-optional = false
+optional = true
 python-versions = ">=3.9"
 groups = ["main"]
 files = [
@@ -2056,7 +2056,7 @@ timezone = ["tzdata ; python_version >= \"3.9\" and platform_system == \"Windows
 name = "pydantic-core"
 version = "2.33.2"
 description = "Core functionality for Pydantic validation and serialization"
-optional = false
+optional = true
 python-versions = ">=3.9"
 groups = ["main"]
 files = [
@@ -2844,7 +2844,7 @@ reference = "collmot"
 name = "skybrush-studio"
 version = "4.21.0"
 description = "Drone show designer tools and scripting language"
-optional = false
+optional = true
 python-versions = ">=3.10,<4.0"
 groups = ["main"]
 files = [
@@ -2903,7 +2903,7 @@ files = [
 name = "svgpathtools-lite"
 version = "1.7.0"
 description = "A collection of tools for manipulating and analyzing SVG Path objects and Bezier curves."
-optional = false
+optional = true
 python-versions = ">=3.8"
 groups = ["main"]
 files = [
@@ -2927,7 +2927,7 @@ reference = "fury"
 name = "svgwrite"
 version = "1.4.3"
 description = "A Python library to create SVG drawings."
-optional = false
+optional = true
 python-versions = ">=3.6"
 groups = ["main"]
 files = [
@@ -3160,7 +3160,7 @@ markers = {dev = "python_version == \"3.10\""}
 name = "typing-inspection"
 version = "0.4.0"
 description = "Runtime typing introspection tools"
-optional = false
+optional = true
 python-versions = ">=3.9"
 groups = ["main"]
 files = [
@@ -3187,7 +3187,7 @@ files = [
 name = "webcolors"
 version = "24.11.1"
 description = "A library for working with the color formats defined by HTML and CSS."
-optional = false
+optional = true
 python-versions = ">=3.9"
 groups = ["main"]
 files = [
@@ -3345,4 +3345,4 @@ pro = ["skybrush-ext-firmware-update", "skybrush-ext-flight-report", "skybrush-e
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10,<4.0"
-content-hash = "f7a0d7a5398c55c07d95fc9ce6b4275ce8e93dffcc368b09800893cae56037b6"
+content-hash = "f93885571c757801e76385562fcc6867ff8717d04935ae09a1ce7f57d482e925"

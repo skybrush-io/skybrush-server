@@ -76,13 +76,7 @@ EXTENSIONS = {
     "rc": {"enabled": "avoid"},
     "rc_udp": {"enabled": False},
     "rtk": {
-        "presets": {
-            # "javad": {
-            #     "title": "JAVAD Triumph-2",
-            #     "source": "tcp://192.168.47.1:8010",
-            #     "format": "rtcm3",  # can be rtcm2, rtcm3 or auto
-            # },
-        },
+        "presets": {},
         "add_serial_ports": True,
         "message_set": "basic",
         # "gnss_types": "all",  # or a list like ["gps", "glonass"]
@@ -95,6 +89,7 @@ EXTENSIONS = {
     "smpte_timecode": {},  # used to trigger auto-loading when the license is installed
     "socketio": {},
     "ssdp": {},
+    "studio": {},  # used to trigger auto-loading when the license is installed
     "system_clock": {},
     "tcp": {},
     "udp": {},

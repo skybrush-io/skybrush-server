@@ -537,14 +537,14 @@ pycparser = "*"
 
 [[package]]
 name = "click"
-version = "8.2.0"
+version = "8.2.1"
 description = "Composable command line interface toolkit"
 optional = false
 python-versions = ">=3.10"
 groups = ["main"]
 files = [
-    {file = "click-8.2.0-py3-none-any.whl", hash = "sha256:6b303f0b2aa85f1cb4e5303078fadcbcd4e476f114fab9b5007005711839325c"},
-    {file = "click-8.2.0.tar.gz", hash = "sha256:f5452aeddd9988eefa20f90f05ab66f17fce1ee2a36907fd30b05bbb5953814d"},
+    {file = "click-8.2.1-py3-none-any.whl", hash = "sha256:61a3265b914e850b85317d0b3109c7f8cd35a670f963866005d6ef1d5175a12b"},
+    {file = "click-8.2.1.tar.gz", hash = "sha256:27c491cc05d968d271d5a1db13e3b5a184636d9d930f148c50b038f0d0646202"},
 ]
 
 [package.dependencies]
@@ -2776,20 +2776,19 @@ reference = "collmot"
 
 [[package]]
 name = "skybrush-ext-studio"
-version = "0.8.1"
+version = "0.8.2"
 description = "Extension to Skybrush Server for supporting Skybrush Studio inline calls."
 optional = true
 python-versions = ">=3.10,<4.0"
 groups = ["main"]
 markers = "extra == \"all\" or extra == \"collmot\" or extra == \"pro\""
 files = [
-    {file = "skybrush_ext_studio-0.8.1-py3-none-any.whl", hash = "sha256:f641aea5e054913b89c0588bcd29966d93365d542e06dc879e933242422c64e5"},
-    {file = "skybrush_ext_studio-0.8.1.tar.gz", hash = "sha256:1b1b2720cf4b4eb85cc2cb4294cc6c396890838ac369886a9eb31da95548a80c"},
+    {file = "skybrush_ext_studio-0.8.2-py3-none-any.whl", hash = "sha256:2e7ba54e372faeb198d7c052a6047c45fa049ee6e0d012e3bfcbe504b3eb9c5d"},
+    {file = "skybrush_ext_studio-0.8.2.tar.gz", hash = "sha256:e9aede0217d0f753fe65f692dfc079bdea558873beeec6aaff35baf5d95691e1"},
 ]
 
 [package.dependencies]
 skybrush-studio = {version = ">=4.20.2", extras = ["cmodules"]}
-trio-parallel = ">=1.2.4,<1.3.0"
 
 [package.source]
 type = "legacy"
@@ -2959,7 +2958,7 @@ description = "Traceback serialization library."
 optional = true
 python-versions = ">=3.9"
 groups = ["main"]
-markers = "extra == \"all\" or extra == \"collmot\" or extra == \"pro\""
+markers = "extra == \"all\" or extra == \"collmot\""
 files = [
     {file = "tblib-3.1.0-py3-none-any.whl", hash = "sha256:670bb4582578134b3d81a84afa1b016128b429f3d48e6cbbaecc9d15675e984e"},
     {file = "tblib-3.1.0.tar.gz", hash = "sha256:06404c2c9f07f66fee2d7d6ad43accc46f9c3361714d9b8426e7f47e595cd652"},
@@ -3047,6 +3046,22 @@ files = [
 markers = {main = "python_version == \"3.10\"", dev = "python_full_version <= \"3.11.0a6\""}
 
 [[package]]
+name = "tricycle"
+version = "0.4.1"
+description = "Miscellaneous extensions for Trio, the friendly async I/O library"
+optional = true
+python-versions = ">=3.8"
+groups = ["main"]
+markers = "extra == \"all\" or extra == \"collmot\""
+files = [
+    {file = "tricycle-0.4.1-py3-none-any.whl", hash = "sha256:67900995a73e7445e2c70250cdca04a778d9c3923dd960a97ad4569085e0fb3f"},
+    {file = "tricycle-0.4.1.tar.gz", hash = "sha256:f56edb4b3e1bed3e2552b1b499b24a2dab47741e92e9b4d806acc5c35c9e6066"},
+]
+
+[package.dependencies]
+trio = ">=0.23.0"
+
+[[package]]
 name = "trio"
 version = "0.30.0"
 description = "A friendly Python library for async concurrency and I/O"
@@ -3089,15 +3104,15 @@ trio = ">=0.22.0"
 
 [[package]]
 name = "trio-parallel"
-version = "1.2.4"
+version = "1.3.0"
 description = "CPU parallelism for Trio"
 optional = true
 python-versions = ">=3.7"
 groups = ["main"]
-markers = "extra == \"all\" or extra == \"collmot\" or extra == \"pro\""
+markers = "extra == \"all\" or extra == \"collmot\""
 files = [
-    {file = "trio_parallel-1.2.4-py3-none-any.whl", hash = "sha256:890a572376b3111486d87447191b82b63bf9ab37c440a7cce36c3b2077946637"},
-    {file = "trio_parallel-1.2.4.tar.gz", hash = "sha256:4d369075fb598ed680a84279e8756686dcf25e87fcdd6f47f30c710f6cba5917"},
+    {file = "trio_parallel-1.3.0-py3-none-any.whl", hash = "sha256:5e6005875171d55b5eca143e2150e436457fe207814ba1f1b0b19aae0b83035b"},
+    {file = "trio_parallel-1.3.0.tar.gz", hash = "sha256:db1242a1923883ce15511465c98f2f437d6bc69596b1afe2efd9782ef1387107"},
 ]
 
 [package.dependencies]
@@ -3105,6 +3120,7 @@ attrs = ">=17.3.0"
 cffi = {version = "*", markers = "os_name == \"nt\" and implementation_name != \"pypy\""}
 outcome = "*"
 tblib = "*"
+tricycle = ">=0.3.0"
 trio = ">=0.18.0"
 
 [package.extras]
@@ -3328,4 +3344,4 @@ pro = ["skybrush-ext-firmware-update", "skybrush-ext-flight-report", "skybrush-e
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10,<4.0"
-content-hash = "a8864a2cfb73ffd044d2b778fadc65fe8674eef60a9d1b0d619f8599c73218fb"
+content-hash = "2013fb2558b440b88b4ef4418cddf1515c37cf0f3785096a147231f611bc637c"

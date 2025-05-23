@@ -671,11 +671,10 @@ class MAVFTP:
 
         Parameters:
             message: the MAVFTP message to send
-            expected_reply: message matcher that matches messages that we expect
-                from the connection as a reply to the original message
             timeout: maximum number of seconds to wait before attempting to
                 re-send the message
             retries: maximum number of retries before giving up
+            allow_nak: whether we consider a NAK message a valid response
 
         Returns:
             the FTP message sent by the UAV in response

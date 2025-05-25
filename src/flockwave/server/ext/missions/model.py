@@ -1,6 +1,6 @@
 """Types specific to the mission planning and management extension."""
 
-from abc import ABCMeta, abstractmethod, abstractproperty
+from abc import ABCMeta, abstractmethod
 from logging import Logger
 from blinker import Signal
 from dataclasses import dataclass
@@ -521,14 +521,16 @@ class MissionType(Generic[T], metaclass=ABCMeta):
     registry.
     """
 
-    @abstractproperty
+    @property
+    @abstractmethod
     def description(self) -> str:
         """A longer, human-readable description of the mission type that can be
         used by clients for presentation purposes.
         """
         raise NotImplementedError
 
-    @abstractproperty
+    @property
+    @abstractmethod
     def name(self) -> str:
         """A human-readable name of the mission type that can be used by
         clients for presentation purposes.

@@ -4,7 +4,7 @@ string identifiers.
 
 from __future__ import annotations
 
-from abc import ABCMeta, abstractmethod, abstractproperty
+from abc import ABCMeta, abstractmethod
 from typing import (
     Callable,
     Generic,
@@ -60,7 +60,8 @@ class Registry(Generic[T], metaclass=ABCMeta):
         """
         raise NotImplementedError
 
-    @abstractproperty
+    @property
+    @abstractmethod
     def ids(self) -> Iterable[str]:
         """Returns an iterable that iterates over all the identifiers
         that are known to the registry.
@@ -76,7 +77,8 @@ class Registry(Generic[T], metaclass=ABCMeta):
         """
         raise NotImplementedError
 
-    @abstractproperty
+    @property
+    @abstractmethod
     def num_entries(self) -> int:
         """Returns the number of entries in the registry."""
         raise NotImplementedError

@@ -1,6 +1,6 @@
 """Clock-related model objects."""
 
-from abc import ABC, abstractmethod, abstractproperty
+from abc import ABC, abstractmethod
 from blinker import Signal
 from datetime import datetime, timezone
 from time import time
@@ -25,7 +25,8 @@ class Clock(ABC):
     adjusted forward and negative if the clock was adjusted backward.
     """
 
-    @abstractproperty
+    @property
+    @abstractmethod
     def epoch(self) -> Optional[float]:
         """The epoch of the clock, expressed as the number of seconds from
         the Unix epoch to the epoch of the clock, in UTC, or ``None`` if
@@ -33,19 +34,22 @@ class Clock(ABC):
         """
         raise NotImplementedError
 
-    @abstractproperty
+    @property
+    @abstractmethod
     def id(self) -> str:
         """The identifier of the clock."""
         raise NotImplementedError
 
-    @abstractproperty
+    @property
+    @abstractmethod
     def json(self):
         """The JSON representation of the clock in a clock status message
         of the Flockwave protocol.
         """
         raise NotImplementedError
 
-    @abstractproperty
+    @property
+    @abstractmethod
     def running(self) -> bool:
         """Whether the clock is running."""
         raise NotImplementedError
@@ -78,7 +82,8 @@ class Clock(ABC):
         """
         raise NotImplementedError
 
-    @abstractproperty
+    @property
+    @abstractmethod
     def ticks_per_second(self) -> float:
         """Returns the number of clock ticks per second (in wall clock
         time).

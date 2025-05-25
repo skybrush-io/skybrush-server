@@ -1,6 +1,6 @@
 """Types specific to the local positioning system support extension."""
 
-from abc import ABCMeta, abstractmethod, abstractproperty
+from abc import ABCMeta, abstractmethod
 from blinker import Signal
 from dataclasses import dataclass
 from typing import (
@@ -157,14 +157,16 @@ class LocalPositioningSystemType(Generic[T], metaclass=ABCMeta):
     from this base class and then registering it in the LPS type registry.
     """
 
-    @abstractproperty
+    @property
+    @abstractmethod
     def description(self) -> str:
         """A longer, human-readable description of the LPS type that can be
         used by clients for presentation purposes.
         """
         raise NotImplementedError
 
-    @abstractproperty
+    @property
+    @abstractmethod
     def name(self) -> str:
         """A human-readable name of the LPS type that can be used by
         clients for presentation purposes.

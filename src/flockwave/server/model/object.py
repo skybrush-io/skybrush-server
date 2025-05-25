@@ -4,7 +4,7 @@ server.
 
 from __future__ import annotations
 
-from abc import ABCMeta, abstractproperty
+from abc import ABC, abstractmethod
 from contextlib import contextmanager
 from typing import (
     Callable,
@@ -31,7 +31,7 @@ if TYPE_CHECKING:
 T = TypeVar("T", bound="ModelObject")
 
 
-class ModelObject(metaclass=ABCMeta):
+class ModelObject(ABC):
     """Abstract object that defines the interface of generic objects tracked
     by the Skybrush server.
     """
@@ -44,7 +44,8 @@ class ModelObject(metaclass=ABCMeta):
         """
         return _type_registry.get(type)
 
-    @abstractproperty
+    @property
+    @abstractmethod
     def device_tree_node(self) -> "Optional[ObjectNode]":
         """Returns the ObjectNode_ that represents the root of the part of the
         device tree that corresponds to the model object, or ``None`` if the
@@ -52,7 +53,8 @@ class ModelObject(metaclass=ABCMeta):
         """
         raise NotImplementedError
 
-    @abstractproperty
+    @property
+    @abstractmethod
     def id(self):
         """A unique identifier for the object, assigned at construction time."""
         raise NotImplementedError

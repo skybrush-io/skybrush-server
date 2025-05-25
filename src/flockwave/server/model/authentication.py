@@ -1,4 +1,4 @@
-from abc import ABCMeta, abstractmethod, abstractproperty
+from abc import ABCMeta, abstractmethod
 from dataclasses import dataclass
 from enum import Enum
 from typing import Optional
@@ -58,7 +58,8 @@ class AuthenticationResult:
 class AuthenticationMethod(metaclass=ABCMeta):
     """Interface specification for authentication methods."""
 
-    @abstractproperty
+    @property
+    @abstractmethod
     def id(self):
         """Identifier of the authentication method with which it will be
         registered in the server.

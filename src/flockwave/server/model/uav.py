@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from abc import ABCMeta, abstractproperty
+from abc import ABCMeta, abstractmethod
 from typing import (
     Any,
     Callable,
@@ -127,21 +127,24 @@ class UAV(ModelObject, metaclass=ABCMeta):
     UAVs.
     """
 
-    @abstractproperty
+    @property
+    @abstractmethod
     def driver(self) -> "UAVDriver":
         """Returns the UAVDriver_ object that is responsible for handling
         communication with this UAV.
         """
         raise NotImplementedError
 
-    @abstractproperty
+    @property
+    @abstractmethod
     def id(self) -> str:
         """A unique identifier for the UAV, assigned at construction
         time.
         """
         raise NotImplementedError
 
-    @abstractproperty
+    @property
+    @abstractmethod
     def status(self) -> UAVStatusInfo:
         """Returns an UAVStatusInfo_ object representing the status of the
         UAV.

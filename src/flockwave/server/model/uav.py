@@ -662,7 +662,7 @@ class UAVDriver(Generic[TUAV], metaclass=ABCMeta):
         # message here
         error = self.validate_command(command, args, kwds)
         if error:
-            return {uav: error for uav in uavs}
+            return dict.fromkeys(uavs, error)
 
         # Figure out whether we will execute the commands for all the UAVs
         # at the same time, or one by one, depending on what is implemented
@@ -1590,7 +1590,7 @@ class PassiveUAVDriver(UAVDriver[PassiveUAV]):
         self, uavs: Iterable[UAV], signal_name: str, handler, broadcaster=None, **kwds
     ) -> dict[UAV, Any]:
         error = RuntimeError("{0} not supported".format(signal_name))
-        return {uav: error for uav in uavs}
+        return dict.fromkeys(uavs, error)
 
 
 def is_uav(x: Any) -> bool:

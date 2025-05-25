@@ -15,6 +15,9 @@ class DummyLocalPositioningSystem(LocalPositioningSystem):
     async def calibrate(self) -> None:
         await sleep(3)
 
+    def _configure_inner(self, cfg: dict[str, Any]) -> None:
+        pass
+
 
 class DummyLocalPositioningSystemType(
     LocalPositioningSystemType[DummyLocalPositioningSystem]

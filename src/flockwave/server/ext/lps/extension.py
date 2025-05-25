@@ -13,8 +13,11 @@ from flockwave.server.message_handlers import (
     create_object_listing_request_handler,
     create_multi_object_message_handler,
 )
-from flockwave.server.model import FlockwaveResponse
-from flockwave.server.model.messages import FlockwaveNotification
+from flockwave.server.model.messages import (
+    FlockwaveMessage,
+    FlockwaveNotification,
+    FlockwaveResponse,
+)
 from flockwave.server.model.object import registered
 from flockwave.server.registries import find_in_registry
 
@@ -122,6 +125,16 @@ class LocalPositioningSystemsExtension(Extension):
                 cmd_manager=self.app.command_execution_manager,
             )
         )
+        handle_LPS_CFG = handle_many_with(
+            create_mapper(
+                "X-LPS-CFG",
+                self._lps_registry,
+                context_getter=self._get_configuration_from_LPS_CFG_message,
+                getter=self._update_configuration_of_lps,
+                description="local positioning system",
+                cmd_manager=self.app.command_execution_manager,
+            )
+        )
         handle_LPS_INF = handle_many_with(create_LPS_INF)
         handle_LPS_LIST = create_object_listing_request_handler(self._lps_registry)
         handle_LPS_TYPE_INF = handle_many_with(
@@ -169,7 +182,7 @@ class LocalPositioningSystemsExtension(Extension):
                 self.app.message_hub.use_message_handlers(
                     {
                         "X-LPS-CALIB": handle_LPS_CALIB,
-                        # "X-LPS-CFG": self._handle_LPS_CFG,
+                        "X-LPS-CFG": handle_LPS_CFG,
                         "X-LPS-INF": handle_LPS_INF,
                         "X-LPS-LIST": handle_LPS_LIST,
                         "X-LPS-TYPE-INF": handle_LPS_TYPE_INF,
@@ -183,6 +196,43 @@ class LocalPositioningSystemsExtension(Extension):
                 message = create_LPS_INF(self.app.message_hub, bundle, None, None)
                 if isinstance(message, FlockwaveNotification):
                     await self.app.message_hub.broadcast_message(message)
+
+    @staticmethod
+    def _get_configuration_from_LPS_CFG_message(
+        message: Optional[FlockwaveMessage],
+    ) -> dict[str, Any]:
+        """Extracts the configuration parameters from the LPS-CFG message.
+
+        Parameters:
+            message: the LPS-CFG message to extract the configuration from
+
+        Returns:
+            the configuration parameters extracted from the message
+        """
+        assert message is not None, "LPS-CFG message cannot be None"
+
+        obj = message.body.get("configuration")
+        if obj is None:
+            raise ValueError(
+                "LPS-CFG message does not contain configuration parameters"
+            )
+        if not isinstance(obj, dict):
+            raise ValueError(
+                "LPS-CFG message does not contain a dictionary of configuration parameters"
+            )
+        return obj
+
+    @staticmethod
+    def _update_configuration_of_lps(
+        lps: LocalPositioningSystem, cfg: dict[str, Any]
+    ) -> None:
+        """Updates the configuration of the given local positioning system (LPS)
+        with the given configuration object extracted from an LPS-CFG message.
+
+        Parameters:
+            lps: the local positioning system to update
+        """
+        return lps.configure(cfg)
 
     def _on_lps_added(self, sender, object: LocalPositioningSystem):
         object.on_updated.connect(self._on_lps_updated, sender=object)

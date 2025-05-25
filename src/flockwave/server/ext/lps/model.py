@@ -5,10 +5,12 @@ from blinker import Signal
 from dataclasses import dataclass
 from typing import (
     Any,
+    Callable,
     ClassVar,
     Generic,
     Optional,
     TypeVar,
+    final,
 )
 
 from flockwave.server.model.battery import BatteryInfo
@@ -104,6 +106,11 @@ class LocalPositioningSystem(ModelObject):
         "system changes in any way that clients might be interested in."
     )
 
+    _schema_validator_getter: Optional[Callable[[], Callable[[Any], None]]] = None
+    """Getter for the validator for the configuration parameters of the local
+    positioning system, generated from the JSON schema of the LPS type.
+    """
+
     def __init__(self) -> None:
         self.errors = []
         self.anchors = []
@@ -135,6 +142,44 @@ class LocalPositioningSystem(ModelObject):
                 calibrated
             RuntimeError: when an error happens during calibration.
         """
+        raise NotImplementedError
+
+    @final
+    def configure(self, cfg: dict[str, Any]) -> None:
+        """Configures the local positioning system with the given parameters.
+
+        This method is final; subclasses should override the `_configure_inner()`
+        method instead to implement the actual configuration logic. Validation
+        is taken care of by the `configure()` method, which checks that the
+        given configuration parameters match the JSON schema returned by the
+        `get_configuration_schema()` method of the type of the local positioning
+        system.
+
+        Parameters:
+            cfg: a dictionary containing the configuration parameters for the
+                local positioning system
+
+        Raises:
+            NotImplementedError: if the local positioning system cannot be
+                configured
+            RuntimeError: when an error happens during configuration.
+        """
+        import fastjsonschema
+
+        if self._schema_validator_getter is None:
+            raise RuntimeError("LPS configuration schema validator getter is not set")
+
+        validator = self._schema_validator_getter()
+        try:
+            validator(cfg)
+        except fastjsonschema.JsonSchemaException as e:
+            raise RuntimeError(
+                f"Invalid configuration for LPS {self.id!r}: {str(e)}"
+            ) from e
+
+        return self._configure_inner(cfg)
+
+    def _configure_inner(self, cfg: dict[str, Any]) -> None:
         raise NotImplementedError
 
     def notify_updated(self) -> None:
@@ -202,3 +247,18 @@ class LocalPositioningSystemType(Generic[T], metaclass=ABCMeta):
             JSON schema of general LPS configuration parameters
         """
         raise NotImplementedError
+
+    @final
+    def get_configuration_schema_validator(self) -> Callable[[Any], None]:
+        """Returns a validator for the configuration parameters of the LPS type.
+
+        The validator is generated from the JSON schema returned by the
+        `get_configuration_schema()` method of this LPS type.
+
+        Returns:
+            a validator that checks whether the given configuration parameters
+            match the JSON schema of this LPS type
+        """
+        import fastjsonschema
+
+        return fastjsonschema.compile(self.get_configuration_schema())  # type: ignore[return-value]

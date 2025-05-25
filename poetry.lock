@@ -3344,4 +3344,4 @@ pro = ["skybrush-ext-firmware-update", "skybrush-ext-flight-report", "skybrush-e
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10,<4.0"
-content-hash = "2013fb2558b440b88b4ef4418cddf1515c37cf0f3785096a147231f611bc637c"
+content-hash = "c764a53a73354fa80c2056f9fc5a17c7af2dd48df8a4b8ec7b6853fbe8fd97ba"

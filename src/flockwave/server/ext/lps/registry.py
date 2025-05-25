@@ -129,6 +129,7 @@ class LocalPositioningSystemRegistry(ObjectRegistryProxy[LocalPositioningSystem]
 
         lps: LocalPositioningSystem = lps_type.create()
         lps._id = lps_id
+        lps._schema_validator_getter = lps_type.get_configuration_schema_validator
         lps.type = type
 
         # Fill in the human-readable name of the LPS from the name of the

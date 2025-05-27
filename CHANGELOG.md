@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added support for the `X-LPS-CFG` command that allows one to configure the
   settings of a local positioning system.
 
-## [2.26.1] to [2.26.5] - 2025-05-20
+## [2.26.1] to [2.26.6] - 2025-05-27
 
 No user-facing changes.
 

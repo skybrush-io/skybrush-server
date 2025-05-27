@@ -13,6 +13,7 @@ from typing import (
     final,
 )
 
+from flockwave.gps.vectors import PositionXYZ
 from flockwave.server.model.battery import BatteryInfo
 from flockwave.server.model.object import ModelObject
 
@@ -31,7 +32,7 @@ class Anchor:
     active: bool = True
     """Whether the anchor is active (i.e. online)."""
 
-    position: Optional[tuple[float, float, float]] = None
+    position: Optional[PositionXYZ] = None
     """The position of the anchor in the coordinate system of the local
     positioning system, if known. ``None`` if not known or not applicable.
     """
@@ -64,6 +65,19 @@ class Anchor:
             return True
         else:
             return False
+
+    def ensure_battery_info(self) -> BatteryInfo:
+        """Ensures that the anchor has battery information.
+
+        If the anchor does not have battery information, it is initialized with
+        default values.
+
+        Returns:
+            the battery information of the anchor
+        """
+        if self.battery is None:
+            self.battery = BatteryInfo()
+        return self.battery
 
     @property
     def json(self) -> dict[str, Any]:

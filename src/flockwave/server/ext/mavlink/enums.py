@@ -447,6 +447,7 @@ class MAVType(IntEnum):
     QUADROTOR = 2
     ANTENNA_TRACKER = 5
     GCS = 6
+    GROUND_ROVER = 10
     HEXAROTOR = 13
     OCTOROTOR = 14
     TRICOPTER = 15
@@ -474,6 +475,7 @@ class MAVType(IntEnum):
             MAVType.FLARM,
             MAVType.SERVO,
             MAVType.ODID,
+            MAVType.GROUND_ROVER,
         )
 
     @property

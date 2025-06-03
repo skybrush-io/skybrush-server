@@ -2799,19 +2799,19 @@ reference = "collmot"
 
 [[package]]
 name = "skybrush-ext-studio"
-version = "0.8.5"
+version = "0.8.6"
 description = "Extension to Skybrush Server for supporting Skybrush Studio inline calls."
 optional = true
 python-versions = ">=3.10,<4.0"
 groups = ["main"]
 markers = "extra == \"all\" or extra == \"collmot\" or extra == \"pro\""
 files = [
-    {file = "skybrush_ext_studio-0.8.5-py3-none-any.whl", hash = "sha256:3ec9af6f27bf2c84ca10c9d73ac461a0c46fb62185da19149c73cdbf93463fcc"},
-    {file = "skybrush_ext_studio-0.8.5.tar.gz", hash = "sha256:5539ff74b1ee54dfea36297c26fe5cd3837c06afba66f3cbae6448ba7e47c981"},
+    {file = "skybrush_ext_studio-0.8.6-py3-none-any.whl", hash = "sha256:9ad8098e26aad7f0e08123ca23a08c822a0e9934e99d45cf8ca32c70d5e08e52"},
+    {file = "skybrush_ext_studio-0.8.6.tar.gz", hash = "sha256:4c67757952eb40f1e59fa304bca838ceac6a299925be45d0737aea5fe056989b"},
 ]
 
 [package.dependencies]
-skybrush-studio = {version = ">=4.21.2", extras = ["cmodules"]}
+skybrush-studio = {version = ">=4.22.3", extras = ["cmodules"]}
 
 [package.source]
 type = "legacy"
@@ -3367,4 +3367,4 @@ pro = ["skybrush-ext-firmware-update", "skybrush-ext-flight-report", "skybrush-e
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10,<4.0"
-content-hash = "ff9fb2df7abbe73ae2d0747782550f988242a27de3a0c6bc3cf234971f06017e"
+content-hash = "294f9385d1aab2ee5faa28fb8c18b5969101740d69d6f3aabb5ef9e3f760da32"

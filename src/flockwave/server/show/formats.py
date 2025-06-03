@@ -248,7 +248,7 @@ class SkybrushBinaryShowFile:
 
         return await self.add_block(SkybrushBinaryFormatBlockType.COMMENT, comment)
 
-    async def add_light_program(self, data: bytes) -> None:
+    async def add_encoded_light_program(self, data: bytes) -> None:
         """Adds a new light program block to the end of the Skybrush file
         with the given light program.
 
@@ -257,15 +257,16 @@ class SkybrushBinaryShowFile:
         """
         return await self.add_block(SkybrushBinaryFormatBlockType.LIGHT_PROGRAM, data)
 
-    async def add_pyro_program(self, data: bytes) -> None:
-        """Adds a new pyro program to the end of the Skybrush file.
+    async def add_encoded_event_list(self, data: bytes) -> None:
+        """Adds a new event list (such as a pyro program) to the end of
+        the Skybrush file.
 
         Parameters:
-            data: the pyro program to add, encoded in Skybrush format
+            data: the event list to add, encoded in Skybrush format
         """
         return await self.add_block(SkybrushBinaryFormatBlockType.EVENT_LIST, data)
 
-    async def add_rth_plan(self, data: bytes) -> None:
+    async def add_encoded_rth_plan(self, data: bytes) -> None:
         """Adds a new return-to-home plan to the end of the Skybrush file.
 
         Parameters:
@@ -299,7 +300,7 @@ class SkybrushBinaryShowFile:
             SkybrushBinaryFormatBlockType.TRAJECTORY, b"".join(chunks)
         )
 
-    async def add_yaw_setpoints(self, data: bytes) -> None:
+    async def add_encoded_yaw_setpoints(self, data: bytes) -> None:
         """Adds a yaw control block to the end of the Skybrush file
         with the given yaw setpoints.
 

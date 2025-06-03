@@ -2107,31 +2107,33 @@ class MAVLinkUAV(UAVBase):
         trajectory = get_trajectory_from_show_specification(show)
         geofence = get_geofence_configuration_from_show_specification(show)
 
-        try:
-            api = self.driver.app.import_api("show_pro")
-            if not api.loaded:
-                raise RuntimeError(
-                    "Show pro extension is not loaded, neglecting pro parts of the show"
-                )
-        except RuntimeError as ex:
-            self.driver.log.warning(str(ex))
-            pyro_program = None
-            rth_plan = None
-            yaw_setpoints = None
-        else:
-            pyro_program = api.encode_pyro(show)
-            rth_plan = api.encode_rth_plan(show)
-            yaw_setpoints = api.encode_yaw(show)
+        pyro_program = None
+        rth_plan = None
+        yaw_setpoints = None
+        pro_keys = set(show.keys()).intersection(["pyro", "rthPlan", "yawControl"])
+        if pro_keys:
+            try:
+                api = self.driver.app.import_api("show_pro")
+                if not api.loaded:
+                    raise RuntimeError(
+                        f"Show pro extension is not loaded, neglecting {'and'.join(pro_keys)} from the show"
+                    )
+            except RuntimeError as ex:
+                self.driver.log.warning(str(ex))
+            else:
+                pyro_program = api.encode_pyro(show)
+                rth_plan = api.encode_rth_plan(show)
+                yaw_setpoints = api.encode_yaw(show)
 
         async with SkybrushBinaryShowFile.create_in_memory() as show_file:
             await show_file.add_trajectory(trajectory)
-            await show_file.add_light_program(light_program)
+            await show_file.add_encoded_light_program(light_program)
             if pyro_program:
-                await show_file.add_pyro_program(pyro_program)
+                await show_file.add_encoded_event_list(pyro_program)
             if rth_plan:
-                await show_file.add_rth_plan(rth_plan)
+                await show_file.add_encoded_rth_plan(rth_plan)
             if yaw_setpoints:
-                await show_file.add_yaw_setpoints(yaw_setpoints)
+                await show_file.add_encoded_yaw_setpoints(yaw_setpoints)
             await show_file.finalize()
             data = show_file.get_contents()
 

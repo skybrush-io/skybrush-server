@@ -4,7 +4,6 @@ from contextlib import aclosing
 from enum import IntEnum, IntFlag
 from functools import partial
 from io import BytesIO, SEEK_END
-from itertools import count
 from math import floor
 from struct import Struct
 from trio import wrap_file
@@ -20,10 +19,8 @@ from typing import (
     Union,
 )
 
-from .rth_plan import RTHAction, RTHPlan, RTHPlanEntry
 from .trajectory import TrajectorySegment, TrajectorySpecification
-from .utils import crc32_mavftp as crc32, encode_variable_length_integer, Point
-from .yaw import YawSetpointList
+from .utils import crc32_mavftp as crc32, Point
 
 __all__ = ("SkybrushBinaryShowFile",)
 
@@ -62,6 +59,7 @@ class SkybrushBinaryFormatBlockType(IntEnum):
     COMMENT = 3
     RTH_PLAN = 4
     YAW_CONTROL = 5
+    EVENT_LIST = 6
 
 
 class SkybrushBinaryFileBlock:
@@ -259,23 +257,25 @@ class SkybrushBinaryShowFile:
         """
         return await self.add_block(SkybrushBinaryFormatBlockType.LIGHT_PROGRAM, data)
 
-    async def add_rth_plan(self, rth_plan: RTHPlan) -> None:
+    async def add_pyro_program(self, pyro_program: bytes) -> None:
+        """Adds a new pyro program to the end of the Skybrush file.
+
+        Parameters:
+            plan: the binary-encoded pyro program to add
+        """
+
+        return await self.add_block(
+            SkybrushBinaryFormatBlockType.EVENT_LIST, pyro_program
+        )
+
+    async def add_rth_plan(self, rth_plan: bytes) -> None:
         """Adds a new return-to-home plan to the end of the Skybrush file.
 
         Parameters:
-            plan: the RTH plan to add
+            plan: the binary-encoded RTH plan to add
         """
-        scaling_factor = rth_plan.propose_scaling_factor()
-        if scaling_factor >= 128:
-            raise RuntimeError(
-                "RTH plan covers too large an area for a Skybrush binary show file"
-            )
 
-        encoder = RTHPlanEncoder(scaling_factor)
-
-        return await self.add_block(
-            SkybrushBinaryFormatBlockType.RTH_PLAN, encoder.encode(rth_plan)
-        )
+        return await self.add_block(SkybrushBinaryFormatBlockType.RTH_PLAN, rth_plan)
 
     async def add_trajectory(self, trajectory: TrajectorySpecification) -> None:
         """Adds a new trajectory block to the end of the Skybrush file
@@ -303,18 +303,16 @@ class SkybrushBinaryShowFile:
             SkybrushBinaryFormatBlockType.TRAJECTORY, b"".join(chunks)
         )
 
-    async def add_yaw_setpoints(self, setpoints: YawSetpointList) -> None:
+    async def add_yaw_setpoints(self, yaw_setpoints: bytes) -> None:
         """Adds a yaw control block to the end of the Skybrush file
         with the given yaw setpoints.
 
         Parameters:
-            setpoints: the yaw setpoint list to add
+            yaw_setpoints: the binary-encoded yaw setpoint list to add
         """
 
-        encoder = YawSetpointEncoder()
-
         return await self.add_block(
-            SkybrushBinaryFormatBlockType.YAW_CONTROL, encoder.encode(setpoints)
+            SkybrushBinaryFormatBlockType.YAW_CONTROL, yaw_setpoints
         )
 
     async def blocks(
@@ -695,263 +693,3 @@ class SegmentEncoder:
         # problems as the one outlined in _scale_points()
         yaw = round((yaw % 360) * 10)
         return yaw - 3600 if yaw >= 3600 else yaw
-
-
-class RTHPlanEncoder:
-    """Encoder class for RTH plans in the Skybrush binary show file format."""
-
-    _point_struct: ClassVar[Struct] = Struct("<hh")
-    """Struct to encode a target point in the RTH plan. Takes two 16-bit
-    signed integers: the X and Y coordinates.
-    """
-
-    _scale: float
-    _scale_orig: int
-
-    def __init__(self, scale: int = 1):
-        """Constructor.
-
-        Parameters:
-            scale: the scaling factor of the RTH plan block; the real
-                coordinates are multiplied by 1000 and then divided by this
-                factor before rounding them to an integer that is then stored
-                in the file.
-        """
-        self._scale_orig = scale
-        self._scale = 1000 / scale
-
-    def encode(self, plan: RTHPlan) -> bytes:
-        chunks: list[bytes] = []
-
-        # First, add the scaling factor
-        chunks.append(bytes([self._scale_orig]))
-
-        # Next, figure out the set of unique target points used in the plan,
-        # and encode the points
-        points: list[tuple[int, ...]] = [
-            self._scale_point(entry.target) for entry in plan if entry.target
-        ]
-        point_index = self._encode_points(points, chunks)
-
-        # Finally, encode the steps of the plan
-        self._encode_plan_entries(plan, point_index, chunks)
-
-        return b"".join(chunks)
-
-    def _encode_plan_entries(
-        self,
-        entries: Sequence[RTHPlanEntry],
-        point_index: dict[tuple[int, ...], int],
-        chunks: list[bytes],
-    ) -> None:
-        """Encodes the entries in the given iterable and appends the encoded
-        chunks to the given chunk list.
-
-        Parameters:
-            entries: the entries to encode
-            point_index: dictionary that maps the points that occur in the RTH
-                plan (after scaling) to the indices that they are encoded with
-            chunks: the list that collects the encoded chunks
-        """
-        chunks.append(len(entries).to_bytes(2, "little"))
-
-        previous_entry: Optional[RTHPlanEntry] = None
-        for entry in entries:
-            self._encode_plan_entry(entry, point_index, previous_entry, chunks)
-            previous_entry = entry
-
-    def _encode_plan_entry(
-        self,
-        entry: RTHPlanEntry,
-        point_index: dict[tuple[int, ...], int],
-        previous_entry: Optional[RTHPlanEntry],
-        chunks: list[bytes],
-    ) -> None:
-        """Encodes a single RTH plan entry and appends the encoded chunk to the
-        given chunk list.
-
-        Parameters:
-            entry: the entry to encode
-            point_index: dictionary that maps the points that occur in the RTH
-                plan (after scaling) to the indices that they are encoded with
-            previous_entry: the entry that was encoded before this one
-            chunks: the list that collects the encoded chunks
-        """
-        encode_int = encode_variable_length_integer
-
-        timestamp_diff = entry.time - (previous_entry.time if previous_entry else 0)
-        if timestamp_diff < 0:
-            raise RuntimeError("timestamps in RTH plan must not go back in time")
-
-        has_pre_delay = entry.has_pre_delay
-        has_post_delay = entry.has_post_delay
-        has_target = entry.has_target
-
-        # First byte contains flags:
-        #
-        # [__AA__pP]
-        #
-        # where AA is the encoding of the _action_ of the entry, p is set to 1
-        # if the entry has a non-zero pre-delay and P is set to 1 if the entry
-        # has a non-zero post-delay. The bits marked with __ must be kept at
-        # zero.
-        #
-        # Valid values for AA:
-        #
-        # 0 = action is the same as in the previous entry ("land" if there was
-        #     no previous entry)
-        # 1 = action is RTHAction.LAND
-        # 2 = action is RTHAction.GO_TO_KEEPING_ALTITUDE_AND_LAND
-
-        if previous_entry and entry.is_same_as_except_timestamp(previous_entry):
-            action_bits = 0
-            has_post_delay = has_pre_delay = has_target = False
-        elif entry.action is RTHAction.LAND:
-            action_bits = 1
-        elif entry.action is RTHAction.GO_TO_KEEPING_ALTITUDE_AND_LAND:
-            action_bits = 2
-        else:
-            raise ValueError(f"unknown RTH action: {entry.action}")
-
-        flags = (
-            (action_bits << 4)
-            | (2 if has_pre_delay else 0)
-            | (1 if has_post_delay else 0)
-        )
-        chunks.append(flags.to_bytes(1, "little"))
-
-        # After the flags, we encode the time difference since the previous
-        # entry as an integer
-        chunks.append(encode_int(timestamp_diff))
-
-        # If the action has a target, encode the index of the point in little
-        # endian variable length integer format; the MSB in each byte is 1
-        # if the number continues in the next byte, otherwise it is zero. Then
-        # also encode the duration of the action.
-        if has_target:
-            if entry.duration < 0:
-                raise ValueError(f"RTH action has negative duration: {entry.duration}")
-            scaled_target = self._scale_point(entry.target)
-            chunks.append(encode_int(point_index[scaled_target]))
-            chunks.append(encode_int(int(entry.duration)))
-
-        # If the action has a non-zero pre-/post-delay, encode it. We round them
-        # to seconds.
-        if has_pre_delay:
-            chunks.append(encode_int(int(entry.pre_delay)))
-        if has_post_delay:
-            chunks.append(encode_int(int(entry.post_delay)))
-
-    def _encode_points(
-        self, points: list[tuple[int, ...]], chunks: list[bytes]
-    ) -> dict[tuple[int, ...], int]:
-        """Encodes the given list of points into the given chunk list, and
-        returns an index that maps the points to their corresponding indices
-        in the chunk list.
-
-        Parameters:
-            points: the points to encode; may contain the same point multiple
-                times as they will be de-duplicated
-            chunks: the list that collects the encoded chunks
-
-        Returns:
-            a dictionary whose keys are the points and the values are the
-            indices that they were mapped to in the chunks array
-        """
-        result: dict[tuple[int, ...], int] = {}
-        point_chunks: list[bytes] = []
-        id_generator = count()
-
-        if len(points) > 65535:
-            raise ValueError("too many points in RTH plan")
-
-        for point in points:
-            index = result.get(point)
-            if index is None:
-                result[point] = index = next(id_generator)
-                point_chunks.append(self._point_struct.pack(*point))
-
-        chunks.append(len(point_chunks).to_bytes(2, "little"))
-        chunks.extend(point_chunks)
-
-        return result
-
-    def _scale_point(self, point: tuple[float, ...]) -> tuple[int, ...]:
-        if len(point) != 2:
-            raise ValueError("each point must be two-dimensional")
-
-        # We always need to round with int() here, we cannot use round(). The
-        # reason is that the scaling factor was determined in a way that it is
-        # guaranteed that we fit into 2 bytes with the values rounded with
-        # int() but it is not guaranteed if we round with round(). Example:
-        # an extremum of 131070 yields a scaling factor of 4, so
-        # self._scale = 0.25. In this case, round(131070 * self._scale) = 32768,
-        # which does not fit.
-        return (
-            int(point[0] * self._scale),
-            int(point[1] * self._scale),
-        )
-
-
-class YawSetpointEncoder:
-    """Encoder class for yaw setpoints in the Skybrush binary show file
-    format.
-    """
-
-    _setpoint_struct: ClassVar[Struct] = Struct("<Hh")
-    _header_struct: ClassVar[Struct] = Struct("<Bh")
-
-    def encode(self, setpoints: YawSetpointList) -> bytes:
-        # First, add header
-        chunks: list[bytes] = []
-        chunks.append(self.encode_header(setpoints.auto_yaw, setpoints.yaw_offset))
-
-        # Next, encode all yaw setpoints
-        if not setpoints.auto_yaw:
-            for setpoint in setpoints.iter_setpoints_as_relative(
-                max_duration=65, max_yaw_change=3200
-            ):
-                chunks.append(
-                    self.encode_relative_setpoint(
-                        setpoint.duration, setpoint.yaw_change
-                    )
-                )
-
-        return b"".join(chunks)
-
-    def encode_header(self, auto_yaw: bool, yaw_offset: float) -> bytes:
-        """Encodes the header of the yaw control block.
-
-        Args:
-            auto_yaw: whether auto yawing is used
-            yaw_offset: the yaw offset / starting yaw to use, in degrees
-        """
-        flags = int(bool(auto_yaw))
-        yaw_offset_ddeg = round(yaw_offset * 10)  # [deg] -> [1e-1 deg]
-        if abs(yaw_offset_ddeg) > 32767:
-            raise RuntimeError(
-                f"yaw offset must be smaller than 3276.8 deg, got {yaw_offset_ddeg / 10} deg"
-            )
-
-        return self._header_struct.pack(flags, yaw_offset_ddeg)
-
-    def encode_relative_setpoint(self, duration: float, yaw_change: float) -> bytes:
-        """Encodes the yaw and duration of a relative yaw setpoint.
-
-        Args:
-            duration: the duration of the yaw setpoint, in seconds
-            yaw_change: the yaw change of the setpoint, in degrees
-        """
-        duration_ms = floor(duration * 1000)  # [s] -> [ms]
-        if duration_ms < 0 or duration > 65535:
-            raise RuntimeError(
-                f"yaw setpoint duration must be in the range 0-65535 msec, got {duration_ms} msec"
-            )
-
-        yaw_change_ddeg = round(yaw_change * 10)  # [deg] -> [1e-1 deg]
-        if abs(yaw_change_ddeg) > 32767:
-            raise RuntimeError(
-                f"relative yaw setpoint must be smaller than 3276.8 deg, got {yaw_change_ddeg / 10} deg"
-            )
-
-        return self._setpoint_struct.pack(duration_ms, yaw_change_ddeg)

@@ -42,9 +42,7 @@ from flockwave.server.show import (
     get_coordinate_system_from_show_specification,
     get_geofence_configuration_from_show_specification,
     get_light_program_from_show_specification,
-    get_rth_plan_from_show_specification,
     get_trajectory_from_show_specification,
-    get_yaw_setpoints_from_show_specification,
 )
 from flockwave.server.show.formats import SkybrushBinaryShowFile
 from flockwave.server.types import GCSLogMessageSender
@@ -2108,12 +2106,28 @@ class MAVLinkUAV(UAVBase):
         light_program = get_light_program_from_show_specification(show)
         trajectory = get_trajectory_from_show_specification(show)
         geofence = get_geofence_configuration_from_show_specification(show)
-        rth_plan = get_rth_plan_from_show_specification(show)
-        yaw_setpoints = get_yaw_setpoints_from_show_specification(show)
+
+        try:
+            api = self.driver.app.import_api("show_pro")
+            if not api.loaded:
+                raise RuntimeError(
+                    "Show pro extension is not loaded, neglecting pro parts of the show"
+                )
+        except RuntimeError as ex:
+            self.driver.log.warning(str(ex))
+            pyro_program = None
+            rth_plan = None
+            yaw_setpoints = None
+        else:
+            pyro_program = api.encode_pyro(show)
+            rth_plan = api.encode_rth_plan(show)
+            yaw_setpoints = api.encode_yaw(show)
 
         async with SkybrushBinaryShowFile.create_in_memory() as show_file:
             await show_file.add_trajectory(trajectory)
             await show_file.add_light_program(light_program)
+            if pyro_program:
+                await show_file.add_pyro_program(pyro_program)
             if rth_plan:
                 await show_file.add_rth_plan(rth_plan)
             if yaw_setpoints:

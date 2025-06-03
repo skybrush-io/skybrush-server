@@ -69,6 +69,7 @@ skybrush-ext-firmware-update = { version = "^0.5.0", source = "collmot", optiona
 skybrush-ext-flight-report = { version = "^1.0.3", source = "collmot", optional = true }
 skybrush-ext-flockctrl = { version = "^4.0.2", source = "collmot", optional = true }
 skybrush-ext-map-cache = { version = "^1.1.1", source = "collmot", optional = true }
+skybrush-ext-show-pro = { version = ">=0.1.0", source = "collmot", optional = true }
 skybrush-ext-sidekick = { version = "^1.0.1", source = "collmot", optional = true }
 skybrush-ext-studio = { version = ">=0.8.5", source = "collmot", optional = true }
 skybrush-ext-timecode = { version = "^1.2.0", source = "collmot", optional = true }
@@ -106,6 +107,7 @@ all = [
   "skybrush-ext-flight-report",
   "skybrush-ext-flockctrl",
   "skybrush-ext-map-cache",
+  "skybrush-ext-show-pro",
   "skybrush-ext-sidekick",
   "skybrush-ext-studio",
   "skybrush-ext-timecode",
@@ -118,6 +120,7 @@ collmot = [
   "skybrush-ext-flight-report",
   "skybrush-ext-flockctrl",
   "skybrush-ext-map-cache",
+  "skybrush-ext-show-pro",
   "skybrush-ext-studio",
   "skybrush-ext-timecode",
   "skybrush-lib-mission-planning",
@@ -126,6 +129,7 @@ pro = [
   "skybrush-ext-firmware-update",
   "skybrush-ext-flight-report",
   "skybrush-ext-map-cache",
+  "skybrush-ext-show-pro",
   "skybrush-ext-sidekick",
   "skybrush-ext-studio",
   "skybrush-ext-timecode",

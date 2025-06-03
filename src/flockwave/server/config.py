@@ -85,6 +85,7 @@ EXTENSIONS = {
     "show": {
         "default_start_method": "rc"  # set to "auto" if you typically start shows automatically and not via a remote controller
     },
+    "show_pro": {},  # used to trigger auto-loading when the license is installed
     "sidekick": {},  # used to trigger auto-loading when the license is installed
     "smpte_timecode": {},  # used to trigger auto-loading when the license is installed
     "socketio": {},

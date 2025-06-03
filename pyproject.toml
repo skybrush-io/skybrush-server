@@ -69,12 +69,12 @@ skybrush-ext-firmware-update = { version = "^0.5.0", source = "collmot", optiona
 skybrush-ext-flight-report = { version = "^1.0.3", source = "collmot", optional = true }
 skybrush-ext-flockctrl = { version = "^4.0.2", source = "collmot", optional = true }
 skybrush-ext-map-cache = { version = "^1.1.1", source = "collmot", optional = true }
-skybrush-ext-show-pro = { version = ">=0.1.0", source = "collmot", optional = true }
+skybrush-ext-show-pro = { version = ">=0.2.0", source = "collmot", optional = true }
 skybrush-ext-sidekick = { version = "^1.0.1", source = "collmot", optional = true }
 skybrush-ext-studio = { version = ">=0.8.5", source = "collmot", optional = true }
 skybrush-ext-timecode = { version = "^1.2.0", source = "collmot", optional = true }
 skybrush-lib-mission-planning = { version = "^2.4.1", source = "collmot", optional = true }
-skybrush-studio = { version = ">=4.22.2", source = "collmot", optional = true }
+skybrush-studio = { version = ">=4.22.3", source = "collmot", optional = true }
 pyledctrl = { version = "^4.1.0", source = "fury" }
 aiocflib = "^4.1.0"
 crcmod-plus = "^2.1.0"
@@ -94,7 +94,7 @@ fastjsonschema = "^2.21.1"
 
 [tool.poetry.group.dev.dependencies]
 coverage = { extras = ["toml"], version = "^7.8.2" }
-pytest = "^8.3.5"
+pytest = "^8.4.0"
 pytest-cov = "^6.1.1"
 pytest-trio = ">=0.8.0"
 pdoc = "^15.0.3"

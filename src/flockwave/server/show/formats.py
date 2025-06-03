@@ -257,25 +257,21 @@ class SkybrushBinaryShowFile:
         """
         return await self.add_block(SkybrushBinaryFormatBlockType.LIGHT_PROGRAM, data)
 
-    async def add_pyro_program(self, pyro_program: bytes) -> None:
+    async def add_pyro_program(self, data: bytes) -> None:
         """Adds a new pyro program to the end of the Skybrush file.
 
         Parameters:
-            plan: the binary-encoded pyro program to add
+            data: the pyro program to add, encoded in Skybrush format
         """
+        return await self.add_block(SkybrushBinaryFormatBlockType.EVENT_LIST, data)
 
-        return await self.add_block(
-            SkybrushBinaryFormatBlockType.EVENT_LIST, pyro_program
-        )
-
-    async def add_rth_plan(self, rth_plan: bytes) -> None:
+    async def add_rth_plan(self, data: bytes) -> None:
         """Adds a new return-to-home plan to the end of the Skybrush file.
 
         Parameters:
-            plan: the binary-encoded RTH plan to add
+            data: the RTH plan to add, encoded in Skybrush format
         """
-
-        return await self.add_block(SkybrushBinaryFormatBlockType.RTH_PLAN, rth_plan)
+        return await self.add_block(SkybrushBinaryFormatBlockType.RTH_PLAN, data)
 
     async def add_trajectory(self, trajectory: TrajectorySpecification) -> None:
         """Adds a new trajectory block to the end of the Skybrush file
@@ -303,17 +299,14 @@ class SkybrushBinaryShowFile:
             SkybrushBinaryFormatBlockType.TRAJECTORY, b"".join(chunks)
         )
 
-    async def add_yaw_setpoints(self, yaw_setpoints: bytes) -> None:
+    async def add_yaw_setpoints(self, data: bytes) -> None:
         """Adds a yaw control block to the end of the Skybrush file
         with the given yaw setpoints.
 
         Parameters:
-            yaw_setpoints: the binary-encoded yaw setpoint list to add
+            data: the yaw setpoint list to add, encoded in Skybrush format
         """
-
-        return await self.add_block(
-            SkybrushBinaryFormatBlockType.YAW_CONTROL, yaw_setpoints
-        )
+        return await self.add_block(SkybrushBinaryFormatBlockType.YAW_CONTROL, data)
 
     async def blocks(
         self, rewind: Optional[bool] = None, validate: Optional[bool] = None

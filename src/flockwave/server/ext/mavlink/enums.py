@@ -622,3 +622,13 @@ class MagCalStatus(IntEnum):
     @property
     def is_successful(self) -> bool:
         return self == 4
+
+
+class SkybrushUserCommand(IntEnum):
+    """Enum representing the types of the user-specified commands that we
+    can submit to a Skybrush drone with MAVCommand.USER_1.
+    """
+
+    RELOAD_SHOW = 0
+    REMOVE_SHOW = 1
+    TEST_PYRO = 2

@@ -70,6 +70,7 @@ from .enums import (
     MotorTestOrder,
     MotorTestThrottleType,
     PositionTargetTypemask,
+    SkybrushUserCommand,
 )
 from .ftp import MAVFTP
 from .log_download import MAVLinkLogDownloader
@@ -297,7 +298,7 @@ class MAVLinkDriver(UAVDriver["MAVLinkUAV"]):
     handle_command_param = create_parameter_command_handler(
         name_validator=to_uppercase_string
     )
-    handle_command_test = create_test_command_handler(("motor", "led"))
+    handle_command_test = create_test_command_handler(("motor", "led", "pyro"))
     handle_command_version = create_version_command_handler()
 
     async def handle_command_mode(self, uav: "MAVLinkUAV", mode: Optional[str] = None):
@@ -1494,8 +1495,8 @@ class MAVLinkUAV(UAVBase):
         """Tests a component of the UAV.
 
         Parameters:
-            component: the component to test; currently we support ``motor`` and
-                ``led``
+            component: the component to test; currently we support ``motor``,
+                ``led`` and ``pyro``
             channel: the communication channel to use when sending the command
         """
         if component == "motor":
@@ -1516,6 +1517,7 @@ class MAVLinkUAV(UAVBase):
                     channel=channel,
                 )
                 await sleep(3)
+
         elif component == "led":
             color_sequence = [
                 Color(name)
@@ -1525,6 +1527,10 @@ class MAVLinkUAV(UAVBase):
                 if index > 0:
                     await sleep(1)
                 await self.set_led_color(color, channel=channel, duration=2)
+
+        elif component == "pyro":
+            await self.start_pyro_test()
+
         else:
             raise NotSupportedError
 
@@ -1891,14 +1897,18 @@ class MAVLinkUAV(UAVBase):
     async def reload_show(self) -> None:
         """Asks the UAV to reload the current drone show file."""
         # param1 = 0 if we want to reload the show file
-        success = await self.driver.send_command_long(self, MAVCommand.USER_1, 0)
+        success = await self.driver.send_command_long(
+            self, MAVCommand.USER_1, SkybrushUserCommand.RELOAD_SHOW
+        )
         if not success:
             raise RuntimeError("Failed to reload show file")
 
     async def remove_show(self) -> None:
         """Asks the UAV to remove the current drone show file."""
         # param1 = 1 if we want to clear the show file
-        success = await self.driver.send_command_long(self, MAVCommand.USER_1, 1)
+        success = await self.driver.send_command_long(
+            self, MAVCommand.USER_1, SkybrushUserCommand.REMOVE_SHOW
+        )
         if not success:
             raise RuntimeError("Failed to remove show file")
 
@@ -1993,6 +2003,38 @@ class MAVLinkUAV(UAVBase):
             ]
         )
         await self.driver.send_packet(message, self, channel=channel)
+
+    async def start_pyro_test(
+        self, channel: Optional[Union[int, tuple[int, int]]] = None, delay: float = 2
+    ) -> None:
+        """Asks the UAV to start testing its pyro channels.
+
+        Args:
+            channel: the channel index to test or the channels to test. ``None``
+                means to test all channels.
+            delay: time between tests of consecutive channels, in seconds
+        """
+        if channel is None:
+            start, end = 0, 256
+        elif isinstance(channel, int):
+            start, end = channel, channel + 1
+        else:
+            start, end = channel
+
+        num_channels = end - start
+        if num_channels <= 0:
+            return
+
+        success = await self.driver.send_command_long(
+            self,
+            MAVCommand.USER_1,
+            SkybrushUserCommand.TEST_PYRO,
+            start,
+            num_channels,
+            delay,
+        )
+        if not success:
+            raise RuntimeError("Failed to start pyro test")
 
     async def takeoff_to_relative_altitude(
         self, altitude: float = 2.5, *, channel: str = Channel.PRIMARY

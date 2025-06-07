@@ -2781,15 +2781,15 @@ reference = "collmot"
 
 [[package]]
 name = "skybrush-ext-sidekick"
-version = "1.0.1"
+version = "1.0.2"
 description = "Skybrush Sidekick support for Skybrush Server"
 optional = true
-python-versions = ">=3.8,<4.0"
+python-versions = ">=3.10,<4.0"
 groups = ["main"]
 markers = "extra == \"all\" or extra == \"pro\""
 files = [
-    {file = "skybrush-ext-sidekick-1.0.1.tar.gz", hash = "sha256:0d43136a596242abe8db02634852c4eb1e3176cfcb5b24040205150c45a51d15"},
-    {file = "skybrush_ext_sidekick-1.0.1-py3-none-any.whl", hash = "sha256:721b5c58d4430de3fa95e22f5f1c514215737aa4516f94613497ecf5acbf4805"},
+    {file = "skybrush_ext_sidekick-1.0.2-py3-none-any.whl", hash = "sha256:3185a0cd70de4409ff3de97b5c09e899d9c3ab59fc1e7e7bdba52fd20a5964c6"},
+    {file = "skybrush_ext_sidekick-1.0.2.tar.gz", hash = "sha256:f755a2acf5369891204709894a2f0b4fa697a321fd0a29835e8ce30d5aca4530"},
 ]
 
 [package.source]
@@ -3367,4 +3367,4 @@ pro = ["skybrush-ext-firmware-update", "skybrush-ext-flight-report", "skybrush-e
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10,<4.0"
-content-hash = "e7fb7422588356c34364339fab7cec465d38caaad56ec2aa12c7ad65ff956997"
+content-hash = "5c75af3eb0ecb2812e5d151566cf944dbf3bc055838b4c6f80819727dbfe9933"

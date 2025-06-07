@@ -120,6 +120,7 @@ async def wait_until(
         raise RuntimeError("only one of 'ticks' and 'seconds' may be given")
 
     if seconds is None:
+        assert ticks is not None
         seconds = ticks / clock.ticks_per_second
 
     # Check whether we need to return immediately

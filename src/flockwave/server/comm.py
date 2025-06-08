@@ -659,12 +659,12 @@ class CommunicationManager(Generic[PacketType, AddressType]):
                 if error_counter <= self.error_limit:
                     if entries:
                         self.log.warning(
-                            "Dropping outbound message, sending failed on all channels",
+                            "Dropping outbound message, sending failed on all suitable connections",
                             extra=extra,
                         )
                     else:
                         self.log.warning(
-                            "Dropping outbound message, no suitable channel",
+                            "Dropping outbound message, no suitable connection",
                             extra=extra,
                         )
 

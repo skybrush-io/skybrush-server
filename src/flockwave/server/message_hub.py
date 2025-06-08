@@ -247,7 +247,7 @@ class MessageHub:
         ), "only notifications may be broadcast"
 
         request = Request(message)
-        await self._queue_tx.send(request)  # type: ignore
+        await self._queue_tx.send(request)
         return request
 
     @property
@@ -837,7 +837,7 @@ class MessageHub:
             return await self.broadcast_message(message)
 
         request = Request(message, to=to, in_response_to=in_response_to)
-        await self._queue_tx.send(request)  # type: ignore
+        await self._queue_tx.send(request)
         return request
 
     def unregister_message_handler(

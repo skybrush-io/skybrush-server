@@ -3,14 +3,16 @@
 from contextlib import aclosing
 from functools import partial
 from trio import (
+    MemoryReceiveChannel,
+    MemorySendChannel,
+    WouldBlock,
     current_time,
     fail_after,
     move_on_after,
     open_memory_channel,
     TooSlowError,
 )
-from trio.abc import ReceiveChannel, SendChannel
-from typing import AsyncIterator, Callable, Optional, Union
+from typing import AsyncGenerator, AsyncIterator, Callable, Optional, Union
 
 from flockwave.concurrency import Future
 from flockwave.logger import Logger
@@ -62,7 +64,7 @@ class MAVLinkLogDownloader:
     _log_listing_future: Optional[Future[list[FlightLogMetadata]]] = None
     """Future that resolves when the log listing operation completes."""
 
-    _message_channel: Optional[SendChannel[MAVLinkMessage]] = None
+    _message_channel: Optional[MemorySendChannel[MAVLinkMessage]] = None
     """Trio channel on which we feed the current log listing operation with new
     MAVLink messages to process.
     """
@@ -127,15 +129,23 @@ class MAVLinkLogDownloader:
 
     def handle_message_log_data(self, message: MAVLinkMessage):
         if self._message_channel:
-            self._message_channel.send_nowait(message)  # type: ignore
+            try:
+                self._message_channel.send_nowait(message)
+            except WouldBlock:
+                if self._log:
+                    self._log.warning("Incoming log data message dropped, queue full")
 
     def handle_message_log_entry(self, message: MAVLinkMessage):
         if self._message_channel:
-            self._message_channel.send_nowait(message)  # type: ignore
+            try:
+                self._message_channel.send_nowait(message)
+            except WouldBlock:
+                if self._log:
+                    self._log.warning("Incoming log entry message dropped, queue full")
 
     async def _get_log_inner(
-        self, log_id: int, rx: ReceiveChannel[MAVLinkMessage]
-    ) -> AsyncIterator[Union[Progress, Optional[FlightLog]]]:
+        self, log_id: int, rx: MemoryReceiveChannel[MAVLinkMessage]
+    ) -> AsyncGenerator[Union[Progress, Optional[FlightLog]], None]:
         last_progress_at = current_time()
 
         # We are requesting at most 512 LOG_DATA messages at once to let the
@@ -147,7 +157,7 @@ class MAVLinkLogDownloader:
 
         try:
             # Get the size of the log first and create a chunk assembler
-            metadata = await self._get_single_log_metadata(log_id, rx)
+            metadata = await self._get_single_log_metadata(log_id)
             if not metadata:
                 yield None
                 return
@@ -199,7 +209,7 @@ class MAVLinkLogDownloader:
         yield FlightLog.create_from_metadata(metadata, body=b"".join(log_data))
 
     async def _get_log_list_inner(
-        self, rx: ReceiveChannel[MAVLinkMessage]
+        self, rx: MemoryReceiveChannel[MAVLinkMessage]
     ) -> list[FlightLogMetadata]:
         # Number of logs to download; ``None`` if we do not know it yet
         num_logs: Optional[int] = None
@@ -242,7 +252,7 @@ class MAVLinkLogDownloader:
         return log_list
 
     async def _get_single_log_metadata(
-        self, log_id: int, rx: ReceiveChannel[MAVLinkMessage]
+        self, log_id: int
     ) -> Optional[FlightLogMetadata]:
         response = await self._send_and_wait(
             spec.log_request_list(start=log_id, end=log_id),

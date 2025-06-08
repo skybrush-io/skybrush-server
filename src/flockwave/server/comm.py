@@ -6,7 +6,15 @@ link (e.g., standard 802.11 wifi).
 from collections import defaultdict
 from contextlib import contextmanager
 from dataclasses import dataclass
-from errno import EADDRNOTAVAIL, ENETDOWN, ENETUNREACH, errorcode
+from enum import Enum
+from errno import (
+    EADDRNOTAVAIL,
+    EHOSTDOWN,
+    EHOSTUNREACH,
+    ENETDOWN,
+    ENETUNREACH,
+    errorcode,
+)
 from functools import partial
 from logging import Logger
 from trio import (
@@ -52,10 +60,23 @@ BROADCAST = object()
 communication channel with no specific destination address.
 """
 
-#: Special Windows error codes for "network unreachable" condition
+# TODO(ntamas): I think that the WSA* error codes do not need to be handled
+# separately; the source code of errnomodule.c in Python suggests that these
+# are transparently mapped to the appropriate errno codes.
+
+#: Special Windows error codes for "network down or unreachable" condition
 WSAENETDOWN = 10050
 WSAENETUNREACH = 10051
-WSAESERVERUNREACH = 10065
+
+#: Special Windows error codes for "host down or unreachable" condition
+WSAEHOSTDOWN = 10064
+WSAEHOSTUNREACH = 10065
+
+
+class ErrorAction(Enum):
+    SKIP_LOGGING = "skipLogging"
+    LOG_AND_SUSPEND = "logAndSuspend"
+    LOG = "log"
 
 
 @dataclass
@@ -89,9 +110,42 @@ class CommunicationManagerEntry(Generic[PacketType, AddressType]):
     ``None`` if the connection is closed.
     """
 
+    _error_count: int = 0
+    """Number of consecutive errors that have occurred recently. Sending a
+    successful message on this entry will clear the error counter.
+    """
+
     def detach_channel(self) -> None:
         """Detaches the channel associated to this entry."""
         self.set_channel(None)
+
+    def notify_error(self, limit: int) -> ErrorAction:
+        """Increments the error count by one.
+
+        Args:
+            limit: error count limit from the communication manager
+
+        Returns:
+            an object describing whether the error should be logged
+        """
+        self._error_count += 1
+        if self._error_count > limit:
+            return ErrorAction.SKIP_LOGGING
+        elif self._error_count == limit:
+            return ErrorAction.LOG_AND_SUSPEND
+        else:
+            return ErrorAction.LOG
+
+    def reset_error_count(self) -> bool:
+        """Resets the error count.
+
+        Returns:
+            whether the error count was non-zero before resetting it
+        """
+        if self._error_count > 0:
+            self._error_count = 0
+            return True
+        return False
 
     def set_channel(
         self, channel: Optional[MessageChannel[tuple[PacketType, AddressType], bytes]]
@@ -100,6 +154,7 @@ class CommunicationManagerEntry(Generic[PacketType, AddressType]):
         if self.channel is not channel:
             self.channel = channel
             self.can_broadcast = isinstance(channel, BroadcastMessageChannel)
+            self._error_count = 0
 
     @property
     def is_open(self) -> bool:
@@ -149,6 +204,12 @@ class CommunicationManager(Generic[PacketType, AddressType]):
     RTK corrections. Typically you should leave this at zero.
     """
 
+    error_limit: int = 5
+    """Number of consecutive errors that can occur on a channel before the
+    communication manager stops logging errors on that channel. This is
+    useful for reducing log noise.
+    """
+
     log: Logger
 
     BROADCAST: ClassVar[object]
@@ -165,6 +226,11 @@ class CommunicationManager(Generic[PacketType, AddressType]):
         str, list[CommunicationManagerEntry[PacketType, AddressType]]
     ]
     """Mapping from channel identifiers to the corresponding Entry_ objects."""
+
+    _error_counters: dict[str, int]
+    """Mapping from channel identifiers to the number of consecutive transmission
+    errors on that channel.
+    """
 
     def __init__(
         self,
@@ -184,6 +250,7 @@ class CommunicationManager(Generic[PacketType, AddressType]):
 
         self._aliases = {}
         self._entries_by_name = defaultdict(list)
+        self._error_counters = defaultdict(int)
         self._running = False
         self._outbound_tx_queue = None
 
@@ -562,48 +629,131 @@ class CommunicationManager(Generic[PacketType, AddressType]):
                             assert channel is not None
                             await channel.send((message, address))
                             sent = True
+
                         if sent:
-                            break
-                    except OSError as ex:
-                        if ex.errno in (
-                            ENETDOWN,
-                            ENETUNREACH,
-                            EADDRNOTAVAIL,
-                            WSAENETDOWN,
-                            WSAENETUNREACH,
-                            WSAESERVERUNREACH,
-                        ):
-                            # This is okay
-                            self.log.error(
-                                f"Network is down or unreachable ({errorcode.get(ex.errno, ex.errno)})",
-                                extra={"id": name or "", "telemetry": "ignore"},
-                            )
-                        else:
+                            if entry.reset_error_count():
+                                formatted_id = f"{name}[{index}]"
+                                self.log.info(
+                                    "Channel resumed normal operation",
+                                    extra={"id": formatted_id},
+                                )
+
+                    except Exception as ex:
+                        try:
+                            self._handle_tx_error(ex, address, entry, index)
+                        except Exception:
                             self.log.exception(
-                                f"Error while sending message on channel {name}[{index}]",
-                                extra={"id": name or ""},
+                                "Error while handling error during message transmission",
+                                extra={"id": f"{name}[{index}]"},
                             )
-                    except BrokenResourceError:
-                        # Trio translates "broken pipe" error to a BrokenResourceError
-                        self.log.error(
-                            f"Channel {name}[{index}] is broken",
-                            extra={"id": name or ""},
+
+        if sent:
+            self._error_counters[name] = 0
+        else:
+            self._error_counters[name] += 1
+            error_counter = self._error_counters[name]
+
+            extra = {"id": name, "telemetry": "ignore"}
+
+            if not is_broadcast:
+                if error_counter <= self.error_limit:
+                    if entries:
+                        self.log.warning(
+                            "Dropping outbound message, sending failed on all channels",
+                            extra=extra,
                         )
-                    except Exception:
-                        self.log.exception(
-                            f"Error while sending message on channel {name}[{index}]",
-                            extra={"id": name or ""},
+                    else:
+                        self.log.warning(
+                            "Dropping outbound message, no suitable channel",
+                            extra=extra,
                         )
 
-        if not sent and not is_broadcast:
-            if entries:
-                self.log.warning(
-                    f"Dropping outbound message, all channels broken for: {name!r}"
-                )
+    def _handle_tx_error(
+        self,
+        ex: Exception,
+        address,
+        entry: CommunicationManagerEntry,
+        index: int,
+    ) -> None:
+        """Handles an error that occurred while sending a message on a channel."""
+        action = entry.notify_error(self.error_limit)
+        if action is ErrorAction.SKIP_LOGGING:
+            return
+
+        formatted_id = f"{entry.name}[{index}]"
+        is_broadcast = address is BROADCAST
+
+        try:
+            if is_broadcast:
+                formatted_address = ""
             else:
-                self.log.warning(
-                    f"Dropping outbound message, no such channel: {name!r}"
-                )
+                formatted_address = self.format_address(address)
+        except Exception:
+            formatted_address = repr(address)
+
+        if isinstance(ex, OSError):
+            self._log_os_error_during_tx(ex, formatted_address, formatted_id)
+        elif isinstance(ex, BrokenResourceError):
+            self.log.error("Channel is broken", extra={"id": formatted_id})
+        else:
+            self.log.error("Error while sending message", extra={"id": formatted_id})
+
+        if action is ErrorAction.LOG_AND_SUSPEND:
+            self.log.warning(
+                "Error reporting suspended until the connection recovers",
+                extra={"id": formatted_id, "telemetry": "ignore"},
+            )
+
+        if not isinstance(ex, OSError):
+            self.log.exception(
+                "Error while sending message",
+                extra={"id": f"{entry.name}[{index}]"},
+            )
+            return
+
+    def _log_os_error_during_tx(
+        self,
+        ex: OSError,
+        formatted_address: str,
+        formatted_id: str,
+    ) -> None:
+        formatted_error_code = (
+            str(errorcode.get(ex.errno, ex.errno))
+            if ex.errno is not None
+            else "code missing"
+        )
+
+        prefix = f"{formatted_address}: " if formatted_address else ""
+
+        if ex.errno in (
+            ENETDOWN,
+            ENETUNREACH,
+            EADDRNOTAVAIL,
+            WSAENETDOWN,
+            WSAENETUNREACH,
+        ):
+            # This is okay
+            self.log.error(
+                f"{prefix}Network is down or unreachable ({formatted_error_code})",
+                extra={"id": formatted_id, "telemetry": "ignore"},
+            )
+
+        elif ex.errno in (
+            EHOSTDOWN,
+            EHOSTUNREACH,
+            WSAEHOSTDOWN,
+            WSAEHOSTUNREACH,
+        ):
+            self.log.error(
+                f"{prefix}Host is down or unreachable ({formatted_error_code})",
+                extra={"id": formatted_id, "telemetry": "ignore"},
+            )
+
+        else:
+            self.log.exception(
+                f"{prefix}Error while sending message ({formatted_error_code})",
+                extra={"id": formatted_id},
+            )
 
 
 CommunicationManager.BROADCAST = BROADCAST

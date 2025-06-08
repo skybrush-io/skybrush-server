@@ -19,6 +19,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   drones are turned at the same time in a location that is outside the _previous_
   geofence location.
 
+- When logging transmission errors for communication channels, we now keep track
+  of the number of _consecutive_ failed attempts and suspend logging errors on
+  the channel when there were more than 5 failed attempts. This is to prevent
+  flooding the logs if the networks are down due to reconfiguration while the
+  server is running.
+
 ### Fixed
 
 - Improved robustness of the main server loop for cases when internal command

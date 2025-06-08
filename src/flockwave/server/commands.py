@@ -9,10 +9,12 @@ from trio import (
     current_time,
     open_memory_channel,
     open_nursery,
+    MemorySendChannel,
+    MemoryReceiveChannel,
     Nursery,
     TooSlowError,
+    WouldBlock,
 )
-from trio.abc import ReceiveChannel, SendChannel
 from trio_util import periodic
 from typing import (
     cast,
@@ -91,8 +93,8 @@ class CommandExecutionManager(RegistryBase[CommandExecutionStatus]):
     consider the command as having timed out.
     """
 
-    _tx_queue: SendChannel[tuple[Result, CommandExecutionStatus]]
-    _rx_queue: ReceiveChannel[tuple[Result, CommandExecutionStatus]]
+    _tx_queue: MemorySendChannel[tuple[Result, CommandExecutionStatus]]
+    _rx_queue: MemoryReceiveChannel[tuple[Result, CommandExecutionStatus]]
 
     def __init__(self, timeout: float = 30):
         """Constructor.
@@ -164,7 +166,10 @@ class CommandExecutionManager(RegistryBase[CommandExecutionStatus]):
             return
 
         command.mark_as_clients_notified()
-        self._tx_queue.send_nowait((result, command))  # type: ignore
+        try:
+            self._tx_queue.send_nowait((result, command))
+        except WouldBlock:
+            log.warning("Command queue is full, dropping command")
 
     def new(self, client_to_notify: Optional[str] = None) -> CommandExecutionStatus:
         """Registers the execution of a new asynchronous command in the

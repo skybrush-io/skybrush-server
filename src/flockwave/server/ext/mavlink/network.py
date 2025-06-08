@@ -910,6 +910,8 @@ class MAVLinkNetwork:
         uav = self._find_uav_from_message(message, address)
         if uav and uav._autopilot.is_prearm_error_message(text):
             uav.notify_prearm_failure(uav._autopilot.process_prearm_error_message(text))
+            if not self._statustext_targets.log_prearm:
+                return
 
         severity: int = message.severity
         if severity <= self._statustext_targets.server:

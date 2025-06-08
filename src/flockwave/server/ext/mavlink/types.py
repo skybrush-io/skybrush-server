@@ -114,8 +114,15 @@ class MAVLinkStatusTextTargetSpecification:
     forwarding of MAVLink messages to the server console.
     """
 
+    log_prearm: bool = False
+    """Whether to log STATUSTEXT messages that represent the result of a failing
+    pre-arm check. These messages are quite common and can be inspected by
+    other means because they are stored in the appropriate UAV object, hence
+    they are hidden by default.
+    """
+
     DEFAULT: ClassVar[MAVLinkStatusTextTargetSpecification]
-    """Special instance to denote the case when MAVLink signing is disabled."""
+    """Special instance to denote the default settings."""
 
     @classmethod
     def from_json(cls, obj):
@@ -124,6 +131,7 @@ class MAVLinkStatusTextTargetSpecification:
         """
         server_level: int = int(MAVSeverity.NOTICE)
         client_level: int = int(MAVSeverity.DEBUG)
+        log_prearm: bool = False
 
         if isinstance(obj, dict):
             # New-style representation, keys mapping to severity levels
@@ -134,6 +142,9 @@ class MAVLinkStatusTextTargetSpecification:
             level = cls._severity_from_json(obj.get("client"))
             if level is not None:
                 client_level = level
+
+            log_prearm = bool(obj.get("log_prearm", False))
+
         elif isinstance(obj, Iterable):
             # Old-style representation, array containing the enabled targets
             enabled = set(obj)
@@ -142,7 +153,7 @@ class MAVLinkStatusTextTargetSpecification:
             if "client" not in enabled:
                 client_level = -1
 
-        return cls(server=server_level, client=client_level)
+        return cls(server=server_level, client=client_level, log_prearm=log_prearm)
 
     @staticmethod
     def _severity_from_json(x: Any) -> Optional[int]:
@@ -168,6 +179,7 @@ class MAVLinkStatusTextTargetSpecification:
         return {
             "server": self._severity_to_json(self.server),
             "client": self._severity_to_json(self.client),
+            "log_prearm": bool(self.log_prearm),
         }
 
 

@@ -643,8 +643,25 @@ schema = {
                             "server": MAVSeverity.json_schema(
                                 title="Log in the server log above this severity",
                             ),
+                            "log_prearm": {
+                                "type": "boolean",
+                                "title": "Log pre-arm messages",
+                                "description": (
+                                    "If enabled, the extension will log all pre-arm check "
+                                    "errors received from the drones in this network. "
+                                    "These messages are hidden by default as they are "
+                                    "fairly common and can be inspected by other means."
+                                ),
+                                "default": False,
+                                "format": "checkbox",
+                                "propertyOrder": 10000,
+                            },
                         },
-                        "default": {"client": "debug", "server": "notice"},
+                        "default": {
+                            "client": "debug",
+                            "server": "notice",
+                            "log_prearm": False,
+                        },
                     },
                     "use_broadcast_rate_limiting": {
                         "type": "boolean",

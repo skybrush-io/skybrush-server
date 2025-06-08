@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [main]
 
+### Changed
+
+- Pre-arm messages from MAVLink drones are not logged by default in the server
+  console any more. You can switch back to the old behaviour with the new
+  `log_prearm` configuration subkey of the `statustext_messages` key of
+  MAVLink network configuration objects. The reason for this change is that
+  pre-arm messages can be retrieved by other means (e.g., by double-clicking
+  on any drone in Skybrush Live that shows a `PREARM` error code), and pre-arm
+  messages related to the polygon geofence may flood the logs when thousands of
+  drones are turned at the same time in a location that is outside the _previous_
+  geofence location.
+
 ### Fixed
 
 - MAVLink autopilot version number is now queried again after a firmware update

@@ -17,6 +17,7 @@ from trio import (
     Event,
     MemoryReceiveChannel,
     MemorySendChannel,
+    WouldBlock,
     move_on_after,
     open_memory_channel,
     open_nursery,
@@ -384,7 +385,10 @@ class MessageHub:
 
         # Don't return the request here because it is not guaranteed that it
         # ends up in the queue; it may be dropped
-        self._queue_tx.send_nowait(Request(message))
+        try:
+            self._queue_tx.send_nowait(Request(message))
+        except WouldBlock:
+            log.warning("Outbound queue is full, dropping broadcast message")
 
     def enqueue_message(
         self,
@@ -426,9 +430,12 @@ class MessageHub:
         else:
             # Don't return the request here because it is not guaranteed that it
             # ends up in the queue; it may be dropped
-            self._queue_tx.send_nowait(
-                Request(message, to=to, in_response_to=in_response_to)
-            )
+            try:
+                self._queue_tx.send_nowait(
+                    Request(message, to=to, in_response_to=in_response_to)
+                )
+            except WouldBlock:
+                log.warning("Outbound queue is full, dropping message")
 
     async def handle_incoming_message(
         self, message: dict[str, Any], sender: Client
@@ -1262,6 +1269,12 @@ class ConnectionStatusMessageRateLimiter(RateLimiter):
     message with the new stable state will be sent.
     """
 
+    _factory: Callable[[Iterable[str]], FlockwaveMessage]
+    _request_tx_queue: MemorySendChannel[tuple[str, ConnectionState, ConnectionState]]
+    _request_rx_queue: MemoryReceiveChannel[
+        tuple[str, ConnectionState, ConnectionState]
+    ]
+
     @dataclass
     class Entry:
         last_stable_state: ConnectionState
@@ -1293,10 +1306,15 @@ class ConnectionStatusMessageRateLimiter(RateLimiter):
         self._request_tx_queue, self._request_rx_queue = open_memory_channel(256)
 
     def add_request(
-        self, uav_id: str, old_state: ConnectionState, new_state: ConnectionState
+        self, connection_id: str, old_state: ConnectionState, new_state: ConnectionState
     ) -> None:
         try:
-            self._request_tx_queue.send_nowait((uav_id, old_state, new_state))
+            self._request_tx_queue.send_nowait((connection_id, old_state, new_state))
+        except WouldBlock:
+            # Too many requests in the queue, this is okay; the main loop will
+            # flush the queue eventually and it is not a big deal if we miss an
+            # event
+            pass
         except BrokenResourceError:
             # Message hub is shutting down, this is okay.
             pass

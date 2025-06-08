@@ -634,7 +634,7 @@ class CommunicationManager(Generic[PacketType, AddressType]):
                             if entry.reset_error_count():
                                 formatted_id = f"{name}[{index}]"
                                 self.log.info(
-                                    "Channel resumed normal operation",
+                                    "Connection resumed normal operation",
                                     extra={"id": formatted_id},
                                 )
 

@@ -95,8 +95,9 @@ class MAVFTPErrorCode(IntEnum):
     FILE_PROTECTED = 9
     FILE_NOT_FOUND = 10
 
-    def to_string(self, errno: Optional[int] = None) -> str:
-        result = _mavftp_error_codes.get(int(self)) or f"Unknown error code {int(self)}"
+    @staticmethod
+    def to_string(code: int, errno: Optional[int] = None) -> str:
+        result = _mavftp_error_codes.get(int(code)) or f"Unknown error code {int(code)}"
         if errno is not None:
             result = f"{result} (errno = {errno})"
         return result
@@ -156,9 +157,23 @@ class MAVFTPError(RuntimeError):
 
 
 class OperationNotAcknowledgedError(MAVFTPError):
-    def __init__(self, code: int, errno: Optional[int] = None):
-        super().__init__(MAVFTPErrorCode.to_string(code, errno))  # type: ignore
+    def __init__(
+        self,
+        code: int,
+        errno: Optional[int] = None,
+        operation: Optional[int] = None,
+    ):
+        message = MAVFTPErrorCode.to_string(code, errno)
+        if operation is not None:
+            try:
+                operation_str = MAVFTPOpCode(operation).name
+            except ValueError:
+                operation_str = str(operation)
+            message = f"{message} (operation = {operation_str})"
+
+        super().__init__(message)  # type: ignore
         self.code = code
+        self.opcode = operation
 
 
 class SequenceNumberMismatch(MAVFTPError):
@@ -276,10 +291,15 @@ class MAVFTPMessage:
         """Returns whether the message is a NAK."""
         return self.opcode == MAVFTPOpCode.NAK
 
-    def raise_error(self):
+    def raise_error(self, replies_to: Optional[MAVFTPMessage] = None) -> None:
         if self.is_nak:
             errno = self.data[1] if len(self.data) >= 2 else None
-            raise OperationNotAcknowledgedError(self.error_code, errno=errno)
+            operation = replies_to.opcode if replies_to else None
+            raise OperationNotAcknowledgedError(
+                self.error_code,
+                errno=errno,
+                operation=operation,
+            )
         else:
             raise ValueError("Message is not an error")
 
@@ -522,7 +542,7 @@ class MAVFTP:
             elif reply.error_code == MAVFTPErrorCode.EOF:
                 break
             else:
-                reply.raise_error()
+                reply.raise_error(replies_to=message)
 
     async def mkdir(self, path: FTPPath, parents: bool = False, exist_ok: bool = False):
         """Creates a directory on the PixHawk over a MAVLink connection."""
@@ -712,7 +732,7 @@ class MAVFTP:
                 if allow_nak:
                     return reply
                 else:
-                    reply.raise_error()
+                    reply.raise_error(replies_to=message)
             else:
                 raise RuntimeError("Received reply that is neither ACK nor NAK")
 

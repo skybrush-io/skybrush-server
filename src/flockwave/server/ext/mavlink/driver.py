@@ -343,10 +343,10 @@ class MAVLinkDriver(UAVDriver["MAVLinkUAV"]):
         try:
             await uav.upload_show(show)
         except TooSlowError as ex:
-            self.log.error(str(ex))
+            self.log.error(str(ex), extra={"id": log_id_for_uav(uav)})
             raise
         except Exception as ex:
-            self.log.error(str(ex))
+            self.log.error(str(ex), extra={"id": log_id_for_uav(uav)})
             raise
 
     async def send_command_int(

@@ -21,6 +21,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Improved robustness of the main server loop for cases when internal command
+  dispatch queues are filled up. This may typically happen when sending a
+  unicast command to thousands of drones at the same time from the Live UI as
+  the internal command dispatch queue has a size limit. (Note that you should
+  use broadcast commands from Live if you want to wake up seveeral drones or
+  send them to sleep mode).
+
 - MAVLink autopilot version number is now queried again after a firmware update
   instead of returning the previously cached value.
 

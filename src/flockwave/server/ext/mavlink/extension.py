@@ -454,9 +454,7 @@ class MAVLinkDronesExtension(UAVExtension[MAVLinkDriver]):
         """Updates the scheduled start times of the drones managed by this
         extension, based on the start time extracted from the show clock.
         """
-        clock: Optional["ShowClock"] = cast(
-            Optional["ShowClock"], self.app.import_api("show").get_clock()
-        )
+        clock = cast(Optional["ShowClock"], self.app.import_api("show").get_clock())
         if not clock:
             return
 

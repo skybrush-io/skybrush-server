@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from logging import Logger
 from time import time
 from trio import (
     CapacityLimiter,
@@ -147,7 +148,7 @@ class ScheduledTakeoffManager:
                     )
                 await sleep(0.5)
 
-    async def _run(self, log) -> None:
+    async def _run(self, log: Logger) -> None:
         async with open_nursery() as nursery:
             queue_tx, queue_rx = open_memory_channel(1024)
             nursery.start_soon(self._process_uavs_scheduled_for_updates, queue_rx)
@@ -210,7 +211,7 @@ class ScheduledTakeoffManager:
                                 != takeoff_config.takeoff_time
                             )
                         else:
-                            # Auth flag is the same and the takeoff time does not
+                            # Auth scope is the same and the takeoff time does not
                             # need to change
                             needs_update = False
 

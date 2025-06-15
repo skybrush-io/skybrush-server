@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [main]
 
+### Added
+
+- The MIDI timecode extension now allows the user to configure the maximum
+  delay allowed between consecutive timecode messages before the MIDI clock is
+  considered to have stopped. Raise the timeout if you are getting false
+  positives in the log about the clock being stopped and then re-started a
+  split second later. Lower the timeout for better responsiveness to stopping
+  the MIDI clock on the timecode generator at the expense of larger probability
+  for false positives.
+
 ### Changed
 
 - Pre-arm messages from MAVLink drones are not logged by default in the server
@@ -24,6 +34,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the channel when there were more than 5 failed attempts. This is to prevent
   flooding the logs if the networks are down due to reconfiguration while the
   server is running.
+
+- The default timeout for MIDI tiemcode messages is raised to 1 second from
+  200 milliseconds as larger delays might be expected (especially on Linux)
+  when the system is under heavy load.
 
 ### Fixed
 

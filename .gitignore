@@ -11,6 +11,7 @@ build/
 dist/
 doc/build/
 doc/skybrush-server-docs-*.zip
+flight_logs/
 htmlcov/
 private/
 tmp/

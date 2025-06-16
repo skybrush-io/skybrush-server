@@ -10,7 +10,7 @@ from random import random, randint, choice
 from time import monotonic
 from trio import CancelScope, sleep
 from trio_util import periodic
-from typing import Any, Callable, NoReturn, Optional, Union
+from typing import Any, AsyncIterator, Callable, NoReturn, Optional, Union
 
 from flockwave.concurrency import delayed
 from flockwave.ext.manager import ExtensionAPIProxy
@@ -1124,11 +1124,14 @@ class VirtualUAVDriver(UAVDriver[VirtualUAV]):
     handle_command_param = create_parameter_command_handler()
     handle_command_version = create_version_command_handler()
 
-    async def get_log(self, uav: VirtualUAV, log_id: str) -> FlightLog:
-        # Simulate a bit of delay to make it more realistic
-        await sleep(0.5)
+    async def _get_log(self, uav: VirtualUAV, log_id: str) -> AsyncIterator[Union[Progress, Optional[FlightLog]]]:
+        # Simulate some progress to make it more realistic
+        total_chunks = 10
+        for chunk in range(total_chunks):
+            await sleep(0.2)
+            yield Progress(percentage=chunk * 100 // total_chunks)
         try:
-            return _LOGS[log_id]
+            yield _LOGS[log_id]
         except KeyError:
             raise RuntimeError(f"no such log: {log_id}") from None
 

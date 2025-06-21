@@ -1499,7 +1499,11 @@ class UAVDriver(Generic[TUAV], metaclass=ABCMeta):
         raise NotImplementedError
 
     def _send_takeoff_signal_single(
-        self, uav: TUAV, *, transport: Optional[TransportOptions] = None
+        self,
+        uav: TUAV,
+        *,
+        scheduled: bool = False,
+        transport: Optional[TransportOptions] = None,
     ) -> None:
         """Asks the driver to send a takeoff signal to a single UAV managed
         by this driver.

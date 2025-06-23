@@ -432,14 +432,14 @@ files = [
 
 [[package]]
 name = "cachetools"
-version = "6.0.0"
+version = "6.1.0"
 description = "Extensible memoizing collections and decorators"
 optional = false
 python-versions = ">=3.9"
 groups = ["main"]
 files = [
-    {file = "cachetools-6.0.0-py3-none-any.whl", hash = "sha256:82e73ba88f7b30228b5507dce1a1f878498fc669d972aef2dde4f3a3c24f103e"},
-    {file = "cachetools-6.0.0.tar.gz", hash = "sha256:f225782b84438f828328fc2ad74346522f27e5b1440f4e9fd18b20ebfd1aa2cf"},
+    {file = "cachetools-6.1.0-py3-none-any.whl", hash = "sha256:1c7bb3cf9193deaf3508b7c5f2a79986c13ea38965c5adcff1f84519cf39163e"},
+    {file = "cachetools-6.1.0.tar.gz", hash = "sha256:b4c4f404392848db3ce7aac34950d17be4d864da4b8b66911008e430bc544587"},
 ]
 
 [[package]]
@@ -2165,14 +2165,14 @@ typing-extensions = ">=4.6.0,<4.7.0 || >4.7.0"
 
 [[package]]
 name = "pygments"
-version = "2.19.1"
+version = "2.19.2"
 description = "Pygments is a syntax highlighting package written in Python."
 optional = false
 python-versions = ">=3.8"
 groups = ["dev"]
 files = [
-    {file = "pygments-2.19.1-py3-none-any.whl", hash = "sha256:9ea1544ad55cecf4b8242fab6dd35a93bbce657034b0611ee383099054ab6d8c"},
-    {file = "pygments-2.19.1.tar.gz", hash = "sha256:61c16d2a8576dc0649d9f39e089b5f02bcd27fba10d8fb4dcc28173f7a45151f"},
+    {file = "pygments-2.19.2-py3-none-any.whl", hash = "sha256:86540386c03d588bb81d44bc3928634ff26449851e99741617ecb9037ee5ec0b"},
+    {file = "pygments-2.19.2.tar.gz", hash = "sha256:636cb2477cec7f8952536970bc533bc43743542f70392ae026374600add5b887"},
 ]
 
 [package.extras]
@@ -2340,14 +2340,14 @@ cp2110 = ["hidapi"]
 
 [[package]]
 name = "pytest"
-version = "8.4.0"
+version = "8.4.1"
 description = "pytest: simple powerful testing with Python"
 optional = false
 python-versions = ">=3.9"
 groups = ["dev"]
 files = [
-    {file = "pytest-8.4.0-py3-none-any.whl", hash = "sha256:f40f825768ad76c0977cbacdf1fd37c6f7a468e460ea6a0636078f8972d4517e"},
-    {file = "pytest-8.4.0.tar.gz", hash = "sha256:14d920b48472ea0dbf68e45b96cd1ffda4705f33307dcc86c676c1b5104838a6"},
+    {file = "pytest-8.4.1-py3-none-any.whl", hash = "sha256:539c70ba6fcead8e78eebbf1115e8b589e7565830d7d006a8723f19ac8a0afb7"},
+    {file = "pytest-8.4.1.tar.gz", hash = "sha256:7c67fd69174877359ed9371ec3af8a3d2b04741818c51e5e99cc1742251fa93c"},
 ]
 
 [package.dependencies]
@@ -2822,15 +2822,15 @@ reference = "collmot"
 
 [[package]]
 name = "skybrush-ext-timecode"
-version = "1.3.0"
+version = "1.4.0"
 description = "SMPTE timecode support for Skybrush Server"
 optional = true
 python-versions = ">=3.10,<4.0"
 groups = ["main"]
 markers = "extra == \"all\" or extra == \"collmot\" or extra == \"pro\""
 files = [
-    {file = "skybrush_ext_timecode-1.3.0-py3-none-any.whl", hash = "sha256:efd3983c9883fc727ee6931e13078b3ec06226807d6343cab901672ad08590c7"},
-    {file = "skybrush_ext_timecode-1.3.0.tar.gz", hash = "sha256:2cc62bc09cf125a75801c72cbddc3cf01abf68c20f66df5f4eaf85ae138fa16a"},
+    {file = "skybrush_ext_timecode-1.4.0-py3-none-any.whl", hash = "sha256:d0bcd07ddb3bebbd72e2a2ea9e02e91eecfaed4fffaf6f815d46ffd0fe9e1d33"},
+    {file = "skybrush_ext_timecode-1.4.0.tar.gz", hash = "sha256:498c5063ee9e41d88b1626c3b5983ba58cf21b76bfdbd91f4f600d932e940377"},
 ]
 
 [package.dependencies]
@@ -2866,14 +2866,14 @@ reference = "collmot"
 
 [[package]]
 name = "skybrush-studio"
-version = "4.23.0"
+version = "4.24.2"
 description = "Drone show designer tools and scripting language"
 optional = true
 python-versions = ">=3.10,<4.0"
 groups = ["main"]
 files = [
-    {file = "skybrush_studio-4.23.0-py3-none-any.whl", hash = "sha256:ca20ab2ff3efcc4e7e16f0c0aeeccd4fbca4d4a16ad03331fd2a10365bd64eea"},
-    {file = "skybrush_studio-4.23.0.tar.gz", hash = "sha256:67746cc1a2d3a22c6f87ecb1153bb5f3b2ce09cdacf294f11b469afbde7819ea"},
+    {file = "skybrush_studio-4.24.2-py3-none-any.whl", hash = "sha256:994b824511e150c88c4a1e673b121853001523f27e0257abce8a9ec1744cf224"},
+    {file = "skybrush_studio-4.24.2.tar.gz", hash = "sha256:b2cd1748ea37cb50c981a3773d9068873ec5b9d4a69389bb71f48abf737b2cf3"},
 ]
 
 [package.dependencies]
@@ -3369,4 +3369,4 @@ pro = ["skybrush-ext-firmware-update", "skybrush-ext-flight-report", "skybrush-e
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10,<4.0"
-content-hash = "2d4bd6a34ab9d92fe83470ff12238684d403e81850242d58c4199e60dbc4516e"
+content-hash = "70110de080ebcbf88078685d92d74c3671f523079c16bfd1ab94d91b663f00f7"

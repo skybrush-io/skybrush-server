@@ -12,6 +12,7 @@ from typing import Optional
 
 from flockwave import logger
 from flockwave.app_framework.hacks import install_unraisable_hook
+from flockwave.app_framework.instrumentation import SlowTaskDetector
 
 from .logger import log
 from .utils.packaging import is_packaged
@@ -104,8 +105,13 @@ def start(
     if retval is not None:
         return retval
 
+    # Add instrumentation if needed
+    instruments = []
+    if "slow_tasks" in str(os.environ.get("SKYBRUSH_INSTRUMENTS", "")).lower():
+        instruments.append(SlowTaskDetector(threshold=0.01))
+
     # Now start the server
-    trio.run(app.run)
+    trio.run(app.run, instruments=instruments)
 
     # Log that we have stopped cleanly.
     log.info("Shutdown finished")

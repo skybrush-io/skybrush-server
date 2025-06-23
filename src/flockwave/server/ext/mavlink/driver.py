@@ -298,7 +298,9 @@ class MAVLinkDriver(UAVDriver["MAVLinkUAV"]):
     handle_command_param = create_parameter_command_handler(
         name_validator=to_uppercase_string
     )
-    handle_command_test = create_test_command_handler(("motor", "led", "pyro"))
+    handle_command_test = create_test_command_handler(
+        ("camera", "motor", "led", "pyro")
+    )
     handle_command_version = create_version_command_handler()
 
     async def handle_command_mode(self, uav: "MAVLinkUAV", mode: Optional[str] = None):
@@ -1509,8 +1511,8 @@ class MAVLinkUAV(UAVBase):
         """Tests a component of the UAV.
 
         Parameters:
-            component: the component to test; currently we support ``motor``,
-                ``led`` and ``pyro``
+            component: the component to test; currently we support ``camera``,
+                ``led``, ``motor`` and ``pyro``
             channel: the communication channel to use when sending the command
         """
         if component == "motor":
@@ -1544,6 +1546,9 @@ class MAVLinkUAV(UAVBase):
 
         elif component == "pyro":
             await self.start_pyro_test()
+
+        elif component == "camera":
+            await self.trigger_camera_shutter()
 
         else:
             raise NotSupportedError
@@ -2179,6 +2184,16 @@ class MAVLinkUAV(UAVBase):
                     f"Failed to reset data stream rate(s) for message(s) {message}",
                     extra={"id": log_id_for_uav(self)},
                 )
+
+    async def trigger_camera_shutter(self) -> None:
+        """Asks the UAV to trigger the camera shutter (if it has a camera)."""
+        success = await self.driver.send_command_long(
+            self,
+            MAVCommand.DO_DIGICAM_CONTROL,
+            param5=1,
+        )
+        if not success:
+            raise RuntimeError("Failed to trigger camera shutter")
 
     async def upload_show(self, show) -> None:
         coordinate_system = get_coordinate_system_from_show_specification(show)

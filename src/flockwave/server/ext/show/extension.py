@@ -142,7 +142,7 @@ class DroneShowExtension(Extension):
 
         try:
             point_of_no_return_seconds = int(
-                configuration.get("default_point_of_no_return_seconds", -10)
+                configuration.get("point_of_no_return_seconds", -10)
             )
         except ValueError:
             self.log.warning(

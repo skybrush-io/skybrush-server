@@ -11,6 +11,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added camera shutter test for MAVLink-based drones.
 
+### Fixed
+
+- Fixed name of configuration key for the point of no return in show clock
+  synchronization, introduced in 2.30.0.
+
 ## [2.30.0] - 2025-06-23
 
 ### Added

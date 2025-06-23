@@ -13,8 +13,12 @@ def clocks() -> ClockPair:
 
 @fixture
 def handler() -> ClockSynchronizationHandler:
-    result = ClockSynchronizationHandler()
-    return result
+    return ClockSynchronizationHandler()
+
+
+@fixture
+def handler_with_point_of_no_return() -> ClockSynchronizationHandler:
+    return ClockSynchronizationHandler(point_of_no_return_seconds=-10)
 
 
 def test_disable_and_stop(clocks: ClockPair, handler: ClockSynchronizationHandler):
@@ -143,3 +147,73 @@ def test_secondary_clock_context_manager(
         with raises(RuntimeError):
             with handler.use_secondary_clock(clocks[0]):
                 pass
+
+
+class MockLogger:
+    def __init__(self):
+        self.messages = []
+
+    def info(self, message):
+        self.messages.append(("info", message))
+
+    def error(self, message):
+        self.messages.append(("error", message))
+
+    def warning(self, message):
+        self.messages.append(("warning", message))
+
+
+def test_clock_adjustment_beyond_point_of_no_return(
+    clocks: ClockPair, handler_with_point_of_no_return: ClockSynchronizationHandler
+):
+    handler = handler_with_point_of_no_return
+    primary, secondary = clocks
+
+    mock_logger = MockLogger()
+
+    now = time()
+    primary.start_time = now
+
+    # Configure the handler
+    handler.secondary_clock = secondary
+    handler.log = mock_logger  # type: ignore
+    handler.synchronize_to(primary, 5)
+    assert secondary.running
+    assert secondary.ticks_given_time(now) == -50
+    assert secondary.ticks_given_time(now + 5) == 0
+    assert not mock_logger.messages
+
+    # Now simulate an adjustment to the primary clock
+    primary.start_time = now - 10
+    assert secondary.running
+    assert secondary.ticks_given_time(now + 5) == 0
+    assert len(mock_logger.messages) == 1
+    assert mock_logger.messages[0][0] == "warning"
+    mock_logger.messages.clear()
+
+    # Set the primary clock back to its original start time
+    primary.start_time = now
+    assert secondary.running
+    assert secondary.ticks_given_time(now + 5) == 0
+    assert len(mock_logger.messages) == 1
+    assert mock_logger.messages[0][0] == "warning"
+    mock_logger.messages.clear()
+
+    # Stop the primary clock -- the secondary clock should also be stopped as
+    # it is not an adjustment
+    primary.start_time = None
+    assert not secondary.running
+    assert secondary.ticks_given_time(now) == 0
+    assert secondary.ticks_given_time(now + 5) == 0
+    assert not mock_logger.messages
+
+    # Simulate an adjustment to the primary clock again -- now it should work
+    primary.start_time = now - 10
+    assert secondary.running
+    assert secondary.ticks_given_time(now + 5) == 100
+
+    # Disable the synchronization, then adjust the primary clock again
+    handler.disable()
+    primary.start_time = now
+    assert secondary.running
+    assert secondary.ticks_given_time(now + 5) == 100

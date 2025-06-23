@@ -83,7 +83,8 @@ EXTENSIONS = {
         "use_high_precision": True,  # set to false if the rover cannot handle high-precision MSM RTK messages
     },
     "show": {
-        "default_start_method": "rc"  # set to "auto" if you typically start shows automatically and not via a remote controller
+        "default_start_method": "rc",  # set to "auto" if you typically start shows automatically and not via a remote controller
+        "point_of_no_return_seconds": -10,
     },
     "show_pro": {},  # used to trigger auto-loading when the license is installed
     "sidekick": {},  # used to trigger auto-loading when the license is installed

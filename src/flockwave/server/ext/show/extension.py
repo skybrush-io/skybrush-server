@@ -126,6 +126,9 @@ class DroneShowExtension(Extension):
         self._clock = ShowClock()
         self._end_clock = ShowEndClock()
 
+        self._clock_sync.log = logger
+        self._end_clock_sync.log = logger
+
         handlers = {
             "SHOW-CFG": self.handle_SHOW_CFG,
             "SHOW-LIGHTS": self.handle_SHOW_LIGHTS,
@@ -135,6 +138,27 @@ class DroneShowExtension(Extension):
 
         self._config.start_method = StartMethod(
             configuration.get("default_start_method", "rc")
+        )
+
+        try:
+            point_of_no_return_seconds = int(
+                configuration.get("default_point_of_no_return_seconds", -10)
+            )
+        except ValueError:
+            self.log.warning(
+                "Invalid value for 'default_point_of_no_return_seconds' in configuration, "
+                "using default value of -10 seconds"
+            )
+            point_of_no_return_seconds = -10
+
+        self._clock_sync.point_of_no_return_seconds = point_of_no_return_seconds
+
+        self.log.info(
+            "Default show start method: %s", self._config.start_method.describe()
+        )
+        self.log.info(
+            "Timecode synchronization suspends at T = %d seconds",
+            point_of_no_return_seconds,
         )
 
         async with open_nursery() as self._nursery:
@@ -396,6 +420,20 @@ schema = {
             "options": {
                 "enum_titles": [StartMethod.RC.describe(), StartMethod.AUTO.describe()],
             },
-        }
+        },
+        "point_of_no_return_seconds": {
+            "type": "number",
+            "title": "Point of no return for clock synchronization (seconds)",
+            "description": (
+                "The number of seconds elapsed on the show clock that acts as "
+                'a "point of no return" threshold. The show clock will not '
+                "be synchronized to an external timecode any more if it is "
+                "running and it is beyond this time (in seconds). Stopping the "
+                "external timecode will still stop the clock even if it is "
+                "beyond the point of no return. Typically you want to set this "
+                "to a negative value."
+            ),
+            "default": -10,
+        },
     }
 }

@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [main]
 
+### Changed
+
+- When synchronizing the show clock to a MIDI timecode, we now have a "point of
+  no return" threshold. Adjustments to the MIDI clock are not reflected in the
+  state of the show clock if the show clock is running and it is beyond the
+  point of no return. However, the show clock is stopped if the MIDI clock is
+  stopped even if the show clock is beyond the point of no return.
+
+## [2.29.0] - 2025-06-15
+
 ### Added
 
 - The MIDI timecode extension now allows the user to configure the maximum

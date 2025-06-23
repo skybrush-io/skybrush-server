@@ -46,7 +46,7 @@ colour = ">=0.1.5"
 pyjwt = "^2.10.1"
 hypercorn = { extras = ["trio"], version = ">=0.17.3" }
 passlib = { extras = ["bcrypt"], version = "^1.7.4" }
-flockwave-app-framework = { version = "^3.2.3", extras = [
+flockwave-app-framework = { version = "^3.3.0", extras = [
   "daemon",
 ], source = "fury" }
 flockwave-async = { version = "^2.0.1", source = "fury" }
@@ -54,7 +54,7 @@ flockwave-conn = { extras = [
   "rpc",
   "serial",
 ], source = "fury", version = "^9.0.0" }
-flockwave-ext = { version = "^1.26.0", source = "fury" }
+flockwave-ext = { version = "^1.27.0", source = "fury" }
 flockwave-flockctrl = { version = "^4.0.0", source = "collmot", optional = true }
 flockwave-gps = { version = "^4.0.0", source = "fury" }
 flockwave-logger = { version = "^2.1.0", source = "fury" }
@@ -74,12 +74,12 @@ skybrush-ext-sidekick = { version = "^1.0.2", source = "collmot", optional = tru
 skybrush-ext-studio = { version = ">=0.8.6", source = "collmot", optional = true }
 skybrush-ext-timecode = { version = "^1.4.0", source = "collmot", optional = true }
 skybrush-lib-mission-planning = { version = "^2.4.1", source = "collmot", optional = true }
-skybrush-studio = { version = ">=4.22.3", source = "collmot", optional = true }
+skybrush-studio = { version = ">=4.24.2", source = "collmot", optional = true }
 pyledctrl = { version = "^4.1.0", source = "fury" }
 aiocflib = "^4.1.0"
 crcmod-plus = "^2.1.0"
-msgpack = "^1.1.0"
-aio-usb-hotplug = "^6.0.0"
+msgpack = "^1.1.1"
+aio-usb-hotplug = "^7.0.0"
 pyserial = "^3.5"
 compose = "^1.6.2"
 adrenaline = "^4.0.1"
@@ -88,16 +88,16 @@ igrf-model = "^1.1.4"
 deprecated = "^1.2.18"
 unidecode = "^1.4.0"
 wrapt = "^1.17.2"
-cachetools = "^6.0.0"
+cachetools = "^6.1.0"
 platformdirs = "^4.3.8"
 fastjsonschema = "^2.21.1"
 
 [tool.poetry.group.dev.dependencies]
-coverage = { extras = ["toml"], version = "^7.8.2" }
-pytest = "^8.4.0"
-pytest-cov = "^6.1.1"
+coverage = { extras = ["toml"], version = "^7.9.1" }
+pytest = "^8.4.1"
+pytest-cov = "^6.2.1"
 pytest-trio = ">=0.8.0"
-pdoc = "^15.0.3"
+pdoc = "^15.0.4"
 
 [tool.poetry.extras]
 all = [

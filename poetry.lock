@@ -41,20 +41,20 @@ dev = ["coverage[toml] (>=7.3.1)", "pytest (>=8.0.0)", "pytest-cov (>=6.1.1)", "
 
 [[package]]
 name = "aio-usb-hotplug"
-version = "6.0.0"
+version = "7.0.0"
 description = "Asynchronous generators yielding detected hotplug events on the USB buses"
 optional = false
-python-versions = ">=3.8,<4.0"
+python-versions = ">=3.9"
 groups = ["main"]
 files = [
-    {file = "aio_usb_hotplug-6.0.0-py3-none-any.whl", hash = "sha256:7fa402ea0e60ed0bebdc38cf61ee0d3095252544bed0c2489fbeb2851f7d0dea"},
-    {file = "aio_usb_hotplug-6.0.0.tar.gz", hash = "sha256:544e9e4289f9c34b71a49054c7b1744291b8f55a1681847aae89a062d95c0b1a"},
+    {file = "aio_usb_hotplug-7.0.0-py3-none-any.whl", hash = "sha256:aac06a554311a8ac69e015eacbc31888fb541e3c06dde27b06c666e028d34320"},
+    {file = "aio_usb_hotplug-7.0.0.tar.gz", hash = "sha256:f9f1c93b370aa1d602c5ae42686c3ada026781c34a2431e29f1b80726a112a34"},
 ]
 
 [package.dependencies]
-anyio = ">=3.7.1,<5"
-pyudev = {version = ">=0.24.1", markers = "sys_platform == \"linux\""}
-pyusb = ">=1.2.1,<2.0.0"
+anyio = ">=4.9.0"
+pyudev = {version = ">=0.24.3", markers = "sys_platform == \"linux\""}
+pyusb = ">=1.3.1"
 
 [[package]]
 name = "aiocflib"
@@ -915,28 +915,28 @@ dotenv = ["python-dotenv"]
 
 [[package]]
 name = "flockwave-app-framework"
-version = "3.2.3"
+version = "3.3.0"
 description = "Generic app framework for CLI based apps in the Skybrush suite"
 optional = false
-python-versions = ">=3.9,<4.0"
+python-versions = ">=3.10"
 groups = ["main"]
 files = [
-    {file = "flockwave-app-framework-3.2.3.tar.gz", hash = "sha256:50fd8dcc2f80cd9dd71b32bde70a39b171558d703f159e28a0c82d8c295f78fa"},
-    {file = "flockwave_app_framework-3.2.3-py3-none-any.whl", hash = "sha256:17216e7d7334f5a80229da830e2e0939367574df0c0599a8bd2a43008320470e"},
+    {file = "flockwave-app-framework-3.3.0.tar.gz", hash = "sha256:5823ad42396ee7b8ae5e1f6ae3013218d5883b6d0dd0e1c611e9a855f43848b4"},
+    {file = "flockwave_app_framework-3.3.0-py3-none-any.whl", hash = "sha256:9fca16921c29189df12ae95d3c074ddc35736ca62cfa41f3d64035b67f74f5ca"},
 ]
 
 [package.dependencies]
-exceptiongroup = ">=1.1.3"
-flockwave-conn = {version = ">=8.4.1", optional = true, markers = "extra == \"daemon\""}
-flockwave-ext = {version = ">=1.24.2", optional = true, markers = "extra == \"daemon\""}
-json5 = ">=0.9.14"
-tomli = {version = ">=2.0.1", markers = "python_version < \"3.11\""}
-trio = ">=0.24.0"
+exceptiongroup = ">=1.3.0"
+flockwave-conn = {version = ">=9.0.0", optional = true, markers = "extra == \"daemon\""}
+flockwave-ext = {version = ">=1.27.0", optional = true, markers = "extra == \"daemon\""}
+json5 = ">=0.12.0"
+tomli = {version = ">=2.2.1", markers = "python_version < \"3.11\""}
+trio = ">=0.30.0"
 
 [package.extras]
-asgi = ["uvicorn[standard] (>=0.23.2)"]
-console = ["urwid-uikit (>=2.0.1)"]
-daemon = ["flockwave-conn (>=8.4.1)", "flockwave-ext (>=1.24.2)"]
+asgi = ["uvicorn[standard] (>=0.34.3)"]
+console = ["urwid-uikit (>=2.1.1)"]
+daemon = ["flockwave-conn (>=9.0.0)", "flockwave-ext (>=1.27.0)"]
 
 [package.source]
 type = "legacy"
@@ -999,21 +999,24 @@ reference = "fury"
 
 [[package]]
 name = "flockwave-ext"
-version = "1.26.0"
+version = "1.27.0"
 description = "Generic extension manager for Skybrush-related projects"
 optional = false
-python-versions = ">=3.9,<4.0"
+python-versions = ">=3.9"
 groups = ["main"]
 files = [
-    {file = "flockwave-ext-1.26.0.tar.gz", hash = "sha256:82cc88be112192b51654b82ea8eb873a694ef4fc4c9466b65adb99618e3372df"},
-    {file = "flockwave_ext-1.26.0-py3-none-any.whl", hash = "sha256:710485f64efa2b90cd24e638fb9542ec04b524ccd6ef63e4fdbe2f35901fc9e3"},
+    {file = "flockwave-ext-1.27.0.tar.gz", hash = "sha256:09fe62cd5c3015899bdfe70b39e2e74adacfa469cf8cb7e558b9e3446841bd8e"},
+    {file = "flockwave_ext-1.27.0-py3-none-any.whl", hash = "sha256:0dcdf64574aa55c5887aff45982507d876afada07b9e01ff5094d98a772b9a2f"},
 ]
 
 [package.dependencies]
-blinker = ">=1.6.2,<2.0.0"
-importlib-metadata = ">=8.0.0,<9.0.0"
-semver = ">=3.0.2,<4.0.0"
-trio = ">=0.21.0"
+blinker = ">=1.9.0"
+importlib-metadata = ">=8.7.0"
+semver = ">=3.0.4"
+trio = ">=0.30.0"
+
+[package.extras]
+dev = ["coverage[toml] (>=7.9.1)", "pytest (>=8.4.1)", "pytest-cov (>=6.2.1)"]
 
 [package.source]
 type = "legacy"
@@ -3369,4 +3372,4 @@ pro = ["skybrush-ext-firmware-update", "skybrush-ext-flight-report", "skybrush-e
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10,<4.0"
-content-hash = "70110de080ebcbf88078685d92d74c3671f523079c16bfd1ab94d91b663f00f7"
+content-hash = "6b2eb59933604d41a422de4a59e772b420717fcb5b58794cadf27b87c2beb34f"

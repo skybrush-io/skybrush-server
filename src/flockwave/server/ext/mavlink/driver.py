@@ -313,6 +313,20 @@ class MAVLinkDriver(UAVDriver["MAVLinkUAV"]):
             await uav.set_mode(mode)
             return f"Mode changed to {mode!r}"
 
+    async def handle_command_servo(
+        self, uav: "MAVLinkUAV", servo: Union[int, str], value: Union[int, str]
+    ):
+        """Sets the value of a servo channel on the UAV.
+
+        Parameters:
+            servo: the servo channel to set (1-based)
+            value: the value to set for the servo channel as a raw PWM value
+        """
+        servo = int(servo)
+        value = int(value)
+        await uav.set_servo(servo, value)
+        return f"Servo {servo} set to {value}"
+
     async def handle_command_show(
         self, uav: "MAVLinkUAV", command: Optional[str] = None
     ):
@@ -1947,6 +1961,31 @@ class MAVLinkUAV(UAVBase):
 
         if not success:
             raise RuntimeError(f"UAV rejected flight mode {mode}")
+
+    async def set_servo(
+        self, servo: int, value: int, *, channel: str = Channel.PRIMARY
+    ) -> None:
+        """Asks the UAV to set one of its servo channels to a given value.
+
+        Args:
+            servo: the index of the servo channel (1-based)
+            value: the PWM value to set on the servo channel, in microseconds
+        """
+        if servo < 1:
+            raise RuntimeError("Invalid servo channel index")
+        if value < 0:
+            raise RuntimeError("Invalid servo channel value")
+
+        success = await self.driver.send_command_long(
+            self,
+            MAVCommand.DO_SET_SERVO,
+            param1=float(servo),
+            param2=float(value),
+            channel=channel,
+        )
+
+        if not success:
+            raise RuntimeError(f"UAV rejected setting servo channel {servo} to {value}")
 
     @property
     def supports_scheduled_takeoff(self) -> bool:

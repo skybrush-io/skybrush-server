@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [main]
 
+### Added
+
+- Servo channels can now be set explicitly for MAVLink-based drones with the
+  `servo` command from the Messages panel in Live. The command has two
+  parameters: the servo index (1-based) and the PWM value of the channel (in
+  microseconds).
+
 ### Changed
 
 - When synchronizing the show clock to a MIDI timecode, we now have a "point of

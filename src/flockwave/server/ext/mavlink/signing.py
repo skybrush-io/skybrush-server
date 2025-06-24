@@ -10,7 +10,7 @@ from .errors import InvalidSigningKeyError
 
 if TYPE_CHECKING:
     from flockwave.protocols.mavlink.types import (
-        MAVLinkInterface,
+        MinimalMAVLinkInterface,
         MAVLinkSigningInterface,
     )
 
@@ -155,11 +155,13 @@ class SignatureTimestampSynchronizer:
     def timestamp(self) -> int:
         return self._get_timestamp()
 
-    def patch(self, mavlink: MAVLinkInterface) -> None:
+    def patch(self, mavlink: MinimalMAVLinkInterface) -> None:
         """Patches a MAVLink object to use a synchronized signature timestamp."""
         mavlink.signing = self.wrap(mavlink.signing)
 
-    def wrap(self, signing_state) -> MAVLinkSigningInterface:
+    def wrap(
+        self, signing_state: MAVLinkSigningInterface[MinimalMAVLinkInterface]
+    ) -> MAVLinkSigningInterface[MinimalMAVLinkInterface]:
         """Wraps an existing MAVLinkSigning_ object with an object proxy that
         overrides the timestamp to correspond to the common timestamp in this
         timestamp synchronizer class.

@@ -33,7 +33,10 @@ from .signing import MAVLinkSigningConfiguration, SignatureTimestampSynchronizer
 from .types import MAVLinkMessage, MAVLinkMessageSpecification
 
 if TYPE_CHECKING:
-    from flockwave.protocols.mavlink.types import MAVLinkFactory, MAVLinkInterface
+    from flockwave.protocols.mavlink.types import (
+        MinimalMAVLinkFactory,
+        MinimalMAVLinkInterface,
+    )
 
 
 __all__ = ("create_communication_manager",)
@@ -78,14 +81,16 @@ def _get_initial_timestamp_for_signing() -> int:
     return max(int((time() - 1420070400) * 100000), 0)
 
 
-def _allow_all_unsigned_messages(mav: MAVLinkInterface, msg_id: int) -> bool:
+def _allow_all_unsigned_messages(mav: MinimalMAVLinkInterface, msg_id: int) -> bool:
     """Callback function for MAVLink connections that allow them to accept
     all unsigned messages.
     """
     return True
 
 
-def _allow_only_basic_unsigned_messages(mav: MAVLinkInterface, msg_id: int) -> bool:
+def _allow_only_basic_unsigned_messages(
+    mav: MinimalMAVLinkInterface, msg_id: int
+) -> bool:
     """Callback function for MAVLink connections that allow them to accept
     only specific unsigned messages that may originate from sources that do
     not support MAVLink signing.
@@ -100,7 +105,7 @@ def get_mavlink_factory(
     *,
     link_id: int = 0,
     signing: MAVLinkSigningConfiguration = MAVLinkSigningConfiguration.DISABLED,
-) -> MAVLinkFactory:
+) -> MinimalMAVLinkFactory:
     """Constructs a function that can be called with no arguments and that will
     construct a new MAVLink parser and message factory.
 
@@ -116,11 +121,11 @@ def get_mavlink_factory(
     """
     module = import_module(f"flockwave.protocols.mavlink.dialects.v20.{dialect}")
 
-    def factory() -> MAVLinkInterface:
+    def factory() -> MinimalMAVLinkInterface:
         """Creates a new MAVLink parser and message factory."""
         # Use robust parsing so we don't freak out if we see some noise on the
         # line
-        link: MAVLinkInterface = module.MAVLink(
+        link: MinimalMAVLinkInterface = module.MAVLink(
             None, srcSystem=system_id, srcComponent=component_id
         )
         link.robust_parsing = True
@@ -195,7 +200,7 @@ def create_communication_manager(
 
 
 def create_mavlink_message(
-    link: MAVLinkInterface, _type: str, *args, **kwds
+    link: MinimalMAVLinkInterface, _type: str, *args, **kwds
 ) -> MAVLinkMessage:
     """Creates a MAVLink message from the methods of a MAVLink object received
     from the low-level `pymavlink` library.
@@ -254,7 +259,7 @@ def create_mavlink_message_channel(
     else:
         link_id = 0
 
-    mavlink_factory: MAVLinkFactory = get_mavlink_factory(
+    mavlink_factory = get_mavlink_factory(
         dialect, system_id, link_id=link_id, signing=signing
     )
 
@@ -293,7 +298,7 @@ def _create_stream_based_mavlink_message_channel(
     connection: RWConnection[bytes, bytes],
     log: Logger,
     *,
-    mavlink_factory: MAVLinkFactory,
+    mavlink_factory: MinimalMAVLinkFactory,
 ) -> MessageChannel[tuple[MAVLinkMessage, str], bytes]:
     """Creates a bidirectional Trio-style channel that reads data from and
     writes data to the given stream-based connection, and does the parsing
@@ -318,7 +323,7 @@ def _create_stream_based_mavlink_message_channel(
     """
     mavlink = mavlink_factory()
 
-    def parser(data: bytes) -> list[tuple[MAVLinkMessage, Any]]:
+    def parser(data: bytes) -> list[tuple[MAVLinkMessage, str]]:
         # Parse the MAVLink messages from the buffer. mavlink.parse_buffer()
         # may occasionally return None so make sure we handle that gracefully.
         messages = mavlink.parse_buffer(data) or ()
@@ -343,7 +348,7 @@ def _create_stream_based_mavlink_message_channel(
 
 
 def _create_datagram_based_mavlink_message_channel(
-    connection: RWConnection, log: Logger, *, mavlink_factory: MAVLinkFactory
+    connection: RWConnection, log: Logger, *, mavlink_factory: MinimalMAVLinkFactory
 ) -> MessageChannel[tuple[MAVLinkMessage, str], tuple[bytes, Any]]:
     """Creates a bidirectional Trio-style channel that reads data from and
     writes data to the given datagram-based connection, and does the parsing
@@ -420,7 +425,9 @@ def _create_datagram_based_mavlink_message_channel(
     )
 
 
-def _notify_mavlink_packet_sent(mavlink: MAVLinkInterface, packet: bytes) -> None:
+def _notify_mavlink_packet_sent(
+    mavlink: MinimalMAVLinkInterface, packet: bytes
+) -> None:
     # Bookkeeping copied from the MAVLink.send() method
     mavlink.seq = (mavlink.seq + 1) % 256
     mavlink.total_packets_sent += 1

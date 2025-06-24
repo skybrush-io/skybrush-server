@@ -28,33 +28,38 @@ __all__ = (
 )
 
 
-#: Type specification for a (base mode, main mode, submode) flight mode triplet
-#: used in MAVLink
 MAVLinkFlightModeNumbers = tuple[int, int, int]
+"""Type specification for a (base mode, main mode, submode) flight mode triplet
+used in MAVLink.
+"""
 
-
-#: Type specification for messages parsed by the MAVLink parser. Unfortunately
-#: we cannot refer to an exact Python class here because that depends on the
-#: dialoect that we will be parsing
 MAVLinkMessage = Any
+"""Type specification for messages parsed by the MAVLink parser. Unfortunately
+we cannot refer to an exact Python class here because that depends on the
+dialect that we will be parsing.
+"""
 
-#: Type specification for MAVLink message matchers. A message matcher is either
-#: `None` (meaning to match all messages), a dictionary containing the required
-#: field name-value pairs in a message that we need to consider the message to
-#: be a match, or a callable that takes a MAVLinkMessage and returns `True` if
-#: the message is a match
 MAVLinkMessageMatcher = Optional[
     Union[dict[str, Any], Callable[[MAVLinkMessage], bool]]
 ]
+"""Type specification for MAVLink message matchers. A message matcher is either
+`None` (meaning to match all messages), a dictionary containing the required
+field name-value pairs in a message that we need to consider the message to
+be a match, or a callable that takes a MAVLinkMessage and returns `True` if
+the message is a match.
+"""
 
-#:
 MAVLinkMessageSpecification = tuple[str, dict[str, Any]]
+"""Type specification for MAVLink message specifications. A message specification
+is a tuple containing the message type and a dictionary of field name-value
+pairs. These are used to construct new MAVLink messages.
+"""
 
-#: Type specification for the broadcast_packet() function of a MAVLinkNetwork object
 PacketBroadcasterFn = Callable[..., Awaitable[None]]
+"""Type specification for the broadcast_packet() function of a MAVLinkNetwork object."""
 
-#: Type specification for the send_packet() function of a MAVLinkNetwork object
 PacketSenderFn = Callable[..., Awaitable[Optional[MAVLinkMessage]]]
+"""Type specification for the send_packet() function of a MAVLinkNetwork object."""
 
 
 def _spec(name, **kwds):
@@ -160,7 +165,7 @@ class MAVLinkStatusTextTargetSpecification:
         if isinstance(x, int):
             return x
         elif isinstance(x, str):
-            return int(getattr(MAVSeverity, x.upper(), None))
+            return int(getattr(MAVSeverity, x.upper(), None))  # type: ignore
         else:
             return None
 

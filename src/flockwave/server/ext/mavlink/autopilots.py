@@ -535,7 +535,7 @@ class PX4(Autopilot):
     def is_prearm_check_in_progress(
         self, heartbeat: MAVLinkMessage, sys_status: MAVLinkMessage
     ) -> bool:
-        mask = MAVSysStatusSensor.PREARM_CHECK
+        mask = MAVSysStatusSensor.PREARM_CHECK.value
         if (
             sys_status.onboard_control_sensors_present
             & sys_status.onboard_control_sensors_enabled
@@ -640,13 +640,14 @@ class ArduPilot(Autopilot):
         # MOTOR_OUTPUTS in the "present" and "health" field and the "enabled"
         # field specifies whether the motor outputs are enabled
         if (
-            sys_status.onboard_control_sensors_health & MAVSysStatusSensor.MOTOR_OUTPUTS
+            sys_status.onboard_control_sensors_health
+            & MAVSysStatusSensor.MOTOR_OUTPUTS.value
             and sys_status.onboard_control_sensors_present
-            & MAVSysStatusSensor.MOTOR_OUTPUTS
+            & MAVSysStatusSensor.MOTOR_OUTPUTS.value
         ):
             return not bool(
                 sys_status.onboard_control_sensors_enabled
-                & MAVSysStatusSensor.MOTOR_OUTPUTS
+                & MAVSysStatusSensor.MOTOR_OUTPUTS.value
             )
         else:
             return False
@@ -1145,7 +1146,7 @@ class ArduPilotWithSkybrush(ArduPilot):
         # Our patched firmware (ab)uses the CALIBRATING state in the heartbeat
         # for this before ArduCopter 4.0.5. From ArduCopter 4.0.5 onwwards,
         # there is a "preflight check" sensor so we use that
-        mask = MAVSysStatusSensor.PREARM_CHECK
+        mask = MAVSysStatusSensor.PREARM_CHECK.value
         if sys_status.onboard_control_sensors_present & mask:
             # ArduCopter version reports prearm check status with this message
             if sys_status.onboard_control_sensors_enabled & mask:

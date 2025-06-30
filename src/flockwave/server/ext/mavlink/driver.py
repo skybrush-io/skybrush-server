@@ -2596,6 +2596,9 @@ class MAVLinkUAV(UAVBase):
         this function.
 
         """
+        # This function is called frequently, and Python enums are a bit slow
+        # so we optimize enum access by using the 'value' property on them
+
         heartbeat = self.get_last_message(MAVMessageType.HEARTBEAT)
         sys_status = self.get_last_message(MAVMessageType.SYS_STATUS)
         if not heartbeat or not sys_status:
@@ -2613,38 +2616,40 @@ class MAVLinkUAV(UAVBase):
         )
 
         has_gyro_error = not_healthy_sensors & (
-            MAVSysStatusSensor.GYRO_3D | MAVSysStatusSensor.GYRO2_3D
+            MAVSysStatusSensor.GYRO_3D.value | MAVSysStatusSensor.GYRO2_3D.value
         )
         has_mag_error = not_healthy_sensors & (
-            MAVSysStatusSensor.MAG_3D | MAVSysStatusSensor.MAG2_3D
+            MAVSysStatusSensor.MAG_3D.value | MAVSysStatusSensor.MAG2_3D.value
         )
         has_accel_error = not_healthy_sensors & (
-            MAVSysStatusSensor.ACCEL_3D | MAVSysStatusSensor.ACCEL2_3D
+            MAVSysStatusSensor.ACCEL_3D.value | MAVSysStatusSensor.ACCEL2_3D.value
         )
         has_baro_error = not_healthy_sensors & (
-            MAVSysStatusSensor.ABSOLUTE_PRESSURE
-            | MAVSysStatusSensor.DIFFERENTIAL_PRESSURE
+            MAVSysStatusSensor.ABSOLUTE_PRESSURE.value
+            | MAVSysStatusSensor.DIFFERENTIAL_PRESSURE.value
         )
-        has_gps_error = not_healthy_sensors & MAVSysStatusSensor.GPS
-        has_proximity_error = not_healthy_sensors & MAVSysStatusSensor.PROXIMITY
+        has_gps_error = not_healthy_sensors & MAVSysStatusSensor.GPS.value
+        has_proximity_error = not_healthy_sensors & MAVSysStatusSensor.PROXIMITY.value
         has_motor_error = not_healthy_sensors & (
-            MAVSysStatusSensor.MOTOR_OUTPUTS | MAVSysStatusSensor.REVERSE_MOTOR
+            MAVSysStatusSensor.MOTOR_OUTPUTS.value
+            | MAVSysStatusSensor.REVERSE_MOTOR.value
         )
-        has_geofence_error = not_healthy_sensors & MAVSysStatusSensor.GEOFENCE
-        has_rc_error = not_healthy_sensors & MAVSysStatusSensor.RC_RECEIVER
-        has_battery_error = not_healthy_sensors & MAVSysStatusSensor.BATTERY
-        has_logging_error = not_healthy_sensors & MAVSysStatusSensor.LOGGING
+        has_geofence_error = not_healthy_sensors & MAVSysStatusSensor.GEOFENCE.value
+        has_rc_error = not_healthy_sensors & MAVSysStatusSensor.RC_RECEIVER.value
+        has_battery_error = not_healthy_sensors & MAVSysStatusSensor.BATTERY.value
+        has_logging_error = not_healthy_sensors & MAVSysStatusSensor.LOGGING.value
 
         are_motor_outputs_disabled = self._autopilot.are_motor_outputs_disabled(
             heartbeat, sys_status
         )
-        are_motors_running = heartbeat.base_mode & MAVModeFlag.SAFETY_ARMED
+        are_motors_running = heartbeat.base_mode & MAVModeFlag.SAFETY_ARMED.value
         is_prearm_check_in_progress = self._autopilot.is_prearm_check_in_progress(
             heartbeat, sys_status
         )
         is_returning_home = self._autopilot.is_rth_flight_mode(
             heartbeat.base_mode, heartbeat.custom_mode
         )
+        is_in_standby = heartbeat.system_status == MAVState.STANDBY.value
 
         # The geofence status is a bit of a mess. ArduCopter and PX4 both report
         # geofence violations by marking the geofence sensor as "present,
@@ -2675,20 +2680,20 @@ class MAVLinkUAV(UAVBase):
             FlockwaveErrorCode.LANDING: show_stage is DroneShowExecutionStage.LANDING,
             FlockwaveErrorCode.TAKEOFF: show_stage is DroneShowExecutionStage.TAKEOFF,
             FlockwaveErrorCode.AUTOPILOT_INIT_FAILED: (
-                heartbeat.system_status == MAVState.UNINIT
+                heartbeat.system_status == MAVState.UNINIT.value
             ),
             FlockwaveErrorCode.AUTOPILOT_INITIALIZING: (
-                heartbeat.system_status == MAVState.BOOT
+                heartbeat.system_status == MAVState.BOOT.value
             ),
             FlockwaveErrorCode.UNSPECIFIED_ERROR: (
                 # RC errors apparently trigger this error condition with
                 # ArduCopter if we don't exclude it explicitly
-                heartbeat.system_status == MAVState.CRITICAL
+                heartbeat.system_status == MAVState.CRITICAL.value
                 and not not_healthy_sensors
                 and not has_rc_error
             ),
             FlockwaveErrorCode.UNSPECIFIED_CRITICAL_ERROR: (
-                heartbeat.system_status == MAVState.EMERGENCY
+                heartbeat.system_status == MAVState.EMERGENCY.value
                 and not not_healthy_sensors
             ),
             FlockwaveErrorCode.MAGNETIC_ERROR: has_mag_error,
@@ -2723,19 +2728,16 @@ class MAVLinkUAV(UAVBase):
             FlockwaveErrorCode.PREARM_CHECK_IN_PROGRESS: is_prearm_check_in_progress,
             # If the motors are not running yet but we are on the ground, ready
             # to fly, we use an informational flag to let the user know
-            FlockwaveErrorCode.ON_GROUND: (
-                not are_motors_running and heartbeat.system_status == MAVState.STANDBY
-            ),
+            FlockwaveErrorCode.ON_GROUND: not are_motors_running and is_in_standby,
             # If the motors are running but we are not in the air yet; we use an
             # informational flag to let the user know
-            FlockwaveErrorCode.MOTORS_RUNNING_WHILE_ON_GROUND: (
-                are_motors_running and heartbeat.system_status == MAVState.STANDBY
-            ),
+            FlockwaveErrorCode.MOTORS_RUNNING_WHILE_ON_GROUND: are_motors_running
+            and is_in_standby,
             # Use the special RTH error code if the drone is in RTH or smart RTH mode
             # and its mode index is larger than the standby mode (typically:
             # active, critical, emergency, poweroff, termination)
             FlockwaveErrorCode.RETURN_TO_HOME: is_returning_home
-            and heartbeat.system_status > MAVState.STANDBY,
+            and heartbeat.system_status > MAVState.STANDBY.value,
         }
 
         # Clear the collected prearm failure messages if the heartbeat and/or

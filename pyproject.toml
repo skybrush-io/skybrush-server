@@ -53,13 +53,13 @@ flockwave-async = { version = "^2.0.1", source = "fury" }
 flockwave-conn = { extras = [
   "rpc",
   "serial",
-], source = "fury", version = "^9.0.0" }
+], source = "fury", version = "^9.1.0" }
 flockwave-ext = { version = "^1.27.0", source = "fury" }
 flockwave-flockctrl = { version = "^4.0.0", source = "collmot", optional = true }
 flockwave-gps = { version = "^4.0.0", source = "fury" }
 flockwave-logger = { version = "^2.1.0", source = "fury" }
 flockwave-mavlink = { version = ">=0.5.0", source = "fury" }
-flockwave-net = { extras = ["async"], version = "^8.0.0", source = "fury" }
+flockwave-net = { extras = ["async"], version = "^8.1.0", source = "fury" }
 flockwave-parsers = { version = "^3.0.1", source = "fury" }
 flockwave-spec = { version = "^2.3.0", source = "fury", extras = [
   "validation",

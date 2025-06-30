@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Performance improvements in the parsing of MAVLink messages.
 
+- The receive buffer size of UDP listener connections (used by the MAVLink module)
+  is now increased to the maximum value allowed by the operating system. This
+  helps in preventing dropped UDP packets when the system is under high load.
+
 ## [2.31.0] - 2025-06-23
 
 ### Added

@@ -967,20 +967,20 @@ reference = "fury"
 
 [[package]]
 name = "flockwave-conn"
-version = "9.0.0"
+version = "9.1.0"
 description = "Connection objects for various data sources"
 optional = false
 python-versions = ">=3.10"
 groups = ["main"]
 files = [
-    {file = "flockwave-conn-9.0.0.tar.gz", hash = "sha256:e2b7483f44110b29530ad69b467b4e1aa1b80130ddbaafc97ff3941cbd3d4b9c"},
-    {file = "flockwave_conn-9.0.0-py3-none-any.whl", hash = "sha256:a606e7d496a20a75329db7dae39ae7ee13dd7129e02127a475dd2c135673eb52"},
+    {file = "flockwave-conn-9.1.0.tar.gz", hash = "sha256:6259f12b4c0666a060b5b742716333a6628232b6c6a56634a9b6237103095d04"},
+    {file = "flockwave_conn-9.1.0-py3-none-any.whl", hash = "sha256:52b98a05914184eca38d3f533b9880a816a481aa1da865d23c2e2e5d1702e057"},
 ]
 
 [package.dependencies]
 blinker = ">=1.4"
 flockwave-async = {version = ">=2.0.1", optional = true, markers = "extra == \"rpc\""}
-flockwave-net = {version = ">=8.0.0", extras = ["async"]}
+flockwave-net = {version = ">=8.1.0", extras = ["async"]}
 flockwave-parsers = ">=3.0.1"
 pyserial = {version = ">=3.5", optional = true, markers = "extra == \"serial\""}
 tinyrpc = {version = ">=1.1.7", extras = ["msgpack"], optional = true, markers = "extra == \"rpc\""}
@@ -1115,14 +1115,14 @@ reference = "fury"
 
 [[package]]
 name = "flockwave-net"
-version = "8.0.0"
+version = "8.1.0"
 description = "Networking related functions for apps based on the Flockwave framework"
 optional = false
 python-versions = ">=3.10"
 groups = ["main"]
 files = [
-    {file = "flockwave-net-8.0.0.tar.gz", hash = "sha256:e7bebc796c043224eef02e566a048a63d4e78f2953917b648f72944f4156c958"},
-    {file = "flockwave_net-8.0.0-py3-none-any.whl", hash = "sha256:c37efa837df456a6de7eea6ded6ce96f2f8956d298b48055ecebc4dc59af6822"},
+    {file = "flockwave-net-8.1.0.tar.gz", hash = "sha256:2636e352348cd3d185658c7f9194d55932ecbcb1d7de5c4eef2fb474f3a06e96"},
+    {file = "flockwave_net-8.1.0-py3-none-any.whl", hash = "sha256:8f07f62b6b488f7ecb712d69eb54d71aaf802a71d384b4b7fae9be0906a08e06"},
 ]
 
 [package.dependencies]
@@ -3375,4 +3375,4 @@ pro = ["skybrush-ext-firmware-update", "skybrush-ext-flight-report", "skybrush-e
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10,<4.0"
-content-hash = "54a7d6de921f0555a4cf046d78231ccc506627418b00ce103d95fb1bbf5edf79"
+content-hash = "4dbd262074b6817a44a5ff7237d7b9e6d8d73204470adab831743ca477a95a83"

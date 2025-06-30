@@ -1095,14 +1095,14 @@ reference = "fury"
 
 [[package]]
 name = "flockwave-mavlink"
-version = "0.4.2"
+version = "0.5.0"
 description = "MAVLink protocol support for Skybrush"
 optional = false
 python-versions = ">=3.9"
 groups = ["main"]
 files = [
-    {file = "flockwave-mavlink-0.4.2.tar.gz", hash = "sha256:d5b041fbac7d3e0f4f7aeb16961a41c48eae7c8f4a8c96bfe6e061b447a00902"},
-    {file = "flockwave_mavlink-0.4.2-py3-none-any.whl", hash = "sha256:013b700562475245369484ce8dd53972d3bd9fa0e9ef21667bee191a840f8515"},
+    {file = "flockwave-mavlink-0.5.0.tar.gz", hash = "sha256:c62829a011c77e9d39fc7e4e710399b80055ba551bd1413ede85dbba7fe36673"},
+    {file = "flockwave_mavlink-0.5.0-py3-none-any.whl", hash = "sha256:1acfb0713fedcc714b9d037c29b46b471cbc1f0b05498ccec474e2d25ca6a51a"},
 ]
 
 [package.dependencies]
@@ -3375,4 +3375,4 @@ pro = ["skybrush-ext-firmware-update", "skybrush-ext-flight-report", "skybrush-e
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10,<4.0"
-content-hash = "904372991c95b36370f81013e83c175eb2aaec6ec258bfb4bbb6c300b53c53d4"
+content-hash = "54a7d6de921f0555a4cf046d78231ccc506627418b00ce103d95fb1bbf5edf79"

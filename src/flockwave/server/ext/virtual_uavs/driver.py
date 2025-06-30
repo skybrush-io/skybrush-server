@@ -34,6 +34,7 @@ from flockwave.server.model.gps import GPSFixType
 from flockwave.server.model.log import FlightLog, FlightLogKind, FlightLogMetadata
 from flockwave.server.model.mission import MissionItemBundle
 from flockwave.server.model.preflight import PreflightCheckResult, PreflightCheckInfo
+from flockwave.server.model.transport import TransportOptions
 from flockwave.server.model.uav import VersionInfo, UAVBase, UAVDriver
 from flockwave.server.show import (
     get_coordinate_system_from_show_specification,
@@ -93,6 +94,7 @@ class VirtualUAV(UAVBase):
     _position_flat: FlatEarthCoordinate
     _request_shutdown: Optional[Callable[[], None]]
     _shutdown_reason: Optional[str]
+    _sleeping: bool
     _trajectory_transformation: Optional[FlatEarthToGPSCoordinateTransformation]
     _trans: FlatEarthToGPSCoordinateTransformation
     _velocity_xyz: Vector3D
@@ -171,6 +173,7 @@ class VirtualUAV(UAVBase):
         self._parameters = {}
         self._position_xyz = Vector3D()
         self._position_flat = FlatEarthCoordinate()
+        self._sleeping = False
         self._state = None  # type: ignore
         self._target_xyz = None
         self._trajectory = None
@@ -215,6 +218,9 @@ class VirtualUAV(UAVBase):
         Returns:
             whether the operation has succeeded
         """
+        if self.sleeping:
+            return False
+
         if self.state is VirtualUAVState.LANDED:
             self.armed = True
             return True
@@ -227,6 +233,9 @@ class VirtualUAV(UAVBase):
         Returns:
             whether the operation has succeeded
         """
+        if self.sleeping:
+            return False
+
         if self.state is VirtualUAVState.LANDED:
             self.armed = False
             return True
@@ -337,6 +346,16 @@ class VirtualUAV(UAVBase):
         # Simulate a bit of delay to make it more realistic
         await sleep(0.05)
         self._parameters[name] = str(value)
+
+    @property
+    def sleeping(self) -> bool:
+        """Returns whether the drone is sleeping."""
+        return self._sleeping
+
+    @sleeping.setter
+    def sleeping(self, value: bool) -> None:
+        self._sleeping = value
+        self.ensure_error(FlockwaveErrorCode.SLEEPING, present=self._sleeping)
 
     @property
     def state(self) -> VirtualUAVState:
@@ -849,6 +868,9 @@ class VirtualUAV(UAVBase):
 
     def takeoff(self) -> None:
         """Starts a simulated take-off with the virtual UAV."""
+        if self.sleeping:
+            return
+
         if self.state != VirtualUAVState.LANDED:
             return
 
@@ -887,6 +909,7 @@ class VirtualUAV(UAVBase):
 
         self.armed = bool(self.boots_armed)
         self.autopilot_initializing = True
+        self.sleeping = False
 
         self._trajectory = None
         self._trajectory_player = None
@@ -1132,6 +1155,16 @@ class VirtualUAVDriver(UAVDriver[VirtualUAV]):
         except KeyError:
             raise RuntimeError(f"no such log: {log_id}") from None
 
+    async def _enter_low_power_mode_single(
+        self, uav: VirtualUAV, *, transport: Optional[TransportOptions]
+    ) -> None:
+        if uav.motors_running:
+            raise RuntimeError(
+                "Cannot bring UAV to sleep mode while motors are running"
+            )
+
+        uav.sleeping = True
+
     async def _get_log_list_single(self, uav: VirtualUAV) -> list[FlightLogMetadata]:
         # Simulate a bit of delay to make it more realistic
         await sleep(0.2)
@@ -1139,6 +1172,11 @@ class VirtualUAVDriver(UAVDriver[VirtualUAV]):
 
     async def _get_parameter_single(self, uav: VirtualUAV, name: str) -> Any:
         return await uav.get_parameter(name)
+
+    async def _resume_from_low_power_mode_single(
+        self, uav: VirtualUAV, *, transport: Optional[TransportOptions]
+    ) -> None:
+        uav.sleeping = False
 
     def _request_preflight_report_single(self, uav: VirtualUAV) -> PreflightCheckInfo:
         return _dummy_preflight_check_info

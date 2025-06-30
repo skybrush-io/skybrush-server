@@ -1501,8 +1501,7 @@ class MAVLinkUAV(UAVBase):
             if value != observed_value:
                 raise RuntimeError(
                     f"Failed to set parameter {name!r}, "
-                    "tried to set {value!r}, "
-                    "got {observed_value!r}"
+                    f"tried to set {value!r}, got {observed_value!r}"
                 ) from None
 
     async def test_component(

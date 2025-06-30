@@ -12,7 +12,7 @@ from typing import Optional
 
 from flockwave import logger
 from flockwave.app_framework.hacks import install_unraisable_hook
-from flockwave.app_framework.instrumentation import SlowTaskDetector
+from flockwave.app_framework.instrumentation import get_enabled_instruments
 
 from .logger import log
 from .utils.packaging import is_packaged
@@ -106,9 +106,7 @@ def start(
         return retval
 
     # Add instrumentation if needed
-    instruments = []
-    if "slow_tasks" in str(os.environ.get("SKYBRUSH_INSTRUMENTS", "")).lower():
-        instruments.append(SlowTaskDetector(threshold=0.01))
+    instruments = get_enabled_instruments(env_var="SKYBRUSH_INSTRUMENTS")
 
     # Now start the server
     trio.run(app.run, instruments=instruments)

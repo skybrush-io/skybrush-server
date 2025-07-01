@@ -1,7 +1,7 @@
 /*
  * This configuration file shows how you can configure two MAVLink networks
  * if you have more than 250 drones. The networks are assumed to live in the
- * same IP network that has enough IP addresses to hot all the drones. Drones
+ * same IP network that has enough IP addresses to host all the drones. Drones
  * in different MAVLink networks are separated by their UDP port numbers:
  * drones in the first network send their telemetry data to the GCS on UDP
  * port 14550 and listen for broadcast packets on UDP port 14555, while drones

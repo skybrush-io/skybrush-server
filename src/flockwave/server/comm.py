@@ -41,7 +41,11 @@ from typing import (
 )
 
 from flockwave.channels import BroadcastMessageChannel, MessageChannel
-from flockwave.connections import Connection, get_connection_capabilities
+from flockwave.connections import (
+    Connection,
+    get_connection_capabilities,
+    SupervisionFunction,
+)
 
 from .types import Disposer
 
@@ -393,7 +397,14 @@ class CommunicationManager(Generic[PacketType, AddressType]):
                 if entry.channel:
                     yield entry.channel
 
-    async def run(self, *, consumer: Consumer, supervisor, log: Logger, tasks=None):
+    async def run(
+        self,
+        *,
+        consumer: Consumer,
+        supervisor: SupervisionFunction,
+        log: Logger,
+        tasks: Optional[list[Callable[..., Awaitable[Any]]]] = None,
+    ):
         """Runs the communication manager in a separate task, using the
         given supervisor function to ensure that the connections associated to
         the communication manager stay open.
@@ -472,7 +483,7 @@ class CommunicationManager(Generic[PacketType, AddressType]):
         self,
         *,
         consumer: Consumer,
-        supervisor,
+        supervisor: SupervisionFunction,
         tasks: Optional[list[Callable[..., Awaitable[Any]]]] = None,
     ) -> None:
         tx_queue, rx_queue = open_memory_channel[
@@ -485,6 +496,7 @@ class CommunicationManager(Generic[PacketType, AddressType]):
                 supervisor,
                 entry.connection,
                 task=partial(self._run_inbound_link, entry=entry, queue=tx_queue),
+                name=f"comm-inbound-link:{entry.name or 'unknown'}",
             )
             for entry in self._iter_entries()
         )

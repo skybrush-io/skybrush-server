@@ -46,7 +46,7 @@ colour = ">=0.1.5"
 pyjwt = "^2.10.1"
 hypercorn = { extras = ["trio"], version = ">=0.17.3" }
 passlib = { extras = ["bcrypt"], version = "^1.7.4" }
-flockwave-app-framework = { version = "^3.4.0", extras = [
+flockwave-app-framework = { version = "^3.5.0", extras = [
   "daemon",
 ], source = "fury" }
 flockwave-async = { version = "^2.0.1", source = "fury" }

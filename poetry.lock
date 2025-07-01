@@ -915,19 +915,19 @@ dotenv = ["python-dotenv"]
 
 [[package]]
 name = "flockwave-app-framework"
-version = "3.4.0"
+version = "3.5.0"
 description = "Generic app framework for CLI based apps in the Skybrush suite"
 optional = false
 python-versions = ">=3.10"
 groups = ["main"]
 files = [
-    {file = "flockwave-app-framework-3.4.0.tar.gz", hash = "sha256:54f16d61fdb4b8b20db883d665525a48ea354790fce6389f5dc8be5c199ad9d0"},
-    {file = "flockwave_app_framework-3.4.0-py3-none-any.whl", hash = "sha256:24448b46a4611a2305c64b21a03e51b0c765f5e0aa8ebe0040e31a4140cd2cd1"},
+    {file = "flockwave-app-framework-3.5.0.tar.gz", hash = "sha256:0d6417ee03a0746082aef6b08cc509c969d0ec6ca686c2defb1c556b04058e13"},
+    {file = "flockwave_app_framework-3.5.0-py3-none-any.whl", hash = "sha256:bff174897a9f231d0b72c00a2de517b988b5532a5fac0723a3c457dbb89159be"},
 ]
 
 [package.dependencies]
 exceptiongroup = ">=1.3.0"
-flockwave-conn = {version = ">=9.0.0", optional = true, markers = "extra == \"daemon\""}
+flockwave-conn = {version = ">=9.2.0", optional = true, markers = "extra == \"daemon\""}
 flockwave-ext = {version = ">=1.27.0", optional = true, markers = "extra == \"daemon\""}
 json5 = ">=0.12.0"
 tomli = {version = ">=2.2.1", markers = "python_version < \"3.11\""}
@@ -936,7 +936,7 @@ trio = ">=0.30.0"
 [package.extras]
 asgi = ["uvicorn[standard] (>=0.34.3)"]
 console = ["urwid-uikit (>=2.1.1)"]
-daemon = ["flockwave-conn (>=9.0.0)", "flockwave-ext (>=1.27.0)"]
+daemon = ["flockwave-conn (>=9.2.0)", "flockwave-ext (>=1.27.0)"]
 
 [package.source]
 type = "legacy"
@@ -967,14 +967,14 @@ reference = "fury"
 
 [[package]]
 name = "flockwave-conn"
-version = "9.1.0"
+version = "9.2.0"
 description = "Connection objects for various data sources"
 optional = false
 python-versions = ">=3.10"
 groups = ["main"]
 files = [
-    {file = "flockwave-conn-9.1.0.tar.gz", hash = "sha256:6259f12b4c0666a060b5b742716333a6628232b6c6a56634a9b6237103095d04"},
-    {file = "flockwave_conn-9.1.0-py3-none-any.whl", hash = "sha256:52b98a05914184eca38d3f533b9880a816a481aa1da865d23c2e2e5d1702e057"},
+    {file = "flockwave-conn-9.2.0.tar.gz", hash = "sha256:1c685fbb258c778012629e48e2ac6a184e5b6864bce4973b35549723e1f7f7f7"},
+    {file = "flockwave_conn-9.2.0-py3-none-any.whl", hash = "sha256:6d9e35b4a641768db360d721cadedfb0f82a368424f5c4af899508f53aa988da"},
 ]
 
 [package.dependencies]
@@ -3375,4 +3375,4 @@ pro = ["skybrush-ext-firmware-update", "skybrush-ext-flight-report", "skybrush-e
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10,<4.0"
-content-hash = "4dbd262074b6817a44a5ff7237d7b9e6d8d73204470adab831743ca477a95a83"
+content-hash = "730c4be17d86f6b59796d1b45db1cee4433014f75ed8169a3c94bdee439366f3"

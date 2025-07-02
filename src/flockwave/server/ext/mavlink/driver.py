@@ -2594,7 +2594,6 @@ class MAVLinkUAV(UAVBase):
         This function does _not_ update the timestamp of the status information;
         you need to do it on your own by calling `update_status()` after calling
         this function.
-
         """
         # This function is called frequently, and Python enums are a bit slow
         # so we optimize enum access by using the 'value' property on them
@@ -2605,11 +2604,11 @@ class MAVLinkUAV(UAVBase):
             return
 
         # Check error conditions from SYS_STATUS
-        sensor_mask = (
+        sensor_mask: int = (
             sys_status.onboard_control_sensors_enabled
             & sys_status.onboard_control_sensors_present
         )
-        not_healthy_sensors = sensor_mask & (
+        not_healthy_sensors: int = sensor_mask & (
             # Python has no proper bitwise negation on unsigned integers
             # so we use XOR instead
             sys_status.onboard_control_sensors_health ^ 0xFFFFFFFF

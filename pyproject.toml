@@ -60,7 +60,7 @@ flockwave-gps = { version = "^4.0.0", source = "fury" }
 flockwave-logger = { version = "^2.1.0", source = "fury" }
 flockwave-mavlink = { version = ">=0.5.0", source = "fury" }
 flockwave-net = { extras = ["async"], version = "^8.1.0", source = "fury" }
-flockwave-parsers = { version = "^3.0.1", source = "fury" }
+flockwave-parsers = { version = ">=4.0.1", source = "fury" }
 flockwave-spec = { version = "^2.3.0", source = "fury", extras = [
   "validation",
 ] }
@@ -91,6 +91,7 @@ wrapt = "^1.17.2"
 cachetools = "^6.1.0"
 platformdirs = "^4.3.8"
 fastjsonschema = "^2.21.1"
+orjson = "^3.10.18"
 
 [tool.poetry.group.dev.dependencies]
 coverage = { extras = ["toml"], version = "^7.9.1" }

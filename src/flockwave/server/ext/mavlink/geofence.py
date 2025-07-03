@@ -150,6 +150,7 @@ class GeofenceManager:
                         "points": [],
                         "count": point_count,
                     }
+                assert current_polygon is not None
                 current_polygon["points"].append(to_point(reply))
 
             elif reply.command in (
@@ -250,7 +251,7 @@ class GeofenceManager:
             TooSlowError: if the UAV failed to respond in time
         """
         items = []
-        for area in areas:
+        for area in areas or ():
             items.extend(_convert_area_to_mission_items(area))
         if not items:
             return

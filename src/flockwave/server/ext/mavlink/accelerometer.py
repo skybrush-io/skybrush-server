@@ -122,27 +122,27 @@ class AccelerometerCalibration:
             self._percentage = int(step) * 15 - 5  # 10, 25, 40, 55, 70, 85
             self._status = AccelerometerCalibrationStatus.CALIBRATING
             suspend = True
-            message = self._next_step.as_action()
+            reply = self._next_step.as_action()
         elif step.is_successful:
             self._percentage = 100
             self._status = AccelerometerCalibrationStatus.SUCCESSFUL
-            message = "Calibration successful"
+            reply = "Calibration successful"
         elif step.is_failure:
             # Keep the percentage where it was so we know how much of the
             # calibration went through before it failed
             self._status = AccelerometerCalibrationStatus.FAILED
-            message = "Calibration failed"
+            reply = "Calibration failed"
         else:
             self._percentage = 0
             self._status = AccelerometerCalibrationStatus.NOT_RUNNING
-            message = ""
+            reply = ""
 
         # report progress of the calibration
         if not self._reporter.done:
             if self.failed:
-                self._reporter.fail(message)
+                self._reporter.fail(reply)
             elif suspend:
                 self._reporter.notify(self._percentage)
-                self._reporter.suspend(message)
+                self._reporter.suspend(reply)
             else:
-                self._reporter.notify(self._percentage, message)
+                self._reporter.notify(self._percentage, reply)

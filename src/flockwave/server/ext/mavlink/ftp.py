@@ -11,7 +11,14 @@ from itertools import cycle, islice
 from pathlib import PurePosixPath
 from random import randint
 from struct import Struct
-from trio import as_safe_channel, fail_after, move_on_after, TooSlowError, wrap_file
+from trio import (
+    as_safe_channel,
+    BrokenResourceError,
+    fail_after,
+    move_on_after,
+    TooSlowError,
+    wrap_file,
+)
 from typing import (
     TYPE_CHECKING,
     AsyncGenerator,
@@ -458,6 +465,10 @@ class MAVFTP:
         try:
             await self._aclose()
             self._closed = True
+        except BrokenResourceError:
+            # This is okay, this happens if we shut down the app while an upload
+            # is in progress because the outbound packet queue gets closed.
+            pass
         finally:
             self._closing = False
 

@@ -90,7 +90,7 @@ class GeofenceStatus:
     """
 
     min_altitude: Optional[float] = None
-    """Minimum altitude that the drone must maintain; `None` means no
+    """Minimum altitude that the drone must maintain, in meters; `None` means no
     minimum altitude requirement.
     """
 
@@ -100,8 +100,8 @@ class GeofenceStatus:
     """
 
     max_distance: Optional[float] = None
-    """Maximum distance that the drone is allowed to fly from its home position;
-    `None` means no distance limit.
+    """Maximum distance that the drone is allowed to fly from its home position,
+    in meters; `None` means no distance limit.
     """
 
     polygons: list[GeofencePolygon] = field(default_factory=list)
@@ -139,8 +139,6 @@ class GeofenceConfigurationRequest:
     implement support for more complex geofences. Things that are missing:
 
     - circular geofences
-
-    - configurable geofence actions
 
     - selectively turning on/off certain geofence types
     """

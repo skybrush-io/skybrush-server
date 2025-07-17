@@ -830,15 +830,16 @@ class MessageHub:
             message = self.create_response_or_notification(
                 message, in_response_to=in_response_to
             )
+
         if to is None:
             assert isinstance(
                 message, FlockwaveNotification
             ), "broadcast messages cannot be sent in response to a particular message"
             return await self.broadcast_message(message)
-
-        request = Request(message, to=to, in_response_to=in_response_to)
-        await self._queue_tx.send(request)
-        return request
+        else:
+            request = Request(message, to=to, in_response_to=in_response_to)
+            await self._queue_tx.send(request)
+            return request
 
     def unregister_message_handler(
         self, func: MessageHandler, message_types: Optional[Iterable[str]] = None

@@ -6,7 +6,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from subprocess import PIPE, STDOUT
 from tempfile import NamedTemporaryFile
-from trio import move_on_after, open_nursery, open_process, Process, sleep_forever
+from trio import move_on_after, open_nursery, Process, sleep_forever
+from trio.lowlevel import open_process
 from typing import Any, Callable, IO, Optional
 
 from .errors import NoIdleWorkerError
@@ -23,7 +24,7 @@ class WorkerEntry:
     name: Optional[str] = None
     process: Optional[Process] = None
     starting: bool = True
-    config_fp: Optional[IO[bytes]] = None
+    config_fp: Optional[IO[str]] = None
 
     def assign_process(self, process: Process) -> None:
         self.process = process
@@ -45,8 +46,13 @@ class WorkerEntry:
 class WorkerManager:
     """Class responsible for spinning up and stopping workers as needed."""
 
+    _processes: list[Optional[WorkerEntry]]
+    _users_to_entries: dict[str, WorkerEntry]
+
     def __init__(
-        self, max_count: int = 1, worker_config_factory: Callable[[int], Any] = None
+        self,
+        max_count: int = 1,
+        worker_config_factory: Optional[Callable[[int], Any]] = None,
     ):
         """Constructor.
 
@@ -96,6 +102,8 @@ class WorkerManager:
         Raises:
             NoIdleWorkerError: when there aren't any idle workers available
         """
+        assert self._nursery is not None
+
         user = f"{name} (id={id})" if name else id
         entry = self._users_to_entries.get(id)
         if entry:
@@ -168,13 +176,15 @@ class WorkerManager:
             finally:
                 self._nursery = None
 
-    def _find_vacant_slot(self) -> int:
+    def _find_vacant_slot(self) -> Optional[int]:
         for index, slot in enumerate(self._processes):
             if slot is None:
                 return index
         return None
 
     async def _stream_process_output(self, index: int, process: Process) -> None:
+        assert process.stdout is not None
+
         logger = log.getChild(f"worker{index}")
         try:
             chunks = []
@@ -197,6 +207,8 @@ class WorkerManager:
 
     async def _supervise_process(self, index: int, entry: WorkerEntry) -> None:
         process = entry.process
+        assert process is not None
+
         user = entry.id
         worker = f"Worker #{index} (user={user}, PID={process.pid})"
 

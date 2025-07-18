@@ -17,7 +17,7 @@ MAX_WORKERS = 4
 
 # Secret key used for JWT tokens sent to the gateway when someone wants to
 # spin up a new worker. Only tokens signed with this key will be accepted.
-JWT_SECRET = "bhu8nji9"
+JWT_SECRET = "a-string-secret-at-least-256-bits-long"
 
 # Set this to a truthy value to make the root URL redirect to aonther address
 ROOT_REDIRECTS_TO = None

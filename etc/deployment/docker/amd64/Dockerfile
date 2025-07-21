@@ -1,14 +1,8 @@
 # syntax = docker/dockerfile:1.0-experimental
-FROM python:3.9-slim AS builder
+FROM python:3.11-slim AS builder
 
 # Update all the things
 RUN apt-get update && apt-get -y upgrade
-
-# Install some additional requirements
-RUN apt-get install -y gcc git openssh-client
-
-# Download public key for git.collmot.com
-RUN mkdir -p -m 0600 ~/.ssh && ssh-keyscan git.collmot.com >>~/.ssh/known_hosts
 
 # Switch working directory
 WORKDIR /app
@@ -27,14 +21,13 @@ RUN .venv/bin/pip install -r requirements-main.txt
 
 # Now we can copy the application itself
 COPY src/flockwave ./src/flockwave/
-COPY src/skybrush ./src/skybrush/
 
 # Clean up __pycache__ files
 RUN find . | grep -E "(__pycache__|\.pyc$)" | xargs rm -rf
 
 # Start the second stage where we don't add the stuff that we only need for
 # compiling things
-FROM python:3.9-slim
+FROM python:3.11-slim
 
 # Add tini as an init system
 ENV TINI_VERSION v0.19.0

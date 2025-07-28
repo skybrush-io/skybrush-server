@@ -11,13 +11,19 @@ from typing import (
     ClassVar,
     Iterable,
     Optional,
+    Protocol,
     Sequence,
     Union,
+    TYPE_CHECKING,
 )
 
 from .enums import MAVSeverity
 from .rssi import RSSIMode
 from .signing import MAVLinkSigningConfiguration
+
+if TYPE_CHECKING:
+    from .driver import MAVLinkUAV
+
 
 __all__ = (
     "MAVLinkFlightModeNumbers",
@@ -58,12 +64,40 @@ pairs. These are used to construct new MAVLink messages.
 PacketBroadcasterFn = Callable[..., Awaitable[None]]
 """Type specification for the broadcast_packet() function of a MAVLinkNetwork object."""
 
-PacketSenderFn = Callable[..., Awaitable[Optional[MAVLinkMessage]]]
-"""Type specification for the send_packet() function of a MAVLinkNetwork object."""
+
+class PacketSenderFn(Protocol):
+    """Type specification for the send_packet() function of a MAVLinkNetwork_
+    bject.
+
+    See the documentation in `MAVLinkNetwork.send_packet()` for more details.
+    """
+
+    def __call__(
+        self,
+        spec: MAVLinkMessageSpecification,
+        target: MAVLinkUAV,
+        *,
+        wait_for_response: Optional[tuple[str, MAVLinkMessageMatcher]] = None,
+        wait_for_one_of: Optional[dict[str, MAVLinkMessageSpecification]] = None,
+        channel: Optional[str] = None,
+    ) -> Awaitable[Optional[MAVLinkMessage]]: ...
 
 
-def _spec(name, **kwds):
-    return (name, kwds)
+class UAVBoundPacketSenderFn(Protocol):
+    """Type specification for the send_packet() function of a MAVLinkUAV_
+    object.
+
+    See the documentation in `MAVLinkUAV.send_packet()` for more details.
+    """
+
+    def __call__(
+        self,
+        spec: MAVLinkMessageSpecification,
+        *,
+        wait_for_response: Optional[tuple[str, MAVLinkMessageMatcher]] = None,
+        wait_for_one_of: Optional[dict[str, MAVLinkMessageSpecification]] = None,
+        channel: Optional[str] = None,
+    ) -> Awaitable[Optional[MAVLinkMessage]]: ...
 
 
 class _MAVLinkMessageSpecificationFactory:

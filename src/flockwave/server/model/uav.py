@@ -5,6 +5,7 @@ from __future__ import annotations
 from abc import ABCMeta, abstractmethod
 from typing import (
     Any,
+    Awaitable,
     Callable,
     Generic,
     Iterable,
@@ -50,6 +51,15 @@ VersionInfo = dict[str, str]
 """Type alias for version information objects returned from UAVDriver, mapping
 component names to version numbers
 """
+
+TUAV = TypeVar("TUAV", bound="UAV")
+"""Type variable that represents a UAV object."""
+
+TDriver = TypeVar("TDriver", bound="UAVDriver")
+"""Type variable that represents a UAV driver object."""
+
+TResult = TypeVar("TResult")
+"""Type variable that represents some unspecified result object."""
 
 
 class UAVStatusInfo(TimestampMixin, metaclass=ModelMeta):
@@ -152,12 +162,12 @@ class UAV(ModelObject, metaclass=ABCMeta):
         raise NotImplementedError
 
 
-class UAVBase(UAV):
+class UAVBase(UAV, Generic[TDriver]):
     """Base object for UAV implementations. Provides a default implementation
     of the methods required by the UAV_ interface.
     """
 
-    def __init__(self, id: str, driver: "UAVDriver"):
+    def __init__(self, id: str, driver: TDriver):
         """Constructor.
 
         Parameters:
@@ -183,7 +193,7 @@ class UAVBase(UAV):
         return self._device_tree_node
 
     @property
-    def driver(self) -> "UAVDriver":
+    def driver(self) -> TDriver:
         """Returns the UAVDriver_ object that is responsible for handling
         communication with this UAV.
         """
@@ -410,13 +420,6 @@ class UAVBase(UAV):
         if debug is not None:
             self._status.debug = debug
         self._status.update_timestamp()
-
-
-TUAV = TypeVar("TUAV", bound="UAV")
-"""Type variable that represents a UAV object."""
-
-TResult = TypeVar("TResult")
-"""Type variable that represents some unspecified result object."""
 
 
 class UAVDriver(Generic[TUAV], metaclass=ABCMeta):
@@ -1148,7 +1151,7 @@ class UAVDriver(Generic[TUAV], metaclass=ABCMeta):
 
     def _enter_low_power_mode_single(
         self, uav: TUAV, *, transport: Optional[TransportOptions] = None
-    ) -> None:
+    ) -> Union[None, Awaitable[None]]:
         """Asks the driver to request a single UAV to switch to low-power mode.
 
         May return an awaitable if sending the request takes a longer time.
@@ -1171,7 +1174,9 @@ class UAVDriver(Generic[TUAV], metaclass=ABCMeta):
         # to support low-power mode
         raise NotSupportedError
 
-    def _get_log_list_single(self, uav: TUAV) -> list[FlightLogMetadata]:
+    def _get_log_list_single(
+        self, uav: TUAV
+    ) -> Union[list[FlightLogMetadata], Awaitable[list[FlightLogMetadata]]]:
         """Asks the driver to retrieve the list of flight logs from a single
         UAV managed by this driver.
 
@@ -1211,7 +1216,7 @@ class UAVDriver(Generic[TUAV], metaclass=ABCMeta):
 
     def _resume_from_low_power_mode_single(
         self, uav: TUAV, *, transport: Optional[TransportOptions] = None
-    ) -> None:
+    ) -> Union[None, Awaitable[None]]:
         """Asks the driver to resume normal operation for a a single UAV that is
         now in low-power mode.
 
@@ -1235,7 +1240,9 @@ class UAVDriver(Generic[TUAV], metaclass=ABCMeta):
         # to support low-power mode
         raise NotSupportedError
 
-    def _request_preflight_report_single(self, uav: TUAV) -> PreflightCheckInfo:
+    def _request_preflight_report_single(
+        self, uav: TUAV
+    ) -> Union[PreflightCheckInfo, Awaitable[PreflightCheckInfo]]:
         """Asks the driver to return a detailed report about the results of the
         preflight checks for a single UAV managed by this driver.
 
@@ -1254,7 +1261,9 @@ class UAVDriver(Generic[TUAV], metaclass=ABCMeta):
         """
         raise NotImplementedError
 
-    def _request_version_info_single(self, uav: TUAV) -> VersionInfo:
+    def _request_version_info_single(
+        self, uav: TUAV
+    ) -> Union[VersionInfo, Awaitable[VersionInfo]]:
         """Asks the driver to return a mapping from component names to the
         corresponding version numbers for a single UAV managed by this driver.
 
@@ -1275,7 +1284,7 @@ class UAVDriver(Generic[TUAV], metaclass=ABCMeta):
 
     def _send_fly_to_target_signal_single(
         self, uav: TUAV, target: GPSCoordinate
-    ) -> None:
+    ) -> Union[None, Awaitable[None]]:
         """Asks the driver to send a "fly to target" signal to a single UAV
         managed by this driver.
 
@@ -1302,7 +1311,7 @@ class UAVDriver(Generic[TUAV], metaclass=ABCMeta):
 
     def _send_hover_signal_single(
         self, uav: TUAV, *, transport: Optional[TransportOptions] = None
-    ) -> None:
+    ) -> Union[None, Awaitable[None]]:
         """Asks the driver to send a position hold signal to a single UAV
         managed by this driver.
 
@@ -1327,7 +1336,7 @@ class UAVDriver(Generic[TUAV], metaclass=ABCMeta):
 
     def _send_landing_signal_single(
         self, uav: TUAV, *, transport: Optional[TransportOptions] = None
-    ) -> None:
+    ) -> Union[None, Awaitable[None]]:
         """Asks the driver to send a landing signal to a single UAV managed
         by this driver.
 
@@ -1356,7 +1365,7 @@ class UAVDriver(Generic[TUAV], metaclass=ABCMeta):
         duration: int,
         *,
         transport: Optional[TransportOptions] = None,
-    ) -> None:
+    ) -> Union[None, Awaitable[None]]:
         """Asks the driver to send a light or sound emission signal to a
         single UAV managed by this driver.
 
@@ -1394,7 +1403,7 @@ class UAVDriver(Generic[TUAV], metaclass=ABCMeta):
         force: bool = False,
         *,
         transport: Optional[TransportOptions] = None,
-    ) -> None:
+    ) -> Union[None, Awaitable[None]]:
         """Asks the driver to send a signal to start or stop the motors of the
         given UAVs, each of which are assumed to be managed by this driver.
 
@@ -1423,7 +1432,7 @@ class UAVDriver(Generic[TUAV], metaclass=ABCMeta):
 
     def _send_reset_signal_single(
         self, uav: TUAV, *, component: str, transport: Optional[TransportOptions] = None
-    ) -> None:
+    ) -> Union[None, Awaitable[None]]:
         """Asks the driver to send a reset signal to a single UAV managed by
         this driver.
 
@@ -1450,7 +1459,7 @@ class UAVDriver(Generic[TUAV], metaclass=ABCMeta):
 
     def _send_return_to_home_signal_single(
         self, uav: TUAV, *, transport: Optional[TransportOptions] = None
-    ) -> None:
+    ) -> Union[None, Awaitable[None]]:
         """Asks the driver to send a return-to-home signal to a single UAV
         managed by this driver.
 
@@ -1475,7 +1484,7 @@ class UAVDriver(Generic[TUAV], metaclass=ABCMeta):
 
     def _send_shutdown_signal_single(
         self, uav: TUAV, *, transport: Optional[TransportOptions] = None
-    ) -> None:
+    ) -> Union[None, Awaitable[None]]:
         """Asks the driver to send a shutdown signal to a single UAV managed
         by this driver.
 
@@ -1504,7 +1513,7 @@ class UAVDriver(Generic[TUAV], metaclass=ABCMeta):
         *,
         scheduled: bool = False,
         transport: Optional[TransportOptions] = None,
-    ) -> None:
+    ) -> Union[None, Awaitable[None]]:
         """Asks the driver to send a takeoff signal to a single UAV managed
         by this driver.
 
@@ -1527,7 +1536,9 @@ class UAVDriver(Generic[TUAV], metaclass=ABCMeta):
         """
         raise NotImplementedError
 
-    def _set_parameter_single(self, uav: TUAV, name: str, value: Any) -> None:
+    def _set_parameter_single(
+        self, uav: TUAV, name: str, value: Any
+    ) -> Union[None, Awaitable[None]]:
         """Asks the driver to set the value of a parameter with the given
         name for a single UAV managed by this driver.
 
@@ -1591,9 +1602,9 @@ class PassiveUAVDriver(UAVDriver[PassiveUAV]):
         return self.app.object_registry.add_if_missing(id, factory=self._create_uav)
 
     def _dispatch_request(
-        self, uavs: Iterable[UAV], signal_name: str, handler, broadcaster=None, **kwds
+        self, uavs: Iterable[UAV], request_name: str, handler, broadcaster=None, **kwds
     ) -> dict[UAV, Any]:
-        error = RuntimeError("{0} not supported".format(signal_name))
+        error = RuntimeError("{0} not supported".format(request_name))
         return dict.fromkeys(uavs, error)
 
 

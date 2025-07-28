@@ -5,7 +5,6 @@ from functools import partial, singledispatch
 from trio import fail_after, TooSlowError
 from typing import (
     Any,
-    Callable,
     Dict,
     Iterable,
     Optional,
@@ -23,7 +22,7 @@ from .enums import MAVCommand, MAVFrame, MAVMissionResult, MAVMissionType
 from .types import (
     MAVLinkMessage,
     MAVLinkMessageSpecification,
-    MAVLinkMessageMatcher,
+    UAVBoundPacketSenderFn,
     spec,
 )
 from .utils import mavlink_nav_command_to_gps_coordinate
@@ -50,7 +49,7 @@ class GeofenceManager:
     MAVLink connection.
     """
 
-    _sender: Callable
+    _sender: UAVBoundPacketSenderFn
     """A function that can be called to send a MAVLink message over the
     connection associated to this MAVFTP object.
 
@@ -70,7 +69,7 @@ class GeofenceManager:
 
     def __init__(
         self,
-        sender: Callable,
+        sender: UAVBoundPacketSenderFn,
         log: Optional[Logger] = None,
     ):
         """Constructor.
@@ -324,7 +323,7 @@ class GeofenceManager:
         self,
         mission_type: MAVMissionType,
         message: MAVLinkMessageSpecification,
-        expected_reply: MAVLinkMessageMatcher,
+        expected_reply: MAVLinkMessageSpecification,
         *,
         timeout: float = 1.5,
         retries: int = 5,
@@ -361,7 +360,10 @@ class GeofenceManager:
         while True:
             try:
                 with fail_after(timeout):
-                    key, response = await self._sender(message, wait_for_one_of=replies)
+                    reply = await self._sender(message, wait_for_one_of=replies)
+                    assert reply is not None
+
+                    key, response = reply
 
                     if key == "response":
                         # Got the response that we expected

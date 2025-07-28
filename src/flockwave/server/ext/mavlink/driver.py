@@ -716,7 +716,7 @@ class MAVLinkDriver(UAVDriver["MAVLinkUAV"]):
         )
 
     async def _enter_low_power_mode_single(
-        self, uav: "MAVLinkUAV", *, transport: Optional[TransportOptions]
+        self, uav: "MAVLinkUAV", *, transport: Optional[TransportOptions] = None
     ) -> None:
         # Effectively the same as shutdown, but without the attempt to stop the
         # motors (so drones where the motors are running will not be affected)
@@ -770,7 +770,7 @@ class MAVLinkDriver(UAVDriver["MAVLinkUAV"]):
         # be resumed (i.e. _notify_rebooted_by_us())?
 
     async def _resume_from_low_power_mode_single(
-        self, uav: "MAVLinkUAV", *, transport: Optional[TransportOptions]
+        self, uav: "MAVLinkUAV", *, transport: Optional[TransportOptions] = None
     ) -> None:
         # This is not supported by standard MAVLink so it relies on a custom
         # protocol extension
@@ -999,10 +999,9 @@ class MAVLinkMessageRecord:
         self.timestamp = monotonic()
 
 
-class MAVLinkUAV(UAVBase):
+class MAVLinkUAV(UAVBase[MAVLinkDriver]):
     """Subclass for UAVs created by the driver for MAVLink-based drones."""
 
-    driver: MAVLinkDriver
     notify_updated: Callable[[], None]
     send_log_message_to_gcs: GCSLogMessageSender
 

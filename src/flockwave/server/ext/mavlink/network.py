@@ -546,10 +546,11 @@ class MAVLinkNetwork:
         self,
         spec: MAVLinkMessageSpecification,
         target: MAVLinkUAV,
+        *,
         wait_for_response: Optional[tuple[str, MAVLinkMessageMatcher]] = None,
         wait_for_one_of: Optional[dict[str, MAVLinkMessageSpecification]] = None,
         channel: Optional[str] = None,
-    ) -> Optional[MAVLinkMessage]:
+    ) -> Union[None, MAVLinkMessage, tuple[str, MAVLinkMessage]]:
         """Sends a message to the given UAV and optionally waits for a matching
         response.
 
@@ -571,6 +572,12 @@ class MAVLinkNetwork:
                 the original message was sent.
             channel: specifies the channel that the packet should be sent on;
                 defaults to the primary channel of the network
+
+        Returns:
+            ``None`` if `wait_for_response` and `wait_for_one_of` are both
+            ``None``; the received response if `wait_for_response` was not
+            ``None``; the key of the matched message specification and the
+            message itself if `wait_for_one_of` was not ``None``.
         """
         spec[1].update(
             target_system=target.system_id,
@@ -612,6 +619,7 @@ class MAVLinkNetwork:
                 # succeed
                 await self.manager.send_packet(spec, destination)
                 return await race(tasks)
+
         else:
             await self.manager.send_packet(spec, destination)
 

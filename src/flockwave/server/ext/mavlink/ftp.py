@@ -24,17 +24,17 @@ from typing import (
     AsyncGenerator,
     AsyncIterator,
     Awaitable,
-    Callable,
     Iterable,
     Iterator,
     Optional,
+    Protocol,
     Union,
 )
 
 from flockwave.server.model.commands import Progress
 from flockwave.server.show.utils import crc32_mavftp as crc32
 
-from .types import MAVLinkMessage, spec
+from .types import MAVLinkMessage, spec, UAVBoundPacketSenderFn
 
 if TYPE_CHECKING:
     from .driver import MAVLinkUAV
@@ -42,11 +42,11 @@ if TYPE_CHECKING:
 __all__ = ("MAVFTP",)
 
 
-#: Type specification for FTP paths that are accepted by MAVFTP
 FTPPath = Union[str, bytes]
+"""Type specification for FTP paths that are accepted by MAVFTP."""
 
-#: Maximum number of bytes allowed in a single read/write operation
 _MAVFTP_CHUNK_SIZE = 239
+"""Maximum number of bytes allowed in a single read/write operation."""
 
 
 class MAVFTPOpCode(IntEnum):
@@ -110,8 +110,8 @@ class MAVFTPErrorCode(IntEnum):
         return result
 
 
-#: Struct representing the format of the payload of a MAVFTP message
 _MAVFTPMessageStruct = Struct("<HBBBBBxI")
+"""Struct representing the format of the payload of a MAVFTP message."""
 
 
 class ListingEntryType(Enum):
@@ -311,6 +311,10 @@ class MAVFTPMessage:
             raise ValueError("Message is not an error")
 
 
+class MAVFTPMessageSender(Protocol):
+    def __call__(self, message: MAVFTPMessage) -> Awaitable[MAVFTPMessage]: ...
+
+
 class MAVFTPSession:
     """Class representing a single reading or writing session over a MAVFTP
     connection.
@@ -319,11 +323,7 @@ class MAVFTPSession:
     doing; typically, the MAVFTP class uses this internally.
     """
 
-    def __init__(
-        self,
-        session_id: int,
-        sender: Callable[[MAVFTPMessage], Awaitable[MAVFTPMessage]],
-    ):
+    def __init__(self, session_id: int, sender: MAVFTPMessageSender):
         """Constructor.
 
         Parameters:
@@ -429,7 +429,7 @@ class MAVFTP:
     _closing: bool
     """Stores whether the MAVFTP connection is being closed."""
 
-    _sender: Callable[[MAVFTPMessage], Awaitable[None]]
+    _sender: UAVBoundPacketSenderFn
     """A function that can be called to send a MAVFTP message associated to
     this MAVFTP object.
     """
@@ -443,7 +443,7 @@ class MAVFTP:
         sender = partial(uav.driver.send_packet, target=uav)
         return cls(sender)
 
-    def __init__(self, sender: Callable[[MAVFTPMessage], Awaitable[None]]):
+    def __init__(self, sender: UAVBoundPacketSenderFn):
         """Constructor."""
         self._closed = False
         self._closing = False
@@ -671,7 +671,12 @@ class MAVFTP:
             yield session
 
     def _parents_of(self, path: FTPPath) -> Iterable[FTPPath]:
-        path_as_str = path if isinstance(path, str) else path.decode("utf-8")
+        if isinstance(path, str):
+            path_as_str = path
+        elif isinstance(path, memoryview):
+            path_as_str = path.tobytes().decode("utf-8")
+        else:
+            path_as_str = path.decode("utf-8")
         for parent_path in reversed(PurePosixPath(path_as_str).parents):
             yield self._to_ftp_path(parent_path)
 
@@ -735,6 +740,8 @@ class MAVFTP:
                     continue
                 else:
                     break
+
+            assert reply is not None
 
             reply = MAVFTPMessage.decode(reply.payload)
             if reply.is_ack:

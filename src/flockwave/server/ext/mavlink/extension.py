@@ -7,8 +7,7 @@ from __future__ import annotations
 from collections import OrderedDict
 from contextlib import ExitStack, contextmanager
 from functools import partial
-from logging import Logger
-from typing import Iterator, cast, Optional, TYPE_CHECKING
+from typing import Iterator, Union, cast, Optional, TYPE_CHECKING
 
 from flockwave.server.ext.base import UAVExtension
 from flockwave.server.ext.mavlink.fw_upload import FirmwareUpdateTarget
@@ -32,7 +31,6 @@ from .types import (
 )
 
 if TYPE_CHECKING:
-    from flockwave.server.app import SkybrushServer
     from flockwave.server.ext.rc import RCState
     from flockwave.server.ext.show.clock import ShowClock
     from flockwave.server.ext.show.config import DroneShowConfiguration
@@ -55,9 +53,6 @@ class MAVLinkDronesExtension(UAVExtension[MAVLinkDriver]):
     """Extension that adds support for drone flocks using the MAVLink
     protocol.
     """
-
-    app: "SkybrushServer"
-    log: Logger
 
     _networks: dict[str, MAVLinkNetwork]
     """Dictionary mapping network IDs to the MAVLink networks managed by this
@@ -88,6 +83,8 @@ class MAVLinkDronesExtension(UAVExtension[MAVLinkDriver]):
             configuration (dict): the configuration dictionary of the
                 extension
         """
+        assert self.log is not None
+
         driver.broadcast_packet = self._broadcast_packet
         driver.create_device_tree_mutator = self.create_device_tree_mutation_context
         driver.log = self.log
@@ -213,6 +210,8 @@ class MAVLinkDronesExtension(UAVExtension[MAVLinkDriver]):
     def _get_network_specifications_from_configuration(
         self, configuration
     ) -> dict[str, MAVLinkNetworkSpecification]:
+        assert self.log is not None
+
         # Construct the network specifications first
         if "networks" in configuration:
             if "connections" in configuration:
@@ -386,6 +385,8 @@ class MAVLinkDronesExtension(UAVExtension[MAVLinkDriver]):
         in a manner that ensures that the UAV is unregistered when the extension
         is stopped.
         """
+        assert self.app is not None
+
         if self._uavs is None:
             raise RuntimeError("cannot register a UAV before the extension is started")
 
@@ -402,10 +403,11 @@ class MAVLinkDronesExtension(UAVExtension[MAVLinkDriver]):
         self,
         spec: MAVLinkMessageSpecification,
         target: MAVLinkUAV,
-        wait_for_response: Optional[MAVLinkMessageSpecification] = None,
-        wait_for_one_of: Optional[dict[str, MAVLinkMessageMatcher]] = None,
+        *,
+        wait_for_response: Optional[tuple[str, MAVLinkMessageMatcher]] = None,
+        wait_for_one_of: Optional[dict[str, MAVLinkMessageSpecification]] = None,
         channel: Optional[str] = None,
-    ) -> Optional[MAVLinkMessage]:
+    ) -> Union[None, MAVLinkMessage, tuple[str, MAVLinkMessage]]:
         """Sends a message to the given UAV and optionally waits for a matching
         response.
 
@@ -422,13 +424,23 @@ class MAVLinkDronesExtension(UAVExtension[MAVLinkDriver]):
                 UAV where this message was sent.
             channel: specifies the channel that the packet should be sent on;
                 defaults to the preferred channel of the network
+
+        Returns:
+            ``None`` if `wait_for_response` and `wait_for_one_of` are both
+            ``None``; the received response if `wait_for_response` was not
+            ``None``; the key of the matched message specification and the
+            message itself if `wait_for_one_of` was not ``None``.
         """
         if not self._networks:
             raise RuntimeError("Cannot send packet; extension is not running")
 
         network = self._networks[target.network_id]
         return await network.send_packet(
-            spec, target, wait_for_response, wait_for_one_of, channel
+            spec,
+            target,
+            wait_for_response=wait_for_response,
+            wait_for_one_of=wait_for_one_of,
+            channel=channel,
         )
 
     def _update_show_configuration_in_networks(
@@ -439,6 +451,9 @@ class MAVLinkDronesExtension(UAVExtension[MAVLinkDriver]):
         the configuration object is `None`, retrieves it from the `show`
         extension itself.
         """
+        assert self.app is not None
+        assert self.log is not None
+
         if config is None:
             config = self.app.import_api("show").get_configuration()
 
@@ -454,6 +469,9 @@ class MAVLinkDronesExtension(UAVExtension[MAVLinkDriver]):
         """Updates the scheduled start times of the drones managed by this
         extension, based on the start time extracted from the show clock.
         """
+        assert self.app is not None
+        assert self.log is not None
+
         clock = cast(Optional["ShowClock"], self.app.import_api("show").get_clock())
         if not clock:
             return
@@ -472,6 +490,9 @@ class MAVLinkDronesExtension(UAVExtension[MAVLinkDriver]):
         extension. If the configuration object is `None`, retrieves it from the
         `show` extension itself.
         """
+        assert self.app is not None
+        assert self.log is not None
+
         if config is None:
             config = self.app.import_api("show").get_light_configuration()
 

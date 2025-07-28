@@ -8,133 +8,121 @@ authors = [
 ]
 license = "GPL-3.0-or-later"
 requires-python = ">=3.10,<4.0"
+dependencies = [
+  "bidict>=0.23.1",
+  "click>=8.2.1",
+  "blinker>=1.9.0",
+  "python-baseconv>=1.2.2",
+  "pynmea2>=1.19.0",
+  "trio>=0.30.0",
+  "quart>=0.20.0",
+  "quart-trio>=0.12.0",
+  "trio-util>=0.8.0",
+  "python-dotenv>=1.1.0",
+  "colour>=0.1.5",
+  "pyjwt>=2.10.1",
+  "hypercorn[trio]>=0.17.3",
+  "passlib[bcrypt]>=1.7.4",
+  "flockwave-app-framework[daemon]>=3.5.0",
+  "flockwave-async>=2.2.0",
+  "flockwave-conn[rpc,serial]>=9.1.0",
+  "flockwave-ext>=1.27.0",
+  "flockwave-gps>=4.0.0",
+  "flockwave-logger>=2.1.0",
+  "flockwave-mavlink>=0.5.0",
+  "flockwave-net[async]>=8.1.0",
+  "flockwave-parsers>=4.0.1",
+  "flockwave-spec[validation]>=2.3.0",
+  "pyledctrl>=4.1.0",
+  "aiocflib>=4.1.0",
+  "crcmod-plus>=2.1.0",
+  "msgpack>=1.1.1",
+  "aio-usb-hotplug>=7.0.0",
+  "pyserial>=3.5",
+  "compose>=1.6.2",
+  "adrenaline>=4.0.1",
+  "httpx>=0.28.1",
+  "igrf-model>=1.1.4",
+  "deprecated>=1.2.18",
+  "unidecode>=1.4.0",
+  "wrapt>=1.17.2",
+  "cachetools>=6.1.0",
+  "platformdirs>=4.3.8",
+  "fastjsonschema>=2.21.1",
+  "orjson>=3.10.18",
+]
 
 [project.scripts]
 skybrushd = "flockwave.server.launcher:start"
 skybrush-gateway = "flockwave.gateway.launcher:start"
 skybrush-proxy = "flockwave.proxy.launcher:start"
 
-[tool.poetry]
-packages = [{ include = "flockwave", from = "src" }]
-
-[[tool.poetry.source]]
-name = "PyPI"
-priority = "primary"
-
-[[tool.poetry.source]]
-name = "collmot"
-url = "https://pypi.collmot.com/simple/"
-priority = "explicit"
-
-[[tool.poetry.source]]
-name = "fury"
-url = "https://pypi.fury.io/skybrush/"
-priority = "supplemental"
-
-[tool.poetry.dependencies]
-bidict = ">=0.23.1"
-click = "^8.2.1"
-blinker = "^1.9.0"
-python-baseconv = "^1.2.2"
-pynmea2 = "^1.19.0"
-trio = ">=0.30.0"
-quart = ">=0.20.0"
-quart-trio = ">=0.12.0"
-trio-util = ">=0.8.0"
-python-dotenv = "^1.1.0"
-colour = ">=0.1.5"
-pyjwt = "^2.10.1"
-hypercorn = { extras = ["trio"], version = ">=0.17.3" }
-passlib = { extras = ["bcrypt"], version = "^1.7.4" }
-flockwave-app-framework = { version = "^3.5.0", extras = [
-  "daemon",
-], source = "fury" }
-flockwave-async = { version = "^2.0.1", source = "fury" }
-flockwave-conn = { extras = [
-  "rpc",
-  "serial",
-], source = "fury", version = "^9.1.0" }
-flockwave-ext = { version = "^1.27.0", source = "fury" }
-flockwave-flockctrl = { version = "^4.0.0", source = "collmot", optional = true }
-flockwave-gps = { version = "^4.0.0", source = "fury" }
-flockwave-logger = { version = "^2.1.0", source = "fury" }
-flockwave-mavlink = { version = ">=0.5.0", source = "fury" }
-flockwave-net = { extras = ["async"], version = "^8.1.0", source = "fury" }
-flockwave-parsers = { version = ">=4.0.1", source = "fury" }
-flockwave-spec = { version = "^2.3.0", source = "fury", extras = [
-  "validation",
-] }
-skybrush-ext-dock = { version = "^1.2.0", source = "collmot", optional = true }
-skybrush-ext-firmware-update = { version = "^0.5.0", source = "collmot", optional = true }
-skybrush-ext-flight-report = { version = "^1.0.3", source = "collmot", optional = true }
-skybrush-ext-flockctrl = { version = "^4.0.3", source = "collmot", optional = true }
-skybrush-ext-map-cache = { version = "^1.1.1", source = "collmot", optional = true }
-skybrush-ext-show-pro = { version = ">=0.3.0", source = "collmot", optional = true }
-skybrush-ext-sidekick = { version = "^1.0.2", source = "collmot", optional = true }
-skybrush-ext-studio = { version = ">=0.8.6", source = "collmot", optional = true }
-skybrush-ext-timecode = { version = "^1.4.0", source = "collmot", optional = true }
-skybrush-lib-mission-planning = { version = "^2.4.1", source = "collmot", optional = true }
-skybrush-studio = { version = ">=4.24.2", source = "collmot", optional = true }
-pyledctrl = { version = "^4.1.0", source = "fury" }
-aiocflib = "^4.1.0"
-crcmod-plus = "^2.1.0"
-msgpack = "^1.1.1"
-aio-usb-hotplug = "^7.0.0"
-pyserial = "^3.5"
-compose = "^1.6.2"
-adrenaline = "^4.0.1"
-httpx = ">=0.28.1"
-igrf-model = "^1.1.4"
-deprecated = "^1.2.18"
-unidecode = "^1.4.0"
-wrapt = "^1.17.2"
-cachetools = "^6.1.0"
-platformdirs = "^4.3.8"
-fastjsonschema = "^2.21.1"
-orjson = "^3.10.18"
-
-[tool.poetry.group.dev.dependencies]
-coverage = { extras = ["toml"], version = "^7.9.1" }
-pytest = "^8.4.1"
-pytest-cov = "^6.2.1"
-pytest-trio = ">=0.8.0"
-pdoc = "^15.0.4"
-
-[tool.poetry.extras]
-all = [
-  "flockwave-flockctrl",
-  "skybrush-ext-dock",
-  "skybrush-ext-firmware-update",
-  "skybrush-ext-flight-report",
-  "skybrush-ext-flockctrl",
-  "skybrush-ext-map-cache",
-  "skybrush-ext-show-pro",
-  "skybrush-ext-sidekick",
-  "skybrush-ext-studio",
-  "skybrush-ext-timecode",
-  "skybrush-lib-mission-planning",
-]
+[project.optional-dependencies]
+all = ["flockwave-server[collmot,pro]"]
 collmot = [
-  "flockwave-flockctrl",
-  "skybrush-ext-dock",
-  "skybrush-ext-firmware-update",
-  "skybrush-ext-flight-report",
-  "skybrush-ext-flockctrl",
-  "skybrush-ext-map-cache",
-  "skybrush-ext-show-pro",
-  "skybrush-ext-studio",
-  "skybrush-ext-timecode",
-  "skybrush-lib-mission-planning",
+  "flockwave-server[pro]",
+  "flockwave-flockctrl>=4.0.0",
+  "skybrush-ext-dock>=1.2.0",
+  "skybrush-ext-flockctrl>=4.0.3",
 ]
 pro = [
-  "skybrush-ext-firmware-update",
-  "skybrush-ext-flight-report",
-  "skybrush-ext-map-cache",
-  "skybrush-ext-show-pro",
-  "skybrush-ext-sidekick",
-  "skybrush-ext-studio",
-  "skybrush-ext-timecode",
-  "skybrush-lib-mission-planning",
+  "skybrush-ext-firmware-update>=0.5.0",
+  "skybrush-ext-flight-report>=1.0.3",
+  "skybrush-ext-map-cache>=1.1.1",
+  "skybrush-ext-show-pro>=0.3.0",
+  "skybrush-ext-sidekick>=1.0.2",
+  "skybrush-ext-studio>=0.8.6",
+  "skybrush-ext-timecode>=1.4.0",
+  "skybrush-lib-mission-planning>=2.4.1",
+  "skybrush-studio>=4.24.2",
+]
+
+[tool.uv.build-backend]
+module-name = "flockwave"
+namespace = true
+
+[[tool.uv.index]]
+name = "collmot"
+url = "https://pypi.collmot.com/"
+publish-url = "https://pypi.collmot.com/"
+explicit = true
+
+[[tool.uv.index]]
+name = "fury"
+url = "https://pypi.fury.io/skybrush/"
+
+[tool.uv.sources]
+flockwave-app-framework = { index = "fury" }
+flockwave-async = { index = "fury" }
+flockwave-conn = { index = "fury" }
+flockwave-ext = { index = "fury" }
+flockwave-flockctrl = { index = "collmot" }
+flockwave-gps = { index = "fury" }
+flockwave-logger = { index = "fury" }
+flockwave-mavlink = { index = "fury" }
+flockwave-net = { index = "fury" }
+flockwave-parsers = { index = "fury" }
+flockwave-spec = { index = "fury" }
+skybrush-ext-dock = { index = "collmot" }
+skybrush-ext-firmware-update = { index = "collmot" }
+skybrush-ext-flight-report = { index = "collmot" }
+skybrush-ext-flockctrl = { index = "collmot" }
+skybrush-ext-map-cache = { index = "collmot" }
+skybrush-ext-show-pro = { index = "collmot" }
+skybrush-ext-sidekick = { index = "collmot" }
+skybrush-ext-studio = { index = "collmot" }
+skybrush-ext-timecode = { index = "collmot" }
+skybrush-lib-mission-planning = { index = "collmot" }
+skybrush-studio = { index = "collmot" }
+pyledctrl = { index = "fury" }
+
+[dependency-groups]
+dev = [
+  "coverage[toml]>=7.9.1",
+  "pytest>=8.4.1",
+  "pytest-cov>=6.2.1",
+  "pytest-trio>=0.8.0",
+  "pdoc>=15.0.4",
 ]
 
 [tool.pytest.ini_options]
@@ -146,5 +134,5 @@ lint.select = ["B", "C", "E", "F", "W"]
 extend-exclude = ["src/flockwave/server/ext/socketio/vendor"]
 
 [build-system]
-requires = ["poetry-core>=1.0.0"]
-build-backend = "poetry.core.masonry.api"
+requires = ["uv_build>=0.8.0"]
+build-backend = "uv_build"

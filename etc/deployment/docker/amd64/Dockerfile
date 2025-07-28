@@ -1,9 +1,6 @@
 # syntax = docker/dockerfile:1.0-experimental
 FROM python:3.11-slim AS builder
 
-# Update all the things
-RUN apt-get update && apt-get -y upgrade
-
 # Switch working directory
 WORKDIR /app
 
@@ -17,10 +14,13 @@ RUN python -m venv .venv
 # Run the build script
 ENV PIP_NO_CACHE_DIR=1
 RUN .venv/bin/pip install wheel
-RUN .venv/bin/pip install -r requirements-main.txt
+RUN \
+    --mount=type=secret,id=NETRC_SECRET_ID,dst=/root/.netrc \
+    --mount=source=etc/deployment/docker/pip.conf,dst=/etc/pip.conf,readonly \
+    .venv/bin/pip install -r requirements-main.txt
 
 # Now we can copy the application itself
-COPY src/flockwave ./src/flockwave/
+COPY ./src/flockwave ./src/flockwave
 
 # Clean up __pycache__ files
 RUN find . | grep -E "(__pycache__|\.pyc$)" | xargs rm -rf

@@ -15,18 +15,18 @@ extend the functionality of the server.
 
 ## Installation
 
-1. Install `poetry`. `poetry` will manage a separate virtual environment for this
-   project to keep things nicely separated. You won't pollute the system Python
-   with the dependencies of the Skybrush server and everyone will be happier.
-   See https://python-poetry.org/ for installation instructions.
+1. Install `uv`. `uv` will manage a virtual environment for this project to keep
+   things nicely separated. You won't pollute the system Python with the
+   dependencies of the Skybrush server and everyone will be happier.
+   See https://docs.astral.sh/uv/ for installation instructions.
 
 2. Check out the source code of the server.
 
-3. Run `poetry install` to install all the dependencies and the server itself
-   in a separate virtualenv. The virtualenv will be created in a folder named
+3. Run `uv sync` to install all the dependencies and the server itself in a
+   separate virtualenv. The virtualenv will be created in a folder named
    `.venv` in the project folder.
 
-4. Run `poetry run skybrushd` to start the server.
+4. Run `uv run skybrushd` to start the server.
 
 ## Documentation
 

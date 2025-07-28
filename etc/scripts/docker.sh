@@ -11,15 +11,21 @@ set -e
 
 cd ${REPO_ROOT}
 
-# Remove all requirements.txt files, we don't use them, only poetry
+# Remove all requirements.txt files, we don't use them, only uv
 rm -f requirements*.txt
 
-# Generate requirements.txt from poetry
-poetry export -f requirements.txt -o requirements-main.txt --without-hashes --with-credentials
+# Generate requirements.txt from uv
+uv export --format requirements.txt -o requirements-main.txt \
+  --no-annotate --no-dev --no-editable --no-emit-project --no-hashes >/dev/null
 trap "rm -f requirements-main.txt" EXIT
 
 # Build the Docker image
-docker build --platform linux/amd64 -t docker.collmot.com/${IMAGE_NAME}:latest -f etc/deployment/docker/amd64/Dockerfile .
+docker build \
+  --platform linux/amd64 \
+  --secret id=NETRC_SECRET_ID,src=${HOME}/.netrc \
+  -t docker.collmot.com/${IMAGE_NAME}:latest \
+  -f etc/deployment/docker/amd64/Dockerfile \
+  .
 echo "Successfully built Docker image."
 
 # If we are at an exact tag, also tag the image

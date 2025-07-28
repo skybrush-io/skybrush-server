@@ -661,7 +661,7 @@ daemon = [
 
 [[package]]
 name = "flockwave-async"
-version = "2.2.0"
+version = "2.2.1"
 source = { registry = "https://pypi.fury.io/skybrush/" }
 dependencies = [
     { name = "anyio" },
@@ -669,9 +669,9 @@ dependencies = [
     { name = "trio" },
     { name = "trio-util" },
 ]
-sdist = { url = "https://pypi.fury.io/skybrush/-/ver_1Q9Ks9/flockwave-async-2.2.0.tar.gz", hash = "sha256:6a1585864f2f8f7366cb30c870e7359e8c89c93fef61d126506ed354908b2f96" }
+sdist = { url = "https://pypi.fury.io/skybrush/-/ver_8CoGE/flockwave-async-2.2.1.tar.gz", hash = "sha256:65ad504541a065d4d52e40df06d63fb0f9652fb383697092f5ee3ed5442baba1" }
 wheels = [
-    { url = "https://pypi.fury.io/skybrush/-/ver_1kYQpo/flockwave_async-2.2.0-py3-none-any.whl", hash = "sha256:8fd12b6a817b6663b29a8e1785a8d3522cc75dbf074229ce34e5b5d3444df565" },
+    { url = "https://pypi.fury.io/skybrush/-/ver_1UfDCx/flockwave_async-2.2.1-py3-none-any.whl", hash = "sha256:686d3e364389669f29c19aaa9ec5f9e0ec4b6894f52a52cc6fc3925b41f949ee" },
 ]
 
 [[package]]
@@ -908,7 +908,7 @@ requires-dist = [
     { name = "deprecated", specifier = ">=1.2.18" },
     { name = "fastjsonschema", specifier = ">=2.21.1" },
     { name = "flockwave-app-framework", extras = ["daemon"], specifier = ">=3.5.0", index = "https://pypi.fury.io/skybrush/" },
-    { name = "flockwave-async", specifier = ">=2.2.0", index = "https://pypi.fury.io/skybrush/" },
+    { name = "flockwave-async", specifier = ">=2.2.1", index = "https://pypi.fury.io/skybrush/" },
     { name = "flockwave-conn", extras = ["rpc", "serial"], specifier = ">=9.1.0", index = "https://pypi.fury.io/skybrush/" },
     { name = "flockwave-ext", specifier = ">=1.27.0", index = "https://pypi.fury.io/skybrush/" },
     { name = "flockwave-flockctrl", marker = "extra == 'collmot'", specifier = ">=4.0.0", index = "https://pypi.collmot.com/" },
@@ -2382,8 +2382,8 @@ name = "taskgroup"
 version = "0.2.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "exceptiongroup" },
-    { name = "typing-extensions" },
+    { name = "exceptiongroup", marker = "python_full_version < '3.11'" },
+    { name = "typing-extensions", marker = "python_full_version < '3.11'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/f0/8d/e218e0160cc1b692e6e0e5ba34e8865dbb171efeb5fc9a704544b3020605/taskgroup-0.2.2.tar.gz", hash = "sha256:078483ac3e78f2e3f973e2edbf6941374fbea81b9c5d0a96f51d297717f4752d", size = 11504, upload-time = "2025-01-03T09:24:13.761Z" }
 wheels = [

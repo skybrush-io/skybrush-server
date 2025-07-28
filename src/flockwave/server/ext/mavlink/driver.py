@@ -161,7 +161,7 @@ class MAVLinkDriver(UAVDriver["MAVLinkUAV"]):
         self.send_packet = None  # type: ignore
 
         self._default_timeout = 2
-        self._default_retries = 5
+        self._default_retries = 10
         self._default_delay = 0.1
 
     async def broadcast_command_long_with_retries(

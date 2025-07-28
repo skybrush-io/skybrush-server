@@ -14,7 +14,6 @@ from struct import Struct
 from trio import (
     as_safe_channel,
     BrokenResourceError,
-    fail_after,
     move_on_after,
     TooSlowError,
     wrap_file,
@@ -31,6 +30,11 @@ from typing import (
     Union,
 )
 
+from flockwave.concurrency import (
+    AdaptiveExponentialBackoffPolicy,
+    RetryPolicy,
+    run_with_retries,
+)
 from flockwave.server.model.commands import Progress
 from flockwave.server.show.utils import crc32_mavftp as crc32
 
@@ -429,6 +433,11 @@ class MAVFTP:
     _closing: bool
     """Stores whether the MAVFTP connection is being closed."""
 
+    _retry_policy: RetryPolicy
+    """The retry policy to use for sending MAVFTP messages within the context of
+    this connection.
+    """
+
     _sender: UAVBoundPacketSenderFn
     """A function that can be called to send a MAVFTP message associated to
     this MAVFTP object.
@@ -447,6 +456,12 @@ class MAVFTP:
         """Constructor."""
         self._closed = False
         self._closing = False
+
+        self._retry_policy = AdaptiveExponentialBackoffPolicy(
+            max_retries=600,
+            base_timeout=0.1,
+            max_timeout=3,
+        )
 
         self._path = PurePosixPath("/")
         self._seq = islice(cycle(range(65536)), randint(0, 65535), None)
@@ -698,8 +713,6 @@ class MAVFTP:
         self,
         message: MAVFTPMessage,
         *,
-        timeout: float = 0.1,
-        retries: int = 600,
         allow_nak: bool = False,
     ) -> MAVFTPMessage:
         """Sends a raw FTP message over the connection and waits for the response
@@ -707,9 +720,6 @@ class MAVFTP:
 
         Parameters:
             message: the MAVFTP message to send
-            timeout: maximum number of seconds to wait before attempting to
-                re-send the message
-            retries: maximum number of retries before giving up
             allow_nak: whether we consider a NAK message a valid response
 
         Returns:
@@ -723,25 +733,23 @@ class MAVFTP:
         expected_seq_no = next(self._seq)
         sender = self._sender
 
+        async def do_send():
+            reply = await sender(
+                spec.file_transfer_protocol(target_network=0, payload=encoded_message),
+                wait_for_response=spec.file_transfer_protocol(
+                    partial(MAVFTPMessage.matches_sequence_no, expected_seq_no)
+                ),
+            )
+            assert reply is not None
+            return reply
+
         while True:
             try:
-                with fail_after(timeout):
-                    reply = await sender(
-                        spec.file_transfer_protocol(
-                            target_network=0, payload=encoded_message
-                        ),
-                        wait_for_response=spec.file_transfer_protocol(
-                            partial(MAVFTPMessage.matches_sequence_no, expected_seq_no)
-                        ),
-                    )
-            except TooSlowError:
-                if retries > 0:
-                    retries -= 1
-                    continue
-                else:
-                    break
-
-            assert reply is not None
+                reply = await run_with_retries(do_send, policy=self._retry_policy)
+            except TimeoutError:
+                raise TooSlowError(
+                    "No response received for MAVFTP packet in time"
+                ) from None
 
             reply = MAVFTPMessage.decode(reply.payload)
             if reply.is_ack:
@@ -753,8 +761,6 @@ class MAVFTP:
                     reply.raise_error(replies_to=message)
             else:
                 raise RuntimeError("Received reply that is neither ACK nor NAK")
-
-        raise TooSlowError("No response received for MAVFTP packet in time")
 
     def _to_ftp_path(self, posix_path: PurePosixPath) -> bytes:
         return (str(posix_path)[1:] or ".").encode("utf-8")

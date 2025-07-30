@@ -943,7 +943,7 @@ requires-dist = [
     { name = "skybrush-ext-show-pro", marker = "extra == 'pro'", specifier = ">=0.3.0", index = "https://pypi.collmot.com/" },
     { name = "skybrush-ext-sidekick", marker = "extra == 'pro'", specifier = ">=1.0.2", index = "https://pypi.collmot.com/" },
     { name = "skybrush-ext-studio", marker = "extra == 'pro'", specifier = ">=0.8.6", index = "https://pypi.collmot.com/" },
-    { name = "skybrush-ext-timecode", marker = "extra == 'pro'", specifier = ">=1.4.0", index = "https://pypi.collmot.com/" },
+    { name = "skybrush-ext-timecode", marker = "extra == 'pro'", specifier = ">=1.4.1", index = "https://pypi.collmot.com/" },
     { name = "skybrush-lib-mission-planning", marker = "extra == 'pro'", specifier = ">=2.4.1", index = "https://pypi.collmot.com/" },
     { name = "skybrush-studio", marker = "extra == 'pro'", specifier = ">=4.24.2", index = "https://pypi.collmot.com/" },
     { name = "trio", specifier = ">=0.30.0" },
@@ -2287,16 +2287,16 @@ wheels = [
 
 [[package]]
 name = "skybrush-ext-timecode"
-version = "1.4.0"
+version = "1.4.1"
 source = { registry = "https://pypi.collmot.com/" }
 dependencies = [
     { name = "mido" },
     { name = "python-rtmidi" },
     { name = "trio" },
 ]
-sdist = { url = "https://pypi.collmot.com/packages/skybrush_ext_timecode-1.4.0.tar.gz", hash = "sha256:498c5063ee9e41d88b1626c3b5983ba58cf21b76bfdbd91f4f600d932e940377" }
+sdist = { url = "https://pypi.collmot.com/packages/skybrush_ext_timecode-1.4.1.tar.gz", hash = "sha256:99631b79f13c7e396af2742cf302a3072121af395c08f09736fd4deb7cede08f" }
 wheels = [
-    { url = "https://pypi.collmot.com/packages/skybrush_ext_timecode-1.4.0-py3-none-any.whl", hash = "sha256:d0bcd07ddb3bebbd72e2a2ea9e02e91eecfaed4fffaf6f815d46ffd0fe9e1d33" },
+    { url = "https://pypi.collmot.com/packages/skybrush_ext_timecode-1.4.1-py3-none-any.whl", hash = "sha256:9e8389566664faefce578bf1c7bbe447ef5cee59974d94a3e07b1354754d0a1f" },
 ]
 
 [[package]]

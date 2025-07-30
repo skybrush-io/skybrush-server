@@ -72,7 +72,7 @@ pro = [
   "skybrush-ext-show-pro>=0.3.0",
   "skybrush-ext-sidekick>=1.0.2",
   "skybrush-ext-studio>=0.8.6",
-  "skybrush-ext-timecode>=1.4.0",
+  "skybrush-ext-timecode>=1.4.1",
   "skybrush-lib-mission-planning>=2.4.1",
   "skybrush-studio>=4.24.2",
 ]

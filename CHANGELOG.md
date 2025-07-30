@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 2.32.3 - 2025-07-31
 
+### Changed
+
+- MAVFTP file upload timeouts are now adaptive similarly to how TCP connections
+  handle retransmissions.
+
 ### Fixed
 
 - Better (more robust) handling of glitchy SMPTE timecodes. Timecodes with

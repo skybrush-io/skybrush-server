@@ -943,6 +943,7 @@ pro = [
 [package.dev-dependencies]
 dev = [
     { name = "coverage", extra = ["toml"] },
+    { name = "flockwave-server", extra = ["all"] },
     { name = "pdoc" },
     { name = "pytest" },
     { name = "pytest-cov" },
@@ -996,7 +997,7 @@ requires-dist = [
     { name = "skybrush-ext-flight-report", marker = "extra == 'pro'", specifier = ">=1.0.3", index = "https://pypi.collmot.com/" },
     { name = "skybrush-ext-flockctrl", marker = "extra == 'collmot'", specifier = ">=4.0.3", index = "https://pypi.collmot.com/" },
     { name = "skybrush-ext-map-cache", marker = "extra == 'pro'", specifier = ">=1.1.1", index = "https://pypi.collmot.com/" },
-    { name = "skybrush-ext-show-pro", marker = "extra == 'pro'", specifier = ">=0.3.0", index = "https://pypi.collmot.com/" },
+    { name = "skybrush-ext-show-pro", marker = "extra == 'pro'", specifier = ">=0.4.0", index = "https://pypi.collmot.com/" },
     { name = "skybrush-ext-sidekick", marker = "extra == 'pro'", specifier = ">=1.0.2", index = "https://pypi.collmot.com/" },
     { name = "skybrush-ext-studio", marker = "extra == 'pro'", specifier = ">=0.8.6", index = "https://pypi.collmot.com/" },
     { name = "skybrush-ext-timecode", marker = "extra == 'pro'", specifier = ">=1.4.1", index = "https://pypi.collmot.com/" },
@@ -1012,6 +1013,7 @@ provides-extras = ["all", "collmot", "pro"]
 [package.metadata.requires-dev]
 dev = [
     { name = "coverage", extras = ["toml"], specifier = ">=7.9.1" },
+    { name = "flockwave-server", extras = ["all"] },
     { name = "pdoc", specifier = ">=15.0.4" },
     { name = "pytest", specifier = ">=8.4.1" },
     { name = "pytest-cov", specifier = ">=6.2.1" },
@@ -2313,11 +2315,11 @@ wheels = [
 
 [[package]]
 name = "skybrush-ext-show-pro"
-version = "0.3.0"
+version = "0.4.0"
 source = { registry = "https://pypi.collmot.com/" }
-sdist = { url = "https://pypi.collmot.com/packages/skybrush_ext_show_pro-0.3.0.tar.gz", hash = "sha256:68b75f23889b8cd688de4f09919e4cdd5013497b6e24c8fd786ca66054655e38" }
+sdist = { url = "https://pypi.collmot.com/packages/skybrush_ext_show_pro-0.4.0.tar.gz", hash = "sha256:96364731cb878851bc90d7a717af66121d1658a94dfff8f9d36813056e8cfc1a" }
 wheels = [
-    { url = "https://pypi.collmot.com/packages/skybrush_ext_show_pro-0.3.0-py3-none-any.whl", hash = "sha256:9612d220e19a351cc96af1819e0aad849fa6906c1ccf8d47a3e9cf785806c8cd" },
+    { url = "https://pypi.collmot.com/packages/skybrush_ext_show_pro-0.4.0-py3-none-any.whl", hash = "sha256:0d577678c4b4d4d131065a25bcd854b9f3b0b052c6e4c0b6b2782c95181afedd" },
 ]
 
 [[package]]

@@ -69,7 +69,7 @@ pro = [
   "skybrush-ext-firmware-update>=0.5.0",
   "skybrush-ext-flight-report>=1.0.3",
   "skybrush-ext-map-cache>=1.1.1",
-  "skybrush-ext-show-pro>=0.3.0",
+  "skybrush-ext-show-pro>=0.4.0",
   "skybrush-ext-sidekick>=1.0.2",
   "skybrush-ext-studio>=0.8.6",
   "skybrush-ext-timecode>=1.4.1",
@@ -118,6 +118,7 @@ pyledctrl = { index = "fury" }
 
 [dependency-groups]
 dev = [
+  "flockwave-server[all]",
   "coverage[toml]>=7.9.1",
   "pytest>=8.4.1",
   "pytest-cov>=6.2.1",

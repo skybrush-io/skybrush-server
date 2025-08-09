@@ -84,12 +84,12 @@ namespace = true
 [[tool.uv.index]]
 name = "collmot"
 url = "https://pypi.collmot.com/"
-publish-url = "https://pypi.collmot.com/"
 explicit = true
 
 [[tool.uv.index]]
 name = "fury"
 url = "https://pypi.fury.io/skybrush/"
+publish-url = "https://pypi.fury.io/skybrush/"
 
 [tool.uv.sources]
 flockwave-app-framework = { index = "fury" }

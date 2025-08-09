@@ -70,6 +70,7 @@ from .utils import (
 
 if TYPE_CHECKING:
     from flockwave.server.ext.show.config import DroneShowConfiguration
+    from flockwave.server.tasks.led_lights import LightConfiguration
 
 __all__ = ("MAVLinkNetwork",)
 
@@ -501,7 +502,7 @@ class MAVLinkNetwork:
                 message, destination=Channel.RTK, allow_failure=True
             )
 
-    def notify_led_light_config_changed(self, config):
+    def notify_led_light_config_changed(self, config: LightConfiguration):
         """Notifies the network that the LED light configuration of the drones
         has changed in the system. The network will then update the LED light
         configuration of each drone.

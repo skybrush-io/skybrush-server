@@ -34,6 +34,7 @@ if TYPE_CHECKING:
     from flockwave.server.ext.rc import RCState
     from flockwave.server.ext.show.clock import ShowClock
     from flockwave.server.ext.show.config import DroneShowConfiguration
+    from flockwave.server.tasks.led_lights import LightConfiguration
 
 __all__ = ("construct", "dependencies")
 
@@ -366,7 +367,9 @@ class MAVLinkDronesExtension(UAVExtension[MAVLinkDriver]):
         # Send the configuration to all the networks
         self._update_show_configuration_in_networks(config)
 
-    def _on_show_light_configuration_changed(self, sender, config) -> None:
+    def _on_show_light_configuration_changed(
+        self, sender, config: LightConfiguration
+    ) -> None:
         """Handler that is called when the user changes the LED light configuration
         of the drones in the `show` extesion.
         """
@@ -484,7 +487,9 @@ class MAVLinkDronesExtension(UAVExtension[MAVLinkDriver]):
                     f"Failed to update start time of drones in network {name!r}"
                 )
 
-    def _update_show_light_configuration_in_networks(self, config=None) -> None:
+    def _update_show_light_configuration_in_networks(
+        self, config: LightConfiguration | None = None
+    ) -> None:
         """Updates the current LED light settings of the drones managed by this
         extension, based on the given configuration object from the `show`
         extension. If the configuration object is `None`, retrieves it from the
@@ -494,7 +499,10 @@ class MAVLinkDronesExtension(UAVExtension[MAVLinkDriver]):
         assert self.log is not None
 
         if config is None:
-            config = self.app.import_api("show").get_light_configuration()
+            config = cast(
+                "LightConfiguration",
+                self.app.import_api("show").get_light_configuration(),
+            )
 
         for name, network in self._networks.items():
             try:

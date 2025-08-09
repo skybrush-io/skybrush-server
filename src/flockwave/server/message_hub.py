@@ -1188,7 +1188,7 @@ class BatchMessageRateLimiter(RateLimiter, Generic[T]):
 
     factory: Callable[[Iterable[T]], FlockwaveMessage]
     name: Optional[str] = None
-    delay: float = 0.1
+    delay: float = 0.2
 
     bundler: AsyncBundler = field(default_factory=AsyncBundler)
 
@@ -1229,7 +1229,7 @@ class UAVMessageRateLimiter(RateLimiter):
 
     factory: Callable[[Iterable[str]], FlockwaveMessage]
     name: Optional[str] = None
-    delay: float = 0.1
+    delay: float = 0.2
 
     bundler: AsyncBundler = field(default_factory=AsyncBundler)
 

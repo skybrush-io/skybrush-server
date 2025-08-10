@@ -64,6 +64,7 @@ from .types import (
 )
 from .utils import (
     flockwave_severity_from_mavlink_severity,
+    log_id_for_uav,
     python_log_level_from_mavlink_severity,
     log_id_from_message,
 )
@@ -924,7 +925,7 @@ class MAVLinkNetwork:
 
         severity: int = message.severity
         if severity <= self._statustext_targets.server:
-            extra = self._log_extra_from_message(message)
+            extra = self._log_extra_from_message(message, uav)
             extra["telemetry"] = "ignore"
             self.log.log(
                 python_log_level_from_mavlink_severity(message.severity),
@@ -976,8 +977,13 @@ class MAVLinkNetwork:
         """Logs an incoming MAVLink message for debugging purposes."""
         self.log.debug(str(message))
 
-    def _log_extra_from_message(self, message: MAVLinkMessage) -> dict[str, Any]:
-        return {"id": log_id_from_message(message, self.id)}
+    def _log_extra_from_message(
+        self, message: MAVLinkMessage, uav: MAVLinkUAV | None = None
+    ) -> dict[str, Any]:
+        if uav:
+            return {"id": log_id_for_uav(uav)}
+        else:
+            return {"id": log_id_from_message(message, self.id)}
 
     def _register_connection_aliases(
         self,

@@ -122,14 +122,12 @@ def log_id_from_message(
 
 def log_id_for_uav(uav: MAVLinkUAV) -> str:
     """Returns an identifier for a single UAV that is suitable for displaying in
-    the logging output, based on the network and system ID of the UAV.
+    the logging output.
+
+    Based on user feedback, we are not showing the network and system ID here,
+    only the UAV ID.
     """
-    network_id = uav.network_id
-    system_id = uav.system_id
-    if network_id:
-        return f"{network_id}/{system_id}"
-    else:
-        return f"{system_id}"
+    return uav.id
 
 
 def mavlink_nav_command_to_gps_coordinate(message: MAVLinkMessage) -> GPSCoordinate:

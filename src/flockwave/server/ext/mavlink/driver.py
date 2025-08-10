@@ -17,7 +17,7 @@ from typing import Any, AsyncIterator, Callable, Optional, Union
 from flockwave.gps.time import datetime_to_gps_time_of_week, gps_time_of_week_to_utc
 from flockwave.gps.vectors import GPSCoordinate, VelocityNED
 
-from flockwave.concurrency import delayed
+from flockwave.concurrency import delayed, FutureCancelled
 from flockwave.server.command_handlers import (
     create_calibration_command_handler,
     create_color_command_handler,
@@ -2476,6 +2476,9 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
             success = await self.driver.send_command_long(
                 self, MAVCommand.REQUEST_AUTOPILOT_CAPABILITIES, param1=1
             )
+        except FutureCancelled:
+            # This is okay, server is shutting down
+            return
         except TooSlowError:
             self.driver.log.warning(
                 "Failed to request autopilot capabilities; no confirmation "

@@ -1,0 +1,32 @@
+{% extends "_layout.html.j2" %}
+
+{% block body %}
+<table class="table table-hover table-striped table-sm mb-0"">
+    <thead>
+        <tr>
+            <th></th>
+            <th>Name</th>
+            <th>Version</th>
+            <th>Description</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+{% for dist in distributions %}
+        <tr>
+            <td class="align-baseline text-right" style="width: 24px">
+            </td>
+            <td class="align-baseline">
+                <pre class="mb-0">{{ dist.name }}</pre>
+            </td>
+            <td class="align-baseline">
+                {{ dist.version or "" }}
+            </td>
+            <td class="align-baseline">
+                {{ dist.metadata.get("Summary") }}
+            </td>
+        </tr>
+{% endfor %}
+    </tbody>
+</table>
+{% endblock %}

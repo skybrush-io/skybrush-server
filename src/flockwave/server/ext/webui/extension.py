@@ -291,6 +291,22 @@ async def list_extensions():
     )
 
 
+@blueprint.route("/version-info")
+@only_when_debugging
+async def version_info():
+    """Returns a page that shows the version information of the server
+    and the Python packages that it depends on.
+    """
+    from importlib import metadata
+
+    distributions = sorted(metadata.distributions(), key=attrgetter("name"))
+    return await render_template(
+        "version_info.html.j2",
+        title="Version Info",
+        distributions=distributions,
+    )
+
+
 @blueprint.route("/messages")
 @only_when_debugging
 async def send_messages():

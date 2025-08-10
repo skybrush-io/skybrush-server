@@ -2572,8 +2572,8 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
         detailed explanation in the source code there.
         """
         errors: dict[int, bool] = {
-            FlockwaveErrorCode.TIMESYNC_ERROR: status.has_timesync_error,
-            FlockwaveErrorCode.FAR_FROM_TAKEOFF_POSITION: status.is_misplaced_before_takeoff,
+            FlockwaveErrorCode.TIMESYNC_ERROR.value: status.has_timesync_error,
+            FlockwaveErrorCode.FAR_FROM_TAKEOFF_POSITION.value: status.is_misplaced_before_takeoff,
         }
         self.ensure_errors(errors)
 
@@ -2589,8 +2589,8 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
         """
         self.clear_errors_up_to_and_including(FlockwaveErrorCode.UNSPECIFIED_WARNING)
         errors = {
-            FlockwaveErrorCode.AUTOPILOT_INIT_FAILED: False,
-            FlockwaveErrorCode.SLEEPING: True,
+            FlockwaveErrorCode.AUTOPILOT_INIT_FAILED.value: False,
+            FlockwaveErrorCode.SLEEPING.value: True,
         }
         self.ensure_errors(errors)  # type: ignore
 
@@ -2688,37 +2688,39 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
         # successful show.
 
         errors = {
-            FlockwaveErrorCode.SLEEPING: False,
-            FlockwaveErrorCode.LANDING: show_stage is DroneShowExecutionStage.LANDING,
-            FlockwaveErrorCode.TAKEOFF: show_stage is DroneShowExecutionStage.TAKEOFF,
-            FlockwaveErrorCode.AUTOPILOT_INIT_FAILED: (
+            FlockwaveErrorCode.SLEEPING.value: False,
+            FlockwaveErrorCode.LANDING.value: show_stage
+            is DroneShowExecutionStage.LANDING,
+            FlockwaveErrorCode.TAKEOFF.value: show_stage
+            is DroneShowExecutionStage.TAKEOFF,
+            FlockwaveErrorCode.AUTOPILOT_INIT_FAILED.value: (
                 heartbeat.system_status == MAVState.UNINIT.value
             ),
-            FlockwaveErrorCode.AUTOPILOT_INITIALIZING: (
+            FlockwaveErrorCode.AUTOPILOT_INITIALIZING.value: (
                 heartbeat.system_status == MAVState.BOOT.value
             ),
-            FlockwaveErrorCode.UNSPECIFIED_ERROR: (
+            FlockwaveErrorCode.UNSPECIFIED_ERROR.value: (
                 # RC errors apparently trigger this error condition with
                 # ArduCopter if we don't exclude it explicitly
                 heartbeat.system_status == MAVState.CRITICAL.value
                 and not not_healthy_sensors
                 and not has_rc_error
             ),
-            FlockwaveErrorCode.UNSPECIFIED_CRITICAL_ERROR: (
+            FlockwaveErrorCode.UNSPECIFIED_CRITICAL_ERROR.value: (
                 heartbeat.system_status == MAVState.EMERGENCY.value
                 and not not_healthy_sensors
             ),
-            FlockwaveErrorCode.MAGNETIC_ERROR: has_mag_error,
-            FlockwaveErrorCode.GYROSCOPE_ERROR: has_gyro_error,
-            FlockwaveErrorCode.ACCELEROMETER_ERROR: has_accel_error,
-            FlockwaveErrorCode.PRESSURE_SENSOR_ERROR: has_baro_error,
-            FlockwaveErrorCode.GPS_SIGNAL_LOST: has_gps_error,
-            FlockwaveErrorCode.PROXIMITY_ERROR: has_proximity_error,
-            FlockwaveErrorCode.MOTOR_MALFUNCTION: has_motor_error,
-            FlockwaveErrorCode.GEOFENCE_VIOLATION: (
+            FlockwaveErrorCode.MAGNETIC_ERROR.value: has_mag_error,
+            FlockwaveErrorCode.GYROSCOPE_ERROR.value: has_gyro_error,
+            FlockwaveErrorCode.ACCELEROMETER_ERROR.value: has_accel_error,
+            FlockwaveErrorCode.PRESSURE_SENSOR_ERROR.value: has_baro_error,
+            FlockwaveErrorCode.GPS_SIGNAL_LOST.value: has_gps_error,
+            FlockwaveErrorCode.PROXIMITY_ERROR.value: has_proximity_error,
+            FlockwaveErrorCode.MOTOR_MALFUNCTION.value: has_motor_error,
+            FlockwaveErrorCode.GEOFENCE_VIOLATION.value: (
                 has_geofence_error and are_motors_running
             ),
-            FlockwaveErrorCode.GEOFENCE_VIOLATION_WARNING: (
+            FlockwaveErrorCode.GEOFENCE_VIOLATION_WARNING.value: (
                 # Geofence error reported from SYS_STATUS...
                 (has_geofence_error and not are_motors_running)
                 # ...or no error reported from SYS_STATUS, but a geofence breach
@@ -2729,26 +2731,27 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
                     and self._last_skybrush_status_info.is_geofence_breached
                 )
             ),
-            FlockwaveErrorCode.DRIFT_FROM_DESIRED_POSITION: (
+            FlockwaveErrorCode.DRIFT_FROM_DESIRED_POSITION.value: (
                 self._last_skybrush_status_info
                 and self._last_skybrush_status_info.is_far_from_expected_position
             ),
-            FlockwaveErrorCode.RC_SIGNAL_LOST_WARNING: has_rc_error,
-            FlockwaveErrorCode.BATTERY_CRITICAL: has_battery_error,
-            FlockwaveErrorCode.LOGGING_DEACTIVATED: has_logging_error,
-            FlockwaveErrorCode.DISARMED: are_motor_outputs_disabled,
-            FlockwaveErrorCode.PREARM_CHECK_IN_PROGRESS: is_prearm_check_in_progress,
+            FlockwaveErrorCode.RC_SIGNAL_LOST_WARNING.value: has_rc_error,
+            FlockwaveErrorCode.BATTERY_CRITICAL.value: has_battery_error,
+            FlockwaveErrorCode.LOGGING_DEACTIVATED.value: has_logging_error,
+            FlockwaveErrorCode.DISARMED.value: are_motor_outputs_disabled,
+            FlockwaveErrorCode.PREARM_CHECK_IN_PROGRESS.value: is_prearm_check_in_progress,
             # If the motors are not running yet but we are on the ground, ready
             # to fly, we use an informational flag to let the user know
-            FlockwaveErrorCode.ON_GROUND: not are_motors_running and is_in_standby,
+            FlockwaveErrorCode.ON_GROUND.value: not are_motors_running
+            and is_in_standby,
             # If the motors are running but we are not in the air yet; we use an
             # informational flag to let the user know
-            FlockwaveErrorCode.MOTORS_RUNNING_WHILE_ON_GROUND: are_motors_running
+            FlockwaveErrorCode.MOTORS_RUNNING_WHILE_ON_GROUND.value: are_motors_running
             and is_in_standby,
             # Use the special RTH error code if the drone is in RTH or smart RTH mode
             # and its mode index is larger than the standby mode (typically:
             # active, critical, emergency, poweroff, termination)
-            FlockwaveErrorCode.RETURN_TO_HOME: is_returning_home
+            FlockwaveErrorCode.RETURN_TO_HOME.value: is_returning_home
             and heartbeat.system_status > MAVState.STANDBY.value,
         }
 

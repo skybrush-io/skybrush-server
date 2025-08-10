@@ -258,7 +258,7 @@ class DroneShowStatus:
     elapsed_time: int = 0
     """Number of seconds elapsed in the drone show."""
 
-    flags: DroneShowStatusFlag = DroneShowStatusFlag.OFF
+    flags: int = DroneShowStatusFlag.OFF.value
     """Various status flags."""
 
     stage: DroneShowExecutionStage = DroneShowExecutionStage.OFF
@@ -321,7 +321,7 @@ class DroneShowStatus:
             # No "flags3" field in the original packet. "flags3" contains the
             # authorization scope and we need to keep it consistent with the
             # authorization flag in the "flags" field.
-            if flags & DroneShowStatusFlag.HAS_AUTHORIZATION_TO_START:
+            if flags & DroneShowStatusFlag.HAS_AUTHORIZATION_TO_START.value:
                 flags3 |= (0x01) << 2
 
         # validate the authorization scope
@@ -382,34 +382,36 @@ class DroneShowStatus:
         """Returns whether the takeoff authorization flag is set in the drone
         show status message.
         """
-        return bool(self.flags & DroneShowStatusFlag.HAS_AUTHORIZATION_TO_START)
+        return bool(self.flags & DroneShowStatusFlag.HAS_AUTHORIZATION_TO_START.value)
 
     @property
     def has_timesync_error(self) -> bool:
         """Returns whether there is probably a time synchronization problem
         as we are receiving invalid timestamps from the GPS.
         """
-        return bool(self.flags & DroneShowStatusFlag.IS_GPS_TIME_BAD)
+        return bool(self.flags & DroneShowStatusFlag.IS_GPS_TIME_BAD.value)
 
     @property
     def is_far_from_expected_position(self) -> bool:
         """Returns whether the drone seems to be far from its expected position,
         typically during a show.
         """
-        return bool(self.flags & DroneShowStatusFlag.IS_FAR_FROM_EXPECTED_POSITION)
+        return bool(
+            self.flags & DroneShowStatusFlag.IS_FAR_FROM_EXPECTED_POSITION.value
+        )
 
     @property
     def is_geofence_breached(self) -> bool:
         """Returns whether at least one of the geofences is breached, even if
         the drone is configured not to act on them (i.e. report only)."""
-        return bool(self.flags & DroneShowStatusFlag.GEOFENCE_BREACHED)
+        return bool(self.flags & DroneShowStatusFlag.GEOFENCE_BREACHED.value)
 
     @property
     def is_misplaced_before_takeoff(self) -> bool:
         """Returns whether we are currently before the takeoff stage and the
         drone seems to be misplaced.
         """
-        return bool(self.flags & DroneShowStatusFlag.IS_MISPLACED_BEFORE_TAKEOFF)
+        return bool(self.flags & DroneShowStatusFlag.IS_MISPLACED_BEFORE_TAKEOFF.value)
 
     @property
     def message(self) -> str:
@@ -427,10 +429,13 @@ class DroneShowStatus:
         """Formats a status message from the execution stage and flags found in
         the drone show status packet.
         """
+        # This function is called frequently, and Python enums are a bit slow
+        # so we optimize enum access by using the 'value' property on them
+
         flags = self.flags
         stage = self.stage
 
-        if not flags & DroneShowStatusFlag.HAS_SHOW_FILE:
+        if not flags & DroneShowStatusFlag.HAS_SHOW_FILE.value:
             return "No show data"
 
         # If we are in a stage that implies that we are flying or we have an
@@ -441,24 +446,24 @@ class DroneShowStatus:
 
         # Looks like we are on the ground, so show the info that we can gather
         # from the flags
-        if not flags & DroneShowStatusFlag.HAS_ORIGIN:
+        if not flags & DroneShowStatusFlag.HAS_ORIGIN.value:
             return "Origin not set"
-        elif not flags & DroneShowStatusFlag.HAS_ORIENTATION:
+        elif not flags & DroneShowStatusFlag.HAS_ORIENTATION.value:
             return "Orientation not set"
-        elif flags & DroneShowStatusFlag.IS_MISPLACED_BEFORE_TAKEOFF:
+        elif flags & DroneShowStatusFlag.IS_MISPLACED_BEFORE_TAKEOFF.value:
             return "Not at takeoff position"
         elif (
-            not flags & DroneShowStatusFlag.HAS_START_TIME
+            not flags & DroneShowStatusFlag.HAS_START_TIME.value
             and stage != DroneShowExecutionStage.LANDED
         ):
-            if flags & DroneShowStatusFlag.HAS_AUTHORIZATION_TO_START:
+            if flags & DroneShowStatusFlag.HAS_AUTHORIZATION_TO_START.value:
                 return "Authorized without start time"
-            elif self.gps_fix < OurGPSFixType.FIX_3D:
+            elif self.gps_fix < OurGPSFixType.FIX_3D.value:
                 # This is needed here to explain why the start time might not
                 # have been set yet; interpreting the SHOW_START_TIME parameter
                 # needs GPS fix
                 return "No 3D GPS fix yet"
-            elif flags & DroneShowStatusFlag.IS_GPS_TIME_BAD:
+            elif flags & DroneShowStatusFlag.IS_GPS_TIME_BAD.value:
                 # If we get here, it means that we _do_ have 3D fix _but_ we
                 # still don't have a GPS timestamp. This can happen only if the
                 # GPS is not sending us the full timestamp; e.g., if it sends
@@ -471,7 +476,7 @@ class DroneShowStatus:
             else:
                 return "Start time not set"
         elif (
-            not flags & DroneShowStatusFlag.HAS_AUTHORIZATION_TO_START
+            not flags & DroneShowStatusFlag.HAS_AUTHORIZATION_TO_START.value
             and stage != DroneShowExecutionStage.LANDED
         ):
             if stage is DroneShowExecutionStage.OFF:
@@ -479,7 +484,7 @@ class DroneShowStatus:
                 return ""
             else:
                 return "Not authorized to start"
-        elif not flags & DroneShowStatusFlag.HAS_GEOFENCE:
+        elif not flags & DroneShowStatusFlag.HAS_GEOFENCE.value:
             return "Geofence not set"
         elif self.gps_fix < OurGPSFixType.FIX_3D:
             return "No 3D GPS fix yet"

@@ -5,6 +5,7 @@ from __future__ import annotations
 from contextlib import aclosing, asynccontextmanager
 from dataclasses import dataclass
 from enum import Enum, IntEnum
+from errno import ENOSPC
 from functools import partial
 from io import BytesIO
 from itertools import cycle, islice
@@ -109,6 +110,11 @@ class MAVFTPErrorCode(IntEnum):
     @staticmethod
     def to_string(code: int, errno: Optional[int] = None) -> str:
         result = _mavftp_error_codes.get(int(code)) or f"Unknown error code {int(code)}"
+        if errno == ENOSPC and code in (
+            MAVFTPErrorCode.FAIL,
+            MAVFTPErrorCode.FAIL_ERRNO,
+        ):
+            result = "No space left on device"
         if errno is not None:
             result = f"{result} (errno = {errno})"
         return result

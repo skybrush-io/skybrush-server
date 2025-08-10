@@ -1078,6 +1078,11 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
     _gps_fix: GPSFix
     """Current GPS fix status of the drone"""
 
+    _last_autopilot_capabilities_requested_at: Optional[float] = None
+    """Stores the time when we attempted to retrieve the autopilot capabilities
+    for the last time. Used to avoid frequent requests.
+    """
+
     _last_data_stream_configuration_attempted_at: Optional[float] = None
     """Stores the time when we attempted to configure the data streams for
     the last time. Used to avoid frequent reconfiguration attempts.
@@ -1665,7 +1670,13 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
         # Do we already have basic information about the autopilot capabilities?
         # If we don't, ask for them.
         if not self.get_last_message(MAVMessageType.AUTOPILOT_VERSION):
-            self.driver.run_in_background(self._request_autopilot_capabilities)
+            now = monotonic()
+            if (
+                self._last_autopilot_capabilities_requested_at is None
+                or now - self._last_autopilot_capabilities_requested_at > 2
+            ):
+                self._last_autopilot_capabilities_requested_at = now
+                self.driver.run_in_background(self._request_autopilot_capabilities)
 
         # If we haven't received a SYS_STATUS message for a while but we keep
         # on receiving heartbeats, chances are that the data streams are not

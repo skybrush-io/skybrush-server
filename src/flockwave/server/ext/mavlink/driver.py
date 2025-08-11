@@ -119,29 +119,34 @@ def transport_options_to_channel(options: Optional[TransportOptions]) -> str:
 
 
 class MAVLinkDriver(UAVDriver["MAVLinkUAV"]):
-    """Driver class for MAVLink-based drones.
+    """Driver class for MAVLink-based drones."""
 
-    Attributes:
-        app: the app in which the driver lives
-        create_device_tree_mutator: a function that should be called by the
-            driver as a context manager whenever it wants to mutate the state
-            of the device tree
-        broadcast_packet: a function that should be called by the driver
-            whenever it wants to broadcast a packet. The function must be
-            called with the packet to send. May be `None` if broadcasting
-            is not supported.
-        send_packet: a function that should be called by the driver whenever it
-            wants to send a packet. The function must be called with the packet
-            to send, and a pair formed by the medium via which the packet
-            should be forwarded and the destination address in that medium.
+    assume_data_streams_configured: bool = False
+    """Whether to assume that UAVs managed by this driver already have their
+    MAVLink data streams configured appropriately. Used to skip the initialization
+    part, which is useful if you have thousands of drones and you know that
+    they are configured correctly.
     """
 
     broadcast_packet: PacketBroadcasterFn
+    """A function that should be called by the driver whenever it wants to
+    broadcast a packet. The function must be called with the packet to send.
+    """
+
     create_device_tree_mutator: Callable[[], DeviceTreeMutator]
+    """A function that should be called by the driver as a context manager
+    whenever it wants to mutate the state of the device tree.
+    """
+
     log: Logger
     mandatory_custom_mode: Optional[int]
     run_in_background: Callable[[Callable], None]
     send_packet: PacketSenderFn
+    """A function that should be called by the driver whenever it wants to send
+    a packet. The function must be called with the packet to send, and a pair
+    formed by the medium via which the packet should be forwarded and the
+    destination address in that medium.
+    """
 
     def __init__(self, app=None):
         """Constructor.
@@ -1050,13 +1055,13 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
     ensure that the log downloader object is created on-demand.
     """
 
-    _network_id = ""
+    _network_id: str = ""
     """Stores the MAVLink network ID of the drone (not part of the MAVLink
     messages; used by us to track which MAVLink network of ours the
     drone belongs to).
     """
 
-    _system_id = 0
+    _system_id: int = 0
     """MAVLink system ID of the drone. Zero if unspecified or unknown."""
 
     _autopilot: Autopilot
@@ -1682,7 +1687,8 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
         # on receiving heartbeats, chances are that the data streams are not
         # configured correctly so we configure them.
         if (
-            age_of_last_heartbeat < 2
+            not self.driver.assume_data_streams_configured
+            and age_of_last_heartbeat < 2
             and self.get_age_of_message(MAVMessageType.SYS_STATUS) > 5
         ):
             self._configure_data_streams_soon()
@@ -2350,6 +2356,9 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
             except TooSlowError:
                 # attempt timed out, even after retries, so we just give up
                 pass
+            except FutureCancelled:
+                # This is okay, server is shutting down
+                return
             finally:
                 self._configuring_data_streams = False
 
@@ -2445,7 +2454,8 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
         """Handles a reboot event on the autopilot and attempts to re-initialize
         the data streams.
         """
-        self._configure_data_streams_soon(force=True)
+        if not self.driver.assume_data_streams_configured:
+            self._configure_data_streams_soon(force=True)
 
         # No need to request the autopilot capabilities here; we do it after
         # every heartbeat if we don't have them yet. See the comment in

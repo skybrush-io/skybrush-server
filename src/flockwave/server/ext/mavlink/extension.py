@@ -86,6 +86,9 @@ class MAVLinkDronesExtension(UAVExtension[MAVLinkDriver]):
         """
         assert self.log is not None
 
+        driver.assume_data_streams_configured = bool(
+            configuration.get("assume_data_streams_configured")
+        )
         driver.broadcast_packet = self._broadcast_packet
         driver.create_device_tree_mutator = self.create_device_tree_mutation_context
         driver.log = self.log
@@ -736,6 +739,18 @@ schema = {
             description="Specifies how RSSI values are derived for the drones. May be overridden in each network.",
             propertyOrder=10000,
         ),
+        "assume_data_streams_configured": {
+            "type": "boolean",
+            "title": "Assume that MAVLink packet streams are configured",
+            "description": (
+                "If enabled, the driver will assume that the MAVLink data streams "
+                "are already configured and will not attempt to configure them "
+                "automatically. This speeds up the initialization sequence "
+                "when you have thousands of drones."
+            ),
+            "default": False,
+            "format": "checkbox",
+        },
         # packet_loss is an advanced setting and is not included here
     }
 }

@@ -6,7 +6,7 @@ from abc import ABC, abstractmethod
 from contextlib import aclosing
 from time import monotonic
 from trio import sleep, TooSlowError
-from typing import AsyncIterator, Type, Union, TYPE_CHECKING
+from typing import AsyncIterator, Optional, Type, Union, TYPE_CHECKING
 
 from flockwave.server.errors import NotSupportedError
 from flockwave.server.model.commands import Progress, Suspend
@@ -50,8 +50,9 @@ class Autopilot(ABC):
     """Interface specification and generic entry point for autopilot objects."""
 
     name = "Abstract autopilot"
+    capabilities: int = 0
 
-    def __init__(self, base=None) -> None:
+    def __init__(self, base: Optional[Autopilot] = None) -> None:
         self.capabilities = int(getattr(base, "capabilities", 0))
 
     @staticmethod
@@ -114,7 +115,7 @@ class Autopilot(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    async def calibrate_accelerometer(self, uav: MAVLinkUAV) -> AsyncIterator[Progress]:
+    def calibrate_accelerometer(self, uav: MAVLinkUAV) -> AsyncIterator[Progress]:
         """Calibrates the accelerometers of the UAV.
 
         Yields:
@@ -130,7 +131,7 @@ class Autopilot(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    async def calibrate_compass(self, uav: MAVLinkUAV) -> AsyncIterator[Progress]:
+    def calibrate_compass(self, uav: MAVLinkUAV) -> AsyncIterator[Progress]:
         """Calibrates the compasses of the UAV.
 
         Yields:
@@ -336,10 +337,10 @@ class UnknownAutopilot(Autopilot):
 
     name = "Unknown autopilot"
 
-    async def calibrate_accelerometer(self, uav: MAVLinkUAV) -> AsyncIterator[Progress]:
+    def calibrate_accelerometer(self, uav: MAVLinkUAV):
         raise NotSupportedError
 
-    async def calibrate_compass(self, uav: MAVLinkUAV) -> AsyncIterator[Progress]:
+    def calibrate_compass(self, uav: MAVLinkUAV):
         raise NotSupportedError
 
     def can_handle_firmware_update_target(self, target_id: str) -> bool:
@@ -366,9 +367,7 @@ class UnknownAutopilot(Autopilot):
     async def get_geofence_status(self, uav: MAVLinkUAV) -> GeofenceStatus:
         raise NotSupportedError
 
-    async def handle_firmware_update(
-        self, uav: MAVLinkUAV, target_id: str, blob: bytes
-    ) -> None:
+    def handle_firmware_update(self, uav: MAVLinkUAV, target_id: str, blob: bytes):
         raise NotSupportedError
 
     @property
@@ -490,10 +489,10 @@ class PX4(Autopilot):
         # anywhere
         return False
 
-    async def calibrate_accelerometer(self, uav: MAVLinkUAV) -> AsyncIterator[Progress]:
+    def calibrate_accelerometer(self, uav: MAVLinkUAV):
         raise NotImplementedError
 
-    async def calibrate_compass(self, uav: MAVLinkUAV) -> AsyncIterator[Progress]:
+    def calibrate_compass(self, uav: MAVLinkUAV):
         raise NotImplementedError
 
     def can_handle_firmware_update_target(self, target_id: str) -> bool:
@@ -520,9 +519,7 @@ class PX4(Autopilot):
     async def get_geofence_status(self, uav: MAVLinkUAV) -> GeofenceStatus:
         raise NotImplementedError
 
-    async def handle_firmware_update(
-        self, uav: MAVLinkUAV, target_id: str, blob: bytes
-    ) -> None:
+    def handle_firmware_update(self, uav: MAVLinkUAV, target_id: str, blob: bytes):
         raise NotSupportedError
 
     @property

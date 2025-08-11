@@ -128,6 +128,14 @@ class MAVLinkDriver(UAVDriver["MAVLinkUAV"]):
     they are configured correctly.
     """
 
+    autopilot_factory: Optional[Callable[[], Autopilot]] = None
+    """Factory function that returns a new Autopilot_ instance to be used by
+    drones managed by this driver. `None` means to infer the autopilot type
+    automatically from the heartbeat and the autopilot capabilities. Used to
+    skip the extra messages associated with the process, which is useful if you
+    have thousands of drones and you know which autopilot they are using.
+    """
+
     broadcast_packet: PacketBroadcasterFn
     """A function that should be called by the driver whenever it wants to
     broadcast a packet. The function must be called with the packet to send.
@@ -166,6 +174,7 @@ class MAVLinkDriver(UAVDriver["MAVLinkUAV"]):
 
         self.app = app  # type: ignore
 
+        self.autopilot_factory = None
         self.broadcast_packet = None  # type: ignore
         self.create_device_tree_mutator = None  # type: ignore
         self.log = None  # type: ignore
@@ -1133,7 +1142,9 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
     def __init__(self, *args, **kwds):
         super().__init__(*args, **kwds)
 
-        self._autopilot = UnknownAutopilot()
+        make_autopilot = self.driver.autopilot_factory or UnknownAutopilot
+        self._autopilot = make_autopilot()
+
         self._battery = BatteryInfo()
         self._connected_event = Event()
         self._gps_fix = GPSFix()
@@ -1682,7 +1693,9 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
 
         # Do we already have basic information about the autopilot capabilities?
         # If we don't, ask for them.
-        if not self.get_last_message(MAVMessageType.AUTOPILOT_VERSION):
+        if not self.driver.autopilot_factory and not self.get_last_message(
+            MAVMessageType.AUTOPILOT_VERSION
+        ):
             now = monotonic()
             if (
                 self._last_autopilot_capabilities_requested_at is None

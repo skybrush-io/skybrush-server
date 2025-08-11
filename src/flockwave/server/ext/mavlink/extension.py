@@ -7,7 +7,7 @@ from __future__ import annotations
 from collections import OrderedDict
 from contextlib import ExitStack, contextmanager
 from functools import partial
-from typing import Iterator, Union, cast, Optional, TYPE_CHECKING
+from typing import Callable, Iterator, Union, cast, Optional, TYPE_CHECKING
 
 from flockwave.server.ext.base import UAVExtension
 from flockwave.server.ext.mavlink.fw_upload import FirmwareUpdateTarget
@@ -15,6 +15,7 @@ from flockwave.server.model.uav import UAV
 from flockwave.server.registries.errors import RegistryFull
 from flockwave.server.utils import optional_int, overridden
 
+from .autopilots import ArduPilot, ArduPilotWithSkybrush, PX4, Autopilot
 from .driver import MAVLinkDriver, MAVLinkUAV
 from .errors import InvalidSigningKeyError
 from .network import MAVLinkNetwork
@@ -83,9 +84,34 @@ class MAVLinkDronesExtension(UAVExtension[MAVLinkDriver]):
         """
         assert self.log is not None
 
-        driver.assume_data_streams_configured = bool(
+        assume_data_streams_configured = bool(
             configuration.get("assume_data_streams_configured")
         )
+        if assume_data_streams_configured:
+            self.log.info("MAVLink data streams are assumed to be configured")
+
+        autopilot_type = str(configuration.get("autopilot_type", "auto")) or "auto"
+        autopilot_factory: Optional[Callable[[], Autopilot]]
+        match autopilot_type:
+            case "auto":
+                autopilot_factory = None
+            case "ardupilot":
+                autopilot_factory = ArduPilot
+                self.log.info("Flight controller firmware: ArduPilot")
+            case "px4":
+                autopilot_factory = PX4
+                self.log.info("Flight controller firmware: PX4")
+            case "skybrush":
+                autopilot_factory = ArduPilotWithSkybrush
+                self.log.info("Flight controller firmware: Skybrush on ArduPilot")
+            case _:
+                autopilot_factory = None
+                self.log.warning(
+                    f'Unknown flight controller firmware: {autopilot_type}, assuming "auto"'
+                )
+
+        driver.assume_data_streams_configured = assume_data_streams_configured
+        driver.autopilot_factory = autopilot_factory
         driver.broadcast_packet = self._broadcast_packet
         driver.create_device_tree_mutator = self.create_device_tree_mutation_context
         driver.log = self.log

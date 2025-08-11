@@ -2592,7 +2592,7 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
             FlockwaveErrorCode.AUTOPILOT_INIT_FAILED.value: False,
             FlockwaveErrorCode.SLEEPING.value: True,
         }
-        self.ensure_errors(errors)  # type: ignore
+        self.ensure_errors(errors)
 
     def _update_errors_from_sys_status_and_heartbeat(self) -> None:
         """Updates the error codes based on the most recent HEARTBEAT and
@@ -2763,7 +2763,7 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
             self._preflight_status.result = PreflightCheckResult.PASS
 
         # Update the error flags as needed
-        self.ensure_errors(errors)  # type: ignore
+        self.ensure_errors(errors)
 
     def _update_gps_fix_type_and_satellite_count(
         self, type: OurGPSFixType, num_satellites: Optional[int]

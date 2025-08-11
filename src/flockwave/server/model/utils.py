@@ -1,27 +1,36 @@
 from base64 import b64decode, b64encode
 from enum import Enum, IntEnum
-from typing import Callable, Optional, Type
+from typing import Any, Callable, Optional, Type, TypeVar
 
 from .metamagic import MapperPair
 
-__all__ = ("as_base64", "coerce", "enum_to_json", "optionally_scaled_by", "scaled_by")
+__all__ = (
+    "as_base64",
+    "coerce",
+    "enum_to_json",
+    "optionally_scaled_by",
+    "scaled_by",
+    "set_to_json",
+)
+
+T = TypeVar("T")
 
 
-def as_base64() -> MapperPair:
+def _as_base64() -> MapperPair[Optional[str], Optional[bytes]]:
     """Returns a property mapper function pair that can be used to represent
     a byte array as a base64-encoded string when saving it into JSON.
     """
 
-    def from_json(value):
+    def from_json(value: Optional[str]) -> Optional[bytes]:
         return None if value is None else b64decode(value.encode("ascii"))
 
-    def to_json(value):
+    def to_json(value: Optional[bytes]) -> Optional[str]:
         return None if value is None else b64encode(value).decode("ascii")
 
     return from_json, to_json
 
 
-as_base64 = as_base64()
+as_base64 = _as_base64()
 
 
 def coerce(type: Callable) -> MapperPair:
@@ -46,7 +55,7 @@ def coerce_optional(type: Callable) -> MapperPair:
     return from_json, to_json
 
 
-def enum_to_json(type: Type[Enum]) -> MapperPair:
+def enum_to_json(type: Type[Enum]) -> MapperPair[Any, Enum]:
     """Returns a property mapper function pair that can be used when the value
     is an enum and has to be replaced with its string or integer representation
     before saving it into JSON.
@@ -57,18 +66,20 @@ def enum_to_json(type: Type[Enum]) -> MapperPair:
 
     if issubclass(type, IntEnum):
 
-        def to_json(value):
+        def to_json_int(value):
             return int(value.value)
+
+        return from_json, to_json_int
 
     else:
 
-        def to_json(value):
+        def to_json_str(value):
             return str(value.value)
 
-    return from_json, to_json
+        return from_json, to_json_str
 
 
-def scaled_by(factor: float) -> MapperPair:
+def scaled_by(factor: float) -> MapperPair[int, float]:
     """Returns a property mapper function pair that can be used when the value
     of a numeric property is scaled up by a factor and then cast to an integer
     when it is stored in JSON.
@@ -84,7 +95,7 @@ def scaled_by(factor: float) -> MapperPair:
     return from_json, to_json
 
 
-def optionally_scaled_by(factor: float) -> MapperPair:
+def optionally_scaled_by(factor: float) -> MapperPair[Optional[int], Optional[float]]:
     """Returns a property mapper function pair that can be used when the value
     of a numeric property is scaled up by a factor and then cast to an integer
     when it is stored in JSON. Also handles None transparently.
@@ -98,3 +109,9 @@ def optionally_scaled_by(factor: float) -> MapperPair:
         return int(round(value * factor)) if value is not None else None
 
     return from_json, to_json
+
+
+set_to_json = set, list
+"""A property mapper function pair that can be used to represent
+a set of plain JSON objects as a list when saving it into JSON.
+"""

@@ -7,20 +7,23 @@ a JSON schema description.
 
 from contextlib import contextmanager
 from dataclasses import dataclass
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable, Dict, Optional, TypeVar
 
 from flockwave.server.utils.validation import cached_validator_for
 from flockwave.spec.schema import Schema
 
 __all__ = ("ModelMeta",)
 
+T = TypeVar("T")
+U = TypeVar("U")
 
-Mapper = Callable[[Any], Any]
+
+Mapper = Callable[[T], U]
 """Type specification for a mapper function that converts a property to its
 JSON representation or vice versa.
 """
 
-MapperPair = tuple[Mapper, Mapper]
+MapperPair = tuple[Mapper[T, U], Mapper[U, T]]
 """Pair of mapper functions, one to convert from JSON and the other one to
 convert to JSON.
 """

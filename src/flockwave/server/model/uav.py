@@ -1431,7 +1431,7 @@ class UAVDriver(Generic[TUAV], metaclass=ABCMeta):
         raise NotImplementedError
 
     def _send_reset_signal_single(
-        self, uav: TUAV, *, component: str, transport: Optional[TransportOptions] = None
+        self, uav: TUAV, component: str, *, transport: Optional[TransportOptions] = None
     ) -> Union[None, Awaitable[None]]:
         """Asks the driver to send a reset signal to a single UAV managed by
         this driver.

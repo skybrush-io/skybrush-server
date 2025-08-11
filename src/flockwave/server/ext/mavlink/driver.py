@@ -12,7 +12,7 @@ from logging import Logger
 from math import inf, isfinite
 from time import monotonic
 from trio import Event, fail_after, move_on_after, sleep, TooSlowError
-from typing import Any, AsyncIterator, Callable, Optional, Union
+from typing import Any, AsyncIterator, Awaitable, Callable, Optional, Union
 
 from flockwave.gps.time import datetime_to_gps_time_of_week, gps_time_of_week_to_utc
 from flockwave.gps.vectors import GPSCoordinate, VelocityNED
@@ -139,8 +139,16 @@ class MAVLinkDriver(UAVDriver["MAVLinkUAV"]):
     """
 
     log: Logger
+    """Logger to use to write log messages."""
+
     mandatory_custom_mode: Optional[int]
-    run_in_background: Callable[[Callable], None]
+    """Custom mode to switch drones to when they are seen for the first time."""
+
+    run_in_background: Callable[[Callable[[], Awaitable[None]]], None]
+    """A function that should be called by the driver whenever it wants to
+    run an asynchronous function in the background.
+    """
+
     send_packet: PacketSenderFn
     """A function that should be called by the driver whenever it wants to send
     a packet. The function must be called with the packet to send, and a pair
@@ -895,7 +903,7 @@ class MAVLinkDriver(UAVDriver["MAVLinkUAV"]):
             raise RuntimeError(f"Resetting {component!r} is not supported")
 
     async def _send_reset_signal_single(
-        self, uav: "MAVLinkUAV", component, *, transport=None
+        self, uav: "MAVLinkUAV", component: str, *, transport=None
     ) -> None:
         channel = transport_options_to_channel(transport)
 
@@ -1868,7 +1876,7 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
         connection.
         """
         self.driver.run_in_background(
-            delayed(1, self.notify_disconnection, ensure_async=True)
+            delayed(1, self.notify_disconnection, ensure_async=True)  # type: ignore[reportArgumentType]
         )
 
     def _reset_mavlink_version(self) -> None:

@@ -22,7 +22,7 @@ from trio import (
     open_nursery,
     SocketStream,
 )
-from typing import Any, Optional, TYPE_CHECKING
+from typing import Any, Generic, Optional, TYPE_CHECKING, TypeVar
 
 from flockwave.channels import ParserChannel
 from flockwave.encoders.json import create_json_encoder
@@ -40,12 +40,15 @@ app: Optional[SkybrushServer] = None
 encoder = create_json_encoder()
 log: Optional[Logger] = None
 
+T = TypeVar("T")
 
-class TCPChannel(CommunicationChannel):
+
+class TCPChannel(Generic[T], CommunicationChannel[T]):
     """Object that represents a TCP communication channel between a
     server and a single client.
     """
 
+    address: Optional[tuple[str, int]]
     client_ref: Optional["weakref.ref[Client]"]
     lock: Lock
 
@@ -60,7 +63,7 @@ class TCPChannel(CommunicationChannel):
         """Binds the communication channel to the given client.
 
         Parameters:
-            client (Client): the client to bind the channel to
+            client: the client to bind the channel to
         """
         if client.id and client.id.startswith("tcp://"):
             host, _, port = client.id[6:].rpartition(":")
@@ -83,7 +86,7 @@ class TCPChannel(CommunicationChannel):
         else:
             await self.stream.aclose()
 
-    async def send(self, message):
+    async def send(self, message: T):
         """Inherited."""
         if self.stream is None:
             self.stream = self.client_ref().stream
@@ -103,7 +106,7 @@ class TCPChannel(CommunicationChannel):
 ############################################################################
 
 
-def get_address(in_subnet_of: Optional[str] = None) -> str:
+def get_address(in_subnet_of: Optional[str] = None) -> tuple[str, int]:
     """Returns the address where we are listening for incoming TCP connections.
 
     Parameters:

@@ -5,7 +5,39 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## 2.32.3 - 2025-07-31
+## [2.33.0] - 2025-08-11
+
+### Added
+
+- Added configuration options to the MAVLink extension to skip the initial
+  autopilot version discovery handshake and the configuration of MAVLink
+  stream rates if needed. These options can be used to achieve faster
+  initialization for large swarms consisting of thosands of drones.
+
+- Added a "Version info" page to the web UI that can be used to discover the
+  version number of all Python packages that the server depends on.
+
+### Changed
+
+- `UAV-INF` and `SYS-MSG` messages are now rate-limited at 5 Hz to reduce traffic
+  between Live and the server.
+
+- MAVFTP file uploads now use an adaptive timeout that tries to estimate the
+  round-trip time of the connection with an algorithm similar to how the TCP
+  protocol deals with it.
+
+- When logging messages from the MAVLink module, use the drone ID if it is
+  available instead of the MAVLink network and system ID.
+
+### Fixed
+
+- Fixed a bug in the pyro event encoder function of the show file encoder that
+  sometimes produced events out of order.
+
+- Autopilot version requests from the MAVLink module are now constrained to
+  at most one request in 2 seconds.
+
+## [2.32.3] - 2025-07-31
 
 ### Changed
 

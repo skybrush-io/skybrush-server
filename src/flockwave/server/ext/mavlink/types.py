@@ -15,6 +15,7 @@ from typing import (
     Sequence,
     Union,
     TYPE_CHECKING,
+    overload,
 )
 
 from .enums import MAVSeverity
@@ -72,15 +73,34 @@ class PacketSenderFn(Protocol):
     See the documentation in `MAVLinkNetwork.send_packet()` for more details.
     """
 
+    @overload
     def __call__(
         self,
         spec: MAVLinkMessageSpecification,
         target: MAVLinkUAV,
         *,
-        wait_for_response: Optional[tuple[str, MAVLinkMessageMatcher]] = None,
-        wait_for_one_of: Optional[dict[str, MAVLinkMessageSpecification]] = None,
         channel: Optional[str] = None,
-    ) -> Awaitable[Optional[MAVLinkMessage]]: ...
+    ) -> Awaitable[None]: ...
+
+    @overload
+    def __call__(
+        self,
+        spec: MAVLinkMessageSpecification,
+        target: MAVLinkUAV,
+        *,
+        wait_for_response: tuple[str, MAVLinkMessageMatcher],
+        channel: Optional[str] = None,
+    ) -> Awaitable[MAVLinkMessage]: ...
+
+    @overload
+    def __call__(
+        self,
+        spec: MAVLinkMessageSpecification,
+        target: MAVLinkUAV,
+        *,
+        wait_for_one_of: dict[str, MAVLinkMessageSpecification],
+        channel: Optional[str] = None,
+    ) -> Awaitable[tuple[str, MAVLinkMessage]]: ...
 
 
 class UAVBoundPacketSenderFn(Protocol):
@@ -90,14 +110,31 @@ class UAVBoundPacketSenderFn(Protocol):
     See the documentation in `MAVLinkUAV.send_packet()` for more details.
     """
 
+    @overload
     def __call__(
         self,
         spec: MAVLinkMessageSpecification,
         *,
-        wait_for_response: Optional[tuple[str, MAVLinkMessageMatcher]] = None,
-        wait_for_one_of: Optional[dict[str, MAVLinkMessageSpecification]] = None,
         channel: Optional[str] = None,
-    ) -> Awaitable[Optional[MAVLinkMessage]]: ...
+    ) -> Awaitable[None]: ...
+
+    @overload
+    def __call__(
+        self,
+        spec: MAVLinkMessageSpecification,
+        *,
+        wait_for_response: tuple[str, MAVLinkMessageMatcher],
+        channel: Optional[str] = None,
+    ) -> Awaitable[MAVLinkMessage]: ...
+
+    @overload
+    def __call__(
+        self,
+        spec: MAVLinkMessageSpecification,
+        *,
+        wait_for_one_of: dict[str, MAVLinkMessageSpecification],
+        channel: Optional[str] = None,
+    ) -> Awaitable[tuple[str, MAVLinkMessage]]: ...
 
 
 class _MAVLinkMessageSpecificationFactory:

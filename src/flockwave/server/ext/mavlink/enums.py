@@ -197,6 +197,10 @@ class MAVMissionResult(IntEnum):
     DENIED = 14
     OPERATION_CANCELLED = 15
 
+    @classmethod
+    def describe(cls, value: int):
+        return cls(value).name or f"unknown result ({value})"
+
 
 class MAVMissionType(IntEnum):
     """Replica of the `MAV_MISSION_TYPE` enum of the MAVLink protocol, using

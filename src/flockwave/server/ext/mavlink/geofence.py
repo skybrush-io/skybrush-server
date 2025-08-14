@@ -8,6 +8,7 @@ from typing import (
     Dict,
     Iterable,
     Optional,
+    Sequence,
     Union,
 )
 
@@ -104,7 +105,6 @@ class GeofenceManager:
         # Retrieve geofence polygons and circles
         mission_type = MAVMissionType.FENCE
         reply = await self._send_and_wait(
-            mission_type,
             spec.mission_request_list(mission_type=mission_type),
             spec.mission_count(mission_type=mission_type),
         )
@@ -123,7 +123,6 @@ class GeofenceManager:
         current_polygon = None  # Status of current polygon
         for index in range(reply.count):
             reply = await self._send_and_wait(
-                mission_type,
                 spec.mission_request_int(seq=index, mission_type=mission_type),
                 spec.mission_item_int(seq=index, mission_type=mission_type),
                 timeout=0.25,
@@ -196,7 +195,6 @@ class GeofenceManager:
         # Retrieve geofence rally points
         mission_type = MAVMissionType.RALLY
         reply = await self._send_and_wait(
-            mission_type,
             spec.mission_request_list(mission_type=mission_type),
             spec.mission_count(mission_type=mission_type),
         )
@@ -204,7 +202,6 @@ class GeofenceManager:
         # Iterate over the mission items
         for index in range(reply.count):
             reply = await self._send_and_wait(
-                mission_type,
                 spec.mission_request_int(seq=index, mission_type=mission_type),
                 spec.mission_item_int(seq=index, mission_type=mission_type),
                 timeout=0.25,
@@ -305,12 +302,13 @@ class GeofenceManager:
             # reply got lost), but we assume that the upload timed out if
             # we haven't received an ACK or the next request from the drone
             # in five seconds.
-            reply = await self._send_and_wait(
+            reply = await self._send_and_wait_for_message_or_ack(
                 mission_type,
                 message,
                 expected_reply,
                 timeout=1.5 if should_resend else 5,
                 retries=5 if should_resend else 0,
+                also_allow_acks=(MAVMissionResult.INVALID_SEQUENCE,),
             )
             if reply is None:
                 # Final ACK received
@@ -321,7 +319,6 @@ class GeofenceManager:
 
     async def _send_and_wait(
         self,
-        mission_type: MAVMissionType,
         message: MAVLinkMessageSpecification,
         expected_reply: MAVLinkMessageSpecification,
         *,
@@ -346,6 +343,51 @@ class GeofenceManager:
 
         Raises:
             TooSlowError: if the UAV failed to respond in time
+        """
+        while True:
+            try:
+                with fail_after(timeout):
+                    return await self._sender(message, wait_for_response=expected_reply)
+
+            except TooSlowError:
+                if retries > 0:
+                    retries -= 1
+                    continue
+                else:
+                    raise TooSlowError(
+                        f"MAVLink mission operation ({message[0]}) timed out"
+                    ) from None
+
+    async def _send_and_wait_for_message_or_ack(
+        self,
+        mission_type: MAVMissionType,
+        message: MAVLinkMessageSpecification,
+        expected_reply: MAVLinkMessageSpecification,
+        *,
+        timeout: float = 1.5,
+        retries: int = 5,
+        also_allow_acks: Sequence[int] = (),
+    ) -> Optional[MAVLinkMessage]:
+        """Sends a message according to the given MAVLink message specification
+        to the drone and waits for an expected reply, re-sending the message
+        as needed a given number of times before timing out.
+
+        Parameters:
+            mission_type: type of the mission we are dealing with
+            message: specification of the message to send
+            expected_reply: message matcher that matches messages that we expect
+                from the connection as a reply to the original message
+            timeout: maximum number of seconds to wait before attempting to
+                re-send the message
+            retries: maximum number of retries before giving up
+
+        Returns:
+            the MAVLink message sent by the UAV in response, or ``None`` if we
+            received a positive ACK instead
+
+        Raises:
+            TooSlowError: if the UAV failed to respond in time
+            RuntimeError: if a negative acknowledgment was received
         """
         # For each mission-related message that we send, we could receive either
         # the expected response or a MISSION_ACK with an error code.
@@ -372,9 +414,12 @@ class GeofenceManager:
                         # Got an ACK. Check whether it has an error code.
                         if response.type == MAVMissionResult.ACCEPTED:
                             return None
+                        elif response.type in also_allow_acks:
+                            return None
                         else:
                             raise RuntimeError(
-                                f"MAVLink mission operation returned code {response.type}"
+                                f"MAVLink mission operation ({message[0]}) "
+                                f"returned {MAVMissionResult.describe(response.type)}"
                             )
 
             except TooSlowError:
@@ -382,7 +427,9 @@ class GeofenceManager:
                     retries -= 1
                     continue
                 else:
-                    raise TooSlowError("MAVLink mission operation timed out") from None
+                    raise TooSlowError(
+                        f"MAVLink mission operation ({message[0]}) timed out"
+                    ) from None
 
     async def _send_final_ack(self, mission_type: int) -> None:
         """Sends the final acknowledgment at the end of a mission download

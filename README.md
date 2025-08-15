@@ -18,7 +18,7 @@ extend the functionality of the server.
 1. Install `uv`. `uv` will manage a virtual environment for this project to keep
    things nicely separated. You won't pollute the system Python with the
    dependencies of the Skybrush server and everyone will be happier.
-   See https://docs.astral.sh/uv/ for installation instructions.
+   See <https://docs.astral.sh/uv/> for installation instructions.
 
 2. Check out the source code of the server.
 
@@ -31,6 +31,21 @@ extend the functionality of the server.
 ## Documentation
 
 - [User guide](https://doc.collmot.com/public/skybrush-live-doc/latest/)
+
+## Development
+
+This project contains both public and private dependencies in `pyproject.toml`.
+Public dependencies are either on PyPI or in our public PyPI index at
+[Gemfury](https://gemfury.com). Private dependencies hosted in our private
+PyPI index are _not_ required to build the community version of Skybrush Server.
+
+However, if you are working with the project on your own and make any changes to
+`pyproject.toml` that would necessitate the regeneration of the lockfile of
+`uv` (i.e. `uv.lock`), `uv` itself may attempt to connect to our private package
+index as it needs information about _all_ dependencies to generate a consistent
+lockfile. In this case, you should remove all the dependencies from
+`pyproject.toml` that are pinned to the `collmot` package index -- these are
+the ones in the `pro` or `collmot` extras.
 
 ## License
 

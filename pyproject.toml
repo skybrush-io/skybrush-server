@@ -118,7 +118,8 @@ pyledctrl = { index = "fury" }
 
 [dependency-groups]
 dev = [
-  "flockwave-server[all]",
+  # do not add flockwave-server[all] here because it would cause problems for
+  # users working with the open-source version
   "coverage[toml]>=7.9.1",
   "pytest>=8.4.1",
   "pytest-cov>=6.2.1",

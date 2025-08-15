@@ -943,7 +943,6 @@ pro = [
 [package.dev-dependencies]
 dev = [
     { name = "coverage", extra = ["toml"] },
-    { name = "flockwave-server", extra = ["all"] },
     { name = "pdoc" },
     { name = "pytest" },
     { name = "pytest-cov" },
@@ -1013,7 +1012,6 @@ provides-extras = ["all", "collmot", "pro"]
 [package.metadata.requires-dev]
 dev = [
     { name = "coverage", extras = ["toml"], specifier = ">=7.9.1" },
-    { name = "flockwave-server", extras = ["all"] },
     { name = "pdoc", specifier = ">=15.0.4" },
     { name = "pytest", specifier = ">=8.4.1" },
     { name = "pytest-cov", specifier = ">=6.2.1" },

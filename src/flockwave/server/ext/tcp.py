@@ -134,7 +134,7 @@ def get_ssdp_location(address, host, port) -> Optional[str]:
     )
 
 
-async def handle_connection(stream, *, limit):
+async def handle_connection(stream: SocketStream, *, limit: CapacityLimiter):
     """Handles a connection attempt from a single client.
 
     Parameters:
@@ -203,11 +203,11 @@ async def handle_message(message: Any, client, *, limit: CapacityLimiter) -> Non
 ############################################################################
 
 
-async def run(app, configuration, logger):
+async def run(app: SkybrushServer, configuration, logger: Logger):
     """Background task that is active while the extension is loaded."""
-    host = configuration.get("host", "")
-    port = configuration.get("port", suggest_port_number_for_service("tcp"))
-    pool_size = configuration.get("pool_size", 1000)
+    host: Optional[str] = str(configuration.get("host", ""))
+    port = int(configuration.get("port", suggest_port_number_for_service("tcp")))
+    pool_size = int(configuration.get("pool_size", 1000))
 
     if not host:
         host = None  # empty string is not okay on Linux

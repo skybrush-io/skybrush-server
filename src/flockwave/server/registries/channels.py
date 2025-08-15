@@ -80,7 +80,7 @@ class ChannelTypeRegistry(RegistryBase[ChannelTypeDescriptor]):
                 CommunicationChannel_ and has an appropriate constructor,
                 but can be an arbitrary callable as long as it returns an
                 instance of CommunicationChannel_.
-            address (Optional[callab]e): a callable that can be called with
+            address (Optional[callable]): a callable that can be called with
                 a single host-port pair or ``None`` and that returns a tuple
                 consisting of a hostname and the corresponding port where the
                 communication channel can be accessed from the outside. The
@@ -99,7 +99,7 @@ class ChannelTypeRegistry(RegistryBase[ChannelTypeDescriptor]):
                 a message to all the clients who are connected with this
                 channel type, and the application will fall back to sending
                 individual messages.
-            ssdp_location (Optional[callab]e]): a callable that can be called
+            ssdp_location (Optional[callable]): a callable that can be called
                 with a single host-port pair or ``None`` and that returns a
                 URI describing the location where the communication channel
                 can be accessed from the outside. For instance, a TCP channel

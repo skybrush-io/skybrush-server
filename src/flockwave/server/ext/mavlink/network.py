@@ -705,7 +705,10 @@ class MAVLinkNetwork:
             "BAD_DATA": nop,
             "COMMAND_ACK": nop,
             "COMMAND_LONG": self._handle_message_command_long,
-            "DATA16": self._handle_message_data16,
+            "DATA16": self._handle_message_data,
+            "DATA32": self._handle_message_data,
+            "DATA64": self._handle_message_data,
+            "DATA96": self._handle_message_data,
             "FENCE_STATUS": nop,
             "FILE_TRANSFER_PROTOCOL": nop,
             "GLOBAL_POSITION_INT": self._handle_message_global_position_int,
@@ -832,7 +835,7 @@ class MAVLinkNetwork:
         if uav:
             uav.handle_message_command_long(message)
 
-    def _handle_message_data16(
+    def _handle_message_data(
         self, message: MAVLinkMessage, *, connection_id: str, address: Any
     ):
         if message.type == DroneShowStatus.TYPE:

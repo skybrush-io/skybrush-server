@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
 from datetime import timezone
 from enum import IntEnum, IntFlag
@@ -248,7 +250,13 @@ class DroneShowExecutionStage(IntEnum):
 
 @dataclass
 class DroneShowStatus:
-    """Data class representing a Skybrush-specific drone show status object."""
+    """Dataclass representing a Skybrush-specific drone show status object.
+
+    This dataclass encapsulates information that can be extracted from the
+    standard drone show status packet. Information that can be extracted only
+    from the extended status packet is provided in a separate object attached
+    to the `extension` property.
+    """
 
     start_time: int = -1
     """Scheduled start time of the drone show, in GPS seconds of week, negative
@@ -281,23 +289,32 @@ class DroneShowStatus:
     in the last few seconds.
     """
 
+    extension: Optional[DroneShowStatusExtension] = None
+    """Extended status information, if provided at construction time."""
+
     TYPE: ClassVar[int] = 0x5B
-    """Identifier of Skybrush-specific DATA16 show status packets."""
+    """Identifier of Skybrush-specific DATA* show status packets."""
 
     _struct: ClassVar[Struct] = Struct("<iHBBBBhBB")
-    """Structure of Skybrush-specific DATA16 show status packets."""
+    """Structure of Skybrush-specific DATA* show status packets."""
 
     @classmethod
     def from_bytes(cls, data: bytes):
         """Constructs a DroneShowStatus_ object from the raw body of a MAVLink
-        DATA16 packet that has already been truncated to the desired length of
+        DATA* packet that has already been truncated to the desired length of
         the packet.
         """
+        # Remember the original length so we can decide how much padding was
+        # added later
         data_len = len(data)
+        is_extended = data_len > 14
 
+        # Length of standard packet is 14 bytes. Pad it to the required length
+        # if the data is shorter than 14 bytes.
         if data_len < 14:
             data = data.ljust(14, b"\x00")
 
+        # Unpack the standard section of the packet
         (
             start_time,
             light,
@@ -343,6 +360,11 @@ class DroneShowStatus:
             else None,
         )
 
+        # if the packet is an extended status packet, parse the extended bits
+        extension = (
+            DroneShowStatusExtension.from_bytes(data[14:]) if is_extended else None
+        )
+
         return cls(
             start_time=start_time,
             elapsed_time=elapsed_time,
@@ -353,14 +375,15 @@ class DroneShowStatus:
             num_satellites=gps_health >> 3,
             authorization_scope=scope,
             rtcm_counters=rtcm_counters,
+            extension=extension,
         )
 
     @classmethod
     def from_mavlink_message(cls, message: MAVLinkMessage):
-        """Constructs a DroneShowStatus_ object from a MAVLink DATA16 packet.
+        """Constructs a DroneShowStatus_ object from a MAVLink DATA* packet.
 
         Raises:
-            ValueError: if the type of the MAVLink DATA16 packet does not match
+            ValueError: if the type of the MAVLink DATA* packet does not match
                 the expected type of a Skybrush-specific show status packet
         """
         if message.type != cls.TYPE:
@@ -492,3 +515,101 @@ class DroneShowStatus:
         # We are on the ground but there's nothing important to report from the
         # flags so just show the description of the stage
         return stage.description
+
+
+@dataclass
+class DroneShowStatusExtension:
+    """Dataclass representing the extended part of a Skybrush-specific drone
+    show status object.
+
+    This dataclass encapsulates information that can be extracted from the
+    extended drone show status packet only.
+    """
+
+    lat: float
+    """Latitude of the drone in degrees."""
+
+    lng: float
+    """Longitude of the drone in degrees."""
+
+    alt: float
+    """Altitude of the drone in meters above sea level."""
+
+    relative_alt: float
+    """Altitude of the drone relative to its home altitude, in meters."""
+
+    vx: float
+    """X (North) coordinate of the velocity of the drone, in m/s."""
+
+    vy: float
+    """Y (East) coordinate of the velocity of the drone, in m/s."""
+
+    vz: float
+    """Z (Down) coordinate of the velocity of the drone, in m/s."""
+
+    heading: float
+    """Heading of the drone."""
+
+    h_acc: Optional[float] = None
+    """Horizontal accuracy as reported by the GPS; ``None`` if not provided."""
+
+    v_acc: Optional[float] = None
+    """Vertical accuracy as reported by the GPS; ``None`` if not provided."""
+
+    show_id: Optional[int] = None
+    """Unique identifier of the show uploaded to the drone, if known."""
+
+    trajectory_index: Optional[int] = None
+    """Index of the trajectory that the drone is going to fly, if known."""
+
+    _struct: ClassVar[Struct] = Struct("<iiiihhhHHHIH")
+    """Structure of the packet."""
+
+    @classmethod
+    def from_bytes(cls, data: bytes):
+        """Constructs a DroneShowStatusExtension_ object from the appropriate
+        section of the raw body of a MAVLink DATA* packet.
+
+        Typically you should not need to call this method directly; call
+        `DroneShowStatus.from_bytes(...)` on the full packet payload instead.
+        """
+        (
+            lat,
+            lng,
+            alt,
+            relative_alt,
+            vx,
+            vy,
+            vz,
+            heading,
+            h_acc,
+            v_acc,
+            show_id,
+            trajectory_index,
+        ) = cls._struct.unpack(data[: cls._struct.size])
+
+        if abs(lat) <= 900000000:
+            # latitude, longitude: convert to degrees
+            lat /= 1e7
+            lng /= 1e7
+            # altitudes: [mm] --> [m]
+            alt /= 1e3
+            relative_alt /= 1e3
+        else:
+            # treat invalid latitudes as an indication of "no GPS fix"
+            lat = lng = alt = relative_alt = 0.0
+
+        # velocity: [cm/s] --> [m/s]
+        vx /= 100.0
+        vy /= 100.0
+        vz /= 100.0
+
+        # heading: [cdeg] --> [deg]
+        heading = heading / 100.0 if abs(heading) <= 36000 else 0.0
+
+        # GPS accuracy
+        h_acc = h_acc / 1000.0 if h_acc > 0 else None
+        v_acc = v_acc / 1000.0 if v_acc > 0 else None
+
+        # TODO(ntamas): show ID, trajectory index
+        return cls(lat, lng, alt, relative_alt, vx, vy, vz, heading, h_acc, v_acc)

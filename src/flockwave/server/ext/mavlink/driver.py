@@ -1628,6 +1628,8 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
 
         self._last_skybrush_status_info = data
 
+        # Process the basic part of the packet that is always present (both with
+        # the standard and the compact telemetry profile)
         self._update_gps_fix_type_and_satellite_count(data.gps_fix, data.num_satellites)
 
         gps_start_time = data.start_time if data.start_time >= 0 else None
@@ -1653,6 +1655,29 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
                 rtcm_counter_to_rssi(data.rtcm_counters[0]),
                 rtcm_counter_to_rssi(data.rtcm_counters[1]),
             ]
+
+        # If the status packet has an extended section, process the extended part
+        if data.extension:
+            extended_part = data.extension
+
+            # Process the missing information that the standard telemetry
+            # provides with the GLOBAL_POSITION_INT packet
+            self._position.lat = extended_part.lat
+            self._position.lon = extended_part.lng
+            self._position.amsl = extended_part.alt
+            self._position.ahl = extended_part.relative_alt
+            self._velocity.x = extended_part.vx
+            self._velocity.y = extended_part.vy
+            self._velocity.z = extended_part.vz
+
+            # Process the missing information that the standard telemetry
+            # provides with the GPS_RAW_INT packet
+            self._gps_fix.horizontal_accuracy = extended_part.h_acc
+            self._gps_fix.vertical_accuracy = extended_part.v_acc
+
+            updates["position"] = self._position
+            updates["velocity"] = self._velocity
+            updates["heading"] = extended_part.heading
 
         self.update_status(**updates)
 

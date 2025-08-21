@@ -27,8 +27,7 @@ async def handle_WTH_AT(message: FlockwaveMessage, sender: Client, hub: MessageH
     if registry.num_entries > 0:
         gps_coordinate = GPSCoordinate.from_json(position)
         weather = Weather(position=gps_coordinate)
-        # TODO(ntamas): use priorities and ordering!
-        for provider in registry:
+        for provider in registry.iter_providers_by_priority():
             result = provider(weather, gps_coordinate)
             if isawaitable(result):
                 await result

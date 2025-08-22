@@ -5,7 +5,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [main]
+## [2.34.0] - 2025-08-22
+
+### Added
+
+- Added `skynet`, an extension that provides support for high-performance
+  MAVLink parsing and routing to allow the server to scale up to 5000 drones
+  and beyond. This extension is currently in an experimental phase and no
+  configuration or documentation is provided yet; let us know if you own a large
+  fleet and you are interested in testing the extension at a large scale and
+  we will help you set things up.
+
+### Changed
+
+- Started implementation of a more compact telemetry format for MAVLink links.
+
+- Weather providers can now have an associated priority when they are registered.
+
+- The takeoff time configuration and authorization logic is now separated from
+  the `mavlink` extension so it became reusable in other extensions that provide
+  support for a certain type of drone.
+
+### Fixed
+
+- `uv sync` should now work consistently out-of-the-box after the repository is
+  checked out, even if the user has no access to private components of the
+  server.
+
+## [2.33.1] - 2025-08-15
 
 ### Fixed
 

@@ -230,12 +230,6 @@ class ScheduledTakeoffManager(ABC, Generic[TUAV]):
         If you want to log them, add your own logging in the implementation of
         this method.
         """
-        # packet = create_start_time_configuration_packet(
-        #     start_time=config.takeoff_time,
-        #     authorization_scope=config.authorization_scope,
-        #     should_update_takeoff_time=config.should_update_takeoff_time,
-        # )
-        # await self._network.broadcast_packet(packet)
         ...
 
     @abstractmethod
@@ -247,9 +241,6 @@ class ScheduledTakeoffManager(ABC, Generic[TUAV]):
         May return an empty iterator if you do not want to support individual
         configuration for the UAVs.
         """
-        # for uav in self._network.uavs():
-        #     if uav.is_connected and uav.supports_scheduled_takeoff:
-        #         yield uav
         ...
 
     @abstractmethod

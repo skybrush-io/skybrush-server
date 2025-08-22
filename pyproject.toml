@@ -71,6 +71,7 @@ pro = [
   "skybrush-ext-map-cache>=1.1.1",
   "skybrush-ext-show-pro>=0.4.0",
   "skybrush-ext-sidekick>=1.0.2",
+  "skybrush-ext-skynet>=0.4.1",
   "skybrush-ext-studio>=0.8.6",
   "skybrush-ext-timecode>=1.4.1",
   "skybrush-lib-mission-planning>=2.4.1",
@@ -109,6 +110,7 @@ skybrush-ext-flight-report = { index = "collmot" }
 skybrush-ext-flockctrl = { index = "collmot" }
 skybrush-ext-map-cache = { index = "collmot" }
 skybrush-ext-show-pro = { index = "collmot" }
+skybrush-ext-skynet = { index = "collmot" }
 skybrush-ext-sidekick = { index = "collmot" }
 skybrush-ext-studio = { index = "collmot" }
 skybrush-ext-timecode = { index = "collmot" }

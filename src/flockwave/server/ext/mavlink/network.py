@@ -54,7 +54,7 @@ from .packets import DroneShowStatus
 from .rssi import RSSIMode
 from .rtk import RTKCorrectionPacketEncoder
 from .signing import MAVLinkSigningConfiguration
-from .takeoff import ScheduledTakeoffManager
+from .takeoff import MAVLinkScheduledTakeoffManager
 from .types import (
     MAVLinkMessageMatcher,
     MAVLinkMessageSpecification,
@@ -235,7 +235,7 @@ class MAVLinkNetwork:
         self._packet_loss = max(float(packet_loss), 0.0)
         self._routing = routing or {}
         self._rssi_mode = rssi_mode
-        self._scheduled_takeoff_manager = ScheduledTakeoffManager(self)
+        self._scheduled_takeoff_manager = MAVLinkScheduledTakeoffManager(self)
         self._signing = signing
         self._statustext_targets = statustext_targets
         self._system_id = max(min(int(system_id), 255), 1)

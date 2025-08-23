@@ -6,7 +6,11 @@ from trio import sleep, TooSlowError
 from typing import AsyncIterator, Union, TYPE_CHECKING
 
 from flockwave.server.errors import NotSupportedError
-from flockwave.server.model.commands import Progress, Suspend
+from flockwave.server.model.commands import (
+    Progress,
+    ProgressEventsWithSuspension,
+    Suspend,
+)
 from flockwave.server.model.geofence import (
     GeofenceAction,
     GeofenceConfigurationRequest,
@@ -126,7 +130,9 @@ class ArduPilot(Autopilot):
         else:
             return False
 
-    async def calibrate_accelerometer(self, uav: MAVLinkUAV) -> AsyncIterator[Progress]:
+    async def calibrate_accelerometer(
+        self, uav: MAVLinkUAV
+    ) -> ProgressEventsWithSuspension[None, str]:
         # Reset our internal state object of the accelerometer calibration procedure
         uav.accelerometer_calibration.reset()
 
@@ -187,7 +193,9 @@ class ArduPilot(Autopilot):
 
         yield Progress.done("Acceelerometer calibration successful.")
 
-    async def calibrate_compass(self, uav: MAVLinkUAV) -> AsyncIterator[Progress]:
+    async def calibrate_compass(
+        self, uav: MAVLinkUAV
+    ) -> ProgressEventsWithSuspension[None, str]:
         calibration_messages = {
             int(MAVMessageType.MAG_CAL_PROGRESS): 1.0,
             int(MAVMessageType.MAG_CAL_REPORT): 1.0,
@@ -216,8 +224,9 @@ class ArduPilot(Autopilot):
                 async for progress in uav.compass_calibration.updates(
                     timeout=timeout, fail_on_timeout=False
                 ):
-                    if progress.percentage == 100:
-                        success = True
+                    if isinstance(progress, Progress):
+                        if progress.percentage == 100:
+                            success = True
                     yield progress
 
         except TooSlowError:

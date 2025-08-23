@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 from collections.abc import AsyncIterator
 from typing import TYPE_CHECKING, Optional, Union, Type
 
-from flockwave.server.model.commands import Progress
+from flockwave.server.model.commands import Progress, ProgressEventsWithSuspension
 from flockwave.server.model.geofence import (
     GeofenceConfigurationRequest,
     GeofenceStatus,
@@ -96,7 +96,9 @@ class Autopilot(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def calibrate_accelerometer(self, uav: MAVLinkUAV) -> AsyncIterator[Progress]:
+    def calibrate_accelerometer(
+        self, uav: MAVLinkUAV
+    ) -> ProgressEventsWithSuspension[None, str]:
         """Calibrates the accelerometers of the UAV.
 
         Yields:
@@ -112,7 +114,9 @@ class Autopilot(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def calibrate_compass(self, uav: MAVLinkUAV) -> AsyncIterator[Progress]:
+    def calibrate_compass(
+        self, uav: MAVLinkUAV
+    ) -> ProgressEventsWithSuspension[None, str]:
         """Calibrates the compasses of the UAV.
 
         Yields:

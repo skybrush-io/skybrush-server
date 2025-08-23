@@ -4,9 +4,8 @@ procedure on ArduPilot UAVs.
 
 from enum import IntEnum
 from math import inf
-from typing import AsyncIterator
 
-from flockwave.server.model import Progress
+from flockwave.server.model.commands import ProgressEventsWithSuspension
 from flockwave.server.tasks import ProgressReporter
 
 from .enums import AccelCalVehiclePos, MAVCommand
@@ -45,7 +44,7 @@ class AccelerometerCalibration:
     _percentage: int
     """Progress of the calibration, expressed as a percentage."""
 
-    _reporter: ProgressReporter
+    _reporter: ProgressReporter[None, str]
     """Progress reporter object corresponding to the calibration."""
 
     def __init__(self):
@@ -91,7 +90,7 @@ class AccelerometerCalibration:
 
     def updates(
         self, timeout: float = inf, fail_on_timeout: bool = True
-    ) -> AsyncIterator[Progress]:
+    ) -> ProgressEventsWithSuspension[None, str]:
         """Returns an async iterator generating progress messages from the current
         calibration task.
         """

@@ -4,9 +4,8 @@ procedure on ArduPilot UAVs.
 
 from enum import IntEnum
 from math import inf
-from typing import AsyncIterator
 
-from flockwave.server.model import Progress
+from flockwave.server.model.commands import ProgressEventsWithSuspension
 from flockwave.server.tasks import ProgressReporter
 
 from .enums import MagCalStatus
@@ -32,6 +31,9 @@ class CompassCalibration:
 
     _status: list[CompassCalibrationStatus]
     """Status value for each compass being calibrated."""
+
+    _reporter: ProgressReporter[None, str]
+    """Progress reporter object corresponding to the calibration."""
 
     def __init__(self):
         """Constructor."""
@@ -113,7 +115,7 @@ class CompassCalibration:
 
     def updates(
         self, timeout: float = inf, fail_on_timeout: bool = True
-    ) -> AsyncIterator[Progress]:
+    ) -> ProgressEventsWithSuspension[None, str]:
         """Returns an async iterator generating progress messages from the current
         calibration task.
         """

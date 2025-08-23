@@ -72,6 +72,7 @@ UAV_COMMAND_HANDLERS: dict[str, tuple[str, MessageBodyTransformationSpec]] = {
     "OBJ-CMD": ("send_command", None),
     "PRM-GET": ("get_parameter", None),
     "PRM-SET": ("set_parameter", None),
+    "PRM-SET-MANY": ("set_parameters", None),
     "UAV-CALIB": ("calibrate_component", None),
     "UAV-FLY": (
         "send_fly_to_target_signal",
@@ -1361,6 +1362,7 @@ async def handle_single_uav_operations(
     "OBJ-CMD",
     "PRM-GET",
     "PRM-SET",
+    "PRM-SET-MANY",
     "UAV-CALIB",
     "UAV-FLY",
     "UAV-HALT",

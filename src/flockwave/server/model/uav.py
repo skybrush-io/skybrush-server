@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from inspect import isawaitable
 from typing import (
     Any,
     Awaitable,
@@ -10,6 +11,7 @@ from typing import (
     Generic,
     Iterable,
     Optional,
+    TypedDict,
     Union,
     TypeVar,
     TYPE_CHECKING,
@@ -60,6 +62,21 @@ TDriver = TypeVar("TDriver", bound="UAVDriver")
 
 TResult = TypeVar("TResult")
 """Type variable that represents some unspecified result object."""
+
+
+class BulkParameterUploadResponse(TypedDict, total=False):
+    """Typed dictionary that is returned as a response for a PRM-SET-MANY
+    request.
+    """
+
+    success: bool
+    """Whether the bulk parameter upload succeeded. Always present."""
+
+    failed: list[str]
+    """List of parameter names for which the bulk upload failed. Omitted if
+    the caller cannot provide the exact list of parameter names where the
+    upload failed.
+    """
 
 
 class UAVStatusInfo(TimestampMixin, metaclass=ModelMeta):
@@ -1001,6 +1018,24 @@ class UAVDriver(Generic[TUAV], ABC):
             value=value,
         )
 
+    def set_parameters(self, uavs: list[TUAV], parameters: dict[str, Any]):
+        """Asks the driver to set the value of multiple parameters on the given UAVs.
+
+        Typically, you don't need to override this method when implementing
+        a driver; override ``_set_parameters_single()`` instead.
+
+        Returns:
+            dict mapping UAVs to the corresponding results (which may also be
+            errors or awaitables; it is the responsibility of the caller to
+            evaluate errors and wait for awaitables)
+        """
+        return self._dispatch_request(
+            uavs,
+            "bulk parameter upload",
+            self._set_parameters_single,
+            parameters=parameters,
+        )
+
     def validate_command(self, command: str, args, kwds) -> Optional[str]:
         """Checks whether the driver could execute the command on the UAVs
         _in principle_, without knowing which UAVs the command will be sent to.
@@ -1556,6 +1591,55 @@ class UAVDriver(Generic[TUAV], ABC):
                 driver and will not be supported in the future either
         """
         raise NotImplementedError
+
+    async def _set_parameters_single(
+        self, uav: TUAV, parameters: dict[str, Any]
+    ) -> BulkParameterUploadResponse:
+        """Asks the driver to set the values of multiple parameters for a single
+        UAV managed by this driver.
+
+        May return an awaitable if preparing the result takes a longer time.
+
+        Since we are dealing with multiple parameters here that may be changed
+        independently, the function attempts to return even if some of the
+        parameters have not been uploaded successfully. The result conveys
+        more detailed information about whether the upload succeeded or not.
+
+        The default implementation falls back to multiple calls to
+        `_set_parameter_single()` in a sequential manner, sorted by keys in
+        alphabetical order. Override this function in concrete driver
+        implementations if you have a more efficient method for bulk parameter
+        uploads.
+
+        The default implementation always returns an awaitable as we have no
+        way of knowing whether `_set_parameter_single()` is sync or async
+        without calling it.
+
+        Raises:
+            NotImplementedError: if the operation is not supported by the
+                driver yet, but there are plans to implement it
+            NotSupportedError: if the operation is not supported by the
+                driver and will not be supported in the future either
+
+        Returns:
+            a dictionary with a `success` key that contains whether all the
+            parameters have been uploaded successfully, and an optional `failed`
+            key that contains the list of parameter names where the upload
+            failed.
+        """
+        failed: list[str] = []
+
+        for name in sorted(parameters.keys()):
+            value = parameters[name]
+
+            try:
+                result = self._set_parameter_single(uav, name, value)
+                if isawaitable(result):
+                    await result
+            except Exception:
+                failed.append(name)
+
+        return {"success": not failed, "failed": failed}
 
 
 class PassiveUAV(UAVBase):

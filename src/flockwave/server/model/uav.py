@@ -22,6 +22,8 @@ from flockwave.server.errors import NotSupportedError
 from flockwave.server.logger import log as base_log
 from flockwave.spec.schema import get_complex_object_schema
 
+from flockwave.server.model.commands import Progress, ProgressEvents
+
 from .attitude import Attitude
 from .battery import BatteryInfo
 from .devices import ObjectNode
@@ -1594,7 +1596,7 @@ class UAVDriver(Generic[TUAV], ABC):
 
     async def _set_parameters_single(
         self, uav: TUAV, parameters: dict[str, Any]
-    ) -> BulkParameterUploadResponse:
+    ) -> ProgressEvents[BulkParameterUploadResponse]:
         """Asks the driver to set the values of multiple parameters for a single
         UAV managed by this driver.
 
@@ -1629,7 +1631,10 @@ class UAVDriver(Generic[TUAV], ABC):
         """
         failed: list[str] = []
 
-        for name in sorted(parameters.keys()):
+        num_params = len(parameters)
+        last_percentage = -1
+
+        for index, name in enumerate(sorted(parameters.keys())):
             value = parameters[name]
 
             try:
@@ -1639,7 +1644,12 @@ class UAVDriver(Generic[TUAV], ABC):
             except Exception:
                 failed.append(name)
 
-        return {"success": not failed, "failed": failed}
+            percentage = int((index + 1) / num_params * 100)
+            if percentage > last_percentage:
+                yield Progress(percentage=percentage)
+                last_percentage = percentage
+
+        yield {"success": not failed, "failed": failed}
 
 
 class PassiveUAV(UAVBase):

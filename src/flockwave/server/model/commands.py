@@ -9,7 +9,6 @@ from trio import CancelScope, current_time
 from typing import (
     Any,
     AsyncGenerator,
-    AsyncIterator,
     Generic,
     Iterator,
     Optional,
@@ -24,10 +23,10 @@ from flockwave.spec.schema import get_complex_object_schema
 from .metamagic import ModelMeta
 
 __all__ = (
-    "AsyncCommandEvents",
     "CommandExecutionStatus",
     "Progress",
     "ProgressEvents",
+    "ProgressEventsWithSuspension",
     "Suspend",
 )
 
@@ -205,13 +204,7 @@ class Suspend(Generic[T]):
             return f"{self.__class__.__name__}(message={self.message!r})"
 
 
-AsyncCommandEvents = AsyncIterator[Union[Progress[T], T]]
-"""Type alias for the return value of an async iterator that implements a
-command handler with progress reporting and client-to-server messaging
-support.
-"""
-
-ProgressEvents = AsyncGenerator[Union[R, Progress[R]], None]
+ProgressEvents = AsyncGenerator[Union[Progress[R], R], None]
 """Type alias for events that can be yielded from an async generator that
 generates progress and result events.
 """
@@ -220,6 +213,9 @@ ProgressEventsWithSuspension = AsyncGenerator[Union[R, Progress[R], Suspend[S]],
 """Type alias for events that can be yielded from an async generator that
 generates progress, suspension and result events.
 """
+
+AsyncCommandEvents = ProgressEvents
+"""Deprecated alias to ProgressEvents."""
 
 
 class CommandExecutionStatus(metaclass=ModelMeta):

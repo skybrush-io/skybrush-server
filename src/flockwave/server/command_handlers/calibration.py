@@ -4,7 +4,7 @@ from inspect import isasyncgenfunction, iscoroutinefunction
 from typing import Callable, Iterable, Optional
 
 from flockwave.server.errors import NotSupportedError
-from flockwave.server.model.commands import AsyncCommandEvents
+from flockwave.server.model.commands import ProgressEvents
 from flockwave.server.model.uav import UAV, UAVDriver
 
 from .test import STANDARD_COMPONENTS as STANDARD_TEST_COMPONENTS
@@ -19,7 +19,7 @@ SUCCESS_MESSAGES = {"level": "Level calibration executed"}
 
 def create_calibration_command_handler(
     supported_components: Iterable[str],
-) -> Callable[[UAVDriver, UAV, Optional[str]], AsyncCommandEvents[str]]:
+) -> Callable[[UAVDriver, UAV, Optional[str]], ProgressEvents[str]]:
     """Creates a generic async command handler function that allows the user to
     calibrate certain components of the UAV, assuming that the UAV has an async or
     sync method named `calibrate_component()` that accepts a single component name
@@ -39,7 +39,7 @@ def create_calibration_command_handler(
         driver: UAVDriver,
         uav: UAV,
         component: Optional[str] = None,
-    ) -> AsyncCommandEvents[str]:
+    ) -> ProgressEvents[str]:
         if component is None:
             yield help_text
             return

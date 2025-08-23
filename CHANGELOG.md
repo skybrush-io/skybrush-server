@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [main]
+
+### Added
+
+- Added support for bulk parameter uploads with the `PRM-SET-MANY` command in
+  the protocol. UAV drivers that do not implement bulk parameter uploads will
+  fall back to single uploads in alphabetical order of the parameters.
+
 ## [2.34.0] - 2025-08-22
 
 ### Added

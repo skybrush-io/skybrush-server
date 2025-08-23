@@ -319,6 +319,14 @@ class Autopilot(ABC):
 
     @property
     @abstractmethod
+    def supports_mavftp_parameter_upload(self) -> bool:
+        """Returns whether the autopilot supports uploading parameters via the
+        MAVFTP protocol.
+        """
+        raise NotImplementedError
+
+    @property
+    @abstractmethod
     def supports_repositioning(self) -> bool:
         """Returns whether the autopilot understands the MAVLink MAV_CMD_DO_REPOSITION
         command.
@@ -389,6 +397,10 @@ class UnknownAutopilot(Autopilot):
     @property
     def supports_local_frame(self) -> bool:
         # Let's be pessimistic :(
+        return False
+
+    @property
+    def supports_mavftp_parameter_upload(self) -> bool:
         return False
 
     @property
@@ -557,6 +569,10 @@ class PX4(Autopilot):
     @property
     def supports_local_frame(self) -> bool:
         # https://github.com/PX4/PX4-Autopilot/issues/10246
+        return False
+
+    @property
+    def supports_mavftp_parameter_upload(self) -> bool:
         return False
 
     @property
@@ -1095,6 +1111,10 @@ class ArduPilot(Autopilot):
     @property
     def supports_local_frame(self) -> bool:
         return True
+
+    @property
+    def supports_mavftp_parameter_upload(self) -> bool:
+        return False
 
     @property
     def supports_repositioning(self) -> bool:

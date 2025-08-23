@@ -1,14 +1,22 @@
 from math import inf
 from trio import fail_after, TooSlowError
 from trio_util import RepeatedEvent
-from typing import Any, AsyncIterator, Optional, Union
+from typing import Any, Generic, Optional, TypeVar, Union, overload
 
-from flockwave.server.model.commands import Progress, Suspend, MISSING
+from flockwave.server.model.commands import (
+    ProgressEvents,
+    Progress,
+    Suspend,
+    MISSING,
+)
 
 __all__ = ("ProgressReporter",)
 
+R = TypeVar("R")
+S = TypeVar("S")
 
-class ProgressReporter:
+
+class ProgressReporter(Generic[R, S]):
     """Helper class for reporting progress from within a command handler if the
     progress is provided by another asynchronous task.
 
@@ -61,8 +69,8 @@ class ProgressReporter:
     _suspended: bool = False
 
     _event: RepeatedEvent
-    _progress: Progress
-    _suspend: Suspend
+    _progress: Progress[R]
+    _suspend: Suspend[S]
 
     def __init__(self, auto_close: bool = False):
         """Constructor.
@@ -125,7 +133,13 @@ class ProgressReporter:
             self.close()
         self._event.set()
 
-    def suspend(self, message: Optional[str] = None, object: Any = MISSING):
+    @overload
+    def suspend(self, message: Optional[str] = None): ...
+
+    @overload
+    def suspend(self, message: Optional[str] = None, *, object: S): ...
+
+    def suspend(self, message: Optional[str] = None, *, object: Any = MISSING):
         """Posts a suspension notice to the progress reporter. Async generators
         returned from `updates()` will wake up and yield a `Suspend` instance.
 
@@ -139,7 +153,7 @@ class ProgressReporter:
 
     async def updates(
         self, timeout: float = inf, fail_on_timeout: bool = True
-    ) -> AsyncIterator[Progress]:
+    ) -> ProgressEvents[R, S]:
         """Async generator that yields `Progress` objects when a new progress
         update is posted to the progress reporter via its `notify()` method.
 

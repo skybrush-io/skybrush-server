@@ -28,7 +28,7 @@ from flockwave.server.command_handlers import (
 from flockwave.server.errors import NotSupportedError
 from flockwave.server.ext.show.config import AuthorizationScope
 from flockwave.server.model.battery import BatteryInfo
-from flockwave.server.model.commands import Progress
+from flockwave.server.model.commands import Progress, ProgressEvents
 from flockwave.server.model.devices import DeviceTreeMutator
 from flockwave.server.model.geofence import GeofenceConfigurationRequest, GeofenceStatus
 from flockwave.server.model.gps import GPSFix, GPSFixType as OurGPSFixType
@@ -753,7 +753,7 @@ class MAVLinkDriver(UAVDriver["MAVLinkUAV"]):
 
     async def get_log(
         self, uav: "MAVLinkUAV", log_id: str
-    ) -> AsyncIterator[Union[Progress, Optional[FlightLog]]]:
+    ) -> ProgressEvents[Optional[FlightLog], None]:
         try:
             log_number = int(log_id)
         except ValueError:

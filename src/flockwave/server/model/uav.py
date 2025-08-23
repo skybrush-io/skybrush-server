@@ -26,7 +26,7 @@ from .attitude import Attitude
 from .battery import BatteryInfo
 from .devices import ObjectNode
 from .gps import GPSFix, GPSFixLike
-from .log import FlightLog, FlightLogMetadata
+from .log import FlightLogMetadata
 from .metamagic import ModelMeta
 from .mixins import TimestampLike, TimestampMixin
 from .object import ModelObject, register
@@ -529,7 +529,7 @@ class UAVDriver(Generic[TUAV], ABC):
             transport=transport,
         )
 
-    def get_log(self, uav: TUAV, log_id: str) -> FlightLog:
+    def get_log(self, uav: TUAV, log_id: str):
         """Asks the driver to retrieve the log with the given ID from the
         given UAV.
 

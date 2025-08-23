@@ -12,11 +12,11 @@ from trio import (
     open_memory_channel,
     TooSlowError,
 )
-from typing import AsyncGenerator, AsyncIterator, Callable, Optional, Union
+from typing import Callable, Optional
 
 from flockwave.concurrency import Future
 from flockwave.logger import Logger
-from flockwave.server.model.commands import Progress
+from flockwave.server.model.commands import Progress, ProgressEvents
 from flockwave.server.model.log import FlightLog, FlightLogKind, FlightLogMetadata
 
 from .types import (
@@ -81,9 +81,7 @@ class MAVLinkLogDownloader:
         self._log = log
         self._retries = 5
 
-    async def get_log(
-        self, log_id: int
-    ) -> AsyncIterator[Union[Progress, Optional[FlightLog]]]:
+    async def get_log(self, log_id: int) -> ProgressEvents[Optional[FlightLog], None]:
         """Retrieves a single log with the given ID from the drone."""
         if self._log_being_downloaded is not None:
             raise RuntimeError("Another log download is in progress")
@@ -145,7 +143,7 @@ class MAVLinkLogDownloader:
 
     async def _get_log_inner(
         self, log_id: int, rx: MemoryReceiveChannel[MAVLinkMessage]
-    ) -> AsyncGenerator[Union[Progress, Optional[FlightLog]], None]:
+    ) -> ProgressEvents[Optional[FlightLog], None]:
         last_progress_at = current_time()
 
         # We are requesting at most 512 LOG_DATA messages at once to let the

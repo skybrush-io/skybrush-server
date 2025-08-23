@@ -1,4 +1,4 @@
-from abc import ABCMeta, abstractmethod
+from abc import ABC, abstractmethod
 from blinker import Signal
 from contextlib import asynccontextmanager
 from enum import Enum
@@ -101,7 +101,7 @@ class LightConfiguration:
             self.updated.send(self)
 
 
-class LEDLightConfigurationManagerBase(Generic[TPacket], metaclass=ABCMeta):
+class LEDLightConfigurationManagerBase(Generic[TPacket], ABC):
     """Base class for objects that manage the state of the LED lights on a set
     of drones when the lights are controlled by commands from the GCS.
 

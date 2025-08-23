@@ -1,6 +1,6 @@
 """Types specific to the mission planning and management extension."""
 
-from abc import ABCMeta, abstractmethod
+from abc import ABC, abstractmethod
 from logging import Logger
 from blinker import Signal
 from dataclasses import dataclass
@@ -512,7 +512,7 @@ creates when asked to create a new mission instance.
 """
 
 
-class MissionType(Generic[T], metaclass=ABCMeta):
+class MissionType(Generic[T], ABC):
     """Base class for mission types, i.e. classes that define how to create a
     mission plan to perform a given task and how to execute such a plan.
 

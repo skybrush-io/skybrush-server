@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from abc import ABCMeta, abstractmethod
+from abc import ABC, abstractmethod
 from collections import defaultdict
 from contextlib import contextmanager, ExitStack
 from dataclasses import dataclass, field
@@ -1153,7 +1153,7 @@ class MessageHub:
 ##############################################################################
 
 
-class RateLimiter(metaclass=ABCMeta):
+class RateLimiter(ABC):
     """Abstract base class for rate limiter objects."""
 
     name: Optional[str] = None

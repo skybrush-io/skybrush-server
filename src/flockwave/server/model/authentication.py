@@ -1,4 +1,4 @@
-from abc import ABCMeta, abstractmethod
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import Enum
 from typing import Optional
@@ -55,7 +55,7 @@ class AuthenticationResult:
         return self.type is AuthenticationResultType.SUCCESS and self.user is not None
 
 
-class AuthenticationMethod(metaclass=ABCMeta):
+class AuthenticationMethod(ABC):
     """Interface specification for authentication methods."""
 
     @property

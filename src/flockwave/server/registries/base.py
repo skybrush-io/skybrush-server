@@ -4,7 +4,7 @@ string identifiers.
 
 from __future__ import annotations
 
-from abc import ABCMeta, abstractmethod
+from abc import ABC, abstractmethod
 from typing import (
     Callable,
     Generic,
@@ -26,7 +26,7 @@ __all__ = ("Registry", "RegistryBase")
 T = TypeVar("T")
 
 
-class Registry(Generic[T], metaclass=ABCMeta):
+class Registry(Generic[T], ABC):
     """Interface specification for registries that keep track of "things"
     by string identifiers.
     """

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from abc import ABCMeta, abstractmethod
+from abc import ABC, abstractmethod
 from typing import (
     Any,
     Awaitable,
@@ -132,7 +132,7 @@ class UAVStatusInfo(TimestampMixin, metaclass=ModelMeta):
 
 
 @register("uav")
-class UAV(ModelObject, metaclass=ABCMeta):
+class UAV(ModelObject, ABC):
     """Abstract object that defines the interface of objects representing
     UAVs.
     """
@@ -422,7 +422,7 @@ class UAVBase(UAV, Generic[TDriver]):
         self._status.update_timestamp()
 
 
-class UAVDriver(Generic[TUAV], metaclass=ABCMeta):
+class UAVDriver(Generic[TUAV], ABC):
     """Interface specification for UAV drivers that are responsible for
     handling communication with a given group of UAVs via a common
     communication channel (e.g., a radio or a wireless network).

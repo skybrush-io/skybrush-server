@@ -7,7 +7,7 @@ channels). The class in this package declares the base that the extensions
 must extend.
 """
 
-from abc import ABCMeta, abstractmethod
+from abc import ABC, abstractmethod
 from typing import Generic, TYPE_CHECKING, TypeVar
 
 if TYPE_CHECKING:
@@ -18,7 +18,7 @@ __all__ = ("CommunicationChannel",)
 T = TypeVar("T")
 
 
-class CommunicationChannel(Generic[T], metaclass=ABCMeta):
+class CommunicationChannel(Generic[T], ABC):
     """Base model object representing a communication channel between the
     server and a client. Concrete implementations of this class are to be
     found in the appropriate Skybrush server extensions (e.g., the

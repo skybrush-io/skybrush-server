@@ -1,6 +1,6 @@
 """Types specific to the local positioning system support extension."""
 
-from abc import ABCMeta, abstractmethod
+from abc import ABC, abstractmethod
 from blinker import Signal
 from dataclasses import dataclass
 from typing import (
@@ -209,7 +209,7 @@ LocalPositioningSystemType_ creates when asked to create a new instance.
 """
 
 
-class LocalPositioningSystemType(Generic[T], metaclass=ABCMeta):
+class LocalPositioningSystemType(Generic[T], ABC):
     """Base class for local positioning system (LPS) types.
 
     New LPS types in the Skybrush server may be implemented by deriving a class

@@ -211,7 +211,12 @@ command handler with progress reporting and client-to-server messaging
 support.
 """
 
-ProgressEvents = AsyncGenerator[Union[R, Progress[R], Suspend[S]], None]
+ProgressEvents = AsyncGenerator[Union[R, Progress[R]], None]
+"""Type alias for events that can be yielded from an async generator that
+generates progress and result events.
+"""
+
+ProgressEventsWithSuspension = AsyncGenerator[Union[R, Progress[R], Suspend[S]], None]
 """Type alias for events that can be yielded from an async generator that
 generates progress, suspension and result events.
 """

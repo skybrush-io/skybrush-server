@@ -753,7 +753,7 @@ class MAVLinkDriver(UAVDriver["MAVLinkUAV"]):
 
     async def get_log(
         self, uav: "MAVLinkUAV", log_id: str
-    ) -> ProgressEvents[Optional[FlightLog], None]:
+    ) -> ProgressEvents[Optional[FlightLog]]:
         try:
             log_number = int(log_id)
         except ValueError:

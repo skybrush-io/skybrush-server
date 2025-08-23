@@ -4,8 +4,8 @@ from trio_util import RepeatedEvent
 from typing import Any, Generic, Optional, TypeVar, Union, overload
 
 from flockwave.server.model.commands import (
-    ProgressEvents,
     Progress,
+    ProgressEventsWithSuspension,
     Suspend,
     MISSING,
 )
@@ -153,7 +153,7 @@ class ProgressReporter(Generic[R, S]):
 
     async def updates(
         self, timeout: float = inf, fail_on_timeout: bool = True
-    ) -> ProgressEvents[R, S]:
+    ) -> ProgressEventsWithSuspension[R, S]:
         """Async generator that yields `Progress` objects when a new progress
         update is posted to the progress reporter via its `notify()` method.
 

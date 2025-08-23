@@ -81,7 +81,7 @@ class MAVLinkLogDownloader:
         self._log = log
         self._retries = 5
 
-    async def get_log(self, log_id: int) -> ProgressEvents[Optional[FlightLog], None]:
+    async def get_log(self, log_id: int) -> ProgressEvents[Optional[FlightLog]]:
         """Retrieves a single log with the given ID from the drone."""
         if self._log_being_downloaded is not None:
             raise RuntimeError("Another log download is in progress")
@@ -143,7 +143,7 @@ class MAVLinkLogDownloader:
 
     async def _get_log_inner(
         self, log_id: int, rx: MemoryReceiveChannel[MAVLinkMessage]
-    ) -> ProgressEvents[Optional[FlightLog], None]:
+    ) -> ProgressEvents[Optional[FlightLog]]:
         last_progress_at = current_time()
 
         # We are requesting at most 512 LOG_DATA messages at once to let the

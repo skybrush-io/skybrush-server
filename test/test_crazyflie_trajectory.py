@@ -1,8 +1,6 @@
 import gzip
-import sys
 
 from json import load
-from pathlib import Path
 
 from flockwave.server.ext.crazyflie.trajectory import (
     encode_trajectory,
@@ -10,11 +8,9 @@ from flockwave.server.ext.crazyflie.trajectory import (
 )
 from flockwave.server.show.trajectory import TrajectorySpecification
 
-fixture_dir = Path(str(sys.modules[__name__].__file__)).parent / "fixtures"
 
-
-def test_figure8():
-    with gzip.open(fixture_dir / "figure8.json.gz") as fp:
+def test_figure8(datadir):
+    with gzip.open(datadir / "figure8.json.gz") as fp:
         trajectory = load(fp)
 
     trajectory = TrajectorySpecification(trajectory)
@@ -61,8 +57,8 @@ def test_encoding_of_bezier_control_points():
     assert data == expected
 
 
-def test_show_5cf_demo():
-    with gzip.open(fixture_dir / "show_5cf_demo.json.gz") as fp:
+def test_show_5cf_demo(datadir):
+    with gzip.open(datadir / "show_5cf_demo.json.gz") as fp:
         show = load(fp)
 
     expected = (

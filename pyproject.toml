@@ -127,6 +127,7 @@ dev = [
   "pytest-cov>=6.2.1",
   "pytest-trio>=0.8.0",
   "pdoc>=15.0.4",
+  "pytest-datadir>=1.8.0",
 ]
 
 [tool.pytest.ini_options]

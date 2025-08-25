@@ -28,7 +28,11 @@ from flockwave.server.command_handlers import (
 from flockwave.server.errors import NotSupportedError
 from flockwave.server.ext.show.config import AuthorizationScope
 from flockwave.server.model.battery import BatteryInfo
-from flockwave.server.model.commands import Progress, ProgressEvents
+from flockwave.server.model.commands import (
+    Progress,
+    ProgressEvents,
+    ProgressEventsWithSuspension,
+)
 from flockwave.server.model.devices import DeviceTreeMutator
 from flockwave.server.model.geofence import GeofenceConfigurationRequest, GeofenceStatus
 from flockwave.server.model.gps import GPSFix, GPSFixType as OurGPSFixType
@@ -1175,7 +1179,7 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
         self._network_id = network_id
         self._system_id = system_id
 
-    async def calibrate_accelerometer(self) -> AsyncIterator[Progress]:
+    async def calibrate_accelerometer(self) -> ProgressEventsWithSuspension[None, str]:
         """Calibrates the accelerometers of the UAV.
 
         Yields:
@@ -1192,7 +1196,7 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
             # Turn NotImplementedError from the autopilot into a NotSupportedError
             raise NotSupportedError from None
 
-    async def calibrate_compass(self) -> AsyncIterator[Progress]:
+    async def calibrate_compass(self) -> ProgressEventsWithSuspension[None, str]:
         """Calibrates the compasses of the UAV.
 
         Yields:
@@ -1209,7 +1213,9 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
             # Turn NotImplementedError from the autopilot into a NotSupportedError
             raise NotSupportedError from None
 
-    async def calibrate_component(self, component: str) -> AsyncIterator[Progress]:
+    async def calibrate_component(
+        self, component: str
+    ) -> ProgressEventsWithSuspension[None, str]:
         """Calibrates a component of the UAV.
 
         Parameters:

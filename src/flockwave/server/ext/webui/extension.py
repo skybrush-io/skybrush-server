@@ -292,7 +292,6 @@ async def list_extensions():
 
 
 @blueprint.route("/version-info")
-@only_when_debugging
 async def version_info():
     """Returns a page that shows the version information of the server
     and the Python packages that it depends on.

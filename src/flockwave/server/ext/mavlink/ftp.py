@@ -598,7 +598,12 @@ class MAVFTP:
                 raise
 
     async def put(
-        self, data: bytes, remote_path: FTPPath, parents: bool = False
+        self,
+        data: bytes,
+        remote_path: FTPPath,
+        *,
+        parents: bool = False,
+        skip_crc_check: bool = False,
     ) -> None:
         """Uploads a file at a local path to the given remote path.
 
@@ -607,8 +612,14 @@ class MAVFTP:
                 raw bytes object
             remote_path: remote folder where the file should be uploaded
             parents: whether to create any parent directories automatically
+            skip_crc_check: whether to skip the CRC check at the end of the upload.
+                This is useful when uploading "virtual files" like ArduPilot's
+                `@PARAM/param.pck` where the content of the file after the
+                upload is not expected to match the uploaded content.
         """
-        async with self.put_gen(data, remote_path, parents=parents) as progress:
+        async with self.put_gen(
+            data, remote_path, parents=parents, skip_crc_check=skip_crc_check
+        ) as progress:
             # This is a generator, so we need to consume it to actually
             # upload the file
             async for _ in progress:
@@ -616,8 +627,13 @@ class MAVFTP:
 
     @as_safe_channel
     async def put_gen(
-        self, data: bytes, remote_path: FTPPath, *, parents: bool = False
-    ) -> AsyncGenerator[Progress, None]:
+        self,
+        data: bytes,
+        remote_path: FTPPath,
+        *,
+        parents: bool = False,
+        skip_crc_check: bool = False,
+    ) -> AsyncGenerator[Progress[None], None]:
         """Uploads a file at a local path to the given remote path.
 
         Due to how Python's async generator cleanup works, this method has to
@@ -629,6 +645,10 @@ class MAVFTP:
                 raw bytes object
             remote_path: remote folder where the file should be uploaded
             parents: whether to create any parent directories automatically
+            skip_crc_check: whether to skip the CRC check at the end of the upload.
+                This is useful when uploading "virtual files" like ArduPilot's
+                `@PARAM/param.pck` where the content of the file after the
+                upload is not expected to match the uploaded content.
 
         Yields:
             progress updates about the state of the upload process
@@ -666,13 +686,14 @@ class MAVFTP:
                 else:
                     break
 
-        observed_crc = await self.crc32(remote_path)
-        if observed_crc != expected_crc:
-            raise RuntimeError(
-                "CRC mismatch, expected {0:08X}, got {1:08X}".format(
-                    expected_crc, observed_crc
+        if not skip_crc_check:
+            observed_crc = await self.crc32(remote_path)
+            if observed_crc != expected_crc:
+                raise RuntimeError(
+                    "CRC mismatch, expected {0:08X}, got {1:08X}".format(
+                        expected_crc, observed_crc
+                    )
                 )
-            )
 
         yield Progress(percentage=100)
 

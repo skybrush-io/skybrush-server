@@ -1,9 +1,13 @@
 from __future__ import annotations
 
 from contextlib import aclosing
+from dataclasses import dataclass
+from functools import partial
+from io import BytesIO
+from struct import Struct
 from time import monotonic
 from trio import sleep, TooSlowError
-from typing import AsyncIterator, Union, TYPE_CHECKING
+from typing import IO, AsyncIterator, Iterable, Sequence, Union, TYPE_CHECKING, cast
 
 from flockwave.server.errors import NotSupportedError
 from flockwave.server.model.commands import (
@@ -556,6 +560,12 @@ class ArduPilot(Autopilot):
     def is_rth_flight_mode(self, base_mode: int, custom_mode: int) -> bool:
         return bool(base_mode & 1) and (custom_mode == 6 or custom_mode == 21)
 
+    def prepare_mavftp_parameter_upload(
+        self, parameters: dict[str, float]
+    ) -> tuple[str, bytes]:
+        data = encode_parameters_to_packed_format(parameters)
+        return "@PARAM/param.pck", data
+
     def process_prearm_error_message(self, text: str) -> str:
         return text[8:]
 
@@ -584,7 +594,7 @@ class ArduPilot(Autopilot):
 
     @property
     def supports_mavftp_parameter_upload(self) -> bool:
-        return False
+        return True
 
     @property
     def supports_repositioning(self) -> bool:
@@ -651,3 +661,222 @@ class ArduPilotWithSkybrush(ArduPilot):
     @ArduPilot.supports_scheduled_takeoff.getter
     def supports_scheduled_takeoff(self):
         return True
+
+
+################################################################################
+## ArduPilot packed parameter format handling
+################################################################################
+
+
+@dataclass
+class PackedParameter:
+    """A single entry in an ArduPilot-specific packed parameter representation."""
+
+    name: str
+    """Name of the parameter."""
+
+    type: MAVParamType | None
+    """Type of the parameter in the packed representation. Not necessarily the
+    same as the type of the parameter in the onboard storage; ArduPilot will
+    convert between the two if needed.
+    """
+
+    value: float
+    """The value of the parameter."""
+
+    default_value: float | None = None
+    """The default value of the parameter, if known. Can be left empty if you
+    want to _encode_ parameters into a packed representation instead of
+    decoding them.
+    """
+
+
+_packed_param_header = Struct("<HHH")
+_packed_type_to_mav_type: list[int] = [
+    0,
+    MAVParamType.INT8,
+    MAVParamType.INT16,
+    MAVParamType.INT32,
+    MAVParamType.REAL32,
+] + [0] * 11
+_mav_type_to_packed_type: dict[MAVParamType, int] = {
+    MAVParamType.INT8: 1,
+    MAVParamType.INT16: 2,
+    MAVParamType.INT32: 3,
+    MAVParamType.REAL32: 4,
+}
+_packed_param_formats: list[Struct | None] = [
+    None,
+    Struct("<b"),
+    Struct("<h"),
+    Struct("<i"),
+    Struct("<f"),
+] + [None] * 11
+
+
+def decode_parameters_from_packed_format(
+    data: bytes | IO[bytes],
+) -> Iterable[PackedParameter]:
+    """Decodes an ArduPilot packed parameter bundle into an iterable of
+    PackedParameter_ instances.
+
+    The input must be a packed parameter bundle retrieved from the vehicle
+    by downloading ``@PARAM/param.pck`` via MAVFTP. See the following file for
+    more details:
+
+    https://github.com/ArduPilot/ardupilot/blob/master/libraries/AP_Filesystem/README.md
+
+    Args:
+        data: the packed parameter bundle as a bytes object or as a readable
+            stream
+
+    Yields:
+        PackedParameter_ instances decoded from the packed parameter bundle.
+    """
+    fp: IO[bytes] = BytesIO(data) if isinstance(data, bytes) else cast(IO[bytes], data)
+
+    header_bytes = fp.read(_packed_param_header.size)
+
+    magic: int
+    num_params: int
+
+    magic, num_params, _ = _packed_param_header.unpack(header_bytes)
+
+    if magic != 0x671B and magic != 0x671C:
+        raise RuntimeError("invalid magic bytes in packed param stream")
+
+    has_defaults = magic == 0x671C
+
+    prev_name = b""
+
+    reader = partial(fp.read, 1)
+
+    for _ in range(num_params):
+        # Skip leading zeros
+        for byte in iter(reader, b""):
+            val = ord(byte)
+            if val:
+                type = val & 0x0F
+                flags = (val & 0xF0) >> 4
+                break
+        else:
+            # End of file, stop iteration
+            break
+
+        byte = reader()
+        common_length, length = ord(byte) & 0x0F, (ord(byte) >> 4) + 1
+
+        name = prev_name[:common_length] + fp.read(length)
+        param_type: MAVParamType = MAVParamType(_packed_type_to_mav_type[type])
+        struct = _packed_param_formats[type]
+        value = struct.unpack(fp.read(struct.size)) if struct else None
+
+        if has_defaults:
+            if flags & 0x01:
+                # Default value also provided
+                default_value = struct.unpack(fp.read(struct.size)) if struct else None
+            else:
+                # Parameter is at its default value
+                default_value = value
+        else:
+            default_value = None
+
+        if value is not None:
+            yield PackedParameter(
+                name.decode("ascii", "replace"),
+                param_type,
+                value[0],
+                default_value[0] if default_value is not None else None,
+            )
+
+        prev_name = name
+
+
+def _propose_mav_type_for_value(value: float) -> MAVParamType:
+    if value.is_integer():
+        if -128 <= value <= 127:
+            return MAVParamType.INT8
+        elif -32768 <= value <= 32767:
+            return MAVParamType.INT16
+        elif -2147483648 <= value <= 2147483647:
+            return MAVParamType.INT32
+    return MAVParamType.REAL32
+
+
+def encode_parameters_to_packed_format(
+    parameters: Sequence[PackedParameter] | dict[str, float],
+) -> bytes:
+    """Encodes a sequence of PackedParameter_ instances into a packed parameter
+    bundle that is suitable for uploading to `@PARAM/param.pck` via MAVFTP.
+
+    Default values are ignored in the input. You may also provide a dict of
+    name-value pairs.
+
+    Note that the decoding and the encoding process is not symmetric. During
+    encoding, the `total_length` field in the header is the total length of the
+    bundle, in bytes. During decoding, the field contains the total number of
+    parameters on the vehicle.
+
+    Args:
+        parameters: the PackedParameter_ instances or name-value pairs to encode
+
+    Returns:
+        The packed parameter bundle as a bytes object.
+    """
+    buf: list[bytes] = []
+
+    # We don't know the total length yet so encode it as zero
+    buf.append(_packed_param_header.pack(0x671B, len(parameters), 0))
+
+    # Construct the parameter iterator
+    if isinstance(parameters, dict):
+        param_iter = (
+            PackedParameter(name, None, float(value))
+            for name, value in parameters.items()
+        )
+    else:
+        param_iter = iter(parameters)
+
+    prev_name = b""
+
+    for param in sorted(param_iter, key=lambda p: p.name.upper()):
+        name = param.name.upper().encode("ascii", "replace")
+        if len(name) > 16:
+            raise RuntimeError(f"Parameter name too long: {name!r}")
+
+        mav_type = param.type or _propose_mav_type_for_value(param.value)
+        packed_type = _mav_type_to_packed_type[mav_type]
+
+        for i in range(len(name)):
+            if name[:i] != prev_name[:i]:
+                common_len = i - 1
+                break
+        else:
+            # Since the iterator is sorted by name, this can happen only if
+            # we have duplicate names
+            raise RuntimeError(f"Duplicate parameter name: {param.name!r}")
+
+        assert common_len < 16
+        name_len = len(name) - common_len
+        encoded_length = common_len | ((name_len - 1) << 4)
+
+        buf.append(bytes([packed_type, encoded_length]))
+        buf.append(name[common_len:])
+
+        param_format = _packed_param_formats[packed_type]
+        assert param_format is not None
+
+        value = (
+            int(param.value) if mav_type != MAVParamType.REAL32 else float(param.value)
+        )
+        buf.append(param_format.pack(value))
+
+        prev_name = name
+
+    total_length = sum(len(x) for x in buf)
+    if total_length > 65535:
+        raise RuntimeError(f"Packed parameter bundle too large: {total_length} bytes")
+
+    # Now we can re-encode the header
+    buf[0] = _packed_param_header.pack(0x671B, len(parameters), total_length)
+    return b"".join(buf)

@@ -93,7 +93,7 @@ class Autopilot(ABC):
         disabled, given the MAVLink HEARTBEAT and SYS_STATUS messages where this
         information is conveyed for _some_ autopilots.
         """
-        raise NotImplementedError
+        ...
 
     @abstractmethod
     def calibrate_accelerometer(
@@ -111,7 +111,7 @@ class Autopilot(ABC):
             NotSupportedError: if the autopilot does not support accelerometer
                 calibration
         """
-        raise NotImplementedError
+        ...
 
     @abstractmethod
     def calibrate_compass(
@@ -128,14 +128,14 @@ class Autopilot(ABC):
             NotSupportedError: if the autopilot does not support compass
                 calibration
         """
-        raise NotImplementedError
+        ...
 
     @abstractmethod
     def can_handle_firmware_update_target(self, target_id: str) -> bool:
         """Returns whether the UAV can handle firmware uploads with the given
         target.
         """
-        raise NotImplementedError
+        ...
 
     @abstractmethod
     async def configure_geofence(
@@ -153,7 +153,7 @@ class Autopilot(ABC):
                 the drone is not capable of doing (e.g., smart landing on a
                 drone that does not support collective collision avoidance)
         """
-        raise NotImplementedError
+        ...
 
     @abstractmethod
     async def configure_safety(
@@ -170,7 +170,7 @@ class Autopilot(ABC):
                 safety or if the configuration request contains something that
                 the drone is not capable of doing
         """
-        raise NotImplementedError
+        ...
 
     def decode_param_from_wire_representation(
         self, value: Union[int, float], type: MAVParamType
@@ -198,7 +198,7 @@ class Autopilot(ABC):
                 a mode string to a flight mode number set
             UnknownFlightModeError: if the flight mode is not known to the autopilot
         """
-        raise NotImplementedError
+        ...
 
     @abstractmethod
     async def get_geofence_status(self, uav: MAVLinkUAV) -> GeofenceStatus:
@@ -216,7 +216,7 @@ class Autopilot(ABC):
                 geofences)
             NotSupportedError: if the autopilot does not support geofences at all
         """
-        raise NotImplementedError
+        ...
 
     @abstractmethod
     def handle_firmware_update(
@@ -241,7 +241,7 @@ class Autopilot(ABC):
             NotSupportedError: if the autopilot does not support firmware
                 updates
         """
-        raise NotImplementedError
+        ...
 
     @property
     @abstractmethod
@@ -249,7 +249,7 @@ class Autopilot(ABC):
         """Returns whether the autopilot provides reliable battery capacity
         percentages.
         """
-        raise NotImplementedError
+        ...
 
     @abstractmethod
     def is_prearm_check_in_progress(
@@ -259,19 +259,31 @@ class Autopilot(ABC):
         assuming that this information is reported either in the heartbeat or
         the SYS_STATUS message.
         """
-        raise NotImplementedError
+        ...
 
     @abstractmethod
     def is_prearm_error_message(self, text: str) -> bool:
         """Returns whether the given text from a MAVLink STATUSTEXT message
         indicates a prearm check error.
         """
-        raise NotImplementedError
+        ...
 
     @abstractmethod
     def is_rth_flight_mode(self, base_mode: int, custom_mode: int) -> bool:
         """Decides whether the flight mode identified by the given base and
         custom mode numbers is a return-to-home mode.
+        """
+        ...
+
+    def prepare_mavftp_parameter_upload(
+        self, parameters: dict[str, float]
+    ) -> tuple[str, bytes]:
+        """Prepares a MAVFTP bulk parameter upload if the autopilot supports it.
+
+        This function must be called only if `self.supports_mavftp_parameter_upload()`
+        returns `True`, otherwise it must raise a `NotImplementedError`.
+
+        The default implementation raises a `NotImplementedError` unconditionally.
         """
         raise NotImplementedError
 
@@ -300,7 +312,7 @@ class Autopilot(ABC):
         """Returns whether the autopilot understands MAVLink commands sent in
         a local coordinate frame.
         """
-        raise NotImplementedError
+        ...
 
     @property
     @abstractmethod
@@ -308,7 +320,7 @@ class Autopilot(ABC):
         """Returns whether the autopilot supports uploading parameters via the
         MAVFTP protocol.
         """
-        raise NotImplementedError
+        ...
 
     @property
     @abstractmethod
@@ -316,10 +328,10 @@ class Autopilot(ABC):
         """Returns whether the autopilot understands the MAVLink MAV_CMD_DO_REPOSITION
         command.
         """
-        raise NotImplementedError
+        ...
 
     @property
     @abstractmethod
     def supports_scheduled_takeoff(self) -> bool:
         """Returns whether the autopilot supports scheduled takeoffs."""
-        raise NotImplementedError
+        ...

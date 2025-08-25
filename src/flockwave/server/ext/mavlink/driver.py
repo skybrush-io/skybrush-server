@@ -40,7 +40,12 @@ from flockwave.server.model.log import FlightLog, FlightLogMetadata
 from flockwave.server.model.preflight import PreflightCheckInfo, PreflightCheckResult
 from flockwave.server.model.safety import SafetyConfigurationRequest
 from flockwave.server.model.transport import TransportOptions
-from flockwave.server.model.uav import VersionInfo, UAVBase, UAVDriver
+from flockwave.server.model.uav import (
+    BulkParameterUploadResponse,
+    VersionInfo,
+    UAVBase,
+    UAVDriver,
+)
 from flockwave.server.show import (
     get_altitude_reference_from_show_specification,
     get_coordinate_system_from_show_specification,
@@ -999,8 +1004,30 @@ class MAVLinkDriver(UAVDriver["MAVLinkUAV"]):
         try:
             value_as_float = float(value)
         except ValueError:
-            raise RuntimeError("parameter value must be numeric") from None
+            raise RuntimeError(f"Value of parameter {name!r} must be numeric") from None
         await uav.set_parameter(name, value_as_float)
+
+    async def _set_parameters_single(
+        self, uav: "MAVLinkUAV", parameters: dict[str, Any]
+    ) -> ProgressEvents[BulkParameterUploadResponse]:
+        parameters_as_float = {}
+        for name, value in parameters.items():
+            try:
+                value_as_float = float(value)
+            except ValueError:
+                raise RuntimeError(
+                    f"Value of parameter {name!r} must be numeric"
+                ) from None
+            parameters_as_float[name] = value_as_float
+
+        try:
+            await uav.set_parameters(parameters_as_float)
+        except Exception:
+            if self.log:
+                self.log.exception("Failed to set parameters")
+            yield {"success": False}
+        else:
+            yield {"success": True}
 
 
 @dataclass
@@ -1496,12 +1523,12 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
         """
         return self._scheduled_takeoff_time_gps_time_of_week
 
-    async def set_parameter(self, name: str, value: float) -> None:
-        """Sets the value of a parameter on the UAV."""
-        # Basic sanity check on the value
-        if not isfinite(value):
-            raise RuntimeError("parameter value must be finite")
+    async def _set_parameter_single(self, name: str, value: float) -> None:
+        """Sets the value of a single parameter on the UAV.
 
+        This function assumes that all sanity checks on the name and the value
+        have already been performed by the caller.
+        """
         # We need to retrieve the current value of the parameter first because
         # we need its type
         param_id = name.encode("utf-8")[:16]
@@ -1537,6 +1564,43 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
                     f"Failed to set parameter {name!r}, "
                     f"tried to set {value!r}, got {observed_value!r}"
                 ) from None
+
+    async def set_parameter(self, name: str, value: float) -> None:
+        """Sets the value of a single parameter on the UAV."""
+        return await self.set_parameters({name: value})
+
+    async def set_parameters(self, parameters: dict[str, float]) -> None:
+        """Sets the value of multiple parameters on the UAV, preferably in a
+        more efficient manner if the autopilot of the drone supports MAVFTP
+        parameter uploads.
+        """
+        if not parameters:
+            return
+
+        # Basic sanity check on the values
+        for name, value in parameters.items():
+            if not isfinite(value):
+                raise RuntimeError(f"Value of parameter {name!r} must be finite")
+
+        if len(parameters) == 1:
+            # Fall back to single-parameter upload as a MAVFTP upload is not
+            # likely to be more efficient
+            name, value = parameters.popitem()
+            return await self._set_parameter_single(name, value)
+
+        if self._autopilot.supports_mavftp_parameter_upload:
+            # Do a bulk upload
+            async with aclosing(MAVFTP.for_uav(self)) as ftp:
+                filename, contents = self._autopilot.prepare_mavftp_parameter_upload(
+                    parameters
+                )
+                # TODO(ntamas): handle error code when closing the file
+                await ftp.put(contents, filename, skip_crc_check=True)
+
+        else:
+            # No support for bulk uploads, just do it one by one
+            for name, value in sorted(parameters.items()):
+                await self._set_parameter_single(name, value)
 
     async def test_component(
         self, component: str, *, channel: str = Channel.PRIMARY

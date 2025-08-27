@@ -5,5 +5,6 @@ having access to real hardware that provides UAV position and velocity data.
 """
 
 from .extension import construct, dependencies, description, enhancers
+from .schema import schema
 
-__all__ = ("construct", "dependencies", "description", "enhancers")
+__all__ = ("construct", "dependencies", "description", "enhancers", "schema")

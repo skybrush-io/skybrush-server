@@ -315,6 +315,7 @@ schema = {
                 "enabled": {
                     "type": "boolean",
                     "title": "Enabled",
+                    "default": True,
                     "format": "checkbox",
                     "propertyOrder": 10,
                 },
@@ -339,9 +340,9 @@ schema = {
                     "options": {
                         "enum_titles": [action.describe() for action in FenceAction]
                     },
+                    "default": "none",
                 },
             },
-            "default": {"enabled": True, "distance": 1, "action": "none"},
         },
         "id_format": {
             "type": "string",

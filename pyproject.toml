@@ -50,6 +50,7 @@ dependencies = [
   "platformdirs>=4.3.8",
   "fastjsonschema>=2.21.1",
   "orjson>=3.10.18",
+  "skynet>=0.4.1",
 ]
 
 [project.scripts]
@@ -116,6 +117,7 @@ skybrush-ext-studio = { index = "collmot" }
 skybrush-ext-timecode = { index = "collmot" }
 skybrush-lib-mission-planning = { index = "collmot" }
 skybrush-studio = { index = "collmot" }
+skynet = { index = "collmot" }
 pyledctrl = { index = "fury" }
 
 [dependency-groups]

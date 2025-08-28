@@ -25,6 +25,7 @@ EXTENSIONS = {
     "auth": {},
     "auth_basic": {"enabled": False},
     "beacon": {},
+    "clocks": {},
     "console_status": {},
     "crazyflie": {
         "id_format": "{0:02}",

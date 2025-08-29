@@ -672,7 +672,7 @@ class ArduPilotWithSkybrush(ArduPilot):
 class PackedParameter:
     """A single entry in an ArduPilot-specific packed parameter representation."""
 
-    name: str
+    name: bytes
     """Name of the parameter."""
 
     type: MAVParamType | None
@@ -783,7 +783,7 @@ def decode_parameters_from_packed_format(
 
         if value is not None:
             yield PackedParameter(
-                name.decode("ascii", "replace"),
+                name,
                 param_type,
                 value[0],
                 default_value[0] if default_value is not None else None,
@@ -831,7 +831,7 @@ def encode_parameters_to_packed_format(
     # Construct the parameter iterator
     if isinstance(parameters, dict):
         param_iter = (
-            PackedParameter(name, None, float(value))
+            PackedParameter(name.upper().encode("ascii", "replace"), None, float(value))
             for name, value in parameters.items()
         )
     else:
@@ -840,21 +840,25 @@ def encode_parameters_to_packed_format(
     prev_name = b""
 
     for param in sorted(param_iter, key=lambda p: p.name.upper()):
-        name = param.name.upper().encode("ascii", "replace")
+        name = param.name
         if len(name) > 16:
             raise RuntimeError(f"Parameter name too long: {name!r}")
 
         mav_type = param.type or _propose_mav_type_for_value(param.value)
         packed_type = _mav_type_to_packed_type[mav_type]
 
-        for i in range(len(name)):
-            if name[:i] != prev_name[:i]:
-                common_len = i - 1
+        # Find length of longest common prefix of name and prev_name
+        for i, (a, b) in enumerate(zip(name, prev_name, strict=False)):
+            if a != b:
+                common_len = i
                 break
         else:
             # Since the iterator is sorted by name, this can happen only if
-            # we have duplicate names
-            raise RuntimeError(f"Duplicate parameter name: {param.name!r}")
+            # we have duplicate names or if prev_name is a prefix of name
+            if name == prev_name:
+                raise RuntimeError(f"Duplicate parameter name: {param.name!r}")
+            else:
+                common_len = len(prev_name)
 
         assert common_len < 16
         name_len = len(name) - common_len

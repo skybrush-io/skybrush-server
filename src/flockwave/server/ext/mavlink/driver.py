@@ -173,6 +173,11 @@ class MAVLinkDriver(UAVDriver["MAVLinkUAV"]):
     destination address in that medium.
     """
 
+    use_bulk_parameter_uploads: bool = False
+    """Whether to use bulk parameter uploads instead of individual uploads if
+    the autopilot supports bulk uploads.
+    """
+
     def __init__(self, app=None):
         """Constructor.
 
@@ -1010,24 +1015,29 @@ class MAVLinkDriver(UAVDriver["MAVLinkUAV"]):
     async def _set_parameters_single(
         self, uav: "MAVLinkUAV", parameters: dict[str, Any]
     ) -> ProgressEvents[BulkParameterUploadResponse]:
-        parameters_as_float = {}
-        for name, value in parameters.items():
-            try:
-                value_as_float = float(value)
-            except ValueError:
-                raise RuntimeError(
-                    f"Value of parameter {name!r} must be numeric"
-                ) from None
-            parameters_as_float[name] = value_as_float
+        if self.use_bulk_parameter_uploads:
+            parameters_as_float = {}
+            for name, value in parameters.items():
+                try:
+                    value_as_float = float(value)
+                except ValueError:
+                    raise RuntimeError(
+                        f"Value of parameter {name!r} must be numeric"
+                    ) from None
+                parameters_as_float[name] = value_as_float
 
-        try:
-            await uav.set_parameters(parameters_as_float)
-        except Exception:
-            if self.log:
-                self.log.exception("Failed to set parameters")
-            yield {"success": False}
+            try:
+                await uav.set_parameters(parameters_as_float)
+            except Exception:
+                if self.log:
+                    self.log.exception("Failed to set parameters")
+                yield {"success": False}
+            else:
+                yield {"success": True}
+
         else:
-            yield {"success": True}
+            async for event in super()._set_parameters_single(uav, parameters):
+                yield event
 
 
 @dataclass

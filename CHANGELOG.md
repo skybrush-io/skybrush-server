@@ -13,6 +13,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the protocol. UAV drivers that do not implement bulk parameter uploads will
   fall back to single uploads in alphabetical order of the parameters.
 
+- The `mavlink` extension now supports bulk parameter uploads for ArduPilot
+  via MAVFTP. This needs to be turned on explicitly for the time being because
+  ArduPilot does not signal parameter upload failures correctly to the GCS when
+  using bulk uploads. The feature will be enabled permanently when the issue is
+  fixed in ArduPilot itself.
+
 ## [2.34.0] - 2025-08-22
 
 ### Added

@@ -221,12 +221,12 @@ schema = {
                 "details."
             ),
             "default": 127,
-            "propertyOrder": 5000,
+            "propertyOrder": 10000,
         },
         "rssi_mode": dict(
             RSSI_MODE_SCHEMA,
             description="Specifies how RSSI values are derived for the drones. May be overridden in each network.",
-            propertyOrder=10000,
+            propertyOrder=11000,
         ),
         "assume_data_streams_configured": {
             "type": "boolean",
@@ -239,6 +239,7 @@ schema = {
             ),
             "default": False,
             "format": "checkbox",
+            "propertyOrder": 12000,
         },
         "autopilot_type": {
             "type": "string",
@@ -253,6 +254,21 @@ schema = {
                     "PX4",
                 ]
             },
+            "propertyOrder": 13000,
+        },
+        "use_bulk_parameter_uploads": {
+            "type": "boolean",
+            "title": "Use bulk parameter uploads",
+            "description": (
+                "If enabled, the driver will use bulk parameter uploads "
+                "instead of individual parameter uploads. This can speed up "
+                "the parameter upload process, especially for large numbers "
+                "of parameters. Requires support from the flight controller; "
+                "currently supported by ArduPilot only."
+            ),
+            "default": False,
+            "format": "checkbox",
+            "propertyOrder": 14000,
         },
         # packet_loss is an advanced setting and is not included here
     }

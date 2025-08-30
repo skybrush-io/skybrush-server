@@ -110,6 +110,12 @@ class MAVLinkDronesExtension(UAVExtension[MAVLinkDriver]):
                     f'Unknown flight controller firmware: {autopilot_type}, assuming "auto"'
                 )
 
+        use_bulk_parameter_uploads = bool(
+            configuration.get("use_bulk_parameter_uploads", False)
+        )
+        if use_bulk_parameter_uploads:
+            self.log.info("Using bulk parameter uploads (experimental)")
+
         driver.assume_data_streams_configured = assume_data_streams_configured
         driver.autopilot_factory = autopilot_factory
         driver.broadcast_packet = self._broadcast_packet
@@ -118,6 +124,7 @@ class MAVLinkDronesExtension(UAVExtension[MAVLinkDriver]):
         driver.mandatory_custom_mode = optional_int(configuration.get("custom_mode"))
         driver.run_in_background = self.run_in_background
         driver.send_packet = self._send_packet
+        driver.use_bulk_parameter_uploads = use_bulk_parameter_uploads
 
     async def run(self, app, configuration):
         networks = OrderedDict(

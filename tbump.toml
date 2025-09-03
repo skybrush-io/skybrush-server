@@ -22,5 +22,9 @@ version_template = "({major}, {minor}, {patch})"
 search = "__version_info__ = {current_version}"
 
 [[before_commit]]
-name = "Run tests"
+name = "Run tests and pre-commit hooks"
 cmd = "uv sync && uv run pytest && pre-commit run --all-files"
+
+[[after_push]]
+name = "Build tarball"
+cmd = "uv build"

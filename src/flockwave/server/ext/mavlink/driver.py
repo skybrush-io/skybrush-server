@@ -1592,13 +1592,7 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
             if not isfinite(value):
                 raise RuntimeError(f"Value of parameter {name!r} must be finite")
 
-        if len(parameters) == 1:
-            # Fall back to single-parameter upload as a MAVFTP upload is not
-            # likely to be more efficient
-            name, value = parameters.popitem()
-            return await self._set_parameter_single(name, value)
-
-        if self._autopilot.supports_mavftp_parameter_upload:
+        if len(parameters) > 1 and self._autopilot.supports_mavftp_parameter_upload:
             # Do a bulk upload
             async with aclosing(MAVFTP.for_uav(self)) as ftp:
                 filename, contents = self._autopilot.prepare_mavftp_parameter_upload(
@@ -1608,7 +1602,8 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
                 await ftp.put(contents, filename, skip_crc_check=True)
 
         else:
-            # No support for bulk uploads, just do it one by one
+            # No support for bulk uploads, or we only have a single parameter,
+            # so just do it one by one
             for name, value in sorted(parameters.items()):
                 await self._set_parameter_single(name, value)
 

@@ -6,6 +6,7 @@ from functools import partial, wraps
 from quart import abort, redirect, request
 from quart_trio import QuartTrio
 
+from .errors import NoIdleWorkerError
 from .logger import log as base_log
 
 PACKAGE_NAME = __name__.rpartition(".")[0]
@@ -70,6 +71,9 @@ async def start_worker(token):
     try:
         index = await api.request_worker(id=user_id, name=username)
         return {"result": {"url": api.get_public_url_of_worker(index)}}
+    except NoIdleWorkerError:
+        log.warning(f"No idle workers available for user {username} (id={user_id})")
+        return "No idle workers available", 503, {"Retry-After": "60"}
     except Exception as ex:
         log.exception(ex)
         return {"error": str(ex) or str(type(ex).__name__)}

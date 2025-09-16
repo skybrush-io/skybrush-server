@@ -4,6 +4,7 @@ import sys
 
 from dataclasses import dataclass
 from pathlib import Path
+from signal import Signals
 from subprocess import PIPE, STDOUT
 from tempfile import NamedTemporaryFile
 from trio import move_on_after, open_nursery, Process, sleep_forever
@@ -101,6 +102,7 @@ class WorkerManager:
 
         Raises:
             NoIdleWorkerError: when there aren't any idle workers available
+            RuntimeError: when the worker fails to start up in time
         """
         assert self._nursery is not None
 
@@ -220,8 +222,10 @@ class WorkerManager:
         log.info(f"{worker} started")
         try:
             code = await process.wait()
-            if code:
+            if code > 0:
                 log.warning(f"{worker} exited with code {code}")
+            elif code < 0:
+                log.warning(f"{worker} exited with signal {Signals(-code).name}")
             else:
                 log.info(f"{worker} exited.")
         except Exception as ex:

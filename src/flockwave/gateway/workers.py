@@ -138,7 +138,9 @@ class WorkerManager:
             with entry.config_fp as fp:
                 for key, value in config.items():
                     fp.write(f"{key} = {value!r}\n")
-            with move_on_after(10) as cancel_scope:
+
+            process = None
+            with move_on_after(10):
                 process = await open_process(
                     [
                         sys.executable,
@@ -153,14 +155,17 @@ class WorkerManager:
                     cwd=str(Path(__file__).parent.parent.parent),
                 )
 
-            if cancel_scope.cancelled_caught:
+            if process is None:
+                # Server failed to start up in 10 seconds
                 self._processes[index] = None
                 if self._users_to_entries.get(id) is entry:
                     del self._users_to_entries[id]
-            else:
-                self._nursery.start_soon(self._stream_process_output, index, process)
-                self._nursery.start_soon(self._supervise_process, index, entry)
-                entry.assign_process(process)
+
+                raise RuntimeError("Worker process failed to start in time")
+
+            self._nursery.start_soon(self._stream_process_output, index, process)
+            self._nursery.start_soon(self._supervise_process, index, entry)
+            entry.assign_process(process)
 
             return index
         finally:

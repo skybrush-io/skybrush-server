@@ -168,7 +168,7 @@ class MissionSchedulerTask(MissionRegistryRelatedTaskBase):
                 "Finished mission",
                 extra={
                     "id": mission.id,
-                    "semantics": "success" if mission.was_successful else "error",
+                    "semantics": "success" if mission.was_successful else "failure",
                 },
             )
 

@@ -7,7 +7,7 @@ from __future__ import annotations
 from collections import OrderedDict
 from contextlib import ExitStack, contextmanager
 from functools import partial
-from typing import Callable, Iterator, Union, cast, Optional, TYPE_CHECKING
+from typing import Any, Callable, Iterator, Union, cast, Optional, TYPE_CHECKING
 
 from flockwave.server.ext.base import UAVExtension
 from flockwave.server.ext.mavlink.fw_upload import FirmwareUpdateTarget
@@ -125,6 +125,23 @@ class MAVLinkDronesExtension(UAVExtension[MAVLinkDriver]):
         driver.run_in_background = self.run_in_background
         driver.send_packet = self._send_packet
         driver.use_bulk_parameter_uploads = use_bulk_parameter_uploads
+
+    def exports(self) -> dict[str, Any]:
+        return {
+            "find_network_by_id": self._find_network_by_id,
+        }
+
+    def _find_network_by_id(self, network_id: str) -> Optional[MAVLinkNetwork]:
+        """Finds a MAVLink network managed by this extension by its ID.
+
+        Parameters:
+            network_id: the ID of the network to find
+
+        Returns:
+            the MAVLink network with the given ID, or `None` if no such
+            network exists
+        """
+        return self._networks.get(network_id)
 
     async def run(self, app, configuration):
         networks = OrderedDict(

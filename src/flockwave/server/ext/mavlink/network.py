@@ -528,6 +528,10 @@ class MAVLinkNetwork:
         """Returns the number of UAVs in this network."""
         return len(self._uavs)
 
+    @property
+    def uav_system_id_offset(self) -> int:
+        return self._uav_system_id_offset
+
     async def send_heartbeat(self, target: MAVLinkUAV) -> Optional[MAVLinkMessage]:
         """Sends a heartbeat targeted to the given UAV.
 

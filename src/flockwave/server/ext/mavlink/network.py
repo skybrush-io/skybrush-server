@@ -21,6 +21,7 @@ from trio.abc import ReceiveChannel
 from trio_util import periodic
 from typing import (
     Any,
+    Awaitable,
     Callable,
     Iterable,
     Iterator,
@@ -97,6 +98,7 @@ class MAVLinkNetwork:
 
     driver: MAVLinkDriver
     log: Logger
+    register_uav: Callable[[MAVLinkUAV], None]
     manager: CommunicationManager[MAVLinkMessageSpecification, Any]
 
     _connections: list[Connection]
@@ -312,7 +314,7 @@ class MAVLinkNetwork:
         *,
         driver,
         log,
-        register_uav,
+        register_uav: Callable[[MAVLinkUAV], None],
         supervisor,
         use_connection,
     ):
@@ -550,7 +552,7 @@ class MAVLinkNetwork:
 
     async def send_packet(
         self,
-        spec: MAVLinkMessageSpecification,
+        spec: Optional[MAVLinkMessageSpecification],
         target: MAVLinkUAV,
         *,
         wait_for_response: Optional[tuple[str, MAVLinkMessageMatcher]] = None,
@@ -563,7 +565,8 @@ class MAVLinkNetwork:
         It is assumed (and not checked) that the UAV belongs to this network.
 
         Parameters:
-            spec: the specification of the MAVLink message to send
+            spec: the specification of the MAVLink message to send; ``None`` if
+                no packet needs to be sent and we only need to wait for a reply
             target: the UAV to send the message to
             wait_for_response: when not `None`, specifies a MAVLink message
                 type to wait for as a response, and an additional message
@@ -585,17 +588,55 @@ class MAVLinkNetwork:
             ``None``; the key of the matched message specification and the
             message itself if `wait_for_one_of` was not ``None``.
         """
-        spec[1].update(
-            target_system=target.system_id,
-            target_component=MAVComponent.AUTOPILOT1,
-            _mavlink_version=target.mavlink_version,
-        )
+        tasks: dict[str, Callable[[], Awaitable[MAVLinkMessage]]]
 
         address = self._uav_addresses.get(target)
         if address is None:
             raise RuntimeError("UAV has no address in this network")
 
         destination = (channel or Channel.PRIMARY, address)
+
+        if not spec:
+            # No sending, only waiting for a reply
+            if wait_for_response:
+                response_type, response_fields = wait_for_response
+                with self.expect_packet(
+                    response_type, response_fields, system_id=target.system_id
+                ) as future:
+                    return await future.wait()
+
+            elif wait_for_one_of:
+                tasks = {}
+
+                with ExitStack() as stack:
+                    # Prepare futures for every single message type that we expect
+                    for key, (
+                        response_type,
+                        response_fields,
+                    ) in wait_for_one_of.items():
+                        future = stack.enter_context(
+                            self.expect_packet(
+                                response_type,
+                                response_fields,
+                                system_id=target.system_id,
+                            )
+                        )
+                        tasks[key] = future.wait
+
+                    return await race(tasks)
+
+            else:
+                # Nothing to do as we don't send and don't expect anything
+                return
+
+        # From this point onwards, spec is not None, i.e. we are definitely
+        # sending something
+
+        spec[1].update(
+            target_system=target.system_id,
+            target_component=MAVComponent.AUTOPILOT1,
+            _mavlink_version=target.mavlink_version,
+        )
 
         if wait_for_response:
             response_type, response_fields = wait_for_response

@@ -121,7 +121,7 @@ class UAVBoundPacketSenderFn(Protocol):
     @overload
     def __call__(
         self,
-        spec: MAVLinkMessageSpecification,
+        spec: Optional[MAVLinkMessageSpecification],
         *,
         wait_for_response: tuple[str, MAVLinkMessageMatcher],
         channel: Optional[str] = None,
@@ -130,7 +130,7 @@ class UAVBoundPacketSenderFn(Protocol):
     @overload
     def __call__(
         self,
-        spec: MAVLinkMessageSpecification,
+        spec: Optional[MAVLinkMessageSpecification],
         *,
         wait_for_one_of: dict[str, MAVLinkMessageSpecification],
         channel: Optional[str] = None,

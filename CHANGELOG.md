@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [master]
+
+### Added
+
+- The MAVLink extension now exports a function that can be used to get a handle
+  to a MAVLink network object from another extension. This will be used by the
+  Sidekick extension from this version onwards to provide a more accurate
+  mapping from system IDs to UAV IDs in case of more than 250 drones.
+
+### Fixed
+
+- Fixed a bug in the MAVLink geofence upload protocol that sometimes reported a
+  successful geofence upload when the last packet in the upload sequence was
+  received out-of-order by the UAV.
+
 ## [2.35.0] - 2025-09-04
 
 ### Added

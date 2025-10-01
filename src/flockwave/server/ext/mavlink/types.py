@@ -285,6 +285,12 @@ class MAVLinkNetworkSpecification:
     they are sent to the ID formatter function.
     """
 
+    network_size: int = 250
+    """Number of system IDs reserved for drones in this network. The server
+    will treat system IDs from 1 to ``network_size`` (inclusive) as drones in
+    this network.
+    """
+
     connections: list[str] = field(default_factory=list)
     """The connections that the MAVLink network will consist of. A MAVLink
     network may have one or more connections where MAVLink messages are
@@ -352,6 +358,9 @@ class MAVLinkNetworkSpecification:
         if "id_offset" in obj:
             result.id_offset = int(obj["id_offset"])
 
+        if "network_size" in obj:
+            result.network_size = int(obj["network_size"])
+
         if "connections" in obj:
             result.connections = obj["connections"]
 
@@ -389,6 +398,7 @@ class MAVLinkNetworkSpecification:
             "id": self.id,
             "id_format": self.id_format,
             "id_offset": self.id_offset,
+            "network_size": self.network_size,
             "system_id": self.system_id,
             "connections": self.connections,
             "packet_loss": self.packet_loss,

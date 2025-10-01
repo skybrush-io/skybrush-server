@@ -8,6 +8,7 @@ __all__ = (
     "MAVLinkExtensionError",
     "UnknownFlightModeError",
     "InvalidSigningKeyError",
+    "InvalidSystemIdError",
     "MissionAcknowledgmentError",
 )
 
@@ -32,6 +33,14 @@ class InvalidSigningKeyError(MAVLinkExtensionError):
     """Error thrown when there is a problem with a MAVLink signing key."""
 
     pass
+
+
+class InvalidSystemIdError(MAVLinkExtensionError):
+    """Error thrown when a system ID is invalid or outside an allowed range."""
+
+    def __init__(self, system_id: int, message: Optional[str] = None):
+        message = message or f"Invalid system ID: {system_id!r}"
+        super().__init__(message)
 
 
 class MissionAcknowledgmentError(MAVLinkExtensionError):

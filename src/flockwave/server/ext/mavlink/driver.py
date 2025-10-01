@@ -715,23 +715,30 @@ class MAVLinkDriver(UAVDriver["MAVLinkUAV"]):
         if retries is None or retries < 0:
             retries = self._default_retries
 
-        if not wait_for_response and not wait_for_one_of:
-            raise RuntimeError(
-                "'wait_for_response' and 'wait_for_one_of' must be provided"
-            )
-
         response = None
 
         while retries >= 0:
             try:
                 with fail_after(timeout):
-                    response = await self.send_packet(
-                        spec,
-                        target,
-                        wait_for_response=wait_for_response,
-                        wait_for_one_of=wait_for_one_of,
-                        channel=channel,
-                    )
+                    if wait_for_response is not None:
+                        response = await self.send_packet(
+                            spec,
+                            target,
+                            wait_for_response=wait_for_response,
+                            channel=channel,
+                        )
+                    elif wait_for_one_of is not None:
+                        response = await self.send_packet(
+                            spec,
+                            target,
+                            wait_for_one_of=wait_for_one_of,
+                            channel=channel,
+                        )
+                    else:
+                        raise RuntimeError(
+                            "At least one of 'wait_for_response' and 'wait_for_one_of' "
+                            "must be provided"
+                        )
                     break
             except TooSlowError:
                 retries -= 1

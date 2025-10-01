@@ -57,6 +57,16 @@ NETWORK_PROPERTIES = {
             "Leave it at zero if you only have one MAVLink network."
         ),
     },
+    "network_size": {
+        "type": "number",
+        "title": "Network size",
+        "default": 250,
+        "description": (
+            "The number of drones that can be connected to this network. "
+            "System IDs from 1 to this number (inclusive) will be allocated to "
+            "drones within the network."
+        ),
+    },
     "system_id": {
         "title": "System ID",
         "description": (

@@ -14,6 +14,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Sidekick extension from this version onwards to provide a more accurate
   mapping from system IDs to UAV IDs in case of more than 250 drones.
 
+- The sizes of MAVLink networks managed by the MAVLink extension can now be
+  limited. The default limit is 250 drones per network, from system ID 1 to
+  system ID 250 (inclusive). This is identical to the typical setup used in
+  drone shows. If you use drones with system IDs larger than 250, you must
+  adjust the network size accordingly in the configuration file.
+
 ### Fixed
 
 - Fixed a bug in the MAVLink geofence upload protocol that sometimes reported a

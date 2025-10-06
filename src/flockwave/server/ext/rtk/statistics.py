@@ -125,6 +125,11 @@ class AntennaInformation:
         self.position_ecef = position
         self._antenna_position_timestamp = monotonic()
 
+    def set_from_ecef(self, position: ECEFCoordinate) -> None:
+        self.position = _ecef_to_gps.to_gps(position)
+        self.position_ecef = position
+        self._antenna_position_timestamp = monotonic()
+
     def _forget_old_antenna_position_if_needed(self) -> None:
         """Clears the position of the antenna we have not received another
         antenna position packet for the last 30 seconds.

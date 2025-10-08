@@ -908,7 +908,6 @@ dependencies = [
     { name = "python-dotenv" },
     { name = "quart" },
     { name = "quart-trio" },
-    { name = "skynet" },
     { name = "trio" },
     { name = "trio-util" },
     { name = "unidecode" },
@@ -929,7 +928,9 @@ all = [
     { name = "skybrush-ext-studio" },
     { name = "skybrush-ext-timecode" },
     { name = "skybrush-lib-mission-planning" },
+    { name = "skybrush-opt-rs" },
     { name = "skybrush-studio" },
+    { name = "skynet" },
 ]
 collmot = [
     { name = "flockwave-flockctrl" },
@@ -944,7 +945,9 @@ collmot = [
     { name = "skybrush-ext-studio" },
     { name = "skybrush-ext-timecode" },
     { name = "skybrush-lib-mission-planning" },
+    { name = "skybrush-opt-rs" },
     { name = "skybrush-studio" },
+    { name = "skynet" },
 ]
 pro = [
     { name = "skybrush-ext-firmware-update" },
@@ -956,7 +959,9 @@ pro = [
     { name = "skybrush-ext-studio" },
     { name = "skybrush-ext-timecode" },
     { name = "skybrush-lib-mission-planning" },
+    { name = "skybrush-opt-rs" },
     { name = "skybrush-studio" },
+    { name = "skynet" },
 ]
 
 [package.dev-dependencies]
@@ -1017,13 +1022,14 @@ requires-dist = [
     { name = "skybrush-ext-flockctrl", marker = "extra == 'collmot'", specifier = ">=4.0.3", index = "https://pypi.collmot.com/" },
     { name = "skybrush-ext-map-cache", marker = "extra == 'pro'", specifier = ">=1.1.1", index = "https://pypi.collmot.com/" },
     { name = "skybrush-ext-show-pro", marker = "extra == 'pro'", specifier = ">=0.4.0", index = "https://pypi.collmot.com/" },
-    { name = "skybrush-ext-sidekick", marker = "extra == 'pro'", specifier = ">=1.0.2", index = "https://pypi.collmot.com/" },
+    { name = "skybrush-ext-sidekick", marker = "extra == 'pro'", specifier = ">=1.1.0", index = "https://pypi.collmot.com/" },
     { name = "skybrush-ext-skynet", marker = "extra == 'pro'", specifier = ">=0.4.1", index = "https://pypi.collmot.com/" },
-    { name = "skybrush-ext-studio", marker = "extra == 'pro'", specifier = ">=0.8.6", index = "https://pypi.collmot.com/" },
+    { name = "skybrush-ext-studio", marker = "extra == 'pro'", specifier = ">=1.0.0", index = "https://pypi.collmot.com/" },
     { name = "skybrush-ext-timecode", marker = "extra == 'pro'", specifier = ">=1.4.1", index = "https://pypi.collmot.com/" },
     { name = "skybrush-lib-mission-planning", marker = "extra == 'pro'", specifier = ">=2.4.1", index = "https://pypi.collmot.com/" },
+    { name = "skybrush-opt-rs", marker = "extra == 'pro'", index = "https://pypi.collmot.com/" },
     { name = "skybrush-studio", marker = "extra == 'pro'", specifier = ">=4.24.2", index = "https://pypi.collmot.com/" },
-    { name = "skynet", specifier = ">=0.4.1", index = "https://pypi.collmot.com/" },
+    { name = "skynet", marker = "extra == 'pro'", specifier = ">=0.4.1", index = "https://pypi.collmot.com/" },
     { name = "trio", specifier = ">=0.30.0" },
     { name = "trio-util", specifier = ">=0.8.0" },
     { name = "unidecode", specifier = ">=1.4.0" },
@@ -2367,11 +2373,14 @@ wheels = [
 
 [[package]]
 name = "skybrush-ext-sidekick"
-version = "1.0.2"
+version = "1.1.0"
 source = { registry = "https://pypi.collmot.com/" }
-sdist = { url = "https://pypi.collmot.com/packages/skybrush_ext_sidekick-1.0.2.tar.gz", hash = "sha256:f755a2acf5369891204709894a2f0b4fa697a321fd0a29835e8ce30d5aca4530" }
+dependencies = [
+    { name = "semver" },
+]
+sdist = { url = "https://pypi.collmot.com/packages/skybrush_ext_sidekick-1.1.0.tar.gz", hash = "sha256:50a3fc35a114e5b6c7cb49ccc1eab4e619154c09b76b023b6cbcf4a33dfdba5d" }
 wheels = [
-    { url = "https://pypi.collmot.com/packages/skybrush_ext_sidekick-1.0.2-py3-none-any.whl", hash = "sha256:3185a0cd70de4409ff3de97b5c09e899d9c3ab59fc1e7e7bdba52fd20a5964c6" },
+    { url = "https://pypi.collmot.com/packages/skybrush_ext_sidekick-1.1.0-py3-none-any.whl", hash = "sha256:644b2732df57d90bbbb0628fc2ce5a6e25fbfe47d90f0dd29a87d902e463fea3" },
 ]
 
 [[package]]
@@ -2388,14 +2397,15 @@ wheels = [
 
 [[package]]
 name = "skybrush-ext-studio"
-version = "0.8.6"
+version = "1.0.0"
 source = { registry = "https://pypi.collmot.com/" }
 dependencies = [
-    { name = "skybrush-studio", extra = ["cmodules"] },
+    { name = "skybrush-opt-rs" },
+    { name = "skybrush-studio" },
 ]
-sdist = { url = "https://pypi.collmot.com/packages/skybrush_ext_studio-0.8.6.tar.gz", hash = "sha256:4c67757952eb40f1e59fa304bca838ceac6a299925be45d0737aea5fe056989b" }
+sdist = { url = "https://pypi.collmot.com/packages/skybrush_ext_studio-1.0.0.tar.gz", hash = "sha256:741b97f5f8b8ee88667aad3415061a577a5992bb44677dda42426fd7871c8d6a" }
 wheels = [
-    { url = "https://pypi.collmot.com/packages/skybrush_ext_studio-0.8.6-py3-none-any.whl", hash = "sha256:9ad8098e26aad7f0e08123ca23a08c822a0e9934e99d45cf8ca32c70d5e08e52" },
+    { url = "https://pypi.collmot.com/packages/skybrush_ext_studio-1.0.0-py3-none-any.whl", hash = "sha256:596e71cd6ac9a6c7ecc2e08dabbc1bcfa61cf3ec9ab6bbfba7e611ad23d773f1" },
 ]
 
 [[package]]
@@ -2425,28 +2435,41 @@ wheels = [
 ]
 
 [[package]]
+name = "skybrush-opt-rs"
+version = "0.5.0"
+source = { registry = "https://pypi.collmot.com/" }
+dependencies = [
+    { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
+    { name = "numpy", version = "2.3.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
+]
+wheels = [
+    { url = "https://pypi.collmot.com/packages/skybrush_opt_rs-0.5.0-cp310-abi3-macosx_10_12_universal2.whl", hash = "sha256:2cb384d826e0a28906d5bcdac26fbbcc83354af0628d135fe204f4c4aab09a57" },
+    { url = "https://pypi.collmot.com/packages/skybrush_opt_rs-0.5.0-cp310-abi3-macosx_10_9_x86_64.whl", hash = "sha256:264953ec156ceb1e5b092f135a804854628326127ff5be8ca048dc77fee42823" },
+    { url = "https://pypi.collmot.com/packages/skybrush_opt_rs-0.5.0-cp310-abi3-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:aa8f9e8eb177b4dde10a0f005a4c1defa0aab0637fa4a3a1b688b816235748ac" },
+    { url = "https://pypi.collmot.com/packages/skybrush_opt_rs-0.5.0-cp310-abi3-win32.whl", hash = "sha256:d9e160c4efcd024533a3f9b72ca7ec2d150188c410c02052c09805509e1daa52" },
+    { url = "https://pypi.collmot.com/packages/skybrush_opt_rs-0.5.0-cp310-abi3-win_amd64.whl", hash = "sha256:5755238817178eae63135e0e9cef3fc77a3242e07d20ea2ceef15d2b0c603725" },
+]
+
+[[package]]
 name = "skybrush-studio"
-version = "4.24.2"
+version = "5.3.0"
 source = { registry = "https://pypi.collmot.com/" }
 dependencies = [
     { name = "jsonref" },
+    { name = "minilsap" },
     { name = "natsort" },
     { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "numpy", version = "2.3.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
     { name = "pydantic" },
     { name = "pyledctrl" },
     { name = "semver" },
+    { name = "skybrush-opt-rs" },
     { name = "svgpathtools-lite" },
     { name = "webcolors" },
 ]
-sdist = { url = "https://pypi.collmot.com/packages/skybrush_studio-4.24.2.tar.gz", hash = "sha256:b2cd1748ea37cb50c981a3773d9068873ec5b9d4a69389bb71f48abf737b2cf3" }
+sdist = { url = "https://pypi.collmot.com/packages/skybrush_studio-5.3.0.tar.gz", hash = "sha256:4b6e863f3b010c0155ca22163642dd3e4279751d258170f3d2c876781346279f" }
 wheels = [
-    { url = "https://pypi.collmot.com/packages/skybrush_studio-4.24.2-py3-none-any.whl", hash = "sha256:994b824511e150c88c4a1e673b121853001523f27e0257abce8a9ec1744cf224" },
-]
-
-[package.optional-dependencies]
-cmodules = [
-    { name = "minilsap" },
+    { url = "https://pypi.collmot.com/packages/skybrush_studio-5.3.0-py3-none-any.whl", hash = "sha256:8fa0cad4890a8ca712a896ba7ddd63ade831d7c619cbca4660b51fff16bfefeb" },
 ]
 
 [[package]]
@@ -2458,6 +2481,7 @@ wheels = [
     { url = "https://pypi.collmot.com/packages/skynet-0.4.1-cp39-abi3-macosx_10_12_universal2.whl", hash = "sha256:906baf4898c644a1a34a1a54d5bf36c2b570a0fcc077bfd8f91894fd362ed15a" },
     { url = "https://pypi.collmot.com/packages/skynet-0.4.1-cp39-abi3-macosx_10_12_x86_64.whl", hash = "sha256:b08299a0f2437c6682093332bb61ed71a2693318b353397bb0140f063405e054" },
     { url = "https://pypi.collmot.com/packages/skynet-0.4.1-cp39-abi3-macosx_11_0_universal2.whl", hash = "sha256:2e74f4590243cff8dbf0e6a71e35e9b0cb59e8cd2922b5c3bf10fcf8fd63b22f" },
+    { url = "https://pypi.collmot.com/packages/skynet-0.4.1-cp39-abi3-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:de179aa03032668cb8971c2fb7a66e9ea8a2d53a5fd8916d3f86c33f59042067" },
     { url = "https://pypi.collmot.com/packages/skynet-0.4.1-cp39-abi3-manylinux_2_28_x86_64.whl", hash = "sha256:cea986318122b3ba82cfbb7817e410329385c0a1232dfbc52e6031ffe9d2ab95" },
     { url = "https://pypi.collmot.com/packages/skynet-0.4.1-cp39-abi3-win32.whl", hash = "sha256:a045d7058c090a7db443239dfb8a2c837bb0697b68e635b802fcbac27348a4a1" },
     { url = "https://pypi.collmot.com/packages/skynet-0.4.1-cp39-abi3-win_amd64.whl", hash = "sha256:3dd030247c50b59169a298e5c6314fd324460cab88cfbad6d7f244812ffdac73" },

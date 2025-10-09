@@ -65,12 +65,10 @@ async def _color_command_handler(
         return "Color override turned off"
 
 
-def create_color_command_handler() -> (
-    Callable[
-        [UAVDriver, UAV, Optional[Union[str, int]], Optional[int], Optional[int]],
-        Awaitable[str],
-    ]
-):
+def create_color_command_handler() -> Callable[
+    [UAVDriver, UAV, Optional[Union[str, int]], Optional[int], Optional[int]],
+    Awaitable[str],
+]:
     """Creates a generic async command handler function that allows the user to
     set the color of the LED lights on the UAV, assuming that the UAV
     has an async or sync method named `set_led_color()`.

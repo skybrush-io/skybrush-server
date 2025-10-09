@@ -5,7 +5,6 @@ and forwards the corrections to the UAVs managed by the server.
 from __future__ import annotations
 
 import json
-
 from collections.abc import Sequence
 from contextlib import ExitStack
 from dataclasses import dataclass, field
@@ -13,13 +12,14 @@ from fnmatch import fnmatch
 from functools import partial
 from pathlib import Path
 from time import monotonic
+from typing import Any, Callable, ClassVar, Iterator, Optional, Union, cast
+
 from trio import CancelScope, open_memory_channel, open_nursery, sleep
 from trio.abc import SendChannel
 from trio_util import AsyncBool, periodic
-from typing import Callable, cast, Any, ClassVar, Iterator, Optional, Union
 
 from flockwave.channels import ParserChannel
-from flockwave.connections import create_connection, RWConnection
+from flockwave.connections import RWConnection, create_connection
 from flockwave.gps.enums import GNSSType
 from flockwave.gps.formatting import format_gps_coordinate_as_nmea_gga_message
 from flockwave.gps.rtk import RTKMessageSet, RTKSurveySettings
@@ -49,8 +49,8 @@ from .beacon_manager import RTKBeaconManager
 from .clock_sync import GPSClockSynchronizationValidator
 from .enums import MessageSet, RTKConfigurationPresetType
 from .preset import (
-    RTKConfigurationPreset,
     ALLOWED_FORMATS,
+    RTKConfigurationPreset,
     describe_format,
 )
 from .registry import RTKPresetRegistry
@@ -369,6 +369,9 @@ class RTKExtension(Extension):
             else:
                 preset_id, desired_preset = None, None
 
+            # Always reset fixed position when switching RTK source
+            self._survey_settings.position = None
+
             self._request_preset_switch_later(desired_preset)
             self._last_preset_request_from_user = (
                 RTKPresetRequest(preset_id=preset_id)
@@ -410,6 +413,10 @@ class RTKExtension(Extension):
                 error = "Settings object missing or invalid"
 
             if error is None:
+                position = self._survey_settings.position
+                if position is not None:
+                    # Populate antenna.position immediately so RTK-STAT reflects it
+                    self._statistics.set_antenna_position_from_ecef(position)
                 self._request_survey()
 
             return hub.acknowledge(message, outcome=error is None, reason=error)
@@ -807,6 +814,10 @@ class RTKExtension(Extension):
                             self._statistics.set_to_fixed_with_accuracy(
                                 accuracy_cm / 100.0
                             )
+                            if position is not None:
+                                self._statistics.set_antenna_position_from_ecef(
+                                    position
+                                )
                         else:
                             self.log.error(
                                 f"Failed to configure {preset.title!r}",

@@ -6,6 +6,8 @@ functionality such as a web-based debug page (`flockwave.ext.debug`) or a
 Socket.IO-based channel.
 """
 
+import logging
+
 from contextlib import contextmanager
 from dataclasses import dataclass
 from heapq import heapify, heappush
@@ -17,12 +19,11 @@ from quart_trio import QuartTrio
 from trio import current_time, sleep
 from typing import Iterable, Optional
 
-import logging
-
 from flockwave.ext.manager import ExtensionManager
 from flockwave.networking import can_bind_to_tcp_address, format_socket_address
 from flockwave.server.ports import suggest_port_number_for_service, use_port
 from flockwave.server.types import Disposer
+from flockwave.server.utils.networking import get_known_apps_for_port
 from flockwave.server.utils.packaging import is_oxidized
 
 from .routing import RoutingMiddleware
@@ -246,7 +247,7 @@ def unload(app):
 
 
 async def run(app, configuration, logger):
-    global exports
+    global exports, KNOWN_PORTS
 
     address = exports.get("address")
     if address is None:
@@ -293,12 +294,17 @@ async def run(app, configuration, logger):
     # Test quickly whether we can bind to the given host and port; if we cannot,
     # chances are that something else is using the port
     if not await can_bind_to_tcp_address(address):
-        logger.error(
-            "Cannot bind {1} server to {0}; is the port already in use?".format(
-                format_socket_address(address), "HTTPS" if secure else "HTTP"
-            ),
-            extra={"telemetry": "ignore"},
-        )
+        protocol = "HTTPS" if secure else "HTTP"
+        formatted_address = format_socket_address(address)
+        message = f"Cannot bind {protocol} server to {formatted_address}; is the port already in use?"
+        apps = get_known_apps_for_port(port)
+
+        if apps:
+            message += "\nThe following application(s) may be using this port:\n"
+            message += "\n".join(f"  - {app}" for app in apps)
+            message += "\nAlternatively, you might have another instance of Skybrush Server running."
+
+        logger.error(message, extra={"telemetry": "ignore"})
         return
 
     # Port seems to be available so try to start the "proper" server

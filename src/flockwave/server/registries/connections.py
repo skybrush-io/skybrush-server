@@ -80,8 +80,9 @@ class ConnectionRegistry(RegistryBase["ConnectionRegistryEntry"]):
         """
         if name in self:
             raise KeyError(
-                "another connection is already registered "
-                "with this name: {0!r}".format(name)
+                "another connection is already registered with this name: {0!r}".format(
+                    name
+                )
             )
 
         purpose = purpose if purpose is not None else ConnectionPurpose.other

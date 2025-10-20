@@ -291,9 +291,17 @@ class ArduPilot(Autopilot):
             pass
 
         if configuration.max_altitude is not None:
-            # Update the maximum altitude limit; note that ArduCopter supports
-            # only the [10; 1000] range.
-            max_altitude = float(clamp(configuration.max_altitude, 10, 1000))
+            # Update the maximum altitude limit; note that the ArduCopter
+            # parameter documentation suggests that it supports only the [10;
+            # 1000] range, but it is most likely a software limitation only,
+            # so we allow higher values here.
+            max_altitude = float(clamp(configuration.max_altitude, 10, 3000))
+            if max_altitude < configuration.max_altitude:
+                raise NotSupportedError(
+                    f"Geofence max altitude ({configuration.max_altitude} m) "
+                    f"exceeds safety limit ({max_altitude} m)",
+                )
+
             await uav.set_parameter("FENCE_ALT_MAX", max_altitude)
             fence_type |= GeofenceType.ALTITUDE
         else:
@@ -301,9 +309,17 @@ class ArduPilot(Autopilot):
             pass
 
         if configuration.max_distance is not None:
-            # Update the maximum distance; note that ArduCopter supports only
-            # the [30; 10000] range.
+            # Update the maximum distance; note that the ArduCopter
+            # parameter documentation suggests that it supports only the [10;
+            # 10000] range. 10 km is actually quite a large distance so we
+            # stick to the recommendations here.
             max_distance = float(clamp(configuration.max_distance, 30, 10000))
+            if max_distance < configuration.max_distance:
+                raise NotSupportedError(
+                    f"Geofence max distance ({configuration.max_distance} m) "
+                    f"exceeds ArduPilot limit ({max_distance} m)",
+                )
+
             await uav.set_parameter("FENCE_RADIUS", max_distance)
             fence_type |= GeofenceType.CIRCLE
         else:

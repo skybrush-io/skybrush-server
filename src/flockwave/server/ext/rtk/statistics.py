@@ -113,11 +113,14 @@ class AntennaInformation:
 
         position = getattr(packet, "position", None)
         if position is not None:
-            self.position = _ecef_to_gps.to_gps(position)
-            self.position_ecef = position
-            self._antenna_position_timestamp = monotonic()
+            self.set_from_ecef(position)
 
     def set_from_ecef(self, position: ECEFCoordinate) -> None:
+        """Sets the antenna position from an ECEF coordinate.
+        Computes and stores the corresponding GPS coordinate and refreshes
+        the internal timestamp used to track the age of the last antenna
+        position observation.
+        """
         self.position = _ecef_to_gps.to_gps(position)
         self.position_ecef = position
         self._antenna_position_timestamp = monotonic()

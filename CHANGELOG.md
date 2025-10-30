@@ -7,12 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [main]
 
+### Added
+
+- Added support for reporting high ESC failure rates as motor errors for MAVLink
+  drones. This feature requires a yet unreleased version of the firmware because
+  the drone needs to transmit a status flag that indicates high ESC error rates.
+
 ### Changed
 
 - Raise an exception when trying to set geofence limits that are over the
   thresholds recommended by the ArduPilot documentation. Altitude limit
   raised to 3000m as there seemed to be at least one case where a value larger
   than ArduPilot's own documented limit (1000m) was needed.
+
+### Fixed
+
+- Better error messages when starting Skybrush Server on a machine where another
+  process already keeps the main Skybrush Server port occupied. The error message
+  now gives a hint to users about other well-known applications that might keep
+  the port busy.
 
 ## [2.36.1] - 2025-10-08
 

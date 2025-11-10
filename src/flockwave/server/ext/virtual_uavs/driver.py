@@ -22,6 +22,7 @@ from flockwave.gps.vectors import (
     VelocityNED,
 )
 from flockwave.server.command_handlers import (
+    create_calibration_command_handler,
     create_color_command_handler,
     create_parameter_command_handler,
     create_test_command_handler,
@@ -259,6 +260,40 @@ class VirtualUAV(UAVBase):
             FlockwaveErrorCode.AUTOPILOT_INITIALIZING,
             present=self._autopilot_initializing,
         )
+
+    async def calibrate_component(
+        self, component: str
+    ) -> ProgressEventsWithSuspension[None, str]:
+        """Calibrates a component of the UAV.
+
+        Parameters:
+            component: the component to calibrate; we plan to support
+                ``accel``, ``baro``, ``compass``, ``gyro`` and ``level``.
+
+        Raises:
+            NotImplementedError: if the calibration of the given component is
+                not yet implemented on this UAV
+            NotSupportedError: if the calibration of the given component is not
+                supported on this UAV
+            RuntimeError: if the UAV rejected to calibrate the component
+        """
+        match component:
+            case "compass":
+                for i in range(10):
+                    yield Progress(percentage=i * 10)
+                    await sleep(0.5 + random() * 1.5)
+
+                yield Progress(percentage=100)
+            case "accel" | "baro" | "gyro" | "level":
+                raise NotImplementedError
+            case _:
+                raise NotSupportedError
+
+        # TODO: Dynamically set preflight results and implement other components
+
+        success = random() < 0.9
+        if not success:
+            raise RuntimeError(f"Failed to calibrate component: {component!r}")
 
     def can_handle_firmware_update_target(self, target_id: str) -> bool:
         """Returns whether the virtual UAV can handle uploads with the given
@@ -1033,6 +1068,10 @@ class VirtualUAVDriver(UAVDriver[VirtualUAV]):
         else:
             uav.battery.voltage = float(value)
             return f"Voltage set to {uav.battery.voltage:.2f}V"
+
+    handle_command_calib = create_calibration_command_handler(
+        ("accel", "baro", "compass", "gyro", "level")
+    )
 
     async def handle_command_disarm(self, uav: VirtualUAV) -> str:
         """Command that disarms the virtual drone if it is on the ground."""

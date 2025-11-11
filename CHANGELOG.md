@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Virtual UAVs now pretend that they support compass calibration.
+
+## [2.37.0] - 2025-10-30
+
+### Added
+
 - Added support for reporting high ESC failure rates as motor errors for MAVLink
   drones. This feature requires a yet unreleased version of the firmware because
   the drone needs to transmit a status flag that indicates high ESC error rates.

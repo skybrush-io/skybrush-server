@@ -9,10 +9,10 @@ class ErrorSet(Set[int]):
     efficiently.
     """
 
-    _errors: list[int]
+    _errors: set[int]
 
     def __init__(self, errors: Iterable[int] | None = None) -> None:
-        self._errors = list(errors) if errors is not None else []
+        self._errors = set(errors) if errors is not None else set()
 
     def __contains__(self, item) -> bool:
         return item in self._errors
@@ -25,7 +25,7 @@ class ErrorSet(Set[int]):
 
     @property
     def json(self) -> Sequence[int]:
-        return self._errors
+        return sorted(self._errors)
 
     def clear(self) -> None:
         """Clears all error codes."""
@@ -50,7 +50,7 @@ class ErrorSet(Set[int]):
                 self._errors.remove(code)
         else:
             if present:
-                self._errors.append(code)
+                self._errors.add(code)
 
     def ensure_many(self, codes: dict[int, bool]) -> None:
         """Updates multiple error codes with a single function call.
@@ -71,7 +71,7 @@ class ErrorSet(Set[int]):
                     self._errors.remove(code)
             else:
                 if present:
-                    self._errors.append(code)
+                    self._errors.add(code)
 
     def set(self, codes: Iterable[int]) -> None:
         """Replaces the current error code list with the given list.
@@ -79,4 +79,5 @@ class ErrorSet(Set[int]):
         Parameters:
             codes: the new list of error codes
         """
-        self._errors[:] = sorted(set(codes))
+        self._errors.clear()
+        self._errors.update(codes)

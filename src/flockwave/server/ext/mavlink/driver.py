@@ -64,6 +64,28 @@ from .autopilots import ArduPilot, Autopilot, UnknownAutopilot
 from .comm import Channel
 from .compass import CompassCalibration
 from .enums import (
+    MAV_MODE_FLAG_SAFETY_ARMED,
+    MAV_STATE_BOOT,
+    MAV_STATE_CRITICAL,
+    MAV_STATE_EMERGENCY,
+    MAV_STATE_STANDBY,
+    MAV_STATE_UNINIT,
+    MAV_SYS_STATUS_SENSOR_ABSOLUTE_PRESSURE,
+    MAV_SYS_STATUS_SENSOR_ACCEL2_3D,
+    MAV_SYS_STATUS_SENSOR_ACCEL_3D,
+    MAV_SYS_STATUS_SENSOR_BATTERY,
+    MAV_SYS_STATUS_SENSOR_DIFFERENTIAL_PRESSURE,
+    MAV_SYS_STATUS_SENSOR_GEOFENCE,
+    MAV_SYS_STATUS_SENSOR_GPS,
+    MAV_SYS_STATUS_SENSOR_GYRO2_3D,
+    MAV_SYS_STATUS_SENSOR_GYRO_3D,
+    MAV_SYS_STATUS_SENSOR_LOGGING,
+    MAV_SYS_STATUS_SENSOR_MAG2_3D,
+    MAV_SYS_STATUS_SENSOR_MAG_3D,
+    MAV_SYS_STATUS_SENSOR_MOTOR_OUTPUTS,
+    MAV_SYS_STATUS_SENSOR_PROXIMITY,
+    MAV_SYS_STATUS_SENSOR_RC_RECEIVER,
+    MAV_SYS_STATUS_SENSOR_REVERSE_MOTOR,
     ConnectionState,
     GPSFixType,
     MAVCommand,
@@ -73,8 +95,6 @@ from .enums import (
     MAVModeFlag,
     MAVProtocolCapability,
     MAVResult,
-    MAVState,
-    MAVSysStatusSensor,
     MAVType,
     MotorTestOrder,
     MotorTestThrottleType,
@@ -2766,40 +2786,39 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
         )
 
         has_gyro_error = not_healthy_sensors & (
-            MAVSysStatusSensor.GYRO_3D.value | MAVSysStatusSensor.GYRO2_3D.value
+            MAV_SYS_STATUS_SENSOR_GYRO_3D | MAV_SYS_STATUS_SENSOR_GYRO2_3D
         )
         has_mag_error = not_healthy_sensors & (
-            MAVSysStatusSensor.MAG_3D.value | MAVSysStatusSensor.MAG2_3D.value
+            MAV_SYS_STATUS_SENSOR_MAG_3D | MAV_SYS_STATUS_SENSOR_MAG2_3D
         )
         has_accel_error = not_healthy_sensors & (
-            MAVSysStatusSensor.ACCEL_3D.value | MAVSysStatusSensor.ACCEL2_3D.value
+            MAV_SYS_STATUS_SENSOR_ACCEL_3D | MAV_SYS_STATUS_SENSOR_ACCEL2_3D
         )
         has_baro_error = not_healthy_sensors & (
-            MAVSysStatusSensor.ABSOLUTE_PRESSURE.value
-            | MAVSysStatusSensor.DIFFERENTIAL_PRESSURE.value
+            MAV_SYS_STATUS_SENSOR_ABSOLUTE_PRESSURE
+            | MAV_SYS_STATUS_SENSOR_DIFFERENTIAL_PRESSURE
         )
-        has_gps_error = not_healthy_sensors & MAVSysStatusSensor.GPS.value
-        has_proximity_error = not_healthy_sensors & MAVSysStatusSensor.PROXIMITY.value
+        has_gps_error = not_healthy_sensors & MAV_SYS_STATUS_SENSOR_GPS
+        has_proximity_error = not_healthy_sensors & MAV_SYS_STATUS_SENSOR_PROXIMITY
         has_motor_error = not_healthy_sensors & (
-            MAVSysStatusSensor.MOTOR_OUTPUTS.value
-            | MAVSysStatusSensor.REVERSE_MOTOR.value
+            MAV_SYS_STATUS_SENSOR_MOTOR_OUTPUTS | MAV_SYS_STATUS_SENSOR_REVERSE_MOTOR
         )
-        has_geofence_error = not_healthy_sensors & MAVSysStatusSensor.GEOFENCE.value
-        has_rc_error = not_healthy_sensors & MAVSysStatusSensor.RC_RECEIVER.value
-        has_battery_error = not_healthy_sensors & MAVSysStatusSensor.BATTERY.value
-        has_logging_error = not_healthy_sensors & MAVSysStatusSensor.LOGGING.value
+        has_geofence_error = not_healthy_sensors & MAV_SYS_STATUS_SENSOR_GEOFENCE
+        has_rc_error = not_healthy_sensors & MAV_SYS_STATUS_SENSOR_RC_RECEIVER
+        has_battery_error = not_healthy_sensors & MAV_SYS_STATUS_SENSOR_BATTERY
+        has_logging_error = not_healthy_sensors & MAV_SYS_STATUS_SENSOR_LOGGING
 
         are_motor_outputs_disabled = self._autopilot.are_motor_outputs_disabled(
             heartbeat, sys_status
         )
-        are_motors_running = heartbeat.base_mode & MAVModeFlag.SAFETY_ARMED.value
+        are_motors_running = heartbeat.base_mode & MAV_MODE_FLAG_SAFETY_ARMED
         is_prearm_check_in_progress = self._autopilot.is_prearm_check_in_progress(
             heartbeat, sys_status
         )
         is_returning_home = self._autopilot.is_rth_flight_mode(
             heartbeat.base_mode, heartbeat.custom_mode
         )
-        is_in_standby = heartbeat.system_status == MAVState.STANDBY.value
+        is_in_standby = heartbeat.system_status == MAV_STATE_STANDBY
 
         # The geofence status is a bit of a mess. ArduCopter and PX4 both report
         # geofence violations by marking the geofence sensor as "present,
@@ -2825,27 +2844,90 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
         # which means that we would get an all-blue display in Live after a
         # successful show.
 
+        # To avoid the overhead of accessing the "value" property of an enum,
+        # we hardcode the numeric error codes here.
+
         errors = {
+            9: False,  # SLEEPING
+            6: show_stage is DroneShowExecutionStage.LANDING,  # LANDING
+            5: show_stage is DroneShowExecutionStage.TAKEOFF,  # TAKEOFF
+            205: heartbeat.system_status == MAV_STATE_UNINIT,  # AUTOPILOT_INIT_FAILED
+            4: heartbeat.system_status == MAV_STATE_BOOT,  # AUTOPILOT_INITIALIZING
+            191: (  # UNSPECIFIED_ERROR
+                heartbeat.system_status == MAV_STATE_CRITICAL
+                and not not_healthy_sensors
+                and not has_rc_error
+            ),
+            255: (  # UNSPECIFIED_CRITICAL_ERROR
+                heartbeat.system_status == MAV_STATE_EMERGENCY
+                and not not_healthy_sensors
+            ),
+            193: has_mag_error,  # MAGNETIC_ERROR
+            194: has_gyro_error,  # GYROSCOPE_ERROR
+            195: has_accel_error,  # ACCELEROMETER_ERROR
+            196: has_baro_error,  # PRESSURE_SENSOR_ERROR
+            133: has_gps_error,  # GPS_SIGNAL_LOST
+            141: has_proximity_error,  # PROXIMITY_ERROR
+            198: has_motor_error  # MOTOR_MALFUNCTION
+            or (
+                self._last_skybrush_status_info
+                and self._last_skybrush_status_info.has_high_esc_error_rate
+            ),
+            201: has_geofence_error and are_motors_running,  # GEOFENCE_VIOLATION
+            71: (  # GEOFENCE_VIOLATION_WARNING
+                # Geofence error reported from SYS_STATUS...
+                (has_geofence_error and not are_motors_running)
+                # ...or no error reported from SYS_STATUS, but a geofence breach
+                # was reported in the Skybrush-specific status packet
+                or (
+                    not has_geofence_error
+                    and self._last_skybrush_status_info
+                    and self._last_skybrush_status_info.is_geofence_breached
+                )
+            ),
+            75: (  # DRIFT_FROM_DESIRED_POSITION
+                self._last_skybrush_status_info
+                and self._last_skybrush_status_info.is_far_from_expected_position
+            ),
+            65: has_rc_error,  # RC_SIGNAL_LOST_WARNING
+            199: has_battery_error,  # BATTERY_CRITICAL
+            2: has_logging_error,  # LOGGING_DEACTIVATED
+            73: are_motor_outputs_disabled,  # DISARMED
+            3: is_prearm_check_in_progress,  # PREARM_CHECK_IN_PROGRESS
+            # If the motors are not running yet but we are on the ground, ready
+            # to fly, we use an informational flag to let the user know
+            1: not are_motors_running and is_in_standby,  # ON_GROUND
+            # If the motors are running but we are not in the air yet; we use an
+            # informational flag to let the user know
+            8: are_motors_running and is_in_standby,  # MOTORS_RUNNING_WHILE_ON_GROUND
+            # Use the special RTH error code if the drone is in RTH or smart RTH mode
+            # and its mode index is larger than the standby mode (typically:
+            # active, critical, emergency, poweroff, termination)
+            63: is_returning_home
+            and heartbeat.system_status > MAV_STATE_STANDBY,  # RETURN_TO_HOME
+        }
+        """
+        {
             FlockwaveErrorCode.SLEEPING.value: False,
             FlockwaveErrorCode.LANDING.value: show_stage
             is DroneShowExecutionStage.LANDING,
             FlockwaveErrorCode.TAKEOFF.value: show_stage
             is DroneShowExecutionStage.TAKEOFF,
             FlockwaveErrorCode.AUTOPILOT_INIT_FAILED.value: (
-                heartbeat.system_status == MAVState.UNINIT.value
+                heartbeat.system_status == MAV_STATE_UNINIT
             ),
             FlockwaveErrorCode.AUTOPILOT_INITIALIZING.value: (
-                heartbeat.system_status == MAVState.BOOT.value
+                heartbeat.system_status == MAV_STATE_BOOT
             ),
             FlockwaveErrorCode.UNSPECIFIED_ERROR.value: (
                 # RC errors apparently trigger this error condition with
                 # ArduCopter if we don't exclude it explicitly
-                heartbeat.system_status == MAVState.CRITICAL.value
+                heartbeat.system_status == MAV_STATE_CRITICAL
                 and not not_healthy_sensors
                 and not has_rc_error
             ),
             FlockwaveErrorCode.UNSPECIFIED_CRITICAL_ERROR.value: (
-                heartbeat.system_status == MAVState.EMERGENCY.value
+                heartbeat.system_status == MAV_STATE_EMERGENCY
                 and not not_healthy_sensors
             ),
             FlockwaveErrorCode.MAGNETIC_ERROR.value: has_mag_error,
@@ -2894,8 +2976,9 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
             # and its mode index is larger than the standby mode (typically:
             # active, critical, emergency, poweroff, termination)
             FlockwaveErrorCode.RETURN_TO_HOME.value: is_returning_home
-            and heartbeat.system_status > MAVState.STANDBY.value,
+            and heartbeat.system_status > MAV_STATE_STANDBY,
         }
+        """
 
         # Clear the collected prearm failure messages if the heartbeat and/or
         # the system status shows that we are not in the prearm check phase any

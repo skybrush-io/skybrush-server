@@ -27,15 +27,14 @@ from flockwave.server.model.safety import (
 from flockwave.server.utils import clamp
 
 from ..enums import (
-    MAV_MODE_FLAG_CUSTOM_MODE_ENABLED,
-    MAV_SYS_STATUS_SENSOR_MOTOR_OUTPUTS,
-    MAV_SYS_STATUS_SENSOR_PREARM_CHECK,
     MAVAutopilot,
     MAVCommand,
     MAVMessageType,
+    MAVModeFlag,
     MAVParamType,
     MAVProtocolCapability,
     MAVState,
+    MAVSysStatusSensor,
 )
 from ..errors import UnknownFlightModeError
 from ..ftp import MAVFTP
@@ -124,13 +123,13 @@ class ArduPilot(Autopilot):
         # field specifies whether the motor outputs are enabled
         if (
             sys_status.onboard_control_sensors_health
-            & MAV_SYS_STATUS_SENSOR_MOTOR_OUTPUTS
+            & MAVSysStatusSensor.MOTOR_OUTPUTS.value
             and sys_status.onboard_control_sensors_present
-            & MAV_SYS_STATUS_SENSOR_MOTOR_OUTPUTS
+            & MAVSysStatusSensor.MOTOR_OUTPUTS.value
         ):
             return not bool(
                 sys_status.onboard_control_sensors_enabled
-                & MAV_SYS_STATUS_SENSOR_MOTOR_OUTPUTS
+                & MAVSysStatusSensor.MOTOR_OUTPUTS.value
             )
         else:
             return False
@@ -443,7 +442,7 @@ class ArduPilot(Autopilot):
             for name in names:
                 name = name.lower().replace(" ", "")
                 if name == mode:
-                    return (MAV_MODE_FLAG_CUSTOM_MODE_ENABLED, number, 0)
+                    return (MAVModeFlag.CUSTOM_MODE_ENABLED, number, 0)
 
         raise UnknownFlightModeError(mode)
 
@@ -660,7 +659,7 @@ class ArduPilotWithSkybrush(ArduPilot):
         # Our patched firmware (ab)uses the CALIBRATING state in the heartbeat
         # for this before ArduCopter 4.0.5. From ArduCopter 4.0.5 onwwards,
         # there is a "preflight check" sensor so we use that
-        mask = MAV_SYS_STATUS_SENSOR_PREARM_CHECK
+        mask = MAVSysStatusSensor.PREARM_CHECK.value
         if sys_status.onboard_control_sensors_present & mask:
             # ArduCopter version reports prearm check status with this message
             if sys_status.onboard_control_sensors_enabled & mask:
@@ -673,7 +672,7 @@ class ArduPilotWithSkybrush(ArduPilot):
             # ArduCopter version does not know about this flag so we assume that
             # we are running our firmware and that the CALIBRATING status is
             # used for reporting this
-            return heartbeat.system_status == MAVState.CALIBRATING.value
+            return heartbeat.system_status == MAVState.CALIBRATING
 
     @ArduPilot.supports_scheduled_takeoff.getter
     def supports_scheduled_takeoff(self):

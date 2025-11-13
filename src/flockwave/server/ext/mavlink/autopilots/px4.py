@@ -5,7 +5,7 @@ from flockwave.server.errors import NotSupportedError
 from flockwave.server.model.geofence import GeofenceConfigurationRequest, GeofenceStatus
 from flockwave.server.model.safety import SafetyConfigurationRequest
 
-from ..enums import MAVAutopilot, MAVModeFlag, MAV_SYS_STATUS_SENSOR_PREARM_CHECK
+from ..enums import MAVAutopilot, MAVModeFlag, MAVSysStatusSensor
 from ..errors import UnknownFlightModeError
 from ..types import MAVLinkFlightModeNumbers, MAVLinkMessage
 
@@ -151,7 +151,7 @@ class PX4(Autopilot):
     def is_prearm_check_in_progress(
         self, heartbeat: MAVLinkMessage, sys_status: MAVLinkMessage
     ) -> bool:
-        mask = MAV_SYS_STATUS_SENSOR_PREARM_CHECK
+        mask = MAVSysStatusSensor.PREARM_CHECK.value
         if (
             sys_status.onboard_control_sensors_present
             & sys_status.onboard_control_sensors_enabled

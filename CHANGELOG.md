@@ -5,11 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [main]
+## [2.38.0] - 2025-11-14
 
 ### Added
 
 - Virtual UAVs now pretend that they support compass calibration.
+
+### Changed
+
+- `skynet` was updated to 0.5.0 to provide more optimizations for large-scale swarm
+  deployments.
+
+- Error codes on UAVs are now stored in an `ErrorSet` instead of a list of integers.
+  Extension authors accessing the `error` property of the `UAVState` object
+  directly should check their code and update if needed. We do not consider this
+  a breaking change as the `ErrorSet` object provides a similar interface and
+  direct manipulation of the `error` property was not supported in earlier
+  versions either.
 
 ## [2.37.0] - 2025-10-30
 

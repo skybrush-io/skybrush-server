@@ -17,6 +17,7 @@ from trio import (
     Event,
     MemoryReceiveChannel,
     MemorySendChannel,
+    Nursery,
     WouldBlock,
     move_on_after,
     open_memory_channel,
@@ -1153,6 +1154,9 @@ class MessageHub:
 ##############################################################################
 
 
+FlockwaveMessageDispatcher = Callable[[FlockwaveMessage], Awaitable[None]]
+
+
 class RateLimiter(ABC):
     """Abstract base class for rate limiter objects."""
 
@@ -1169,7 +1173,7 @@ class RateLimiter(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    async def run(self, dispatcher, nursery) -> None:
+    async def run(self, dispatcher, nursery: Nursery) -> None:
         """Runs the task handling the messages emitted from this rate
         limiter.
         """
@@ -1195,7 +1199,11 @@ class BatchMessageRateLimiter(RateLimiter, Generic[T]):
     def add_request(self, request: T) -> None:
         self.bundler.add(request)
 
-    async def run(self, dispatcher, nursery):
+    async def run(
+        self,
+        dispatcher: FlockwaveMessageDispatcher,
+        nursery: Nursery,
+    ):
         self.bundler.clear()
         async with self.bundler.iter() as bundle_iterator:
             async for bundle in bundle_iterator:
@@ -1240,7 +1248,11 @@ class UAVMessageRateLimiter(RateLimiter):
         """
         self.bundler.add_many(uav_ids)
 
-    async def run(self, dispatcher, nursery):
+    async def run(
+        self,
+        dispatcher: FlockwaveMessageDispatcher,
+        nursery: Nursery,
+    ):
         self.bundler.clear()
         async with self.bundler.iter() as bundle_iterator:
             async for bundle in bundle_iterator:
@@ -1408,7 +1420,11 @@ class RateLimiters:
     sent in a single batch with a minimum prescribed delay between batches.
     """
 
-    def __init__(self, dispatcher: Callable[[FlockwaveMessage], Awaitable[Any]]):
+    _dispatcher: FlockwaveMessageDispatcher
+    _rate_limiters: dict[str, RateLimiter]
+    _running: bool
+
+    def __init__(self, dispatcher: FlockwaveMessageDispatcher):
         """Constructor.
 
         Parameters:

@@ -1814,6 +1814,10 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
         # If we haven't received a SYS_STATUS message for a while but we keep
         # on receiving heartbeats, chances are that the data streams are not
         # configured correctly so we configure them.
+        #
+        # TODO(ntamas): This can be problematic with Skynet if it is deduplicating
+        # HEARTBEAT or SYS_STATUS messages that contain no change. Make sure that
+        # in these cases self.driver.assume_data_streams_configured is True
         if (
             not self.driver.assume_data_streams_configured
             and age_of_last_heartbeat < 2

@@ -140,9 +140,9 @@ class ChannelTypeRegistry(RegistryBase[ChannelTypeDescriptor]):
                 type.
         """
         result = self._entries[channel_id].factory()
-        assert isinstance(
-            result, CommunicationChannel
-        ), "communication channel factory did not return a CommunicationChannel"
+        assert isinstance(result, CommunicationChannel), (
+            "communication channel factory did not return a CommunicationChannel"
+        )
         return result
 
     @property

@@ -242,9 +242,9 @@ class MessageHub:
             the request object that identifies this message in the outbound
             message queue. It can be used to wait until the message is delivered
         """
-        assert isinstance(
-            message, FlockwaveNotification
-        ), "only notifications may be broadcast"
+        assert isinstance(message, FlockwaveNotification), (
+            "only notifications may be broadcast"
+        )
 
         request = Request(message)
         await self._queue_tx.send(request)
@@ -379,9 +379,9 @@ class MessageHub:
         Parameters:
             message: the notification to enqueue
         """
-        assert isinstance(
-            message, FlockwaveNotification
-        ), "only notifications may be broadcast"
+        assert isinstance(message, FlockwaveNotification), (
+            "only notifications may be broadcast"
+        )
 
         # Don't return the request here because it is not guaranteed that it
         # ends up in the queue; it may be dropped
@@ -423,9 +423,9 @@ class MessageHub:
                 message, in_response_to=in_response_to
             )
         if to is None:
-            assert isinstance(
-                message, FlockwaveNotification
-            ), "broadcast messages cannot be sent in response to a particular message"
+            assert isinstance(message, FlockwaveNotification), (
+                "broadcast messages cannot be sent in response to a particular message"
+            )
             return self.enqueue_broadcast_message(message)
         else:
             # Don't return the request here because it is not guaranteed that it
@@ -549,12 +549,12 @@ class MessageHub:
         """Calculates the list of methods to call when the message hub
         wishes to broadcast a message to all the connected clients.
         """
-        assert (
-            self._client_registry is not None
-        ), "message hub does not have a client registry yet"
-        assert (
-            self._channel_type_registry is not None
-        ), "message hub does not have a channel type registry yet"
+        assert self._client_registry is not None, (
+            "message hub does not have a client registry yet"
+        )
+        assert self._channel_type_registry is not None, (
+            "message hub does not have a channel type registry yet"
+        )
 
         result = []
         clients_for = self._client_registry.client_ids_for_channel_type
@@ -832,9 +832,9 @@ class MessageHub:
             )
 
         if to is None:
-            assert isinstance(
-                message, FlockwaveNotification
-            ), "broadcast messages cannot be sent in response to a particular message"
+            assert isinstance(message, FlockwaveNotification), (
+                "broadcast messages cannot be sent in response to a particular message"
+            )
             return await self.broadcast_message(message)
         else:
             request = Request(message, to=to, in_response_to=in_response_to)
@@ -1068,9 +1068,9 @@ class MessageHub:
         in_response_to: Optional[FlockwaveMessage] = None,
         done: Optional[Callable[[], None]] = None,
     ):
-        assert (
-            self._client_registry is not None
-        ), "message hub does not have a client registry yet"
+        assert self._client_registry is not None, (
+            "message hub does not have a client registry yet"
+        )
 
         if not isinstance(to, Client):
             try:

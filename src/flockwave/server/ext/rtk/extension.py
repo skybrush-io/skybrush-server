@@ -99,6 +99,7 @@ class RTKExtension(Extension):
     _statistics: RTKStatistics
     _survey_settings: RTKSurveySettings
     _tx_queue: Optional[SendChannel] = None
+    _config_fixed_position: Optional[Any] = None
 
     def __init__(self):
         """Constructor."""
@@ -223,6 +224,8 @@ class RTKExtension(Extension):
 
             position = self._survey_settings.position
             if position is not None:
+                # Store the fixed position from config so we can restore it when switching RTK sources.
+                self._config_fixed_position = position
                 coord = ECEFToGPSCoordinateTransformation().to_gps(position).format()
                 self.log.info(
                     f"Base station is fixed at {coord} (accuracy: {accuracy}m)"
@@ -369,8 +372,8 @@ class RTKExtension(Extension):
             else:
                 preset_id, desired_preset = None, None
 
-            # Always reset fixed position when switching RTK source
-            self._survey_settings.position = None
+            # Reset fixed position when switching RTK source, but restore from config if available
+            self._survey_settings.position = self._config_fixed_position
 
             self._request_preset_switch_later(desired_preset)
             self._last_preset_request_from_user = (

@@ -72,12 +72,12 @@ pro = [
   "skybrush-ext-show-pro>=0.4.0",
   "skybrush-ext-sidekick>=1.1.0",
   "skybrush-ext-skynet>=0.5.0",
-  "skybrush-ext-studio>=1.0.0",
+  "skybrush-ext-studio>=1.1.0",
   "skybrush-ext-timecode>=1.4.1",
   "skybrush-lib-mission-planning>=2.4.1",
   "skybrush-opt-rs",
-  "skybrush-studio>=5.5.0",
-  "skynet>=0.4.1",
+  "skybrush-studio",
+  "skynet",
 ]
 
 [tool.uv.build-backend]
@@ -106,6 +106,7 @@ flockwave-mavlink = { index = "fury" }
 flockwave-net = { index = "fury" }
 flockwave-parsers = { index = "fury" }
 flockwave-spec = { index = "fury" }
+pyledctrl = { index = "fury" }
 skybrush-ext-dock = { index = "collmot" }
 skybrush-ext-firmware-update = { index = "collmot" }
 skybrush-ext-flight-report = { index = "collmot" }
@@ -120,7 +121,6 @@ skybrush-lib-mission-planning = { index = "collmot" }
 skybrush-opt-rs = { index = "collmot" }
 skybrush-studio = { index = "collmot" }
 skynet = { index = "collmot" }
-pyledctrl = { index = "fury" }
 
 [dependency-groups]
 dev = [

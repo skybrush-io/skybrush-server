@@ -76,7 +76,7 @@ pro = [
   "skybrush-ext-timecode>=1.4.1",
   "skybrush-lib-mission-planning>=2.4.1",
   "skybrush-opt-rs",
-  "skybrush-studio>=4.24.2",
+  "skybrush-studio>=5.5.0",
   "skynet>=0.4.1",
 ]
 

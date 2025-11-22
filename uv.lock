@@ -1028,7 +1028,7 @@ requires-dist = [
     { name = "skybrush-ext-timecode", marker = "extra == 'pro'", specifier = ">=1.4.1", index = "https://pypi.collmot.com/" },
     { name = "skybrush-lib-mission-planning", marker = "extra == 'pro'", specifier = ">=2.4.1", index = "https://pypi.collmot.com/" },
     { name = "skybrush-opt-rs", marker = "extra == 'pro'", index = "https://pypi.collmot.com/" },
-    { name = "skybrush-studio", marker = "extra == 'pro'", specifier = ">=4.24.2", index = "https://pypi.collmot.com/" },
+    { name = "skybrush-studio", marker = "extra == 'pro'", specifier = ">=5.5.0", index = "https://pypi.collmot.com/" },
     { name = "skynet", marker = "extra == 'pro'", specifier = ">=0.4.1", index = "https://pypi.collmot.com/" },
     { name = "trio", specifier = ">=0.30.0" },
     { name = "trio-util", specifier = ">=0.8.0" },
@@ -1946,6 +1946,19 @@ wheels = [
 ]
 
 [[package]]
+name = "pydantic-extra-types"
+version = "2.10.6"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "pydantic" },
+    { name = "typing-extensions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/3a/10/fb64987804cde41bcc39d9cd757cd5f2bb5d97b389d81aa70238b14b8a7e/pydantic_extra_types-2.10.6.tar.gz", hash = "sha256:c63d70bf684366e6bbe1f4ee3957952ebe6973d41e7802aea0b770d06b116aeb", size = 141858, upload-time = "2025-10-08T13:47:49.483Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/93/04/5c918669096da8d1c9ec7bb716bd72e755526103a61bc5e76a3e4fb23b53/pydantic_extra_types-2.10.6-py3-none-any.whl", hash = "sha256:6106c448316d30abf721b5b9fecc65e983ef2614399a24142d689c7546cc246a", size = 40949, upload-time = "2025-10-08T13:47:48.268Z" },
+]
+
+[[package]]
 name = "pygments"
 version = "2.19.2"
 source = { registry = "https://pypi.org/simple" }
@@ -2462,7 +2475,7 @@ wheels = [
 
 [[package]]
 name = "skybrush-studio"
-version = "5.3.0"
+version = "5.5.0"
 source = { registry = "https://pypi.collmot.com/" }
 dependencies = [
     { name = "jsonref" },
@@ -2471,15 +2484,16 @@ dependencies = [
     { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "numpy", version = "2.3.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
     { name = "pydantic" },
+    { name = "pydantic-extra-types" },
     { name = "pyledctrl" },
     { name = "semver" },
     { name = "skybrush-opt-rs" },
     { name = "svgpathtools-lite" },
     { name = "webcolors" },
 ]
-sdist = { url = "https://pypi.collmot.com/packages/skybrush_studio-5.3.0.tar.gz", hash = "sha256:4b6e863f3b010c0155ca22163642dd3e4279751d258170f3d2c876781346279f" }
+sdist = { url = "https://pypi.collmot.com/packages/skybrush_studio-5.5.0.tar.gz", hash = "sha256:76b36b09251a1bce8ed7a0aefb7c067c191a14770ca59d70ccdc50e0faaa8730" }
 wheels = [
-    { url = "https://pypi.collmot.com/packages/skybrush_studio-5.3.0-py3-none-any.whl", hash = "sha256:8fa0cad4890a8ca712a896ba7ddd63ade831d7c619cbca4660b51fff16bfefeb" },
+    { url = "https://pypi.collmot.com/packages/skybrush_studio-5.5.0-py3-none-any.whl", hash = "sha256:5de0f172c5c1e3d2da290ca847eff532153e0a87379623659cf8c5dc04745bd1" },
 ]
 
 [[package]]

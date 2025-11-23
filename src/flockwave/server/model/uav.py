@@ -318,6 +318,16 @@ class UAVBase(UAV, Generic[TDriver]):
         """
         self._status.errors.ensure_many(codes)
 
+    def touch_status(self) -> None:
+        """Updates the timestamp of the status information of the UAV without
+        updating any of its fields.
+
+        This function can be used when we receive a message that is semantically
+        equivalent to a previous message but we want to remember that the UAV is
+        alive.
+        """
+        self._status.update_timestamp()
+
     def update_rssi(self, *, index: int, value: Optional[int] = None) -> None:
         """Updates the RSSI value of the UAV for the channel with the given
         index.

@@ -564,6 +564,9 @@ class ArduPilot(Autopilot):
 
         yield Progress(percentage=100)
 
+    def is_duplicate_message(self, message: MAVLinkMessage) -> bool:
+        return False
+
     def is_prearm_check_in_progress(
         self, heartbeat: MAVLinkMessage, sys_status: MAVLinkMessage
     ) -> bool:
@@ -652,6 +655,12 @@ class ArduPilotWithSkybrush(ArduPilot):
         | MAVProtocolCapability.MAVLINK2
         | MAVProtocolCapability.DRONE_SHOW_MODE
     )
+
+    def is_duplicate_message(self, message: MAVLinkMessage) -> bool:
+        # We use the MSB of the compatibility flags to indicate that the message
+        # is semantically equivalent to an earlier message of the same type from
+        # the same source
+        return message.get_header().compat_flags & 0x80
 
     def is_prearm_check_in_progress(
         self, heartbeat: MAVLinkMessage, sys_status: MAVLinkMessage

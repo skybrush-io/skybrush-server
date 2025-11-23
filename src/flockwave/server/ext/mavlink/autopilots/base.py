@@ -252,6 +252,19 @@ class Autopilot(ABC):
         ...
 
     @abstractmethod
+    def is_duplicate_message(self, message: MAVLinkMessage) -> bool:
+        """Decides whether the given MAVLink message is marked as being a
+        duplicate of a previously received message.
+
+        In the context of this method, "duplicate" means that the message is
+        semantically equivalent to an earlier message of the same type from the
+        same source system and component. This can be used to skip the
+        processing of the message or certain parts of it for performance
+        reasons.
+        """
+        ...
+
+    @abstractmethod
     def is_prearm_check_in_progress(
         self, heartbeat: MAVLinkMessage, sys_status: MAVLinkMessage
     ) -> bool:

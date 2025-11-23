@@ -9,6 +9,7 @@ from typing import (
     Awaitable,
     Callable,
     ClassVar,
+    ContextManager,
     Iterable,
     Optional,
     Protocol,
@@ -23,7 +24,9 @@ from .rssi import RSSIMode
 from .signing import MAVLinkSigningConfiguration
 
 if TYPE_CHECKING:
+    from .channel import MAVLinkMessageChannelFactory
     from .driver import MAVLinkUAV
+    from .network import MAVLinkNetwork
 
 
 __all__ = (
@@ -420,3 +423,13 @@ class MAVLinkNetworkSpecification:
             return [int(x) for x in entry.strip().split()]
         else:
             return [int(x) for x in entry]
+
+
+class MAVLinkExtensionAPI:
+    """Interface specification of the API exposed by the `mavlink` extension."""
+
+    def find_network_by_id(self, id: str) -> MAVLinkNetwork | None: ...
+    def use_mavlink_message_channel_factory(
+        self,
+        factory: MAVLinkMessageChannelFactory,
+    ) -> ContextManager[None]: ...

@@ -35,6 +35,7 @@ from ..enums import (
     MAVProtocolCapability,
     MAVState,
     MAVSysStatusSensor,
+    MAVType,  # added to detect vehicle type
 )
 from ..errors import UnknownFlightModeError
 from ..ftp import MAVFTP
@@ -59,18 +60,18 @@ class ArduPilot(Autopilot):
     name = "ArduPilot"
 
     #: Custom mode dictionary, containing the primary name and the aliases for
-    #: each known flight mode
+    #: each known flight mode (default / typical multirotor mapping)
     _custom_modes = {
         0: ("stab", "stabilize"),
         1: ("acro",),
         2: ("alt", "alt hold"),
         3: ("auto",),
-        4: ("guided",),
+        4: ("uided",),
         5: ("loiter",),
         6: ("rth",),
         7: ("circle",),
         9: ("land",),
-        11: ("drift",),
+        11: ("rift",),
         13: ("sport",),
         14: ("flip",),
         15: ("tune",),
@@ -89,6 +90,37 @@ class ArduPilot(Autopilot):
         28: ("turtle",),
     }
 
+    # Rover-specific custom modes (used for MAVType.GROUND_ROVER)
+    # Note: numbers correspond to ArduPilot custom mode indices; aliases are
+    # provided as commonly used names. Adjust entries if your firmware uses
+    # different indices/names.
+    _rover_custom_modes = {
+        0: ("manual",),
+        1: ("learning",),
+        2: ("steer", "steering"),
+        3: ("hold",),
+        4: ("loiter",),
+        10: ("auto",),
+        11: ("rtl", "return"),
+        15: ("guided",),
+        16: ("pos", "position"),
+        17: ("brake",),
+    }
+
+    # Per-vehicle-type custom modes mapping. Keys are MAVType enum members.
+    # Only add mappings that differ from the default; otherwise the default
+    # _custom_modes will be used.
+    _custom_modes_by_mav_type: dict[int, dict[int, tuple[str, ...]]] = {
+        # Quadcopter / multirotor explicit mapping uses the default mapping
+        MAVType.QUADROTOR.value: _custom_modes,
+        # Ground rover mapping
+        MAVType.GROUND_ROVER.value: _rover_custom_modes,
+        # You can extend other vehicle types here if needed. If absent, the
+        # class falls back to _custom_modes.
+        # Example placeholders (keep empty or add real mappings if desired):
+        # MAVType.FIXED_WING.value: { ... },
+    }
+
     _geofence_actions = {
         0: (GeofenceAction.REPORT,),
         1: (GeofenceAction.RETURN, GeofenceAction.LAND),
@@ -104,14 +136,28 @@ class ArduPilot(Autopilot):
     """Maximum allowed duration of a compass calibration, in seconds"""
 
     @classmethod
-    def describe_custom_mode(cls, base_mode: int, custom_mode: int) -> str:
+    def describe_custom_mode(cls, base_mode: int, custom_mode: int, vehicle_type: int | None = None) -> str:
         """Returns the description of the current custom mode that the autopilot
         is in, given the base and the custom mode in the heartbeat message.
 
         This method is called if the "custom mode" bit is set in the base mode
         of the heartbeat.
+
+        New optional parameter `vehicle_type` (MAVType or int) allows selecting
+        a vehicle-specific custom mode map; if omitted, the legacy/default
+        mapping is used.
         """
-        mode_attrs = cls._custom_modes.get(custom_mode)
+        # Determine which mapping to use. Accept both MAVType enum members and ints.
+        mapping = cls._custom_modes
+        if vehicle_type is not None:
+            try:
+                vt = int(vehicle_type.value) if hasattr(vehicle_type, "value") else int(vehicle_type)
+            except Exception:
+                vt = None
+            if vt is not None:
+                mapping = cls._custom_modes_by_mav_type.get(vt, cls._custom_modes)
+
+        mode_attrs = mapping.get(custom_mode)
         return mode_attrs[0] if mode_attrs else f"mode {custom_mode}"
 
     def are_motor_outputs_disabled(

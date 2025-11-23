@@ -4,11 +4,18 @@ USB device is removed.
 """
 
 from contextlib import aclosing
+from typing import TYPE_CHECKING
+
 from aio_usb_hotplug import HotplugDetector, NoBackendError
 
+if TYPE_CHECKING:
+    from logging import Logger
+    from flockwave.server.app import SkybrushServer
+    from flockwave.server.ext.signals import SignalsExtensionAPI
 
-async def run(app, configuration, log):
-    signal = app.import_api("signals").get("hotplug:event")
+
+async def run(app: SkybrushServer, configuration, log: Logger):
+    signal = app.import_api("signals", SignalsExtensionAPI).get("hotplug:event")
 
     try:
         gen = HotplugDetector().events()

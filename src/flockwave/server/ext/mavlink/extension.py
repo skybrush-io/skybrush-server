@@ -41,6 +41,7 @@ if TYPE_CHECKING:
     from flockwave.server.ext.rc import RCState
     from flockwave.server.ext.show.config import DroneShowConfiguration
     from flockwave.server.ext.show.types import ShowExtensionAPI
+    from flockwave.server.ext.signals import SignalsExtensionAPI
     from flockwave.server.tasks.led_lights import LightConfiguration
 
 
@@ -159,7 +160,7 @@ class MAVLinkDronesExtension(UAVExtension[MAVLinkDriver]):
         )
 
         # Get a handle to the signals extension that we will need
-        signals = app.import_api("signals")
+        signals = app.import_api("signals", SignalsExtensionAPI)
         status_summary_signal = signals.get("mavlink:status_summary")
 
         # Create self._uavs only here and not in the constructor; this is to

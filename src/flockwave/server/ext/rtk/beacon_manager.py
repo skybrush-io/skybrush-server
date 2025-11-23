@@ -14,6 +14,7 @@ from flockwave.server.utils.generic import overridden
 if TYPE_CHECKING:
     from flockwave.server.ext.beacon.model import Beacon
     from flockwave.server.ext.rtk.extension import RTKExtension
+    from flockwave.server.ext.signals import SignalsExtensionAPI
 
 __all__ = ("RTKBeaconManager",)
 
@@ -46,7 +47,7 @@ class RTKBeaconManager:
             return
 
         beacon_api = app.import_api("beacon")
-        signal_api = app.import_api("signals")
+        signal_api = app.import_api("signals", SignalsExtensionAPI)
         signal = ext.RTK_PACKET_SIGNAL
 
         self._parser = create_rtcm_parser()

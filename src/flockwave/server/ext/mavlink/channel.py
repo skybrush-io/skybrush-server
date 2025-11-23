@@ -31,7 +31,11 @@ if TYPE_CHECKING:
     )
     from .types import MAVLinkMessage, MAVLinkMessageSpecification
 
-__all__ = ("create_mavlink_message_channel", "use_mavlink_message_channel_factory")
+__all__ = (
+    "create_mavlink_message_channel",
+    "encode_mavlink_message_from_spec",
+    "use_mavlink_message_channel_factory",
+)
 
 
 class Channel:
@@ -198,6 +202,31 @@ def use_mavlink_message_channel_factory(
             pass
 
 
+def encode_mavlink_message_from_spec(
+    spec: MAVLinkMessageSpecification, mavlink: MinimalMAVLinkInterface
+) -> bytes:
+    """Encodes a MAVLink message given a message specification and a MAVLink
+    object. Sequence numbers are generated from the current state of the
+    MAVLink object. The internal state variables are also updated as needed.
+
+    This function is essentially a building block for message channel factories
+    where it can be used in the encoder function.
+    """
+    type, kwds = spec
+
+    mavlink_version = kwds.pop("_mavlink_version", 2)
+
+    message = _create_mavlink_message(mavlink, type, **kwds)
+    result: bytes = message.pack(mavlink, force_mavlink1=mavlink_version < 2)
+
+    # Bookkeeping copied from the MAVLink.send() method
+    mavlink.seq = (mavlink.seq + 1) % 256
+    mavlink.total_packets_sent += 1
+    mavlink.total_bytes_sent += len(result)
+
+    return result
+
+
 def _create_stream_based_mavlink_message_channel(
     connection: Connection,
     log: Logger,
@@ -239,16 +268,7 @@ def _create_stream_based_mavlink_message_channel(
 
     def encoder(spec_and_address: tuple[MAVLinkMessageSpecification, Any]) -> bytes:
         spec, _ = spec_and_address
-
-        type, kwds = spec
-        mavlink_version = kwds.pop("_mavlink_version", 2)
-
-        message = _create_mavlink_message(mavlink, type, **kwds)
-        result: bytes = message.pack(mavlink, force_mavlink1=mavlink_version < 2)
-
-        _notify_mavlink_packet_sent(mavlink, result)
-
-        return result
+        return encode_mavlink_message_from_spec(spec, mavlink)
 
     return BroadcastMessageChannel(
         connection, parser=parser, encoder=encoder, broadcast_encoder=encoder
@@ -320,31 +340,13 @@ def _create_datagram_based_mavlink_message_channel(
         spec_and_address: tuple[MAVLinkMessageSpecification, Any],
     ) -> tuple[bytes, Any]:
         spec, address = spec_and_address
-
-        type, kwds = spec
-
         mavlink = mavlink_by_address[address]
-        mavlink_version = kwds.pop("_mavlink_version", 2)
-
-        message = _create_mavlink_message(mavlink, type, **kwds)
-        result = message.pack(mavlink, force_mavlink1=mavlink_version < 2)
-
-        _notify_mavlink_packet_sent(mavlink, result)
-
+        result = encode_mavlink_message_from_spec(spec, mavlink)
         return (result, address)
 
     return BroadcastMessageChannel(
         connection, parser=parser, encoder=encoder, broadcast_encoder=encoder
     )
-
-
-def _notify_mavlink_packet_sent(
-    mavlink: MinimalMAVLinkInterface, packet: bytes
-) -> None:
-    # Bookkeeping copied from the MAVLink.send() method
-    mavlink.seq = (mavlink.seq + 1) % 256
-    mavlink.total_packets_sent += 1
-    mavlink.total_bytes_sent += len(packet)
 
 
 _message_channel_factories: list[MAVLinkMessageChannelFactory] = [

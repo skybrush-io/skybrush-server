@@ -148,6 +148,9 @@ class PX4(Autopilot):
         """
         return True
 
+    def is_duplicate_message(self, message: MAVLinkMessage) -> bool:
+        return False
+
     def is_prearm_check_in_progress(
         self, heartbeat: MAVLinkMessage, sys_status: MAVLinkMessage
     ) -> bool:

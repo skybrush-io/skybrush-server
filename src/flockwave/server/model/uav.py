@@ -22,11 +22,11 @@ from flockwave.server.errors import NotSupportedError
 from flockwave.server.logger import log as base_log
 from flockwave.spec.schema import get_complex_object_schema
 
-from flockwave.server.model.commands import Progress, ProgressEvents
-
 from .attitude import Attitude
 from .battery import BatteryInfo
+from .commands import Progress, ProgressEvents
 from .devices import ObjectNode
+from .error_set import ErrorSet
 from .gps import GPSFix, GPSFixLike
 from .log import FlightLogMetadata
 from .metamagic import ModelMeta
@@ -91,7 +91,7 @@ class UAVStatusInfo(TimestampMixin, metaclass=ModelMeta):
         mappers = {"heading": scaled_by(10), "debug": as_base64}
 
     debug: bytes
-    errors: list[int]
+    errors: ErrorSet
     gps: GPSFix
     heading: float
     attitude: Optional[Attitude]
@@ -119,7 +119,7 @@ class UAVStatusInfo(TimestampMixin, metaclass=ModelMeta):
         TimestampMixin.__init__(self, timestamp)
 
         self.debug = b""
-        self.errors = []
+        self.errors = ErrorSet()
         self.gps = GPSFix()
         self.heading = 0.0
         self.attitude = None
@@ -307,17 +307,7 @@ class UAVBase(UAV, Generic[TDriver]):
             code: the code to add or remove
             present: whether to add the code (True) or remove it (False)
         """
-        # If the error code is to be cleared and we don't have any errors
-        # (which is the common code path), we can bail out immediately.
-        if present or self._status.errors:
-            code = int(code)
-
-            if code in self._status.errors:
-                if not present:
-                    self._status.errors.remove(code)
-            else:
-                if present:
-                    self._status.errors.append(code)
+        self._status.errors.ensure(code, present)
 
     def ensure_errors(self, codes: dict[int, bool]) -> None:
         """Updates multiple error codes with a single function call.
@@ -326,9 +316,17 @@ class UAVBase(UAV, Generic[TDriver]):
             codes: dictionary mapping error codes to a boolean specifying
                 whether the error code should be present or absent
         """
-        if self._status.errors or any(present for present in codes.values()):
-            for code, present in codes.items():
-                self.ensure_error(code, present)
+        self._status.errors.ensure_many(codes)
+
+    def touch_status(self) -> None:
+        """Updates the timestamp of the status information of the UAV without
+        updating any of its fields.
+
+        This function can be used when we receive a message that is semantically
+        equivalent to a previous message but we want to remember that the UAV is
+        alive.
+        """
+        self._status.update_timestamp()
 
     def update_rssi(self, *, index: int, value: Optional[int] = None) -> None:
         """Updates the RSSI value of the UAV for the channel with the given
@@ -424,10 +422,9 @@ class UAVBase(UAV, Generic[TDriver]):
             self._status.light = int(light)
         if errors is not None:
             if isinstance(errors, int):
-                errors = [errors] if errors > 0 else []
+                self._status.errors.set([errors] if errors > 0 else [])
             else:
-                errors = sorted(code for code in errors if code > 0)
-            self._status.errors = errors
+                self._status.errors.set(code for code in errors if code > 0)
         if rssi is not None:
             if isinstance(rssi, int):
                 rssi = [rssi]

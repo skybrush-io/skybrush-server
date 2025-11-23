@@ -61,7 +61,7 @@ from flockwave.spec.errors import FlockwaveErrorCode
 
 from .accelerometer import AccelerometerCalibration
 from .autopilots import ArduPilot, Autopilot, UnknownAutopilot
-from .comm import Channel
+from .channel import Channel
 from .compass import CompassCalibration
 from .enums import (
     ConnectionState,
@@ -1814,6 +1814,10 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
         # If we haven't received a SYS_STATUS message for a while but we keep
         # on receiving heartbeats, chances are that the data streams are not
         # configured correctly so we configure them.
+        #
+        # TODO(ntamas): This can be problematic with Skynet if it is deduplicating
+        # HEARTBEAT or SYS_STATUS messages that contain no change. Make sure that
+        # in these cases self.driver.assume_data_streams_configured is True
         if (
             not self.driver.assume_data_streams_configured
             and age_of_last_heartbeat < 2
@@ -1821,11 +1825,16 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
         ):
             self._configure_data_streams_soon()
 
-        # Update error codes and basic status info
-        self._update_errors_from_sys_status_and_heartbeat()
-        self.update_status(
-            mode=self._autopilot.describe_mode(message.base_mode, message.custom_mode, message.type)
-        )
+        # Update error codes and basic status info if needed
+        if self._autopilot.is_duplicate_message(message):
+            self.touch_status()
+        else:
+            self._update_errors_from_sys_status_and_heartbeat()
+            self.update_status(
+                mode=self._autopilot.describe_mode(
+                    message.base_mode, message.custom_mode
+                )
+            )
         self.notify_updated()
 
     def handle_message_global_position_int(self, message: MAVLinkMessage):
@@ -1912,20 +1921,25 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
 
     def handle_message_sys_status(self, message: MAVLinkMessage):
         self._store_message(message)
-        self._update_errors_from_sys_status_and_heartbeat()
 
-        # Update battery status
-        if message.voltage_battery < 65535:
-            self._battery.voltage = message.voltage_battery / 1000
+        if self._autopilot.is_duplicate_message(message):
+            self.touch_status()
         else:
-            self._battery.voltage = 0.0
-        if message.battery_remaining == -1:
-            self._battery.percentage = None
-        elif self._autopilot.is_battery_percentage_reliable:
-            self._battery.percentage = message.battery_remaining
-        else:
-            self._battery.percentage = None
-        self.update_status(battery=self._battery)
+            self._update_errors_from_sys_status_and_heartbeat()
+
+            # Update battery status
+            if message.voltage_battery < 65535:
+                self._battery.voltage = message.voltage_battery / 1000
+            else:
+                self._battery.voltage = 0.0
+            if message.battery_remaining == -1:
+                self._battery.percentage = None
+            elif self._autopilot.is_battery_percentage_reliable:
+                self._battery.percentage = message.battery_remaining
+            else:
+                self._battery.percentage = None
+
+            self.update_status(battery=self._battery)
 
         self.notify_updated()
 

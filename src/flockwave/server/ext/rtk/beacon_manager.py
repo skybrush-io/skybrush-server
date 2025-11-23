@@ -8,6 +8,7 @@ from flockwave.gps.rtcm.packets import RTCMPacket, RTCMV3StationaryAntennaPacket
 from flockwave.gps.rtcm.parsers import create_rtcm_parser
 from flockwave.gps.vectors import ECEFToGPSCoordinateTransformation
 
+from flockwave.server.ext.signals import SignalsExtensionAPI
 from flockwave.server.registries.errors import RegistryFull
 from flockwave.server.utils.generic import overridden
 
@@ -46,7 +47,7 @@ class RTKBeaconManager:
             return
 
         beacon_api = app.import_api("beacon")
-        signal_api = app.import_api("signals")
+        signal_api = app.import_api("signals", SignalsExtensionAPI)
         signal = ext.RTK_PACKET_SIGNAL
 
         self._parser = create_rtcm_parser()

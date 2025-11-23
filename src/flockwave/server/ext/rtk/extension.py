@@ -16,7 +16,7 @@ from time import monotonic
 from trio import CancelScope, open_memory_channel, open_nursery, sleep
 from trio.abc import SendChannel
 from trio_util import AsyncBool, periodic
-from typing import Callable, cast, Any, ClassVar, Iterator, Optional, Union
+from typing import Callable, cast, Any, ClassVar, Iterator
 
 from flockwave.channels import ParserChannel
 from flockwave.connections import create_connection, RWConnection
@@ -26,6 +26,7 @@ from flockwave.gps.rtk import RTKMessageSet, RTKSurveySettings
 from flockwave.gps.ubx.rtk_config import UBXRTKBaseConfigurator
 from flockwave.gps.vectors import ECEFToGPSCoordinateTransformation, GPSCoordinate
 from flockwave.server.ext.base import Extension
+from flockwave.server.ext.signals import SignalsExtensionAPI
 from flockwave.server.message_handlers import (
     create_mapper,
     create_multi_object_message_handler,
@@ -84,21 +85,21 @@ class RTKExtension(Extension):
     RTK_PACKET_SIGNAL: ClassVar[str] = "rtk:packet"
 
     _clock_sync_validator: GPSClockSynchronizationValidator
-    _current_preset: Optional[RTKConfigurationPreset] = None
+    _current_preset: RTKConfigurationPreset | None = None
     _custom_user_presets_file: str = ""
     _dynamic_serial_port_configurations: list[SerialPortConfiguration]
     _dynamic_serial_port_filters: list[str]
     _exclude_non_rtk_bases: bool = True
-    _last_preset_request_from_user: Optional[RTKPresetRequest] = None
+    _last_preset_request_from_user: RTKPresetRequest | None = None
     _presets: list[RTKConfigurationPreset]
-    _registry: Optional[RTKPresetRegistry] = None
+    _registry: RTKPresetRegistry | None = None
     _message_set: MessageSet = MessageSet.FULL
     _rtk_beacon_manager: RTKBeaconManager
-    _rtk_preset_task_cancel_scope: Optional[CancelScope] = None
-    _rtk_survey_trigger: Optional[AsyncBool] = None
+    _rtk_preset_task_cancel_scope: CancelScope | None = None
+    _rtk_survey_trigger: AsyncBool | None = None
     _statistics: RTKStatistics
     _survey_settings: RTKSurveySettings
-    _tx_queue: Optional[SendChannel] = None
+    _tx_queue: SendChannel | None = None
 
     def __init__(self):
         """Constructor."""
@@ -131,8 +132,8 @@ class RTKExtension(Extension):
         self._dynamic_serial_port_configurations = []
         serial_port_specs = configuration.get("add_serial_ports")
         if serial_port_specs is not None:
-            serial_port_spec_list: list[Union[int, dict]]
-            serial_port_specs_iter: Optional[Iterator[Union[int, dict]]] = None
+            serial_port_spec_list: list[dict | int]
+            serial_port_specs_iter: Iterator[dict | int] | None = None
 
             if serial_port_specs is True:
                 serial_port_spec_list = [
@@ -252,7 +253,7 @@ class RTKExtension(Extension):
                 self.log.warning(f"Ignoring unknown message set: {message_set!r}")
 
     @property
-    def current_preset(self) -> Optional[RTKConfigurationPreset]:
+    def current_preset(self) -> RTKConfigurationPreset | None:
         """Returns the currently selected RTK configuration preset that is used
         for broadcasting RTK corrections to connected UAVs.
         """
@@ -287,8 +288,8 @@ class RTKExtension(Extension):
         }
 
     def find_preset_by_id(
-        self, preset_id: str, response: Optional[FlockwaveResponse] = None
-    ) -> Optional[RTKConfigurationPreset]:
+        self, preset_id: str, response: FlockwaveResponse | None = None
+    ) -> RTKConfigurationPreset | None:
         """Finds the RTK preset with the given ID in the RTK preset registry or
         registers a failure in the given response object if there is no preset
         with the given ID.
@@ -359,7 +360,7 @@ class RTKExtension(Extension):
         """Handles an incoming RTK-SOURCE message."""
         if "id" in message.body:
             # Selecting a new RTK source to use
-            preset_id: Optional[str] = message.body["id"]
+            preset_id: str | None = message.body["id"]
             if preset_id is None:
                 desired_preset = None
             elif isinstance(preset_id, str):
@@ -503,15 +504,13 @@ class RTKExtension(Extension):
             async with self.use_nursery():
                 async for message, args in rx_queue:
                     if message == "set_preset":
-                        preset = cast(Optional[RTKConfigurationPreset], args)
+                        preset = cast(RTKConfigurationPreset | None, args)
                         await self._perform_preset_switch(preset)
 
     def update_preset(
         self,
         preset: RTKConfigurationPreset,
-        updates: Union[
-            dict[str, Any], Callable[[RTKConfigurationPreset], dict[str, Any]]
-        ],
+        updates: dict[str, Any] | Callable[[RTKConfigurationPreset], dict[str, Any]],
     ) -> bool:
         """Updates the given RTK preset.
 
@@ -574,7 +573,7 @@ class RTKExtension(Extension):
             )
         )
 
-    def _get_current_preset(self) -> Optional[RTKConfigurationPreset]:
+    def _get_current_preset(self) -> RTKConfigurationPreset | None:
         """Returns the current RTK configuration preset.
 
         This function is exported to other extensions via the exports object.
@@ -589,7 +588,7 @@ class RTKExtension(Extension):
         return self._statistics
 
     def _get_updates_from_RTK_UPDATE_message(
-        self, message: Optional[FlockwaveMessage]
+        self, message: FlockwaveMessage | None
     ) -> Callable[[RTKConfigurationPreset], dict[str, Any]]:
         """Helper function for the implementation of the RTK-UPDATE message
         handler.
@@ -612,7 +611,7 @@ class RTKExtension(Extension):
 
     def _load_presets_from(
         self,
-        obj: Union[dict[str, Any], Sequence[Any]],
+        obj: dict[str, Any] | Sequence[Any],
         *,
         type: RTKConfigurationPresetType = RTKConfigurationPresetType.BUILTIN,
     ):
@@ -691,7 +690,7 @@ class RTKExtension(Extension):
                 raise
 
     async def _request_preset_switch(
-        self, value: Optional[RTKConfigurationPreset]
+        self, value: RTKConfigurationPreset | None
     ) -> None:
         """Requests the extension to switch to a new RTK preset."""
         if not self._tx_queue:
@@ -703,7 +702,7 @@ class RTKExtension(Extension):
             await self._tx_queue.send(("set_preset", value))
 
     def _request_preset_switch_later(
-        self, value: Optional[RTKConfigurationPreset]
+        self, value: RTKConfigurationPreset | None
     ) -> None:
         """Requests the extension to switch to a new RTK preset as soon as
         possible (but not immediately).
@@ -724,7 +723,7 @@ class RTKExtension(Extension):
             self._rtk_survey_trigger.value = True
 
     async def _perform_preset_switch(
-        self, value: Optional[RTKConfigurationPreset]
+        self, value: RTKConfigurationPreset | None
     ) -> None:
         """Performs the switch from an RTK configuration preset to another,
         cleaning up the old connection and creating a new one.
@@ -904,7 +903,9 @@ class RTKExtension(Extension):
         assert self.app is not None
 
         channel = ParserChannel(connection, parser=preset.create_gps_parser())  # type: ignore
-        signal = self.app.import_api("signals").get(self.RTK_PACKET_SIGNAL)
+        signal = self.app.import_api("signals", SignalsExtensionAPI).get(
+            self.RTK_PACKET_SIGNAL
+        )
         get_location = self.app.import_api("location").get_location
         rtcm_encoder = preset.create_rtcm_encoder()
         maybe_vrs = "NTRIPConnection" in str(connection.__class__)
@@ -935,7 +936,7 @@ class RTKExtension(Extension):
 
                 lat: float = location.position.lat
                 lon: float = location.position.lon
-                alt: Optional[float] = location.position.amsl
+                alt: float | None = location.position.amsl
                 if alt is None:
                     alt = 0.0
 

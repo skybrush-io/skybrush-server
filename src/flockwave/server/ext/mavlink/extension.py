@@ -17,6 +17,8 @@ from typing import (
 
 from flockwave.server.ext.base import UAVExtension
 from flockwave.server.ext.mavlink.fw_upload import FirmwareUpdateTarget
+from flockwave.server.ext.show.types import ShowExtensionAPI
+from flockwave.server.ext.signals import SignalsExtensionAPI
 from flockwave.server.model.uav import UAV
 from flockwave.server.registries.errors import RegistryFull
 from flockwave.server.utils import optional_int, overridden
@@ -41,8 +43,6 @@ if TYPE_CHECKING:
     from flockwave.server.app import SkybrushServer
     from flockwave.server.ext.rc import RCState
     from flockwave.server.ext.show.config import DroneShowConfiguration
-    from flockwave.server.ext.show.types import ShowExtensionAPI
-    from flockwave.server.ext.signals import SignalsExtensionAPI
     from flockwave.server.tasks.led_lights import LightConfiguration
 
 

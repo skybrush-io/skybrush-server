@@ -3,15 +3,18 @@ on and emits a signal whenever a new USB device is plugged in or an existing
 USB device is removed.
 """
 
+from __future__ import annotations
+
 from contextlib import aclosing
 from typing import TYPE_CHECKING
 
 from aio_usb_hotplug import HotplugDetector, NoBackendError
 
+from flockwave.server.ext.signals import SignalsExtensionAPI
+
 if TYPE_CHECKING:
     from logging import Logger
     from flockwave.server.app import SkybrushServer
-    from flockwave.server.ext.signals import SignalsExtensionAPI
 
 
 async def run(app: SkybrushServer, configuration, log: Logger):

@@ -16,7 +16,7 @@ from time import monotonic
 from trio import CancelScope, open_memory_channel, open_nursery, sleep
 from trio.abc import SendChannel
 from trio_util import AsyncBool, periodic
-from typing import Callable, cast, Any, ClassVar, Iterator, TYPE_CHECKING
+from typing import Callable, cast, Any, ClassVar, Iterator
 
 from flockwave.channels import ParserChannel
 from flockwave.connections import create_connection, RWConnection
@@ -26,6 +26,7 @@ from flockwave.gps.rtk import RTKMessageSet, RTKSurveySettings
 from flockwave.gps.ubx.rtk_config import UBXRTKBaseConfigurator
 from flockwave.gps.vectors import ECEFToGPSCoordinateTransformation, GPSCoordinate
 from flockwave.server.ext.base import Extension
+from flockwave.server.ext.signals import SignalsExtensionAPI
 from flockwave.server.message_handlers import (
     create_mapper,
     create_multi_object_message_handler,
@@ -55,9 +56,6 @@ from .preset import (
 )
 from .registry import RTKPresetRegistry
 from .statistics import RTKStatistics
-
-if TYPE_CHECKING:
-    from flockwave.server.ext.signals import SignalsExtensionAPI
 
 
 @dataclass

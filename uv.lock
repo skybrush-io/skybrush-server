@@ -711,7 +711,7 @@ wheels = [
 
 [[package]]
 name = "flockwave-app-framework"
-version = "3.5.0"
+version = "3.6.0"
 source = { registry = "https://pypi.fury.io/skybrush/" }
 dependencies = [
     { name = "exceptiongroup" },
@@ -719,9 +719,9 @@ dependencies = [
     { name = "tomli", marker = "python_full_version < '3.11'" },
     { name = "trio" },
 ]
-sdist = { url = "https://pypi.fury.io/skybrush/-/ver_1qoMxn/flockwave-app-framework-3.5.0.tar.gz", hash = "sha256:0d6417ee03a0746082aef6b08cc509c969d0ec6ca686c2defb1c556b04058e13" }
+sdist = { url = "https://pypi.fury.io/skybrush/-/ver_1abDIL/flockwave-app-framework-3.6.0.tar.gz", hash = "sha256:2740e277177b79a459f4726775e4b64c4a45c8bbedf26502d08442e1d89331d1" }
 wheels = [
-    { url = "https://pypi.fury.io/skybrush/-/ver_QHoAG/flockwave_app_framework-3.5.0-py3-none-any.whl", hash = "sha256:bff174897a9f231d0b72c00a2de517b988b5532a5fac0723a3c457dbb89159be" },
+    { url = "https://pypi.fury.io/skybrush/-/ver_aYmQ/flockwave_app_framework-3.6.0-py3-none-any.whl", hash = "sha256:c4d062b5baff975be9702902c593b0b1fca5254551d325a281321a96a5f9dcf3" },
 ]
 
 [package.optional-dependencies]
@@ -988,7 +988,7 @@ requires-dist = [
     { name = "crcmod-plus", specifier = ">=2.1.0" },
     { name = "deprecated", specifier = ">=1.2.18" },
     { name = "fastjsonschema", specifier = ">=2.21.1" },
-    { name = "flockwave-app-framework", extras = ["daemon"], specifier = ">=3.5.0", index = "https://pypi.fury.io/skybrush/" },
+    { name = "flockwave-app-framework", extras = ["daemon"], specifier = ">=3.6.0", index = "https://pypi.fury.io/skybrush/" },
     { name = "flockwave-async", specifier = ">=2.2.1", index = "https://pypi.fury.io/skybrush/" },
     { name = "flockwave-conn", extras = ["rpc", "serial"], specifier = ">=9.1.0", index = "https://pypi.fury.io/skybrush/" },
     { name = "flockwave-ext", specifier = ">=1.27.0", index = "https://pypi.fury.io/skybrush/" },

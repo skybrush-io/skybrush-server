@@ -7,9 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [main]
 
+### Added
+
+- Extensions can now teach the `mavlink` extension how to handle connection types
+  beyond the usual UDP, TCP and serial connections.
+
 ### Changed
 
-- `studio` extension was updated to link to `skybrush-studio` 5.5.0 to support 
+- `studio` extension was updated to link to `skybrush-studio` 5.5.0 to support
   setting light configurations when adapting shows.
 
 ## [2.38.1] - 2025-11-17

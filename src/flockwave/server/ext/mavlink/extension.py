@@ -22,6 +22,7 @@ from flockwave.server.registries.errors import RegistryFull
 from flockwave.server.utils import optional_int, overridden
 
 from .autopilots import ArduPilot, ArduPilotWithSkybrush, PX4, Autopilot
+from .channel import use_mavlink_message_channel_factory
 from .driver import MAVLinkDriver, MAVLinkUAV
 from .errors import InvalidSigningKeyError
 from .network import MAVLinkNetwork
@@ -137,6 +138,7 @@ class MAVLinkDronesExtension(UAVExtension[MAVLinkDriver]):
     def exports(self) -> dict[str, Any]:
         return {
             "find_network_by_id": self._find_network_by_id,
+            "use_mavlink_message_channel_factory": use_mavlink_message_channel_factory,
         }
 
     def _find_network_by_id(self, network_id: str) -> MAVLinkNetwork | None:

@@ -5,9 +5,10 @@ objects to receive and send MAVLink messages.
 from __future__ import annotations
 
 from collections import defaultdict
+from contextlib import contextmanager
 from importlib import import_module
 from time import time
-from typing import Any, ClassVar, Optional, Protocol, TYPE_CHECKING, cast
+from typing import Any, ClassVar, Iterator, Optional, Protocol, TYPE_CHECKING, cast
 
 from flockwave.channels import (
     BroadcastMessageChannel,
@@ -30,13 +31,7 @@ if TYPE_CHECKING:
     )
     from .types import MAVLinkMessage, MAVLinkMessageSpecification
 
-__all__ = ("create_mavlink_message_channel",)
-
-
-_signature_timestamp_synchronizer = SignatureTimestampSynchronizer()
-"""Object to synchronize MAVLink signing timestamps created between different
-MAVLink networks.
-"""
+__all__ = ("create_mavlink_message_channel", "use_mavlink_message_channel_factory")
 
 
 class Channel:
@@ -173,6 +168,34 @@ class MAVLinkMessageChannelFactory(Protocol):
                 by this factory
         """
         ...
+
+
+@contextmanager
+def use_mavlink_message_channel_factory(
+    factory: MAVLinkMessageChannelFactory,
+) -> Iterator[None]:
+    """Context manager that registers a new MAVLink message channel factory that
+    will be used by `create_mavlink_message_channel()` to create channels for
+    connections.
+
+    The newly registered factory will be tried first, before any of the built-in
+    factories. This allows other extensions to provide implementations of
+    alternative Connection_ instances from which MAVLink messages can be read.
+
+    The message channel factory is automatically unregistered when the context
+    manager exits.
+
+    Args:
+        factory: the factory function to register
+    """
+    try:
+        _message_channel_factories.insert(0, factory)
+        yield
+    finally:
+        try:
+            _message_channel_factories.remove(factory)
+        except ValueError:
+            pass
 
 
 def _create_stream_based_mavlink_message_channel(
@@ -337,6 +360,12 @@ _message_channel_factories: list[MAVLinkMessageChannelFactory] = [
 """List of registered MAVLink message channel factories."""
 
 
+_signature_timestamp_synchronizer = SignatureTimestampSynchronizer()
+"""Object to synchronize MAVLink signing timestamps created between different
+MAVLink networks.
+"""
+
+
 def _create_mavlink_message(
     link: MinimalMAVLinkInterface, _type: str, *args, **kwds
 ) -> MAVLinkMessage:
@@ -412,7 +441,7 @@ def _get_mavlink_factory(
 
 
 def _get_initial_timestamp_for_signing() -> int:
-    """Returns a timestamp based on the system clock that is suitable for using
+    """Returns a timestamp based on the system clock that is suitable for usage
     in a MAVLink signing context.
     """
     # Offset = 1420070400, i.e. the number of seconds between the current time

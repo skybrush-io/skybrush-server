@@ -61,7 +61,7 @@ from flockwave.spec.errors import FlockwaveErrorCode
 
 from .accelerometer import AccelerometerCalibration
 from .autopilots import ArduPilot, Autopilot, UnknownAutopilot
-from .comm import Channel
+from .channel import Channel
 from .compass import CompassCalibration
 from .enums import (
     ConnectionState,
@@ -1826,10 +1826,15 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
             self._configure_data_streams_soon()
 
         # Update error codes and basic status info
-        self._update_errors_from_sys_status_and_heartbeat()
-        self.update_status(
-            mode=self._autopilot.describe_mode(message.base_mode, message.custom_mode)
-        )
+        # 0x80 is a special compatibility flag injected by Skynet if the message
+        # is redundant (i.e. same as the previous message of the same type)
+        if not message.get_header().compat_flags & 0x80:
+            self._update_errors_from_sys_status_and_heartbeat()
+            self.update_status(
+                mode=self._autopilot.describe_mode(
+                    message.base_mode, message.custom_mode
+                )
+            )
         self.notify_updated()
 
     def handle_message_global_position_int(self, message: MAVLinkMessage):

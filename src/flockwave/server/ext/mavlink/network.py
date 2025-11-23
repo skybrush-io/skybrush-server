@@ -43,11 +43,8 @@ from flockwave.server.comm import CommunicationManager
 from flockwave.server.model import ConnectionPurpose
 from flockwave.server.utils import nop, overridden
 
-from .comm import (
-    create_communication_manager,
-    Channel,
-    MAVLinkMessage,
-)
+from .channel import Channel
+from .comm import create_communication_manager
 from .driver import MAVLinkDriver, MAVLinkUAV
 from .enums import MAVAutopilot, MAVComponent, MAVMessageType, MAVState, MAVType
 from .errors import InvalidSystemIdError
@@ -58,6 +55,7 @@ from .rtk import RTKCorrectionPacketEncoder
 from .signing import MAVLinkSigningConfiguration
 from .takeoff import MAVLinkScheduledTakeoffManager
 from .types import (
+    MAVLinkMessage,
     MAVLinkMessageMatcher,
     MAVLinkMessageSpecification,
     MAVLinkNetworkSpecification,

@@ -8,6 +8,7 @@ from struct import Struct
 from time import monotonic
 from trio import sleep, TooSlowError
 from typing import IO, AsyncIterator, Iterable, Sequence, Union, TYPE_CHECKING, cast
+import logging  # new import
 
 from flockwave.server.errors import NotSupportedError
 from flockwave.server.model.commands import (
@@ -59,19 +60,18 @@ class ArduPilot(Autopilot):
 
     name = "ArduPilot"
 
-    #: Custom mode dictionary, containing the primary name and the aliases for
-    #: each known flight mode (default / typical multirotor mapping)
-    _custom_modes = {
+    # Explicit quadcopter (multirotor) custom modes
+    _quadcopter_custom_modes = {
         0: ("stab", "stabilize"),
         1: ("acro",),
         2: ("alt", "alt hold"),
         3: ("auto",),
-        4: ("uided",),
+        4: ("guided",),      # corrected spelling
         5: ("loiter",),
         6: ("rth",),
         7: ("circle",),
         9: ("land",),
-        11: ("rift",),
+        11: ("drift",),      # corrected spelling
         13: ("sport",),
         14: ("flip",),
         15: ("tune",),
@@ -90,10 +90,10 @@ class ArduPilot(Autopilot):
         28: ("turtle",),
     }
 
+    # Backwards-compatible alias used elsewhere in the codebase
+    _custom_modes = _quadcopter_custom_modes
+
     # Rover-specific custom modes (used for MAVType.GROUND_ROVER)
-    # Note: numbers correspond to ArduPilot custom mode indices; aliases are
-    # provided as commonly used names. Adjust entries if your firmware uses
-    # different indices/names.
     _rover_custom_modes = {
         0: ("manual",),
         1: ("learning",),
@@ -107,18 +107,11 @@ class ArduPilot(Autopilot):
         17: ("brake",),
     }
 
-    # Per-vehicle-type custom modes mapping. Keys are MAVType enum members.
-    # Only add mappings that differ from the default; otherwise the default
-    # _custom_modes will be used.
+    # Per-vehicle-type custom modes mapping. Keys are MAVType enum values.
     _custom_modes_by_mav_type: dict[int, dict[int, tuple[str, ...]]] = {
-        # Quadcopter / multirotor explicit mapping uses the default mapping
-        MAVType.QUADROTOR.value: _custom_modes,
-        # Ground rover mapping
+        MAVType.QUADROTOR.value: _quadcopter_custom_modes,
         MAVType.GROUND_ROVER.value: _rover_custom_modes,
-        # You can extend other vehicle types here if needed. If absent, the
-        # class falls back to _custom_modes.
-        # Example placeholders (keep empty or add real mappings if desired):
-        # MAVType.FIXED_WING.value: { ... },
+        # other vehicle types may be added here
     }
 
     _geofence_actions = {
@@ -140,13 +133,16 @@ class ArduPilot(Autopilot):
         """Returns the description of the current custom mode that the autopilot
         is in, given the base and the custom mode in the heartbeat message.
 
-        This method is called if the "custom mode" bit is set in the base mode
-        of the heartbeat.
-
         New optional parameter `vehicle_type` (MAVType or int) allows selecting
         a vehicle-specific custom mode map; if omitted, the legacy/default
-        mapping is used.
+        mapping is used and a warning is logged.
         """
+        # Warn if vehicle type is not provided so the user knows we're using the default
+        if vehicle_type is None:
+            logging.getLogger(__name__).warning(
+                "Vehicle type unknown; using default quadcopter custom mode mapping"
+            )
+
         # Determine which mapping to use. Accept both MAVType enum members and ints.
         mapping = cls._custom_modes
         if vehicle_type is not None:

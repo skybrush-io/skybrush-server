@@ -1077,9 +1077,10 @@ class MessageHub:
                 log.warning(
                     "Client is gone; not sending message", extra={"id": str(to)}
                 )
+                return
+            finally:
                 if done:
                     done()
-                return
         else:
             client = to
 
@@ -1108,8 +1109,9 @@ class MessageHub:
             else:
                 if hasattr(message, "_notify_sent"):
                     message._notify_sent()  # type: ignore
-                if done:
-                    done()
+
+        if done:
+            done()
 
     async def _send_response(
         self, message, to: Client, in_response_to: FlockwaveMessage

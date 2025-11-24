@@ -19,9 +19,20 @@ class Client:
     """A single client connected to the Flockwave server."""
 
     _id: str
+    """Unique identifier for the client."""
+
     _channel: CommunicationChannel
+    """The communication channel to use when sending messages to the client
+    or receiving messages from it.
+    """
+
     _user: User | None = None
+    """The user that is authenticated on the communication channel that
+    this client uses; `None` if the client is not authenticated yet.
+    """
+
     _authenticated_event: Event | None = None
+    """Event that is set when the client gets authenticated."""
 
     _connected_at: float = field(default_factory=monotonic)
     """Monotonic timestamp when the client connected; not related to actual

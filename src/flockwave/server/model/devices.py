@@ -338,7 +338,7 @@ class DeviceTreeNodeBase(metaclass=ModelMeta):
             self.children = {}
         if id in self.children:
             raise ValueError(
-                "another child node already exists with " "ID={0!r}".format(id)
+                "another child node already exists with ID={0!r}".format(id)
             )
         self.children[id] = node
 
@@ -534,7 +534,7 @@ class DeviceNode(DeviceTreeNodeBase):
         if (
             initial_value is None
             and isinstance(type, __builtins__["type"])
-            and type != object
+            and type is not object
         ):
             initial_value = type()  # type: ignore
 

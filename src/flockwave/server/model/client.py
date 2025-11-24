@@ -1,8 +1,8 @@
 """Model classes related to a single client connected to the server."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from time import monotonic
 from trio import Event
-from typing import Optional, Union
 
 from flockwave.server.logger import log as base_log
 
@@ -16,18 +16,17 @@ log = base_log.getChild("model.clients")  # plural to match registry.clients
 
 @dataclass(eq=False)
 class Client:
-    """A single client connected to the Flockwave server.
-
-    Attributes:
-        authenticated: signal that is sent when the client changes from an
-            unauthenticated to an authenticated state
-        deauthenticated: signal that is sent when the client changes from an
-            authenticated to an unauthenticated state
-    """
+    """A single client connected to the Flockwave server."""
 
     _id: str
     _channel: CommunicationChannel
-    _user: Optional[User] = None
+    _user: User | None = None
+    _authenticated_event: Event | None = None
+
+    _connected_at: float = field(default_factory=monotonic)
+    """Monotonic timestamp when the client connected; not related to actual
+    wall-clock time.
+    """
 
     @property
     def channel(self) -> CommunicationChannel:
@@ -44,14 +43,14 @@ class Client:
         return self._id
 
     @property
-    def user(self) -> Optional[User]:
+    def user(self) -> User | None:
         """The user that is authenticated on the communication channel that
         this client uses; `None` if the client is not authenticated yet.
         """
         return self._user
 
     @user.setter
-    def user(self, value: Optional[Union[str, User]]) -> None:
+    def user(self, value: str | User | None) -> None:
         if value is not None and not isinstance(value, User):
             value = User.from_string(value)
 
@@ -66,18 +65,22 @@ class Client:
         self._user = value
 
         if value:
-            if hasattr(self, "_authenticated_event"):
+            if self._authenticated_event:
                 self._authenticated_event.set()
             log.info(f"Authenticated as {value}", extra={"id": self._id})
         else:
             log.info("Deauthenticated current user")
+
+    def get_connection_age_in_seconds(self, now: float) -> float:
+        """The time elapsed since the connection was established, in seconds."""
+        return (now if now is not None else monotonic()) - self._connected_at
 
     async def wait_until_authenticated(self) -> None:
         """Waits until the client is authenticated."""
         if self.user is not None:
             return
 
-        if not hasattr(self, "_authenticated_event"):
+        if self._authenticated_event is None:
             self._authenticated_event = Event()
 
         try:

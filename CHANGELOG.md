@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.39.2] - 2025-11-25
+
+### Fixed
+
+- Fixed a case when the error set of a UAV was modified while being iterated over.
+  This happened when the UAV resumed from a sleeping or inactive state but it was
+  otherwise harmless (it just seemed scary on the console).
+
 ## [2.39.0] - 2025-11-23
 
 ### Added

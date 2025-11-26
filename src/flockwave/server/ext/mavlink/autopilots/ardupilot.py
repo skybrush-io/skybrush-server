@@ -68,12 +68,12 @@ class ArduPilot(Autopilot):
         1: ("acro",),
         2: ("alt", "alt hold"),
         3: ("auto",),
-        4: ("guided",),  # corrected spelling
+        4: ("guided",),
         5: ("loiter",),
         6: ("rth",),
         7: ("circle",),
         9: ("land",),
-        11: ("drift",),  # corrected spelling
+        11: ("drift",),
         13: ("sport",),
         14: ("flip",),
         15: ("tune",),

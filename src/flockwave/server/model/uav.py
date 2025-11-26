@@ -257,7 +257,10 @@ class UAVBase(UAV, Generic[TDriver]):
         to the given error code.
         """
         if self._status.errors:
-            self.update_status(errors=(x for x in self._status.errors if x > code))
+            # Do not use a generator here -- it results in a race condition in
+            # rare cases when self._status.errors changes while it is being
+            # iterated over
+            self.update_status(errors=[x for x in self._status.errors if x > code])
 
     def convert_ahl_to_amsl(
         self, altitude: float, *, current_ahl: Optional[float] = None

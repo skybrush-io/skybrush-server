@@ -22,25 +22,31 @@ from trio import (
     open_nursery,
     SocketStream,
 )
-from typing import Any, Generic, Optional, TYPE_CHECKING, TypeVar
+from typing import Any, Generic, TYPE_CHECKING, Protocol, TypeVar, cast
 
 from flockwave.channels import ParserChannel
+from flockwave.connections import IPAddressAndPort
 from flockwave.encoders.json import create_json_encoder
 from flockwave.parsers.json import create_json_parser
 from flockwave.server.model import Client, CommunicationChannel
 from flockwave.server.ports import suggest_port_number_for_service, use_port
-from flockwave.networking import format_socket_address, get_socket_address
+from flockwave.networking import format_socket_address
 from flockwave.server.utils import overridden
 from flockwave.server.utils.networking import serve_tcp_and_log_errors
 
 if TYPE_CHECKING:
     from flockwave.server.app import SkybrushServer
 
-app: Optional[SkybrushServer] = None
+app: SkybrushServer | None = None
+address: IPAddressAndPort | None = None
 encoder = create_json_encoder()
-log: Optional[Logger] = None
+log: Logger | None = None
 
 T = TypeVar("T")
+
+
+class ClientWithStream(Protocol):
+    stream: SocketStream | None = None
 
 
 class TCPChannel(Generic[T], CommunicationChannel[T]):
@@ -48,16 +54,14 @@ class TCPChannel(Generic[T], CommunicationChannel[T]):
     server and a single client.
     """
 
-    address: Optional[tuple[str, int]]
-    client_ref: Optional["weakref.ref[Client]"]
+    address: tuple[str, int] | None = None
+    client_ref: weakref.ref[ClientWithStream] | None = None
     lock: Lock
+    stream: SocketStream | None = None
 
     def __init__(self):
         """Constructor."""
-        self.address = None
-        self.client_ref = None
         self.lock = Lock()
-        self.stream = None
 
     def bind_to(self, client: Client) -> None:
         """Binds the communication channel to the given client.
@@ -68,60 +72,51 @@ class TCPChannel(Generic[T], CommunicationChannel[T]):
         if client.id and client.id.startswith("tcp://"):
             host, _, port = client.id[6:].rpartition(":")
             self.address = host, int(port)
-            self.client_ref = weakref.ref(client, self._erase_stream)
+            self.client_ref = weakref.ref(cast("Any", client), self._erase_stream)
         else:
             raise ValueError("client has no ID or address yet")
 
     async def close(self, force: bool = False) -> None:
-        if self.stream is None:
-            if self.client_ref is not None:
-                self.stream = self.client_ref().stream
-                self.client_ref = None
-            else:
-                print("No client and no client_ref yet")
-                return
+        stream = self._resolve_stream()
+        if stream is None:
+            return
 
         if force:
-            await aclose_forcefully(self.stream)
+            await aclose_forcefully(stream)
         else:
-            await self.stream.aclose()
+            await stream.aclose()
 
     async def send(self, message: T):
         """Inherited."""
-        if self.stream is None:
-            self.stream = self.client_ref().stream
-            self.client_ref = None
+        stream = self._resolve_stream()
+        if stream is None:
+            raise RuntimeError("cannot send message, channel is not bound to a stream")
 
         async with self.lock:
             # Locking is needed, otherwise we could be running into problems
             # if a message was sent only partially but the message hub is
             # already trying to send another one (since the message hub
             # dispatches each message in a separate task)
-            await self.stream.send_all(encoder(message))
+            await stream.send_all(encoder(message))
 
     def _erase_stream(self, ref) -> None:
         self.stream = None
+
+    def _resolve_stream(self) -> SocketStream | None:
+        if self.stream is None and self.client_ref is not None:
+            client = self.client_ref()
+            if client is not None:
+                self.stream = client.stream
+            self.client_ref = None
+        return self.stream
 
 
 ############################################################################
 
 
-def get_address(in_subnet_of: Optional[str] = None) -> tuple[str, int]:
-    """Returns the address where we are listening for incoming TCP connections.
-
-    Parameters:
-        in_subnet_of: when not `None` and we are listening on multiple (or
-            all) interfaces, this address is used to pick a reported address
-            that is in the same subnet as the given address
-
-    Returns:
-        the address where we are listening
-    """
-    global sock
-    return get_socket_address(sock)
-
-
-def get_ssdp_location(address, host, port) -> Optional[str]:
+def get_ssdp_location(
+    address: IPAddressAndPort | None, host: str, port: int
+) -> str | None:
     """Returns the SSDP location descriptor of the TCP channel.
 
     Parameters:
@@ -153,6 +148,7 @@ async def handle_connection(stream: SocketStream, *, limit: CapacityLimiter):
     assert app is not None
 
     with app.client_registry.use(client_id, "tcp") as client:
+        client = cast(ClientWithStream, client)
         client.stream = stream
         async with open_nursery() as nursery:
             channel = ParserChannel(reader=stream.receive_some, parser=parser)
@@ -205,21 +201,18 @@ async def handle_message(message: Any, client, *, limit: CapacityLimiter) -> Non
 
 async def run(app: SkybrushServer, configuration, logger: Logger):
     """Background task that is active while the extension is loaded."""
-    host: Optional[str] = str(configuration.get("host", ""))
+    host = str(configuration.get("host", ""))
     port = int(configuration.get("port", suggest_port_number_for_service("tcp")))
     pool_size = int(configuration.get("pool_size", 1000))
-
-    if not host:
-        host = None  # empty string is not okay on Linux
+    address = host, port
 
     with ExitStack() as stack:
-        stack.enter_context(overridden(globals(), app=app, log=logger))
+        stack.enter_context(overridden(globals(), app=app, log=logger, address=address))
         stack.enter_context(use_port("tcp", port))
         stack.enter_context(
             app.channel_type_registry.use(
                 "tcp",
                 factory=TCPChannel,
-                address=get_address,
                 ssdp_location=partial(get_ssdp_location, host=host, port=port),
             )
         )
@@ -227,7 +220,8 @@ async def run(app: SkybrushServer, configuration, logger: Logger):
         limit = CapacityLimiter(pool_size)
         handler = partial(handle_connection_safely, limit=limit)
 
-        await serve_tcp_and_log_errors(handler, port, host=host, log=logger)
+        # empty string is not okay on Linux for the hostname so use None
+        await serve_tcp_and_log_errors(handler, port, host=host or None, log=logger)
 
 
 description = "TCP socket-based communication channel"

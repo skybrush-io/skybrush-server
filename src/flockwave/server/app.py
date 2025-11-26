@@ -835,13 +835,14 @@ class SkybrushServer(DaemonApp):
         """
         self.rate_limiters.request_to_send("UAV-INF", uav_ids)
 
-    async def run(self) -> int:
+    def prepare(self, config: str | None = None, debug: bool = False) -> int | None:
         self._registry_full_error_counts = Counter()
 
         self.run_in_background(self.command_execution_manager.run)
         self.run_in_background(self.message_hub.run)
         self.run_in_background(self.rate_limiters.run)
-        return await super().run()
+
+        return super().prepare(config, debug)
 
     def sort_uavs_by_drivers(
         self, uav_ids: Iterable[str], response: Optional[FlockwaveResponse] = None

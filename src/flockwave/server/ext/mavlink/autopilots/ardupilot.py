@@ -8,6 +8,7 @@ from struct import Struct
 from time import monotonic
 from trio import sleep, TooSlowError
 from typing import IO, AsyncIterator, Iterable, Sequence, Union, TYPE_CHECKING, cast
+import logging
 
 from flockwave.server.errors import NotSupportedError
 from flockwave.server.model.commands import (
@@ -35,6 +36,7 @@ from ..enums import (
     MAVProtocolCapability,
     MAVState,
     MAVSysStatusSensor,
+    MAVType,
 )
 from ..errors import UnknownFlightModeError
 from ..ftp import MAVFTP
@@ -51,6 +53,8 @@ from .registry import register_for_mavlink_type
 
 __all__ = ("ArduPilot", "ArduPilotWithSkybrush")
 
+log = logging.getLogger(__name__)
+
 
 @register_for_mavlink_type(MAVAutopilot.ARDUPILOTMEGA)
 class ArduPilot(Autopilot):
@@ -58,9 +62,8 @@ class ArduPilot(Autopilot):
 
     name = "ArduPilot"
 
-    #: Custom mode dictionary, containing the primary name and the aliases for
-    #: each known flight mode
-    _custom_modes = {
+    # Explicit quadcopter (multirotor) custom modes
+    _quadcopter_custom_modes = {
         0: ("stab", "stabilize"),
         1: ("acro",),
         2: ("alt", "alt hold"),
@@ -89,6 +92,30 @@ class ArduPilot(Autopilot):
         28: ("turtle",),
     }
 
+    # Backwards-compatible alias used elsewhere in the codebase
+    _custom_modes = _quadcopter_custom_modes
+
+    # Rover-specific custom modes (used for MAVType.GROUND_ROVER)
+    _rover_custom_modes = {
+        0: ("manual",),
+        1: ("learning",),
+        2: ("steer", "steering"),
+        3: ("hold",),
+        4: ("loiter",),
+        10: ("auto",),
+        11: ("rtl", "return"),
+        15: ("guided",),
+        16: ("pos", "position"),
+        17: ("brake",),
+    }
+
+    # Per-vehicle-type custom modes mapping. Keys are MAVType enum values.
+    _custom_modes_by_mav_type: dict[int, dict[int, tuple[str, ...]]] = {
+        MAVType.QUADROTOR.value: _quadcopter_custom_modes,
+        MAVType.GROUND_ROVER.value: _rover_custom_modes,
+        # other vehicle types may be added here
+    }
+
     _geofence_actions = {
         0: (GeofenceAction.REPORT,),
         1: (GeofenceAction.RETURN, GeofenceAction.LAND),
@@ -104,14 +131,40 @@ class ArduPilot(Autopilot):
     """Maximum allowed duration of a compass calibration, in seconds"""
 
     @classmethod
-    def describe_custom_mode(cls, base_mode: int, custom_mode: int) -> str:
+    def describe_custom_mode(
+        cls, base_mode: int, custom_mode: int, vehicle_type: int | MAVType | None = None
+    ) -> str:
         """Returns the description of the current custom mode that the autopilot
         is in, given the base and the custom mode in the heartbeat message.
 
-        This method is called if the "custom mode" bit is set in the base mode
-        of the heartbeat.
+        Args:
+            base_mode: the base mode from the heartbeat message
+            custom_mode: the custom mode from the heartbeat message
+            vehicle_type: the vehicle type from the heartbeat message. May be
+                omitted; in this case the legacy/default mapping is used and
+                a warning message is logged.
         """
-        mode_attrs = cls._custom_modes.get(custom_mode)
+        # Warn if vehicle type is not provided so the user knows we're using the default
+        if vehicle_type is None:
+            log.warning(
+                "Vehicle type unknown; using default quadcopter custom mode mapping"
+            )
+
+        # Determine which mapping to use. Accept both MAVType enum members and ints.
+        mapping = cls._custom_modes
+        if vehicle_type is not None:
+            try:
+                vt = (
+                    int(cast(MAVType, vehicle_type).value)
+                    if hasattr(vehicle_type, "value")
+                    else int(vehicle_type)
+                )
+            except Exception:
+                vt = None
+            if vt is not None:
+                mapping = cls._custom_modes_by_mav_type.get(vt, cls._custom_modes)
+
+        mode_attrs = mapping.get(custom_mode)
         return mode_attrs[0] if mode_attrs else f"mode {custom_mode}"
 
     def are_motor_outputs_disabled(

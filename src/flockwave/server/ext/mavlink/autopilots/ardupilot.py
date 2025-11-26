@@ -8,7 +8,7 @@ from struct import Struct
 from time import monotonic
 from trio import sleep, TooSlowError
 from typing import IO, AsyncIterator, Iterable, Sequence, Union, TYPE_CHECKING, cast
-import logging  # new import
+import logging
 
 from flockwave.server.errors import NotSupportedError
 from flockwave.server.model.commands import (
@@ -36,7 +36,7 @@ from ..enums import (
     MAVProtocolCapability,
     MAVState,
     MAVSysStatusSensor,
-    MAVType,  # added to detect vehicle type
+    MAVType,
 )
 from ..errors import UnknownFlightModeError
 from ..ftp import MAVFTP
@@ -53,6 +53,8 @@ from .registry import register_for_mavlink_type
 
 __all__ = ("ArduPilot", "ArduPilotWithSkybrush")
 
+log = logging.getLogger(__name__)
+
 
 @register_for_mavlink_type(MAVAutopilot.ARDUPILOTMEGA)
 class ArduPilot(Autopilot):
@@ -66,12 +68,12 @@ class ArduPilot(Autopilot):
         1: ("acro",),
         2: ("alt", "alt hold"),
         3: ("auto",),
-        4: ("guided",),      # corrected spelling
+        4: ("guided",),  # corrected spelling
         5: ("loiter",),
         6: ("rth",),
         7: ("circle",),
         9: ("land",),
-        11: ("drift",),      # corrected spelling
+        11: ("drift",),  # corrected spelling
         13: ("sport",),
         14: ("flip",),
         15: ("tune",),
@@ -129,17 +131,22 @@ class ArduPilot(Autopilot):
     """Maximum allowed duration of a compass calibration, in seconds"""
 
     @classmethod
-    def describe_custom_mode(cls, base_mode: int, custom_mode: int, vehicle_type: int | None = None) -> str:
+    def describe_custom_mode(
+        cls, base_mode: int, custom_mode: int, vehicle_type: int | MAVType | None = None
+    ) -> str:
         """Returns the description of the current custom mode that the autopilot
         is in, given the base and the custom mode in the heartbeat message.
 
-        New optional parameter `vehicle_type` (MAVType or int) allows selecting
-        a vehicle-specific custom mode map; if omitted, the legacy/default
-        mapping is used and a warning is logged.
+        Args:
+            base_mode: the base mode from the heartbeat message
+            custom_mode: the custom mode from the heartbeat message
+            vehicle_type: the vehicle type from the heartbeat message. May be
+                omitted; in this case the legacy/default mapping is used and
+                a warning message is logged.
         """
         # Warn if vehicle type is not provided so the user knows we're using the default
         if vehicle_type is None:
-            logging.getLogger(__name__).warning(
+            log.warning(
                 "Vehicle type unknown; using default quadcopter custom mode mapping"
             )
 
@@ -147,7 +154,11 @@ class ArduPilot(Autopilot):
         mapping = cls._custom_modes
         if vehicle_type is not None:
             try:
-                vt = int(vehicle_type.value) if hasattr(vehicle_type, "value") else int(vehicle_type)
+                vt = (
+                    int(cast(MAVType, vehicle_type).value)
+                    if hasattr(vehicle_type, "value")
+                    else int(vehicle_type)
+                )
             except Exception:
                 vt = None
             if vt is not None:

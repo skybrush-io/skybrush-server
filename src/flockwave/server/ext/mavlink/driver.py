@@ -1835,6 +1835,7 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
                     message.base_mode, message.custom_mode
                 )
             )
+
         self.notify_updated()
 
     def handle_message_global_position_int(self, message: MAVLinkMessage):

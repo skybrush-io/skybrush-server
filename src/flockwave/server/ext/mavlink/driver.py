@@ -1832,7 +1832,7 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
             self._update_errors_from_sys_status_and_heartbeat()
             self.update_status(
                 mode=self._autopilot.describe_mode(
-                    message.base_mode, message.custom_mode
+                    message.base_mode, message.custom_mode, message.type
                 )
             )
 

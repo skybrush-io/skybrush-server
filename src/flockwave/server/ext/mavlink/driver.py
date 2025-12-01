@@ -2737,7 +2737,7 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
         heartbeat = self.get_last_message(MAVMessageType.HEARTBEAT)
         sys_status = self.get_last_message(MAVMessageType.SYS_STATUS)
         if not heartbeat or not sys_status:
-            return heartbeat, sys_status, False, False
+            return None, None, False, False
 
         sensor_mask: int = (
             sys_status.onboard_control_sensors_enabled
@@ -2819,6 +2819,8 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
         heartbeat, sys_status, has_geofence_error, are_motors_running = (
             self._get_heartbeat_sys_status_geofence_error_and_motor_state()
         )
+        if not heartbeat or not sys_status:
+            return
 
         # Check error conditions from SYS_STATUS
         sensor_mask: int = (

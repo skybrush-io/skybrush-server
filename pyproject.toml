@@ -1,6 +1,6 @@
 [project]
 name = "flockwave-server"
-version = "2.39.3"
+version = "2.39.4"
 description = "Skybrush server component"
 authors = [
   { name = "Tamas Nepusz", email = "tamas@collmot.com" },

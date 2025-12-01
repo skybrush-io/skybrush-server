@@ -14,6 +14,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   [@r0n4n](https://github.com/r0n4n) in PR
   [#12](https://github.com/skybrush-io/skybrush-server/pull/12/files)
 
+### Fixed
+
+- Fixed the geofence warning flag sometimes getting stuck when using Skynet
+  optimizations.
+
 ## [2.39.2] - 2025-11-25
 
 ### Fixed

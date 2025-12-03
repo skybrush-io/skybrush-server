@@ -7,12 +7,24 @@ schema = {
             "type": "boolean",
             "description": "Whether to add stochasticity to positions and headings of virtual UAVs",
             "default": False,
+            "format": "checkbox",
+            "propertyOrder": 1000,
         },
         "arm_after_boot": {
             "title": "Arm after boot",
             "type": "boolean",
             "description": "Whether to arm virtual UAVs after boot automatically",
             "default": True,
+            "format": "checkbox",
+            "propertyOrder": 1000,
+        },
+        "battery_auto_recharging": {
+            "title": "Batteries recharge automatically",
+            "type": "boolean",
+            "description": "Whether to recharge simulated batteries automatically when their voltage falls below the typical minimum voltage",
+            "default": True,
+            "format": "checkbox",
+            "propertyOrder": 1000,
         },
         "count": {
             "title": "Count",
@@ -86,6 +98,14 @@ schema = {
                     },
                 },
             },
+        },
+        "use_battery_percentages": {
+            "title": "Show battery percentages",
+            "type": "boolean",
+            "description": "Whether the simulated batteries provide information about their charge percentage. Voltages are always provided.",
+            "default": True,
+            "format": "checkbox",
+            "propertyOrder": 1000,
         },
     }
 }

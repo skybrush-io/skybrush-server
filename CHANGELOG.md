@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [main]
+
+### Added
+
+- The auto-recharging mechanism of the batteries of virtual UAVs can now be
+  disabled from the configuration of the `virtual_uavs` extension.
+
 ## [2.39.4] - 2025-12-01
 
 ### Added

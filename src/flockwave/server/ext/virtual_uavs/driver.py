@@ -159,8 +159,11 @@ class VirtualUAV(UAVBase):
 
     radiation_ext: Optional[ExtensionAPIProxy] = None
 
-    def __init__(self, *args, use_battery_percentage: bool, **kwds):
+    def __init__(
+        self, *args, use_battery_percentage: bool, battery_auto_recharging: bool, **kwds
+    ):
         self.use_battery_percentage = use_battery_percentage
+        self.battery_auto_recharging = battery_auto_recharging
 
         super().__init__(*args, **kwds)
 
@@ -906,7 +909,10 @@ class VirtualUAV(UAVBase):
         self.state = VirtualUAVState.TAKEOFF
 
     def _initialize_device_tree_node(self, node: ObjectNode) -> None:
-        self.battery = VirtualBattery(report_percentage=self.use_battery_percentage)
+        self.battery = VirtualBattery(
+            report_percentage=self.use_battery_percentage,
+            auto_recharging=self.battery_auto_recharging,
+        )
         self.battery.register_in_device_tree(node)
 
         device = node.add_device("thermometer")
@@ -996,12 +1002,14 @@ class VirtualUAVDriver(UAVDriver[VirtualUAV]):
     extension.
     """
 
+    battery_auto_recharging: bool
     uavs_armed_after_boot: bool
     use_battery_percentages: bool
 
     def __init__(self, *args, **kwds):
         super().__init__(*args, **kwds)
         self.uavs_armed_after_boot = False
+        self.battery_auto_recharging = False
         self.use_battery_percentages = False
 
     def create_uav(
@@ -1017,7 +1025,10 @@ class VirtualUAVDriver(UAVDriver[VirtualUAV]):
             an appropriate virtual UAV object
         """
         uav = VirtualUAV(
-            id, driver=self, use_battery_percentage=self.use_battery_percentages
+            id,
+            driver=self,
+            use_battery_percentage=self.use_battery_percentages,
+            battery_auto_recharging=self.battery_auto_recharging,
         )
         uav.boots_armed = bool(self.uavs_armed_after_boot)
         uav.takeoff_altitude = 3

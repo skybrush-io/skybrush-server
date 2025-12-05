@@ -425,7 +425,7 @@ class MAVLinkNetworkSpecification:
             return [int(x) for x in entry]
 
 
-class MAVLinkExtensionAPI:
+class MAVLinkExtensionAPI(Protocol):
     """Interface specification of the API exposed by the `mavlink` extension."""
 
     def find_network_by_id(self, id: str) -> MAVLinkNetwork | None: ...

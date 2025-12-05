@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Protocol
 
 if TYPE_CHECKING:
     from flockwave.server.tasks.led_lights import LightConfiguration
@@ -11,7 +11,7 @@ if TYPE_CHECKING:
 __all__ = ("ShowExtensionAPI",)
 
 
-class ShowExtensionAPI:
+class ShowExtensionAPI(Protocol):
     """Interface specification of the API exposed by the `show` extension."""
 
     def get_clock(self) -> ShowClock | None: ...

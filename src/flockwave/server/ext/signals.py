@@ -8,7 +8,7 @@ from __future__ import annotations
 from blinker import NamedSignal, Signal
 from contextlib import contextmanager, ExitStack
 from logging import Logger
-from typing import Callable, ContextManager, Iterator, Optional
+from typing import Callable, ContextManager, Iterator, Optional, Protocol
 
 
 #: Logger that will be used to log unexpected exceptions from signal handlers
@@ -110,7 +110,7 @@ def unload():
     signals = None
 
 
-class SignalsExtensionAPI:
+class SignalsExtensionAPI(Protocol):
     """Interface specification for the API exposed by the `signals` extension."""
 
     def get(self, name: str) -> Signal: ...

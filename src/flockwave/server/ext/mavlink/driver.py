@@ -1791,7 +1791,7 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
         # heartbeat
         if not can_communicate:
             self._update_errors_from_inactive_state()
-            self.update_status(mode="off")
+            self.update_status(mode="off", gps=OurGPSFixType.NO_FIX)
             self.notify_updated()
             return
 
@@ -2675,6 +2675,19 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
     ) -> None:
         if self._connection_state is value:
             return
+
+        if value is ConnectionState.CONNECTED:
+            if self._connection_state is ConnectionState.SLEEPING:
+                # Clear any previously stored GPS coordinate, velocity,
+                # attitude and heading info
+                self.update_status(
+                    position=None,
+                    position_xyz=None,
+                    velocity=None,
+                    velocity_xyz=None,
+                    attitude=None,
+                    heading=None,
+                )
 
         self._connection_state = value
 

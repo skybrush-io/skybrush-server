@@ -12,6 +12,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The auto-recharging mechanism of the batteries of virtual UAVs can now be
   disabled from the configuration of the `virtual_uavs` extension.
 
+### Changed
+
+- When a drone goes to sleep mode, the stored GPS fix is now cleared in order
+  not to mislead the operator about the state of the GPS. The position
+  remains set to ensure that the drone is still visible on the map on the GCS.
+
+- When a drone resumes from sleep mode, we now clear the stored position,
+  velocity and attitude data because the next update should arrive soon anyway.
+
 ## [2.39.4] - 2025-12-01
 
 ### Added

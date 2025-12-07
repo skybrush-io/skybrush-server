@@ -1135,6 +1135,9 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
     _battery: BatteryInfo
     """Battery status of the drone"""
 
+    _vehicle_type: Optional[int] = None
+    """MAVLink vehicle type of the drone, determined from heartbeat messages."""
+
     _configuring_data_streams: bool = False
     """Stores whether we are currently configuring the data stream rates for
     the drone. Used to avoid multiple parallel configuration attempts.
@@ -1772,6 +1775,10 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
             # 2 as well
             self._mavlink_version = 2
 
+        # Store the vehicle type from the heartbeat (it doesn't change)
+        if self._vehicle_type is None:
+            self._vehicle_type = message.type
+
         # Get the age of the _last_ heartbeat, will be used later
         age_of_last_heartbeat = self.get_age_of_message(MAVMessageType.HEARTBEAT)
 
@@ -2105,7 +2112,10 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
             base_mode, submode = MAVModeFlag.CUSTOM_MODE_ENABLED, 0
         elif isinstance(mode, str):
             try:
-                base_mode, mode, submode = self._autopilot.get_flight_mode_numbers(mode)
+                # Use stored vehicle type to support vehicle-specific modes
+                base_mode, mode, submode = self._autopilot.get_flight_mode_numbers(
+                    mode, vehicle_type=self._vehicle_type
+                )
             except NotSupportedError:
                 raise ValueError(
                     "setting flight modes by name is not supported"

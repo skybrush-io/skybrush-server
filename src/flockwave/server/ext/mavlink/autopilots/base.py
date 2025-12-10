@@ -52,13 +52,13 @@ class Autopilot(ABC):
         return cls.from_autopilot_type(message.autopilot)
 
     @classmethod
-    def describe_mode(cls, base_mode: int, custom_mode: int) -> str:
+    def describe_mode(cls, base_mode: int, custom_mode: int, type: int) -> str:
         """Returns the description of the current mode that the autopilot is
         in, given the base and the custom mode in the heartbeat message.
         """
         if base_mode & 1:
             # custom mode
-            return cls.describe_custom_mode(base_mode, custom_mode)
+            return cls.describe_custom_mode(base_mode, custom_mode, type)
         elif base_mode & 4:
             # auto mode
             return "auto"
@@ -76,7 +76,7 @@ class Autopilot(ABC):
             return "unknown"
 
     @classmethod
-    def describe_custom_mode(cls, base_mode: int, custom_mode: int) -> str:
+    def describe_custom_mode(cls, base_mode: int, custom_mode: int, type) -> str:
         """Returns the description of the current custom mode that the autopilot
         is in, given the base and the custom mode in the heartbeat message.
 
@@ -248,6 +248,19 @@ class Autopilot(ABC):
     def is_battery_percentage_reliable(self) -> bool:
         """Returns whether the autopilot provides reliable battery capacity
         percentages.
+        """
+        ...
+
+    @abstractmethod
+    def is_duplicate_message(self, message: MAVLinkMessage) -> bool:
+        """Decides whether the given MAVLink message is marked as being a
+        duplicate of a previously received message.
+
+        In the context of this method, "duplicate" means that the message is
+        semantically equivalent to an earlier message of the same type from the
+        same source system and component. This can be used to skip the
+        processing of the message or certain parts of it for performance
+        reasons.
         """
         ...
 

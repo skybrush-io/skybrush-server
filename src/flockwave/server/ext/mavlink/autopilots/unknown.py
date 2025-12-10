@@ -58,6 +58,9 @@ class UnknownAutopilot(Autopilot):
         # Let's be optimistic :)
         return True
 
+    def is_duplicate_message(self, message: MAVLinkMessage) -> bool:
+        return False
+
     def is_prearm_error_message(self, text: str) -> bool:
         return False
 

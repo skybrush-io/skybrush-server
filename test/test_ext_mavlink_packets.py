@@ -28,7 +28,7 @@ def test_authorization_scope_from_int():
 
 
 def test_drone_show_status_from_bytes():
-    # Legacy packt, length 9, no flags3 or elapsed_time field
+    # Legacy packet, length 9, no flags3 or elapsed_time field
     status = DroneShowStatus.from_bytes(b"\x01\x02\x03\x04\x05\x06\x07\x88\x19")
 
     assert status.start_time == 67305985
@@ -54,7 +54,7 @@ def test_drone_show_status_from_bytes():
 
     # v2 packet, length 12
     status = DroneShowStatus.from_bytes(
-        b"\x01\x02\x03\x04\x05\x06\x07\x88\x19\x8f\x0a\x0b"
+        b"\x01\x02\x03\x04\x05\x06\x07\x88\x19\xcf\x0a\x0b"
     )
 
     assert status.start_time == 67305985
@@ -65,9 +65,11 @@ def test_drone_show_status_from_bytes():
         | DroneShowStatusFlag.HAS_AUTHORIZATION_TO_START
         | DroneShowStatusFlag.IS_MISPLACED_BEFORE_TAKEOFF
         | DroneShowStatusFlag.IS_FAR_FROM_EXPECTED_POSITION
+        | DroneShowStatusFlag.HAS_HIGH_ESC_ERROR_RATE
     )
     assert status.stage is DroneShowExecutionStage.LANDED
     assert status.gps_fix is GPSFixType.NO_FIX
     assert status.num_satellites == 3
     assert status.authorization_scope is AuthorizationScope.LIGHTS_ONLY
     assert status.elapsed_time == 2826
+    assert status.has_high_esc_error_rate

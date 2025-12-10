@@ -201,6 +201,7 @@ class RTKExtension(Extension):
         if isinstance(fixed, (list, tuple)):
             fixed = {"position": list(fixed)}
 
+        self._config_fixed_position = None
         if isinstance(fixed, dict) and "position" in fixed:
             if "accuracy" not in fixed:
                 self.log.warning(

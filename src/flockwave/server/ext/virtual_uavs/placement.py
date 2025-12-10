@@ -104,7 +104,7 @@ def place_drones_explicitly(n: int, *, coordinates: list[Vector3D]) -> list[Vect
 
 @register("circle")
 def place_drones_on_circle(
-    n: int, *, radius: Optional[float] = None, min_distance: float = 5
+    n: int, *, radius: Optional[float] = None, spacing: float = 5
 ) -> list[Vector3D]:
     """Returns coordinates to place the given number of drones in a circle.
     The circle will be centered at the origin. The first drone will be placed
@@ -113,7 +113,7 @@ def place_drones_on_circle(
     Parameters:
         n: the number of drones to place
         radius: the radius of the circle
-        min_distance: the minimum distance between drones in the circle, along
+        spacing: the distance between drones in the circle, along
             the circumference of the circle. Used only when the radius is not
             given explicitly.
 
@@ -123,13 +123,13 @@ def place_drones_on_circle(
     if radius is not None:
         radius = float(radius)
 
-    if min_distance <= 0:
-        raise ValueError("minimum distance cannot be negative")
+    if spacing <= 0:
+        raise ValueError("spacing cannot be negative")
 
     if radius is None:
-        # 2 * r * pi = n * min_distance
-        # r = n * min_distance / 2 / pi
-        radius = n * min_distance / 2 / pi
+        # 2 * r * pi = n * spacing
+        # r = n * spacing / 2 / pi
+        radius = n * spacing / 2 / pi
 
     radius = float(radius)
     if radius <= 0 and n > 0:

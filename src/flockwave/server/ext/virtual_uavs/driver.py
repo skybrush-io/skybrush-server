@@ -1048,7 +1048,7 @@ class VirtualUAVDriver(UAVDriver[VirtualUAV]):
             return "Failed to arm"
 
     async def handle_command_async_exception(self, uav: VirtualUAV) -> NoReturn:
-        """Throws an synchronous exception."""
+        """Throws an asynchronous exception."""
         await sleep(0.2)
         raise RuntimeError("Async exception raised")
 

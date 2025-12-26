@@ -489,9 +489,25 @@ class ArduPilot(Autopilot):
         # https://gitter.im/ArduPilot/pymavlink?at=5bfb975587c4b86bcc1af3ee
         return float(value)
 
-    def get_flight_mode_numbers(self, mode: str) -> MAVLinkFlightModeNumbers:
+    def get_flight_mode_numbers(
+        self, mode: str, vehicle_type: int | None = None
+    ) -> MAVLinkFlightModeNumbers:
+        """Returns the flight mode numbers for the given mode string,
+        considering the vehicle type if provided.
+        """
         mode = mode.lower().replace(" ", "")
-        for number, names in self._custom_modes.items():
+        
+        # Determine which custom modes mapping to use
+        mapping = self._custom_modes
+        if vehicle_type is not None:
+            try:
+                vt = int(vehicle_type.value) if hasattr(vehicle_type, "value") else int(vehicle_type)
+            except Exception:
+                vt = None
+            if vt is not None:
+                mapping = self._custom_modes_by_mav_type.get(vt, self._custom_modes)
+
+        for number, names in mapping.items():
             for name in names:
                 name = name.lower().replace(" ", "")
                 if name == mode:

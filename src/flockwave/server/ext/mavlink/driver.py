@@ -855,12 +855,6 @@ class MAVLinkDriver(UAVDriver["MAVLinkUAV"]):
         channel = transport_options_to_channel(transport)
         await uav.set_mode("pos hold", channel=channel)
 
-    async def _send_loiter_signal_single(
-        self, uav: "MAVLinkUAV", *, transport=None
-    ) -> None:
-        channel = transport_options_to_channel(transport)
-        await uav.set_mode("loiter", channel=channel)
-
     async def _send_landing_signal_broadcast(self, *, transport=None) -> None:
         channel = transport_options_to_channel(transport)
         await self.broadcast_command_long_with_retries(
@@ -894,6 +888,18 @@ class MAVLinkDriver(UAVDriver["MAVLinkUAV"]):
         if "light" in signals:
             message = create_led_control_packet()
             await self.send_packet(message, uav, channel=channel)
+
+    async def _send_loiter_signal_single(
+        self, uav: "MAVLinkUAV", *, transport=None
+    ) -> None:
+        channel = transport_options_to_channel(transport)
+        await uav.set_mode("loiter", channel=channel)
+
+    async def _send_manual_signal_single(
+        self, uav: "MAVLinkUAV", *, transport=None
+    ) -> None:
+        channel = transport_options_to_channel(transport)
+        await uav.set_mode("manual", channel=channel)
 
     async def _send_motor_start_stop_signal_broadcast(
         self, start: bool, force: bool = False, *, transport=None

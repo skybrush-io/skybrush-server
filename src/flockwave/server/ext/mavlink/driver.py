@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from colour import Color
 from contextlib import aclosing, asynccontextmanager
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -11,13 +10,15 @@ from functools import partial
 from logging import Logger
 from math import inf, isfinite
 from time import monotonic
-from trio import Event, fail_after, move_on_after, sleep, TooSlowError
 from typing import Any, AsyncIterator, Awaitable, Callable, Optional, Union
 
+from colour import Color
+from flockwave.concurrency import FutureCancelled, delayed
 from flockwave.gps.time import datetime_to_gps_time_of_week, gps_time_of_week_to_utc
 from flockwave.gps.vectors import GPSCoordinate, VelocityNED
+from flockwave.spec.errors import FlockwaveErrorCode
+from trio import Event, TooSlowError, fail_after, move_on_after, sleep
 
-from flockwave.concurrency import delayed, FutureCancelled
 from flockwave.server.command_handlers import (
     create_calibration_command_handler,
     create_color_command_handler,
@@ -35,16 +36,17 @@ from flockwave.server.model.commands import (
 )
 from flockwave.server.model.devices import DeviceTreeMutator
 from flockwave.server.model.geofence import GeofenceConfigurationRequest, GeofenceStatus
-from flockwave.server.model.gps import GPSFix, GPSFixType as OurGPSFixType
+from flockwave.server.model.gps import GPSFix
+from flockwave.server.model.gps import GPSFixType as OurGPSFixType
 from flockwave.server.model.log import FlightLog, FlightLogMetadata
 from flockwave.server.model.preflight import PreflightCheckInfo, PreflightCheckResult
 from flockwave.server.model.safety import SafetyConfigurationRequest
 from flockwave.server.model.transport import TransportOptions
 from flockwave.server.model.uav import (
     BulkParameterUploadResponse,
-    VersionInfo,
     UAVBase,
     UAVDriver,
+    VersionInfo,
 )
 from flockwave.server.show import (
     get_altitude_reference_from_show_specification,
@@ -57,7 +59,6 @@ from flockwave.server.show.formats import SkybrushBinaryShowFile
 from flockwave.server.types import GCSLogMessageSender
 from flockwave.server.utils import color_to_rgb8_triplet, to_uppercase_string
 from flockwave.server.utils.generic import nop
-from flockwave.spec.errors import FlockwaveErrorCode
 
 from .accelerometer import AccelerometerCalibration
 from .autopilots import ArduPilot, Autopilot, UnknownAutopilot
@@ -79,15 +80,16 @@ from .enums import (
     MotorTestOrder,
     MotorTestThrottleType,
     PositionTargetTypemask,
+    RebootShutdownConditions,
     SkybrushUserCommand,
 )
 from .ftp import MAVFTP
 from .log_download import MAVLinkLogDownloader
 from .packets import (
-    authorization_scope_to_int,
-    create_led_control_packet,
     DroneShowExecutionStage,
     DroneShowStatus,
+    authorization_scope_to_int,
+    create_led_control_packet,
 )
 from .rssi import RSSIMode, rtcm_counter_to_rssi
 from .types import MAVLinkMessage, PacketBroadcasterFn, PacketSenderFn, spec
@@ -96,7 +98,6 @@ from .utils import (
     log_id_for_uav,
     mavlink_version_number_to_semver,
 )
-
 
 __all__ = ("MAVLinkDriver",)
 
@@ -982,6 +983,7 @@ class MAVLinkDriver(UAVDriver["MAVLinkUAV"]):
         await self.broadcast_command_long_with_retries(
             MAVCommand.PREFLIGHT_REBOOT_SHUTDOWN,
             2,  # shutdown autopilot
+            param6=RebootShutdownConditions.FORCE,
             channel=channel,
         )
 
@@ -998,6 +1000,7 @@ class MAVLinkDriver(UAVDriver["MAVLinkUAV"]):
             uav,
             MAVCommand.PREFLIGHT_REBOOT_SHUTDOWN,
             2,  # shutdown autopilot
+            param6=RebootShutdownConditions.FORCE,
             channel=channel,
         ):
             raise RuntimeError("Failed to send shutdown command to autopilot")

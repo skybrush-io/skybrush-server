@@ -13,10 +13,10 @@ from typing import Deque, Optional
 from flockwave.gps.rtcm.packets import (
     RTCMPacket,
     RTCMV2Packet,
-    RTCMV3Packet,
-    RTCMV3StationaryAntennaPacket,
     RTCMV3AntennaDescriptorPacket,
     RTCMV3ExtendedAntennaDescriptorPacket,
+    RTCMV3Packet,
+    RTCMV3StationaryAntennaPacket,
 )
 from flockwave.gps.ubx.enums import UBXClass, UBXNAVSubclass
 from flockwave.gps.ubx.packet import UBXPacket
@@ -260,29 +260,34 @@ class SatelliteCNRs:
 class SurveyStatusFlag(IntFlag):
     """Status flags for a survey status object."""
 
-    #: Indicates that the survey status is unknown
     UNKNOWN = 0
+    """Indicates that the survey status is unknown"""
 
-    #: Indicates that the survey status is supported on the GPS receiver
     SUPPORTED = 1
+    """Indicates that the survey procedure is supported on the GPS receiver"""
 
-    #: Indicates that the GPS receiver is Surveying its own position
     ACTIVE = 2
+    """Indicates that the GPS receiver is surveying its own position"""
 
-    #: Indicates that the GPS receiver has a valid estimate of its own position
     VALID = 4
+    """Indicates that the GPS receiver has a valid estimate of its own position
+    _from the survey procedure itself_. Note that an RTK base station with a
+    pre-configured fixed position does not count as having a "valid" _surveyed_
+    position.
+    """
 
 
 @dataclass
 class SurveyStatus:
     """Object that stores the status of the current survey procedure."""
 
-    #: Stores the estimated accuracy of the surveyed position, in meters; valid
-    #: only if the "valid" flag is set
     accuracy: float = 0.0
+    """Stores the estimated accuracy of the surveyed position, in meters; valid
+    only if the "valid" flag is set.
+    """
 
-    #: Status flags
     flags: SurveyStatusFlag = SurveyStatusFlag.UNKNOWN
+    """Stores the current status flags of the survey procedure."""
 
     @staticmethod
     def is_survey_related_packet(packet: GPSPacket) -> bool:

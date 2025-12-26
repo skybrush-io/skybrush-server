@@ -1,6 +1,6 @@
 [project]
 name = "flockwave-server"
-version = "2.40.0"
+version = "2.40.2"
 description = "Skybrush server component"
 authors = [
   { name = "Tamas Nepusz", email = "tamas@collmot.com" },
@@ -72,7 +72,7 @@ pro = [
   "skybrush-ext-show-pro>=0.4.0",
   "skybrush-ext-sidekick>=1.1.1",
   "skybrush-ext-skynet>=0.6.0",
-  "skybrush-ext-studio>=1.2.0",
+  "skybrush-ext-studio>=1.2.2",
   "skybrush-ext-timecode>=1.4.1",
   "skybrush-lib-mission-planning>=2.4.1",
   "skybrush-opt-rs",

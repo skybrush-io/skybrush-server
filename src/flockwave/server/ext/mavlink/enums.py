@@ -632,6 +632,15 @@ class MagCalStatus(IntEnum):
         return self == 4
 
 
+class RebootShutdownConditions(IntEnum):
+    """Enum specifying the conditions under which a `MAV_CMD_PREFLIGHT_REBOOT_SHUTDOWN`
+    command should be accepted.
+    """
+
+    SAFETY_INTERLOCKED = 0
+    FORCE = 20190226
+
+
 class SkybrushUserCommand(IntEnum):
     """Enum representing the types of the user-specified commands that we
     can submit to a Skybrush drone with MAVCommand.USER_1.

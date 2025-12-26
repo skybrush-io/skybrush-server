@@ -53,7 +53,11 @@ async def _color_command_handler(
             "Please provide the red, green and blue components of the color to set"
         )
 
-    color = _parse_color(red, green, blue)
+    try:
+        color = _parse_color(red, green, blue)
+    except ValueError as ex:
+        raise RuntimeError(ex) from ex
+
     if iscoroutinefunction(uav.set_led_color):
         await uav.set_led_color(color)
     else:

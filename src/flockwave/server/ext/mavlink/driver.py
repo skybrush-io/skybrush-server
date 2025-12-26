@@ -861,18 +861,6 @@ class MAVLinkDriver(UAVDriver["MAVLinkUAV"]):
         channel = transport_options_to_channel(transport)
         await uav.set_mode("loiter", channel=channel)
 
-    async def _send_loiter_signal_broadcast(self, *, transport=None) -> None:
-        channel = transport_options_to_channel(transport)
-        # Use PX4 loiter mode numbers for broadcast
-        base_mode, mode, submode = MAVModeFlag.CUSTOM_MODE_ENABLED, 4, 3
-        await self.broadcast_command_long_with_retries(
-            MAVCommand.DO_SET_MODE,
-            param1=float(base_mode),
-            param2=float(mode),
-            param3=float(submode),
-            channel=channel,
-        )
-
     async def _send_landing_signal_broadcast(self, *, transport=None) -> None:
         channel = transport_options_to_channel(transport)
         await self.broadcast_command_long_with_retries(

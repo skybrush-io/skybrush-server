@@ -785,7 +785,7 @@ class UAVDriver(Generic[TUAV], ABC):
         transport: Optional[TransportOptions] = None,
     ):
         """Asks the driver to send a signal to the given UAVs in order to
-        request them to enter loiter mode (e.g., hold position or circle).
+        request them to enter loiter mode.
 
         Typically, you don't need to override this method when implementing
         a driver; override ``_send_loiter_signal_single()`` and optionally
@@ -804,7 +804,7 @@ class UAVDriver(Generic[TUAV], ABC):
             uavs,
             "loiter signal",
             self._send_loiter_signal_single,
-            getattr(self, "_send_loiter_signal_broadcast", None),
+            None,
             transport=transport,
         )
 

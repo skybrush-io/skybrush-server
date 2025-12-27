@@ -16,6 +16,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   motor-off command before the shutdown command, which has already ensured a drastic
   shutdown anyway via physical means.
 
+### Fixed
+
+- Fixed a bug that made the server incorrectly report `mode 127` as the flight mode
+  for Skybrush-based drones when they were set to drone show flight mode.
+
 ## [2.40.2] - 2025-12-11
 
 ### Fixed

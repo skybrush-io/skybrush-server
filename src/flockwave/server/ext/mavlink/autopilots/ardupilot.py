@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 from contextlib import aclosing
+from copy import deepcopy
 from dataclasses import dataclass
 from functools import partial
 from io import BytesIO
@@ -13,6 +14,7 @@ from typing import (
     AsyncIterator,
     Iterable,
     Sequence,
+    Type,
     Union,
     cast,
 )
@@ -155,14 +157,9 @@ class ArduPilot(Autopilot):
                 omitted; in this case the legacy/default mapping is used and
                 a warning message is logged.
         """
-        # Warn if vehicle type is not provided so the user knows we're using the default
-        if vehicle_type is None:
-            log.warning(
-                "Vehicle type unknown; using default quadcopter custom mode mapping"
-            )
-
         # Determine which mapping to use. Accept both MAVType enum members and ints.
-        mapping = cls._custom_modes
+        mapping: FlightModeMap
+
         if vehicle_type is not None:
             try:
                 vt = (
@@ -174,6 +171,10 @@ class ArduPilot(Autopilot):
                 vt = None
             if vt is not None:
                 mapping = cls._custom_modes_by_mav_type.get(vt, cls._custom_modes)
+        else:
+            # Warn if vehicle type is not provided so the user knows we're using the default
+            log.warning("Vehicle type unknown; using default custom mode mapping")
+            mapping = cls._custom_modes
 
         mode_attrs = mapping.get(custom_mode)
         return mode_attrs[0] if mode_attrs else f"mode {custom_mode}"
@@ -693,13 +694,15 @@ class ArduPilot(Autopilot):
         return False
 
 
-def extend_custom_modes(super, _new_modes, **kwds):
+def extend_custom_modes(
+    super: Type[ArduPilot], vehicle_type: int | MAVType, _new_modes: FlightModeMap
+):
     """Helper function to extend the custom modes of an Autopilot_ subclass
     with new modes.
     """
-    result = dict(super._custom_modes)
-    result.update(_new_modes)
-    result.update(**kwds)
+    result = deepcopy(super._custom_modes_by_mav_type)
+    mode_map = result.setdefault(vehicle_type, {})
+    mode_map.update(_new_modes)
     return result
 
 
@@ -709,7 +712,9 @@ class ArduPilotWithSkybrush(ArduPilot):
     """
 
     name = "ArduPilot + Skybrush"
-    _custom_modes = extend_custom_modes(ArduPilot, {127: ("show",)})
+    _custom_modes_by_mav_type = extend_custom_modes(
+        ArduPilot, MAVType.QUADROTOR, {127: ("show",)}
+    )
 
     CAPABILITY_MASK = (
         MAVProtocolCapability.PARAM_FLOAT

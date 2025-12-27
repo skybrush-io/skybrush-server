@@ -1012,7 +1012,7 @@ requires-dist = [
     { name = "flockwave-parsers", specifier = ">=4.0.1", index = "https://pypi.fury.io/skybrush/" },
     { name = "flockwave-server", extras = ["collmot", "pro"], marker = "extra == 'all'" },
     { name = "flockwave-server", extras = ["pro"], marker = "extra == 'collmot'" },
-    { name = "flockwave-spec", extras = ["validation"], specifier = ">=2.4.0", index = "https://pypi.fury.io/skybrush/" },
+    { name = "flockwave-spec", extras = ["validation"], specifier = ">=2.6.0", index = "https://pypi.fury.io/skybrush/" },
     { name = "httpx", specifier = ">=0.28.1" },
     { name = "hypercorn", extras = ["trio"], specifier = ">=0.17.3" },
     { name = "igrf-model", specifier = ">=1.1.4" },
@@ -1061,15 +1061,15 @@ dev = [
 
 [[package]]
 name = "flockwave-spec"
-version = "2.4.1"
+version = "2.6.0"
 source = { registry = "https://pypi.fury.io/skybrush/" }
 dependencies = [
     { name = "jsonpointer" },
     { name = "jsonref" },
 ]
-sdist = { url = "https://pypi.fury.io/skybrush/-/ver_1AtwG6/flockwave-spec-2.4.1.tar.gz", hash = "sha256:f7eb2bd11b88ee8a3c6fa454bbc945f582b4f380ef9ae232212a896c202634ab" }
+sdist = { url = "https://pypi.fury.io/skybrush/-/ver_vPoEH/flockwave-spec-2.6.0.tar.gz", hash = "sha256:14531e019420db4f8975bb063185f408cc0522bf97f63b6e04cd75a4455204c5" }
 wheels = [
-    { url = "https://pypi.fury.io/skybrush/-/ver_12tKRp/flockwave_spec-2.4.1-py3-none-any.whl", hash = "sha256:f2179e5cbfe7a3388c92c9eced6bbfaaa1e73bb727e9ce36d9dfc4e46e0a34a2" },
+    { url = "https://pypi.fury.io/skybrush/-/ver_165Hxs/flockwave_spec-2.6.0-py3-none-any.whl", hash = "sha256:f379befdf558c34eabcbff27e8c07fed51d80ed5dc03f18a7d1d235e9923a7e1" },
 ]
 
 [package.optional-dependencies]

@@ -21,6 +21,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed a bug that made the server incorrectly report `mode 127` as the flight mode
   for Skybrush-based drones when they were set to drone show flight mode.
 
+- Fixed a bug that prevented the server from starting an RTK survey with alternative
+  settings.
+
 ## [2.40.2] - 2025-12-11
 
 ### Fixed

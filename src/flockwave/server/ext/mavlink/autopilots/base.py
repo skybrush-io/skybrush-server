@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from collections.abc import AsyncIterator
-from typing import TYPE_CHECKING, Optional, Union, Type
+from typing import TYPE_CHECKING, Optional, Type, Union
 
 from flockwave.server.model.commands import Progress, ProgressEventsWithSuspension
 from flockwave.server.model.geofence import (
@@ -11,7 +11,7 @@ from flockwave.server.model.geofence import (
 )
 from flockwave.server.model.safety import SafetyConfigurationRequest
 
-from ..enums import MAVParamType
+from ..enums import MAVParamType, MAVType
 from ..types import MAVLinkFlightModeNumbers, MAVLinkMessage
 from ..utils import (
     decode_param_from_wire_representation,
@@ -76,7 +76,9 @@ class Autopilot(ABC):
             return "unknown"
 
     @classmethod
-    def describe_custom_mode(cls, base_mode: int, custom_mode: int, type) -> str:
+    def describe_custom_mode(
+        cls, base_mode: int, custom_mode: int, vehicle_type: int | MAVType | None = None
+    ) -> str:
         """Returns the description of the current custom mode that the autopilot
         is in, given the base and the custom mode in the heartbeat message.
 

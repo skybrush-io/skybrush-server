@@ -100,7 +100,7 @@ class ArduPilot(Autopilot):
         0: ("manual",),
         1: ("learning",),
         2: ("steer", "steering"),
-        3: ("hold",),
+        3: ("hold","pos hold"),
         4: ("loiter",),
         10: ("auto",),
         11: ("rtl", "return"),

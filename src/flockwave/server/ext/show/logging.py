@@ -2,7 +2,7 @@
 
 from logging import Logger
 from time import monotonic
-from typing import Any, Optional
+from typing import Any
 
 from flockwave.gps.vectors import FlatEarthToGPSCoordinateTransformation
 from flockwave.server.model import Client, FlockwaveMessage
@@ -32,7 +32,7 @@ class ShowUploadLoggingMiddleware:
     messages whenever it detects that a new show upload has started.
     """
 
-    _last_show_metadata: Optional[ShowMetadata] = None
+    _last_show_metadata: ShowMetadata | None = None
     """The metadata of the last show upload that was seen by the
     middleware.
     """
@@ -40,7 +40,7 @@ class ShowUploadLoggingMiddleware:
     _last_show_upload_command_at: float
     """Timestamp when the last show upload command was detected."""
 
-    _last_show_upload_fingerprint: Optional[ShowFingerprint] = None
+    _last_show_upload_fingerprint: ShowFingerprint | None = None
     """Fingerprint containing the basic parameters of the last show upload.
     Used to decide whether it's a new show upload or most likely not.
     """
@@ -83,7 +83,7 @@ class ShowUploadLoggingMiddleware:
 
         return message
 
-    def _extract_show(self, message: FlockwaveMessage) -> Optional[dict[str, Any]]:
+    def _extract_show(self, message: FlockwaveMessage) -> dict[str, Any] | None:
         """Checks whether the given message is a show upload and extracts the
         show specification out of the message if it is.
         """
@@ -96,7 +96,7 @@ class ShowUploadLoggingMiddleware:
                     return kwds["show"]
 
     @property
-    def last_show_metadata(self) -> Optional[ShowMetadata]:
+    def last_show_metadata(self) -> ShowMetadata | None:
         """Returns the metadata of the last show upload that was seen by the
         middleware.
         """

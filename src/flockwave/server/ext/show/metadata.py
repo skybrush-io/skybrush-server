@@ -1,10 +1,10 @@
-from typing import Any, Literal, Optional, TypedDict
+from typing import Any, Literal, TypedDict
 
 
 class ShowCoordinateSystem(TypedDict):
     """The coordinate system of a show."""
 
-    origin: Optional[list[float]]
+    origin: list[float] | None
     """The origin of the coordinate system (longitude, latitude); ``None`` for
    indoor shows.
    """
@@ -14,7 +14,7 @@ class ShowCoordinateSystem(TypedDict):
    to avoid rounding errors.
    """
 
-    type: Optional[Literal["nwu", "neu"]]
+    type: Literal["nwu", "neu"] | None
     """The type of the coordinate system; ``None`` for indoor shows."""
 
 
@@ -39,10 +39,10 @@ class ShowMetadata(TypedDict):
     coordinateSystem: ShowCoordinateSystem
     """The coordinate system in which the show is defined."""
 
-    geofence: Optional[dict[str, Any]]
+    geofence: dict[str, Any] | None
     """The geofence of the show."""
 
-    amslReference: Optional[float]
+    amslReference: float | None
     """The altitude above mean sea level that corresponds to Z=0 in the show;
     ``None`` if the show is controlled based on AGL instead.
     """

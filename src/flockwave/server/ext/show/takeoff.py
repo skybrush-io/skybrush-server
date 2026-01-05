@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from collections.abc import Iterator
 from dataclasses import dataclass
 from logging import Logger
 from time import time
@@ -17,7 +18,7 @@ from trio import (
 )
 from trio.lowlevel import ParkingLot
 from trio_util import periodic
-from typing import Generic, Iterator, Optional, TypeVar
+from typing import Generic, TypeVar
 from weakref import WeakKeyDictionary
 
 from flockwave.server.model import UAV
@@ -46,15 +47,13 @@ class TakeoffConfiguration:
     `takeoff_time` property of this object.
     """
 
-    takeoff_time: Optional[int] = None
+    takeoff_time: int | None = None
     """The desired takeoff time of the swarm; `None` if the takeoff time should
     be cleared. Ignored if `should_update_takeoff_time` is set to `False`.
     """
 
     @classmethod
-    def from_show_config(
-        cls, config: DroneShowConfiguration, start_time: Optional[float]
-    ):
+    def from_show_config(cls, config: DroneShowConfiguration, start_time: float | None):
         """Returns the desired start time in seconds and the desired state
         of the takeoff authorization flag on all the UAVs.
         """
@@ -125,7 +124,7 @@ class TakeoffConfiguration:
         return self.takeoff_time is not None and self.takeoff_time >= time()
 
     @property
-    def takeoff_time_in_legacy_format(self) -> Optional[int]:
+    def takeoff_time_in_legacy_format(self) -> int | None:
         """Returns the desired takeoff time in the legacy format we used in
         earlier versions of the code.
 
@@ -156,7 +155,7 @@ class ScheduledTakeoffManager(ABC, Generic[TUAV]):
     the takeoff for that given MAVLink network.
     """
 
-    _config: Optional[DroneShowConfiguration] = None
+    _config: DroneShowConfiguration | None = None
     """The configuration of the show to start, including the start method,
     the clock that the start is synchronized to, the start time according to
     the given clock, and the list of UAVs to start.
@@ -168,7 +167,7 @@ class ScheduledTakeoffManager(ABC, Generic[TUAV]):
     in time.
     """
 
-    _log: Optional[Logger] = None
+    _log: Logger | None = None
     """The logger that the takeoff manager uses to log events."""
 
     _parking_lot: ParkingLot
@@ -176,7 +175,7 @@ class ScheduledTakeoffManager(ABC, Generic[TUAV]):
     background tasks performed by this object.
     """
 
-    _start_time: Optional[float] = None
+    _start_time: float | None = None
     """The start time of the show, expressed as the number of seconds since
     the UNIX epoch.
     """
@@ -199,8 +198,8 @@ class ScheduledTakeoffManager(ABC, Generic[TUAV]):
     def __init__(
         self,
         *,
-        log: Optional[Logger] = None,
-        capacity_limiter: Optional[CapacityLimiter] = None,
+        log: Logger | None = None,
+        capacity_limiter: CapacityLimiter | None = None,
     ):
         """Constructor.
 
@@ -268,7 +267,7 @@ class ScheduledTakeoffManager(ABC, Generic[TUAV]):
         ...
 
     @property
-    def config(self) -> Optional[DroneShowConfiguration]:
+    def config(self) -> DroneShowConfiguration | None:
         return self._config
 
     def notify_config_changed(self, config: DroneShowConfiguration) -> None:
@@ -279,7 +278,7 @@ class ScheduledTakeoffManager(ABC, Generic[TUAV]):
         self._parking_lot.unpark_all()
         self._trigger_uav_updates_soon()
 
-    def notify_start_time_changed(self, start_time: Optional[float]) -> None:
+    def notify_start_time_changed(self, start_time: float | None) -> None:
         """Notifies the manager that the scheduled start time of the show has
         been changed. This is typically a side effect of the user adjusting the
         start time manually, but it may also be related to the adjustment of

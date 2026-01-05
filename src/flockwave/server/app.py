@@ -879,7 +879,7 @@ class SkybrushServer(DaemonApp):
 
         # Create an object that can be used to get hold of commonly used
         # directories within the app
-        self.dirs = AppDirs("Skybrush Server", "CollMot Robotics")
+        self.dirs = AppDirs("Botlab Server", "CollMot Robotics")
 
         # Create an object to hold information about all the registered
         # communication channel types that the server can handle

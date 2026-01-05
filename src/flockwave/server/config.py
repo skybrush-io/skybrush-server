@@ -11,7 +11,7 @@ locally, create a configuration file containing this:
 """
 
 # Label that is used to identify the server in SSDP discovery requests
-SERVER_NAME = "Skybrush server"
+SERVER_NAME = "Botlab server"
 
 # Base port from which the port numbers used by the server are derived
 PORT = 5000

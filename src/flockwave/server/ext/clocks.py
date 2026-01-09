@@ -5,9 +5,10 @@ for the ``CLK-...`` commands defined in the Skybrush protocol.
 from __future__ import annotations
 
 from blinker import Signal
+from collections.abc import Iterator, Iterable
 from contextlib import contextmanager, ExitStack
 from trio import sleep_forever
-from typing import Any, Iterator, Iterable, Optional, TYPE_CHECKING
+from typing import Any, TYPE_CHECKING
 
 from flockwave.server.model.clock import Clock
 from flockwave.server.registries.base import RegistryBase, find_in_registry
@@ -17,8 +18,8 @@ if TYPE_CHECKING:
     from flockwave.server.message_hub import MessageHub
     from flockwave.server.model.messages import FlockwaveMessage, FlockwaveResponse
 
-message_hub: Optional["MessageHub"] = None
-registry: Optional["ClockRegistry"] = None
+message_hub: MessageHub | None = None
+registry: ClockRegistry | None = None
 
 exports: dict[str, Any] = {
     "register_clock": None,
@@ -62,7 +63,7 @@ class ClockRegistry(RegistryBase[Clock]):
         self._entries[clock.id] = clock
         self._subscribe_to_clock(clock)
 
-    def remove(self, clock: Clock) -> Optional[Clock]:
+    def remove(self, clock: Clock) -> Clock | None:
         """Removes the given clock from the registry.
 
         This function is a no-op if the clock is not registered.
@@ -76,7 +77,7 @@ class ClockRegistry(RegistryBase[Clock]):
         """
         return self.remove_by_id(clock.id)
 
-    def remove_by_id(self, clock_id: str) -> Optional[Clock]:
+    def remove_by_id(self, clock_id: str) -> Clock | None:
         """Removes the clock with the given ID from the registry.
 
         This function is a no-op if no clock is registered with the given ID.
@@ -134,8 +135,8 @@ class ClockRegistry(RegistryBase[Clock]):
 
 
 def create_CLK_INF_message_for(
-    clock_ids: Iterable[str], in_response_to: Optional["FlockwaveMessage"] = None
-) -> "FlockwaveMessage":
+    clock_ids: Iterable[str], in_response_to: FlockwaveMessage | None = None
+) -> FlockwaveMessage:
     """Creates a CLK-INF message that contains information regarding
     the clocks with the given IDs.
 
@@ -168,8 +169,8 @@ def create_CLK_INF_message_for(
 
 
 def find_clock_by_id(
-    clock_id: str, response: Optional["FlockwaveResponse"] = None
-) -> Optional[Clock]:
+    clock_id: str, response: FlockwaveResponse | None = None
+) -> Clock | None:
     """Finds the clock with the given ID in the clock registry or registers
     a failure in the given response object if there is no clock with the
     given ID.
@@ -187,7 +188,7 @@ def find_clock_by_id(
     )
 
 
-def on_clock_changed(sender, clock: "Clock") -> None:
+def on_clock_changed(sender, clock: Clock) -> None:
     """Handler called when one of the clocks managed by the clock
     registry has changed. Creates and sends a ``CLK-INF`` notification for the
     clock that has changed.

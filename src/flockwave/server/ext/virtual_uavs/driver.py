@@ -10,7 +10,7 @@ from random import random, randint, choice
 from time import monotonic
 from trio import CancelScope, sleep
 from trio_util import periodic
-from typing import Any, Callable, NoReturn, Optional, Union
+from typing import Any, Callable, Collection, NoReturn, Optional, Union
 
 from flockwave.concurrency import delayed
 from flockwave.ext.manager import ExtensionAPIProxy
@@ -22,13 +22,18 @@ from flockwave.gps.vectors import (
     VelocityNED,
 )
 from flockwave.server.command_handlers import (
+    create_calibration_command_handler,
     create_color_command_handler,
     create_parameter_command_handler,
     create_test_command_handler,
     create_version_command_handler,
 )
 from flockwave.server.errors import NotSupportedError
-from flockwave.server.model.commands import Progress, Suspend
+from flockwave.server.model.commands import (
+    Progress,
+    Suspend,
+    ProgressEventsWithSuspension,
+)
 from flockwave.server.model.devices import ObjectNode
 from flockwave.server.model.gps import GPSFixType
 from flockwave.server.model.log import FlightLog, FlightLogKind, FlightLogMetadata
@@ -123,9 +128,6 @@ class VirtualUAV(UAVBase):
     boots_armed: bool
     """Whether the drone boots in an armed state."""
 
-    errors: list[int]
-    """List of simulated error codes of the UAV."""
-
     max_acceleration_xy: float
     """The maximum acceleration of the UAV in the X-Y plane (parallel to the
     surface of the Earth), in m/s/s. To simplify the simulation a bit, the
@@ -157,8 +159,11 @@ class VirtualUAV(UAVBase):
 
     radiation_ext: Optional[ExtensionAPIProxy] = None
 
-    def __init__(self, *args, use_battery_percentage: bool, **kwds):
+    def __init__(
+        self, *args, use_battery_percentage: bool, battery_auto_recharging: bool, **kwds
+    ):
         self.use_battery_percentage = use_battery_percentage
+        self.battery_auto_recharging = battery_auto_recharging
 
         super().__init__(*args, **kwds)
 
@@ -190,7 +195,6 @@ class VirtualUAV(UAVBase):
         self._shutdown_reason = None
 
         self.boots_armed = False
-        self.errors = []
         self.max_acceleration_xy = 4
         self.max_acceleration_z = 1
         self.max_velocity_z = 2
@@ -260,6 +264,40 @@ class VirtualUAV(UAVBase):
             present=self._autopilot_initializing,
         )
 
+    async def calibrate_component(
+        self, component: str
+    ) -> ProgressEventsWithSuspension[None, str]:
+        """Calibrates a component of the UAV.
+
+        Parameters:
+            component: the component to calibrate; we plan to support
+                ``accel``, ``baro``, ``compass``, ``gyro`` and ``level``.
+
+        Raises:
+            NotImplementedError: if the calibration of the given component is
+                not yet implemented on this UAV
+            NotSupportedError: if the calibration of the given component is not
+                supported on this UAV
+            RuntimeError: if the UAV rejected to calibrate the component
+        """
+        match component:
+            case "compass":
+                for i in range(10):
+                    yield Progress(percentage=i * 10)
+                    await sleep(0.5 + random() * 1.5)
+
+                yield Progress(percentage=100)
+            case "accel" | "baro" | "gyro" | "level":
+                raise NotImplementedError
+            case _:
+                raise NotSupportedError
+
+        # TODO: Dynamically set preflight results and implement other components
+
+        success = random() < 0.9
+        if not success:
+            raise RuntimeError(f"Failed to calibrate component: {component!r}")
+
     def can_handle_firmware_update_target(self, target_id: str) -> bool:
         """Returns whether the virtual UAV can handle uploads with the given
         target.
@@ -276,6 +314,10 @@ class VirtualUAV(UAVBase):
             if self._mission_started_at is not None
             else None
         )
+
+    @property
+    def errors(self) -> Collection[int]:
+        return self._status.errors
 
     async def get_parameter(self, name: str, fetch: bool = False) -> str:
         if fetch:
@@ -501,23 +543,6 @@ class VirtualUAV(UAVBase):
 
         if self._user_defined_error is not None:
             self.ensure_error(self._user_defined_error, present=True)
-
-    def ensure_error(self, code: int, present: bool = True) -> None:
-        """Ensures that the given error code is present (or not present) in the
-        error code list.
-
-        Parameters:
-            code: the code to add or remove
-            present: whether to add the code (True) or remove it (False)
-        """
-        code = int(code)
-
-        if code in self.errors:
-            if not present:
-                self.errors.remove(code)
-        else:
-            if present:
-                self.errors.append(code)
 
     def handle_mission_upload(self, bundle: MissionItemBundle, format: str) -> None:
         """Handles the upload of a waypoint based mission.
@@ -790,32 +815,30 @@ class VirtualUAV(UAVBase):
         self.battery.discharge(dt, load, mutator=mutator)
 
         # Update the error code based on the battery status
-        self.ensure_error(
-            FlockwaveErrorCode.BATTERY_CRITICAL, present=self.battery.is_critical
-        )
-        self.ensure_error(
-            FlockwaveErrorCode.BATTERY_LOW_ERROR, present=self.battery.is_very_low
-        )
-        self.ensure_error(
-            FlockwaveErrorCode.BATTERY_LOW_WARNING, present=self.battery.is_low
+        self.ensure_errors(
+            {
+                FlockwaveErrorCode.BATTERY_CRITICAL: self.battery.is_critical,
+                FlockwaveErrorCode.BATTERY_LOW_ERROR: self.battery.is_very_low,
+                FlockwaveErrorCode.BATTERY_LOW_WARNING: self.battery.is_low,
+            }
         )
 
         # Update the error codes when the UAV is still on the ground, based on
         # whether its motors are running or not
-        self.ensure_error(
-            FlockwaveErrorCode.ON_GROUND,
-            self.state is VirtualUAVState.LANDED and not self.motors_running,
-        )
-        self.ensure_error(
-            FlockwaveErrorCode.MOTORS_RUNNING_WHILE_ON_GROUND,
-            self.state is VirtualUAVState.LANDED and self.motors_running,
+        self.ensure_errors(
+            {
+                FlockwaveErrorCode.ON_GROUND: self.state is VirtualUAVState.LANDED
+                and not self.motors_running,
+                FlockwaveErrorCode.MOTORS_RUNNING_WHILE_ON_GROUND: self.state
+                is VirtualUAVState.LANDED
+                and self.motors_running,
+            }
         )
 
         # Update the UAV status
         updates = {
             "position": position,
             "velocity": self._velocity_ned,
-            "errors": self.errors,
             "battery": self.battery.status,
             "light": color_to_rgb565(self._light_controller.evaluate(monotonic())),
         }
@@ -886,7 +909,10 @@ class VirtualUAV(UAVBase):
         self.state = VirtualUAVState.TAKEOFF
 
     def _initialize_device_tree_node(self, node: ObjectNode) -> None:
-        self.battery = VirtualBattery(report_percentage=self.use_battery_percentage)
+        self.battery = VirtualBattery(
+            report_percentage=self.use_battery_percentage,
+            auto_recharging=self.battery_auto_recharging,
+        )
         self.battery.register_in_device_tree(node)
 
         device = node.add_device("thermometer")
@@ -976,12 +1002,14 @@ class VirtualUAVDriver(UAVDriver[VirtualUAV]):
     extension.
     """
 
+    battery_auto_recharging: bool
     uavs_armed_after_boot: bool
     use_battery_percentages: bool
 
     def __init__(self, *args, **kwds):
         super().__init__(*args, **kwds)
         self.uavs_armed_after_boot = False
+        self.battery_auto_recharging = False
         self.use_battery_percentages = False
 
     def create_uav(
@@ -997,7 +1025,10 @@ class VirtualUAVDriver(UAVDriver[VirtualUAV]):
             an appropriate virtual UAV object
         """
         uav = VirtualUAV(
-            id, driver=self, use_battery_percentage=self.use_battery_percentages
+            id,
+            driver=self,
+            use_battery_percentage=self.use_battery_percentages,
+            battery_auto_recharging=self.battery_auto_recharging,
         )
         uav.boots_armed = bool(self.uavs_armed_after_boot)
         uav.takeoff_altitude = 3
@@ -1033,6 +1064,10 @@ class VirtualUAVDriver(UAVDriver[VirtualUAV]):
         else:
             uav.battery.voltage = float(value)
             return f"Voltage set to {uav.battery.voltage:.2f}V"
+
+    handle_command_calib = create_calibration_command_handler(
+        ("accel", "baro", "compass", "gyro", "level")
+    )
 
     async def handle_command_disarm(self, uav: VirtualUAV) -> str:
         """Command that disarms the virtual drone if it is on the ground."""
@@ -1156,7 +1191,7 @@ class VirtualUAVDriver(UAVDriver[VirtualUAV]):
             raise RuntimeError(f"no such log: {log_id}") from None
 
     async def _enter_low_power_mode_single(
-        self, uav: VirtualUAV, *, transport: Optional[TransportOptions]
+        self, uav: VirtualUAV, *, transport: Optional[TransportOptions] = None
     ) -> None:
         if uav.motors_running:
             raise RuntimeError(
@@ -1174,7 +1209,7 @@ class VirtualUAVDriver(UAVDriver[VirtualUAV]):
         return await uav.get_parameter(name)
 
     async def _resume_from_low_power_mode_single(
-        self, uav: VirtualUAV, *, transport: Optional[TransportOptions]
+        self, uav: VirtualUAV, *, transport: Optional[TransportOptions] = None
     ) -> None:
         uav.sleeping = False
 
@@ -1195,24 +1230,38 @@ class VirtualUAVDriver(UAVDriver[VirtualUAV]):
         uav.stop_trajectory()
         uav.target = target
 
-    async def _send_hover_signal_single(self, uav: VirtualUAV, *, transport) -> None:
+    async def _send_hover_signal_single(
+        self, uav: VirtualUAV, *, transport: Optional[TransportOptions] = None
+    ) -> None:
         # Make the hover signal async to simulate how it works for "real" drones
         await sleep(0.2)
         uav.hold_position()
 
-    async def _send_landing_signal_single(self, uav: VirtualUAV, *, transport) -> None:
+    async def _send_landing_signal_single(
+        self, uav: VirtualUAV, *, transport: Optional[TransportOptions] = None
+    ) -> None:
         # Make the landing signal async to simulate how it works for "real" drones
         await sleep(0.2)
         uav.land()
 
     def _send_light_or_sound_emission_signal_single(
-        self, uav: VirtualUAV, signals: list[str], duration: float, *, transport
+        self,
+        uav: VirtualUAV,
+        signals: list[str],
+        duration: float,
+        *,
+        transport: Optional[TransportOptions] = None,
     ) -> None:
         if "light" in signals:
             uav.handle_where_are_you(duration)
 
     def _send_motor_start_stop_signal_single(
-        self, uav: VirtualUAV, start: bool, force: bool = False, *, transport=None
+        self,
+        uav: VirtualUAV,
+        start: bool,
+        force: bool = False,
+        *,
+        transport: Optional[TransportOptions] = None,
     ) -> None:
         if start:
             uav.start_motors()
@@ -1220,7 +1269,11 @@ class VirtualUAVDriver(UAVDriver[VirtualUAV]):
             uav.stop_motors()
 
     def _send_reset_signal_single(
-        self, uav: VirtualUAV, component: str, *, transport=None
+        self,
+        uav: VirtualUAV,
+        component: str,
+        *,
+        transport: Optional[TransportOptions] = None,
     ) -> None:
         if not component:
             # Resetting the whole UAV, this is supported

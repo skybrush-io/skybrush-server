@@ -26,23 +26,28 @@ class VirtualBattery:
         discharge_time: float = 1200,
         initial_charge: Optional[float] = 1,
         report_percentage: bool = True,
+        auto_recharging: bool = True,
     ):
         """Constructor.
 
         Parameters:
-            min_voltage (float): the minimum voltage of the battery when it
-                will magically recharge
-            max_voltage (float): the maximum voltage of the battery
-            discharge_time (float): number of seconds after which the battery
+            min_voltage: the minimum voltage of the battery when it
+                will magically recharge (if automatic recharging is allowed)
+            max_voltage: the maximum voltage of the battery
+            discharge_time: number of seconds after which the battery
                 becomes discharged when fully loaded
-            initial_charge (Optional[float]): initial relative charge of the
+            initial_charge: initial relative charge of the
                 battery, expressed as a float between 0 (completely empty) and
                 1 (completely full). `None` means to simulate a nearly-full
                 charge with some small variation.
             report_percentage: whether the virtual battery reports its charge
                 percentage as well as its voltage
+            auto_rechargin: whether the virtual battery automatically
+                recharges itself when its voltage drops below the minimum
+                voltage
         """
         self._report_percentage = bool(report_percentage)
+        self._auto_recharging = bool(auto_recharging)
         self._status = BatteryInfo()
         self._voltage_channel = None
 
@@ -108,11 +113,15 @@ class VirtualBattery:
 
     @voltage.setter
     def voltage(self, value):
-        self._status.voltage = value
-
+        # First we update the percentage, _then_ we update the voltage. This
+        # is because setting the percentage actually sets the voltage behind
+        # the scenes, but we want to exit this function with a state that
+        # the voltage desired by the user is set exactly.
         if self._report_percentage:
             percentage = (value - self._min) / self._range * 100
             self._status.percentage = round(clamp(percentage, 0, 100))
+
+        self._status.voltage = value
 
     def recharge(self) -> None:
         """Recharges the battery to the maximum voltage."""
@@ -131,7 +140,7 @@ class VirtualBattery:
         voltage = self.voltage
         discharged = dt * load * self._peak_discharge_rate
         new_voltage = (voltage if voltage is not None else self._max) - discharged
-        while new_voltage < self._min:
+        while self._auto_recharging and new_voltage < self._min:
             new_voltage += self._range
         self.voltage = new_voltage
 

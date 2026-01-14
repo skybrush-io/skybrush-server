@@ -14,8 +14,7 @@ from typing import (
 )
 
 from flockwave.gps.vectors import PositionXYZ
-from flockwave.server.model.battery import BatteryInfo
-from flockwave.server.model.object import ModelObject
+from flockwave.server.model import BatteryInfo, ErrorSet, ModelObject
 
 __all__ = ("LocalPositioningSystem", "LocalPositioningSystemType")
 
@@ -109,7 +108,7 @@ class LocalPositioningSystem(ModelObject):
     name: str = ""
     """The name of the LPS that is to be displayed on user interfaces."""
 
-    errors: list[int]
+    errors: ErrorSet
     """The list of error codes corresponding to the local positioning system."""
 
     anchors: list[Anchor]
@@ -126,7 +125,7 @@ class LocalPositioningSystem(ModelObject):
     """
 
     def __init__(self) -> None:
-        self.errors = []
+        self.errors = ErrorSet()
         self.anchors = []
 
     @property

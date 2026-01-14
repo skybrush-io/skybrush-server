@@ -6,28 +6,41 @@ requests on a certain UDP port. Responses will be sent to the same host and
 port where the request was sent from.
 """
 
-import trio.socket
+from __future__ import annotations
 
 from contextlib import closing, ExitStack
 from functools import partial
+from logging import Logger
 from trio import aclose_forcefully, CapacityLimiter, open_nursery
-from typing import Any, Optional
+from trio.socket import SOCK_DGRAM
+from typing import Any, TYPE_CHECKING, Protocol
 
+from flockwave.connections import IPAddressAndPort
 from flockwave.encoders.json import create_json_encoder
 from flockwave.parsers.json import create_json_parser
-from flockwave.networking import (
-    create_socket,
-    format_socket_address,
-    get_socket_address,
-)
-from flockwave.server.model import CommunicationChannel
+from flockwave.networking import create_socket, format_socket_address
+from flockwave.server.model import Client, CommunicationChannel
 from flockwave.server.ports import suggest_port_number_for_service, use_port
 from flockwave.server.utils import overridden
 
-app = None
+if TYPE_CHECKING:
+    from flockwave.server.app import SkybrushServer
+
+app: "SkybrushServer | None" = None
 encoder = create_json_encoder()
-log = None
-sock = None
+log: "Logger | None" = None
+sock: "Socket | None" = None
+
+
+class Socket(Protocol):
+    """Type specification for objects that look like a Trio UDP socket.
+
+    This protocol is necessary because Trio does not expose an appropriate
+    type.
+    """
+
+    async def aclose(self) -> None: ...
+    async def sendto(self, data: bytes, addr: tuple[str, int]) -> int: ...
 
 
 class UDPChannel(CommunicationChannel):
@@ -40,16 +53,20 @@ class UDPChannel(CommunicationChannel):
     properly.
     """
 
-    def __init__(self, sock: trio.socket.socket):
+    address: IPAddressAndPort
+
+    def __init__(self, sock: Socket):
         """Constructor."""
-        self.address = None
+        # self.address won't ever be None because the caller will call
+        # self.bind_to() before using the channel
+        self.address = None  # pyright: ignore[reportAttributeAccessIssue]
         self.sock = sock
 
-    def bind_to(self, client):
+    def bind_to(self, client: Client) -> None:
         """Binds the communication channel to the given client.
 
         Parameters:
-            client (Client): the client to bind the channel to
+            client: the client to bind the channel to
         """
         if client.id and client.id.startswith("udp://"):
             host, _, port = client.id[6:].rpartition(":")
@@ -57,10 +74,10 @@ class UDPChannel(CommunicationChannel):
         else:
             raise ValueError("client has no ID or address yet")
 
-    async def close(self, force: bool = False):
+    async def close(self, force: bool = False) -> None:
         if self.sock:
             if force:
-                await aclose_forcefully(self.sock)
+                await aclose_forcefully(self.sock)  # pyright: ignore[reportArgumentType]
             else:
                 await self.sock.aclose()
 
@@ -72,22 +89,7 @@ class UDPChannel(CommunicationChannel):
 ############################################################################
 
 
-def get_address(in_subnet_of: Optional[str] = None) -> str:
-    """Returns the address where we are listening for incoming UDP packets.
-
-    Parameters:
-        in_subnet_of: when not `None` and we are listening on multiple (or
-            all) interfaces, this address is used to pick a reported address
-            that is in the same subnet as the given address
-
-    Returns:
-        the address where we are listening
-    """
-    global sock
-    return get_socket_address(sock)
-
-
-def get_ssdp_location(address) -> Optional[str]:
+def get_ssdp_location(address: IPAddressAndPort | None) -> str | None:
     """Returns the SSDP location descriptor of the UDP channel.
 
     Parameters:
@@ -110,6 +112,8 @@ async def handle_message(message: Any, sender: tuple[str, int]) -> None:
         message: the incoming message
         sender: the IP address and port of the sender
     """
+    assert app is not None
+
     client_id = "udp://{0}:{1}".format(*sender)
 
     with app.client_registry.use(client_id, "udp") as client:
@@ -133,13 +137,14 @@ async def handle_message_safely(
         try:
             return await handle_message(message, sender)
         except Exception as ex:
-            log.exception(ex)
+            if log:
+                log.exception(ex)
 
 
 ############################################################################
 
 
-async def run(app, configuration, logger):
+async def run(app: "SkybrushServer", configuration: dict[str, Any], logger: Logger):
     """Background task that is active while the extension is loaded."""
     host = configuration.get("host", "")
     port = configuration.get("port", suggest_port_number_for_service("udp"))
@@ -147,7 +152,7 @@ async def run(app, configuration, logger):
     address = host, port
     pool_size = configuration.get("pool_size", 1000)
 
-    sock = create_socket(trio.socket.SOCK_DGRAM)
+    sock = create_socket(SOCK_DGRAM)
     await sock.bind(address)
 
     with ExitStack() as stack:
@@ -158,7 +163,6 @@ async def run(app, configuration, logger):
             app.channel_type_registry.use(
                 "udp",
                 factory=partial(UDPChannel, sock),
-                address=get_address,
                 ssdp_location=get_ssdp_location,
             )
         )

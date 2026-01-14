@@ -171,6 +171,7 @@ class DroneShowStatusFlag(IntFlag):
     # Flags from now on come from the third flag byte in the status packet;
     # four most significant bits only.
     IS_FAR_FROM_EXPECTED_POSITION = 1 << 17
+    HAS_HIGH_ESC_ERROR_RATE = 1 << 16
 
     # Flags from now on come from the second flag byte in the status packet;
     # four most significant bits only.
@@ -392,6 +393,13 @@ class DroneShowStatus:
             )
 
         return cls.from_bytes(bytes(message.data[: message.len]))
+
+    @property
+    def has_high_esc_error_rate(self) -> bool:
+        """Returns whether at least one of the ESCs on the the drone has a high
+        error rate.
+        """
+        return bool(self.flags & DroneShowStatusFlag.HAS_HIGH_ESC_ERROR_RATE.value)
 
     @property
     def has_start_time(self) -> bool:

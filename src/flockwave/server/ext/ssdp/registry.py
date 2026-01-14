@@ -5,12 +5,13 @@ provides, their IDs and URLs.
 __all__ = ("UPnPServiceRegistry",)
 
 from contextlib import contextmanager
-from typing import Callable, Optional, Union
+from typing import Callable
 
+from flockwave.connections import IPAddressAndPort
 from flockwave.server.registries.base import RegistryBase
 
 
-URIOrCallableReturningURI = Union[str, Callable[[str], Optional[str]]]
+URIOrCallableReturningURI = str | Callable[[IPAddressAndPort], str | None]
 
 
 class UPnPServiceRegistry(RegistryBase[URIOrCallableReturningURI]):
@@ -39,7 +40,7 @@ class UPnPServiceRegistry(RegistryBase[URIOrCallableReturningURI]):
 
         self._entries[service_id] = uri
 
-    def remove(self, service_id: str) -> Optional[URIOrCallableReturningURI]:
+    def remove(self, service_id: str) -> URIOrCallableReturningURI | None:
         """Removes the service with the given ID from the registry.
 
         This function is a no-op if the service is not registered.

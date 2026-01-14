@@ -151,7 +151,7 @@ def get_enabled_protocols(
     """
     protocols: Optional[Iterable[str]] = configuration.get("protocols")
     if protocols is not None and not isinstance(protocols, (list, tuple)):
-        logger.warn("'protocols' configuration key must be a list, ignoring")
+        logger.warning("'protocols' configuration key must be a list, ignoring")
         protocols = None
 
     result: list[SocketIOProtocol] = []
@@ -160,7 +160,9 @@ def get_enabled_protocols(
             protocol = SocketIOProtocol.from_string(protocol_code)
             result.append(protocol)
         except Exception:
-            logger.warn(f"Ignoring unknown protocol from configuration: {protocol!r}")
+            logger.warning(
+                f"Ignoring unknown protocol from configuration: {protocol_code!r}"
+            )
 
     return result
 

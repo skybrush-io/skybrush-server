@@ -1,5 +1,6 @@
 """Model-related classes for the Skybrush server."""
 
+from .battery import BatteryInfo
 from .builders import CommandExecutionStatusBuilder, FlockwaveMessageBuilder
 from .channel import CommunicationChannel
 from .client import Client
@@ -18,6 +19,7 @@ from .devices import (
     ObjectNode,
 )
 from .errors import ClientNotSubscribedError, NoSuchPathError
+from .error_set import ErrorSet
 from .identifiers import default_id_generator
 from .messages import FlockwaveMessage, FlockwaveNotification, FlockwaveResponse
 from .object import ModelObject
@@ -37,6 +39,7 @@ __all__ = (
     "UAV",
     "UAVBase",
     "ModelObject",
+    "BatteryInfo",
     "Client",
     "ConnectionInfo",
     "ConnectionPurpose",
@@ -53,6 +56,7 @@ __all__ = (
     "DeviceNode",
     "DeviceTree",
     "DeviceTreeNodeType",
+    "ErrorSet",
     "ObjectNode",
     "DeviceTreeSubscriptionManager",
     "NoSuchPathError",

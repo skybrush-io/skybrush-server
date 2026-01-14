@@ -5,7 +5,118 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [master]
+## [2.40.1] - 2025-12-10
+
+### Fixed
+
+- Fixed a bug in the show adaptation feature that sometimes altered the
+  trajectories in the show slightly.
+
+## [2.40.0] - 2025-12-05
+
+### Added
+
+- The auto-recharging mechanism of the batteries of virtual UAVs can now be
+  disabled from the configuration of the `virtual_uavs` extension.
+
+### Changed
+
+- When a drone goes to sleep mode, the stored GPS fix is now cleared in order
+  not to mislead the operator about the state of the GPS. The position
+  remains set to ensure that the drone is still visible on the map on the GCS.
+
+- When a drone resumes from sleep mode, we now clear the stored position,
+  velocity and attitude data because the next update should arrive soon anyway.
+
+## [2.39.4] - 2025-12-01
+
+### Added
+
+- Rovers are now recognized by the ArduPilot autopilot driver in the MAVLink
+  extension and the proper modes are displayed on the Live UI, thanks to
+  [@r0n4n](https://github.com/r0n4n) in PR
+  [#12](https://github.com/skybrush-io/skybrush-server/pull/12/files)
+
+### Fixed
+
+- Fixed the geofence warning flag sometimes getting stuck when using Skynet
+  optimizations.
+
+## [2.39.2] - 2025-11-25
+
+### Fixed
+
+- Fixed a case when the error set of a UAV was modified while being iterated over.
+  This happened when the UAV resumed from a sleeping or inactive state but it was
+  otherwise harmless (it just seemed scary on the console).
+
+## [2.39.0] - 2025-11-23
+
+### Added
+
+- Extensions can now teach the `mavlink` extension how to handle connection types
+  beyond the usual UDP, TCP and serial connections.
+
+### Changed
+
+- `studio` extension was updated to link to `skybrush-studio` 5.5.0 to support
+  setting light configurations when adapting shows.
+
+## [2.38.1] - 2025-11-17
+
+### Fixed
+
+- Performance improvements during the show upload process: avoid async IO functions
+  when the underlying buffer is entirely in memory.
+
+## [2.38.0] - 2025-11-14
+
+### Added
+
+- Virtual UAVs now pretend that they support compass calibration.
+
+### Changed
+
+- `skynet` was updated to 0.5.0 to provide more optimizations for large-scale swarm
+  deployments.
+
+- Error codes on UAVs are now stored in an `ErrorSet` instead of a list of integers.
+  Extension authors accessing the `error` property of the `UAVState` object
+  directly should check their code and update if needed. We do not consider this
+  a breaking change as the `ErrorSet` object provides a similar interface and
+  direct manipulation of the `error` property was not supported in earlier
+  versions either.
+
+## [2.37.0] - 2025-10-30
+
+### Added
+
+- Added support for reporting high ESC failure rates as motor errors for MAVLink
+  drones. This feature requires a yet unreleased version of the firmware because
+  the drone needs to transmit a status flag that indicates high ESC error rates.
+
+### Changed
+
+- Raise an exception when trying to set geofence limits that are over the
+  thresholds recommended by the ArduPilot documentation. Altitude limit
+  raised to 3000m as there seemed to be at least one case where a value larger
+  than ArduPilot's own documented limit (1000m) was needed.
+
+### Fixed
+
+- Better error messages when starting Skybrush Server on a machine where another
+  process already keeps the main Skybrush Server port occupied. The error message
+  now gives a hint to users about other well-known applications that might keep
+  the port busy.
+
+## [2.36.1] - 2025-10-08
+
+### Fixed
+
+- `skynet` is not a mandatory dependency any more; it belongs to the pro
+  version only.
+
+## [2.36.0] - 2025-10-02
 
 ### Added
 

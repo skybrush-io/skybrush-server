@@ -653,7 +653,7 @@ class MAVFTP:
         Yields:
             progress updates about the state of the upload process
         """
-        fp = wrap_file(BytesIO(data))
+        fp = BytesIO(data)
         total_length = len(data)
 
         remote_path = self._resolve(remote_path)
@@ -674,7 +674,7 @@ class MAVFTP:
 
         async with self._open_session(reply.session_id) as session:
             while True:
-                data = await fp.read(_MAVFTP_CHUNK_SIZE)
+                data = fp.read(_MAVFTP_CHUNK_SIZE)
                 if data:
                     offset += await session.write(data=data, offset=offset)
                     expected_crc = crc32(data, expected_crc)

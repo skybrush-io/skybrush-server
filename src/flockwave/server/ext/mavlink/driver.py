@@ -61,7 +61,7 @@ from flockwave.spec.errors import FlockwaveErrorCode
 
 from .accelerometer import AccelerometerCalibration
 from .autopilots import ArduPilot, Autopilot, UnknownAutopilot
-from .comm import Channel
+from .channel import Channel
 from .compass import CompassCalibration
 from .enums import (
     ConnectionState,
@@ -1791,7 +1791,7 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
         # heartbeat
         if not can_communicate:
             self._update_errors_from_inactive_state()
-            self.update_status(mode="off")
+            self.update_status(mode="off", gps=OurGPSFixType.NO_FIX)
             self.notify_updated()
             return
 
@@ -1814,6 +1814,10 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
         # If we haven't received a SYS_STATUS message for a while but we keep
         # on receiving heartbeats, chances are that the data streams are not
         # configured correctly so we configure them.
+        #
+        # TODO(ntamas): This can be problematic with Skynet if it is deduplicating
+        # HEARTBEAT or SYS_STATUS messages that contain no change. Make sure that
+        # in these cases self.driver.assume_data_streams_configured is True
         if (
             not self.driver.assume_data_streams_configured
             and age_of_last_heartbeat < 2
@@ -1821,11 +1825,17 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
         ):
             self._configure_data_streams_soon()
 
-        # Update error codes and basic status info
-        self._update_errors_from_sys_status_and_heartbeat()
-        self.update_status(
-            mode=self._autopilot.describe_mode(message.base_mode, message.custom_mode)
-        )
+        # Update error codes and basic status info if needed
+        if self._autopilot.is_duplicate_message(message):
+            self.touch_status()
+        else:
+            self._update_errors_from_sys_status_and_heartbeat()
+            self.update_status(
+                mode=self._autopilot.describe_mode(
+                    message.base_mode, message.custom_mode, message.type
+                )
+            )
+
         self.notify_updated()
 
     def handle_message_global_position_int(self, message: MAVLinkMessage):
@@ -1912,20 +1922,25 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
 
     def handle_message_sys_status(self, message: MAVLinkMessage):
         self._store_message(message)
-        self._update_errors_from_sys_status_and_heartbeat()
 
-        # Update battery status
-        if message.voltage_battery < 65535:
-            self._battery.voltage = message.voltage_battery / 1000
+        if self._autopilot.is_duplicate_message(message):
+            self.touch_status()
         else:
-            self._battery.voltage = 0.0
-        if message.battery_remaining == -1:
-            self._battery.percentage = None
-        elif self._autopilot.is_battery_percentage_reliable:
-            self._battery.percentage = message.battery_remaining
-        else:
-            self._battery.percentage = None
-        self.update_status(battery=self._battery)
+            self._update_errors_from_sys_status_and_heartbeat()
+
+            # Update battery status
+            if message.voltage_battery < 65535:
+                self._battery.voltage = message.voltage_battery / 1000
+            else:
+                self._battery.voltage = 0.0
+            if message.battery_remaining == -1:
+                self._battery.percentage = None
+            elif self._autopilot.is_battery_percentage_reliable:
+                self._battery.percentage = message.battery_remaining
+            else:
+                self._battery.percentage = None
+
+            self.update_status(battery=self._battery)
 
         self.notify_updated()
 
@@ -2661,6 +2676,19 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
         if self._connection_state is value:
             return
 
+        if value is ConnectionState.CONNECTED:
+            if self._connection_state is ConnectionState.SLEEPING:
+                # Clear any previously stored GPS coordinate, velocity,
+                # attitude and heading info
+                self.update_status(
+                    position=None,
+                    position_xyz=None,
+                    velocity=None,
+                    velocity_xyz=None,
+                    attitude=None,
+                    heading=None,
+                )
+
         self._connection_state = value
 
         if value is ConnectionState.DISCONNECTED:
@@ -2699,6 +2727,44 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
         """
         self._last_messages[message.get_msgId()].update(message)
 
+    def _get_heartbeat_sys_status_geofence_error_and_motor_state(
+        self,
+    ) -> tuple[Any, Any, bool, bool]:
+        """Returns a tuple indicating whether there is a geofence error and
+        whether the motors are currently running, based on the most recent
+        HEARTBEAT and SYS_STATUS messages.
+
+        If either message is not available, returns `(False, False)`.
+
+        This function encapsulates some logic that is shared between
+        `_update_errors_from_drone_show_status_packet()` and
+        `_update_errors_from_sys_status_and_heartbeat()` and it is required
+        to update the FlockwaveErrorCode.GEOFENCE_VIOLATION_WARNING flag
+        correctly from both places.
+
+        Returns:
+            the last heartbeat message, the last SYS_STATUS message, whether
+            the SYS_STATUS packet indicated a geofence error, and whether the
+            motors are running according to the heartbeat.
+        """
+        heartbeat = self.get_last_message(MAVMessageType.HEARTBEAT)
+        sys_status = self.get_last_message(MAVMessageType.SYS_STATUS)
+        if not heartbeat or not sys_status:
+            return None, None, False, False
+
+        sensor_mask: int = (
+            sys_status.onboard_control_sensors_enabled
+            & sys_status.onboard_control_sensors_present
+        )
+        not_healthy_sensors: int = sensor_mask & (
+            # Python has no proper bitwise negation on unsigned integers
+            # so we use XOR instead
+            sys_status.onboard_control_sensors_health ^ 0xFFFFFFFF
+        )
+        has_geofence_error = not_healthy_sensors & MAVSysStatusSensor.GEOFENCE.value
+        are_motors_running = heartbeat.base_mode & MAVModeFlag.SAFETY_ARMED.value
+        return heartbeat, sys_status, bool(has_geofence_error), bool(are_motors_running)
+
     def _update_errors_from_drone_show_status_packet(self, status: DroneShowStatus):
         """Updates the error codes based on the most recent drone show status
         message.
@@ -2706,12 +2772,23 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
         The error codes managed by this function are disjoint from the error
         codes managed by `_update_errors_from_sys_status_and_heartbeat()`,
         except for FlockwaveErrorCode.GEOFENCE_VIOLATION_WARNING, which is
-        handled in `_update_errors_from_sys_status_and_heartbeat()`. See a
-        detailed explanation in the source code there.
+        handled in both places because its presence depends on both SYS_STATUS
+        and the drone show status packets.
         """
+        _, _, has_geofence_error, are_motors_running = (
+            self._get_heartbeat_sys_status_geofence_error_and_motor_state()
+        )
+
         errors: dict[int, bool] = {
             FlockwaveErrorCode.TIMESYNC_ERROR.value: status.has_timesync_error,
             FlockwaveErrorCode.FAR_FROM_TAKEOFF_POSITION.value: status.is_misplaced_before_takeoff,
+            FlockwaveErrorCode.GEOFENCE_VIOLATION_WARNING.value: (
+                # Geofence error reported from SYS_STATUS...
+                (has_geofence_error and not are_motors_running)
+                # ...or no error reported from SYS_STATUS, but a geofence breach
+                # was reported in the Skybrush-specific status packet
+                or (not has_geofence_error and status.is_geofence_breached)
+            ),
         }
         self.ensure_errors(errors)
 
@@ -2739,8 +2816,11 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
         handlers.
 
         The error codes managed by this function are disjoint from the error
-        codes managed by `_update_errors_from_drone_show_status_packet()`.
-        Make sure to keep it this way.
+        codes managed by `_update_errors_from_drone_show_status_packet()`,
+        except for FlockwaveErrorCode.GEOFENCE_VIOLATION_WARNING, which is
+        handled in both places because its presence depends on both SYS_STATUS
+        and the drone show status packets. Try to keep things this way as it
+        simplifies things.
 
         This function does _not_ update the timestamp of the status information;
         you need to do it on your own by calling `update_status()` after calling
@@ -2749,8 +2829,9 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
         # This function is called frequently, and Python enums are a bit slow
         # so we optimize enum access by using the 'value' property on them
 
-        heartbeat = self.get_last_message(MAVMessageType.HEARTBEAT)
-        sys_status = self.get_last_message(MAVMessageType.SYS_STATUS)
+        heartbeat, sys_status, has_geofence_error, are_motors_running = (
+            self._get_heartbeat_sys_status_geofence_error_and_motor_state()
+        )
         if not heartbeat or not sys_status:
             return
 
@@ -2784,7 +2865,7 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
             MAVSysStatusSensor.MOTOR_OUTPUTS.value
             | MAVSysStatusSensor.REVERSE_MOTOR.value
         )
-        has_geofence_error = not_healthy_sensors & MAVSysStatusSensor.GEOFENCE.value
+        # has_geofence_error already parsed above
         has_rc_error = not_healthy_sensors & MAVSysStatusSensor.RC_RECEIVER.value
         has_battery_error = not_healthy_sensors & MAVSysStatusSensor.BATTERY.value
         has_logging_error = not_healthy_sensors & MAVSysStatusSensor.LOGGING.value
@@ -2792,7 +2873,7 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
         are_motor_outputs_disabled = self._autopilot.are_motor_outputs_disabled(
             heartbeat, sys_status
         )
-        are_motors_running = heartbeat.base_mode & MAVModeFlag.SAFETY_ARMED.value
+        # are_motors_running already parsed above
         is_prearm_check_in_progress = self._autopilot.is_prearm_check_in_progress(
             heartbeat, sys_status
         )
@@ -2854,7 +2935,11 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
             FlockwaveErrorCode.PRESSURE_SENSOR_ERROR.value: has_baro_error,
             FlockwaveErrorCode.GPS_SIGNAL_LOST.value: has_gps_error,
             FlockwaveErrorCode.PROXIMITY_ERROR.value: has_proximity_error,
-            FlockwaveErrorCode.MOTOR_MALFUNCTION.value: has_motor_error,
+            FlockwaveErrorCode.MOTOR_MALFUNCTION.value: has_motor_error
+            or (
+                self._last_skybrush_status_info
+                and self._last_skybrush_status_info.has_high_esc_error_rate
+            ),
             FlockwaveErrorCode.GEOFENCE_VIOLATION.value: (
                 has_geofence_error and are_motors_running
             ),

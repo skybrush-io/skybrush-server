@@ -10,6 +10,8 @@ M-SEARCH requests for root devices, and for searches for
 ``urn:collmot-com:service:flockwave`` targets.
 """
 
+from __future__ import annotations
+
 from contextlib import closing
 from datetime import datetime
 from errno import EADDRNOTAVAIL, ENODEV
@@ -20,7 +22,7 @@ from os import getenv
 from random import random
 from time import mktime, monotonic
 from trio import sleep
-from typing import Any, Callable, Iterable, Optional
+from typing import Iterable, TYPE_CHECKING
 from wsgiref.handlers import format_date_time
 
 import platform
@@ -28,6 +30,7 @@ import re
 import socket
 import struct
 
+from flockwave.connections import IPAddressAndPort
 from flockwave.networking import create_socket
 from flockwave.server.ports import suggest_port_number_for_service, use_port
 from flockwave.server.registries import find_in_registry
@@ -35,17 +38,21 @@ from flockwave.server.utils import overridden
 from flockwave.server.version import __version__ as skybrush_version
 
 from .registry import UPnPServiceRegistry
+from .types import SSDPExtensionAPIDict
+
+if TYPE_CHECKING:
+    from flockwave.server.app import SkybrushServer
 
 USN = "flockwave"
 UPNP_DEVICE_ID = "urn:collmot-com:device:{0}:1".format(USN)
 UPNP_SERVICE_ID_TEMPLATE = "urn:collmot-com:service:{0}-{{0}}:1".format(USN)
 
-app = None
-label = None
-log: Optional[Logger] = None
-registry = None
+app: SkybrushServer | None = None
+label: str | None = None
+log: Logger | None = None
+registry: UPnPServiceRegistry | None = None
 
-exports: dict[str, Optional[Callable[..., Any]]] = {
+exports: SSDPExtensionAPIDict = {
     "register_service": None,
     "registry": None,
     "unregister_service": None,
@@ -98,7 +105,7 @@ class Request(BaseHTTPRequestHandler):
         """Returns whether the request has an associated error code."""
         return self.error_code is not None
 
-    def send_error(self, code, message):
+    def send_error(self, code, message=None, explain=None):
         """Records an HTTP error code and message in the current request
         object. These errors typically come from the parser.
         """
@@ -126,7 +133,7 @@ class Sockets:
             self.receiver = None
 
 
-def get_service_uri(service_id: str, address: str) -> Optional[str]:
+def get_service_uri(service_id: str, address: IPAddressAndPort) -> str | None:
     """Returns the location URI of the UPnP service that belongs to the given
     registered Skybrush service ID.
 
@@ -173,12 +180,12 @@ def get_service_uri(service_id: str, address: str) -> Optional[str]:
     return location
 
 
-async def handle_message(message, sender, *, socket):
+async def handle_message(message: bytes, sender: IPAddressAndPort, *, socket):
     """Handles a single message received from the given sender.
 
     Parameters:
-        message (bytes): the incoming message, waiting to be parsed
-        sender (tuple[str,int]): the IP address and port of the sender
+        message: the incoming message, waiting to be parsed
+        sender: the IP address and port of the sender
     """
     request = Request(message, sender)
     if request.has_error:
@@ -195,11 +202,11 @@ async def handle_message(message, sender, *, socket):
             log.warning("Unknown SSDP command: {0.command}".format(request))
 
 
-async def handle_m_search(request, *, socket):
+async def handle_m_search(request: Request, *, socket):
     """Handles an incoming M-SEARCH request.
 
     Parameters:
-        request (Request): the incoming request to handle
+        request: the incoming request to handle
     """
     global _RESPONSE_HEADERS, _UPNP_SERVICE_ID_REGEX, UPNP_DEVICE_ID
 
@@ -274,9 +281,9 @@ def is_valid_service(service: str) -> bool:
 
 
 def prepare_response(
-    headers: Optional[Iterable[str]] = None,
-    extra: Optional[dict[str, str]] = None,
-    prefix: Optional[str] = None,
+    headers: Iterable[str] | None = None,
+    extra: dict[str, str] | None = None,
+    prefix: str | None = None,
 ):
     """Prepares a response to send.
 
@@ -348,7 +355,7 @@ def unload():
     registry = None
 
 
-async def run(app, configuration, logger):
+async def run(app: SkybrushServer, configuration, logger: Logger):
     """Loop that listens for incoming messages and calls a handler
     function for each incoming message.
     """
@@ -398,7 +405,7 @@ async def run(app, configuration, logger):
             await sleep(2)
 
 
-async def receive_ssdp_messages(multicast_group, port, *, sender):
+async def receive_ssdp_messages(multicast_group: str, port: int, *, sender):
     global log
 
     # Set up the receiver end of the socket pair. This is the one that will most
@@ -431,11 +438,14 @@ async def receive_ssdp_messages(multicast_group, port, *, sender):
         else:
             raise
 
+    data: bytes
+    address: IPAddressAndPort
+
     await receiver.bind(("", port))
     with closing(receiver):
         while True:
-            data = await receiver.recvfrom(65536)
-            await handle_message(*data, socket=sender)
+            data, address = await receiver.recvfrom(65536)
+            await handle_message(data, address, socket=sender)
 
 
 def get_schema():

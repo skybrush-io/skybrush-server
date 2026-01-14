@@ -6,7 +6,6 @@ from functools import partial
 from io import BytesIO, SEEK_END
 from math import floor
 from struct import Struct
-from trio import wrap_file
 from typing import (
     AsyncIterable,
     Awaitable,
@@ -36,16 +35,31 @@ _SKYBRUSH_BINARY_FILE_HEADER: list[bytes] = [
 ]
 
 
+# async def _read_exactly(
+#     fp,
+#     length: int,
+#     offset: Optional[int] = None,
+#     *,
+#     message: str = "unexpected end of block in Skybrush file",
+# ):
+#     if offset is not None:
+#         await fp.seek(offset)
+#     data = await fp.read(length)
+#     if len(data) != length:
+#         raise IOError(message)
+#     return data
+
+
 async def _read_exactly(
-    fp,
+    fp: IO[bytes],
     length: int,
     offset: Optional[int] = None,
     *,
     message: str = "unexpected end of block in Skybrush file",
 ):
     if offset is not None:
-        await fp.seek(offset)
-    data = await fp.read(length)
+        fp.seek(offset)
+    data = fp.read(length)
     if len(data) != length:
         raise IOError(message)
     return data
@@ -133,6 +147,8 @@ class SkybrushBinaryShowFile:
 
     _header_struct: ClassVar[Struct] = Struct("<BH")
 
+    _fp: IO[bytes]
+
     @classmethod
     def create_in_memory(cls, version: int = 2):
         return cls.from_bytes(data=None, version=version)
@@ -163,44 +179,56 @@ class SkybrushBinaryShowFile:
         if isinstance(fp, BytesIO):
             self._buffer = fp
 
+        # we go with sync file IO because Trio's async file IO has a significant
+        # overhead due to thread switching and we are unlikely to block the main
+        # loop as we mostly work directly in memory
+
         self._checksum_validated = False
-        self._fp = wrap_file(fp)
+        self._fp = fp
         self._features = SkybrushBinaryFileFeatures.NONE
         self._version = None
         self._start_of_first_block = None
 
     async def __aenter__(self):
-        await self._fp.__aenter__()
+        self._fp.__enter__()
+        # await self._fp.__aenter__()
         return self
 
     async def __aexit__(self, exc_type, exc_value, tb):
-        return await self._fp.__aexit__(exc_type, exc_value, tb)
+        return self._fp.__exit__(exc_type, exc_value, tb)
+        # return await self._fp.__aexit__(exc_type, exc_value, tb)
 
     async def _rewind(self) -> None:
         """Rewinds the internal read/write pointer of the underlying file-like
         object to the start of the first block in the file.
         """
         if self._start_of_first_block is None:
-            await self._fp.seek(0)
+            self._fp.seek(0)
+            # await self._fp.seek(0)
 
             self._version = await self._expect_header()
             if self._version == 1:
                 self._features = SkybrushBinaryFileFeatures.NONE
             elif self._version == 2:
-                feature_flags = await self._fp.read(1)
+                feature_flags = self._fp.read(1)
+                # feature_flags = await self._fp.read(1)
                 self._features = SkybrushBinaryFileFeatures(feature_flags[0])
             else:
                 raise RuntimeError("only version 1 files are supported")
 
             if self._features & SkybrushBinaryFileFeatures.CRC32:
-                self._start_of_crc_bytes = await self._fp.tell()
-                await self._fp.read(4)
+                self._start_of_crc_bytes = self._fp.tell()
+                self._fp.read(4)
+                # self._start_of_crc_bytes = await self._fp.tell()
+                # await self._fp.read(4)
             else:
                 self._start_of_crc_bytes = None
 
-            self._start_of_first_block = await self._fp.tell()
+            self._start_of_first_block = self._fp.tell()
+            # self._start_of_first_block = await self._fp.tell()
         else:
-            await self._fp.seek(self._start_of_first_block)
+            self._fp.seek(self._start_of_first_block)
+            # await self._fp.seek(self._start_of_first_block)
 
     async def _expect_header(self) -> int:
         """Reads the beginning of the buffer to check whether the Skybrush binary
@@ -210,11 +238,13 @@ class SkybrushBinaryShowFile:
         Returns:
             the Skybrush binary file schema version
         """
-        header = await self._fp.read(4)
+        header = self._fp.read(4)
+        # header = await self._fp.read(4)
         if header != _SKYBRUSH_BINARY_FILE_MARKER:
             raise RuntimeError(f"expected Skybrush binary file header, got {header!r}")
 
-        version = await self._fp.read(1)
+        # version = await self._fp.read(1)
+        version = self._fp.read(1)
         return ord(version)
 
     async def add_block(self, type: SkybrushBinaryFormatBlockType, body: bytes) -> None:
@@ -222,7 +252,8 @@ class SkybrushBinaryShowFile:
         seekable = self._fp.seekable()
 
         if seekable:
-            await self._fp.seek(0, SEEK_END)
+            self._fp.seek(0, SEEK_END)
+            # await self._fp.seek(0, SEEK_END)
 
         if len(body) >= 65536:
             raise ValueError(
@@ -230,8 +261,10 @@ class SkybrushBinaryShowFile:
             )
 
         header = self._header_struct.pack(type, len(body))
-        await self._fp.write(header)
-        await self._fp.write(body)
+        self._fp.write(header)
+        self._fp.write(body)
+        # await self._fp.write(header)
+        # await self._fp.write(body)
 
     async def add_comment(
         self, comment: Union[str, bytes], encoding: str = "utf-8"
@@ -337,7 +370,8 @@ class SkybrushBinaryShowFile:
             await self.validate_checksum()
 
         while True:
-            data = await self._fp.read(self._header_struct.size)
+            data = self._fp.read(self._header_struct.size)
+            # data = await self._fp.read(self._header_struct.size)
             if not data:
                 # End of stream
                 break
@@ -345,17 +379,20 @@ class SkybrushBinaryShowFile:
             block_type, length = self._header_struct.unpack(data)
 
             if seekable:
-                offset = await self._fp.tell()
+                offset = self._fp.tell()
+                # offset = await self._fp.tell()
                 reader = partial(_read_exactly, self._fp, length, offset=offset)
             else:
                 reader = partial(_read_exactly, self._fp, length)
 
             block = SkybrushBinaryFileBlock(block_type, reader)
             if seekable:
-                end_of_block = await self._fp.tell()
+                end_of_block = self._fp.tell()
+                # end_of_block = await self._fp.tell()
                 end_of_block += length
                 yield block
-                await self._fp.seek(end_of_block)
+                self._fp.seek(end_of_block)
+                # await self._fp.seek(end_of_block)
             else:
                 yield block
                 if not block.consumed:
@@ -376,11 +413,13 @@ class SkybrushBinaryShowFile:
                     "version number not known yet and the binary show file is not seekable"
                 )
 
-            pos = await self._fp.tell()
+            pos = self._fp.tell()
+            # pos = await self._fp.tell()
             try:
                 await self._rewind()
             finally:
-                await self._fp.seek(pos)
+                self._fp.seek(pos)
+                # await self._fp.seek(pos)
 
         await self._update_crc32()
 
@@ -444,12 +483,15 @@ class SkybrushBinaryShowFile:
 
         assert self._start_of_crc_bytes is not None
 
-        position: int = await self._fp.tell()
+        position: int = self._fp.tell()
+        # position: int = await self._fp.tell()
         try:
-            await self._fp.seek(self._start_of_crc_bytes)
+            self._fp.seek(self._start_of_crc_bytes)
+            # await self._fp.seek(self._start_of_crc_bytes)
             observed_crc: bytes = await _read_exactly(self._fp, 4)
         finally:
-            await self._fp.seek(position)
+            self._fp.seek(position)
+            # await self._fp.seek(position)
 
         if observed_crc != expected_crc:
             expected = expected_crc.hex()
@@ -478,7 +520,8 @@ class SkybrushBinaryShowFile:
 
         assert self._start_of_crc_bytes is not None
 
-        position: int = await self._fp.tell()
+        position: int = self._fp.tell()
+        # position: int = await self._fp.tell()
         try:
             expected_crc = 0
 
@@ -489,13 +532,15 @@ class SkybrushBinaryShowFile:
             expected_crc = crc32(b"\x00\x00\x00\x00", expected_crc)
 
             while True:
-                block = await self._fp.read(4096)
+                block = self._fp.read(4096)
+                # block = await self._fp.read(4096)
                 if block:
                     expected_crc = crc32(block, expected_crc)
                 if len(block) < 4096:
                     break
         finally:
-            await self._fp.seek(position)
+            self._fp.seek(position)
+            # await self._fp.seek(position)
 
         return expected_crc.to_bytes(4, "little", signed=False)
 
@@ -508,12 +553,16 @@ class SkybrushBinaryShowFile:
 
         assert self._start_of_crc_bytes is not None
 
-        position: int = await self._fp.tell()
+        position: int = self._fp.tell()
+        # position: int = await self._fp.tell()
         try:
-            await self._fp.seek(self._start_of_crc_bytes)
-            await self._fp.write(expected_crc)
+            self._fp.seek(self._start_of_crc_bytes)
+            self._fp.write(expected_crc)
+            # await self._fp.seek(self._start_of_crc_bytes)
+            # await self._fp.write(expected_crc)
         finally:
-            await self._fp.seek(position)
+            self._fp.seek(position)
+            # await self._fp.seek(position)
 
 
 class SegmentEncoder:

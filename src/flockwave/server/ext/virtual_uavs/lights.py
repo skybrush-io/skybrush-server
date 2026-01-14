@@ -2,13 +2,18 @@
 on the UAVs.
 """
 
+from __future__ import annotations
+
 from abc import abstractmethod
 from colour import Color
 from time import monotonic
-from typing import Callable, Iterable, Optional, Union
+from typing import Callable, Iterable, Optional, Union, TYPE_CHECKING
 
 from flockwave.spec.errors import FlockwaveErrorCode
 from flockwave.server.show import LightPlayer
+
+if TYPE_CHECKING:
+    from .driver import VirtualUAV
 
 __all__ = ("LightController", "ModularLightController", "DefaultLightController")
 
@@ -102,7 +107,7 @@ class DefaultLightController(ModularLightController):
 
     _override: Optional[Color]
 
-    def __init__(self, owner=None):
+    def __init__(self, owner: Optional[VirtualUAV] = None):
         super().__init__(self._create_default_modules())
 
         self.owner = owner

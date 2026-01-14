@@ -133,6 +133,9 @@ class VirtualUAVProviderExtension(UAVExtension[VirtualUAVDriver]):
         driver.use_battery_percentages = bool(
             configuration.get("use_battery_percentages", True)
         )
+        driver.battery_auto_recharging = bool(
+            configuration.get("battery_auto_recharging", True)
+        )
 
     @property
     def delay(self):

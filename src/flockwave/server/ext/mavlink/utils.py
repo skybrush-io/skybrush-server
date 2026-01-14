@@ -56,8 +56,8 @@ def can_communicate_infer_from_heartbeat(message: Optional[MAVLinkMessage]) -> b
     system_status = getattr(message, "system_status", None)
     return (
         system_status is not None
-        and system_status != MAVState.FLIGHT_TERMINATION
-        and system_status != MAVState.BOOT
+        and system_status != MAVState.FLIGHT_TERMINATION.value
+        and system_status != MAVState.BOOT.value
     )
 
 

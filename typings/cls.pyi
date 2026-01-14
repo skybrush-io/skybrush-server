@@ -1,9 +1,0 @@
-from typing import Any, Optional, Union
-
-License = dict[str, Any]
-
-license: Optional[License]
-
-def decode(license: Union[bytes, str]) -> License: ...
-def get_license_path() -> str: ...
-def launch(module_and_func_name: Optional[str] = None): ...

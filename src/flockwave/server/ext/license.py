@@ -5,7 +5,7 @@ from collections.abc import Mapping
 from datetime import date, datetime, timedelta
 from functools import partial, wraps
 from math import inf, isfinite
-from typing import Any, Optional
+from typing import Any, Optional, Protocol
 
 from flockwave.ext.errors import ApplicationExit, NotLoadableError, NotSupportedError
 from flockwave.networking import get_link_layer_address_mapping
@@ -509,6 +509,13 @@ def unload(app):
 
     enforce_license_limits(None, app)
     license = None
+
+
+class LicenseExtensionAPI(Protocol):
+    """Interface specification of the API exposed by the `license` extension."""
+
+    def get_license(self) -> License | None: ...
+    def has_feature(self, *args: str) -> bool: ...
 
 
 description = "License management"

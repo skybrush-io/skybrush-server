@@ -5,6 +5,7 @@ server is currently connected to.
 from blinker import Signal
 from collections import defaultdict
 from contextlib import contextmanager
+from time import time
 from typing import Iterable, Iterator
 
 from flockwave.server.model.client import Client
@@ -23,24 +24,24 @@ class ClientRegistry(RegistryBase[Client]):
     server is currently connected to.
 
     Attributes:
-        added (Signal): signal that is sent by the registry when a new client
-            has been added to the registry. The signal has a keyword
-            argment named ``client`` that contains the client that has just
-            been added to the registry.
+        added: signal that is sent by the registry when a new client has been
+            added to the registry. The signal has a keyword argument named
+            ``client`` that contains the client that has just been added to the
+            registry.
 
-        channel_type_registry (ChannelTypeRegistry): the channel type
-            registry that the client registry turns to when it has to
-            construct a new communication channel instance to a client
+        channel_type_registry: the channel type registry that the client
+            registry turns to when it has to construct a new communication
+            channel instance to a client.
 
-        count_changed (Signal): signal that is sent by the registry when the
+        count_changed: signal that is sent by the registry when the
             number of connected clients changed. This can be used by
             extensions to optimize their behaviour when no clients are
             connected.
 
-        removed (Signal): signal that is sent by the registry when a client
-            has been removed from the registry. The signal has a keyword
-            argument named ``client`` that contains the client that has just
-            been removed from the registry.
+        removed: signal that is sent by the registry when a client has been
+            removed from the registry. The signal has a keyword argument named
+            ``client`` that contains the client that has just been removed from
+            the registry.
     """
 
     added: Signal = Signal()
@@ -79,7 +80,7 @@ class ClientRegistry(RegistryBase[Client]):
             return self[client_id]
 
         channel = self.channel_type_registry.create_channel_for(channel_type)
-        client = Client(_id=client_id, _channel=channel)
+        client = Client(_id=client_id, _channel=channel, _connected_at=time())
         channel.bind_to(client)
 
         self._entries[client_id] = client

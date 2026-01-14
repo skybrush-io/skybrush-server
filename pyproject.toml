@@ -1,6 +1,6 @@
 [project]
 name = "flockwave-server"
-version = "2.36.0"
+version = "2.40.1"
 description = "Skybrush server component"
 authors = [
   { name = "Tamas Nepusz", email = "tamas@collmot.com" },
@@ -23,13 +23,13 @@ dependencies = [
   "pyjwt>=2.10.1",
   "hypercorn[trio]>=0.17.3",
   "passlib[bcrypt]>=1.7.4",
-  "flockwave-app-framework[daemon]>=3.5.0",
+  "flockwave-app-framework[daemon]>=3.6.0",
   "flockwave-async>=2.2.1",
   "flockwave-conn[rpc,serial]>=9.1.0",
   "flockwave-ext>=1.27.0",
   "flockwave-gps>=4.0.0",
   "flockwave-logger>=2.1.1",
-  "flockwave-mavlink>=0.5.1",
+  "flockwave-mavlink>=0.6.0",
   "flockwave-net[async]>=8.1.0",
   "flockwave-parsers>=4.0.1",
   "flockwave-spec[validation]>=2.4.0",
@@ -50,7 +50,6 @@ dependencies = [
   "platformdirs>=4.3.8",
   "fastjsonschema>=2.21.1",
   "orjson>=3.10.18",
-  "skynet>=0.4.1",
 ]
 
 [project.scripts]
@@ -71,12 +70,14 @@ pro = [
   "skybrush-ext-flight-report>=1.0.3",
   "skybrush-ext-map-cache>=1.1.1",
   "skybrush-ext-show-pro>=0.4.0",
-  "skybrush-ext-sidekick>=1.0.2",
-  "skybrush-ext-skynet>=0.4.1",
-  "skybrush-ext-studio>=0.8.6",
+  "skybrush-ext-sidekick>=1.1.1",
+  "skybrush-ext-skynet>=0.6.0",
+  "skybrush-ext-studio>=1.2.1",
   "skybrush-ext-timecode>=1.4.1",
   "skybrush-lib-mission-planning>=2.4.1",
-  "skybrush-studio>=4.24.2",
+  "skybrush-opt-rs",
+  "skybrush-studio",
+  "skynet",
 ]
 
 [tool.uv.build-backend]
@@ -105,6 +106,7 @@ flockwave-mavlink = { index = "fury" }
 flockwave-net = { index = "fury" }
 flockwave-parsers = { index = "fury" }
 flockwave-spec = { index = "fury" }
+pyledctrl = { index = "fury" }
 skybrush-ext-dock = { index = "collmot" }
 skybrush-ext-firmware-update = { index = "collmot" }
 skybrush-ext-flight-report = { index = "collmot" }
@@ -116,9 +118,9 @@ skybrush-ext-sidekick = { index = "collmot" }
 skybrush-ext-studio = { index = "collmot" }
 skybrush-ext-timecode = { index = "collmot" }
 skybrush-lib-mission-planning = { index = "collmot" }
+skybrush-opt-rs = { index = "collmot" }
 skybrush-studio = { index = "collmot" }
 skynet = { index = "collmot" }
-pyledctrl = { index = "fury" }
 
 [dependency-groups]
 dev = [

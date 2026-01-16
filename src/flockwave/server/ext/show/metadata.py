@@ -6,13 +6,13 @@ class ShowCoordinateSystem(TypedDict):
 
     origin: list[float] | None
     """The origin of the coordinate system (longitude, latitude); ``None`` for
-   indoor shows.
-   """
+    indoor shows.
+    """
 
     orientation: str
     """The orientation of the X axis of the coordinate system, stored as a string
-   to avoid rounding errors.
-   """
+    to avoid rounding errors.
+    """
 
     type: Literal["nwu", "neu"] | None
     """The type of the coordinate system; ``None`` for indoor shows."""

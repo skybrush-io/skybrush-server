@@ -137,12 +137,6 @@ class ShowUploadLoggingMiddleware:
         if not isinstance(maybe_amsl_reference, (int, float)):
             maybe_amsl_reference = None
 
-        collective_rth_timestamps = show.get("collectiveRTHTimestamps")
-        if not isinstance(collective_rth_timestamps, list) or any(
-            not isinstance(x, int) for x in collective_rth_timestamps
-        ):
-            collective_rth_timestamps = []
-
         return {
             "coordinateSystem": {
                 "origin": coordinate_system.get("origin"),
@@ -156,7 +150,6 @@ class ShowUploadLoggingMiddleware:
                 "title": str(mission.get("title", "")),
                 "numDrones": int(mission.get("numDrones", 0)),
             },
-            "collectiveRTHTimestamps": collective_rth_timestamps,
         }
 
     @staticmethod

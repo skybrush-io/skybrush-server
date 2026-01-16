@@ -6,13 +6,13 @@ class ShowCoordinateSystem(TypedDict):
 
     origin: list[float] | None
     """The origin of the coordinate system (longitude, latitude); ``None`` for
-   indoor shows.
-   """
+    indoor shows.
+    """
 
     orientation: str
     """The orientation of the X axis of the coordinate system, stored as a string
-   to avoid rounding errors.
-   """
+    to avoid rounding errors.
+    """
 
     type: Literal["nwu", "neu"] | None
     """The type of the coordinate system; ``None`` for indoor shows."""
@@ -36,15 +36,19 @@ class ShowMetadata(TypedDict):
     what is being posted from Skybrush Live.
     """
 
+    amslReference: float | None
+    """The altitude above mean sea level that corresponds to Z=0 in the show;
+    ``None`` if the show is controlled based on AGL instead.
+    """
+
+    collectiveRTHTimestamps: list[int]
+    """Timestamps of available collective RTH plans of the show,
+    in seconds relative to show start."""
+
     coordinateSystem: ShowCoordinateSystem
     """The coordinate system in which the show is defined."""
 
     geofence: dict[str, Any] | None
     """The geofence of the show."""
-
-    amslReference: float | None
-    """The altitude above mean sea level that corresponds to Z=0 in the show;
-    ``None`` if the show is controlled based on AGL instead.
-    """
 
     mission: MissionInfo

@@ -6,9 +6,9 @@ signal that other extensions can subscribe to if they are interested in the
 values of the RC channels.
 """
 
+from collections.abc import Sequence
 from logging import Logger
-
-from typing import Any, ClassVar, Sequence
+from typing import Any, ClassVar
 
 
 rc_changed_signal: Any = None

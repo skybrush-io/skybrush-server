@@ -4,10 +4,11 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from collections import Counter
+from collections.abc import Sequence
 from dataclasses import dataclass, field, InitVar
 from enum import Enum
 from itertools import chain
-from typing import Any, Sequence, TypedDict
+from typing import Any, TypedDict
 
 from flockwave.server.show import (
     get_flight_area_configuration_from_show_specification,

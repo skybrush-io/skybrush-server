@@ -2,8 +2,10 @@
 
 from aiocflib.crazyflie.mem import write_with_checksum
 from aiocflib.crazyflie import Crazyflie
+
+from collections.abc import Sequence
 from struct import Struct
-from typing import Any, Sequence
+from typing import Any
 
 from flockwave.server.show.trajectory import TrajectorySpecification
 

@@ -2,10 +2,10 @@
 understood by the Crazyflies.
 """
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 from enum import IntEnum
 from struct import Struct
-from typing import Sequence
 
 from flockwave.server.show.formats import SegmentEncoder
 from flockwave.server.show.trajectory import TrajectorySpecification

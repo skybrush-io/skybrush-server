@@ -1,12 +1,13 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import timezone
 from enum import IntEnum, IntFlag
 from functools import lru_cache
 from struct import Struct, pack
 from time import time
-from typing import ClassVar, Sequence
+from typing import ClassVar
 
 from flockwave.gps.time import unix_to_gps_time_of_week, gps_time_of_week_to_utc
 from flockwave.server.ext.show.config import AuthorizationScope

@@ -2,7 +2,7 @@
 Skybrush-related geofence specifications, until we find a better place for them.
 """
 
-from typing import Sequence
+from collections.abc import Sequence
 
 from flockwave.gps.vectors import (
     FlatEarthCoordinate,

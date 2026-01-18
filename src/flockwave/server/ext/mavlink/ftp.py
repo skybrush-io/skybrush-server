@@ -15,6 +15,11 @@ from random import randint
 from struct import Struct
 from typing import TYPE_CHECKING, Protocol
 
+from flockwave.concurrency import (
+    AdaptiveExponentialBackoffPolicy,
+    RetryPolicy,
+    run_with_retries,
+)
 from trio import (
     BrokenResourceError,
     TooSlowError,
@@ -23,11 +28,6 @@ from trio import (
     wrap_file,
 )
 
-from flockwave.concurrency import (
-    AdaptiveExponentialBackoffPolicy,
-    RetryPolicy,
-    run_with_retries,
-)
 from flockwave.server.model.commands import Progress
 from flockwave.server.show.utils import crc32_mavftp as crc32
 

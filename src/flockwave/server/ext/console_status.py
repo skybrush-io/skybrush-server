@@ -12,10 +12,10 @@ from json import dumps
 from logging import Logger
 from typing import TYPE_CHECKING, Any
 
+from flockwave.connections import ConnectionState
 from trio import MemorySendChannel, WouldBlock, open_memory_channel
 from trio.abc import ReceiveChannel
 
-from flockwave.connections import ConnectionState
 from flockwave.server.registries import ConnectionRegistry, ConnectionRegistryEntry
 from flockwave.server.utils import overridden
 

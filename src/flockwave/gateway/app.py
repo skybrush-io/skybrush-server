@@ -5,14 +5,14 @@ from copy import deepcopy
 from typing import Any
 from urllib.parse import urlparse, urlunparse
 
+from flockwave.app_framework import DaemonApp
+from flockwave.app_framework.configurator import AppConfigurator, Configuration
+from flockwave.networking import format_socket_address
 from hypercorn.config import Config as HyperConfig
 from hypercorn.trio import serve
 from jwt import decode
 from trio import Nursery, current_time, open_nursery, sleep
 
-from flockwave.app_framework import DaemonApp
-from flockwave.app_framework.configurator import AppConfigurator, Configuration
-from flockwave.networking import format_socket_address
 from flockwave.server.utils.packaging import is_packaged
 
 from .asgi_app import app as asgi_app

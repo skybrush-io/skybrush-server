@@ -8,6 +8,7 @@ from flockwave.concurrency import Watchdog
 from flockwave.gps.rtcm.packets import RTCMPacket, RTCMV3StationaryAntennaPacket
 from flockwave.gps.rtcm.parsers import create_rtcm_parser
 from flockwave.gps.vectors import ECEFToGPSCoordinateTransformation
+
 from flockwave.server.ext.signals import SignalsExtensionAPI
 from flockwave.server.registries.errors import RegistryFull
 from flockwave.server.utils.generic import overridden

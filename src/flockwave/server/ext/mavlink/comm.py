@@ -8,12 +8,12 @@ from functools import partial
 from typing import Any
 
 from compose import compose
-
 from flockwave.channels import (
     create_lossy_channel,
 )
 from flockwave.connections import Connection
 from flockwave.networking import format_socket_address
+
 from flockwave.server.comm import CommunicationManager
 
 from .channel import create_mavlink_message_channel

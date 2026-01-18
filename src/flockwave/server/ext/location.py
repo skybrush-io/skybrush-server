@@ -10,10 +10,10 @@ from math import inf
 from typing import Any, ClassVar
 
 from blinker import Signal
-
 from flockwave.gps.distances import haversine
 from flockwave.gps.vectors import GPSCoordinate
 from flockwave.logger import Logger
+
 from flockwave.server.types import Disposer
 
 

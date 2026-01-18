@@ -6,10 +6,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, cast
 
-from trio import CancelScope, sleep, sleep_forever
-
 from flockwave.gps.vectors import GPSCoordinate
 from flockwave.logger import Logger
+from trio import CancelScope, sleep, sleep_forever
+
 from flockwave.server.ext.base import Extension
 from flockwave.server.ext.location import Location
 from flockwave.server.model.uav import UAV

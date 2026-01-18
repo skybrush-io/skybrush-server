@@ -2,8 +2,9 @@ from collections.abc import Awaitable, Callable
 from time import time
 
 from flockwave.gps.vectors import GPSCoordinate
-from flockwave.server.model.metamagic import ModelMeta
 from flockwave.spec.schema import get_complex_object_schema
+
+from flockwave.server.model.metamagic import ModelMeta
 
 __all__ = ("Weather", "WeatherProvider")
 

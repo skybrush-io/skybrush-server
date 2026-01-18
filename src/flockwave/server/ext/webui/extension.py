@@ -14,11 +14,11 @@ from logging import Logger
 from operator import attrgetter
 from typing import TYPE_CHECKING, Any
 
+from flockwave.ext.errors import NotSupportedError
 from quart import abort, make_response, redirect, render_template, request, url_for
 from trio import sleep_forever
 from trio.lowlevel import current_root_task
 
-from flockwave.ext.errors import NotSupportedError
 from flockwave.server.utils import overridden
 from flockwave.server.utils.quart import make_blueprint
 
@@ -29,9 +29,9 @@ from .utils import (
 )
 
 if TYPE_CHECKING:
+    from flockwave.ext.manager import ExtensionManager
     from semver import Version
 
-    from flockwave.ext.manager import ExtensionManager
     from flockwave.server.app import SkybrushServer
 
 

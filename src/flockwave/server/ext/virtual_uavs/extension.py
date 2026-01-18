@@ -6,14 +6,14 @@ from functools import partial
 from random import uniform
 
 from colour import Color
-from trio import open_nursery, sleep, sleep_forever
-
 from flockwave.gps.vectors import (
     FlatEarthCoordinate,
     FlatEarthToGPSCoordinateTransformation,
 )
-from flockwave.server.registries.errors import RegistryFull
 from flockwave.spec.ids import make_valid_object_id
+from trio import open_nursery, sleep, sleep_forever
+
+from flockwave.server.registries.errors import RegistryFull
 
 from ..base import UAVExtension
 from .driver import VirtualUAV, VirtualUAVDriver

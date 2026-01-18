@@ -5,6 +5,7 @@ from contextlib import ExitStack, contextmanager
 from operator import attrgetter
 
 from flockwave.concurrency import AsyncBundler
+
 from flockwave.server.ext.base import Extension
 from flockwave.server.message_handlers import (
     create_mapper,

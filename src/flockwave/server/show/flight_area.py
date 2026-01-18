@@ -9,6 +9,7 @@ from flockwave.gps.vectors import (
     FlatEarthToGPSCoordinateTransformation,
     GPSCoordinate,
 )
+
 from flockwave.server.model.flight_area import (
     FlightAreaConfigurationRequest,
     FlightAreaPolygon,

@@ -29,10 +29,10 @@ from time import mktime, monotonic
 from typing import TYPE_CHECKING
 from wsgiref.handlers import format_date_time
 
-from trio import sleep
-
 from flockwave.connections import IPAddressAndPort
 from flockwave.networking import create_socket
+from trio import sleep
+
 from flockwave.server.ports import suggest_port_number_for_service, use_port
 from flockwave.server.registries import find_in_registry
 from flockwave.server.utils import overridden

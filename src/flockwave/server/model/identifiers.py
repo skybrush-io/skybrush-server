@@ -4,7 +4,6 @@ from typing import Generic, TypeVar
 
 from baseconv import base64
 from bidict import bidict
-
 from flockwave.spec.ids import make_valid_object_id
 
 __all__ = (

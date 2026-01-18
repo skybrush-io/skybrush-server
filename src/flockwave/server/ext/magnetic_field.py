@@ -4,10 +4,10 @@ Earth's magnetic field using the IGRF13 model.
 
 from datetime import datetime
 
+from flockwave.gps.vectors import GPSCoordinate
 from igrf_model import DateBoundIGRFModel, IGRFModel
 from trio import sleep_forever
 
-from flockwave.gps.vectors import GPSCoordinate
 from flockwave.server.model.weather import Weather
 
 last_model: DateBoundIGRFModel | None = None

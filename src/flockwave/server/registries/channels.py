@@ -14,7 +14,6 @@ from dataclasses import dataclass
 from typing import Generic, TypeVar
 
 from blinker import Signal
-
 from flockwave.connections import IPAddressAndPort
 
 from ..logger import log as base_log

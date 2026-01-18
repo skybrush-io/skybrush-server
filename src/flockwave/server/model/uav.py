@@ -14,9 +14,10 @@ from typing import (
 )
 
 from flockwave.gps.vectors import GPSCoordinate, PositionXYZ, VelocityNED, VelocityXYZ
+from flockwave.spec.schema import get_complex_object_schema
+
 from flockwave.server.errors import NotSupportedError
 from flockwave.server.logger import log as base_log
-from flockwave.spec.schema import get_complex_object_schema
 
 from .attitude import Attitude
 from .battery import BatteryInfo

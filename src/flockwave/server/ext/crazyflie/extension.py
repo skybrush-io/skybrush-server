@@ -7,10 +7,10 @@ from logging import Logger
 from struct import Struct
 from typing import TYPE_CHECKING, Any
 
+from flockwave.connections.factory import create_connection
 from trio import open_memory_channel, open_nursery
 from trio.abc import ReceiveChannel, SendChannel
 
-from flockwave.connections.factory import create_connection
 from flockwave.server.ext.base import UAVExtension
 from flockwave.server.model import ConnectionPurpose
 

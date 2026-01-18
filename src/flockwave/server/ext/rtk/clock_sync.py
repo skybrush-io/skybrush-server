@@ -7,7 +7,6 @@ from struct import Struct
 from typing import ClassVar
 
 from blinker import Signal
-
 from flockwave.gps.ubx.enums import UBXClass, UBXNAVSubclass
 from flockwave.gps.ubx.packet import UBXPacket
 

@@ -11,7 +11,6 @@ from itertools import islice
 from typing import TYPE_CHECKING, Any, Generic, TypeVar, cast, overload
 
 from blinker import Signal
-
 from flockwave.spec.schema import get_complex_object_schema
 
 from .client import Client

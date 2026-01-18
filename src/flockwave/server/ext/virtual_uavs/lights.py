@@ -10,9 +10,9 @@ from time import monotonic
 from typing import TYPE_CHECKING
 
 from colour import Color
+from flockwave.spec.errors import FlockwaveErrorCode
 
 from flockwave.server.show import LightPlayer
-from flockwave.spec.errors import FlockwaveErrorCode
 
 if TYPE_CHECKING:
     from .driver import VirtualUAV

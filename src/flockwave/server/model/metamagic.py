@@ -10,8 +10,9 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from typing import Any, TypeVar
 
-from flockwave.server.utils.validation import cached_validator_for
 from flockwave.spec.schema import Schema
+
+from flockwave.server.utils.validation import cached_validator_for
 
 __all__ = ("ModelMeta",)
 

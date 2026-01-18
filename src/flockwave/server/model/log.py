@@ -2,8 +2,9 @@ from base64 import b64encode
 from enum import Enum
 from typing import Any
 
-from flockwave.server.model.metamagic import ModelMeta
 from flockwave.spec.schema import get_complex_object_schema
+
+from flockwave.server.model.metamagic import ModelMeta
 
 from .utils import enum_to_json
 

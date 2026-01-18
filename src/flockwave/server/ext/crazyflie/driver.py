@@ -21,10 +21,12 @@ from aiocflib.crazyflie.mem import write_with_checksum
 from aiocflib.crtp.crtpstack import MemoryType
 from aiocflib.errors import TimeoutError
 from colour import Color
+from flockwave.gps.vectors import PositionXYZ, VelocityXYZ
+from flockwave.spec.errors import FlockwaveErrorCode
+from flockwave.spec.ids import make_valid_object_id
 from trio import Nursery, open_nursery, sleep
 from trio_util import periodic
 
-from flockwave.gps.vectors import PositionXYZ, VelocityXYZ
 from flockwave.server.command_handlers import (
     create_color_command_handler,
     create_parameter_command_handler,
@@ -45,8 +47,6 @@ from flockwave.server.show import (
 )
 from flockwave.server.types import GCSLogMessageSender
 from flockwave.server.utils import color_to_rgb8_triplet, nop, optional_float
-from flockwave.spec.errors import FlockwaveErrorCode
-from flockwave.spec.ids import make_valid_object_id
 
 from .crtp_extensions import (
     DRONE_SHOW_PORT,

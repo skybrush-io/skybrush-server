@@ -5,6 +5,7 @@ from time import monotonic
 from typing import Any
 
 from flockwave.gps.vectors import FlatEarthToGPSCoordinateTransformation
+
 from flockwave.server.model import Client, FlockwaveMessage
 
 from .metadata import ShowMetadata

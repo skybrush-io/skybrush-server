@@ -7,6 +7,7 @@ from operator import attrgetter, methodcaller
 from typing import Any
 
 from flockwave.concurrency import AsyncBundler
+
 from flockwave.server.ext.base import Extension
 from flockwave.server.message_handlers import (
     create_mapper,

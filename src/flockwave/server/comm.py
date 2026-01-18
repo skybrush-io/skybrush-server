@@ -20,6 +20,12 @@ from functools import partial
 from logging import Logger
 from typing import Any, ClassVar, Generic, TypeVar, cast
 
+from flockwave.channels import BroadcastMessageChannel, MessageChannel
+from flockwave.connections import (
+    Connection,
+    SupervisionFunction,
+    get_connection_capabilities,
+)
 from trio import (
     BrokenResourceError,
     ClosedResourceError,
@@ -29,13 +35,6 @@ from trio import (
 )
 from trio.abc import ReceiveChannel, SendChannel
 from trio_util import wait_all
-
-from flockwave.channels import BroadcastMessageChannel, MessageChannel
-from flockwave.connections import (
-    Connection,
-    SupervisionFunction,
-    get_connection_capabilities,
-)
 
 from .types import Disposer
 

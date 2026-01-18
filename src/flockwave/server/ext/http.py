@@ -11,11 +11,11 @@ from json import loads
 from logging import Logger
 from typing import Any
 
+from flockwave.encoders import Encoder
+from flockwave.encoders.json import create_json_encoder
 from quart import Response, abort, request
 from trio import Event, TooSlowError, fail_after, sleep_forever
 
-from flockwave.encoders import Encoder
-from flockwave.encoders.json import create_json_encoder
 from flockwave.server.model import CommunicationChannel, FlockwaveMessageBuilder
 from flockwave.server.utils import overridden
 from flockwave.server.utils.quart import make_blueprint

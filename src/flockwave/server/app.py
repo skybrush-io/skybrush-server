@@ -6,16 +6,16 @@ from inspect import isasyncgen, isawaitable
 from os import environ
 from typing import Any
 
+from flockwave.app_framework import DaemonApp
+from flockwave.app_framework.configurator import AppConfigurator, Configuration
+from flockwave.connections.base import ConnectionState
+from flockwave.gps.vectors import GPSCoordinate
 from platformdirs import AppDirs
 from trio import (
     BrokenResourceError,
     move_on_after,
 )
 
-from flockwave.app_framework import DaemonApp
-from flockwave.app_framework.configurator import AppConfigurator, Configuration
-from flockwave.connections.base import ConnectionState
-from flockwave.gps.vectors import GPSCoordinate
 from flockwave.server.ports import get_port_map, set_base_port
 from flockwave.server.utils import divide_by, rename_keys
 from flockwave.server.utils.packaging import is_packaged

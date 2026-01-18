@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from flockwave.app_framework.configurator import Configuration
+
     from flockwave.server.app import SkybrushServer
 
 __all__ = (

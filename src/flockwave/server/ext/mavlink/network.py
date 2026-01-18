@@ -19,10 +19,6 @@ from logging import Logger
 from time import time_ns
 from typing import TYPE_CHECKING, Any
 
-from trio import move_on_after, open_nursery, to_thread
-from trio.abc import ReceiveChannel
-from trio_util import periodic
-
 from flockwave.concurrency import Future, race
 from flockwave.connections import (
     Connection,
@@ -31,6 +27,10 @@ from flockwave.connections import (
     create_connection,
 )
 from flockwave.networking import find_interfaces_with_address
+from trio import move_on_after, open_nursery, to_thread
+from trio.abc import ReceiveChannel
+from trio_util import periodic
+
 from flockwave.server.comm import CommunicationManager
 from flockwave.server.model import ConnectionPurpose
 from flockwave.server.utils import nop, overridden

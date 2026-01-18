@@ -1,7 +1,6 @@
 from typing import Any
 
 from cachetools import LRUCache, cached
-
 from flockwave.spec.validator import (
     ValidationError,
     Validator,

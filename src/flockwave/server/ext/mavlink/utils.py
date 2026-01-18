@@ -5,6 +5,7 @@ from logging import DEBUG, ERROR, INFO, WARNING
 from typing import TYPE_CHECKING, NamedTuple
 
 from flockwave.gps.vectors import GPSCoordinate
+
 from flockwave.server.model.log import Severity
 
 from .enums import MAVFrame, MAVParamType, MAVState

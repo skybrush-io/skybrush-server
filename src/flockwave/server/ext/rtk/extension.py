@@ -14,10 +14,6 @@ from pathlib import Path
 from time import monotonic
 from typing import Any, ClassVar, cast
 
-from trio import CancelScope, open_memory_channel, open_nursery, sleep
-from trio.abc import SendChannel
-from trio_util import AsyncBool, periodic
-
 from flockwave.channels import ParserChannel
 from flockwave.connections import RWConnection, create_connection
 from flockwave.gps.enums import GNSSType
@@ -25,6 +21,10 @@ from flockwave.gps.formatting import format_gps_coordinate_as_nmea_gga_message
 from flockwave.gps.rtk import RTKMessageSet, RTKSurveySettings
 from flockwave.gps.ubx.rtk_config import UBXRTKBaseConfigurator
 from flockwave.gps.vectors import ECEFToGPSCoordinateTransformation, GPSCoordinate
+from trio import CancelScope, open_memory_channel, open_nursery, sleep
+from trio.abc import SendChannel
+from trio_util import AsyncBool, periodic
+
 from flockwave.server.ext.base import Extension
 from flockwave.server.ext.signals import SignalsExtensionAPI
 from flockwave.server.message_handlers import (

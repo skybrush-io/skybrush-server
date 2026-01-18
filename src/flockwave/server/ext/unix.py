@@ -15,12 +15,12 @@ from pathlib import Path
 from tempfile import gettempdir
 from typing import TYPE_CHECKING, Any, Generic, Protocol, TypeVar, cast
 
-from trio import CapacityLimiter, Lock, SocketStream, aclose_forcefully, open_nursery
-
 from flockwave.channels import ParserChannel
 from flockwave.connections import serve_unix
 from flockwave.encoders.json import create_json_encoder
 from flockwave.parsers.json import create_json_parser
+from trio import CapacityLimiter, Lock, SocketStream, aclose_forcefully, open_nursery
+
 from flockwave.server.model import Client, CommunicationChannel
 from flockwave.server.utils import overridden
 

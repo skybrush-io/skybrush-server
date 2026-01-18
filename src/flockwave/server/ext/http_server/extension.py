@@ -13,14 +13,14 @@ from dataclasses import dataclass
 from heapq import heapify, heappush
 from pathlib import Path
 
+from flockwave.ext.manager import ExtensionManager
+from flockwave.networking import can_bind_to_tcp_address, format_socket_address
 from hypercorn.config import Config as HyperConfig
 from hypercorn.trio import serve
 from quart import Blueprint, Quart, abort, redirect, request, url_for
 from quart_trio import QuartTrio
 from trio import current_time, sleep
 
-from flockwave.ext.manager import ExtensionManager
-from flockwave.networking import can_bind_to_tcp_address, format_socket_address
 from flockwave.server.ports import suggest_port_number_for_service, use_port
 from flockwave.server.types import Disposer
 from flockwave.server.utils.networking import get_known_apps_for_port

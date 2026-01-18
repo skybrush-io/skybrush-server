@@ -10,9 +10,8 @@ unloaded by the user.
 from functools import partial, wraps
 from inspect import iscoroutinefunction
 
-from trio import sleep_forever
-
 from flockwave.ext.manager import ExtensionManager
+from trio import sleep_forever
 
 #############################################################################
 

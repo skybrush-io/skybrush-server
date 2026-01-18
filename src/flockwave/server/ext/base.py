@@ -6,7 +6,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Generic, TypeVar
 
 from deprecated.sphinx import versionadded
-
 from flockwave.ext.base import ExtensionBase
 
 if TYPE_CHECKING:

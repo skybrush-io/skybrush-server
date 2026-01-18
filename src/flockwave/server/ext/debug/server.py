@@ -6,6 +6,7 @@ from functools import partial
 from logging import Logger
 from math import inf
 
+from flockwave.networking import format_socket_address
 from trio import (
     BrokenResourceError,
     TooSlowError,
@@ -15,7 +16,6 @@ from trio import (
 )
 from trio.abc import ReceiveChannel, Stream
 
-from flockwave.networking import format_socket_address
 from flockwave.server.utils import overridden
 from flockwave.server.utils.networking import serve_tcp_and_log_errors
 

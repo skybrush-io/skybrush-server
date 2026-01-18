@@ -8,11 +8,11 @@ from collections.abc import Callable, Sequence
 from logging import Logger
 from typing import TYPE_CHECKING, Any
 
-from trio import TooSlowError, fail_after
-
 from flockwave.connections import create_connection
 from flockwave.connections.socket import UDPListenerConnection
 from flockwave.networking import format_socket_address
+from trio import TooSlowError, fail_after
+
 from flockwave.server.ports import suggest_port_number_for_service, use_port
 
 if TYPE_CHECKING:

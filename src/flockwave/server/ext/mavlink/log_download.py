@@ -4,6 +4,8 @@ from collections.abc import Callable
 from contextlib import aclosing
 from functools import partial
 
+from flockwave.concurrency import Future
+from flockwave.logger import Logger
 from trio import (
     MemoryReceiveChannel,
     MemorySendChannel,
@@ -15,8 +17,6 @@ from trio import (
     open_memory_channel,
 )
 
-from flockwave.concurrency import Future
-from flockwave.logger import Logger
 from flockwave.server.model.commands import Progress, ProgressEvents
 from flockwave.server.model.log import FlightLog, FlightLogKind, FlightLogMetadata
 

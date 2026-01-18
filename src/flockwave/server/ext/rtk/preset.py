@@ -9,6 +9,7 @@ from flockwave.gps.nmea import NMEAPacket
 from flockwave.gps.parser import create_gps_parser
 from flockwave.gps.rtcm import create_rtcm_encoder
 from flockwave.gps.rtcm.packets import RTCMPacket, RTCMV2Packet, RTCMV3Packet
+
 from flockwave.server.utils.serial import (
     describe_serial_port,
     describe_serial_port_configuration,

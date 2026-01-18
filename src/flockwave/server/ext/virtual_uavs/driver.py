@@ -11,9 +11,6 @@ from time import monotonic
 from typing import Any, NoReturn
 
 from colour import Color
-from trio import CancelScope, sleep
-from trio_util import periodic
-
 from flockwave.concurrency import delayed
 from flockwave.ext.manager import ExtensionAPIProxy
 from flockwave.gps.vectors import (
@@ -23,6 +20,10 @@ from flockwave.gps.vectors import (
     Vector3D,
     VelocityNED,
 )
+from flockwave.spec.errors import FlockwaveErrorCode
+from trio import CancelScope, sleep
+from trio_util import periodic
+
 from flockwave.server.command_handlers import (
     create_calibration_command_handler,
     create_color_command_handler,
@@ -50,7 +51,6 @@ from flockwave.server.show import (
     get_light_program_from_show_specification,
 )
 from flockwave.server.utils import color_to_rgb565
-from flockwave.spec.errors import FlockwaveErrorCode
 
 from .battery import VirtualBattery
 from .fw_upload import FIRMWARE_UPDATE_TARGET_ID

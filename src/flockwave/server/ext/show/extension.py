@@ -5,10 +5,10 @@ from logging import Logger
 from math import inf
 from typing import Any
 
+from flockwave.concurrency import CancellableTaskGroup
 from trio import Nursery, TooSlowError, fail_after, open_nursery, sleep_forever
 from trio_util import periodic
 
-from flockwave.concurrency import CancellableTaskGroup
 from flockwave.server.ext.base import Extension
 from flockwave.server.model.clock import Clock
 from flockwave.server.tasks import wait_for_dict_items, wait_until

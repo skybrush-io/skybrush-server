@@ -16,8 +16,6 @@ from json import loads
 from re import sub
 from typing import TYPE_CHECKING, Any
 
-from pynmea2 import parse as parse_nmea
-
 from flockwave.channels import ParserChannel
 from flockwave.channels.types import Parser
 from flockwave.connections import (
@@ -30,11 +28,13 @@ from flockwave.ext.manager import ExtensionAPIProxy
 from flockwave.gps.vectors import GPSCoordinate
 from flockwave.networking import format_socket_address
 from flockwave.parsers import create_line_parser
+from flockwave.spec.ids import make_valid_object_id
+from pynmea2 import parse as parse_nmea
+
 from flockwave.server.errors import NotSupportedError
 from flockwave.server.model import ConnectionPurpose
 from flockwave.server.registries.errors import RegistryFull
 from flockwave.server.utils.generic import overridden
-from flockwave.spec.ids import make_valid_object_id
 
 from .base import UAVExtension
 

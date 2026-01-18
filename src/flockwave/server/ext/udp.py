@@ -13,13 +13,13 @@ from functools import partial
 from logging import Logger
 from typing import TYPE_CHECKING, Any, Protocol
 
-from trio import CapacityLimiter, aclose_forcefully, open_nursery
-from trio.socket import SOCK_DGRAM
-
 from flockwave.connections import IPAddressAndPort
 from flockwave.encoders.json import create_json_encoder
 from flockwave.networking import create_socket, format_socket_address
 from flockwave.parsers.json import create_json_parser
+from trio import CapacityLimiter, aclose_forcefully, open_nursery
+from trio.socket import SOCK_DGRAM
+
 from flockwave.server.model import Client, CommunicationChannel
 from flockwave.server.ports import suggest_port_number_for_service, use_port
 from flockwave.server.utils import overridden

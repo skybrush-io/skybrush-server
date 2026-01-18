@@ -6,9 +6,9 @@ from contextlib import ExitStack, contextmanager
 from logging import Logger
 from typing import Any, cast
 
+from flockwave.concurrency.scheduler import Job, LateSubmissionError, Scheduler
 from trio import MemorySendChannel, WouldBlock, open_memory_channel
 
-from flockwave.concurrency.scheduler import Job, LateSubmissionError, Scheduler
 from flockwave.server.utils import overridden
 from flockwave.server.utils.formatting import format_timestamp_nicely
 

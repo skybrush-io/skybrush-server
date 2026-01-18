@@ -8,9 +8,8 @@ from typing import AsyncContextManager, ClassVar
 from aiocflib.crtp.broadcaster import Broadcaster
 from aiocflib.crtp.crtpstack import CRTPPort
 from aiocflib.utils.addressing import parse_radio_uri
-from trio import Event
-
 from flockwave.connections.base import TaskConnectionBase
+from trio import Event
 
 __all__ = ("CrazyradioConnection", "parse_radio_uri")
 

@@ -10,9 +10,9 @@ from time import monotonic
 from typing import ClassVar
 
 import httpx
+from flockwave.gps.vectors import GPSCoordinate
 from trio import Lock, TooSlowError, fail_after, sleep_forever
 
-from flockwave.gps.vectors import GPSCoordinate
 from flockwave.server.model.weather import Weather
 
 

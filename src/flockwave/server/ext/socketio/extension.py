@@ -15,10 +15,10 @@ from logging import Logger
 from typing import TYPE_CHECKING, Any
 from urllib.parse import parse_qs
 
-from trio import open_nursery, sleep_forever
-
 from flockwave.encoders.json import create_json_encoder
 from flockwave.networking import format_socket_address
+from trio import open_nursery, sleep_forever
+
 from flockwave.server.model import Client, CommunicationChannel
 
 from .vendor.socketio_v4 import TrioServer as TrioServerForSocketIOV4

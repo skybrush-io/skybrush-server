@@ -7,9 +7,9 @@ from enum import IntFlag
 from functools import partial, singledispatch
 from typing import TYPE_CHECKING, Any
 
+from flockwave.logger import Logger
 from trio import TooSlowError, fail_after
 
-from flockwave.logger import Logger
 from flockwave.server.model.geofence import (
     GeofenceCircle,
     GeofencePolygon,

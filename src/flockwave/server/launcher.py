@@ -8,10 +8,10 @@ import warnings
 import click
 import dotenv
 import trio
-
-from flockwave import logger
 from flockwave.app_framework.hacks import install_unraisable_hook
 from flockwave.app_framework.instrumentation import get_enabled_instruments
+
+from flockwave import logger
 
 from .logger import log
 from .utils.packaging import is_packaged

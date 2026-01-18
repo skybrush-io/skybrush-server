@@ -14,6 +14,8 @@ from logging import Logger
 from time import monotonic
 from typing import Any, Generic, TypeVar, overload
 
+from flockwave.concurrency import AsyncBundler
+from flockwave.connections import ConnectionState
 from trio import (
     BrokenResourceError,
     ClosedResourceError,
@@ -27,9 +29,6 @@ from trio import (
     open_nursery,
     sleep,
 )
-
-from flockwave.concurrency import AsyncBundler
-from flockwave.connections import ConnectionState
 
 from .logger import log as base_log
 

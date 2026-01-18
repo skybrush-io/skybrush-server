@@ -14,6 +14,11 @@ from json import JSONDecodeError
 from logging import Logger
 from typing import TYPE_CHECKING, Any, Generic, Protocol, TypeVar, cast
 
+from flockwave.channels import ParserChannel
+from flockwave.connections import IPAddressAndPort
+from flockwave.encoders.json import create_json_encoder
+from flockwave.networking import format_socket_address
+from flockwave.parsers.json import create_json_parser
 from trio import (
     BrokenResourceError,
     CapacityLimiter,
@@ -24,11 +29,6 @@ from trio import (
     open_nursery,
 )
 
-from flockwave.channels import ParserChannel
-from flockwave.connections import IPAddressAndPort
-from flockwave.encoders.json import create_json_encoder
-from flockwave.networking import format_socket_address
-from flockwave.parsers.json import create_json_parser
 from flockwave.server.model import Client, CommunicationChannel
 from flockwave.server.ports import suggest_port_number_for_service, use_port
 from flockwave.server.utils import overridden

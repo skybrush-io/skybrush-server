@@ -14,8 +14,6 @@ from typing import (
     AsyncIterator,
     Iterable,
     Sequence,
-    Type,
-    Union,
     cast,
 )
 
@@ -482,7 +480,7 @@ class ArduPilot(Autopilot):
             )
 
     def decode_param_from_wire_representation(
-        self, value: Union[int, float], type: MAVParamType
+        self, value: int | float, type: MAVParamType
     ) -> float:
         # ArduCopter does not implement the MAVLink specification correctly and
         # requires all parameter values to be sent as floats, no matter what
@@ -492,7 +490,7 @@ class ArduPilot(Autopilot):
         return float(value)
 
     def encode_param_to_wire_representation(
-        self, value: Union[int, float], type: MAVParamType
+        self, value: int | float, type: MAVParamType
     ) -> float:
         # ArduCopter does not implement the MAVLink specification correctly and
         # requires all parameter values to be sent as floats, no matter what
@@ -695,7 +693,7 @@ class ArduPilot(Autopilot):
 
 
 def extend_custom_modes(
-    super: Type[ArduPilot], vehicle_type: int | MAVType, _new_modes: FlightModeMap
+    super: type[ArduPilot], vehicle_type: int | MAVType, _new_modes: FlightModeMap
 ):
     """Helper function to extend the custom modes of an Autopilot_ subclass
     with new modes.

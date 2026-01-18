@@ -13,7 +13,6 @@ from typing import (
     Iterable,
     Optional,
     Sequence,
-    Union,
 )
 
 from flockwave.app_framework import DaemonApp
@@ -699,7 +698,7 @@ class SkybrushServer(DaemonApp):
     def find_uav_by_id(
         self,
         uav_id: str,
-        response: Optional[Union[FlockwaveResponse, FlockwaveNotification]] = None,
+        response: Optional[FlockwaveResponse | FlockwaveNotification] = None,
     ) -> Optional[UAV]:
         """Finds the UAV with the given ID in the object registry or registers
         a failure in the given response object if there is no UAV with the
@@ -976,7 +975,7 @@ class SkybrushServer(DaemonApp):
     def _find_connection_by_id(
         self,
         connection_id: str,
-        response: Optional[Union[FlockwaveResponse, FlockwaveNotification]] = None,
+        response: Optional[FlockwaveResponse | FlockwaveNotification] = None,
     ) -> Optional[ConnectionRegistryEntry]:
         """Finds the connection with the given ID in the connection registry
         or registers a failure in the given response object if there is no
@@ -1002,7 +1001,7 @@ class SkybrushServer(DaemonApp):
     def _find_object_by_id(
         self,
         object_id: str,
-        response: Optional[Union[FlockwaveResponse, FlockwaveNotification]] = None,
+        response: Optional[FlockwaveResponse | FlockwaveNotification] = None,
     ) -> Optional[ModelObject]:
         """Finds the object with the given ID in the object registry or registers
         a failure in the given response object if there is no object with the

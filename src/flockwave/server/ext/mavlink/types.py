@@ -14,7 +14,6 @@ from typing import (
     Optional,
     Protocol,
     Sequence,
-    Union,
     TYPE_CHECKING,
     overload,
 )
@@ -49,9 +48,8 @@ we cannot refer to an exact Python class here because that depends on the
 dialect that we will be parsing.
 """
 
-MAVLinkMessageMatcher = Optional[
-    Union[dict[str, Any], Callable[[MAVLinkMessage], bool]]
-]
+MAVLinkMessageMatcher = Optional[dict[str, Any] | Callable[[MAVLinkMessage], bool]]
+
 """Type specification for MAVLink message matchers. A message matcher is either
 `None` (meaning to match all messages), a dictionary containing the required
 field name-value pairs in a message that we need to consider the message to
@@ -244,7 +242,7 @@ class MAVLinkStatusTextTargetSpecification:
             return None
 
     @staticmethod
-    def _severity_to_json(x: int) -> Union[int, str]:
+    def _severity_to_json(x: int) -> int | str:
         try:
             severity = MAVSeverity(x)
         except Exception:
@@ -413,7 +411,7 @@ class MAVLinkNetworkSpecification:
         }
 
     @staticmethod
-    def _process_routing_entry(entry: Union[int, str, Sequence[int]]) -> list[int]:
+    def _process_routing_entry(entry: int | str | Sequence[int]) -> list[int]:
         """Helper function for processing entries in the ``routing`` configuration
         key and constructor parameter.
         """

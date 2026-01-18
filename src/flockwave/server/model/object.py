@@ -10,7 +10,6 @@ from typing import (
     Callable,
     Iterator,
     Optional,
-    Type,
     TypeVar,
     TYPE_CHECKING,
     overload,
@@ -22,7 +21,7 @@ log = base_log.getChild("object")
 
 __all__ = ("ModelObject", "register", "registered", "unregister")
 
-_type_registry: dict[str, Type["ModelObject"]] = {}
+_type_registry: dict[str, type["ModelObject"]] = {}
 
 if TYPE_CHECKING:
     from .devices import ObjectNode
@@ -37,7 +36,7 @@ class ModelObject(ABC):
     """
 
     @staticmethod
-    def resolve_type(type: str) -> Optional[Type["ModelObject"]]:
+    def resolve_type(type: str) -> Optional[type["ModelObject"]]:
         """Resolves the given model object type specified as a string (as it
         appears in the Flockwave protocol) into the corresponding model object
         class, or `None` if the given type does not map to a model object class.
@@ -63,16 +62,16 @@ class ModelObject(ABC):
 @overload
 def register(
     type: str,
-) -> Callable[[Type[T]], Type[T]]: ...
+) -> Callable[[type[T]], type[T]]: ...
 
 
 @overload
-def register(type: str, cls: Type[T]) -> None: ...
+def register(type: str, cls: type[T]) -> None: ...
 
 
 def register(
-    type: str, cls: Optional[Type[T]] = None
-) -> Optional[Callable[[Type[T]], Type[T]]]:
+    type: str, cls: Optional[type[T]] = None
+) -> Optional[Callable[[type[T]], type[T]]]:
     """Registers a ModelObject_ subclass or factory in the Flockwave messaging
     system with a given type name.
 
@@ -115,7 +114,7 @@ def unregister(type: str) -> None:
 
 
 @contextmanager
-def registered(type: str, cls: Type[ModelObject]) -> Iterator[None]:
+def registered(type: str, cls: type[ModelObject]) -> Iterator[None]:
     """Context manager that temporarily registers the class in the Flockwave
     messaging system with a given type name, and unregisters the class
     when exiting the context.

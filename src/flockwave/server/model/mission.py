@@ -7,7 +7,7 @@ from collections import Counter
 from dataclasses import dataclass, field, InitVar
 from enum import Enum
 from itertools import chain
-from typing import Any, Optional, Sequence, TypedDict, Union
+from typing import Any, Optional, Sequence, TypedDict
 
 from flockwave.server.show import (
     get_flight_area_configuration_from_show_specification,
@@ -1121,7 +1121,7 @@ class SetParameterMissionCommand(MissionCommand):
     name: str
     """The name of the parameter to set."""
 
-    value: Union[str, int, float, bool]
+    value: str | int | float | bool
     """The value of the parameter to set."""
 
     @classmethod

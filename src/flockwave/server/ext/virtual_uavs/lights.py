@@ -7,7 +7,7 @@ from __future__ import annotations
 from abc import abstractmethod
 from colour import Color
 from time import monotonic
-from typing import Callable, Iterable, Optional, Union, TYPE_CHECKING
+from typing import Callable, Iterable, Optional, TYPE_CHECKING
 
 from flockwave.spec.errors import FlockwaveErrorCode
 from flockwave.server.show import LightPlayer
@@ -51,7 +51,7 @@ class LightController:
 
 
 #: Type specification for objects that can be converted into a light module
-LightModuleLike = Union[LightController, LightModule]
+LightModuleLike = LightController | LightModule
 
 
 class ModularLightController(LightController):
@@ -70,7 +70,7 @@ class ModularLightController(LightController):
         for module in modules or []:
             self.add_module(module)
 
-    def add_module(self, module: Union[LightController, LightModule]) -> None:
+    def add_module(self, module: LightController | LightModule) -> None:
         """Adds a new module to the light controller."""
         if isinstance(module, LightController):
             module = module.evaluate

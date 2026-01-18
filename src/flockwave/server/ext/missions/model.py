@@ -14,7 +14,6 @@ from typing import (
     ClassVar,
     Generic,
     Optional,
-    Union,
     TypeVar,
 )
 
@@ -357,7 +356,7 @@ class Mission(ModelObject):
         self.notify_updated()
 
     @final
-    def update_start_time(self, start_time: Optional[Union[float, datetime]]):
+    def update_start_time(self, start_time: Optional[float | datetime]):
         """Updates or clears the start time of the missions.
 
         This function must be called only when the mission is in the ``NEW``
@@ -548,7 +547,7 @@ class MissionType(Generic[T], ABC):
 
     def create_plan(
         self, parameters: dict[str, Any]
-    ) -> Union[MissionPlan, Awaitable[MissionPlan]]:
+    ) -> MissionPlan | Awaitable[MissionPlan]:
         """Creates a new mission plan with the given planning parameters.
 
         Parameters:

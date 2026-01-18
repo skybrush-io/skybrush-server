@@ -4,7 +4,6 @@ from typing import (
     Callable,
     Iterable,
     Optional,
-    Union,
     TypeVar,
     TYPE_CHECKING,
     overload,
@@ -35,13 +34,13 @@ T = TypeVar("T")
 
 GenericMapperMessageFactory = Callable[
     ["MessageHub", Iterable[str], Optional[FlockwaveMessage], Optional[Client]],
-    Union[FlockwaveNotification, FlockwaveResponse],
+    FlockwaveNotification | FlockwaveResponse,
 ]
 """Type alias for SOMETHING-INF-style Flockwave message factory functions"""
 
-MessageBodyTransformationSpec = Union[
-    Callable[[Any], Any], dict[str, Callable[[Any], Any]], None
-]
+MessageBodyTransformationSpec = (
+    Callable[[Any], Any] | dict[str, Callable[[Any], Any]] | None
+)
 """Type alias for objects that specify how to transform the body of a
 message before it is forwarded to a command handler function.
 
@@ -56,7 +55,7 @@ The transformation object may also be ``None``, representing the identity
 transformation.
 """
 
-RegistryOrRegistryGetter = Union[Registry[T], Callable[[], Optional[Registry[T]]], None]
+RegistryOrRegistryGetter = Registry[T] | Callable[[], Optional[Registry[T]]] | None
 """Type alias for registries or getter functions that return a registry when called
 with no arguments.
 """
@@ -98,7 +97,7 @@ def create_mapper(
     context_getter: Optional[Callable[[Optional[FlockwaveMessage]], C]] = None,
     key: str = "result",
     filter: Optional[Callable[[T], bool]] = None,
-    getter: Optional[Union[Callable[[T], Any], Callable[[T, C], Any]]] = None,
+    getter: Optional[Callable[[T], Any] | Callable[[T, C], Any]] = None,
     description: str = "item",
     add_object_id: bool = False,
     cmd_manager: Optional["CommandExecutionManager"] = None,
@@ -189,7 +188,7 @@ def create_mapper(
         ids: Iterable[str],
         in_response_to: Optional[FlockwaveMessage] = None,
         sender: Optional[Client] = None,
-    ) -> Union[FlockwaveNotification, FlockwaveResponse]:
+    ) -> FlockwaveNotification | FlockwaveResponse:
         results = {}
 
         body: dict[str, Any] = {

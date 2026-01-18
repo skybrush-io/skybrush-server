@@ -2,7 +2,7 @@
 
 from colour import Color
 from inspect import iscoroutinefunction
-from typing import Awaitable, Callable, Optional, Union
+from typing import Awaitable, Callable, Optional
 
 from flockwave.server.model.uav import UAV, UAVDriver
 
@@ -10,7 +10,7 @@ __all__ = ("create_color_command_handler",)
 
 
 def _parse_color(
-    red: Optional[Union[str, int]] = None,
+    red: Optional[str | int] = None,
     green: Optional[int] = None,
     blue: Optional[int] = None,
 ) -> Optional[Color]:
@@ -44,7 +44,7 @@ def _parse_color(
 async def _color_command_handler(
     driver: UAVDriver,
     uav: UAV,
-    red: Optional[Union[str, int]] = None,
+    red: Optional[str | int] = None,
     green: Optional[int] = None,
     blue: Optional[int] = None,
 ) -> str:
@@ -70,7 +70,7 @@ async def _color_command_handler(
 
 
 def create_color_command_handler() -> Callable[
-    [UAVDriver, UAV, Optional[Union[str, int]], Optional[int], Optional[int]],
+    [UAVDriver, UAV, Optional[str | int], Optional[int], Optional[int]],
     Awaitable[str],
 ]:
     """Creates a generic async command handler function that allows the user to

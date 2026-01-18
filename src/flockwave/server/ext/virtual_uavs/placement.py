@@ -11,7 +11,7 @@ GPS coordinates using a FlatEarthToGPSCoordinateTransformation_ object.
 
 from functools import partial
 from math import cos, floor, pi, radians, sin
-from typing import Callable, Optional, Union
+from typing import Callable, Optional
 
 from flockwave.gps.vectors import Vector3D
 
@@ -143,7 +143,7 @@ def place_drones_on_circle(
 def place_drones_on_grid(
     n: int,
     *,
-    spacing: Union[float, tuple[float, float]] = 5,
+    spacing: float | tuple[float, float] = 5,
     rows: Optional[float] = None,
 ) -> list[Vector3D]:
     """Returns coordinates to place the given number of drones in a regular

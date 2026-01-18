@@ -1,7 +1,7 @@
 """Mixin classes for other model objects."""
 
 from datetime import datetime
-from typing import Optional, Union
+from typing import Optional
 
 from flockwave.server.utils import get_current_unix_timestamp_msec, is_timezone_aware
 
@@ -9,7 +9,7 @@ __all__ = ("TimestampMixin",)
 
 
 #: Type specification for timestamps that we accept in a TimestampMixin
-TimestampLike = Union[datetime, int]
+TimestampLike = datetime | int
 
 
 def _timestamplike_to_timestamp(timestamp: Optional[TimestampLike]) -> int:

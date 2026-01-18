@@ -10,7 +10,7 @@ from base64 import b64decode
 from enum import Enum
 from pathlib import Path
 from trio import sleep_forever
-from typing import Callable, Mapping, Optional, Union
+from typing import Callable, Mapping, Optional
 
 from flockwave.server.model.authentication import (
     AuthenticationMethod,
@@ -73,7 +73,7 @@ def create_dict_validator(
     return validator
 
 
-def create_htpasswd_validator(filename: Union[Path, str]) -> PasswordValidator:
+def create_htpasswd_validator(filename: Path | str) -> PasswordValidator:
     """Password validator factory that validates passwords using the given
     htpasswd file.
 

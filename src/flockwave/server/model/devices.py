@@ -16,10 +16,8 @@ from typing import (
     Generic,
     Iterable,
     Optional,
-    Type,
     TypeVar,
     TYPE_CHECKING,
-    Union,
 )
 
 from flockwave.spec.schema import get_complex_object_schema
@@ -52,7 +50,7 @@ class ChannelOperation(Enum):
     WRITE = "write"
 
 
-_channel_type_mapping: dict[Type, str] = {
+_channel_type_mapping: dict[type, str] = {
     int: "number",
     float: "number",
     str: "string",
@@ -76,7 +74,7 @@ class ChannelType(Enum):
     VIDEO = "video"
 
     @classmethod
-    def from_object(cls, obj: Union["ChannelType", Type]):
+    def from_object(cls, obj: ChannelType | type):
         """Converts a Python type object to a corresponding channel type
         object. Also accepts ChannelType objects as input, in which case
         the object is returned as is.
@@ -515,7 +513,7 @@ class DeviceNode(DeviceTreeNodeBase):
     def add_channel(
         self,
         id: str,
-        type: Union[Type, ChannelType],
+        type: type | ChannelType,
         *,
         initial_value: Any = None,
         unit: Optional[str] = None,
@@ -663,7 +661,7 @@ class DeviceTreePath:
     style.
     """
 
-    def __init__(self, path: Union[str, "DeviceTreePath"] = "/"):
+    def __init__(self, path: str | DeviceTreePath = "/"):
         """Constructor.
 
         Parameters:
@@ -767,7 +765,7 @@ class DeviceTree:
         """The root node of the device tree."""
         return self._root
 
-    def resolve(self, path: Union[str, DeviceTreePath]) -> DeviceTreeNodeBase:
+    def resolve(self, path: str | DeviceTreePath) -> DeviceTreeNodeBase:
         """Resolves the given path in the tree and returns the node that
         corresponds to the given path.
 
@@ -898,7 +896,7 @@ class DeviceTreeMutator:
         if self._updated_nodes:
             self.callback(self._updated_nodes)
 
-    def update(self, node, new_value):
+    def update(self, node: str | DeviceTreePath | ChannelNode, new_value: object):
         """Updates the value of a channel node at the given path with the
         given new value.
 
@@ -907,10 +905,9 @@ class DeviceTreeMutator:
         the channel will _not_ be modified.
 
         Parameters:
-            node (Union[str, DeviceTreePath, ChannelNode]): the path
-                of the channel node to modify (either as a string or as a
-                DeviceTreePath_), or the channel node itself.
-            new_value (object): the new value of the channel
+            node: the path of the channel node to modify (either as a
+                string or as a DeviceTreePath_), or the channel node itself.
+            new_value: the new value of the channel
         """
         if not isinstance(node, DeviceTreeNodeBase):
             node = self.tree.resolve(node)
@@ -1027,7 +1024,7 @@ class DeviceTreeSubscriptionManager:
             path._parts.pop()
 
     def _find_device_tree_node_by_path(
-        self, path: Union[str, DeviceTreePath], response=None
+        self, path: str | DeviceTreePath, response=None
     ) -> Optional[DeviceTreeNodeBase]:
         """Finds a node in the global device tree based on a device tree
         path or registers a failure in the given response object if there
@@ -1175,7 +1172,7 @@ class DeviceTreeSubscriptionManager:
         return result
 
     def subscribe(
-        self, client: Client, path: Union[str, DeviceTreePath], lazy: bool = False
+        self, client: Client, path: str | DeviceTreePath, lazy: bool = False
     ) -> None:
         """Subscribes the given client to the given device tree path.
 
@@ -1202,7 +1199,7 @@ class DeviceTreeSubscriptionManager:
                 raise
 
     def unsubscribe(
-        self, client: Client, path: Union[str, DeviceTreePath], force: bool = False
+        self, client: Client, path: str | DeviceTreePath, force: bool = False
     ) -> None:
         """Unsubscribes the given client from the given device tree path.
 

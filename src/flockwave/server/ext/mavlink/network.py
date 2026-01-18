@@ -27,7 +27,6 @@ from typing import (
     Iterator,
     Optional,
     Sequence,
-    Union,
     TYPE_CHECKING,
 )
 
@@ -274,7 +273,7 @@ class MAVLinkNetwork:
     @contextmanager
     def expect_packet(
         self,
-        type: Union[int, str, MAVMessageType],
+        type: int | str | MAVMessageType,
         params: MAVLinkMessageMatcher = None,
         system_id: Optional[int] = None,
     ) -> Iterator[Future[MAVLinkMessage]]:
@@ -575,7 +574,7 @@ class MAVLinkNetwork:
         wait_for_response: Optional[tuple[str, MAVLinkMessageMatcher]] = None,
         wait_for_one_of: Optional[dict[str, MAVLinkMessageSpecification]] = None,
         channel: Optional[str] = None,
-    ) -> Union[None, MAVLinkMessage, tuple[str, MAVLinkMessage]]:
+    ) -> MAVLinkMessage | tuple[str, MAVLinkMessage] | None:
         """Sends a message to the given UAV and optionally waits for a matching
         response.
 
@@ -1079,7 +1078,7 @@ class MAVLinkNetwork:
             return
 
         def register_by_index(
-            alias: str, index: Optional[Union[int, Iterable[int]]]
+            alias: str, index: Optional[int | Iterable[int]]
         ) -> list[str]:
             if index is None:
                 index = 0

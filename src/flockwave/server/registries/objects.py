@@ -12,9 +12,7 @@ from typing import (
     Iterable,
     Iterator,
     Optional,
-    Type,
     TypeVar,
-    Union,
 )
 
 from flockwave.server.model import ModelObject
@@ -104,7 +102,7 @@ class ObjectRegistry(RegistryBase[ModelObject]):
             self.add(factory(id))
         return cast(T, self.find_by_id(id))
 
-    def ids_by_type(self, cls: Union[str, Type[ModelObject]]) -> Iterable[str]:
+    def ids_by_type(self, cls: str | type[ModelObject]) -> Iterable[str]:
         """Returns an iterable that iterates over all the identifiers in the
         registry where the associated object is an instance of the given type.
 
@@ -123,9 +121,7 @@ class ObjectRegistry(RegistryBase[ModelObject]):
                 if isinstance(value, resolved_cls)
             )
 
-    def ids_by_types(
-        self, classes: Iterable[Union[Type[ModelObject], str]]
-    ) -> Iterable[str]:
+    def ids_by_types(self, classes: Iterable[type[ModelObject] | str]) -> Iterable[str]:
         """Returns an iterable that iterates over all the identifiers in the
         registry where the associated object matches the given predicate.
 

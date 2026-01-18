@@ -295,11 +295,11 @@ def _is_rtcm_packet(packet: GPSPacket) -> bool:
 
 def _process_rtcm_packet_id_list(
     id_list: Optional[Iterable[str]],
-) -> Optional[dict[Type[RTCMPacket], set[int]]]:
+) -> Optional[dict[type[RTCMPacket], set[int]]]:
     if id_list is None:
         return None
 
-    result: dict[Type[RTCMPacket], set[int]] = {
+    result: dict[type[RTCMPacket], set[int]] = {
         RTCMV2Packet: set(),
         RTCMV3Packet: set(),
     }

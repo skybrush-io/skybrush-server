@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import IntEnum
-from typing import Optional, Union
+from typing import Optional
 
 
 __all__ = ("GPSFix", "GPSFixType", "ScaledLatLonPair")
@@ -23,10 +23,6 @@ class GPSFixType(IntEnum):
     RTK_FLOAT = 5
     RTK_FIXED = 6
     STATIC = 7
-
-
-#: Type alias for objects that can be used to update a GPSFix object
-GPSFixLike = Union[int, GPSFixType, "GPSFix"]
 
 
 @dataclass
@@ -86,3 +82,7 @@ class GPSFix:
             self.num_satellites = other.num_satellites
             self.horizontal_accuracy = other.horizontal_accuracy
             self.vertical_accuracy = other.vertical_accuracy
+
+
+#: Type alias for objects that can be used to update a GPSFix object
+GPSFixLike = int | GPSFixType | GPSFix

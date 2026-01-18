@@ -1,7 +1,7 @@
 from math import inf
 from trio import fail_after, TooSlowError
 from trio_util import RepeatedEvent
-from typing import Any, Generic, Optional, TypeVar, Union, overload
+from typing import Any, Generic, Optional, TypeVar, overload
 
 from flockwave.server.model.commands import (
     Progress,
@@ -99,7 +99,7 @@ class ProgressReporter(Generic[R, S]):
         """Returns whether the `close()` method has already been called."""
         return self._done
 
-    def fail(self, message: Optional[Union[str, Exception]] = None):
+    def fail(self, message: Optional[str | Exception] = None):
         """Closes the progress reporter and injects an exception into the async
         generators that are currently waiting for an update in the `updates()`
         method.

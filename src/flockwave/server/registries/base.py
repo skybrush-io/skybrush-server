@@ -13,7 +13,6 @@ from typing import (
     Optional,
     TypeVar,
     TYPE_CHECKING,
-    Union,
 )
 
 if TYPE_CHECKING:
@@ -166,7 +165,7 @@ def find_in_registry(
     entry_id: str,
     *,
     predicate: Optional[Callable[[T], bool]] = None,
-    response: Optional[Union["FlockwaveNotification", "FlockwaveResponse"]] = None,
+    response: Optional[FlockwaveNotification | FlockwaveResponse] = None,
     failure_reason: Optional[str] = None,
 ) -> Optional[T]:
     """Finds an entry in the given registry with the given ID or

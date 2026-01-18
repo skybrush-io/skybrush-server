@@ -10,7 +10,6 @@ unloaded by the user.
 from functools import partial, wraps
 from inspect import iscoroutinefunction
 from trio import sleep_forever
-from typing import Dict
 
 from flockwave.ext.manager import ExtensionManager
 
@@ -224,7 +223,7 @@ async def reload_extension(ext: ExtensionManager, identifier: str):
 
 
 async def set_configuration_of_extension(
-    ext: ExtensionManager, identifier: str, configuration: Dict
+    ext: ExtensionManager, identifier: str, configuration: dict
 ):
     """Sets the configuration of the given extension in the extension manager.
 

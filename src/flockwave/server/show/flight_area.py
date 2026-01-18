@@ -2,7 +2,7 @@
 Skybrush-related flight area specifications, until we find a better place for them.
 """
 
-from typing import Dict, Optional, Sequence, Union
+from typing import Optional, Sequence
 
 from flockwave.gps.vectors import (
     FlatEarthCoordinate,
@@ -24,7 +24,7 @@ __all__ = ("get_flight_area_configuration_from_show_specification",)
 
 
 def get_flight_area_configuration_from_show_specification(
-    show: Dict,
+    show: dict,
 ) -> FlightAreaConfigurationRequest:
     result = FlightAreaConfigurationRequest()
 
@@ -61,7 +61,7 @@ def get_flight_area_configuration_from_show_specification(
 
 
 def _parse_points(
-    points: Sequence[list[Union[int, float]]],
+    points: Sequence[list[int | float]],
     coordinate_system: Optional[FlatEarthToGPSCoordinateTransformation],
 ) -> list[GPSCoordinate]:
     """Parses a list of points from the flight area specification using the given
@@ -83,7 +83,7 @@ def _parse_points(
 
 
 def _parse_polygon(
-    polygon: Dict, coordinate_system: Optional[FlatEarthToGPSCoordinateTransformation]
+    polygon: dict, coordinate_system: Optional[FlatEarthToGPSCoordinateTransformation]
 ) -> FlightAreaPolygon:
     """Parses a polygon from the flight area specification using the given optional
     local-to-global coordinate system and returns the parsed polygon.

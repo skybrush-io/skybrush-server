@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from heapq import heappush, heappop
 from logging import ERROR, WARNING, INFO, DEBUG
-from typing import NamedTuple, Optional, Union, TYPE_CHECKING
+from typing import NamedTuple, Optional, TYPE_CHECKING
 
 from flockwave.gps.vectors import GPSCoordinate
 from flockwave.server.model.log import Severity
@@ -61,9 +61,7 @@ def can_communicate_infer_from_heartbeat(message: Optional[MAVLinkMessage]) -> b
     )
 
 
-def decode_param_from_wire_representation(
-    value, type: MAVParamType
-) -> Union[int, float]:
+def decode_param_from_wire_representation(value, type: MAVParamType) -> int | float:
     """Decodes the given value when it is interpreted as a given MAVLink type,
     received from a MAVLink parameter retrieval command.
 

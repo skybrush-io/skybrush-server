@@ -15,7 +15,6 @@ from typing import (
     Iterable,
     Optional,
     Sequence,
-    Union,
 )
 
 from .trajectory import TrajectorySegment, TrajectorySpecification
@@ -82,7 +81,7 @@ class SkybrushBinaryFileBlock:
     def __init__(
         self,
         type: int,
-        contents: Union[Optional[bytes], Callable[[], Awaitable[bytes]]],
+        contents: Optional[bytes] | Callable[[], Awaitable[bytes]],
     ):
         """Constructor.
 
@@ -266,9 +265,7 @@ class SkybrushBinaryShowFile:
         # await self._fp.write(header)
         # await self._fp.write(body)
 
-    async def add_comment(
-        self, comment: Union[str, bytes], encoding: str = "utf-8"
-    ) -> None:
+    async def add_comment(self, comment: str | bytes, encoding: str = "utf-8") -> None:
         """Adds a new comment block to the end of the Skybrush file.
 
         Parameters:

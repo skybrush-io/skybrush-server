@@ -12,7 +12,6 @@ from typing import (
     Iterable,
     Optional,
     TypedDict,
-    Union,
     TypeVar,
     TYPE_CHECKING,
 )
@@ -360,9 +359,9 @@ class UAVBase(UAV, Generic[TDriver]):
         gps: Optional[GPSFixLike] = None,
         battery: Optional[BatteryInfo] = None,
         light: Optional[int] = None,
-        errors: Optional[Union[int, Iterable[int]]] = None,
+        errors: Optional[int | Iterable[int]] = None,
         debug: Optional[bytes] = None,
-        rssi: Optional[Union[int, Iterable[int]]] = None,
+        rssi: Optional[int | Iterable[int]] = None,
     ):
         """Updates the status information of the UAV.
 
@@ -1072,7 +1071,7 @@ class UAVDriver(Generic[TUAV], ABC):
         handler: Callable[..., TResult],
         broadcaster: Optional[Callable[..., TResult]] = None,
         **kwds,
-    ) -> Union[TResult, Exception, dict[TUAV, Union[Exception, TResult]]]:
+    ) -> TResult | Exception | dict[TUAV, Exception | TResult]:
         """Common implementation for the body of several ``send_*_signal()``
         and similar methods in this class.
 
@@ -1188,7 +1187,7 @@ class UAVDriver(Generic[TUAV], ABC):
 
     def _enter_low_power_mode_single(
         self, uav: TUAV, *, transport: Optional[TransportOptions] = None
-    ) -> Union[None, Awaitable[None]]:
+    ) -> None | Awaitable[None]:
         """Asks the driver to request a single UAV to switch to low-power mode.
 
         May return an awaitable if sending the request takes a longer time.
@@ -1213,7 +1212,7 @@ class UAVDriver(Generic[TUAV], ABC):
 
     def _get_log_list_single(
         self, uav: TUAV
-    ) -> Union[list[FlightLogMetadata], Awaitable[list[FlightLogMetadata]]]:
+    ) -> list[FlightLogMetadata] | Awaitable[list[FlightLogMetadata]]:
         """Asks the driver to retrieve the list of flight logs from a single
         UAV managed by this driver.
 
@@ -1253,7 +1252,7 @@ class UAVDriver(Generic[TUAV], ABC):
 
     def _resume_from_low_power_mode_single(
         self, uav: TUAV, *, transport: Optional[TransportOptions] = None
-    ) -> Union[None, Awaitable[None]]:
+    ) -> None | Awaitable[None]:
         """Asks the driver to resume normal operation for a a single UAV that is
         now in low-power mode.
 
@@ -1279,7 +1278,7 @@ class UAVDriver(Generic[TUAV], ABC):
 
     def _request_preflight_report_single(
         self, uav: TUAV
-    ) -> Union[PreflightCheckInfo, Awaitable[PreflightCheckInfo]]:
+    ) -> PreflightCheckInfo | Awaitable[PreflightCheckInfo]:
         """Asks the driver to return a detailed report about the results of the
         preflight checks for a single UAV managed by this driver.
 
@@ -1300,7 +1299,7 @@ class UAVDriver(Generic[TUAV], ABC):
 
     def _request_version_info_single(
         self, uav: TUAV
-    ) -> Union[VersionInfo, Awaitable[VersionInfo]]:
+    ) -> VersionInfo | Awaitable[VersionInfo]:
         """Asks the driver to return a mapping from component names to the
         corresponding version numbers for a single UAV managed by this driver.
 
@@ -1321,7 +1320,7 @@ class UAVDriver(Generic[TUAV], ABC):
 
     def _send_fly_to_target_signal_single(
         self, uav: TUAV, target: GPSCoordinate
-    ) -> Union[None, Awaitable[None]]:
+    ) -> None | Awaitable[None]:
         """Asks the driver to send a "fly to target" signal to a single UAV
         managed by this driver.
 
@@ -1348,7 +1347,7 @@ class UAVDriver(Generic[TUAV], ABC):
 
     def _send_hover_signal_single(
         self, uav: TUAV, *, transport: Optional[TransportOptions] = None
-    ) -> Union[None, Awaitable[None]]:
+    ) -> None | Awaitable[None]:
         """Asks the driver to send a position hold signal to a single UAV
         managed by this driver.
 
@@ -1373,7 +1372,7 @@ class UAVDriver(Generic[TUAV], ABC):
 
     def _send_landing_signal_single(
         self, uav: TUAV, *, transport: Optional[TransportOptions] = None
-    ) -> Union[None, Awaitable[None]]:
+    ) -> None | Awaitable[None]:
         """Asks the driver to send a landing signal to a single UAV managed
         by this driver.
 
@@ -1402,7 +1401,7 @@ class UAVDriver(Generic[TUAV], ABC):
         duration: int,
         *,
         transport: Optional[TransportOptions] = None,
-    ) -> Union[None, Awaitable[None]]:
+    ) -> None | Awaitable[None]:
         """Asks the driver to send a light or sound emission signal to a
         single UAV managed by this driver.
 
@@ -1440,7 +1439,7 @@ class UAVDriver(Generic[TUAV], ABC):
         force: bool = False,
         *,
         transport: Optional[TransportOptions] = None,
-    ) -> Union[None, Awaitable[None]]:
+    ) -> None | Awaitable[None]:
         """Asks the driver to send a signal to start or stop the motors of the
         given UAVs, each of which are assumed to be managed by this driver.
 
@@ -1469,7 +1468,7 @@ class UAVDriver(Generic[TUAV], ABC):
 
     def _send_reset_signal_single(
         self, uav: TUAV, component: str, *, transport: Optional[TransportOptions] = None
-    ) -> Union[None, Awaitable[None]]:
+    ) -> None | Awaitable[None]:
         """Asks the driver to send a reset signal to a single UAV managed by
         this driver.
 
@@ -1496,7 +1495,7 @@ class UAVDriver(Generic[TUAV], ABC):
 
     def _send_return_to_home_signal_single(
         self, uav: TUAV, *, transport: Optional[TransportOptions] = None
-    ) -> Union[None, Awaitable[None]]:
+    ) -> None | Awaitable[None]:
         """Asks the driver to send a return-to-home signal to a single UAV
         managed by this driver.
 
@@ -1521,7 +1520,7 @@ class UAVDriver(Generic[TUAV], ABC):
 
     def _send_shutdown_signal_single(
         self, uav: TUAV, *, transport: Optional[TransportOptions] = None
-    ) -> Union[None, Awaitable[None]]:
+    ) -> None | Awaitable[None]:
         """Asks the driver to send a shutdown signal to a single UAV managed
         by this driver.
 
@@ -1550,7 +1549,7 @@ class UAVDriver(Generic[TUAV], ABC):
         *,
         scheduled: bool = False,
         transport: Optional[TransportOptions] = None,
-    ) -> Union[None, Awaitable[None]]:
+    ) -> None | Awaitable[None]:
         """Asks the driver to send a takeoff signal to a single UAV managed
         by this driver.
 
@@ -1575,7 +1574,7 @@ class UAVDriver(Generic[TUAV], ABC):
 
     def _set_parameter_single(
         self, uav: TUAV, name: str, value: Any
-    ) -> Union[None, Awaitable[None]]:
+    ) -> None | Awaitable[None]:
         """Asks the driver to set the value of a parameter with the given
         name for a single UAV managed by this driver.
 

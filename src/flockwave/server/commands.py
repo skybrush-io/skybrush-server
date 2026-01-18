@@ -22,7 +22,6 @@ from typing import (
     AsyncGenerator,
     Awaitable,
     Optional,
-    Union,
     TypeVar,
 )
 
@@ -36,8 +35,8 @@ __all__ = ("CommandExecutionManager",)
 log = base_log.getChild("commands")
 
 
-ReceiptLike = Union[CommandExecutionStatus, str]
-Result = Union[Any, Awaitable[Any], AsyncGenerator[Any, Any]]
+ReceiptLike = CommandExecutionStatus | str
+Result = Any | Awaitable[Any] | AsyncGenerator[Any, Any]
 
 T = TypeVar("T")
 
@@ -368,7 +367,7 @@ class CommandExecutionManager(RegistryBase[CommandExecutionStatus]):
 
     async def _wait_for(
         self,
-        async_obj: Union[Awaitable[Any], AsyncGenerator[Any, Any]],
+        async_obj: Awaitable[Any] | AsyncGenerator[Any, Any],
         status: CommandExecutionStatus,
     ) -> None:
         try:
@@ -401,7 +400,7 @@ class CommandExecutionManager(RegistryBase[CommandExecutionStatus]):
 
     async def _wait_for_generator(
         self, it: AsyncGenerator[T, Any], status: CommandExecutionStatus
-    ) -> Union[Optional[T], Exception]:
+    ) -> T | None | Exception:
         """Waits for yielded progress updates from an async iterator and updates
         the command execution receipt with the progress information and the
         returned result from the iterator.

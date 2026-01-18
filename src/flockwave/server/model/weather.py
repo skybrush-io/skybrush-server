@@ -1,5 +1,5 @@
 from time import time
-from typing import Awaitable, Callable, Optional, Union
+from typing import Awaitable, Callable, Optional
 
 from flockwave.gps.vectors import GPSCoordinate
 from flockwave.server.model.metamagic import ModelMeta
@@ -30,6 +30,4 @@ SyncWeatherProvider = Callable[[Weather, GPSCoordinate], None]
 AsyncWeatherProvider = Callable[[Weather, GPSCoordinate], Awaitable[None]]
 
 #: Type specification for weather provider functions
-WeatherProvider = Callable[
-    [Weather, Optional[GPSCoordinate]], Union[None, Awaitable[None]]
-]
+WeatherProvider = Callable[[Weather, Optional[GPSCoordinate]], None | Awaitable[None]]

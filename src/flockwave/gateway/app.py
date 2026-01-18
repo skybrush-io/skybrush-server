@@ -4,7 +4,7 @@ import logging
 
 from copy import deepcopy
 from trio import current_time, Nursery, open_nursery, sleep
-from typing import Any, Optional, Union
+from typing import Any, Optional
 from urllib.parse import urlparse, urlunparse
 
 from hypercorn.config import Config as HyperConfig
@@ -93,9 +93,7 @@ class SkybrushGatewayServer(DaemonApp):
         port = int(port)
         return host, port
 
-    def _get_port_for_worker(
-        self, index: int, base: Optional[Union[int, str]] = None
-    ) -> int:
+    def _get_port_for_worker(self, index: int, base: Optional[int | str] = None) -> int:
         if base is None:
             base = self.base_port
             if base is None:

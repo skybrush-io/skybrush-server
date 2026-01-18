@@ -10,7 +10,7 @@ from functools import partial
 from logging import Logger
 from math import inf, isfinite
 from time import monotonic
-from typing import Any, AsyncIterator, Awaitable, Callable, Optional, Union
+from typing import Any, AsyncIterator, Awaitable, Callable, Optional
 
 from colour import Color
 from flockwave.concurrency import FutureCancelled, delayed
@@ -353,7 +353,7 @@ class MAVLinkDriver(UAVDriver["MAVLinkUAV"]):
             return f"Mode changed to {mode!r}"
 
     async def handle_command_servo(
-        self, uav: "MAVLinkUAV", servo: Union[int, str], value: Union[int, str]
+        self, uav: "MAVLinkUAV", servo: int | str, value: int | str
     ):
         """Sets the value of a servo channel on the UAV.
 
@@ -2095,7 +2095,7 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
             raise RuntimeError("Failed to remove show file")
 
     async def set_mode(
-        self, mode: Union[int, str], *, channel: str = Channel.PRIMARY
+        self, mode: int | str, *, channel: str = Channel.PRIMARY
     ) -> None:
         """Attempts to set the UAV in the given custom mode."""
         if isinstance(mode, str):
@@ -2212,7 +2212,7 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
         await self.driver.send_packet(message, self, channel=channel)
 
     async def start_pyro_test(
-        self, channel: Optional[Union[int, tuple[int, int]]] = None, delay: float = 2
+        self, channel: Optional[int | tuple[int, int]] = None, delay: float = 2
     ) -> None:
         """Asks the UAV to start testing its pyro channels.
 

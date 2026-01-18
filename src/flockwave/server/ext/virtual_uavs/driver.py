@@ -10,7 +10,7 @@ from random import random, randint, choice
 from time import monotonic
 from trio import CancelScope, sleep
 from trio_util import periodic
-from typing import Any, Callable, Collection, NoReturn, Optional, Union
+from typing import Any, Callable, Collection, NoReturn, Optional
 
 from flockwave.concurrency import delayed
 from flockwave.ext.manager import ExtensionAPIProxy
@@ -1083,7 +1083,7 @@ class VirtualUAVDriver(UAVDriver[VirtualUAV]):
         uav.send_log_message_to_gcs(message)
         return message
 
-    def handle_command_error(self, uav: VirtualUAV, value: Union[str, int] = 0) -> str:
+    def handle_command_error(self, uav: VirtualUAV, value: str | int = 0) -> str:
         """Sets or clears the error code of the virtual drone."""
         value = int(value)
         uav.user_defined_error = value

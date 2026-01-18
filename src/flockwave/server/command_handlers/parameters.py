@@ -1,6 +1,6 @@
 """Functions related to generic onboard parameter handling on UAVs."""
 
-from typing import Awaitable, Callable, Optional, Union
+from typing import Awaitable, Callable, Optional
 
 from flockwave.server.errors import NotSupportedError
 from flockwave.server.model.uav import UAV, UAVDriver
@@ -48,7 +48,7 @@ def create_parameter_command_handler(
         driver: UAVDriver,
         uav: UAV,
         name: Optional[str] = None,
-        value: Optional[Union[str, float]] = None,
+        value: Optional[str | float] = None,
     ) -> str:
         if not name:
             raise RuntimeError("Missing parameter name")

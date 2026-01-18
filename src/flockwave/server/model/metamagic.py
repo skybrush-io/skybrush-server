@@ -7,7 +7,7 @@ a JSON schema description.
 
 from contextlib import contextmanager
 from dataclasses import dataclass
-from typing import Any, Callable, Dict, Optional, TypeVar
+from typing import Any, Callable, Optional, TypeVar
 
 from flockwave.server.utils.validation import cached_validator_for
 from flockwave.spec.schema import Schema
@@ -42,7 +42,7 @@ class PropertyInfo:
     mappers: Optional[MapperPair] = None
 
     @classmethod
-    def from_json_schema(cls, name: str, definition: Dict):
+    def from_json_schema(cls, name: str, definition: dict):
         """Constructs a property information object from its JSON schema
         representation.
 
@@ -202,7 +202,7 @@ class ModelMetaHelpers:
         dct.update(__init__=__init__, from_json=from_json, json=json)
 
     @staticmethod
-    def add_proxy_property(dct: Dict, name: str, property_info: PropertyInfo):
+    def add_proxy_property(dct: dict, name: str, property_info: PropertyInfo):
         """Extends the class being constructed with a single proxy property
         that accesses an entry in the underlying JSON object directly.
 

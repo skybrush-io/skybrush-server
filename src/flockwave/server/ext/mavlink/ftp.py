@@ -28,7 +28,6 @@ from typing import (
     Iterator,
     Optional,
     Protocol,
-    Union,
 )
 
 from flockwave.concurrency import (
@@ -47,7 +46,7 @@ if TYPE_CHECKING:
 __all__ = ("MAVFTP",)
 
 
-FTPPath = Union[str, bytes]
+FTPPath = str | bytes
 """Type specification for FTP paths that are accepted by MAVFTP."""
 
 _MAVFTP_CHUNK_SIZE = 239

@@ -7,10 +7,8 @@ from functools import partial, singledispatch
 from trio import fail_after, TooSlowError
 from typing import (
     Any,
-    Dict,
     Iterable,
     Optional,
-    Union,
     TYPE_CHECKING,
 )
 
@@ -247,7 +245,7 @@ class GeofenceManager:
 
     async def set_geofence_areas(
         self,
-        areas: Optional[Iterable[Union[GeofenceCircle, GeofencePolygon]]] = None,
+        areas: Optional[Iterable[GeofenceCircle | GeofencePolygon]] = None,
     ) -> None:
         """Uploads the given geofence polygons and circles to the MAVLink
         connection.
@@ -491,12 +489,12 @@ class GeofenceManager:
 
 
 @singledispatch
-def _convert_area_to_mission_items(area: Any) -> list[tuple[int, Dict]]:
+def _convert_area_to_mission_items(area: Any) -> list[tuple[int, dict]]:
     raise ValueError(f"Unknown geofence area type: {type(area)!r}")
 
 
 @_convert_area_to_mission_items.register
-def _(area: GeofenceCircle) -> list[tuple[int, Dict]]:
+def _(area: GeofenceCircle) -> list[tuple[int, dict]]:
     return [
         (
             (
@@ -514,7 +512,7 @@ def _(area: GeofenceCircle) -> list[tuple[int, Dict]]:
 
 
 @_convert_area_to_mission_items.register
-def _(area: GeofencePolygon) -> list[tuple[int, Dict]]:
+def _(area: GeofencePolygon) -> list[tuple[int, dict]]:
     points = list(area.points)
     if points and points[0] == points[-1]:
         points.pop()

@@ -1,6 +1,6 @@
 """Error classes specific to the MAVLink extension."""
 
-from typing import Optional, Union
+from typing import Optional
 
 from .enums import MAVMissionResult
 
@@ -24,7 +24,7 @@ class UnknownFlightModeError(MAVLinkExtensionError):
     base mode / custom mode configuration.
     """
 
-    def __init__(self, mode: Union[str, int], message: Optional[str] = None):
+    def __init__(self, mode: str | int, message: Optional[str] = None):
         message = message or f"Unknown flight mode: {mode!r}"
         super().__init__(message)
 

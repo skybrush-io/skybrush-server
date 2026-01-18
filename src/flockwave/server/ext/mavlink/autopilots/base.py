@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from collections.abc import AsyncIterator
-from typing import TYPE_CHECKING, Optional, Type, Union
+from typing import TYPE_CHECKING, Optional
 
 from flockwave.server.model.commands import Progress, ProgressEventsWithSuspension
 from flockwave.server.model.geofence import (
@@ -34,7 +34,7 @@ class Autopilot(ABC):
         self.capabilities = int(getattr(base, "capabilities", 0))
 
     @staticmethod
-    def from_autopilot_type(type: int) -> Type["Autopilot"]:
+    def from_autopilot_type(type: int) -> type["Autopilot"]:
         """Returns an autopilot factory that can construct an Autopilot_
         instance that is suitable to represent the behaviour of an autopilot
         with the given MAVLink autopilot identifier.
@@ -44,7 +44,7 @@ class Autopilot(ABC):
         return get_autopilot_factory_by_mavlink_type(type)
 
     @classmethod
-    def from_heartbeat(cls, message: MAVLinkMessage) -> Type["Autopilot"]:
+    def from_heartbeat(cls, message: MAVLinkMessage) -> type["Autopilot"]:
         """Returns an autopilot factory that can construct an Autopilot_
         instance that is suitable to represent the behaviour of an autopilot
         that sent the given MAVLink heartbeat message.
@@ -175,7 +175,7 @@ class Autopilot(ABC):
         ...
 
     def decode_param_from_wire_representation(
-        self, value: Union[int, float], type: MAVParamType
+        self, value: int | float, type: MAVParamType
     ) -> float:
         """Decodes the given MAVLink parameter value returned from a MAVLink
         PARAM_VALUE message into its "real" value as a float.
@@ -183,7 +183,7 @@ class Autopilot(ABC):
         return decode_param_from_wire_representation(value, type)
 
     def encode_param_to_wire_representation(
-        self, value: Union[int, float], type: MAVParamType
+        self, value: int | float, type: MAVParamType
     ) -> float:
         """Encodes the given MAVLink parameter value as a float suitable to be
         transmitted over the wire in a MAVLink PARAM_SET command.

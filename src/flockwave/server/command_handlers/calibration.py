@@ -1,7 +1,7 @@
 """Factory function to create handlers for the "calib" command in UAV drivers."""
 
+from collections.abc import Callable, Iterable
 from inspect import isasyncgenfunction, iscoroutinefunction
-from typing import Callable, Iterable
 
 from flockwave.server.errors import NotSupportedError
 from flockwave.server.model.commands import ProgressEvents

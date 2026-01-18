@@ -1,7 +1,8 @@
+from collections.abc import Callable, Iterable, Iterator
 from contextlib import ExitStack, contextmanager
 from functools import partial
 from itertools import count
-from typing import Callable, ClassVar, Iterable, Iterator, TYPE_CHECKING
+from typing import ClassVar, TYPE_CHECKING
 
 from flockwave.concurrency import Watchdog
 from flockwave.gps.rtcm.packets import RTCMPacket, RTCMV3StationaryAntennaPacket

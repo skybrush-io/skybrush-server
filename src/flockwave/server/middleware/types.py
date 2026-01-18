@@ -1,5 +1,6 @@
+from collections.abc import Callable
+
 from flockwave.server.model import Client, FlockwaveMessage
-from typing import Callable
 
 __all__ = ("RequestMiddleware", "ResponseMiddleware")
 

@@ -2,19 +2,14 @@
 of a Crazyflie address space for Crazyflie drones.
 """
 
+from collections.abc import Callable, Iterable
 from contextlib import aclosing
 from errno import ENODEV
 from functools import partial
 from time import monotonic
 from trio import Event, move_on_after, sleep
 from trio.abc import ReceiveChannel, SendChannel
-from typing import (
-    TYPE_CHECKING,
-    AsyncIterable,
-    Callable,
-    ClassVar,
-    Iterable,
-)
+from typing import TYPE_CHECKING, AsyncIterable, ClassVar
 
 from flockwave.server.utils import longest_common_prefix
 

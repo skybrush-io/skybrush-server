@@ -1,7 +1,8 @@
 """Builder classes for model objects for sake of convenience."""
 
 from builtins import str
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 from .commands import CommandExecutionStatus
 from .identifiers import default_id_generator

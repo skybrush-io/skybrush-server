@@ -1,6 +1,7 @@
 """Functions related to handling the dedicated debug port"""
 
 from base64 import b64decode, b64encode
+from collections.abc import Callable
 from functools import partial
 from logging import Logger
 from math import inf
@@ -12,7 +13,6 @@ from trio import (
     TooSlowError,
 )
 from trio.abc import ReceiveChannel, Stream
-from typing import Callable
 
 from flockwave.networking import format_socket_address
 from flockwave.server.utils import overridden

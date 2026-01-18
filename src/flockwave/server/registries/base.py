@@ -5,14 +5,8 @@ string identifiers.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import (
-    Callable,
-    Generic,
-    Iterable,
-    Iterator,
-    TypeVar,
-    TYPE_CHECKING,
-)
+from collections.abc import Callable, Iterable, Iterator
+from typing import Generic, TypeVar, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from flockwave.server.model.messages import FlockwaveNotification, FlockwaveResponse

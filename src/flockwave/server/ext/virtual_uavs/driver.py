@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable, Collection
 from colour import Color
 from enum import Enum
 from hashlib import sha1 as firmware_hash
@@ -10,7 +11,7 @@ from random import random, randint, choice
 from time import monotonic
 from trio import CancelScope, sleep
 from trio_util import periodic
-from typing import Any, Callable, Collection, NoReturn
+from typing import Any, NoReturn
 
 from flockwave.concurrency import delayed
 from flockwave.ext.manager import ExtensionAPIProxy

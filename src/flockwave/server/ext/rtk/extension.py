@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import json
 
-from collections.abc import Sequence
+from collections.abc import Callable, Iterator, Sequence
 from contextlib import ExitStack
 from dataclasses import dataclass, field
 from fnmatch import fnmatch
@@ -16,7 +16,7 @@ from time import monotonic
 from trio import CancelScope, open_memory_channel, open_nursery, sleep
 from trio.abc import SendChannel
 from trio_util import AsyncBool, periodic
-from typing import Callable, cast, Any, ClassVar, Iterator
+from typing import cast, Any, ClassVar
 
 from flockwave.channels import ParserChannel
 from flockwave.connections import create_connection, RWConnection

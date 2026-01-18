@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from collections import defaultdict
+from collections.abc import Awaitable, Callable, Iterable, Iterator
 from contextlib import contextmanager, ExitStack
 from dataclasses import dataclass, field
 from functools import partial
@@ -27,11 +28,7 @@ from trio import (
 from typing import (
     Any,
     AsyncIterable,
-    Awaitable,
-    Callable,
     Generic,
-    Iterable,
-    Iterator,
     TypeVar,
     overload,
 )

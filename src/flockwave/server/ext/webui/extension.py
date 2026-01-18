@@ -7,6 +7,7 @@ from __future__ import annotations
 import json
 import threading
 
+from collections.abc import Awaitable, Callable
 from contextlib import ExitStack
 from dataclasses import dataclass, field
 from functools import wraps
@@ -15,7 +16,7 @@ from operator import attrgetter
 from quart import abort, make_response, redirect, render_template, request, url_for
 from trio import sleep_forever
 from trio.lowlevel import current_root_task
-from typing import Any, Awaitable, Callable, TYPE_CHECKING
+from typing import Any, TYPE_CHECKING
 
 from flockwave.ext.errors import NotSupportedError
 from flockwave.server.utils import overridden

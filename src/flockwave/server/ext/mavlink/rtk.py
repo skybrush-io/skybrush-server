@@ -1,7 +1,7 @@
+from collections.abc import Callable, Iterable
 from contextlib import contextmanager
 from itertools import cycle
 from logging import Logger
-from typing import Callable, Iterable
 
 from .types import MAVLinkMessageSpecification, spec
 

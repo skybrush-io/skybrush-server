@@ -6,6 +6,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from collections import deque
+from collections.abc import Callable, Iterable, Sequence
 from contextlib import asynccontextmanager, closing
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
@@ -20,9 +21,6 @@ from trio.lowlevel import ParkingLot
 from typing import (
     Any,
     AsyncIterator,
-    Callable,
-    Iterable,
-    Sequence,
     TYPE_CHECKING,
     TypeVar,
 )

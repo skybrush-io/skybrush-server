@@ -4,6 +4,7 @@ link (e.g., standard 802.11 wifi).
 """
 
 from collections import defaultdict
+from collections.abc import Awaitable, Callable, Generator, Iterable, Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass
 from enum import Enum
@@ -26,18 +27,7 @@ from trio import (
 )
 from trio.abc import ReceiveChannel, SendChannel
 from trio_util import wait_all
-from typing import (
-    Any,
-    Awaitable,
-    Callable,
-    ClassVar,
-    Generator,
-    Generic,
-    Iterable,
-    Iterator,
-    TypeVar,
-    cast,
-)
+from typing import Any, ClassVar, Generic, TypeVar, cast
 
 from flockwave.channels import BroadcastMessageChannel, MessageChannel
 from flockwave.connections import (

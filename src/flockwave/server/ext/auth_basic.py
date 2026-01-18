@@ -7,10 +7,10 @@ server are secure if you are using this extension for authentication.
 """
 
 from base64 import b64decode
+from collections.abc import Callable, Mapping
 from enum import Enum
 from pathlib import Path
 from trio import sleep_forever
-from typing import Callable, Mapping
 
 from flockwave.server.model.authentication import (
     AuthenticationMethod,

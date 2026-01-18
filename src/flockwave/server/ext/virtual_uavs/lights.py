@@ -5,9 +5,10 @@ on the UAVs.
 from __future__ import annotations
 
 from abc import abstractmethod
+from collections.abc import Callable, Iterable
 from colour import Color
 from time import monotonic
-from typing import Callable, Iterable, TYPE_CHECKING
+from typing import TYPE_CHECKING
 
 from flockwave.spec.errors import FlockwaveErrorCode
 from flockwave.server.show import LightPlayer

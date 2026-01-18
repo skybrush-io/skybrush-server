@@ -3,16 +3,10 @@ server knows.
 """
 
 from blinker import Signal
+from collections.abc import Callable, Iterable, Iterator
 from contextlib import contextmanager
 from math import inf
-from typing import (
-    cast,
-    Callable,
-    ClassVar,
-    Iterable,
-    Iterator,
-    TypeVar,
-)
+from typing import cast, ClassVar, TypeVar
 
 from flockwave.server.model import ModelObject
 

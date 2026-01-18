@@ -1,5 +1,5 @@
+from collections.abc import Awaitable, Callable
 from time import time
-from typing import Awaitable, Callable
 
 from flockwave.gps.vectors import GPSCoordinate
 from flockwave.server.model.metamagic import ModelMeta

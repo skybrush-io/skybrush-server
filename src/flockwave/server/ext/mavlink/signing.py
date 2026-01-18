@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 from base64 import b64encode, b64decode
+from collections.abc import Callable
 from dataclasses import dataclass
 from re import match, sub
-from typing import Callable, ClassVar, TYPE_CHECKING
+from typing import ClassVar, TYPE_CHECKING
 from wrapt import ObjectProxy
 
 from .errors import InvalidSigningKeyError

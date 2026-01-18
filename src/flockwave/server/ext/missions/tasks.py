@@ -1,10 +1,11 @@
 """Background tasks managed by the mission extension."""
 
 from abc import ABC, abstractmethod
+from collections.abc import Awaitable, Callable, Iterable, Iterator
 from contextlib import ExitStack, contextmanager
 from logging import Logger
 from trio import open_memory_channel, MemorySendChannel, WouldBlock
-from typing import Iterable, cast, Any, Awaitable, Callable, Iterator
+from typing import cast, Any
 
 from flockwave.concurrency.scheduler import Job, LateSubmissionError, Scheduler
 

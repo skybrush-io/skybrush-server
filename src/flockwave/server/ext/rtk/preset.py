@@ -1,6 +1,7 @@
+from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass, field
 from urllib.parse import urlencode
-from typing import Any, Callable, Iterable, Sequence, TypeVar
+from typing import Any, TypeVar
 
 from flockwave.channels.types import Encoder, Parser
 from flockwave.gps.encoder import create_gps_encoder

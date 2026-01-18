@@ -2,6 +2,7 @@
 
 import sys
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from signal import Signals
@@ -9,7 +10,7 @@ from subprocess import PIPE, STDOUT
 from tempfile import NamedTemporaryFile
 from trio import move_on_after, open_nursery, Process, sleep_forever
 from trio.lowlevel import open_process
-from typing import Any, Callable, IO
+from typing import Any, IO
 
 from .errors import NoIdleWorkerError
 from .logger import log as base_log

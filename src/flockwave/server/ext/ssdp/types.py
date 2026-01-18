@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import Callable, ContextManager, Protocol, TypedDict, TYPE_CHECKING
+from collections.abc import Callable
+from typing import ContextManager, Protocol, TypedDict, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from .registry import UPnPServiceRegistry, URIOrCallableReturningURI

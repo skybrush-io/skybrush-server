@@ -3,13 +3,11 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from collections.abc import Awaitable, Callable, Iterable
 from inspect import isawaitable
 from typing import (
     Any,
-    Awaitable,
-    Callable,
     Generic,
-    Iterable,
     TypedDict,
     TypeVar,
     TYPE_CHECKING,

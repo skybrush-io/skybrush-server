@@ -1,5 +1,6 @@
 """Implementation of downloading logs via a MAVLink connection."""
 
+from collections.abc import Callable
 from contextlib import aclosing
 from functools import partial
 from trio import (
@@ -12,7 +13,6 @@ from trio import (
     open_memory_channel,
     TooSlowError,
 )
-from typing import Callable
 
 from flockwave.concurrency import Future
 from flockwave.logger import Logger

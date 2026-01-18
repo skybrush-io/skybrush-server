@@ -5,9 +5,10 @@ properties for themselves and validate themselves automatically based on
 a JSON schema description.
 """
 
+from collections.abc import Callable
 from contextlib import contextmanager
 from dataclasses import dataclass
-from typing import Any, Callable, TypeVar
+from typing import Any, TypeVar
 
 from flockwave.server.utils.validation import cached_validator_for
 from flockwave.spec.schema import Schema

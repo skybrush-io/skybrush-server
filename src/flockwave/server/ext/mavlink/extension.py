@@ -5,15 +5,10 @@ MAVLink protocol.
 from __future__ import annotations
 
 from collections import OrderedDict
+from collections.abc import Callable, Iterator
 from contextlib import ExitStack, contextmanager
 from functools import partial
-from typing import (
-    Any,
-    Callable,
-    Iterator,
-    TYPE_CHECKING,
-    overload,
-)
+from typing import Any, TYPE_CHECKING, overload
 
 from flockwave.server.ext.base import UAVExtension
 from flockwave.server.ext.mavlink.fw_upload import FirmwareUpdateTarget

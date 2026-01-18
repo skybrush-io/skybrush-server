@@ -2,7 +2,8 @@ from baseconv import base64
 from bidict import bidict
 from random import getrandbits
 
-from typing import Callable, Generic, TypeVar
+from collections.abc import Callable
+from typing import Generic, TypeVar
 
 from flockwave.spec.ids import make_valid_object_id
 

@@ -2,15 +2,9 @@
 
 from abc import ABC, abstractmethod
 from blinker import Signal
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import (
-    Any,
-    Callable,
-    ClassVar,
-    Generic,
-    TypeVar,
-    final,
-)
+from typing import Any, ClassVar, Generic, TypeVar, final
 
 from flockwave.gps.vectors import PositionXYZ
 from flockwave.server.model import BatteryInfo, ErrorSet, ModelObject

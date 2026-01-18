@@ -3,8 +3,8 @@ trajectory.
 """
 
 from bisect import bisect
+from collections.abc import Callable
 from math import inf
-from typing import Callable
 
 from pyledctrl.player import Player as LightPlayer
 

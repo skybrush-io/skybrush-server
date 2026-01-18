@@ -1,6 +1,7 @@
 from base64 import b64decode, b64encode
+from collections.abc import Callable
 from enum import Enum, IntEnum
-from typing import Any, Callable, TypeVar
+from typing import Any, TypeVar
 
 from .metamagic import MapperPair
 

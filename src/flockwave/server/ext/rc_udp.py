@@ -4,9 +4,10 @@ RC channel values for a (virtual or real) RC transmitter.
 
 from __future__ import annotations
 
+from collections.abc import Callable, Sequence
 from logging import Logger
 from trio import fail_after, TooSlowError
-from typing import Any, Callable, Sequence, TYPE_CHECKING
+from typing import Any, TYPE_CHECKING
 
 from flockwave.connections import create_connection
 from flockwave.connections.socket import UDPListenerConnection

@@ -9,9 +9,9 @@ in the flat Earth coordinate system. The caller must then map these into
 GPS coordinates using a FlatEarthToGPSCoordinateTransformation_ object.
 """
 
+from collections.abc import Callable
 from functools import partial
 from math import cos, floor, pi, radians, sin
-from typing import Callable
 
 from flockwave.gps.vectors import Vector3D
 

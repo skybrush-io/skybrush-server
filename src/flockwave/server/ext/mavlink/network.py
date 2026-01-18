@@ -12,6 +12,7 @@ MAVLink-based drone swarms.
 
 from __future__ import annotations
 
+from collections.abc import Awaitable, Callable, Iterable, Iterator, Sequence
 from collections import defaultdict
 from contextlib import contextmanager, ExitStack
 from logging import Logger
@@ -19,15 +20,7 @@ from time import time_ns
 from trio import move_on_after, open_nursery, to_thread
 from trio.abc import ReceiveChannel
 from trio_util import periodic
-from typing import (
-    Any,
-    Awaitable,
-    Callable,
-    Iterable,
-    Iterator,
-    Sequence,
-    TYPE_CHECKING,
-)
+from typing import Any, TYPE_CHECKING
 
 from flockwave.connections import (
     Connection,

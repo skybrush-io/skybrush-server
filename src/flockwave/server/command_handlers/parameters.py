@@ -1,6 +1,6 @@
 """Functions related to generic onboard parameter handling on UAVs."""
 
-from typing import Awaitable, Callable
+from collections.abc import Awaitable, Callable
 
 from flockwave.server.errors import NotSupportedError
 from flockwave.server.model.uav import UAV, UAVDriver

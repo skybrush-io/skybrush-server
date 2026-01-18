@@ -1,7 +1,8 @@
 """Formatting-related utility functions."""
 
+from collections.abc import Callable, Sequence
 from datetime import datetime, timedelta
-from typing import Callable, Sequence, TypeVar
+from typing import TypeVar
 
 from flockwave.gps.formatting import format_gps_coordinate
 

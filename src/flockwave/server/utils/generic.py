@@ -1,19 +1,13 @@
 """Generic utility functions that do not fit elsewhere."""
 
+from collections.abc import Callable, Iterable, Iterator, Sequence
 from colour import Color
 from contextlib import contextmanager
 from datetime import datetime
 from functools import partial
 from itertools import islice
 from operator import mul
-from typing import (
-    Any,
-    Callable,
-    Iterable,
-    Iterator,
-    Sequence,
-    TypeVar,
-)
+from typing import Any, TypeVar
 
 __all__ = (
     "clamp",

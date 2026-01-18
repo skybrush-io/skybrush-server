@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from collections.abc import Callable, Iterable, Sequence
 from colour import Color
 from contextlib import asynccontextmanager, AsyncExitStack
 from errno import EIO
@@ -17,9 +18,6 @@ from trio_util import periodic
 from typing import (
     Any,
     AsyncIterator,
-    Callable,
-    Iterable,
-    Sequence,
     TYPE_CHECKING,
     cast,
 )

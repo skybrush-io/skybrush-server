@@ -2,8 +2,9 @@
 drones with a single Crazyradio.
 """
 
+from collections.abc import Callable
 from trio import Event
-from typing import AsyncContextManager, Callable, ClassVar
+from typing import AsyncContextManager, ClassVar
 
 from aiocflib.crtp.broadcaster import Broadcaster
 from aiocflib.crtp.crtpstack import CRTPPort

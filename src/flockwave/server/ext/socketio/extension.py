@@ -6,19 +6,14 @@ Socket.IO connections.
 
 from __future__ import annotations
 
+from collections.abc import Callable, Iterable, Iterator
 from contextlib import contextmanager, ExitStack
 from enum import Enum
 from functools import partial
 from json import JSONDecoder
 from logging import Logger
 from trio import open_nursery, sleep_forever
-from typing import (
-    Any,
-    Callable,
-    Iterable,
-    Iterator,
-    TYPE_CHECKING,
-)
+from typing import Any, TYPE_CHECKING
 from urllib.parse import parse_qs
 
 from flockwave.encoders.json import create_json_encoder

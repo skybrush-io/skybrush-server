@@ -1,11 +1,11 @@
 from __future__ import annotations
 
+from collections.abc import Callable, Iterator
 from colour import Color
 from contextlib import contextmanager
 from functools import partial
 from random import uniform
 from trio import open_nursery, sleep, sleep_forever
-from typing import Callable, Iterator
 
 from flockwave.gps.vectors import (
     FlatEarthCoordinate,

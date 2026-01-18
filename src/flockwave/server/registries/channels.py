@@ -9,9 +9,10 @@ channels, not each individual channel between a client and the server.
 """
 
 from blinker import Signal
+from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass
-from typing import Callable, Generic, Iterator, TypeVar
+from typing import Generic, TypeVar
 
 from flockwave.connections import IPAddressAndPort
 

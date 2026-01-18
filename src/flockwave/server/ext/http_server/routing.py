@@ -1,9 +1,10 @@
 """Simple routing middleware for the HTTP server extension."""
 
 from bisect import insort_left
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from functools import partial, total_ordering
-from typing import Any, Callable, Iterable
+from typing import Any
 
 
 __all__ = ("RoutingMiddleware",)

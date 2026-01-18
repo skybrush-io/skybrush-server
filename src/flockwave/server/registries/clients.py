@@ -4,9 +4,9 @@ server is currently connected to.
 
 from blinker import Signal
 from collections import defaultdict
+from collections.abc import Iterable, Iterator
 from contextlib import contextmanager
 from time import time
-from typing import Iterable, Iterator
 
 from flockwave.server.model.client import Client
 from flockwave.server.registries.channels import ChannelTypeRegistry

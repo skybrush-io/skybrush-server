@@ -4,20 +4,12 @@ from __future__ import annotations
 
 from blinker import Signal
 from builtins import str
-from collections import defaultdict
+from collections import Counter, defaultdict
+from collections.abc import Iterable
 from dataclasses import dataclass
 from enum import Enum
 from itertools import islice
-from typing import (
-    cast,
-    overload,
-    Any,
-    Counter,
-    Generic,
-    Iterable,
-    TypeVar,
-    TYPE_CHECKING,
-)
+from typing import cast, overload, Any, Generic, TypeVar, TYPE_CHECKING
 
 from flockwave.spec.schema import get_complex_object_schema
 

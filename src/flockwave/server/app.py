@@ -1,6 +1,7 @@
 """Application object for the Skybrush server."""
 
 from collections import Counter, defaultdict
+from collections.abc import Iterable, Sequence
 from inspect import isawaitable, isasyncgen
 from os import environ
 from platformdirs import AppDirs
@@ -8,11 +9,7 @@ from trio import (
     BrokenResourceError,
     move_on_after,
 )
-from typing import (
-    Any,
-    Iterable,
-    Sequence,
-)
+from typing import Any
 
 from flockwave.app_framework import DaemonApp
 from flockwave.app_framework.configurator import AppConfigurator, Configuration

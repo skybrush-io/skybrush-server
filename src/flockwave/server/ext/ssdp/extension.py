@@ -12,6 +12,7 @@ M-SEARCH requests for root devices, and for searches for
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from contextlib import closing
 from datetime import datetime
 from errno import EADDRNOTAVAIL, ENODEV
@@ -22,7 +23,7 @@ from os import getenv
 from random import random
 from time import mktime, monotonic
 from trio import sleep
-from typing import Iterable, TYPE_CHECKING
+from typing import TYPE_CHECKING
 from wsgiref.handlers import format_date_time
 
 import platform

@@ -1,4 +1,5 @@
-from typing import Any, Iterable
+from collections.abc import Iterable
+from typing import Any
 
 __all__ = ("describe_serial_port", "list_serial_ports")
 

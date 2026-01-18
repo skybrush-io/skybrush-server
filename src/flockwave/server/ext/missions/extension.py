@@ -4,11 +4,12 @@ uploading missions to UAVs.
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from contextlib import ExitStack
 from functools import partial
 from inspect import isawaitable
 from trio import open_nursery
-from typing import Any, Iterable, cast, overload
+from typing import Any, cast, overload
 
 from flockwave.server.ext.base import Extension
 from flockwave.server.message_hub import MessageHub

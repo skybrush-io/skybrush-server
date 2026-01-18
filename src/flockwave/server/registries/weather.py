@@ -4,9 +4,9 @@ the server knows.
 
 __all__ = ("WeatherProviderRegistry",)
 
+from collections.abc import Iterable, Iterator
 from contextlib import contextmanager
 from functools import partial
-from typing import Iterable, Iterator
 
 from flockwave.server.model.weather import WeatherProvider
 from flockwave.server.types import Disposer

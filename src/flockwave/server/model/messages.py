@@ -1,7 +1,9 @@
 """Flockwave message model classes."""
 
+from collections.abc import Iterable, Sequence
+
 from flockwave.spec.schema import get_message_schema
-from typing import Any, Iterable, Sequence
+from typing import Any
 
 from .commands import CommandExecutionStatus
 from .metamagic import ModelMeta

@@ -1,9 +1,10 @@
 """Middleware that logs incoming and outgoing messages in the message hub."""
 
+from collections.abc import Iterable
 from logging import Logger
 
 from flockwave.server.model import Client, FlockwaveMessage, FlockwaveNotification
-from typing import ClassVar, Iterable
+from typing import ClassVar
 
 __all__ = ("RequestLogMiddleware",)
 

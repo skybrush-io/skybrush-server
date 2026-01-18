@@ -8,6 +8,7 @@ Socket.IO-based channel.
 
 import logging
 
+from collections.abc import Iterable
 from contextlib import contextmanager
 from dataclasses import dataclass
 from heapq import heapify, heappush
@@ -17,7 +18,6 @@ from pathlib import Path
 from quart import abort, Blueprint, Quart, redirect, request, url_for
 from quart_trio import QuartTrio
 from trio import current_time, sleep
-from typing import Iterable
 
 from flockwave.ext.manager import ExtensionManager
 from flockwave.networking import can_bind_to_tcp_address, format_socket_address

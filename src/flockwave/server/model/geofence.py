@@ -1,8 +1,9 @@
 """Geofence-related data structures and functions for the server."""
 
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Iterable
+from typing import Any
 
 from flockwave.gps.vectors import GPSCoordinate
 

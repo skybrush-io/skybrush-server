@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Awaitable, Iterable, Iterator
 from contextlib import aclosing, asynccontextmanager
 from dataclasses import dataclass
 from enum import Enum, IntEnum
@@ -23,9 +24,6 @@ from typing import (
     TYPE_CHECKING,
     AsyncGenerator,
     AsyncIterator,
-    Awaitable,
-    Iterable,
-    Iterator,
     Protocol,
 )
 

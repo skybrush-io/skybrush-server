@@ -2,10 +2,10 @@
 Skybrush-related trajectories, until we find a better place for them.
 """
 
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from itertools import chain
 from math import ceil, inf
-from typing import Iterable, Sequence
 
 from .utils import BoundingBoxCalculator, Point
 

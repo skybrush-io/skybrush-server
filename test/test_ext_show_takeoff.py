@@ -1,8 +1,8 @@
 from collections import Counter
+from collections.abc import Iterable, Iterator
 from logging import getLogger
 from random import random
 from time import time
-from typing import Iterable, Iterator
 
 from pytest import fixture
 from trio import CapacityLimiter, TooSlowError, sleep

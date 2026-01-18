@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from collections.abc import Iterable, Sequence
+from collections.abc import AsyncIterator, Iterable, Sequence
 from contextlib import aclosing
 from copy import deepcopy
 from dataclasses import dataclass
@@ -9,7 +9,7 @@ from functools import partial
 from io import BytesIO
 from struct import Struct
 from time import monotonic
-from typing import IO, TYPE_CHECKING, AsyncIterator, cast
+from typing import IO, TYPE_CHECKING, cast
 
 from trio import TooSlowError, sleep
 

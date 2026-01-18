@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Awaitable, Iterable, Iterator
+from collections.abc import AsyncGenerator, AsyncIterator, Awaitable, Iterable, Iterator
 from contextlib import aclosing, asynccontextmanager
 from dataclasses import dataclass
 from enum import Enum, IntEnum
@@ -20,12 +20,7 @@ from trio import (
     TooSlowError,
     wrap_file,
 )
-from typing import (
-    TYPE_CHECKING,
-    AsyncGenerator,
-    AsyncIterator,
-    Protocol,
-)
+from typing import TYPE_CHECKING, Protocol
 
 from flockwave.concurrency import (
     AdaptiveExponentialBackoffPolicy,

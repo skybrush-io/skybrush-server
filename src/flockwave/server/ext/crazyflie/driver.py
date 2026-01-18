@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from collections.abc import Callable, Iterable, Sequence
+from collections.abc import AsyncIterator, Callable, Iterable, Sequence
 from colour import Color
 from contextlib import asynccontextmanager, AsyncExitStack
 from errno import EIO
@@ -15,12 +15,7 @@ from random import random
 from struct import Struct
 from trio import Nursery, open_nursery, sleep
 from trio_util import periodic
-from typing import (
-    Any,
-    AsyncIterator,
-    TYPE_CHECKING,
-    cast,
-)
+from typing import Any, TYPE_CHECKING, cast
 
 from aiocflib.crazyflie import Crazyflie
 from aiocflib.crtp.crtpstack import MemoryType

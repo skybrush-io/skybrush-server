@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from collections.abc import Awaitable, Callable
+from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import aclosing, asynccontextmanager
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -11,7 +11,7 @@ from functools import partial
 from logging import Logger
 from math import inf, isfinite
 from time import monotonic
-from typing import Any, AsyncIterator
+from typing import Any
 
 from colour import Color
 from flockwave.concurrency import FutureCancelled, delayed

@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from blinker import Signal
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from enum import Enum
 from logging import Logger
@@ -11,7 +12,7 @@ from trio import (
     open_nursery,
     sleep,
 )
-from typing import AsyncIterator, Generic, TypeVar
+from typing import Generic, TypeVar
 
 __all__ = ("LEDLightConfigurationManagerBase",)
 

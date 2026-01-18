@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from collections import deque
-from collections.abc import Callable, Iterable, Sequence
+from collections.abc import AsyncIterator, Callable, Iterable, Sequence
 from contextlib import asynccontextmanager, closing
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
@@ -18,12 +18,7 @@ from textwrap import dedent
 from time import time
 from trio import move_on_after, sleep, to_thread
 from trio.lowlevel import ParkingLot
-from typing import (
-    Any,
-    AsyncIterator,
-    TYPE_CHECKING,
-    TypeVar,
-)
+from typing import Any, TYPE_CHECKING, TypeVar
 
 from flockwave.server.utils import constant
 

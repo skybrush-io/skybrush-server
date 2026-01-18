@@ -1,13 +1,13 @@
 """Classes representing various Skybrush show file formats."""
 
-from collections.abc import Awaitable, Callable, Iterable, Sequence
+from collections.abc import AsyncIterable, Awaitable, Callable, Iterable, Sequence
 from contextlib import aclosing
 from enum import IntEnum, IntFlag
 from functools import partial
 from io import BytesIO, SEEK_END
 from math import floor
 from struct import Struct
-from typing import AsyncIterable, ClassVar, IO
+from typing import ClassVar, IO
 
 from .trajectory import TrajectorySegment, TrajectorySpecification
 from .utils import crc32_mavftp as crc32, Point

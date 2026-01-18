@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from collections import defaultdict
-from collections.abc import Awaitable, Callable, Iterable, Iterator
+from collections.abc import AsyncIterable, Awaitable, Callable, Iterable, Iterator
 from contextlib import contextmanager, ExitStack
 from dataclasses import dataclass, field
 from functools import partial
@@ -25,13 +25,7 @@ from trio import (
     open_nursery,
     sleep,
 )
-from typing import (
-    Any,
-    AsyncIterable,
-    Generic,
-    TypeVar,
-    overload,
-)
+from typing import Any, Generic, TypeVar, overload
 
 from flockwave.connections import ConnectionState
 from flockwave.concurrency import AsyncBundler

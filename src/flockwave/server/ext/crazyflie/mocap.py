@@ -1,11 +1,11 @@
 from typing import TYPE_CHECKING
 
-from aiocflib.crtp.crtpstack import CRTPPort
 from aiocflib.crazyflie.localization import (
     GenericLocalizationCommand,
     Localization,
     LocalizationChannel,
 )
+from aiocflib.crtp.crtpstack import CRTPPort
 from aiocflib.utils.quaternion import QuaternionXYZW
 
 from flockwave.server.utils import chunks
@@ -13,8 +13,9 @@ from flockwave.server.utils import chunks
 from .connection import BroadcasterFunction
 
 if TYPE_CHECKING:
-    from .driver import CrazyflieDriver
     from flockwave.server.ext.motion_capture import MotionCaptureFrame
+
+    from .driver import CrazyflieDriver
 
 __all__ = ("CrazyflieMocapFrameHandler",)
 

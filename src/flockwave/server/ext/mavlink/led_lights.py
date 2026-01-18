@@ -5,9 +5,9 @@ from struct import Struct
 from typing import TYPE_CHECKING
 
 from flockwave.server.tasks.led_lights import (
+    LEDLightConfigurationManagerBase,
     LightConfiguration,
     LightEffectType,
-    LEDLightConfigurationManagerBase,
 )
 
 from .packets import create_led_control_packet

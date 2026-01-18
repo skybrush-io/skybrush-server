@@ -4,11 +4,12 @@ for the ``CLK-...`` commands defined in the Skybrush protocol.
 
 from __future__ import annotations
 
+from collections.abc import Iterable, Iterator
+from contextlib import ExitStack, contextmanager
+from typing import TYPE_CHECKING, Any
+
 from blinker import Signal
-from collections.abc import Iterator, Iterable
-from contextlib import contextmanager, ExitStack
 from trio import sleep_forever
-from typing import Any, TYPE_CHECKING
 
 from flockwave.server.model.clock import Clock
 from flockwave.server.registries.base import RegistryBase, find_in_registry

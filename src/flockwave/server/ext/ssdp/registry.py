@@ -10,7 +10,6 @@ from contextlib import contextmanager
 from flockwave.connections import IPAddressAndPort
 from flockwave.server.registries.base import RegistryBase
 
-
 URIOrCallableReturningURI = str | Callable[[IPAddressAndPort], str | None]
 
 

@@ -1,10 +1,11 @@
-from cachetools import cached, LRUCache
 from typing import Any
 
+from cachetools import LRUCache, cached
+
 from flockwave.spec.validator import (
+    ValidationError,
     Validator,
     create_validator_for_schema,
-    ValidationError,
 )
 
 __all__ = ("cached_validator_for", "validator_for", "Validator", "ValidationError")

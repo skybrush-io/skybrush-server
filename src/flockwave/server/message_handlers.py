@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Iterable
-from inspect import isawaitable, isasyncgen
+from inspect import isasyncgen, isawaitable
 from typing import (
+    TYPE_CHECKING,
     Any,
     TypeVar,
-    TYPE_CHECKING,
     overload,
 )
 

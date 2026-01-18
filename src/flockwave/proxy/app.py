@@ -2,6 +2,7 @@
 
 from http.client import parse_headers
 from io import BytesIO
+
 from trio import open_nursery, sleep_forever
 
 from flockwave.app_framework import DaemonApp

@@ -3,12 +3,12 @@ drones with a single Crazyradio.
 """
 
 from collections.abc import Callable
-from trio import Event
 from typing import AsyncContextManager, ClassVar
 
 from aiocflib.crtp.broadcaster import Broadcaster
 from aiocflib.crtp.crtpstack import CRTPPort
 from aiocflib.utils.addressing import parse_radio_uri
+from trio import Event
 
 from flockwave.connections.base import TaskConnectionBase
 

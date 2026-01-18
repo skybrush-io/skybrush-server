@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Awaitable, Callable, Iterable, Sequence
 from dataclasses import dataclass, field
 from functools import partial
-from typing import Any, ClassVar, ContextManager, Protocol, TYPE_CHECKING, overload
+from typing import TYPE_CHECKING, Any, ClassVar, ContextManager, Protocol, overload
 
 from .enums import MAVSeverity
 from .rssi import RSSIMode

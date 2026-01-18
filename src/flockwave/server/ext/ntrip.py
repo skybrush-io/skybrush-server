@@ -2,7 +2,7 @@
 yielding RTCMv2 and RTCMv3 messages from a remote NTRIP server.
 """
 
-from flockwave.connections import ConnectionBase, create_connection, RWConnection
+from flockwave.connections import ConnectionBase, RWConnection, create_connection
 from flockwave.gps.http.response import Response
 from flockwave.gps.ntrip.client import NtripClient
 

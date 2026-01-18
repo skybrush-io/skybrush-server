@@ -4,13 +4,14 @@ from collections.abc import AsyncIterable, Awaitable, Callable, Iterable, Sequen
 from contextlib import aclosing
 from enum import IntEnum, IntFlag
 from functools import partial
-from io import BytesIO, SEEK_END
+from io import SEEK_END, BytesIO
 from math import floor
 from struct import Struct
-from typing import ClassVar, IO
+from typing import IO, ClassVar
 
 from .trajectory import TrajectorySegment, TrajectorySpecification
-from .utils import crc32_mavftp as crc32, Point
+from .utils import Point
+from .utils import crc32_mavftp as crc32
 
 __all__ = ("SkybrushBinaryShowFile",)
 

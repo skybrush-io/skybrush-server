@@ -15,7 +15,6 @@ from math import cos, floor, pi, radians, sin
 
 from flockwave.gps.vectors import Vector3D
 
-
 __all__ = ("place_drones", "register")
 
 

@@ -4,6 +4,7 @@ keeps track of registered authentication methods.
 
 from collections.abc import Iterator
 from contextlib import contextmanager
+from typing import TYPE_CHECKING, Any
 
 from flockwave.server.model.authentication import (
     AuthenticationMethod,
@@ -13,8 +14,6 @@ from flockwave.server.model.client import Client
 from flockwave.server.registries.base import RegistryBase
 
 from .base import Extension
-
-from typing import Any, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from flockwave.server.app import SkybrushServer

@@ -9,9 +9,10 @@ intervals can be configured.
 Useful primarily for debugging purposes.
 """
 
+from trio import current_time, open_nursery, sleep, sleep_until
+
 from flockwave.connections import Connection, ConnectionBase
 from flockwave.server.model import ConnectionPurpose
-from trio import current_time, open_nursery, sleep, sleep_until
 
 __all__ = ()
 

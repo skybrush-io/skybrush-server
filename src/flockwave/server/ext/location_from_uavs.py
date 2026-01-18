@@ -4,8 +4,9 @@ of the server in geodetic coordinates.
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING, Any, cast
+
 from trio import CancelScope, sleep, sleep_forever
-from typing import Any, TYPE_CHECKING, cast
 
 from flockwave.gps.vectors import GPSCoordinate
 from flockwave.logger import Logger

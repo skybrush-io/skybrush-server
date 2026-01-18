@@ -6,12 +6,13 @@ from __future__ import annotations
 
 from abc import abstractmethod
 from collections.abc import Callable, Iterable
-from colour import Color
 from time import monotonic
 from typing import TYPE_CHECKING
 
-from flockwave.spec.errors import FlockwaveErrorCode
+from colour import Color
+
 from flockwave.server.show import LightPlayer
+from flockwave.spec.errors import FlockwaveErrorCode
 
 if TYPE_CHECKING:
     from .driver import VirtualUAV

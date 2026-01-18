@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING, Protocol
 
 if TYPE_CHECKING:
     from flockwave.server.tasks.led_lights import LightConfiguration
+
     from .clock import ShowClock
     from .config import DroneShowConfiguration
     from .metadata import ShowMetadata

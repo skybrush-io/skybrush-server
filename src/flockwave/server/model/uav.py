@@ -6,11 +6,11 @@ from abc import ABC, abstractmethod
 from collections.abc import Awaitable, Callable, Iterable
 from inspect import isawaitable
 from typing import (
+    TYPE_CHECKING,
     Any,
     Generic,
     TypedDict,
     TypeVar,
-    TYPE_CHECKING,
 )
 
 from flockwave.gps.vectors import GPSCoordinate, PositionXYZ, VelocityNED, VelocityXYZ

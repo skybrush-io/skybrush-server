@@ -1,14 +1,13 @@
-from blinker import Signal
 from typing import Any
+
+from blinker import Signal
 
 from flockwave.gps.vectors import GPSCoordinate
 from flockwave.server.model.metamagic import ModelMeta
 from flockwave.server.model.mixins import TimestampLike, TimestampMixin
 from flockwave.server.model.object import ModelObject
 from flockwave.server.model.utils import optionally_scaled_by
-
 from flockwave.spec.schema import get_complex_object_schema
-
 
 __all__ = ("Beacon", "is_beacon")
 

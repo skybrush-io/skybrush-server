@@ -2,14 +2,15 @@
 
 from __future__ import annotations
 
-from blinker import Signal
 from builtins import str
 from collections import Counter, defaultdict
 from collections.abc import Iterable
 from dataclasses import dataclass
 from enum import Enum
 from itertools import islice
-from typing import cast, overload, Any, Generic, TypeVar, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Generic, TypeVar, cast, overload
+
+from blinker import Signal
 
 from flockwave.spec.schema import get_complex_object_schema
 
@@ -19,8 +20,8 @@ from .metamagic import ModelMeta
 from .object import ModelObject
 
 if TYPE_CHECKING:
-    from flockwave.server.registries.clients import ClientRegistry
     from flockwave.server.message_hub import MessageHub
+    from flockwave.server.registries.clients import ClientRegistry
 
 __all__ = (
     "ChannelNode",

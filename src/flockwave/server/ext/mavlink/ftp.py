@@ -13,14 +13,15 @@ from itertools import cycle, islice
 from pathlib import PurePosixPath
 from random import randint
 from struct import Struct
+from typing import TYPE_CHECKING, Protocol
+
 from trio import (
-    as_safe_channel,
     BrokenResourceError,
-    move_on_after,
     TooSlowError,
+    as_safe_channel,
+    move_on_after,
     wrap_file,
 )
-from typing import TYPE_CHECKING, Protocol
 
 from flockwave.concurrency import (
     AdaptiveExponentialBackoffPolicy,
@@ -30,7 +31,7 @@ from flockwave.concurrency import (
 from flockwave.server.model.commands import Progress
 from flockwave.server.show.utils import crc32_mavftp as crc32
 
-from .types import MAVLinkMessage, spec, UAVBoundPacketSenderFn
+from .types import MAVLinkMessage, UAVBoundPacketSenderFn, spec
 
 if TYPE_CHECKING:
     from .driver import MAVLinkUAV

@@ -2,14 +2,15 @@
 
 from collections import Counter, defaultdict
 from collections.abc import Iterable, Sequence
-from inspect import isawaitable, isasyncgen
+from inspect import isasyncgen, isawaitable
 from os import environ
+from typing import Any
+
 from platformdirs import AppDirs
 from trio import (
     BrokenResourceError,
     move_on_after,
 )
-from typing import Any
 
 from flockwave.app_framework import DaemonApp
 from flockwave.app_framework.configurator import AppConfigurator, Configuration
@@ -27,6 +28,7 @@ from flockwave.server.utils.system_time import (
 from .commands import CommandExecutionManager, CommandExecutionStatus
 from .errors import NotSupportedError
 from .logger import log
+from .message_handlers import MessageBodyTransformationSpec, transform_message_body
 from .message_hub import (
     BatchMessageRateLimiter,
     ConnectionStatusMessageRateLimiter,
@@ -34,7 +36,6 @@ from .message_hub import (
     RateLimiters,
     UAVMessageRateLimiter,
 )
-from .message_handlers import MessageBodyTransformationSpec, transform_message_body
 from .model.client import Client
 from .model.devices import DeviceTree, DeviceTreeSubscriptionManager
 from .model.errors import ClientNotSubscribedError, NoSuchPathError
@@ -42,7 +43,7 @@ from .model.log import LogMessage, Severity
 from .model.messages import FlockwaveMessage, FlockwaveNotification, FlockwaveResponse
 from .model.object import ModelObject
 from .model.transport import TransportOptions
-from .model.uav import is_uav, UAV, UAVDriver
+from .model.uav import UAV, UAVDriver, is_uav
 from .model.world import World
 from .registries import (
     ChannelTypeRegistry,

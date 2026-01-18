@@ -7,9 +7,10 @@ from contextlib import aclosing
 from errno import ENODEV
 from functools import partial
 from time import monotonic
+from typing import TYPE_CHECKING, ClassVar
+
 from trio import Event, move_on_after, sleep
 from trio.abc import ReceiveChannel, SendChannel
-from typing import TYPE_CHECKING, ClassVar
 
 from flockwave.server.utils import longest_common_prefix
 

@@ -7,18 +7,19 @@ Socket.IO connections.
 from __future__ import annotations
 
 from collections.abc import Callable, Iterable, Iterator
-from contextlib import contextmanager, ExitStack
+from contextlib import ExitStack, contextmanager
 from enum import Enum
 from functools import partial
 from json import JSONDecoder
 from logging import Logger
-from trio import open_nursery, sleep_forever
-from typing import Any, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 from urllib.parse import parse_qs
 
+from trio import open_nursery, sleep_forever
+
 from flockwave.encoders.json import create_json_encoder
-from flockwave.server.model import Client, CommunicationChannel
 from flockwave.networking import format_socket_address
+from flockwave.server.model import Client, CommunicationChannel
 
 from .vendor.socketio_v4 import TrioServer as TrioServerForSocketIOV4
 from .vendor.socketio_v5 import TrioServer as TrioServerForSocketIOV5

@@ -6,7 +6,6 @@ from dataclasses import dataclass
 from functools import partial, total_ordering
 from typing import Any
 
-
 __all__ = ("RoutingMiddleware",)
 
 

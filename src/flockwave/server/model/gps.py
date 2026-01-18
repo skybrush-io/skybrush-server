@@ -3,7 +3,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import IntEnum
 
-
 __all__ = ("GPSFix", "GPSFixType", "ScaledLatLonPair")
 
 

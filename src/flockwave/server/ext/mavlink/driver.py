@@ -14,12 +14,11 @@ from time import monotonic
 from typing import Any
 
 from colour import Color
+from trio import Event, TooSlowError, fail_after, move_on_after, sleep
+
 from flockwave.concurrency import FutureCancelled, delayed
 from flockwave.gps.time import datetime_to_gps_time_of_week, gps_time_of_week_to_utc
 from flockwave.gps.vectors import GPSCoordinate, VelocityNED
-from flockwave.spec.errors import FlockwaveErrorCode
-from trio import Event, TooSlowError, fail_after, move_on_after, sleep
-
 from flockwave.server.command_handlers import (
     create_calibration_command_handler,
     create_color_command_handler,
@@ -60,6 +59,7 @@ from flockwave.server.show.formats import SkybrushBinaryShowFile
 from flockwave.server.types import GCSLogMessageSender
 from flockwave.server.utils import color_to_rgb8_triplet, to_uppercase_string
 from flockwave.server.utils.generic import nop
+from flockwave.spec.errors import FlockwaveErrorCode
 
 from .accelerometer import AccelerometerCalibration
 from .autopilots import ArduPilot, Autopilot, UnknownAutopilot

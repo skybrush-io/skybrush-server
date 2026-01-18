@@ -1,19 +1,19 @@
 """Safety fence handling extension for the Crazyflie with our custom firmware."""
 
-from aiocflib.crazyflie.mem import write_with_checksum
-from aiocflib.crazyflie import Crazyflie
-
 from collections.abc import Sequence
 from struct import Struct
 from typing import Any
+
+from aiocflib.crazyflie import Crazyflie
+from aiocflib.crazyflie.mem import write_with_checksum
 
 from flockwave.server.show.trajectory import TrajectorySpecification
 
 from .crtp_extensions import (
     DRONE_SHOW_PORT,
-    FenceAction,
     MEM_TYPE_FENCE,
     DroneShowCommand,
+    FenceAction,
     FenceLocation,
     FenceType,
 )

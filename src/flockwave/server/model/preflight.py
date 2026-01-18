@@ -1,11 +1,11 @@
-from bidict import bidict  # type: ignore
 from enum import Enum
+
+from bidict import bidict  # type: ignore
 
 from flockwave.server.model.metamagic import ModelMeta
 from flockwave.spec.schema import get_complex_object_schema
 
 from .utils import enum_to_json
-
 
 __all__ = ("PreflightCheckInfo",)
 

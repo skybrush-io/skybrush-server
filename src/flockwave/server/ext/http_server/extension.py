@@ -7,15 +7,15 @@ Socket.IO-based channel.
 """
 
 import logging
-
 from collections.abc import Iterable
 from contextlib import contextmanager
 from dataclasses import dataclass
 from heapq import heapify, heappush
+from pathlib import Path
+
 from hypercorn.config import Config as HyperConfig
 from hypercorn.trio import serve
-from pathlib import Path
-from quart import abort, Blueprint, Quart, redirect, request, url_for
+from quart import Blueprint, Quart, abort, redirect, request, url_for
 from quart_trio import QuartTrio
 from trio import current_time, sleep
 

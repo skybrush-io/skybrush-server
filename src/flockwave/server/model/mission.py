@@ -5,7 +5,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from collections import Counter
 from collections.abc import Sequence
-from dataclasses import dataclass, field, InitVar
+from dataclasses import InitVar, dataclass, field
 from enum import Enum
 from itertools import chain
 from typing import Any, TypedDict
@@ -21,7 +21,6 @@ from .geofence import GeofenceConfigurationRequest
 from .gps import ScaledLatLonPair
 from .identifiers import default_id_generator
 from .safety import SafetyConfigurationRequest
-
 
 __all__ = (
     # mission items

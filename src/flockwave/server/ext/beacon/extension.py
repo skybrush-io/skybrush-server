@@ -14,7 +14,6 @@ from flockwave.server.model.messages import FlockwaveNotification
 from flockwave.server.model.object import registered
 from flockwave.server.registries.base import find_in_registry
 
-
 from .model import Beacon, is_beacon
 
 ############################################################################

@@ -6,8 +6,9 @@ from __future__ import annotations
 
 from collections.abc import Callable, Sequence
 from logging import Logger
-from trio import fail_after, TooSlowError
-from typing import Any, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
+
+from trio import TooSlowError, fail_after
 
 from flockwave.connections import create_connection
 from flockwave.connections.socket import UDPListenerConnection

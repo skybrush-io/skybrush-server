@@ -3,15 +3,16 @@
 from collections.abc import Callable
 from contextlib import aclosing
 from functools import partial
+
 from trio import (
     MemoryReceiveChannel,
     MemorySendChannel,
+    TooSlowError,
     WouldBlock,
     current_time,
     fail_after,
     move_on_after,
     open_memory_channel,
-    TooSlowError,
 )
 
 from flockwave.concurrency import Future

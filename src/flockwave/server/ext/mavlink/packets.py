@@ -9,7 +9,7 @@ from struct import Struct, pack
 from time import time
 from typing import ClassVar
 
-from flockwave.gps.time import unix_to_gps_time_of_week, gps_time_of_week_to_utc
+from flockwave.gps.time import gps_time_of_week_to_utc, unix_to_gps_time_of_week
 from flockwave.server.ext.show.config import AuthorizationScope
 from flockwave.server.model.gps import GPSFixType as OurGPSFixType
 

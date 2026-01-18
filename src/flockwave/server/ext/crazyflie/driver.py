@@ -4,8 +4,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from collections.abc import AsyncIterator, Callable, Iterable, Sequence
-from colour import Color
-from contextlib import asynccontextmanager, AsyncExitStack
+from contextlib import AsyncExitStack, asynccontextmanager
 from errno import EIO
 from functools import partial
 from logging import Logger
@@ -13,16 +12,17 @@ from math import ceil, hypot
 from pathlib import Path
 from random import random
 from struct import Struct
-from trio import Nursery, open_nursery, sleep
-from trio_util import periodic
-from typing import Any, TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, Any, cast
 
 from aiocflib.crazyflie import Crazyflie
-from aiocflib.crtp.crtpstack import MemoryType
 from aiocflib.crazyflie.high_level_commander import TrajectoryType
 from aiocflib.crazyflie.log import LogSession
 from aiocflib.crazyflie.mem import write_with_checksum
+from aiocflib.crtp.crtpstack import MemoryType
 from aiocflib.errors import TimeoutError
+from colour import Color
+from trio import Nursery, open_nursery, sleep
+from trio_util import periodic
 
 from flockwave.gps.vectors import PositionXYZ, VelocityXYZ
 from flockwave.server.command_handlers import (
@@ -37,11 +37,11 @@ from flockwave.server.model.transport import TransportOptions
 from flockwave.server.model.uav import BatteryInfo, UAVBase, UAVDriver, VersionInfo
 from flockwave.server.registries.errors import RegistryFull
 from flockwave.server.show import (
+    TrajectorySpecification,
     get_group_index_from_show_specification,
     get_home_position_from_show_specification,
     get_light_program_from_show_specification,
     get_trajectory_from_show_specification,
-    TrajectorySpecification,
 )
 from flockwave.server.types import GCSLogMessageSender
 from flockwave.server.utils import color_to_rgb8_triplet, nop, optional_float
@@ -59,7 +59,7 @@ from .crtp_extensions import (
     PreflightCheckStatus,
 )
 from .fence import Fence, FenceConfiguration
-from .trajectory import encode_trajectory, TrajectoryEncoding
+from .trajectory import TrajectoryEncoding, encode_trajectory
 from .types import ControllerType
 
 if TYPE_CHECKING:

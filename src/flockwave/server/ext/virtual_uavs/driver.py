@@ -3,22 +3,23 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Collection
-from colour import Color
 from enum import Enum
 from hashlib import sha1 as firmware_hash
 from math import atan2, cos, hypot, radians, sin
-from random import random, randint, choice
+from random import choice, randint, random
 from time import monotonic
+from typing import Any, NoReturn
+
+from colour import Color
 from trio import CancelScope, sleep
 from trio_util import periodic
-from typing import Any, NoReturn
 
 from flockwave.concurrency import delayed
 from flockwave.ext.manager import ExtensionAPIProxy
 from flockwave.gps.vectors import (
     FlatEarthCoordinate,
-    GPSCoordinate,
     FlatEarthToGPSCoordinateTransformation,
+    GPSCoordinate,
     Vector3D,
     VelocityNED,
 )
@@ -32,21 +33,21 @@ from flockwave.server.command_handlers import (
 from flockwave.server.errors import NotSupportedError
 from flockwave.server.model.commands import (
     Progress,
-    Suspend,
     ProgressEventsWithSuspension,
+    Suspend,
 )
 from flockwave.server.model.devices import ObjectNode
 from flockwave.server.model.gps import GPSFixType
 from flockwave.server.model.log import FlightLog, FlightLogKind, FlightLogMetadata
 from flockwave.server.model.mission import MissionItemBundle
-from flockwave.server.model.preflight import PreflightCheckResult, PreflightCheckInfo
+from flockwave.server.model.preflight import PreflightCheckInfo, PreflightCheckResult
 from flockwave.server.model.transport import TransportOptions
-from flockwave.server.model.uav import VersionInfo, UAVBase, UAVDriver
+from flockwave.server.model.uav import UAVBase, UAVDriver, VersionInfo
 from flockwave.server.show import (
-    get_coordinate_system_from_show_specification,
-    get_light_program_from_show_specification,
     TrajectoryPlayer,
     TrajectorySpecification,
+    get_coordinate_system_from_show_specification,
+    get_light_program_from_show_specification,
 )
 from flockwave.server.utils import color_to_rgb565
 from flockwave.spec.errors import FlockwaveErrorCode
@@ -54,7 +55,6 @@ from flockwave.spec.errors import FlockwaveErrorCode
 from .battery import VirtualBattery
 from .fw_upload import FIRMWARE_UPDATE_TARGET_ID
 from .lights import DefaultLightController
-
 
 __all__ = ("VirtualUAVDriver",)
 

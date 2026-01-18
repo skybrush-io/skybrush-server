@@ -1,9 +1,10 @@
 """Command line launcher for the Skybrush proxy server."""
 
-import click
-import dotenv
 import logging
 import sys
+
+import click
+import dotenv
 import trio
 
 from flockwave import logger

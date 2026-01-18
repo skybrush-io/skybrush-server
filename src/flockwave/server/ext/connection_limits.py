@@ -3,12 +3,12 @@ on the maximum duration of a connection.
 """
 
 from contextlib import ExitStack
-from trio import current_time, sleep
-from trio_util import periodic
 from weakref import WeakKeyDictionary
 
-from flockwave.server.utils import overridden
+from trio import current_time, sleep
+from trio_util import periodic
 
+from flockwave.server.utils import overridden
 
 app = None
 deadlines = None

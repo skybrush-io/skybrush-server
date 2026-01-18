@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-
 from copy import deepcopy
 from shutil import move
 from tempfile import NamedTemporaryFile

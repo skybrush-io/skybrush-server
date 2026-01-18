@@ -5,7 +5,7 @@ from __future__ import annotations
 from logging import Handler, Logger, getLogger
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
-from typing import Any, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from flockwave.logger.formatters import styles
 

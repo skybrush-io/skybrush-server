@@ -1,10 +1,11 @@
 """Clock-related model objects."""
 
 from abc import ABC, abstractmethod
-from blinker import Signal
 from datetime import datetime, timezone
 from time import time
 from typing import ClassVar
+
+from blinker import Signal
 
 __all__ = ("Clock", "ClockBase", "StoppableClockBase", "TimeElapsedSinceReferenceClock")
 

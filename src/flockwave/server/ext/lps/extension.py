@@ -10,8 +10,8 @@ from flockwave.concurrency import AsyncBundler
 from flockwave.server.ext.base import Extension
 from flockwave.server.message_handlers import (
     create_mapper,
-    create_object_listing_request_handler,
     create_multi_object_message_handler,
+    create_object_listing_request_handler,
 )
 from flockwave.server.model.messages import (
     FlockwaveMessage,

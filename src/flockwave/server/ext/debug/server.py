@@ -5,12 +5,13 @@ from collections.abc import Callable
 from functools import partial
 from logging import Logger
 from math import inf
+
 from trio import (
     BrokenResourceError,
+    TooSlowError,
     fail_after,
     open_memory_channel,
     open_nursery,
-    TooSlowError,
 )
 from trio.abc import ReceiveChannel, Stream
 

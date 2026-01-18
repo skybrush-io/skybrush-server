@@ -5,12 +5,12 @@ each other's API.
 
 from __future__ import annotations
 
-from blinker import NamedSignal, Signal
 from collections.abc import Callable, Iterator
-from contextlib import contextmanager, ExitStack
+from contextlib import ExitStack, contextmanager
 from logging import Logger
 from typing import ContextManager, Protocol
 
+from blinker import NamedSignal, Signal
 
 log: Logger | None = None
 """Logger that will be used to log unexpected exceptions from signal handlers."""

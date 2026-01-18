@@ -9,7 +9,7 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 from importlib import import_module
 from time import time
-from typing import Any, ClassVar, Protocol, TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, Any, ClassVar, Protocol, cast
 
 from flockwave.channels import (
     BroadcastMessageChannel,
@@ -30,6 +30,7 @@ if TYPE_CHECKING:
         MinimalMAVLinkFactory,
         MinimalMAVLinkInterface,
     )
+
     from .types import MAVLinkMessage, MAVLinkMessageSpecification
 
 __all__ = (

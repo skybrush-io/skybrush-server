@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from heapq import heappush, heappop
-from logging import ERROR, WARNING, INFO, DEBUG
-from typing import NamedTuple, TYPE_CHECKING
+from heapq import heappop, heappush
+from logging import DEBUG, ERROR, INFO, WARNING
+from typing import TYPE_CHECKING, NamedTuple
 
 from flockwave.gps.vectors import GPSCoordinate
 from flockwave.server.model.log import Severity

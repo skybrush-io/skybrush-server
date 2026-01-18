@@ -25,7 +25,6 @@ from flockwave.gps.vectors import (
     ECEFToGPSCoordinateTransformation,
     GPSCoordinate,
 )
-
 from flockwave.server.utils import LastUpdatedOrderedDict
 
 from .types import GPSPacket

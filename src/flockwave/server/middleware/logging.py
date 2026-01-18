@@ -2,9 +2,9 @@
 
 from collections.abc import Iterable
 from logging import Logger
+from typing import ClassVar
 
 from flockwave.server.model import Client, FlockwaveMessage, FlockwaveNotification
-from typing import ClassVar
 
 __all__ = ("RequestLogMiddleware",)
 

@@ -1,7 +1,8 @@
 from collections.abc import Awaitable
 from inspect import isawaitable
-from trio import open_nursery
 from typing import Any, TypeVar
+
+from trio import open_nursery
 
 __all__ = ("wait_for_dict_items",)
 

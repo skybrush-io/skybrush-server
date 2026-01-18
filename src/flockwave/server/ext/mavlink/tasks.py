@@ -2,6 +2,7 @@
 
 from collections import defaultdict
 from time import monotonic
+
 from trio_util import periodic
 
 from .driver import MAVLinkUAV

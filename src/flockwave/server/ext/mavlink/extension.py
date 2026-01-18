@@ -8,7 +8,7 @@ from collections import OrderedDict
 from collections.abc import Callable, Iterator
 from contextlib import ExitStack, contextmanager
 from functools import partial
-from typing import Any, TYPE_CHECKING, overload
+from typing import TYPE_CHECKING, Any, overload
 
 from flockwave.server.ext.base import UAVExtension
 from flockwave.server.ext.mavlink.fw_upload import FirmwareUpdateTarget
@@ -18,7 +18,7 @@ from flockwave.server.model.uav import UAV
 from flockwave.server.registries.errors import RegistryFull
 from flockwave.server.utils import optional_int, overridden
 
-from .autopilots import ArduPilot, ArduPilotWithSkybrush, PX4, Autopilot
+from .autopilots import PX4, ArduPilot, ArduPilotWithSkybrush, Autopilot
 from .channel import use_mavlink_message_channel_factory
 from .driver import MAVLinkDriver, MAVLinkUAV
 from .errors import InvalidSigningKeyError

@@ -8,8 +8,9 @@ from collections.abc import Iterable
 from contextlib import ExitStack
 from functools import partial
 from inspect import isawaitable
-from trio import open_nursery
 from typing import Any, cast, overload
+
+from trio import open_nursery
 
 from flockwave.server.ext.base import Extension
 from flockwave.server.message_hub import MessageHub
@@ -17,7 +18,7 @@ from flockwave.server.model import Client, FlockwaveMessage, FlockwaveResponse
 from flockwave.server.model.messages import FlockwaveNotification
 from flockwave.server.registries import find_in_registry
 from flockwave.server.utils.formatting import format_list_nicely
-from flockwave.server.utils.validation import cached_validator_for, ValidationError
+from flockwave.server.utils.validation import ValidationError, cached_validator_for
 
 from .examples import LandImmediatelyMissionType
 from .model import Mission, MissionPlan, MissionType

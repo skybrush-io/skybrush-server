@@ -2,11 +2,12 @@
 server knows.
 """
 
-from blinker import Signal
 from collections.abc import Callable, Iterable, Iterator
 from contextlib import contextmanager
 from math import inf
-from typing import cast, ClassVar, TypeVar
+from typing import ClassVar, TypeVar, cast
+
+from blinker import Signal
 
 from flockwave.server.model import ModelObject
 

@@ -12,7 +12,6 @@ from flockwave.server.show.trajectory import TrajectorySpecification
 
 from .math import get_poly_degree, to_bernstein_form
 
-
 __all__ = ("encode_trajectory", "Poly4D", "to_poly4d_sequence")
 
 

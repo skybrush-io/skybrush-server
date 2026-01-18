@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 from typing import TYPE_CHECKING
 
 from flockwave.server.errors import NotSupportedError
@@ -6,7 +7,6 @@ from flockwave.server.model.geofence import GeofenceConfigurationRequest, Geofen
 from flockwave.server.model.safety import SafetyConfigurationRequest
 
 from ..types import MAVLinkFlightModeNumbers, MAVLinkMessage
-
 from .base import Autopilot
 
 if TYPE_CHECKING:

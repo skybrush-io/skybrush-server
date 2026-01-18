@@ -13,28 +13,28 @@ from contextlib import ExitStack
 from enum import Enum
 from functools import partial
 from json import loads
-from pynmea2 import parse as parse_nmea
 from re import sub
-from typing import Any, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
-from flockwave.gps.vectors import GPSCoordinate
+from pynmea2 import parse as parse_nmea
+
 from flockwave.channels import ParserChannel
 from flockwave.channels.types import Parser
 from flockwave.connections import (
-    create_connection,
     Connection,
     ListenerConnection,
     RWConnection,
+    create_connection,
 )
 from flockwave.ext.manager import ExtensionAPIProxy
+from flockwave.gps.vectors import GPSCoordinate
 from flockwave.networking import format_socket_address
 from flockwave.parsers import create_line_parser
 from flockwave.server.errors import NotSupportedError
 from flockwave.server.model import ConnectionPurpose
 from flockwave.server.registries.errors import RegistryFull
-from flockwave.spec.ids import make_valid_object_id
-
 from flockwave.server.utils.generic import overridden
+from flockwave.spec.ids import make_valid_object_id
 
 from .base import UAVExtension
 

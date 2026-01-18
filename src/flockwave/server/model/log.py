@@ -7,7 +7,6 @@ from flockwave.spec.schema import get_complex_object_schema
 
 from .utils import enum_to_json
 
-
 __all__ = ("LogMessage", "FlightLog", "FlightLogKind", "FlightLogMetadata")
 
 

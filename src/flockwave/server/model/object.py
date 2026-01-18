@@ -7,7 +7,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
-from typing import TypeVar, TYPE_CHECKING, overload
+from typing import TYPE_CHECKING, TypeVar, overload
 
 from flockwave.server.logger import log as base_log
 

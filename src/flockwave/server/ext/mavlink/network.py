@@ -12,23 +12,24 @@ MAVLink-based drone swarms.
 
 from __future__ import annotations
 
-from collections.abc import Awaitable, Callable, Iterable, Iterator, Sequence
 from collections import defaultdict
-from contextlib import contextmanager, ExitStack
+from collections.abc import Awaitable, Callable, Iterable, Iterator, Sequence
+from contextlib import ExitStack, contextmanager
 from logging import Logger
 from time import time_ns
+from typing import TYPE_CHECKING, Any
+
 from trio import move_on_after, open_nursery, to_thread
 from trio.abc import ReceiveChannel
 from trio_util import periodic
-from typing import Any, TYPE_CHECKING
 
+from flockwave.concurrency import Future, race
 from flockwave.connections import (
     Connection,
-    create_connection,
     ListenerConnection,
     UDPListenerConnection,
+    create_connection,
 )
-from flockwave.concurrency import Future, race
 from flockwave.networking import find_interfaces_with_address
 from flockwave.server.comm import CommunicationManager
 from flockwave.server.model import ConnectionPurpose
@@ -56,8 +57,8 @@ from .types import (
 from .utils import (
     flockwave_severity_from_mavlink_severity,
     log_id_for_uav,
-    python_log_level_from_mavlink_severity,
     log_id_from_message,
+    python_log_level_from_mavlink_severity,
 )
 
 if TYPE_CHECKING:

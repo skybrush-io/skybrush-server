@@ -2,8 +2,9 @@ from __future__ import annotations
 
 from contextlib import ExitStack
 from logging import Logger
-from trio import sleep_forever
 from typing import TYPE_CHECKING
+
+from trio import sleep_forever
 
 from flockwave.server.utils import overridden
 

@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-from deprecated.sphinx import versionadded
 from pathlib import Path
-from typing import Generic, TYPE_CHECKING, TypeVar
+from typing import TYPE_CHECKING, Generic, TypeVar
+
+from deprecated.sphinx import versionadded
 
 from flockwave.ext.base import ExtensionBase
 

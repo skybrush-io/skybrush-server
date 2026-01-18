@@ -5,13 +5,15 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from collections import defaultdict
 from collections.abc import AsyncIterable, Awaitable, Callable, Iterable, Iterator
-from contextlib import contextmanager, ExitStack
+from contextlib import ExitStack, contextmanager
 from dataclasses import dataclass, field
 from functools import partial
 from inspect import isawaitable
 from itertools import chain
 from logging import Logger
 from time import monotonic
+from typing import Any, Generic, TypeVar, overload
+
 from trio import (
     BrokenResourceError,
     ClosedResourceError,
@@ -25,12 +27,20 @@ from trio import (
     open_nursery,
     sleep,
 )
-from typing import Any, Generic, TypeVar, overload
 
-from flockwave.connections import ConnectionState
 from flockwave.concurrency import AsyncBundler
+from flockwave.connections import ConnectionState
 
 from .logger import log as base_log
+
+# Legacy imports for compatibility reasons. We can get rid of these when the
+# "dock" extension has migrated to the new location in .message_handlers
+from .message_handlers import (
+    create_mapper as create_generic_INF_or_PROPS_message_factory,
+)
+from .message_handlers import (
+    create_multi_object_message_handler,
+)
 from .middleware import RequestMiddleware, ResponseMiddleware
 from .middleware.logging import RequestLogMiddleware, ResponseLogMiddleware
 from .model import (
@@ -43,13 +53,6 @@ from .model import (
 from .registries import ChannelTypeRegistry, ClientRegistry
 from .types import Disposer
 from .utils.validation import ValidationError
-
-# Legacy imports for compatibility reasons. We can get rid of these when the
-# "dock" extension has migrated to the new location in .message_handlers
-from .message_handlers import (
-    create_mapper as create_generic_INF_or_PROPS_message_factory,
-    create_multi_object_message_handler,
-)
 
 __all__ = (
     "ConnectionStatusMessageRateLimiter",

@@ -3,9 +3,10 @@ from __future__ import annotations
 from contextlib import ExitStack
 from logging import Logger
 from math import inf
-from trio import fail_after, Nursery, open_nursery, sleep_forever, TooSlowError
-from trio_util import periodic
 from typing import Any
+
+from trio import Nursery, TooSlowError, fail_after, open_nursery, sleep_forever
+from trio_util import periodic
 
 from flockwave.concurrency import CancellableTaskGroup
 from flockwave.server.ext.base import Extension

@@ -4,20 +4,21 @@ remote UAVs.
 
 from collections.abc import AsyncGenerator, Awaitable
 from contextlib import aclosing
-from blinker import Signal
 from inspect import isasyncgen, isawaitable
+from typing import Any, TypeVar, cast
+
+from blinker import Signal
 from trio import (
-    current_time,
-    open_memory_channel,
-    open_nursery,
-    MemorySendChannel,
     MemoryReceiveChannel,
+    MemorySendChannel,
     Nursery,
     TooSlowError,
     WouldBlock,
+    current_time,
+    open_memory_channel,
+    open_nursery,
 )
 from trio_util import periodic
-from typing import cast, Any, TypeVar
 
 from .logger import log as base_log
 from .model.builders import CommandExecutionStatusBuilder

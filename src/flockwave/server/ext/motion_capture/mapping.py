@@ -1,9 +1,8 @@
 import re
-
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import cast, Any
+from typing import Any, cast
 
 from flockwave.server.utils.generic import constant, identity
 

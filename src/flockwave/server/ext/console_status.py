@@ -7,13 +7,13 @@ from __future__ import annotations
 
 import os
 import platform
-
 from contextlib import ExitStack
-from logging import Logger
 from json import dumps
-from trio import open_memory_channel, MemorySendChannel, WouldBlock
+from logging import Logger
+from typing import TYPE_CHECKING, Any
+
+from trio import MemorySendChannel, WouldBlock, open_memory_channel
 from trio.abc import ReceiveChannel
-from typing import Any, TYPE_CHECKING
 
 from flockwave.connections import ConnectionState
 from flockwave.server.registries import ConnectionRegistry, ConnectionRegistryEntry

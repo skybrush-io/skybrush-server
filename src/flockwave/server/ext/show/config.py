@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-from blinker import Signal
 from enum import Enum
 from typing import Any, TypeVar
+
+from blinker import Signal
 
 from flockwave.server.tasks.led_lights import LightConfiguration
 from flockwave.server.utils.formatting import (

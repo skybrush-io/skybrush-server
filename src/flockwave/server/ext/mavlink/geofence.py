@@ -5,8 +5,9 @@ from __future__ import annotations
 from collections.abc import Iterable
 from enum import IntFlag
 from functools import partial, singledispatch
-from trio import fail_after, TooSlowError
-from typing import Any, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
+
+from trio import TooSlowError, fail_after
 
 from flockwave.logger import Logger
 from flockwave.server.model.geofence import (

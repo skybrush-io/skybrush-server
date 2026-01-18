@@ -7,7 +7,6 @@ from contextlib import contextmanager
 
 from ..logger import log as base_log
 from ..model.uav import UAVDriver
-
 from .base import RegistryBase
 
 __all__ = ("UAVDriverRegistry",)

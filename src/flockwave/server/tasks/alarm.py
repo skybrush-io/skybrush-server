@@ -3,11 +3,12 @@ calls a function when the clock reaches a given tick count.
 """
 
 from contextlib import ExitStack
+
+from trio import WouldBlock, move_on_after, open_memory_channel, sleep
+
 from flockwave.server.logger import log as base_log
 from flockwave.server.model.clock import Clock
 from flockwave.server.utils import clamp
-
-from trio import open_memory_channel, move_on_after, sleep, WouldBlock
 
 __all__ = ("wait_until",)
 

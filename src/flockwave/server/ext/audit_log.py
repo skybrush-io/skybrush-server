@@ -16,9 +16,10 @@ from math import inf
 from pathlib import Path
 from textwrap import dedent
 from time import time
+from typing import TYPE_CHECKING, Any, TypeVar
+
 from trio import move_on_after, sleep, to_thread
 from trio.lowlevel import ParkingLot
-from typing import Any, TYPE_CHECKING, TypeVar
 
 from flockwave.server.utils import constant
 

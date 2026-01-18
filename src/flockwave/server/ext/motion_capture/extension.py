@@ -1,9 +1,10 @@
 from collections.abc import AsyncIterator
 from contextlib import aclosing
 from time import monotonic, time
+from typing import TYPE_CHECKING
+
 from trio import sleep
 from trio_util import RepeatedEvent
-from typing import TYPE_CHECKING
 
 from .frame import MotionCaptureFrame, MotionCaptureFrameItem
 from .mapping import NameRemapping

@@ -1,13 +1,14 @@
 from math import inf
-from trio import fail_after, TooSlowError
-from trio_util import RepeatedEvent
 from typing import Any, Generic, TypeVar, overload
 
+from trio import TooSlowError, fail_after
+from trio_util import RepeatedEvent
+
 from flockwave.server.model.commands import (
+    MISSING,
     Progress,
     ProgressEventsWithSuspension,
     Suspend,
-    MISSING,
 )
 
 __all__ = ("ProgressReporter",)

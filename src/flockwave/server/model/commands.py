@@ -6,8 +6,9 @@ from collections.abc import AsyncGenerator, Iterator
 from contextlib import contextmanager
 from math import inf
 from time import time
-from trio import CancelScope, current_time
 from typing import Any, Generic, TypeVar, overload
+
+from trio import CancelScope, current_time
 
 from flockwave.concurrency import Future
 from flockwave.spec.schema import get_complex_object_schema

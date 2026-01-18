@@ -2,13 +2,12 @@ from collections.abc import Callable, Iterable, Iterator
 from contextlib import ExitStack, contextmanager
 from functools import partial
 from itertools import count
-from typing import ClassVar, TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 from flockwave.concurrency import Watchdog
 from flockwave.gps.rtcm.packets import RTCMPacket, RTCMV3StationaryAntennaPacket
 from flockwave.gps.rtcm.parsers import create_rtcm_parser
 from flockwave.gps.vectors import ECEFToGPSCoordinateTransformation
-
 from flockwave.server.ext.signals import SignalsExtensionAPI
 from flockwave.server.registries.errors import RegistryFull
 from flockwave.server.utils.generic import overridden

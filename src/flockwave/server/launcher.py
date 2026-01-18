@@ -1,12 +1,13 @@
 """Command line launcher for the Skybrush server."""
 
-import click
-import dotenv
 import logging
 import os
 import sys
-import trio
 import warnings
+
+import click
+import dotenv
+import trio
 
 from flockwave import logger
 from flockwave.app_framework.hacks import install_unraisable_hook

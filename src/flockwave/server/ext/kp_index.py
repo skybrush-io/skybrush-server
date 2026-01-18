@@ -2,15 +2,15 @@
 values from a chosen data source.
 """
 
-import httpx
-
 from bisect import bisect
 from collections.abc import Awaitable, Callable, Iterable, Sequence
 from datetime import datetime, timedelta, timezone
 from math import ceil, floor
 from time import monotonic
-from trio import fail_after, Lock, sleep_forever, TooSlowError
 from typing import ClassVar
+
+import httpx
+from trio import Lock, TooSlowError, fail_after, sleep_forever
 
 from flockwave.gps.vectors import GPSCoordinate
 from flockwave.server.model.weather import Weather

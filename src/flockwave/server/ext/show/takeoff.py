@@ -5,21 +5,22 @@ from collections.abc import Iterator
 from dataclasses import dataclass
 from logging import Logger
 from time import time
+from typing import Generic, TypeVar
+from weakref import WeakKeyDictionary
+
 from trio import (
     TASK_STATUS_IGNORED,
     CapacityLimiter,
     MemorySendChannel,
+    TooSlowError,
+    WouldBlock,
     current_time,
     open_memory_channel,
     open_nursery,
     sleep,
-    TooSlowError,
-    WouldBlock,
 )
 from trio.lowlevel import ParkingLot
 from trio_util import periodic
-from typing import Generic, TypeVar
-from weakref import WeakKeyDictionary
 
 from flockwave.server.model import UAV
 

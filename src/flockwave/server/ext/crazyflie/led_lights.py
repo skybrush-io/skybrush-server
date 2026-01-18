@@ -2,15 +2,14 @@ from __future__ import annotations
 
 from struct import Struct
 
+from flockwave.server.ext.crazyflie.crtp_extensions import (
+    DRONE_SHOW_PORT,
+    DroneShowCommand,
+)
 from flockwave.server.tasks.led_lights import (
     LEDLightConfigurationManagerBase,
     LightConfiguration,
     LightEffectType,
-)
-
-from flockwave.server.ext.crazyflie.crtp_extensions import (
-    DRONE_SHOW_PORT,
-    DroneShowCommand,
 )
 
 from .connection import BroadcasterFunction

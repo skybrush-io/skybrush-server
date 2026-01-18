@@ -2,18 +2,19 @@
 
 from abc import ABC, abstractmethod
 from collections.abc import Awaitable
-from logging import Logger
-from blinker import Signal
 from dataclasses import dataclass
 from datetime import datetime
+from logging import Logger
 from time import time
+from typing import Any, ClassVar, Generic, TypeVar, final
+
+from blinker import Signal
 from trio import Cancelled
-from typing import final, Any, ClassVar, Generic, TypeVar
 
 from flockwave.server.errors import NotSupportedError
 from flockwave.server.model.object import ModelObject
 from flockwave.server.utils import maybe_round
-from flockwave.server.utils.validation import Validator, ValidationError
+from flockwave.server.utils.validation import ValidationError, Validator
 
 from .types import MissionState
 

@@ -1,8 +1,9 @@
 """Factory function to create handlers for the "color" command in UAV drivers."""
 
 from collections.abc import Awaitable, Callable
-from colour import Color
 from inspect import iscoroutinefunction
+
+from colour import Color
 
 from flockwave.server.model.uav import UAV, UAVDriver
 

@@ -7,11 +7,12 @@ HTTP authentication headers will be translated to AUTH-REQ requests.
 """
 
 from contextlib import ExitStack
-from logging import Logger
 from json import loads
-from quart import abort, Response, request
-from trio import Event, fail_after, sleep_forever, TooSlowError
+from logging import Logger
 from typing import Any
+
+from quart import Response, abort, request
+from trio import Event, TooSlowError, fail_after, sleep_forever
 
 from flockwave.encoders import Encoder
 from flockwave.encoders.json import create_json_encoder

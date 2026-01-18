@@ -2,6 +2,7 @@
 
 from dataclasses import dataclass, field
 from time import monotonic
+
 from trio import Event
 
 from flockwave.server.logger import log as base_log

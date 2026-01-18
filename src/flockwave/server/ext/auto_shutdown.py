@@ -5,6 +5,7 @@ connected for a given number of seconds.
 from contextlib import ExitStack
 from functools import partial
 from math import inf
+
 from trio import CancelScope, current_time, sleep_forever
 
 

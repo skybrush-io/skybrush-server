@@ -5,9 +5,10 @@ from errno import EACCES
 from functools import partial
 from logging import Logger
 from struct import Struct
+from typing import TYPE_CHECKING, Any
+
 from trio import open_memory_channel, open_nursery
 from trio.abc import ReceiveChannel, SendChannel
-from typing import Any, TYPE_CHECKING
 
 from flockwave.connections.factory import create_connection
 from flockwave.server.ext.base import UAVExtension

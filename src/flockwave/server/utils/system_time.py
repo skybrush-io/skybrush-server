@@ -4,6 +4,7 @@ from pathlib import Path
 from platform import system
 from subprocess import CalledProcessError, run
 from time import time
+
 from trio import to_thread
 
 try:

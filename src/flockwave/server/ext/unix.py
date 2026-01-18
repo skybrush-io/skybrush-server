@@ -8,14 +8,14 @@ requests on a certain Unix domain socket.
 from __future__ import annotations
 
 import weakref
-
 from contextlib import ExitStack
 from functools import partial
 from logging import Logger
 from pathlib import Path
 from tempfile import gettempdir
-from trio import aclose_forcefully, CapacityLimiter, Lock, open_nursery, SocketStream
-from typing import Any, Generic, Protocol, TypeVar, TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, Any, Generic, Protocol, TypeVar, cast
+
+from trio import CapacityLimiter, Lock, SocketStream, aclose_forcefully, open_nursery
 
 from flockwave.channels import ParserChannel
 from flockwave.connections import serve_unix

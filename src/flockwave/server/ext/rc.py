@@ -10,7 +10,6 @@ from collections.abc import Sequence
 from logging import Logger
 from typing import Any, ClassVar
 
-
 rc_changed_signal: Any = None
 """Signal that this extension emits in order to notify subscribers about the
 new channel values.

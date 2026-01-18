@@ -14,6 +14,7 @@ from flockwave.server.ext.signals import SignalsExtensionAPI
 
 if TYPE_CHECKING:
     from logging import Logger
+
     from flockwave.server.app import SkybrushServer
 
 

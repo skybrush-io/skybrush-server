@@ -1,5 +1,6 @@
-from crcmod import mkCrcFun as make_crc_function
 from collections.abc import Sequence
+
+from crcmod import mkCrcFun as make_crc_function
 
 __all__ = (
     "BoundingBoxCalculator",

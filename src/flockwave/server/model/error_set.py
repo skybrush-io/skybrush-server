@@ -1,4 +1,4 @@
-from collections.abc import Iterable, Iterator, Set, Sequence
+from collections.abc import Iterable, Iterator, Sequence, Set
 
 __all__ = ("ErrorSet",)
 

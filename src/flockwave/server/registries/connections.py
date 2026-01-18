@@ -4,9 +4,10 @@ server knows.
 
 from __future__ import annotations
 
-from blinker import Signal
 from collections.abc import Iterator
 from contextlib import contextmanager
+
+from blinker import Signal
 
 from flockwave.connections.base import Connection, ConnectionState
 

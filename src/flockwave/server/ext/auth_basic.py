@@ -10,13 +10,13 @@ from base64 import b64decode
 from collections.abc import Callable, Mapping
 from enum import Enum
 from pathlib import Path
+
 from trio import sleep_forever
 
 from flockwave.server.model.authentication import (
     AuthenticationMethod,
     AuthenticationResult,
 )
-
 
 HashComparator = Callable[[str, str], bool]
 """Type specification for a function that compares a password with its hash."""

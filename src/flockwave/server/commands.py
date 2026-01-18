@@ -2,6 +2,7 @@
 remote UAVs.
 """
 
+from collections.abc import Awaitable
 from contextlib import aclosing
 from blinker import Signal
 from inspect import isasyncgen, isawaitable
@@ -16,13 +17,7 @@ from trio import (
     WouldBlock,
 )
 from trio_util import periodic
-from typing import (
-    cast,
-    Any,
-    AsyncGenerator,
-    Awaitable,
-    TypeVar,
-)
+from typing import cast, Any, AsyncGenerator, TypeVar
 
 from .logger import log as base_log
 from .model.builders import CommandExecutionStatusBuilder

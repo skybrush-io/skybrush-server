@@ -1,20 +1,14 @@
 """Types specific to the mission planning and management extension."""
 
 from abc import ABC, abstractmethod
+from collections.abc import Awaitable
 from logging import Logger
 from blinker import Signal
 from dataclasses import dataclass
 from datetime import datetime
 from time import time
 from trio import Cancelled
-from typing import (
-    final,
-    Any,
-    Awaitable,
-    ClassVar,
-    Generic,
-    TypeVar,
-)
+from typing import final, Any, ClassVar, Generic, TypeVar
 
 from flockwave.server.errors import NotSupportedError
 from flockwave.server.model.object import ModelObject

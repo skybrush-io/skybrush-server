@@ -12,11 +12,11 @@ from logging import Logger
 from typing import ContextManager, Protocol
 
 
-#: Logger that will be used to log unexpected exceptions from signal handlers
 log: Logger | None = None
+"""Logger that will be used to log unexpected exceptions from signal handlers."""
 
-#: Namespace containing all the signals registered in this extension
 signals: Namespace | None = None
+"""Namespace containing all the signals registered in this extension"""
 
 
 class ProtectedSignal(NamedSignal):

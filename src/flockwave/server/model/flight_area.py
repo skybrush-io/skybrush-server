@@ -12,8 +12,8 @@ __all__ = (
 )
 
 
-#: Type specification for points in the flight area
 FlightAreaPoint = GPSCoordinate
+"""Type specification for points in the flight area."""
 
 
 @dataclass

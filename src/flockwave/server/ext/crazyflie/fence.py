@@ -124,15 +124,15 @@ class FenceConfiguration:
     drones when a show is uploaded.
     """
 
-    #: Stores whether the safety fence should be enabled
     enabled: bool = True
+    """Stores whether the safety fence should be enabled."""
 
-    #: Distance between the axis-aligned bounding box of the trajectory and the
-    #: safety fence, in meters
     distance: float = 1.0
+    """Distance between the axis-aligned bounding box of the trajectory and the.
+    safety fence, in meters."""
 
-    #: Action to take when the fence is breached
     action: FenceAction = FenceAction.NONE
+    """Action to take when the fence is breached."""
 
     @classmethod
     def from_json(cls, obj: Any):

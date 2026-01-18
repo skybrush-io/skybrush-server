@@ -42,8 +42,8 @@ if TYPE_CHECKING:
     from flockwave.server.app import SkybrushServer
     from flockwave.server.ext.beacon.model import Beacon
 
-#: Type alias for the unified GPS-related message format used by this extension
 GPSMessage = dict[str, Any]
+"""Type alias for the unified GPS-related message format used by this extension."""
 
 
 class MessageFormat(Enum):

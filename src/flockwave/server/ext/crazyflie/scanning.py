@@ -21,19 +21,17 @@ if TYPE_CHECKING:
 __all__ = ("CrazyradioScannerTask",)
 
 
-#: Typing for address list getters, i.e. functions that can be called with
-#: a priority argument (0 for normal scans, 1 for scans that intend to find
-#: drones with whom we have recently lost contact) and that return a list of
-#: Crazyradio addresses to scan
 AddressListGetter = Callable[[int], Iterable[str]]
+"""Typing for address list getters, i.e. functions that can be called with
+a priority argument (0 for normal scans, 1 for scans that intend to find
+drones with whom we have recently lost contact) and that return a list of
+Crazyradio addresses to scan."""
 
 
 def _get_all_addresses_in_connection(conn: CrazyradioConnection, priority: int):
     return conn.address_space
 
 
-#: Typing for schedulers, o.e. async iterators that yield list of addresses to
-#: scan or yield `None` to request a full scan of an address space
 class Scheduler:
     """Interface specification for schedulers; these are essentially async
     iterators that yield lists of addresses to scan, or yield `None` to

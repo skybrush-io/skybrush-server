@@ -18,14 +18,14 @@ from flockwave.server.model.authentication import (
 )
 
 
-#: Type specification for a function that compares a password with its hash
 HashComparator = Callable[[str, str], bool]
+"""Type specification for a function that compares a password with its hash."""
 
-#: Type specification for a password validator function
 PasswordValidator = Callable[[str, str], bool]
+"""Type specification for a password validator function."""
 
-#: Type specification for password validator specification objects
 PasswordValidatorSpecification = dict[str, str]
+"""Type specification for password validator specification objects."""
 
 
 class PasswordDataSourceType(Enum):

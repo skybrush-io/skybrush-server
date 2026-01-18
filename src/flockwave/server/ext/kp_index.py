@@ -116,9 +116,9 @@ last_data: KpIndexData = KpIndexData.INVALID
 data_valid_until: float = monotonic() - 1
 selected_data_provider: str = ""
 
-#: Mapping from data source names to callables that can be called with a
-#: single timestamp and return the corresponding Kp-index data
 data_providers: dict[str, Callable[[], Awaitable[KpIndexData]]] = {}
+"""Mapping from data source names to callables that can be called with a
+single timestamp and return the corresponding Kp-index data."""
 
 
 async def fetch_kp_index_now() -> None:

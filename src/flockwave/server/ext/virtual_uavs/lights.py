@@ -19,12 +19,13 @@ if TYPE_CHECKING:
 __all__ = ("LightController", "ModularLightController", "DefaultLightController")
 
 
-#: Type specification of a light module for a modular light controller
 LightModule = Callable[[float, Color], Color]
+"""Type specification of a light module for a modular light controller."""
 
 
-#: Object listing a few well-known colors
 class Colors:
+    """Object listing a few well-known colors."""
+
     BLACK = Color("black")
     WHITE = Color("white")
     RED = Color(rgb=(1, 0, 0))
@@ -51,8 +52,8 @@ class LightController:
         raise NotImplementedError
 
 
-#: Type specification for objects that can be converted into a light module
 LightModuleLike = LightController | LightModule
+"""Type specification for objects that can be converted into a light module."""
 
 
 class ModularLightController(LightController):

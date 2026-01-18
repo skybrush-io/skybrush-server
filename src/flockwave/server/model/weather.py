@@ -23,11 +23,11 @@ class Weather(metaclass=ModelMeta):
         self.timestamp = timestamp if timestamp is not None else time()
 
 
-#: Type specification for synchronous weather provider functions
 SyncWeatherProvider = Callable[[Weather, GPSCoordinate], None]
+"""Type specification for synchronous weather provider functions."""
 
-#: Type specification for asynchronous weather provider functions
 AsyncWeatherProvider = Callable[[Weather, GPSCoordinate], Awaitable[None]]
+"""Type specification for asynchronous weather provider functions."""
 
-#: Type specification for weather provider functions
 WeatherProvider = Callable[[Weather, GPSCoordinate | None], None | Awaitable[None]]
+"""Type specification for weather provider functions."""

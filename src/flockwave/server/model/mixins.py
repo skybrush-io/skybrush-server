@@ -7,8 +7,8 @@ from flockwave.server.utils import get_current_unix_timestamp_msec, is_timezone_
 __all__ = ("TimestampMixin",)
 
 
-#: Type specification for timestamps that we accept in a TimestampMixin
 TimestampLike = datetime | int
+"""Type specification for timestamps that we accept in a TimestampMixin."""
 
 
 def _timestamplike_to_timestamp(timestamp: TimestampLike | None) -> int:

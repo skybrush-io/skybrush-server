@@ -32,8 +32,8 @@ from .types import GPSPacket
 
 __all__ = ("RTKStatistics",)
 
-#: ECEF-to-GPS transformation used to convert antenna coordinates
 _ecef_to_gps = ECEFToGPSCoordinateTransformation()
+"""ECEF-to-GPS transformation used to convert antenna coordinates."""
 
 
 @dataclass

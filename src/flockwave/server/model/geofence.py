@@ -19,8 +19,8 @@ __all__ = (
 )
 
 
-#: Type specification for points in the geofence
 GeofencePoint = GPSCoordinate
+"""Type specification for points in the geofence."""
 
 
 @dataclass

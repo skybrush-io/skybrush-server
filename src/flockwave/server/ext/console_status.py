@@ -25,13 +25,13 @@ if TYPE_CHECKING:
     from trio.lowlevel import FdStream  # not available on Windows
 
 
-#: Dictionary mapping connection statuses to corresponding string representations
 _status_to_string = {
     ConnectionState.CONNECTED: "connected",
     ConnectionState.CONNECTING: "connecting",
     ConnectionState.DISCONNECTED: "disconnected",
     ConnectionState.DISCONNECTING: "disconnecting",
 }
+"""Dictionary mapping connection statuses to corresponding string representations."""
 
 
 class ConsoleStatusExtension(Extension):

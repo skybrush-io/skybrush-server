@@ -68,8 +68,9 @@ class VirtualUAVState(Enum):
     LANDING = 3
 
 
-#: Dummy preflight check information object returned from all virtual UAVs
 _dummy_preflight_check_info = PreflightCheckInfo()
+"""Dummy preflight check information object returned from all virtual UAVs."""
+
 _dummy_preflight_check_info.add_item("accel", "Accelerometer")
 _dummy_preflight_check_info.add_item("compass", "Compass")
 _dummy_preflight_check_info.add_item("ekf", "EKF")

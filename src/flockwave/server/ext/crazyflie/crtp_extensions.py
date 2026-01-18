@@ -17,12 +17,12 @@ __all__ = (
 )
 
 
-#: Constant representing the CRTP port where we can access droneshow-related
-#: services on the Crazyflie if it is running our patched firmware
 DRONE_SHOW_PORT = CRTPPort.UNUSED_1
+"""Constant representing the CRTP port where we can access droneshow-related
+services on the Crazyflie if it is running our patched firmware."""
 
-#: Constent representing the identifier of the geofence memory
 MEM_TYPE_FENCE = 0x40
+"""Constent representing the identifier of the geofence memory."""
 
 
 class DroneShowCommand(IntEnum):

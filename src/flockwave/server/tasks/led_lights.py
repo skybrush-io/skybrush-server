@@ -17,13 +17,13 @@ from typing import Generic, TypeVar
 __all__ = ("LEDLightConfigurationManagerBase",)
 
 
-#: Type variable representing a packet type that the LED light configuration
-#: manager will generate and send
 TPacket = TypeVar("TPacket")
+"""Type variable representing a packet type that the LED light configuration
+manager will generate and send."""
 
 
-#: Type alias for an RGB color
 RGBColor = tuple[int, int, int]
+"""Type alias for an RGB color."""
 
 
 class LightEffectType(Enum):

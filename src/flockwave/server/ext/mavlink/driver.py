@@ -103,16 +103,16 @@ from .utils import (
 __all__ = ("MAVLinkDriver",)
 
 
-#: Conversion constant from seconds to microseconds
 SEC_TO_USEC = 1000000
+"""Conversion constant from seconds to microseconds."""
 
-#: Magic number to force an arming or disarming operation even if it is unsafe
-#: to do so
 FORCE_MAGIC = 21196
+"""Magic number to force an arming or disarming operation even if it is unsafe
+to do so."""
 
-#: "Not a number" constant, used in some MAVLink messages to indicate a default
-#: value
 nan = float("nan")
+""""Not a number" constant, used in some MAVLink messages to indicate a default
+value."""
 
 
 def transport_options_to_channel(options: TransportOptions | None) -> str:

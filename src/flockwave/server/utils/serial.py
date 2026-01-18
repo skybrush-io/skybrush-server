@@ -4,12 +4,12 @@ from typing import Any
 __all__ = ("describe_serial_port", "list_serial_ports")
 
 
-#: Type specification for dict-style serial port configurations
 SerialPortConfiguration = dict[str, Any]
+"""Type specification for dict-style serial port configurations."""
 
-#: Type specification for a generic serial port descriptor returned from
-#: `list_serial_ports()`
 SerialPortDescriptor = Any
+"""Type specification for a generic serial port descriptor returned from
+`list_serial_ports().`"""
 
 
 def describe_serial_port(

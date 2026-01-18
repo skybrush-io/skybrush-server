@@ -21,10 +21,9 @@ from flockwave.server.utils.networking import serve_tcp_and_log_errors
 __all__ = ("setup_debugging_server",)
 
 
-#: Buffer in which we assemble debug messages to send to the client. It is
-#: assumed that debug messages are terminated by \n, optionally preceded by
-#: \r
 buffer = []
+"""Buffer in which we assemble debug messages to send to the client. It is
+assumed that debug messages are terminated by \n, optionally preceded by \r."""
 
 connected_client_queue = None
 

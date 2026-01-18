@@ -66,8 +66,6 @@ if TYPE_CHECKING:
 
 __all__ = ("MAVLinkNetwork",)
 
-#: MAVLink message specification for heartbeat messages that we are sending
-#: to connected UAVs to keep them sending telemetry data
 HEARTBEAT_SPEC = (
     "HEARTBEAT",
     {
@@ -78,6 +76,8 @@ HEARTBEAT_SPEC = (
         "system_status": MAVState.STANDBY,
     },
 )
+"""MAVLink message specification for heartbeat messages that we are sending
+to connected UAVs to keep them sending telemetry data."""
 
 
 Matchers = dict[str, list[tuple[int | None, MAVLinkMessageMatcher, Future]]]

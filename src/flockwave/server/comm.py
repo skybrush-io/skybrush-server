@@ -57,13 +57,17 @@ communication channel with no specific destination address.
 # separately; the source code of errnomodule.c in Python suggests that these
 # are transparently mapped to the appropriate errno codes.
 
-#: Special Windows error codes for "network down or unreachable" condition
 WSAENETDOWN = 10050
-WSAENETUNREACH = 10051
+"""Special Windows error code for "network down" condition."""
 
-#: Special Windows error codes for "host down or unreachable" condition
+WSAENETUNREACH = 10051
+"""Special Windows error code for "network unreachable" condition."""
+
 WSAEHOSTDOWN = 10064
+"""Special Windows error code for "host down" condition."""
+
 WSAEHOSTUNREACH = 10065
+"""Special Windows error code for "host unreachable" condition."""
 
 
 class ErrorAction(Enum):

@@ -4,5 +4,5 @@ from flockwave.gps.ubx import UBXPacket
 
 __all__ = ("GPSPacket",)
 
-#: Union type matching all the GPS packets that we expect on the wire
 GPSPacket = NMEAPacket | RTCMPacket | UBXPacket
+"""Union type matching all the GPS packets that we expect on the wire."""

@@ -83,5 +83,5 @@ class GPSFix:
             self.vertical_accuracy = other.vertical_accuracy
 
 
-#: Type alias for objects that can be used to update a GPSFix object
 GPSFixLike = int | GPSFixType | GPSFix
+"""Type alias for objects that can be used to update a GPSFix object."""

@@ -41,15 +41,15 @@ if TYPE_CHECKING:
     from flockwave.server.tasks.led_lights import LightConfiguration
 
 
-#: Dictionary that resolves common connection preset aliases used in
-#: the configuration file
 CONNECTION_PRESETS = {
     "default": "udp-listen://:14550?broadcast_port=14555",
     "apm-sitl": "tcp://localhost:5760",
 }
+"""Dictionary that resolves common connection preset aliases used in
+the configuration file."""
 
-#: Default routing configuration for networks
 DEFAULT_ROUTING = {"rtk": 0, "rc": 0}
+"""Default routing configuration for networks."""
 
 
 class MAVLinkDronesExtension(UAVExtension[MAVLinkDriver]):

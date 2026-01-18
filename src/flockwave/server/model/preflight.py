@@ -64,9 +64,6 @@ class PreflightCheckResult(Enum):
         )
 
 
-#: Ordering of preflight check results; used when summarizing the results of a
-#: preflight checklist into a single result value. Larger values take precedence
-#: over smaller ones
 _numeric_preflight_check_results = bidict(
     {
         PreflightCheckResult.OFF: 0,
@@ -78,6 +75,9 @@ _numeric_preflight_check_results = bidict(
         PreflightCheckResult.ERROR: 60,
     }
 )
+"""Ordering of preflight check results; used when summarizing the results of a
+preflight checklist into a single result value. Larger values take precedence
+over smaller ones."""
 
 
 class PreflightCheckItem(metaclass=ModelMeta):

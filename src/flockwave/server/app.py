@@ -59,8 +59,6 @@ __all__ = ("app",)
 
 PACKAGE_NAME = __name__.rpartition(".")[0]
 
-
-#: Table that describes the handlers of several UAV-related command requests
 UAV_COMMAND_HANDLERS: dict[str, tuple[str, MessageBodyTransformationSpec]] = {
     "LOG-DATA": ("get_log", rename_keys({"logId": "log_id"})),
     "LOG-INF": ("get_log_list", None),
@@ -102,9 +100,10 @@ UAV_COMMAND_HANDLERS: dict[str, tuple[str, MessageBodyTransformationSpec]] = {
         {"transport": TransportOptions.from_json},
     ),
 }
+"""Table that describes the handlers of several UAV-related command requests."""
 
-#: Constant for a dummy UAV command handler that does nothing
 NULL_HANDLER = (None, None)
+"""Constant for a dummy UAV command handler that does nothing."""
 
 
 class SkybrushServer(DaemonApp):

@@ -12,8 +12,8 @@ from flockwave.server.model.messages import FlockwaveMessage, FlockwaveResponse
 from flockwave.server.model.weather import Weather
 from flockwave.server.registries import find_in_registry, WeatherProviderRegistry
 
-#: Registry containing the registered weather providers by ID
 registry = WeatherProviderRegistry()
+"""Registry containing the registered weather providers by ID."""
 
 
 async def handle_WTH_AT(message: FlockwaveMessage, sender: Client, hub: MessageHub):

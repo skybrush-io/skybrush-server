@@ -1,6 +1,7 @@
 from contextlib import closing
+
 from pytest import raises
-from trio import sleep, TooSlowError
+from trio import TooSlowError, sleep
 
 from flockwave.server.tasks import ProgressReporter
 

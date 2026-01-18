@@ -1,7 +1,8 @@
-from flockwave.server.ext.show.clock import ClockSynchronizationHandler, ShowClock
-from pytest import fixture, raises
 from time import time
 
+from pytest import fixture, raises
+
+from flockwave.server.ext.show.clock import ClockSynchronizationHandler, ShowClock
 
 ClockPair = tuple[ShowClock, ShowClock]
 

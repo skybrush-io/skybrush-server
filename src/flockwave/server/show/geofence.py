@@ -2,7 +2,7 @@
 Skybrush-related geofence specifications, until we find a better place for them.
 """
 
-from typing import Optional, Sequence
+from typing import Sequence
 
 from flockwave.gps.vectors import (
     FlatEarthCoordinate,
@@ -77,7 +77,7 @@ def get_geofence_configuration_from_show_specification(
 
 def _parse_points(
     points: Sequence[list[int | float]],
-    coordinate_system: Optional[FlatEarthToGPSCoordinateTransformation],
+    coordinate_system: FlatEarthToGPSCoordinateTransformation | None,
 ) -> list[GPSCoordinate]:
     """Parses a list of points from the geofence specification using the given
     optional local-to-global coordinate system and returns the parsed points.
@@ -98,7 +98,7 @@ def _parse_points(
 
 
 def _parse_polygon(
-    polygon: dict, coordinate_system: Optional[FlatEarthToGPSCoordinateTransformation]
+    polygon: dict, coordinate_system: FlatEarthToGPSCoordinateTransformation | None
 ) -> GeofencePolygon:
     """Parses a polygon from the geofence specification using the given optional
     local-to-global coordinate system and returns the parsed polygon.

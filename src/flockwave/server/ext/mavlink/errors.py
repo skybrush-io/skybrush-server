@@ -1,7 +1,5 @@
 """Error classes specific to the MAVLink extension."""
 
-from typing import Optional
-
 from .enums import MAVMissionResult
 
 __all__ = (
@@ -24,7 +22,7 @@ class UnknownFlightModeError(MAVLinkExtensionError):
     base mode / custom mode configuration.
     """
 
-    def __init__(self, mode: str | int, message: Optional[str] = None):
+    def __init__(self, mode: str | int, message: str | None = None):
         message = message or f"Unknown flight mode: {mode!r}"
         super().__init__(message)
 
@@ -38,7 +36,7 @@ class InvalidSigningKeyError(MAVLinkExtensionError):
 class InvalidSystemIdError(MAVLinkExtensionError):
     """Error thrown when a system ID is invalid or outside an allowed range."""
 
-    def __init__(self, system_id: int, message: Optional[str] = None):
+    def __init__(self, system_id: int, message: str | None = None):
         message = message or f"Invalid system ID: {system_id!r}"
         super().__init__(message)
 
@@ -49,9 +47,9 @@ class MissionAcknowledgmentError(MAVLinkExtensionError):
     """
 
     result: int
-    operation: Optional[str]
+    operation: str | None
 
-    def __init__(self, result: int, operation: Optional[str] = None):
+    def __init__(self, result: int, operation: str | None = None):
         self.result = result
         self.operation = operation
 

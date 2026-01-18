@@ -3,7 +3,7 @@
 from logging import Logger
 
 from flockwave.server.model import Client, FlockwaveMessage, FlockwaveNotification
-from typing import ClassVar, Iterable, Optional
+from typing import ClassVar, Iterable
 
 __all__ = ("RequestLogMiddleware",)
 
@@ -55,8 +55,8 @@ class ResponseLogMiddleware:
     def __call__(
         self,
         message: FlockwaveMessage,
-        to: Optional[Client],
-        in_response_to: Optional[FlockwaveMessage],
+        to: Client | None,
+        in_response_to: FlockwaveMessage | None,
     ) -> FlockwaveMessage:
         type = message.get_type() or "untyped"
         if to is None:

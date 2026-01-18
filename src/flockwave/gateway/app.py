@@ -4,7 +4,7 @@ import logging
 
 from copy import deepcopy
 from trio import current_time, Nursery, open_nursery, sleep
-from typing import Any, Optional
+from typing import Any
 from urllib.parse import urlparse, urlunparse
 
 from hypercorn.config import Config as HyperConfig
@@ -32,7 +32,7 @@ class SkybrushGatewayServer(DaemonApp):
         self.worker_manager = WorkerManager()
 
     @property
-    def base_port(self) -> Optional[int]:
+    def base_port(self) -> int | None:
         """The base port that the gateway is listening on."""
         base_port = self.config.get("PORT")
         if base_port is not None:
@@ -82,7 +82,7 @@ class SkybrushGatewayServer(DaemonApp):
                 config["EXTENSIONS"]["http_server"]["port"] = port
         return config
 
-    def _get_listening_address(self) -> Optional[tuple[str, int]]:
+    def _get_listening_address(self) -> tuple[str, int] | None:
         """Returns the hostname and port where the server is listening, or
         `None` if the address is not configured in the configuration file.
         """
@@ -93,7 +93,7 @@ class SkybrushGatewayServer(DaemonApp):
         port = int(port)
         return host, port
 
-    def _get_port_for_worker(self, index: int, base: Optional[int | str] = None) -> int:
+    def _get_port_for_worker(self, index: int, base: int | str | None = None) -> int:
         if base is None:
             base = self.base_port
             if base is None:
@@ -104,7 +104,7 @@ class SkybrushGatewayServer(DaemonApp):
         """Returns whether the application is listening on a secure socket."""
         return bool(self.config.get("certfile")) and bool(self.config.get("keyfile"))
 
-    def _process_configuration(self, config: Configuration) -> Optional[int]:
+    def _process_configuration(self, config: Configuration) -> int | None:
         self._public_url_parts = (
             urlparse(config["PUBLIC_URL"]) if config.get("PUBLIC_URL") else None
         )

@@ -7,7 +7,7 @@ from __future__ import annotations
 from abc import abstractmethod
 from colour import Color
 from time import monotonic
-from typing import Callable, Iterable, Optional, TYPE_CHECKING
+from typing import Callable, Iterable, TYPE_CHECKING
 
 from flockwave.spec.errors import FlockwaveErrorCode
 from flockwave.server.show import LightPlayer
@@ -62,7 +62,7 @@ class ModularLightController(LightController):
     completely or mix another color into it.
     """
 
-    def __init__(self, modules: Optional[Iterable[LightModuleLike]] = None):
+    def __init__(self, modules: Iterable[LightModuleLike] | None = None):
         """Constructor."""
         super().__init__()
         self._modules = []  # type: list[LightModule]
@@ -99,15 +99,15 @@ class DefaultLightController(ModularLightController):
     for a virtual UAV.
     """
 
-    _light_program_player: Optional[LightPlayer]
-    _light_program_start_time: Optional[float]
+    _light_program_player: LightPlayer | None
+    _light_program_start_time: float | None
 
     _where_are_you_duration_ms: float
-    _where_are_you_start_time: Optional[float]
+    _where_are_you_start_time: float | None
 
-    _override: Optional[Color]
+    _override: Color | None
 
-    def __init__(self, owner: Optional[VirtualUAV] = None):
+    def __init__(self, owner: VirtualUAV | None = None):
         super().__init__(self._create_default_modules())
 
         self.owner = owner
@@ -132,11 +132,11 @@ class DefaultLightController(ModularLightController):
         self._light_program_player = LightPlayer.from_bytes(light_program)
 
     @property
-    def override(self) -> Optional[Color]:
+    def override(self) -> Color | None:
         return self._override
 
     @override.setter
-    def override(self, value: Optional[Color]):
+    def override(self, value: Color | None):
         if value is not None and not isinstance(value, Color):
             raise TypeError(f"Color or None expected, got {type(value)!r}")
         self._override = value

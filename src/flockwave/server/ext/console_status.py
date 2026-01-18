@@ -3,6 +3,8 @@
 device.
 """
 
+from __future__ import annotations
+
 import os
 import platform
 
@@ -11,7 +13,7 @@ from logging import Logger
 from json import dumps
 from trio import open_memory_channel, MemorySendChannel, WouldBlock
 from trio.abc import ReceiveChannel
-from typing import Any, Optional, TYPE_CHECKING
+from typing import Any, TYPE_CHECKING
 
 from flockwave.connections import ConnectionState
 from flockwave.server.registries import ConnectionRegistry, ConnectionRegistryEntry
@@ -40,8 +42,8 @@ class ConsoleStatusExtension(Extension):
 
     log: Logger
 
-    _queue_tx: Optional[MemorySendChannel]
-    _stream: Optional["FdStream"]
+    _queue_tx: MemorySendChannel | None
+    _stream: FdStream | None
 
     def __init__(self):
         super().__init__()
@@ -191,7 +193,7 @@ class ConsoleStatusExtension(Extension):
         await self._stream.send_all(message)
 
 
-def _get_fd_to_console_frontend() -> Optional[int]:
+def _get_fd_to_console_frontend() -> int | None:
     """Returns the file descriptor that we should use to commnicate with the
     console frontend, or `None` if we were not launched by the console
     frontend.

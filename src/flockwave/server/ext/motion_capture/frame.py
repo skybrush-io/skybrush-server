@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-from typing import Optional
 
 from .types import Attitude, Position
 
@@ -18,10 +17,10 @@ class MotionCaptureFrameItem:
     name: str
     """The name of the rigid body"""
 
-    position: Optional[Position] = None
+    position: Position | None = None
     """The position information in the pose data"""
 
-    attitude: Optional[Attitude] = None
+    attitude: Attitude | None = None
     """The attitude information in the pose data"""
 
 
@@ -41,8 +40,8 @@ class MotionCaptureFrame:
     def add_item(
         self,
         name: str,
-        position: Optional[Position] = None,
-        attitude: Optional[Attitude] = None,
+        position: Position | None = None,
+        attitude: Attitude | None = None,
     ) -> MotionCaptureFrameItem:
         """Adds a new item to this frame and returns the newly added item.
 

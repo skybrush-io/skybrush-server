@@ -3,7 +3,7 @@
 from bisect import insort_left
 from dataclasses import dataclass
 from functools import partial, total_ordering
-from typing import Any, Callable, Iterable, Optional
+from typing import Any, Callable, Iterable
 
 
 __all__ = ("RoutingMiddleware",)
@@ -17,8 +17,8 @@ class Route:
     """
 
     app: Any
-    scopes: Optional[frozenset[str]] = None
-    path: Optional[str] = None
+    scopes: frozenset[str] | None = None
+    path: str | None = None
     priority: int = 0
 
     async def handle(self, scope, receive, send):
@@ -72,8 +72,8 @@ class RoutingMiddleware:
     def add(
         self,
         app,
-        scopes: Optional[Iterable[str]] = None,
-        path: Optional[str] = None,
+        scopes: Iterable[str] | None = None,
+        path: str | None = None,
         priority: int = 0,
     ) -> Callable[[], None]:
         """Mounts a new application for the given scopes at the given path.

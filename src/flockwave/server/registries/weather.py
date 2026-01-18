@@ -6,7 +6,7 @@ __all__ = ("WeatherProviderRegistry",)
 
 from contextlib import contextmanager
 from functools import partial
-from typing import Iterable, Iterator, Optional
+from typing import Iterable, Iterator
 
 from flockwave.server.model.weather import WeatherProvider
 from flockwave.server.types import Disposer
@@ -66,7 +66,7 @@ class WeatherProviderRegistry(RegistryBase[WeatherProvider]):
         """
         return (provider for _, provider in self._ordered_entries)
 
-    def remove_by_id(self, id: str) -> Optional[WeatherProvider]:
+    def remove_by_id(self, id: str) -> WeatherProvider | None:
         """Removes the weather provider with the given ID from the registry.
 
         This function is a no-op if no weather provider is registered with the

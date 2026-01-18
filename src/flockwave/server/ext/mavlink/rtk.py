@@ -1,7 +1,7 @@
 from contextlib import contextmanager
 from itertools import cycle
 from logging import Logger
-from typing import Callable, Iterable, Optional
+from typing import Callable, Iterable
 
 from .types import MAVLinkMessageSpecification, spec
 
@@ -14,7 +14,7 @@ class RTKCorrectionPacketEncoder:
     packets if needed.
     """
 
-    def __init__(self, log: Optional[Logger] = None):
+    def __init__(self, log: Logger | None = None):
         """Constructor."""
         self._log = log
         self._seq_no = cycle(range(32))
@@ -67,10 +67,10 @@ class RTKCorrectionPacketSignalManager:
     into individual MAVLink packets.
     """
 
-    _log: Optional[Logger] = None
+    _log: Logger | None = None
     """Logger to use for logging messages."""
 
-    _sender: Optional[Callable[[Iterable[MAVLinkMessageSpecification]], None]]
+    _sender: Callable[[Iterable[MAVLinkMessageSpecification]], None] | None
 
     def __init__(self):
         """Constructor."""

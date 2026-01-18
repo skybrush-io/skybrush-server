@@ -9,7 +9,7 @@ from subprocess import PIPE, STDOUT
 from tempfile import NamedTemporaryFile
 from trio import move_on_after, open_nursery, Process, sleep_forever
 from trio.lowlevel import open_process
-from typing import Any, Callable, IO, Optional
+from typing import Any, Callable, IO
 
 from .errors import NoIdleWorkerError
 from .logger import log as base_log
@@ -22,10 +22,10 @@ log = base_log.getChild("workers")
 @dataclass
 class WorkerEntry:
     id: str
-    name: Optional[str] = None
-    process: Optional[Process] = None
+    name: str | None = None
+    process: Process | None = None
     starting: bool = True
-    config_fp: Optional[IO[str]] = None
+    config_fp: IO[str] | None = None
 
     def assign_process(self, process: Process) -> None:
         self.process = process
@@ -47,13 +47,13 @@ class WorkerEntry:
 class WorkerManager:
     """Class responsible for spinning up and stopping workers as needed."""
 
-    _processes: list[Optional[WorkerEntry]]
+    _processes: list[WorkerEntry | None]
     _users_to_entries: dict[str, WorkerEntry]
 
     def __init__(
         self,
         max_count: int = 1,
-        worker_config_factory: Optional[Callable[[int], Any]] = None,
+        worker_config_factory: Callable[[int], Any] | None = None,
     ):
         """Constructor.
 
@@ -183,7 +183,7 @@ class WorkerManager:
             finally:
                 self._nursery = None
 
-    def _find_vacant_slot(self) -> Optional[int]:
+    def _find_vacant_slot(self) -> int | None:
         for index, slot in enumerate(self._processes):
             if slot is None:
                 return index

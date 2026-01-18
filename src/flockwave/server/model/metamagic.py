@@ -7,7 +7,7 @@ a JSON schema description.
 
 from contextlib import contextmanager
 from dataclasses import dataclass
-from typing import Any, Callable, Optional, TypeVar
+from typing import Any, Callable, TypeVar
 
 from flockwave.server.utils.validation import cached_validator_for
 from flockwave.spec.schema import Schema
@@ -36,10 +36,10 @@ class PropertyInfo:
     """
 
     name: str
-    title: Optional[str] = None
-    description: Optional[str] = None
+    title: str | None = None
+    description: str | None = None
     default: Any = None
-    mappers: Optional[MapperPair] = None
+    mappers: MapperPair | None = None
 
     @classmethod
     def from_json_schema(cls, name: str, definition: dict):
@@ -65,7 +65,7 @@ class PropertyInfo:
 def collect_properties(
     schema: Any,
     mappers: dict[str, MapperPair],
-    result: Optional[dict[str, PropertyInfo]] = None,
+    result: dict[str, PropertyInfo] | None = None,
 ) -> dict[str, PropertyInfo]:
     """Collects information about all the properties defined on a JSON
     schema.
@@ -397,7 +397,7 @@ class ModelMetaHelpers:
             return {}
 
     @classmethod
-    def find_schema(cls, dct, bases) -> Optional[Schema]:
+    def find_schema(cls, dct, bases) -> Schema | None:
         """Finds the JSON schema that the class being constructed must
         adhere to. This is done by looking up the ``schema`` attribute
         in the class dictionary. If no such attribute is found, one of

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from contextlib import ExitStack, contextmanager
 from operator import attrgetter
-from typing import Iterator, Optional
+from typing import Iterator
 
 from flockwave.concurrency import AsyncBundler
 from flockwave.server.ext.base import Extension
@@ -25,7 +25,7 @@ class BeaconExtension(Extension):
 
     beacons_to_update: AsyncBundler[str]
 
-    def _find_beacon_by_id(self, id: str) -> Optional[Beacon]:
+    def _find_beacon_by_id(self, id: str) -> Beacon | None:
         """Finds a beacon by its ID in the object registry.
 
         Parameters:

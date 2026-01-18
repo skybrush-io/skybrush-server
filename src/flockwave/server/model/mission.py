@@ -7,7 +7,7 @@ from collections import Counter
 from dataclasses import dataclass, field, InitVar
 from enum import Enum
 from itertools import chain
-from typing import Any, Optional, Sequence, TypedDict
+from typing import Any, Sequence, TypedDict
 
 from flockwave.server.show import (
     get_flight_area_configuration_from_show_specification,
@@ -123,10 +123,10 @@ class MissionItem(TypedDict):
     from/to Skybrush Live.
     """
 
-    id: Optional[str]
+    id: str | None
     """The (optional) unique identifier of the mission item."""
 
-    participants: Optional[list[int]]
+    participants: list[int] | None
     """Optional restriction of the item to numbered parts/participants of a
     multi-UAV mission.
 
@@ -137,7 +137,7 @@ class MissionItem(TypedDict):
     type: str
     """The type of the mission item."""
 
-    parameters: Optional[dict[str, Any]]
+    parameters: dict[str, Any] | None
     """The parameters of the mission item; exact parameters are dependent on
     the type of the item.
     """
@@ -160,13 +160,13 @@ class MissionItemBundle(TypedDict):
     version: int
     """The version number of the bundle; currently it is always 1."""
 
-    name: Optional[str]
+    name: str | None
     """The name of the mission to upload to the drone."""
 
     items: list[MissionItem]
     """The list of mission items in the bundle."""
 
-    startPositions: Optional[list[Optional[ScaledLatLonPair]]]
+    startPositions: list[ScaledLatLonPair | None] | None
     """Optional list of start positions of the UAVs in the mission."""
 
 
@@ -267,7 +267,7 @@ def _generate_mission_command_from_mission_item(item: MissionItem) -> MissionCom
     """
     _validate_mission_item(item)
     type = MissionItemType(item["type"])
-    command: Optional[MissionCommand] = None
+    command: MissionCommand | None = None
 
     if type == MissionItemType.CHANGE_ALTITUDE:
         command = ChangeAltitudeMissionCommand.from_json(item)
@@ -305,7 +305,7 @@ def _generate_mission_command_from_mission_item(item: MissionItem) -> MissionCom
     return command
 
 
-def _get_altitude_from_parameters(params: dict[str, Any]) -> Optional[Altitude]:
+def _get_altitude_from_parameters(params: dict[str, Any]) -> Altitude | None:
     if "alt" in params:
         # "alt" will be an object with "reference" and "value" as keys
         value_and_reference = params["alt"]
@@ -404,7 +404,7 @@ def _get_marker_from_parameters(params: dict[str, Any]) -> tuple[Marker, float]:
 
 def _get_payload_action_from_parameters(
     params: dict[str, Any],
-) -> tuple[str, PayloadAction, Optional[float]]:
+) -> tuple[str, PayloadAction, float | None]:
     name = params.get("name")
     if not isinstance(name, str) or not name:
         raise RuntimeError("payload name must be a valid string")
@@ -426,7 +426,7 @@ def _get_payload_action_from_parameters(
 
 def _get_rate_from_parameters(
     params: dict[str, Any],
-) -> Optional[float]:
+) -> float | None:
     rate = params.get("rate")
     if rate is not None and (not isinstance(rate, (int, float)) or rate <= 0):
         raise RuntimeError("rate must be a positive number")
@@ -436,7 +436,7 @@ def _get_rate_from_parameters(
 
 def _get_speed_from_parameters(
     params: dict[str, Any],
-) -> tuple[Optional[float], Optional[float]]:
+) -> tuple[float | None, float | None]:
     velocity_xy = params.get("velocityXY")
     if velocity_xy is not None and (
         not isinstance(velocity_xy, (int, float)) or velocity_xy <= 0
@@ -454,7 +454,7 @@ def _get_speed_from_parameters(
 
 def _parse_mission_item(
     item: MissionItem,
-) -> tuple[Optional[str], Optional[list[int]], dict[str, Any]]:
+) -> tuple[str | None, list[int] | None, dict[str, Any]]:
     """Parses a mission item."""
     id = item.get("id")
     participants = item.get("participants")
@@ -464,8 +464,8 @@ def _parse_mission_item(
 
 
 def _prepare_mission_item(
-    id: Optional[str],
-    participants: Optional[list[int]],
+    id: str | None,
+    participants: list[int] | None,
     type: MissionItemType,
     params: dict[str, Any],
 ) -> MissionItem:
@@ -479,8 +479,8 @@ def _prepare_mission_item(
 
 def _validate_mission_item(
     item: Any,
-    expected_type: Optional[MissionItemType] = None,
-    expect_params: Optional[bool] = None,
+    expected_type: MissionItemType | None = None,
+    expect_params: bool | None = None,
 ) -> None:
     """Validates a mission item.
 
@@ -542,17 +542,17 @@ class MissionCommand(ABC):
 
     # TODO: use Python 3.10+ and field(kw_only=True) and then default base value
     # can be added instead of explicit id=None argument in child classes
-    id: InitVar[Optional[str]]
+    id: InitVar[str] | None
     """The unique identifier of the mission command. Set it to `None` to
     initialize with a random string."""
 
     # TODO: use Python 3.10+ and field(kw_only=True) and then default base value
     # can be added instead of explicit participants=None argument in child classes
-    participants: Optional[list[int]]
+    participants: list[int] | None
     """Optional restriction of the command to specific participants
     of a multi-UAV mission. Set it to `None` to work with no restrictions."""
 
-    def __post_init__(self, id: Optional[str]) -> None:
+    def __post_init__(self, id: str | None) -> None:
         self.id = default_id_generator() if id is None else id
 
     @classmethod
@@ -581,13 +581,13 @@ class MissionCommandBundle:
     version: int = 1
     """The version number of the bundle; currently it is always 1."""
 
-    name: Optional[str] = None
+    name: str | None = None
     """The name of the mission to upload to the drone."""
 
     commands: list[MissionCommand] = field(default_factory=list)
     """The list of mission commands in the bundle."""
 
-    start_positions: Optional[list[ScaledLatLonPair]] = None
+    start_positions: list[ScaledLatLonPair] | None = None
     """The starting positions of the UAVs in the mission."""
 
     def __post_init__(self):
@@ -696,7 +696,7 @@ class ChangeAltitudeMissionCommand(MissionCommand):
     altitude: Altitude
     """The altitude reference and value to set."""
 
-    velocity_z: Optional[float] = None
+    velocity_z: float | None = None
     """Vertical velocity when changing altitude in [m/s]."""
 
     @classmethod
@@ -765,7 +765,7 @@ class ChangeHeadingMissionCommand(MissionCommand):
     heading: Heading
     """The heading mode and value to set."""
 
-    rate: Optional[float] = None
+    rate: float | None = None
     """The optional angular rate at which heading should be changed in [deg/s]."""
 
     @classmethod
@@ -802,10 +802,10 @@ class ChangeSpeedMissionCommand(MissionCommand):
     """Mission command that instructs the drone to change its horizontal and/or
     vertical speed for the consecutive waypoints"""
 
-    velocity_xy: Optional[float]
+    velocity_xy: float | None
     """The horizontal speed to set optionally in [m/s]."""
 
-    velocity_z: Optional[float]
+    velocity_z: float | None
     """The vertical speed to set optionally in [m/s]."""
 
     @classmethod
@@ -853,13 +853,13 @@ class GoToMissionCommand(MissionCommand):
     longitude: float
     """The desired longitude in [deg]."""
 
-    altitude: Optional[Altitude]
+    altitude: Altitude | None
     """The desired (optional) altitude."""
 
-    velocity_xy: Optional[float] = None
+    velocity_xy: float | None = None
     """Velocity in the XY (horizontal) plane when approaching the waypoint in [m/s]."""
 
-    velocity_z: Optional[float] = None
+    velocity_z: float | None = None
     """Velocity in the Z (vertical) plane when approaching the waypoint in [m/s]."""
 
     @classmethod
@@ -937,7 +937,7 @@ class HoverMissionCommand(MissionCommand):
 class LandMissionCommand(MissionCommand):
     """Mission command that instructs the drone to land in place."""
 
-    velocity_z: Optional[float] = None
+    velocity_z: float | None = None
     """Vertical velocity while landing in [m/s]."""
 
     @classmethod
@@ -1016,10 +1016,10 @@ class ReturnToHomeMissionCommand(MissionCommand):
     coordinate horizontally.
     """
 
-    velocity_xy: Optional[float] = None
+    velocity_xy: float | None = None
     """Horizontal velocity while returning to home in [m/s]."""
 
-    velocity_z: Optional[float] = None
+    velocity_z: float | None = None
     """Vertical velocity while returning to home in [m/s]."""
 
     @classmethod
@@ -1067,7 +1067,7 @@ class SetPayloadMissionCommand(MissionCommand):
     action: PayloadAction
     """The action to perform on the payload."""
 
-    value: Optional[float] = None
+    value: float | None = None
     """Optional parameter of the payload action to perform; in case of "trigger at interval"
     payload action the value must be the time interval in seconds; In case of "trigger at distance"
     payload action the value must be the distance in meters."""
@@ -1162,7 +1162,7 @@ class TakeoffMissionCommand(MissionCommand):
     altitude: Altitude
     """The altitude reference and value to takeoff to."""
 
-    velocity_z: Optional[float] = None
+    velocity_z: float | None = None
     """Vertical velocity while taking off in [m/s]."""
 
     @classmethod

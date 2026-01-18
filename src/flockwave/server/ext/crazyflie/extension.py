@@ -7,7 +7,7 @@ from logging import Logger
 from struct import Struct
 from trio import open_memory_channel, open_nursery
 from trio.abc import ReceiveChannel, SendChannel
-from typing import Any, Optional, TYPE_CHECKING
+from typing import Any, TYPE_CHECKING
 
 from flockwave.connections.factory import create_connection
 from flockwave.server.ext.base import UAVExtension
@@ -231,7 +231,7 @@ class CrazyflieDronesExtension(UAVExtension[CrazyflieDriver]):
     def _on_show_countdown_notification(
         self,
         sender,
-        delay: Optional[float],
+        delay: float | None,
         *,
         broadcaster: BroadcasterFunction,
     ) -> None:

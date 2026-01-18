@@ -22,7 +22,6 @@ from typing import (
     AsyncIterator,
     Callable,
     Iterable,
-    Optional,
     Sequence,
     TYPE_CHECKING,
     TypeVar,
@@ -83,7 +82,7 @@ class Storage(ABC):
     """Interface specification for storage backends of the audit log."""
 
     @abstractmethod
-    async def prune(self, threshold: float) -> Optional[int]:
+    async def prune(self, threshold: float) -> int | None:
         """Removes all the entries from the storage backend whose timestamp
         is smaller than the given threshold.
 
@@ -193,7 +192,7 @@ class InMemoryStorage(Storage):
 class DbStorage(Storage):
     """Storage backend backed by an on-disk SQLite database."""
 
-    _conn: Optional[Connection] = None
+    _conn: Connection | None = None
     """Connection to the underlying SQLite database."""
 
     _path: Path

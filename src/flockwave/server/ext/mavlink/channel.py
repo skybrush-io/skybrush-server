@@ -8,7 +8,7 @@ from collections import defaultdict
 from contextlib import contextmanager
 from importlib import import_module
 from time import time
-from typing import Any, ClassVar, Iterator, Optional, Protocol, TYPE_CHECKING, cast
+from typing import Any, ClassVar, Iterator, Protocol, TYPE_CHECKING, cast
 
 from flockwave.channels import (
     BroadcastMessageChannel,
@@ -69,7 +69,7 @@ def create_mavlink_message_channel(
     dialect: str = "ardupilotmega",
     network_id: str = "",
     system_id: int = 255,
-    link_ids: Optional[dict[Connection, int]] = None,
+    link_ids: dict[Connection, int] | None = None,
     signing: MAVLinkSigningConfiguration = MAVLinkSigningConfiguration.DISABLED,
 ) -> MessageChannel[tuple[MAVLinkMessage, str], Any]:
     """Creates a bidirectional Trio-style channel that reads data from and

@@ -5,16 +5,16 @@ from __future__ import annotations
 from logging import Handler, Logger, getLogger
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
-from typing import Any, Optional, TYPE_CHECKING
+from typing import Any, TYPE_CHECKING
 
 from flockwave.logger.formatters import styles
 
 if TYPE_CHECKING:
     from flockwave.server.app import SkybrushServer
 
-handler: Optional[Handler] = None
-log: Optional[Logger] = None
-log_dir: Optional[Path] = None
+handler: Handler | None = None
+log: Logger | None = None
+log_dir: Path | None = None
 
 LOG_FILENAME: str = "skybrushd.log"
 

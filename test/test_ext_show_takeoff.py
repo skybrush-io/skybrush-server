@@ -2,7 +2,7 @@ from collections import Counter
 from logging import getLogger
 from random import random
 from time import time
-from typing import Iterable, Iterator, Optional
+from typing import Iterable, Iterator
 
 from pytest import fixture
 from trio import CapacityLimiter, TooSlowError, sleep
@@ -16,7 +16,7 @@ from flockwave.server.model.uav import UAVBase
 
 
 class MockUAV(UAVBase):
-    config: Optional[TakeoffConfiguration] = None
+    config: TakeoffConfiguration | None = None
 
     def __init__(self, id: str) -> None:
         super().__init__(driver=None, id=id)
@@ -53,7 +53,7 @@ class MockScheduledTakeoffManager(ScheduledTakeoffManager[MockUAV]):
     """Probability of a unicast message reaching a drone successfully."""
 
     def __init__(
-        self, uavs: Iterable[MockUAV], *, rng: Optional[Iterator[float]] = None
+        self, uavs: Iterable[MockUAV], *, rng: Iterator[float] | None = None
     ) -> None:
         super().__init__(log=getLogger("test_ext_show_takeoff"))
         self._uavs = list(uavs)

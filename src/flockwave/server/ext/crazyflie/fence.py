@@ -3,7 +3,7 @@
 from aiocflib.crazyflie.mem import write_with_checksum
 from aiocflib.crazyflie import Crazyflie
 from struct import Struct
-from typing import Any, Optional, Sequence
+from typing import Any, Sequence
 
 from flockwave.server.show.trajectory import TrajectorySpecification
 
@@ -21,7 +21,7 @@ class Fence:
     """Fence handling for a Crazyflie drone."""
 
     _crazyflie: Crazyflie
-    _is_supported: Optional[bool]
+    _is_supported: bool | None
 
     def __init__(self, crazyflie: Crazyflie):
         """Constructor.

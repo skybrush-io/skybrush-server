@@ -13,7 +13,6 @@ from typing import (
     Awaitable,
     ClassVar,
     Generic,
-    Optional,
     TypeVar,
 )
 
@@ -48,7 +47,7 @@ class Mission(ModelObject):
     type registry.
     """
 
-    parameter_validator: Optional[Validator] = None
+    parameter_validator: Validator | None = None
     """The JSON schema validator of the mission parameters."""
 
     state: MissionState = MissionState.NEW
@@ -57,27 +56,27 @@ class Mission(ModelObject):
     created_at: float
     """Timestamp that stores when the mission was created on the server."""
 
-    authorized_at: Optional[float] = None
+    authorized_at: float | None = None
     """Timestamp that stores when the mission was authorized to start on the
     server, or ``None`` if the mission was not authorized to start yet.
     """
 
-    starts_at: Optional[float] = None
+    starts_at: float | None = None
     """Scheduled start time of the mission (if it is scheduled to start
     automatically). ``None`` if there is no scheduled start time yet.
     """
 
-    started_at: Optional[float] = None
+    started_at: float | None = None
     """Timestamp that stores when the mission has started, or ``None`` if the
     mission has not started yet.
     """
 
-    finished_at: Optional[float] = None
+    finished_at: float | None = None
     """Timestamp that stores when the mission has finished, or ``None`` if it
     has not finished yet or has not been started yet.
     """
 
-    log: Optional[Logger] = None
+    log: Logger | None = None
     """Logger to use during the execution of the mission. Not available when
     the mission is not running.
     """
@@ -261,7 +260,7 @@ class Mission(ModelObject):
             self.notify_updated()
 
     @final
-    async def run(self, log: Optional[Logger]) -> None:
+    async def run(self, log: Logger | None) -> None:
         """Run the task corresponding to the mission. This function will be
         called by the mission scheduler when it is time to start the mission.
 
@@ -356,7 +355,7 @@ class Mission(ModelObject):
         self.notify_updated()
 
     @final
-    def update_start_time(self, start_time: Optional[float | datetime]):
+    def update_start_time(self, start_time: float | datetime | None):
         """Updates or clears the start time of the missions.
 
         This function must be called only when the mission is in the ``NEW``
@@ -429,7 +428,7 @@ class Mission(ModelObject):
         pass
 
     @abstractmethod
-    async def _run(self, log: Optional[Logger] = None) -> None:
+    async def _run(self, log: Logger | None = None) -> None:
         """Async function that runs the task corresponding to the mission.
         This function must be overridden in subclasses to add your own behaviour.
 

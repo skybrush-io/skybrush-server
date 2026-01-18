@@ -1,7 +1,6 @@
 """Connection-related model objects."""
 
 from flockwave.spec.schema import get_complex_object_schema, get_enum_from_schema
-from typing import Optional
 
 from .metamagic import ModelMeta
 from .mixins import TimestampLike, TimestampMixin
@@ -28,11 +27,9 @@ class ConnectionInfo(TimestampMixin, metaclass=ModelMeta):
         "DISCONNECTING": "disconnecting",
     }
 
-    id: Optional[str]
+    id: str | None
 
-    def __init__(
-        self, id: Optional[str] = None, timestamp: Optional[TimestampLike] = None
-    ):
+    def __init__(self, id: str | None = None, timestamp: TimestampLike | None = None):
         """Constructor.
 
         Parameters:

@@ -13,7 +13,6 @@ from typing import (
     ClassVar,
     IO,
     Iterable,
-    Optional,
     Sequence,
 )
 
@@ -37,7 +36,7 @@ _SKYBRUSH_BINARY_FILE_HEADER: list[bytes] = [
 # async def _read_exactly(
 #     fp,
 #     length: int,
-#     offset: Optional[int] = None,
+#     offset: int | None = None,
 #     *,
 #     message: str = "unexpected end of block in Skybrush file",
 # ):
@@ -52,7 +51,7 @@ _SKYBRUSH_BINARY_FILE_HEADER: list[bytes] = [
 async def _read_exactly(
     fp: IO[bytes],
     length: int,
-    offset: Optional[int] = None,
+    offset: int | None = None,
     *,
     message: str = "unexpected end of block in Skybrush file",
 ):
@@ -81,7 +80,7 @@ class SkybrushBinaryFileBlock:
     def __init__(
         self,
         type: int,
-        contents: Optional[bytes] | Callable[[], Awaitable[bytes]],
+        contents: bytes | None | Callable[[], Awaitable[bytes]],
     ):
         """Constructor.
 
@@ -136,12 +135,12 @@ class SkybrushBinaryShowFile:
     _features: SkybrushBinaryFileFeatures = SkybrushBinaryFileFeatures.NONE
     """The optional features (checksum etc) added to this binary show file."""
 
-    _start_of_crc_bytes: Optional[int] = None
+    _start_of_crc_bytes: int | None = None
     """Byte index of the CRC bytes in the show file, `None` if not known yet
     or if the show has no CRC bytes.
     """
 
-    _start_of_first_block: Optional[int] = None
+    _start_of_first_block: int | None = None
     """Byte index of the first block in the show file, `None` if not known yet."""
 
     _header_struct: ClassVar[Struct] = Struct("<BH")
@@ -153,7 +152,7 @@ class SkybrushBinaryShowFile:
         return cls.from_bytes(data=None, version=version)
 
     @classmethod
-    def from_bytes(cls, data: Optional[bytes] = None, *, version: int = 2):
+    def from_bytes(cls, data: bytes | None = None, *, version: int = 2):
         """Creates an in-memory Skybrush binary show file.
 
         Parameters:
@@ -340,7 +339,7 @@ class SkybrushBinaryShowFile:
         return await self.add_block(SkybrushBinaryFormatBlockType.YAW_CONTROL, data)
 
     async def blocks(
-        self, rewind: Optional[bool] = None, validate: Optional[bool] = None
+        self, rewind: bool | None = None, validate: bool | None = None
     ) -> AsyncIterable[SkybrushBinaryFileBlock]:
         """Iterates over the blocks found in the file.
 
@@ -442,7 +441,7 @@ class SkybrushBinaryShowFile:
         return self._buffer.getvalue()
 
     async def read_all_blocks(
-        self, rewind: Optional[bool] = None, validate: Optional[bool] = None
+        self, rewind: bool | None = None, validate: bool | None = None
     ) -> list[SkybrushBinaryFileBlock]:
         """Reads and returns all the blocks found in the file.
 

@@ -11,7 +11,7 @@ from logging import Logger
 from json import loads
 from quart import abort, Response, request
 from trio import Event, fail_after, sleep_forever, TooSlowError
-from typing import Any, Optional
+from typing import Any
 
 from flockwave.encoders import Encoder
 from flockwave.encoders.json import create_json_encoder
@@ -21,8 +21,8 @@ from flockwave.server.utils.quart import make_blueprint
 
 app = None
 builder = None
-encoder: Optional[Encoder] = None
-log: Optional[Logger] = None
+encoder: Encoder | None = None
+log: Logger | None = None
 
 
 class HTTPChannel(CommunicationChannel):
@@ -35,8 +35,8 @@ class HTTPChannel(CommunicationChannel):
     AUTH-REQ messages.
     """
 
-    _event: Optional[Event]
-    _message_id: Optional[str]
+    _event: Event | None
+    _message_id: str | None
 
     def __init__(self):
         """Constructor."""

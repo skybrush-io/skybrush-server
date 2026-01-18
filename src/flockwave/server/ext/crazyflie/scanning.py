@@ -14,7 +14,6 @@ from typing import (
     Callable,
     ClassVar,
     Iterable,
-    Optional,
 )
 
 from flockwave.server.utils import longest_common_prefix
@@ -48,7 +47,7 @@ class Scheduler:
 
     async def run(
         self, addresses: CrazyradioConnection | AddressListGetter
-    ) -> AsyncIterable[Optional[list[str]]]:
+    ) -> AsyncIterable[list[str] | None]:
         """Runs the scheduler, yielding lists of addresses to scan, or yielding
         `None` when a full scan is requested.
 
@@ -65,7 +64,7 @@ class Scheduler:
         async for item in self._run(addresses):
             yield item
 
-    def _run(self, addresses: AddressListGetter) -> AsyncIterable[Optional[list[str]]]:
+    def _run(self, addresses: AddressListGetter) -> AsyncIterable[list[str] | None]:
         raise NotImplementedError
 
     def wake_up(self) -> None:

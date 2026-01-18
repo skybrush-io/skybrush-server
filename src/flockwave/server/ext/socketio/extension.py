@@ -17,7 +17,6 @@ from typing import (
     Callable,
     Iterable,
     Iterator,
-    Optional,
     TYPE_CHECKING,
 )
 from urllib.parse import parse_qs
@@ -149,7 +148,7 @@ def get_enabled_protocols(
     Returns:
         a list containing the enabled Socket.IO protocols from the configuration.
     """
-    protocols: Optional[Iterable[str]] = configuration.get("protocols")
+    protocols: Iterable[str] | None = configuration.get("protocols")
     if protocols is not None and not isinstance(protocols, (list, tuple)):
         logger.warning("'protocols' configuration key must be a list, ignoring")
         protocols = None
@@ -188,8 +187,8 @@ class SocketIOCommunicationHandler:
         return f"{self._prefix}:{client_id}"
 
     def _get_ssdp_location(
-        self, channel_id: str, address: Optional[tuple[str, int]]
-    ) -> Optional[str]:
+        self, channel_id: str, address: tuple[str, int] | None
+    ) -> str | None:
         """Returns the SSDP location descriptor of the Socket.IO channel
         corresponding to the Socket.IO protocol of this instance.
 

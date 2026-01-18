@@ -15,7 +15,7 @@ from logging import Logger
 from pathlib import Path
 from tempfile import gettempdir
 from trio import aclose_forcefully, CapacityLimiter, Lock, open_nursery, SocketStream
-from typing import Any, Generic, Optional, Protocol, TypeVar, TYPE_CHECKING, cast
+from typing import Any, Generic, Protocol, TypeVar, TYPE_CHECKING, cast
 
 from flockwave.channels import ParserChannel
 from flockwave.connections import serve_unix
@@ -103,7 +103,7 @@ class UnixDomainSocketChannel(Generic[T], CommunicationChannel[T]):
 ############################################################################
 
 
-def get_ssdp_location(address: Any) -> Optional[str]:
+def get_ssdp_location(address: Any) -> str | None:
     """Returns the SSDP location descriptor of the Unix domain socket channel.
 
     Parameters:

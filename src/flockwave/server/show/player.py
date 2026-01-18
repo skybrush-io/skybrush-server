@@ -4,7 +4,7 @@ trajectory.
 
 from bisect import bisect
 from math import inf
-from typing import Callable, Optional
+from typing import Callable
 
 from pyledctrl.player import Player as LightPlayer
 
@@ -80,7 +80,7 @@ class TrajectoryPlayer:
     where the drone should be at any given moment in time.
     """
 
-    _current_segment: Optional[TrajectorySegment]
+    _current_segment: TrajectorySegment | None
     _current_segment_start_time: float
     _current_segment_end_time: float
     _current_segment_length: float

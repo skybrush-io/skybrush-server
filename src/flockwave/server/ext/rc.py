@@ -8,7 +8,7 @@ values of the RC channels.
 
 from logging import Logger
 
-from typing import Any, ClassVar, Optional, Sequence
+from typing import Any, ClassVar, Sequence
 
 
 rc_changed_signal: Any = None
@@ -19,7 +19,7 @@ new channel values.
 debug: bool = False
 """Stores whether the extension is in debug mode"""
 
-logger: Optional[Logger] = None
+logger: Logger | None = None
 """Logger instance used by the extension"""
 
 

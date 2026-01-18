@@ -10,7 +10,7 @@ from base64 import b64decode
 from enum import Enum
 from pathlib import Path
 from trio import sleep_forever
-from typing import Callable, Mapping, Optional
+from typing import Callable, Mapping
 
 from flockwave.server.model.authentication import (
     AuthenticationMethod,
@@ -47,7 +47,7 @@ class PasswordDataSourceType(Enum):
 
 
 def create_dict_validator(
-    passwords: Mapping[str, str], compare: Optional[HashComparator] = None
+    passwords: Mapping[str, str], compare: HashComparator | None = None
 ) -> PasswordValidator:
     """Password validator factory that validates passwords from the given
     dictionary.
@@ -219,7 +219,7 @@ async def run(app, configuration, logger):
         )
 
     for spec in sources:
-        validator: Optional[PasswordValidator] = None
+        validator: PasswordValidator | None = None
 
         try:
             validator = create_validator_from_config(spec)

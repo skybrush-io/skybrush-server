@@ -15,7 +15,7 @@ from operator import attrgetter
 from quart import abort, make_response, redirect, render_template, request, url_for
 from trio import sleep_forever
 from trio.lowlevel import current_root_task
-from typing import Any, Awaitable, Callable, Optional, TYPE_CHECKING
+from typing import Any, Awaitable, Callable, TYPE_CHECKING
 
 from flockwave.ext.errors import NotSupportedError
 from flockwave.server.utils import overridden
@@ -44,9 +44,9 @@ blueprint = make_blueprint(
     static_url_path="/static",
 )
 
-app: Optional["SkybrushServer"] = None
+app: SkybrushServer | None = None
 is_public: bool = False
-log: Optional[Logger] = None
+log: Logger | None = None
 
 
 async def run(app, configuration, logger):
@@ -79,7 +79,7 @@ class ExtensionInfo:
     dependencies: list[str] = field(default_factory=list)
     dependents: list[str] = field(default_factory=list)
     restart_requested: bool = False
-    version: Optional[Version] = None
+    version: Version | None = None
 
     @classmethod
     def for_extension(

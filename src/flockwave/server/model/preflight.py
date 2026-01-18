@@ -1,6 +1,5 @@
 from bidict import bidict  # type: ignore
 from enum import Enum
-from typing import Optional
 
 from flockwave.server.model.metamagic import ModelMeta
 from flockwave.spec.schema import get_complex_object_schema
@@ -91,7 +90,7 @@ class PreflightCheckItem(metaclass=ModelMeta):
     def __init__(
         self,
         id: str,
-        label: Optional[str] = None,
+        label: str | None = None,
         result: PreflightCheckResult = PreflightCheckResult.OFF,
     ):
         self.id = id
@@ -118,7 +117,7 @@ class PreflightCheckInfo(metaclass=ModelMeta):
     def add_item(
         self,
         id: str,
-        label: Optional[str] = None,
+        label: str | None = None,
         result: PreflightCheckResult = PreflightCheckResult.OFF,
     ) -> None:
         self.items.append(PreflightCheckItem(id=id, label=label, result=result))
@@ -207,7 +206,7 @@ class PreflightCheckInfo(metaclass=ModelMeta):
         return PreflightCheckResult.OFF
 
     def set_result(
-        self, id: str, result: PreflightCheckResult, label: Optional[str] = None
+        self, id: str, result: PreflightCheckResult, label: str | None = None
     ) -> None:
         """Updates the result of a single preflight check in this preflight
         check report.

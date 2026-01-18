@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from collections.abc import AsyncIterator
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 from flockwave.server.model.commands import Progress, ProgressEventsWithSuspension
 from flockwave.server.model.geofence import (
@@ -30,7 +30,7 @@ class Autopilot(ABC):
     name = "Abstract autopilot"
     capabilities: int = 0
 
-    def __init__(self, base: Optional[Autopilot] = None) -> None:
+    def __init__(self, base: Autopilot | None = None) -> None:
         self.capabilities = int(getattr(base, "capabilities", 0))
 
     @staticmethod

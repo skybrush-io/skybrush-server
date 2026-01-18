@@ -1,7 +1,6 @@
 """Mixin classes for other model objects."""
 
 from datetime import datetime
-from typing import Optional
 
 from flockwave.server.utils import get_current_unix_timestamp_msec, is_timezone_aware
 
@@ -12,7 +11,7 @@ __all__ = ("TimestampMixin",)
 TimestampLike = datetime | int
 
 
-def _timestamplike_to_timestamp(timestamp: Optional[TimestampLike]) -> int:
+def _timestamplike_to_timestamp(timestamp: TimestampLike | None) -> int:
     if timestamp is None:
         return get_current_unix_timestamp_msec()
     elif isinstance(timestamp, datetime):
@@ -28,7 +27,7 @@ class TimestampMixin:
     timestamp: int
     """The timestamp, expressed in milliseconds elapsed since the UNIX epoch."""
 
-    def __init__(self, timestamp: Optional[TimestampLike] = None):
+    def __init__(self, timestamp: TimestampLike | None = None):
         """Mixin constructor. Must be called from the constructor of the
         class where this mixin is mixed in.
 
@@ -55,7 +54,7 @@ class TimestampMixin:
         """
         return _timestamplike_to_timestamp(now) - self.timestamp
 
-    def update_timestamp(self, timestamp: Optional[TimestampLike] = None) -> None:
+    def update_timestamp(self, timestamp: TimestampLike | None = None) -> None:
         """Updates the timestamp of the object.
 
         Parameters:

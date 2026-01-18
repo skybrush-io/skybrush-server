@@ -9,7 +9,6 @@ from contextlib import contextmanager
 from typing import (
     Callable,
     Iterator,
-    Optional,
     TypeVar,
     TYPE_CHECKING,
     overload,
@@ -36,7 +35,7 @@ class ModelObject(ABC):
     """
 
     @staticmethod
-    def resolve_type(type: str) -> Optional[type["ModelObject"]]:
+    def resolve_type(type: str) -> type["ModelObject"] | None:
         """Resolves the given model object type specified as a string (as it
         appears in the Flockwave protocol) into the corresponding model object
         class, or `None` if the given type does not map to a model object class.
@@ -45,7 +44,7 @@ class ModelObject(ABC):
 
     @property
     @abstractmethod
-    def device_tree_node(self) -> "Optional[ObjectNode]":
+    def device_tree_node(self) -> ObjectNode | None:
         """Returns the ObjectNode_ that represents the root of the part of the
         device tree that corresponds to the model object, or ``None`` if the
         model object does not have to be registered in the device tree.
@@ -70,8 +69,8 @@ def register(type: str, cls: type[T]) -> None: ...
 
 
 def register(
-    type: str, cls: Optional[type[T]] = None
-) -> Optional[Callable[[type[T]], type[T]]]:
+    type: str, cls: type[T] | None = None
+) -> Callable[[type[T]], type[T]] | None:
     """Registers a ModelObject_ subclass or factory in the Flockwave messaging
     system with a given type name.
 

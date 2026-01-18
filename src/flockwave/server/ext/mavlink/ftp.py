@@ -26,7 +26,6 @@ from typing import (
     Awaitable,
     Iterable,
     Iterator,
-    Optional,
     Protocol,
 )
 
@@ -107,7 +106,7 @@ class MAVFTPErrorCode(IntEnum):
     FILE_NOT_FOUND = 10
 
     @staticmethod
-    def to_string(code: int, errno: Optional[int] = None) -> str:
+    def to_string(code: int, errno: int | None = None) -> str:
         result = _mavftp_error_codes.get(int(code)) or f"Unknown error code {int(code)}"
         if errno == ENOSPC and code in (
             MAVFTPErrorCode.FAIL,
@@ -176,8 +175,8 @@ class OperationNotAcknowledgedError(MAVFTPError):
     def __init__(
         self,
         code: int,
-        errno: Optional[int] = None,
-        operation: Optional[int] = None,
+        errno: int | None = None,
+        operation: int | None = None,
     ):
         message = MAVFTPErrorCode.to_string(code, errno)
         if operation is not None:
@@ -208,10 +207,10 @@ class MAVFTPMessage:
     session_id: int = 0
     offset: int = 0
     data: bytes = b""
-    size: Optional[int] = None
+    size: int | None = None
 
     @classmethod
-    def decode(cls, payload: bytes, expected_seq_no: Optional[int] = None):
+    def decode(cls, payload: bytes, expected_seq_no: int | None = None):
         """Constructs a MAVFTP message by decoding the payload of a MAVLink
         FILE_TRANSFER_PROTOCOL message.
 
@@ -307,7 +306,7 @@ class MAVFTPMessage:
         """Returns whether the message is a NAK."""
         return self.opcode == MAVFTPOpCode.NAK
 
-    def raise_error(self, replies_to: Optional[MAVFTPMessage] = None) -> None:
+    def raise_error(self, replies_to: MAVFTPMessage | None = None) -> None:
         if self.is_nak:
             errno = self.data[1] if len(self.data) >= 2 else None
             operation = replies_to.opcode if replies_to else None
@@ -504,7 +503,7 @@ class MAVFTP:
         reply = await self._send_and_wait(message)
         return int.from_bytes(reply.data, byteorder="little")
 
-    async def get(self, remote_path: FTPPath, fp=None) -> Optional[bytes]:
+    async def get(self, remote_path: FTPPath, fp=None) -> bytes | None:
         """Downloads a file at a given remote path.
 
         Parameters:

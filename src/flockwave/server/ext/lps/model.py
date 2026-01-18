@@ -8,7 +8,6 @@ from typing import (
     Callable,
     ClassVar,
     Generic,
-    Optional,
     TypeVar,
     final,
 )
@@ -31,12 +30,12 @@ class Anchor:
     active: bool = True
     """Whether the anchor is active (i.e. online)."""
 
-    position: Optional[PositionXYZ] = None
+    position: PositionXYZ | None = None
     """The position of the anchor in the coordinate system of the local
     positioning system, if known. ``None`` if not known or not applicable.
     """
 
-    battery: Optional[BatteryInfo] = None
+    battery: BatteryInfo | None = None
     """The battery information of the anchor; specifies its voltage, percentage
     and whether it is charging or not. ``None`` if the anchor has no battery.
     """
@@ -119,7 +118,7 @@ class LocalPositioningSystem(ModelObject):
         "system changes in any way that clients might be interested in."
     )
 
-    _schema_validator_getter: Optional[Callable[[], Callable[[Any], None]]] = None
+    _schema_validator_getter: Callable[[], Callable[[Any], None]] | None = None
     """Getter for the validator for the configuration parameters of the local
     positioning system, generated from the JSON schema of the LPS type.
     """

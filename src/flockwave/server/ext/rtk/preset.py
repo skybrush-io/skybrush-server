@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 from urllib.parse import urlencode
-from typing import Any, Callable, Iterable, Optional, Sequence, Type, TypeVar
+from typing import Any, Callable, Iterable, Sequence, TypeVar
 
 from flockwave.channels.types import Encoder, Parser
 from flockwave.gps.encoder import create_gps_encoder
@@ -59,7 +59,7 @@ class RTKConfigurationPreset:
     id: str
     """The unique ID of the preset"""
 
-    title: Optional[str] = None
+    title: str | None = None
     """A human-readable title of the preset"""
 
     type: RTKConfigurationPresetType = RTKConfigurationPresetType.BUILTIN
@@ -71,12 +71,12 @@ class RTKConfigurationPreset:
     sources: list[str] = field(default_factory=list)
     """List of source connections where this preset collects messages from"""
 
-    init: Optional[bytes] = None
+    init: bytes | None = None
     """Optional data to send on the connection before starting to read the
     RTCM messages. Can be used for source-specific initialization.
     """
 
-    filter: Optional[GPSPacketFilter] = None
+    filter: GPSPacketFilter | None = None
     """List of filters that the messages from the sources must pass through"""
 
     auto_survey: bool = False
@@ -94,7 +94,7 @@ class RTKConfigurationPreset:
         cls,
         spec: dict[str, Any],
         *,
-        id: Optional[str] = None,
+        id: str | None = None,
         type: RTKConfigurationPresetType = RTKConfigurationPresetType.BUILTIN,
     ):
         """Creates an RTK configuration preset object from its JSON
@@ -143,7 +143,7 @@ class RTKConfigurationPreset:
                 raise ValueError(f"Invalid RTK packet format: {format!r}")
             self.format = format
 
-        sources: Optional[list[Any]]
+        sources: list[Any] | None
         if "sources" in updates:
             sources = updates["sources"]
         elif "source" in updates:
@@ -294,8 +294,8 @@ def _is_rtcm_packet(packet: GPSPacket) -> bool:
 
 
 def _process_rtcm_packet_id_list(
-    id_list: Optional[Iterable[str]],
-) -> Optional[dict[type[RTCMPacket], set[int]]]:
+    id_list: Iterable[str] | None,
+) -> dict[type[RTCMPacket], set[int]] | None:
     if id_list is None:
         return None
 
@@ -313,7 +313,7 @@ def _process_rtcm_packet_id_list(
 
 
 def create_filter_function(
-    accept: Optional[Iterable[str]] = None, reject: Optional[Iterable[str]] = None
+    accept: Iterable[str] | None = None, reject: Iterable[str] | None = None
 ) -> Callable[[GPSPacket], bool]:
     """Creates a filtering function that takes GPS packets and returns whether
     the filter would accept the packet, based on a list of acceptable RTCM

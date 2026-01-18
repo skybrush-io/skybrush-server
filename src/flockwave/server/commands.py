@@ -21,7 +21,6 @@ from typing import (
     Any,
     AsyncGenerator,
     Awaitable,
-    Optional,
     TypeVar,
 )
 
@@ -170,7 +169,7 @@ class CommandExecutionManager(RegistryBase[CommandExecutionStatus]):
         except WouldBlock:
             log.warning("Command queue is full, dropping command")
 
-    def new(self, client_to_notify: Optional[str] = None) -> CommandExecutionStatus:
+    def new(self, client_to_notify: str | None = None) -> CommandExecutionStatus:
         """Registers the execution of a new asynchronous command in the
         command manager.
 
@@ -252,7 +251,7 @@ class CommandExecutionManager(RegistryBase[CommandExecutionStatus]):
 
     def _get_command_from_id(
         self, receipt_id: ReceiptLike
-    ) -> Optional[CommandExecutionStatus]:
+    ) -> CommandExecutionStatus | None:
         """Returns the command execution status object corresponding to the
         given receipt ID, or, if the function is given a
         CommandExecutionStatus_ object, checks whether the object really
@@ -410,7 +409,7 @@ class CommandExecutionManager(RegistryBase[CommandExecutionStatus]):
             status: the status object that is to be manipulated when the
                 async generator finishes or the execution times out
         """
-        result: Optional[T] = None
+        result: T | None = None
 
         async with aclosing(it) as gen:
             data_from_client: Any = None

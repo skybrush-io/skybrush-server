@@ -11,7 +11,7 @@ GPS coordinates using a FlatEarthToGPSCoordinateTransformation_ object.
 
 from functools import partial
 from math import cos, floor, pi, radians, sin
-from typing import Callable, Optional
+from typing import Callable
 
 from flockwave.gps.vectors import Vector3D
 
@@ -22,7 +22,7 @@ __all__ = ("place_drones", "register")
 _registry = {}
 
 
-def register(name: str, func: Optional[Callable] = None):
+def register(name: str, func: Callable | None = None):
     """Registers the given drone placement function with the given name.
     When the function is omitted, returns a decorator that can be applied to
     a function to register it.
@@ -104,7 +104,7 @@ def place_drones_explicitly(n: int, *, coordinates: list[Vector3D]) -> list[Vect
 
 @register("circle")
 def place_drones_on_circle(
-    n: int, *, radius: Optional[float] = None, spacing: float = 5
+    n: int, *, radius: float | None = None, spacing: float = 5
 ) -> list[Vector3D]:
     """Returns coordinates to place the given number of drones in a circle.
     The circle will be centered at the origin. The first drone will be placed
@@ -144,7 +144,7 @@ def place_drones_on_grid(
     n: int,
     *,
     spacing: float | tuple[float, float] = 5,
-    rows: Optional[float] = None,
+    rows: float | None = None,
 ) -> list[Vector3D]:
     """Returns coordinates to place the given number of drones in a regular
     grid.

@@ -5,7 +5,7 @@ Skybrush-related trajectories, until we find a better place for them.
 from dataclasses import dataclass
 from itertools import chain
 from math import ceil, inf
-from typing import Iterable, Optional, Sequence
+from typing import Iterable, Sequence
 
 from .utils import BoundingBoxCalculator, Point
 
@@ -270,14 +270,14 @@ class TrajectorySpecification:
                 constant segment will be inserted in front of the first segment
                 if the takeoff time is positive.
         """
-        point_iter: Optional[Iterable[tuple[float, Point, list[Point]]]] = (
-            self._data.get("points")
+        point_iter: Iterable[tuple[float, Point, list[Point]]] | None = self._data.get(
+            "points"
         )
         if not point_iter:
             return
 
-        prev_t: Optional[float] = None
-        start: Optional[Point] = None
+        prev_t: float | None = None
+        start: Point | None = None
 
         if absolute:
             time_offset = self.takeoff_time

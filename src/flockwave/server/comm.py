@@ -35,7 +35,6 @@ from typing import (
     Generic,
     Iterable,
     Iterator,
-    Optional,
     TypeVar,
     cast,
 )
@@ -109,7 +108,7 @@ class CommunicationManagerEntry(Generic[PacketType, AddressType]):
     can_send: bool = True
     """Stores whether the connection can be used for sending messages."""
 
-    channel: Optional[MessageChannel[tuple[PacketType, AddressType], bytes]] = None
+    channel: MessageChannel[tuple[PacketType, AddressType], bytes] | None = None
     """The channel that can be used to send messages on the connection.
     ``None`` if the connection is closed.
     """
@@ -152,7 +151,7 @@ class CommunicationManagerEntry(Generic[PacketType, AddressType]):
         return False
 
     def set_channel(
-        self, channel: Optional[MessageChannel[tuple[PacketType, AddressType], bytes]]
+        self, channel: MessageChannel[tuple[PacketType, AddressType], bytes] | None
     ) -> None:
         """Sets the channel associated to this entry."""
         if self.channel is not channel:
@@ -258,7 +257,7 @@ class CommunicationManager(Generic[PacketType, AddressType]):
         self._running = False
         self._outbound_tx_queue = None
 
-    def add(self, connection, *, name: str, can_send: Optional[bool] = None):
+    def add(self, connection, *, name: str, can_send: bool | None = None):
         """Adds the given connection to the list of connections managed by
         the communication manager.
 
@@ -302,7 +301,7 @@ class CommunicationManager(Generic[PacketType, AddressType]):
         self,
         packet: PacketType,
         *,
-        destination: Optional[str] = None,
+        destination: str | None = None,
         allow_failure: bool = False,
     ) -> None:
         """Requests the communication manager to broadcast the given message
@@ -330,7 +329,7 @@ class CommunicationManager(Generic[PacketType, AddressType]):
         self,
         packet: PacketType,
         *,
-        destination: Optional[str] = None,
+        destination: str | None = None,
         allow_failure: bool = False,
     ) -> None:
         """Requests the communication manager to broadcast the given message
@@ -403,7 +402,7 @@ class CommunicationManager(Generic[PacketType, AddressType]):
         consumer: Consumer,
         supervisor: SupervisionFunction,
         log: Logger,
-        tasks: Optional[list[Callable[..., Awaitable[Any]]]] = None,
+        tasks: list[Callable[..., Awaitable[Any]]] | None = None,
     ):
         """Runs the communication manager in a separate task, using the
         given supervisor function to ensure that the connections associated to
@@ -484,7 +483,7 @@ class CommunicationManager(Generic[PacketType, AddressType]):
         *,
         consumer: Consumer,
         supervisor: SupervisionFunction,
-        tasks: Optional[list[Callable[..., Awaitable[Any]]]] = None,
+        tasks: list[Callable[..., Awaitable[Any]]] | None = None,
     ) -> None:
         tx_queue, rx_queue = open_memory_channel[
             tuple[str, tuple[PacketType, AddressType]]

@@ -15,7 +15,7 @@ from functools import partial
 from json import loads
 from pynmea2 import parse as parse_nmea
 from re import sub
-from typing import Any, Optional, TYPE_CHECKING
+from typing import Any, TYPE_CHECKING
 
 from flockwave.gps.vectors import GPSCoordinate
 from flockwave.channels import ParserChannel
@@ -66,7 +66,7 @@ class MessageFormat(Enum):
 
 
 def create_gps_connection_and_format(
-    connection: str, format: Optional[str] = None
+    connection: str, format: str | None = None
 ) -> tuple[Connection, MessageFormat]:
     """Creates a connection from a connection specification object found
     in the configuration of the extension. The ``connection`` and ``format``
@@ -212,7 +212,7 @@ class GPSExtension(UAVExtension):
     extension.
     """
 
-    _beacon_context_stack: Optional[ExitStack]
+    _beacon_context_stack: ExitStack | None
     """Stack in which the beacon objects created by this extension are pushed.
     This stack is unwound when the extension is unloaded, removing all the
     beacons.
@@ -237,7 +237,7 @@ class GPSExtension(UAVExtension):
     _id_format: str
     """Format string that defines how to derive globally registered beacon IDs."""
 
-    _main_connection: Optional[Connection]
+    _main_connection: Connection | None
     """The "main" connection object of the extension."""
 
     def __init__(self):
@@ -283,7 +283,7 @@ class GPSExtension(UAVExtension):
 
     def _deactivate_beacon(self, beacon_id: str) -> None:
         """Marks the beacon with the given global ID as not active."""
-        beacon: Optional[Beacon] = self._beacon_api.find_by_id(beacon_id)
+        beacon: Beacon | None = self._beacon_api.find_by_id(beacon_id)
         if beacon:
             beacon.update_status(active=False)
 
@@ -354,7 +354,7 @@ class GPSExtension(UAVExtension):
         device_id = self._get_local_device_id(message, source)
         beacon_id = self._get_global_beacon_id(device_id)
 
-        beacon: Optional[Beacon] = self._beacon_api.find_by_id(beacon_id)
+        beacon: Beacon | None = self._beacon_api.find_by_id(beacon_id)
         if not beacon:
             if not self._beacon_context_stack:
                 # Extension was already unloaded so we should not have gotten

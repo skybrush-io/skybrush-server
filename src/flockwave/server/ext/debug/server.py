@@ -12,7 +12,7 @@ from trio import (
     TooSlowError,
 )
 from trio.abc import ReceiveChannel, Stream
-from typing import Callable, Optional
+from typing import Callable
 
 from flockwave.networking import format_socket_address
 from flockwave.server.utils import overridden
@@ -84,7 +84,7 @@ async def run_debug_port(
     host: str,
     port: int,
     on_message: Callable[[bytes], None],
-    log: Optional[Logger] = None,
+    log: Logger | None = None,
 ) -> None:
     """Opens a TCP port that can be used during debugging to inject arbitrary
     data into data streams provided by other extensions if they support this
@@ -117,7 +117,7 @@ async def run_debug_port(
 
 
 async def handle_debug_connection_safely(
-    stream: Stream, *, on_message: Callable[[bytes], None], log: Optional[Logger] = None
+    stream: Stream, *, on_message: Callable[[bytes], None], log: Logger | None = None
 ) -> None:
     """Handles a single debug connection, catching all exceptions so they
     don't propagate out and crash the extension.
@@ -133,7 +133,7 @@ async def handle_debug_connection_safely(
 
 
 async def handle_debug_connection_outbound(
-    stream: Stream, *, on_message: Callable[[bytes], None], log: Optional[Logger] = None
+    stream: Stream, *, on_message: Callable[[bytes], None], log: Logger | None = None
 ) -> None:
     if connected_client_queue is not None:
         # one connection only

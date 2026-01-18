@@ -5,7 +5,6 @@ import os
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from sys import executable
-from typing import Optional
 from zlib import adler32
 
 from jinja2 import BaseLoader, ChoiceLoader, FileSystemLoader, TemplateNotFound
@@ -16,7 +15,7 @@ from .generic import constant
 from .packaging import is_oxidized
 
 
-def _get_quart_root_path_of(name: str) -> Optional[str]:
+def _get_quart_root_path_of(name: str) -> str | None:
     if is_oxidized():
         # Running inside PyOxidizer, return the current folder as a dummy
         # root path for Quart

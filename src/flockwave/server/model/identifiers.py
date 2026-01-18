@@ -2,7 +2,7 @@ from baseconv import base64
 from bidict import bidict
 from random import getrandbits
 
-from typing import Callable, Generic, Optional, TypeVar
+from typing import Callable, Generic, TypeVar
 
 from flockwave.spec.ids import make_valid_object_id
 
@@ -29,7 +29,7 @@ class UniqueIdGenerator(Generic[T]):
     returns the corresponding string ID.
     """
 
-    _validator: Optional[Callable[[str], str]] = None
+    _validator: Callable[[str], str] | None = None
     """Validator function that takes a generated string ID and possibly returns
     another string that is guaranteed to satisfy some validation criteria.
     Called every time a new ID is generated using the formatter. `None` means
@@ -44,7 +44,7 @@ class UniqueIdGenerator(Generic[T]):
     def __init__(
         self,
         formatter: str | Callable[[T], str] = "{0}",
-        validator: Optional[Callable[[str], str]] = None,
+        validator: Callable[[str], str] | None = None,
     ):
         """Constructor.
 
@@ -72,7 +72,7 @@ class UniqueIdGenerator(Generic[T]):
             self._value_to_id[value] = result
         return result
 
-    def reverse_lookup(self, id: str) -> Optional[T]:
+    def reverse_lookup(self, id: str) -> T | None:
         """Returns the original value that was mapped to the given ID, or
         `None` if the given ID was never returned from this generator.
         """

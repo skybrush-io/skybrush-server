@@ -8,8 +8,6 @@ import sys
 import trio
 import warnings
 
-from typing import Optional
-
 from flockwave import logger
 from flockwave.app_framework.hacks import install_unraisable_hook
 from flockwave.app_framework.instrumentation import get_enabled_instruments
@@ -48,7 +46,7 @@ from .version import __version__
 @click.version_option(version=__version__)
 def start(
     config: str,
-    port: Optional[int] = None,
+    port: int | None = None,
     debug: bool = False,
     quiet: bool = False,
     log_style: str = "fancy",

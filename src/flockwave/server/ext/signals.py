@@ -8,14 +8,14 @@ from __future__ import annotations
 from blinker import NamedSignal, Signal
 from contextlib import contextmanager, ExitStack
 from logging import Logger
-from typing import Callable, ContextManager, Iterator, Optional, Protocol
+from typing import Callable, ContextManager, Iterator, Protocol
 
 
 #: Logger that will be used to log unexpected exceptions from signal handlers
-log: Optional[Logger] = None
+log: Logger | None = None
 
 #: Namespace containing all the signals registered in this extension
-signals: Optional["Namespace"] = None
+signals: Namespace | None = None
 
 
 class ProtectedSignal(NamedSignal):
@@ -53,7 +53,7 @@ class ProtectedSignal(NamedSignal):
 class Namespace(dict):
     """A mapping of signal names to signals."""
 
-    def signal(self, name: str, doc: Optional[str] = None) -> ProtectedSignal:
+    def signal(self, name: str, doc: str | None = None) -> ProtectedSignal:
         """Return the ProtectedSignal_ called *name*, creating it if required.
 
         Repeated calls to this function will return the same signal object.

@@ -1,7 +1,6 @@
 from contextlib import closing
 from pytest import raises
 from trio import sleep, TooSlowError
-from typing import Optional
 
 from flockwave.server.tasks import ProgressReporter
 
@@ -30,7 +29,7 @@ async def test_progress_reporter(nursery, autojump_clock):
 
     nursery.start_soon(generator)
 
-    expected_seq: list[tuple[Optional[int], Optional[str]]] = [
+    expected_seq: list[tuple[int | None, str | None]] = [
         (5, "foo"),
         (10, "foo"),
         (25, "foo"),
@@ -69,7 +68,7 @@ async def test_progress_reporter_auto_close(nursery, autojump_clock):
 
     nursery.start_soon(generator)
 
-    expected_seq: list[tuple[Optional[int], Optional[str]]] = [
+    expected_seq: list[tuple[int | None, str | None]] = [
         (5, "foo"),
         (100, "foo"),
     ]
@@ -101,7 +100,7 @@ async def test_progress_reporter_timeout(nursery, autojump_clock):
 
     nursery.start_soon(generator)
 
-    expected_seq: list[tuple[Optional[int], Optional[str]]] = [
+    expected_seq: list[tuple[int | None, str | None]] = [
         (5, "foo"),
         (10, "foo"),
     ]
@@ -140,7 +139,7 @@ async def test_progress_reporter_timeout_no_failure(nursery, autojump_clock):
 
     nursery.start_soon(generator)
 
-    expected_seq: list[tuple[Optional[int], Optional[str]]] = [
+    expected_seq: list[tuple[int | None, str | None]] = [
         (5, "foo"),
         (10, "foo"),
     ]

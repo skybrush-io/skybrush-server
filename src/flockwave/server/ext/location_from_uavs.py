@@ -5,7 +5,7 @@ of the server in geodetic coordinates.
 from __future__ import annotations
 
 from trio import CancelScope, sleep, sleep_forever
-from typing import Any, TYPE_CHECKING, Optional, cast
+from typing import Any, TYPE_CHECKING, cast
 
 from flockwave.gps.vectors import GPSCoordinate
 from flockwave.logger import Logger
@@ -28,7 +28,7 @@ MAX_AGE_MSEC = 60000
 """Maximum age of the status information of the UAV, in milliseconds."""
 
 
-def is_valid_position(position: Optional[GPSCoordinate]) -> bool:
+def is_valid_position(position: GPSCoordinate | None) -> bool:
     return (
         position is not None
         and position.lat is not None
@@ -42,7 +42,7 @@ class LocationFromUAVSExtension(Extension):
     approximation of the location of the server.
     """
 
-    def _pick_uav_to_track(self) -> Optional[UAV]:
+    def _pick_uav_to_track(self) -> UAV | None:
         """Picks a single UAV from the UAV registry of the server whose location
         will be used as a proxy for the location of the server.
 
@@ -69,7 +69,7 @@ class LocationFromUAVSExtension(Extension):
         """
         assert self.log is not None
 
-        maybe_uav: Optional[UAV]
+        maybe_uav: UAV | None
 
         await self.wait_for_at_least_one_uav()
 

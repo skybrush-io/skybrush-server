@@ -1,7 +1,9 @@
+from __future__ import annotations
+
 from contextlib import ExitStack
 from logging import Logger
 from trio import sleep_forever
-from typing import Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING
 
 from flockwave.server.utils import overridden
 
@@ -10,8 +12,8 @@ from .server import run_debug_port, setup_debugging_server
 if TYPE_CHECKING:
     from flockwave.server.app import SkybrushServer
 
-app: Optional["SkybrushServer"] = None
-log: Optional[Logger] = None
+app: SkybrushServer | None = None
+log: Logger | None = None
 
 
 async def run(app, configuration, logger):

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from deprecated.sphinx import versionadded
 from pathlib import Path
-from typing import Generic, Optional, TYPE_CHECKING, TypeVar
+from typing import Generic, TYPE_CHECKING, TypeVar
 
 from flockwave.ext.base import ExtensionBase
 
@@ -19,7 +19,7 @@ class Extension(ExtensionBase["SkybrushServer"]):
     """Base class for extensions in the server application."""
 
     @versionadded(version="2.15.0")
-    def get_cache_dir(self, name: Optional[str] = None) -> Path:
+    def get_cache_dir(self, name: str | None = None) -> Path:
         """Returns the full path of a directory that the extension may use to
         store cached data.
 
@@ -34,7 +34,7 @@ class Extension(ExtensionBase["SkybrushServer"]):
         return self.app.dirs.user_cache_path / "ext" / (name or self.name or "_unnamed")
 
     @versionadded(version="2.15.0")
-    def get_data_dir(self, name: Optional[str] = None) -> Path:
+    def get_data_dir(self, name: str | None = None) -> Path:
         """Returns the full path of a directory that the extension may use to
         store persistent data.
 
@@ -61,7 +61,7 @@ class UAVExtension(Extension, Generic[D]):
     ``configure_driver()`` method to configure the driver.
     """
 
-    _driver: Optional[D] = None
+    _driver: D | None = None
 
     def create_device_tree_mutation_context(self):
         """Returns a context that can be used in a ``with`` statement to
@@ -96,7 +96,7 @@ class UAVExtension(Extension, Generic[D]):
         """
         pass
 
-    def _create_driver(self) -> Optional[D]:
+    def _create_driver(self) -> D | None:
         """Creates the driver object that the extension will use. It is
         not required to associate the driver to the current application;
         the extension will do it.
@@ -112,7 +112,7 @@ class UAVExtension(Extension, Generic[D]):
         app has changed.
         """
         if self._driver:
-            old_app: Optional["SkybrushServer"] = self._driver.app
+            old_app: SkybrushServer | None = self._driver.app
             if old_app:
                 old_app.uav_driver_registry.remove(self._driver)
 

@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Iterable, Optional
+from typing import Any, Iterable
 
 from flockwave.gps.vectors import GPSCoordinate
 
@@ -89,17 +89,17 @@ class GeofenceStatus:
     will try them.
     """
 
-    min_altitude: Optional[float] = None
+    min_altitude: float | None = None
     """Minimum altitude that the drone must maintain, in meters; `None` means no
     minimum altitude requirement.
     """
 
-    max_altitude: Optional[float] = None
+    max_altitude: float | None = None
     """Maximum altitude that the drone is allowed to fly to; `None` means no
     maximum altitude limit.
     """
 
-    max_distance: Optional[float] = None
+    max_distance: float | None = None
     """Maximum distance that the drone is allowed to fly from its home position,
     in meters; `None` means no distance limit.
     """
@@ -143,35 +143,35 @@ class GeofenceConfigurationRequest:
     - selectively turning on/off certain geofence types
     """
 
-    enabled: Optional[bool] = None
+    enabled: bool | None = None
     """Whether the geofence should be enabled; `None` means not to change it"""
 
-    min_altitude: Optional[float] = None
+    min_altitude: float | None = None
     """Minimum altitude that the drone must maintain; `None` means not to
     change the minimum altitude requirement.
     """
 
-    max_altitude: Optional[float] = None
+    max_altitude: float | None = None
     """Maximum altitude that the drone is allowed to fly to; `None` means not
     to change the maximum altitude limit.
     """
 
-    max_distance: Optional[float] = None
+    max_distance: float | None = None
     """Maximum distance that the drone is allowed to fly from its home
     position; `None` means not to change the distance limit.
     """
 
-    polygons: Optional[list[GeofencePolygon]] = None
+    polygons: list[GeofencePolygon] | None = None
     """Inclusion and exclusion polygons in the geofence; `None` means not to
     update the polygons.
     """
 
-    rally_points: Optional[list[GeofencePoint]] = None
+    rally_points: list[GeofencePoint] | None = None
     """Rally points in the geofence; `None` means not to update the rally
     points.
     """
 
-    action: Optional[GeofenceAction] = None
+    action: GeofenceAction | None = None
     """The action to take if the vehicle hits the geofence; `None` means not to
     update the current geofence action.
     """

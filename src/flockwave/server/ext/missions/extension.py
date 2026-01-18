@@ -8,7 +8,7 @@ from contextlib import ExitStack
 from functools import partial
 from inspect import isawaitable
 from trio import open_nursery
-from typing import Any, Iterable, Optional, cast, overload
+from typing import Any, Iterable, cast, overload
 
 from flockwave.server.ext.base import Extension
 from flockwave.server.message_hub import MessageHub
@@ -53,8 +53,8 @@ class MissionManagementExtension(Extension):
         }
 
     def find_mission_by_id(
-        self, id: str, response: Optional[FlockwaveResponse] = None
-    ) -> Optional[Mission]:
+        self, id: str, response: FlockwaveResponse | None = None
+    ) -> Mission | None:
         """Finds the mission with the given ID in the mission registry or
         registers a failure in the given response object if there is no mission
         with the given ID.
@@ -74,8 +74,8 @@ class MissionManagementExtension(Extension):
         )
 
     def find_mission_type_by_id(
-        self, id: str, response: Optional[FlockwaveResponse] = None
-    ) -> Optional[MissionType]:
+        self, id: str, response: FlockwaveResponse | None = None
+    ) -> MissionType | None:
         """Finds the mission type with the given ID in the mission type registry
         or registers a failure in the given response object if there is no
         mission type with the given ID.
@@ -160,7 +160,7 @@ class MissionManagementExtension(Extension):
     def _create_MSN_INF_message_for(
         self,
         mission_ids: Iterable[str],
-        in_response_to: Optional[FlockwaveMessage] = None,
+        in_response_to: FlockwaveMessage | None = None,
     ):
         """Creates an MSN-INF message that contains information regarding
         the missions with the given IDs.

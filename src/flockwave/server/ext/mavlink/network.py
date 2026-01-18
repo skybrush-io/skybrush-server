@@ -25,7 +25,6 @@ from typing import (
     Callable,
     Iterable,
     Iterator,
-    Optional,
     Sequence,
     TYPE_CHECKING,
 )
@@ -88,7 +87,7 @@ HEARTBEAT_SPEC = (
 )
 
 
-Matchers = dict[str, list[tuple[Optional[int], MAVLinkMessageMatcher, Future]]]
+Matchers = dict[str, list[tuple[int | None, MAVLinkMessageMatcher, Future]]]
 
 
 class MAVLinkNetwork:
@@ -191,7 +190,7 @@ class MAVLinkNetwork:
         id_formatter: Callable[[int, str], str] = "{0}".format,
         packet_loss: float = 0,
         statustext_targets: MAVLinkStatusTextTargetSpecification = MAVLinkStatusTextTargetSpecification.DEFAULT,
-        routing: Optional[dict[str, list[int]]] = None,
+        routing: dict[str, list[int]] | None = None,
         rssi_mode: RSSIMode = RSSIMode.RADIO_STATUS,
         signing: MAVLinkSigningConfiguration = MAVLinkSigningConfiguration.DISABLED,
         uav_system_id_offset: int = 0,
@@ -275,7 +274,7 @@ class MAVLinkNetwork:
         self,
         type: int | str | MAVMessageType,
         params: MAVLinkMessageMatcher = None,
-        system_id: Optional[int] = None,
+        system_id: int | None = None,
     ) -> Iterator[Future[MAVLinkMessage]]:
         """Sets up a handler that waits for a MAVLink packet of a given type,
         optionally matching its content with the given parameter values based
@@ -452,7 +451,7 @@ class MAVLinkNetwork:
                 nursery.cancel_scope.cancel()
 
     async def broadcast_packet(
-        self, spec: MAVLinkMessageSpecification, channel: Optional[str] = None
+        self, spec: MAVLinkMessageSpecification, channel: str | None = None
     ) -> None:
         """Broadcasts a message to all UAVs in the network.
 
@@ -531,7 +530,7 @@ class MAVLinkNetwork:
         """
         self._scheduled_takeoff_manager.notify_config_changed(config)
 
-    def notify_show_clock_start_time_changed(self, start_time: Optional[float]) -> None:
+    def notify_show_clock_start_time_changed(self, start_time: float | None) -> None:
         """Notifies the network that the show clock was started, stopped or
         adjusted in the system.
         """
@@ -550,7 +549,7 @@ class MAVLinkNetwork:
     def uav_system_id_range(self) -> tuple[int, int]:
         return self._uav_system_id_range
 
-    async def send_heartbeat(self, target: MAVLinkUAV) -> Optional[MAVLinkMessage]:
+    async def send_heartbeat(self, target: MAVLinkUAV) -> MAVLinkMessage | None:
         """Sends a heartbeat targeted to the given UAV.
 
         It is assumed (and not checked) that the UAV belongs to this network.
@@ -568,12 +567,12 @@ class MAVLinkNetwork:
 
     async def send_packet(
         self,
-        spec: Optional[MAVLinkMessageSpecification],
+        spec: MAVLinkMessageSpecification | None,
         target: MAVLinkUAV,
         *,
-        wait_for_response: Optional[tuple[str, MAVLinkMessageMatcher]] = None,
-        wait_for_one_of: Optional[dict[str, MAVLinkMessageSpecification]] = None,
-        channel: Optional[str] = None,
+        wait_for_response: tuple[str, MAVLinkMessageMatcher] | None = None,
+        wait_for_one_of: dict[str, MAVLinkMessageSpecification] | None = None,
+        channel: str | None = None,
     ) -> MAVLinkMessage | tuple[str, MAVLinkMessage] | None:
         """Sends a message to the given UAV and optionally waits for a matching
         response.
@@ -717,7 +716,7 @@ class MAVLinkNetwork:
 
     def _find_uav_from_message(
         self, message: MAVLinkMessage, address: Any
-    ) -> Optional[MAVLinkUAV]:
+    ) -> MAVLinkUAV | None:
         """Finds the UAV that this message is sent from, based on its system ID,
         creating a new UAV object if we have not seen the UAV yet.
 
@@ -1078,7 +1077,7 @@ class MAVLinkNetwork:
             return
 
         def register_by_index(
-            alias: str, index: Optional[int | Iterable[int]]
+            alias: str, index: int | Iterable[int] | None
         ) -> list[str]:
             if index is None:
                 index = 0

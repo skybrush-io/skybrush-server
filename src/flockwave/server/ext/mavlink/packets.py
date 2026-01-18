@@ -6,7 +6,7 @@ from enum import IntEnum, IntFlag
 from functools import lru_cache
 from struct import Struct, pack
 from time import time
-from typing import ClassVar, Optional, Sequence
+from typing import ClassVar, Sequence
 
 from flockwave.gps.time import unix_to_gps_time_of_week, gps_time_of_week_to_utc
 from flockwave.server.ext.show.config import AuthorizationScope
@@ -84,7 +84,7 @@ def create_custom_data_packet(type: int, payload: bytes) -> MAVLinkMessageSpecif
 
 def create_start_time_configuration_packet(
     authorization_scope: AuthorizationScope,
-    start_time: Optional[float] = None,
+    start_time: float | None = None,
     should_update_takeoff_time: bool = True,
 ) -> MAVLinkMessageSpecification:
     """Creates a custom command packet used by our firmware that sets the
@@ -121,7 +121,7 @@ def create_start_time_configuration_packet(
 
 
 def create_led_control_packet(
-    data: Optional[Sequence[int]] = None, broadcast: bool = False
+    data: Sequence[int] | None = None, broadcast: bool = False
 ) -> MAVLinkMessageSpecification:
     """Creates a special LED light control packet used by our firmware."""
     kwds = {
@@ -285,12 +285,12 @@ class DroneShowStatus:
     authorization_scope: AuthorizationScope = AuthorizationScope.NONE
     """Authorization scope of the scheduled start of the drone show."""
 
-    rtcm_counters: Sequence[Optional[int]] = (None, None)
+    rtcm_counters: Sequence[int | None] = (None, None)
     """Number of RTCM messages received from the primary and secondary channels
     in the last few seconds.
     """
 
-    extension: Optional[DroneShowStatusExtension] = None
+    extension: DroneShowStatusExtension | None = None
     """Extended status information, if provided at construction time."""
 
     TYPE: ClassVar[int] = 0x5B
@@ -558,16 +558,16 @@ class DroneShowStatusExtension:
     heading: float
     """Heading of the drone."""
 
-    h_acc: Optional[float] = None
+    h_acc: float | None = None
     """Horizontal accuracy as reported by the GPS; ``None`` if not provided."""
 
-    v_acc: Optional[float] = None
+    v_acc: float | None = None
     """Vertical accuracy as reported by the GPS; ``None`` if not provided."""
 
-    show_id: Optional[int] = None
+    show_id: int | None = None
     """Unique identifier of the show uploaded to the drone, if known."""
 
-    trajectory_index: Optional[int] = None
+    trajectory_index: int | None = None
     """Index of the trajectory that the drone is going to fly, if known."""
 
     _struct: ClassVar[Struct] = Struct("<iiiihhhHHHIH")

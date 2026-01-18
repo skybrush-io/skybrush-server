@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from contextlib import ExitStack
 from operator import attrgetter, methodcaller
-from typing import Any, Optional
+from typing import Any
 
 from flockwave.concurrency import AsyncBundler
 from flockwave.server.ext.base import Extension
@@ -41,7 +41,7 @@ class LocalPositioningSystemsExtension(Extension):
     (LPS) for which specific instances may be created in the LPS registry.
     """
 
-    _lps_to_update: Optional[AsyncBundler[str]]
+    _lps_to_update: AsyncBundler[str] | None
     """Async bundler that collects the list of LPS objects for which we need to
     dispatch an LPS-INF message.
     """
@@ -62,8 +62,8 @@ class LocalPositioningSystemsExtension(Extension):
         }
 
     def find_lps_by_id(
-        self, id: str, response: Optional[FlockwaveResponse] = None
-    ) -> Optional[LocalPositioningSystem]:
+        self, id: str, response: FlockwaveResponse | None = None
+    ) -> LocalPositioningSystem | None:
         """Finds the local positioning system (LPS) with the given ID in the
         LPS registry or registers a failure in the given response object if
         there is no LPS instance the given ID.
@@ -83,8 +83,8 @@ class LocalPositioningSystemsExtension(Extension):
         )
 
     def find_lps_type_by_id(
-        self, id: str, response: Optional[FlockwaveResponse] = None
-    ) -> Optional[LocalPositioningSystemType]:
+        self, id: str, response: FlockwaveResponse | None = None
+    ) -> LocalPositioningSystemType | None:
         """Finds the local positioning system (LPS) type with the given ID in
         the LPS type registry or registers a failure in the given response
         object if there is no LPS type with the given ID.
@@ -199,7 +199,7 @@ class LocalPositioningSystemsExtension(Extension):
 
     @staticmethod
     def _get_configuration_from_LPS_CFG_message(
-        message: Optional[FlockwaveMessage],
+        message: FlockwaveMessage | None,
     ) -> dict[str, Any]:
         """Extracts the configuration parameters from the LPS-CFG message.
 

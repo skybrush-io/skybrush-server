@@ -14,7 +14,6 @@ from typing import (
     Callable,
     ClassVar,
     Iterable,
-    Optional,
     Sequence,
 )
 
@@ -71,7 +70,7 @@ class KpIndexData:
         self._timestamps = []
         self._values = []
 
-    def get_kp_index_for(self, timestamp: int) -> Optional[float]:
+    def get_kp_index_for(self, timestamp: int) -> float | None:
         """Returns an (estimated or definite) Kp-index for the given timestamp,
         measured in seconds from the UNIX epoch, or `None` if there is no data
         for the given timestamp.
@@ -244,7 +243,7 @@ async def _fetch_kp_index_from_potsdam() -> KpIndexData:
     return KpIndexData.from_midpoints_and_values(entries)
 
 
-async def provide_kp_index(weather: Weather, position: Optional[GPSCoordinate]) -> None:
+async def provide_kp_index(weather: Weather, position: GPSCoordinate | None) -> None:
     """Extends the given weather object with the planetary Kp index estimate
     at the timestamp corresponding to the weather object.
     """
@@ -272,7 +271,7 @@ async def provide_kp_index(weather: Weather, position: Optional[GPSCoordinate]) 
         weather.kpIndex = kp_index  # type: ignore
 
 
-def set_selected_data_provider(value: Optional[str]) -> None:
+def set_selected_data_provider(value: str | None) -> None:
     """Sets the data provider that we use to retrieve the Kp index estimate from.
     Invalidates data fetched earlier if the data provider changes.
     """

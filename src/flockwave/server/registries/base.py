@@ -10,7 +10,6 @@ from typing import (
     Generic,
     Iterable,
     Iterator,
-    Optional,
     TypeVar,
     TYPE_CHECKING,
 )
@@ -161,13 +160,13 @@ class RegistryBase(Generic[T], Registry[T]):
 
 
 def find_in_registry(
-    registry: Optional[Registry[T]],
+    registry: Registry[T] | None,
     entry_id: str,
     *,
-    predicate: Optional[Callable[[T], bool]] = None,
-    response: Optional[FlockwaveNotification | FlockwaveResponse] = None,
-    failure_reason: Optional[str] = None,
-) -> Optional[T]:
+    predicate: Callable[[T], bool] | None = None,
+    response: FlockwaveNotification | FlockwaveResponse | None = None,
+    failure_reason: str | None = None,
+) -> T | None:
     """Finds an entry in the given registry with the given ID or
     registers a failure in the given response object if there is no
     such entry in the registry.

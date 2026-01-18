@@ -13,7 +13,7 @@ from flockwave.server.registries.base import RegistryBase
 
 from .base import Extension
 
-from typing import Any, Iterator, Optional, TYPE_CHECKING
+from typing import Any, Iterator, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from flockwave.server.app import SkybrushServer
@@ -41,7 +41,7 @@ class AuthenticationMethodRegistry(RegistryBase[AuthenticationMethod]):
             raise KeyError(f"Authentication method ID already taken: {method.id}")
         self._entries[method.id] = method
 
-    def remove(self, method: AuthenticationMethod) -> Optional[AuthenticationMethod]:
+    def remove(self, method: AuthenticationMethod) -> AuthenticationMethod | None:
         """Removes the given authentication method from the registry.
 
         This function is a no-op if the method is not registered.
@@ -55,7 +55,7 @@ class AuthenticationMethodRegistry(RegistryBase[AuthenticationMethod]):
         """
         return self.remove_by_id(method.id)
 
-    def remove_by_id(self, method_id: str) -> Optional[AuthenticationMethod]:
+    def remove_by_id(self, method_id: str) -> AuthenticationMethod | None:
         """Removes the authentication method with the given ID from the
         registry.
 

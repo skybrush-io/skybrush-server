@@ -4,7 +4,6 @@ Earth's magnetic field using the IGRF13 model.
 
 from datetime import datetime
 from trio import sleep_forever
-from typing import Optional
 
 from igrf_model import DateBoundIGRFModel, IGRFModel
 
@@ -12,7 +11,7 @@ from flockwave.gps.vectors import GPSCoordinate
 from flockwave.server.model.weather import Weather
 
 
-last_model: Optional[DateBoundIGRFModel] = None
+last_model: DateBoundIGRFModel | None = None
 """The last model that the extension used."""
 
 model_validity_range: tuple[float, float] = (-1, -1)
@@ -23,7 +22,7 @@ ONE_WEEK = 7 * 24 * 3600
 
 
 async def provide_magnetic_field(
-    weather: Weather, position: Optional[GPSCoordinate]
+    weather: Weather, position: GPSCoordinate | None
 ) -> None:
     """Extends the given weather object with Earth's magnetic field according
     to the IGRF13 model, at the timestamp corresponding to the weather object.

@@ -1,6 +1,6 @@
 from logging import Logger
 from trio import sleep
-from typing import Any, Optional
+from typing import Any
 
 from .model import Mission, MissionType
 
@@ -21,7 +21,7 @@ class LandImmediatelyMission(Mission):
     def parameters(self) -> dict[str, Any]:
         return {"delay": self.delay}
 
-    async def _run(self, log: Optional[Logger] = None) -> None:
+    async def _run(self, log: Logger | None = None) -> None:
         await sleep(30)
 
     def _update_parameters(self, parameters: dict[str, Any]) -> None:

@@ -1,9 +1,10 @@
+from __future__ import annotations
+
 from inspect import isawaitable, isasyncgen
 from typing import (
     Any,
     Callable,
     Iterable,
-    Optional,
     TypeVar,
     TYPE_CHECKING,
     overload,
@@ -33,7 +34,7 @@ C = TypeVar("C")
 T = TypeVar("T")
 
 GenericMapperMessageFactory = Callable[
-    ["MessageHub", Iterable[str], Optional[FlockwaveMessage], Optional[Client]],
+    ["MessageHub", Iterable[str], FlockwaveMessage | None, Client | None],
     FlockwaveNotification | FlockwaveResponse,
 ]
 """Type alias for SOMETHING-INF-style Flockwave message factory functions"""
@@ -55,7 +56,7 @@ The transformation object may also be ``None``, representing the identity
 transformation.
 """
 
-RegistryOrRegistryGetter = Registry[T] | Callable[[], Optional[Registry[T]]] | None
+RegistryOrRegistryGetter = Registry[T] | Callable[[], Registry[T] | None] | None
 """Type alias for registries or getter functions that return a registry when called
 with no arguments.
 """
@@ -66,13 +67,13 @@ def create_mapper(
     type: str,
     registry_or_registry_getter: RegistryOrRegistryGetter[T],
     *,
-    context_getter: Callable[[Optional[FlockwaveMessage]], C],
+    context_getter: Callable[[FlockwaveMessage | None], C],
     key: str = "result",
-    filter: Optional[Callable[[T], bool]] = None,
-    getter: Optional[Callable[[T, C], Any]] = None,
+    filter: Callable[[T], bool] | None = None,
+    getter: Callable[[T, C], Any] | None = None,
     description: str = "item",
     add_object_id: bool = False,
-    cmd_manager: Optional["CommandExecutionManager"] = None,
+    cmd_manager: CommandExecutionManager | None = None,
 ) -> GenericMapperMessageFactory: ...
 
 
@@ -82,11 +83,11 @@ def create_mapper(
     registry_or_registry_getter: RegistryOrRegistryGetter[T],
     *,
     key: str = "result",
-    filter: Optional[Callable[[T], bool]] = None,
-    getter: Optional[Callable[[T], Any]] = None,
+    filter: Callable[[T], bool] | None = None,
+    getter: Callable[[T], Any] | None = None,
     description: str = "item",
     add_object_id: bool = False,
-    cmd_manager: Optional["CommandExecutionManager"] = None,
+    cmd_manager: CommandExecutionManager | None = None,
 ) -> GenericMapperMessageFactory: ...
 
 
@@ -94,13 +95,13 @@ def create_mapper(
     type: str,
     registry_or_registry_getter: RegistryOrRegistryGetter[T],
     *,
-    context_getter: Optional[Callable[[Optional[FlockwaveMessage]], C]] = None,
+    context_getter: Callable[[FlockwaveMessage | None], C] | None = None,
     key: str = "result",
-    filter: Optional[Callable[[T], bool]] = None,
-    getter: Optional[Callable[[T], Any] | Callable[[T, C], Any]] = None,
+    filter: Callable[[T], bool] | None = None,
+    getter: Callable[[T], Any] | Callable[[T, C], Any] | None = None,
     description: str = "item",
     add_object_id: bool = False,
-    cmd_manager: Optional["CommandExecutionManager"] = None,
+    cmd_manager: CommandExecutionManager | None = None,
 ) -> GenericMapperMessageFactory:
     """Creates a standard SOMETHING-INF or SOMETHING-PROPS-style Flockwave
     message factory function.
@@ -186,8 +187,8 @@ def create_mapper(
     def factory(
         hub: "MessageHub",
         ids: Iterable[str],
-        in_response_to: Optional[FlockwaveMessage] = None,
-        sender: Optional[Client] = None,
+        in_response_to: FlockwaveMessage | None = None,
+        sender: Client | None = None,
     ) -> FlockwaveNotification | FlockwaveResponse:
         results = {}
 
@@ -321,7 +322,7 @@ def create_multi_object_message_handler(
 
 def create_object_listing_request_handler(
     registry_or_registry_getter: RegistryOrRegistryGetter[T],
-    predicate: Optional[Callable[[T], bool]] = None,
+    predicate: Callable[[T], bool] | None = None,
 ) -> "MessageHandler":
     """Creates a standard SOMETHING-LIST-style Flockwave message factory
     function that lists the IDs of all objects from a registry, optionally

@@ -1,7 +1,7 @@
 from math import inf
 from trio import fail_after, TooSlowError
 from trio_util import RepeatedEvent
-from typing import Any, Generic, Optional, TypeVar, overload
+from typing import Any, Generic, TypeVar, overload
 
 from flockwave.server.model.commands import (
     Progress,
@@ -65,7 +65,7 @@ class ProgressReporter(Generic[R, S]):
 
     _auto_close: bool = False
     _done: bool = False
-    _error: Optional[Exception] = None
+    _error: Exception | None = None
     _suspended: bool = False
 
     _event: RepeatedEvent
@@ -99,7 +99,7 @@ class ProgressReporter(Generic[R, S]):
         """Returns whether the `close()` method has already been called."""
         return self._done
 
-    def fail(self, message: Optional[str | Exception] = None):
+    def fail(self, message: str | Exception | None = None):
         """Closes the progress reporter and injects an exception into the async
         generators that are currently waiting for an update in the `updates()`
         method.
@@ -114,7 +114,7 @@ class ProgressReporter(Generic[R, S]):
         self._error = message
         self.close()
 
-    def notify(self, percentage: Optional[int] = None, message: Optional[str] = None):
+    def notify(self, percentage: int | None = None, message: str | None = None):
         """Posts a new progress percentage and message to the progress reporter.
         Async generators returned from `updates()` will wake up and yield a
         `Progress` instance.
@@ -134,12 +134,12 @@ class ProgressReporter(Generic[R, S]):
         self._event.set()
 
     @overload
-    def suspend(self, message: Optional[str] = None): ...
+    def suspend(self, message: str | None = None): ...
 
     @overload
-    def suspend(self, message: Optional[str] = None, *, object: S): ...
+    def suspend(self, message: str | None = None, *, object: S): ...
 
-    def suspend(self, message: Optional[str] = None, *, object: Any = MISSING):
+    def suspend(self, message: str | None = None, *, object: Any = MISSING):
         """Posts a suspension notice to the progress reporter. Async generators
         returned from `updates()` will wake up and yield a `Suspend` instance.
 

@@ -3,10 +3,10 @@ served over HTTP.
 """
 
 from bisect import insort_right
+from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Iterator
 
 from quart import render_template, url_for
 

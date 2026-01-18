@@ -5,10 +5,11 @@ objects to receive and send MAVLink messages.
 from __future__ import annotations
 
 from collections import defaultdict
+from collections.abc import Iterator
 from contextlib import contextmanager
 from importlib import import_module
 from time import time
-from typing import Any, ClassVar, Iterator, Protocol, TYPE_CHECKING, cast
+from typing import Any, ClassVar, Protocol, TYPE_CHECKING, cast
 
 from flockwave.channels import (
     BroadcastMessageChannel,

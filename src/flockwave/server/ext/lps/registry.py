@@ -3,9 +3,9 @@ instances themselves. Other extensions that provide support for specific types
 of local positioning systems need to register these in the LPS registry.
 """
 
+from collections.abc import Iterator
 from contextlib import contextmanager
 from functools import partial
-from typing import Iterator
 
 from flockwave.server.model import default_id_generator
 from flockwave.server.registries.base import RegistryBase

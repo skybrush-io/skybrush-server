@@ -2,8 +2,8 @@
 knows about.
 """
 
+from collections.abc import Iterator
 from contextlib import contextmanager
-from typing import Iterator
 
 from ..logger import log as base_log
 from ..model.uav import UAVDriver

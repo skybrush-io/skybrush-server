@@ -2,18 +2,12 @@
 UAVs.
 """
 
+from collections.abc import Iterator
 from contextlib import contextmanager
 from math import inf
 from time import time
 from trio import CancelScope, current_time
-from typing import (
-    Any,
-    AsyncGenerator,
-    Generic,
-    Iterator,
-    TypeVar,
-    overload,
-)
+from typing import Any, AsyncGenerator, Generic, TypeVar, overload
 
 from flockwave.concurrency import Future
 from flockwave.spec.schema import get_complex_object_schema

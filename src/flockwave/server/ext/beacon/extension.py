@@ -1,8 +1,8 @@
 from __future__ import annotations
 
+from collections.abc import Iterator
 from contextlib import ExitStack, contextmanager
 from operator import attrgetter
-from typing import Iterator
 
 from flockwave.concurrency import AsyncBundler
 from flockwave.server.ext.base import Extension

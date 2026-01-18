@@ -4,8 +4,8 @@ the server knows.
 
 __all__ = ("RTKPresetRegistry",)
 
+from collections.abc import Iterator
 from contextlib import contextmanager
-from typing import Iterator
 
 from flockwave.server.registries.base import RegistryBase
 

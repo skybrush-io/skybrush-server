@@ -2,9 +2,10 @@
 and related applications.
 """
 
+from collections.abc import Iterator, Mapping
 from contextlib import contextmanager
 from types import MappingProxyType
-from typing import Iterator, Literal, Mapping
+from typing import Literal
 
 from deprecated import deprecated
 

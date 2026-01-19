@@ -36,9 +36,9 @@ def _parse_color(
                 return Color(red)
 
     return Color(
-        red=(int(red) or 0) / 255,
-        green=(int(green) or 0) / 255,
-        blue=(int(blue) or 0) / 255,
+        red=int(red or 0) / 255,
+        green=int(green or 0) / 255,
+        blue=int(blue or 0) / 255,
     )
 
 

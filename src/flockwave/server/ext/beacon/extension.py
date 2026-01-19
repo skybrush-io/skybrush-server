@@ -105,7 +105,7 @@ class BeaconExtension(Extension):
             stack.enter_context(registered("beacon", Beacon))
 
             async for bundle in self.beacons_to_update:
-                message = create_BCN_INF(app.message_hub, bundle, None)
+                message = create_BCN_INF(app.message_hub, bundle, None, None)
                 if isinstance(message, FlockwaveNotification):
                     await app.message_hub.broadcast_message(message)
 

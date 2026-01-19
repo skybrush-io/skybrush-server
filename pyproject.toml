@@ -142,6 +142,9 @@ lint.ignore = ["B905", "C901", "E402", "E501"]
 lint.select = ["B", "C", "E", "F", "I", "W"]
 extend-exclude = ["src/flockwave/server/ext/socketio/vendor"]
 
+[tool.ty.environment]
+python = ".venv"
+
 [build-system]
 requires = ["uv_build>=0.8.0"]
 build-backend = "uv_build"

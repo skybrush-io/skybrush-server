@@ -102,6 +102,7 @@ async def handle_message(message, client, limit: CapacityLimiter) -> None:
         message: the incoming message, waiting to be parsed
         client: the client that sent the message
     """
+    assert app is not None
     async with limit:
         await app.message_hub.handle_incoming_message(message, client)
 

@@ -30,9 +30,9 @@ def create_calibration_command_handler(
     driver support component tests, assuming that the corresponding UAV_ object
     already supports it.
     """
-    supported = set(supported_components)
+    supported: set[str] = set(supported_components)
 
-    options = "|".join(sorted(supported))
+    options: str = "|".join(sorted(supported))
     help_text = f"Usage: calib <{options}>"
 
     async def _calibration_command_handler(
@@ -47,7 +47,7 @@ def create_calibration_command_handler(
         if component not in supported:
             raise NotSupportedError
 
-        calibrate_component = uav.calibrate_component
+        calibrate_component = getattr(uav, "calibrate_component", None)
         if calibrate_component is None:
             raise RuntimeError("Component calibration not supported")
 

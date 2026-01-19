@@ -30,9 +30,9 @@ def create_calibration_command_handler(
     driver support component tests, assuming that the corresponding UAV_ object
     already supports it.
     """
-    supported: set[str] = set(supported_components)
+    supported = set(supported_components)
 
-    options: str = "|".join(sorted(supported))
+    options = "|".join(sorted(supported))
     help_text = f"Usage: calib <{options}>"
 
     async def _calibration_command_handler(

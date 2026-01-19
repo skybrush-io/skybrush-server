@@ -71,8 +71,9 @@ class FDChannel(CommunicationChannel):
             try:
                 await self._serve(handler)
             except Exception as ex:
-                log.exception(ex)
-                log.error("Closing connection")
+                if log is not None:
+                    log.exception(ex)
+                    log.error("Closing connection")
             finally:
                 self.cancel_scope = None
 

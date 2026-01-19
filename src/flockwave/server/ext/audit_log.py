@@ -45,8 +45,12 @@ def days_ago(age: float) -> float:
 T = TypeVar("T")
 
 
-def to_timestamp(value: float | datetime | None, *, default: T = None) -> float | T:
+def to_timestamp(
+    value: float | datetime | None, *, default: T | None = None
+) -> float | T:
     if value is None:
+        if default is None:
+            raise ValueError("Either value or default should be defined")
         return default
     elif isinstance(value, datetime):
         return value.timestamp()

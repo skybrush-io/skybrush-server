@@ -40,7 +40,7 @@ def parse_content_length(headers: bytes) -> int:
 
 async def parse_http_headers_from_connection(
     conn: Connection,
-) -> tuple[bytes, bytes, bytes]:
+) -> tuple[bytes, bytes, bytes] | None:
     """Parses the status line and the HTTP headers from the given connection.
 
     Returns:
@@ -159,11 +159,10 @@ class SkybrushProxyServer(DaemonApp):
             await local_connection.write(preamble)
 
             # Read the response so we know how many bytes to expect
-            (
-                response_status_line,
-                response_headers,
-                response_body,
-            ) = await parse_http_headers_from_connection(local_connection)
+            parsed_stuff = await parse_http_headers_from_connection(local_connection)
+            if parsed_stuff is None:
+                return True
+            response_status_line, response_headers, response_body = parsed_stuff
 
             await conn.write(response_status_line + CRLF + response_headers + CRLFCRLF)
             await conn.write(response_body)

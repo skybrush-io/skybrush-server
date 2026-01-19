@@ -9,10 +9,14 @@ __all__ = ("create_version_command_handler",)
 
 
 async def _version_command_handler(driver: UAVDriver, uav: UAV) -> str:
-    if iscoroutinefunction(uav.get_version_info):
-        version_info = await uav.get_version_info()
+    get_version_info = getattr(uav, "get_version_info", None)
+    if get_version_info is None:
+        raise RuntimeError("Version command not supported")
+
+    if iscoroutinefunction(get_version_info):
+        version_info = await get_version_info()
     else:
-        version_info = uav.get_version_info()
+        version_info = get_version_info()
 
     if version_info:
         parts = [f"{key} = {version_info[key]}" for key in sorted(version_info.keys())]

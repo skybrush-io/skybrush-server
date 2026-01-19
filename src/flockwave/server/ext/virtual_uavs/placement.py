@@ -12,6 +12,7 @@ GPS coordinates using a FlatEarthToGPSCoordinateTransformation_ object.
 from collections.abc import Callable
 from functools import partial
 from math import cos, floor, pi, radians, sin
+from typing import Sequence
 
 from flockwave.gps.vectors import Vector3D
 
@@ -67,7 +68,9 @@ def place_drones(n: int, *, type: str, **kwds):
 
 
 @register("explicit")
-def place_drones_explicitly(n: int, *, coordinates: list[Vector3D]) -> list[Vector3D]:
+def place_drones_explicitly(
+    n: int, *, coordinates: list[Sequence[float]]
+) -> list[Vector3D]:
     """Returns coordinates to place the given number of drones with explicit
     flat Earth coordinates.
 
@@ -181,7 +184,7 @@ def place_drones_on_grid(
 
     result = []
     x, y = 0, 0
-    xs, ys = spacing
+    xs, ys = spacing  # ty:ignore[not-iterable]
 
     for i in range(n):
         y, x = divmod(i, rows)

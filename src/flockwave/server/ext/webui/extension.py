@@ -182,13 +182,13 @@ async def _to_json(
             # handled silently
             message = "Operation not supported"
         elif isinstance(ex, OSError):
-            message = ex.strerror
+            message = ex.strerror or "OS error"
             if log:
-                log.error(ex.strerror)
+                log.error(message)
         else:
             message = str(ex)
             if log:
-                log.exception(ex)
+                log.exception(message)
         return {"error": message}
 
     return {"result": on_success} if result is None else {"result": result}

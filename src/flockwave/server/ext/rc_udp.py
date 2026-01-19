@@ -90,7 +90,7 @@ def parse_range(value: Any) -> tuple[int, int] | None:
     if value is None:
         return None
     elif isinstance(value, (list, tuple)) and len(value) == 2:
-        return tuple(value)  # type: ignore
+        return tuple(value)
     else:
         raise ValueError("range must be None or an array of length 2")
 

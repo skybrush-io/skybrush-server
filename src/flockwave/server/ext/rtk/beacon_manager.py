@@ -99,9 +99,9 @@ class RTKBeaconManager:
         encoded = packet
         try:
             for packet in self._parser(encoded):
-                if isinstance(packet, RTCMV3StationaryAntennaPacket):  # type: ignore
+                if isinstance(packet, RTCMV3StationaryAntennaPacket):
                     beacon.update_status(
-                        position=self._trans.to_gps(packet.position),  # type: ignore
+                        position=self._trans.to_gps(packet.position),
                         active=True,
                     )
                     if self._watchdog:

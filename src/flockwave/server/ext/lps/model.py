@@ -268,4 +268,4 @@ class LocalPositioningSystemType(Generic[T], ABC):
         """
         import fastjsonschema
 
-        return fastjsonschema.compile(self.get_configuration_schema())  # type: ignore[return-value]
+        return fastjsonschema.compile(self.get_configuration_schema())

@@ -318,7 +318,7 @@ async def run(app, configuration: dict[str, Any], logger: Logger):
 
         async with open_nursery() as nursery:
             for server in socketio_servers:
-                server.eio.use_nursery(nursery)  # type: ignore
+                server.eio.use_nursery(nursery)
             await sleep_forever()
 
 

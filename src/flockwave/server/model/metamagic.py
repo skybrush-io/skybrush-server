@@ -217,7 +217,7 @@ class ModelMetaHelpers:
 
         if property_info.mappers is None:
 
-            def getter(self):  # type: ignore
+            def getter(self):
                 try:
                     return self._json[name]
                 except KeyError:

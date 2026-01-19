@@ -50,7 +50,7 @@ class LightConfiguration:
     @classmethod
     def create_solid_color(cls, color: RGBColor) -> "LightConfiguration":
         result = cls()
-        result.color = tuple(color)  # type: ignore
+        result.color = tuple(color)
         result.effect = LightEffectType.SOLID
         return result
 

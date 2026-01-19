@@ -1060,7 +1060,7 @@ class SkybrushServer(DaemonApp):
             body["error"] = (
                 str(status.error)
                 if not hasattr(status.error, "json")
-                else status.error.json  # type: ignore
+                else status.error.json
             )
         else:
             body["result"] = status.result

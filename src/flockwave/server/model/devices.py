@@ -525,7 +525,7 @@ class DeviceNode(DeviceTreeNodeBase):
             and isinstance(type, __builtins__["type"])
             and type is not object
         ):
-            initial_value = type()  # type: ignore
+            initial_value = type()
 
         channel_type = ChannelType.from_object(type)
         node = ChannelNode(channel_type, initial_value, unit=unit)
@@ -1034,7 +1034,7 @@ class DeviceTreeSubscriptionManager:
             return self._tree.resolve(path)
         except NoSuchPathError:
             if hasattr(response, "add_error"):
-                response.add_error(path, "No such device tree path")  # type: ignore
+                response.add_error(path, "No such device tree path")
             return None
 
     def _notify_subscriber(self, subscriber: Client, channel_values: Any) -> None:

@@ -152,7 +152,7 @@ class _MAVLinkMessageSpecificationFactory:
                 )
             if len(args) > 1:
                 raise RuntimeError("only one matcher function is supported")
-            return (name, args[0])  # type: ignore
+            return (name, args[0])
         else:
             return (name, kwds)
 

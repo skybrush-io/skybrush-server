@@ -94,7 +94,7 @@ def use_signals(map: dict[str, Callable]) -> Iterator[None]:
     with ExitStack() as stack:
         for key, func in map.items():
             signal = get_signal(key)
-            stack.enter_context(signal.connected_to(func))  # type: ignore
+            stack.enter_context(signal.connected_to(func))
         yield
 
 

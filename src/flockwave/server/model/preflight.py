@@ -1,6 +1,6 @@
 from enum import Enum
 
-from bidict import bidict  # type: ignore
+from bidict import bidict
 from flockwave.spec.schema import get_complex_object_schema
 
 from flockwave.server.model.metamagic import ModelMeta

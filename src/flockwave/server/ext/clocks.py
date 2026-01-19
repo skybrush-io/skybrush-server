@@ -231,7 +231,7 @@ async def run(app, configuration, logger):
             overridden(globals(), message_hub=message_hub, registry=registry)
         )
         stack.enter_context(
-            registry.clock_changed.connected_to(on_clock_changed, sender=registry)  # type: ignore
+            registry.clock_changed.connected_to(on_clock_changed, sender=registry)
         )
         stack.enter_context(
             overridden(

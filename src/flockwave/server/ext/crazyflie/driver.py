@@ -1447,7 +1447,7 @@ class CrazyflieHandlerTask:
                         pass
                     return
 
-                nursery: Nursery = await enter(open_nursery())  # type: ignore
+                nursery: Nursery = await enter(open_nursery())
                 self._uav.notify_shutdown_suspend_or_reboot = (
                     nursery.cancel_scope.cancel
                 )

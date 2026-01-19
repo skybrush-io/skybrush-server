@@ -293,7 +293,7 @@ class GPSExtension(UAVExtension):
         messages through this connection.
         """
         if hasattr(connection, "address"):
-            address = connection.address  # type: ignore
+            address = connection.address
             if isinstance(address, tuple) and len(address) >= 2:
                 # Use the hostname only; port number may change if the other end
                 # closes the socket, opens another one and reconnects
@@ -391,7 +391,7 @@ class GPSExtension(UAVExtension):
 
         address = None
         if hasattr(connection, "address"):
-            address = format_socket_address(connection.address)  # type: ignore
+            address = format_socket_address(connection.address)
 
         is_listener = isinstance(connection, ListenerConnection)
 

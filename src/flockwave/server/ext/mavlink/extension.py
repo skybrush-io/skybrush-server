@@ -547,7 +547,7 @@ class MAVLinkDronesExtension(UAVExtension[MAVLinkDriver]):
 
         for name, network in self._networks.items():
             try:
-                network.notify_scheduled_takeoff_config_changed(config)  # type: ignore
+                network.notify_scheduled_takeoff_config_changed(config)
             except Exception:
                 self.log.warning(
                     f"Failed to update start configuration of drones in network {name!r}"

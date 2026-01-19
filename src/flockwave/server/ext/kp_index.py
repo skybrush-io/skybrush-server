@@ -50,8 +50,8 @@ class KpIndexData:
         """
         result = cls()
         timestamps, values = tuple(zip(*sorted(midpoints_and_values)))
-        result._timestamps = timestamps  # type: ignore
-        result._values = values  # type: ignore
+        result._timestamps = timestamps
+        result._values = values
         result._update_min_max_timestamps()
         return result
 
@@ -137,7 +137,7 @@ async def fetch_kp_index_now() -> None:
     if data_lock.locked():
         return
 
-    async with data_lock:  # type: ignore
+    async with data_lock:
         try:
             func = data_providers[selected_data_provider]
             last_data = await func()

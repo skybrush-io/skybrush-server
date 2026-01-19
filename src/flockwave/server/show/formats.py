@@ -345,7 +345,7 @@ class SkybrushBinaryShowFile:
                 iterating. `None` means to validate if and only if it has not
                 been validated before at least once.
         """
-        seekable: bool = self._fp.seekable()  # type: ignore
+        seekable: bool = self._fp.seekable()
 
         if rewind is None:
             rewind = seekable

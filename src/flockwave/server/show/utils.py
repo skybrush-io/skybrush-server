@@ -56,7 +56,7 @@ class BoundingBoxCalculator:
             raise ValueError("the bounding box is empty")
         else:
             assert self._min is not None and self._max is not None
-            return tuple(self._min), tuple(self._max)  # type: ignore
+            return tuple(self._min), tuple(self._max)
 
     def pad(self, amount: float) -> None:
         """Pads the bounding box on each side with the given padding.

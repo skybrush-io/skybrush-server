@@ -79,7 +79,7 @@ def color_to_rgb8_triplet(color: Color) -> tuple[int, int, int]:
     Returns:
         the color in its RGB8 triplet representation
     """
-    return tuple(round(x * 255) for x in color.rgb)  # type: ignore
+    return tuple(round(x * 255) for x in color.rgb)
 
 
 T = TypeVar("T")

@@ -1198,7 +1198,7 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
         self._battery = BatteryInfo()
         self._connected_event = Event()
         self._gps_fix = GPSFix()
-        self._last_messages = defaultdict(MAVLinkMessageRecord)  # type: ignore
+        self._last_messages = defaultdict(MAVLinkMessageRecord)
         self._preflight_status = PreflightCheckInfo()
         self._position = GPSCoordinate()
         self._rssi_mode = RSSIMode.NONE
@@ -1236,7 +1236,7 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
                 on the UAV
         """
         try:
-            async for event in self._autopilot.calibrate_accelerometer(self):  # type: ignore
+            async for event in self._autopilot.calibrate_accelerometer(self):
                 yield event
         except NotImplementedError:
             # Turn NotImplementedError from the autopilot into a NotSupportedError
@@ -1253,7 +1253,7 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
                 the UAV
         """
         try:
-            async for event in self._autopilot.calibrate_compass(self):  # type: ignore
+            async for event in self._autopilot.calibrate_compass(self):
                 yield event
         except NotImplementedError:
             # Turn NotImplementedError from the autopilot into a NotSupportedError

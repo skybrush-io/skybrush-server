@@ -8,7 +8,8 @@ from time import time
 from trio import to_thread
 
 try:
-    from time import CLOCK_REALTIME, clock_settime
+    # not available on Windows
+    from time import CLOCK_REALTIME, clock_settime  # ty:ignore[unresolved-import]
 except ImportError:
     clock_settime = CLOCK_REALTIME = None
 
@@ -39,7 +40,7 @@ def can_set_system_time_detailed() -> tuple[bool, str]:
     """
     if system() in ("Darwin", "Linux"):
         # Deferred import because geteuid() is not available on Windows
-        from os import geteuid
+        from os import geteuid  # ty:ignore[unresolved-import]
 
         # Only root can modify the system time
         if geteuid() != 0:

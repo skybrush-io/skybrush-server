@@ -22,7 +22,8 @@ from flockwave.server.utils import overridden
 from .base import Extension
 
 if TYPE_CHECKING:
-    from trio.lowlevel import FdStream  # not available on Windows
+    # not available on Windows
+    from trio.lowlevel import FdStream  # ty:ignore[unresolved-import]
 
 
 _status_to_string = {
@@ -61,7 +62,7 @@ class ConsoleStatusExtension(Extension):
             return
 
         # Lazy import -- FdStream not available on Windows
-        from trio.lowlevel import FdStream
+        from trio.lowlevel import FdStream  # ty:ignore[unresolved-import]
 
         with ExitStack() as stack:
             connection_registry = app.connection_registry

@@ -59,10 +59,14 @@ async def _color_command_handler(
     except ValueError as ex:
         raise RuntimeError(ex) from ex
 
-    if iscoroutinefunction(uav.set_led_color):
-        await uav.set_led_color(color)
+    set_led_color = getattr(uav, "set_led_color", None)
+    if set_led_color is None:
+        raise RuntimeError("Color commands are not supported")
+
+    if iscoroutinefunction(set_led_color):
+        await set_led_color(color)
     else:
-        uav.set_led_color(color)
+        set_led_color(color)
 
     if color is not None:
         return f"Color set to {color.hex_l}"

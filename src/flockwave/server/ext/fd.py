@@ -3,15 +3,15 @@ channel between the server and a single client.
 """
 
 from contextlib import ExitStack
-from fcntl import F_GETFL, F_SETFL, fcntl
+from fcntl import F_GETFL, F_SETFL, fcntl  # not available on Windows
 from functools import partial
-from os import O_NONBLOCK
+from os import O_NONBLOCK  # not available on Windows
 
 from flockwave.channels import ParserChannel
 from flockwave.encoders.json import create_json_encoder
 from flockwave.parsers.json import create_json_parser
 from trio import CapacityLimiter, ClosedResourceError, Lock, open_file, open_nursery
-from trio.lowlevel import FdStream
+from trio.lowlevel import FdStream  # not available on Windows
 
 from flockwave.server.model import CommunicationChannel
 from flockwave.server.utils import overridden

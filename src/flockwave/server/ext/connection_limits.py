@@ -36,7 +36,8 @@ async def check_client_auths_in_time(app, client_id: str, deadline: float) -> No
     except Exception as ex:
         # Exceptions raised are caught and logged here; we do not let the main
         # task itself crash because of them
-        log.exception(ex)
+        if log is not None:
+            log.exception(ex)
 
 
 async def disconnect_client_safely(app, client, reason):
@@ -50,7 +51,8 @@ async def disconnect_client_safely(app, client, reason):
     except Exception as ex:
         # Exceptions raised during disconnection are caught and logged here;
         # we do not let the main task itself crash because of them
-        log.exception(ex)
+        if log is not None:
+            log.exception(ex)
 
 
 def disconnect_clients_if_needed():
@@ -58,6 +60,7 @@ def disconnect_clients_if_needed():
     those that need to be disconnected.
     """
     global app
+    assert app is not None
 
     now = current_time()
     to_disconnect = [client for client, deadline in deadlines.items() if deadline < now]
@@ -106,6 +109,9 @@ def on_client_added(sender, client):
 def on_client_removed(sender, client):
     global deadlines
 
+    if deadlines is None:
+        return
+
     try:
         del deadlines[client]
     except KeyError:
@@ -152,4 +158,4 @@ async def run(app, configuration, logger):
             try:
                 disconnect_clients_if_needed()
             except Exception as ex:
-                log.exception(ex)
+                logger.exception(ex)

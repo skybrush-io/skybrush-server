@@ -1,6 +1,7 @@
 from base64 import b64decode, b64encode
+from collections.abc import Callable
 from enum import Enum, IntEnum
-from typing import Any, Callable, Optional, Type, TypeVar
+from typing import Any, TypeVar
 
 from .metamagic import MapperPair
 
@@ -16,15 +17,15 @@ __all__ = (
 T = TypeVar("T")
 
 
-def _as_base64() -> MapperPair[Optional[str], Optional[bytes]]:
+def _as_base64() -> MapperPair[str | None, bytes | None]:
     """Returns a property mapper function pair that can be used to represent
     a byte array as a base64-encoded string when saving it into JSON.
     """
 
-    def from_json(value: Optional[str]) -> Optional[bytes]:
+    def from_json(value: str | None) -> bytes | None:
         return None if value is None else b64decode(value.encode("ascii"))
 
-    def to_json(value: Optional[bytes]) -> Optional[str]:
+    def to_json(value: bytes | None) -> str | None:
         return None if value is None else b64encode(value).decode("ascii")
 
     return from_json, to_json
@@ -55,7 +56,7 @@ def coerce_optional(type: Callable) -> MapperPair:
     return from_json, to_json
 
 
-def enum_to_json(type: Type[Enum]) -> MapperPair[Any, Enum]:
+def enum_to_json(type: type[Enum]) -> MapperPair[Any, Enum]:
     """Returns a property mapper function pair that can be used when the value
     is an enum and has to be replaced with its string or integer representation
     before saving it into JSON.
@@ -95,17 +96,17 @@ def scaled_by(factor: float) -> MapperPair[int, float]:
     return from_json, to_json
 
 
-def optionally_scaled_by(factor: float) -> MapperPair[Optional[int], Optional[float]]:
+def optionally_scaled_by(factor: float) -> MapperPair[int | None, float | None]:
     """Returns a property mapper function pair that can be used when the value
     of a numeric property is scaled up by a factor and then cast to an integer
     when it is stored in JSON. Also handles None transparently.
     """
     factor = float(factor)
 
-    def from_json(value: Optional[float]) -> Optional[float]:
+    def from_json(value: float | None) -> float | None:
         return value / factor if value is not None else None
 
-    def to_json(value: Optional[float]) -> Optional[int]:
+    def to_json(value: float | None) -> int | None:
         return int(round(value * factor)) if value is not None else None
 
     return from_json, to_json

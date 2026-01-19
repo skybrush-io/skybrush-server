@@ -7,25 +7,25 @@ server are secure if you are using this extension for authentication.
 """
 
 from base64 import b64decode
+from collections.abc import Callable, Mapping
 from enum import Enum
 from pathlib import Path
+
 from trio import sleep_forever
-from typing import Callable, Mapping, Optional, Union
 
 from flockwave.server.model.authentication import (
     AuthenticationMethod,
     AuthenticationResult,
 )
 
-
-#: Type specification for a function that compares a password with its hash
 HashComparator = Callable[[str, str], bool]
+"""Type specification for a function that compares a password with its hash."""
 
-#: Type specification for a password validator function
 PasswordValidator = Callable[[str, str], bool]
+"""Type specification for a password validator function."""
 
-#: Type specification for password validator specification objects
 PasswordValidatorSpecification = dict[str, str]
+"""Type specification for password validator specification objects."""
 
 
 class PasswordDataSourceType(Enum):
@@ -47,7 +47,7 @@ class PasswordDataSourceType(Enum):
 
 
 def create_dict_validator(
-    passwords: Mapping[str, str], compare: Optional[HashComparator] = None
+    passwords: Mapping[str, str], compare: HashComparator | None = None
 ) -> PasswordValidator:
     """Password validator factory that validates passwords from the given
     dictionary.
@@ -73,7 +73,7 @@ def create_dict_validator(
     return validator
 
 
-def create_htpasswd_validator(filename: Union[Path, str]) -> PasswordValidator:
+def create_htpasswd_validator(filename: Path | str) -> PasswordValidator:
     """Password validator factory that validates passwords using the given
     htpasswd file.
 
@@ -219,7 +219,7 @@ async def run(app, configuration, logger):
         )
 
     for spec in sources:
-        validator: Optional[PasswordValidator] = None
+        validator: PasswordValidator | None = None
 
         try:
             validator = create_validator_from_config(spec)

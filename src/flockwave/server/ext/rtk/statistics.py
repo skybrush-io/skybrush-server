@@ -8,7 +8,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass, field
 from enum import IntFlag
 from time import monotonic
-from typing import Deque, Optional
+from typing import Deque
 
 from flockwave.gps.rtcm.packets import (
     RTCMPacket,
@@ -32,19 +32,19 @@ from .types import GPSPacket
 
 __all__ = ("RTKStatistics",)
 
-#: ECEF-to-GPS transformation used to convert antenna coordinates
 _ecef_to_gps = ECEFToGPSCoordinateTransformation()
+"""ECEF-to-GPS transformation used to convert antenna coordinates."""
 
 
 @dataclass
 class AntennaInformation:
     """Simple data class holding information about the current RTK antenna."""
 
-    station_id: Optional[int] = None
-    descriptor: Optional[str] = None
-    serial_number: Optional[str] = None
-    position: Optional[GPSCoordinate] = None
-    position_ecef: Optional[ECEFCoordinate] = None
+    station_id: int | None = None
+    descriptor: str | None = None
+    serial_number: str | None = None
+    position: GPSCoordinate | None = None
+    position_ecef: ECEFCoordinate | None = None
 
     _antenna_position_timestamp: float = 0.0
 
@@ -199,7 +199,7 @@ class SatelliteCNRs:
         """
         return hasattr(packet, "satellites")
 
-    def add(self, packet: RTCMPacket, timestamp: Optional[float] = None) -> None:
+    def add(self, packet: RTCMPacket, timestamp: float | None = None) -> None:
         """Update the locally stored information about the satellites based on
         the given satellite list retrieved from an RTCM packet.
         """

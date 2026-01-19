@@ -1,5 +1,6 @@
+from collections.abc import Sequence
+
 from crcmod import mkCrcFun as make_crc_function
-from typing import Optional, Sequence
 
 __all__ = (
     "BoundingBoxCalculator",
@@ -17,8 +18,8 @@ class BoundingBoxCalculator:
     set of points.
     """
 
-    _max: Optional[list[float]]
-    _min: Optional[list[float]]
+    _max: list[float] | None
+    _min: list[float] | None
 
     def __init__(self, dim: int = 3):
         """Constructor.

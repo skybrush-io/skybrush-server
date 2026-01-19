@@ -4,9 +4,9 @@ register themselves in the mission planner registry so their services can
 be used by clients.
 """
 
+from collections.abc import Iterator
 from contextlib import contextmanager
 from functools import partial
-from typing import Iterator
 
 from flockwave.server.model import default_id_generator
 from flockwave.server.registries.base import RegistryBase

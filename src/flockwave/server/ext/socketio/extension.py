@@ -6,25 +6,20 @@ Socket.IO connections.
 
 from __future__ import annotations
 
-from contextlib import contextmanager, ExitStack
+from collections.abc import Callable, Iterable, Iterator
+from contextlib import ExitStack, contextmanager
 from enum import Enum
 from functools import partial
 from json import JSONDecoder
 from logging import Logger
-from trio import open_nursery, sleep_forever
-from typing import (
-    Any,
-    Callable,
-    Iterable,
-    Iterator,
-    Optional,
-    TYPE_CHECKING,
-)
+from typing import TYPE_CHECKING, Any
 from urllib.parse import parse_qs
 
 from flockwave.encoders.json import create_json_encoder
-from flockwave.server.model import Client, CommunicationChannel
 from flockwave.networking import format_socket_address
+from trio import open_nursery, sleep_forever
+
+from flockwave.server.model import Client, CommunicationChannel
 
 from .vendor.socketio_v4 import TrioServer as TrioServerForSocketIOV4
 from .vendor.socketio_v5 import TrioServer as TrioServerForSocketIOV5
@@ -149,7 +144,7 @@ def get_enabled_protocols(
     Returns:
         a list containing the enabled Socket.IO protocols from the configuration.
     """
-    protocols: Optional[Iterable[str]] = configuration.get("protocols")
+    protocols: Iterable[str] | None = configuration.get("protocols")
     if protocols is not None and not isinstance(protocols, (list, tuple)):
         logger.warning("'protocols' configuration key must be a list, ignoring")
         protocols = None
@@ -188,8 +183,8 @@ class SocketIOCommunicationHandler:
         return f"{self._prefix}:{client_id}"
 
     def _get_ssdp_location(
-        self, channel_id: str, address: Optional[tuple[str, int]]
-    ) -> Optional[str]:
+        self, channel_id: str, address: tuple[str, int] | None
+    ) -> str | None:
         """Returns the SSDP location descriptor of the Socket.IO channel
         corresponding to the Socket.IO protocol of this instance.
 

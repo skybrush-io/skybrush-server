@@ -1,12 +1,13 @@
 """Background tasks managed by the mission extension."""
 
 from abc import ABC, abstractmethod
+from collections.abc import Awaitable, Callable, Iterable, Iterator
 from contextlib import ExitStack, contextmanager
 from logging import Logger
-from trio import open_memory_channel, MemorySendChannel, WouldBlock
-from typing import Iterable, cast, Any, Awaitable, Callable, Iterator, Optional
+from typing import Any, cast
 
 from flockwave.concurrency.scheduler import Job, LateSubmissionError, Scheduler
+from trio import MemorySendChannel, WouldBlock, open_memory_channel
 
 from flockwave.server.utils import overridden
 from flockwave.server.utils.formatting import format_timestamp_nicely
@@ -20,7 +21,7 @@ __all__ = ("MissionSchedulerTask", "MissionUpdateNotifierTask")
 class MissionRegistryRelatedTaskBase(ABC):
     """Base class for tasks that are related to missions in a mission registry."""
 
-    log: Optional[Logger] = None
+    log: Logger | None = None
     """Logger that the task will log events to."""
 
     mission_registry: MissionRegistry
@@ -30,7 +31,7 @@ class MissionRegistryRelatedTaskBase(ABC):
         self._mission_registry = mission_registry
         self._missions_to_jobs = {}
 
-    async def run(self, *args, log: Optional[Logger] = None, **kwds):
+    async def run(self, *args, log: Logger | None = None, **kwds):
         """Runs the task.
 
         Positional and keyword arguments are forwarded to ``self._run()``,
@@ -127,7 +128,7 @@ class MissionSchedulerTask(MissionRegistryRelatedTaskBase):
     starts them when their scheduled start time has come.
     """
 
-    scheduler: Optional[Scheduler] = None
+    scheduler: Scheduler | None = None
     """The scheduler that is responsible for starting tasks related to missions."""
 
     _missions_to_jobs: dict[Mission, Job]
@@ -334,7 +335,7 @@ class MissionUpdateNotifierTask(MissionRegistryRelatedTaskBase):
     dispatches notifications when the missions change.
     """
 
-    _update_queue: Optional[MemorySendChannel] = None
+    _update_queue: MemorySendChannel | None = None
 
     async def _run(
         self,

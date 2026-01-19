@@ -12,26 +12,27 @@ M-SEARCH requests for root devices, and for searches for
 
 from __future__ import annotations
 
-from contextlib import closing
-from datetime import datetime
-from errno import EADDRNOTAVAIL, ENODEV
-from http.server import BaseHTTPRequestHandler
-from logging import Logger
-from io import BytesIO
-from os import getenv
-from random import random
-from time import mktime, monotonic
-from trio import sleep
-from typing import Iterable, TYPE_CHECKING
-from wsgiref.handlers import format_date_time
-
 import platform
 import re
 import socket
 import struct
+from collections.abc import Iterable
+from contextlib import closing
+from datetime import datetime
+from errno import EADDRNOTAVAIL, ENODEV
+from http.server import BaseHTTPRequestHandler
+from io import BytesIO
+from logging import Logger
+from os import getenv
+from random import random
+from time import mktime, monotonic
+from typing import TYPE_CHECKING
+from wsgiref.handlers import format_date_time
 
 from flockwave.connections import IPAddressAndPort
 from flockwave.networking import create_socket
+from trio import sleep
+
 from flockwave.server.ports import suggest_port_number_for_service, use_port
 from flockwave.server.registries import find_in_registry
 from flockwave.server.utils import overridden

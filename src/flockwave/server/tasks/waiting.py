@@ -1,12 +1,14 @@
+from collections.abc import Awaitable
 from inspect import isawaitable
+from typing import Any, TypeVar
+
 from trio import open_nursery
-from typing import Any, Awaitable, Dict, TypeVar
 
 __all__ = ("wait_for_dict_items",)
 
 T = TypeVar("T")
 
-DictT = TypeVar("DictT", bound=Dict)
+DictT = TypeVar("DictT", bound=dict)
 
 
 async def wait_for_dict_items(obj: DictT) -> DictT:

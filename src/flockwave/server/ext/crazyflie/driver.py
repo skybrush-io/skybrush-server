@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from colour import Color
-from contextlib import asynccontextmanager, AsyncExitStack
+from collections.abc import AsyncIterator, Callable, Iterable, Sequence
+from contextlib import AsyncExitStack, asynccontextmanager
 from errno import EIO
 from functools import partial
 from logging import Logger
@@ -12,27 +12,21 @@ from math import ceil, hypot
 from pathlib import Path
 from random import random
 from struct import Struct
-from trio import Nursery, open_nursery, sleep
-from trio_util import periodic
-from typing import (
-    Any,
-    AsyncIterator,
-    Callable,
-    Iterable,
-    Optional,
-    Sequence,
-    TYPE_CHECKING,
-    cast,
-)
+from typing import TYPE_CHECKING, Any, cast
 
 from aiocflib.crazyflie import Crazyflie
-from aiocflib.crtp.crtpstack import MemoryType
 from aiocflib.crazyflie.high_level_commander import TrajectoryType
 from aiocflib.crazyflie.log import LogSession
 from aiocflib.crazyflie.mem import write_with_checksum
+from aiocflib.crtp.crtpstack import MemoryType
 from aiocflib.errors import TimeoutError
-
+from colour import Color
 from flockwave.gps.vectors import PositionXYZ, VelocityXYZ
+from flockwave.spec.errors import FlockwaveErrorCode
+from flockwave.spec.ids import make_valid_object_id
+from trio import Nursery, open_nursery, sleep
+from trio_util import periodic
+
 from flockwave.server.command_handlers import (
     create_color_command_handler,
     create_parameter_command_handler,
@@ -45,16 +39,14 @@ from flockwave.server.model.transport import TransportOptions
 from flockwave.server.model.uav import BatteryInfo, UAVBase, UAVDriver, VersionInfo
 from flockwave.server.registries.errors import RegistryFull
 from flockwave.server.show import (
+    TrajectorySpecification,
     get_group_index_from_show_specification,
     get_home_position_from_show_specification,
     get_light_program_from_show_specification,
     get_trajectory_from_show_specification,
-    TrajectorySpecification,
 )
 from flockwave.server.types import GCSLogMessageSender
 from flockwave.server.utils import color_to_rgb8_triplet, nop, optional_float
-from flockwave.spec.errors import FlockwaveErrorCode
-from flockwave.spec.ids import make_valid_object_id
 
 from .crtp_extensions import (
     DRONE_SHOW_PORT,
@@ -67,7 +59,7 @@ from .crtp_extensions import (
     PreflightCheckStatus,
 )
 from .fence import Fence, FenceConfiguration
-from .trajectory import encode_trajectory, TrajectoryEncoding
+from .trajectory import TrajectoryEncoding, encode_trajectory
 from .types import ControllerType
 
 if TYPE_CHECKING:
@@ -101,12 +93,12 @@ class CrazyflieDriver(UAVDriver["CrazyflieUAV"]):
     id_format: str
     log: Logger
     fence_config: FenceConfiguration
-    preferred_controller: Optional[ControllerType]
+    preferred_controller: ControllerType | None
     status_interval: float = 0.5
     takeoff_altitude: float = 1
     use_test_mode: bool = False
 
-    _cache_folder: Optional[str]
+    _cache_folder: str | None
     _address_space_by_uav_id: dict[str, Any]
     _uav_ids_by_address_space: dict[Any, dict[int, str]]
 
@@ -114,7 +106,7 @@ class CrazyflieDriver(UAVDriver["CrazyflieUAV"]):
         self,
         app=None,
         id_format: str = "{0:02}",
-        cache: Optional[Path] = None,
+        cache: Path | None = None,
     ):
         """Constructor.
 
@@ -160,13 +152,13 @@ class CrazyflieDriver(UAVDriver["CrazyflieUAV"]):
         return uav
 
     @property
-    def cache_folder(self) -> Optional[str]:
+    def cache_folder(self) -> str | None:
         """Returns the full path to a folder where the driver can store
         the parameter TOC files of the Crazyflie drones that it sees.
         """
         return self._cache_folder
 
-    def get_or_create_uav(self, address_space, index: int) -> Optional["CrazyflieUAV"]:
+    def get_or_create_uav(self, address_space, index: int) -> CrazyflieUAV | None:
         """Retrieves the UAV with the given index in the given address space
         or creates one if the driver has not seen a UAV with the given index in
         the given address space yet.
@@ -207,7 +199,7 @@ class CrazyflieDriver(UAVDriver["CrazyflieUAV"]):
     async def handle_command_alt(
         self,
         uav: "CrazyflieUAV",
-        z: Optional[str] = None,
+        z: str | None = None,
     ):
         """Command that sends the UAV to a given altitude."""
         try:
@@ -227,13 +219,13 @@ class CrazyflieDriver(UAVDriver["CrazyflieUAV"]):
     async def handle_command_fence(
         self,
         uav: "CrazyflieUAV",
-        subcommand: Optional[str] = None,
-        x_min: Optional[str] = None,
-        y_min: Optional[str] = None,
-        z_min: Optional[str] = None,
-        x_max: Optional[str] = None,
-        y_max: Optional[str] = None,
-        z_max: Optional[str] = None,
+        subcommand: str | None = None,
+        x_min: str | None = None,
+        y_min: str | None = None,
+        z_min: str | None = None,
+        x_max: str | None = None,
+        y_max: str | None = None,
+        z_max: str | None = None,
     ):
         """Command that activates or deactivates the geofence on the UAV, or
         sets up a geofence based on an axis-aligned bounding box.
@@ -273,9 +265,9 @@ class CrazyflieDriver(UAVDriver["CrazyflieUAV"]):
     async def handle_command_go(
         self,
         uav: "CrazyflieUAV",
-        x: Optional[str] = None,
-        y: Optional[str] = None,
-        z: Optional[str] = None,
+        x: str | None = None,
+        y: str | None = None,
+        z: str | None = None,
     ):
         """Command that sends the UAV to a given coordinate."""
         if x is None and y is None and z is None:
@@ -302,7 +294,7 @@ class CrazyflieDriver(UAVDriver["CrazyflieUAV"]):
             return f"Home: [{x:.2f}, {y:.2f}, {z:.2f}] m"
 
     async def handle_command_kalman(
-        self, uav: "CrazyflieUAV", command: Optional[str] = None
+        self, uav: "CrazyflieUAV", command: str | None = None
     ) -> str:
         if command is None:
             return "Run 'kalman reset' to reset the Kalman filter"
@@ -319,10 +311,10 @@ class CrazyflieDriver(UAVDriver["CrazyflieUAV"]):
     async def handle_command_rush(
         self,
         uav: "CrazyflieUAV",
-        x: Optional[str] = None,
-        y: Optional[str] = None,
-        z: Optional[str] = None,
-        multiplier: Optional[str] = None,
+        x: str | None = None,
+        y: str | None = None,
+        z: str | None = None,
+        multiplier: str | None = None,
     ):
         """Temporary command for Nina's project that sends the UAV to a given
         coordinate _very_ quickly."""
@@ -351,7 +343,7 @@ class CrazyflieDriver(UAVDriver["CrazyflieUAV"]):
         return f"Target set to ({x_num:.2f}, {y_num:.2f}, {z_num:.2f}) m"
 
     async def handle_command_show(
-        self, uav: "CrazyflieUAV", command: Optional[str] = None
+        self, uav: "CrazyflieUAV", command: str | None = None
     ) -> str:
         if command is None:
             raise RuntimeError(
@@ -433,12 +425,12 @@ class CrazyflieDriver(UAVDriver["CrazyflieUAV"]):
         return dict(result)
 
     async def _enter_low_power_mode_single(
-        self, uav: "CrazyflieUAV", *, transport: Optional[TransportOptions]
+        self, uav: "CrazyflieUAV", *, transport: TransportOptions | None
     ) -> None:
         await uav.enter_low_power_mode()
 
     async def _resume_from_low_power_mode_single(
-        self, uav: "CrazyflieUAV", *, transport: Optional[TransportOptions]
+        self, uav: "CrazyflieUAV", *, transport: TransportOptions | None
     ) -> None:
         await uav.resume_from_low_power_mode()
 
@@ -451,7 +443,7 @@ class CrazyflieDriver(UAVDriver["CrazyflieUAV"]):
         return await uav.get_version_info()
 
     async def _send_landing_signal_single(
-        self, uav: "CrazyflieUAV", *, transport: Optional[TransportOptions]
+        self, uav: "CrazyflieUAV", *, transport: TransportOptions | None
     ) -> None:
         if uav.is_in_drone_show_mode:
             await uav.stop_drone_show()
@@ -464,7 +456,7 @@ class CrazyflieDriver(UAVDriver["CrazyflieUAV"]):
         signals,
         duration,
         *,
-        transport: Optional[TransportOptions],
+        transport: TransportOptions | None,
     ) -> None:
         if "light" in signals:
             await uav.emit_light_signal()
@@ -475,7 +467,7 @@ class CrazyflieDriver(UAVDriver["CrazyflieUAV"]):
         start: bool,
         force: bool,
         *,
-        transport: Optional[TransportOptions],
+        transport: TransportOptions | None,
     ) -> None:
         if start:
             await uav.arm(force=force)
@@ -487,7 +479,7 @@ class CrazyflieDriver(UAVDriver["CrazyflieUAV"]):
         uav: "CrazyflieUAV",
         component: str,
         *,
-        transport: Optional[TransportOptions],
+        transport: TransportOptions | None,
     ) -> None:
         if not component:
             # Resetting the whole UAV, this is supported
@@ -498,12 +490,12 @@ class CrazyflieDriver(UAVDriver["CrazyflieUAV"]):
             raise RuntimeError(f"Resetting {component!r} is not supported")
 
     async def _send_shutdown_signal_single(
-        self, uav: "CrazyflieUAV", *, transport: Optional[TransportOptions]
+        self, uav: "CrazyflieUAV", *, transport: TransportOptions | None
     ) -> None:
         await uav.shutdown()
 
     async def _send_takeoff_signal_single(
-        self, uav, *, scheduled: bool = False, transport: Optional[TransportOptions]
+        self, uav, *, scheduled: bool = False, transport: TransportOptions | None
     ) -> None:
         if scheduled:
             # Handled by a broadcast signal in the extension class
@@ -543,14 +535,14 @@ class CrazyflieUAV(UAVBase):
     notify_updated: Callable[[], None]
     notify_shutdown_suspend_or_reboot: Callable[[], None]
     send_log_message_to_gcs: GCSLogMessageSender
-    uri: Optional[str]
+    uri: str | None
 
     _airborne: bool
     _armed: bool
-    _crazyflie: Optional[Crazyflie]
-    _fence: Optional[Fence]
+    _crazyflie: Crazyflie | None
+    _fence: Fence | None
     _fence_breached: bool
-    _log_session: Optional[LogSession]
+    _log_session: LogSession | None
 
     def __init__(self, *args, **kwds):
         super().__init__(*args, **kwds)
@@ -579,7 +571,7 @@ class CrazyflieUAV(UAVBase):
         return self._crazyflie
 
     @property
-    def fence(self) -> Optional[Fence]:
+    def fence(self) -> Fence | None:
         return self._fence
 
     async def arm(self, force: bool = False) -> None:
@@ -617,7 +609,7 @@ class CrazyflieUAV(UAVBase):
         """
         self._last_uploaded_show = None
 
-    async def get_home_position(self) -> Optional[tuple[float, float, float]]:
+    async def get_home_position(self) -> tuple[float, float, float] | None:
         """Returns the current home position of the UAV."""
         x = await self.get_parameter("preflight.homeX", fetch=True)
         y = await self.get_parameter("preflight.homeY", fetch=True)
@@ -639,9 +631,9 @@ class CrazyflieUAV(UAVBase):
 
     async def go_to(
         self,
-        x: Optional[float] = None,
-        y: Optional[float] = None,
-        z: Optional[float] = None,
+        x: float | None = None,
+        y: float | None = None,
+        z: float | None = None,
         velocity_xy: float = 2,
         velocity_z: float = 0.5,
         min_travel_time: float = 1,
@@ -732,7 +724,7 @@ class CrazyflieUAV(UAVBase):
         return self._last_uploaded_show
 
     @property
-    def log_session(self) -> Optional[LogSession]:
+    def log_session(self) -> LogSession | None:
         """Returns the logging session that the Crazyflie currently uses."""
         return self._log_session
 
@@ -889,7 +881,7 @@ class CrazyflieUAV(UAVBase):
         if self.last_uploaded_show:
             await self.upload_show(self.last_uploaded_show, remember=True)
 
-    async def run(self, disposer: Optional[Callable[[], None]] = None):
+    async def run(self, disposer: Callable[[], None] | None = None):
         """Starts the main message handler task of the UAV."""
         try:
             await CrazyflieHandlerTask(
@@ -923,9 +915,7 @@ class CrazyflieUAV(UAVBase):
         async with self._get_crazyflie().param.set_and_restore(name, value):
             yield
 
-    async def set_home_position(
-        self, pos: Optional[tuple[float, float, float]]
-    ) -> None:
+    async def set_home_position(self, pos: tuple[float, float, float] | None) -> None:
         """Sets or clears the home position of the UAV.
 
         Parameters:
@@ -937,7 +927,7 @@ class CrazyflieUAV(UAVBase):
         await self.set_parameter("preflight.homeY", y)
         await self.set_parameter("preflight.homeZ", z)
 
-    async def set_led_color(self, color: Optional[Color] = None):
+    async def set_led_color(self, color: Color | None = None):
         """Overrides the color of the LED ring of the UAV.
 
         Parameters:
@@ -1323,7 +1313,7 @@ class CrazyflieUAV(UAVBase):
     async def _upload_trajectory_and_fence(
         self,
         trajectory: TrajectorySpecification,
-        home: Optional[tuple[float, float, float]],
+        home: tuple[float, float, float] | None,
         fence_config: FenceConfiguration,
     ) -> None:
         """Uploads the given trajectory data to the Crazyflie drone and applies

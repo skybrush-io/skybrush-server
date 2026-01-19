@@ -7,6 +7,7 @@ Useful primarily for debugging purposes.
 """
 
 from contextlib import ExitStack
+
 from trio import sleep_forever
 
 from flockwave.server.model.clock import ClockBase

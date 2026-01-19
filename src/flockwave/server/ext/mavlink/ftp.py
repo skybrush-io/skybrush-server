@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import AsyncGenerator, AsyncIterator, Awaitable, Iterable, Iterator
 from contextlib import aclosing, asynccontextmanager
 from dataclasses import dataclass
 from enum import Enum, IntEnum
@@ -12,34 +13,25 @@ from itertools import cycle, islice
 from pathlib import PurePosixPath
 from random import randint
 from struct import Struct
-from trio import (
-    as_safe_channel,
-    BrokenResourceError,
-    move_on_after,
-    TooSlowError,
-    wrap_file,
-)
-from typing import (
-    TYPE_CHECKING,
-    AsyncGenerator,
-    AsyncIterator,
-    Awaitable,
-    Iterable,
-    Iterator,
-    Optional,
-    Protocol,
-    Union,
-)
+from typing import TYPE_CHECKING, Protocol
 
 from flockwave.concurrency import (
     AdaptiveExponentialBackoffPolicy,
     RetryPolicy,
     run_with_retries,
 )
+from trio import (
+    BrokenResourceError,
+    TooSlowError,
+    as_safe_channel,
+    move_on_after,
+    wrap_file,
+)
+
 from flockwave.server.model.commands import Progress
 from flockwave.server.show.utils import crc32_mavftp as crc32
 
-from .types import MAVLinkMessage, spec, UAVBoundPacketSenderFn
+from .types import MAVLinkMessage, UAVBoundPacketSenderFn, spec
 
 if TYPE_CHECKING:
     from .driver import MAVLinkUAV
@@ -47,7 +39,7 @@ if TYPE_CHECKING:
 __all__ = ("MAVFTP",)
 
 
-FTPPath = Union[str, bytes]
+FTPPath = str | bytes
 """Type specification for FTP paths that are accepted by MAVFTP."""
 
 _MAVFTP_CHUNK_SIZE = 239
@@ -108,7 +100,7 @@ class MAVFTPErrorCode(IntEnum):
     FILE_NOT_FOUND = 10
 
     @staticmethod
-    def to_string(code: int, errno: Optional[int] = None) -> str:
+    def to_string(code: int, errno: int | None = None) -> str:
         result = _mavftp_error_codes.get(int(code)) or f"Unknown error code {int(code)}"
         if errno == ENOSPC and code in (
             MAVFTPErrorCode.FAIL,
@@ -177,8 +169,8 @@ class OperationNotAcknowledgedError(MAVFTPError):
     def __init__(
         self,
         code: int,
-        errno: Optional[int] = None,
-        operation: Optional[int] = None,
+        errno: int | None = None,
+        operation: int | None = None,
     ):
         message = MAVFTPErrorCode.to_string(code, errno)
         if operation is not None:
@@ -209,10 +201,10 @@ class MAVFTPMessage:
     session_id: int = 0
     offset: int = 0
     data: bytes = b""
-    size: Optional[int] = None
+    size: int | None = None
 
     @classmethod
-    def decode(cls, payload: bytes, expected_seq_no: Optional[int] = None):
+    def decode(cls, payload: bytes, expected_seq_no: int | None = None):
         """Constructs a MAVFTP message by decoding the payload of a MAVLink
         FILE_TRANSFER_PROTOCOL message.
 
@@ -308,7 +300,7 @@ class MAVFTPMessage:
         """Returns whether the message is a NAK."""
         return self.opcode == MAVFTPOpCode.NAK
 
-    def raise_error(self, replies_to: Optional[MAVFTPMessage] = None) -> None:
+    def raise_error(self, replies_to: MAVFTPMessage | None = None) -> None:
         if self.is_nak:
             errno = self.data[1] if len(self.data) >= 2 else None
             operation = replies_to.opcode if replies_to else None
@@ -505,7 +497,7 @@ class MAVFTP:
         reply = await self._send_and_wait(message)
         return int.from_bytes(reply.data, byteorder="little")
 
-    async def get(self, remote_path: FTPPath, fp=None) -> Optional[bytes]:
+    async def get(self, remote_path: FTPPath, fp=None) -> bytes | None:
         """Downloads a file at a given remote path.
 
         Parameters:

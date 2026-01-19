@@ -3,11 +3,12 @@ from __future__ import annotations
 from contextlib import ExitStack
 from logging import Logger
 from math import inf
-from trio import fail_after, Nursery, open_nursery, sleep_forever, TooSlowError
-from trio_util import periodic
-from typing import Any, Optional
+from typing import Any
 
 from flockwave.concurrency import CancellableTaskGroup
+from trio import Nursery, TooSlowError, fail_after, open_nursery, sleep_forever
+from trio_util import periodic
+
 from flockwave.server.ext.base import Extension
 from flockwave.server.model.clock import Clock
 from flockwave.server.tasks import wait_for_dict_items, wait_until
@@ -32,15 +33,15 @@ class DroneShowExtension(Extension):
 
     log: Logger
 
-    _clock: Optional[ShowClock]
+    _clock: ShowClock | None
     _clock_sync: ClockSynchronizationHandler
-    _end_clock: Optional[ShowEndClock]
+    _end_clock: ShowEndClock | None
     _end_clock_sync: ClockSynchronizationHandler
 
-    _log_middleware: Optional[ShowUploadLoggingMiddleware]
+    _log_middleware: ShowUploadLoggingMiddleware | None
 
-    _nursery: Optional[Nursery]
-    _show_tasks: Optional[CancellableTaskGroup]
+    _nursery: Nursery | None
+    _show_tasks: CancellableTaskGroup | None
 
     def __init__(self):
         super().__init__()
@@ -210,7 +211,7 @@ class DroneShowExtension(Extension):
                 )
                 await sleep_forever()
 
-    def _get_clock(self) -> Optional[ShowClock]:
+    def _get_clock(self) -> ShowClock | None:
         """Returns a reference to the show clock."""
         return self._clock
 
@@ -257,7 +258,7 @@ class DroneShowExtension(Extension):
         updated_signal = self.app.import_api("signals").get("show:lights_updated")
         updated_signal.send(self, config=self._lights.clone())
 
-    def _on_show_clock_changed(self, sender, *, delta: Optional[float] = None) -> None:
+    def _on_show_clock_changed(self, sender, *, delta: float | None = None) -> None:
         """Handler that is called when the show clock is started, stopped or
         adjusted.
         """
@@ -278,7 +279,7 @@ class DroneShowExtension(Extension):
         )
 
     def _sync_show_clocks_to(
-        self, clock_id: Optional[str], time: Optional[float], duration: Optional[float]
+        self, clock_id: str | None, time: float | None, duration: float | None
     ) -> None:
         """Configures the clock synchronization handler such that it syncs the
         show clock to the clock with the given ID, assuming that the show clock
@@ -294,7 +295,7 @@ class DroneShowExtension(Extension):
             time: timestamp to synchronize the start to
             duration: expected duration of the show, in seconds
         """
-        primary_clock: Optional[Clock]
+        primary_clock: Clock | None
 
         end_time = time if time is not None else None
         if end_time is not None and duration is not None:

@@ -1,6 +1,7 @@
-from errno import EADDRINUSE
 import platform
-from typing import Callable
+from collections.abc import Callable
+from errno import EADDRINUSE
+
 from trio import serve_tcp
 
 __all__ = ("serve_tcp_and_log_errors",)

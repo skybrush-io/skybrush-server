@@ -7,20 +7,20 @@ Socket.IO-based channel.
 """
 
 import logging
-
+from collections.abc import Iterable
 from contextlib import contextmanager
 from dataclasses import dataclass
 from heapq import heapify, heappush
-from hypercorn.config import Config as HyperConfig
-from hypercorn.trio import serve
 from pathlib import Path
-from quart import abort, Blueprint, Quart, redirect, request, url_for
-from quart_trio import QuartTrio
-from trio import current_time, sleep
-from typing import Iterable, Optional
 
 from flockwave.ext.manager import ExtensionManager
 from flockwave.networking import can_bind_to_tcp_address, format_socket_address
+from hypercorn.config import Config as HyperConfig
+from hypercorn.trio import serve
+from quart import Blueprint, Quart, abort, redirect, request, url_for
+from quart_trio import QuartTrio
+from trio import current_time, sleep
+
 from flockwave.server.ports import suggest_port_number_for_service, use_port
 from flockwave.server.types import Disposer
 from flockwave.server.utils.networking import get_known_apps_for_port
@@ -38,9 +38,9 @@ SERVICE: str = "http"
 ############################################################################
 
 proposed_index_pages: list["ProposedIndexPage"] = []
-quart_app: Optional[Quart] = None
+quart_app: Quart | None = None
 got_first_request: bool = False
-ext_manager: Optional[ExtensionManager] = None
+ext_manager: ExtensionManager | None = None
 
 ############################################################################
 
@@ -95,7 +95,7 @@ def create_app():
     return router
 
 
-def get_index_url() -> Optional[str]:
+def get_index_url() -> str | None:
     """Get the index URL with the highest priority that was proposed by
     other extensions.
 
@@ -111,8 +111,8 @@ def get_index_url() -> Optional[str]:
 
 
 def mount(
-    app, *, path: str, scopes: Optional[Iterable[str]] = None, priority: int = 0
-) -> Optional[Disposer]:
+    app, *, path: str, scopes: Iterable[str] | None = None, priority: int = 0
+) -> Disposer | None:
     """Mounts the given ASGI web application or Quart blueprint at the
     given path.
 
@@ -146,9 +146,7 @@ def mount(
 
 
 @contextmanager
-def mounted(
-    app, *, path: str, scopes: Optional[Iterable[str]] = None, priority: int = 0
-):
+def mounted(app, *, path: str, scopes: Iterable[str] | None = None, priority: int = 0):
     """Context manager that mounts the given ASGI web application or Quart
     blueprint at the given path, and unmounts it when the context is exited.
 

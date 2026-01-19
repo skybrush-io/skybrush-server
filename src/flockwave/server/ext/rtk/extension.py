@@ -5,26 +5,26 @@ and forwards the corrections to the UAVs managed by the server.
 from __future__ import annotations
 
 import json
-
-from collections.abc import Sequence
+from collections.abc import Callable, Iterator, Sequence
 from contextlib import ExitStack
 from dataclasses import dataclass, field
 from fnmatch import fnmatch
 from functools import partial
 from pathlib import Path
 from time import monotonic
-from trio import CancelScope, open_memory_channel, open_nursery, sleep
-from trio.abc import SendChannel
-from trio_util import AsyncBool, periodic
-from typing import Callable, cast, Any, ClassVar, Iterator
+from typing import Any, ClassVar, cast
 
 from flockwave.channels import ParserChannel
-from flockwave.connections import create_connection, RWConnection
+from flockwave.connections import RWConnection, create_connection
 from flockwave.gps.enums import GNSSType
 from flockwave.gps.formatting import format_gps_coordinate_as_nmea_gga_message
 from flockwave.gps.rtk import RTKMessageSet, RTKSurveySettings
 from flockwave.gps.ubx.rtk_config import UBXRTKBaseConfigurator
 from flockwave.gps.vectors import ECEFToGPSCoordinateTransformation, GPSCoordinate
+from trio import CancelScope, open_memory_channel, open_nursery, sleep
+from trio.abc import SendChannel
+from trio_util import AsyncBool, periodic
+
 from flockwave.server.ext.base import Extension
 from flockwave.server.ext.signals import SignalsExtensionAPI
 from flockwave.server.message_handlers import (
@@ -50,8 +50,8 @@ from .beacon_manager import RTKBeaconManager
 from .clock_sync import GPSClockSynchronizationValidator
 from .enums import MessageSet, RTKConfigurationPresetType
 from .preset import (
-    RTKConfigurationPreset,
     ALLOWED_FORMATS,
+    RTKConfigurationPreset,
     describe_format,
 )
 from .registry import RTKPresetRegistry

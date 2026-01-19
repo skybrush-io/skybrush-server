@@ -6,6 +6,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from collections import deque
+from collections.abc import AsyncIterator, Callable, Iterable, Sequence
 from contextlib import asynccontextmanager, closing
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
@@ -15,19 +16,10 @@ from math import inf
 from pathlib import Path
 from textwrap import dedent
 from time import time
+from typing import TYPE_CHECKING, Any, TypeVar
+
 from trio import move_on_after, sleep, to_thread
 from trio.lowlevel import ParkingLot
-from typing import (
-    Any,
-    AsyncIterator,
-    Callable,
-    Iterable,
-    Optional,
-    Sequence,
-    TYPE_CHECKING,
-    TypeVar,
-    Union,
-)
 
 from flockwave.server.utils import constant
 
@@ -53,9 +45,7 @@ def days_ago(age: float) -> float:
 T = TypeVar("T")
 
 
-def to_timestamp(
-    value: Union[float, datetime, None], *, default: T = None
-) -> Union[float, T]:
+def to_timestamp(value: float | datetime | None, *, default: T = None) -> float | T:
     if value is None:
         return default
     elif isinstance(value, datetime):
@@ -86,7 +76,7 @@ class Storage(ABC):
     """Interface specification for storage backends of the audit log."""
 
     @abstractmethod
-    async def prune(self, threshold: float) -> Optional[int]:
+    async def prune(self, threshold: float) -> int | None:
         """Removes all the entries from the storage backend whose timestamp
         is smaller than the given threshold.
 
@@ -103,10 +93,10 @@ class Storage(ABC):
     @abstractmethod
     async def query(
         self,
-        component: Union[str, Iterable[str], None] = None,
+        component: str | Iterable[str] | None = None,
         *,
-        min_date: Union[datetime, float, None] = None,
-        max_date: Union[datetime, float, None] = None,
+        min_date: datetime | float | None = None,
+        max_date: datetime | float | None = None,
     ) -> Iterable[Entry]:
         raise NotImplementedError
 
@@ -127,10 +117,10 @@ class NullStorage(Storage):
 
     async def query(
         self,
-        component: Union[str, Iterable[str], None] = None,
+        component: str | Iterable[str] | None = None,
         *,
-        min_date: Union[datetime, float, None] = None,
-        max_date: Union[datetime, float, None] = None,
+        min_date: datetime | float | None = None,
+        max_date: datetime | float | None = None,
     ) -> Iterable[Entry]:
         return ()
 
@@ -158,10 +148,10 @@ class InMemoryStorage(Storage):
 
     async def query(
         self,
-        component: Union[str, Iterable[str], None] = None,
+        component: str | Iterable[str] | None = None,
         *,
-        min_date: Union[datetime, float, None] = None,
-        max_date: Union[datetime, float, None] = None,
+        min_date: datetime | float | None = None,
+        max_date: datetime | float | None = None,
     ) -> Iterable[Entry]:
         min_timestamp = to_timestamp(min_date, default=-inf)
         max_timestamp = to_timestamp(max_date, default=inf)
@@ -196,13 +186,13 @@ class InMemoryStorage(Storage):
 class DbStorage(Storage):
     """Storage backend backed by an on-disk SQLite database."""
 
-    _conn: Optional[Connection] = None
+    _conn: Connection | None = None
     """Connection to the underlying SQLite database."""
 
     _path: Path
     """Path to the SQLite database that the backend writes to."""
 
-    def __init__(self, path: Union[str, Path]):
+    def __init__(self, path: str | Path):
         self._path = Path(path)
 
     async def prune(self, threshold: float) -> int:
@@ -213,10 +203,10 @@ class DbStorage(Storage):
 
     async def query(
         self,
-        component: Union[str, Iterable[str], None] = None,
+        component: str | Iterable[str] | None = None,
         *,
-        min_date: Union[datetime, float, None] = None,
-        max_date: Union[datetime, float, None] = None,
+        min_date: datetime | float | None = None,
+        max_date: datetime | float | None = None,
     ) -> Iterable[Entry]:
         return await to_thread.run_sync(self._query_sync, component, min_date, max_date)
 
@@ -247,9 +237,9 @@ class DbStorage(Storage):
 
     def _query_sync(
         self,
-        component: Union[str, Iterable[str], None] = None,
-        min_date: Union[datetime, float, None] = None,
-        max_date: Union[datetime, float, None] = None,
+        component: str | Iterable[str] | None = None,
+        min_date: datetime | float | None = None,
+        max_date: datetime | float | None = None,
     ) -> Iterable[Entry]:
         result: list[Entry] = []
 
@@ -370,7 +360,7 @@ class AuditLogExtension(Extension):
         self._storage = NullStorage()
         self.max_age = 0
 
-    def append(self, component: str, type: str, data: Union[str, bytes] = b"") -> None:
+    def append(self, component: str, type: str, data: str | bytes = b"") -> None:
         """Appends a new entry to the audit log.
 
         The appended entry may not written to the log immediately for sake of
@@ -411,7 +401,7 @@ class AuditLogExtension(Extension):
             self._entries.clear()
             await self._storage.put(entries)
 
-    def get_logger(self, component: str) -> Callable[[str, Union[str, bytes]], None]:
+    def get_logger(self, component: str) -> Callable[[str, str | bytes], None]:
         """Returns a logger function that can be called with a message type and
         an attached data object and that appends a new entry to the audit log
         with the given component name.
@@ -420,10 +410,10 @@ class AuditLogExtension(Extension):
 
     async def query(
         self,
-        component: Union[str, Iterable[str], None] = None,
+        component: str | Iterable[str] | None = None,
         *,
-        min_date: Union[datetime, float, None] = None,
-        max_date: Union[datetime, float, None] = None,
+        min_date: datetime | float | None = None,
+        max_date: datetime | float | None = None,
     ) -> Iterable[Entry]:
         """Retrieves all entries from the audit log that match the given search
         criteria.

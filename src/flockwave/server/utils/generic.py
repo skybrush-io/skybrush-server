@@ -1,20 +1,14 @@
 """Generic utility functions that do not fit elsewhere."""
 
-from colour import Color
+from collections.abc import Callable, Iterable, Iterator, Sequence
 from contextlib import contextmanager
 from datetime import datetime
 from functools import partial
 from itertools import islice
 from operator import mul
-from typing import (
-    Any,
-    Callable,
-    Iterable,
-    Iterator,
-    Optional,
-    Sequence,
-    TypeVar,
-)
+from typing import Any, TypeVar
+
+from colour import Color
 
 __all__ = (
     "clamp",
@@ -224,7 +218,7 @@ def longest_common_prefix(strings: Sequence[str]) -> str:
     return shortest_string
 
 
-def maybe_round(value: Optional[float], ndigits: int = 0) -> Optional[float]:
+def maybe_round(value: float | None, ndigits: int = 0) -> float | None:
     """Rounds the given value to the given number of digits if it is not
     ``None``; returns ``None`` otherwise.
     """
@@ -261,7 +255,7 @@ def once(func):
     return wrapped
 
 
-def optional_float(x: Any) -> Optional[float]:
+def optional_float(x: Any) -> float | None:
     """Converts the given value into a float, unless it is `None`, in which
     case it is returned intact.
 
@@ -271,7 +265,7 @@ def optional_float(x: Any) -> Optional[float]:
     return float(x) if x is not None else None
 
 
-def optional_int(x: Any) -> Optional[int]:
+def optional_int(x: Any) -> int | None:
     """Converts the given value into an integer, unless it is `None`, in which
     case it is returned intact.
 

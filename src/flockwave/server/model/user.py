@@ -3,6 +3,7 @@ via a client connection.
 """
 
 from dataclasses import dataclass
+
 from flockwave.spec.ids import parse_user
 
 __all__ = ("User",)

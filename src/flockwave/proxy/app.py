@@ -2,7 +2,6 @@
 
 from http.client import parse_headers
 from io import BytesIO
-from trio import open_nursery, sleep_forever
 
 from flockwave.app_framework import DaemonApp
 from flockwave.app_framework.configurator import AppConfigurator
@@ -13,6 +12,8 @@ from flockwave.connections import (
     create_connection_factory,
 )
 from flockwave.networking import format_socket_address
+from trio import open_nursery, sleep_forever
+
 from flockwave.server.utils.packaging import is_packaged
 
 from .logger import log

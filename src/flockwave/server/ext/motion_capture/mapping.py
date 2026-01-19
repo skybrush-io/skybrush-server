@@ -1,8 +1,8 @@
 import re
-
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import cast, Any, Callable, Iterable, Optional
+from typing import Any, cast
 
 from flockwave.server.utils.generic import constant, identity
 
@@ -42,7 +42,7 @@ class NameRemappingRule:
     regular expression to match).
     """
 
-    _func: Callable[[str], Optional[str]] = field(init=False)
+    _func: Callable[[str], str | None] = field(init=False)
 
     @classmethod
     def from_configuration(cls, config: dict[str, Any]):
@@ -68,7 +68,7 @@ class NameRemappingRule:
         else:
             self._func = constant(None)
 
-    def apply(self, name: str) -> Optional[str]:
+    def apply(self, name: str) -> str | None:
         """Applies this rule to the given name.
 
         Returns:
@@ -109,14 +109,14 @@ class NameRemapping:
     def __init__(self):
         self._rules = []
 
-    def __call__(self, name: str) -> Optional[str]:
+    def __call__(self, name: str) -> str | None:
         """Applies the rules to the given name.
 
         Returns:
             the remapped naem if the name was accepted, or ``None`` if the name
             was rejected
         """
-        maybe_name: Optional[str] = name
+        maybe_name: str | None = name
         for rule in self._rules:
             maybe_name = rule.apply(name)
             if maybe_name is None:

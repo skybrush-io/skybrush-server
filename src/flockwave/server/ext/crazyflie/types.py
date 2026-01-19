@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 from enum import IntEnum
-from typing import Any, Optional
+from typing import Any
 
 __all__ = ("ControllerType",)
 
@@ -14,7 +16,7 @@ class ControllerType(IntEnum):
     BRESCIANINI = 4
 
     @classmethod
-    def from_json(cls, value: Any) -> Optional["ControllerType"]:
+    def from_json(cls, value: Any) -> ControllerType | None:
         if value is None:
             return None
 

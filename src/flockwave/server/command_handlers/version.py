@@ -1,7 +1,7 @@
 """Factory function to create handlers for the "version" command in UAV drivers."""
 
+from collections.abc import Awaitable, Callable
 from inspect import iscoroutinefunction
-from typing import Awaitable, Callable
 
 from flockwave.server.model.uav import UAV, UAVDriver
 

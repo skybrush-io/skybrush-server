@@ -2,26 +2,15 @@
 
 from __future__ import annotations
 
-from blinker import Signal
 from builtins import str
-from collections import defaultdict
+from collections import Counter, defaultdict
+from collections.abc import Iterable
 from dataclasses import dataclass
 from enum import Enum
 from itertools import islice
-from typing import (
-    cast,
-    overload,
-    Any,
-    Counter,
-    Generic,
-    Iterable,
-    Optional,
-    Type,
-    TypeVar,
-    TYPE_CHECKING,
-    Union,
-)
+from typing import TYPE_CHECKING, Any, Generic, TypeVar, cast, overload
 
+from blinker import Signal
 from flockwave.spec.schema import get_complex_object_schema
 
 from .client import Client
@@ -30,8 +19,8 @@ from .metamagic import ModelMeta
 from .object import ModelObject
 
 if TYPE_CHECKING:
-    from flockwave.server.registries.clients import ClientRegistry
     from flockwave.server.message_hub import MessageHub
+    from flockwave.server.registries.clients import ClientRegistry
 
 __all__ = (
     "ChannelNode",
@@ -52,7 +41,7 @@ class ChannelOperation(Enum):
     WRITE = "write"
 
 
-_channel_type_mapping: dict[Type, str] = {
+_channel_type_mapping: dict[type, str] = {
     int: "number",
     float: "number",
     str: "string",
@@ -76,7 +65,7 @@ class ChannelType(Enum):
     VIDEO = "video"
 
     @classmethod
-    def from_object(cls, obj: Union["ChannelType", Type]):
+    def from_object(cls, obj: ChannelType | type):
         """Converts a Python type object to a corresponding channel type
         object. Also accepts ChannelType objects as input, in which case
         the object is returned as is.
@@ -143,18 +132,18 @@ class DeviceTreeNodeBase(metaclass=ModelMeta):
 
     children: dict[str, "DeviceTreeNodeBase"]
 
-    _subscribers: Optional[Counter[Client]]
+    _subscribers: Counter[Client] | None
     """Mapping that maps clients to the number of times they are subscribed to
     this node in the tree. Created lazily; ``None`` means that the mapping was
     not created yet.
     """
 
-    _parent: Optional["DeviceTreeNodeBase"]
+    _parent: DeviceTreeNodeBase | None
     """The parent of this node; ``None`` if this node is the root of the device
     tree.
     """
 
-    _path: Optional[str]
+    _path: str | None
     """The path string of this node, listing the names of all the nodes leading
     to this node from the root. Calculated lazily; ``None`` means that the
     path string was not calculated yet.
@@ -237,7 +226,7 @@ class DeviceTreeNodeBase(metaclass=ModelMeta):
             return iter(())
 
     @property
-    def parent(self) -> Optional["DeviceTreeNodeBase"]:
+    def parent(self) -> DeviceTreeNodeBase | None:
         """Returns the parent node of this node."""
         return self._parent
 
@@ -281,7 +270,7 @@ class DeviceTreeNodeBase(metaclass=ModelMeta):
     @overload
     def traverse_dfs(
         self, own_id: None = None
-    ) -> Iterable[tuple[Optional[str], "DeviceTreeNodeBase"]]: ...
+    ) -> Iterable[tuple[str | None, "DeviceTreeNodeBase"]]: ...
 
     @overload
     def traverse_dfs(
@@ -289,8 +278,8 @@ class DeviceTreeNodeBase(metaclass=ModelMeta):
     ) -> Iterable[tuple[str, "DeviceTreeNodeBase"]]: ...
 
     def traverse_dfs(
-        self, own_id: Optional[str] = None
-    ) -> Iterable[tuple[Optional[str], "DeviceTreeNodeBase"]]:
+        self, own_id: str | None = None
+    ) -> Iterable[tuple[str | None, "DeviceTreeNodeBase"]]:
         """Returns a generator that yields all the nodes in the subtree of
         this node, including the node itself, in depth-first order.
 
@@ -310,7 +299,7 @@ class DeviceTreeNodeBase(metaclass=ModelMeta):
             queue.extend(node.iterchildren())
 
     @property
-    def tree(self) -> Optional[DeviceTree]:
+    def tree(self) -> DeviceTree | None:
         """Returns the tree that this node is a part of."""
         node = self
         while node is not None and not isinstance(node, RootNode):
@@ -467,8 +456,8 @@ class ChannelNode(DeviceTreeNodeBase, Generic[T]):
         channel_type: ChannelType,
         initial_value: T,
         *,
-        operations: Optional[Iterable[ChannelOperation]] = None,
-        unit: Optional[str] = None,
+        operations: Iterable[ChannelOperation] | None = None,
+        unit: str | None = None,
     ):
         """Constructor.
 
@@ -515,10 +504,10 @@ class DeviceNode(DeviceTreeNodeBase):
     def add_channel(
         self,
         id: str,
-        type: Union[Type, ChannelType],
+        type: type | ChannelType,
         *,
         initial_value: Any = None,
-        unit: Optional[str] = None,
+        unit: str | None = None,
     ) -> ChannelNode:
         """Adds a new channel with the given identifier to this device
         node.
@@ -663,7 +652,7 @@ class DeviceTreePath:
     style.
     """
 
-    def __init__(self, path: Union[str, "DeviceTreePath"] = "/"):
+    def __init__(self, path: str | DeviceTreePath = "/"):
         """Constructor.
 
         Parameters:
@@ -767,7 +756,7 @@ class DeviceTree:
         """The root node of the device tree."""
         return self._root
 
-    def resolve(self, path: Union[str, DeviceTreePath]) -> DeviceTreeNodeBase:
+    def resolve(self, path: str | DeviceTreePath) -> DeviceTreeNodeBase:
         """Resolves the given path in the tree and returns the node that
         corresponds to the given path.
 
@@ -793,7 +782,7 @@ class DeviceTree:
 
         return node
 
-    def traverse_dfs(self) -> Iterable[tuple[Optional[str], DeviceTreeNodeBase]]:
+    def traverse_dfs(self) -> Iterable[tuple[str | None, DeviceTreeNodeBase]]:
         """Returns a generator that yields all the nodes in the tree in
         depth-first order.
 
@@ -898,7 +887,7 @@ class DeviceTreeMutator:
         if self._updated_nodes:
             self.callback(self._updated_nodes)
 
-    def update(self, node, new_value):
+    def update(self, node: str | DeviceTreePath | ChannelNode, new_value: object):
         """Updates the value of a channel node at the given path with the
         given new value.
 
@@ -907,10 +896,9 @@ class DeviceTreeMutator:
         the channel will _not_ be modified.
 
         Parameters:
-            node (Union[str, DeviceTreePath, ChannelNode]): the path
-                of the channel node to modify (either as a string or as a
-                DeviceTreePath_), or the channel node itself.
-            new_value (object): the new value of the channel
+            node: the path of the channel node to modify (either as a
+                string or as a DeviceTreePath_), or the channel node itself.
+            new_value: the new value of the channel
         """
         if not isinstance(node, DeviceTreeNodeBase):
             node = self.tree.resolve(node)
@@ -931,7 +919,7 @@ class DeviceTreeSubscriptionManager:
     """
 
     _tree: DeviceTree
-    _client_registry: Optional["ClientRegistry"]
+    _client_registry: ClientRegistry | None
     _message_hub: "MessageHub"
 
     _pending_subscriptions: defaultdict[Client, list[DeviceTreePath]]
@@ -943,7 +931,7 @@ class DeviceTreeSubscriptionManager:
         self,
         tree: DeviceTree,
         *,
-        client_registry: Optional["ClientRegistry"],
+        client_registry: ClientRegistry | None,
         message_hub: "MessageHub",
     ):
         """Constructor.
@@ -967,7 +955,7 @@ class DeviceTreeSubscriptionManager:
         self.client_registry = client_registry
 
     @property
-    def client_registry(self) -> Optional["ClientRegistry"]:
+    def client_registry(self) -> ClientRegistry | None:
         """The client registry that the device tree watches. The device tree
         will remove the subscriptions of clients from the tree when a
         client is removed from this registry.
@@ -975,7 +963,7 @@ class DeviceTreeSubscriptionManager:
         return self._client_registry
 
     @client_registry.setter
-    def client_registry(self, value: Optional["ClientRegistry"]) -> None:
+    def client_registry(self, value: ClientRegistry | None) -> None:
         if self._client_registry == value:
             return
 
@@ -1027,8 +1015,8 @@ class DeviceTreeSubscriptionManager:
             path._parts.pop()
 
     def _find_device_tree_node_by_path(
-        self, path: Union[str, DeviceTreePath], response=None
-    ) -> Optional[DeviceTreeNodeBase]:
+        self, path: str | DeviceTreePath, response=None
+    ) -> DeviceTreeNodeBase | None:
         """Finds a node in the global device tree based on a device tree
         path or registers a failure in the given response object if there
         is no such entry in the registry.
@@ -1175,7 +1163,7 @@ class DeviceTreeSubscriptionManager:
         return result
 
     def subscribe(
-        self, client: Client, path: Union[str, DeviceTreePath], lazy: bool = False
+        self, client: Client, path: str | DeviceTreePath, lazy: bool = False
     ) -> None:
         """Subscribes the given client to the given device tree path.
 
@@ -1202,7 +1190,7 @@ class DeviceTreeSubscriptionManager:
                 raise
 
     def unsubscribe(
-        self, client: Client, path: Union[str, DeviceTreePath], force: bool = False
+        self, client: Client, path: str | DeviceTreePath, force: bool = False
     ) -> None:
         """Unsubscribes the given client from the given device tree path.
 

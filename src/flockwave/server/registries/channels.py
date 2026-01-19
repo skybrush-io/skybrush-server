@@ -8,11 +8,12 @@ Note that the registry keeps track of the different *types* of communication
 channels, not each individual channel between a client and the server.
 """
 
-from blinker import Signal
+from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass
-from typing import Callable, Generic, Iterator, TypeVar
+from typing import Generic, TypeVar
 
+from blinker import Signal
 from flockwave.connections import IPAddressAndPort
 
 from ..logger import log as base_log

@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Optional
+from typing import Any
 
 __all__ = ("SafetyConfigurationRequest",)
 
@@ -65,22 +65,22 @@ class SafetyConfigurationRequest:
 
     """
 
-    low_battery_threshold: Optional[LowBatteryThreshold] = None
+    low_battery_threshold: LowBatteryThreshold | None = None
     """Low battery threshold settings, defining a voltage or percentage value
     under which a low battery failsafe action is triggered, or explicitely
     disabling the low battery failsafe settings. `None` means not to change
     the low battery voltage setting."""
 
-    critical_battery_voltage: Optional[float] = None
+    critical_battery_voltage: float | None = None
     """Critically low battery voltage in [V] under which a critical battery
     failsafe action is triggered. `None` means not to change the critical
     battery voltage setting."""
 
-    return_to_home_altitude: Optional[float] = None
+    return_to_home_altitude: float | None = None
     """Minimum altitude in [mAHL] above which return to home operations are
     performed. `None` means not to change the return to home altitude setting."""
 
-    return_to_home_speed: Optional[float] = None
+    return_to_home_speed: float | None = None
     """Horizontal speed in [m/s] at which return to home operations are
     performed. `None` means not to change the return to home speed setting."""
 

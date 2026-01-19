@@ -6,18 +6,19 @@ from __future__ import annotations
 
 import json
 import threading
-
+from collections.abc import Awaitable, Callable
 from contextlib import ExitStack
 from dataclasses import dataclass, field
 from functools import wraps
 from logging import Logger
 from operator import attrgetter
+from typing import TYPE_CHECKING, Any
+
+from flockwave.ext.errors import NotSupportedError
 from quart import abort, make_response, redirect, render_template, request, url_for
 from trio import sleep_forever
 from trio.lowlevel import current_root_task
-from typing import Any, Awaitable, Callable, Optional, TYPE_CHECKING
 
-from flockwave.ext.errors import NotSupportedError
 from flockwave.server.utils import overridden
 from flockwave.server.utils.quart import make_blueprint
 
@@ -29,8 +30,9 @@ from .utils import (
 
 if TYPE_CHECKING:
     from flockwave.ext.manager import ExtensionManager
-    from flockwave.server.app import SkybrushServer
     from semver import Version
+
+    from flockwave.server.app import SkybrushServer
 
 
 __all__ = ("index", "run")
@@ -44,9 +46,9 @@ blueprint = make_blueprint(
     static_url_path="/static",
 )
 
-app: Optional["SkybrushServer"] = None
+app: SkybrushServer | None = None
 is_public: bool = False
-log: Optional[Logger] = None
+log: Logger | None = None
 
 
 async def run(app, configuration, logger):
@@ -79,7 +81,7 @@ class ExtensionInfo:
     dependencies: list[str] = field(default_factory=list)
     dependents: list[str] = field(default_factory=list)
     restart_requested: bool = False
-    version: Optional[Version] = None
+    version: Version | None = None
 
     @classmethod
     def for_extension(

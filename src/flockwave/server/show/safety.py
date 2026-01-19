@@ -2,8 +2,6 @@
 Skybrush-related safety specifications, until we find a better place for them.
 """
 
-from typing import Dict
-
 from flockwave.server.model.safety import (
     LowBatteryThreshold,
     LowBatteryThresholdType,
@@ -15,7 +13,7 @@ __all__ = ("get_safety_configuration_from_show_specification",)
 
 
 def get_safety_configuration_from_show_specification(
-    show: Dict,
+    show: dict,
 ) -> SafetyConfigurationRequest:
     result = SafetyConfigurationRequest()
 

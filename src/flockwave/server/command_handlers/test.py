@@ -1,7 +1,7 @@
 """Factory function to create handlers for the "test" command in UAV drivers."""
 
+from collections.abc import Callable, Iterable
 from inspect import isasyncgenfunction, iscoroutinefunction
-from typing import Callable, Iterable, Optional
 
 from flockwave.server.errors import NotSupportedError
 from flockwave.server.model.commands import ProgressEvents
@@ -23,7 +23,7 @@ STANDARD_COMPONENTS = {
 
 def create_test_command_handler(
     supported_components: Iterable[str],
-) -> Callable[[UAVDriver, UAV, Optional[str]], ProgressEvents[str]]:
+) -> Callable[[UAVDriver, UAV, str | None], ProgressEvents[str]]:
     """Creates a generic async command handler function that allows the user to
     test certain components of the UAV, assuming that the UAV has an async or
     sync method named `test_component()` that accepts a single component name
@@ -43,7 +43,7 @@ def create_test_command_handler(
     async def _test_command_handler(
         driver: UAVDriver,
         uav: UAV,
-        component: Optional[str] = None,
+        component: str | None = None,
     ) -> ProgressEvents[str]:
         if component is None:
             yield help_text

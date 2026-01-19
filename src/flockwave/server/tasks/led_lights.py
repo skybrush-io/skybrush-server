@@ -1,8 +1,11 @@
 from abc import ABC, abstractmethod
-from blinker import Signal
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from enum import Enum
 from logging import Logger
+from typing import Generic, TypeVar
+
+from blinker import Signal
 from trio import (
     BrokenResourceError,
     Event,
@@ -11,18 +14,17 @@ from trio import (
     open_nursery,
     sleep,
 )
-from typing import AsyncIterator, Generic, Optional, TypeVar
 
 __all__ = ("LEDLightConfigurationManagerBase",)
 
 
-#: Type variable representing a packet type that the LED light configuration
-#: manager will generate and send
 TPacket = TypeVar("TPacket")
+"""Type variable representing a packet type that the LED light configuration
+manager will generate and send."""
 
 
-#: Type alias for an RGB color
 RGBColor = tuple[int, int, int]
+"""Type alias for an RGB color."""
 
 
 class LightEffectType(Enum):
@@ -123,7 +125,7 @@ class LEDLightConfigurationManagerBase(Generic[TPacket], ABC):
     """
 
     _active: bool
-    _config: Optional[LightConfiguration]
+    _config: LightConfiguration | None
     _config_last_updated_at: float
     _rapid_mode: bool
     _rapid_mode_triggered: Event
@@ -183,7 +185,7 @@ class LEDLightConfigurationManagerBase(Generic[TPacket], ABC):
                     )
                 await sleep(0.5)
 
-    async def _run(self, log: Optional[Logger]) -> None:
+    async def _run(self, log: Logger | None) -> None:
         while True:
             # Note that we might need to send a packet even if we are inactive
             # to ensure that the drones are informed when the GCS stops sending
@@ -243,7 +245,7 @@ class LEDLightConfigurationManagerBase(Generic[TPacket], ABC):
     @abstractmethod
     def _create_light_control_packet(
         self, config: LightConfiguration
-    ) -> Optional[TPacket]:
+    ) -> TPacket | None:
         """Creates a light control packet that must be sent to the group of
         drones managed by this extension, assuming the given light
         configuration on the GCS.
@@ -254,7 +256,7 @@ class LEDLightConfigurationManagerBase(Generic[TPacket], ABC):
         """
         raise NotImplementedError
 
-    def _get_logger(self) -> Optional[Logger]:
+    def _get_logger(self) -> Logger | None:
         """Returns the logger that the manager can use for logging warning
         messages, or `None` if the manager should not use a logger.
 
@@ -269,7 +271,7 @@ class LEDLightConfigurationManagerBase(Generic[TPacket], ABC):
         """
         raise NotImplementedError
 
-    def _send_warning(self, log: Optional[Logger], message: str, *args, **kwds) -> None:
+    def _send_warning(self, log: Logger | None, message: str, *args, **kwds) -> None:
         """Prints a warning to the log and suppresses further warnings for the
         next five seconds if needed.
         """

@@ -1,25 +1,24 @@
 from __future__ import annotations
 
-from colour import Color
+from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from functools import partial
 from random import uniform
-from trio import open_nursery, sleep, sleep_forever
-from typing import Callable, Iterator
 
+from colour import Color
 from flockwave.gps.vectors import (
     FlatEarthCoordinate,
     FlatEarthToGPSCoordinateTransformation,
 )
 from flockwave.spec.ids import make_valid_object_id
+from trio import open_nursery, sleep, sleep_forever
+
 from flockwave.server.registries.errors import RegistryFull
 
 from ..base import UAVExtension
-
 from .driver import VirtualUAV, VirtualUAVDriver
 from .fw_upload import FIRMWARE_UPDATE_TARGET_ID
 from .placement import place_drones
-
 
 __all__ = ("construct", "dependencies")
 

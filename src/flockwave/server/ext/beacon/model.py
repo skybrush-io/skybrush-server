@@ -1,14 +1,13 @@
-from blinker import Signal
-from typing import Any, Optional
+from typing import Any
 
+from blinker import Signal
 from flockwave.gps.vectors import GPSCoordinate
+from flockwave.spec.schema import get_complex_object_schema
+
 from flockwave.server.model.metamagic import ModelMeta
 from flockwave.server.model.mixins import TimestampLike, TimestampMixin
 from flockwave.server.model.object import ModelObject
 from flockwave.server.model.utils import optionally_scaled_by
-
-from flockwave.spec.schema import get_complex_object_schema
-
 
 __all__ = ("Beacon", "is_beacon")
 
@@ -21,7 +20,7 @@ class BeaconBasicProperties(metaclass=ModelMeta):
     class __meta__:
         schema = get_complex_object_schema("beaconBasicProperties")
 
-    def __init__(self, id: Optional[str] = None, name: Optional[str] = None):
+    def __init__(self, id: str | None = None, name: str | None = None):
         """Constructor.
 
         Parameters:
@@ -39,9 +38,7 @@ class BeaconStatusInfo(TimestampMixin, metaclass=ModelMeta):
         schema = get_complex_object_schema("beaconStatusInfo")
         mappers = {"heading": optionally_scaled_by(10)}
 
-    def __init__(
-        self, id: Optional[str] = None, timestamp: Optional[TimestampLike] = None
-    ):
+    def __init__(self, id: str | None = None, timestamp: TimestampLike | None = None):
         """Constructor.
 
         Parameters:
@@ -52,8 +49,8 @@ class BeaconStatusInfo(TimestampMixin, metaclass=ModelMeta):
         """
         TimestampMixin.__init__(self, timestamp)
         self.id = id or ""
-        self.position: Optional[GPSCoordinate] = None
-        self.heading: Optional[float] = None
+        self.position: GPSCoordinate | None = None
+        self.heading: float | None = None
         self.active = False
 
 
@@ -64,7 +61,7 @@ class Beacon(ModelObject):
 
     name: str
 
-    def __init__(self, id: str, name: Optional[str] = None):
+    def __init__(self, id: str, name: str | None = None):
         """Constructor.
 
         Parameters:
@@ -99,9 +96,9 @@ class Beacon(ModelObject):
 
     def update_status(
         self,
-        position: Optional[GPSCoordinate] = None,
-        heading: Optional[float] = None,
-        active: Optional[bool] = None,
+        position: GPSCoordinate | None = None,
+        heading: float | None = None,
+        active: bool | None = None,
     ):
         """Updates the status information of the beacon.
 

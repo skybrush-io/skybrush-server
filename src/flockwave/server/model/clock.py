@@ -1,10 +1,11 @@
 """Clock-related model objects."""
 
 from abc import ABC, abstractmethod
-from blinker import Signal
 from datetime import datetime, timezone
 from time import time
-from typing import ClassVar, Optional, Union
+from typing import ClassVar
+
+from blinker import Signal
 
 __all__ = ("Clock", "ClockBase", "StoppableClockBase", "TimeElapsedSinceReferenceClock")
 
@@ -27,7 +28,7 @@ class Clock(ABC):
 
     @property
     @abstractmethod
-    def epoch(self) -> Optional[float]:
+    def epoch(self) -> float | None:
         """The epoch of the clock, expressed as the number of seconds from
         the Unix epoch to the epoch of the clock, in UTC, or ``None`` if
         the clock has no epoch or an unknown epoch.
@@ -94,7 +95,7 @@ class Clock(ABC):
 class ClockBase(Clock):
     """Abstract base class for clock objects."""
 
-    _epoch: Optional[float]
+    _epoch: float | None
     """The epoch of the clock, expressed as the number of seconds from the Unix
     epoch to the epoch of the clock, in UTC, or ``None`` if the clock has no
     epoch or an unknown epoch.
@@ -103,7 +104,7 @@ class ClockBase(Clock):
     _id: str
     """The identifier of the clock."""
 
-    def __init__(self, id: str, epoch: Optional[float] = None):
+    def __init__(self, id: str, epoch: float | None = None):
         """Constructor.
 
         Creates a new clock with the given ID and the given epoch.
@@ -118,7 +119,7 @@ class ClockBase(Clock):
         self._id = id
 
     @property
-    def epoch(self) -> Optional[float]:
+    def epoch(self) -> float | None:
         """The epoch of the clock."""
         return self._epoch
 
@@ -147,7 +148,7 @@ class ClockBase(Clock):
             result["ticksPerSecond"] = self.ticks_per_second
         return result
 
-    def _format_epoch(self, epoch: Optional[float]) -> Optional[Union[str, datetime]]:
+    def _format_epoch(self, epoch: float | None) -> str | datetime | None:
         """Returns a formatted copy of the epoch value as it should appear
         in the JSON output.
 
@@ -176,7 +177,7 @@ class StoppableClockBase(ClockBase):
     _ticks_per_second: int
     """Number of clock ticks per second."""
 
-    def __init__(self, id: str, epoch: Optional[float] = None):
+    def __init__(self, id: str, epoch: float | None = None):
         """Constructor.
 
         Creates a new stoppable clock with the given ID and the given epoch.
@@ -238,7 +239,7 @@ class TimeElapsedSinceReferenceClock(ClockBase):
     time instant.
     """
 
-    _reference_time: Optional[float] = None
+    _reference_time: float | None = None
     """The reference time from which we measure the number of seconds elapsed;
     ``None`` if no reference time was set.
     """
@@ -266,14 +267,14 @@ class TimeElapsedSinceReferenceClock(ClockBase):
         return self._reference_time is not None
 
     @property
-    def reference_time(self) -> Optional[float]:
+    def reference_time(self) -> float | None:
         """The reference time, in seconds since the UNIX epoch, or ``None``
         if no reference time has been specified yet.
         """
         return self._reference_time
 
     @reference_time.setter
-    def reference_time(self, value: Optional[float]):
+    def reference_time(self, value: float | None):
         if self._reference_time == value:
             return
 

@@ -6,10 +6,9 @@ signal that other extensions can subscribe to if they are interested in the
 values of the RC channels.
 """
 
+from collections.abc import Sequence
 from logging import Logger
-
-from typing import Any, ClassVar, Optional, Sequence
-
+from typing import Any, ClassVar
 
 rc_changed_signal: Any = None
 """Signal that this extension emits in order to notify subscribers about the
@@ -19,7 +18,7 @@ new channel values.
 debug: bool = False
 """Stores whether the extension is in debug mode"""
 
-logger: Optional[Logger] = None
+logger: Logger | None = None
 """Logger instance used by the extension"""
 
 

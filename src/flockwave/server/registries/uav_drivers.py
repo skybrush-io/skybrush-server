@@ -2,12 +2,11 @@
 knows about.
 """
 
+from collections.abc import Iterator
 from contextlib import contextmanager
-from typing import Iterator, Optional
 
 from ..logger import log as base_log
 from ..model.uav import UAVDriver
-
 from .base import RegistryBase
 
 __all__ = ("UAVDriverRegistry",)
@@ -44,7 +43,7 @@ class UAVDriverRegistry(RegistryBase[UAVDriver]):
 
         return driver_id
 
-    def remove(self, driver: UAVDriver) -> Optional[UAVDriver]:
+    def remove(self, driver: UAVDriver) -> UAVDriver | None:
         """Removes the given driver from the registry.
 
         This function is a no-op if the driver is not registered.
@@ -57,7 +56,7 @@ class UAVDriverRegistry(RegistryBase[UAVDriver]):
             if maybe_driver is driver:
                 return self.remove_by_id(id)
 
-    def remove_by_id(self, id: str) -> Optional[UAVDriver]:
+    def remove_by_id(self, id: str) -> UAVDriver | None:
         """Removes the driver with the given ID from the registry.
 
         This function is a no-op if no driver is registered with the given ID.

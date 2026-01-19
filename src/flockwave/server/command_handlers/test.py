@@ -52,7 +52,7 @@ def create_test_command_handler(
         if component not in supported:
             raise NotSupportedError
 
-        test_component = uav.test_component
+        test_component = getattr(uav, "test_component", None)
         if test_component is None:
             raise RuntimeError("Component tests not supported")
 

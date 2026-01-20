@@ -838,7 +838,7 @@ class VirtualUAV(UAVBase):
         )
 
         # Update the UAV status
-        updates = {
+        updates: dict[str, Any] = {
             "position": position,
             "velocity": self._velocity_ned,
             "battery": self.battery.status,

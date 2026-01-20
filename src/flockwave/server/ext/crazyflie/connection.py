@@ -105,7 +105,7 @@ class CrazyradioConnection(TaskConnectionBase):
             self._radio = None
 
     @property
-    def address_space(self) -> RadioAddressSpace:
+    def address_space(self) -> "RadioAddressSpace":
         """Returns the address space associated to the connection.
 
         The address space is a sequence containing the addresses of all the

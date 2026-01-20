@@ -31,7 +31,7 @@ Crazyradio addresses to scan."""
 
 def _get_all_addresses_in_connection(
     conn: CrazyradioConnection, priority: int
-) -> RadioAddressSpace:
+) -> "RadioAddressSpace":
     return conn.address_space
 
 

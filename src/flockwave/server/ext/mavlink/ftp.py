@@ -180,7 +180,7 @@ class OperationNotAcknowledgedError(MAVFTPError):
                 operation_str = str(operation)
             message = f"{message} (operation = {operation_str})"
 
-        super().__init__(message)  # type: ignore
+        super().__init__(message)
         self.code = code
         self.opcode = operation
 

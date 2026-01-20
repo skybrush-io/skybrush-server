@@ -425,12 +425,12 @@ class CrazyflieDriver(UAVDriver["CrazyflieUAV"]):
         return dict(result)
 
     async def _enter_low_power_mode_single(
-        self, uav: "CrazyflieUAV", *, transport: TransportOptions | None
+        self, uav: "CrazyflieUAV", *, transport: TransportOptions | None = None
     ) -> None:
         await uav.enter_low_power_mode()
 
     async def _resume_from_low_power_mode_single(
-        self, uav: "CrazyflieUAV", *, transport: TransportOptions | None
+        self, uav: "CrazyflieUAV", *, transport: TransportOptions | None = None
     ) -> None:
         await uav.resume_from_low_power_mode()
 
@@ -443,7 +443,7 @@ class CrazyflieDriver(UAVDriver["CrazyflieUAV"]):
         return await uav.get_version_info()
 
     async def _send_landing_signal_single(
-        self, uav: "CrazyflieUAV", *, transport: TransportOptions | None
+        self, uav: "CrazyflieUAV", *, transport: TransportOptions | None = None
     ) -> None:
         if uav.is_in_drone_show_mode:
             await uav.stop_drone_show()
@@ -456,7 +456,7 @@ class CrazyflieDriver(UAVDriver["CrazyflieUAV"]):
         signals,
         duration,
         *,
-        transport: TransportOptions | None,
+        transport: TransportOptions | None = None,
     ) -> None:
         if "light" in signals:
             await uav.emit_light_signal()
@@ -465,9 +465,9 @@ class CrazyflieDriver(UAVDriver["CrazyflieUAV"]):
         self,
         uav: "CrazyflieUAV",
         start: bool,
-        force: bool,
+        force: bool = False,
         *,
-        transport: TransportOptions | None,
+        transport: TransportOptions | None = None,
     ) -> None:
         if start:
             await uav.arm(force=force)
@@ -479,7 +479,7 @@ class CrazyflieDriver(UAVDriver["CrazyflieUAV"]):
         uav: "CrazyflieUAV",
         component: str,
         *,
-        transport: TransportOptions | None,
+        transport: TransportOptions | None = None,
     ) -> None:
         if not component:
             # Resetting the whole UAV, this is supported
@@ -490,12 +490,12 @@ class CrazyflieDriver(UAVDriver["CrazyflieUAV"]):
             raise RuntimeError(f"Resetting {component!r} is not supported")
 
     async def _send_shutdown_signal_single(
-        self, uav: "CrazyflieUAV", *, transport: TransportOptions | None
+        self, uav: "CrazyflieUAV", *, transport: TransportOptions | None = None
     ) -> None:
         await uav.shutdown()
 
     async def _send_takeoff_signal_single(
-        self, uav, *, scheduled: bool = False, transport: TransportOptions | None
+        self, uav, *, scheduled: bool = False, transport: TransportOptions | None = None
     ) -> None:
         if scheduled:
             # Handled by a broadcast signal in the extension class

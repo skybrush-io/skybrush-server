@@ -278,7 +278,7 @@ def is_valid_service(service: str) -> bool:
         return True
 
     channel = app.channel_type_registry.find_by_id(service)
-    return channel and channel.get_ssdp_location() is not None
+    return channel.get_ssdp_location() is not None
 
 
 def prepare_response(

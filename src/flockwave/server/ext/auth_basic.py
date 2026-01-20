@@ -84,8 +84,6 @@ def create_htpasswd_validator(filename: Path | str) -> PasswordValidator:
     Returns:
         an appropriate password validator function
     """
-    global log
-
     from passlib.apache import HtpasswdFile
 
     ht = HtpasswdFile(str(filename))

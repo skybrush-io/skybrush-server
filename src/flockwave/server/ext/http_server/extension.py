@@ -12,6 +12,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from heapq import heapify, heappush
 from pathlib import Path
+from typing import Any
 
 from flockwave.ext.manager import ExtensionManager
 from flockwave.networking import can_bind_to_tcp_address, format_socket_address
@@ -245,7 +246,7 @@ def unload(app):
 
 
 async def run(app, configuration, logger):
-    global exports, KNOWN_PORTS
+    global exports
 
     address = exports.get("address")
     if address is None:
@@ -349,7 +350,9 @@ async def run(app, configuration, logger):
 
 description = "HTTP server that listens on a specific port"
 
-exports = {
+# We need the unusual typehint below only for ty
+# to handle `global exports` calls properly
+exports: dict[str, Any] = {
     "address": None,
     "asgi_app": None,
     "mount": mount,

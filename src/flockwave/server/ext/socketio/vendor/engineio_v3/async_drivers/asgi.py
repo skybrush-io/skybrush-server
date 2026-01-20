@@ -163,9 +163,11 @@ class WebSocket(object):  # pragma: no cover
         await self.handler(self)
 
     async def close(self):
+        assert self.asgi_send is not None
         await self.asgi_send({"type": "websocket.close"})
 
     async def send(self, message):
+        assert self.asgi_send is not None
         msg_bytes = None
         msg_text = None
         if isinstance(message, bytes):
@@ -177,6 +179,7 @@ class WebSocket(object):  # pragma: no cover
         )
 
     async def wait(self):
+        assert self.asgi_receive is not None
         event = await self.asgi_receive()
         if event["type"] != "websocket.receive":
             raise IOError()

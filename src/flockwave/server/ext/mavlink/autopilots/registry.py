@@ -19,13 +19,13 @@ def get_autopilot_factory_by_mavlink_type(type: int) -> type["Autopilot"]:
 
 
 def register_for_mavlink_type(
-    type: int,
+    mavlink_type: int,
 ) -> Callable[[type["Autopilot"]], type["Autopilot"]]:
     """Class decorator to register an Autopilot subclass for a given MAVLink
     autopilot type.
 
     Args:
-        type: The MAVLink autopilot type to register the class for.
+        mavlink_type: The MAVLink autopilot type to register the class for.
 
     Returns:
         The class decorator.
@@ -35,7 +35,7 @@ def register_for_mavlink_type(
         if cls in _autopilot_registry:
             raise RuntimeError(f"{cls!r} is already registered")
 
-        _autopilot_registry[type] = cls
+        _autopilot_registry[mavlink_type] = cls
         return cls
 
     return decorator

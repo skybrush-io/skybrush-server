@@ -833,7 +833,7 @@ class RTKExtension(Extension):
                     self._clock_sync_validator.sync_state_changed.connected_to(
                         self._on_gps_clock_sync_state_changed,
                         sender=self._clock_sync_validator,
-                    )  # type: ignore
+                    )
                 )
 
                 self._rtk_survey_trigger.value = preset.auto_survey
@@ -864,7 +864,7 @@ class RTKExtension(Extension):
                                 task=partial(
                                     self._run_single_connection_for_preset,
                                     preset=preset,
-                                ),  # type: ignore
+                                ),
                             )
                         )
                     except Exception:
@@ -902,7 +902,7 @@ class RTKExtension(Extension):
         """
         assert self.app is not None
 
-        channel = ParserChannel(connection, parser=preset.create_gps_parser())  # type: ignore
+        channel = ParserChannel(connection, parser=preset.create_gps_parser())
         signal = self.app.import_api("signals", SignalsExtensionAPI).get(
             self.RTK_PACKET_SIGNAL
         )

@@ -1732,7 +1732,11 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
 
         self._update_errors_from_drone_show_status_packet(data)
 
-        updates = {"light": data.light, "gps": self._gps_fix, "debug": debug}
+        updates: dict[str, Any] = {
+            "light": data.light,
+            "gps": self._gps_fix,
+            "debug": debug,
+        }
 
         if self._rssi_mode is RSSIMode.RTCM_COUNTERS:
             updates["rssi"] = [

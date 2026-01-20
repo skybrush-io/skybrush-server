@@ -2,6 +2,8 @@
 server.
 """
 
+from typing import Any
+
 from jwt import decode
 from jwt.exceptions import (
     ExpiredSignatureError,
@@ -42,7 +44,10 @@ class JWTAuthentication(AuthenticationMethod):
         return "jwt"
 
     def authenticate(self, client, data):
-        params = {"issuer": self._issuer, "algorithms": self._algorithms}
+        params: dict[str, Any] = {
+            "issuer": self._issuer,
+            "algorithms": self._algorithms,
+        }
 
         if self._audience is not None:
             params["audience"] = self._audience

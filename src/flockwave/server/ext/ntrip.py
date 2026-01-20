@@ -2,6 +2,8 @@
 yielding RTCMv2 and RTCMv3 messages from a remote NTRIP server.
 """
 
+from typing import Any
+
 from flockwave.connections import ConnectionBase, RWConnection, create_connection
 from flockwave.gps.http.response import Response
 from flockwave.gps.ntrip.client import NtripClient
@@ -49,7 +51,7 @@ class NTRIPConnection(ConnectionBase, RWConnection[bytes, bytes]):
             raise ValueError("mountpoint must not be empty")
 
         self._stream = None
-        self._client_params = {
+        self._client_params: dict[str, Any] = {
             "host": host,
             "port": port,
             "username": username,

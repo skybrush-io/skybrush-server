@@ -6,7 +6,7 @@ from flockwave.server.errors import NotSupportedError
 from flockwave.server.model.geofence import GeofenceConfigurationRequest, GeofenceStatus
 from flockwave.server.model.safety import SafetyConfigurationRequest
 
-from ..enums import MAVAutopilot, MAVModeFlag, MAVSysStatusSensor
+from ..enums import MAVAutopilot, MAVModeFlag, MAVSysStatusSensor, MAVType
 from ..errors import UnknownFlightModeError
 from ..types import MAVLinkFlightModeNumbers, MAVLinkMessage
 from .base import Autopilot
@@ -75,7 +75,9 @@ class PX4(Autopilot):
     triplets."""
 
     @classmethod
-    def describe_custom_mode(cls, base_mode: int, custom_mode: int) -> str:
+    def describe_custom_mode(
+        cls, base_mode: int, custom_mode: int, vehicle_type: int | MAVType | None = None
+    ) -> str:
         main_mode = (custom_mode & 0x00FF0000) >> 16
         submode = (custom_mode & 0xFF000000) >> 24
         main_mode_name = cls._main_modes.get(main_mode)

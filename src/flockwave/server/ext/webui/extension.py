@@ -145,6 +145,7 @@ def _get_extension_by_name(name: str) -> tuple[ExtensionInfo, "ExtensionManager"
     if extension is None:
         abort(404)
 
+    assert extension is not None
     assert extension_manager is not None
 
     return extension, extension_manager

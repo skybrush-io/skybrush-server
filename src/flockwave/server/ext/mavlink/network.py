@@ -366,7 +366,7 @@ class MAVLinkNetwork:
                         connection,
                         f"MAVLink: {name}" if name else "MAVLink",
                         description=description,
-                        purpose=ConnectionPurpose.uavRadioLink,
+                        purpose=ConnectionPurpose.uavRadioLink,  # type: ignore
                     )
                 )
 

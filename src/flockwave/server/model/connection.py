@@ -1,5 +1,8 @@
 """Connection-related model objects."""
 
+from enum import Enum
+from typing import TYPE_CHECKING
+
 from flockwave.spec.schema import get_complex_object_schema, get_enum_from_schema
 
 from .metamagic import ModelMeta
@@ -7,9 +10,17 @@ from .mixins import TimestampLike, TimestampMixin
 
 __all__ = ("ConnectionInfo", "ConnectionPurpose", "ConnectionStatus")
 
+if TYPE_CHECKING:
+    # TODO: generate a typing file from the schema to be able to
+    # vlaidate the enum values of these classes as well
 
-ConnectionPurpose = get_enum_from_schema("connectionPurpose", "ConnectionPurpose")
-ConnectionStatus = get_enum_from_schema("connectionStatus", "ConnectionStatus")
+    class ConnectionPurpose(Enum): ...
+
+    class ConnectionStatus(Enum): ...
+
+else:
+    ConnectionPurpose = get_enum_from_schema("connectionPurpose", "ConnectionPurpose")
+    ConnectionStatus = get_enum_from_schema("connectionStatus", "ConnectionStatus")
 
 
 class ConnectionInfo(TimestampMixin, metaclass=ModelMeta):
@@ -41,8 +52,8 @@ class ConnectionInfo(TimestampMixin, metaclass=ModelMeta):
         """
         TimestampMixin.__init__(self, timestamp)
         self.id = id
-        self.purpose = ConnectionPurpose.other
-        self.status = ConnectionStatus.unknown
+        self.purpose = ConnectionPurpose.other  # type: ignore
+        self.status = ConnectionStatus.unknown  # type: ignore
 
     def update_status_from(self, connection):
         """Updates the status member of this object from the status of the

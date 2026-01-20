@@ -2159,7 +2159,7 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
     @property
     def supports_scheduled_takeoff(self) -> bool:
         """Returns whether the UAV supports scheduled takeoffs."""
-        return self._autopilot and self._autopilot.supports_scheduled_takeoff
+        return self._autopilot.supports_scheduled_takeoff
 
     async def set_authorization_scope(self, scope: AuthorizationScope) -> None:
         """Sets or clears whether the UAV has authorization to perform an

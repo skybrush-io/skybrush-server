@@ -397,7 +397,7 @@ async def run(app: SkybrushServer, configuration, logger: Logger):
                     show_warning = False
 
                 if show_warning:
-                    logger.warn("SSDP receiver socket closed: '{}'".format(error))
+                    logger.warning("SSDP receiver socket closed: '{}'".format(error))
 
                 last_error = now
 

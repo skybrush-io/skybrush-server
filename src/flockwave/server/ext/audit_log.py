@@ -181,7 +181,7 @@ class InMemoryStorage(Storage):
 
     @asynccontextmanager
     async def use(self, log: Logger):
-        log.warn(
+        log.warning(
             "Using in-memory audit log storage. Log entries will not be persisted."
         )
         yield

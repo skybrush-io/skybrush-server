@@ -79,7 +79,9 @@ class LocationFromUAVSExtension(Extension):
                 maybe_uav = self._pick_uav_to_track()
             except Exception:
                 maybe_uav = None
-                self.log.warn("Error while finding UAV to track, retrying in 1 second")
+                self.log.warning(
+                    "Error while finding UAV to track, retrying in 1 second"
+                )
 
             if maybe_uav is not None:
                 return maybe_uav

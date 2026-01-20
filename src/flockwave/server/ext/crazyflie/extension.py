@@ -63,7 +63,7 @@ class CrazyflieDronesExtension(UAVExtension[CrazyflieDriver]):
         try:
             preferred_controller = ControllerType.from_json(controller_spec)
         except ValueError:
-            self.log.warn(
+            self.log.warning(
                 f"Unknown preferred controller in configuration: {controller_spec!r}"
             )
         else:

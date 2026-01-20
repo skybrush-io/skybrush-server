@@ -70,7 +70,7 @@ class GeofenceManager:
         """Constructs a MAVFTP connection object to the given UAV."""
         sender = partial(uav.driver.send_packet, target=uav)
         log = uav.driver.log
-        return cls(sender, log=log, uav_id=uav.id)  # pyright: ignore[reportArgumentType]
+        return cls(sender, log=log, uav_id=uav.id)
 
     def __init__(
         self,

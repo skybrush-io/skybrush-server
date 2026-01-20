@@ -2912,7 +2912,7 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
         # which means that we would get an all-blue display in Live after a
         # successful show.
 
-        errors = {
+        errors: dict[int, Any] = {
             FlockwaveErrorCode.SLEEPING.value: False,
             FlockwaveErrorCode.LANDING.value: show_stage
             is DroneShowExecutionStage.LANDING,

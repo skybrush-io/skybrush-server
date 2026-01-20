@@ -34,7 +34,7 @@ class User:
     @property
     def is_logged_in(self) -> bool:
         """Returns whether this object represents a logged-in user."""
-        return self.name or self.domain
+        return bool(self.name or self.domain)
 
     @property
     def json(self) -> str:

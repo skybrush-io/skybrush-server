@@ -245,6 +245,7 @@ async def get_configuration(as_attachment: bool = False, compact: bool = False):
     """Returns the current configuration of the server in JSON format."""
     if app is None:
         abort(403)
+    assert app is not None
 
     config = get_server_configuration_as_json(app, compact=compact)
     formatted_config = json.dumps(config, indent=2, sort_keys=True)

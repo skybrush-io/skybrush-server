@@ -658,12 +658,12 @@ class MissionCommandBundle:
         """
         self.check_validity()
 
-        return {
-            "version": 1,
-            "name": self.name,
-            "items": [command.json for command in self.commands],
-            "startPositions": self.start_positions,
-        }
+        return MissionItemBundle(
+            version=1,
+            name=self.name,
+            items=[command.json for command in self.commands],
+            startPositions=self.start_positions,  # ty:ignore[invalid-argument-type]
+        )
 
     @property
     def participants(self) -> list[int]:

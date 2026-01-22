@@ -630,7 +630,9 @@ class RTKExtension(Extension):
         if isinstance(obj, dict):
             for id, spec in obj.items():
                 try:
-                    preset = RTKConfigurationPreset.from_json(spec, id=id, type=type)
+                    preset = RTKConfigurationPreset.from_json(
+                        cast("dict[str, Any]", spec), id=str(id), type=type
+                    )
                 except Exception:
                     self.log.error(f"Ignoring invalid RTK configuration {id!r}")
                     continue

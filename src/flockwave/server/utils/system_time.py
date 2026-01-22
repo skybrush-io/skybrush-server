@@ -1,5 +1,6 @@
 """Utility functions related to getting or adjusting the system time."""
 
+from collections.abc import Callable
 from pathlib import Path
 from platform import system
 from subprocess import CalledProcessError, run
@@ -7,9 +8,17 @@ from time import time
 
 from trio import to_thread
 
+# Type annotations for platform-specific imports (assigned in try-except below)
+clock_settime: Callable[[int, int | float], None] | None
+CLOCK_REALTIME: int | None
+
 try:
     # not available on Windows
-    from time import CLOCK_REALTIME, clock_settime  # ty:ignore[unresolved-import]
+    from time import CLOCK_REALTIME as _CLOCK_REALTIME
+    from time import clock_settime as _clock_settime
+
+    clock_settime = _clock_settime
+    CLOCK_REALTIME = _CLOCK_REALTIME
 except ImportError:
     clock_settime = CLOCK_REALTIME = None
 
@@ -40,7 +49,7 @@ def can_set_system_time_detailed() -> tuple[bool, str]:
     """
     if system() in ("Darwin", "Linux"):
         # Deferred import because geteuid() is not available on Windows
-        from os import geteuid  # ty:ignore[unresolved-import]
+        from os import geteuid
 
         # Only root can modify the system time
         if geteuid() != 0:

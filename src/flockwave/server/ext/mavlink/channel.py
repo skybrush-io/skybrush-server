@@ -259,7 +259,6 @@ def _create_stream_based_mavlink_message_channel(
     if not isinstance(connection, StreamConnectionBase):
         raise ConnectionNotSupportedError()
 
-    connection = cast(StreamConnectionBase, connection)
     mavlink = mavlink_factory()
 
     def parser(data: bytes) -> list[tuple[MAVLinkMessage, str]]:

@@ -5,11 +5,11 @@ channel between the server and a single client.
 from contextlib import ExitStack
 
 # not available on Windows
-from fcntl import F_GETFL, F_SETFL, fcntl  # ty:ignore[unresolved-import]
+from fcntl import F_GETFL, F_SETFL, fcntl
 from functools import partial
 
 # not available on Windows
-from os import O_NONBLOCK  # ty:ignore[unresolved-import]
+from os import O_NONBLOCK
 
 from flockwave.channels import ParserChannel
 from flockwave.encoders.json import create_json_encoder
@@ -17,7 +17,7 @@ from flockwave.parsers.json import create_json_parser
 from trio import CapacityLimiter, ClosedResourceError, Lock, open_file, open_nursery
 
 # not available on Windows
-from trio.lowlevel import FdStream  # ty:ignore[unresolved-import]
+from trio.lowlevel import FdStream
 
 from flockwave.server.model import CommunicationChannel
 from flockwave.server.utils import overridden

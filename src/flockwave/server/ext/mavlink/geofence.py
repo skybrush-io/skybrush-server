@@ -5,8 +5,9 @@ from __future__ import annotations
 from collections.abc import Iterable
 from enum import IntFlag
 from functools import partial, singledispatch
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, TypedDict
 
+from flockwave.gps.vectors import GPSCoordinate
 from flockwave.logger import Logger
 from trio import TooSlowError, fail_after
 
@@ -28,6 +29,15 @@ from .utils import mavlink_nav_command_to_gps_coordinate
 
 if TYPE_CHECKING:
     from .driver import MAVLinkUAV
+
+
+class PolygonData(TypedDict):
+    """Type representing the current polygon being built."""
+
+    is_inclusion: bool
+    points: list[GPSCoordinate]
+    count: int
+
 
 __all__ = (
     "GeofenceManager",
@@ -116,7 +126,7 @@ class GeofenceManager:
             spec.mission_count(mission_type=mission_type),
         )
 
-        def add_polygon_to_result(poly):
+        def add_polygon_to_result(poly: PolygonData | None) -> None:
             if poly and len(poly["points"]) == poly["count"]:
                 status.polygons.append(
                     GeofencePolygon(
@@ -127,7 +137,7 @@ class GeofenceManager:
         to_point = mavlink_nav_command_to_gps_coordinate
 
         # Iterate over the mission items
-        current_polygon = None  # Status of current polygon
+        current_polygon: PolygonData | None = None  # Status of current polygon
         for index in range(reply.count):
             reply = await self._send_and_wait(
                 spec.mission_request_int(seq=index, mission_type=mission_type),

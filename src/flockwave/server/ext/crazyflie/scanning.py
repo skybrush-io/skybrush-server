@@ -2,6 +2,8 @@
 of a Crazyflie address space for Crazyflie drones.
 """
 
+from __future__ import annotations
+
 from collections.abc import AsyncIterable, Callable, Iterable
 from contextlib import aclosing
 from errno import ENODEV
@@ -31,7 +33,7 @@ Crazyradio addresses to scan."""
 
 def _get_all_addresses_in_connection(
     conn: CrazyradioConnection, priority: int
-) -> "RadioAddressSpace":
+) -> RadioAddressSpace:
     return conn.address_space
 
 
@@ -146,7 +148,7 @@ class DefaultScheduler(Scheduler):
         self._speedup_counter = 10
 
 
-ScannerTaskEvent = tuple["RadioAddressSpace", int, Callable[[], None]]
+ScannerTaskEvent = tuple[RadioAddressSpace, int, Callable[[], None]]
 ScannerTaskSendChannel = SendChannel[ScannerTaskEvent]
 ScannerTaskReceiveChannel = ReceiveChannel[ScannerTaskEvent]
 

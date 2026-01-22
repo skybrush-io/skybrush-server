@@ -148,7 +148,7 @@ class DefaultScheduler(Scheduler):
         self._speedup_counter = 10
 
 
-ScannerTaskEvent = tuple[RadioAddressSpace, int, Callable[[], None]]
+ScannerTaskEvent = tuple["RadioAddressSpace", int, Callable[[], None]]
 ScannerTaskSendChannel = SendChannel[ScannerTaskEvent]
 ScannerTaskReceiveChannel = ReceiveChannel[ScannerTaskEvent]
 

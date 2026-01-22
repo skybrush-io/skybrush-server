@@ -209,7 +209,7 @@ def longest_common_prefix(strings: Sequence[str]) -> str:
     if not strings:
         return ""
 
-    shortest_string: int = min(strings, key=len)  # ty:ignore[no-matching-overload]
+    shortest_string: str = min(strings, key=len)  # ty:ignore[invalid-assignment]
     for i, char in enumerate(shortest_string):
         for other in strings:
             if other[i] != char:

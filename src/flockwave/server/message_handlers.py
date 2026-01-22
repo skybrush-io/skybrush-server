@@ -5,6 +5,7 @@ from inspect import isasyncgen, isawaitable
 from typing import (
     TYPE_CHECKING,
     Any,
+    Protocol,
     TypeVar,
     overload,
 )
@@ -32,11 +33,18 @@ __all__ = (
 C = TypeVar("C")
 T = TypeVar("T")
 
-GenericMapperMessageFactory = Callable[
-    ["MessageHub", Iterable[str], FlockwaveMessage | None, Client | None],
-    FlockwaveNotification | FlockwaveResponse,
-]
-"""Type alias for SOMETHING-INF-style Flockwave message factory functions"""
+
+class GenericMapperMessageFactory(Protocol):
+    """Type alias for SOMETHING-INF-style Flockwave message factory functions"""
+
+    def __call__(
+        self,
+        hub: MessageHub,
+        ids: Iterable[str],
+        message: FlockwaveMessage | None = None,
+        client: Client | None = None,
+    ) -> FlockwaveNotification | FlockwaveResponse: ...
+
 
 MessageBodyTransformationSpec = (
     Callable[[Any], Any] | dict[str, Callable[[Any], Any]] | None

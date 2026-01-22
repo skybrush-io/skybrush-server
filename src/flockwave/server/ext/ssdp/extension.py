@@ -277,7 +277,11 @@ def is_valid_service(service: str) -> bool:
     if registry is not None and registry.contains(service):
         return True
 
-    channel = app.channel_type_registry.find_by_id(service)
+    try:
+        channel = app.channel_type_registry.find_by_id(service)
+    except KeyError:
+        return False
+
     return channel.get_ssdp_location() is not None
 
 

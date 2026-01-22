@@ -2,8 +2,6 @@
 server.
 """
 
-from typing import Any
-
 from jwt import decode
 from jwt.exceptions import (
     ExpiredSignatureError,
@@ -18,10 +16,17 @@ from flockwave.server.model.authentication import (
     AuthenticationMethod,
     AuthenticationResult,
 )
+from flockwave.server.model.client import Client
 
 
 class JWTAuthentication(AuthenticationMethod):
-    def __init__(self, algorithms, secret, issuer=None, audience=None):
+    def __init__(
+        self,
+        algorithms: list[str],
+        secret: str,
+        issuer: str | None = None,
+        audience: str | None = None,
+    ):
         """Constructor.
 
         Parameters:
@@ -43,17 +48,15 @@ class JWTAuthentication(AuthenticationMethod):
     def id(self):
         return "jwt"
 
-    def authenticate(self, client, data):
-        params: dict[str, Any] = {
-            "issuer": self._issuer,
-            "algorithms": self._algorithms,
-        }
-
-        if self._audience is not None:
-            params["audience"] = self._audience
-
+    def authenticate(self, client: Client, data: str) -> AuthenticationResult:
         try:
-            decoded = decode(data, self._secret, **params)
+            decoded = decode(
+                data,
+                self._secret,
+                issuer=self._issuer,
+                algorithms=self._algorithms,
+                audience=self._audience,
+            )
         except ExpiredSignatureError:
             return AuthenticationResult.failure(reason="JWT token expired")
         except InvalidAudienceError:

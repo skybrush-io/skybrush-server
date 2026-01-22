@@ -1,8 +1,5 @@
 """Connection-related model objects."""
 
-from enum import Enum
-from typing import TYPE_CHECKING
-
 from flockwave.spec.schema import get_complex_object_schema, get_enum_from_schema
 
 from .metamagic import ModelMeta
@@ -10,17 +7,8 @@ from .mixins import TimestampLike, TimestampMixin
 
 __all__ = ("ConnectionInfo", "ConnectionPurpose", "ConnectionStatus")
 
-if TYPE_CHECKING:
-    # TODO: generate a typing file from the schema to be able to
-    # vlaidate the enum values of these classes as well
-
-    class ConnectionPurpose(Enum): ...
-
-    class ConnectionStatus(Enum): ...
-
-else:
-    ConnectionPurpose = get_enum_from_schema("connectionPurpose", "ConnectionPurpose")
-    ConnectionStatus = get_enum_from_schema("connectionStatus", "ConnectionStatus")
+ConnectionPurpose = get_enum_from_schema("connectionPurpose", "ConnectionPurpose")
+ConnectionStatus = get_enum_from_schema("connectionStatus", "ConnectionStatus")
 
 
 class ConnectionInfo(TimestampMixin, metaclass=ModelMeta):

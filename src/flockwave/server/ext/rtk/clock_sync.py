@@ -80,9 +80,10 @@ class GPSClockSynchronizationValidator:
 
         try:
             struct = self._ubx_nav_timeutc_struct
-            dt = datetime(*struct.unpack(payload[: struct.size])).replace(
-                tzinfo=timezone.utc
+            year, month, day, hour, minute, second = struct.unpack(
+                payload[: struct.size]
             )
+            dt = datetime(year, month, day, hour, minute, second, tzinfo=timezone.utc)
             delta = dt - datetime.now(timezone.utc)
         except Exception:
             return

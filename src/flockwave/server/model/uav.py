@@ -11,7 +11,6 @@ from typing import (
     Generic,
     TypedDict,
     TypeVar,
-    cast,
 )
 
 from flockwave.gps.vectors import GPSCoordinate, PositionXYZ, VelocityNED, VelocityXYZ
@@ -395,12 +394,10 @@ class UAVBase(UAV, Generic[TDriver]):
         if position is not None:
             self._status.position.update_from(position, precision=7)
         if position_xyz is not None:
-            if self._status.position_xyz is None:
-                self._status.position_xyz = PositionXYZ()
-            # Narrow the type of self._status.position_xyz since we've ensured it's not None
-            cast(PositionXYZ, self._status.position_xyz).update_from(
-                position_xyz, precision=3
-            )
+            self_position_xyz = self._status.position_xyz
+            if self_position_xyz is None:
+                self._status.position_xyz = self_position_xyz = PositionXYZ()
+            self_position_xyz.update_from(position_xyz, precision=3)
         if heading is not None:
             # Heading is rounded to 2 digits; it is unlikely that more
             # precision is needed and it saves space in the JSON
@@ -413,12 +410,10 @@ class UAVBase(UAV, Generic[TDriver]):
         if velocity is not None:
             self._status.velocity.update_from(velocity, precision=2)
         if velocity_xyz is not None:
-            if self._status.velocity_xyz is None:
-                self._status.velocity_xyz = VelocityXYZ()
-            # Narrow the type of self._status.velocity_xyz since we've ensured it's not None
-            cast(VelocityXYZ, self._status.velocity_xyz).update_from(
-                velocity_xyz, precision=2
-            )
+            self_velocity_xyz = self._status.velocity_xyz
+            if self_velocity_xyz is None:
+                self._status.velocity_xyz = self_velocity_xyz = VelocityXYZ()
+            self_velocity_xyz.update_from(velocity_xyz, precision=2)
         if mode is not None:
             self._status.mode = mode
         if battery is not None:

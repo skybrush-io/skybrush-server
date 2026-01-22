@@ -19,8 +19,6 @@ log: Logger | None = None
 
 async def run(app, configuration, logger):
     """Runs the extension."""
-    global is_public
-
     host = configuration.get("host", "localhost")
     port = configuration.get("port")
 

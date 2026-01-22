@@ -5,7 +5,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from collections import Counter
 from collections.abc import Sequence
-from dataclasses import InitVar, dataclass, field
+from dataclasses import dataclass, field
 from enum import Enum
 from itertools import chain
 from typing import Any, TypedDict
@@ -540,20 +540,17 @@ def _validate_mission_item(
 class MissionCommand(ABC):
     """Abstract superclass for mission commands."""
 
-    # TODO: use Python 3.10+ and field(kw_only=True) and then default base value
-    # can be added instead of explicit id=None argument in child classes
-    id: InitVar[str] | None
+    id: str | None = field(default=None, kw_only=True)
     """The unique identifier of the mission command. Set it to `None` to
     initialize with a random string."""
 
-    # TODO: use Python 3.10+ and field(kw_only=True) and then default base value
-    # can be added instead of explicit participants=None argument in child classes
-    participants: list[int] | None
+    participants: list[int] | None = field(default=None, kw_only=True)
     """Optional restriction of the command to specific participants
     of a multi-UAV mission. Set it to `None` to work with no restrictions."""
 
-    def __post_init__(self, id: str | None) -> None:
-        self.id = default_id_generator() if id is None else id
+    def __post_init__(self) -> None:
+        if self.id is None:
+            self.id = default_id_generator()
 
     @classmethod
     @abstractmethod
@@ -656,11 +653,18 @@ class MissionCommandBundle:
         bundle format.
 
         Raises:
-            RuntimeError if ids of commands are not unique
-
+            RuntimeError: if ids of commands are not unique
         """
         self.check_validity()
 
+        # TODO(vg): fix the typing issues here properly, not by trying to wrap this in
+        # MissionItemBundle(...)
+        #
+        # Problems:
+        #   - self.commands contains MissionCommand instances, but MissionItemBundle
+        #     expects MissionItem instances in its 'items' field
+        #   - every item in self.start_positions can be None, but MissionItemBundle expects
+        #     only ScaledLatLonPair instances (not None) in its 'startPositions' field
         return {
             "version": 1,
             "name": self.name,

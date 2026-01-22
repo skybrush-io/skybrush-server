@@ -2,6 +2,8 @@
 of a Crazyflie address space for Crazyflie drones.
 """
 
+from __future__ import annotations
+
 from collections.abc import AsyncIterable, Callable, Iterable
 from contextlib import aclosing
 from errno import ENODEV
@@ -29,7 +31,9 @@ drones with whom we have recently lost contact) and that return a list of
 Crazyradio addresses to scan."""
 
 
-def _get_all_addresses_in_connection(conn: CrazyradioConnection, priority: int):
+def _get_all_addresses_in_connection(
+    conn: CrazyradioConnection, priority: int
+) -> RadioAddressSpace:
     return conn.address_space
 
 
@@ -54,6 +58,7 @@ class Scheduler:
         # If we have received a Crazyradio connection, create a getter for it
         if not callable(addresses):
             addresses = partial(_get_all_addresses_in_connection, addresses)
+        assert not isinstance(addresses, CrazyradioConnection)
 
         async for item in self._run(addresses):
             yield item

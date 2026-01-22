@@ -113,7 +113,7 @@ class RegistryBase(Generic[T], Registry[T]):
         """Returns an entry from this registry given its ID.
 
         Parameters:
-            entry_id (str): the ID of the entry to retrieve
+            entry_id: the ID of the entry to retrieve
 
         Returns:
             object: the entry with the given ID

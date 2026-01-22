@@ -112,9 +112,10 @@ class Beacon(ModelObject):
             active: whether the beacon is active (operational)
         """
         if position is not None:
-            if self._status.position is None:
-                self._status.position = GPSCoordinate()
-            self._status.position.update_from(position, precision=7)
+            self_position = self._status.position
+            if self_position is None:
+                self._status.position = self_position = GPSCoordinate()
+            self_position.update_from(position, precision=7)
         if heading is not None:
             # Heading is rounded to 2 digits; it is unlikely that more
             # precision is needed and it saves space in the JSON

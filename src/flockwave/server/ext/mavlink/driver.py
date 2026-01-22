@@ -1732,7 +1732,11 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
 
         self._update_errors_from_drone_show_status_packet(data)
 
-        updates = {"light": data.light, "gps": self._gps_fix, "debug": debug}
+        updates: dict[str, Any] = {
+            "light": data.light,
+            "gps": self._gps_fix,
+            "debug": debug,
+        }
 
         if self._rssi_mode is RSSIMode.RTCM_COUNTERS:
             updates["rssi"] = [
@@ -2155,7 +2159,7 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
     @property
     def supports_scheduled_takeoff(self) -> bool:
         """Returns whether the UAV supports scheduled takeoffs."""
-        return self._autopilot and self._autopilot.supports_scheduled_takeoff
+        return self._autopilot.supports_scheduled_takeoff
 
     async def set_authorization_scope(self, scope: AuthorizationScope) -> None:
         """Sets or clears whether the UAV has authorization to perform an
@@ -2908,7 +2912,7 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
         # which means that we would get an all-blue display in Live after a
         # successful show.
 
-        errors = {
+        errors: dict[int, Any] = {
             FlockwaveErrorCode.SLEEPING.value: False,
             FlockwaveErrorCode.LANDING.value: show_stage
             is DroneShowExecutionStage.LANDING,

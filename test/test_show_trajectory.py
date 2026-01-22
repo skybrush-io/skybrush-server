@@ -1,3 +1,5 @@
+from typing import Any
+
 from pytest import approx, raises
 
 from flockwave.server.show.player import create_function_for_segment
@@ -106,7 +108,7 @@ def test_trajectory_segment_splitting_to_max_duration():
 
 
 class TestTrajectorySpecification:
-    spec_json = {
+    spec_json: dict[str, Any] = {
         "version": 1,
         "points": [
             [0, [10, 20, 0], []],

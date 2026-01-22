@@ -653,7 +653,7 @@ class ArduPilot(Autopilot):
         ):
             mask = ArduPilotWithSkybrush.CAPABILITY_MASK
             if (capabilities & mask) == mask:
-                result = ArduPilotWithSkybrush(self)  # pyright: ignore[reportAbstractUsage]
+                result = ArduPilotWithSkybrush(self)
 
         return result
 

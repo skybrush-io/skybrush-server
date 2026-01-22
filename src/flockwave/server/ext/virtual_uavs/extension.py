@@ -155,6 +155,8 @@ class VirtualUAVProviderExtension(UAVExtension[VirtualUAVDriver]):
             spawn: function to call when the UAV wishes to spawn a background
                 task
         """
+        assert self.app is not None
+
         try:
             await self._simulate_uav(uav, spawn)
         except RegistryFull:

@@ -7,7 +7,6 @@ from .mixins import TimestampLike, TimestampMixin
 
 __all__ = ("ConnectionInfo", "ConnectionPurpose", "ConnectionStatus")
 
-
 ConnectionPurpose = get_enum_from_schema("connectionPurpose", "ConnectionPurpose")
 ConnectionStatus = get_enum_from_schema("connectionStatus", "ConnectionStatus")
 
@@ -41,8 +40,8 @@ class ConnectionInfo(TimestampMixin, metaclass=ModelMeta):
         """
         TimestampMixin.__init__(self, timestamp)
         self.id = id
-        self.purpose = ConnectionPurpose.other
-        self.status = ConnectionStatus.unknown
+        self.purpose = ConnectionPurpose.other  # type: ignore
+        self.status = ConnectionStatus.unknown  # type: ignore
 
     def update_status_from(self, connection):
         """Updates the status member of this object from the status of the

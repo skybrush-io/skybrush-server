@@ -60,7 +60,7 @@ class UDPChannel(CommunicationChannel):
         """Constructor."""
         # self.address won't ever be None because the caller will call
         # self.bind_to() before using the channel
-        self.address = None  # pyright: ignore[reportAttributeAccessIssue]
+        self.address = None  # ty:ignore[invalid-assignment]
         self.sock = sock
 
     def bind_to(self, client: Client) -> None:
@@ -78,7 +78,7 @@ class UDPChannel(CommunicationChannel):
     async def close(self, force: bool = False) -> None:
         if self.sock:
             if force:
-                await aclose_forcefully(self.sock)  # pyright: ignore[reportArgumentType]
+                await aclose_forcefully(self.sock)  # ty:ignore[invalid-argument-type]
             else:
                 await self.sock.aclose()
 

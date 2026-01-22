@@ -263,7 +263,7 @@ async def run(app, configuration: dict[str, Any], logger: Logger):
     # Check whether the user has enabled Socket.IO v4, Socket.IO v5 or both.
     protocols = get_enabled_protocols(configuration, logger)
     if not protocols:
-        logger.warn("No protocols enabled in configuration")
+        logger.warning("No protocols enabled in configuration")
         return
 
     socketio_servers = []

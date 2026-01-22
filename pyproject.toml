@@ -164,6 +164,11 @@ extend-exclude = ["src/flockwave/server/ext/socketio/vendor"]
 [tool.ty.environment]
 python = ".venv"
 
+[tool.ty.src]
+exclude=[
+  "src/flockwave/server/ext/socketio/vendor"
+]
+
 [build-system]
 requires = ["uv_build>=0.8.0"]
 build-backend = "uv_build"

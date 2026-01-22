@@ -23,7 +23,9 @@ from .base import Extension
 
 if TYPE_CHECKING:
     # not available on Windows
-    from trio.lowlevel import FdStream  # ty:ignore[unresolved-import]
+    from trio.lowlevel import (
+        FdStream,  # ty:ignore[unresolved-import, unused-ignore-comment]
+    )
 
 
 _status_to_string = {
@@ -62,7 +64,9 @@ class ConsoleStatusExtension(Extension):
             return
 
         # Lazy import -- FdStream not available on Windows
-        from trio.lowlevel import FdStream  # ty:ignore[unresolved-import]
+        from trio.lowlevel import (
+            FdStream,  # ty:ignore[unresolved-import, unused-ignore-comment]
+        )
 
         with ExitStack() as stack:
             connection_registry = app.connection_registry

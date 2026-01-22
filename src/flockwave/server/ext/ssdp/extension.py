@@ -277,8 +277,12 @@ def is_valid_service(service: str) -> bool:
     if registry is not None and registry.contains(service):
         return True
 
-    channel = app.channel_type_registry.find_by_id(service)
-    return channel and channel.get_ssdp_location() is not None
+    try:
+        channel = app.channel_type_registry.find_by_id(service)
+    except KeyError:
+        return False
+
+    return channel.get_ssdp_location() is not None
 
 
 def prepare_response(
@@ -397,7 +401,7 @@ async def run(app: SkybrushServer, configuration, logger: Logger):
                     show_warning = False
 
                 if show_warning:
-                    logger.warn("SSDP receiver socket closed: '{}'".format(error))
+                    logger.warning("SSDP receiver socket closed: '{}'".format(error))
 
                 last_error = now
 

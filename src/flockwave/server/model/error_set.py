@@ -13,8 +13,8 @@ class ErrorSet(Set[int]):
     def __init__(self, errors: Iterable[int] | None = None) -> None:
         self._errors = set(errors) if errors is not None else set()
 
-    def __contains__(self, item) -> bool:
-        return item in self._errors
+    def __contains__(self, x: object) -> bool:
+        return x in self._errors
 
     def __iter__(self) -> Iterator[int]:
         return iter(self._errors)

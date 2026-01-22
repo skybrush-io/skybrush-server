@@ -347,17 +347,19 @@ def create_filter_function(
     reject_by_class = _process_rtcm_packet_id_list(reject)
 
     def filter(packet: GPSPacket) -> bool:
+        cls: type[RTCMV2Packet] | type[RTCMV3Packet]
+        rtcm_packet: RTCMV2Packet | RTCMV3Packet
         if isinstance(packet, RTCMV2Packet):
-            cls = RTCMV2Packet
+            rtcm_packet, cls = packet, RTCMV2Packet
         elif isinstance(packet, RTCMV3Packet):
-            cls = RTCMV3Packet
+            rtcm_packet, cls = packet, RTCMV3Packet
         else:
             return False
 
-        if reject_by_class and packet.packet_type in reject_by_class[cls]:
+        if reject_by_class and rtcm_packet.packet_type in reject_by_class[cls]:
             return False
 
-        if accept_by_class and packet.packet_type not in accept_by_class[cls]:
+        if accept_by_class and rtcm_packet.packet_type not in accept_by_class[cls]:
             return False
 
         return True

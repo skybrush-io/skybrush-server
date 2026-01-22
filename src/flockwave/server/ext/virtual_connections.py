@@ -79,6 +79,8 @@ async def worker(app, configuration, logger):
 
 async def _handle_single_connection(app, connection: Connection, name: str) -> None:
     with app.connection_registry.use(
-        connection, name=name, purpose=ConnectionPurpose.debug
+        connection,
+        name=name,
+        purpose=ConnectionPurpose.debug,  # type: ignore
     ):
         await app.supervise(connection, task=VirtualConnection.close_soon)

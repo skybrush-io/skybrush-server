@@ -61,7 +61,7 @@ class ConnectionRegistry(RegistryBase["ConnectionRegistryEntry"]):
         connection: Connection,
         name: str,
         description: str | None = None,
-        purpose=ConnectionPurpose.other,
+        purpose=ConnectionPurpose.other,  # type: ignore
     ) -> "ConnectionRegistryEntry":
         """Adds a connection with the given name to the registry.
 
@@ -87,7 +87,7 @@ class ConnectionRegistry(RegistryBase["ConnectionRegistryEntry"]):
                 )
             )
 
-        purpose = purpose if purpose is not None else ConnectionPurpose.other
+        purpose = purpose if purpose is not None else ConnectionPurpose.other  # type: ignore
 
         entry = self._create_entry(connection, name)
         entry.purpose = purpose

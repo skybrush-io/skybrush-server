@@ -58,7 +58,7 @@ class BeaconExtension(Extension):
 
         beacon = Beacon(id=beacon_id)
         with self.app.object_registry.use(beacon):
-            with beacon.updated.connected_to(self._on_beacon_updated, sender=beacon):  # type: ignore
+            with beacon.updated.connected_to(self._on_beacon_updated, sender=beacon):
                 yield beacon
 
     def exports(self):

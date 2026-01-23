@@ -96,7 +96,7 @@ class ShowUploadLoggingMiddleware:
         self, message: FlockwaveMessage
     ) -> tuple[dict[str, Any] | None, str | None]:
         """Checks whether the given message is a show upload and extracts the
-        show specification out of the message if it is.
+        show specification and the show hash out of the message if it is.
         """
         type = message.get_type()
         if type == "OBJ-CMD":

@@ -47,9 +47,7 @@ class ShowUploadLoggingMiddleware:
     """
 
     _last_show_upload_hash: str | None = None
-    """The hash of the last show upload that was seen by the
-    middleware.
-    """
+    """The hash of the last show upload that was seen by the middleware."""
 
     _log: Logger
     """Logger that the middleware will write to."""
@@ -60,8 +58,6 @@ class ShowUploadLoggingMiddleware:
         Parameter:
             log: logger that the middleware will write to
         """
-        self._last_show_upload_hash = None
-        self._last_show_metadata = None
         self._last_show_upload_command_at = monotonic() - 1000
         self._log = log
 

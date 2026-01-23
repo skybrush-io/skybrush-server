@@ -8,9 +8,10 @@ from collections.abc import Sequence
 from dataclasses import dataclass, field
 from enum import Enum
 from itertools import chain
-from typing import Any, TypedDict
+from typing import Any, TypedDict, cast
 
 from flockwave.server.show import (
+    ShowSpecification,
     get_flight_area_configuration_from_show_specification,
     get_geofence_configuration_from_show_specification,
     get_safety_configuration_from_show_specification,
@@ -1222,6 +1223,7 @@ class UpdateFlightAreaMissionCommand(MissionCommand):
         # we need a "flightArea" and a "coordinateSystem" entry, where the latter
         # can be "geodetic" or a complete JSON representation of a
         # FlatEarthToGPSCoordinateTransformation
+        params = cast(ShowSpecification, params)
         flight_area = get_flight_area_configuration_from_show_specification(params)
 
         return cls(id=id, participants=participants, flight_area=flight_area)
@@ -1261,6 +1263,7 @@ class UpdateGeofenceMissionCommand(MissionCommand):
         # we need a "geofence" and a "coordinateSystem" entry, where the latter
         # can be "geodetic" or a complete JSON representation of a
         # FlatEarthToGPSCoordinateTransformation
+        params = cast(ShowSpecification, params)
         geofence = get_geofence_configuration_from_show_specification(params)
 
         return cls(id=id, participants=participants, geofence=geofence)

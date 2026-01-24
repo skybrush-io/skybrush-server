@@ -20,7 +20,11 @@ from flockwave.gps.enums import GNSSType
 from flockwave.gps.formatting import format_gps_coordinate_as_nmea_gga_message
 from flockwave.gps.rtk import RTKMessageSet, RTKSurveySettings
 from flockwave.gps.ubx.rtk_config import UBXRTKBaseConfigurator
-from flockwave.gps.vectors import ECEFToGPSCoordinateTransformation, GPSCoordinate
+from flockwave.gps.vectors import (
+    ECEFCoordinate,
+    ECEFToGPSCoordinateTransformation,
+    GPSCoordinate,
+)
 from trio import CancelScope, open_memory_channel, open_nursery, sleep
 from trio.abc import SendChannel
 from trio_util import AsyncBool, periodic
@@ -100,6 +104,7 @@ class RTKExtension(Extension):
     _statistics: RTKStatistics
     _survey_settings: RTKSurveySettings
     _tx_queue: SendChannel | None = None
+    _config_fixed_position: ECEFCoordinate | None = None
 
     def __init__(self):
         """Constructor."""
@@ -201,6 +206,7 @@ class RTKExtension(Extension):
         if isinstance(fixed, (list, tuple)):
             fixed = {"position": list(fixed)}
 
+        self._config_fixed_position = None
         if isinstance(fixed, dict) and "position" in fixed:
             if "accuracy" not in fixed:
                 self.log.warning(
@@ -224,6 +230,8 @@ class RTKExtension(Extension):
 
             position = self._survey_settings.position
             if position is not None:
+                # Store the fixed position from config so we can restore it when switching RTK sources.
+                self._config_fixed_position = position
                 coord = ECEFToGPSCoordinateTransformation().to_gps(position).format()
                 self.log.info(
                     f"Base station is fixed at {coord} (accuracy: {accuracy}m)"
@@ -370,6 +378,9 @@ class RTKExtension(Extension):
             else:
                 preset_id, desired_preset = None, None
 
+            # Reset fixed position when switching RTK source, but restore from config if available
+            self._survey_settings.position = self._config_fixed_position
+
             self._request_preset_switch_later(desired_preset)
             self._last_preset_request_from_user = (
                 RTKPresetRequest(preset_id=preset_id)
@@ -411,6 +422,10 @@ class RTKExtension(Extension):
                 error = "Settings object missing or invalid"
 
             if error is None:
+                position = self._survey_settings.position
+                if position is not None:
+                    # Populate antenna.position immediately so RTK-STAT reflects it
+                    self._statistics.set_antenna_position_from_ecef(position)
                 self._request_survey()
 
             return hub.acknowledge(message, outcome=error is None, reason=error)
@@ -808,6 +823,10 @@ class RTKExtension(Extension):
                             self._statistics.set_to_fixed_with_accuracy(
                                 accuracy_cm / 100.0
                             )
+                            if position is not None:
+                                self._statistics.set_antenna_position_from_ecef(
+                                    position
+                                )
                         else:
                             self.log.error(
                                 f"Failed to configure {preset.title!r}",

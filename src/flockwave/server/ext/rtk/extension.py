@@ -20,7 +20,11 @@ from flockwave.gps.enums import GNSSType
 from flockwave.gps.formatting import format_gps_coordinate_as_nmea_gga_message
 from flockwave.gps.rtk import RTKMessageSet, RTKSurveySettings
 from flockwave.gps.ubx.rtk_config import UBXRTKBaseConfigurator
-from flockwave.gps.vectors import ECEFToGPSCoordinateTransformation, GPSCoordinate
+from flockwave.gps.vectors import (
+    ECEFCoordinate,
+    ECEFToGPSCoordinateTransformation,
+    GPSCoordinate,
+)
 from trio import CancelScope, open_memory_channel, open_nursery, sleep
 from trio.abc import SendChannel
 from trio_util import AsyncBool, periodic
@@ -100,7 +104,7 @@ class RTKExtension(Extension):
     _statistics: RTKStatistics
     _survey_settings: RTKSurveySettings
     _tx_queue: SendChannel | None = None
-    _config_fixed_position: Any | None = None
+    _config_fixed_position: ECEFCoordinate | None = None
 
     def __init__(self):
         """Constructor."""

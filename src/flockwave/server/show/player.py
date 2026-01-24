@@ -3,8 +3,8 @@ trajectory.
 """
 
 from bisect import bisect
+from collections.abc import Callable
 from math import inf
-from typing import Callable, Optional
 
 from pyledctrl.player import Player as LightPlayer
 
@@ -54,11 +54,11 @@ def _create_bezier_function_for_segment(
 
     def func(ratio: float) -> Point:
         if ratio == 0:
-            return tuple(coords[0])  # type: ignore
+            return tuple(coords[0])
         elif ratio == 1:
-            return tuple(coords[-1])  # type: ignore
+            return tuple(coords[-1])
         else:
-            return tuple(de_casteljau_step(0, len(coords) - 1, ratio))  # type: ignore
+            return tuple(de_casteljau_step(0, len(coords) - 1, ratio))
 
     return func
 
@@ -70,7 +70,7 @@ def _create_linear_interpolation_function(
     coeffs = list(zip(diff, start))
 
     def func(ratio: float) -> Point:
-        return tuple(a * ratio + b for a, b in coeffs)  # type: ignore
+        return tuple(a * ratio + b for a, b in coeffs)
 
     return func
 
@@ -80,7 +80,7 @@ class TrajectoryPlayer:
     where the drone should be at any given moment in time.
     """
 
-    _current_segment: Optional[TrajectorySegment]
+    _current_segment: TrajectorySegment | None
     _current_segment_start_time: float
     _current_segment_end_time: float
     _current_segment_length: float

@@ -1,13 +1,14 @@
 """Command line launcher for the Skybrush gateway server."""
 
-import click
-import dotenv
 import logging
 import sys
+
+import click
+import dotenv
 import trio
+from flockwave.logger import log
 
 from flockwave import logger
-from flockwave.logger import log
 
 from .version import __version__
 

@@ -12,26 +12,27 @@ M-SEARCH requests for root devices, and for searches for
 
 from __future__ import annotations
 
-from contextlib import closing
-from datetime import datetime
-from errno import EADDRNOTAVAIL, ENODEV
-from http.server import BaseHTTPRequestHandler
-from logging import Logger
-from io import BytesIO
-from os import getenv
-from random import random
-from time import mktime, monotonic
-from trio import sleep
-from typing import Iterable, TYPE_CHECKING
-from wsgiref.handlers import format_date_time
-
 import platform
 import re
 import socket
 import struct
+from collections.abc import Iterable
+from contextlib import closing
+from datetime import datetime
+from errno import EADDRNOTAVAIL, ENODEV
+from http.server import BaseHTTPRequestHandler
+from io import BytesIO
+from logging import Logger
+from os import getenv
+from random import random
+from time import mktime, monotonic
+from typing import TYPE_CHECKING
+from wsgiref.handlers import format_date_time
 
 from flockwave.connections import IPAddressAndPort
 from flockwave.networking import create_socket
+from trio import sleep
+
 from flockwave.server.ports import suggest_port_number_for_service, use_port
 from flockwave.server.registries import find_in_registry
 from flockwave.server.utils import overridden
@@ -276,8 +277,12 @@ def is_valid_service(service: str) -> bool:
     if registry is not None and registry.contains(service):
         return True
 
-    channel = app.channel_type_registry.find_by_id(service)
-    return channel and channel.get_ssdp_location() is not None
+    try:
+        channel = app.channel_type_registry.find_by_id(service)
+    except KeyError:
+        return False
+
+    return channel.get_ssdp_location() is not None
 
 
 def prepare_response(
@@ -396,7 +401,7 @@ async def run(app: SkybrushServer, configuration, logger: Logger):
                     show_warning = False
 
                 if show_warning:
-                    logger.warn("SSDP receiver socket closed: '{}'".format(error))
+                    logger.warning("SSDP receiver socket closed: '{}'".format(error))
 
                 last_error = now
 

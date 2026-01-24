@@ -2,19 +2,15 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from enum import IntFlag
 from functools import partial, singledispatch
-from trio import fail_after, TooSlowError
-from typing import (
-    Any,
-    Dict,
-    Iterable,
-    Optional,
-    Union,
-    TYPE_CHECKING,
-)
+from typing import TYPE_CHECKING, Any, TypedDict
 
+from flockwave.gps.vectors import GPSCoordinate
 from flockwave.logger import Logger
+from trio import TooSlowError, fail_after
+
 from flockwave.server.model.geofence import (
     GeofenceCircle,
     GeofencePolygon,
@@ -33,6 +29,15 @@ from .utils import mavlink_nav_command_to_gps_coordinate
 
 if TYPE_CHECKING:
     from .driver import MAVLinkUAV
+
+
+class PolygonData(TypedDict):
+    """Type representing the current polygon being built."""
+
+    is_inclusion: bool
+    points: list[GPSCoordinate]
+    count: int
+
 
 __all__ = (
     "GeofenceManager",
@@ -64,7 +69,7 @@ class GeofenceManager:
     object.
     """
 
-    _log: Optional[Logger]
+    _log: Logger | None
     """Logger that the manager object can use to log messages."""
 
     _uav_id: str
@@ -75,12 +80,12 @@ class GeofenceManager:
         """Constructs a MAVFTP connection object to the given UAV."""
         sender = partial(uav.driver.send_packet, target=uav)
         log = uav.driver.log
-        return cls(sender, log=log, uav_id=uav.id)  # pyright: ignore[reportArgumentType]
+        return cls(sender, log=log, uav_id=uav.id)
 
     def __init__(
         self,
         sender: UAVBoundPacketSenderFn,
-        log: Optional[Logger] = None,
+        log: Logger | None = None,
         uav_id: str = "",
     ):
         """Constructor.
@@ -96,7 +101,7 @@ class GeofenceManager:
         self._uav_id = uav_id
 
     async def get_geofence_areas(
-        self, status: Optional[GeofenceStatus] = None
+        self, status: GeofenceStatus | None = None
     ) -> GeofenceStatus:
         """Returns the configured areas of the geofence from the MAVLink
         connection.
@@ -121,7 +126,7 @@ class GeofenceManager:
             spec.mission_count(mission_type=mission_type),
         )
 
-        def add_polygon_to_result(poly):
+        def add_polygon_to_result(poly: PolygonData | None) -> None:
             if poly and len(poly["points"]) == poly["count"]:
                 status.polygons.append(
                     GeofencePolygon(
@@ -132,7 +137,7 @@ class GeofenceManager:
         to_point = mavlink_nav_command_to_gps_coordinate
 
         # Iterate over the mission items
-        current_polygon = None  # Status of current polygon
+        current_polygon: PolygonData | None = None  # Status of current polygon
         for index in range(reply.count):
             reply = await self._send_and_wait(
                 spec.mission_request_int(seq=index, mission_type=mission_type),
@@ -186,7 +191,7 @@ class GeofenceManager:
         return status
 
     async def get_geofence_rally_points(
-        self, status: Optional[GeofenceStatus] = None
+        self, status: GeofenceStatus | None = None
     ) -> GeofenceStatus:
         """Returns the configured rally points of the geofence from the MAVLink
         connection.
@@ -229,7 +234,7 @@ class GeofenceManager:
         return status
 
     async def get_geofence_areas_and_rally_points(
-        self, status: Optional[GeofenceStatus] = None
+        self, status: GeofenceStatus | None = None
     ) -> GeofenceStatus:
         """Returns the areas and rally points of the geofence from the MAVLink
         connection.
@@ -247,7 +252,7 @@ class GeofenceManager:
 
     async def set_geofence_areas(
         self,
-        areas: Optional[Iterable[Union[GeofenceCircle, GeofencePolygon]]] = None,
+        areas: Iterable[GeofenceCircle | GeofencePolygon] | None = None,
     ) -> None:
         """Uploads the given geofence polygons and circles to the MAVLink
         connection.
@@ -412,7 +417,7 @@ class GeofenceManager:
         timeout: float = 1.5,
         retries: int = 5,
         suppress_sending: bool = False,
-    ) -> Optional[MAVLinkMessage]:
+    ) -> MAVLinkMessage | None:
         """Sends a message according to the given MAVLink message specification
         to the drone and waits for an expected reply, re-sending the message
         as needed a given number of times before timing out.
@@ -491,12 +496,12 @@ class GeofenceManager:
 
 
 @singledispatch
-def _convert_area_to_mission_items(area: Any) -> list[tuple[int, Dict]]:
+def _convert_area_to_mission_items(area: Any) -> list[tuple[int, dict]]:
     raise ValueError(f"Unknown geofence area type: {type(area)!r}")
 
 
 @_convert_area_to_mission_items.register
-def _(area: GeofenceCircle) -> list[tuple[int, Dict]]:
+def _(area: GeofenceCircle) -> list[tuple[int, dict]]:
     return [
         (
             (
@@ -514,7 +519,7 @@ def _(area: GeofenceCircle) -> list[tuple[int, Dict]]:
 
 
 @_convert_area_to_mission_items.register
-def _(area: GeofencePolygon) -> list[tuple[int, Dict]]:
+def _(area: GeofencePolygon) -> list[tuple[int, dict]]:
     points = list(area.points)
     if points and points[0] == points[-1]:
         points.pop()

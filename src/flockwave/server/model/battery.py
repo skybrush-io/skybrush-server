@@ -1,5 +1,3 @@
-from typing import Optional
-
 __all__ = ("BatteryInfo",)
 
 
@@ -22,19 +20,19 @@ class BatteryInfo:
         self._charging = bool(value)
 
     @property
-    def percentage(self) -> Optional[int]:
+    def percentage(self) -> int | None:
         return self._percentage
 
     @percentage.setter
-    def percentage(self, value: Optional[int]) -> None:
+    def percentage(self, value: int | None) -> None:
         self._percentage = int(value) if value is not None else None
 
     @property
-    def voltage(self) -> Optional[float]:
+    def voltage(self) -> float | None:
         return self._voltage
 
     @voltage.setter
-    def voltage(self, value: Optional[float]) -> None:
+    def voltage(self, value: float | None) -> None:
         self._voltage = float(value) if value is not None else None
 
     @property

@@ -2,21 +2,17 @@
 of a Crazyflie address space for Crazyflie drones.
 """
 
+from __future__ import annotations
+
+from collections.abc import AsyncIterable, Callable, Iterable
 from contextlib import aclosing
 from errno import ENODEV
 from functools import partial
 from time import monotonic
+from typing import TYPE_CHECKING, ClassVar
+
 from trio import Event, move_on_after, sleep
 from trio.abc import ReceiveChannel, SendChannel
-from typing import (
-    TYPE_CHECKING,
-    AsyncIterable,
-    Callable,
-    ClassVar,
-    Iterable,
-    Optional,
-    Union,
-)
 
 from flockwave.server.utils import longest_common_prefix
 
@@ -28,19 +24,19 @@ if TYPE_CHECKING:
 __all__ = ("CrazyradioScannerTask",)
 
 
-#: Typing for address list getters, i.e. functions that can be called with
-#: a priority argument (0 for normal scans, 1 for scans that intend to find
-#: drones with whom we have recently lost contact) and that return a list of
-#: Crazyradio addresses to scan
 AddressListGetter = Callable[[int], Iterable[str]]
+"""Typing for address list getters, i.e. functions that can be called with
+a priority argument (0 for normal scans, 1 for scans that intend to find
+drones with whom we have recently lost contact) and that return a list of
+Crazyradio addresses to scan."""
 
 
-def _get_all_addresses_in_connection(conn: CrazyradioConnection, priority: int):
+def _get_all_addresses_in_connection(
+    conn: CrazyradioConnection, priority: int
+) -> RadioAddressSpace:
     return conn.address_space
 
 
-#: Typing for schedulers, o.e. async iterators that yield list of addresses to
-#: scan or yield `None` to request a full scan of an address space
 class Scheduler:
     """Interface specification for schedulers; these are essentially async
     iterators that yield lists of addresses to scan, or yield `None` to
@@ -48,8 +44,8 @@ class Scheduler:
     """
 
     async def run(
-        self, addresses: Union[CrazyradioConnection, AddressListGetter]
-    ) -> AsyncIterable[Optional[list[str]]]:
+        self, addresses: CrazyradioConnection | AddressListGetter
+    ) -> AsyncIterable[list[str] | None]:
         """Runs the scheduler, yielding lists of addresses to scan, or yielding
         `None` when a full scan is requested.
 
@@ -62,11 +58,12 @@ class Scheduler:
         # If we have received a Crazyradio connection, create a getter for it
         if not callable(addresses):
             addresses = partial(_get_all_addresses_in_connection, addresses)
+        assert not isinstance(addresses, CrazyradioConnection)
 
         async for item in self._run(addresses):
             yield item
 
-    def _run(self, addresses: AddressListGetter) -> AsyncIterable[Optional[list[str]]]:
+    def _run(self, addresses: AddressListGetter) -> AsyncIterable[list[str] | None]:
         raise NotImplementedError
 
     def wake_up(self) -> None:

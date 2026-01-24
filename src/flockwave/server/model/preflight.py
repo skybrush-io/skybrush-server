@@ -1,12 +1,11 @@
-from bidict import bidict  # type: ignore
 from enum import Enum
-from typing import Optional
 
-from flockwave.server.model.metamagic import ModelMeta
+from bidict import bidict
 from flockwave.spec.schema import get_complex_object_schema
 
-from .utils import enum_to_json
+from flockwave.server.model.metamagic import ModelMeta
 
+from .utils import enum_to_json
 
 __all__ = ("PreflightCheckInfo",)
 
@@ -65,9 +64,6 @@ class PreflightCheckResult(Enum):
         )
 
 
-#: Ordering of preflight check results; used when summarizing the results of a
-#: preflight checklist into a single result value. Larger values take precedence
-#: over smaller ones
 _numeric_preflight_check_results = bidict(
     {
         PreflightCheckResult.OFF: 0,
@@ -79,6 +75,9 @@ _numeric_preflight_check_results = bidict(
         PreflightCheckResult.ERROR: 60,
     }
 )
+"""Ordering of preflight check results; used when summarizing the results of a
+preflight checklist into a single result value. Larger values take precedence
+over smaller ones."""
 
 
 class PreflightCheckItem(metaclass=ModelMeta):
@@ -91,7 +90,7 @@ class PreflightCheckItem(metaclass=ModelMeta):
     def __init__(
         self,
         id: str,
-        label: Optional[str] = None,
+        label: str | None = None,
         result: PreflightCheckResult = PreflightCheckResult.OFF,
     ):
         self.id = id
@@ -118,7 +117,7 @@ class PreflightCheckInfo(metaclass=ModelMeta):
     def add_item(
         self,
         id: str,
-        label: Optional[str] = None,
+        label: str | None = None,
         result: PreflightCheckResult = PreflightCheckResult.OFF,
     ) -> None:
         self.items.append(PreflightCheckItem(id=id, label=label, result=result))
@@ -207,7 +206,7 @@ class PreflightCheckInfo(metaclass=ModelMeta):
         return PreflightCheckResult.OFF
 
     def set_result(
-        self, id: str, result: PreflightCheckResult, label: Optional[str] = None
+        self, id: str, result: PreflightCheckResult, label: str | None = None
     ) -> None:
         """Updates the result of a single preflight check in this preflight
         check report.

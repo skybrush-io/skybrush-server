@@ -6,18 +6,19 @@ from __future__ import annotations
 
 import json
 import threading
-
+from collections.abc import Awaitable, Callable
 from contextlib import ExitStack
 from dataclasses import dataclass, field
 from functools import wraps
 from logging import Logger
 from operator import attrgetter
+from typing import TYPE_CHECKING, Any
+
+from flockwave.ext.errors import NotSupportedError
 from quart import abort, make_response, redirect, render_template, request, url_for
 from trio import sleep_forever
 from trio.lowlevel import current_root_task
-from typing import Any, Awaitable, Callable, Optional, TYPE_CHECKING
 
-from flockwave.ext.errors import NotSupportedError
 from flockwave.server.utils import overridden
 from flockwave.server.utils.quart import make_blueprint
 
@@ -29,8 +30,9 @@ from .utils import (
 
 if TYPE_CHECKING:
     from flockwave.ext.manager import ExtensionManager
-    from flockwave.server.app import SkybrushServer
     from semver import Version
+
+    from flockwave.server.app import SkybrushServer
 
 
 __all__ = ("index", "run")
@@ -44,9 +46,9 @@ blueprint = make_blueprint(
     static_url_path="/static",
 )
 
-app: Optional["SkybrushServer"] = None
+app: SkybrushServer | None = None
 is_public: bool = False
-log: Optional[Logger] = None
+log: Logger | None = None
 
 
 async def run(app, configuration, logger):
@@ -79,7 +81,7 @@ class ExtensionInfo:
     dependencies: list[str] = field(default_factory=list)
     dependents: list[str] = field(default_factory=list)
     restart_requested: bool = False
-    version: Optional[Version] = None
+    version: Version | None = None
 
     @classmethod
     def for_extension(
@@ -143,6 +145,7 @@ def _get_extension_by_name(name: str) -> tuple[ExtensionInfo, "ExtensionManager"
     if extension is None:
         abort(404)
 
+    assert extension is not None
     assert extension_manager is not None
 
     return extension, extension_manager
@@ -180,13 +183,13 @@ async def _to_json(
             # handled silently
             message = "Operation not supported"
         elif isinstance(ex, OSError):
-            message = ex.strerror
+            message = ex.strerror or "OS error"
             if log:
-                log.error(ex.strerror)
+                log.error(message)
         else:
             message = str(ex)
             if log:
-                log.exception(ex)
+                log.exception(message)
         return {"error": message}
 
     return {"result": on_success} if result is None else {"result": result}
@@ -242,6 +245,7 @@ async def get_configuration(as_attachment: bool = False, compact: bool = False):
     """Returns the current configuration of the server in JSON format."""
     if app is None:
         abort(403)
+    assert app is not None
 
     config = get_server_configuration_as_json(app, compact=compact)
     formatted_config = json.dumps(config, indent=2, sort_keys=True)

@@ -2,9 +2,10 @@
 and related applications.
 """
 
+from collections.abc import Iterator, Mapping
 from contextlib import contextmanager
 from types import MappingProxyType
-from typing import Iterator, Literal, Mapping, Optional
+from typing import Literal
 
 from deprecated import deprecated
 
@@ -62,13 +63,11 @@ def get_port_map() -> Mapping[str, int]:
 
 
 @deprecated(reason="use suggest_port_number_for_service")
-def get_port_number_for_service(service: str, base_port: Optional[int] = None) -> int:
+def get_port_number_for_service(service: str, base_port: int | None = None) -> int:
     return suggest_port_number_for_service(service, base_port)
 
 
-def suggest_port_number_for_service(
-    service: str, base_port: Optional[int] = None
-) -> int:
+def suggest_port_number_for_service(service: str, base_port: int | None = None) -> int:
     """Returns a suggested port number for the given Skybrush-related service.
 
     Service names are keys in the `SERVICE_MAP` dictionary. Typical service

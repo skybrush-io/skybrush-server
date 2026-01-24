@@ -2,11 +2,11 @@
 clock of the computer running the server.
 """
 
-from blinker import Signal
 from datetime import datetime, timezone
 from struct import Struct
 from typing import ClassVar
 
+from blinker import Signal
 from flockwave.gps.ubx.enums import UBXClass, UBXNAVSubclass
 from flockwave.gps.ubx.packet import UBXPacket
 
@@ -80,7 +80,10 @@ class GPSClockSynchronizationValidator:
 
         try:
             struct = self._ubx_nav_timeutc_struct
-            dt = datetime(*struct.unpack(payload[: struct.size]), tzinfo=timezone.utc)
+            year, month, day, hour, minute, second = struct.unpack(
+                payload[: struct.size]
+            )
+            dt = datetime(year, month, day, hour, minute, second, tzinfo=timezone.utc)
             delta = dt - datetime.now(timezone.utc)
         except Exception:
             return

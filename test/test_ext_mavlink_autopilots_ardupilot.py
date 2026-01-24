@@ -1,4 +1,5 @@
 from pathlib import Path
+
 from flockwave.server.ext.mavlink.autopilots.ardupilot import (
     decode_parameters_from_packed_format,
     encode_parameters_to_packed_format,

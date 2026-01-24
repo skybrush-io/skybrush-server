@@ -1,14 +1,14 @@
 from __future__ import annotations
+
 from typing import TYPE_CHECKING
 
 from flockwave.server.errors import NotSupportedError
 from flockwave.server.model.geofence import GeofenceConfigurationRequest, GeofenceStatus
 from flockwave.server.model.safety import SafetyConfigurationRequest
 
-from ..enums import MAVAutopilot, MAVModeFlag, MAVSysStatusSensor
+from ..enums import MAVAutopilot, MAVModeFlag, MAVSysStatusSensor, MAVType
 from ..errors import UnknownFlightModeError
 from ..types import MAVLinkFlightModeNumbers, MAVLinkMessage
-
 from .base import Autopilot
 from .registry import register_for_mavlink_type
 
@@ -24,9 +24,6 @@ class PX4(Autopilot):
 
     name = "PX4"
 
-    #: Custom mode dictionary, containing the primary name and the aliases for
-    #: each known main flight mode. The primary name should be from one of the
-    #: constants in the FlightMode enum of the Flockwave spec
     _main_modes = {
         1: ("manual",),
         2: ("alt", "alt hold"),
@@ -38,9 +35,10 @@ class PX4(Autopilot):
         8: ("rattitude",),
         9: ("simple",),
     }
+    """Custom mode dictionary, containing the primary name and the aliases for
+    each known main flight mode. The primary name should be from one of the
+    constants in the FlightMode enum of the Flockwave spec."""
 
-    #: Custom mode dictionary, containing the primary name and the aliases for
-    #: each known submode of the "auto" flight mode
     _auto_submodes = {
         2: ("takeoff",),
         3: ("loiter",),
@@ -50,9 +48,9 @@ class PX4(Autopilot):
         8: ("follow",),
         9: ("precland",),
     }
+    """Custom mode dictionary, containing the primary name and the aliases for
+    each known submode of the "auto" flight mode."""
 
-    #: Mapping from mode names to the corresponding basemode / mode / submode
-    #: triplets
     _mode_names_to_numbers = {
         "manual": (MAVModeFlag.CUSTOM_MODE_ENABLED, 1, 0),
         "althold": (MAVModeFlag.CUSTOM_MODE_ENABLED, 2, 0),
@@ -73,9 +71,13 @@ class PX4(Autopilot):
         "stabilize": (MAVModeFlag.CUSTOM_MODE_ENABLED, 7, 0),
         "rattitude": (MAVModeFlag.CUSTOM_MODE_ENABLED, 8, 0),
     }
+    """Mapping from mode names to the corresponding basemode / mode / submode
+    triplets."""
 
     @classmethod
-    def describe_custom_mode(cls, base_mode: int, custom_mode: int) -> str:
+    def describe_custom_mode(
+        cls, base_mode: int, custom_mode: int, vehicle_type: int | MAVType | None = None
+    ) -> str:
         main_mode = (custom_mode & 0x00FF0000) >> 16
         submode = (custom_mode & 0xFF000000) >> 24
         main_mode_name = cls._main_modes.get(main_mode)

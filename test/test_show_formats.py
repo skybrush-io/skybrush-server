@@ -3,11 +3,10 @@ from pytest import raises
 from flockwave.server.show.formats import (
     SegmentEncoder,
     SkybrushBinaryFileFeatures,
-    SkybrushBinaryShowFile,
     SkybrushBinaryFormatBlockType,
+    SkybrushBinaryShowFile,
 )
 from flockwave.server.show.trajectory import TrajectorySegment
-
 
 SIMPLE_SKYB_FILE_V1 = (
     # Header, version 1

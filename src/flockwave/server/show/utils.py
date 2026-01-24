@@ -1,5 +1,6 @@
+from collections.abc import Sequence
+
 from crcmod import mkCrcFun as make_crc_function
-from typing import Optional, Sequence
 
 __all__ = (
     "BoundingBoxCalculator",
@@ -17,8 +18,8 @@ class BoundingBoxCalculator:
     set of points.
     """
 
-    _max: Optional[list[float]]
-    _min: Optional[list[float]]
+    _max: list[float] | None
+    _min: list[float] | None
 
     def __init__(self, dim: int = 3):
         """Constructor.
@@ -55,7 +56,7 @@ class BoundingBoxCalculator:
             raise ValueError("the bounding box is empty")
         else:
             assert self._min is not None and self._max is not None
-            return tuple(self._min), tuple(self._max)  # type: ignore
+            return tuple(self._min), tuple(self._max)
 
     def pad(self, amount: float) -> None:
         """Pads the bounding box on each side with the given padding.

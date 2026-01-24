@@ -1,10 +1,11 @@
 from __future__ import annotations
 
-from heapq import heappush, heappop
-from logging import ERROR, WARNING, INFO, DEBUG
-from typing import NamedTuple, Optional, Union, TYPE_CHECKING
+from heapq import heappop, heappush
+from logging import DEBUG, ERROR, INFO, WARNING
+from typing import TYPE_CHECKING, NamedTuple
 
 from flockwave.gps.vectors import GPSCoordinate
+
 from flockwave.server.model.log import Severity
 
 from .enums import MAVFrame, MAVParamType, MAVState
@@ -48,7 +49,7 @@ _mavlink_severity_to_flockwave_severity = [
 ]
 
 
-def can_communicate_infer_from_heartbeat(message: Optional[MAVLinkMessage]) -> bool:
+def can_communicate_infer_from_heartbeat(message: MAVLinkMessage | None) -> bool:
     """Decides whether a drone that has sent the given heartbeat message is
     likely to be able to communicate now. This function is used to distinguish
     drones in a sleep state from drones where the flight controller is alive.
@@ -61,9 +62,7 @@ def can_communicate_infer_from_heartbeat(message: Optional[MAVLinkMessage]) -> b
     )
 
 
-def decode_param_from_wire_representation(
-    value, type: MAVParamType
-) -> Union[int, float]:
+def decode_param_from_wire_representation(value, type: MAVParamType) -> int | float:
     """Decodes the given value when it is interpreted as a given MAVLink type,
     received from a MAVLink parameter retrieval command.
 
@@ -107,9 +106,7 @@ def flockwave_severity_from_mavlink_severity(severity: int) -> Severity:
         return _mavlink_severity_to_flockwave_severity[severity]
 
 
-def log_id_from_message(
-    message: MAVLinkMessage, network_id: Optional[str] = None
-) -> str:
+def log_id_from_message(message: MAVLinkMessage, network_id: str | None = None) -> str:
     """Returns an identifier composed from the MAVLink system and component ID
     that is suitable for displaying in the logging output.
     """
@@ -151,7 +148,7 @@ def mavlink_nav_command_to_gps_coordinate(message: MAVLinkMessage) -> GPSCoordin
 
 
 def mavlink_version_number_to_semver(
-    number: int, custom: Optional[list[int]] = None
+    number: int, custom: list[int] | None = None
 ) -> str:
     """Converts a version number found in the MAVLink `AUTOPILOT_VERSION` message
     to a string representation, in semantic version number format.
@@ -252,7 +249,7 @@ class ChunkAssembler:
         self._num_flushed = 0
         self._num_pending = 0
 
-    def add_chunk(self, offset: int, data: bytes) -> Optional[bytes]:
+    def add_chunk(self, offset: int, data: bytes) -> bytes | None:
         """Adds a new chunk to the chunk assembler, starting at the given
         offset.
 

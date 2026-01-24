@@ -5,12 +5,14 @@ properties for themselves and validate themselves automatically based on
 a JSON schema description.
 """
 
+from collections.abc import Callable
 from contextlib import contextmanager
 from dataclasses import dataclass
-from typing import Any, Callable, Dict, Optional, TypeVar
+from typing import Any, TypeVar
+
+from flockwave.spec.schema import Schema
 
 from flockwave.server.utils.validation import cached_validator_for
-from flockwave.spec.schema import Schema
 
 __all__ = ("ModelMeta",)
 
@@ -36,13 +38,13 @@ class PropertyInfo:
     """
 
     name: str
-    title: Optional[str] = None
-    description: Optional[str] = None
+    title: str | None = None
+    description: str | None = None
     default: Any = None
-    mappers: Optional[MapperPair] = None
+    mappers: MapperPair | None = None
 
     @classmethod
-    def from_json_schema(cls, name: str, definition: Dict):
+    def from_json_schema(cls, name: str, definition: dict):
         """Constructs a property information object from its JSON schema
         representation.
 
@@ -65,7 +67,7 @@ class PropertyInfo:
 def collect_properties(
     schema: Any,
     mappers: dict[str, MapperPair],
-    result: Optional[dict[str, PropertyInfo]] = None,
+    result: dict[str, PropertyInfo] | None = None,
 ) -> dict[str, PropertyInfo]:
     """Collects information about all the properties defined on a JSON
     schema.
@@ -202,7 +204,7 @@ class ModelMetaHelpers:
         dct.update(__init__=__init__, from_json=from_json, json=json)
 
     @staticmethod
-    def add_proxy_property(dct: Dict, name: str, property_info: PropertyInfo):
+    def add_proxy_property(dct: dict, name: str, property_info: PropertyInfo):
         """Extends the class being constructed with a single proxy property
         that accesses an entry in the underlying JSON object directly.
 
@@ -215,7 +217,7 @@ class ModelMetaHelpers:
 
         if property_info.mappers is None:
 
-            def getter(self):  # type: ignore
+            def getter(self):
                 try:
                     return self._json[name]
                 except KeyError:
@@ -397,7 +399,7 @@ class ModelMetaHelpers:
             return {}
 
     @classmethod
-    def find_schema(cls, dct, bases) -> Optional[Schema]:
+    def find_schema(cls, dct, bases) -> Schema | None:
         """Finds the JSON schema that the class being constructed must
         adhere to. This is done by looking up the ``schema`` attribute
         in the class dictionary. If no such attribute is found, one of

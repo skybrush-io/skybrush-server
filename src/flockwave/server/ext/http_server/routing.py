@@ -1,10 +1,16 @@
 """Simple routing middleware for the HTTP server extension."""
 
 from bisect import insort_left
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from functools import partial, total_ordering
-from typing import Any, Callable, Iterable, Optional
 
+from hypercorn.typing import (
+    ASGIFramework,
+    ASGIReceiveCallable,
+    ASGISendCallable,
+    Scope,
+)
 
 __all__ = ("RoutingMiddleware",)
 
@@ -16,15 +22,17 @@ class Route:
     middleware.
     """
 
-    app: Any
-    scopes: Optional[frozenset[str]] = None
-    path: Optional[str] = None
+    app: ASGIFramework
+    scopes: frozenset[str] | None = None
+    path: str | None = None
     priority: int = 0
 
-    async def handle(self, scope, receive, send):
+    async def handle(
+        self, scope: Scope, receive: ASGIReceiveCallable, send: ASGISendCallable
+    ) -> None:
         return await self.app(scope, receive, send)
 
-    def matches(self, scope):
+    def matches(self, scope: Scope) -> bool:
         """Returns whether the route object matches (i.e. should handle)
         the given scope.
         """
@@ -55,11 +63,15 @@ class RoutingMiddleware:
     WebSocket requests at the designated Socket.IO path (`/socket.io`).
     """
 
+    _routes: list[Route]
+
     def __init__(self):
         """Constructor."""
         self._routes = [Route(handle_lifespan_scope, scopes=frozenset({"lifespan"}))]
 
-    async def __call__(self, scope, receive, send):
+    async def __call__(
+        self, scope: Scope, receive: ASGIReceiveCallable, send: ASGISendCallable
+    ) -> None:
         """Entry point for incoming requests according to the ASGI
         specification.
         """
@@ -71,9 +83,9 @@ class RoutingMiddleware:
 
     def add(
         self,
-        app,
-        scopes: Optional[Iterable[str]] = None,
-        path: Optional[str] = None,
+        app: ASGIFramework,
+        scopes: Iterable[str] | None = None,
+        path: str | None = None,
         priority: int = 0,
     ) -> Callable[[], None]:
         """Mounts a new application for the given scopes at the given path.
@@ -110,7 +122,9 @@ class RoutingMiddleware:
         self._routes.remove(route)
 
 
-async def handle_lifespan_scope(scope, receive, send):
+async def handle_lifespan_scope(
+    scope: Scope, receive: ASGIReceiveCallable, send: ASGISendCallable
+) -> None:
     """ASGI handler function for the events of the lifespan scope."""
     event = await receive()
     if event["type"] == "lifespan.startup":
@@ -119,7 +133,9 @@ async def handle_lifespan_scope(scope, receive, send):
         await send({"type": "lifespan.shutdown.complete"})
 
 
-async def default_handler(scope, receive, send):
+async def default_handler(
+    scope: Scope, receive: ASGIReceiveCallable, send: ASGISendCallable
+) -> None:
     """Default ASGI handler function that simply returns an HTTP 404
     error for requests that are not matched by any other handler.
     """
@@ -128,6 +144,7 @@ async def default_handler(scope, receive, send):
             "type": "http.response.start",
             "status": 404,
             "headers": [(b"Content-Type", b"text/plain")],
+            "trailers": False,
         }
     )
-    await send({"type": "http.response.body", "body": b"Not Found"})
+    await send({"type": "http.response.body", "body": b"Not Found", "more_body": False})

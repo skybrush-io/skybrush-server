@@ -2,14 +2,20 @@
 drones with a single Crazyradio.
 """
 
-from trio import Event
-from typing import AsyncContextManager, Callable, ClassVar, Optional
+from __future__ import annotations
+
+from collections.abc import Callable
+from typing import TYPE_CHECKING, AsyncContextManager, ClassVar
 
 from aiocflib.crtp.broadcaster import Broadcaster
 from aiocflib.crtp.crtpstack import CRTPPort
 from aiocflib.utils.addressing import parse_radio_uri
-
 from flockwave.connections.base import TaskConnectionBase
+from trio import Event
+
+if TYPE_CHECKING:
+    from aiocflib.utils.addressing import RadioAddressSpace
+
 
 __all__ = ("CrazyradioConnection", "parse_radio_uri")
 
@@ -34,11 +40,11 @@ class CrazyradioConnection(TaskConnectionBase):
     """
 
     _radio = None
-    _radio_factory: Optional[Callable[[], AsyncContextManager]] = None
-    _request_close_event: Optional[Event] = None
+    _radio_factory: Callable[[], AsyncContextManager] | None = None
+    _request_close_event: Event | None = None
 
     @classmethod
-    def parse_radio_index_from_uri(cls, uri: str) -> Optional[int]:
+    def parse_radio_index_from_uri(cls, uri: str) -> int | None:
         """Parses the given connection URI and returns the index of the
         Crazyradio that it refers to, or ``None`` if the connection URI is not
         a Crazyflie connection URI or it does not use a radio.
@@ -101,7 +107,7 @@ class CrazyradioConnection(TaskConnectionBase):
             self._radio = None
 
     @property
-    def address_space(self):
+    def address_space(self) -> RadioAddressSpace:
         """Returns the address space associated to the connection.
 
         The address space is a sequence containing the addresses of all the

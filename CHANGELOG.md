@@ -5,7 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [2.40.1] - 2025-12-10
+## [2.40.3] - 2025-12-27
+
+### Changed
+
+- When sending a shutdown request to a MAVLink drone, we now set parameter 6 of the
+  `MAV_CMD_PREFLIGHT_SHUTDOWN` command to the magic value that forces a shutdown
+  even if the drone is airborne (at least on ArduPilot-based drones). Note that this
+  does not change the _physical_ behaviour of the drone as we already send a forced
+  motor-off command before the shutdown command, which has already ensured a drastic
+  shutdown anyway via physical means.
+
+### Fixed
+
+- Fixed a bug that made the server incorrectly report `mode 127` as the flight mode
+  for Skybrush-based drones when they were set to drone show flight mode.
+
+- Fixed a bug that prevented the server from starting an RTK survey with alternative
+  settings.
+
+## [2.40.2] - 2025-12-11
 
 ### Fixed
 

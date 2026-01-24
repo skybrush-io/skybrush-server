@@ -10,7 +10,7 @@ must extend.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Generic, TYPE_CHECKING, TypeVar
+from typing import TYPE_CHECKING, Generic, TypeVar
 
 if TYPE_CHECKING:
     from .client import Client

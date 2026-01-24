@@ -2,8 +2,8 @@
 
 from collections import defaultdict
 from time import monotonic
+
 from trio_util import periodic
-from typing import Optional
 
 from .driver import MAVLinkUAV
 from .enums import MAVMessageType
@@ -11,7 +11,7 @@ from .enums import MAVMessageType
 __all__ = ("check_uavs_alive",)
 
 
-def _create_state_summary() -> list[Optional[int]]:
+def _create_state_summary() -> list[int | None]:
     return [None] * 256
 
 
@@ -33,7 +33,7 @@ async def check_uavs_alive(
         timeout: number of seconds to wait after a heartbeat to consider a UAV
             as disconnected
     """
-    state_summaries: dict[str, list[Optional[int]]] = defaultdict(_create_state_summary)
+    state_summaries: dict[str, list[int | None]] = defaultdict(_create_state_summary)
 
     # TODO(ntamas): remove UAVs that have been disconnected for a long while?
     async for _ in periodic(delay):
@@ -58,7 +58,7 @@ async def check_uavs_alive(
 
 
 def send_state_summary_signal(
-    uavs: list[MAVLinkUAV], signal, summaries: dict[str, list[Optional[int]]]
+    uavs: list[MAVLinkUAV], signal, summaries: dict[str, list[int | None]]
 ):
     """Helper function that creates a status summary for the UAVs in the given
     list, sorted by MAVLink network IDs, and emits the summaries to subscribers

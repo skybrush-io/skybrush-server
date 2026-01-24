@@ -3,17 +3,18 @@ allow weather station providers to register themselves.
 """
 
 from inspect import isawaitable
-from trio import sleep_forever
 
 from flockwave.gps.vectors import GPSCoordinate
+from trio import sleep_forever
+
 from flockwave.server.message_hub import MessageHub
 from flockwave.server.model.client import Client
 from flockwave.server.model.messages import FlockwaveMessage, FlockwaveResponse
 from flockwave.server.model.weather import Weather
-from flockwave.server.registries import find_in_registry, WeatherProviderRegistry
+from flockwave.server.registries import WeatherProviderRegistry, find_in_registry
 
-#: Registry containing the registered weather providers by ID
 registry = WeatherProviderRegistry()
+"""Registry containing the registered weather providers by ID."""
 
 
 async def handle_WTH_AT(message: FlockwaveMessage, sender: Client, hub: MessageHub):

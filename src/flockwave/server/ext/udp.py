@@ -8,17 +8,18 @@ port where the request was sent from.
 
 from __future__ import annotations
 
-from contextlib import closing, ExitStack
+from contextlib import ExitStack, closing
 from functools import partial
 from logging import Logger
-from trio import aclose_forcefully, CapacityLimiter, open_nursery
-from trio.socket import SOCK_DGRAM
-from typing import Any, TYPE_CHECKING, Protocol
+from typing import TYPE_CHECKING, Any, Protocol
 
 from flockwave.connections import IPAddressAndPort
 from flockwave.encoders.json import create_json_encoder
-from flockwave.parsers.json import create_json_parser
 from flockwave.networking import create_socket, format_socket_address
+from flockwave.parsers.json import create_json_parser
+from trio import CapacityLimiter, aclose_forcefully, open_nursery
+from trio.socket import SOCK_DGRAM
+
 from flockwave.server.model import Client, CommunicationChannel
 from flockwave.server.ports import suggest_port_number_for_service, use_port
 from flockwave.server.utils import overridden
@@ -59,7 +60,7 @@ class UDPChannel(CommunicationChannel):
         """Constructor."""
         # self.address won't ever be None because the caller will call
         # self.bind_to() before using the channel
-        self.address = None  # pyright: ignore[reportAttributeAccessIssue]
+        self.address = None  # ty:ignore[invalid-assignment]
         self.sock = sock
 
     def bind_to(self, client: Client) -> None:
@@ -77,7 +78,7 @@ class UDPChannel(CommunicationChannel):
     async def close(self, force: bool = False) -> None:
         if self.sock:
             if force:
-                await aclose_forcefully(self.sock)  # pyright: ignore[reportArgumentType]
+                await aclose_forcefully(self.sock)  # ty:ignore[invalid-argument-type]
             else:
                 await self.sock.aclose()
 

@@ -2,23 +2,17 @@
 values from a chosen data source.
 """
 
-import httpx
-
 from bisect import bisect
+from collections.abc import Awaitable, Callable, Iterable, Sequence
 from datetime import datetime, timedelta, timezone
 from math import ceil, floor
 from time import monotonic
-from trio import fail_after, Lock, sleep_forever, TooSlowError
-from typing import (
-    Awaitable,
-    Callable,
-    ClassVar,
-    Iterable,
-    Optional,
-    Sequence,
-)
+from typing import ClassVar
 
+import httpx
 from flockwave.gps.vectors import GPSCoordinate
+from trio import Lock, TooSlowError, fail_after, sleep_forever
+
 from flockwave.server.model.weather import Weather
 
 
@@ -56,8 +50,8 @@ class KpIndexData:
         """
         result = cls()
         timestamps, values = tuple(zip(*sorted(midpoints_and_values)))
-        result._timestamps = timestamps  # type: ignore
-        result._values = values  # type: ignore
+        result._timestamps = timestamps
+        result._values = values
         result._update_min_max_timestamps()
         return result
 
@@ -71,7 +65,7 @@ class KpIndexData:
         self._timestamps = []
         self._values = []
 
-    def get_kp_index_for(self, timestamp: int) -> Optional[float]:
+    def get_kp_index_for(self, timestamp: int) -> float | None:
         """Returns an (estimated or definite) Kp-index for the given timestamp,
         measured in seconds from the UNIX epoch, or `None` if there is no data
         for the given timestamp.
@@ -122,9 +116,9 @@ last_data: KpIndexData = KpIndexData.INVALID
 data_valid_until: float = monotonic() - 1
 selected_data_provider: str = ""
 
-#: Mapping from data source names to callables that can be called with a
-#: single timestamp and return the corresponding Kp-index data
 data_providers: dict[str, Callable[[], Awaitable[KpIndexData]]] = {}
+"""Mapping from data source names to callables that can be called with a
+single timestamp and return the corresponding Kp-index data."""
 
 
 async def fetch_kp_index_now() -> None:
@@ -143,7 +137,7 @@ async def fetch_kp_index_now() -> None:
     if data_lock.locked():
         return
 
-    async with data_lock:  # type: ignore
+    async with data_lock:
         try:
             func = data_providers[selected_data_provider]
             last_data = await func()
@@ -244,7 +238,7 @@ async def _fetch_kp_index_from_potsdam() -> KpIndexData:
     return KpIndexData.from_midpoints_and_values(entries)
 
 
-async def provide_kp_index(weather: Weather, position: Optional[GPSCoordinate]) -> None:
+async def provide_kp_index(weather: Weather, position: GPSCoordinate | None) -> None:
     """Extends the given weather object with the planetary Kp index estimate
     at the timestamp corresponding to the weather object.
     """
@@ -272,7 +266,7 @@ async def provide_kp_index(weather: Weather, position: Optional[GPSCoordinate]) 
         weather.kpIndex = kp_index  # type: ignore
 
 
-def set_selected_data_provider(value: Optional[str]) -> None:
+def set_selected_data_provider(value: str | None) -> None:
     """Sets the data provider that we use to retrieve the Kp index estimate from.
     Invalidates data fetched earlier if the data provider changes.
     """

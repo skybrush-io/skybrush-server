@@ -1,21 +1,22 @@
 """Implementation of downloading logs via a MAVLink connection."""
 
+from collections.abc import Callable
 from contextlib import aclosing
 from functools import partial
+
+from flockwave.concurrency import Future
+from flockwave.logger import Logger
 from trio import (
     MemoryReceiveChannel,
     MemorySendChannel,
+    TooSlowError,
     WouldBlock,
     current_time,
     fail_after,
     move_on_after,
     open_memory_channel,
-    TooSlowError,
 )
-from typing import Callable, Optional
 
-from flockwave.concurrency import Future
-from flockwave.logger import Logger
 from flockwave.server.model.commands import Progress, ProgressEvents
 from flockwave.server.model.log import FlightLog, FlightLogKind, FlightLogMetadata
 
@@ -55,16 +56,16 @@ class MAVLinkLogDownloader:
     object.
     """
 
-    _log: Optional[Logger]
+    _log: Logger | None
     """Logger that the manager object can use to log messages."""
 
-    _log_being_downloaded: Optional[int] = None
+    _log_being_downloaded: int | None = None
     """ID of the log that is currently being downloaded."""
 
-    _log_listing_future: Optional[Future[list[FlightLogMetadata]]] = None
+    _log_listing_future: Future[list[FlightLogMetadata]] | None = None
     """Future that resolves when the log listing operation completes."""
 
-    _message_channel: Optional[MemorySendChannel[MAVLinkMessage]] = None
+    _message_channel: MemorySendChannel[MAVLinkMessage] | None = None
     """Trio channel on which we feed the current log listing operation with new
     MAVLink messages to process.
     """
@@ -76,12 +77,12 @@ class MAVLinkLogDownloader:
         log = uav.driver.log
         return cls(sender, log=log)
 
-    def __init__(self, sender: Callable, log: Optional[Logger] = None):
+    def __init__(self, sender: Callable, log: Logger | None = None):
         self._sender = sender
         self._log = log
         self._retries = 5
 
-    async def get_log(self, log_id: int) -> ProgressEvents[Optional[FlightLog]]:
+    async def get_log(self, log_id: int) -> ProgressEvents[FlightLog | None]:
         """Retrieves a single log with the given ID from the drone."""
         if self._log_being_downloaded is not None:
             raise RuntimeError("Another log download is in progress")
@@ -143,7 +144,7 @@ class MAVLinkLogDownloader:
 
     async def _get_log_inner(
         self, log_id: int, rx: MemoryReceiveChannel[MAVLinkMessage]
-    ) -> ProgressEvents[Optional[FlightLog]]:
+    ) -> ProgressEvents[FlightLog | None]:
         last_progress_at = current_time()
 
         # We are requesting at most 512 LOG_DATA messages at once to let the
@@ -167,7 +168,7 @@ class MAVLinkLogDownloader:
             log_data: list[bytes] = []
             while not chunks.done:
                 next_range = chunks.get_next_range(max_size=MAX_CHUNK_SIZE)
-                response: Optional[MAVLinkMessage] = await self._send_and_wait(
+                response: MAVLinkMessage | None = await self._send_and_wait(
                     spec.log_request_data(
                         id=log_id, ofs=next_range.offset, count=next_range.size
                     ),
@@ -210,7 +211,7 @@ class MAVLinkLogDownloader:
         self, rx: MemoryReceiveChannel[MAVLinkMessage]
     ) -> list[FlightLogMetadata]:
         # Number of logs to download; ``None`` if we do not know it yet
-        num_logs: Optional[int] = None
+        num_logs: int | None = None
         logs: dict[int, FlightLogMetadata] = {}
 
         try:
@@ -249,9 +250,7 @@ class MAVLinkLogDownloader:
         log_list = [logs[index] for index in sorted(logs.keys())]
         return log_list
 
-    async def _get_single_log_metadata(
-        self, log_id: int
-    ) -> Optional[FlightLogMetadata]:
+    async def _get_single_log_metadata(self, log_id: int) -> FlightLogMetadata | None:
         response = await self._send_and_wait(
             spec.log_request_list(start=log_id, end=log_id),
             spec.log_entry(),

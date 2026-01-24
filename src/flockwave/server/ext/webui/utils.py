@@ -1,14 +1,14 @@
 from __future__ import annotations
 
 import json
-
 from copy import deepcopy
 from shutil import move
 from tempfile import NamedTemporaryFile
-from typing import Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from flockwave.app_framework.configurator import Configuration
+
     from flockwave.server.app import SkybrushServer
 
 __all__ = (
@@ -86,7 +86,7 @@ def get_server_configuration_as_json(
     return config
 
 
-def can_save_server_configuration(app: Optional["SkybrushServer"]) -> bool:
+def can_save_server_configuration(app: SkybrushServer | None) -> bool:
     """Returns whether it is possible to save the current configuration of the
     server back into a configuration file.
     """

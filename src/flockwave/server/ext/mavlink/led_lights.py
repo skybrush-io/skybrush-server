@@ -2,12 +2,12 @@ from __future__ import annotations
 
 from logging import Logger
 from struct import Struct
-from typing import Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING
 
 from flockwave.server.tasks.led_lights import (
+    LEDLightConfigurationManagerBase,
     LightConfiguration,
     LightEffectType,
-    LEDLightConfigurationManagerBase,
 )
 
 from .packets import create_led_control_packet
@@ -40,7 +40,7 @@ class MAVLinkLEDLightConfigurationManager(
 
     def _create_light_control_packet(
         self, config: LightConfiguration
-    ) -> Optional[MAVLinkMessageSpecification]:
+    ) -> MAVLinkMessageSpecification | None:
         """Creates a MAVLink message specification for the MAVLink message that
         we need to send to all the drones in order to instruct them to do the
         current light effect.
@@ -59,7 +59,7 @@ class MAVLinkLEDLightConfigurationManager(
         )
         return create_led_control_packet(data, broadcast=True)
 
-    def _get_logger(self) -> Optional[Logger]:
+    def _get_logger(self) -> Logger | None:
         return self._network.log if self._network else None
 
     async def _send_light_control_packet(

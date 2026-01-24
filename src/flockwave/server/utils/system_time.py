@@ -1,13 +1,24 @@
 """Utility functions related to getting or adjusting the system time."""
 
+from collections.abc import Callable
 from pathlib import Path
 from platform import system
 from subprocess import CalledProcessError, run
 from time import time
+
 from trio import to_thread
 
+# Type annotations for platform-specific imports (assigned in try-except below)
+clock_settime: Callable[[int, int | float], None] | None
+CLOCK_REALTIME: int | None
+
 try:
-    from time import CLOCK_REALTIME, clock_settime
+    # not available on Windows
+    from time import CLOCK_REALTIME as _CLOCK_REALTIME
+    from time import clock_settime as _clock_settime
+
+    clock_settime = _clock_settime
+    CLOCK_REALTIME = _CLOCK_REALTIME
 except ImportError:
     clock_settime = CLOCK_REALTIME = None
 

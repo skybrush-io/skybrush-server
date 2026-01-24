@@ -13,32 +13,24 @@ MAVLink-based drone swarms.
 from __future__ import annotations
 
 from collections import defaultdict
-from contextlib import contextmanager, ExitStack
+from collections.abc import Awaitable, Callable, Iterable, Iterator, Sequence
+from contextlib import ExitStack, contextmanager
 from logging import Logger
 from time import time_ns
+from typing import TYPE_CHECKING, Any
+
+from flockwave.concurrency import Future, race
+from flockwave.connections import (
+    Connection,
+    ListenerConnection,
+    UDPListenerConnection,
+    create_connection,
+)
+from flockwave.networking import find_interfaces_with_address
 from trio import move_on_after, open_nursery, to_thread
 from trio.abc import ReceiveChannel
 from trio_util import periodic
-from typing import (
-    Any,
-    Awaitable,
-    Callable,
-    Iterable,
-    Iterator,
-    Optional,
-    Sequence,
-    Union,
-    TYPE_CHECKING,
-)
 
-from flockwave.connections import (
-    Connection,
-    create_connection,
-    ListenerConnection,
-    UDPListenerConnection,
-)
-from flockwave.concurrency import Future, race
-from flockwave.networking import find_interfaces_with_address
 from flockwave.server.comm import CommunicationManager
 from flockwave.server.model import ConnectionPurpose
 from flockwave.server.utils import nop, overridden
@@ -65,8 +57,8 @@ from .types import (
 from .utils import (
     flockwave_severity_from_mavlink_severity,
     log_id_for_uav,
-    python_log_level_from_mavlink_severity,
     log_id_from_message,
+    python_log_level_from_mavlink_severity,
 )
 
 if TYPE_CHECKING:
@@ -75,8 +67,6 @@ if TYPE_CHECKING:
 
 __all__ = ("MAVLinkNetwork",)
 
-#: MAVLink message specification for heartbeat messages that we are sending
-#: to connected UAVs to keep them sending telemetry data
 HEARTBEAT_SPEC = (
     "HEARTBEAT",
     {
@@ -87,9 +77,11 @@ HEARTBEAT_SPEC = (
         "system_status": MAVState.STANDBY,
     },
 )
+"""MAVLink message specification for heartbeat messages that we are sending
+to connected UAVs to keep them sending telemetry data."""
 
 
-Matchers = dict[str, list[tuple[Optional[int], MAVLinkMessageMatcher, Future]]]
+Matchers = dict[str, list[tuple[int | None, MAVLinkMessageMatcher, Future]]]
 
 
 class MAVLinkNetwork:
@@ -192,7 +184,7 @@ class MAVLinkNetwork:
         id_formatter: Callable[[int, str], str] = "{0}".format,
         packet_loss: float = 0,
         statustext_targets: MAVLinkStatusTextTargetSpecification = MAVLinkStatusTextTargetSpecification.DEFAULT,
-        routing: Optional[dict[str, list[int]]] = None,
+        routing: dict[str, list[int]] | None = None,
         rssi_mode: RSSIMode = RSSIMode.RADIO_STATUS,
         signing: MAVLinkSigningConfiguration = MAVLinkSigningConfiguration.DISABLED,
         uav_system_id_offset: int = 0,
@@ -274,9 +266,9 @@ class MAVLinkNetwork:
     @contextmanager
     def expect_packet(
         self,
-        type: Union[int, str, MAVMessageType],
+        type: int | str | MAVMessageType,
         params: MAVLinkMessageMatcher = None,
-        system_id: Optional[int] = None,
+        system_id: int | None = None,
     ) -> Iterator[Future[MAVLinkMessage]]:
         """Sets up a handler that waits for a MAVLink packet of a given type,
         optionally matching its content with the given parameter values based
@@ -374,7 +366,7 @@ class MAVLinkNetwork:
                         connection,
                         f"MAVLink: {name}" if name else "MAVLink",
                         description=description,
-                        purpose=ConnectionPurpose.uavRadioLink,
+                        purpose=ConnectionPurpose.uavRadioLink,  # type: ignore
                     )
                 )
 
@@ -453,7 +445,7 @@ class MAVLinkNetwork:
                 nursery.cancel_scope.cancel()
 
     async def broadcast_packet(
-        self, spec: MAVLinkMessageSpecification, channel: Optional[str] = None
+        self, spec: MAVLinkMessageSpecification, channel: str | None = None
     ) -> None:
         """Broadcasts a message to all UAVs in the network.
 
@@ -532,7 +524,7 @@ class MAVLinkNetwork:
         """
         self._scheduled_takeoff_manager.notify_config_changed(config)
 
-    def notify_show_clock_start_time_changed(self, start_time: Optional[float]) -> None:
+    def notify_show_clock_start_time_changed(self, start_time: float | None) -> None:
         """Notifies the network that the show clock was started, stopped or
         adjusted in the system.
         """
@@ -551,7 +543,7 @@ class MAVLinkNetwork:
     def uav_system_id_range(self) -> tuple[int, int]:
         return self._uav_system_id_range
 
-    async def send_heartbeat(self, target: MAVLinkUAV) -> Optional[MAVLinkMessage]:
+    async def send_heartbeat(self, target: MAVLinkUAV) -> MAVLinkMessage | None:
         """Sends a heartbeat targeted to the given UAV.
 
         It is assumed (and not checked) that the UAV belongs to this network.
@@ -569,13 +561,13 @@ class MAVLinkNetwork:
 
     async def send_packet(
         self,
-        spec: Optional[MAVLinkMessageSpecification],
+        spec: MAVLinkMessageSpecification | None,
         target: MAVLinkUAV,
         *,
-        wait_for_response: Optional[tuple[str, MAVLinkMessageMatcher]] = None,
-        wait_for_one_of: Optional[dict[str, MAVLinkMessageSpecification]] = None,
-        channel: Optional[str] = None,
-    ) -> Union[None, MAVLinkMessage, tuple[str, MAVLinkMessage]]:
+        wait_for_response: tuple[str, MAVLinkMessageMatcher] | None = None,
+        wait_for_one_of: dict[str, MAVLinkMessageSpecification] | None = None,
+        channel: str | None = None,
+    ) -> MAVLinkMessage | tuple[str, MAVLinkMessage] | None:
         """Sends a message to the given UAV and optionally waits for a matching
         response.
 
@@ -718,7 +710,7 @@ class MAVLinkNetwork:
 
     def _find_uav_from_message(
         self, message: MAVLinkMessage, address: Any
-    ) -> Optional[MAVLinkUAV]:
+    ) -> MAVLinkUAV | None:
         """Finds the UAV that this message is sent from, based on its system ID,
         creating a new UAV object if we have not seen the UAV yet.
 
@@ -1079,7 +1071,7 @@ class MAVLinkNetwork:
             return
 
         def register_by_index(
-            alias: str, index: Optional[Union[int, Iterable[int]]]
+            alias: str, index: int | Iterable[int] | None
         ) -> list[str]:
             if index is None:
                 index = 0

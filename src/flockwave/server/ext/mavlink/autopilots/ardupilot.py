@@ -1,14 +1,17 @@
 from __future__ import annotations
 
+import logging
+from collections.abc import AsyncIterator, Iterable, Sequence
 from contextlib import aclosing
+from copy import deepcopy
 from dataclasses import dataclass
 from functools import partial
 from io import BytesIO
 from struct import Struct
 from time import monotonic
-from trio import sleep, TooSlowError
-from typing import IO, AsyncIterator, Iterable, Sequence, Union, TYPE_CHECKING, cast
-import logging
+from typing import IO, TYPE_CHECKING, cast
+
+from trio import TooSlowError, sleep
 
 from flockwave.server.errors import NotSupportedError
 from flockwave.server.model.commands import (
@@ -55,6 +58,8 @@ __all__ = ("ArduPilot", "ArduPilotWithSkybrush")
 
 log = logging.getLogger(__name__)
 
+FlightModeMap = dict[int, tuple[str, ...]]
+
 
 @register_for_mavlink_type(MAVAutopilot.ARDUPILOTMEGA)
 class ArduPilot(Autopilot):
@@ -63,7 +68,7 @@ class ArduPilot(Autopilot):
     name = "ArduPilot"
 
     # Explicit quadcopter (multirotor) custom modes
-    _quadcopter_custom_modes = {
+    _quadcopter_custom_modes: FlightModeMap = {
         0: ("stab", "stabilize"),
         1: ("acro",),
         2: ("alt", "alt hold"),
@@ -93,10 +98,10 @@ class ArduPilot(Autopilot):
     }
 
     # Backwards-compatible alias used elsewhere in the codebase
-    _custom_modes = _quadcopter_custom_modes
+    _custom_modes: FlightModeMap = _quadcopter_custom_modes
 
     # Rover-specific custom modes (used for MAVType.GROUND_ROVER)
-    _rover_custom_modes = {
+    _rover_custom_modes: FlightModeMap = {
         0: ("manual",),
         1: ("learning",),
         2: ("steer", "steering"),
@@ -110,13 +115,13 @@ class ArduPilot(Autopilot):
     }
 
     # Per-vehicle-type custom modes mapping. Keys are MAVType enum values.
-    _custom_modes_by_mav_type: dict[int, dict[int, tuple[str, ...]]] = {
+    _custom_modes_by_mav_type: dict[int, FlightModeMap] = {
         MAVType.QUADROTOR.value: _quadcopter_custom_modes,
         MAVType.GROUND_ROVER.value: _rover_custom_modes,
         # other vehicle types may be added here
     }
 
-    _geofence_actions = {
+    _geofence_actions: dict[int, tuple[GeofenceAction, ...]] = {
         0: (GeofenceAction.REPORT,),
         1: (GeofenceAction.RETURN, GeofenceAction.LAND),
         2: (GeofenceAction.LAND,),
@@ -144,14 +149,9 @@ class ArduPilot(Autopilot):
                 omitted; in this case the legacy/default mapping is used and
                 a warning message is logged.
         """
-        # Warn if vehicle type is not provided so the user knows we're using the default
-        if vehicle_type is None:
-            log.warning(
-                "Vehicle type unknown; using default quadcopter custom mode mapping"
-            )
-
         # Determine which mapping to use. Accept both MAVType enum members and ints.
-        mapping = cls._custom_modes
+        mapping: FlightModeMap
+
         if vehicle_type is not None:
             try:
                 vt = (
@@ -163,6 +163,10 @@ class ArduPilot(Autopilot):
                 vt = None
             if vt is not None:
                 mapping = cls._custom_modes_by_mav_type.get(vt, cls._custom_modes)
+        else:
+            # Warn if vehicle type is not provided so the user knows we're using the default
+            log.warning("Vehicle type unknown; using default custom mode mapping")
+            mapping = cls._custom_modes
 
         mode_attrs = mapping.get(custom_mode)
         return mode_attrs[0] if mode_attrs else f"mode {custom_mode}"
@@ -470,7 +474,7 @@ class ArduPilot(Autopilot):
             )
 
     def decode_param_from_wire_representation(
-        self, value: Union[int, float], type: MAVParamType
+        self, value: int | float, type: MAVParamType
     ) -> float:
         # ArduCopter does not implement the MAVLink specification correctly and
         # requires all parameter values to be sent as floats, no matter what
@@ -480,7 +484,7 @@ class ArduPilot(Autopilot):
         return float(value)
 
     def encode_param_to_wire_representation(
-        self, value: Union[int, float], type: MAVParamType
+        self, value: int | float, type: MAVParamType
     ) -> float:
         # ArduCopter does not implement the MAVLink specification correctly and
         # requires all parameter values to be sent as floats, no matter what
@@ -649,7 +653,7 @@ class ArduPilot(Autopilot):
         ):
             mask = ArduPilotWithSkybrush.CAPABILITY_MASK
             if (capabilities & mask) == mask:
-                result = ArduPilotWithSkybrush(self)  # pyright: ignore[reportAbstractUsage]
+                result = ArduPilotWithSkybrush(self)
 
         return result
 
@@ -682,13 +686,15 @@ class ArduPilot(Autopilot):
         return False
 
 
-def extend_custom_modes(super, _new_modes, **kwds):
+def extend_custom_modes(
+    super: type[ArduPilot], vehicle_type: int | MAVType, _new_modes: FlightModeMap
+):
     """Helper function to extend the custom modes of an Autopilot_ subclass
     with new modes.
     """
-    result = dict(super._custom_modes)
-    result.update(_new_modes)
-    result.update(**kwds)
+    result = deepcopy(super._custom_modes_by_mav_type)
+    mode_map = result.setdefault(vehicle_type, {})
+    mode_map.update(_new_modes)
     return result
 
 
@@ -698,7 +704,9 @@ class ArduPilotWithSkybrush(ArduPilot):
     """
 
     name = "ArduPilot + Skybrush"
-    _custom_modes = extend_custom_modes(ArduPilot, {127: ("show",)})
+    _custom_modes_by_mav_type = extend_custom_modes(
+        ArduPilot, MAVType.QUADROTOR, {127: ("show",)}
+    )
 
     CAPABILITY_MASK = (
         MAVProtocolCapability.PARAM_FLOAT
@@ -871,7 +879,7 @@ def decode_parameters_from_packed_format(
 
 
 def _propose_mav_type_for_value(value: float) -> MAVParamType:
-    if value.is_integer():
+    if isinstance(value, int) or value.is_integer():
         if -128 <= value <= 127:
             return MAVParamType.INT8
         elif -32768 <= value <= 32767:

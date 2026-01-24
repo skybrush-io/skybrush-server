@@ -2,10 +2,12 @@
 server knows.
 """
 
-from blinker import Signal
-from contextlib import contextmanager
-from typing import Iterator, Optional
+from __future__ import annotations
 
+from collections.abc import Iterator
+from contextlib import contextmanager
+
+from blinker import Signal
 from flockwave.connections.base import Connection, ConnectionState
 
 from ..logger import log as base_log
@@ -58,8 +60,8 @@ class ConnectionRegistry(RegistryBase["ConnectionRegistryEntry"]):
         self,
         connection: Connection,
         name: str,
-        description: Optional[str] = None,
-        purpose=ConnectionPurpose.other,
+        description: str | None = None,
+        purpose=ConnectionPurpose.other,  # type: ignore
     ) -> "ConnectionRegistryEntry":
         """Adds a connection with the given name to the registry.
 
@@ -85,7 +87,7 @@ class ConnectionRegistry(RegistryBase["ConnectionRegistryEntry"]):
                 )
             )
 
-        purpose = purpose if purpose is not None else ConnectionPurpose.other
+        purpose = purpose if purpose is not None else ConnectionPurpose.other  # type: ignore
 
         entry = self._create_entry(connection, name)
         entry.purpose = purpose
@@ -97,7 +99,7 @@ class ConnectionRegistry(RegistryBase["ConnectionRegistryEntry"]):
 
         return entry
 
-    def remove(self, name: str) -> Optional["ConnectionRegistryEntry"]:
+    def remove(self, name: str) -> ConnectionRegistryEntry | None:
         """Removes an entry from the set of connections.
 
         This function is a no-op if there is no such connection.
@@ -176,14 +178,14 @@ class ConnectionRegistryEntry:
 
     info: ConnectionInfo
 
-    _connection: Optional[Connection]
+    _connection: Connection | None
     _registry: ConnectionRegistry
 
     def __init__(
         self,
         registry: ConnectionRegistry,
-        connection: Optional[Connection] = None,
-        name: Optional[str] = None,
+        connection: Connection | None = None,
+        name: str | None = None,
     ):
         self._connection = None
         self._registry = registry
@@ -192,7 +194,7 @@ class ConnectionRegistryEntry:
         self.connection = connection
 
     @property
-    def connection(self) -> Optional[Connection]:
+    def connection(self) -> Connection | None:
         """The connection stored in this entry."""
         return self._connection
 

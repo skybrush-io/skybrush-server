@@ -5,11 +5,13 @@ on the UAVs.
 from __future__ import annotations
 
 from abc import abstractmethod
-from colour import Color
+from collections.abc import Callable, Iterable
 from time import monotonic
-from typing import Callable, Iterable, Optional, Union, TYPE_CHECKING
+from typing import TYPE_CHECKING
 
+from colour import Color
 from flockwave.spec.errors import FlockwaveErrorCode
+
 from flockwave.server.show import LightPlayer
 
 if TYPE_CHECKING:
@@ -18,12 +20,13 @@ if TYPE_CHECKING:
 __all__ = ("LightController", "ModularLightController", "DefaultLightController")
 
 
-#: Type specification of a light module for a modular light controller
 LightModule = Callable[[float, Color], Color]
+"""Type specification of a light module for a modular light controller."""
 
 
-#: Object listing a few well-known colors
 class Colors:
+    """Object listing a few well-known colors."""
+
     BLACK = Color("black")
     WHITE = Color("white")
     RED = Color(rgb=(1, 0, 0))
@@ -50,8 +53,8 @@ class LightController:
         raise NotImplementedError
 
 
-#: Type specification for objects that can be converted into a light module
-LightModuleLike = Union[LightController, LightModule]
+LightModuleLike = LightController | LightModule
+"""Type specification for objects that can be converted into a light module."""
 
 
 class ModularLightController(LightController):
@@ -62,7 +65,7 @@ class ModularLightController(LightController):
     completely or mix another color into it.
     """
 
-    def __init__(self, modules: Optional[Iterable[LightModuleLike]] = None):
+    def __init__(self, modules: Iterable[LightModuleLike] | None = None):
         """Constructor."""
         super().__init__()
         self._modules = []  # type: list[LightModule]
@@ -70,7 +73,7 @@ class ModularLightController(LightController):
         for module in modules or []:
             self.add_module(module)
 
-    def add_module(self, module: Union[LightController, LightModule]) -> None:
+    def add_module(self, module: LightController | LightModule) -> None:
         """Adds a new module to the light controller."""
         if isinstance(module, LightController):
             module = module.evaluate
@@ -99,15 +102,15 @@ class DefaultLightController(ModularLightController):
     for a virtual UAV.
     """
 
-    _light_program_player: Optional[LightPlayer]
-    _light_program_start_time: Optional[float]
+    _light_program_player: LightPlayer | None
+    _light_program_start_time: float | None
 
     _where_are_you_duration_ms: float
-    _where_are_you_start_time: Optional[float]
+    _where_are_you_start_time: float | None
 
-    _override: Optional[Color]
+    _override: Color | None
 
-    def __init__(self, owner: Optional[VirtualUAV] = None):
+    def __init__(self, owner: VirtualUAV | None = None):
         super().__init__(self._create_default_modules())
 
         self.owner = owner
@@ -132,11 +135,11 @@ class DefaultLightController(ModularLightController):
         self._light_program_player = LightPlayer.from_bytes(light_program)
 
     @property
-    def override(self) -> Optional[Color]:
+    def override(self) -> Color | None:
         return self._override
 
     @override.setter
-    def override(self, value: Optional[Color]):
+    def override(self, value: Color | None):
         if value is not None and not isinstance(value, Color):
             raise TypeError(f"Color or None expected, got {type(value)!r}")
         self._override = value

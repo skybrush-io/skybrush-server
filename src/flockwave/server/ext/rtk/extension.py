@@ -5,18 +5,14 @@ and forwards the corrections to the UAVs managed by the server.
 from __future__ import annotations
 
 import json
-from collections.abc import Sequence
+from collections.abc import Callable, Iterator, Sequence
 from contextlib import ExitStack
 from dataclasses import dataclass, field
 from fnmatch import fnmatch
 from functools import partial
 from pathlib import Path
 from time import monotonic
-from typing import Any, Callable, ClassVar, Iterator, cast
-
-from trio import CancelScope, open_memory_channel, open_nursery, sleep
-from trio.abc import SendChannel
-from trio_util import AsyncBool, periodic
+from typing import Any, ClassVar, cast
 
 from flockwave.channels import ParserChannel
 from flockwave.connections import RWConnection, create_connection
@@ -25,6 +21,10 @@ from flockwave.gps.formatting import format_gps_coordinate_as_nmea_gga_message
 from flockwave.gps.rtk import RTKMessageSet, RTKSurveySettings
 from flockwave.gps.ubx.rtk_config import UBXRTKBaseConfigurator
 from flockwave.gps.vectors import ECEFToGPSCoordinateTransformation, GPSCoordinate
+from trio import CancelScope, open_memory_channel, open_nursery, sleep
+from trio.abc import SendChannel
+from trio_util import AsyncBool, periodic
+
 from flockwave.server.ext.base import Extension
 from flockwave.server.ext.signals import SignalsExtensionAPI
 from flockwave.server.message_handlers import (
@@ -641,7 +641,9 @@ class RTKExtension(Extension):
         if isinstance(obj, dict):
             for id, spec in obj.items():
                 try:
-                    preset = RTKConfigurationPreset.from_json(spec, id=id, type=type)
+                    preset = RTKConfigurationPreset.from_json(
+                        cast("dict[str, Any]", spec), id=str(id), type=type
+                    )
                 except Exception:
                     self.log.error(f"Ignoring invalid RTK configuration {id!r}")
                     continue
@@ -848,7 +850,7 @@ class RTKExtension(Extension):
                     self._clock_sync_validator.sync_state_changed.connected_to(
                         self._on_gps_clock_sync_state_changed,
                         sender=self._clock_sync_validator,
-                    )  # type: ignore
+                    )
                 )
 
                 self._rtk_survey_trigger.value = preset.auto_survey
@@ -879,7 +881,7 @@ class RTKExtension(Extension):
                                 task=partial(
                                     self._run_single_connection_for_preset,
                                     preset=preset,
-                                ),  # type: ignore
+                                ),
                             )
                         )
                     except Exception:
@@ -917,7 +919,7 @@ class RTKExtension(Extension):
         """
         assert self.app is not None
 
-        channel = ParserChannel(connection, parser=preset.create_gps_parser())  # type: ignore
+        channel = ParserChannel(connection, parser=preset.create_gps_parser())
         signal = self.app.import_api("signals", SignalsExtensionAPI).get(
             self.RTK_PACKET_SIGNAL
         )

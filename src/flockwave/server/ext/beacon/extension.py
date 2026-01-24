@@ -1,10 +1,11 @@
 from __future__ import annotations
 
+from collections.abc import Iterator
 from contextlib import ExitStack, contextmanager
 from operator import attrgetter
-from typing import Iterator, Optional
 
 from flockwave.concurrency import AsyncBundler
+
 from flockwave.server.ext.base import Extension
 from flockwave.server.message_handlers import (
     create_mapper,
@@ -13,7 +14,6 @@ from flockwave.server.message_handlers import (
 from flockwave.server.model.messages import FlockwaveNotification
 from flockwave.server.model.object import registered
 from flockwave.server.registries.base import find_in_registry
-
 
 from .model import Beacon, is_beacon
 
@@ -25,7 +25,7 @@ class BeaconExtension(Extension):
 
     beacons_to_update: AsyncBundler[str]
 
-    def _find_beacon_by_id(self, id: str) -> Optional[Beacon]:
+    def _find_beacon_by_id(self, id: str) -> Beacon | None:
         """Finds a beacon by its ID in the object registry.
 
         Parameters:
@@ -58,7 +58,7 @@ class BeaconExtension(Extension):
 
         beacon = Beacon(id=beacon_id)
         with self.app.object_registry.use(beacon):
-            with beacon.updated.connected_to(self._on_beacon_updated, sender=beacon):  # type: ignore
+            with beacon.updated.connected_to(self._on_beacon_updated, sender=beacon):
                 yield beacon
 
     def exports(self):

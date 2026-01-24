@@ -1,6 +1,5 @@
 from enum import Enum, IntEnum, IntFlag
 from struct import Struct
-from typing import Union
 
 from flockwave.server.model.gps import GPSFixType as OurGPSFixType
 
@@ -296,7 +295,7 @@ class MAVParamType(IntEnum):
             encoded = _mav_param_type_structs[self].pack(value)  # type: ignore
             return _mav_param_type_structs[MAVParamType.REAL32].unpack(encoded)[0]  # type: ignore
 
-    def decode_float(self, value: float) -> Union[int, float]:
+    def decode_float(self, value: float) -> int | float:
         """Decodes the given value by interpreting it as this MAVLink parameter
         type.
 
@@ -630,6 +629,15 @@ class MagCalStatus(IntEnum):
     @property
     def is_successful(self) -> bool:
         return self == 4
+
+
+class RebootShutdownConditions(IntEnum):
+    """Enum specifying the conditions under which a `MAV_CMD_PREFLIGHT_REBOOT_SHUTDOWN`
+    command should be accepted.
+    """
+
+    SAFETY_INTERLOCKED = 0
+    FORCE = 20190226
 
 
 class SkybrushUserCommand(IntEnum):

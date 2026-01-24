@@ -2,11 +2,12 @@
 
 from logging import Logger
 from time import monotonic
-from typing import Any
+from typing import Any, cast
 
 from flockwave.gps.vectors import FlatEarthToGPSCoordinateTransformation
 
 from flockwave.server.model import Client, FlockwaveMessage
+from flockwave.server.show import ShowSpecification
 
 from .metadata import ShowMetadata
 
@@ -90,7 +91,7 @@ class ShowUploadLoggingMiddleware:
 
     def _extract_show_and_hash(
         self, message: FlockwaveMessage
-    ) -> tuple[dict[str, Any] | None, str | None]:
+    ) -> tuple[ShowSpecification | None, str | None]:
         """Checks whether the given message is a show upload and extracts the
         show specification and the show hash out of the message if it is.
         """
@@ -113,20 +114,21 @@ class ShowUploadLoggingMiddleware:
         return self._last_show_metadata
 
     @staticmethod
-    def _get_show_fingerprint(show: dict[str, Any]) -> ShowFingerprint:
+    def _get_show_fingerprint(show: ShowSpecification) -> ShowFingerprint:
         """Extracts the basic show parameters like the origin and the orientation
         from the upload. These are used to decide whether an upload attempt is
         probably a continuation of an ongoing sequence of requests from the
         client or a completely new one.
         """
+        show_dict = cast(dict[str, Any], show)
         return [
-            get(show, "mission", "id"),
-            get(show, "coordinateSystem"),
-            get(show, "amslReference"),
+            get(show_dict, "mission", "id"),
+            get(show_dict, "coordinateSystem"),
+            get(show_dict, "amslReference"),
         ]
 
     @staticmethod
-    def _get_metadata_from_upload_request(show: dict[str, Any]) -> ShowMetadata:
+    def _get_metadata_from_upload_request(show: ShowSpecification) -> ShowMetadata:
         """Extracts the metadata of the current show being uploaded. This is
         returned to consumers of the API of the show extension when the caller
         requests the metadata of the last uploaded show.

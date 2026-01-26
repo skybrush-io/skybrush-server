@@ -1166,11 +1166,7 @@ class VirtualUAVDriver(UAVDriver[VirtualUAV]):
         await sleep(0.25 + random() * 0.5)
 
     async def handle_command___show_upload(
-        self,
-        uav: VirtualUAV,
-        *,
-        show: ShowSpecification,
-        show_hash: str | None = None,
+        self, uav: VirtualUAV, *, show: ShowSpecification
     ) -> None:
         """Handles a drone show upload request for the given UAV.
 
@@ -1179,7 +1175,6 @@ class VirtualUAVDriver(UAVDriver[VirtualUAV]):
 
         Parameters:
             show: the show data for a single UAV
-            show_hash: optional hash of the entire global show configuration
         """
         uav.handle_show_upload(show)
         await sleep(0.25 + random() * 0.5)

@@ -47,9 +47,6 @@ class ShowUploadLoggingMiddleware:
     Used to decide whether it's a new show upload or most likely not.
     """
 
-    _last_show_upload_hash: str | None = None
-    """The hash of the last show upload that was seen by the middleware."""
-
     _log: Logger
     """Logger that the middleware will write to."""
 
@@ -63,14 +60,13 @@ class ShowUploadLoggingMiddleware:
         self._log = log
 
     def __call__(self, message: FlockwaveMessage, sender: Client) -> FlockwaveMessage:
-        show, show_hash = self._extract_show_and_hash(message)
+        show = self._extract_show(message)
         if show:
             now = monotonic()
             fingerprint = self._get_show_fingerprint(show)
 
             should_log = (
-                show_hash != self._last_show_upload_hash
-                or fingerprint != self._last_show_upload_fingerprint
+                fingerprint != self._last_show_upload_fingerprint
                 or now - self._last_show_upload_command_at >= 30
             )
             if should_log:
@@ -85,26 +81,20 @@ class ShowUploadLoggingMiddleware:
 
             self._last_show_upload_command_at = now
             self._last_show_upload_fingerprint = fingerprint
-            self._last_show_upload_hash = show_hash
 
         return message
 
-    def _extract_show_and_hash(
-        self, message: FlockwaveMessage
-    ) -> tuple[ShowSpecification | None, str | None]:
+    def _extract_show(self, message: FlockwaveMessage) -> ShowSpecification | None:
         """Checks whether the given message is a show upload and extracts the
-        show specification and the show hash out of the message if it is.
+        show specification out of the message if it is.
         """
         type = message.get_type()
         if type == "OBJ-CMD":
             cmd = message.body.get("command", "")
             if cmd == "__show_upload":
                 kwds = message.body.get("kwds", {})
-                if isinstance(kwds, dict):
-                    show = kwds.get("show", None)
-                    show_hash = kwds.get("show_hash", None)
-                    return show, show_hash
-        return None, None
+                if isinstance(kwds, dict) and "show" in kwds:
+                    return kwds["show"]
 
     @property
     def last_show_metadata(self) -> ShowMetadata | None:

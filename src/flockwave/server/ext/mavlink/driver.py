@@ -385,11 +385,7 @@ class MAVLinkDriver(UAVDriver["MAVLinkUAV"]):
             raise RuntimeError(f"Unknown subcommand: {command!r}")
 
     async def handle_command___show_upload(
-        self,
-        uav: "MAVLinkUAV",
-        *,
-        show: ShowSpecification,
-        show_hash: str | None = None,
+        self, uav: "MAVLinkUAV", *, show: ShowSpecification
     ):
         """Handles a drone show upload request for the given UAV.
 
@@ -398,7 +394,6 @@ class MAVLinkDriver(UAVDriver["MAVLinkUAV"]):
 
         Parameters:
             show: the show data for a single UAV
-            show_hash: optional hash of the entire global show configuration
         """
         try:
             await uav.upload_show(show)

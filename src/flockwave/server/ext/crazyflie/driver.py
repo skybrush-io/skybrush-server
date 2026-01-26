@@ -392,11 +392,7 @@ class CrazyflieDriver(UAVDriver["CrazyflieUAV"]):
         )
 
     async def handle_command___show_upload(
-        self,
-        uav: "CrazyflieUAV",
-        *,
-        show: ShowSpecification,
-        show_hash: str | None = None,
+        self, uav: "CrazyflieUAV", *, show: ShowSpecification
     ):
         """Handles a drone show upload request for the given UAV.
 
@@ -405,7 +401,6 @@ class CrazyflieDriver(UAVDriver["CrazyflieUAV"]):
 
         Parameters:
             show: the show data for a single UAV
-            show_hash: the hash of the entire show data for all UAVs
         """
         await uav.upload_show(show, remember=True)
         if self.preferred_controller is not None:

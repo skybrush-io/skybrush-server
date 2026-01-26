@@ -50,6 +50,7 @@ from flockwave.server.model.uav import (
     VersionInfo,
 )
 from flockwave.server.show import (
+    ShowSpecification,
     get_altitude_reference_from_show_specification,
     get_coordinate_system_from_show_specification,
     get_geofence_configuration_from_show_specification,
@@ -383,14 +384,16 @@ class MAVLinkDriver(UAVDriver["MAVLinkUAV"]):
         else:
             raise RuntimeError(f"Unknown subcommand: {command!r}")
 
-    async def handle_command___show_upload(self, uav: "MAVLinkUAV", *, show):
+    async def handle_command___show_upload(
+        self, uav: "MAVLinkUAV", *, show: ShowSpecification
+    ):
         """Handles a drone show upload request for the given UAV.
 
         This is a temporary solution until we figure out something that is
         more sustainable in the long run.
 
         Parameters:
-            show: the show data
+            show: the show data for a single UAV
         """
         try:
             await uav.upload_show(show)
@@ -2359,7 +2362,7 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
         if not success:
             raise RuntimeError("Failed to trigger camera shutter")
 
-    async def upload_show(self, show) -> None:
+    async def upload_show(self, show: ShowSpecification) -> None:
         coordinate_system = get_coordinate_system_from_show_specification(show)
         if coordinate_system.type != "nwu":
             raise RuntimeError("Only NWU coordinate systems are supported")

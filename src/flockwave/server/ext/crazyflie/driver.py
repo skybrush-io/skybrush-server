@@ -39,6 +39,7 @@ from flockwave.server.model.transport import TransportOptions
 from flockwave.server.model.uav import BatteryInfo, UAVBase, UAVDriver, VersionInfo
 from flockwave.server.registries.errors import RegistryFull
 from flockwave.server.show import (
+    ShowSpecification,
     TrajectorySpecification,
     get_group_index_from_show_specification,
     get_home_position_from_show_specification,
@@ -390,14 +391,16 @@ class CrazyflieDriver(UAVDriver["CrazyflieUAV"]):
             f"hover time = {hover_time} s"
         )
 
-    async def handle_command___show_upload(self, uav: "CrazyflieUAV", *, show):
+    async def handle_command___show_upload(
+        self, uav: "CrazyflieUAV", *, show: ShowSpecification
+    ):
         """Handles a drone show upload request for the given UAV.
 
         This is a temporary solution until we figure out something that is
         more sustainable in the long run.
 
         Parameters:
-            show: the show data
+            show: the show data for a single UAV
         """
         await uav.upload_show(show, remember=True)
         if self.preferred_controller is not None:
@@ -1019,7 +1022,9 @@ class CrazyflieUAV(UAVBase):
         else:
             raise NotSupportedError
 
-    async def upload_show(self, show, *, remember: bool = True) -> None:
+    async def upload_show(
+        self, show: ShowSpecification, *, remember: bool = True
+    ) -> None:
         home = get_home_position_from_show_specification(show)
         trajectory = get_trajectory_from_show_specification(show)
         group_index = get_group_index_from_show_specification(show)

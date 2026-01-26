@@ -1,3 +1,5 @@
+from typing import Any, TypedDict
+
 from flockwave.gps.vectors import FlatEarthToGPSCoordinateTransformation
 
 from .trajectory import TrajectorySpecification
@@ -14,8 +16,24 @@ __all__ = (
 )
 
 
-ShowSpecification = dict
-"""Type alias for show specification objects."""
+class ShowSpecification(TypedDict, total=False):
+    """Specification of a drone show for a single UAV as it appears
+    in show upload commands coming from Skybrush Live."""
+
+    cues: dict[str, Any]
+    validation: dict[str, Any]
+    trajectory: dict[str, Any]
+    lights: dict[str, Any]
+    rthPlan: dict[str, Any]
+    home: list[float]
+    landAt: list[float]
+    name: str
+    amslReference: float
+    coordinateSystem: dict[str, Any]
+    geofence: dict[str, Any]
+    mission: dict[str, Any]
+    group: int
+    flightArea: dict[str, Any]
 
 
 def get_trajectory_from_show_specification(

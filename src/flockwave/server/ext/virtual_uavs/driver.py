@@ -45,6 +45,7 @@ from flockwave.server.model.preflight import PreflightCheckInfo, PreflightCheckR
 from flockwave.server.model.transport import TransportOptions
 from flockwave.server.model.uav import UAVBase, UAVDriver, VersionInfo
 from flockwave.server.show import (
+    ShowSpecification,
     TrajectoryPlayer,
     TrajectorySpecification,
     get_coordinate_system_from_show_specification,
@@ -563,7 +564,7 @@ class VirtualUAV(UAVBase):
 
         self.update_status(mode="mission" if self.has_mission_items else "stab")
 
-    def handle_show_upload(self, show) -> None:
+    def handle_show_upload(self, show: ShowSpecification) -> None:
         """Handles the upload of a full drone show (trajectory + light program).
 
         Parameters:
@@ -1164,14 +1165,16 @@ class VirtualUAVDriver(UAVDriver[VirtualUAV]):
         uav.handle_mission_upload(bundle, format)
         await sleep(0.25 + random() * 0.5)
 
-    async def handle_command___show_upload(self, uav: VirtualUAV, *, show) -> None:
+    async def handle_command___show_upload(
+        self, uav: VirtualUAV, *, show: ShowSpecification
+    ) -> None:
         """Handles a drone show upload request for the given UAV.
 
         This is a temporary solution until we figure out something that is
         more sustainable in the long run.
 
         Parameters:
-            show: the show data
+            show: the show data for a single UAV
         """
         uav.handle_show_upload(show)
         await sleep(0.25 + random() * 0.5)

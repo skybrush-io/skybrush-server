@@ -17,6 +17,7 @@ from flockwave.server.model.flight_area import (
 from flockwave.server.utils import optional_float
 
 from .specification import (
+    ShowSpecification,
     get_coordinate_system_from_show_specification,
     is_coordinate_system_in_show_specification_geodetic,
 )
@@ -25,7 +26,7 @@ __all__ = ("get_flight_area_configuration_from_show_specification",)
 
 
 def get_flight_area_configuration_from_show_specification(
-    show: dict,
+    show: ShowSpecification,
 ) -> FlightAreaConfigurationRequest:
     result = FlightAreaConfigurationRequest()
 

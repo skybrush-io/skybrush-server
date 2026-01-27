@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING, Any, overload
 
 from flockwave.server.ext.base import UAVExtension
 from flockwave.server.ext.mavlink.fw_upload import FirmwareUpdateTarget
+from flockwave.server.ext.show.time import BinaryTimeAxisConfiguration
 from flockwave.server.ext.show.types import ShowExtensionAPI
 from flockwave.server.ext.signals import SignalsExtensionAPI
 from flockwave.server.model.uav import UAV
@@ -192,6 +193,7 @@ class MAVLinkDronesExtension(UAVExtension[MAVLinkDriver]):
                         "show:clock_changed": self._on_show_clock_changed,
                         "show:config_updated": self._on_show_configuration_changed,
                         "show:lights_updated": self._on_show_light_configuration_changed,
+                        "show_pro:time_axis_config_updated": self._on_show_pro_time_axis_config_updated,
                     }
                 )
             )
@@ -426,7 +428,7 @@ class MAVLinkDronesExtension(UAVExtension[MAVLinkDriver]):
         self, sender, config: LightConfiguration
     ) -> None:
         """Handler that is called when the user changes the LED light configuration
-        of the drones in the `show` extesion.
+        of the drones in the `show` extension.
         """
         if not self._networks:
             return
@@ -437,6 +439,22 @@ class MAVLinkDronesExtension(UAVExtension[MAVLinkDriver]):
 
         # Send the configuration to all the networks
         self._update_show_light_configuration_in_networks(config)
+
+    def _on_show_pro_time_axis_config_updated(
+        self, sender, config: BinaryTimeAxisConfiguration
+    ) -> None:
+        """Handler that is called when the user changes the time axis
+        configuration of the drones in the `show_pro` extension.
+        """
+        if not self._networks:
+            return
+
+        # Note that we do not need to make a copy of the config here
+        # as in e.g. the light config update, as the binary config
+        # representation is immutable.
+
+        # Send the configuration to all the networks
+        self._update_show_time_axis_configuration_in_networks(config)
 
     def _register_uav(self, uav: UAV) -> None:
         """Registers a new UAV object in the object registry of the application
@@ -594,4 +612,21 @@ class MAVLinkDronesExtension(UAVExtension[MAVLinkDriver]):
             except Exception:
                 self.log.warning(
                     f"Failed to update LED light configuration of drones in network {name!r}"
+                )
+
+    def _update_show_time_axis_configuration_in_networks(
+        self, config: BinaryTimeAxisConfiguration
+    ) -> None:
+        """Updates the time axis configuration of the drones managed by this
+        extension, based on the given configuration object.
+        """
+        assert self.app is not None
+        assert self.log is not None
+
+        for name, network in self._networks.items():
+            try:
+                network.notify_show_time_axis_config_changed(config)
+            except Exception:
+                self.log.warning(
+                    f"Failed to update show time axis configuration of drones in network {name!r}"
                 )

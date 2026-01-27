@@ -12,12 +12,18 @@ from typing import ClassVar
 from flockwave.gps.time import gps_time_of_week_to_utc, unix_to_gps_time_of_week
 
 from flockwave.server.ext.show.config import AuthorizationScope
+from flockwave.server.ext.show.time import BinaryTimeAxisConfiguration
 from flockwave.server.model.gps import GPSFixType as OurGPSFixType
 
 from .enums import GPSFixType
 from .types import MAVLinkMessage, MAVLinkMessageSpecification, spec
 
-__all__ = ("DroneShowStatus", "create_led_control_packet")
+__all__ = (
+    "DroneShowStatus",
+    "create_led_control_packet",
+    "create_start_time_configuration_packet",
+    "create_time_axis_configuration_packet",
+)
 
 
 _EMPTY = b"\x00" * 256
@@ -120,6 +126,13 @@ def create_start_time_configuration_packet(
     return create_custom_data_packet(
         type=1, payload=pack("<iBi", start_time, scope_value, msec_until_start)
     )
+
+
+def create_time_axis_configuration_packet(
+    config: BinaryTimeAxisConfiguration,
+) -> MAVLinkMessageSpecification:
+    """Creates a time axis configuration packet used by our firmware."""
+    return create_custom_data_packet(type=5, payload=config)
 
 
 def create_led_control_packet(

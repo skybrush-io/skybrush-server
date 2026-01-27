@@ -257,7 +257,7 @@ class TimeElapsedSinceReferenceClock(ClockBase):
             ticks per second
         """
         return (
-            (now - self._reference_time) * 10
+            (now - self._reference_time) * self.ticks_per_second
             if self._reference_time is not None
             else 0.0
         )

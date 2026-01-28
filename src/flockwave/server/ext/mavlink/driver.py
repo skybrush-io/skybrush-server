@@ -892,6 +892,18 @@ class MAVLinkDriver(UAVDriver["MAVLinkUAV"]):
             message = create_led_control_packet()
             await self.send_packet(message, uav, channel=channel)
 
+    async def _send_loiter_signal_single(
+        self, uav: "MAVLinkUAV", *, transport=None
+    ) -> None:
+        channel = transport_options_to_channel(transport)
+        await uav.set_mode("loiter", channel=channel)
+
+    async def _send_manual_signal_single(
+        self, uav: "MAVLinkUAV", *, transport=None
+    ) -> None:
+        channel = transport_options_to_channel(transport)
+        await uav.set_mode("manual", channel=channel)
+
     async def _send_motor_start_stop_signal_broadcast(
         self, start: bool, force: bool = False, *, transport=None
     ) -> None:
@@ -1139,6 +1151,9 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
 
     _battery: BatteryInfo
     """Battery status of the drone"""
+
+    _vehicle_type: Optional[int] = None
+    """MAVLink vehicle type of the drone, determined from heartbeat messages."""
 
     _configuring_data_streams: bool = False
     """Stores whether we are currently configuring the data stream rates for
@@ -1781,6 +1796,10 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
             # 2 as well
             self._mavlink_version = 2
 
+        # Store the vehicle type from the heartbeat (it doesn't change)
+        if self._vehicle_type is None:
+            self._vehicle_type = message.type
+
         # Get the age of the _last_ heartbeat, will be used later
         age_of_last_heartbeat = self.get_age_of_message(MAVMessageType.HEARTBEAT)
 
@@ -2114,7 +2133,10 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
             base_mode, submode = MAVModeFlag.CUSTOM_MODE_ENABLED, 0
         elif isinstance(mode, str):
             try:
-                base_mode, mode, submode = self._autopilot.get_flight_mode_numbers(mode)
+                # Use stored vehicle type to support vehicle-specific modes
+                base_mode, mode, submode = self._autopilot.get_flight_mode_numbers(
+                    mode, vehicle_type=self._vehicle_type
+                )
             except NotSupportedError:
                 raise ValueError(
                     "setting flight modes by name is not supported"

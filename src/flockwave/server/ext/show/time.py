@@ -55,7 +55,7 @@ class TimeAxisConfigurationManager(ABC, Generic[TUAV]):
     """Timestamp when the time axis configuration got updated the last time."""
 
     broadcast_frequency: float = 1
-    """The regular broadcast frequency of the time axis configuration, 
+    """The regular broadcast frequency of the time axis configuration,
     in seconds."""
 
     duration_of_rapid_broadcast: float = 5
@@ -63,7 +63,7 @@ class TimeAxisConfigurationManager(ABC, Generic[TUAV]):
     broadcast frequency is raised, in seconds."""
 
     rapid_broadcast_frequency: float = 0.2
-    """The broadcast frequency of the time axis configuration right after 
+    """The broadcast frequency of the time axis configuration right after
     a config update, in seconds."""
 
     def __init__(

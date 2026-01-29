@@ -341,6 +341,12 @@ class MAVLinkNetwork:
                 network manager wishes to register a connection in the
                 application
         """
+        # propagate logger to all handled processes that did not receive it
+        # through the init process properly
+        self.log = log
+        self._scheduled_takeoff_manager._log = log
+        self._time_axis_configuration_manager._log = log
+
         if len(self._connections) > 1:
             if self.id:
                 id_format = "{0}/{1}"

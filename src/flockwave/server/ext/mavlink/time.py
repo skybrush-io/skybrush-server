@@ -36,5 +36,11 @@ class MAVLinkTimeAxisConfigurationManager(TimeAxisConfigurationManager["MAVLinkU
     async def broadcast_time_axis_configuration(
         self, config: BinaryTimeAxisConfiguration
     ) -> None:
-        packet = create_time_axis_configuration_packet(config)
+        try:
+            packet = create_time_axis_configuration_packet(config)
+        except ValueError as ex:
+            if self._log:
+                self._log.warning(f"Could not create time axis config packet: {ex}")
+            raise
+
         await self._network.broadcast_packet(packet)

@@ -38,11 +38,17 @@ class MAVLinkScheduledTakeoffManager(ScheduledTakeoffManager["MAVLinkUAV"]):
     async def broadcast_takeoff_configuration(
         self, config: TakeoffConfiguration
     ) -> None:
-        packet = create_start_time_configuration_packet(
-            start_time=config.takeoff_time,
-            authorization_scope=config.authorization_scope,
-            should_update_takeoff_time=config.should_update_takeoff_time,
-        )
+        try:
+            packet = create_start_time_configuration_packet(
+                start_time=config.takeoff_time,
+                authorization_scope=config.authorization_scope,
+                should_update_takeoff_time=config.should_update_takeoff_time,
+            )
+        except ValueError as ex:
+            if self._log:
+                self._log.warning(f"Could not create start time config packet: {ex}")
+            raise
+
         await self._network.broadcast_packet(packet)
 
     def iter_uavs_to_schedule(self) -> Iterator[MAVLinkUAV]:

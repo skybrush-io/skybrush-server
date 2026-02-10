@@ -441,7 +441,7 @@ class MAVLinkDronesExtension(UAVExtension[MAVLinkDriver]):
         self._update_show_light_configuration_in_networks(config)
 
     def _on_show_pro_time_axis_config_updated(
-        self, sender, config: BinaryTimeAxisConfiguration
+        self, sender, config: BinaryTimeAxisConfiguration | None
     ) -> None:
         """Handler that is called when the user changes the time axis
         configuration of the drones in the `show_pro` extension.
@@ -450,8 +450,8 @@ class MAVLinkDronesExtension(UAVExtension[MAVLinkDriver]):
             return
 
         # Note that we do not need to make a copy of the config here
-        # as in e.g. the light config update, as the binary config
-        # representation is immutable.
+        # as in e.g. the light config update, as both the binary config
+        # representation and None are immutable.
 
         # Send the configuration to all the networks
         self._update_show_time_axis_configuration_in_networks(config)
@@ -615,7 +615,7 @@ class MAVLinkDronesExtension(UAVExtension[MAVLinkDriver]):
                 )
 
     def _update_show_time_axis_configuration_in_networks(
-        self, config: BinaryTimeAxisConfiguration
+        self, config: BinaryTimeAxisConfiguration | None
     ) -> None:
         """Updates the time axis configuration of the drones managed by this
         extension, based on the given configuration object.

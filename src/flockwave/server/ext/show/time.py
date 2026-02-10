@@ -100,14 +100,15 @@ class TimeAxisConfigurationManager(ABC, Generic[TUAV]):
         return self._config
 
     def notify_time_axis_config_changed(
-        self, config: BinaryTimeAxisConfiguration
+        self, config: BinaryTimeAxisConfiguration | None
     ) -> None:
         """Notifies the manager that the time axis configuration has
         changed.
         """
         self._config = config
         self._config_last_updated_at = current_time()
-        self._parking_lot.unpark_all()
+        if config is not None:
+            self._parking_lot.unpark_all()
 
     async def run(self, *, task_status=TASK_STATUS_IGNORED) -> None:
         """Background task that checks the time axis configuration on the UAVs

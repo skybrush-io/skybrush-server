@@ -543,7 +543,9 @@ class MAVLinkNetwork:
         """
         self._scheduled_takeoff_manager.notify_start_time_changed(start_time)
 
-    def notify_show_time_axis_config_changed(self, config: BinaryTimeAxisConfiguration):
+    def notify_show_time_axis_config_changed(
+        self, config: BinaryTimeAxisConfiguration | None
+    ):
         """Notifies the network that the show time axis configuration was updated
         in the system.
         """

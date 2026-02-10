@@ -7,6 +7,7 @@ from flockwave.server.ext.show.time import (
     TimeAxisConfigurationManager,
 )
 
+from .driver import MAVLinkUAV
 from .packets import create_time_axis_configuration_packet
 
 __all__ = ("MAVLinkTimeAxisConfigurationManager",)
@@ -15,7 +16,7 @@ if TYPE_CHECKING:
     from .network import MAVLinkNetwork
 
 
-class MAVLinkTimeAxisConfigurationManager(TimeAxisConfigurationManager["MAVLinkUAV"]):
+class MAVLinkTimeAxisConfigurationManager(TimeAxisConfigurationManager[MAVLinkUAV]):
     """Class that manages the time axis configuration updates on a single MAVLink
     network.
     """

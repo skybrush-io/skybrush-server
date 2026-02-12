@@ -775,6 +775,7 @@ class UAVDriver(Generic[TUAV], ABC):
             transport=transport,
         )
 
+
     def send_landing_signal(
         self, uavs: list[TUAV], transport: TransportOptions | None = None
     ):
@@ -836,6 +837,66 @@ class UAVDriver(Generic[TUAV], ABC):
             getattr(self, "_send_light_or_sound_emission_signal_broadcast", None),
             signals=signals,
             duration=duration,
+            transport=transport,
+        )
+
+    def send_loiter_signal(
+        self,
+        uavs: list[TUAV],
+        *,
+        transport: Optional[TransportOptions] = None,
+    ):
+        """Asks the driver to send a signal to the given UAVs in order to
+        request them to enter loiter mode.
+
+        Typically, you don't need to override this method when implementing
+        a driver; override ``_send_loiter_signal_single()`` and optionally
+        ``_send_loiter_signal_broadcast()`` instead.
+
+        Parameters:
+            uavs: the UAVs to address with this request
+            transport: transport options for sending the signal
+
+        Returns:
+            dict mapping UAVs to the corresponding results (which may also be
+            errors or awaitables; it is the responsibility of the caller to
+            evaluate errors and wait for awaitables)
+        """
+        return self._dispatch_request(
+            uavs,
+            "loiter signal",
+            self._send_loiter_signal_single,
+            None,
+            transport=transport,
+        )
+    
+    def send_manual_signal(
+        self,
+        uavs: list[TUAV],
+        *,
+        transport: Optional[TransportOptions] = None,
+    ):
+        """Asks the driver to send a signal to the given UAVs in order to
+        request them to enter manual mode.
+
+        Typically, you don't need to override this method when implementing
+        a driver; override ``_send_manual_signal_single()`` and optionally
+        ``_send_manual_signal_broadcast()`` instead.
+
+        Parameters:
+            uavs: the UAVs to address with this request
+            transport: transport options for sending the signal
+
+        Returns:
+            dict mapping UAVs to the corresponding results (which may also be
+            errors or awaitables; it is the responsibility of the caller to
+            evaluate errors and wait for awaitables)
+        """
+        return self._dispatch_request(
+            uavs,
+            "manual signal",
+            self._send_manual_signal_single,
+            None,
             transport=transport,
         )
 
@@ -1420,6 +1481,56 @@ class UAVDriver(Generic[TUAV], ABC):
             signals: the list of signal types that the targeted UAV should emit
                 (e.g., 'sound', 'light')
             duration: the duration of the required signal in milliseconds
+            transport: transport options for sending the signal
+
+        Raises:
+            NotImplementedError: if the operation is not supported by the
+                driver yet, but there are plans to implement it
+            NotSupportedError: if the operation is not supported by the
+                driver and will not be supported in the future either
+        """
+        raise NotImplementedError
+    
+    def _send_loiter_signal_single(
+        self, uav: TUAV, *, transport: Optional[TransportOptions] = None
+    ) -> Union[None, Awaitable[None]]:
+        """Asks the driver to send a loiter signal to a single UAV managed
+        by this driver.
+
+        May return an awaitable if sending the signal takes a longer time.
+
+        The function follows the "samurai principle", i.e. "return victorious,
+        or not at all". It means that if it returns, the operation succeeded.
+        Raise an exception if the operation cannot be executed for any reason;
+        a RuntimeError is typically sufficient.
+
+        Parameters:
+            uav: the UAV to address with this request
+            transport: transport options for sending the signal
+
+        Raises:
+            NotImplementedError: if the operation is not supported by the
+                driver yet, but there are plans to implement it
+            NotSupportedError: if the operation is not supported by the
+                driver and will not be supported in the future either
+        """
+        raise NotImplementedError
+    
+    def _send_manual_signal_single(
+        self, uav: TUAV, *, transport: Optional[TransportOptions] = None
+    ) -> Union[None, Awaitable[None]]:
+        """Asks the driver to send a manual signal to a single UAV managed
+        by this driver.
+
+        May return an awaitable if sending the signal takes a longer time.
+
+        The function follows the "samurai principle", i.e. "return victorious,
+        or not at all". It means that if it returns, the operation succeeded.
+        Raise an exception if the operation cannot be executed for any reason;
+        a RuntimeError is typically sufficient.
+
+        Parameters:
+            uav: the UAV to address with this request
             transport: transport options for sending the signal
 
         Raises:

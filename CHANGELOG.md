@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [main]
+
+### Added
+
+- Added a `show` route to the routing configuration of MAVLink networks so the user
+  can now decide which connection(s) to route the drone show control packet to.
+
 ## [2.40.3] - 2025-12-27
 
 ### Changed

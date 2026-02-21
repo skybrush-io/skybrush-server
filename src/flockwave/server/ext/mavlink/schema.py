@@ -108,6 +108,18 @@ NETWORK_PROPERTIES = {
                     "minimum": 0,
                 },
             },
+            "show": {
+                "type": "array",
+                "format": "table",
+                "title": "Drone show related messages",
+                "description": "Indices of the connections where drone show related messages are routed to (zero-based)",
+                "default": [0],
+                "items": {
+                    "type": "integer",
+                    "default": 0,
+                    "minimum": 0,
+                },
+            },
         },
     },
     "rssi_mode": dict(

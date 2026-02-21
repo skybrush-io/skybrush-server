@@ -29,6 +29,7 @@ from .tasks import check_uavs_alive
 from .types import (
     MAVLinkMessage,
     MAVLinkMessageMatcher,
+    MAVLinkMessageRoutingTable,
     MAVLinkMessageSpecification,
     MAVLinkNetworkSpecification,
     MAVLinkStatusTextTargetSpecification,
@@ -48,7 +49,7 @@ CONNECTION_PRESETS = {
 """Dictionary that resolves common connection preset aliases used in
 the configuration file."""
 
-DEFAULT_ROUTING = {"rtk": 0, "rc": 0}
+DEFAULT_ROUTING: MAVLinkMessageRoutingTable = {"rtk": (0,), "rc": (0,), "show": (0,)}
 """Default routing configuration for networks."""
 
 
@@ -313,9 +314,8 @@ class MAVLinkDronesExtension(UAVExtension[MAVLinkDriver]):
             "system_id": configuration.get("system_id", 254),
         }
 
-        # Apply the default ID format for networks that do not specify an
-        # ID format on their own
-
+        # Apply the defaults to the individual network configurations where a specific
+        # item is missing
         for spec in network_specs.values():
             for key, value in network_spec_defaults.items():
                 if key not in spec and value is not MISSING:

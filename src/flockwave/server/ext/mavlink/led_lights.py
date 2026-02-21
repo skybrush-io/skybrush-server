@@ -10,6 +10,7 @@ from flockwave.server.tasks.led_lights import (
     LightEffectType,
 )
 
+from .channel import Channel
 from .packets import create_led_control_packet
 from .types import MAVLinkMessageSpecification
 
@@ -65,4 +66,6 @@ class MAVLinkLEDLightConfigurationManager(
     async def _send_light_control_packet(
         self, packet: MAVLinkMessageSpecification
     ) -> None:
-        return await self._network.broadcast_packet(packet)
+        return await self._network.broadcast_packet(
+            packet, channel=Channel.SHOW_CONTROL
+        )

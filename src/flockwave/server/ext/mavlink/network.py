@@ -49,6 +49,7 @@ from .takeoff import MAVLinkScheduledTakeoffManager
 from .types import (
     MAVLinkMessage,
     MAVLinkMessageMatcher,
+    MAVLinkMessageRoutingTable,
     MAVLinkMessageSpecification,
     MAVLinkNetworkSpecification,
     MAVLinkStatusTextTargetSpecification,
@@ -112,7 +113,13 @@ class MAVLinkNetwork:
     system ID was specified).
     """
 
-    _routing: dict[str, list[int]]
+    _routing: MAVLinkMessageRoutingTable
+    """Dictionary that specifies which link should be used for certain types of
+    packets. The keys of the dictionary are the packet types; the values are
+    the indices of the connections to use for sending that particular packet
+    type. Not including a particular packet type in the dictionary will let the
+    system choose the link on its own.
+    """
 
     _rssi_mode: RSSIMode
     """Specifies how this network derives RSSI values for the drones in the
@@ -184,7 +191,7 @@ class MAVLinkNetwork:
         id_formatter: Callable[[int, str], str] = "{0}".format,
         packet_loss: float = 0,
         statustext_targets: MAVLinkStatusTextTargetSpecification = MAVLinkStatusTextTargetSpecification.DEFAULT,
-        routing: dict[str, list[int]] | None = None,
+        routing: MAVLinkMessageRoutingTable | None = None,
         rssi_mode: RSSIMode = RSSIMode.RADIO_STATUS,
         signing: MAVLinkSigningConfiguration = MAVLinkSigningConfiguration.DISABLED,
         uav_system_id_offset: int = 0,
@@ -1117,12 +1124,19 @@ class MAVLinkNetwork:
         if channels:
             log.info(f"Routing RTK corrections to {channels}", extra=extra)
 
-        # Register the RTK channel according to the routing setup
+        # Register the RC override channel according to the routing setup
         channels = format_channel_ids(
             register_by_index(Channel.RC, self._routing.get("rc"))
         )
         if channels:
             log.info(f"Routing RC overrides to {channels}", extra=extra)
+
+        # Register the drone show conrol channel according to the routing setup
+        channels = format_channel_ids(
+            register_by_index(Channel.SHOW_CONTROL, self._routing.get("show"))
+        )
+        if channels:
+            log.info(f"Routing show control packets to {channels}", extra=extra)
 
     async def _update_broadcast_address_of_channel_to_subnet(
         self, connection_id: str, address: tuple[str, int], timeout: float = 1

@@ -8,6 +8,7 @@ from flockwave.server.ext.show.takeoff import (
     TakeoffConfiguration,
 )
 
+from .channel import Channel
 from .packets import create_start_time_configuration_packet
 
 __all__ = ("ScheduledTakeoffManager",)
@@ -43,7 +44,7 @@ class MAVLinkScheduledTakeoffManager(ScheduledTakeoffManager["MAVLinkUAV"]):
             authorization_scope=config.authorization_scope,
             should_update_takeoff_time=config.should_update_takeoff_time,
         )
-        await self._network.broadcast_packet(packet)
+        await self._network.broadcast_packet(packet, channel=Channel.SHOW_CONTROL)
 
     def iter_uavs_to_schedule(self) -> Iterator[MAVLinkUAV]:
         """Returns an iterator over the UAVs managed by this object that are

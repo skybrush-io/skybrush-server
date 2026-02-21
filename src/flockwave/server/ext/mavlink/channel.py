@@ -63,6 +63,11 @@ class Channel:
     RC: ClassVar[str] = "_rc"
     """Alias of the channel that should be used for sending RC overrides"""
 
+    SHOW_CONTROL: ClassVar[str] = "_show_control"
+    """Alias of the channel that should be used for sending drone show control messages
+    (start time, authorization, time axis etc).
+    """
+
 
 def create_mavlink_message_channel(
     connection: Connection,

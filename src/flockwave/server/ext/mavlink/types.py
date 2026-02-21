@@ -5,7 +5,16 @@ from __future__ import annotations
 from collections.abc import Awaitable, Callable, Iterable, Sequence
 from dataclasses import dataclass, field
 from functools import partial
-from typing import TYPE_CHECKING, Any, ClassVar, ContextManager, Protocol, overload
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    ClassVar,
+    ContextManager,
+    Literal,
+    Protocol,
+    TypeAlias,
+    overload,
+)
 
 from .enums import MAVSeverity
 from .rssi import RSSIMode
@@ -20,25 +29,32 @@ if TYPE_CHECKING:
 __all__ = (
     "MAVLinkFlightModeNumbers",
     "MAVLinkMessage",
+    "MAVLinkMessageMatcher",
+    "MAVLinkMessageRoute",
+    "MAVLinkMessageRoutingTable",
     "MAVLinkMessageSpecification",
     "MAVLinkNetworkSpecification",
+    "PacketBroadcasterFn",
+    "PacketSenderFn",
+    "UAVBoundPacketSenderFn",
     "spec",
 )
 
 
-MAVLinkFlightModeNumbers = tuple[int, int, int]
+MAVLinkFlightModeNumbers: TypeAlias = tuple[int, int, int]
 """Type specification for a (base mode, main mode, submode) flight mode triplet
 used in MAVLink.
 """
 
-MAVLinkMessage = Any
+MAVLinkMessage: TypeAlias = Any
 """Type specification for messages parsed by the MAVLink parser. Unfortunately
 we cannot refer to an exact Python class here because that depends on the
 dialect that we will be parsing.
 """
 
-MAVLinkMessageMatcher = dict[str, Any] | Callable[[MAVLinkMessage], bool] | None
-
+MAVLinkMessageMatcher: TypeAlias = (
+    dict[str, Any] | Callable[[MAVLinkMessage], bool] | None
+)
 """Type specification for MAVLink message matchers. A message matcher is either
 `None` (meaning to match all messages), a dictionary containing the required
 field name-value pairs in a message that we need to consider the message to
@@ -46,13 +62,27 @@ be a match, or a callable that takes a MAVLinkMessage and returns `True` if
 the message is a match.
 """
 
-MAVLinkMessageSpecification = tuple[str, dict[str, Any]]
+MAVLinkMessageRoute: TypeAlias = Literal["rtk", "rc", "show"]
+"""Type alias for the different routes that a message can be sent to (if the message is
+not sent directly to a specific connection. `rtk` is the route for RTK corrections;
+`rc` is the route for RC override messages; `show` is the route for messages that are
+related to the start time, authorization state or time axis configuration of the drones
+in a drone light show.
+"""
+
+MAVLinkMessageRoutingTable: TypeAlias = dict[MAVLinkMessageRoute, Sequence[int]]
+"""Type alias for the routing table that specifies where the individual message routes
+should be directed to. Each entry in the routing table is either the index of a single
+connection or a sequence of connection indices.
+"""
+
+MAVLinkMessageSpecification: TypeAlias = tuple[str, dict[str, Any]]
 """Type specification for MAVLink message specifications. A message specification
 is a tuple containing the message type and a dictionary of field name-value
 pairs. These are used to construct new MAVLink messages.
 """
 
-PacketBroadcasterFn = Callable[..., Awaitable[None]]
+PacketBroadcasterFn: TypeAlias = Callable[..., Awaitable[None]]
 """Type specification for the broadcast_packet() function of a MAVLinkNetwork object."""
 
 
@@ -293,7 +323,7 @@ class MAVLinkNetworkSpecification:
     `create_connection()` function.
     """
 
-    routing: dict[str, list[int]] = field(default_factory=dict)
+    routing: MAVLinkMessageRoutingTable = field(default_factory=dict)
     """Specifies where certain types of packets should be routed if the
     network has multiple connections.
     """

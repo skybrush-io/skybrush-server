@@ -32,6 +32,7 @@ from trio.abc import ReceiveChannel
 from trio_util import periodic
 
 from flockwave.server.comm import CommunicationManager
+from flockwave.server.ext.show.time import BinaryTimeAxisConfiguration
 from flockwave.server.model import ConnectionPurpose
 from flockwave.server.utils import nop, overridden
 
@@ -46,6 +47,7 @@ from .rssi import RSSIMode
 from .rtk import RTKCorrectionPacketEncoder
 from .signing import MAVLinkSigningConfiguration
 from .takeoff import MAVLinkScheduledTakeoffManager
+from .time import MAVLinkTimeAxisConfigurationManager
 from .types import (
     MAVLinkMessage,
     MAVLinkMessageMatcher,
@@ -260,6 +262,9 @@ class MAVLinkNetwork:
             self
         )
         self._scheduled_takeoff_manager = MAVLinkScheduledTakeoffManager(self)
+        self._time_axis_configuration_manager = MAVLinkTimeAxisConfigurationManager(
+            self
+        )
         self._rtk_correction_packet_encoder = RTKCorrectionPacketEncoder()
 
     def add_connection(self, connection: Connection):
@@ -343,6 +348,12 @@ class MAVLinkNetwork:
                 network manager wishes to register a connection in the
                 application
         """
+        # propagate logger to all handled processes that did not receive it
+        # through the init process properly
+        self.log = log
+        self._scheduled_takeoff_manager._log = log
+        self._time_axis_configuration_manager._log = log
+
         if len(self._connections) > 1:
             if self.id:
                 id_format = "{0}/{1}"
@@ -430,10 +441,12 @@ class MAVLinkNetwork:
 
             async with open_nursery() as nursery:
                 # Start background tasks that check the configured start times
-                # on the drones at regular intervals and that take care of
+                # on the drones at regular intervals, that take care of
                 # broadcasting the current light configuration to the drones
+                # and that manage the show time axis configuration updates
                 nursery.start_soon(self._scheduled_takeoff_manager.run)
                 nursery.start_soon(self._led_light_configuration_manager.run)
+                nursery.start_soon(self._time_axis_configuration_manager.run)
 
                 # Start the communication manager
                 try:
@@ -536,6 +549,14 @@ class MAVLinkNetwork:
         adjusted in the system.
         """
         self._scheduled_takeoff_manager.notify_start_time_changed(start_time)
+
+    def notify_show_time_axis_config_changed(
+        self, config: BinaryTimeAxisConfiguration | None
+    ):
+        """Notifies the network that the show time axis configuration was updated
+        in the system.
+        """
+        self._time_axis_configuration_manager.notify_time_axis_config_changed(config)
 
     @property
     def num_uavs(self) -> int:

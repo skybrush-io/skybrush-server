@@ -7,6 +7,7 @@ from flockwave.server.ext.show.time import (
     TimeAxisConfigurationManager,
 )
 
+from .channel import Channel
 from .driver import MAVLinkUAV
 from .packets import create_time_axis_configuration_packet
 
@@ -44,4 +45,4 @@ class MAVLinkTimeAxisConfigurationManager(TimeAxisConfigurationManager[MAVLinkUA
                 self._log.warning(f"Could not create time axis config packet: {ex}")
             raise
 
-        await self._network.broadcast_packet(packet)
+        await self._network.broadcast_packet(packet, channel=Channel.SHOW_CONTROL)

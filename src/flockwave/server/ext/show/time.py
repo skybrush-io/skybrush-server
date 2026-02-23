@@ -2,12 +2,10 @@
 
 from abc import ABC, abstractmethod
 from logging import Logger
-from typing import Generic, TypeAlias, TypeVar
+from typing import TypeAlias
 
 from trio import TASK_STATUS_IGNORED, current_time, sleep, sleep_until
 from trio.lowlevel import ParkingLot
-
-from flockwave.server.model import UAV
 
 __all__ = (
     "BinaryTimeAxisConfiguration",
@@ -19,10 +17,8 @@ BinaryTimeAxisConfiguration: TypeAlias = bytes
 """Binary representation of a time axis configuration
 to be sent to drones."""
 
-TUAV = TypeVar("TUAV", bound="UAV")
 
-
-class TimeAxisConfigurationManager(ABC, Generic[TUAV]):
+class TimeAxisConfigurationManager(ABC):
     """Class that manages the time axis configuration process on a group of drones.
 
     The class provides the following facilities:

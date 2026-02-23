@@ -2,10 +2,18 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from collections.abc import Iterator
+from contextlib import contextmanager
 from dataclasses import dataclass
 from logging import Logger
 from time import time
-from typing import Generic, TypeVar
+from typing import (
+    Awaitable,
+    Callable,
+    Generic,
+    TypeAlias,
+    TypeVar,
+    final,
+)
 from weakref import WeakKeyDictionary
 
 from trio import (
@@ -30,7 +38,12 @@ from .config import (
     StartMethod,
 )
 
-__all__ = ("ScheduledTakeoffManager", "TakeoffConfiguration")
+__all__ = (
+    "ScheduledTakeoffManager",
+    "SimpleScheduledTakeoffManager",
+    "SimpleScheduledTakeoffManagerBase",
+    "TakeoffConfiguration",
+)
 
 
 @dataclass
@@ -457,3 +470,95 @@ class ScheduledTakeoffManager(ABC, Generic[TUAV]):
         recently in the last three seconds.
         """
         self._uavs_last_updated_at.clear()
+
+
+TakeoffConfigurationDispatcher: TypeAlias = Callable[
+    [TakeoffConfiguration], Awaitable[None]
+]
+""""Type alias for the type of the function that broadcasts a takeoff configuration to the UAVs."""
+
+
+class SimpleScheduledTakeoffManagerBase(ScheduledTakeoffManager[UAV]):
+    """Base class for a simple implementation of the `ScheduledTakeoffManager` that
+    only supports broadcasting and does not attempt to configure UAVs individually.
+    """
+
+    @final
+    def iter_uavs_to_schedule(self) -> Iterator[UAV]:
+        # This manager does not support individual configuration of UAVs so we
+        # return an empty iterator here
+        return iter(())
+
+    @final
+    def uav_needs_update(self, uav: UAV, config: TakeoffConfiguration) -> bool:
+        # This manager does not support individual configuration of UAVs so we
+        # return False here
+        return False
+
+    @final
+    async def update_uav(self, uav: UAV, config: TakeoffConfiguration) -> None:
+        # This manager does not support individual configuration of UAVs so we do
+        # nothing here
+        pass
+
+
+class SimpleScheduledTakeoffManager(SimpleScheduledTakeoffManagerBase):
+    """A simple implementation of the `ScheduledTakeoffManager` that only supports
+    broadcasting to a function passed at construction time and does not attempt to
+    configure UAVs individually.
+    """
+
+    _func: TakeoffConfigurationDispatcher | None = None
+    """The function to call to broadcast the takeoff configuration to the UAVs.
+    `None` means to do nothing.
+    """
+
+    def __init__(
+        self,
+        func: TakeoffConfigurationDispatcher | None = None,
+        *,
+        log: Logger | None = None,
+        capacity_limiter: CapacityLimiter | None = None,
+    ):
+        """Constructor.
+
+        Parameters:
+            func: the function to call to broadcast the takeoff configuration to
+                the UAVs; this is typically a function that sends a packet to
+                the UAVs via some communication channel
+            log: the logger to use to log messages from this object
+        """
+        super().__init__(log=log, capacity_limiter=capacity_limiter)
+        self._func = func
+
+    async def broadcast_takeoff_configuration(
+        self, config: TakeoffConfiguration
+    ) -> None:
+        if self._func:
+            await self._func(config)
+
+    @contextmanager
+    def use(
+        self, func: TakeoffConfigurationDispatcher, *, log: Logger | None = None
+    ) -> Iterator[None]:
+        """Context manager that overrides the function to call to broadcast the takeoff
+        configuration to the UAVs.
+
+        Parameters:
+            func: the function to call to broadcast the takeoff configuration to
+                the UAVs; this is typically a function that sends a packet to
+                the UAVs via some communication channel
+            log: the logger to use to log messages from this object; if not provided,
+                the existing logger of this object will be used
+        """
+        old_func = self._func
+        self._func = func
+
+        old_log = self._log
+        self._log = log or self._log
+
+        try:
+            yield
+        finally:
+            self._func = old_func
+            self._log = old_log

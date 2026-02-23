@@ -1183,7 +1183,7 @@ requires-dist = [
     { name = "skybrush-ext-flockctrl", marker = "extra == 'collmot'", specifier = ">=4.0.3", index = "https://pypi.collmot.com/" },
     { name = "skybrush-ext-map-cache", marker = "extra == 'pro'", specifier = ">=1.1.1", index = "https://pypi.collmot.com/" },
     { name = "skybrush-ext-show-pro", marker = "extra == 'pro'", specifier = ">=0.5.0", index = "https://pypi.collmot.com/" },
-    { name = "skybrush-ext-sidekick", marker = "extra == 'pro'", specifier = ">=1.1.1", index = "https://pypi.collmot.com/" },
+    { name = "skybrush-ext-sidekick", marker = "extra == 'pro'", specifier = ">=1.2.0", index = "https://pypi.collmot.com/" },
     { name = "skybrush-ext-skynet", marker = "extra == 'pro'", specifier = ">=0.6.0", index = "https://pypi.collmot.com/" },
     { name = "skybrush-ext-studio", marker = "extra == 'pro'", specifier = ">=1.2.2", index = "https://pypi.collmot.com/" },
     { name = "skybrush-ext-timecode", marker = "extra == 'pro'", specifier = ">=1.4.1", index = "https://pypi.collmot.com/" },
@@ -2802,14 +2802,14 @@ wheels = [
 
 [[package]]
 name = "skybrush-ext-sidekick"
-version = "1.1.1"
+version = "1.2.0"
 source = { registry = "https://pypi.collmot.com/" }
 dependencies = [
     { name = "semver" },
 ]
-sdist = { url = "https://pypi.collmot.com/packages/skybrush_ext_sidekick-1.1.1.tar.gz", hash = "sha256:38d3af9b087b9be4e821bb37eff3f6c6c61edd39da92da02064772fca2accb83" }
+sdist = { url = "https://pypi.collmot.com/packages/skybrush_ext_sidekick-1.2.0.tar.gz", hash = "sha256:4ab6642764d194314e2bac1d627daa95baad74327153126ff6cb15614cfa5398" }
 wheels = [
-    { url = "https://pypi.collmot.com/packages/skybrush_ext_sidekick-1.1.1-py3-none-any.whl", hash = "sha256:3877cd7dec4146c3af746ddf75eec2d66fb313911e6735824b4d88862723ddf1" },
+    { url = "https://pypi.collmot.com/packages/skybrush_ext_sidekick-1.2.0-py3-none-any.whl", hash = "sha256:82a1d7e262481ed6afd4ad5dbda55dcb63005e7881381c33e27679488d53ba1b" },
 ]
 
 [[package]]

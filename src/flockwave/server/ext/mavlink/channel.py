@@ -7,7 +7,6 @@ from __future__ import annotations
 from collections import defaultdict
 from collections.abc import Iterator
 from contextlib import contextmanager
-from importlib import import_module
 from time import time
 from typing import TYPE_CHECKING, Any, ClassVar, Protocol, cast
 
@@ -21,6 +20,7 @@ from flockwave.connections import (
     StreamConnectionBase,
 )
 from flockwave.logger import Logger
+from flockwave.protocols.mavlink.introspection import import_dialect
 
 from .enums import MAVComponent
 from .signing import MAVLinkSigningConfiguration, SignatureTimestampSynchronizer
@@ -420,7 +420,7 @@ def _get_mavlink_factory(
         signing: whether outbound messages should be signed and inbound messages
             should be rejectd when unsigned
     """
-    module = import_module(f"flockwave.protocols.mavlink.dialects.v20.{dialect}")
+    module = import_dialect(dialect)
 
     def factory() -> MinimalMAVLinkInterface:
         """Creates a new MAVLink parser and message factory."""

@@ -798,8 +798,8 @@ class MAVLinkDriver(UAVDriver["MAVLinkUAV"]):
     def _request_preflight_report_single(self, uav: "MAVLinkUAV") -> PreflightCheckInfo:
         return uav.preflight_status
 
-    def _request_version_info_single(self, uav: "MAVLinkUAV") -> VersionInfo:
-        return uav.get_version_info()
+    async def _request_version_info_single(self, uav: "MAVLinkUAV") -> VersionInfo:
+        return await uav.get_version_info()
 
     async def _resume_from_low_power_mode_broadcast(
         self, *, transport: TransportOptions | None = None
@@ -1380,11 +1380,22 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
             timeout=0.7,
         )
 
-    def get_version_info(self) -> VersionInfo:
+    async def get_version_info(self) -> VersionInfo:
         """Returns a dictionary mapping component names of this UAV to the
         corresponding version numbers.
         """
-        version_info = self.get_last_message(MAVMessageType.AUTOPILOT_VERSION)
+        while True:
+            version_info = self.get_last_message(MAVMessageType.AUTOPILOT_VERSION)
+            if version_info is not None:
+                break
+
+            success = await self._request_autopilot_capabilities()
+            if not success:
+                raise RuntimeError("Failed to request autopilot version number")
+
+            # Do not send requests too often
+            await sleep(0.5)
+
         result = {}
 
         for version in ("flight", "middleware", "os"):
@@ -2630,24 +2641,34 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
         """
         self._last_messages.pop(MAVMessageType.AUTOPILOT_VERSION, None)
 
-    async def _request_autopilot_capabilities(self) -> None:
+    async def _request_autopilot_capabilities(self) -> bool:
         """Sends a request to the autopilot to send its capabilities via MAVLink
         in a separate packet.
+
+        Returns successfully when the drone has acknowledged the command.
+
+        Returns:
+            whether the request was sent successfully and it was acknowledged by the
+            drone. Since the autopilot version is still sent in a separate message,
+            returning successfully from this function does not necessarily mean that we
+            have received the capabilities, but at least we know that the drone is alive
+            and it understood what we wanted.
         """
         try:
             success = await self.driver.send_command_long(
                 self, MAVCommand.REQUEST_AUTOPILOT_CAPABILITIES, param1=1
             )
         except FutureCancelled:
-            # This is okay, server is shutting down
-            return
+            # This is okay, server is shutting down; pretend that the result is a
+            # success
+            return True
         except TooSlowError:
             self.driver.log.warning(
                 "Failed to request autopilot capabilities; no confirmation "
                 "received in time",
                 extra={"id": log_id_for_uav(self)},
             )
-            return
+            return False
 
         if not success:
             self.driver.log.warning(
@@ -2655,12 +2676,7 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
                 extra={"id": log_id_for_uav(self)},
             )
 
-        # At this point, we only received an acknowledgment from the drone that
-        # it _will_ send the AUTOPILOT_VERSION packet -- we don't know whether
-        # it really will and even if it does, it might get lost in transit.
-        # Therefore, we check whether we already have an AUTOPILOT_VERSION
-        # packet in our stash after receiving a heartbeat, and if we don't, we
-        # ask the drone to send one by calling this function.
+        return success
 
     def _get_previous_copy_of_message(
         self, message: MAVLinkMessage

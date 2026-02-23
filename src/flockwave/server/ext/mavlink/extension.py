@@ -29,6 +29,7 @@ from .rssi import RSSIMode
 from .rtk import RTKCorrectionPacketSignalManager
 from .takeoff import ScheduledTakeoffSignalDispatcher
 from .tasks import check_uavs_alive
+from .time import TimeAxisConfigurationSignalDispatcher
 from .types import (
     MAVLinkMessage,
     MAVLinkMessageMatcher,
@@ -88,6 +89,9 @@ class MAVLinkDronesExtension(UAVExtension[MAVLinkDriver]):
             LEDLightConfigurationSignalDispatcher()
         )
         self._takeoff_signal_dispatcher = ScheduledTakeoffSignalDispatcher()
+        self._time_axis_configuration_signal_dispatcher = (
+            TimeAxisConfigurationSignalDispatcher()
+        )
 
     def _create_driver(self):
         return MAVLinkDriver()
@@ -233,6 +237,19 @@ class MAVLinkDronesExtension(UAVExtension[MAVLinkDriver]):
                 self._takeoff_signal_dispatcher.use(signals, log=self.log)
             )
 
+            # Set up the time axis configuration signal dispatcher so it dispatches a
+            # signal whenever the time axis configuration changes and the drones need to
+            # be informed.
+            #
+            # Other extensions can hook into this signal to provide alternative
+            # communication channels for the time axis configuration to reach
+            # the drones.
+            stack.enter_context(
+                self._time_axis_configuration_signal_dispatcher.use(
+                    signals, log=self.log
+                )
+            )
+
             # Set up the LED light configuration signal dispatcher so it dispatches a
             # signal whenever the GCS takes control of the LEDs on the drones and they
             # need to be informed.
@@ -267,6 +284,9 @@ class MAVLinkDronesExtension(UAVExtension[MAVLinkDriver]):
                         self._led_light_configuration_signal_dispatcher.run
                     )
                     nursery.start_soon(self._takeoff_signal_dispatcher.run)
+                    nursery.start_soon(
+                        self._time_axis_configuration_signal_dispatcher.run
+                    )
 
                     # Create an additional task that periodically checks whether the UAVs
                     # registered in the extension are still alive, and that sends
@@ -702,3 +722,12 @@ class MAVLinkDronesExtension(UAVExtension[MAVLinkDriver]):
                 self.log.warning(
                     f"Failed to update show time axis configuration of drones in network {name!r}"
                 )
+
+        try:
+            self._time_axis_configuration_signal_dispatcher.notify_time_axis_config_changed(
+                config
+            )
+        except Exception:
+            self.log.warning(
+                "Failed to dispatch time axis configuration signal to other extensions"
+            )

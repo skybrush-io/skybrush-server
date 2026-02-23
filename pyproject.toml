@@ -1,6 +1,6 @@
 [project]
 name = "flockwave-server"
-version = "2.40.4"
+version = "2.41.1"
 description = "Skybrush server component"
 authors = [
   { name = "Tamas Nepusz", email = "tamas@collmot.com" },
@@ -29,7 +29,7 @@ dependencies = [
   "flockwave-ext>=2.0.0,<3.0.0",
   "flockwave-gps>=4.0.0,<5.0.0",
   "flockwave-logger>=2.1.1,<3.0.0",
-  "flockwave-mavlink>=0.6.0,<0.7.0",
+  "flockwave-mavlink>=1.0.0,<2.0.0",
   "flockwave-net[async]>=8.1.0,<9.0.0",
   "flockwave-parsers>=4.0.1,<5.0.0",
   "flockwave-spec[validation]>=2.6.0,<3.0.0",
@@ -70,7 +70,7 @@ pro = [
   "skybrush-ext-flight-report>=1.0.3",
   "skybrush-ext-map-cache>=1.1.1",
   "skybrush-ext-show-pro>=0.5.0",
-  "skybrush-ext-sidekick>=1.1.1",
+  "skybrush-ext-sidekick>=1.2.0",
   "skybrush-ext-skynet>=0.6.0",
   "skybrush-ext-studio>=1.2.2",
   "skybrush-ext-timecode>=1.4.1",

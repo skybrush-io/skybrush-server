@@ -5,12 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [main]
+## [2.41.1] - 2026-02-23
+
+### Changed
+
+- Updated `skybrush-ext-sidekick` dependency, completing the process of allowing
+  Sidekick to transmit show control packets over radio as a redundant link.
+
+## [2.41.0] - 2026-02-23
 
 ### Added
 
 - Added a `show` route to the routing configuration of MAVLink networks so the user
   can now decide which connection(s) to route the drone show control packet to.
+
+- Added a `mavlink:show_control` signal dispatched from the MAVLink extension. This
+  signal can be used by other extensions to subscribe to all show control packets
+  (start time, authorization state, LED lights) that are related to drone show
+  control.
+
+### Fixed
+
+- Fixed a bug that made MAVLink drones return "No version information available"
+  for version queries when their autopilot type was pre-defined in the configuration
+  file.
 
 ## [2.40.3] - 2025-12-27
 

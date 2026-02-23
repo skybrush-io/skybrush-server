@@ -10,6 +10,7 @@ from trio import CapacityLimiter, TooSlowError, sleep
 from flockwave.server.ext.show.config import AuthorizationScope, DroneShowConfiguration
 from flockwave.server.ext.show.takeoff import (
     ScheduledTakeoffManager,
+    SimpleScheduledTakeoffManager,
     TakeoffConfiguration,
 )
 from flockwave.server.model.uav import UAVBase
@@ -143,7 +144,7 @@ def uavs():
 
 
 @fixture
-def manager(uavs, config):
+def manager(uavs, config) -> MockScheduledTakeoffManager:
     manager = MockScheduledTakeoffManager(uavs)
     manager.notify_config_changed(config)
     return manager
@@ -157,7 +158,7 @@ no_takeoff_time = TakeoffConfiguration(
 
 
 async def test_scheduled_takeoff_manager_simple_broadcast(
-    manager,
+    manager: MockScheduledTakeoffManager,
     nursery,
     autojump_clock,
 ):
@@ -165,6 +166,7 @@ async def test_scheduled_takeoff_manager_simple_broadcast(
     configurations at regular intervals.
     """
     config = manager.config
+    assert config is not None
 
     start_time = int(time()) + 60000
 
@@ -212,7 +214,7 @@ async def test_scheduled_takeoff_manager_simple_broadcast(
 
 
 async def test_scheduled_takeoff_manager_simple_unicast(
-    manager,
+    manager: MockScheduledTakeoffManager,
     nursery,
     autojump_clock,
 ):
@@ -222,6 +224,7 @@ async def test_scheduled_takeoff_manager_simple_unicast(
     manager.disable_broadcast()
 
     config = manager.config
+    assert config is not None
 
     start_time = int(time()) + 60000
 
@@ -272,7 +275,7 @@ async def test_scheduled_takeoff_manager_simple_unicast(
 
 
 async def test_scheduled_takeoff_manager_unicast_rate_limiting(
-    manager,
+    manager: MockScheduledTakeoffManager,
     nursery,
     autojump_clock,
 ):
@@ -322,7 +325,7 @@ async def test_scheduled_takeoff_manager_unicast_rate_limiting(
 
 
 async def test_scheduled_takeoff_manager_retries_unicast_messages(
-    manager,
+    manager: MockScheduledTakeoffManager,
     nursery,
     autojump_clock,
 ):
@@ -384,7 +387,7 @@ async def test_scheduled_takeoff_manager_retries_unicast_messages(
 
 
 async def test_scheduled_takeoff_manager_handles_unicast_errors_gracefully(
-    manager,
+    manager: MockScheduledTakeoffManager,
     nursery,
     autojump_clock,
 ):
@@ -436,7 +439,7 @@ async def test_scheduled_takeoff_manager_handles_unicast_errors_gracefully(
 
 
 async def test_scheduled_takeoff_manager_handles_unicast_timeouts_gracefully(
-    manager,
+    manager: MockScheduledTakeoffManager,
     nursery,
     autojump_clock,
 ):
@@ -488,7 +491,7 @@ async def test_scheduled_takeoff_manager_handles_unicast_timeouts_gracefully(
 
 
 async def test_scheduled_takeoff_manager_restarts_when_crashes(
-    manager, nursery, autojump_clock
+    manager: MockScheduledTakeoffManager, nursery, autojump_clock
 ):
     """Tests the scheduled takeoff manager's ability to restart after a crash."""
     await nursery.start(manager.run)
@@ -511,3 +514,56 @@ async def test_scheduled_takeoff_manager_restarts_when_crashes(
     # checked above, one that happened right before the crash, and one that
     # happened _after_ the manager has restarted
     assert len(manager.broadcast_history) == 3
+
+
+async def test_simple_scheduled_takeoff_manager(
+    config: DroneShowConfiguration, nursery, autojump_clock
+):
+    """Tests whether the simple scheduled takeoff manager calls its associated function
+    at the right time.
+    """
+    counter = 0
+    last_config: TakeoffConfiguration | None = None
+
+    def increment_counter(config: TakeoffConfiguration):
+        nonlocal counter, last_config
+        last_config = config
+        counter += 1
+
+    def dont_increment_counter(config: TakeoffConfiguration):
+        pass
+
+    manager = SimpleScheduledTakeoffManager(increment_counter)
+
+    assert counter == 0
+    assert last_config is None
+
+    await nursery.start(manager.run)
+    manager.notify_config_changed(config)
+
+    # No calls should have been made by now because we only do broadcasts once per second
+    assert counter == 0
+    assert last_config is None
+
+    # Manager is supposed to call the function once per second, so after 2.5 seconds we
+    # should have 2 calls in total
+    await sleep(2.5)
+    assert counter == 2
+    assert last_config is not None
+
+    # Wait a bit more; total wait time will be 4.1 seconds so 4 calls
+    await sleep(1.6)
+    assert counter == 4
+    assert last_config is not None
+
+    # Check whether `use()` can be used to override temporarily
+    with manager.use(dont_increment_counter):
+        await sleep(2.5)
+        assert counter == 4
+        assert last_config is not None
+
+    # Check whether the previous function is restored after the `use()` block
+    last_config = None
+    await sleep(1.6)
+    assert counter == 6
+    assert last_config is not None

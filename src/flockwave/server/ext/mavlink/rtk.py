@@ -3,6 +3,8 @@ from contextlib import contextmanager
 from itertools import cycle
 from logging import Logger
 
+from flockwave.server.ext.signals import SignalsExtensionAPI
+
 from .types import MAVLinkMessageSpecification, spec
 
 __all__ = ("RTKCorrectionPacketEncoder",)
@@ -101,16 +103,18 @@ class RTKCorrectionPacketSignalManager:
                     )
 
     @contextmanager
-    def use(self, signals, *, log):
+    def use(self, signals: SignalsExtensionAPI, *, log: Logger | None = None):
         rtk_packet_fragments_signal = signals.get("mavlink:rtk_fragments")
         with signals.use({"rtk:packet": self._handle_packet}):
             if rtk_packet_fragments_signal:
                 self._sender = lambda messages: rtk_packet_fragments_signal.send(
                     self, messages=messages
                 )
-            self._log = log
+
+            old_log = self._log
+            self._log = log or old_log
             try:
                 yield
             finally:
-                self._log = None
+                self._log = old_log
                 self._sender = None

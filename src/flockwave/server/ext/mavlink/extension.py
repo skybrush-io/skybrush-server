@@ -25,6 +25,7 @@ from .errors import InvalidSigningKeyError
 from .network import MAVLinkNetwork
 from .rssi import RSSIMode
 from .rtk import RTKCorrectionPacketSignalManager
+from .takeoff import ScheduledTakeoffSignalDispatcher
 from .tasks import check_uavs_alive
 from .types import (
     MAVLinkMessage,
@@ -63,12 +64,18 @@ class MAVLinkDronesExtension(UAVExtension[MAVLinkDriver]):
     extension.
     """
 
+    _takeoff_signal_dispatcher: ScheduledTakeoffSignalDispatcher
+    """Object responsible for dispatching a signal when the takeoff configuration
+    of the drones in this extension changes.
+    """
+
     def __init__(self):
         super().__init__()
 
         self._driver = None
         self._networks = {}
         self._start_method = None
+        self._takeoff_signal_dispatcher = ScheduledTakeoffSignalDispatcher()
         self._uavs = None
 
     def _create_driver(self):
@@ -204,6 +211,15 @@ class MAVLinkDronesExtension(UAVExtension[MAVLinkDriver]):
                 rtk_correction_packet_signal_manager.use(signals, log=self.log)
             )
 
+            # Set up the takeoff signal dispatcher so it dispatches a signal whenever
+            # the start time configuration changes and the drones need to be informed.
+            # Other extensions can hook into this signal to provide alternative
+            # communication channels for the scheduled takeoff configuration to reach
+            # the drones.
+            stack.enter_context(
+                self._takeoff_signal_dispatcher.use(signals, log=self.log)
+            )
+
             # Forward the current start configuration for the drones in this network.
             # Note that this can be called only if self._networks has been set
             # up so we cannot do it outside the exit stack
@@ -219,6 +235,9 @@ class MAVLinkDronesExtension(UAVExtension[MAVLinkDriver]):
                     # Create one task for each network
                     for network in networks.values():
                         nursery.start_soon(partial(network.run, **kwds))
+
+                    # Create a task for the takeoff signal dispatcher
+                    nursery.start_soon(self._takeoff_signal_dispatcher.run)
 
                     # Create an additional task that periodically checks whether the UAVs
                     # registered in the extension are still alive, and that sends
@@ -553,6 +572,15 @@ class MAVLinkDronesExtension(UAVExtension[MAVLinkDriver]):
                     f"Failed to update start configuration of drones in network {name!r}"
                 )
 
+        try:
+            self._takeoff_signal_dispatcher.notify_config_changed(config)
+        except Exception:
+            self.log.warning(
+                "Failed to dispatch scheduled takeoff configuration change signal "
+                "to other extensions (reason of dispatch attempt: updated start "
+                "configuration)"
+            )
+
     def _update_show_start_time_in_networks(self) -> None:
         """Updates the scheduled start times of the drones managed by this
         extension, based on the start time extracted from the show clock.
@@ -571,6 +599,14 @@ class MAVLinkDronesExtension(UAVExtension[MAVLinkDriver]):
                 self.log.warning(
                     f"Failed to update start time of drones in network {name!r}"
                 )
+
+        try:
+            self._takeoff_signal_dispatcher.notify_start_time_changed(clock.start_time)
+        except Exception:
+            self.log.warning(
+                "Failed to dispatch scheduled takeoff configuration change signal "
+                "to other extensions (reason of dispatch attempt: updated start time)"
+            )
 
     def _update_show_light_configuration_in_networks(
         self, config: LightConfiguration | None = None

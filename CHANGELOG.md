@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.42.0] - 2026-02-24
+
+### Added
+
+- Started adding functionality for warping the time axis of the show to facilitate
+  suspend, resume and collective RTH. Functionality is still experimental.
+
 ## [2.41.1] - 2026-02-23
 
 ### Changed

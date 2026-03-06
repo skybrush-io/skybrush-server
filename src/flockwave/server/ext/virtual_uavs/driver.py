@@ -507,7 +507,7 @@ class VirtualUAV(UAVBase):
             flat_earth = FlatEarthCoordinate(x=x, y=y, amsl=amsl, ahl=z)
             self.target = self._trans.to_gps(flat_earth)
 
-    async def test_component(self, component: str) -> ProgressEvents[Progress]:
+    async def test_component(self, component: str) -> ProgressEvents[str]:
         """Tests a component of the UAV.
 
         Parameters:

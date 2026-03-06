@@ -1672,7 +1672,7 @@ class UAVDriver(Generic[TUAV], ABC):
 
     async def _test_component_single(
         self, uav: TUAV, component: str
-    ) -> ProgressEvents[Progress]:
+    ) -> ProgressEvents[str]:
         """Asks the driver to test a specific component of a single UAV
         managed by this driver.
 

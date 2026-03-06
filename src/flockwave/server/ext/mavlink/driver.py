@@ -1632,7 +1632,7 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
 
     async def test_component(
         self, component: str, *, channel: str = Channel.PRIMARY
-    ) -> ProgressEvents[Progress]:
+    ) -> ProgressEvents[str]:
         """Tests a component of the UAV.
 
         Parameters:

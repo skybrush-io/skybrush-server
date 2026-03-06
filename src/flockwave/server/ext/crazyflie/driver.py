@@ -1007,7 +1007,7 @@ class CrazyflieUAV(UAVBase):
             altitude, relative=relative, velocity=velocity
         )
 
-    async def test_component(self, component: str) -> ProgressEvents[Progress]:
+    async def test_component(self, component: str) -> ProgressEvents[str]:
         """Tests a component of the UAV.
 
         Parameters:

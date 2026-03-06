@@ -1622,7 +1622,7 @@ class UAVDriver(Generic[TUAV], ABC):
         """Asks the driver to set the values of multiple parameters for a single
         UAV managed by this driver.
 
-        May yield progress info if preparing the result takes a longer time.
+        May return an awaitable if preparing the result takes a longer time.
 
         Since we are dealing with multiple parameters here that may be changed
         independently, the function attempts to return even if some of the
@@ -1645,7 +1645,7 @@ class UAVDriver(Generic[TUAV], ABC):
             NotSupportedError: if the operation is not supported by the
                 driver and will not be supported in the future either
 
-        Yields:
+        Returns:
             a dictionary with a `success` key that contains whether all the
             parameters have been uploaded successfully, and an optional `failed`
             key that contains the list of parameter names where the upload

@@ -286,15 +286,23 @@ class VirtualUAV(UAVBase):
         """
         match component:
             case "compass":
+                if self._state != VirtualUAVState.LANDED:
+                    raise RuntimeError(f"Cannot calibrate {component} while flying")
                 for i in range(10):
                     yield Progress(percentage=i * 10)
                     await sleep(0.5 + random() * 1.5)
-
-                yield Progress(percentage=100)
-            case "accel" | "baro" | "gyro" | "level":
+            case "baro" | "gyro" | "level":
+                if self._state != VirtualUAVState.LANDED:
+                    raise RuntimeError(f"Cannot calibrate {component} while flying")
+                yield Progress(percentage=0)
+                self._position_xyz.z = 0
+                await sleep(1)
+            case "accel":
                 raise NotImplementedError
             case _:
                 raise NotSupportedError
+
+        yield Progress(percentage=100)
 
         # TODO: Dynamically set preflight results and implement other components
 

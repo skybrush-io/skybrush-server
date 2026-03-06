@@ -1051,12 +1051,6 @@ class MAVLinkDriver(UAVDriver["MAVLinkUAV"]):
             async for event in super()._set_parameters_single(uav, parameters):
                 yield event
 
-    async def _test_component_single(
-        self, uav: "MAVLinkUAV", component: str, parameters: dict[str, Any]
-    ) -> ProgressEvents[Progress]:
-        async for progress in uav.test_component(component=component):
-            yield progress
-
 
 @dataclass
 class MAVLinkMessageRecord:

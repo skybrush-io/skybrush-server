@@ -519,12 +519,6 @@ class CrazyflieDriver(UAVDriver["CrazyflieUAV"]):
             raise RuntimeError("parameter value must be numeric") from None
         await uav.set_parameter(name, value_as_float)
 
-    async def _test_component_single(
-        self, uav: "CrazyflieUAV", component: str, parameters: dict[str, Any]
-    ) -> ProgressEvents[Progress]:
-        async for progress in uav.test_component(component=component):
-            yield progress
-
 
 class CrazyflieUAV(UAVBase):
     """Subclass for UAVs created by the driver for Crazyflie drones.

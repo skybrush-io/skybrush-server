@@ -1331,9 +1331,3 @@ class VirtualUAVDriver(UAVDriver[VirtualUAV]):
         self, uav: VirtualUAV, name: str, value: Any
     ) -> None:
         await uav.set_parameter(name, value)
-
-    async def _test_component_single(
-        self, uav: VirtualUAV, component: str, parameters: dict[str, Any]
-    ) -> ProgressEvents[Progress]:
-        async for progress in uav.test_component(component=component):
-            yield progress

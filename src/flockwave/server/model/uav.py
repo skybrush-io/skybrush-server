@@ -1035,9 +1035,7 @@ class UAVDriver(Generic[TUAV], ABC):
             parameters=parameters,
         )
 
-    def test_component(
-        self, uavs: list[TUAV], component: str, parameters: dict[str, Any]
-    ):
+    def test_component(self, uavs: list[TUAV], component: str):
         """Asks the driver to test a specific component of the given UAVs.
 
         Typically, you don't need to override this method when implementing
@@ -1046,7 +1044,6 @@ class UAVDriver(Generic[TUAV], ABC):
         Parameters:
             uavs: the UAVs to address with this request
             component: the component to test
-            parameters: additional parameters provided for the test
 
         Returns:
             dict mapping UAVs to the corresponding results (which may also be
@@ -1058,7 +1055,6 @@ class UAVDriver(Generic[TUAV], ABC):
             "test component",
             self._test_component_single,
             component=component,
-            parameters=parameters,
         )
 
     def validate_command(self, command: str, args, kwds) -> str | None:
@@ -1675,10 +1671,21 @@ class UAVDriver(Generic[TUAV], ABC):
         yield {"success": not failed, "failed": failed}
 
     async def _test_component_single(
-        self, uav: TUAV, component: str, parameters: dict[str, Any]
+        self, uav: TUAV, component: str
     ) -> ProgressEvents[Progress]:
         """Asks the driver to test a specific component of a single UAV
         managed by this driver.
+
+        May return an awaitable if preparing the result takes a longer time.
+
+        The function follows the "samurai principle", i.e. "return victorious,
+        or not at all". It means that if it returns, the operation succeeded.
+        Raise an exception if the operation cannot be executed for any reason;
+        a RuntimeError is typically sufficient.
+
+        Parameters:
+            uav: the UAV to address with this request
+            component: the component to test
 
         Yields:
             progress information about the component test
@@ -1689,7 +1696,12 @@ class UAVDriver(Generic[TUAV], ABC):
             NotSupportedError: if the operation is not supported by the
                 driver and will not be supported in the future either
         """
-        raise NotImplementedError
+        test_component = getattr(uav, "test_component", None)
+        if test_component is None:
+            raise NotSupportedError
+
+        async for progress in test_component(component):
+            yield progress
 
 
 class PassiveUAV(UAVBase):

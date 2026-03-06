@@ -34,6 +34,7 @@ from flockwave.server.command_handlers import (
     create_version_command_handler,
 )
 from flockwave.server.errors import NotSupportedError
+from flockwave.server.model.commands import Progress, ProgressEvents
 from flockwave.server.model.preflight import PreflightCheckInfo, PreflightCheckResult
 from flockwave.server.model.transport import TransportOptions
 from flockwave.server.model.uav import BatteryInfo, UAVBase, UAVDriver, VersionInfo
@@ -517,6 +518,13 @@ class CrazyflieDriver(UAVDriver["CrazyflieUAV"]):
         except ValueError:
             raise RuntimeError("parameter value must be numeric") from None
         await uav.set_parameter(name, value_as_float)
+
+    async def _test_component_single(
+        self, uav: "CrazyflieUAV", component: str, parameters: dict[str, Any]
+    ) -> ProgressEvents[Progress]:
+        yield Progress(percentage=0)
+        await uav.test_component(component=component)
+        yield Progress(percentage=100)
 
 
 class CrazyflieUAV(UAVBase):
@@ -1012,6 +1020,9 @@ class CrazyflieUAV(UAVBase):
         Parameters:
             component: the component to test; currently we support ``motor``,
                 ``battery`` and ``led``
+
+        Raises:
+            NotSupportedError if the given component test is not supported
         """
         if component == "motor":
             await self.set_parameter("health.startPropTest", 1)

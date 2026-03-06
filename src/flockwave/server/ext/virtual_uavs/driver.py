@@ -34,6 +34,7 @@ from flockwave.server.command_handlers import (
 from flockwave.server.errors import NotSupportedError
 from flockwave.server.model.commands import (
     Progress,
+    ProgressEvents,
     ProgressEventsWithSuspension,
     Suspend,
 )
@@ -498,16 +499,24 @@ class VirtualUAV(UAVBase):
             flat_earth = FlatEarthCoordinate(x=x, y=y, amsl=amsl, ahl=z)
             self.target = self._trans.to_gps(flat_earth)
 
-    async def test_component(self, component: str):
+    async def test_component(self, component: str) -> ProgressEvents[Progress]:
         """Tests a component of the UAV.
 
         Parameters:
             component: the component to test; currently we support ``motor`` and
                 ``led``
+
+        Yields:
+            progress information about the test
+
+        Raises:
+            NotSupportedError if the given component test is not supported
         """
         if component == "motor":
             self.start_motors()
-            await sleep(3)
+            for i in range(4):
+                yield Progress(percentage=i * 25)
+                await sleep(1)
             self.stop_motors()
         elif component == "led":
             color_sequence = [
@@ -515,14 +524,14 @@ class VirtualUAV(UAVBase):
                 for name in "red lime blue yellow cyan magenta white".split()
             ]
             for index, color in enumerate(color_sequence):
-                if index > 0:
-                    await sleep(1)
+                yield Progress(percentage=int(index * (100 / len(color_sequence))))
                 self.set_led_color(color)
-                yield Progress(
-                    percentage=int((index + 1) * (100 / len(color_sequence)))
-                )
+                await sleep(1)
+
         else:
             raise NotSupportedError
+
+        yield Progress(percentage=100)
 
     @property
     def user_defined_error(self) -> int | None:
@@ -1314,3 +1323,9 @@ class VirtualUAVDriver(UAVDriver[VirtualUAV]):
         self, uav: VirtualUAV, name: str, value: Any
     ) -> None:
         await uav.set_parameter(name, value)
+
+    async def _test_component_single(
+        self, uav: VirtualUAV, component: str, parameters: dict[str, Any]
+    ) -> ProgressEvents[Progress]:
+        async for progress in uav.test_component(component=component):
+            yield progress

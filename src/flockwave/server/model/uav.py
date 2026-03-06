@@ -1035,6 +1035,32 @@ class UAVDriver(Generic[TUAV], ABC):
             parameters=parameters,
         )
 
+    def test_component(
+        self, uavs: list[TUAV], component: str, parameters: dict[str, Any]
+    ):
+        """Asks the driver to test a specific component of the given UAVs.
+
+        Typically, you don't need to override this method when implementing
+        a driver; override ``_test_component_single()`` instead.
+
+        Parameters:
+            uavs: the UAVs to address with this request
+            component: the component to test
+            parameters: additional parameters provided for the test
+
+        Returns:
+            dict mapping UAVs to the corresponding results (which may also be
+            errors or awaitables; it is the responsibility of the caller to
+            evaluate errors and wait for awaitables)
+        """
+        return self._dispatch_request(
+            uavs,
+            "test component",
+            self._test_component_single,
+            component=component,
+            parameters=parameters,
+        )
+
     def validate_command(self, command: str, args, kwds) -> str | None:
         """Checks whether the driver could execute the command on the UAVs
         _in principle_, without knowing which UAVs the command will be sent to.
@@ -1597,7 +1623,7 @@ class UAVDriver(Generic[TUAV], ABC):
         """Asks the driver to set the values of multiple parameters for a single
         UAV managed by this driver.
 
-        May return an awaitable if preparing the result takes a longer time.
+        May yield progress info if preparing the result takes a longer time.
 
         Since we are dealing with multiple parameters here that may be changed
         independently, the function attempts to return even if some of the
@@ -1620,7 +1646,7 @@ class UAVDriver(Generic[TUAV], ABC):
             NotSupportedError: if the operation is not supported by the
                 driver and will not be supported in the future either
 
-        Returns:
+        Yields:
             a dictionary with a `success` key that contains whether all the
             parameters have been uploaded successfully, and an optional `failed`
             key that contains the list of parameter names where the upload
@@ -1647,6 +1673,23 @@ class UAVDriver(Generic[TUAV], ABC):
                 last_percentage = percentage
 
         yield {"success": not failed, "failed": failed}
+
+    async def _test_component_single(
+        self, uav: TUAV, component: str, parameters: dict[str, Any]
+    ) -> ProgressEvents[Progress]:
+        """Asks the driver to test a specific component of a single UAV
+        managed by this driver.
+
+        Yields:
+            progress information about the component test
+
+        Raises:
+            NotImplementedError: if the operation is not supported by the
+                driver yet, but there are plans to implement it
+            NotSupportedError: if the operation is not supported by the
+                driver and will not be supported in the future either
+        """
+        raise NotImplementedError
 
 
 class PassiveUAV(UAVBase):

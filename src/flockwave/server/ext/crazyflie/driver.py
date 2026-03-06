@@ -522,9 +522,8 @@ class CrazyflieDriver(UAVDriver["CrazyflieUAV"]):
     async def _test_component_single(
         self, uav: "CrazyflieUAV", component: str, parameters: dict[str, Any]
     ) -> ProgressEvents[Progress]:
-        yield Progress(percentage=0)
-        await uav.test_component(component=component)
-        yield Progress(percentage=100)
+        async for progress in uav.test_component(component=component):
+            yield progress
 
 
 class CrazyflieUAV(UAVBase):
@@ -1014,7 +1013,7 @@ class CrazyflieUAV(UAVBase):
             altitude, relative=relative, velocity=velocity
         )
 
-    async def test_component(self, component: str) -> None:
+    async def test_component(self, component: str) -> ProgressEvents[Progress]:
         """Tests a component of the UAV.
 
         Parameters:
@@ -1025,13 +1024,18 @@ class CrazyflieUAV(UAVBase):
             NotSupportedError if the given component test is not supported
         """
         if component == "motor":
+            yield Progress(percentage=0)
             await self.set_parameter("health.startPropTest", 1)
         elif component == "led":
+            yield Progress(percentage=0)
             await self._get_crazyflie().led_ring.test()
         elif component == "battery":
+            yield Progress(percentage=0)
             await self.set_parameter("health.startBatTest", 1)
         else:
             raise NotSupportedError
+
+        yield Progress(percentage=100)
 
     async def upload_show(
         self, show: ShowSpecification, *, remember: bool = True

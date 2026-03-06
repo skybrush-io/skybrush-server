@@ -1199,11 +1199,14 @@ class UAVDriver(Generic[TUAV], ABC):
                 driver yet, but there are plans to implement it
             NotSupportedError: if the operation is not supported by the
                 driver and will not be supported in the future either
+
         """
-        if hasattr(uav, "calibrate_component"):
-            return uav.calibrate_component(component)  # type: ignore
-        else:
+
+        calibrate_component = getattr(uav, "calibrate_component", None)
+        if calibrate_component is None:
             raise NotSupportedError
+
+        return calibrate_component(component)
 
     def _enter_low_power_mode_single(
         self, uav: TUAV, *, transport: TransportOptions | None = None
@@ -1670,9 +1673,7 @@ class UAVDriver(Generic[TUAV], ABC):
 
         yield {"success": not failed, "failed": failed}
 
-    async def _test_component_single(
-        self, uav: TUAV, component: str
-    ) -> ProgressEvents[str]:
+    def _test_component_single(self, uav: TUAV, component: str):
         """Asks the driver to test a specific component of a single UAV
         managed by this driver.
 
@@ -1687,9 +1688,6 @@ class UAVDriver(Generic[TUAV], ABC):
             uav: the UAV to address with this request
             component: the component to test
 
-        Yields:
-            progress information about the component test
-
         Raises:
             NotImplementedError: if the operation is not supported by the
                 driver yet, but there are plans to implement it
@@ -1700,8 +1698,7 @@ class UAVDriver(Generic[TUAV], ABC):
         if test_component is None:
             raise NotSupportedError
 
-        async for progress in test_component(component):
-            yield progress
+        return test_component(component)
 
 
 class PassiveUAV(UAVBase):

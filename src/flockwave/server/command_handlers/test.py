@@ -4,7 +4,7 @@ from collections.abc import Callable, Iterable
 from inspect import isasyncgenfunction, iscoroutinefunction
 
 from flockwave.server.errors import NotSupportedError
-from flockwave.server.model.commands import Progress, ProgressEvents
+from flockwave.server.model.commands import ProgressEvents
 from flockwave.server.model.uav import UAV, UAVDriver
 
 __all__ = ("create_test_command_handler",)

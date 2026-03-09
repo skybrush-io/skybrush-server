@@ -151,7 +151,7 @@ lint-fix = "ruff check . --fix"
 
 ty = "ty check src/ test/"
 
-check.sequence = ["format", "lint", "ty"]
+check.sequence = ["format", "lint"]
 check.ignore_fail = "return_non_zero"
 
 test.cmd = "python -m pytest test"

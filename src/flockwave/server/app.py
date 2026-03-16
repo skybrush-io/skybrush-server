@@ -75,6 +75,8 @@ UAV_COMMAND_HANDLERS: dict[str, tuple[str, MessageBodyTransformationSpec]] = {
     "UAV-HALT": ("send_shutdown_signal", {"transport": TransportOptions.from_json}),
     "UAV-HOVER": ("send_hover_signal", {"transport": TransportOptions.from_json}),
     "UAV-LAND": ("send_landing_signal", {"transport": TransportOptions.from_json}),
+    "UAV-LOITER": ("send_loiter_signal", {"transport": TransportOptions.from_json}),
+    "UAV-MANUAL": ("send_manual_signal", {"transport": TransportOptions.from_json}),
     "UAV-MOTOR": (
         "send_motor_start_stop_signal",
         {"transport": TransportOptions.from_json},
@@ -1362,6 +1364,8 @@ async def handle_single_uav_operations(
     "UAV-HALT",
     "UAV-HOVER",
     "UAV-LAND",
+    "UAV-LOITER",
+    "UAV-MANUAL",
     "UAV-MOTOR",
     "UAV-PREFLT",
     "UAV-RST",

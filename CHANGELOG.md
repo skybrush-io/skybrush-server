@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.43.0] - 2026-03-18
+
+### Changed
+
+- Refinements to the suspend, resume and collective RTH functionality, including a
+  change in the format used to store the collective RTH plan on the drone. This is
+  not considered a breaking change because the functionality is still experimental.
+
 ## [2.42.0] - 2026-02-24
 
 ### Added

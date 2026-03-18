@@ -1184,10 +1184,10 @@ requires-dist = [
     { name = "skybrush-ext-flight-report", marker = "extra == 'pro'", specifier = ">=1.0.3", index = "https://pypi.collmot.com/" },
     { name = "skybrush-ext-flockctrl", marker = "extra == 'collmot'", specifier = ">=4.0.3", index = "https://pypi.collmot.com/" },
     { name = "skybrush-ext-map-cache", marker = "extra == 'pro'", specifier = ">=1.1.1", index = "https://pypi.collmot.com/" },
-    { name = "skybrush-ext-show-pro", marker = "extra == 'pro'", specifier = ">=0.7.0", index = "https://pypi.collmot.com/" },
+    { name = "skybrush-ext-show-pro", marker = "extra == 'pro'", specifier = ">=0.8.0", index = "https://pypi.collmot.com/" },
     { name = "skybrush-ext-sidekick", marker = "extra == 'pro'", specifier = ">=1.2.0", index = "https://pypi.collmot.com/" },
     { name = "skybrush-ext-skynet", marker = "extra == 'pro'", specifier = ">=0.6.0", index = "https://pypi.collmot.com/" },
-    { name = "skybrush-ext-studio", marker = "extra == 'pro'", specifier = ">=1.5.1", index = "https://pypi.collmot.com/" },
+    { name = "skybrush-ext-studio", marker = "extra == 'pro'", specifier = ">=1.6.0", index = "https://pypi.collmot.com/" },
     { name = "skybrush-ext-timecode", marker = "extra == 'pro'", specifier = ">=1.4.1", index = "https://pypi.collmot.com/" },
     { name = "skybrush-lib-mission-planning", marker = "extra == 'pro'", specifier = ">=2.4.1", index = "https://pypi.collmot.com/" },
     { name = "skybrush-opt-rs", marker = "extra == 'pro'", index = "https://pypi.collmot.com/" },
@@ -2795,15 +2795,15 @@ wheels = [
 
 [[package]]
 name = "skybrush-ext-show-pro"
-version = "0.7.0"
+version = "0.8.0"
 source = { registry = "https://pypi.collmot.com/" }
 dependencies = [
     { name = "skybrush-opt-rs" },
     { name = "skybrush-studio" },
 ]
-sdist = { url = "https://pypi.collmot.com/packages/skybrush_ext_show_pro-0.7.0.tar.gz", hash = "sha256:efeceb868e23e7c212d4519368a7d07db6774e49f5bca53b01833824f2883f3b" }
+sdist = { url = "https://pypi.collmot.com/packages/skybrush_ext_show_pro-0.8.0.tar.gz", hash = "sha256:f874459e27f1be35c68802ba74614a24169842da7e2940aa83e3c3f159f61455" }
 wheels = [
-    { url = "https://pypi.collmot.com/packages/skybrush_ext_show_pro-0.7.0-py3-none-any.whl", hash = "sha256:ae723aad4f5fe034e9bd710c37e4a16144c0c3cd2efb6c4074d1247a6b2bc647" },
+    { url = "https://pypi.collmot.com/packages/skybrush_ext_show_pro-0.8.0-py3-none-any.whl", hash = "sha256:e9bca31fde45d83dc2b4061badf825498df94bf5c93174354d9ec54c76dbbd9c" },
 ]
 
 [[package]]
@@ -2833,15 +2833,15 @@ wheels = [
 
 [[package]]
 name = "skybrush-ext-studio"
-version = "1.5.1"
+version = "1.6.0"
 source = { registry = "https://pypi.collmot.com/" }
 dependencies = [
     { name = "skybrush-opt-rs" },
     { name = "skybrush-studio" },
 ]
-sdist = { url = "https://pypi.collmot.com/packages/skybrush_ext_studio-1.5.1.tar.gz", hash = "sha256:02eb12e93e36748a2878aa92e95b87f426e55153a2a1df67cac25a386df30bb1" }
+sdist = { url = "https://pypi.collmot.com/packages/skybrush_ext_studio-1.6.0.tar.gz", hash = "sha256:f207f5b478ab68ddffaacae584a058e0acd171ea2ef122d1796675e87d449cbd" }
 wheels = [
-    { url = "https://pypi.collmot.com/packages/skybrush_ext_studio-1.5.1-py3-none-any.whl", hash = "sha256:6b6bd43d3d381d48174b4254c5bfb7aec44dc9a5954051a8bcc249b2f1c842b0" },
+    { url = "https://pypi.collmot.com/packages/skybrush_ext_studio-1.6.0-py3-none-any.whl", hash = "sha256:76addc4dc2cb35cf26554ed61440c53d304ceb9846b7c1fc1fa2ecd1edfe0b29" },
 ]
 
 [[package]]
@@ -2888,7 +2888,7 @@ wheels = [
 
 [[package]]
 name = "skybrush-studio"
-version = "5.15.0"
+version = "6.0.0"
 source = { registry = "https://pypi.collmot.com/" }
 dependencies = [
     { name = "jsonref" },
@@ -2905,9 +2905,9 @@ dependencies = [
     { name = "svgpathtools-lite" },
     { name = "webcolors" },
 ]
-sdist = { url = "https://pypi.collmot.com/packages/skybrush_studio-5.15.0.tar.gz", hash = "sha256:3a5f504d259337baba882d28f40de6071917ed19a088271fba38f6e003bc4ed5" }
+sdist = { url = "https://pypi.collmot.com/packages/skybrush_studio-6.0.0.tar.gz", hash = "sha256:290acdd83b58288bd8fc3328de4667838715c58373494299eef9339266759489" }
 wheels = [
-    { url = "https://pypi.collmot.com/packages/skybrush_studio-5.15.0-py3-none-any.whl", hash = "sha256:670f2d9c19742054209f6486b9b3623a6fd9ccad8299167b5fa3fd18877a0520" },
+    { url = "https://pypi.collmot.com/packages/skybrush_studio-6.0.0-py3-none-any.whl", hash = "sha256:5724417764512d1d12fd7f7d0a9f464a2b4ec941fd7689c33d5336cd2bc848a2" },
 ]
 
 [[package]]

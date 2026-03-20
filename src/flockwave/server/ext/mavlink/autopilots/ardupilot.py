@@ -396,6 +396,21 @@ class ArduPilot(Autopilot):
                 finally:
                     nursery.cancel_scope.cancel()  # stop sending RC overrides
 
+        yield Progress(message="Calculating parameters...")
+        params = calibration_status.calculate_calibration_parameters(min_current=0.5)
+        if params:
+            yield Progress(message="Saving calibration results...")
+
+            log_lines = ["Calculated calibration parameters"]
+            for name, value in params.items():
+                log_lines.append(f"    {name} = {value:.07f}")
+
+            extra = {"id": uav.id}
+            for line in log_lines:
+                uav.driver.log.info(line, extra=extra)
+
+            await uav.set_parameters(params)
+
         yield Progress.done("Compass motor interference calibration successful.")
 
     def can_handle_firmware_update_target(self, target_id: str) -> bool:

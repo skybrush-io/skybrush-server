@@ -277,7 +277,7 @@ def perform_compass_motor_interference_calibration(
     *,
     instance: int = 0,
     min_source: float | None = None,
-    min_samples: int = 100,
+    min_samples: int = 50,
 ) -> CompassMotorInterferenceCalibrationResult:
     import numpy as np
 

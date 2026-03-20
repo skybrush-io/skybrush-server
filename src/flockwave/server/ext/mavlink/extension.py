@@ -25,6 +25,7 @@ from .driver import MAVLinkDriver, MAVLinkUAV
 from .errors import InvalidSigningKeyError
 from .led_lights import LEDLightConfigurationSignalDispatcher
 from .network import MAVLinkNetwork
+from .packets import create_rc_override_packet
 from .rssi import RSSIMode
 from .rtk import RTKCorrectionPacketSignalManager
 from .takeoff import ScheduledTakeoffSignalDispatcher
@@ -419,28 +420,12 @@ class MAVLinkDronesExtension(UAVExtension[MAVLinkDriver]):
 
         return result
 
-    def _on_rc_channels_changed(self, sender: "RCState"):
+    def _on_rc_channels_changed(self, sender: RCState):
         """Handles the event when the RC channel values changed."""
-        if not self._networks:
-            return
-
-        if sender.lost:
-            # Cancel all previous RC overrides. For channels <= 8, zero means
-            # "release back to RC radio". For channels > 8, 65534 means
-            # "release back to rC radio" as zero would mean "ignore"
-            channels = [0] * 8 + [65534] * 10
-        else:
-            # Get scaled PWM values to send
-            channels = sender.get_scaled_channel_values_int(out_of_range=0)
-            if sender.num_channels < 18:
-                # Ignore channels for which the sender has no real value.
-                # 65535 in MAVLink RC_CHANNELS_OVERRIDE packets means "ignore"
-                num_missing = 18 - sender.num_channels
-                channels[sender.num_channels :] = [65535] * num_missing
-
+        spec = create_rc_override_packet(sender)
         for name, network in self._networks.items():
             try:
-                network.enqueue_rc_override_packet(channels)
+                network.enqueue_rc_override_packet(spec)
             except Exception:
                 if self.log:
                     self.log.warning(

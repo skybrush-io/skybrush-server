@@ -55,7 +55,6 @@ from .types import (
     MAVLinkMessageSpecification,
     MAVLinkNetworkSpecification,
     MAVLinkStatusTextTargetSpecification,
-    spec,
 )
 from .utils import (
     flockwave_severity_from_mavlink_severity,
@@ -476,38 +475,12 @@ class MAVLinkNetwork:
         """
         await self.manager.broadcast_packet(spec, destination=channel)
 
-    def enqueue_rc_override_packet(self, channels: list[int]) -> None:
-        """Handles a list of a RC channels that the server wishes to forward
-        to the drones as RC override.
-
-        Parameters:
-            channels: the values of the RC channels to send in a MAVLink
-                `RC_CHANNELS_OVERRIDE` message
+    def enqueue_rc_override_packet(self, spec: MAVLinkMessageSpecification) -> None:
+        """Enqueues a message containing a MAVLink RC override packet to the network,
+        handling failures gracefully.
         """
-        message = spec.rc_channels_override(
-            target_system=0,
-            target_component=0,
-            chan1_raw=channels[0],
-            chan2_raw=channels[1],
-            chan3_raw=channels[2],
-            chan4_raw=channels[3],
-            chan5_raw=channels[4],
-            chan6_raw=channels[5],
-            chan7_raw=channels[6],
-            chan8_raw=channels[7],
-            chan9_raw=channels[8],
-            chan10_raw=channels[9],
-            chan11_raw=channels[10],
-            chan12_raw=channels[11],
-            chan13_raw=channels[12],
-            chan14_raw=channels[13],
-            chan15_raw=channels[14],
-            chan16_raw=channels[15],
-            chan17_raw=channels[16],
-            chan18_raw=channels[17],
-        )
         self.manager.enqueue_broadcast_packet(
-            message, destination=Channel.RC, allow_failure=True
+            spec, destination=Channel.RC, allow_failure=True
         )
 
     def enqueue_rtk_correction_packet(self, packet: bytes) -> None:

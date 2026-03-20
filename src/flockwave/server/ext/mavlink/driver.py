@@ -19,6 +19,7 @@ from flockwave.gps.time import datetime_to_gps_time_of_week, gps_time_of_week_to
 from flockwave.gps.vectors import GPSCoordinate, VelocityNED
 from flockwave.spec.errors import FlockwaveErrorCode
 from trio import Event, TooSlowError, fail_after, move_on_after, sleep
+from trio_util import periodic
 
 from flockwave.server.command_handlers import (
     create_calibration_command_handler,
@@ -28,6 +29,7 @@ from flockwave.server.command_handlers import (
     create_version_command_handler,
 )
 from flockwave.server.errors import NotSupportedError
+from flockwave.server.ext.rc import RCExtensionAPI
 from flockwave.server.ext.show.config import AuthorizationScope
 from flockwave.server.model.battery import BatteryInfo
 from flockwave.server.model.commands import (
@@ -93,6 +95,7 @@ from .packets import (
     DroneShowStatus,
     authorization_scope_to_int,
     create_led_control_packet,
+    create_rc_override_packet,
 )
 from .rssi import RSSIMode, rtcm_counter_to_rssi
 from .types import MAVLinkMessage, PacketBroadcasterFn, PacketSenderFn, spec
@@ -2412,6 +2415,42 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
             except Exception:
                 self.driver.log.warning(
                     "Failed to disarm UAV after arming temporarily",
+                    extra={"id": log_id_for_uav(self)},
+                )
+
+    @asynccontextmanager
+    async def temporarily_override_rc(
+        self, channel: str = Channel.RC
+    ) -> AsyncIterator[Callable[[Sequence[int]], Awaitable[None]]]:
+        """Creates a context that allows the caller to send RC override messages to
+        this drone without affecting others. Upon exiting the context, RC control will
+        be released back to the UAV at a best-effort basis. There is currently no way
+        to detect failure reliably.
+        """
+        rc_api = self.driver.app.import_api("rc", RCExtensionAPI)
+        state = rc_api.create_state()
+
+        async def update(values: Sequence[int] | None = None) -> None:
+            if values is not None:
+                state.update(values)
+
+            packet = create_rc_override_packet(state)
+            await self.driver.send_packet(packet, self, channel=Channel.PRIMARY)
+
+        try:
+            yield update
+        finally:
+            try:
+                state.reset()
+                count = 0
+                async for _ in periodic(0.1):
+                    await update()
+                    count += 1
+                    if count >= 10:
+                        break
+            except Exception:
+                self.driver.log.warning(
+                    "Failed to release RC control back to the UAV",
                     extra={"id": log_id_for_uav(self)},
                 )
 

@@ -7,7 +7,7 @@ from enum import IntEnum, IntFlag
 from functools import lru_cache
 from struct import Struct, pack
 from time import time
-from typing import ClassVar
+from typing import TYPE_CHECKING, ClassVar
 
 from flockwave.gps.time import gps_time_of_week_to_utc, unix_to_gps_time_of_week
 
@@ -18,9 +18,13 @@ from flockwave.server.model.gps import GPSFixType as OurGPSFixType
 from .enums import GPSFixType
 from .types import MAVLinkMessage, MAVLinkMessageSpecification, spec
 
+if TYPE_CHECKING:
+    from flockwave.server.ext.rc import RCState
+
 __all__ = (
     "DroneShowStatus",
     "create_led_control_packet",
+    "create_rc_override_packet",
     "create_start_time_configuration_packet",
     "create_time_axis_configuration_packet",
 )
@@ -148,6 +152,53 @@ def create_led_control_packet(
     if broadcast:
         kwds.update(target_system=0, target_component=0)
     return spec.led_control(**kwds)
+
+
+def create_rc_override_packet(
+    state: RCState, broadcast: bool = False
+) -> MAVLinkMessageSpecification:
+    """Creates a MAVLink RC override packet based on the given RC state object,
+    mapping from the channel conventions used in the RCState_ instance to the ones used
+    by the MAVLink RC_OVERRIDE packet.
+    """
+    if state.lost:
+        # Cancel all previous RC overrides. For channels <= 8, zero means
+        # "release back to RC radio". For channels > 8, 65534 means
+        # "release back to RC radio" as zero would mean "ignore"
+        channels = [0] * 8 + [65534] * 10
+    else:
+        # Get scaled PWM values to send
+        channels = state.get_scaled_channel_values_int(out_of_range=0)
+        if state.num_channels < 18:
+            # Ignore channels for which the sender has no real value.
+            # 65535 in MAVLink RC_CHANNELS_OVERRIDE packets means "ignore"
+            num_missing = 18 - state.num_channels
+            channels[state.num_channels :] = [65535] * num_missing
+
+    kwds = {
+        "chan1_raw": channels[0],
+        "chan2_raw": channels[1],
+        "chan3_raw": channels[2],
+        "chan4_raw": channels[3],
+        "chan5_raw": channels[4],
+        "chan6_raw": channels[5],
+        "chan7_raw": channels[6],
+        "chan8_raw": channels[7],
+        "chan9_raw": channels[8],
+        "chan10_raw": channels[9],
+        "chan11_raw": channels[10],
+        "chan12_raw": channels[11],
+        "chan13_raw": channels[12],
+        "chan14_raw": channels[13],
+        "chan15_raw": channels[14],
+        "chan16_raw": channels[15],
+        "chan17_raw": channels[16],
+        "chan18_raw": channels[17],
+    }
+    if broadcast:
+        kwds.update(target_system=0, target_component=0)
+
+    return spec.rc_channels_override(**kwds)
 
 
 def format_elapsed_time(value: int) -> str:

@@ -796,6 +796,7 @@ class MAVLinkNetwork:
         handlers = {
             "AUTOPILOT_VERSION": self._handle_message_autopilot_version,
             "BAD_DATA": nop,
+            "BATTERY_STATUS": self._handle_message_battery_status,
             "COMMAND_ACK": nop,
             "COMMAND_LONG": self._handle_message_command_long,
             "DATA16": self._handle_message_data,
@@ -826,6 +827,9 @@ class MAVLinkNetwork:
             "POSITION_TARGET_GLOBAL_INT": nop,
             "POWER_STATUS": nop,
             "RADIO_STATUS": radio_status_handler,
+            "SCALED_IMU": self._handle_message_scaled_imu,  # common handler for all IMUs
+            "SCALED_IMU2": self._handle_message_scaled_imu,  # common handler for all IMUs
+            "SCALED_IMU3": self._handle_message_scaled_imu,  # common handler for all IMUs
             "STATUSTEXT": self._handle_message_statustext,
             "SYS_STATUS": self._handle_message_sys_status,
             "TIMESYNC": self._handle_message_timesync,
@@ -920,6 +924,14 @@ class MAVLinkNetwork:
         if uav:
             uav.handle_message_autopilot_version(message)
 
+    def _handle_message_battery_status(
+        self, message: MAVLinkMessage, *, connection_id: str, address: Any
+    ):
+        """Handles an incoming MAVLink BATTERY_STATUS message."""
+        uav = self._find_uav_from_message(message, address)
+        if uav:
+            uav.handle_message_battery_status(message)
+
     def _handle_message_command_long(
         self, message: MAVLinkMessage, *, connection_id: str, address: Any
     ):
@@ -1002,6 +1014,14 @@ class MAVLinkNetwork:
         uav = self._find_uav_from_message(message, address)
         if uav:
             uav.handle_message_radio_status(message)
+
+    def _handle_message_scaled_imu(
+        self, message: MAVLinkMessage, *, connection_id: str, address: Any
+    ):
+        """Handles an incoming MAVLink SCALED_IMU, SCALED_IMU2 or SCALED_IMU3 message."""
+        uav = self._find_uav_from_message(message, address)
+        if uav:
+            uav.handle_message_scaled_imu(message)
 
     def _handle_message_statustext(
         self, message: MAVLinkMessage, *, connection_id: str, address: Any

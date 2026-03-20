@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import AsyncIterator, Iterable, Sequence
-from contextlib import aclosing
+from contextlib import AsyncExitStack, aclosing
 from copy import deepcopy
 from dataclasses import dataclass
 from functools import partial
@@ -11,7 +11,7 @@ from struct import Struct
 from time import monotonic
 from typing import IO, TYPE_CHECKING, cast
 
-from trio import TooSlowError, sleep
+from trio import TooSlowError, open_nursery, sleep
 
 from flockwave.server.errors import NotSupportedError
 from flockwave.server.model.commands import (
@@ -134,6 +134,9 @@ class ArduPilot(Autopilot):
 
     MAX_COMPASS_CALIBRATION_DURATION = 60
     """Maximum allowed duration of a compass calibration, in seconds"""
+
+    MAX_COMPASS_MOTOR_INTERFERENCE_CALIBRATION_DURATION = 120
+    """Maximum allowed duration of a compass-motor interference calibration, in seconds"""
 
     @classmethod
     def describe_custom_mode(
@@ -329,8 +332,51 @@ class ArduPilot(Autopilot):
 
         yield Progress.done("Compass calibration successful.")
 
-    def calibrate_compass_motor_interference(self, uav: MAVLinkUAV):
-        raise NotImplementedError
+    async def calibrate_compass_motor_interference(
+        self, uav: MAVLinkUAV
+    ) -> ProgressEventsWithSuspension[None, str]:
+        rate_hz = 20.0  # 20 Hz should be enough; logs only use 10 Hz
+        calibration_messages = {
+            int(MAVMessageType.BATTERY_STATUS): rate_hz,
+            int(MAVMessageType.SCALED_IMU): rate_hz,
+            int(MAVMessageType.SCALED_IMU2): rate_hz,
+            int(MAVMessageType.SCALED_IMU3): rate_hz,
+        }
+        timeout = self.MAX_COMPASS_MOTOR_INTERFERENCE_CALIBRATION_DURATION
+
+        async with AsyncExitStack() as stack:
+            # Reset our internal state object of the compass-motor interference
+            # calibration procedure
+            calibration_status = uav.compass_motor_interference_calibration
+            calibration_status.reset()
+
+            yield Progress(message="Configuring UAV for calibration...")
+            await stack.enter_async_context(uav.temporarily_set_mode("acro"))
+            await stack.enter_async_context(
+                uav.temporarily_request_messages(calibration_messages)
+            )
+
+            async def generate_actions():
+                """Function that generates RC override commands in the background to
+                ramp the throttle up and down during the compass-motor interference
+                calibration.
+                """
+                async for _ in calibration_status.actions():
+                    # TODO(ntamas)
+                    pass
+
+            async with open_nursery() as nursery:
+                nursery.start_soon(generate_actions)
+                try:
+                    yield Progress(message="Calibration in progress...")
+                    async for progress in calibration_status.updates(
+                        timeout=timeout, fail_on_timeout=False
+                    ):
+                        yield progress
+                finally:
+                    nursery.cancel_scope.cancel()  # stop sending RC overrides
+
+        yield Progress.done("Compass motor interference calibration successful.")
 
     def can_handle_firmware_update_target(self, target_id: str) -> bool:
         return target_id == FirmwareUpdateTarget.ABIN.value

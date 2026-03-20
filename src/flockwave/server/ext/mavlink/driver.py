@@ -66,6 +66,7 @@ from .accelerometer import AccelerometerCalibration
 from .autopilots import ArduPilot, Autopilot, UnknownAutopilot
 from .channel import Channel
 from .compass import CompassCalibration
+from .compassmot import CompassMotorInterferenceCalibration
 from .enums import (
     ConnectionState,
     GPSFixType,
@@ -331,7 +332,7 @@ class MAVLinkDriver(UAVDriver["MAVLinkUAV"]):
         return int(monotonic() * 1000)
 
     handle_command_calib = create_calibration_command_handler(
-        ("accel", "baro", "compass", "gyro", "level")
+        ("accel", "baro", "compass", "compassmot", "gyro", "level")
     )
     handle_command_color = create_color_command_handler()
     handle_command_param = create_parameter_command_handler(
@@ -1098,6 +1099,16 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
     ensure that the compass calibration status object is created on-demand.
     """
 
+    _compass_motor_interference_calibration: (
+        CompassMotorInterferenceCalibration | None
+    ) = None
+    """Compass motor interference calibration status of the drone, constructed lazily.
+
+    Use the `compass_motor_interference_calibration` getter to access this
+    property; this will ensure that the compass motor interference calibration
+    status object is created on-demand.
+    """
+
     _connected_event: Event
     """Event that is emitted when the connection state of the UAV becomes
     connected.
@@ -1741,6 +1752,14 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
                 # a protocol error at this point and bail out.
                 self.ensure_error(FlockwaveErrorCode.AUTOPILOT_PROTOCOL_ERROR)
 
+    def handle_message_battery_status(self, message: MAVLinkMessage):
+        """Handles an incoming MAVLink BATTERY_STATUS message targeted at this
+        UAV.
+        """
+        calib = self._compass_motor_interference_calibration
+        if calib is not None:
+            calib.handle_message_battery_status(message)
+
     def handle_message_command_long(self, message: MAVLinkMessage):
         if message.command == MAVCommand.ACCELCAL_VEHICLE_POS:
             self.accelerometer_calibration.handle_message_accelcal_vehicle_pos(message)
@@ -1973,6 +1992,12 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
         rssi = min(max(0, int((rssi_dbm + 100) * 2)), 100)
         self.update_rssi(index=0, value=rssi)
 
+    def handle_message_scaled_imu(self, message: MAVLinkMessage):
+        """Handles an incoming MAVLink SCALED_IMU message targeted at this UAV."""
+        calib = self._compass_motor_interference_calibration
+        if calib is not None:
+            calib.handle_message_scaled_imu(message)
+
     def handle_message_sys_status(self, message: MAVLinkMessage):
         self._store_message(message)
 
@@ -2020,6 +2045,17 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
         if self._compass_calibration is None:
             self._compass_calibration = CompassCalibration()
         return self._compass_calibration
+
+    @property
+    def compass_motor_interference_calibration(
+        self,
+    ) -> CompassMotorInterferenceCalibration:
+        """State object of the compass-motor interference calibration procedure."""
+        if self._compass_motor_interference_calibration is None:
+            self._compass_motor_interference_calibration = (
+                CompassMotorInterferenceCalibration()
+            )
+        return self._compass_motor_interference_calibration
 
     @property
     def is_connected(self) -> bool:

@@ -152,7 +152,7 @@ class CompassMotorInterferenceCalibration:
         UAV during the compass-motor interference calibration.
         """
         schedule = schedule or LinearThrottleRamp(
-            ramp_time=10, pre_delay=2, post_delay=1, max_throttle=0.5
+            ramp_time=10, pre_delay=2, post_delay=1
         )
         dt = 1 / update_rate_hz
         total = schedule.get_total_duration()

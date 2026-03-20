@@ -1262,6 +1262,27 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
             # Turn NotImplementedError from the autopilot into a NotSupportedError
             raise NotSupportedError from None
 
+    async def calibrate_compass_motor_interference(
+        self,
+    ) -> ProgressEventsWithSuspension[None, str]:
+        """Attempts to compensate for the interference between the compasses and the
+        motors of the UAV.
+
+        Yields:
+            events describing the progress of the compensation procedure
+
+        Raises:
+            NotSupportedError: if the compensation is not supported on the UAV
+        """
+        try:
+            async for event in self._autopilot.calibrate_compass_motor_interference(
+                self
+            ):
+                yield event
+        except NotImplementedError:
+            # Turn NotImplementedError from the autopilot into a NotSupportedError
+            raise NotSupportedError from None
+
     async def calibrate_component(
         self, component: str
     ) -> ProgressEventsWithSuspension[None, str]:
@@ -1269,7 +1290,8 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
 
         Parameters:
             component: the component to calibrate; currently we support
-                ``accel``, ``baro``, ``compass``, ``gyro`` or ``level``.
+                ``accel``, ``baro``, ``compass``, ``gyro``, ``level`` or
+                ``compassmot`` (compass-motor interference).
 
         Raises:
             NotSupportedError: if the calibration of the given component is not
@@ -1287,6 +1309,13 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
             # Compass calibration takes a long time and involves progress
             # handling so that's handled in a separate function
             async for event in self.calibrate_compass():
+                yield event
+            return
+
+        if component == "compassmot":
+            # Compass-motor interference calibration takes a long time and involves
+            # progress handling so that's handled in a separate function
+            async for event in self.calibrate_compass_motor_interference():
                 yield event
             return
 

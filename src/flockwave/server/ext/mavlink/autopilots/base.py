@@ -133,6 +133,26 @@ class Autopilot(ABC):
         ...
 
     @abstractmethod
+    def calibrate_compass_motor_interference(
+        self, uav: MAVLinkUAV
+    ) -> ProgressEventsWithSuspension[None, str]:
+        """Runs a calibration procedure that attempts to compensate for the
+        changes in the electromagnetic field of the UAV when the motors are spinning
+        at high throttle.
+
+        Yields:
+            events describing the progress of the calibration
+
+        Raises:
+            NotImplementedError: if we have not implemented support for
+                compensating the interference between the compasses and the motors
+                (but the device itself supports this compensation)
+            NotSupportedError: if the autopilot is not able to compensate for the
+                interference between the compasses and the motors
+        """
+        ...
+
+    @abstractmethod
     def can_handle_firmware_update_target(self, target_id: str) -> bool:
         """Returns whether the UAV can handle firmware uploads with the given
         target.

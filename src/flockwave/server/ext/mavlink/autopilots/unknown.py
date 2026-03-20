@@ -26,6 +26,9 @@ class UnknownAutopilot(Autopilot):
     def calibrate_compass(self, uav: MAVLinkUAV):
         raise NotSupportedError
 
+    def calibrate_compass_motor_interference(self, uav: MAVLinkUAV):
+        raise NotSupportedError
+
     def can_handle_firmware_update_target(self, target_id: str) -> bool:
         return False
 

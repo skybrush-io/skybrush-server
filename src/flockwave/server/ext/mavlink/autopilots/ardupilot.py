@@ -329,6 +329,9 @@ class ArduPilot(Autopilot):
 
         yield Progress.done("Compass calibration successful.")
 
+    def calibrate_compass_motor_interference(self, uav: MAVLinkUAV):
+        raise NotImplementedError
+
     def can_handle_firmware_update_target(self, target_id: str) -> bool:
         return target_id == FirmwareUpdateTarget.ABIN.value
 

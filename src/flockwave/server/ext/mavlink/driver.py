@@ -3057,6 +3057,7 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
                 # was reported in the Skybrush-specific status packet
                 or (not has_geofence_error and status.is_geofence_breached)
             ),
+            FlockwaveErrorCode.ESC_ERROR.value: status.has_high_esc_error_rate,
         }
         self.ensure_errors(errors)
 
@@ -3203,11 +3204,7 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
             FlockwaveErrorCode.PRESSURE_SENSOR_ERROR.value: has_baro_error,
             FlockwaveErrorCode.GPS_SIGNAL_LOST.value: has_gps_error,
             FlockwaveErrorCode.PROXIMITY_ERROR.value: has_proximity_error,
-            FlockwaveErrorCode.MOTOR_MALFUNCTION.value: has_motor_error
-            or (
-                self._last_skybrush_status_info
-                and self._last_skybrush_status_info.has_high_esc_error_rate
-            ),
+            FlockwaveErrorCode.MOTOR_MALFUNCTION.value: has_motor_error,
             FlockwaveErrorCode.GEOFENCE_VIOLATION.value: (
                 has_geofence_error and are_motors_running
             ),

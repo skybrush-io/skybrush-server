@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [main]
+
+### Changed
+
+- High ESC error rates reported by the UAV now received a new, separate error code
+  (`ESC`, numeric value: 142). Earlier versions used the "motor malfunction" error code,
+  which was misleading and also complicated the logic that updated the error codes in
+  the MAVLink extension.
+
 ## [2.44.1] - 2026-03-20
 
 ### Added

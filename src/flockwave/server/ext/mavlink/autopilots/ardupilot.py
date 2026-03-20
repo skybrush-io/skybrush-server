@@ -921,7 +921,7 @@ def encode_parameters_to_packed_format(
     if isinstance(parameters, dict):
         param_iter = (
             PackedParameter(name.upper().encode("ascii", "replace"), None, float(value))
-            for name, value in parameters.items()
+            for name, value in cast(dict[str, float], parameters).items()
         )
     else:
         param_iter = iter(parameters)

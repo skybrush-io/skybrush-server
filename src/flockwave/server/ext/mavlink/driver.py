@@ -1703,7 +1703,9 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
 
                 # The other side has to know that we have switched; we do it by
                 # sending it a REQUEST_AUTOPILOT_CAPABILITIES message again
-                self.driver.run_in_background(self._request_autopilot_capabilities)
+                self.driver.run_in_background(
+                    self._request_autopilot_capabilities_and_ignore_result
+                )
             else:
                 # MAVLink 2 not supported by the drone. We do not support MAVLink 1
                 # as most of the messages we use are MAVLink 2 only, so indicate
@@ -1829,7 +1831,9 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
                 or now - self._last_autopilot_capabilities_requested_at > 2
             ):
                 self._last_autopilot_capabilities_requested_at = now
-                self.driver.run_in_background(self._request_autopilot_capabilities)
+                self.driver.run_in_background(
+                    self._request_autopilot_capabilities_and_ignore_result
+                )
 
         # If we haven't received a SYS_STATUS message for a while but we keep
         # on receiving heartbeats, chances are that the data streams are not
@@ -2677,6 +2681,12 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
             )
 
         return success
+
+    async def _request_autopilot_capabilities_and_ignore_result(self) -> None:
+        """Sends a request to the autopilot to send its capabilities via MAVLink
+        in a separate packet, and then ignore whether the request succeeded or not.
+        """
+        await self._request_autopilot_capabilities()
 
     def _get_previous_copy_of_message(
         self, message: MAVLinkMessage

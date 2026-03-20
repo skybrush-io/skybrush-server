@@ -26,7 +26,7 @@ class CompassMotorInterferenceCalibrationStatus(IntEnum):
 
 @dataclass
 class ThrottleAction:
-    value: int
+    value: float
     should_sample: bool = True
     done: bool = False
 
@@ -103,7 +103,9 @@ class CompassMotorInterferenceCalibration:
         """Returns an async iterator generating throttle actions to be performed on the
         UAV during the compass-motor interference calibration.
         """
-        schedule = schedule or LinearThrottleRamp(ramp_time=10)
+        schedule = schedule or LinearThrottleRamp(
+            ramp_time=10, pre_delay=2, post_delay=1
+        )
         dt = 1 / update_rate_hz
         total = schedule.get_total_duration()
 
@@ -135,20 +137,29 @@ class LinearThrottleRamp:
     interference calibration.
     """
 
+    cycles: int
+    min_throttle: float
+    max_throttle: float
+    post_delay: float
+    pre_delay: float
+    ramp_time: float
+
     def __init__(
         self,
         *,
         ramp_time: float,
-        min_throttle: int = 1000,
-        max_throttle: int = 2000,
+        min_throttle: float = 0,
+        max_throttle: float = 1,
         cycles: int = 1,
-        initial_delay: float = 0,
+        pre_delay: float = 0,
+        post_delay: float = 0,
     ):
         self.min_throttle = min_throttle
         self.max_throttle = max_throttle
         self.ramp_time = ramp_time
         self.cycles = cycles
-        self.initial_delay = initial_delay
+        self.pre_delay = pre_delay
+        self.post_delay = post_delay
 
     def get_action(self, dt: float) -> ThrottleAction:
         """Returns the throttle action corresponding to the given elapsed time since
@@ -158,32 +169,31 @@ class LinearThrottleRamp:
             dt: the time elapsed, in seconds
         """
         cycle_time = self.ramp_time * 2
-        total_time = cycle_time * self.cycles
+        total_cycle_time = cycle_time * self.cycles
+        total_time = self.get_total_duration()
 
-        dt -= self.initial_delay
-
-        if dt < 0:
+        if dt < self.pre_delay:
             return ThrottleAction(self.min_throttle, False, False)
 
         if dt > total_time:
             return ThrottleAction(self.min_throttle, False, True)
 
+        dt -= self.pre_delay
+        if dt > total_cycle_time:
+            return ThrottleAction(self.min_throttle)
+
         cycle_position = dt % cycle_time
         if cycle_position < self.ramp_time:
-            value = int(
-                self.min_throttle
-                + (self.max_throttle - self.min_throttle)
-                * (cycle_position / self.ramp_time)
+            value = self.min_throttle + (self.max_throttle - self.min_throttle) * (
+                cycle_position / self.ramp_time
             )
         else:
-            value = int(
-                self.max_throttle
-                - (self.max_throttle - self.min_throttle)
-                * ((cycle_position - self.ramp_time) / self.ramp_time)
+            value = self.max_throttle - (self.max_throttle - self.min_throttle) * (
+                (cycle_position - self.ramp_time) / self.ramp_time
             )
 
         return ThrottleAction(value)
 
     def get_total_duration(self) -> float:
         """Returns the total duration of the linear throttle ramp schedule."""
-        return self.initial_delay + self.ramp_time * 2 * self.cycles
+        return self.pre_delay + self.ramp_time * 2 * self.cycles + self.post_delay

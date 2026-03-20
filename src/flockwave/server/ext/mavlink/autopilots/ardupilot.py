@@ -7,6 +7,7 @@ from copy import deepcopy
 from dataclasses import dataclass
 from functools import partial
 from io import BytesIO
+from math import floor
 from struct import Struct
 from time import monotonic
 from typing import IO, TYPE_CHECKING, cast
@@ -343,12 +344,15 @@ class ArduPilot(Autopilot):
             int(MAVMessageType.SCALED_IMU3): rate_hz,
         }
         calibration_parameters = [
-            # Turn off arming checks so we can arm indoord
-            # ("ARMING_CHECK", 0),
             # Ensure that we are receiving uncompensated compass readings
             ("COMPASS_MOTCT", 0),
             # Mute buzzer in case it generates interference on the UART when on
             ("NTF_BUZZ_VOLUME", 0),
+            # Disable geofence so we can arm indoors
+            ("FENCE_ENABLE", 0),
+            # Configure RC override
+            ("RC_OPTIONS", 0),
+            ("RC_OVERRIDE_TIME", 3),
         ]
         timeout = self.MAX_COMPASS_MOTOR_INTERFERENCE_CALIBRATION_DURATION
 
@@ -367,15 +371,19 @@ class ArduPilot(Autopilot):
                 uav.temporarily_request_messages(calibration_messages)
             )
             await stack.enter_async_context(uav.temporarily_arm())
+            override_rc = await stack.enter_async_context(uav.temporarily_override_rc())
 
             async def generate_actions():
                 """Function that generates RC override commands in the background to
                 ramp the throttle up and down during the compass-motor interference
                 calibration.
                 """
-                async for _ in calibration_status.actions():
-                    # TODO(ntamas)
-                    pass
+                # midpoint for roll, pitch, yaw and throttle channels
+                channels = [32768, 32768, 32768, 32768]
+                throttle_channel = 2  # index of the throttle channel in ArduPilot
+                async for throttle in calibration_status.actions():
+                    channels[throttle_channel] = floor(65536 * throttle.value)
+                    await override_rc(channels)
 
             async with open_nursery() as nursery:
                 nursery.start_soon(generate_actions)

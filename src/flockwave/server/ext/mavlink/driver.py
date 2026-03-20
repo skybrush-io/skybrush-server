@@ -2396,6 +2396,53 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
                     extra={"id": log_id_for_uav(self)},
                 )
 
+    @asynccontextmanager
+    async def temporarily_set_mode(
+        self, mode: int | str, *, channel: str = Channel.PRIMARY
+    ) -> AsyncIterator[None]:
+        """Temporarily requests the UAV to switch to the given flight mode while the
+        execution is in the context, resetting to the previous flight mode upon exiting
+        the context. Resetting is done at a best-effort basis; failures will be
+        ignored.
+
+        Args:
+            mode: the custom flight mode to switch to
+            channel: the communication channel to use
+        """
+        # Wait at most 5 seconds for a heartbeat so we can store what the current
+        # flight mode is
+        tries = 5
+        while tries > 0:
+            heartbeat = self.get_last_message(MAVMessageType.HEARTBEAT)
+            if heartbeat is not None:
+                break
+            await sleep(1)
+            tries -= 1
+
+        if heartbeat is None:
+            raise RuntimeError(
+                "Failed to get heartbeat from UAV to determine current flight mode"
+            )
+
+        try:
+            await self.set_mode(mode, channel=channel)
+            yield
+        finally:
+            base_mode = heartbeat.base_mode
+            custom_mode = heartbeat.custom_mode
+            success = await self.driver.send_command_long(
+                self,
+                MAVCommand.DO_SET_MODE,
+                param1=float(base_mode),
+                param2=float(custom_mode),
+                channel=channel,
+            )
+            if not success:
+                raise RuntimeError(
+                    f"UAV rejected to restore flight mode after a temporary "
+                    f"mode change (base mode {base_mode}, custom mode {custom_mode})"
+                )
+
     async def trigger_camera_shutter(self) -> None:
         """Asks the UAV to trigger the camera shutter (if it has a camera)."""
         success = await self.driver.send_command_long(

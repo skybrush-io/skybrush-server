@@ -11,7 +11,7 @@ from functools import partial
 from logging import Logger
 from math import inf, isfinite
 from time import monotonic
-from typing import Any
+from typing import Any, Sequence
 
 from colour import Color
 from flockwave.concurrency import FutureCancelled, delayed
@@ -908,17 +908,10 @@ class MAVLinkDriver(UAVDriver["MAVLinkUAV"]):
         self, uav: "MAVLinkUAV", start: bool, force: bool = False, *, transport=None
     ) -> None:
         channel = transport_options_to_channel(transport)
-
-        if not await self.send_command_long(
-            uav,
-            MAVCommand.COMPONENT_ARM_DISARM,
-            1 if start else 0,
-            FORCE_MAGIC if force else 0,
-            channel=channel,
-        ):
-            raise RuntimeError(
-                "Failed to arm motors" if start else "Failed to disarm motors"
-            )
+        if start:
+            await uav.arm(force=force, channel=channel)
+        else:
+            await uav.disarm(force=force, channel=channel)
 
     async def _send_reset_signal_broadcast(self, component, *, transport=None) -> None:
         channel = transport_options_to_channel(transport)
@@ -1239,6 +1232,14 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
         self._network_id = network_id
         self._system_id = system_id
 
+    async def arm(self, *, force: bool = False, channel: str = Channel.PRIMARY) -> None:
+        """Arms the motors of the UAV.
+
+        Args:
+            force: whether to force the arming even if the UAV thinks it is not safe
+        """
+        return await self._set_armed_state(True, force=force, channel=channel)
+
     async def calibrate_accelerometer(self) -> ProgressEventsWithSuspension[None, str]:
         """Calibrates the accelerometers of the UAV.
 
@@ -1356,9 +1357,7 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
             raise RuntimeError(f"Failed to calibrate component: {component!r}")
 
     def can_handle_firmware_update_target(self, target_id: str) -> bool:
-        """Returns whether the virtual UAV can handle uploads with the given
-        target.
-        """
+        """Returns whether the UAV can handle uploads with the given target."""
         return self._autopilot.can_handle_firmware_update_target(target_id)
 
     async def clear_scheduled_takeoff_time(self) -> None:
@@ -1374,6 +1373,19 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
     async def configure_safety(self, configuration: SafetyConfigurationRequest) -> None:
         """Configures the safety features on the UAV."""
         return await self._autopilot.configure_safety(self, configuration)
+
+    async def disarm(
+        self,
+        *,
+        force: bool = False,
+        channel: str = Channel.PRIMARY,
+    ) -> None:
+        """Disarms the motors of the UAV.
+
+        Args:
+            force: whether to force the arming even if the UAV thinks it is not safe
+        """
+        return await self._set_armed_state(False, force=force, channel=channel)
 
     def get_age_of_message(self, type: int, now: float | None = None) -> float:
         """Returns the number of seconds elapsed since we have last seen a
@@ -2384,6 +2396,26 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
             raise RuntimeError("Failed to send takeoff command")
 
     @asynccontextmanager
+    async def temporarily_arm(
+        self, *, force: bool = False, channel: str = Channel.PRIMARY
+    ) -> AsyncIterator[None]:
+        """Temporarily arms the UAV while the execution is in the context, disarming it
+        upon exiting the context. Disarming is done at a best-effort basis; failures
+        will be ignored.
+        """
+        try:
+            await self.arm(force=force, channel=channel)
+            yield
+        finally:
+            try:
+                await self.disarm(force=force, channel=channel)
+            except Exception:
+                self.driver.log.warning(
+                    "Failed to disarm UAV after arming temporarily",
+                    extra={"id": log_id_for_uav(self)},
+                )
+
+    @asynccontextmanager
     async def temporarily_request_messages(
         self, messages: dict[int, float]
     ) -> AsyncIterator[None]:
@@ -2474,9 +2506,45 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
                 channel=channel,
             )
             if not success:
-                raise RuntimeError(
+                self.driver.log.warning(
                     f"UAV rejected to restore flight mode after a temporary "
-                    f"mode change (base mode {base_mode}, custom mode {custom_mode})"
+                    f"mode change (base mode {base_mode}, custom mode {custom_mode})",
+                    extra={"id": log_id_for_uav(self)},
+                )
+
+    @asynccontextmanager
+    async def temporarily_set_parameters(
+        self, parameters: Sequence[tuple[str, float]]
+    ) -> AsyncIterator[None]:
+        """Temporarily sets the given parameters on the UAV while the execution is in
+        the context, resetting to the previous values upon exiting the context.
+        Resetting is done at a best-effort basis; failures will be ignored.
+
+        Args:
+            parameters: a sequence of (parameter name, value) pairs to set. The order
+                matters: parameters will be attempted to set in this order and reset
+                to their values in the reverse order
+        """
+        previous_values: Sequence[tuple[str, float]] = []
+        failed_to_restore: list[str] = []
+        try:
+            for name, value in parameters:
+                old_value = await self.get_parameter(name)
+                await self.set_parameter(name, value)
+                previous_values.append((name, float(old_value)))
+            yield
+        finally:
+            for name, value in reversed(previous_values):
+                try:
+                    await self.set_parameter(name, value)
+                except Exception:
+                    failed_to_restore.append(name)
+
+            if failed_to_restore:
+                self.driver.log.warning(
+                    f"Failed to reset parameter(s) {failed_to_restore} after temporary "
+                    f"parameter change",
+                    extra={"id": log_id_for_uav(self)},
                 )
 
     async def trigger_camera_shutter(self) -> None:
@@ -2816,6 +2884,20 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
         or `None` if we have not observed such a message yet.
         """
         return self._last_messages.get(message.get_msgId())
+
+    async def _set_armed_state(
+        self, armed: bool, *, force: bool = False, channel: str = Channel.PRIMARY
+    ) -> None:
+        if not await self.driver.send_command_long(
+            self,
+            MAVCommand.COMPONENT_ARM_DISARM,
+            1 if armed else 0,
+            FORCE_MAGIC if force else 0,
+            channel=channel,
+        ):
+            raise RuntimeError(
+                "Failed to arm the motors" if armed else "Failed to disarm the motors"
+            )
 
     def _set_connection_state(
         self, value: ConnectionState, heartbeat: MAVLinkMessage | None

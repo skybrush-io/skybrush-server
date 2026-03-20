@@ -342,6 +342,14 @@ class ArduPilot(Autopilot):
             int(MAVMessageType.SCALED_IMU2): rate_hz,
             int(MAVMessageType.SCALED_IMU3): rate_hz,
         }
+        calibration_parameters = [
+            # Turn off arming checks so we can arm indoord
+            # ("ARMING_CHECK", 0),
+            # Ensure that we are receiving uncompensated compass readings
+            ("COMPASS_MOTCT", 0),
+            # Mute buzzer in case it generates interference on the UART when on
+            ("NTF_BUZZ_VOLUME", 0),
+        ]
         timeout = self.MAX_COMPASS_MOTOR_INTERFERENCE_CALIBRATION_DURATION
 
         async with AsyncExitStack() as stack:
@@ -353,8 +361,12 @@ class ArduPilot(Autopilot):
             yield Progress(message="Configuring UAV for calibration...")
             await stack.enter_async_context(uav.temporarily_set_mode("acro"))
             await stack.enter_async_context(
+                uav.temporarily_set_parameters(calibration_parameters)
+            )
+            await stack.enter_async_context(
                 uav.temporarily_request_messages(calibration_messages)
             )
+            await stack.enter_async_context(uav.temporarily_arm())
 
             async def generate_actions():
                 """Function that generates RC override commands in the background to

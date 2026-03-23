@@ -363,6 +363,28 @@ class ArduPilot(Autopilot):
             calibration_status.reset()
 
             yield Progress(message="Configuring UAV for calibration...")
+
+            rc_map: dict[str, int] = {}
+            rc_channels: list[str] = ["roll", "pitch", "throttle", "yaw"]
+            max_channel_index = -1
+            for channel_name in rc_channels:
+                index = await uav.get_parameter(f"RCMAP_{channel_name.upper()}")
+                if isinstance(index, int) or (
+                    isinstance(index, float) and index.is_integer()
+                ):
+                    index = int(index)
+                else:
+                    index = 0
+                if index > 0:
+                    rc_map[channel_name] = index - 1
+                    max_channel_index = max(max_channel_index, index)
+
+            if "throttle" not in rc_map:
+                raise RuntimeError(
+                    "No RC channel is configured for throttle. Set RCMAP_THROTTLE to "
+                    "a nonzero value and reboot."
+                )
+
             await stack.enter_async_context(uav.temporarily_set_mode("acro"))
             await stack.enter_async_context(
                 uav.temporarily_set_parameters(calibration_parameters)
@@ -378,11 +400,10 @@ class ArduPilot(Autopilot):
                 ramp the throttle up and down during the compass-motor interference
                 calibration.
                 """
-                # midpoint for roll, pitch, yaw and throttle channels
-                channels = [32768, 32768, 32768, 32768]
-                throttle_channel = 2  # index of the throttle channel in ArduPilot
+                # midpoint for all RC channels
+                channels = [32768] * (max_channel_index + 1)
                 async for throttle in calibration_status.actions():
-                    channels[throttle_channel] = floor(65536 * throttle.value)
+                    channels[rc_map["throttle"]] = floor(65536 * throttle.value)
                     await override_rc(channels)
 
             async with open_nursery() as nursery:

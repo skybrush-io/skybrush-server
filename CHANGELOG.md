@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.45.1] - 2026-03-24
+
+### Fixed
+
+- Compass-motor interference calibration now queries the `RCMAP_THROTTLE` parameter
+  to determine the RC channel index to use for adjusting the throttle during the
+  calibration.
+
+- Fixed a bug in collective RTH plan calculations where the drones were taking off
+  later than T=0. The bug affected only the part of the collective RTH plan before
+  the takeoff itself.
+
 ## [2.45.0] - 2026-03-21
 
 ### Changed

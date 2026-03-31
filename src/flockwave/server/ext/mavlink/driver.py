@@ -789,7 +789,7 @@ class MAVLinkDriver(UAVDriver["MAVLinkUAV"]):
 
         async for maybe_log_or_progress in uav.log_downloader.get_log(log_number):
             if maybe_log_or_progress is None:
-                raise RuntimeError("No log with the given ID: {log_number!r}")
+                raise RuntimeError(f"No log with the given ID: {log_number!r}")
             else:
                 yield maybe_log_or_progress
 

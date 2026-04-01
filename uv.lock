@@ -1187,7 +1187,7 @@ requires-dist = [
     { name = "skybrush-ext-flight-report", marker = "extra == 'pro'", specifier = ">=1.0.3", index = "https://pypi.collmot.com/" },
     { name = "skybrush-ext-flockctrl", marker = "extra == 'collmot'", specifier = ">=4.0.3", index = "https://pypi.collmot.com/" },
     { name = "skybrush-ext-map-cache", marker = "extra == 'pro'", specifier = ">=1.1.1", index = "https://pypi.collmot.com/" },
-    { name = "skybrush-ext-show-pro", marker = "extra == 'pro'", specifier = ">=0.9.0", index = "https://pypi.collmot.com/" },
+    { name = "skybrush-ext-show-pro", marker = "extra == 'pro'", specifier = ">=0.10.0", index = "https://pypi.collmot.com/" },
     { name = "skybrush-ext-sidekick", marker = "extra == 'pro'", specifier = ">=1.2.0", index = "https://pypi.collmot.com/" },
     { name = "skybrush-ext-skynet", marker = "extra == 'pro'", specifier = ">=0.6.0", index = "https://pypi.collmot.com/" },
     { name = "skybrush-ext-studio", marker = "extra == 'pro'", specifier = ">=1.6.1", index = "https://pypi.collmot.com/" },
@@ -2798,15 +2798,15 @@ wheels = [
 
 [[package]]
 name = "skybrush-ext-show-pro"
-version = "0.9.0"
+version = "0.10.0"
 source = { registry = "https://pypi.collmot.com/" }
 dependencies = [
     { name = "skybrush-opt-rs" },
     { name = "skybrush-studio" },
 ]
-sdist = { url = "https://pypi.collmot.com/packages/skybrush_ext_show_pro-0.9.0.tar.gz", hash = "sha256:5723b0abcdaf00e65a0970f4e66aee33a70e60eacedde9cda19514e8b27b9d42" }
+sdist = { url = "https://pypi.collmot.com/packages/skybrush_ext_show_pro-0.10.0.tar.gz", hash = "sha256:897cfc50393a454f302d1f098ba95214a19a4f99309644dd3e416f87dab4b34f" }
 wheels = [
-    { url = "https://pypi.collmot.com/packages/skybrush_ext_show_pro-0.9.0-py3-none-any.whl", hash = "sha256:6b20f44f72daf8a18823a92585dfd64ae44c01296daedd75198fd208acc24ed1" },
+    { url = "https://pypi.collmot.com/packages/skybrush_ext_show_pro-0.10.0-py3-none-any.whl", hash = "sha256:0c4f6019095f6c292121e4c07cbc0cf885d93d881f7afa00b15743c67ae5f2aa" },
 ]
 
 [[package]]

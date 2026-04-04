@@ -1035,6 +1035,28 @@ class UAVDriver(Generic[TUAV], ABC):
             parameters=parameters,
         )
 
+    def test_component(self, uavs: list[TUAV], component: str):
+        """Asks the driver to test a specific component of the given UAVs.
+
+        Typically, you don't need to override this method when implementing
+        a driver; override ``_test_component_single()`` instead.
+
+        Parameters:
+            uavs: the UAVs to address with this request
+            component: the component to test
+
+        Returns:
+            dict mapping UAVs to the corresponding results (which may also be
+            errors or awaitables; it is the responsibility of the caller to
+            evaluate errors and wait for awaitables)
+        """
+        return self._dispatch_request(
+            uavs,
+            "test component",
+            self._test_component_single,
+            component=component,
+        )
+
     def validate_command(self, command: str, args, kwds) -> str | None:
         """Checks whether the driver could execute the command on the UAVs
         _in principle_, without knowing which UAVs the command will be sent to.
@@ -1177,11 +1199,14 @@ class UAVDriver(Generic[TUAV], ABC):
                 driver yet, but there are plans to implement it
             NotSupportedError: if the operation is not supported by the
                 driver and will not be supported in the future either
+
         """
-        if hasattr(uav, "calibrate_component"):
-            return uav.calibrate_component(component)  # type: ignore
-        else:
+
+        calibrate_component = getattr(uav, "calibrate_component", None)
+        if calibrate_component is None:
             raise NotSupportedError
+
+        return calibrate_component(component)
 
     def _enter_low_power_mode_single(
         self, uav: TUAV, *, transport: TransportOptions | None = None
@@ -1647,6 +1672,33 @@ class UAVDriver(Generic[TUAV], ABC):
                 last_percentage = percentage
 
         yield {"success": not failed, "failed": failed}
+
+    def _test_component_single(self, uav: TUAV, component: str):
+        """Asks the driver to test a specific component of a single UAV
+        managed by this driver.
+
+        May return an awaitable if preparing the result takes a longer time.
+
+        The function follows the "samurai principle", i.e. "return victorious,
+        or not at all". It means that if it returns, the operation succeeded.
+        Raise an exception if the operation cannot be executed for any reason;
+        a RuntimeError is typically sufficient.
+
+        Parameters:
+            uav: the UAV to address with this request
+            component: the component to test
+
+        Raises:
+            NotImplementedError: if the operation is not supported by the
+                driver yet, but there are plans to implement it
+            NotSupportedError: if the operation is not supported by the
+                driver and will not be supported in the future either
+        """
+        test_component = getattr(uav, "test_component", None)
+        if test_component is None:
+            raise NotSupportedError
+
+        return test_component(component)
 
 
 class PassiveUAV(UAVBase):

@@ -1102,8 +1102,8 @@ class MessageHub:
                     "Error while sending message to client", extra={"id": client.id}
                 )
             else:
-                if hasattr(message, "_notify_sent"):
-                    message._notify_sent()  # type: ignore
+                if isinstance(message, FlockwaveResponse):
+                    await message._notify_sent()
 
         if done:
             done()

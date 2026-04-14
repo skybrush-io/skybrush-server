@@ -6,7 +6,7 @@
 
 <nav aria-label="breadcrumb">
   <ol class="breadcrumb">
-    <li class="breadcrumb-item"><a href="{{ url_for('.list_extensions') }}">Extensions</a></li>
+    <li class="breadcrumb-item"><a hx-boost="true"  href="{{ url_for('.list_extensions') }}">Extensions</a></li>
     <li class="breadcrumb-item active" aria-current="page">{{ extension.name }}</li>
   </ol>
 </nav>
@@ -31,7 +31,7 @@
   <dt class="col-sm-2">Dependencies</dt>
   <dd class="col-sm-10">
     {% for dep in extension.dependencies %}
-      <a href="{{ url_for('.show_extension_details', name=dep) }}">{{ dep }}</a>
+      <a hx-boost="true" href="{{ url_for('.show_extension_details', name=dep) }}">{{ dep }}</a>
       {{ "·" if not loop.last else "" }}
     {% endfor %}
   </dd>
@@ -41,7 +41,7 @@
   <dt class="col-sm-2">Dependents</dt>
   <dd class="col-sm-10">
     {% for dep in extension.dependents %}
-      <a href="{{ url_for('.show_extension_details', name=dep) }}">{{ dep }}</a>
+      <a hx-boost="true" href="{{ url_for('.show_extension_details', name=dep) }}">{{ dep }}</a>
       {{ "·" if not loop.last else "" }}
     {% endfor %}
   </dd>
@@ -133,7 +133,6 @@ function updateButtons() {
 </script>
 
 {% if schema and schema.properties %}
-  <script type="text/javascript" src="static/js/jsoneditor-2.5.4.min.js"></script>
   <script>
   const element = document.getElementById('configuration');
   const editor = new JSONEditor(element, {
@@ -205,7 +204,6 @@ function updateButtons() {
   }
   </script>
 {% else %}
-  <script type="text/javascript" src="static/js/ace-1.4.12.min.js"></script>
   <script>
   ace.config.setModuleUrl("ace/mode/json", "static/js/ace-mode-json-1.4.12.min.js");
   ace.config.setModuleUrl("ace/mode/json_worker", "static/js/ace-worker-json-1.4.12.min.js");

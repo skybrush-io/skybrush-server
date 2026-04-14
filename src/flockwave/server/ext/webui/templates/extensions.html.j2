@@ -16,7 +16,8 @@
     <tbody>
 {% for extension in extensions %}
         <tr style="cursor: pointer; {{ "" if true or extension.loaded else "opacity: 0.5" }}"
-            onclick="window.location.href='{{ url_for('.show_extension_details', name=extension.name) }}'">
+            hx-trigger="click" hx-target="body" hx-push-url="true"
+            hx-get="{{ url_for('.show_extension_details', name=extension.name) }}">
             <td class="align-baseline text-right" style="width: 24px">
                 {% if extension.restart_requested %}
                 <span class="text-primary" data-feather="refresh-cw"></span>

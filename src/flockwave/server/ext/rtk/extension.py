@@ -678,7 +678,7 @@ class RTKExtension(Extension):
                     self.log.error(
                         f"Parse error while reading user presets from {str(user_preset_file)!r}"
                     )
-
+        self.log.info(f"Loaded {len(user_presets)} user presets from {str(user_preset_file)!r}")
         self._load_presets_from(user_presets, type=RTKConfigurationPresetType.USER)
 
     def _save_user_presets(self) -> None:
@@ -1201,6 +1201,11 @@ def get_schema():
             # user to mess with the location of the presets file by default,
             # but it is useful to us in certain deployments. Use it at your
             # own risk.
+            # "presets_file": {
+            #     "type": "string",
+            #     "title": "RTK presets file",
+            #     "description": "Optional JSON file path to store user-defined RTK presets."
+            # },
             "add_serial_ports": {
                 "title": "Use serial ports automatically",
                 "description": (

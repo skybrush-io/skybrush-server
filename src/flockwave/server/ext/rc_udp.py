@@ -4,13 +4,15 @@ RC channel values for a (virtual or real) RC transmitter.
 
 from __future__ import annotations
 
+from collections.abc import Callable, Sequence
 from logging import Logger
-from trio import fail_after, TooSlowError
-from typing import Any, Callable, Sequence, Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from flockwave.connections import create_connection
 from flockwave.connections.socket import UDPListenerConnection
 from flockwave.networking import format_socket_address
+from trio import TooSlowError, fail_after
+
 from flockwave.server.ports import suggest_port_number_for_service, use_port
 
 if TYPE_CHECKING:
@@ -81,14 +83,14 @@ async def run(app: SkybrushServer, configuration, log):
         await app.supervise(connection, task=handler)
 
 
-def parse_range(value: Any) -> Optional[tuple[int, int]]:
+def parse_range(value: Any) -> tuple[int, int] | None:
     """Parses the 'range' parameter from the configuration and returns the
     lower and upper bound of each channel; the upper bound is exclusive.
     """
     if value is None:
         return None
     elif isinstance(value, (list, tuple)) and len(value) == 2:
-        return tuple(value)  # type: ignore
+        return tuple(value)
     else:
         raise ValueError("range must be None or an array of length 2")
 

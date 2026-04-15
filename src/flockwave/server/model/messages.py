@@ -1,11 +1,12 @@
 """Flockwave message model classes."""
 
+from collections.abc import Iterable, Sequence
+from typing import Any
+
 from flockwave.spec.schema import get_message_schema
-from typing import Any, Iterable, Optional, Sequence, Union
 
 from .commands import CommandExecutionStatus
 from .metamagic import ModelMeta
-
 
 __all__ = ("FlockwaveMessage", "FlockwaveNotification", "FlockwaveResponse")
 
@@ -64,7 +65,7 @@ class FlockwaveResponse(FlockwaveMessage):
         self._on_sent = []
         super().__init__(*args, **kwds)
 
-    def add_error(self, failed_id: str, reason: Optional[Union[str, Exception]] = None):
+    def add_error(self, failed_id: str, reason: str | Exception | None = None):
         """Adds an error message to the response body.
 
         A common pattern in the Flockwave protocol is that a request

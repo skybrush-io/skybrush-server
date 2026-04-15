@@ -2,25 +2,28 @@
 
 from __future__ import annotations
 
-from colour import Color
+from collections.abc import Callable, Collection
 from enum import Enum
 from hashlib import sha1 as firmware_hash
 from math import atan2, cos, hypot, radians, sin
-from random import random, randint, choice
+from random import choice, randint, random
 from time import monotonic
-from trio import CancelScope, sleep
-from trio_util import periodic
-from typing import Any, Callable, Collection, NoReturn, Optional, Union
+from typing import Any, NoReturn
 
+from colour import Color
 from flockwave.concurrency import delayed
 from flockwave.ext.manager import ExtensionAPIProxy
 from flockwave.gps.vectors import (
     FlatEarthCoordinate,
-    GPSCoordinate,
     FlatEarthToGPSCoordinateTransformation,
+    GPSCoordinate,
     Vector3D,
     VelocityNED,
 )
+from flockwave.spec.errors import FlockwaveErrorCode
+from trio import CancelScope, sleep
+from trio_util import periodic
+
 from flockwave.server.command_handlers import (
     create_calibration_command_handler,
     create_color_command_handler,
@@ -31,29 +34,27 @@ from flockwave.server.command_handlers import (
 from flockwave.server.errors import NotSupportedError
 from flockwave.server.model.commands import (
     Progress,
-    Suspend,
     ProgressEventsWithSuspension,
+    Suspend,
 )
 from flockwave.server.model.devices import ObjectNode
 from flockwave.server.model.gps import GPSFixType
 from flockwave.server.model.log import FlightLog, FlightLogKind, FlightLogMetadata
 from flockwave.server.model.mission import MissionItemBundle
-from flockwave.server.model.preflight import PreflightCheckResult, PreflightCheckInfo
+from flockwave.server.model.preflight import PreflightCheckInfo, PreflightCheckResult
 from flockwave.server.model.transport import TransportOptions
-from flockwave.server.model.uav import VersionInfo, UAVBase, UAVDriver
+from flockwave.server.model.uav import UAVBase, UAVDriver, VersionInfo
 from flockwave.server.show import (
-    get_coordinate_system_from_show_specification,
-    get_light_program_from_show_specification,
     TrajectoryPlayer,
     TrajectorySpecification,
+    get_coordinate_system_from_show_specification,
+    get_light_program_from_show_specification,
 )
 from flockwave.server.utils import color_to_rgb565
-from flockwave.spec.errors import FlockwaveErrorCode
 
 from .battery import VirtualBattery
 from .fw_upload import FIRMWARE_UPDATE_TARGET_ID
 from .lights import DefaultLightController
-
 
 __all__ = ("VirtualUAVDriver",)
 
@@ -67,8 +68,9 @@ class VirtualUAVState(Enum):
     LANDING = 3
 
 
-#: Dummy preflight check information object returned from all virtual UAVs
 _dummy_preflight_check_info = PreflightCheckInfo()
+"""Dummy preflight check information object returned from all virtual UAVs."""
+
 _dummy_preflight_check_info.add_item("accel", "Accelerometer")
 _dummy_preflight_check_info.add_item("compass", "Compass")
 _dummy_preflight_check_info.add_item("ekf", "EKF")
@@ -92,15 +94,15 @@ class VirtualUAV(UAVBase):
     _armed: bool
     _autopilot_initializing: bool
     _light_controller: DefaultLightController
-    _mission_started_at: Optional[float]
+    _mission_started_at: float | None
     _motors_running: bool
     _parameters: dict[str, str]
     _position_xyz: Vector3D
     _position_flat: FlatEarthCoordinate
-    _request_shutdown: Optional[Callable[[], None]]
-    _shutdown_reason: Optional[str]
+    _request_shutdown: Callable[[], None] | None
+    _shutdown_reason: str | None
     _sleeping: bool
-    _trajectory_transformation: Optional[FlatEarthToGPSCoordinateTransformation]
+    _trajectory_transformation: FlatEarthToGPSCoordinateTransformation | None
     _trans: FlatEarthToGPSCoordinateTransformation
     _velocity_xyz: Vector3D
     _velocity_ned: VelocityNED
@@ -108,13 +110,13 @@ class VirtualUAV(UAVBase):
     _state: VirtualUAVState
     """The state of the UAV."""
 
-    _target: Optional[GPSCoordinate]
+    _target: GPSCoordinate | None
     """The target coordinates of the UAV, in geodetic coordinates."""
 
-    _target_xyz: Optional[Vector3D]
+    _target_xyz: Vector3D | None
     """The target coordinates of the UAV, in topocentric coordinates."""
 
-    _user_defined_error: Optional[int]
+    _user_defined_error: int | None
     """User defined simulated error code, if any."""
 
     _version: int
@@ -157,7 +159,7 @@ class VirtualUAV(UAVBase):
     voltages (False).
     """
 
-    radiation_ext: Optional[ExtensionAPIProxy] = None
+    radiation_ext: ExtensionAPIProxy | None = None
 
     def __init__(
         self, *args, use_battery_percentage: bool, battery_auto_recharging: bool, **kwds
@@ -305,7 +307,7 @@ class VirtualUAV(UAVBase):
         return target_id == FIRMWARE_UPDATE_TARGET_ID
 
     @property
-    def elapsed_time_in_mission(self) -> Optional[float]:
+    def elapsed_time_in_mission(self) -> float | None:
         """Returns the number of seconds elapsed in the execution of the current
         mission (trajectory) or `None` if no mission is running yet.
         """
@@ -449,12 +451,12 @@ class VirtualUAV(UAVBase):
             self.stop_motors()
 
     @property
-    def target(self) -> Optional[GPSCoordinate]:
+    def target(self) -> GPSCoordinate | None:
         """The target coordinates of the UAV in GPS coordinates."""
         return self._target
 
     @target.setter
-    def target(self, value: Optional[GPSCoordinate]) -> None:
+    def target(self, value: GPSCoordinate | None) -> None:
         self._target = value
 
         # Clear the "return to home" error code (if any)
@@ -479,7 +481,7 @@ class VirtualUAV(UAVBase):
             self._target_xyz = Vector3D(x=flat.x, y=flat.y, z=new_altitude)
 
     @property
-    def target_xyz(self) -> Optional[Vector3D]:
+    def target_xyz(self) -> Vector3D | None:
         """The target coordinates of the UAV in flat Earth coordinates around
         its home.
         """
@@ -522,14 +524,14 @@ class VirtualUAV(UAVBase):
             raise NotSupportedError
 
     @property
-    def user_defined_error(self) -> Optional[int]:
+    def user_defined_error(self) -> int | None:
         """Returns the single user-defined error code or `None` if the UAV
         is currently not simulating any error condition.
         """
         return self._user_defined_error
 
     @user_defined_error.setter
-    def user_defined_error(self, value: Optional[int]) -> None:
+    def user_defined_error(self, value: int | None) -> None:
         if value is not None:
             value = int(value)
 
@@ -615,7 +617,7 @@ class VirtualUAV(UAVBase):
         self._target_xyz.z = 0
         self.state = VirtualUAVState.LANDING
 
-    def set_led_color(self, color: Optional[Color]) -> None:
+    def set_led_color(self, color: Color | None) -> None:
         """Overrides the current color of the simulated light on the drone."""
         self._light_controller.override = color
 
@@ -836,7 +838,7 @@ class VirtualUAV(UAVBase):
         )
 
         # Update the UAV status
-        updates = {
+        updates: dict[str, Any] = {
             "position": position,
             "velocity": self._velocity_ned,
             "battery": self.battery.status,
@@ -1048,7 +1050,7 @@ class VirtualUAVDriver(UAVDriver[VirtualUAV]):
             return "Failed to arm"
 
     async def handle_command_async_exception(self, uav: VirtualUAV) -> NoReturn:
-        """Throws an synchronous exception."""
+        """Throws an asynchronous exception."""
         await sleep(0.2)
         raise RuntimeError("Async exception raised")
 
@@ -1083,7 +1085,7 @@ class VirtualUAVDriver(UAVDriver[VirtualUAV]):
         uav.send_log_message_to_gcs(message)
         return message
 
-    def handle_command_error(self, uav: VirtualUAV, value: Union[str, int] = 0) -> str:
+    def handle_command_error(self, uav: VirtualUAV, value: str | int = 0) -> str:
         """Sets or clears the error code of the virtual drone."""
         value = int(value)
         uav.user_defined_error = value
@@ -1191,7 +1193,7 @@ class VirtualUAVDriver(UAVDriver[VirtualUAV]):
             raise RuntimeError(f"no such log: {log_id}") from None
 
     async def _enter_low_power_mode_single(
-        self, uav: VirtualUAV, *, transport: Optional[TransportOptions] = None
+        self, uav: VirtualUAV, *, transport: TransportOptions | None = None
     ) -> None:
         if uav.motors_running:
             raise RuntimeError(
@@ -1209,7 +1211,7 @@ class VirtualUAVDriver(UAVDriver[VirtualUAV]):
         return await uav.get_parameter(name)
 
     async def _resume_from_low_power_mode_single(
-        self, uav: VirtualUAV, *, transport: Optional[TransportOptions] = None
+        self, uav: VirtualUAV, *, transport: TransportOptions | None = None
     ) -> None:
         uav.sleeping = False
 
@@ -1231,14 +1233,14 @@ class VirtualUAVDriver(UAVDriver[VirtualUAV]):
         uav.target = target
 
     async def _send_hover_signal_single(
-        self, uav: VirtualUAV, *, transport: Optional[TransportOptions] = None
+        self, uav: VirtualUAV, *, transport: TransportOptions | None = None
     ) -> None:
         # Make the hover signal async to simulate how it works for "real" drones
         await sleep(0.2)
         uav.hold_position()
 
     async def _send_landing_signal_single(
-        self, uav: VirtualUAV, *, transport: Optional[TransportOptions] = None
+        self, uav: VirtualUAV, *, transport: TransportOptions | None = None
     ) -> None:
         # Make the landing signal async to simulate how it works for "real" drones
         await sleep(0.2)
@@ -1250,7 +1252,7 @@ class VirtualUAVDriver(UAVDriver[VirtualUAV]):
         signals: list[str],
         duration: float,
         *,
-        transport: Optional[TransportOptions] = None,
+        transport: TransportOptions | None = None,
     ) -> None:
         if "light" in signals:
             uav.handle_where_are_you(duration)
@@ -1261,7 +1263,7 @@ class VirtualUAVDriver(UAVDriver[VirtualUAV]):
         start: bool,
         force: bool = False,
         *,
-        transport: Optional[TransportOptions] = None,
+        transport: TransportOptions | None = None,
     ) -> None:
         if start:
             uav.start_motors()
@@ -1273,7 +1275,7 @@ class VirtualUAVDriver(UAVDriver[VirtualUAV]):
         uav: VirtualUAV,
         component: str,
         *,
-        transport: Optional[TransportOptions] = None,
+        transport: TransportOptions | None = None,
     ) -> None:
         if not component:
             # Resetting the whole UAV, this is supported

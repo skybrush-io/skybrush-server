@@ -1,9 +1,10 @@
 """Middleware that logs incoming and outgoing messages in the message hub."""
 
+from collections.abc import Iterable
 from logging import Logger
+from typing import ClassVar
 
 from flockwave.server.model import Client, FlockwaveMessage, FlockwaveNotification
-from typing import ClassVar, Iterable, Optional
 
 __all__ = ("RequestLogMiddleware",)
 
@@ -55,8 +56,8 @@ class ResponseLogMiddleware:
     def __call__(
         self,
         message: FlockwaveMessage,
-        to: Optional[Client],
-        in_response_to: Optional[FlockwaveMessage],
+        to: Client | None,
+        in_response_to: FlockwaveMessage | None,
     ) -> FlockwaveMessage:
         type = message.get_type() or "untyped"
         if to is None:

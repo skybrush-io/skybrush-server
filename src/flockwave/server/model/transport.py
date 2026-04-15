@@ -1,4 +1,5 @@
-from typing import Any, Callable, ClassVar
+from collections.abc import Callable
+from typing import Any, ClassVar
 
 from flockwave.spec.schema import get_complex_object_schema
 

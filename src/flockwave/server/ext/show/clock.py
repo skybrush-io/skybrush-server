@@ -2,10 +2,11 @@
 of the show, or the elapsed time into the show if it is already running.
 """
 
+from collections.abc import Iterator
 from contextlib import contextmanager
 from logging import Logger
 from time import time
-from typing import Any, Iterator, Optional
+from typing import Any
 
 from flockwave.server.model.clock import (
     Clock,
@@ -25,7 +26,7 @@ class ShowClock(TimeElapsedSinceReferenceClock):
         super().__init__(id="show", epoch=None)
 
     @property
-    def start_time(self) -> Optional[float]:
+    def start_time(self) -> float | None:
         """The scheduled start time, in seconds since the UNIX epoch, or ``None``
         if no start time has been scheduled yet.
 
@@ -34,7 +35,7 @@ class ShowClock(TimeElapsedSinceReferenceClock):
         return self.reference_time
 
     @start_time.setter
-    def start_time(self, value: Optional[float]):
+    def start_time(self, value: float | None):
         self.reference_time = value
 
 
@@ -66,10 +67,10 @@ class ClockSynchronizationHandler:
 
     _enabled: bool = False
 
-    _primary_clock: Optional[Clock] = None
-    _secondary_clock: Optional[TimeElapsedSinceReferenceClock] = None
+    _primary_clock: Clock | None = None
+    _secondary_clock: TimeElapsedSinceReferenceClock | None = None
 
-    _subscribed_clock: Optional[Clock] = None
+    _subscribed_clock: Clock | None = None
     """The clock whose signals the handler is currently subscribed to. Updated
     dynamically when the enabled / disabled state or the primary clock changes.
     """
@@ -79,12 +80,12 @@ class ClockSynchronizationHandler:
     seconds on the secondary clock.
     """
 
-    log: Optional[Logger] = None
+    log: Logger | None = None
     """Logger to use for logging messages. If ``None``, no logging will be done
     by the handler.
     """
 
-    point_of_no_return_seconds: Optional[float] = None
+    point_of_no_return_seconds: float | None = None
     """The number of seconds on the secondary clock that correspond to the
     so-called "point of no return".
     """
@@ -92,7 +93,7 @@ class ClockSynchronizationHandler:
     def __init__(
         self,
         *,
-        point_of_no_return_seconds: Optional[float] = None,
+        point_of_no_return_seconds: float | None = None,
     ):
         """Constructor.
 
@@ -111,14 +112,14 @@ class ClockSynchronizationHandler:
         return self._enabled
 
     @property
-    def primary_clock(self) -> Optional[Clock]:
+    def primary_clock(self) -> Clock | None:
         """The primary clock; ``None`` means that it has not been assigned yet and
         the secondary clock should be stopped.
         """
         return self._primary_clock
 
     @property
-    def secondary_clock(self) -> Optional[TimeElapsedSinceReferenceClock]:
+    def secondary_clock(self) -> TimeElapsedSinceReferenceClock | None:
         """The secondary clock; ``None`` means that it has not been assigned
         yet.
 
@@ -129,7 +130,7 @@ class ClockSynchronizationHandler:
         return self._secondary_clock
 
     @secondary_clock.setter
-    def secondary_clock(self, value: Optional[TimeElapsedSinceReferenceClock]) -> None:
+    def secondary_clock(self, value: TimeElapsedSinceReferenceClock | None) -> None:
         if self._secondary_clock == value:
             return
 
@@ -189,7 +190,7 @@ class ClockSynchronizationHandler:
 
     def _calculate_desired_state_of_secondary_clock(
         self, now: float
-    ) -> tuple[bool, Optional[float]]:
+    ) -> tuple[bool, float | None]:
         """Calculates the desired state of the secondary clock, given the
         primary clock. Assumes that the synchronization mechanism is enabled.
 

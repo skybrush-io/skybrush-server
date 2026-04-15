@@ -9,6 +9,7 @@ from .lights import get_light_program_from_show_specification
 from .player import LightPlayer, TrajectoryPlayer
 from .safety import get_safety_configuration_from_show_specification
 from .specification import (
+    ShowSpecification,
     get_altitude_reference_from_show_specification,
     get_coordinate_system_from_show_specification,
     get_drone_count_from_show_specification,
@@ -16,7 +17,6 @@ from .specification import (
     get_home_position_from_show_specification,
     get_trajectory_from_show_specification,
     is_coordinate_system_in_show_specification_geodetic,
-    ShowSpecification,
 )
 from .trajectory import TrajectorySpecification
 

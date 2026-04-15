@@ -1,7 +1,7 @@
 """Math related functions."""
 
+from collections.abc import Sequence
 from functools import lru_cache
-from typing import Sequence
 
 __all__ = (
     "get_poly_degree",

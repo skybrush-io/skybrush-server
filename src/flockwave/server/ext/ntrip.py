@@ -2,28 +2,38 @@
 yielding RTCMv2 and RTCMv3 messages from a remote NTRIP server.
 """
 
-from typing import Optional
+from typing import TypedDict
 
-from flockwave.connections import ConnectionBase, create_connection, RWConnection
+from flockwave.connections import ConnectionBase, RWConnection, create_connection
 from flockwave.gps.http.response import Response
 from flockwave.gps.ntrip.client import NtripClient
 
 __all__ = ("load", "unload")
 
 
+class ClientParams(TypedDict):
+    host: str
+    port: int
+    username: str | None
+    password: str | None
+    mountpoint: str
+    version: int | None
+
+
 class NTRIPConnection(ConnectionBase, RWConnection[bytes, bytes]):
     """Connection to a remote NTRIP server."""
 
-    _stream: Optional[Response]
+    _client_params: ClientParams
+    _stream: Response | None
 
     def __init__(
         self,
         host: str,
-        mountpoint: Optional[str] = None,
+        mountpoint: str | None = None,
         port: int = 2101,
-        username: Optional[str] = None,
-        password: Optional[str] = None,
-        version: Optional[int] = None,
+        username: str | None = None,
+        password: str | None = None,
+        version: int | None = None,
         **kwds,
     ):
         """Constructor.
@@ -41,6 +51,7 @@ class NTRIPConnection(ConnectionBase, RWConnection[bytes, bytes]):
             path: an alias to "mountpoint"; the leading slash will be stripped
         """
         path = kwds.pop("path", None)
+        path = str(path) if path is not None else None
 
         super().__init__(**kwds)
 
@@ -51,7 +62,7 @@ class NTRIPConnection(ConnectionBase, RWConnection[bytes, bytes]):
             raise ValueError("mountpoint must not be empty")
 
         self._stream = None
-        self._client_params = {
+        self._client_params: ClientParams = {
             "host": host,
             "port": port,
             "username": username,
@@ -76,7 +87,7 @@ class NTRIPConnection(ConnectionBase, RWConnection[bytes, bytes]):
         finally:
             self._stream = None
 
-    async def read(self, max_bytes: Optional[int] = None) -> bytes:
+    async def read(self, max_bytes: int | None = None) -> bytes:
         assert self._stream is not None
         return await self._stream.read(max_bytes)
 

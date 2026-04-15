@@ -1,7 +1,6 @@
 """Simulated battery for a virtual drone."""
 
 from random import random
-from typing import Optional
 
 from flockwave.server.model.battery import BatteryInfo
 from flockwave.server.model.devices import ObjectNode
@@ -24,7 +23,7 @@ class VirtualBattery:
         min_voltage: float = 9,
         max_voltage: float = 12.6,
         discharge_time: float = 1200,
-        initial_charge: Optional[float] = 1,
+        initial_charge: float | None = 1,
         report_percentage: bool = True,
         auto_recharging: bool = True,
     ):
@@ -90,7 +89,7 @@ class VirtualBattery:
         return voltage is not None and voltage <= self._very_low_threshold
 
     @property
-    def percentage(self) -> Optional[int]:
+    def percentage(self) -> int | None:
         """The current charge percentage of the battery, in the range of 0 to
         100, or `None` if the battery does not report percentages.
         """
@@ -107,7 +106,7 @@ class VirtualBattery:
         return self._status
 
     @property
-    def voltage(self) -> Optional[float]:
+    def voltage(self) -> float | None:
         """The current voltage of the battery."""
         return self._status.voltage
 

@@ -7,7 +7,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from functools import partial
 from math import inf
-from typing import Any, ClassVar, Optional
+from typing import Any, ClassVar
 
 from blinker import Signal
 from flockwave.gps.distances import haversine
@@ -23,12 +23,12 @@ class Location:
     optional estimated accuracy in meters.
     """
 
-    position: Optional[GPSCoordinate] = None
+    position: GPSCoordinate | None = None
     """The geodetic coordinates corresponding to the location; ``None`` if
     unknown.
     """
 
-    accuracy: Optional[float] = None
+    accuracy: float | None = None
     """Estimated accuracy of the location; ``None`` if unknown. Locations
     without an accuracy value are treated as approximate.
     """
@@ -46,23 +46,23 @@ class Location:
 
 Location.UNKNOWN = Location()
 
-_log: Optional[Logger] = None
+_log: Logger | None = None
 
 _location_candidates: dict[str, tuple[float, Location]] = {}
 """Location candidates submitted by other extensions, along with the priorities."""
 
-_location: Optional[Location] = None
+_location: Location | None = None
 """The physical location of the server; `None` if it has not been calculated
 yet from the candidates submitted by other extensions.
 """
 
-_location_changed_signal: Optional[Signal] = None
+_location_changed_signal: Signal | None = None
 """Signal to emit when the location chosen by the extension changes."""
 
 _location_priority: float = -inf
 """Priority of the currently chosen best location."""
 
-_last_location: Optional[Location] = None
+_last_location: Location | None = None
 """The last reported physical location of the server; `None` if no location was
 reported yet. Used to decide whether we should communicate the change of the
 location to the user in the logs.
@@ -75,9 +75,7 @@ other data source provides a location to the server.
 """
 
 
-def _distance_of_locations(
-    first: Optional[Location], second: Optional[Location]
-) -> float:
+def _distance_of_locations(first: Location | None, second: Location | None) -> float:
     first_pos = first.position if first is not None else None
     second_pos = second.position if second is not None else None
     if first_pos is None:

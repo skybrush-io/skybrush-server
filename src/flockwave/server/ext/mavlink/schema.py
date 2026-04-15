@@ -1,10 +1,12 @@
+from typing import Any
+
 from .enums import MAVSeverity
 from .rssi import RSSIMode
 
 __all__ = ("schema",)
 
 
-RSSI_MODE_SCHEMA = {
+RSSI_MODE_SCHEMA: dict[str, Any] = {
     "type": "string",
     "enum": [
         RSSIMode.NONE.value,

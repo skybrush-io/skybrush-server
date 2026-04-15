@@ -1,14 +1,15 @@
-from typing import Any, Iterable, Optional
+from collections.abc import Iterable
+from typing import Any
 
 __all__ = ("describe_serial_port", "list_serial_ports")
 
 
-#: Type specification for dict-style serial port configurations
 SerialPortConfiguration = dict[str, Any]
+"""Type specification for dict-style serial port configurations."""
 
-#: Type specification for a generic serial port descriptor returned from
-#: `list_serial_ports()`
 SerialPortDescriptor = Any
+"""Type specification for a generic serial port descriptor returned from
+`list_serial_ports().`"""
 
 
 def describe_serial_port(
@@ -36,7 +37,7 @@ def describe_serial_port(
 
 
 def describe_serial_port_configuration(
-    config: SerialPortConfiguration, only: Optional[Iterable[str]] = None
+    config: SerialPortConfiguration, only: Iterable[str] | None = None
 ) -> str:
     """Returns a human-readable description of the given serial port configuration
     object. The object must have the same keyword arguments as the ones supported

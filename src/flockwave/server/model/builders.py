@@ -1,7 +1,8 @@
 """Builder classes for model objects for sake of convenience."""
 
 from builtins import str
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 from .commands import CommandExecutionStatus
 from .identifiers import default_id_generator
@@ -59,11 +60,11 @@ class FlockwaveMessageBuilder(object):
         self.id_generator = id_generator
         self.version = version
 
-    def _create_message_object(self, body: Any = None) -> dict[str, Any]:
+    def _create_message_object(self, body: Any | None = None) -> dict[str, Any]:
         """Creates a new Flockwave message object with the given body.
 
         Parameters:
-            body (Optional[object]): the body of the message.
+            body: the body of the message.
 
         Returns:
             FlockwaveMessage: the newly created message

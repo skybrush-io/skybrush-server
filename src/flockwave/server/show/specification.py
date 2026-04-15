@@ -1,5 +1,3 @@
-from typing import Dict, Optional
-
 from flockwave.gps.vectors import FlatEarthToGPSCoordinateTransformation
 
 from .trajectory import TrajectorySpecification
@@ -16,7 +14,7 @@ __all__ = (
 )
 
 
-ShowSpecification = Dict
+ShowSpecification = dict
 """Type alias for show specification objects."""
 
 
@@ -44,7 +42,7 @@ def get_coordinate_system_from_show_specification(
         ) from None
 
 
-def get_drone_count_from_show_specification(show: ShowSpecification) -> Optional[int]:
+def get_drone_count_from_show_specification(show: ShowSpecification) -> int | None:
     """Returns the number of drones in the show from the show specification if
     known, `None` if not known (which may happen with older versions of
     Skybrush Live that do not send this information yet).
@@ -62,7 +60,7 @@ def get_drone_count_from_show_specification(show: ShowSpecification) -> Optional
 
 def get_home_position_from_show_specification(
     show: ShowSpecification,
-) -> Optional[tuple[float, float, float]]:
+) -> tuple[float, float, float] | None:
     """Returns the home position of the drone from the given show specification
     object. Units are in meters.
     """
@@ -76,7 +74,7 @@ def get_home_position_from_show_specification(
 
 def get_altitude_reference_from_show_specification(
     show: ShowSpecification,
-) -> Optional[float]:
+) -> float | None:
     """Returns the altitude above mean sea level where the Z coordinates of the
     show should be referred to, or `None` if the show is to be controlled with
     relative coordinates (altitude above home level).

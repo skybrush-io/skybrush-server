@@ -2,23 +2,15 @@
 UAVs.
 """
 
+from collections.abc import AsyncGenerator, Iterator
 from contextlib import contextmanager
 from math import inf
 from time import time
-from trio import CancelScope, current_time
-from typing import (
-    Any,
-    AsyncGenerator,
-    Generic,
-    Iterator,
-    Optional,
-    Union,
-    TypeVar,
-    overload,
-)
+from typing import Any, Generic, TypeVar, overload
 
 from flockwave.concurrency import Future
 from flockwave.spec.schema import get_complex_object_schema
+from trio import CancelScope, current_time
 
 from .metamagic import ModelMeta
 
@@ -52,20 +44,20 @@ class Progress(Generic[T]):
     followed by a result object.
     """
 
-    message: Optional[str]
-    percentage: Optional[int]
+    message: str | None
+    percentage: int | None
     object: Any
 
     @overload
     @classmethod
-    def done(cls, message: Optional[str] = None): ...
+    def done(cls, message: str | None = None): ...
 
     @overload
     @classmethod
-    def done(cls, message: Optional[str] = None, *, object: T): ...
+    def done(cls, message: str | None = None, *, object: T): ...
 
     @classmethod
-    def done(cls, message: Optional[str] = None, *, object: Any = MISSING):
+    def done(cls, message: str | None = None, *, object: Any = MISSING):
         """Convenience constructor for a progress message with 100%
         percentage.
         """
@@ -75,24 +67,24 @@ class Progress(Generic[T]):
     def __init__(
         self,
         *,
-        percentage: Optional[int] = None,
-        message: Optional[str] = None,
+        percentage: int | None = None,
+        message: str | None = None,
     ): ...
 
     @overload
     def __init__(
         self,
         *,
-        percentage: Optional[int] = None,
-        message: Optional[str] = None,
+        percentage: int | None = None,
+        message: str | None = None,
         object: T,
     ): ...
 
     def __init__(
         self,
         *,
-        percentage: Optional[int] = None,
-        message: Optional[str] = None,
+        percentage: int | None = None,
+        message: str | None = None,
         object: Any = MISSING,
     ):
         self.message = message
@@ -111,9 +103,7 @@ class Progress(Generic[T]):
             result["object"] = self.object
         return result
 
-    def update(
-        self: C, percentage: Optional[int] = None, message: Optional[str] = None
-    ) -> C:
+    def update(self: C, percentage: int | None = None, message: str | None = None) -> C:
         """Updates the progress object with a new percentage, a new message or
         both.
 
@@ -151,34 +141,34 @@ class Suspend(Generic[T]):
     for additional input from the client.
     """
 
-    message: Optional[str]
+    message: str | None
     object: Any
 
     @overload
     def __init__(
         self,
         *,
-        message: Optional[str] = None,
+        message: str | None = None,
     ): ...
 
     @overload
     def __init__(
         self,
         *,
-        message: Optional[str] = None,
+        message: str | None = None,
         object: T,
     ): ...
 
     def __init__(
         self,
         *,
-        message: Optional[str] = None,
+        message: str | None = None,
         object: Any = MISSING,
     ):
         self.message = message
         self.object = object
 
-    def update(self, message: Optional[str] = None, object: Any = MISSING):
+    def update(self, message: str | None = None, object: Any = MISSING):
         """Updates the suspension object with a new percentage, a new object or
         both.
 
@@ -204,12 +194,12 @@ class Suspend(Generic[T]):
             return f"{self.__class__.__name__}(message={self.message!r})"
 
 
-ProgressEvents = AsyncGenerator[Union[Progress[R], R], None]
+ProgressEvents = AsyncGenerator[Progress[R] | R, None]
 """Type alias for events that can be yielded from an async generator that
 generates progress and result events.
 """
 
-ProgressEventsWithSuspension = AsyncGenerator[Union[R, Progress[R], Suspend[S]], None]
+ProgressEventsWithSuspension = AsyncGenerator[R | Progress[R] | Suspend[S], None]
 """Type alias for events that can be yielded from an async generator that
 generates progress, suspension and result events.
 """
@@ -228,19 +218,19 @@ class CommandExecutionStatus(metaclass=ModelMeta):
 
     id: str
     created_at: float
-    client_notified: Optional[float]
-    error: Optional[Exception]
+    client_notified: float | None
+    error: Exception | None
     result: Any
-    sent: Optional[float]
-    finished: Optional[float]
-    cancelled: Optional[float]
-    progress: Optional[Progress]
+    sent: float | None
+    finished: float | None
+    cancelled: float | None
+    progress: Progress | None
 
     _cancel_scope: CancelScope
     _cancelled_by_user: bool
     _clients_to_notify: set[str]
     _deadline: float
-    _suspension_future: Optional[Future[Any]]
+    _suspension_future: Future[Any] | None
 
     def __init__(self, id: str):
         """Constructor.
@@ -277,7 +267,7 @@ class CommandExecutionStatus(metaclass=ModelMeta):
         """
         return self._clients_to_notify
 
-    def is_expired(self, now: Optional[float]) -> bool:
+    def is_expired(self, now: float | None) -> bool:
         """Returns whether the command execution status has expired, i.e. it
         is past its deadline.
         """
@@ -381,7 +371,7 @@ class CommandExecutionStatus(metaclass=ModelMeta):
         self._cancel_scope.deadline = self._deadline
 
     @contextmanager
-    def suspended(self, post_timeout: Optional[float] = None) -> Iterator[Future[Any]]:
+    def suspended(self, post_timeout: float | None = None) -> Iterator[Future[Any]]:
         """Context manager that marks the execution of the command as suspended
         (waiting for user input) upon entering the context and resumes it when
         exiting the context.

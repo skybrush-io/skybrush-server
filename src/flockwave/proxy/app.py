@@ -2,17 +2,18 @@
 
 from http.client import parse_headers
 from io import BytesIO
-from trio import open_nursery, sleep_forever
 
 from flockwave.app_framework import DaemonApp
 from flockwave.app_framework.configurator import AppConfigurator
 from flockwave.connections import (
-    Connection,
+    RWConnection,
     StreamConnection,
     create_connection,
     create_connection_factory,
 )
 from flockwave.networking import format_socket_address
+from trio import open_nursery, sleep_forever
+
 from flockwave.server.utils.packaging import is_packaged
 
 from .logger import log
@@ -38,8 +39,8 @@ def parse_content_length(headers: bytes) -> int:
 
 
 async def parse_http_headers_from_connection(
-    conn: Connection,
-) -> tuple[bytes, bytes, bytes]:
+    conn: RWConnection[bytes, bytes],
+) -> tuple[bytes, bytes, bytes] | None:
     """Parses the status line and the HTTP headers from the given connection.
 
     Returns:
@@ -83,11 +84,11 @@ class SkybrushProxyServer(DaemonApp):
             # nursery.start_soon(self.process_request_queue)
             nursery.start_soon(self.supervise_remote_connection, remote_connection)
 
-    async def run_local_connection(self, conn: Connection) -> None:
+    async def run_local_connection(self, conn: RWConnection) -> None:
         while True:
             await sleep_forever()
 
-    async def run_remote_connection(self, conn: Connection) -> None:
+    async def run_remote_connection(self, conn: RWConnection) -> None:
         address = getattr(conn, "address", None)
         assert address is not None
 
@@ -106,7 +107,7 @@ class SkybrushProxyServer(DaemonApp):
         finally:
             log.info(f"Closed connection to {format_socket_address(address)}")
 
-    async def run_remote_connection_new(self, conn: Connection) -> None:
+    async def run_remote_connection_new(self, conn: RWConnection) -> None:
         # TODO(ntamas): this should be conceptually simpler and not dependent
         # on HTTP, but it does not work yet for some reason. Investigate.
         address = getattr(conn, "address", None)
@@ -126,7 +127,7 @@ class SkybrushProxyServer(DaemonApp):
             log.info(f"Closed connection to {format_socket_address(address)}")
 
     async def handle_single_request_from_remote_connection(
-        self, conn: Connection
+        self, conn: RWConnection[bytes, bytes]
     ) -> bool:
         """Handles a single request from a remote connection. Returns whether
         the connection should be closed after processing the request.
@@ -158,11 +159,10 @@ class SkybrushProxyServer(DaemonApp):
             await local_connection.write(preamble)
 
             # Read the response so we know how many bytes to expect
-            (
-                response_status_line,
-                response_headers,
-                response_body,
-            ) = await parse_http_headers_from_connection(local_connection)
+            parsed_stuff = await parse_http_headers_from_connection(local_connection)
+            if parsed_stuff is None:
+                return True
+            response_status_line, response_headers, response_body = parsed_stuff
 
             await conn.write(response_status_line + CRLF + response_headers + CRLFCRLF)
             await conn.write(response_body)
@@ -181,13 +181,17 @@ class SkybrushProxyServer(DaemonApp):
 
         return False
 
-    async def supervise_local_connection(self, conn: Connection) -> None:
+    async def supervise_local_connection(
+        self, conn: RWConnection[bytes, bytes]
+    ) -> None:
         assert self.connection_supervisor is not None
         await self.connection_supervisor.supervise(
             conn, task=self.run_local_connection, policy=None
         )
 
-    async def supervise_remote_connection(self, conn: Connection) -> None:
+    async def supervise_remote_connection(
+        self, conn: RWConnection[bytes, bytes]
+    ) -> None:
         assert self.connection_supervisor is not None
         await self.connection_supervisor.supervise(
             conn, task=self.run_remote_connection, policy=None

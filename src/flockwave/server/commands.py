@@ -2,29 +2,23 @@
 remote UAVs.
 """
 
+from collections.abc import AsyncGenerator, Awaitable
 from contextlib import aclosing
-from blinker import Signal
 from inspect import isasyncgen, isawaitable
+from typing import Any, TypeVar, cast
+
+from blinker import Signal
 from trio import (
-    current_time,
-    open_memory_channel,
-    open_nursery,
-    MemorySendChannel,
     MemoryReceiveChannel,
+    MemorySendChannel,
     Nursery,
     TooSlowError,
     WouldBlock,
+    current_time,
+    open_memory_channel,
+    open_nursery,
 )
 from trio_util import periodic
-from typing import (
-    cast,
-    Any,
-    AsyncGenerator,
-    Awaitable,
-    Optional,
-    Union,
-    TypeVar,
-)
 
 from .logger import log as base_log
 from .model.builders import CommandExecutionStatusBuilder
@@ -36,8 +30,8 @@ __all__ = ("CommandExecutionManager",)
 log = base_log.getChild("commands")
 
 
-ReceiptLike = Union[CommandExecutionStatus, str]
-Result = Union[Any, Awaitable[Any], AsyncGenerator[Any, Any]]
+ReceiptLike = CommandExecutionStatus | str
+Result = Any | Awaitable[Any] | AsyncGenerator[Any, Any]
 
 T = TypeVar("T")
 
@@ -171,7 +165,7 @@ class CommandExecutionManager(RegistryBase[CommandExecutionStatus]):
         except WouldBlock:
             log.warning("Command queue is full, dropping command")
 
-    def new(self, client_to_notify: Optional[str] = None) -> CommandExecutionStatus:
+    def new(self, client_to_notify: str | None = None) -> CommandExecutionStatus:
         """Registers the execution of a new asynchronous command in the
         command manager.
 
@@ -253,7 +247,7 @@ class CommandExecutionManager(RegistryBase[CommandExecutionStatus]):
 
     def _get_command_from_id(
         self, receipt_id: ReceiptLike
-    ) -> Optional[CommandExecutionStatus]:
+    ) -> CommandExecutionStatus | None:
         """Returns the command execution status object corresponding to the
         given receipt ID, or, if the function is given a
         CommandExecutionStatus_ object, checks whether the object really
@@ -368,7 +362,7 @@ class CommandExecutionManager(RegistryBase[CommandExecutionStatus]):
 
     async def _wait_for(
         self,
-        async_obj: Union[Awaitable[Any], AsyncGenerator[Any, Any]],
+        async_obj: Awaitable[Any] | AsyncGenerator[Any, Any],
         status: CommandExecutionStatus,
     ) -> None:
         try:
@@ -401,7 +395,7 @@ class CommandExecutionManager(RegistryBase[CommandExecutionStatus]):
 
     async def _wait_for_generator(
         self, it: AsyncGenerator[T, Any], status: CommandExecutionStatus
-    ) -> Union[Optional[T], Exception]:
+    ) -> T | None | Exception:
         """Waits for yielded progress updates from an async iterator and updates
         the command execution receipt with the progress information and the
         returned result from the iterator.
@@ -411,7 +405,7 @@ class CommandExecutionManager(RegistryBase[CommandExecutionStatus]):
             status: the status object that is to be manipulated when the
                 async generator finishes or the execution times out
         """
-        result: Optional[T] = None
+        result: T | None = None
 
         async with aclosing(it) as gen:
             data_from_client: Any = None

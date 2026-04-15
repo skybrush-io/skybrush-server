@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from collections.abc import AsyncIterator
-from typing import TYPE_CHECKING, Optional, Union, Type
+from typing import TYPE_CHECKING
 
 from flockwave.server.model.commands import Progress, ProgressEventsWithSuspension
 from flockwave.server.model.geofence import (
@@ -11,7 +11,7 @@ from flockwave.server.model.geofence import (
 )
 from flockwave.server.model.safety import SafetyConfigurationRequest
 
-from ..enums import MAVParamType
+from ..enums import MAVParamType, MAVType
 from ..types import MAVLinkFlightModeNumbers, MAVLinkMessage
 from ..utils import (
     decode_param_from_wire_representation,
@@ -30,11 +30,11 @@ class Autopilot(ABC):
     name = "Abstract autopilot"
     capabilities: int = 0
 
-    def __init__(self, base: Optional[Autopilot] = None) -> None:
+    def __init__(self, base: Autopilot | None = None) -> None:
         self.capabilities = int(getattr(base, "capabilities", 0))
 
     @staticmethod
-    def from_autopilot_type(type: int) -> Type["Autopilot"]:
+    def from_autopilot_type(type: int) -> type["Autopilot"]:
         """Returns an autopilot factory that can construct an Autopilot_
         instance that is suitable to represent the behaviour of an autopilot
         with the given MAVLink autopilot identifier.
@@ -44,7 +44,7 @@ class Autopilot(ABC):
         return get_autopilot_factory_by_mavlink_type(type)
 
     @classmethod
-    def from_heartbeat(cls, message: MAVLinkMessage) -> Type["Autopilot"]:
+    def from_heartbeat(cls, message: MAVLinkMessage) -> type["Autopilot"]:
         """Returns an autopilot factory that can construct an Autopilot_
         instance that is suitable to represent the behaviour of an autopilot
         that sent the given MAVLink heartbeat message.
@@ -76,7 +76,9 @@ class Autopilot(ABC):
             return "unknown"
 
     @classmethod
-    def describe_custom_mode(cls, base_mode: int, custom_mode: int, type) -> str:
+    def describe_custom_mode(
+        cls, base_mode: int, custom_mode: int, vehicle_type: int | MAVType | None = None
+    ) -> str:
         """Returns the description of the current custom mode that the autopilot
         is in, given the base and the custom mode in the heartbeat message.
 
@@ -173,7 +175,7 @@ class Autopilot(ABC):
         ...
 
     def decode_param_from_wire_representation(
-        self, value: Union[int, float], type: MAVParamType
+        self, value: int | float, type: MAVParamType
     ) -> float:
         """Decodes the given MAVLink parameter value returned from a MAVLink
         PARAM_VALUE message into its "real" value as a float.
@@ -181,7 +183,7 @@ class Autopilot(ABC):
         return decode_param_from_wire_representation(value, type)
 
     def encode_param_to_wire_representation(
-        self, value: Union[int, float], type: MAVParamType
+        self, value: int | float, type: MAVParamType
     ) -> float:
         """Encodes the given MAVLink parameter value as a float suitable to be
         transmitted over the wire in a MAVLink PARAM_SET command.

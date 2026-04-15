@@ -1,7 +1,7 @@
 """Flight area related data structures and functions for the server."""
 
 from dataclasses import dataclass, field
-from typing import Any, Optional
+from typing import Any
 
 from flockwave.gps.vectors import GPSCoordinate
 
@@ -12,8 +12,8 @@ __all__ = (
 )
 
 
-#: Type specification for points in the flight area
 FlightAreaPoint = GPSCoordinate
+"""Type specification for points in the flight area."""
 
 
 @dataclass
@@ -46,17 +46,17 @@ class FlightAreaConfigurationRequest:
     - selectively turning on/off certain flight area types
     """
 
-    min_altitude: Optional[float] = None
+    min_altitude: float | None = None
     """Minimum altitude that the drone must maintain; `None` means not to
     change the minimum altitude requirement.
     """
 
-    max_altitude: Optional[float] = None
+    max_altitude: float | None = None
     """Maximum altitude that the drone is allowed to fly to; `None` means not
     to change the maximum altitude limit.
     """
 
-    polygons: Optional[list[FlightAreaPolygon]] = None
+    polygons: list[FlightAreaPolygon] | None = None
     """Inclusion and exclusion polygons in the flight area; `None` means not to
     update the polygons.
     """

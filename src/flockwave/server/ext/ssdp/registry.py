@@ -4,12 +4,12 @@ provides, their IDs and URLs.
 
 __all__ = ("UPnPServiceRegistry",)
 
+from collections.abc import Callable
 from contextlib import contextmanager
-from typing import Callable
 
 from flockwave.connections import IPAddressAndPort
-from flockwave.server.registries.base import RegistryBase
 
+from flockwave.server.registries.base import RegistryBase
 
 URIOrCallableReturningURI = str | Callable[[IPAddressAndPort], str | None]
 

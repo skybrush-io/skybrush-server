@@ -6,10 +6,9 @@ signal that other extensions can subscribe to if they are interested in the
 values of the RC channels.
 """
 
+from collections.abc import Sequence
 from logging import Logger
-
-from typing import Any, ClassVar, Optional, Sequence
-
+from typing import Any, ClassVar, overload
 
 rc_changed_signal: Any = None
 """Signal that this extension emits in order to notify subscribers about the
@@ -19,7 +18,7 @@ new channel values.
 debug: bool = False
 """Stores whether the extension is in debug mode"""
 
-logger: Optional[Logger] = None
+logger: Logger | None = None
 """Logger instance used by the extension"""
 
 
@@ -52,9 +51,15 @@ class RCState(Sequence[int]):
         """Constructor."""
         self.reset()
 
-    def __getitem__(self, index: int) -> int:
+    @overload
+    def __getitem__(self, index: int) -> int: ...
+
+    @overload
+    def __getitem__(self, index: slice) -> Sequence[int]: ...
+
+    def __getitem__(self, index: int | slice) -> int | Sequence[int]:
         """Returns the raw, unscaled value of the RC channel with the given
-        index.
+        index or slice.
         """
         return self.channels[index]
 

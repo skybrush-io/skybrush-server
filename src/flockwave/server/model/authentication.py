@@ -1,7 +1,6 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import Enum
-from typing import Optional
 
 from .client import Client
 
@@ -15,9 +14,9 @@ class AuthenticationResultType(Enum):
 @dataclass
 class AuthenticationResult:
     type: AuthenticationResultType
-    data: Optional[str] = None
-    reason: Optional[str] = None
-    user: Optional[str] = None
+    data: str | None = None
+    reason: str | None = None
+    user: str | None = None
 
     @classmethod
     def challenge(cls, data):

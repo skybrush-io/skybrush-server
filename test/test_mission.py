@@ -16,8 +16,6 @@ from flockwave.server.model.mission import (
 @fixture
 def command() -> MissionCommand:
     return GoToMissionCommand(
-        id=None,
-        participants=None,
         latitude=47,
         longitude=19,
         altitude=Altitude(value=100, reference=AltitudeReference.HOME),
@@ -29,31 +27,26 @@ def bundle() -> MissionCommandBundle:
     return MissionCommandBundle(
         commands=[
             TakeoffMissionCommand(
-                id=None,
-                participants=None,
                 altitude=Altitude(value=10, reference=AltitudeReference.HOME),
             ),
             GoToMissionCommand(
-                id=None,
                 participants=[0],
                 latitude=47.1,
                 longitude=19.1,
                 altitude=Altitude(value=100, reference=AltitudeReference.HOME),
             ),
             HoverMissionCommand(
-                id=None,
                 participants=[0, 1],
                 duration=5,
             ),
             GoToMissionCommand(
-                id=None,
                 participants=[1],
                 latitude=47.2,
                 longitude=19.2,
                 altitude=Altitude(value=100, reference=AltitudeReference.HOME),
             ),
-            ReturnToHomeMissionCommand(id=None, participants=None),
-            LandMissionCommand(id=None, participants=None),
+            ReturnToHomeMissionCommand(id="42"),
+            LandMissionCommand(),
         ],
         start_positions=[
             (470000000, 190000000),

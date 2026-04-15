@@ -5,10 +5,11 @@ objects to receive and send MAVLink messages.
 from __future__ import annotations
 
 from collections import defaultdict
+from collections.abc import Iterator
 from contextlib import contextmanager
 from importlib import import_module
 from time import time
-from typing import Any, ClassVar, Iterator, Optional, Protocol, TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, Any, ClassVar, Protocol, cast
 
 from flockwave.channels import (
     BroadcastMessageChannel,
@@ -29,6 +30,7 @@ if TYPE_CHECKING:
         MinimalMAVLinkFactory,
         MinimalMAVLinkInterface,
     )
+
     from .types import MAVLinkMessage, MAVLinkMessageSpecification
 
 __all__ = (
@@ -69,7 +71,7 @@ def create_mavlink_message_channel(
     dialect: str = "ardupilotmega",
     network_id: str = "",
     system_id: int = 255,
-    link_ids: Optional[dict[Connection, int]] = None,
+    link_ids: dict[Connection, int] | None = None,
     signing: MAVLinkSigningConfiguration = MAVLinkSigningConfiguration.DISABLED,
 ) -> MessageChannel[tuple[MAVLinkMessage, str], Any]:
     """Creates a bidirectional Trio-style channel that reads data from and
@@ -257,7 +259,6 @@ def _create_stream_based_mavlink_message_channel(
     if not isinstance(connection, StreamConnectionBase):
         raise ConnectionNotSupportedError()
 
-    connection = cast(StreamConnectionBase, connection)
     mavlink = mavlink_factory()
 
     def parser(data: bytes) -> list[tuple[MAVLinkMessage, str]]:

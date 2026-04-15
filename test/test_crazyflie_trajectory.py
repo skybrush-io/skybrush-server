@@ -1,10 +1,9 @@
 import gzip
-
 from json import load
 
 from flockwave.server.ext.crazyflie.trajectory import (
-    encode_trajectory,
     TrajectoryEncoding,
+    encode_trajectory,
 )
 from flockwave.server.show.trajectory import TrajectorySpecification
 

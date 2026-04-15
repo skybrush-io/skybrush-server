@@ -1,25 +1,21 @@
 """Application object for the Skybrush server."""
 
 from collections import Counter, defaultdict
-from inspect import isawaitable, isasyncgen
+from collections.abc import Iterable, Sequence
+from inspect import isasyncgen, isawaitable
 from os import environ
-from platformdirs import AppDirs
-from trio import (
-    BrokenResourceError,
-    move_on_after,
-)
-from typing import (
-    Any,
-    Iterable,
-    Optional,
-    Sequence,
-    Union,
-)
+from typing import Any
 
 from flockwave.app_framework import DaemonApp
 from flockwave.app_framework.configurator import AppConfigurator, Configuration
 from flockwave.connections.base import ConnectionState
 from flockwave.gps.vectors import GPSCoordinate
+from platformdirs import AppDirs
+from trio import (
+    BrokenResourceError,
+    move_on_after,
+)
+
 from flockwave.server.ports import get_port_map, set_base_port
 from flockwave.server.utils import divide_by, rename_keys
 from flockwave.server.utils.packaging import is_packaged
@@ -32,6 +28,7 @@ from flockwave.server.utils.system_time import (
 from .commands import CommandExecutionManager, CommandExecutionStatus
 from .errors import NotSupportedError
 from .logger import log
+from .message_handlers import MessageBodyTransformationSpec, transform_message_body
 from .message_hub import (
     BatchMessageRateLimiter,
     ConnectionStatusMessageRateLimiter,
@@ -39,7 +36,6 @@ from .message_hub import (
     RateLimiters,
     UAVMessageRateLimiter,
 )
-from .message_handlers import MessageBodyTransformationSpec, transform_message_body
 from .model.client import Client
 from .model.devices import DeviceTree, DeviceTreeSubscriptionManager
 from .model.errors import ClientNotSubscribedError, NoSuchPathError
@@ -47,7 +43,7 @@ from .model.log import LogMessage, Severity
 from .model.messages import FlockwaveMessage, FlockwaveNotification, FlockwaveResponse
 from .model.object import ModelObject
 from .model.transport import TransportOptions
-from .model.uav import is_uav, UAV, UAVDriver
+from .model.uav import UAV, UAVDriver, is_uav
 from .model.world import World
 from .registries import (
     ChannelTypeRegistry,
@@ -64,8 +60,6 @@ __all__ = ("app",)
 
 PACKAGE_NAME = __name__.rpartition(".")[0]
 
-
-#: Table that describes the handlers of several UAV-related command requests
 UAV_COMMAND_HANDLERS: dict[str, tuple[str, MessageBodyTransformationSpec]] = {
     "LOG-DATA": ("get_log", rename_keys({"logId": "log_id"})),
     "LOG-INF": ("get_log_list", None),
@@ -107,9 +101,10 @@ UAV_COMMAND_HANDLERS: dict[str, tuple[str, MessageBodyTransformationSpec]] = {
         {"transport": TransportOptions.from_json},
     ),
 }
+"""Table that describes the handlers of several UAV-related command requests."""
 
-#: Constant for a dummy UAV command handler that does nothing
 NULL_HANDLER = (None, None)
+"""Constant for a dummy UAV command handler that does nothing."""
 
 
 class SkybrushServer(DaemonApp):
@@ -187,7 +182,7 @@ class SkybrushServer(DaemonApp):
     def create_CONN_INF_message_for(
         self,
         connection_ids: Iterable[str],
-        in_response_to: Optional[FlockwaveMessage] = None,
+        in_response_to: FlockwaveMessage | None = None,
     ) -> FlockwaveMessage:
         """Creates a CONN-INF message that contains information regarding
         the connections with the given IDs.
@@ -217,7 +212,7 @@ class SkybrushServer(DaemonApp):
         return response
 
     def create_DEV_INF_message_for(
-        self, paths: Iterable[str], in_response_to: Optional[FlockwaveMessage] = None
+        self, paths: Iterable[str], in_response_to: FlockwaveMessage | None = None
     ) -> FlockwaveMessage:
         """Creates a DEV-INF message that contains information regarding
         the current values of the channels in the subtrees of the device
@@ -419,7 +414,7 @@ class SkybrushServer(DaemonApp):
         return self.message_hub.create_response_or_notification(body=body)
 
     def create_UAV_INF_message_for(
-        self, uav_ids: Iterable[str], in_response_to: Optional[FlockwaveMessage] = None
+        self, uav_ids: Iterable[str], in_response_to: FlockwaveMessage | None = None
     ):
         """Creates an UAV-INF message that contains information regarding
         the UAVs with the given IDs.
@@ -460,7 +455,7 @@ class SkybrushServer(DaemonApp):
         return response
 
     async def disconnect_client(
-        self, client: Client, reason: Optional[str] = None, timeout: float = 10
+        self, client: Client, reason: str | None = None, timeout: float = 10
     ) -> None:
         """Disconnects the given client from the server.
 
@@ -523,9 +518,9 @@ class SkybrushServer(DaemonApp):
         # Process the body
         parameters = dict(message.body)
         message_type = parameters.pop("type")
-        uav_id: Optional[str] = parameters.pop(id_property, None)
-        uav: Optional[UAV] = None
-        error: Optional[str] = None
+        uav_id: str | None = parameters.pop(id_property, None)
+        uav: UAV | None = None
+        error: str | None = None
         result: Any = None
 
         try:
@@ -699,8 +694,8 @@ class SkybrushServer(DaemonApp):
     def find_uav_by_id(
         self,
         uav_id: str,
-        response: Optional[Union[FlockwaveResponse, FlockwaveNotification]] = None,
-    ) -> Optional[UAV]:
+        response: FlockwaveResponse | FlockwaveNotification | None = None,
+    ) -> UAV | None:
         """Finds the UAV with the given ID in the object registry or registers
         a failure in the given response object if there is no UAV with the
         given ID.
@@ -799,8 +794,8 @@ class SkybrushServer(DaemonApp):
         message: str,
         *,
         severity: Severity = Severity.INFO,
-        sender: Optional[str] = None,
-        timestamp: Optional[int] = None,
+        sender: str | None = None,
+        timestamp: int | None = None,
     ):
         """Requests the application to send a SYS-MSG message to the connected
         clients with the given message body, severity, sender ID and timestamp.
@@ -845,7 +840,7 @@ class SkybrushServer(DaemonApp):
         return super().prepare(config, debug)
 
     def sort_uavs_by_drivers(
-        self, uav_ids: Iterable[str], response: Optional[FlockwaveResponse] = None
+        self, uav_ids: Iterable[str], response: FlockwaveResponse | None = None
     ) -> dict[UAVDriver, list[UAV]]:
         """Given a list of UAV IDs, returns a mapping that maps UAV drivers
         to the UAVs specified by the IDs.
@@ -976,21 +971,19 @@ class SkybrushServer(DaemonApp):
     def _find_connection_by_id(
         self,
         connection_id: str,
-        response: Optional[Union[FlockwaveResponse, FlockwaveNotification]] = None,
-    ) -> Optional[ConnectionRegistryEntry]:
+        response: FlockwaveResponse | FlockwaveNotification | None = None,
+    ) -> ConnectionRegistryEntry | None:
         """Finds the connection with the given ID in the connection registry
         or registers a failure in the given response object if there is no
         connection with the given ID.
 
         Parameters:
-            connection_id (str): the ID of the connection to find
-            response (Optional[FlockwaveResponse]): the response in which
-                the failure can be registered
+            connection_id: the ID of the connection to find
+            response: the response in which the failure can be registered
 
         Returns:
-            Optional[ConnectionRegistryEntry]: the entry in the connection
-                registry with the given ID or ``None`` if there is no such
-                connection
+            The entry in the connection registry with the given ID or
+            ``None`` if there is no such connection
         """
         return find_in_registry(
             self.connection_registry,
@@ -1002,8 +995,8 @@ class SkybrushServer(DaemonApp):
     def _find_object_by_id(
         self,
         object_id: str,
-        response: Optional[Union[FlockwaveResponse, FlockwaveNotification]] = None,
-    ) -> Optional[ModelObject]:
+        response: FlockwaveResponse | FlockwaveNotification | None = None,
+    ) -> ModelObject | None:
         """Finds the object with the given ID in the object registry or registers
         a failure in the given response object if there is no object with the
         given ID.
@@ -1067,7 +1060,7 @@ class SkybrushServer(DaemonApp):
             body["error"] = (
                 str(status.error)
                 if not hasattr(status.error, "json")
-                else status.error.json  # type: ignore
+                else status.error.json
             )
         else:
             body["result"] = status.result
@@ -1193,14 +1186,14 @@ class SkybrushServer(DaemonApp):
             extra={"id": name},
         )
 
-    def _process_configuration(self, config: Configuration) -> Optional[int]:
+    def _process_configuration(self, config: Configuration) -> int | None:
         # Process the configuration options
         cfg = config.get("COMMAND_EXECUTION_MANAGER", {})
         self.command_execution_manager.timeout = cfg.get("timeout", 90)
 
         # Override the base port if needed
-        port_from_env: Optional[str] = environ.get("PORT")
-        port: Optional[int] = config.get("PORT")
+        port_from_env: str | None = environ.get("PORT")
+        port: int | None = config.get("PORT")
         if port_from_env:
             try:
                 port = int(port_from_env)

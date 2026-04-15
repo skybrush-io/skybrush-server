@@ -1,17 +1,19 @@
 """Safety fence handling extension for the Crazyflie with our custom firmware."""
 
-from aiocflib.crazyflie.mem import write_with_checksum
-from aiocflib.crazyflie import Crazyflie
+from collections.abc import Sequence
 from struct import Struct
-from typing import Any, Optional, Sequence
+from typing import Any
+
+from aiocflib.crazyflie import Crazyflie
+from aiocflib.crazyflie.mem import write_with_checksum
 
 from flockwave.server.show.trajectory import TrajectorySpecification
 
 from .crtp_extensions import (
     DRONE_SHOW_PORT,
-    FenceAction,
     MEM_TYPE_FENCE,
     DroneShowCommand,
+    FenceAction,
     FenceLocation,
     FenceType,
 )
@@ -21,7 +23,7 @@ class Fence:
     """Fence handling for a Crazyflie drone."""
 
     _crazyflie: Crazyflie
-    _is_supported: Optional[bool]
+    _is_supported: bool | None
 
     def __init__(self, crazyflie: Crazyflie):
         """Constructor.
@@ -122,15 +124,15 @@ class FenceConfiguration:
     drones when a show is uploaded.
     """
 
-    #: Stores whether the safety fence should be enabled
     enabled: bool = True
+    """Stores whether the safety fence should be enabled."""
 
-    #: Distance between the axis-aligned bounding box of the trajectory and the
-    #: safety fence, in meters
     distance: float = 1.0
+    """Distance between the axis-aligned bounding box of the trajectory and the.
+    safety fence, in meters."""
 
-    #: Action to take when the fence is breached
     action: FenceAction = FenceAction.NONE
+    """Action to take when the fence is breached."""
 
     @classmethod
     def from_json(cls, obj: Any):

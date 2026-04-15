@@ -1,8 +1,9 @@
 """Factory function to create handlers for the "color" command in UAV drivers."""
 
-from colour import Color
+from collections.abc import Awaitable, Callable
 from inspect import iscoroutinefunction
-from typing import Awaitable, Callable, Optional, Union
+
+from colour import Color
 
 from flockwave.server.model.uav import UAV, UAVDriver
 
@@ -10,10 +11,10 @@ __all__ = ("create_color_command_handler",)
 
 
 def _parse_color(
-    red: Optional[Union[str, int]] = None,
-    green: Optional[int] = None,
-    blue: Optional[int] = None,
-) -> Optional[Color]:
+    red: str | int | None = None,
+    green: int | None = None,
+    blue: int | None = None,
+) -> Color | None:
     """Parses a color from its red, green and blue components specified as
     integers, or from a string representation, which must be submitted in place
     of the "red" argument (the first positional argument).
@@ -35,29 +36,37 @@ def _parse_color(
                 return Color(red)
 
     return Color(
-        red=(int(red) or 0) / 255,
-        green=(int(green) or 0) / 255,
-        blue=(int(blue) or 0) / 255,
+        red=int(red or 0) / 255,
+        green=int(green or 0) / 255,
+        blue=int(blue or 0) / 255,
     )
 
 
 async def _color_command_handler(
     driver: UAVDriver,
     uav: UAV,
-    red: Optional[Union[str, int]] = None,
-    green: Optional[int] = None,
-    blue: Optional[int] = None,
+    red: str | int | None = None,
+    green: int | None = None,
+    blue: int | None = None,
 ) -> str:
     if red is None and green is None and blue is None:
         raise RuntimeError(
             "Please provide the red, green and blue components of the color to set"
         )
 
-    color = _parse_color(red, green, blue)
-    if iscoroutinefunction(uav.set_led_color):
-        await uav.set_led_color(color)
+    try:
+        color = _parse_color(red, green, blue)
+    except ValueError as ex:
+        raise RuntimeError(ex) from ex
+
+    set_led_color = getattr(uav, "set_led_color", None)
+    if set_led_color is None:
+        raise RuntimeError("Color commands are not supported")
+
+    if iscoroutinefunction(set_led_color):
+        await set_led_color(color)
     else:
-        uav.set_led_color(color)
+        set_led_color(color)
 
     if color is not None:
         return f"Color set to {color.hex_l}"
@@ -66,7 +75,7 @@ async def _color_command_handler(
 
 
 def create_color_command_handler() -> Callable[
-    [UAVDriver, UAV, Optional[Union[str, int]], Optional[int], Optional[int]],
+    [UAVDriver, UAV, str | int | None, int | None, int | None],
     Awaitable[str],
 ]:
     """Creates a generic async command handler function that allows the user to

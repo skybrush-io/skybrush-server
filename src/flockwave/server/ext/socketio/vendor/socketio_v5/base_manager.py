@@ -1,7 +1,7 @@
 import itertools
 import logging
 
-from bidict import bidict, ValueDuplicationError  # type: ignore
+from bidict import bidict, ValueDuplicationError
 
 default_logger = logging.getLogger("socketio")
 

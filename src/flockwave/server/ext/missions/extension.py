@@ -4,11 +4,13 @@ uploading missions to UAVs.
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from contextlib import ExitStack
 from functools import partial
 from inspect import isawaitable
+from typing import Any, cast, overload
+
 from trio import open_nursery
-from typing import Any, Iterable, Optional, cast, overload
 
 from flockwave.server.ext.base import Extension
 from flockwave.server.message_hub import MessageHub
@@ -16,7 +18,7 @@ from flockwave.server.model import Client, FlockwaveMessage, FlockwaveResponse
 from flockwave.server.model.messages import FlockwaveNotification
 from flockwave.server.registries import find_in_registry
 from flockwave.server.utils.formatting import format_list_nicely
-from flockwave.server.utils.validation import cached_validator_for, ValidationError
+from flockwave.server.utils.validation import ValidationError, cached_validator_for
 
 from .examples import LandImmediatelyMissionType
 from .model import Mission, MissionPlan, MissionType
@@ -53,8 +55,8 @@ class MissionManagementExtension(Extension):
         }
 
     def find_mission_by_id(
-        self, id: str, response: Optional[FlockwaveResponse] = None
-    ) -> Optional[Mission]:
+        self, id: str, response: FlockwaveResponse | None = None
+    ) -> Mission | None:
         """Finds the mission with the given ID in the mission registry or
         registers a failure in the given response object if there is no mission
         with the given ID.
@@ -74,8 +76,8 @@ class MissionManagementExtension(Extension):
         )
 
     def find_mission_type_by_id(
-        self, id: str, response: Optional[FlockwaveResponse] = None
-    ) -> Optional[MissionType]:
+        self, id: str, response: FlockwaveResponse | None = None
+    ) -> MissionType | None:
         """Finds the mission type with the given ID in the mission type registry
         or registers a failure in the given response object if there is no
         mission type with the given ID.
@@ -160,7 +162,7 @@ class MissionManagementExtension(Extension):
     def _create_MSN_INF_message_for(
         self,
         mission_ids: Iterable[str],
-        in_response_to: Optional[FlockwaveMessage] = None,
+        in_response_to: FlockwaveMessage | None = None,
     ):
         """Creates an MSN-INF message that contains information regarding
         the missions with the given IDs.
@@ -359,10 +361,11 @@ class MissionManagementExtension(Extension):
                     f"Plan parameter validation error: {str(ex)}"
                 ) from None
             maybe_plan = mission_type.create_plan(parameters)
+            plan: MissionPlan
             if isawaitable(maybe_plan):
                 plan = cast(MissionPlan, await maybe_plan)
             else:
-                plan = cast(MissionPlan, maybe_plan)
+                plan = maybe_plan
         except RuntimeError as ex:
             if self.log:
                 self.log.warning(f"Mission plan error: {ex}")

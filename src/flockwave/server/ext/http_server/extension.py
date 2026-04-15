@@ -6,27 +6,35 @@ functionality such as a web-based debug page (`flockwave.ext.debug`) or a
 Socket.IO-based channel.
 """
 
-import logging
+from __future__ import annotations
 
+import logging
+from collections.abc import Iterable
 from contextlib import contextmanager
 from dataclasses import dataclass
 from heapq import heapify, heappush
-from hypercorn.config import Config as HyperConfig
-from hypercorn.trio import serve
 from pathlib import Path
-from quart import abort, Blueprint, Quart, redirect, request, url_for
-from quart_trio import QuartTrio
-from trio import current_time, sleep
-from typing import Iterable, Optional
+from typing import TYPE_CHECKING, Any
 
 from flockwave.ext.manager import ExtensionManager
 from flockwave.networking import can_bind_to_tcp_address, format_socket_address
+from hypercorn.config import Config as HyperConfig
+from hypercorn.logging import Logger
+from hypercorn.trio import serve
+from quart import Blueprint, Quart, abort, redirect, request, url_for
+from quart_trio import QuartTrio
+from trio import current_time, sleep
+
 from flockwave.server.ports import suggest_port_number_for_service, use_port
 from flockwave.server.types import Disposer
 from flockwave.server.utils.networking import get_known_apps_for_port
 from flockwave.server.utils.packaging import is_oxidized
 
 from .routing import RoutingMiddleware
+from .types import HTTPServerExtensionAPI
+
+if TYPE_CHECKING:
+    from flockwave.server.app import SkybrushServer
 
 __all__ = ("exports", "load", "unload", "schema")
 
@@ -38,9 +46,9 @@ SERVICE: str = "http"
 ############################################################################
 
 proposed_index_pages: list["ProposedIndexPage"] = []
-quart_app: Optional[Quart] = None
+quart_app: Quart | None = None
 got_first_request: bool = False
-ext_manager: Optional[ExtensionManager] = None
+ext_manager: ExtensionManager | None = None
 
 ############################################################################
 
@@ -54,7 +62,7 @@ class ProposedIndexPage:
 ############################################################################
 
 
-def create_app():
+def create_app() -> RoutingMiddleware:
     """Creates the ASGI web application provided by this extension."""
 
     global quart_app, got_first_request
@@ -95,7 +103,7 @@ def create_app():
     return router
 
 
-def get_index_url() -> Optional[str]:
+def get_index_url() -> str | None:
     """Get the index URL with the highest priority that was proposed by
     other extensions.
 
@@ -111,8 +119,12 @@ def get_index_url() -> Optional[str]:
 
 
 def mount(
-    app, *, path: str, scopes: Optional[Iterable[str]] = None, priority: int = 0
-) -> Optional[Disposer]:
+    app,
+    *,
+    path: str,
+    scopes: Iterable[str] | None = None,
+    priority: int = 0,
+) -> Disposer | None:
     """Mounts the given ASGI web application or Quart blueprint at the
     given path.
 
@@ -142,13 +154,13 @@ def mount(
         else:
             quart_app.register_blueprint(app, url_prefix=path)
     else:
-        return exports["asgi_app"].add(app, scopes=scopes, path=path, priority=priority)
+        router = exports["asgi_app"]
+        assert router is not None
+        return router.add(app, scopes=scopes, path=path, priority=priority)
 
 
 @contextmanager
-def mounted(
-    app, *, path: str, scopes: Optional[Iterable[str]] = None, priority: int = 0
-):
+def mounted(app, *, path: str, scopes: Iterable[str] | None = None, priority: int = 0):
     """Context manager that mounts the given ASGI web application or Quart
     blueprint at the given path, and unmounts it when the context is exited.
 
@@ -223,7 +235,7 @@ def proposed_index_page(route: str, priority: int = 0):
 ############################################################################
 
 
-def load(app, configuration):
+def load(app: SkybrushServer, configuration: dict[str, Any]):
     """Loads the extension."""
     global exports, ext_manager
 
@@ -236,7 +248,7 @@ def load(app, configuration):
     exports.update(address=address, asgi_app=create_app())
 
 
-def unload(app):
+def unload(app: SkybrushServer):
     """Unloads the extension."""
     global exports, ext_manager, quart_app, got_first_request
 
@@ -246,8 +258,8 @@ def unload(app):
     exports.update(address=None, asgi_app=None)
 
 
-async def run(app, configuration, logger):
-    global exports, KNOWN_PORTS
+async def run(app: SkybrushServer, configuration: dict[str, Any], logger: Logger):
+    global exports
 
     address = exports.get("address")
     if address is None:
@@ -315,17 +327,17 @@ async def run(app, configuration, logger):
     await sleep(startup_delay)
 
     while True:
-        logger.info(
-            "Starting {1} server on {0}".format(
-                format_socket_address(address), "HTTPS" if secure else "HTTP"
-            )
-        )
+        protocol = "HTTPS" if secure else "HTTP"
+        formatted_address = format_socket_address(address)
+        logger.info(f"Starting {protocol} server on {formatted_address}")
 
         started_at = current_time()
 
         try:
+            asgi_app = exports.get("asgi_app")
+            assert asgi_app is not None
             with use_port(SERVICE, port):
-                await serve(exports["asgi_app"], config)
+                await serve(asgi_app, config)
         except Exception as ex:
             print(repr(ex))
             print(getattr(ex, "__cause__", None))
@@ -351,7 +363,9 @@ async def run(app, configuration, logger):
 
 description = "HTTP server that listens on a specific port"
 
-exports = {
+# We need the unusual typehint below only for ty
+# to handle `global exports` calls properly
+exports: HTTPServerExtensionAPI = {
     "address": None,
     "asgi_app": None,
     "mount": mount,

@@ -8,29 +8,29 @@ requests on a certain TCP port.
 from __future__ import annotations
 
 import weakref
-
 from contextlib import ExitStack
 from functools import partial
 from json import JSONDecodeError
 from logging import Logger
-from trio import (
-    aclose_forcefully,
-    BrokenResourceError,
-    CapacityLimiter,
-    ClosedResourceError,
-    Lock,
-    open_nursery,
-    SocketStream,
-)
-from typing import Any, Generic, TYPE_CHECKING, Protocol, TypeVar, cast
+from typing import TYPE_CHECKING, Any, Generic, Protocol, TypeVar, cast
 
 from flockwave.channels import ParserChannel
 from flockwave.connections import IPAddressAndPort
 from flockwave.encoders.json import create_json_encoder
+from flockwave.networking import format_socket_address
 from flockwave.parsers.json import create_json_parser
+from trio import (
+    BrokenResourceError,
+    CapacityLimiter,
+    ClosedResourceError,
+    Lock,
+    SocketStream,
+    aclose_forcefully,
+    open_nursery,
+)
+
 from flockwave.server.model import Client, CommunicationChannel
 from flockwave.server.ports import suggest_port_number_for_service, use_port
-from flockwave.networking import format_socket_address
 from flockwave.server.utils import overridden
 from flockwave.server.utils.networking import serve_tcp_and_log_errors
 

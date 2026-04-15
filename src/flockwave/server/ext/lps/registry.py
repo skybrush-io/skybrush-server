@@ -3,9 +3,9 @@ instances themselves. Other extensions that provide support for specific types
 of local positioning systems need to register these in the LPS registry.
 """
 
+from collections.abc import Iterator
 from contextlib import contextmanager
 from functools import partial
-from typing import Iterator, Optional
 
 from flockwave.server.model import default_id_generator
 from flockwave.server.registries.base import RegistryBase
@@ -91,7 +91,7 @@ class LocalPositioningSystemRegistry(ObjectRegistryProxy[LocalPositioningSystem]
         super().__init__()
         self._lps_type_registry = lps_type_registry
 
-    def create(self, type: str, id: Optional[str] = None) -> LocalPositioningSystem:
+    def create(self, type: str, id: str | None = None) -> LocalPositioningSystem:
         """Creates a new local positioning system (LPS) of the given type, adds
         it to the registry and returns the corresponding state object.
 
@@ -141,7 +141,7 @@ class LocalPositioningSystemRegistry(ObjectRegistryProxy[LocalPositioningSystem]
 
     @contextmanager
     def create_and_use(
-        self, type: str, id: Optional[str] = None
+        self, type: str, id: str | None = None
     ) -> Iterator[LocalPositioningSystem]:
         """Context manager that creates a new local positioning system (LPS)
         instance of the given type, adds it to the registry and yields the

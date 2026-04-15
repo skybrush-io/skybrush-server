@@ -5,7 +5,7 @@ from collections.abc import Mapping
 from datetime import date, datetime, timedelta
 from functools import partial, wraps
 from math import inf, isfinite
-from typing import Any, Optional, Protocol
+from typing import Any, Protocol
 
 from flockwave.ext.errors import ApplicationExit, NotLoadableError, NotSupportedError
 from flockwave.networking import get_link_layer_address_mapping
@@ -18,7 +18,7 @@ NEVER_EXPIRES = 20 * 365
 never expires.
 """
 
-license: Optional[License] = None
+license: License | None = None
 """Global variable holding the current license."""
 
 _EMPTY_SET = frozenset()
@@ -31,7 +31,7 @@ class License(ABC):
     """
 
     @abstractmethod
-    def get_allowed_hardware_ids(self) -> Optional[tuple[str, ...]]:
+    def get_allowed_hardware_ids(self) -> tuple[str, ...] | None:
         """Returns a tuple containing the hardware IDs associated to the
         license, or `None` if the license does not have hardware ID
         restrictions.
@@ -39,7 +39,7 @@ class License(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def get_allowed_mac_addresses(self) -> Optional[tuple[str, ...]]:
+    def get_allowed_mac_addresses(self) -> tuple[str, ...] | None:
         """Returns a tuple containing the MAC addresses associated to the
         license, or `None` if the license does not have MAC address
         restrictions.
@@ -84,7 +84,7 @@ class License(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def get_expiry_date(self) -> Optional[date]:
+    def get_expiry_date(self) -> date | None:
         """Returns the date on which the license expires (but is still valid),
         or `None` if the license never expires.
         """
@@ -111,7 +111,7 @@ class License(ABC):
         allowed_hardware_ids = self.get_allowed_hardware_ids()
         if allowed_hardware_ids:
             try:
-                from cls import get_hardware_id
+                from cls import get_hardware_id  # ty:ignore[unresolved-import]
 
                 own_hardware_id = get_hardware_id()
             except ImportError:
@@ -216,7 +216,7 @@ class DummyLicense(License):
     def get_allowed_mac_addresses(self):
         return None
 
-    def get_expiry_date(self) -> Optional[date]:
+    def get_expiry_date(self) -> date | None:
         return date.today() + timedelta(days=42)
 
     def get_id(self) -> str:
@@ -274,7 +274,7 @@ class DictBasedLicense(License):
         hwids = self._get_conditions().get("hwid")
         return tuple(str(x) for x in hwids) if hwids is not None else None
 
-    def get_allowed_mac_addresses(self) -> Optional[tuple[str, ...]]:
+    def get_allowed_mac_addresses(self) -> tuple[str, ...] | None:
         addresses = self._get_conditions().get("mac")
 
         # An earlier bug in cmtool sometimes added empty MAC addresses to the
@@ -284,7 +284,7 @@ class DictBasedLicense(License):
         else:
             return None
 
-    def get_expiry_date(self) -> Optional[date]:
+    def get_expiry_date(self) -> date | None:
         expiry = self._license_info.get("expiry")
         if expiry is None:
             return None
@@ -336,7 +336,10 @@ class CLSLicense(DictBasedLicense):
 
     @classmethod
     def get_license(cls):
-        from cls import license
+        try:
+            from cls import license  # ty:ignore[unresolved-import]
+        except ImportError as ex:
+            raise RuntimeError("no license manager") from ex
 
         if isinstance(license, Mapping) and len(license) > 0:
             return cls(license)
@@ -344,7 +347,7 @@ class CLSLicense(DictBasedLicense):
             raise RuntimeError("no license")
 
 
-def get_license() -> Optional[License]:
+def get_license() -> License | None:
     """Returns the currently loaded license, or `None` if there is no license
     associated to the app.
     """
@@ -363,13 +366,13 @@ def has_feature(*args: str) -> bool:
     return license is not None and any(license.has_feature(feature) for feature in args)
 
 
-def enforce_license_limits(license: Optional[License], app) -> None:
+def enforce_license_limits(license: License | None, app) -> None:
     num_drones = license.get_maximum_drone_count() if license else inf
     app.object_registry.size_limit = num_drones
 
 
 def show_license_information(
-    license: Optional[License], logger, *, with_restrictions: bool = False
+    license: License | None, logger, *, with_restrictions: bool = False
 ) -> None:
     """Shows detailed information about the current license in the application
     logs at startup.
@@ -388,7 +391,7 @@ def show_license_information(
         logger.info(f"Licensed to {licensee}")
 
     try:
-        from cls import get_hardware_id
+        from cls import get_hardware_id  # ty:ignore[unresolved-import]
     except ImportError:
         # No license manager or it is older than 3.0.0
         pass

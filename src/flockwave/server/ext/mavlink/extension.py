@@ -187,7 +187,7 @@ class MAVLinkDronesExtension(UAVExtension[MAVLinkDriver]):
         # Create self._uavs only here and not in the constructor; this is to
         # ensure that we cannot accidentally register a UAV when the extension
         # is not running yet
-        uavs = []
+        uavs: list[MAVLinkUAV] = []
 
         # Create a list of arguments to pass to `network.run()` for each MAVLink
         # network that the extension manages

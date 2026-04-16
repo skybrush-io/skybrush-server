@@ -147,7 +147,7 @@ class DroneShowExtension(Extension):
             )
         except ValueError:
             self.log.warning(
-                "Invalid value for 'default_point_of_no_return_seconds' in configuration, "
+                "Invalid value for 'point_of_no_return_seconds' in configuration, "
                 "using default value of -10 seconds"
             )
             point_of_no_return_seconds = -10

@@ -344,6 +344,8 @@ class ArduPilot(Autopilot):
             int(MAVMessageType.SCALED_IMU3): rate_hz,
         }
         calibration_parameters = [
+            # Turn off arming checks
+            ("ARMING_CHECK", 0),
             # Ensure that we are receiving uncompensated compass readings
             ("COMPASS_MOTCT", 0),
             # Mute buzzer in case it generates interference on the UART when on
@@ -353,6 +355,7 @@ class ArduPilot(Autopilot):
             # Configure RC override
             ("RC_OPTIONS", 0),
             ("RC_OVERRIDE_TIME", 3),
+            # TODO(ntamas): set SYSID_THISMAV to our own sysID
         ]
         timeout = self.MAX_COMPASS_MOTOR_INTERFERENCE_CALIBRATION_DURATION
 

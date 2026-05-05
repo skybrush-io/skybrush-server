@@ -60,7 +60,7 @@ __all__ = ("app",)
 
 PACKAGE_NAME = __name__.rpartition(".")[0]
 
-UAV_COMMAND_HANDLERS: dict[str, tuple[str, MessageBodyTransformationSpec]] = {
+UAV_COMMAND_HANDLERS: dict[str, tuple[str, MessageBodyTransformationSpec | None]] = {
     "LOG-DATA": ("get_log", rename_keys({"logId": "log_id"})),
     "LOG-INF": ("get_log_list", None),
     "OBJ-CMD": ("send_command", None),

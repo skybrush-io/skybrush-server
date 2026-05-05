@@ -55,10 +55,10 @@ def format_timedelta_nicely(delta: float | timedelta) -> str:
     """
     dt = delta.total_seconds() if isinstance(delta, timedelta) else delta
     sign = "-" if dt < 0 else ""
-    minutes, seconds = divmod(abs(dt), 60)
+    minutes, seconds = divmod(abs(float(dt)), 60)
     minutes = int(minutes)
     hours, minutes = divmod(minutes, 60)
-    seconds = round(seconds, 3)
+    seconds = float(round(seconds, 3))
     maybe_zero = "0" if seconds < 10 else ""
     if seconds.is_integer():
         seconds = int(seconds)

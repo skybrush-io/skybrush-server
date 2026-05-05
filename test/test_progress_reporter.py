@@ -3,6 +3,7 @@ from contextlib import closing
 from pytest import raises
 from trio import TooSlowError, sleep
 
+from flockwave.server.model.commands import Progress
 from flockwave.server.tasks import ProgressReporter
 
 
@@ -45,6 +46,7 @@ async def test_progress_reporter(nursery, autojump_clock):
         assert index < len(expected_seq), "reporter yielded more items than expected"
 
         percentage, message = expected_seq[index]
+        assert isinstance(progress, Progress)
         assert progress.percentage == percentage
         assert progress.message == message
 
@@ -79,6 +81,7 @@ async def test_progress_reporter_auto_close(nursery, autojump_clock):
         assert index < len(expected_seq), "reporter yielded more items than expected"
 
         percentage, message = expected_seq[index]
+        assert isinstance(progress, Progress)
         assert progress.percentage == percentage
         assert progress.message == message
 
@@ -111,6 +114,7 @@ async def test_progress_reporter_timeout(nursery, autojump_clock):
         assert index < len(expected_seq), "reporter yielded more items than expected"
 
         percentage, message = expected_seq[index]
+        assert isinstance(progress, Progress)
         assert progress.percentage == percentage
         assert progress.message == message
 
@@ -150,6 +154,7 @@ async def test_progress_reporter_timeout_no_failure(nursery, autojump_clock):
         assert index < len(expected_seq), "reporter yielded more items than expected"
 
         percentage, message = expected_seq[index]
+        assert isinstance(progress, Progress)
         assert progress.percentage == percentage
         assert progress.message == message
 

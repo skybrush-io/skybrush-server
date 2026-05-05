@@ -27,6 +27,7 @@ class ConnectionInfo(TimestampMixin, metaclass=ModelMeta):
     }
 
     id: str | None
+    description: str | None
 
     def __init__(self, id: str | None = None, timestamp: TimestampLike | None = None):
         """Constructor.

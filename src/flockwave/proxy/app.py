@@ -74,7 +74,7 @@ async def copy_stream(source: StreamConnection, target: StreamConnection) -> Non
 class SkybrushProxyServer(DaemonApp):
     """Main application object for the Skybrush proxy server."""
 
-    async def run(self) -> None:
+    async def run(self) -> int:
         self.local_connection_factory = create_connection_factory(
             self.config.get("LOCAL_SERVER")
         )
@@ -83,6 +83,8 @@ class SkybrushProxyServer(DaemonApp):
         async with open_nursery() as nursery:
             # nursery.start_soon(self.process_request_queue)
             nursery.start_soon(self.supervise_remote_connection, remote_connection)
+
+        return 0
 
     async def run_local_connection(self, conn: RWConnection) -> None:
         while True:

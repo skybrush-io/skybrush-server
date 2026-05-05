@@ -1054,7 +1054,7 @@ class SkybrushServer(DaemonApp):
             status: the status object corresponding to the command whose
                 execution has just finished.
         """
-        body = {"type": "ASYNC-RESP", "id": status.id}
+        body: dict[str, Any] = {"type": "ASYNC-RESP", "id": status.id}
 
         if status.error:
             body["error"] = (
@@ -1081,7 +1081,7 @@ class SkybrushServer(DaemonApp):
             status: the status object corresponding to the command whose
                 execution has just finished.
         """
-        body = {
+        body: dict[str, Any] = {
             "type": "ASYNC-ST",
             "id": status.id,
             "progress": status.progress.json,  # type: ignore

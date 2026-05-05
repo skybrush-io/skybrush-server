@@ -179,7 +179,7 @@ def find_in_registry(
         the entry from the registry with the given ID or ``None`` if there is
         no such entry (or if the registry itself was ``None``)
     """
-    entry = None
+    entry: T | None = None
     exists = False
 
     if registry:
@@ -189,7 +189,9 @@ def find_in_registry(
         except KeyError:
             exists = False
 
-        exists = exists and (not predicate or predicate(entry))
+        if exists:
+            assert entry is not None
+            exists = not predicate or predicate(entry)
 
     if not exists:
         if hasattr(response, "add_error"):

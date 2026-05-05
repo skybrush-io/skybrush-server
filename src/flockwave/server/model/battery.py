@@ -37,6 +37,8 @@ class BatteryInfo:
 
     @property
     def json(self):
+        result: list[float | None]
+
         if self.voltage is None:
             if self.percentage is None:
                 result = [0.0]

@@ -19,7 +19,7 @@ class ConnectionInfo(TimestampMixin, metaclass=ModelMeta):
     class __meta__:
         schema = get_complex_object_schema("connectionInfo")
 
-    _STATUS_MAPPING = {
+    _STATUS_MAPPING: dict[str | None, str] = {
         "CONNECTED": "connected",
         "CONNECTING": "connecting",
         "DISCONNECTED": "disconnected",

@@ -586,9 +586,12 @@ class ArduPilot(Autopilot):
     ) -> float:
         # ArduCopter does not implement the MAVLink specification correctly and
         # requires all parameter values to be sent as floats, no matter what
-        # their type is. See this link from Gitter:
+        # their type is. More information:
         #
-        # https://gitter.im/ArduPilot/pymavlink?at=5bfb975587c4b86bcc1af3ee
+        # https://mavlink.io/en/services/parameter.html#ardupilot
+        #
+        # This makes it unreliable to set parameter values outside the range in which
+        # floats can accurately represent integers.
         return float(value)
 
     def encode_param_to_wire_representation(
@@ -596,9 +599,12 @@ class ArduPilot(Autopilot):
     ) -> float:
         # ArduCopter does not implement the MAVLink specification correctly and
         # requires all parameter values to be sent as floats, no matter what
-        # their type is. See this link from Gitter:
+        # their type is. More information:
         #
-        # https://gitter.im/ArduPilot/pymavlink?at=5bfb975587c4b86bcc1af3ee
+        # https://mavlink.io/en/services/parameter.html#ardupilot
+        #
+        # This makes it unreliable to set parameter values outside the range in which
+        # floats can accurately represent integers.
         return float(value)
 
     def get_flight_mode_numbers(self, mode: str) -> MAVLinkFlightModeNumbers:

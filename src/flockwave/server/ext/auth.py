@@ -4,7 +4,7 @@ keeps track of registered authentication methods.
 
 from collections.abc import Iterator
 from contextlib import contextmanager
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, ContextManager, Protocol, Sequence
 
 from flockwave.server.model.authentication import (
     AuthenticationMethod,
@@ -27,7 +27,7 @@ class AuthenticationMethodRegistry(RegistryBase[AuthenticationMethod]):
     by its identifier.
     """
 
-    def add(self, method: AuthenticationMethod):
+    def add(self, method: AuthenticationMethod) -> None:
         """Registers an authentication method in the registry.
 
         Parameters:
@@ -190,6 +190,20 @@ class AuthenticationExtension(Extension):
         on this server.
         """
         return self._required
+
+
+class AuthenticationExtensionAPI(Protocol):
+    """Interface specification for the API exposed by the `auth` extension."""
+
+    def get_supported_methods(self) -> Sequence[str]: ...
+    def is_required(self) -> bool: ...
+    def register(self, method: AuthenticationMethod) -> None: ...
+    def unregister(
+        self, method: AuthenticationMethod
+    ) -> AuthenticationMethod | None: ...
+    def use(
+        self, method: AuthenticationMethod
+    ) -> ContextManager[AuthenticationMethod]: ...
 
 
 construct = AuthenticationExtension

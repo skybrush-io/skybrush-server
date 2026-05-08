@@ -33,16 +33,20 @@ class CommunicationChannel(Generic[T], ABC):
         by this object is shared between multiple clients and the sending
         method has to know which client a message is intended to.
 
+        The default implementation of this method is a no-op. Callers can
+        override the method without having to call the superclass.
+
         Parameters:
             client: the client to bind the channel to
         """
         pass
 
+    @abstractmethod
     async def close(self, force: bool = False) -> None:
         """Closes the server's endpoint of the channel.
 
         Parameters:
-            force: whethr to attempt a forceful close
+            force: whether to attempt a forceful close
         """
         raise NotImplementedError
 

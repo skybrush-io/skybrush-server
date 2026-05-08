@@ -6,22 +6,30 @@ Only the response to the submitted request will be delivered back to the client.
 HTTP authentication headers will be translated to AUTH-REQ requests.
 """
 
+from __future__ import annotations
+
 from contextlib import ExitStack
 from json import loads
-from logging import Logger
-from typing import Any
+from typing import TYPE_CHECKING, Any, cast
 
 from flockwave.encoders import Encoder
 from flockwave.encoders.json import create_json_encoder
 from quart import Response, abort, request
 from trio import Event, TooSlowError, fail_after, sleep_forever
 
-from flockwave.server.model import CommunicationChannel, FlockwaveMessageBuilder
+from flockwave.server.ext.auth import AuthenticationExtensionAPI
+from flockwave.server.model import Client, CommunicationChannel, FlockwaveMessageBuilder
 from flockwave.server.utils import overridden
 from flockwave.server.utils.quart import make_blueprint
 
-app = None
-builder = None
+if TYPE_CHECKING:
+    from logging import Logger
+
+    from flockwave.server.app import SkybrushServer
+
+
+app: SkybrushServer | None = None
+builder: FlockwaveMessageBuilder | None = None
 encoder: Encoder | None = None
 log: Logger | None = None
 
@@ -41,19 +49,9 @@ class HTTPChannel(CommunicationChannel):
 
     def __init__(self):
         """Constructor."""
-        self.address = None
-
         self._event = None
         self._message_id = None
         self._response = None
-
-    def bind_to(self, client):
-        """Binds the communication channel to the given client.
-
-        Parameters:
-            client (Client): the client to bind the channel to
-        """
-        pass
 
     async def close(self, force: bool = False):
         raise NotImplementedError
@@ -100,16 +98,18 @@ def ensure_authorization_header_is_present_if_needed() -> None:
     assert app is not None
 
     if not request.headers.get("Authorization"):
-        auth = app.import_api("auth")
+        auth = app.import_api("auth", AuthenticationExtensionAPI)
         if auth.is_required():
-            headers: list[tuple[str, str]] = []
+            response = Response("Unauthorized", 401)
+            headers = response.headers
+
             for method in auth.get_supported_methods():
                 if method == "basic":
-                    headers.append(("WWW-Authenticate", "Basic"))
+                    headers.add("WWW-Authenticate", "Basic")
                 elif method == "jwt":
-                    headers.append(("WWW-Authenticate", "Bearer"))
+                    headers.add("WWW-Authenticate", "Bearer")
 
-            abort(Response("Unauthorized", 401, headers))
+            abort(response)
 
 
 def wrap_message_in_envelope(message: dict[str, Any]) -> dict[str, Any]:
@@ -131,7 +131,7 @@ def wrap_message_in_envelope(message: dict[str, Any]) -> dict[str, Any]:
     return message
 
 
-async def authenticate_client_if_needed(client) -> None:
+async def authenticate_client_if_needed(client: Client) -> HTTPChannel:
     """Helper function that injects an AUTH-REQ message and inspects the
     corresponding AUTH-RESP message from the server to decide whether the
     credentials presented by the user are sufficient.
@@ -143,13 +143,15 @@ async def authenticate_client_if_needed(client) -> None:
 
     assert app is not None
 
-    auth = app.import_api("auth")
+    channel = cast(HTTPChannel, client.channel)
+
+    auth = app.import_api("auth", AuthenticationExtensionAPI)
     authorization_header = request.headers.get("Authorization")
     if not authorization_header:
         if auth.is_required():
             abort(403)  # Forbidden
         else:
-            return
+            return channel
 
     method, _, data = authorization_header.partition(" ")
     method = method.lower()
@@ -163,8 +165,6 @@ async def authenticate_client_if_needed(client) -> None:
 
     if not auth_request or auth_request["method"] not in auth.get_supported_methods():
         abort(403)  # Forbidden
-
-    channel = client.channel
 
     auth_request = wrap_message_in_envelope(auth_request)
     channel.expect_response_for(auth_request)
@@ -180,6 +180,8 @@ async def authenticate_client_if_needed(client) -> None:
     body = response["body"]
     if body.get("type") != "AUTH-RESP" or body.get("result") is not True:
         abort(403)  # Forbidden
+
+    return channel
 
 
 ############################################################################
@@ -219,9 +221,7 @@ async def index():
     # response
     client_id = f"http://{request.host}"
     with app.client_registry.use(client_id, "http") as client:
-        await authenticate_client_if_needed(client)
-
-        channel = client.channel
+        channel = await authenticate_client_if_needed(client)
         channel.expect_response_for(message)
 
         handled = await app.message_hub.handle_incoming_message(message, client)
@@ -244,7 +244,7 @@ async def index():
 ############################################################################
 
 
-async def run(app, configuration, logger):
+async def run(app: SkybrushServer, configuration: dict[str, Any], logger: Logger):
     """Background task that is active while the extension is loaded."""
     route = configuration.get("route", "/api/v1")
 

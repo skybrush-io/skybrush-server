@@ -2114,9 +2114,7 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
         and we should configure its data streams again soon once we re-establish
         connection.
         """
-        self.driver.run_in_background(
-            delayed(1, self.notify_disconnection, ensure_async=True)  # type: ignore[reportArgumentType]
-        )
+        self.driver.run_in_background(delayed(1, self.notify_disconnection))
 
     def _reset_mavlink_version(self) -> None:
         """Resets the MAVLink protocol version used by messages sent to this

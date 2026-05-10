@@ -13,13 +13,13 @@ from collections.abc import Iterable
 from contextlib import contextmanager
 from dataclasses import dataclass
 from heapq import heapify, heappush
+from logging import Logger
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from flockwave.ext.manager import ExtensionManager
 from flockwave.networking import can_bind_to_tcp_address, format_socket_address
 from hypercorn.config import Config as HyperConfig
-from hypercorn.logging import Logger
 from hypercorn.trio import serve
 from quart import Blueprint, Quart, abort, redirect, request, url_for
 from quart_trio import QuartTrio
@@ -263,7 +263,7 @@ async def run(app: SkybrushServer, configuration: dict[str, Any], logger: Logger
 
     address = exports.get("address")
     if address is None:
-        logger.warn("HTTP server address is not specified in configuration")
+        logger.warning("HTTP server address is not specified in configuration")
         return
 
     host, port = address
@@ -284,7 +284,7 @@ async def run(app: SkybrushServer, configuration: dict[str, Any], logger: Logger
             if startup_delay < 0:
                 raise ValueError
         except ValueError:
-            logger.warn(f"Ignoring invalid startup delay: {maybe_startup_delay!r}")
+            logger.warning(f"Ignoring invalid startup delay: {maybe_startup_delay!r}")
 
     # Don't show info messages by default (unless the app is in debug mode),
     # show warnings and errors only

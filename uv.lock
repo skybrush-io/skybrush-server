@@ -893,7 +893,7 @@ daemon = [
 
 [[package]]
 name = "flockwave-async"
-version = "2.2.2"
+version = "3.0.0"
 source = { registry = "https://pypi.fury.io/skybrush/" }
 dependencies = [
     { name = "anyio" },
@@ -901,14 +901,14 @@ dependencies = [
     { name = "trio" },
     { name = "trio-util" },
 ]
-sdist = { url = "https://pypi.fury.io/skybrush/-/ver_jwc5s/flockwave-async-2.2.2.tar.gz", hash = "sha256:77cd45776e01ddbe978d90c0b89706c21279909ad56cb6b47a14430a563692d7" }
+sdist = { url = "https://pypi.fury.io/skybrush/-/ver_1lmBJt/flockwave-async-3.0.0.tar.gz", hash = "sha256:51a5440f521f8dcfada4ecebfb5e874f19adc81ffc3b0e73e4e5cd33a7a62fdc" }
 wheels = [
-    { url = "https://pypi.fury.io/skybrush/-/ver_26S7Ij/flockwave_async-2.2.2-py3-none-any.whl", hash = "sha256:9b9d811492592d756f7fed22f1bd1f7c5b7fae24e8fbe90a313af4c426baf67b" },
+    { url = "https://pypi.fury.io/skybrush/-/ver_NXokQ/flockwave_async-3.0.0-py3-none-any.whl", hash = "sha256:f2329517a92d5e6eacf85b4f773c8e57b495d90b426752736f602d61da481e6e" },
 ]
 
 [[package]]
 name = "flockwave-conn"
-version = "9.2.0"
+version = "9.3.0"
 source = { registry = "https://pypi.fury.io/skybrush/" }
 dependencies = [
     { name = "blinker" },
@@ -918,9 +918,9 @@ dependencies = [
     { name = "trio-util" },
     { name = "wrapt" },
 ]
-sdist = { url = "https://pypi.fury.io/skybrush/-/ver_28zuwP/flockwave-conn-9.2.0.tar.gz", hash = "sha256:1c685fbb258c778012629e48e2ac6a184e5b6864bce4973b35549723e1f7f7f7" }
+sdist = { url = "https://pypi.fury.io/skybrush/-/ver_1UidZw/flockwave-conn-9.3.0.tar.gz", hash = "sha256:11b50118d456bc9e352335933d71549bd726fffbe3f75533c59ca19a3ad88790" }
 wheels = [
-    { url = "https://pypi.fury.io/skybrush/-/ver_166NFP/flockwave_conn-9.2.0-py3-none-any.whl", hash = "sha256:6d9e35b4a641768db360d721cadedfb0f82a368424f5c4af899508f53aa988da" },
+    { url = "https://pypi.fury.io/skybrush/-/ver_1mRTlR/flockwave_conn-9.3.0-py3-none-any.whl", hash = "sha256:63830fd83b7555dcd86230124679af3c0c903a96887da2c8ea0f8f1d600ecd28" },
 ]
 
 [package.optional-dependencies]
@@ -1155,8 +1155,8 @@ requires-dist = [
     { name = "deprecated", specifier = ">=1.2.18,<2.0.0" },
     { name = "fastjsonschema", specifier = ">=2.21.1,<3.0.0" },
     { name = "flockwave-app-framework", extras = ["daemon"], specifier = ">=3.6.0,<4.0.0", index = "https://pypi.fury.io/skybrush/" },
-    { name = "flockwave-async", specifier = ">=2.2.2,<3.0.0", index = "https://pypi.fury.io/skybrush/" },
-    { name = "flockwave-conn", extras = ["rpc", "serial"], specifier = ">=9.1.0,<10.0.0", index = "https://pypi.fury.io/skybrush/" },
+    { name = "flockwave-async", specifier = ">=3.0.0,<4.0.0", index = "https://pypi.fury.io/skybrush/" },
+    { name = "flockwave-conn", extras = ["rpc", "serial"], specifier = ">=9.3.0,<10.0.0", index = "https://pypi.fury.io/skybrush/" },
     { name = "flockwave-ext", specifier = ">=2.0.0,<3.0.0", index = "https://pypi.fury.io/skybrush/" },
     { name = "flockwave-flockctrl", marker = "extra == 'collmot'", specifier = ">=4.0.0", index = "https://pypi.collmot.com/" },
     { name = "flockwave-gps", specifier = ">=5.0.1,<6.0.0", index = "https://pypi.fury.io/skybrush/" },

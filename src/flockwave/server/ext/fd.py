@@ -16,7 +16,7 @@ from functools import partial
 
 # not available on Windows
 from os import O_NONBLOCK  # ty:ignore[unresolved-import, unused-ignore-comment]
-from typing import TYPE_CHECKING, Any, TypeVar, cast
+from typing import TYPE_CHECKING, Any, Protocol, TypeVar, cast
 
 from flockwave.channels import ParserChannel
 from flockwave.encoders.json import create_json_encoder
@@ -52,7 +52,12 @@ path = None
 T = TypeVar("T")
 
 
-async def open_fd(fd, mode):
+class AsyncWritable(Protocol):
+    async def write(self, data: bytes, /) -> int: ...
+    async def flush(self) -> None: ...
+
+
+async def open_fd(fd: int, mode: str) -> AsyncWritable:
     flag = fcntl(fd, F_GETFL)
     fcntl(fd, F_SETFL, flag | O_NONBLOCK)
     return await open_file(fd, mode)
@@ -64,6 +69,7 @@ class FDChannel(CommunicationChannel[T]):
     """
 
     _nursery: Nursery | None
+    _out_fp: AsyncWritable | None
 
     def __init__(self):
         """Constructor."""
@@ -95,6 +101,7 @@ class FDChannel(CommunicationChannel[T]):
             # if a message was sent only partially but the message hub is
             # already trying to send another one (since the message hub
             # dispatches each message in a separate task)
+            assert self._out_fp is not None
             await self._out_fp.write(encoder(message))
             await self._out_fp.flush()
 

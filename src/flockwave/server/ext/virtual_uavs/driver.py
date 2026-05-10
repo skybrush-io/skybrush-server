@@ -655,13 +655,7 @@ class VirtualUAV(UAVBase):
         # Now we enter the main control loop of the UAV. We assume that the
         # autopilot initialization takes about 2 seconds.
         self._notify_booted()
-        spawn(
-            delayed(
-                random() * 0.5 + 2,
-                self._notify_autopilot_initialized,
-                ensure_async=True,
-            )
-        )
+        spawn(delayed(random() * 0.5 + 2, self._notify_autopilot_initialized))
 
         try:
             with CancelScope() as scope:

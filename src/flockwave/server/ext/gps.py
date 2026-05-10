@@ -14,7 +14,7 @@ from enum import Enum
 from functools import partial
 from json import loads
 from re import sub
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from flockwave.channels import ParserChannel
 from flockwave.channels.types import Parser
@@ -393,6 +393,7 @@ class GPSExtension(UAVExtension):
         if hasattr(connection, "address"):
             address = format_socket_address(connection.address)
 
+        connection = cast(RWConnection[bytes, bytes], connection)
         is_listener = isinstance(connection, ListenerConnection)
 
         if is_listener:

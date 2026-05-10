@@ -26,7 +26,7 @@ from logging import Logger
 from os import getenv
 from random import random
 from time import mktime, monotonic
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Callable, cast
 from wsgiref.handlers import format_date_time
 
 from flockwave.connections import IPAddressAndPort
@@ -38,7 +38,7 @@ from flockwave.server.registries import find_in_registry
 from flockwave.server.utils import overridden
 from flockwave.server.version import __version__ as skybrush_version
 
-from .registry import UPnPServiceRegistry
+from .registry import CallableReturningURI, UPnPServiceRegistry
 from .types import SSDPExtensionAPIDict
 
 if TYPE_CHECKING:
@@ -158,7 +158,7 @@ def get_service_uri(service_id: str, address: IPAddressAndPort) -> str | None:
         uri = find_in_registry(registry, service_id)
         if uri is not None:
             if callable(uri):
-                uri = uri(address)
+                uri = cast(CallableReturningURI, uri)(address)
             return uri
 
     # service_id is not found in the list of registered services in this
@@ -293,15 +293,15 @@ def prepare_response(
     """Prepares a response to send.
 
     Parameters:
-        headers (Iterable[str]): list containing names of standard headers to
+        headers: list containing names of standard headers to
             include in the response. The values of the headers are obtained
             from the global ``_RESPONSE_HEADERS`` dictionary. When the dict
             contains a function for a given header name, the function will be
             executed without arguments and its return value will be added as
             the real value of the header.
-        extra (dict[str,str]): dictionary mapping additional headers to add
+        extra: dictionary mapping additional headers to add
             to the response.
-        prefix (str): prefix line to add in front of the response.
+        prefix: prefix line to add in front of the response.
     """
     response: list[str] = []
     if prefix:
@@ -312,7 +312,7 @@ def prepare_response(
             header_name = header_name.upper()
             header_value = _RESPONSE_HEADERS.get(header_name)
             if callable(header_value):
-                header_value = header_value()
+                header_value = cast(Callable[[], str], header_value)()
             if header_value is None:
                 continue
             response.append("{0}: {1}".format(header_name, header_value))

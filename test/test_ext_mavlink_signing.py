@@ -112,7 +112,7 @@ class TestSignatureTimestampSynchronizer:
         sync = SignatureTimestampSynchronizer()
 
         signer = foo.signing
-        sync.patch(foo)  # type: ignore
+        sync.patch(foo)
         patched_signer = foo.signing
 
         assert signer is not patched_signer

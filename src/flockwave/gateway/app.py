@@ -67,7 +67,7 @@ class SkybrushGatewayServer(DaemonApp):
             nursery.start_soon(self.worker_manager.run)
             await self._serve(nursery)
 
-    def validate_jwt_token(self, token: str) -> None:
+    def validate_jwt_token(self, token: str) -> dict[str, Any]:
         secret = self.config.get("JWT_SECRET")
         if not secret:
             raise ValueError("no JWT secret was configured")

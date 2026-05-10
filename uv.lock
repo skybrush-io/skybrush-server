@@ -989,14 +989,14 @@ wheels = [
 
 [[package]]
 name = "flockwave-mavlink"
-version = "1.0.0"
+version = "1.0.1"
 source = { registry = "https://pypi.fury.io/skybrush/" }
 dependencies = [
     { name = "fastcrc" },
 ]
-sdist = { url = "https://pypi.fury.io/skybrush/-/ver_sD5LH/flockwave-mavlink-1.0.0.tar.gz", hash = "sha256:7b4c975116cb625e57e91838b376db59bba71de2ddebb1c8c7aee9b406ab6f2b" }
+sdist = { url = "https://pypi.fury.io/skybrush/-/ver_1ebflw/flockwave-mavlink-1.0.1.tar.gz", hash = "sha256:b55f5b605023720b9ee588c41a307e7b63b7576c1ad1f91b6f0214008e49477a" }
 wheels = [
-    { url = "https://pypi.fury.io/skybrush/-/ver_XLNre/flockwave_mavlink-1.0.0-py3-none-any.whl", hash = "sha256:1d4cc9fafe7cb18db7b3e23b22d6bf2e7ca277032ecdf75fd64f5e5b7fc46d9c" },
+    { url = "https://pypi.fury.io/skybrush/-/ver_GKVun/flockwave_mavlink-1.0.1-py3-none-any.whl", hash = "sha256:4537e3b2364a807e41519edaf020ec63d6a3904d22dc40cd622159538c60a829" },
 ]
 
 [[package]]
@@ -1161,7 +1161,7 @@ requires-dist = [
     { name = "flockwave-flockctrl", marker = "extra == 'collmot'", specifier = ">=4.0.0", index = "https://pypi.collmot.com/" },
     { name = "flockwave-gps", specifier = ">=5.0.1,<6.0.0", index = "https://pypi.fury.io/skybrush/" },
     { name = "flockwave-logger", specifier = ">=2.1.1,<3.0.0", index = "https://pypi.fury.io/skybrush/" },
-    { name = "flockwave-mavlink", specifier = ">=1.0.0,<2.0.0", index = "https://pypi.fury.io/skybrush/" },
+    { name = "flockwave-mavlink", specifier = ">=1.0.1,<2.0.0", index = "https://pypi.fury.io/skybrush/" },
     { name = "flockwave-net", extras = ["async"], specifier = ">=8.1.0,<9.0.0", index = "https://pypi.fury.io/skybrush/" },
     { name = "flockwave-parsers", specifier = ">=4.0.1,<5.0.0", index = "https://pypi.fury.io/skybrush/" },
     { name = "flockwave-server", extras = ["collmot", "pro"], marker = "extra == 'all'" },

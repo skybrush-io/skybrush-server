@@ -2,6 +2,8 @@
 provides, their IDs and URLs.
 """
 
+from typing import TypeAlias
+
 __all__ = ("UPnPServiceRegistry",)
 
 from collections.abc import Callable
@@ -11,7 +13,8 @@ from flockwave.connections import IPAddressAndPort
 
 from flockwave.server.registries.base import RegistryBase
 
-URIOrCallableReturningURI = str | Callable[[IPAddressAndPort], str | None]
+CallableReturningURI: TypeAlias = Callable[[IPAddressAndPort], str | None]
+URIOrCallableReturningURI: TypeAlias = str | CallableReturningURI
 
 
 class UPnPServiceRegistry(RegistryBase[URIOrCallableReturningURI]):

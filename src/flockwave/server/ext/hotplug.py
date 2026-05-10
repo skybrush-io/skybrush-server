@@ -23,7 +23,7 @@ async def run(app: SkybrushServer, configuration, log: Logger):
 
     try:
         gen = HotplugDetector().events()
-        async with aclosing(gen):  # ty:ignore[invalid-argument-type]
+        async with aclosing(gen):
             async for event in gen:
                 signal.send(event=event)
     except NoBackendError:

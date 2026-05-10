@@ -1,9 +1,16 @@
 """Connection-related model objects."""
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from flockwave.spec.schema import get_complex_object_schema, get_enum_from_schema
 
 from .metamagic import ModelMeta
 from .mixins import TimestampLike, TimestampMixin
+
+if TYPE_CHECKING:
+    from flockwave.connections import Connection
 
 __all__ = ("ConnectionInfo", "ConnectionPurpose", "ConnectionStatus")
 
@@ -41,10 +48,11 @@ class ConnectionInfo(TimestampMixin, metaclass=ModelMeta):
         """
         TimestampMixin.__init__(self, timestamp)
         self.id = id
+        self.description = None
         self.purpose = ConnectionPurpose.other  # type: ignore
         self.status = ConnectionStatus.unknown  # type: ignore
 
-    def update_status_from(self, connection):
+    def update_status_from(self, connection: Connection | None) -> None:
         """Updates the status member of this object from the status of the
         given connection.
 

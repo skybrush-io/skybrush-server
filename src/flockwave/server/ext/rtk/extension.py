@@ -546,7 +546,7 @@ class RTKExtension(Extension):
             raise RuntimeError("Only user-defined presets can be deleted")
 
         if callable(updates):
-            updates = updates(preset)
+            updates = updates(preset)  # ty:ignore[call-top-callable]
 
         preset.update_from(updates)
         return True

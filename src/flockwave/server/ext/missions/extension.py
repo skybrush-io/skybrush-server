@@ -361,9 +361,8 @@ class MissionManagementExtension(Extension):
                     f"Plan parameter validation error: {str(ex)}"
                 ) from None
             maybe_plan = mission_type.create_plan(parameters)
-            plan: MissionPlan
             if isawaitable(maybe_plan):
-                plan = await maybe_plan
+                plan = cast(MissionPlan, await maybe_plan)
             else:
                 plan = maybe_plan
         except RuntimeError as ex:

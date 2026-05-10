@@ -107,9 +107,11 @@ class RTKCorrectionPacketSignalManager:
         rtk_packet_fragments_signal = signals.get("mavlink:rtk_fragments")
         with signals.use({"rtk:packet": self._handle_packet}):
             if rtk_packet_fragments_signal:
-                self._sender = lambda messages: rtk_packet_fragments_signal.send(
-                    self, messages=messages
-                )
+
+                def sender(messages: Iterable[MAVLinkMessageSpecification]):
+                    rtk_packet_fragments_signal.send(self, messages=messages)
+
+                self._sender = sender
 
             old_log = self._log
             self._log = log or old_log

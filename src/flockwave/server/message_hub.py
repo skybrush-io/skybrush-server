@@ -623,7 +623,7 @@ class MessageHub:
                 # ordering constraints; e.g., async operation notifications
                 # must be sent later than the initial responses because the
                 # latter contain the receipt IDs that the former ones refer to).
-                self.enqueue_message(response, to=sender, in_response_to=message)
+                self.enqueue_message(response, to=sender, in_response_to=message)  # ty:ignore[invalid-argument-type]
                 handled = True
 
         return handled

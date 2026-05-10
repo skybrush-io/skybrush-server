@@ -161,7 +161,7 @@ class DefaultLightController(ModularLightController):
 
     def _create_default_modules(self) -> list[LightModuleLike]:
         """Returns the default set of modules to use in this controller."""
-        result = [
+        result: list[LightModuleLike] = [
             constant_color(Colors.WHITE),
             self._light_program_module,
             self._error_module,

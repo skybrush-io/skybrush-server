@@ -44,8 +44,8 @@ class GenericMapperMessageFactory(Protocol):
         self,
         hub: MessageHub,
         ids: Iterable[str],
-        message: FlockwaveMessage | None = None,
-        client: Client | None = None,
+        in_response_to: FlockwaveMessage | None = None,
+        sender: Client | None = None,
     ) -> FlockwaveNotification | FlockwaveResponse: ...
 
 
@@ -291,7 +291,7 @@ def create_mapper(
                     raise RuntimeError("async getters not supported for notifications")
             else:
                 if add_object_id and getter and isinstance(result, dict):
-                    result["id"] = object_id
+                    result["id"] = object_id  # ty:ignore[invalid-assignment]
                 results[object_id] = result
 
         return response

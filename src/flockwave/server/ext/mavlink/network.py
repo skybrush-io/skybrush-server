@@ -863,7 +863,7 @@ class MAVLinkNetwork:
                     # the future twice
                     continue
                 elif callable(params):
-                    matched = params(message)
+                    matched = params(message)  # ty:ignore[call-top-callable]
                 elif params is None:
                     matched = True
                 else:

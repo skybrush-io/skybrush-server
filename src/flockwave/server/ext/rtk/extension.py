@@ -678,7 +678,9 @@ class RTKExtension(Extension):
                     self.log.error(
                         f"Parse error while reading user presets from {str(user_preset_file)!r}"
                     )
-        self.log.info(f"Loaded {len(user_presets)} user presets from {str(user_preset_file)!r}")
+        self.log.info(
+            f"Loaded {len(user_presets)} user presets from {str(user_preset_file)!r}"
+        )
         self._load_presets_from(user_presets, type=RTKConfigurationPresetType.USER)
 
     def _save_user_presets(self) -> None:

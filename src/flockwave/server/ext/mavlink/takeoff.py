@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections.abc import Iterator
 from contextlib import contextmanager
 from logging import Logger
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Iterable
 
 from blinker import Signal
 
@@ -47,15 +47,29 @@ class MAVLinkScheduledTakeoffManager(ScheduledTakeoffManager["MAVLinkUAV"]):
     _network: MAVLinkNetwork
     """The MAVLink network that owns this scheduled takeoff manager."""
 
-    def __init__(self, network: MAVLinkNetwork):
+    _use_individual_setup: bool
+    """Whether to support individual configuration for the UAVs in the network that do
+    not receive the broadcast configuration packet or do not respond to it.
+    """
+
+    def __init__(self, network: MAVLinkNetwork, *, use_individual_setup: bool = False):
         """Constructor.
 
         Parameters:
             network: the network whose automatic takeoff process this object
                 manages
+            use_individual_setup: whether to support individual configuration for
+                the UAVs in the network that do not receive the broadcast
+                configuration packet or do not respond to it. The default is `False`;
+                this is because the network may contain drones that support the
+                `SHOW_START_TIME` parameter only but not `SHOW_START_MSEC`, and
+                individual configuration would fail for these drones. You can set the
+                `use_individual_setup` parameter to `True` if you are sure that all the
+                drones support setting the start time with millisecond precision.
         """
         super().__init__(log=network.log)
         self._network = network
+        self._use_individual_setup = bool(use_individual_setup)
 
     async def broadcast_takeoff_configuration(
         self, config: TakeoffConfiguration
@@ -69,7 +83,7 @@ class MAVLinkScheduledTakeoffManager(ScheduledTakeoffManager["MAVLinkUAV"]):
 
         await self._network.broadcast_packet(spec, channel=Channel.SHOW_CONTROL)
 
-    def iter_uavs_to_schedule(self) -> Iterator[MAVLinkUAV]:
+    def iter_uavs_to_schedule(self) -> Iterable[MAVLinkUAV]:
         """Returns an iterator over the UAVs managed by this object that are
         to be updated on an individual basis if they do not receive the
         broadcast configuration packet or do not respond to it.
@@ -78,9 +92,13 @@ class MAVLinkScheduledTakeoffManager(ScheduledTakeoffManager["MAVLinkUAV"]):
         configuration for the UAVs.
         """
         return (
-            uav
-            for uav in self._network.uavs()
-            if uav.is_connected and uav.supports_scheduled_takeoff
+            (
+                uav
+                for uav in self._network.uavs()
+                if uav.is_connected and uav.supports_scheduled_takeoff
+            )
+            if self._use_individual_setup
+            else ()
         )
 
     def uav_needs_update(self, uav: MAVLinkUAV, config: TakeoffConfiguration) -> bool:
@@ -102,7 +120,7 @@ class MAVLinkScheduledTakeoffManager(ScheduledTakeoffManager["MAVLinkUAV"]):
             # Takeoff time must be cleared (None) or set to a specific
             # value; we need an update if it is different from what
             # we have on the UAV
-            return uav.scheduled_takeoff_time != config.takeoff_time
+            return uav.scheduled_takeoff_time_msec != config.takeoff_time_msec
 
         # Auth scope is the same and the takeoff time does not
         # need to change
@@ -110,12 +128,9 @@ class MAVLinkScheduledTakeoffManager(ScheduledTakeoffManager["MAVLinkUAV"]):
 
     async def update_uav(self, uav: MAVLinkUAV, config: TakeoffConfiguration) -> None:
         desired_auth_scope = config.authorization_scope
-        desired_takeoff_time = config.takeoff_time_in_legacy_format
 
-        if (
-            desired_takeoff_time is None or desired_takeoff_time >= 0
-        ) and desired_takeoff_time != uav.scheduled_takeoff_time:
-            await uav.set_scheduled_takeoff_time(seconds=desired_takeoff_time)
+        if config.should_update_takeoff_time:
+            await uav.set_scheduled_takeoff_time(msec=config.takeoff_time_msec)
 
         if desired_auth_scope != uav.scheduled_takeoff_authorization_scope:
             await uav.set_authorization_scope(desired_auth_scope)

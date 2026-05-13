@@ -73,7 +73,7 @@ class MockScheduledTakeoffManager(ScheduledTakeoffManager[MockUAV]):
                 if next(self._rng) < self.broadcast_success_probability:
                     uav.config = config
 
-    def iter_uavs_to_schedule(self) -> Iterator[MockUAV]:
+    def iter_uavs_to_schedule(self) -> Iterable[MockUAV]:
         if self._crash_events["iter_uavs_to_schedule"] > 0:
             self._crash_events["iter_uavs_to_schedule"] -= 1
             raise RuntimeError("Simulated crash")

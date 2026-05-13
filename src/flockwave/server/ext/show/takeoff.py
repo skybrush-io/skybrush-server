@@ -10,6 +10,7 @@ from typing import (
     Awaitable,
     Callable,
     Generic,
+    Iterable,
     TypeAlias,
     TypeVar,
     final,
@@ -61,9 +62,10 @@ class TakeoffConfiguration:
     `takeoff_time` property of this object.
     """
 
-    takeoff_time: int | None = None
-    """The desired takeoff time of the swarm; `None` if the takeoff time should
-    be cleared. Ignored if `should_update_takeoff_time` is set to `False`.
+    takeoff_time: float | None = None
+    """The desired takeoff time of the swarm, in seconds since the UNIX epoch; `None` if
+    the takeoff time should be cleared. Ignored if `should_update_takeoff_time` is set
+    to `False`.
     """
 
     @classmethod
@@ -101,7 +103,7 @@ class TakeoffConfiguration:
                 # User has a show clock and the show clock has a scheduled
                 # start time so we want to use that
                 return cls(
-                    takeoff_time=int(start_time), authorization_scope=desired_auth_scope
+                    takeoff_time=start_time, authorization_scope=desired_auth_scope
                 )
             else:
                 # User has no show clock or the show clock is stopped, so we
@@ -138,15 +140,18 @@ class TakeoffConfiguration:
         return self.takeoff_time is not None and self.takeoff_time >= time()
 
     @property
-    def takeoff_time_in_legacy_format(self) -> int | None:
-        """Returns the desired takeoff time in the legacy format we used in
-        earlier versions of the code.
+    def takeoff_time_msec(self) -> int | None:
+        """Returns the desired takeoff time in milliseconds since the UNIX epoch,
+        or `None` if the takeoff time should be cleared.
 
-        Returns:
-            -1 if the takeoff time should not be updated, `None` if the takeoff
-            time should be cleared, or the real takeoff time otherwise
+        When the takeoff time is not an exact millisecond, it will be rounded to the
+        nearest millisecond.
         """
-        return self.takeoff_time if self.should_update_takeoff_time else -1
+        return (
+            int(round(self.takeoff_time * 1000))
+            if self.takeoff_time is not None
+            else None
+        )
 
 
 TUAV = TypeVar("TUAV", bound="UAV")
@@ -246,12 +251,12 @@ class ScheduledTakeoffManager(ABC, Generic[TUAV]):
         ...
 
     @abstractmethod
-    def iter_uavs_to_schedule(self) -> Iterator[TUAV]:
+    def iter_uavs_to_schedule(self) -> Iterable[TUAV]:
         """Returns an iterator over the UAVs managed by this object that are
         to be updated on an individual basis if they do not receive the
         broadcast configuration packet or do not respond to it.
 
-        May return an empty iterator if you do not want to support individual
+        May return an empty iterable if you do not want to support individual
         configuration for the UAVs.
         """
         ...
@@ -260,6 +265,9 @@ class ScheduledTakeoffManager(ABC, Generic[TUAV]):
     def uav_needs_update(self, uav: TUAV, config: TakeoffConfiguration) -> bool:
         """Returns whether the given UAV needs to be updated if the desired
         takeoff configuration is the one provided as `config`.
+
+        It is guaranteed that this function gets called only for those UAVs that
+        appeared in the results of `iter_uavs_to_schedule()`.
 
         May return False unconditionally if you do not want to support individual
         configuration for the UAVs.
@@ -273,6 +281,9 @@ class ScheduledTakeoffManager(ABC, Generic[TUAV]):
     @abstractmethod
     async def update_uav(self, uav: TUAV, config: TakeoffConfiguration) -> None:
         """Updates the given UAV with the desired takeoff configuration.
+
+        It is guaranteed that this function gets called only for those UAVs that
+        appeared in the results of `iter_uavs_to_schedule()`.
 
         This method is called by the manager when it needs to update a UAV
         individually. It should not block for too long, as it is called from
@@ -484,7 +495,7 @@ class SimpleScheduledTakeoffManagerBase(ScheduledTakeoffManager[UAV]):
     """
 
     @final
-    def iter_uavs_to_schedule(self) -> Iterator[UAV]:
+    def iter_uavs_to_schedule(self) -> Iterable[UAV]:
         # This manager does not support individual configuration of UAVs so we
         # return an empty iterator here
         return iter(())

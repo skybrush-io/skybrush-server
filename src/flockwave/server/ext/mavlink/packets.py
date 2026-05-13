@@ -9,6 +9,7 @@ from struct import Struct, pack
 from time import time
 from typing import TYPE_CHECKING, ClassVar
 
+from deprecated import deprecated
 from flockwave.gps.time import gps_time_of_week_to_utc, unix_to_gps_time_of_week
 
 from flockwave.server.ext.show.config import AuthorizationScope
@@ -115,20 +116,26 @@ def create_start_time_configuration_packet(
         # on the drone's side.
         start_time = 0x7FFFFFFF
         msec_until_start = 0x7FFFFFFF
+        start_time_msec_offset = 0
     elif start_time is None or start_time < 0:
         # clear start time; this is expressed by a value smaller than -604800
         # seconds on the drone's side
         start_time = -0x80000000
         msec_until_start = -0x80000000
+        start_time_msec_offset = 0
     else:
         # convert from UNIX timestamp to GPS time-of-week
         msec_until_start = int(1000 * (start_time - time()))
         msec_until_start = min(max(msec_until_start, -MSEC_IN_WEEK), MSEC_IN_WEEK)
+        start_time, start_time_msec_offset = divmod(int(start_time * 1000), 1000)
         _, start_time = unix_to_gps_time_of_week(int(start_time))
 
     scope_value = authorization_scope_to_int(authorization_scope)
     return create_custom_data_packet(
-        type=1, payload=pack("<iBi", start_time, scope_value, msec_until_start)
+        type=1,
+        payload=pack(
+            "<iBiH", start_time, scope_value, msec_until_start, start_time_msec_offset
+        ),
     )
 
 
@@ -325,9 +332,9 @@ class DroneShowStatus:
     to the `extension` property.
     """
 
-    start_time: int = -1
-    """Scheduled start time of the drone show, in GPS seconds of week, negative
-    if not set.
+    start_time_msec: int | None = None
+    """Scheduled start time of the drone show, in GPS milliseconds of week, `None` if
+    not set.
     """
 
     elapsed_time: int = 0
@@ -362,7 +369,7 @@ class DroneShowStatus:
     TYPE: ClassVar[int] = 0x5B
     """Identifier of Skybrush-specific DATA* show status packets."""
 
-    _struct: ClassVar[Struct] = Struct("<iHBBBBhBB")
+    _struct: ClassVar[Struct] = Struct("<IHBBBBhBB")
     """Structure of Skybrush-specific DATA* show status packets."""
 
     @classmethod
@@ -383,7 +390,7 @@ class DroneShowStatus:
 
         # Unpack the standard section of the packet
         (
-            start_time,
+            encoded_start_time,
             light,
             flags,
             flags2,
@@ -393,6 +400,16 @@ class DroneShowStatus:
             primary_rtcm_count_plus_one,
             secondary_rtcm_count_plus_one,
         ) = cls._struct.unpack(data[:14])
+
+        # encoded_start_time contains the GPS time of week in the lower 20 bits, and the
+        # millisecond part of the start time in the next 10 bits. Except if
+        # encoded_start_time is all 1s, in which case it means "not set yet"
+        if encoded_start_time == 0xFFFFFFFF:
+            start_time_msec = None
+        else:
+            start_time_msec = ((encoded_start_time & 0xFFFFF) * 1000) + (
+                encoded_start_time >> 20
+            )
 
         # Merge flags, flags2 and flags3 into one byte. Lower 4 bits of flags2
         # is the execution stage. Lower 2 bits of flags3 is the boot count
@@ -433,7 +450,7 @@ class DroneShowStatus:
         )
 
         return cls(
-            start_time=start_time,
+            start_time_msec=start_time_msec,
             elapsed_time=elapsed_time,
             light=light,
             flags=flags,
@@ -446,7 +463,7 @@ class DroneShowStatus:
         )
 
     @classmethod
-    def from_mavlink_message(cls, message: MAVLinkMessage):
+    def from_mavlink_message(cls, message: MAVLinkMessage) -> "DroneShowStatus":
         """Constructs a DroneShowStatus_ object from a MAVLink DATA* packet.
 
         Raises:
@@ -472,7 +489,7 @@ class DroneShowStatus:
         """Returns whether there is a valid start time in the drone show status
         message.
         """
-        return self.start_time >= 0
+        return self.start_time_msec is not None and self.start_time_msec >= 0
 
     @property
     def has_takeoff_authorization(self) -> bool:
@@ -518,9 +535,28 @@ class DroneShowStatus:
         if self.stage.probably_airborne or self.elapsed_time >= -30:
             clock = format_elapsed_time(self.elapsed_time)
         else:
-            clock = format_gps_time_of_week(self.start_time)
+            clock = format_gps_time_of_week(
+                self.start_time_msec // 1000 if self.start_time_msec is not None else -1
+            )
         message = self._format_message()
         return f"[{clock}] {message}"
+
+    @property
+    @deprecated(
+        "use `start_time_sec` instead to make the unit explicit", version="2.47.0"
+    )
+    def start_time(self) -> float | None:
+        return self.start_time_sec
+
+    @property
+    def start_time_sec(self) -> float | None:
+        """Scheduled start time of the drone show, in GPS seconds of week, `None`
+        if not set.
+        """
+        if self.start_time_msec is None or self.start_time_msec < 0:
+            return None
+        else:
+            return self.start_time_msec / 1000.0
 
     def _format_message(self) -> str:
         """Formats a status message from the execution stage and flags found in

@@ -14,6 +14,7 @@ from time import monotonic
 from typing import Any, Sequence
 
 from colour import Color
+from deprecated import deprecated
 from flockwave.concurrency import FutureCancelled, delayed
 from flockwave.gps.time import datetime_to_gps_time_of_week, gps_time_of_week_to_utc
 from flockwave.gps.vectors import GPSCoordinate, VelocityNED
@@ -1189,12 +1190,13 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
     _scheduled_takeoff_authorization_scope: AuthorizationScope = AuthorizationScope.NONE
     """The current authorization scope of the scheduled takeoff of the drone."""
 
-    _scheduled_takeoff_time: int | None = None
-    """Scheduled takeoff time of the drone, as a UNIX timestamp, in seconds"""
+    _scheduled_takeoff_time_msec: int | None = None
+    """Scheduled takeoff time of the drone, as a UNIX timestamp, in milliseconds"""
 
-    _scheduled_takeoff_time_gps_time_of_week: int | None = None
+    _scheduled_takeoff_time_gps_time_of_week_msec: int | None = None
     """Scheduled takeoff time of the drone, as a GPS time-of-week timestamp,
-    in seconds"""
+    in milliseconds.
+    """
 
     _velocity: VelocityNED
     """Current velocity of the drone in NED coordinate system, m/sec"""
@@ -1362,10 +1364,6 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
     def can_handle_firmware_update_target(self, target_id: str) -> bool:
         """Returns whether the UAV can handle uploads with the given target."""
         return self._autopilot.can_handle_firmware_update_target(target_id)
-
-    async def clear_scheduled_takeoff_time(self) -> None:
-        """Clears the scheduled takeoff time of the UAV."""
-        await self.set_scheduled_takeoff_time(None)
 
     async def configure_geofence(
         self, configuration: GeofenceConfigurationRequest
@@ -1597,19 +1595,64 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
         return self._scheduled_takeoff_authorization_scope
 
     @property
-    def scheduled_takeoff_time(self) -> int | None:
-        """Returns the scheduled takeoff time of the UAV as a UNIX timestamp
-        in seconds, truncated to an integer, or `None` if the UAV is not
-        scheduled for an automatic takeoff.
-        """
-        return self._scheduled_takeoff_time
+    @deprecated(
+        reason="use scheduled_takeoff_time_sec to make the unit explicit",
+        version="2.47.0",
+    )
+    def scheduled_takeoff_time(self) -> float | None:
+        return self.scheduled_takeoff_time_sec
 
     @property
-    def scheduled_takeoff_time_gps_time_of_week(self) -> int | None:
-        """Returns the scheduled takeoff time of the UAV as a GPS time of week
-        value, or `None` if the UAV is not scheduled for an automatic takeoff.
+    def scheduled_takeoff_time_sec(self) -> float | None:
+        """Returns the scheduled takeoff time of the UAV as a UNIX timestamp
+        in seconds, or `None` if the UAV is not scheduled for an automatic takeoff.
+
+        Note that internally the takeoff time is stored in millisecond precision so this
+        function may return a fractional number of seconds.
         """
-        return self._scheduled_takeoff_time_gps_time_of_week
+        return (
+            self._scheduled_takeoff_time_msec / 1000
+            if self._scheduled_takeoff_time_msec is not None
+            else None
+        )
+
+    @property
+    def scheduled_takeoff_time_msec(self) -> int | None:
+        """Returns the scheduled takeoff time of the UAV as a UNIX timestamp
+        in milliseconds, or `None` if the UAV is not scheduled for an automatic takeoff.
+        """
+        return self._scheduled_takeoff_time_msec
+
+    @property
+    @deprecated(
+        reason="use scheduled_takeoff_time_gps_time_of_week_sec to make the unit explicit",
+        version="2.47.0",
+    )
+    def scheduled_takeoff_time_gps_time_of_week(self) -> float | None:
+        return self.scheduled_takeoff_time_gps_time_of_week_sec
+
+    @property
+    def scheduled_takeoff_time_gps_time_of_week_sec(self) -> float | None:
+        """Returns the scheduled takeoff time of the UAV as a GPS time of week
+        value, in seconds, or `None` if the UAV is not scheduled for an automatic
+        takeoff.
+
+        Note that internally the takeoff time is stored in millisecond precision so this
+        function may return a fractional number of seconds.
+        """
+        return (
+            self._scheduled_takeoff_time_gps_time_of_week_msec / 1000
+            if self._scheduled_takeoff_time_gps_time_of_week_msec is not None
+            else None
+        )
+
+    @property
+    def scheduled_takeoff_time_gps_time_of_week_msec(self) -> int | None:
+        """Returns the scheduled takeoff time of the UAV as a GPS time of week
+        value, in milliseconds, or `None` if the UAV is not scheduled for an automatic
+        takeoff.
+        """
+        return self._scheduled_takeoff_time_gps_time_of_week_msec
 
     async def _set_parameter_single(self, name: str, value: float) -> None:
         """Sets the value of a single parameter on the UAV.
@@ -1795,14 +1838,14 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
         # the standard and the compact telemetry profile)
         self._update_gps_fix_type_and_satellite_count(data.gps_fix, data.num_satellites)
 
-        gps_start_time = data.start_time if data.start_time >= 0 else None
-        if gps_start_time != self._scheduled_takeoff_time_gps_time_of_week:
-            self._scheduled_takeoff_time_gps_time_of_week = gps_start_time
-            if gps_start_time is None:
-                self._scheduled_takeoff_time = None
+        gps_start_time_msec = data.start_time_msec
+        if gps_start_time_msec != self._scheduled_takeoff_time_gps_time_of_week_msec:
+            self._scheduled_takeoff_time_gps_time_of_week_msec = gps_start_time_msec
+            if gps_start_time_msec is None:
+                self._scheduled_takeoff_time_msec = None
             else:
-                self._scheduled_takeoff_time = int(
-                    gps_time_of_week_to_utc(gps_start_time).timestamp()
+                self._scheduled_takeoff_time_msec = int(
+                    gps_time_of_week_to_utc(gps_start_time_msec / 1000).timestamp()
                 )
 
         self._scheduled_takeoff_authorization_scope = data.authorization_scope
@@ -2263,23 +2306,41 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
         """
         await self.set_parameter("SHOW_START_AUTH", authorization_scope_to_int(scope))
 
-    async def set_scheduled_takeoff_time(self, seconds: int | None) -> None:
+    async def set_scheduled_takeoff_time(
+        self, *, msec: int | None = None, use_msec: bool = True
+    ) -> None:
         """Sets the scheduled takeoff time of the UAV to the given timestamp in
-        seconds. Only integer seconds are supported. Setting the takeoff time
+        seconds. Only integer milliseconds are supported. Setting the takeoff time
         to `None` or a negative number will clear the takeoff time.
+
+        This function will work only if the firmware is recent enough to support storing
+        the start time with millisecond precision. If the firmware is older, set the
+        `use_msec` property to `False` to skip sending the millisecond part.
+
+        Note that this function is inherently error-prone: if the function fails, the
+        drone may end up in a state where the seconds were already set but the
+        milliseconds were not.
         """
         # The UAV needs GPS time of week so we convert it first. Note that we
         # convert the UNIX timestamp to a datetime first because UNIX timestamps
         # do not have leap seconds (every day is 86400 seconds in UNIX time) so
         # they are inherently ambiguous
 
-        if seconds is None or seconds < 0:
-            gps_time_of_week = -1
+        if msec is None or msec < 0:
+            gps_time_of_week_whole_seconds = -1
+            gps_time_of_week_msec_offset = 0
         else:
-            dt = datetime.fromtimestamp(int(seconds), tz=timezone.utc)
+            dt = datetime.fromtimestamp(msec / 1000, tz=timezone.utc)
             _, gps_time_of_week = datetime_to_gps_time_of_week(dt)
+            gps_time_of_week_whole_seconds, gps_time_of_week_msec_offset = divmod(
+                gps_time_of_week, 1
+            )
 
-        await self.set_parameter("SHOW_START_TIME", gps_time_of_week)
+        await self.set_parameter("SHOW_START_TIME", int(gps_time_of_week_whole_seconds))
+        if use_msec:
+            await self.set_parameter(
+                "SHOW_START_MSEC", int(gps_time_of_week_msec_offset)
+            )
 
     async def set_led_color(
         self,

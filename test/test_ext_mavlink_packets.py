@@ -4,6 +4,7 @@ from flockwave.server.ext.mavlink.packets import (
     DroneShowStatusFlag,
     authorization_scope_from_int,
     authorization_scope_to_int,
+    create_start_time_configuration_packet,
 )
 from flockwave.server.ext.show.config import AuthorizationScope
 from flockwave.server.model.gps import GPSFixType
@@ -31,7 +32,8 @@ def test_drone_show_status_from_bytes():
     # Legacy packet, length 9, no flags3 or elapsed_time field
     status = DroneShowStatus.from_bytes(b"\x01\x02\x03\x04\x05\x06\x07\x88\x19")
 
-    assert status.start_time == 67305985
+    assert status.start_time_msec == 197121064
+    assert status.start_time_sec == 197121.064
     assert status.light == 1541
     assert status.flags == (
         DroneShowStatusFlag.GEOFENCE_BREACHED
@@ -57,7 +59,8 @@ def test_drone_show_status_from_bytes():
         b"\x01\x02\x03\x04\x05\x06\x07\x88\x19\xcf\x0a\x0b"
     )
 
-    assert status.start_time == 67305985
+    assert status.start_time_msec == 197121064
+    assert status.start_time_sec == 197121.064
     assert status.light == 1541
     assert status.flags == (
         DroneShowStatusFlag.GEOFENCE_BREACHED
@@ -73,3 +76,42 @@ def test_drone_show_status_from_bytes():
     assert status.authorization_scope is AuthorizationScope.LIGHTS_ONLY
     assert status.elapsed_time == 2826
     assert status.has_high_esc_error_rate
+
+
+def test_create_start_time_configuration_packet():
+    packet_type, kwargs = create_start_time_configuration_packet(
+        AuthorizationScope.LIVE, should_update_takeoff_time=False
+    )
+    assert packet_type == "DATA16"
+    assert (
+        kwargs["data"]
+        == b"\x01\xff\xff\xff\x7f\x01\xff\xff\xff\x7f\x00\x00\x00\x00\x00\x00"
+    )
+    assert kwargs["len"] == 12
+    assert kwargs["type"] == 92
+
+    packet_type, kwargs = create_start_time_configuration_packet(
+        AuthorizationScope.LIGHTS_ONLY, should_update_takeoff_time=True
+    )
+    assert packet_type == "DATA16"
+    assert (
+        kwargs["data"]
+        == b"\x01\x00\x00\x00\x80\x03\x00\x00\x00\x80\x00\x00\x00\x00\x00\x00"
+    )
+    assert kwargs["len"] == 12
+    assert kwargs["type"] == 92
+
+    packet_type, kwargs = create_start_time_configuration_packet(
+        AuthorizationScope.LIGHTS_ONLY,
+        start_time=1778710848.543,
+        should_update_takeoff_time=True,
+    )
+    assert packet_type == "DATA16"
+    # mask the countdown because that depends on the current time
+    kwargs["data"] = kwargs["data"][:6] + b"\xde\xad\xbe\xef" + kwargs["data"][10:]
+    assert (
+        kwargs["data"]
+        == b"\x01\xd2\x2e\x05\x00\x03\xde\xad\xbe\xef\x1f\x02\x00\x00\x00\x00"
+    )
+    assert kwargs["len"] == 12
+    assert kwargs["type"] == 92

@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable, Iterator
 from contextlib import ExitStack, contextmanager
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, ContextManager, Protocol
 
 from blinker import Signal
 from trio import sleep_forever
@@ -16,8 +16,16 @@ from flockwave.server.registries.base import RegistryBase, find_in_registry
 from flockwave.server.utils.generic import overridden
 
 if TYPE_CHECKING:
-    from flockwave.server.message_hub import MessageHub
-    from flockwave.server.model.messages import FlockwaveMessage, FlockwaveResponse
+    from logging import Logger
+
+    from flockwave.server.app import SkybrushServer
+    from flockwave.server.message_hub import MessageHandler, MessageHub
+    from flockwave.server.model import Client
+    from flockwave.server.model.messages import (
+        FlockwaveMessage,
+        FlockwaveNotification,
+        FlockwaveResponse,
+    )
 
 message_hub: MessageHub | None = None
 registry: ClockRegistry | None = None
@@ -39,7 +47,7 @@ class ClockRegistry(RegistryBase[Clock]):
     running or not and how it relates to the system time).
     """
 
-    clock_changed = Signal()
+    clock_changed: Signal = Signal()
     """Signal that is dispatched when one of the clocks registered in the clock
     registry is changed (adjusted), started or stopped. You need to subscribe to
     the signals of the clock on your own if you are interested in the exact
@@ -126,7 +134,7 @@ class ClockRegistry(RegistryBase[Clock]):
         clock.started.disconnect(self._send_clock_changed_signal, sender=clock)
         clock.stopped.disconnect(self._send_clock_changed_signal, sender=clock)
 
-    def _send_clock_changed_signal(self, sender, **kwds):
+    def _send_clock_changed_signal(self, sender: Clock, **kwds: Any) -> None:
         """Sends a ``clock_changed`` signal in response to an actual
         ``started``, ``stopped`` or ``changed`` signal from one of the clocks
         in the registry. The ``clock`` argument of the signal being sent will
@@ -154,7 +162,7 @@ def create_CLK_INF_message_for(
 
     assert message_hub is not None
 
-    statuses = {}
+    statuses: dict[str, Any] = {}
 
     body = {"status": statuses, "type": "CLK-INF"}
     response = message_hub.create_response_or_notification(
@@ -162,7 +170,7 @@ def create_CLK_INF_message_for(
     )
 
     for clock_id in clock_ids:
-        entry = find_clock_by_id(clock_id, response)  # type: ignore
+        entry = find_clock_by_id(clock_id, response)
         if entry:
             statuses[clock_id] = entry.json
 
@@ -170,7 +178,8 @@ def create_CLK_INF_message_for(
 
 
 def find_clock_by_id(
-    clock_id: str, response: FlockwaveResponse | None = None
+    clock_id: str,
+    response: FlockwaveNotification | FlockwaveResponse | None = None,
 ) -> Clock | None:
     """Finds the clock with the given ID in the clock registry or registers
     a failure in the given response object if there is no clock with the
@@ -189,7 +198,7 @@ def find_clock_by_id(
     )
 
 
-def on_clock_changed(sender, clock: Clock) -> None:
+def on_clock_changed(sender: ClockRegistry, clock: Clock) -> None:
     """Handler called when one of the clocks managed by the clock
     registry has changed. Creates and sends a ``CLK-INF`` notification for the
     clock that has changed.
@@ -205,11 +214,15 @@ def on_clock_changed(sender, clock: Clock) -> None:
 #############################################################################
 
 
-def handle_CLK_INF(message, sender, hub):
+def handle_CLK_INF(
+    message: FlockwaveMessage, sender: Client, hub: MessageHub
+) -> FlockwaveMessage:
     return create_CLK_INF_message_for(message.get_ids(), in_response_to=message)
 
 
-def handle_CLK_LIST(message, sender, hub):
+def handle_CLK_LIST(
+    message: FlockwaveMessage, sender: Client, hub: MessageHub
+) -> dict[str, list[str]]:
     global registry
 
     assert registry is not None
@@ -220,11 +233,16 @@ def handle_CLK_LIST(message, sender, hub):
 #############################################################################
 
 
-async def run(app, configuration, logger):
+async def run(
+    app: SkybrushServer, configuration: dict[str, Any], logger: Logger
+) -> None:
     message_hub = app.message_hub
     registry = ClockRegistry()
 
-    handlers = {"CLK-INF": handle_CLK_INF, "CLK-LIST": handle_CLK_LIST}
+    handlers: dict[str, MessageHandler] = {
+        "CLK-INF": handle_CLK_INF,
+        "CLK-LIST": handle_CLK_LIST,
+    }
 
     with ExitStack() as stack:
         stack.enter_context(
@@ -244,6 +262,16 @@ async def run(app, configuration, logger):
         )
         stack.enter_context(message_hub.use_message_handlers(handlers))
         await sleep_forever()
+
+
+class ClocksExtensionAPI(Protocol):
+    """Interface specification for the API exposed by the `clocks` extension."""
+
+    registry: ClockRegistry
+
+    def register_clock(self, clock: Clock) -> None: ...
+    def unregister_clock(self, clock: Clock) -> Clock | None: ...
+    def use_clock(self, clock: Clock) -> ContextManager[Clock]: ...
 
 
 description = "Clocks and clock registry"

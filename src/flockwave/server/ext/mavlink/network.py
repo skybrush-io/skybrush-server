@@ -17,16 +17,17 @@ from collections.abc import Awaitable, Callable, Iterable, Iterator, Sequence
 from contextlib import ExitStack, contextmanager
 from logging import Logger
 from time import time_ns
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from flockwave.concurrency import Future, race
 from flockwave.connections import (
+    BroadcastAddressOverride,
     Connection,
+    IPAddressAndPort,
     ListenerConnection,
-    UDPListenerConnection,
     create_connection,
 )
-from flockwave.networking import find_interfaces_with_address
+from flockwave.networking import find_interfaces_with_address, format_socket_address
 from trio import move_on_after, open_nursery, to_thread
 from trio.abc import ReceiveChannel
 from trio_util import periodic
@@ -1169,56 +1170,63 @@ class MAVLinkNetwork:
         with move_on_after(timeout):
             subnets = await to_thread.run_sync(find_interfaces_with_address, ip)
 
+        if not subnets:
+            self.log.warning(
+                f"Failed to update broadcast address to a subnet-specific one: no "
+                f"subnets found for address: {format_socket_address(address)}"
+            )
+            return
+
         success = False
-        if subnets:
-            interface, subnet = subnets[0]
-            # HACK HACK HACK this is an ugly temporary fix; we are reaching into
-            # the internals of self.manager, which we shouldn't do
-            for entries in self.manager._entries_by_name.values():
-                for entry in entries:
-                    if entry.channel and entry.name == connection_id:
-                        broadcast_address = subnet.broadcast_address
-                        if str(broadcast_address) == "127.255.255.255":
-                            # We are on localhost, so just keep on using localhost
-                            broadcast_address = "127.0.0.1"
+        interface, subnet = subnets[0]
+        # HACK HACK HACK this is an ugly temporary fix; we are reaching into
+        # the internals of self.manager, which we shouldn't do
+        for entries in self.manager._entries_by_name.values():
+            for entry in entries:
+                if entry.channel and entry.name == connection_id:
+                    broadcast_address = subnet.broadcast_address
+                    if str(broadcast_address) == "127.255.255.255":
+                        # We are on localhost, so just keep on using localhost
+                        broadcast_address = "127.0.0.1"
 
-                        # Try to figure out the current broadcast address of the channel
-                        # TODO(ntamas): this should be sorted out in the future
-                        old_broadcast_address = getattr(
-                            entry.channel, "broadcast_address", None
+                    # Try to figure out the current broadcast address of the channel
+                    # TODO(ntamas): this should be sorted out in the future
+                    old_broadcast_address = getattr(
+                        entry.channel, "broadcast_address", None
+                    )
+                    if old_broadcast_address is None:
+                        connection = getattr(entry, "connection", None)
+                        if connection:
+                            old_broadcast_address = getattr(
+                                connection, "broadcast_address", None
+                            )
+
+                    if (
+                        old_broadcast_address
+                        and isinstance(old_broadcast_address, tuple)
+                        and len(old_broadcast_address) == 2
+                    ):
+                        # Keep the port, update the address only
+                        broadcast_port = old_broadcast_address[1]
+                    else:
+                        # Hmmm, let's just assume that the source port of this packet is okay
+                        broadcast_port = port
+
+                    conn = entry.connection
+                    if isinstance(conn, BroadcastAddressOverride):
+                        conn = cast("BroadcastAddressOverride[IPAddressAndPort]", conn)
+                        conn.set_user_defined_broadcast_address(
+                            (
+                                str(broadcast_address),
+                                broadcast_port,
+                            )
                         )
-                        if old_broadcast_address is None:
-                            connection = getattr(entry, "connection", None)
-                            if connection:
-                                old_broadcast_address = getattr(
-                                    connection, "broadcast_address", None
-                                )
-
-                        if (
-                            old_broadcast_address
-                            and isinstance(old_broadcast_address, tuple)
-                            and len(old_broadcast_address) == 2
-                        ):
-                            # Keep the port, update the address only
-                            broadcast_port = old_broadcast_address[1]
-                        else:
-                            # Hmmm, let's just assume that the source port of this packet is okay
-                            broadcast_port = port
-
-                        conn = entry.connection
-                        if isinstance(conn, UDPListenerConnection):
-                            conn.set_user_defined_broadcast_address(
-                                (
-                                    str(broadcast_address),
-                                    broadcast_port,
-                                )
-                            )
-                            self.log.info(
-                                f"Broadcast address updated to {broadcast_address}:{broadcast_port} "
-                                f"({interface})",
-                                extra={"id": connection_id},
-                            )
-                            success = True
+                        self.log.info(
+                            f"Broadcast address updated to {broadcast_address}:{broadcast_port} "
+                            f"({interface})",
+                            extra={"id": connection_id},
+                        )
+                        success = True
 
         if not success:
             self.log.warning(

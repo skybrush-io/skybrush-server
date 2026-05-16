@@ -2,16 +2,17 @@ from __future__ import annotations
 
 import logging
 from collections.abc import AsyncIterator, Iterable, Sequence
-from contextlib import aclosing
+from contextlib import AsyncExitStack, aclosing
 from copy import deepcopy
 from dataclasses import dataclass
 from functools import partial
 from io import BytesIO
+from math import floor
 from struct import Struct
 from time import monotonic
 from typing import IO, TYPE_CHECKING, cast
 
-from trio import TooSlowError, sleep
+from trio import TooSlowError, open_nursery, sleep
 
 from flockwave.server.errors import NotSupportedError
 from flockwave.server.model.commands import (
@@ -134,6 +135,9 @@ class ArduPilot(Autopilot):
 
     MAX_COMPASS_CALIBRATION_DURATION = 60
     """Maximum allowed duration of a compass calibration, in seconds"""
+
+    MAX_COMPASS_MOTOR_INTERFERENCE_CALIBRATION_DURATION = 120
+    """Maximum allowed duration of a compass-motor interference calibration, in seconds"""
 
     @classmethod
     def describe_custom_mode(
@@ -329,6 +333,110 @@ class ArduPilot(Autopilot):
 
         yield Progress.done("Compass calibration successful.")
 
+    async def calibrate_compass_motor_interference(
+        self, uav: MAVLinkUAV
+    ) -> ProgressEventsWithSuspension[None, str]:
+        rate_hz = 20.0  # 20 Hz should be enough; logs only use 10 Hz
+        calibration_messages = {
+            int(MAVMessageType.BATTERY_STATUS): rate_hz,
+            int(MAVMessageType.SCALED_IMU): rate_hz,
+            int(MAVMessageType.SCALED_IMU2): rate_hz,
+            int(MAVMessageType.SCALED_IMU3): rate_hz,
+        }
+        calibration_parameters = [
+            # Turn off arming checks
+            ("ARMING_CHECK", 0),
+            # Ensure that we are receiving uncompensated compass readings
+            ("COMPASS_MOTCT", 0),
+            # Mute buzzer in case it generates interference on the UART when on
+            ("NTF_BUZZ_VOLUME", 0),
+            # Disable geofence so we can arm indoors
+            ("FENCE_ENABLE", 0),
+            # Configure RC override
+            ("RC_OPTIONS", 0),
+            ("RC_OVERRIDE_TIME", 3),
+            # TODO(ntamas): set SYSID_THISMAV to our own sysID
+        ]
+        timeout = self.MAX_COMPASS_MOTOR_INTERFERENCE_CALIBRATION_DURATION
+
+        async with AsyncExitStack() as stack:
+            # Reset our internal state object of the compass-motor interference
+            # calibration procedure
+            calibration_status = uav.compass_motor_interference_calibration
+            calibration_status.reset()
+
+            yield Progress(message="Configuring UAV for calibration...")
+
+            rc_map: dict[str, int] = {}
+            rc_channels: list[str] = ["roll", "pitch", "throttle", "yaw"]
+            max_channel_index = -1
+            for channel_name in rc_channels:
+                index = await uav.get_parameter(f"RCMAP_{channel_name.upper()}")
+                if isinstance(index, int) or (
+                    isinstance(index, float) and index.is_integer()
+                ):
+                    index = int(index)
+                else:
+                    index = 0
+                if index > 0:
+                    rc_map[channel_name] = index - 1
+                    max_channel_index = max(max_channel_index, index)
+
+            if "throttle" not in rc_map:
+                raise RuntimeError(
+                    "No RC channel is configured for throttle. Set RCMAP_THROTTLE to "
+                    "a nonzero value and reboot."
+                )
+
+            await stack.enter_async_context(uav.temporarily_set_mode("acro"))
+            await stack.enter_async_context(
+                uav.temporarily_set_parameters(calibration_parameters)
+            )
+            await stack.enter_async_context(
+                uav.temporarily_request_messages(calibration_messages)
+            )
+            await stack.enter_async_context(uav.temporarily_arm())
+            override_rc = await stack.enter_async_context(uav.temporarily_override_rc())
+
+            async def generate_actions():
+                """Function that generates RC override commands in the background to
+                ramp the throttle up and down during the compass-motor interference
+                calibration.
+                """
+                # midpoint for all RC channels
+                channels = [32768] * (max_channel_index + 1)
+                async for throttle in calibration_status.actions():
+                    channels[rc_map["throttle"]] = floor(65536 * throttle.value)
+                    await override_rc(channels)
+
+            async with open_nursery() as nursery:
+                nursery.start_soon(generate_actions)
+                try:
+                    yield Progress(message="Calibration in progress...")
+                    async for progress in calibration_status.updates(
+                        timeout=timeout, fail_on_timeout=False
+                    ):
+                        yield progress
+                finally:
+                    nursery.cancel_scope.cancel()  # stop sending RC overrides
+
+        yield Progress(message="Calculating parameters...")
+        params = calibration_status.calculate_calibration_parameters(min_current=0.5)
+        if params:
+            yield Progress(message="Saving calibration results...")
+
+            log_lines = ["Calculated calibration parameters"]
+            for name, value in params.items():
+                log_lines.append(f"    {name} = {value:.07f}")
+
+            extra = {"id": uav.id}
+            for line in log_lines:
+                uav.driver.log.info(line, extra=extra)
+
+            await uav.set_parameters(params)
+
+        yield Progress.done("Compass motor interference calibration successful.")
+
     def can_handle_firmware_update_target(self, target_id: str) -> bool:
         return target_id == FirmwareUpdateTarget.ABIN.value
 
@@ -478,9 +586,12 @@ class ArduPilot(Autopilot):
     ) -> float:
         # ArduCopter does not implement the MAVLink specification correctly and
         # requires all parameter values to be sent as floats, no matter what
-        # their type is. See this link from Gitter:
+        # their type is. More information:
         #
-        # https://gitter.im/ArduPilot/pymavlink?at=5bfb975587c4b86bcc1af3ee
+        # https://mavlink.io/en/services/parameter.html#ardupilot
+        #
+        # This makes it unreliable to set parameter values outside the range in which
+        # floats can accurately represent integers.
         return float(value)
 
     def encode_param_to_wire_representation(
@@ -488,9 +599,12 @@ class ArduPilot(Autopilot):
     ) -> float:
         # ArduCopter does not implement the MAVLink specification correctly and
         # requires all parameter values to be sent as floats, no matter what
-        # their type is. See this link from Gitter:
+        # their type is. More information:
         #
-        # https://gitter.im/ArduPilot/pymavlink?at=5bfb975587c4b86bcc1af3ee
+        # https://mavlink.io/en/services/parameter.html#ardupilot
+        #
+        # This makes it unreliable to set parameter values outside the range in which
+        # floats can accurately represent integers.
         return float(value)
 
     def get_flight_mode_numbers(self, mode: str) -> MAVLinkFlightModeNumbers:
@@ -918,7 +1032,7 @@ def encode_parameters_to_packed_format(
     if isinstance(parameters, dict):
         param_iter = (
             PackedParameter(name.upper().encode("ascii", "replace"), None, float(value))
-            for name, value in parameters.items()
+            for name, value in cast(dict[str, float], parameters).items()
         )
     else:
         param_iter = iter(parameters)

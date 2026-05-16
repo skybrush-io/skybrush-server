@@ -13,7 +13,6 @@ from trio import (
     MemorySendChannel,
     Nursery,
     TooSlowError,
-    WouldBlock,
     current_time,
     open_memory_channel,
     open_nursery,
@@ -138,7 +137,9 @@ class CommandExecutionManager(RegistryBase[CommandExecutionStatus]):
         """
         return self._get_command_from_id(receipt_id) is not None
 
-    def mark_as_clients_notified(self, receipt_id: ReceiptLike, result: Result) -> None:
+    async def mark_as_clients_notified(
+        self, receipt_id: ReceiptLike, result: Result
+    ) -> None:
         """Marks that the asynchronous command with the given receipt identifier
         was passed back to the client that originally initiated the request,
         and forwards the command to the execution task.
@@ -160,10 +161,7 @@ class CommandExecutionManager(RegistryBase[CommandExecutionStatus]):
             return
 
         command.mark_as_clients_notified()
-        try:
-            self._tx_queue.send_nowait((result, command))
-        except WouldBlock:
-            log.warning("Command queue is full, dropping command")
+        await self._tx_queue.send((result, command))
 
     def new(self, client_to_notify: str | None = None) -> CommandExecutionStatus:
         """Registers the execution of a new asynchronous command in the

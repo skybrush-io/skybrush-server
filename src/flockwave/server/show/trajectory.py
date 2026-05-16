@@ -305,6 +305,7 @@ class TrajectorySpecification:
                 elif dt == 0:
                     raise ValueError(f"time should not stand still at t = {t}")
                 else:
+                    assert start is not None
                     points = [start, *control, point]
                     segment = TrajectorySegment(
                         t=prev_t + time_offset, duration=dt, points=points

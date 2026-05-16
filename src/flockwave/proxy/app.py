@@ -2,6 +2,7 @@
 
 from http.client import parse_headers
 from io import BytesIO
+from typing import Callable
 
 from flockwave.app_framework import DaemonApp
 from flockwave.app_framework.configurator import AppConfigurator
@@ -74,15 +75,15 @@ async def copy_stream(source: StreamConnection, target: StreamConnection) -> Non
 class SkybrushProxyServer(DaemonApp):
     """Main application object for the Skybrush proxy server."""
 
-    async def run(self) -> None:
+    local_connection_factory: Callable[[], RWConnection[bytes, bytes]]
+
+    async def ready(self) -> None:
         self.local_connection_factory = create_connection_factory(
             self.config.get("LOCAL_SERVER")
         )
         remote_connection = create_connection(self.config.get("REMOTE_SERVER"))
 
-        async with open_nursery() as nursery:
-            # nursery.start_soon(self.process_request_queue)
-            nursery.start_soon(self.supervise_remote_connection, remote_connection)
+        self.run_in_background(self.supervise_remote_connection, remote_connection)
 
     async def run_local_connection(self, conn: RWConnection) -> None:
         while True:
@@ -150,7 +151,7 @@ class SkybrushProxyServer(DaemonApp):
 
         # Read the body
         if body_length > 0:
-            body = body + (await conn.read(body_length))
+            body = body + (await conn.read(body_length))  # ty:ignore[too-many-positional-arguments]
 
         # Forward the whole shebang to the local connection
         local_connection = self.local_connection_factory()

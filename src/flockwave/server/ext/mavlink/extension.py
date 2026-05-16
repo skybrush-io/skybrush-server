@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING, Any, overload
 
 from flockwave.server.ext.base import UAVExtension
 from flockwave.server.ext.mavlink.fw_upload import FirmwareUpdateTarget
+from flockwave.server.ext.show.time import BinaryTimeAxisConfiguration
 from flockwave.server.ext.show.types import ShowExtensionAPI
 from flockwave.server.ext.signals import SignalsExtensionAPI
 from flockwave.server.model.uav import UAV
@@ -22,13 +23,18 @@ from .autopilots import PX4, ArduPilot, ArduPilotWithSkybrush, Autopilot
 from .channel import use_mavlink_message_channel_factory
 from .driver import MAVLinkDriver, MAVLinkUAV
 from .errors import InvalidSigningKeyError
+from .led_lights import LEDLightConfigurationSignalDispatcher
 from .network import MAVLinkNetwork
+from .packets import create_rc_override_packet
 from .rssi import RSSIMode
 from .rtk import RTKCorrectionPacketSignalManager
+from .takeoff import ScheduledTakeoffSignalDispatcher
 from .tasks import check_uavs_alive
+from .time import TimeAxisConfigurationSignalDispatcher
 from .types import (
     MAVLinkMessage,
     MAVLinkMessageMatcher,
+    MAVLinkMessageRoutingTable,
     MAVLinkMessageSpecification,
     MAVLinkNetworkSpecification,
     MAVLinkStatusTextTargetSpecification,
@@ -48,7 +54,7 @@ CONNECTION_PRESETS = {
 """Dictionary that resolves common connection preset aliases used in
 the configuration file."""
 
-DEFAULT_ROUTING = {"rtk": 0, "rc": 0}
+DEFAULT_ROUTING: MAVLinkMessageRoutingTable = {"rtk": (0,), "rc": (0,), "show": (0,)}
 """Default routing configuration for networks."""
 
 
@@ -62,6 +68,16 @@ class MAVLinkDronesExtension(UAVExtension[MAVLinkDriver]):
     extension.
     """
 
+    _led_light_configuration_signal_dispatcher: LEDLightConfigurationSignalDispatcher
+    """Object responsible for dispatching a signal when the LED light configuration
+    of the drones in this extension changes.
+    """
+
+    _takeoff_signal_dispatcher: ScheduledTakeoffSignalDispatcher
+    """Object responsible for dispatching a signal when the takeoff configuration
+    of the drones in this extension changes.
+    """
+
     def __init__(self):
         super().__init__()
 
@@ -69,6 +85,14 @@ class MAVLinkDronesExtension(UAVExtension[MAVLinkDriver]):
         self._networks = {}
         self._start_method = None
         self._uavs = None
+
+        self._led_light_configuration_signal_dispatcher = (
+            LEDLightConfigurationSignalDispatcher()
+        )
+        self._takeoff_signal_dispatcher = ScheduledTakeoffSignalDispatcher()
+        self._time_axis_configuration_signal_dispatcher = (
+            TimeAxisConfigurationSignalDispatcher()
+        )
 
     def _create_driver(self):
         return MAVLinkDriver()
@@ -163,7 +187,7 @@ class MAVLinkDronesExtension(UAVExtension[MAVLinkDriver]):
         # Create self._uavs only here and not in the constructor; this is to
         # ensure that we cannot accidentally register a UAV when the extension
         # is not running yet
-        uavs = []
+        uavs: list[MAVLinkUAV] = []
 
         # Create a list of arguments to pass to `network.run()` for each MAVLink
         # network that the extension manages
@@ -192,6 +216,7 @@ class MAVLinkDronesExtension(UAVExtension[MAVLinkDriver]):
                         "show:clock_changed": self._on_show_clock_changed,
                         "show:config_updated": self._on_show_configuration_changed,
                         "show:lights_updated": self._on_show_light_configuration_changed,
+                        "show_pro:time_axis_config_updated": self._on_show_pro_time_axis_config_updated,
                     }
                 )
             )
@@ -201,6 +226,42 @@ class MAVLinkDronesExtension(UAVExtension[MAVLinkDriver]):
             # packet is to be forwarded to other extensions
             stack.enter_context(
                 rtk_correction_packet_signal_manager.use(signals, log=self.log)
+            )
+
+            # Set up the takeoff signal dispatcher so it dispatches a signal whenever
+            # the start time configuration changes and the drones need to be informed.
+            #
+            # Other extensions can hook into this signal to provide alternative
+            # communication channels for the scheduled takeoff configuration to reach
+            # the drones.
+            stack.enter_context(
+                self._takeoff_signal_dispatcher.use(signals, log=self.log)
+            )
+
+            # Set up the time axis configuration signal dispatcher so it dispatches a
+            # signal whenever the time axis configuration changes and the drones need to
+            # be informed.
+            #
+            # Other extensions can hook into this signal to provide alternative
+            # communication channels for the time axis configuration to reach
+            # the drones.
+            stack.enter_context(
+                self._time_axis_configuration_signal_dispatcher.use(
+                    signals, log=self.log
+                )
+            )
+
+            # Set up the LED light configuration signal dispatcher so it dispatches a
+            # signal whenever the GCS takes control of the LEDs on the drones and they
+            # need to be informed.
+            #
+            # Other extensions can hook into this signal to provide alternative
+            # communication channels for the LED light configuration to reach
+            # the drones.
+            stack.enter_context(
+                self._led_light_configuration_signal_dispatcher.use(
+                    signals, log=self.log
+                )
             )
 
             # Forward the current start configuration for the drones in this network.
@@ -218,6 +279,15 @@ class MAVLinkDronesExtension(UAVExtension[MAVLinkDriver]):
                     # Create one task for each network
                     for network in networks.values():
                         nursery.start_soon(partial(network.run, **kwds))
+
+                    # Create tasks for the signal dispatchers
+                    nursery.start_soon(
+                        self._led_light_configuration_signal_dispatcher.run
+                    )
+                    nursery.start_soon(self._takeoff_signal_dispatcher.run)
+                    nursery.start_soon(
+                        self._time_axis_configuration_signal_dispatcher.run
+                    )
 
                     # Create an additional task that periodically checks whether the UAVs
                     # registered in the extension are still alive, and that sends
@@ -313,9 +383,8 @@ class MAVLinkDronesExtension(UAVExtension[MAVLinkDriver]):
             "system_id": configuration.get("system_id", 254),
         }
 
-        # Apply the default ID format for networks that do not specify an
-        # ID format on their own
-
+        # Apply the defaults to the individual network configurations where a specific
+        # item is missing
         for spec in network_specs.values():
             for key, value in network_spec_defaults.items():
                 if key not in spec and value is not MISSING:
@@ -351,28 +420,12 @@ class MAVLinkDronesExtension(UAVExtension[MAVLinkDriver]):
 
         return result
 
-    def _on_rc_channels_changed(self, sender: "RCState"):
+    def _on_rc_channels_changed(self, sender: RCState):
         """Handles the event when the RC channel values changed."""
-        if not self._networks:
-            return
-
-        if sender.lost:
-            # Cancel all previous RC overrides. For channels <= 8, zero means
-            # "release back to RC radio". For channels > 8, 65534 means
-            # "release back to rC radio" as zero would mean "ignore"
-            channels = [0] * 8 + [65534] * 10
-        else:
-            # Get scaled PWM values to send
-            channels = sender.get_scaled_channel_values_int(out_of_range=0)
-            if sender.num_channels < 18:
-                # Ignore channels for which the sender has no real value.
-                # 65535 in MAVLink RC_CHANNELS_OVERRIDE packets means "ignore"
-                num_missing = 18 - sender.num_channels
-                channels[sender.num_channels :] = [65535] * num_missing
-
+        spec = create_rc_override_packet(sender)
         for name, network in self._networks.items():
             try:
-                network.enqueue_rc_override_packet(channels)
+                network.enqueue_rc_override_packet(spec)
             except Exception:
                 if self.log:
                     self.log.warning(
@@ -426,7 +479,7 @@ class MAVLinkDronesExtension(UAVExtension[MAVLinkDriver]):
         self, sender, config: LightConfiguration
     ) -> None:
         """Handler that is called when the user changes the LED light configuration
-        of the drones in the `show` extesion.
+        of the drones in the `show` extension.
         """
         if not self._networks:
             return
@@ -437,6 +490,22 @@ class MAVLinkDronesExtension(UAVExtension[MAVLinkDriver]):
 
         # Send the configuration to all the networks
         self._update_show_light_configuration_in_networks(config)
+
+    def _on_show_pro_time_axis_config_updated(
+        self, sender, config: BinaryTimeAxisConfiguration | None
+    ) -> None:
+        """Handler that is called when the user changes the time axis
+        configuration of the drones in the `show_pro` extension.
+        """
+        if not self._networks:
+            return
+
+        # Note that we do not need to make a copy of the config here
+        # as in e.g. the light config update, as both the binary config
+        # representation and None are immutable.
+
+        # Send the configuration to all the networks
+        self._update_show_time_axis_configuration_in_networks(config)
 
     def _register_uav(self, uav: UAV) -> None:
         """Registers a new UAV object in the object registry of the application
@@ -553,6 +622,15 @@ class MAVLinkDronesExtension(UAVExtension[MAVLinkDriver]):
                     f"Failed to update start configuration of drones in network {name!r}"
                 )
 
+        try:
+            self._takeoff_signal_dispatcher.notify_config_changed(config)
+        except Exception:
+            self.log.warning(
+                "Failed to dispatch scheduled takeoff configuration change signal "
+                "to other extensions (reason of dispatch attempt: updated start "
+                "configuration)"
+            )
+
     def _update_show_start_time_in_networks(self) -> None:
         """Updates the scheduled start times of the drones managed by this
         extension, based on the start time extracted from the show clock.
@@ -571,6 +649,14 @@ class MAVLinkDronesExtension(UAVExtension[MAVLinkDriver]):
                 self.log.warning(
                     f"Failed to update start time of drones in network {name!r}"
                 )
+
+        try:
+            self._takeoff_signal_dispatcher.notify_start_time_changed(clock.start_time)
+        except Exception:
+            self.log.warning(
+                "Failed to dispatch scheduled takeoff configuration change signal "
+                "to other extensions (reason of dispatch attempt: updated start time)"
+            )
 
     def _update_show_light_configuration_in_networks(
         self, config: LightConfiguration | None = None
@@ -595,3 +681,38 @@ class MAVLinkDronesExtension(UAVExtension[MAVLinkDriver]):
                 self.log.warning(
                     f"Failed to update LED light configuration of drones in network {name!r}"
                 )
+
+        try:
+            self._led_light_configuration_signal_dispatcher.notify_config_changed(
+                config
+            )
+        except Exception:
+            self.log.warning(
+                "Failed to dispatch LED light configuration signal to other extensions"
+            )
+
+    def _update_show_time_axis_configuration_in_networks(
+        self, config: BinaryTimeAxisConfiguration | None
+    ) -> None:
+        """Updates the time axis configuration of the drones managed by this
+        extension, based on the given configuration object.
+        """
+        assert self.app is not None
+        assert self.log is not None
+
+        for name, network in self._networks.items():
+            try:
+                network.notify_show_time_axis_config_changed(config)
+            except Exception:
+                self.log.warning(
+                    f"Failed to update show time axis configuration of drones in network {name!r}"
+                )
+
+        try:
+            self._time_axis_configuration_signal_dispatcher.notify_time_axis_config_changed(
+                config
+            )
+        except Exception:
+            self.log.warning(
+                "Failed to dispatch time axis configuration signal to other extensions"
+            )

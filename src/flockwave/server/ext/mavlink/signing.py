@@ -4,7 +4,7 @@ from base64 import b64decode, b64encode
 from collections.abc import Callable
 from dataclasses import dataclass
 from re import match, sub
-from typing import TYPE_CHECKING, ClassVar
+from typing import TYPE_CHECKING, ClassVar, cast
 
 from wrapt import ObjectProxy
 
@@ -169,6 +169,7 @@ class SignatureTimestampSynchronizer:
         timestamp synchronizer class.
         """
         self._update_timestamp(signing_state.timestamp)
-        return self.TimestampProxy(
+        proxy = self.TimestampProxy(
             signing_state, self._get_timestamp, self._update_timestamp
         )
+        return cast("MAVLinkSigningInterface[MinimalMAVLinkInterface]", proxy)

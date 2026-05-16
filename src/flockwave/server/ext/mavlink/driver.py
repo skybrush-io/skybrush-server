@@ -11,14 +11,16 @@ from functools import partial
 from logging import Logger
 from math import inf, isfinite
 from time import monotonic
-from typing import Any
+from typing import Any, Sequence
 
 from colour import Color
+from deprecated import deprecated
 from flockwave.concurrency import FutureCancelled, delayed
 from flockwave.gps.time import datetime_to_gps_time_of_week, gps_time_of_week_to_utc
 from flockwave.gps.vectors import GPSCoordinate, VelocityNED
 from flockwave.spec.errors import FlockwaveErrorCode
 from trio import Event, TooSlowError, fail_after, move_on_after, sleep
+from trio_util import periodic
 
 from flockwave.server.command_handlers import (
     create_calibration_command_handler,
@@ -28,6 +30,7 @@ from flockwave.server.command_handlers import (
     create_version_command_handler,
 )
 from flockwave.server.errors import NotSupportedError
+from flockwave.server.ext.rc import RCExtensionAPI
 from flockwave.server.ext.show.config import AuthorizationScope
 from flockwave.server.model.battery import BatteryInfo
 from flockwave.server.model.commands import (
@@ -50,6 +53,7 @@ from flockwave.server.model.uav import (
     VersionInfo,
 )
 from flockwave.server.show import (
+    ShowSpecification,
     get_altitude_reference_from_show_specification,
     get_coordinate_system_from_show_specification,
     get_geofence_configuration_from_show_specification,
@@ -65,6 +69,7 @@ from .accelerometer import AccelerometerCalibration
 from .autopilots import ArduPilot, Autopilot, UnknownAutopilot
 from .channel import Channel
 from .compass import CompassCalibration
+from .compassmot import CompassMotorInterferenceCalibration
 from .enums import (
     ConnectionState,
     GPSFixType,
@@ -91,6 +96,7 @@ from .packets import (
     DroneShowStatus,
     authorization_scope_to_int,
     create_led_control_packet,
+    create_rc_override_packet,
 )
 from .rssi import RSSIMode, rtcm_counter_to_rssi
 from .types import MAVLinkMessage, PacketBroadcasterFn, PacketSenderFn, spec
@@ -330,7 +336,7 @@ class MAVLinkDriver(UAVDriver["MAVLinkUAV"]):
         return int(monotonic() * 1000)
 
     handle_command_calib = create_calibration_command_handler(
-        ("accel", "baro", "compass", "gyro", "level")
+        ("accel", "baro", "compass", "compassmot", "gyro", "level")
     )
     handle_command_color = create_color_command_handler()
     handle_command_param = create_parameter_command_handler(
@@ -383,14 +389,16 @@ class MAVLinkDriver(UAVDriver["MAVLinkUAV"]):
         else:
             raise RuntimeError(f"Unknown subcommand: {command!r}")
 
-    async def handle_command___show_upload(self, uav: "MAVLinkUAV", *, show):
+    async def handle_command___show_upload(
+        self, uav: "MAVLinkUAV", *, show: ShowSpecification
+    ):
         """Handles a drone show upload request for the given UAV.
 
         This is a temporary solution until we figure out something that is
         more sustainable in the long run.
 
         Parameters:
-            show: the show data
+            show: the show data for a single UAV
         """
         try:
             await uav.upload_show(show)
@@ -782,7 +790,7 @@ class MAVLinkDriver(UAVDriver["MAVLinkUAV"]):
 
         async for maybe_log_or_progress in uav.log_downloader.get_log(log_number):
             if maybe_log_or_progress is None:
-                raise RuntimeError("No log with the given ID: {log_number!r}")
+                raise RuntimeError(f"No log with the given ID: {log_number!r}")
             else:
                 yield maybe_log_or_progress
 
@@ -795,8 +803,8 @@ class MAVLinkDriver(UAVDriver["MAVLinkUAV"]):
     def _request_preflight_report_single(self, uav: "MAVLinkUAV") -> PreflightCheckInfo:
         return uav.preflight_status
 
-    def _request_version_info_single(self, uav: "MAVLinkUAV") -> VersionInfo:
-        return uav.get_version_info()
+    async def _request_version_info_single(self, uav: "MAVLinkUAV") -> VersionInfo:
+        return await uav.get_version_info()
 
     async def _resume_from_low_power_mode_broadcast(
         self, *, transport: TransportOptions | None = None
@@ -904,17 +912,10 @@ class MAVLinkDriver(UAVDriver["MAVLinkUAV"]):
         self, uav: "MAVLinkUAV", start: bool, force: bool = False, *, transport=None
     ) -> None:
         channel = transport_options_to_channel(transport)
-
-        if not await self.send_command_long(
-            uav,
-            MAVCommand.COMPONENT_ARM_DISARM,
-            1 if start else 0,
-            FORCE_MAGIC if force else 0,
-            channel=channel,
-        ):
-            raise RuntimeError(
-                "Failed to arm motors" if start else "Failed to disarm motors"
-            )
+        if start:
+            await uav.arm(force=force, channel=channel)
+        else:
+            await uav.disarm(force=force, channel=channel)
 
     async def _send_reset_signal_broadcast(self, component, *, transport=None) -> None:
         channel = transport_options_to_channel(transport)
@@ -1095,6 +1096,16 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
     ensure that the compass calibration status object is created on-demand.
     """
 
+    _compass_motor_interference_calibration: (
+        CompassMotorInterferenceCalibration | None
+    ) = None
+    """Compass motor interference calibration status of the drone, constructed lazily.
+
+    Use the `compass_motor_interference_calibration` getter to access this
+    property; this will ensure that the compass motor interference calibration
+    status object is created on-demand.
+    """
+
     _connected_event: Event
     """Event that is emitted when the connection state of the UAV becomes
     connected.
@@ -1179,12 +1190,13 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
     _scheduled_takeoff_authorization_scope: AuthorizationScope = AuthorizationScope.NONE
     """The current authorization scope of the scheduled takeoff of the drone."""
 
-    _scheduled_takeoff_time: int | None = None
-    """Scheduled takeoff time of the drone, as a UNIX timestamp, in seconds"""
+    _scheduled_takeoff_time_msec: int | None = None
+    """Scheduled takeoff time of the drone, as a UNIX timestamp, in milliseconds"""
 
-    _scheduled_takeoff_time_gps_time_of_week: int | None = None
+    _scheduled_takeoff_time_gps_time_of_week_msec: int | None = None
     """Scheduled takeoff time of the drone, as a GPS time-of-week timestamp,
-    in seconds"""
+    in milliseconds.
+    """
 
     _velocity: VelocityNED
     """Current velocity of the drone in NED coordinate system, m/sec"""
@@ -1225,6 +1237,14 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
         self._network_id = network_id
         self._system_id = system_id
 
+    async def arm(self, *, force: bool = False, channel: str = Channel.PRIMARY) -> None:
+        """Arms the motors of the UAV.
+
+        Args:
+            force: whether to force the arming even if the UAV thinks it is not safe
+        """
+        return await self._set_armed_state(True, force=force, channel=channel)
+
     async def calibrate_accelerometer(self) -> ProgressEventsWithSuspension[None, str]:
         """Calibrates the accelerometers of the UAV.
 
@@ -1259,6 +1279,27 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
             # Turn NotImplementedError from the autopilot into a NotSupportedError
             raise NotSupportedError from None
 
+    async def calibrate_compass_motor_interference(
+        self,
+    ) -> ProgressEventsWithSuspension[None, str]:
+        """Attempts to compensate for the interference between the compasses and the
+        motors of the UAV.
+
+        Yields:
+            events describing the progress of the compensation procedure
+
+        Raises:
+            NotSupportedError: if the compensation is not supported on the UAV
+        """
+        try:
+            async for event in self._autopilot.calibrate_compass_motor_interference(
+                self
+            ):
+                yield event
+        except NotImplementedError:
+            # Turn NotImplementedError from the autopilot into a NotSupportedError
+            raise NotSupportedError from None
+
     async def calibrate_component(
         self, component: str
     ) -> ProgressEventsWithSuspension[None, str]:
@@ -1266,7 +1307,8 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
 
         Parameters:
             component: the component to calibrate; currently we support
-                ``accel``, ``baro``, ``compass``, ``gyro`` or ``level``.
+                ``accel``, ``baro``, ``compass``, ``gyro``, ``level`` or
+                ``compassmot`` (compass-motor interference).
 
         Raises:
             NotSupportedError: if the calibration of the given component is not
@@ -1284,6 +1326,13 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
             # Compass calibration takes a long time and involves progress
             # handling so that's handled in a separate function
             async for event in self.calibrate_compass():
+                yield event
+            return
+
+        if component == "compassmot":
+            # Compass-motor interference calibration takes a long time and involves
+            # progress handling so that's handled in a separate function
+            async for event in self.calibrate_compass_motor_interference():
                 yield event
             return
 
@@ -1313,14 +1362,8 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
             raise RuntimeError(f"Failed to calibrate component: {component!r}")
 
     def can_handle_firmware_update_target(self, target_id: str) -> bool:
-        """Returns whether the virtual UAV can handle uploads with the given
-        target.
-        """
+        """Returns whether the UAV can handle uploads with the given target."""
         return self._autopilot.can_handle_firmware_update_target(target_id)
-
-    async def clear_scheduled_takeoff_time(self) -> None:
-        """Clears the scheduled takeoff time of the UAV."""
-        await self.set_scheduled_takeoff_time(None)
 
     async def configure_geofence(
         self, configuration: GeofenceConfigurationRequest
@@ -1331,6 +1374,19 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
     async def configure_safety(self, configuration: SafetyConfigurationRequest) -> None:
         """Configures the safety features on the UAV."""
         return await self._autopilot.configure_safety(self, configuration)
+
+    async def disarm(
+        self,
+        *,
+        force: bool = False,
+        channel: str = Channel.PRIMARY,
+    ) -> None:
+        """Disarms the motors of the UAV.
+
+        Args:
+            force: whether to force the arming even if the UAV thinks it is not safe
+        """
+        return await self._set_armed_state(False, force=force, channel=channel)
 
     def get_age_of_message(self, type: int, now: float | None = None) -> float:
         """Returns the number of seconds elapsed since we have last seen a
@@ -1377,11 +1433,22 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
             timeout=0.7,
         )
 
-    def get_version_info(self) -> VersionInfo:
+    async def get_version_info(self) -> VersionInfo:
         """Returns a dictionary mapping component names of this UAV to the
         corresponding version numbers.
         """
-        version_info = self.get_last_message(MAVMessageType.AUTOPILOT_VERSION)
+        while True:
+            version_info = self.get_last_message(MAVMessageType.AUTOPILOT_VERSION)
+            if version_info is not None:
+                break
+
+            success = await self._request_autopilot_capabilities()
+            if not success:
+                raise RuntimeError("Failed to request autopilot version number")
+
+            # Do not send requests too often
+            await sleep(0.5)
+
         result = {}
 
         for version in ("flight", "middleware", "os"):
@@ -1528,19 +1595,64 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
         return self._scheduled_takeoff_authorization_scope
 
     @property
-    def scheduled_takeoff_time(self) -> int | None:
-        """Returns the scheduled takeoff time of the UAV as a UNIX timestamp
-        in seconds, truncated to an integer, or `None` if the UAV is not
-        scheduled for an automatic takeoff.
-        """
-        return self._scheduled_takeoff_time
+    @deprecated(
+        reason="use scheduled_takeoff_time_sec to make the unit explicit",
+        version="2.47.0",
+    )
+    def scheduled_takeoff_time(self) -> float | None:
+        return self.scheduled_takeoff_time_sec
 
     @property
-    def scheduled_takeoff_time_gps_time_of_week(self) -> int | None:
-        """Returns the scheduled takeoff time of the UAV as a GPS time of week
-        value, or `None` if the UAV is not scheduled for an automatic takeoff.
+    def scheduled_takeoff_time_sec(self) -> float | None:
+        """Returns the scheduled takeoff time of the UAV as a UNIX timestamp
+        in seconds, or `None` if the UAV is not scheduled for an automatic takeoff.
+
+        Note that internally the takeoff time is stored in millisecond precision so this
+        function may return a fractional number of seconds.
         """
-        return self._scheduled_takeoff_time_gps_time_of_week
+        return (
+            self._scheduled_takeoff_time_msec / 1000
+            if self._scheduled_takeoff_time_msec is not None
+            else None
+        )
+
+    @property
+    def scheduled_takeoff_time_msec(self) -> int | None:
+        """Returns the scheduled takeoff time of the UAV as a UNIX timestamp
+        in milliseconds, or `None` if the UAV is not scheduled for an automatic takeoff.
+        """
+        return self._scheduled_takeoff_time_msec
+
+    @property
+    @deprecated(
+        reason="use scheduled_takeoff_time_gps_time_of_week_sec to make the unit explicit",
+        version="2.47.0",
+    )
+    def scheduled_takeoff_time_gps_time_of_week(self) -> float | None:
+        return self.scheduled_takeoff_time_gps_time_of_week_sec
+
+    @property
+    def scheduled_takeoff_time_gps_time_of_week_sec(self) -> float | None:
+        """Returns the scheduled takeoff time of the UAV as a GPS time of week
+        value, in seconds, or `None` if the UAV is not scheduled for an automatic
+        takeoff.
+
+        Note that internally the takeoff time is stored in millisecond precision so this
+        function may return a fractional number of seconds.
+        """
+        return (
+            self._scheduled_takeoff_time_gps_time_of_week_msec / 1000
+            if self._scheduled_takeoff_time_gps_time_of_week_msec is not None
+            else None
+        )
+
+    @property
+    def scheduled_takeoff_time_gps_time_of_week_msec(self) -> int | None:
+        """Returns the scheduled takeoff time of the UAV as a GPS time of week
+        value, in milliseconds, or `None` if the UAV is not scheduled for an automatic
+        takeoff.
+        """
+        return self._scheduled_takeoff_time_gps_time_of_week_msec
 
     async def _set_parameter_single(self, name: str, value: float) -> None:
         """Sets the value of a single parameter on the UAV.
@@ -1689,12 +1801,22 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
 
                 # The other side has to know that we have switched; we do it by
                 # sending it a REQUEST_AUTOPILOT_CAPABILITIES message again
-                self.driver.run_in_background(self._request_autopilot_capabilities)
+                self.driver.run_in_background(
+                    self._request_autopilot_capabilities_and_ignore_result
+                )
             else:
                 # MAVLink 2 not supported by the drone. We do not support MAVLink 1
                 # as most of the messages we use are MAVLink 2 only, so indicate
                 # a protocol error at this point and bail out.
                 self.ensure_error(FlockwaveErrorCode.AUTOPILOT_PROTOCOL_ERROR)
+
+    def handle_message_battery_status(self, message: MAVLinkMessage):
+        """Handles an incoming MAVLink BATTERY_STATUS message targeted at this
+        UAV.
+        """
+        calib = self._compass_motor_interference_calibration
+        if calib is not None:
+            calib.handle_message_battery_status(message)
 
     def handle_message_command_long(self, message: MAVLinkMessage):
         if message.command == MAVCommand.ACCELCAL_VEHICLE_POS:
@@ -1716,14 +1838,14 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
         # the standard and the compact telemetry profile)
         self._update_gps_fix_type_and_satellite_count(data.gps_fix, data.num_satellites)
 
-        gps_start_time = data.start_time if data.start_time >= 0 else None
-        if gps_start_time != self._scheduled_takeoff_time_gps_time_of_week:
-            self._scheduled_takeoff_time_gps_time_of_week = gps_start_time
-            if gps_start_time is None:
-                self._scheduled_takeoff_time = None
+        gps_start_time_msec = data.start_time_msec
+        if gps_start_time_msec != self._scheduled_takeoff_time_gps_time_of_week_msec:
+            self._scheduled_takeoff_time_gps_time_of_week_msec = gps_start_time_msec
+            if gps_start_time_msec is None:
+                self._scheduled_takeoff_time_msec = None
             else:
-                self._scheduled_takeoff_time = int(
-                    gps_time_of_week_to_utc(gps_start_time).timestamp()
+                self._scheduled_takeoff_time_msec = int(
+                    gps_time_of_week_to_utc(gps_start_time_msec / 1000).timestamp()
                 )
 
         self._scheduled_takeoff_authorization_scope = data.authorization_scope
@@ -1815,7 +1937,9 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
                 or now - self._last_autopilot_capabilities_requested_at > 2
             ):
                 self._last_autopilot_capabilities_requested_at = now
-                self.driver.run_in_background(self._request_autopilot_capabilities)
+                self.driver.run_in_background(
+                    self._request_autopilot_capabilities_and_ignore_result
+                )
 
         # If we haven't received a SYS_STATUS message for a while but we keep
         # on receiving heartbeats, chances are that the data streams are not
@@ -1926,6 +2050,12 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
         rssi = min(max(0, int((rssi_dbm + 100) * 2)), 100)
         self.update_rssi(index=0, value=rssi)
 
+    def handle_message_scaled_imu(self, message: MAVLinkMessage):
+        """Handles an incoming MAVLink SCALED_IMU message targeted at this UAV."""
+        calib = self._compass_motor_interference_calibration
+        if calib is not None:
+            calib.handle_message_scaled_imu(message)
+
     def handle_message_sys_status(self, message: MAVLinkMessage):
         self._store_message(message)
 
@@ -1975,6 +2105,17 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
         return self._compass_calibration
 
     @property
+    def compass_motor_interference_calibration(
+        self,
+    ) -> CompassMotorInterferenceCalibration:
+        """State object of the compass-motor interference calibration procedure."""
+        if self._compass_motor_interference_calibration is None:
+            self._compass_motor_interference_calibration = (
+                CompassMotorInterferenceCalibration()
+            )
+        return self._compass_motor_interference_calibration
+
+    @property
     def is_connected(self) -> bool:
         """Returns whether the UAV is connected to the ground station and we
         have seen heartbeats from it recently (even if they indicated that the
@@ -2016,9 +2157,7 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
         and we should configure its data streams again soon once we re-establish
         connection.
         """
-        self.driver.run_in_background(
-            delayed(1, self.notify_disconnection, ensure_async=True)  # type: ignore[reportArgumentType]
-        )
+        self.driver.run_in_background(delayed(1, self.notify_disconnection))
 
     def _reset_mavlink_version(self) -> None:
         """Resets the MAVLink protocol version used by messages sent to this
@@ -2167,23 +2306,41 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
         """
         await self.set_parameter("SHOW_START_AUTH", authorization_scope_to_int(scope))
 
-    async def set_scheduled_takeoff_time(self, seconds: int | None) -> None:
+    async def set_scheduled_takeoff_time(
+        self, *, msec: int | None = None, use_msec: bool = True
+    ) -> None:
         """Sets the scheduled takeoff time of the UAV to the given timestamp in
-        seconds. Only integer seconds are supported. Setting the takeoff time
+        seconds. Only integer milliseconds are supported. Setting the takeoff time
         to `None` or a negative number will clear the takeoff time.
+
+        This function will work only if the firmware is recent enough to support storing
+        the start time with millisecond precision. If the firmware is older, set the
+        `use_msec` property to `False` to skip sending the millisecond part.
+
+        Note that this function is inherently error-prone: if the function fails, the
+        drone may end up in a state where the seconds were already set but the
+        milliseconds were not.
         """
         # The UAV needs GPS time of week so we convert it first. Note that we
         # convert the UNIX timestamp to a datetime first because UNIX timestamps
         # do not have leap seconds (every day is 86400 seconds in UNIX time) so
         # they are inherently ambiguous
 
-        if seconds is None or seconds < 0:
-            gps_time_of_week = -1
+        if msec is None or msec < 0:
+            gps_time_of_week_whole_seconds = -1
+            gps_time_of_week_msec_offset = 0
         else:
-            dt = datetime.fromtimestamp(int(seconds), tz=timezone.utc)
+            dt = datetime.fromtimestamp(msec / 1000, tz=timezone.utc)
             _, gps_time_of_week = datetime_to_gps_time_of_week(dt)
+            gps_time_of_week_whole_seconds, gps_time_of_week_msec_offset = divmod(
+                gps_time_of_week, 1
+            )
 
-        await self.set_parameter("SHOW_START_TIME", gps_time_of_week)
+        await self.set_parameter("SHOW_START_TIME", int(gps_time_of_week_whole_seconds))
+        if use_msec:
+            await self.set_parameter(
+                "SHOW_START_MSEC", int(gps_time_of_week_msec_offset)
+            )
 
     async def set_led_color(
         self,
@@ -2301,6 +2458,62 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
             raise RuntimeError("Failed to send takeoff command")
 
     @asynccontextmanager
+    async def temporarily_arm(
+        self, *, force: bool = False, channel: str = Channel.PRIMARY
+    ) -> AsyncIterator[None]:
+        """Temporarily arms the UAV while the execution is in the context, disarming it
+        upon exiting the context. Disarming is done at a best-effort basis; failures
+        will be ignored.
+        """
+        try:
+            await self.arm(force=force, channel=channel)
+            yield
+        finally:
+            try:
+                await self.disarm(force=force, channel=channel)
+            except Exception:
+                self.driver.log.warning(
+                    "Failed to disarm UAV after arming temporarily",
+                    extra={"id": log_id_for_uav(self)},
+                )
+
+    @asynccontextmanager
+    async def temporarily_override_rc(
+        self, channel: str = Channel.RC
+    ) -> AsyncIterator[Callable[[Sequence[int]], Awaitable[None]]]:
+        """Creates a context that allows the caller to send RC override messages to
+        this drone without affecting others. Upon exiting the context, RC control will
+        be released back to the UAV at a best-effort basis. There is currently no way
+        to detect failure reliably.
+        """
+        rc_api = self.driver.app.import_api("rc", RCExtensionAPI)
+        state = rc_api.create_state()
+
+        async def update(values: Sequence[int] | None = None) -> None:
+            if values is not None:
+                state.update(values)
+
+            packet = create_rc_override_packet(state)
+            await self.driver.send_packet(packet, self, channel=Channel.PRIMARY)
+
+        try:
+            yield update
+        finally:
+            try:
+                state.reset()
+                count = 0
+                async for _ in periodic(0.1):
+                    await update()
+                    count += 1
+                    if count >= 10:
+                        break
+            except Exception:
+                self.driver.log.warning(
+                    "Failed to release RC control back to the UAV",
+                    extra={"id": log_id_for_uav(self)},
+                )
+
+    @asynccontextmanager
     async def temporarily_request_messages(
         self, messages: dict[int, float]
     ) -> AsyncIterator[None]:
@@ -2349,6 +2562,89 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
                     extra={"id": log_id_for_uav(self)},
                 )
 
+    @asynccontextmanager
+    async def temporarily_set_mode(
+        self, mode: int | str, *, channel: str = Channel.PRIMARY
+    ) -> AsyncIterator[None]:
+        """Temporarily requests the UAV to switch to the given flight mode while the
+        execution is in the context, resetting to the previous flight mode upon exiting
+        the context. Resetting is done at a best-effort basis; failures will be
+        ignored.
+
+        Args:
+            mode: the custom flight mode to switch to
+            channel: the communication channel to use
+        """
+        # Wait at most 5 seconds for a heartbeat so we can store what the current
+        # flight mode is
+        tries = 5
+        while tries > 0:
+            heartbeat = self.get_last_message(MAVMessageType.HEARTBEAT)
+            if heartbeat is not None:
+                break
+            await sleep(1)
+            tries -= 1
+
+        if heartbeat is None:
+            raise RuntimeError(
+                "Failed to get heartbeat from UAV to determine current flight mode"
+            )
+
+        try:
+            await self.set_mode(mode, channel=channel)
+            yield
+        finally:
+            base_mode = heartbeat.base_mode
+            custom_mode = heartbeat.custom_mode
+            success = await self.driver.send_command_long(
+                self,
+                MAVCommand.DO_SET_MODE,
+                param1=float(base_mode),
+                param2=float(custom_mode),
+                channel=channel,
+            )
+            if not success:
+                self.driver.log.warning(
+                    f"UAV rejected to restore flight mode after a temporary "
+                    f"mode change (base mode {base_mode}, custom mode {custom_mode})",
+                    extra={"id": log_id_for_uav(self)},
+                )
+
+    @asynccontextmanager
+    async def temporarily_set_parameters(
+        self, parameters: Sequence[tuple[str, float]]
+    ) -> AsyncIterator[None]:
+        """Temporarily sets the given parameters on the UAV while the execution is in
+        the context, resetting to the previous values upon exiting the context.
+        Resetting is done at a best-effort basis; failures will be ignored.
+
+        Args:
+            parameters: a sequence of (parameter name, value) pairs to set. The order
+                matters: parameters will be attempted to set in this order and reset
+                to their values in the reverse order
+        """
+        previous_values: Sequence[tuple[str, float]] = []
+        failed_to_restore: list[str] = []
+        try:
+            for name, value in parameters:
+                old_value = await self.get_parameter(name)
+                await self.set_parameter(name, value)
+                previous_values.append((name, float(old_value)))
+            yield
+        finally:
+            for name, value in reversed(previous_values):
+                try:
+                    await self.set_parameter(name, value)
+                except Exception:
+                    failed_to_restore.append(name)
+
+            if failed_to_restore:
+                self.driver.log.warning(
+                    f"Failed to reset parameter(s) {failed_to_restore} after temporary "
+                    f"parameter change",
+                    extra={"id": log_id_for_uav(self)},
+                )
+
     async def trigger_camera_shutter(self) -> None:
         """Asks the UAV to trigger the camera shutter (if it has a camera)."""
         success = await self.driver.send_command_long(
@@ -2359,7 +2655,7 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
         if not success:
             raise RuntimeError("Failed to trigger camera shutter")
 
-    async def upload_show(self, show) -> None:
+    async def upload_show(self, show: ShowSpecification) -> None:
         coordinate_system = get_coordinate_system_from_show_specification(show)
         if coordinate_system.type != "nwu":
             raise RuntimeError("Only NWU coordinate systems are supported")
@@ -2627,24 +2923,34 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
         """
         self._last_messages.pop(MAVMessageType.AUTOPILOT_VERSION, None)
 
-    async def _request_autopilot_capabilities(self) -> None:
+    async def _request_autopilot_capabilities(self) -> bool:
         """Sends a request to the autopilot to send its capabilities via MAVLink
         in a separate packet.
+
+        Returns successfully when the drone has acknowledged the command.
+
+        Returns:
+            whether the request was sent successfully and it was acknowledged by the
+            drone. Since the autopilot version is still sent in a separate message,
+            returning successfully from this function does not necessarily mean that we
+            have received the capabilities, but at least we know that the drone is alive
+            and it understood what we wanted.
         """
         try:
             success = await self.driver.send_command_long(
                 self, MAVCommand.REQUEST_AUTOPILOT_CAPABILITIES, param1=1
             )
         except FutureCancelled:
-            # This is okay, server is shutting down
-            return
+            # This is okay, server is shutting down; pretend that the result is a
+            # success
+            return True
         except TooSlowError:
             self.driver.log.warning(
                 "Failed to request autopilot capabilities; no confirmation "
                 "received in time",
                 extra={"id": log_id_for_uav(self)},
             )
-            return
+            return False
 
         if not success:
             self.driver.log.warning(
@@ -2652,12 +2958,13 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
                 extra={"id": log_id_for_uav(self)},
             )
 
-        # At this point, we only received an acknowledgment from the drone that
-        # it _will_ send the AUTOPILOT_VERSION packet -- we don't know whether
-        # it really will and even if it does, it might get lost in transit.
-        # Therefore, we check whether we already have an AUTOPILOT_VERSION
-        # packet in our stash after receiving a heartbeat, and if we don't, we
-        # ask the drone to send one by calling this function.
+        return success
+
+    async def _request_autopilot_capabilities_and_ignore_result(self) -> None:
+        """Sends a request to the autopilot to send its capabilities via MAVLink
+        in a separate packet, and then ignore whether the request succeeded or not.
+        """
+        await self._request_autopilot_capabilities()
 
     def _get_previous_copy_of_message(
         self, message: MAVLinkMessage
@@ -2675,6 +2982,20 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
         or `None` if we have not observed such a message yet.
         """
         return self._last_messages.get(message.get_msgId())
+
+    async def _set_armed_state(
+        self, armed: bool, *, force: bool = False, channel: str = Channel.PRIMARY
+    ) -> None:
+        if not await self.driver.send_command_long(
+            self,
+            MAVCommand.COMPONENT_ARM_DISARM,
+            1 if armed else 0,
+            FORCE_MAGIC if force else 0,
+            channel=channel,
+        ):
+            raise RuntimeError(
+                "Failed to arm the motors" if armed else "Failed to disarm the motors"
+            )
 
     def _set_connection_state(
         self, value: ConnectionState, heartbeat: MAVLinkMessage | None
@@ -2795,6 +3116,7 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
                 # was reported in the Skybrush-specific status packet
                 or (not has_geofence_error and status.is_geofence_breached)
             ),
+            FlockwaveErrorCode.ESC_ERROR.value: status.has_high_esc_error_rate,
         }
         self.ensure_errors(errors)
 
@@ -2941,11 +3263,7 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
             FlockwaveErrorCode.PRESSURE_SENSOR_ERROR.value: has_baro_error,
             FlockwaveErrorCode.GPS_SIGNAL_LOST.value: has_gps_error,
             FlockwaveErrorCode.PROXIMITY_ERROR.value: has_proximity_error,
-            FlockwaveErrorCode.MOTOR_MALFUNCTION.value: has_motor_error
-            or (
-                self._last_skybrush_status_info
-                and self._last_skybrush_status_info.has_high_esc_error_rate
-            ),
+            FlockwaveErrorCode.MOTOR_MALFUNCTION.value: has_motor_error,
             FlockwaveErrorCode.GEOFENCE_VIOLATION.value: (
                 has_geofence_error and are_motors_running
             ),

@@ -292,7 +292,7 @@ class DeviceTreeNodeBase(metaclass=ModelMeta):
             and its associated ID in its parent, in depth-first order. The ID
             will be the value of the ``own_id`` parameter for this node.
         """
-        queue = [(own_id, self)]
+        queue: list[tuple[str | None, "DeviceTreeNodeBase"]] = [(own_id, self)]
         while queue:
             id, node = queue.pop()
             yield id, node

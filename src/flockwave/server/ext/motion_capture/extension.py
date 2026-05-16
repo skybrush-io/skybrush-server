@@ -1,7 +1,6 @@
-from collections.abc import AsyncIterator
 from contextlib import aclosing
 from time import monotonic, time
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, AsyncGenerator
 
 from trio import sleep
 from trio_util import RepeatedEvent
@@ -53,7 +52,7 @@ class FrameRateLimiter:
         self._last_frame = frame
         self._has_new_frame.set()
 
-    async def iter_frames(self) -> AsyncIterator[MotionCaptureFrame]:
+    async def iter_frames(self) -> AsyncGenerator[MotionCaptureFrame]:
         """Iterates over the received frames, ensuring that the iterator does
         not yield a new item more frequently than the number of frames per
         second prescribed in the constructor.

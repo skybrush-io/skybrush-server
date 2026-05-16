@@ -111,7 +111,7 @@ class License(ABC):
         allowed_hardware_ids = self.get_allowed_hardware_ids()
         if allowed_hardware_ids:
             try:
-                from cls import get_hardware_id  # ty:ignore[unresolved-import]
+                from cls import get_hardware_id
 
                 own_hardware_id = get_hardware_id()
             except ImportError:
@@ -337,7 +337,7 @@ class CLSLicense(DictBasedLicense):
     @classmethod
     def get_license(cls):
         try:
-            from cls import license  # ty:ignore[unresolved-import]
+            from cls import license
         except ImportError as ex:
             raise RuntimeError("no license manager") from ex
 
@@ -391,7 +391,7 @@ def show_license_information(
         logger.info(f"Licensed to {licensee}")
 
     try:
-        from cls import get_hardware_id  # ty:ignore[unresolved-import]
+        from cls import get_hardware_id
     except ImportError:
         # No license manager or it is older than 3.0.0
         pass

@@ -8,9 +8,12 @@ from collections.abc import Sequence
 from dataclasses import dataclass, field
 from enum import Enum
 from itertools import chain
-from typing import Any, TypedDict
+from typing import Any, cast
+
+from typing_extensions import NotRequired, TypedDict
 
 from flockwave.server.show import (
+    ShowSpecification,
     get_flight_area_configuration_from_show_specification,
     get_geofence_configuration_from_show_specification,
     get_safety_configuration_from_show_specification,
@@ -126,7 +129,7 @@ class MissionItem(TypedDict):
     id: str | None
     """The (optional) unique identifier of the mission item."""
 
-    participants: list[int] | None
+    participants: NotRequired[list[int] | None]
     """Optional restriction of the item to numbered parts/participants of a
     multi-UAV mission.
 
@@ -153,8 +156,7 @@ class MissionItemBundle(TypedDict):
 
     In case of multi-UAV missions, the `startPositions` variable must hold
     information about the starting position of the UAVs in the mission,
-    implicitely defining the exact number of UAVs in the mission.
-
+    implicitly defining the exact number of UAVs in the mission.
     """
 
     version: int
@@ -470,11 +472,11 @@ def _prepare_mission_item(
     params: dict[str, Any],
 ) -> MissionItem:
     """Prepares a mission item."""
-    retval = {"id": id, "type": type.value, "parameters": params}
+    retval: MissionItem = {"id": id, "type": type.value, "parameters": params}
     if participants is not None:
         retval["participants"] = participants
 
-    return retval  # type: ignore
+    return retval
 
 
 def _validate_mission_item(
@@ -584,7 +586,7 @@ class MissionCommandBundle:
     commands: list[MissionCommand] = field(default_factory=list)
     """The list of mission commands in the bundle."""
 
-    start_positions: list[ScaledLatLonPair] | None = None
+    start_positions: list[ScaledLatLonPair | None] | None = None
     """The starting positions of the UAVs in the mission."""
 
     def __post_init__(self):
@@ -785,7 +787,7 @@ class ChangeHeadingMissionCommand(MissionCommand):
 
     @property
     def json(self) -> MissionItem:
-        parameters = {"heading": self.heading.json}
+        parameters: dict[str, Any] = {"heading": self.heading.json}
         if self.rate is not None:
             parameters["rate"] = round(self.rate, ndigits=3)
 
@@ -882,7 +884,7 @@ class GoToMissionCommand(MissionCommand):
 
     @property
     def json(self) -> MissionItem:
-        parameters = {
+        parameters: dict[str, Any] = {
             "lat": round(self.latitude, ndigits=7),
             "lon": round(self.longitude, ndigits=7),
         }
@@ -1090,7 +1092,7 @@ class SetPayloadMissionCommand(MissionCommand):
 
     @property
     def json(self) -> MissionItem:
-        parameters = {
+        parameters: dict[str, Any] = {
             "name": self.name,
             "action": self.action.value,
         }
@@ -1186,7 +1188,7 @@ class TakeoffMissionCommand(MissionCommand):
 
     @property
     def json(self) -> MissionItem:
-        parameters = {
+        parameters: dict[str, Any] = {
             "alt": self.altitude.json,
         }
         if self.velocity_z is not None:
@@ -1222,6 +1224,7 @@ class UpdateFlightAreaMissionCommand(MissionCommand):
         # we need a "flightArea" and a "coordinateSystem" entry, where the latter
         # can be "geodetic" or a complete JSON representation of a
         # FlatEarthToGPSCoordinateTransformation
+        params = cast(ShowSpecification, params)
         flight_area = get_flight_area_configuration_from_show_specification(params)
 
         return cls(id=id, participants=participants, flight_area=flight_area)
@@ -1261,6 +1264,7 @@ class UpdateGeofenceMissionCommand(MissionCommand):
         # we need a "geofence" and a "coordinateSystem" entry, where the latter
         # can be "geodetic" or a complete JSON representation of a
         # FlatEarthToGPSCoordinateTransformation
+        params = cast(ShowSpecification, params)
         geofence = get_geofence_configuration_from_show_specification(params)
 
         return cls(id=id, participants=participants, geofence=geofence)

@@ -4,9 +4,17 @@ according to the server, expressed as the number of seconds elapsed since
 the Unix epoch, in UTC.
 """
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from trio import sleep_forever
 
+from flockwave.server.ext.clocks import ClocksExtensionAPI
 from flockwave.server.model import ClockBase
+
+if TYPE_CHECKING:
+    from flockwave.server.app import SkybrushServer
 
 
 class SystemClock(ClockBase):
@@ -39,9 +47,10 @@ class SystemClock(ClockBase):
         return 1
 
 
-async def run(app):
+async def run(app: SkybrushServer):
     """Runs the extension."""
-    with app.import_api("clocks").use_clock(SystemClock()):
+    clocks = app.import_api("clocks", ClocksExtensionAPI)
+    with clocks.use_clock(SystemClock()):
         await sleep_forever()
 
 

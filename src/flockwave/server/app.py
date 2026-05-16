@@ -60,7 +60,7 @@ __all__ = ("app",)
 
 PACKAGE_NAME = __name__.rpartition(".")[0]
 
-UAV_COMMAND_HANDLERS: dict[str, tuple[str, MessageBodyTransformationSpec]] = {
+UAV_COMMAND_HANDLERS: dict[str, tuple[str, MessageBodyTransformationSpec | None]] = {
     "LOG-DATA": ("get_log", rename_keys({"logId": "log_id"})),
     "LOG-INF": ("get_log_list", None),
     "OBJ-CMD": ("send_command", None),
@@ -1054,7 +1054,7 @@ class SkybrushServer(DaemonApp):
             status: the status object corresponding to the command whose
                 execution has just finished.
         """
-        body = {"type": "ASYNC-RESP", "id": status.id}
+        body: dict[str, Any] = {"type": "ASYNC-RESP", "id": status.id}
 
         if status.error:
             body["error"] = (
@@ -1081,7 +1081,7 @@ class SkybrushServer(DaemonApp):
             status: the status object corresponding to the command whose
                 execution has just finished.
         """
-        body = {
+        body: dict[str, Any] = {
             "type": "ASYNC-ST",
             "id": status.id,
             "progress": status.progress.json,  # type: ignore

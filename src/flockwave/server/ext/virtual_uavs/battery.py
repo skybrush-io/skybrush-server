@@ -41,7 +41,7 @@ class VirtualBattery:
                 charge with some small variation.
             report_percentage: whether the virtual battery reports its charge
                 percentage as well as its voltage
-            auto_rechargin: whether the virtual battery automatically
+            auto_recharging: whether the virtual battery automatically
                 recharges itself when its voltage drops below the minimum
                 voltage
         """

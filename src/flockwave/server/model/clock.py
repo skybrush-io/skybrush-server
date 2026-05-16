@@ -136,7 +136,7 @@ class ClockBase(Clock):
         epoch = self.epoch
         ticks = self.ticks_per_second
         now = time()
-        result = {
+        result: dict[str, str | float | datetime | None] = {
             "id": self.id,
             "retrievedAt": int(now * 1000),
             "ticks": self.ticks_given_time(now),
@@ -148,7 +148,8 @@ class ClockBase(Clock):
             result["ticksPerSecond"] = self.ticks_per_second
         return result
 
-    def _format_epoch(self, epoch: float | None) -> str | datetime | None:
+    @staticmethod
+    def _format_epoch(epoch: float | None) -> str | datetime | None:
         """Returns a formatted copy of the epoch value as it should appear
         in the JSON output.
 
@@ -257,7 +258,7 @@ class TimeElapsedSinceReferenceClock(ClockBase):
             ticks per second
         """
         return (
-            (now - self._reference_time) * 10
+            (now - self._reference_time) * self.ticks_per_second
             if self._reference_time is not None
             else 0.0
         )

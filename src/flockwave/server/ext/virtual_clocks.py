@@ -6,11 +6,20 @@ provide support for starting or stopping the clocks.
 Useful primarily for debugging purposes.
 """
 
+from __future__ import annotations
+
 from contextlib import ExitStack
+from typing import TYPE_CHECKING
 
 from trio import sleep_forever
 
+from flockwave.server.ext.clocks import ClocksExtensionAPI
 from flockwave.server.model.clock import ClockBase
+
+if TYPE_CHECKING:
+    from logging import Logger
+
+    from flockwave.server.app import SkybrushServer
 
 __all__ = ()
 
@@ -35,12 +44,12 @@ class VirtualClock(ClockBase):
         return 10
 
 
-async def run(app, configuration, logger):
+async def run(app: SkybrushServer, configuration, logger: Logger):
     """Runs the main task of the extension."""
-    use_clock = app.import_api("clocks").use_clock
+    clocks = app.import_api("clocks", ClocksExtensionAPI)
     with ExitStack() as stack:
         for clock_id in configuration.get("ids", []):
-            stack.enter_context(use_clock(VirtualClock(id=clock_id)))
+            stack.enter_context(clocks.use_clock(VirtualClock(id=clock_id)))
         await sleep_forever()
 
 

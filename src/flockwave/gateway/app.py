@@ -11,7 +11,7 @@ from flockwave.networking import format_socket_address
 from hypercorn.config import Config as HyperConfig
 from hypercorn.trio import serve
 from jwt import decode
-from trio import Nursery, current_time, open_nursery, sleep
+from trio import current_time, sleep
 
 from flockwave.server.utils.packaging import is_packaged
 
@@ -62,12 +62,11 @@ class SkybrushGatewayServer(DaemonApp):
             scheme = "https" if self._is_listening_securely() else "http"
             return f"{scheme}://{host}:{port}"
 
-    async def run(self) -> None:
-        async with open_nursery() as nursery:
-            nursery.start_soon(self.worker_manager.run)
-            await self._serve(nursery)
+    async def ready(self) -> None:
+        self.run_in_background(self.worker_manager.run)
+        self.run_in_background(self._serve)
 
-    def validate_jwt_token(self, token: str) -> None:
+    def validate_jwt_token(self, token: str) -> dict[str, Any]:
         secret = self.config.get("JWT_SECRET")
         if not secret:
             raise ValueError("no JWT secret was configured")
@@ -112,7 +111,7 @@ class SkybrushGatewayServer(DaemonApp):
         self.worker_manager.max_count = config.get("MAX_WORKERS", 1)
         self.worker_manager.worker_config_factory = self._create_worker_config
 
-    async def _serve(self, nursery: Nursery) -> None:
+    async def _serve(self) -> None:
         address = self._get_listening_address()
         if address is None:
             log.warning("HTTP server address is not specified in configuration")
@@ -142,38 +141,35 @@ class SkybrushGatewayServer(DaemonApp):
 
         update_api(self)
 
-        try:
-            while True:
-                log.info(
-                    "Starting {1} server on {0}...".format(
-                        format_socket_address(address), "HTTPS" if secure else "HTTP"
-                    )
+        while True:
+            log.info(
+                "Starting {1} server on {0}...".format(
+                    format_socket_address(address), "HTTPS" if secure else "HTTP"
                 )
+            )
 
-                started_at = current_time()
+            started_at = current_time()
 
-                try:
-                    await serve(asgi_app, config)
-                except Exception:
-                    # Server crashed -- maybe a change in IP address? Let's try
-                    # again if we have not reached the maximum retry count.
-                    if current_time() - started_at >= 5:
-                        retries = 0
+            try:
+                await serve(asgi_app, config)
+            except Exception:
+                # Server crashed -- maybe a change in IP address? Let's try
+                # again if we have not reached the maximum retry count.
+                if current_time() - started_at >= 5:
+                    retries = 0
 
-                    if retries < max_retries:
-                        log.error(
-                            "Server stopped unexpectedly, retrying...",
-                            extra={"telemetry": "ignore"},
-                        )
-                        await sleep(1)
-                        retries += 1
-                    else:
-                        # Re-raise the exception
-                        raise
+                if retries < max_retries:
+                    log.error(
+                        "Server stopped unexpectedly, retrying...",
+                        extra={"telemetry": "ignore"},
+                    )
+                    await sleep(1)
+                    retries += 1
                 else:
-                    break
-        finally:
-            nursery.cancel_scope.cancel()
+                    # Re-raise the exception
+                    raise
+            else:
+                break
 
     def _setup_app_configurator(self, configurator: AppConfigurator) -> None:
         configurator.safe = is_packaged()

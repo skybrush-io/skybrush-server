@@ -17,21 +17,23 @@ from collections.abc import Awaitable, Callable, Iterable, Iterator, Sequence
 from contextlib import ExitStack, contextmanager
 from logging import Logger
 from time import time_ns
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from flockwave.concurrency import Future, race
 from flockwave.connections import (
+    BroadcastAddressOverride,
     Connection,
+    IPAddressAndPort,
     ListenerConnection,
-    UDPListenerConnection,
     create_connection,
 )
-from flockwave.networking import find_interfaces_with_address
+from flockwave.networking import find_interfaces_with_address, format_socket_address
 from trio import move_on_after, open_nursery, to_thread
 from trio.abc import ReceiveChannel
 from trio_util import periodic
 
 from flockwave.server.comm import CommunicationManager
+from flockwave.server.ext.show.time import BinaryTimeAxisConfiguration
 from flockwave.server.model import ConnectionPurpose
 from flockwave.server.utils import nop, overridden
 
@@ -46,13 +48,14 @@ from .rssi import RSSIMode
 from .rtk import RTKCorrectionPacketEncoder
 from .signing import MAVLinkSigningConfiguration
 from .takeoff import MAVLinkScheduledTakeoffManager
+from .time import MAVLinkTimeAxisConfigurationManager
 from .types import (
     MAVLinkMessage,
     MAVLinkMessageMatcher,
+    MAVLinkMessageRoutingTable,
     MAVLinkMessageSpecification,
     MAVLinkNetworkSpecification,
     MAVLinkStatusTextTargetSpecification,
-    spec,
 )
 from .utils import (
     flockwave_severity_from_mavlink_severity,
@@ -112,7 +115,13 @@ class MAVLinkNetwork:
     system ID was specified).
     """
 
-    _routing: dict[str, list[int]]
+    _routing: MAVLinkMessageRoutingTable
+    """Dictionary that specifies which link should be used for certain types of
+    packets. The keys of the dictionary are the packet types; the values are
+    the indices of the connections to use for sending that particular packet
+    type. Not including a particular packet type in the dictionary will let the
+    system choose the link on its own.
+    """
 
     _rssi_mode: RSSIMode
     """Specifies how this network derives RSSI values for the drones in the
@@ -184,7 +193,7 @@ class MAVLinkNetwork:
         id_formatter: Callable[[int, str], str] = "{0}".format,
         packet_loss: float = 0,
         statustext_targets: MAVLinkStatusTextTargetSpecification = MAVLinkStatusTextTargetSpecification.DEFAULT,
-        routing: dict[str, list[int]] | None = None,
+        routing: MAVLinkMessageRoutingTable | None = None,
         rssi_mode: RSSIMode = RSSIMode.RADIO_STATUS,
         signing: MAVLinkSigningConfiguration = MAVLinkSigningConfiguration.DISABLED,
         uav_system_id_offset: int = 0,
@@ -253,6 +262,9 @@ class MAVLinkNetwork:
             self
         )
         self._scheduled_takeoff_manager = MAVLinkScheduledTakeoffManager(self)
+        self._time_axis_configuration_manager = MAVLinkTimeAxisConfigurationManager(
+            self
+        )
         self._rtk_correction_packet_encoder = RTKCorrectionPacketEncoder()
 
     def add_connection(self, connection: Connection):
@@ -336,6 +348,12 @@ class MAVLinkNetwork:
                 network manager wishes to register a connection in the
                 application
         """
+        # propagate logger to all handled processes that did not receive it
+        # through the init process properly
+        self.log = log
+        self._scheduled_takeoff_manager._log = log
+        self._time_axis_configuration_manager._log = log
+
         if len(self._connections) > 1:
             if self.id:
                 id_format = "{0}/{1}"
@@ -423,10 +441,12 @@ class MAVLinkNetwork:
 
             async with open_nursery() as nursery:
                 # Start background tasks that check the configured start times
-                # on the drones at regular intervals and that take care of
+                # on the drones at regular intervals, that take care of
                 # broadcasting the current light configuration to the drones
+                # and that manage the show time axis configuration updates
                 nursery.start_soon(self._scheduled_takeoff_manager.run)
                 nursery.start_soon(self._led_light_configuration_manager.run)
+                nursery.start_soon(self._time_axis_configuration_manager.run)
 
                 # Start the communication manager
                 try:
@@ -456,38 +476,12 @@ class MAVLinkNetwork:
         """
         await self.manager.broadcast_packet(spec, destination=channel)
 
-    def enqueue_rc_override_packet(self, channels: list[int]) -> None:
-        """Handles a list of a RC channels that the server wishes to forward
-        to the drones as RC override.
-
-        Parameters:
-            channels: the values of the RC channels to send in a MAVLink
-                `RC_CHANNELS_OVERRIDE` message
+    def enqueue_rc_override_packet(self, spec: MAVLinkMessageSpecification) -> None:
+        """Enqueues a message containing a MAVLink RC override packet to the network,
+        handling failures gracefully.
         """
-        message = spec.rc_channels_override(
-            target_system=0,
-            target_component=0,
-            chan1_raw=channels[0],
-            chan2_raw=channels[1],
-            chan3_raw=channels[2],
-            chan4_raw=channels[3],
-            chan5_raw=channels[4],
-            chan6_raw=channels[5],
-            chan7_raw=channels[6],
-            chan8_raw=channels[7],
-            chan9_raw=channels[8],
-            chan10_raw=channels[9],
-            chan11_raw=channels[10],
-            chan12_raw=channels[11],
-            chan13_raw=channels[12],
-            chan14_raw=channels[13],
-            chan15_raw=channels[14],
-            chan16_raw=channels[15],
-            chan17_raw=channels[16],
-            chan18_raw=channels[17],
-        )
         self.manager.enqueue_broadcast_packet(
-            message, destination=Channel.RC, allow_failure=True
+            spec, destination=Channel.RC, allow_failure=True
         )
 
     def enqueue_rtk_correction_packet(self, packet: bytes) -> None:
@@ -529,6 +523,14 @@ class MAVLinkNetwork:
         adjusted in the system.
         """
         self._scheduled_takeoff_manager.notify_start_time_changed(start_time)
+
+    def notify_show_time_axis_config_changed(
+        self, config: BinaryTimeAxisConfiguration | None
+    ):
+        """Notifies the network that the show time axis configuration was updated
+        in the system.
+        """
+        self._time_axis_configuration_manager.notify_time_axis_config_changed(config)
 
     @property
     def num_uavs(self) -> int:
@@ -768,6 +770,7 @@ class MAVLinkNetwork:
         handlers = {
             "AUTOPILOT_VERSION": self._handle_message_autopilot_version,
             "BAD_DATA": nop,
+            "BATTERY_STATUS": self._handle_message_battery_status,
             "COMMAND_ACK": nop,
             "COMMAND_LONG": self._handle_message_command_long,
             "DATA16": self._handle_message_data,
@@ -798,6 +801,9 @@ class MAVLinkNetwork:
             "POSITION_TARGET_GLOBAL_INT": nop,
             "POWER_STATUS": nop,
             "RADIO_STATUS": radio_status_handler,
+            "SCALED_IMU": self._handle_message_scaled_imu,  # common handler for all IMUs
+            "SCALED_IMU2": self._handle_message_scaled_imu,  # common handler for all IMUs
+            "SCALED_IMU3": self._handle_message_scaled_imu,  # common handler for all IMUs
             "STATUSTEXT": self._handle_message_statustext,
             "SYS_STATUS": self._handle_message_sys_status,
             "TIMESYNC": self._handle_message_timesync,
@@ -858,7 +864,7 @@ class MAVLinkNetwork:
                     # the future twice
                     continue
                 elif callable(params):
-                    matched = params(message)
+                    matched = params(message)  # ty:ignore[call-top-callable]
                 elif params is None:
                     matched = True
                 else:
@@ -891,6 +897,14 @@ class MAVLinkNetwork:
         uav = self._find_uav_from_message(message, address)
         if uav:
             uav.handle_message_autopilot_version(message)
+
+    def _handle_message_battery_status(
+        self, message: MAVLinkMessage, *, connection_id: str, address: Any
+    ):
+        """Handles an incoming MAVLink BATTERY_STATUS message."""
+        uav = self._find_uav_from_message(message, address)
+        if uav:
+            uav.handle_message_battery_status(message)
 
     def _handle_message_command_long(
         self, message: MAVLinkMessage, *, connection_id: str, address: Any
@@ -974,6 +988,14 @@ class MAVLinkNetwork:
         uav = self._find_uav_from_message(message, address)
         if uav:
             uav.handle_message_radio_status(message)
+
+    def _handle_message_scaled_imu(
+        self, message: MAVLinkMessage, *, connection_id: str, address: Any
+    ):
+        """Handles an incoming MAVLink SCALED_IMU, SCALED_IMU2 or SCALED_IMU3 message."""
+        uav = self._find_uav_from_message(message, address)
+        if uav:
+            uav.handle_message_scaled_imu(message)
 
     def _handle_message_statustext(
         self, message: MAVLinkMessage, *, connection_id: str, address: Any
@@ -1117,12 +1139,19 @@ class MAVLinkNetwork:
         if channels:
             log.info(f"Routing RTK corrections to {channels}", extra=extra)
 
-        # Register the RTK channel according to the routing setup
+        # Register the RC override channel according to the routing setup
         channels = format_channel_ids(
             register_by_index(Channel.RC, self._routing.get("rc"))
         )
         if channels:
             log.info(f"Routing RC overrides to {channels}", extra=extra)
+
+        # Register the drone show conrol channel according to the routing setup
+        channels = format_channel_ids(
+            register_by_index(Channel.SHOW_CONTROL, self._routing.get("show"))
+        )
+        if channels:
+            log.info(f"Routing show control packets to {channels}", extra=extra)
 
     async def _update_broadcast_address_of_channel_to_subnet(
         self, connection_id: str, address: tuple[str, int], timeout: float = 1
@@ -1141,56 +1170,63 @@ class MAVLinkNetwork:
         with move_on_after(timeout):
             subnets = await to_thread.run_sync(find_interfaces_with_address, ip)
 
+        if not subnets:
+            self.log.warning(
+                f"Failed to update broadcast address to a subnet-specific one: no "
+                f"subnets found for address: {format_socket_address(address)}"
+            )
+            return
+
         success = False
-        if subnets:
-            interface, subnet = subnets[0]
-            # HACK HACK HACK this is an ugly temporary fix; we are reaching into
-            # the internals of self.manager, which we shouldn't do
-            for entries in self.manager._entries_by_name.values():
-                for entry in entries:
-                    if entry.channel and entry.name == connection_id:
-                        broadcast_address = subnet.broadcast_address
-                        if str(broadcast_address) == "127.255.255.255":
-                            # We are on localhost, so just keep on using localhost
-                            broadcast_address = "127.0.0.1"
+        interface, subnet = subnets[0]
+        # HACK HACK HACK this is an ugly temporary fix; we are reaching into
+        # the internals of self.manager, which we shouldn't do
+        for entries in self.manager._entries_by_name.values():
+            for entry in entries:
+                if entry.channel and entry.name == connection_id:
+                    broadcast_address = subnet.broadcast_address
+                    if str(broadcast_address) == "127.255.255.255":
+                        # We are on localhost, so just keep on using localhost
+                        broadcast_address = "127.0.0.1"
 
-                        # Try to figure out the current broadcast address of the channel
-                        # TODO(ntamas): this should be sorted out in the future
-                        old_broadcast_address = getattr(
-                            entry.channel, "broadcast_address", None
+                    # Try to figure out the current broadcast address of the channel
+                    # TODO(ntamas): this should be sorted out in the future
+                    old_broadcast_address = getattr(
+                        entry.channel, "broadcast_address", None
+                    )
+                    if old_broadcast_address is None:
+                        connection = getattr(entry, "connection", None)
+                        if connection:
+                            old_broadcast_address = getattr(
+                                connection, "broadcast_address", None
+                            )
+
+                    if (
+                        old_broadcast_address
+                        and isinstance(old_broadcast_address, tuple)
+                        and len(old_broadcast_address) == 2
+                    ):
+                        # Keep the port, update the address only
+                        broadcast_port = old_broadcast_address[1]
+                    else:
+                        # Hmmm, let's just assume that the source port of this packet is okay
+                        broadcast_port = port
+
+                    conn = entry.connection
+                    if isinstance(conn, BroadcastAddressOverride):
+                        conn = cast("BroadcastAddressOverride[IPAddressAndPort]", conn)
+                        conn.set_user_defined_broadcast_address(
+                            (
+                                str(broadcast_address),
+                                broadcast_port,
+                            )
                         )
-                        if old_broadcast_address is None:
-                            connection = getattr(entry, "connection", None)
-                            if connection:
-                                old_broadcast_address = getattr(
-                                    connection, "broadcast_address", None
-                                )
-
-                        if (
-                            old_broadcast_address
-                            and isinstance(old_broadcast_address, tuple)
-                            and len(old_broadcast_address) == 2
-                        ):
-                            # Keep the port, update the address only
-                            broadcast_port = old_broadcast_address[1]
-                        else:
-                            # Hmmm, let's just assume that the source port of this packet is okay
-                            broadcast_port = port
-
-                        conn = entry.connection
-                        if isinstance(conn, UDPListenerConnection):
-                            conn.set_user_defined_broadcast_address(
-                                (
-                                    str(broadcast_address),
-                                    broadcast_port,
-                                )
-                            )
-                            self.log.info(
-                                f"Broadcast address updated to {broadcast_address}:{broadcast_port} "
-                                f"({interface})",
-                                extra={"id": connection_id},
-                            )
-                            success = True
+                        self.log.info(
+                            f"Broadcast address updated to {broadcast_address}:{broadcast_port} "
+                            f"({interface})",
+                            extra={"id": connection_id},
+                        )
+                        success = True
 
         if not success:
             self.log.warning(

@@ -37,7 +37,7 @@ def create_test_command_handler(
     """
     supported = set(supported_components)
 
-    options = "|".join(sorted(supported))
+    options = " | ".join(sorted(supported))
     help_text = f"Usage: test <{options}>"
 
     async def _test_command_handler(

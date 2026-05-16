@@ -31,12 +31,12 @@ class KpIndexData:
     max_timestamp: int
     """Largest UNIX timestamp for which we have a valid Kp-index estimate."""
 
-    _timestamps: list[int]
+    _timestamps: Sequence[int]
     """Sorted list of timestamps; each timestamp refers to
     the midpoint of an interval for which we have a Kp-index estimate.
     """
 
-    _values: list[float]
+    _values: Sequence[float]
     """List of Kp-index values, one value for each timestamp in the timestamp
     array.
     """

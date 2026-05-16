@@ -1,13 +1,13 @@
 """Classes representing various Skybrush show file formats."""
 
-from collections.abc import AsyncIterable, Awaitable, Callable, Iterable, Sequence
+from collections.abc import Awaitable, Callable, Iterable, Sequence
 from contextlib import aclosing
 from enum import IntEnum, IntFlag
 from functools import partial
 from io import SEEK_END, BytesIO
 from math import floor
 from struct import Struct
-from typing import IO, ClassVar
+from typing import IO, AsyncGenerator, ClassVar, cast
 
 from .trajectory import TrajectorySegment, TrajectorySpecification
 from .utils import Point
@@ -71,6 +71,17 @@ class SkybrushBinaryFormatBlockType(IntEnum):
 class SkybrushBinaryFileBlock:
     """Class representing a single block in a Skybrush binary file."""
 
+    _contents: bytes | None
+    """The contents of the block, or `None` if the block was constructed with an async
+    loader and the loader has not been invoked yet.
+    """
+
+    _loader: Callable[[], Awaitable[bytes]] | None
+    """An optional async function that can be invoked to load the contents of the block
+    from the backing file-like object. This is used to support lazy loading of block
+    contents.
+    """
+
     def __init__(
         self,
         type: int,
@@ -86,7 +97,7 @@ class SkybrushBinaryFileBlock:
         self.type = type
 
         if callable(contents):
-            self._loader = contents
+            self._loader = cast(Callable[[], Awaitable[bytes]], contents)
             self._contents = None
         else:
             self._loader = None
@@ -106,7 +117,9 @@ class SkybrushBinaryFileBlock:
         if self._contents is None and self._loader is not None:
             self._contents = await self._loader()
             self._loader = None
-        return self._contents  # type: ignore
+
+        assert self._contents is not None
+        return self._contents
 
 
 class SkybrushBinaryFileFeatures(IntFlag):
@@ -334,7 +347,7 @@ class SkybrushBinaryShowFile:
 
     async def blocks(
         self, rewind: bool | None = None, validate: bool | None = None
-    ) -> AsyncIterable[SkybrushBinaryFileBlock]:
+    ) -> AsyncGenerator[SkybrushBinaryFileBlock]:
         """Iterates over the blocks found in the file.
 
         Parameters:

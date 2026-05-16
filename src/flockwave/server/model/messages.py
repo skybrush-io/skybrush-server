@@ -1,7 +1,8 @@
 """Flockwave message model classes."""
 
 from collections.abc import Iterable, Sequence
-from typing import Any
+from inspect import isawaitable
+from typing import Any, Awaitable, Callable
 
 from flockwave.spec.schema import get_message_schema
 
@@ -60,6 +61,7 @@ class FlockwaveResponse(FlockwaveMessage):
     """
 
     refs: list[str]
+    _on_sent: list[tuple[Callable[..., None | Awaitable[None]], tuple, dict]]
 
     def __init__(self, *args, **kwds):
         self._on_sent = []
@@ -186,14 +188,16 @@ class FlockwaveResponse(FlockwaveMessage):
         if isinstance(receipts, dict):
             yield from (receipt_id for receipt_id in receipts.values())
 
-    def when_sent(self, func, *args, **kwds):
+    def when_sent(self, func: Callable[..., None | Awaitable[None]], *args, **kwds):
         """Registers a function to be called when the message is sent."""
         self._on_sent.append((func, args, kwds))
 
-    def _notify_sent(self):
+    async def _notify_sent(self) -> None:
         """Notifies the message that it was successfully sent to all the
         clients it should have been sent to. Calls all registered handlers
         in a synchronous manner.
         """
         for func, args, kwds in self._on_sent:
-            func(*args, **kwds)
+            result = func(*args, **kwds)
+            if isawaitable(result):
+                await result

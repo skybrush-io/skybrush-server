@@ -447,7 +447,7 @@ class MAVFTP:
     @classmethod
     def for_uav(cls, uav: MAVLinkUAV):
         """Constructs a MAVFTP connection object to the given UAV."""
-        sender = partial(uav.driver.send_packet, target=uav)
+        sender: UAVBoundPacketSenderFn = partial(uav.driver.send_packet, target=uav)  # ty:ignore[invalid-assignment]
         return cls(sender)
 
     def __init__(self, sender: UAVBoundPacketSenderFn):

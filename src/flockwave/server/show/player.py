@@ -70,7 +70,7 @@ def _create_linear_interpolation_function(
     coeffs = list(zip(diff, start))
 
     def func(ratio: float) -> Point:
-        return tuple(a * ratio + b for a, b in coeffs)
+        return tuple(a * ratio + b for a, b in coeffs)  # ty:ignore[invalid-return-type]
 
     return func
 

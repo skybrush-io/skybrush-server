@@ -78,7 +78,7 @@ class GeofenceManager:
     @classmethod
     def for_uav(cls, uav: MAVLinkUAV):
         """Constructs a MAVFTP connection object to the given UAV."""
-        sender = partial(uav.driver.send_packet, target=uav)
+        sender: UAVBoundPacketSenderFn = partial(uav.driver.send_packet, target=uav)  # ty:ignore[invalid-assignment]
         log = uav.driver.log
         return cls(sender, log=log, uav_id=uav.id)
 

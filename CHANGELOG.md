@@ -5,6 +5,81 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.46.0] - 2026-04-01
+
+### Added
+
+- It is now possible to trigger a collective RTH when the show is suspended.
+
+## [2.45.1] - 2026-03-24
+
+### Fixed
+
+- Compass-motor interference calibration now queries the `RCMAP_THROTTLE` parameter
+  to determine the RC channel index to use for adjusting the throttle during the
+  calibration.
+
+- Fixed a bug in collective RTH plan calculations where the drones were taking off
+  later than T=0. The bug affected only the part of the collective RTH plan before
+  the takeoff itself.
+
+## [2.45.0] - 2026-03-21
+
+### Changed
+
+- High ESC error rates reported by the UAV now received a new, separate error code
+  (`ESC`, numeric value: 142). Earlier versions used the "motor malfunction" error code,
+  which was misleading and also complicated the logic that updated the error codes in
+  the MAVLink extension.
+
+## [2.44.1] - 2026-03-20
+
+### Added
+
+- Added compass-motor interference calibration. This is a potentially dangerous
+  operation as it has to be performed with the propellers attached to the drone,
+  so it is not exposed to the UI of Live yet.
+
+## [2.43.0] - 2026-03-18
+
+### Changed
+
+- Refinements to the suspend, resume and collective RTH functionality, including a
+  change in the format used to store the collective RTH plan on the drone. This is
+  not considered a breaking change because the functionality is still experimental.
+
+## [2.42.0] - 2026-02-24
+
+### Added
+
+- Started adding functionality for warping the time axis of the show to facilitate
+  suspend, resume and collective RTH. Functionality is still experimental.
+
+## [2.41.1] - 2026-02-23
+
+### Changed
+
+- Updated `skybrush-ext-sidekick` dependency, completing the process of allowing
+  Sidekick to transmit show control packets over radio as a redundant link.
+
+## [2.41.0] - 2026-02-23
+
+### Added
+
+- Added a `show` route to the routing configuration of MAVLink networks so the user
+  can now decide which connection(s) to route the drone show control packet to.
+
+- Added a `mavlink:show_control` signal dispatched from the MAVLink extension. This
+  signal can be used by other extensions to subscribe to all show control packets
+  (start time, authorization state, LED lights) that are related to drone show
+  control.
+
+### Fixed
+
+- Fixed a bug that made MAVLink drones return "No version information available"
+  for version queries when their autopilot type was pre-defined in the configuration
+  file.
+
 ## [2.40.3] - 2025-12-27
 
 ### Changed

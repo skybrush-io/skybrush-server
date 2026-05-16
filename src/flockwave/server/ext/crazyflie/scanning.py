@@ -9,7 +9,7 @@ from contextlib import aclosing
 from errno import ENODEV
 from functools import partial
 from time import monotonic
-from typing import TYPE_CHECKING, ClassVar
+from typing import TYPE_CHECKING, AsyncGenerator, ClassVar
 
 from trio import Event, move_on_after, sleep
 from trio.abc import ReceiveChannel, SendChannel
@@ -45,7 +45,7 @@ class Scheduler:
 
     async def run(
         self, addresses: CrazyradioConnection | AddressListGetter
-    ) -> AsyncIterable[list[str] | None]:
+    ) -> AsyncGenerator[list[str] | None]:
         """Runs the scheduler, yielding lists of addresses to scan, or yielding
         `None` when a full scan is requested.
 

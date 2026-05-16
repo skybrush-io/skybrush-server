@@ -32,7 +32,7 @@ def create_calibration_command_handler(
     """
     supported = set(supported_components)
 
-    options = "|".join(sorted(supported))
+    options = " | ".join(sorted(supported))
     help_text = f"Usage: calib <{options}>"
 
     async def _calibration_command_handler(

@@ -1,10 +1,12 @@
+from typing import Any
+
 from .enums import MAVSeverity
 from .rssi import RSSIMode
 
 __all__ = ("schema",)
 
 
-RSSI_MODE_SCHEMA = {
+RSSI_MODE_SCHEMA: dict[str, Any] = {
     "type": "string",
     "enum": [
         RSSIMode.NONE.value,
@@ -99,6 +101,18 @@ NETWORK_PROPERTIES = {
                 "format": "table",
                 "title": "RTK messages",
                 "description": "Indices of the connection where RTK correction messages are routed to (zero-based)",
+                "default": [0],
+                "items": {
+                    "type": "integer",
+                    "default": 0,
+                    "minimum": 0,
+                },
+            },
+            "show": {
+                "type": "array",
+                "format": "table",
+                "title": "Drone show related messages",
+                "description": "Indices of the connections where drone show related messages are routed to (zero-based)",
                 "default": [0],
                 "items": {
                     "type": "integer",

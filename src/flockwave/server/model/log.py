@@ -1,12 +1,12 @@
 from base64 import b64encode
 from enum import Enum
-from typing import Any, Optional
+from typing import Any
 
-from flockwave.server.model.metamagic import ModelMeta
 from flockwave.spec.schema import get_complex_object_schema
 
-from .utils import enum_to_json
+from flockwave.server.model.metamagic import ModelMeta
 
+from .utils import enum_to_json
 
 __all__ = ("LogMessage", "FlightLog", "FlightLogKind", "FlightLogMetadata")
 
@@ -34,8 +34,8 @@ class LogMessage(metaclass=ModelMeta):
         self,
         message: str,
         severity: Severity = Severity.INFO,
-        sender: Optional[str] = None,
-        timestamp: Optional[int] = None,
+        sender: str | None = None,
+        timestamp: int | None = None,
     ):
         self.message = message
         self.severity = severity
@@ -69,16 +69,16 @@ class FlightLogMetadata(metaclass=ModelMeta):
 
     id: str
     kind: FlightLogKind = FlightLogKind.UNKNOWN
-    size: Optional[int] = None
-    timestamp: Optional[int] = None
+    size: int | None = None
+    timestamp: int | None = None
 
     @classmethod
     def create(
         cls,
         id: str,
         kind: FlightLogKind = FlightLogKind.UNKNOWN,
-        size: Optional[int] = None,
-        timestamp: Optional[int] = None,
+        size: int | None = None,
+        timestamp: int | None = None,
     ):
         result = cls()
         result.id = str(id)
@@ -99,8 +99,8 @@ class FlightLog(metaclass=ModelMeta):
 
     id: str
     kind: FlightLogKind = FlightLogKind.UNKNOWN
-    size: Optional[int] = None
-    timestamp: Optional[int] = None
+    size: int | None = None
+    timestamp: int | None = None
     body: Any
 
     @classmethod
@@ -109,8 +109,8 @@ class FlightLog(metaclass=ModelMeta):
         id: str,
         kind: FlightLogKind = FlightLogKind.UNKNOWN,
         body: Any = "",
-        size: Optional[int] = None,
-        timestamp: Optional[int] = None,
+        size: int | None = None,
+        timestamp: int | None = None,
     ):
         result = cls()
         result.id = str(id)

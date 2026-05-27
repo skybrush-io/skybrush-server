@@ -10,8 +10,8 @@ from .formatting import (
 from .generic import (
     chunks,
     clamp,
-    color_to_rgb565,
     color_to_rgb8_triplet,
+    color_to_rgb565,
     consecutive_pairs,
     constant,
     datetime_to_unix_timestamp,

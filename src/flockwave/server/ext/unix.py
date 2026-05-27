@@ -8,19 +8,19 @@ requests on a certain Unix domain socket.
 from __future__ import annotations
 
 import weakref
-
 from contextlib import ExitStack
 from functools import partial
 from logging import Logger
 from pathlib import Path
 from tempfile import gettempdir
-from trio import aclose_forcefully, CapacityLimiter, Lock, open_nursery, SocketStream
-from typing import Any, Generic, Optional, Protocol, TypeVar, TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, Any, Generic, Protocol, TypeVar, cast
 
 from flockwave.channels import ParserChannel
 from flockwave.connections import serve_unix
 from flockwave.encoders.json import create_json_encoder
 from flockwave.parsers.json import create_json_parser
+from trio import CapacityLimiter, Lock, SocketStream, aclose_forcefully, open_nursery
+
 from flockwave.server.model import Client, CommunicationChannel
 from flockwave.server.utils import overridden
 
@@ -103,7 +103,7 @@ class UnixDomainSocketChannel(Generic[T], CommunicationChannel[T]):
 ############################################################################
 
 
-def get_ssdp_location(address: Any) -> Optional[str]:
+def get_ssdp_location(address: Any) -> str | None:
     """Returns the SSDP location descriptor of the Unix domain socket channel.
 
     Parameters:

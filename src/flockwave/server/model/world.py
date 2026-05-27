@@ -1,7 +1,8 @@
 """Representation of the outside world in which the flock of UAVs live."""
 
-from flockwave.gps.vectors import GPSCoordinate
 from typing import Any
+
+from flockwave.gps.vectors import GPSCoordinate
 
 __all__ = ("World",)
 

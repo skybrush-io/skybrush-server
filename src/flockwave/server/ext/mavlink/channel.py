@@ -5,10 +5,10 @@ objects to receive and send MAVLink messages.
 from __future__ import annotations
 
 from collections import defaultdict
+from collections.abc import Iterator
 from contextlib import contextmanager
-from importlib import import_module
 from time import time
-from typing import Any, ClassVar, Iterator, Optional, Protocol, TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, Any, ClassVar, Protocol, cast
 
 from flockwave.channels import (
     BroadcastMessageChannel,
@@ -20,6 +20,7 @@ from flockwave.connections import (
     StreamConnectionBase,
 )
 from flockwave.logger import Logger
+from flockwave.protocols.mavlink.introspection import import_dialect
 
 from .enums import MAVComponent
 from .signing import MAVLinkSigningConfiguration, SignatureTimestampSynchronizer
@@ -29,6 +30,7 @@ if TYPE_CHECKING:
         MinimalMAVLinkFactory,
         MinimalMAVLinkInterface,
     )
+
     from .types import MAVLinkMessage, MAVLinkMessageSpecification
 
 __all__ = (
@@ -61,6 +63,11 @@ class Channel:
     RC: ClassVar[str] = "_rc"
     """Alias of the channel that should be used for sending RC overrides"""
 
+    SHOW_CONTROL: ClassVar[str] = "_show_control"
+    """Alias of the channel that should be used for sending drone show control messages
+    (start time, authorization, time axis etc).
+    """
+
 
 def create_mavlink_message_channel(
     connection: Connection,
@@ -69,7 +76,7 @@ def create_mavlink_message_channel(
     dialect: str = "ardupilotmega",
     network_id: str = "",
     system_id: int = 255,
-    link_ids: Optional[dict[Connection, int]] = None,
+    link_ids: dict[Connection, int] | None = None,
     signing: MAVLinkSigningConfiguration = MAVLinkSigningConfiguration.DISABLED,
 ) -> MessageChannel[tuple[MAVLinkMessage, str], Any]:
     """Creates a bidirectional Trio-style channel that reads data from and
@@ -257,7 +264,6 @@ def _create_stream_based_mavlink_message_channel(
     if not isinstance(connection, StreamConnectionBase):
         raise ConnectionNotSupportedError()
 
-    connection = cast(StreamConnectionBase, connection)
     mavlink = mavlink_factory()
 
     def parser(data: bytes) -> list[tuple[MAVLinkMessage, str]]:
@@ -414,7 +420,7 @@ def _get_mavlink_factory(
         signing: whether outbound messages should be signed and inbound messages
             should be rejectd when unsigned
     """
-    module = import_module(f"flockwave.protocols.mavlink.dialects.v20.{dialect}")
+    module = import_dialect(dialect)
 
     def factory() -> MinimalMAVLinkInterface:
         """Creates a new MAVLink parser and message factory."""

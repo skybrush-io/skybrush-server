@@ -6,27 +6,26 @@ from .channel import CommunicationChannel
 from .client import Client
 from .clock import Clock, ClockBase, StoppableClockBase
 from .commands import CommandExecutionStatus, Progress
-from .connection import ConnectionPurpose, ConnectionInfo, ConnectionStatus
+from .connection import ConnectionInfo, ConnectionPurpose, ConnectionStatus
 from .devices import (
     ChannelNode,
     ChannelOperation,
     ChannelType,
     DeviceClass,
-    DeviceTree,
     DeviceNode,
+    DeviceTree,
     DeviceTreeNodeType,
     DeviceTreeSubscriptionManager,
     ObjectNode,
 )
-from .errors import ClientNotSubscribedError, NoSuchPathError
 from .error_set import ErrorSet
+from .errors import ClientNotSubscribedError, NoSuchPathError
 from .identifiers import default_id_generator
 from .messages import FlockwaveMessage, FlockwaveNotification, FlockwaveResponse
 from .object import ModelObject
-from .uav import PassiveUAVDriver, UAVStatusInfo, UAVDriver, UAV, UAVBase
+from .uav import UAV, PassiveUAVDriver, UAVBase, UAVDriver, UAVStatusInfo
 from .weather import Weather
 from .world import World
-
 
 __all__ = (
     "default_id_generator",

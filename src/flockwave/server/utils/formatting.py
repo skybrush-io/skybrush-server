@@ -1,7 +1,8 @@
 """Formatting-related utility functions."""
 
+from collections.abc import Callable, Sequence
 from datetime import datetime, timedelta
-from typing import Callable, Sequence, TypeVar, Union
+from typing import TypeVar
 
 from flockwave.gps.formatting import format_gps_coordinate
 
@@ -48,16 +49,16 @@ def format_number_nicely(value: float) -> str:
     return f"{value:.7f}".rstrip("0").rstrip(".")
 
 
-def format_timedelta_nicely(delta: Union[float, timedelta]) -> str:
+def format_timedelta_nicely(delta: float | timedelta) -> str:
     """Formats a Python timedelta object or a float containing seconds; the
     result will be separated into hours, minutes and seconds.
     """
     dt = delta.total_seconds() if isinstance(delta, timedelta) else delta
     sign = "-" if dt < 0 else ""
-    minutes, seconds = divmod(abs(dt), 60)
+    minutes, seconds = divmod(abs(float(dt)), 60)
     minutes = int(minutes)
     hours, minutes = divmod(minutes, 60)
-    seconds = round(seconds, 3)
+    seconds = float(round(seconds, 3))
     maybe_zero = "0" if seconds < 10 else ""
     if seconds.is_integer():
         seconds = int(seconds)
@@ -66,7 +67,7 @@ def format_timedelta_nicely(delta: Union[float, timedelta]) -> str:
         return f"{sign}{hours:02}:{minutes:02}:{maybe_zero}{seconds:.3}"
 
 
-def format_timestamp_nicely(timestamp: Union[float, datetime]) -> str:
+def format_timestamp_nicely(timestamp: float | datetime) -> str:
     """Formats a UNIX timestamp or a Python datetime object nicely, including
     the date part of the timestamp as well.
     """

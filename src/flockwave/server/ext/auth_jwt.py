@@ -2,6 +2,10 @@
 server.
 """
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from jwt import decode
 from jwt.exceptions import (
     ExpiredSignatureError,
@@ -12,14 +16,25 @@ from jwt.exceptions import (
 )
 from trio import sleep_forever
 
+from flockwave.server.ext.auth import AuthenticationExtensionAPI
 from flockwave.server.model.authentication import (
     AuthenticationMethod,
     AuthenticationResult,
 )
+from flockwave.server.model.client import Client
+
+if TYPE_CHECKING:
+    from flockwave.server.app import SkybrushServer
 
 
 class JWTAuthentication(AuthenticationMethod):
-    def __init__(self, algorithms, secret, issuer=None, audience=None):
+    def __init__(
+        self,
+        algorithms: list[str],
+        secret: str,
+        issuer: str | None = None,
+        audience: str | None = None,
+    ):
         """Constructor.
 
         Parameters:
@@ -41,14 +56,15 @@ class JWTAuthentication(AuthenticationMethod):
     def id(self):
         return "jwt"
 
-    def authenticate(self, client, data):
-        params = {"issuer": self._issuer, "algorithms": self._algorithms}
-
-        if self._audience is not None:
-            params["audience"] = self._audience
-
+    def authenticate(self, client: Client, data: str) -> AuthenticationResult:
         try:
-            decoded = decode(data, self._secret, **params)
+            decoded = decode(
+                data,
+                self._secret,
+                issuer=self._issuer,
+                algorithms=self._algorithms,
+                audience=self._audience,
+            )
         except ExpiredSignatureError:
             return AuthenticationResult.failure(reason="JWT token expired")
         except InvalidAudienceError:
@@ -73,7 +89,7 @@ class JWTAuthentication(AuthenticationMethod):
         return AuthenticationResult.success(username)
 
 
-async def run(app, configuration):
+async def run(app: SkybrushServer, configuration):
     secret = configuration.get("secret")
     if secret is None:
         raise ValueError("JWT shared secret must be specified")
@@ -84,7 +100,7 @@ async def run(app, configuration):
         audience=configuration.get("audience"),
         issuer=configuration.get("issuer"),
     )
-    with app.import_api("auth").use(auth):
+    with app.import_api("auth", AuthenticationExtensionAPI).use(auth):
         await sleep_forever()
 
 

@@ -1,12 +1,13 @@
-from inspect import isawaitable, isasyncgen
+from __future__ import annotations
+
+from collections.abc import Callable, Iterable
+from inspect import isasyncgen, isawaitable
 from typing import (
-    Any,
-    Callable,
-    Iterable,
-    Optional,
-    Union,
-    TypeVar,
     TYPE_CHECKING,
+    Any,
+    MutableMapping,
+    Protocol,
+    TypeVar,
     overload,
 )
 
@@ -32,16 +33,23 @@ __all__ = (
 
 C = TypeVar("C")
 T = TypeVar("T")
+U = TypeVar("U")
+M = TypeVar("M", bound=MutableMapping[str, Any])
 
-GenericMapperMessageFactory = Callable[
-    ["MessageHub", Iterable[str], Optional[FlockwaveMessage], Optional[Client]],
-    Union[FlockwaveNotification, FlockwaveResponse],
-]
-"""Type alias for SOMETHING-INF-style Flockwave message factory functions"""
 
-MessageBodyTransformationSpec = Union[
-    Callable[[Any], Any], dict[str, Callable[[Any], Any]], None
-]
+class GenericMapperMessageFactory(Protocol):
+    """Type alias for SOMETHING-INF-style Flockwave message factory functions"""
+
+    def __call__(
+        self,
+        hub: MessageHub,
+        ids: Iterable[str],
+        in_response_to: FlockwaveMessage | None = None,
+        sender: Client | None = None,
+    ) -> FlockwaveNotification | FlockwaveResponse: ...
+
+
+MessageBodyTransformationSpec = Callable[[M], U] | dict[str, Callable[[M], U]]
 """Type alias for objects that specify how to transform the body of a
 message before it is forwarded to a command handler function.
 
@@ -51,57 +59,53 @@ to the command handler instead of the original message body, or may be
 a dictionary mapping keys to functions, in which case the values corresponding
 to the keys in the message body will be mapped individually according to the
 functions specified in the dictionary.
-
-The transformation object may also be ``None``, representing the identity
-transformation.
 """
 
-RegistryOrRegistryGetter = Union[Registry[T], Callable[[], Optional[Registry[T]]], None]
-"""Type alias for registries or getter functions that return a registry when called
-with no arguments.
+RegistryGetter = Callable[[], Registry[T]]
+"""Type alias for functions that return a registry when called with no arguments.
 """
 
 
 @overload
 def create_mapper(
     type: str,
-    registry_or_registry_getter: RegistryOrRegistryGetter[T],
+    registry_or_registry_getter: Registry[T] | RegistryGetter[T],
     *,
-    context_getter: Callable[[Optional[FlockwaveMessage]], C],
+    context_getter: Callable[[FlockwaveMessage | None], C],
     key: str = "result",
-    filter: Optional[Callable[[T], bool]] = None,
-    getter: Optional[Callable[[T, C], Any]] = None,
+    filter: Callable[[T], bool] | None = None,
+    getter: Callable[[T, C], Any] | None = None,
     description: str = "item",
     add_object_id: bool = False,
-    cmd_manager: Optional["CommandExecutionManager"] = None,
+    cmd_manager: CommandExecutionManager | None = None,
 ) -> GenericMapperMessageFactory: ...
 
 
 @overload
 def create_mapper(
     type: str,
-    registry_or_registry_getter: RegistryOrRegistryGetter[T],
+    registry_or_registry_getter: Registry[T] | RegistryGetter[T],
     *,
     key: str = "result",
-    filter: Optional[Callable[[T], bool]] = None,
-    getter: Optional[Callable[[T], Any]] = None,
+    filter: Callable[[T], bool] | None = None,
+    getter: Callable[[T], Any] | None = None,
     description: str = "item",
     add_object_id: bool = False,
-    cmd_manager: Optional["CommandExecutionManager"] = None,
+    cmd_manager: CommandExecutionManager | None = None,
 ) -> GenericMapperMessageFactory: ...
 
 
 def create_mapper(
     type: str,
-    registry_or_registry_getter: RegistryOrRegistryGetter[T],
+    registry_or_registry_getter: Registry[T] | RegistryGetter[T],
     *,
-    context_getter: Optional[Callable[[Optional[FlockwaveMessage]], C]] = None,
+    context_getter: Callable[[FlockwaveMessage | None], C] | None = None,
     key: str = "result",
-    filter: Optional[Callable[[T], bool]] = None,
-    getter: Optional[Union[Callable[[T], Any], Callable[[T, C], Any]]] = None,
+    filter: Callable[[T], bool] | None = None,
+    getter: Callable[[T], Any] | Callable[[T, C], Any] | None = None,
     description: str = "item",
     add_object_id: bool = False,
-    cmd_manager: Optional["CommandExecutionManager"] = None,
+    cmd_manager: CommandExecutionManager | None = None,
 ) -> GenericMapperMessageFactory:
     """Creates a standard SOMETHING-INF or SOMETHING-PROPS-style Flockwave
     message factory function.
@@ -181,15 +185,21 @@ def create_mapper(
     Returns:
         the message handler function
     """
-    registry_is_deferred = callable(registry_or_registry_getter)
+    fixed_registry: Registry[T] | None = None
+    registry_getter: RegistryGetter[T] | None = None
+    if isinstance(registry_or_registry_getter, Registry):
+        fixed_registry = registry_or_registry_getter
+    else:
+        registry_getter = registry_or_registry_getter
+
     has_context = context_getter is not None
 
     def factory(
         hub: "MessageHub",
         ids: Iterable[str],
-        in_response_to: Optional[FlockwaveMessage] = None,
-        sender: Optional[Client] = None,
-    ) -> Union[FlockwaveNotification, FlockwaveResponse]:
+        in_response_to: FlockwaveMessage | None = None,
+        sender: Client | None = None,
+    ) -> FlockwaveNotification | FlockwaveResponse:
         results = {}
 
         body: dict[str, Any] = {
@@ -200,11 +210,10 @@ def create_mapper(
             body=body, in_response_to=in_response_to
         )
 
-        registry: Registry[T] = (
-            registry_or_registry_getter()  # type: ignore
-            if registry_is_deferred
-            else registry_or_registry_getter
-        )
+        registry = registry_getter() if registry_getter is not None else fixed_registry
+        assert (
+            registry is not None
+        )  # because either registry_getter or fixed_registry is not None
 
         # Determine the context if needed
         context_error = None
@@ -282,7 +291,7 @@ def create_mapper(
                     raise RuntimeError("async getters not supported for notifications")
             else:
                 if add_object_id and getter and isinstance(result, dict):
-                    result["id"] = object_id
+                    result["id"] = object_id  # ty:ignore[invalid-assignment]
                 results[object_id] = result
 
         return response
@@ -321,8 +330,8 @@ def create_multi_object_message_handler(
 
 
 def create_object_listing_request_handler(
-    registry_or_registry_getter: RegistryOrRegistryGetter[T],
-    predicate: Optional[Callable[[T], bool]] = None,
+    registry_or_registry_getter: Registry[T] | RegistryGetter[T],
+    predicate: Callable[[T], bool] | None = None,
 ) -> "MessageHandler":
     """Creates a standard SOMETHING-LIST-style Flockwave message factory
     function that lists the IDs of all objects from a registry, optionally
@@ -339,7 +348,12 @@ def create_object_listing_request_handler(
     Returns:
         the message factory function
     """
-    registry_is_deferred = callable(registry_or_registry_getter)
+    fixed_registry: Registry[T] | None = None
+    registry_getter: RegistryGetter[T] | None = None
+    if isinstance(registry_or_registry_getter, Registry):
+        fixed_registry = registry_or_registry_getter
+    else:
+        registry_getter = registry_or_registry_getter
 
     if predicate is not None:
         # Filtered case
@@ -348,11 +362,12 @@ def create_object_listing_request_handler(
             sender: "Client",
             hub: "MessageHub",
         ):
-            registry: Registry[T] = (
-                registry_or_registry_getter()  # type: ignore
-                if registry_is_deferred
-                else registry_or_registry_getter
+            registry = (
+                registry_getter() if registry_getter is not None else fixed_registry
             )
+            assert (
+                registry is not None
+            )  # because either registry_getter or fixed_registry is not None
             return {"ids": list(registry.ids_matching(predicate))}
 
     else:
@@ -362,19 +377,30 @@ def create_object_listing_request_handler(
             sender: "Client",
             hub: "MessageHub",
         ):
-            registry: Registry[T] = (
-                registry_or_registry_getter()  # type: ignore
-                if registry_is_deferred
-                else registry_or_registry_getter
+            registry = (
+                registry_getter() if registry_getter is not None else fixed_registry
             )
+            assert (
+                registry is not None
+            )  # because either registry_getter or fixed_registry is not None
             return {"ids": list(registry.ids)}
 
     return handler
 
 
+@overload
+def transform_message_body(transformer: None, body: M) -> M: ...
+
+
+@overload
 def transform_message_body(
-    transformer: MessageBodyTransformationSpec, body: dict[str, Any]
-) -> dict[str, Any]:
+    transformer: MessageBodyTransformationSpec[M, U], body: M
+) -> U: ...
+
+
+def transform_message_body(
+    transformer: MessageBodyTransformationSpec[M, U] | None, body: M
+) -> M | U:
     """Helper function that executes the given transformation specification
     on the given message body.
 
@@ -393,12 +419,14 @@ def transform_message_body(
     if transformer is None:
         return body
 
-    if callable(transformer):
+    if not isinstance(transformer, dict):
         return transformer(body)
 
     for parameter_name, func in transformer.items():
         if parameter_name in body:
+            assert isinstance(parameter_name, str)
+            assert callable(func)
             value = body[parameter_name]
-            body[parameter_name] = func(value)
+            body[parameter_name] = func(value)  # ty:ignore[call-top-callable]
 
     return body

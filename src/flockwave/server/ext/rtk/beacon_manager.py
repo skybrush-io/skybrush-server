@@ -1,7 +1,8 @@
+from collections.abc import Callable, Iterable, Iterator
 from contextlib import ExitStack, contextmanager
 from functools import partial
 from itertools import count
-from typing import Callable, ClassVar, Iterable, Iterator, TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, ClassVar
 
 from flockwave.concurrency import Watchdog
 from flockwave.gps.rtcm.packets import RTCMPacket, RTCMV3StationaryAntennaPacket
@@ -32,7 +33,7 @@ class RTKBeaconManager:
     _counter: Iterator[int]
     _parser: Callable[[bytes], Iterable[RTCMPacket]]
     _trans: ECEFToGPSCoordinateTransformation = ECEFToGPSCoordinateTransformation()
-    _watchdog: Optional[Watchdog] = None
+    _watchdog: Watchdog | None = None
 
     def __init__(self) -> None:
         self._counter = count()
@@ -98,9 +99,9 @@ class RTKBeaconManager:
         encoded = packet
         try:
             for packet in self._parser(encoded):
-                if isinstance(packet, RTCMV3StationaryAntennaPacket):  # type: ignore
+                if isinstance(packet, RTCMV3StationaryAntennaPacket):
                     beacon.update_status(
-                        position=self._trans.to_gps(packet.position),  # type: ignore
+                        position=self._trans.to_gps(packet.position),
                         active=True,
                     )
                     if self._watchdog:

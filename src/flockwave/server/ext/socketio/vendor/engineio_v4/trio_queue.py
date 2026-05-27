@@ -1,6 +1,6 @@
 from math import inf
 from trio import Cancelled, Event, open_memory_channel, WouldBlock
-from typing import Generic, Optional, TypeVar
+from typing import Generic, TypeVar
 
 __all__ = ("TrioQueue",)
 
@@ -12,7 +12,7 @@ class TrioQueue(Generic[T]):
     standard Python queues.
     """
 
-    _join_event: Optional[Event]
+    _join_event: Event | None
     _maxsize: float
     _tasks_pending: int
 

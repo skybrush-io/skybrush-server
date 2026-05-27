@@ -2,9 +2,8 @@
 preferably single-file application.
 """
 
-from functools import lru_cache
-
 import sys
+from functools import lru_cache
 
 __all__ = ("is_oxidized", "is_packaged", "is_packaged_with_pyinstaller")
 

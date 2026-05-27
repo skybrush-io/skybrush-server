@@ -1,17 +1,15 @@
 from __future__ import annotations
 
 from struct import Struct
-from typing import Optional
-
-from flockwave.server.tasks.led_lights import (
-    LEDLightConfigurationManagerBase,
-    LightConfiguration,
-    LightEffectType,
-)
 
 from flockwave.server.ext.crazyflie.crtp_extensions import (
     DRONE_SHOW_PORT,
     DroneShowCommand,
+)
+from flockwave.server.tasks.led_lights import (
+    LEDLightConfigurationManagerBase,
+    LightConfiguration,
+    LightEffectType,
 )
 
 from .connection import BroadcasterFunction
@@ -34,9 +32,7 @@ class CrazyflieLEDLightConfigurationManager(LEDLightConfigurationManagerBase[byt
         super().__init__()
         self._broadcaster = broadcaster
 
-    def _create_light_control_packet(
-        self, config: LightConfiguration
-    ) -> Optional[bytes]:
+    def _create_light_control_packet(self, config: LightConfiguration) -> bytes | None:
         """Creates a CRTP message payload for the message that we need to
         send to all the drones in order to instruct them to do the current light
         effect.

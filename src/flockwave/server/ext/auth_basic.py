@@ -6,26 +6,36 @@ sent on an encrypted channel. Make sure that the channels provided by the
 server are secure if you are using this extension for authentication.
 """
 
+from __future__ import annotations
+
 from base64 import b64decode
+from collections.abc import Callable, Mapping
 from enum import Enum
 from pathlib import Path
-from trio import sleep_forever
-from typing import Callable, Mapping, Optional, Union
+from typing import TYPE_CHECKING
 
+from trio import sleep_forever
+
+from flockwave.server.ext.auth import AuthenticationExtensionAPI
 from flockwave.server.model.authentication import (
     AuthenticationMethod,
     AuthenticationResult,
 )
+from flockwave.server.model.client import Client
 
+if TYPE_CHECKING:
+    from logging import Logger
 
-#: Type specification for a function that compares a password with its hash
+    from flockwave.server.app import SkybrushServer
+
 HashComparator = Callable[[str, str], bool]
+"""Type specification for a function that compares a password with its hash."""
 
-#: Type specification for a password validator function
 PasswordValidator = Callable[[str, str], bool]
+"""Type specification for a password validator function."""
 
-#: Type specification for password validator specification objects
 PasswordValidatorSpecification = dict[str, str]
+"""Type specification for password validator specification objects."""
 
 
 class PasswordDataSourceType(Enum):
@@ -47,7 +57,7 @@ class PasswordDataSourceType(Enum):
 
 
 def create_dict_validator(
-    passwords: Mapping[str, str], compare: Optional[HashComparator] = None
+    passwords: Mapping[str, str], compare: HashComparator | None = None
 ) -> PasswordValidator:
     """Password validator factory that validates passwords from the given
     dictionary.
@@ -73,7 +83,7 @@ def create_dict_validator(
     return validator
 
 
-def create_htpasswd_validator(filename: Union[Path, str]) -> PasswordValidator:
+def create_htpasswd_validator(filename: Path | str) -> PasswordValidator:
     """Password validator factory that validates passwords using the given
     htpasswd file.
 
@@ -84,8 +94,6 @@ def create_htpasswd_validator(filename: Union[Path, str]) -> PasswordValidator:
     Returns:
         an appropriate password validator function
     """
-    global log
-
     from passlib.apache import HtpasswdFile
 
     ht = HtpasswdFile(str(filename))
@@ -189,7 +197,7 @@ class BasicAuthentication(AuthenticationMethod):
         """
         self._validators.append(validator)
 
-    def authenticate(self, client, data):
+    def authenticate(self, client: Client, data: str) -> AuthenticationResult:
         try:
             decoded = b64decode(data.encode("ascii")).decode("utf-8")
         except Exception:
@@ -209,7 +217,7 @@ class BasicAuthentication(AuthenticationMethod):
         return "basic"
 
 
-async def run(app, configuration, logger):
+async def run(app: SkybrushServer, configuration, logger: Logger):
     auth = BasicAuthentication()
     sources = configuration.get("sources", ())
 
@@ -219,7 +227,7 @@ async def run(app, configuration, logger):
         )
 
     for spec in sources:
-        validator: Optional[PasswordValidator] = None
+        validator: PasswordValidator | None = None
 
         try:
             validator = create_validator_from_config(spec)
@@ -236,7 +244,7 @@ async def run(app, configuration, logger):
         if validator:
             auth.add_validator(validator)
 
-    with app.import_api("auth").use(auth):
+    with app.import_api("auth", AuthenticationExtensionAPI).use(auth):
         await sleep_forever()
 
 

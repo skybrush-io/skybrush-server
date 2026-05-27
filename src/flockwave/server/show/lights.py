@@ -3,12 +3,13 @@ Skybrush-related light programs, until we find a better place for them.
 """
 
 from base64 import b64decode
-from typing import Dict
+
+from .specification import ShowSpecification
 
 __all__ = ("get_light_program_from_show_specification",)
 
 
-def get_light_program_from_show_specification(show: Dict) -> bytes:
+def get_light_program_from_show_specification(show: ShowSpecification) -> bytes:
     """Returns the raw Skybrush light program as bytecode from the given
     show specification object.
     """

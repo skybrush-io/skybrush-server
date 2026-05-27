@@ -8,7 +8,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass, field
 from enum import IntFlag
 from time import monotonic
-from typing import Deque, Optional
+from typing import Deque
 
 from flockwave.gps.rtcm.packets import (
     RTCMPacket,
@@ -32,19 +32,19 @@ from .types import GPSPacket
 
 __all__ = ("RTKStatistics",)
 
-#: ECEF-to-GPS transformation used to convert antenna coordinates
 _ecef_to_gps = ECEFToGPSCoordinateTransformation()
+"""ECEF-to-GPS transformation used to convert antenna coordinates."""
 
 
 @dataclass
 class AntennaInformation:
     """Simple data class holding information about the current RTK antenna."""
 
-    station_id: Optional[int] = None
-    descriptor: Optional[str] = None
-    serial_number: Optional[str] = None
-    position: Optional[GPSCoordinate] = None
-    position_ecef: Optional[ECEFCoordinate] = None
+    station_id: int | None = None
+    descriptor: str | None = None
+    serial_number: str | None = None
+    position: GPSCoordinate | None = None
+    position_ecef: ECEFCoordinate | None = None
 
     _antenna_position_timestamp: float = 0.0
 
@@ -59,7 +59,7 @@ class AntennaInformation:
                 RTCMV3StationaryAntennaPacket,
                 RTCMV3AntennaDescriptorPacket,
                 RTCMV3ExtendedAntennaDescriptorPacket,
-            ),  # type: ignore
+            ),
         )
 
     @property
@@ -113,9 +113,17 @@ class AntennaInformation:
 
         position = getattr(packet, "position", None)
         if position is not None:
-            self.position = _ecef_to_gps.to_gps(position)
-            self.position_ecef = position
-            self._antenna_position_timestamp = monotonic()
+            self.set_from_ecef(position)
+
+    def set_from_ecef(self, position: ECEFCoordinate) -> None:
+        """Sets the antenna position from an ECEF coordinate.
+        Computes and stores the corresponding GPS coordinate and refreshes
+        the internal timestamp used to track the age of the last antenna
+        position observation.
+        """
+        self.position = _ecef_to_gps.to_gps(position)
+        self.position_ecef = position
+        self._antenna_position_timestamp = monotonic()
 
     def _forget_old_antenna_position_if_needed(self) -> None:
         """Clears the position of the antenna we have not received another
@@ -199,7 +207,7 @@ class SatelliteCNRs:
         """
         return hasattr(packet, "satellites")
 
-    def add(self, packet: RTCMPacket, timestamp: Optional[float] = None) -> None:
+    def add(self, packet: RTCMPacket, timestamp: float | None = None) -> None:
         """Update the locally stored information about the satellites based on
         the given satellite list retrieved from an RTCM packet.
         """
@@ -424,6 +432,10 @@ class RTKStatistics:
         known survey accuracy.
         """
         self._survey_status.set_to_fixed_with_accuracy(accuracy)
+
+    def set_antenna_position_from_ecef(self, position: ECEFCoordinate) -> None:
+        """Sets the antenna position directly from an ECEF coordinate."""
+        self._antenna_information.set_from_ecef(position)
 
     @contextmanager
     def use(self):

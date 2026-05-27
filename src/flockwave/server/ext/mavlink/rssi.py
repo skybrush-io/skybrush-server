@@ -1,5 +1,4 @@
 from enum import Enum
-from typing import Optional
 
 __all__ = ("RSSIMode", "rtcm_counter_to_rssi")
 
@@ -23,7 +22,7 @@ class RSSIMode(Enum):
     """
 
 
-def rtcm_counter_to_rssi(value: Optional[int]) -> Optional[int]:
+def rtcm_counter_to_rssi(value: int | None) -> int | None:
     """Converts an RTCM message counter to a simulated RSSI value.
 
     The conversion is done as follows:

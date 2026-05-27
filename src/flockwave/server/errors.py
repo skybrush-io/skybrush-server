@@ -1,7 +1,5 @@
 """Common exception classes used in many places throughout the server."""
 
-from typing import Optional
-
 __all__ = ("CommandInvocationError", "FlockwaveError", "NotSupportedError")
 
 
@@ -16,7 +14,7 @@ class CommandInvocationError(FlockwaveError):
     of a remote UAV but failed to parameterize the command properly.
     """
 
-    def __init__(self, message: Optional[str] = None):
+    def __init__(self, message: str | None = None):
         """Constructor.
 
         Parameters:
@@ -33,7 +31,7 @@ class NotSupportedError(FlockwaveError):
     know that the operation is not likely to be implemented in the future.
     """
 
-    def __init__(self, message: Optional[str] = None):
+    def __init__(self, message: str | None = None):
         """Constructor.
 
         Parameters:

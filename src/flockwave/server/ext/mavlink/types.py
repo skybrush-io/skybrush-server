@@ -2,20 +2,17 @@
 
 from __future__ import annotations
 
+from collections.abc import Awaitable, Callable, Iterable, Sequence
 from dataclasses import dataclass, field
 from functools import partial
 from typing import (
+    TYPE_CHECKING,
     Any,
-    Awaitable,
-    Callable,
     ClassVar,
     ContextManager,
-    Iterable,
-    Optional,
+    Literal,
     Protocol,
-    Sequence,
-    Union,
-    TYPE_CHECKING,
+    TypeAlias,
     overload,
 )
 
@@ -32,26 +29,32 @@ if TYPE_CHECKING:
 __all__ = (
     "MAVLinkFlightModeNumbers",
     "MAVLinkMessage",
+    "MAVLinkMessageMatcher",
+    "MAVLinkMessageRoute",
+    "MAVLinkMessageRoutingTable",
     "MAVLinkMessageSpecification",
     "MAVLinkNetworkSpecification",
+    "PacketBroadcasterFn",
+    "PacketSenderFn",
+    "UAVBoundPacketSenderFn",
     "spec",
 )
 
 
-MAVLinkFlightModeNumbers = tuple[int, int, int]
+MAVLinkFlightModeNumbers: TypeAlias = tuple[int, int, int]
 """Type specification for a (base mode, main mode, submode) flight mode triplet
 used in MAVLink.
 """
 
-MAVLinkMessage = Any
+MAVLinkMessage: TypeAlias = Any
 """Type specification for messages parsed by the MAVLink parser. Unfortunately
 we cannot refer to an exact Python class here because that depends on the
 dialect that we will be parsing.
 """
 
-MAVLinkMessageMatcher = Optional[
-    Union[dict[str, Any], Callable[[MAVLinkMessage], bool]]
-]
+MAVLinkMessageMatcher: TypeAlias = (
+    dict[str, Any] | Callable[[MAVLinkMessage], bool] | None
+)
 """Type specification for MAVLink message matchers. A message matcher is either
 `None` (meaning to match all messages), a dictionary containing the required
 field name-value pairs in a message that we need to consider the message to
@@ -59,13 +62,27 @@ be a match, or a callable that takes a MAVLinkMessage and returns `True` if
 the message is a match.
 """
 
-MAVLinkMessageSpecification = tuple[str, dict[str, Any]]
+MAVLinkMessageRoute: TypeAlias = Literal["rtk", "rc", "show"]
+"""Type alias for the different routes that a message can be sent to (if the message is
+not sent directly to a specific connection. `rtk` is the route for RTK corrections;
+`rc` is the route for RC override messages; `show` is the route for messages that are
+related to the start time, authorization state or time axis configuration of the drones
+in a drone light show.
+"""
+
+MAVLinkMessageRoutingTable: TypeAlias = dict[MAVLinkMessageRoute, Sequence[int]]
+"""Type alias for the routing table that specifies where the individual message routes
+should be directed to. Each entry in the routing table is either the index of a single
+connection or a sequence of connection indices.
+"""
+
+MAVLinkMessageSpecification: TypeAlias = tuple[str, dict[str, Any]]
 """Type specification for MAVLink message specifications. A message specification
 is a tuple containing the message type and a dictionary of field name-value
 pairs. These are used to construct new MAVLink messages.
 """
 
-PacketBroadcasterFn = Callable[..., Awaitable[None]]
+PacketBroadcasterFn: TypeAlias = Callable[..., Awaitable[None]]
 """Type specification for the broadcast_packet() function of a MAVLinkNetwork object."""
 
 
@@ -82,7 +99,7 @@ class PacketSenderFn(Protocol):
         spec: MAVLinkMessageSpecification,
         target: MAVLinkUAV,
         *,
-        channel: Optional[str] = None,
+        channel: str | None = None,
     ) -> Awaitable[None]: ...
 
     @overload
@@ -92,7 +109,7 @@ class PacketSenderFn(Protocol):
         target: MAVLinkUAV,
         *,
         wait_for_response: tuple[str, MAVLinkMessageMatcher],
-        channel: Optional[str] = None,
+        channel: str | None = None,
     ) -> Awaitable[MAVLinkMessage]: ...
 
     @overload
@@ -102,7 +119,7 @@ class PacketSenderFn(Protocol):
         target: MAVLinkUAV,
         *,
         wait_for_one_of: dict[str, MAVLinkMessageSpecification],
-        channel: Optional[str] = None,
+        channel: str | None = None,
     ) -> Awaitable[tuple[str, MAVLinkMessage]]: ...
 
 
@@ -118,25 +135,25 @@ class UAVBoundPacketSenderFn(Protocol):
         self,
         spec: MAVLinkMessageSpecification,
         *,
-        channel: Optional[str] = None,
+        channel: str | None = None,
     ) -> Awaitable[None]: ...
 
     @overload
     def __call__(
         self,
-        spec: Optional[MAVLinkMessageSpecification],
+        spec: MAVLinkMessageSpecification | None,
         *,
         wait_for_response: tuple[str, MAVLinkMessageMatcher],
-        channel: Optional[str] = None,
+        channel: str | None = None,
     ) -> Awaitable[MAVLinkMessage]: ...
 
     @overload
     def __call__(
         self,
-        spec: Optional[MAVLinkMessageSpecification],
+        spec: MAVLinkMessageSpecification | None,
         *,
         wait_for_one_of: dict[str, MAVLinkMessageSpecification],
-        channel: Optional[str] = None,
+        channel: str | None = None,
     ) -> Awaitable[tuple[str, MAVLinkMessage]]: ...
 
 
@@ -165,7 +182,7 @@ class _MAVLinkMessageSpecificationFactory:
                 )
             if len(args) > 1:
                 raise RuntimeError("only one matcher function is supported")
-            return (name, args[0])  # type: ignore
+            return (name, args[0])
         else:
             return (name, kwds)
 
@@ -235,7 +252,7 @@ class MAVLinkStatusTextTargetSpecification:
         return cls(server=server_level, client=client_level, log_prearm=log_prearm)
 
     @staticmethod
-    def _severity_from_json(x: Any) -> Optional[int]:
+    def _severity_from_json(x: Any) -> int | None:
         if isinstance(x, int):
             return x
         elif isinstance(x, str):
@@ -244,7 +261,7 @@ class MAVLinkStatusTextTargetSpecification:
             return None
 
     @staticmethod
-    def _severity_to_json(x: int) -> Union[int, str]:
+    def _severity_to_json(x: int) -> int | str:
         try:
             severity = MAVSeverity(x)
         except Exception:
@@ -306,7 +323,7 @@ class MAVLinkNetworkSpecification:
     `create_connection()` function.
     """
 
-    routing: dict[str, list[int]] = field(default_factory=dict)
+    routing: MAVLinkMessageRoutingTable = field(default_factory=dict)
     """Specifies where certain types of packets should be routed if the
     network has multiple connections.
     """
@@ -346,7 +363,7 @@ class MAVLinkNetworkSpecification:
     """
 
     @classmethod
-    def from_json(cls, obj, id: Optional[str] = None):
+    def from_json(cls, obj, id: str | None = None):
         """Constructs a MAVLink network specification from its JSON
         representation.
         """
@@ -413,7 +430,7 @@ class MAVLinkNetworkSpecification:
         }
 
     @staticmethod
-    def _process_routing_entry(entry: Union[int, str, Sequence[int]]) -> list[int]:
+    def _process_routing_entry(entry: int | str | Sequence[int]) -> list[int]:
         """Helper function for processing entries in the ``routing`` configuration
         key and constructor parameter.
         """

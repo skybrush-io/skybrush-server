@@ -5,26 +5,30 @@ and forwards the corrections to the UAVs managed by the server.
 from __future__ import annotations
 
 import json
-
-from collections.abc import Sequence
+from collections.abc import Callable, Iterator, Sequence
 from contextlib import ExitStack
 from dataclasses import dataclass, field
 from fnmatch import fnmatch
 from functools import partial
 from pathlib import Path
 from time import monotonic
-from trio import CancelScope, open_memory_channel, open_nursery, sleep
-from trio.abc import SendChannel
-from trio_util import AsyncBool, periodic
-from typing import Callable, cast, Any, ClassVar, Iterator
+from typing import Any, ClassVar, cast
 
 from flockwave.channels import ParserChannel
-from flockwave.connections import create_connection, RWConnection
+from flockwave.connections import RWConnection, create_connection
 from flockwave.gps.enums import GNSSType
 from flockwave.gps.formatting import format_gps_coordinate_as_nmea_gga_message
 from flockwave.gps.rtk import RTKMessageSet, RTKSurveySettings
 from flockwave.gps.ubx.rtk_config import UBXRTKBaseConfigurator
-from flockwave.gps.vectors import ECEFToGPSCoordinateTransformation, GPSCoordinate
+from flockwave.gps.vectors import (
+    ECEFCoordinate,
+    ECEFToGPSCoordinateTransformation,
+    GPSCoordinate,
+)
+from trio import CancelScope, open_memory_channel, open_nursery, sleep
+from trio.abc import SendChannel
+from trio_util import AsyncBool, periodic
+
 from flockwave.server.ext.base import Extension
 from flockwave.server.ext.signals import SignalsExtensionAPI
 from flockwave.server.message_handlers import (
@@ -50,8 +54,8 @@ from .beacon_manager import RTKBeaconManager
 from .clock_sync import GPSClockSynchronizationValidator
 from .enums import MessageSet, RTKConfigurationPresetType
 from .preset import (
-    RTKConfigurationPreset,
     ALLOWED_FORMATS,
+    RTKConfigurationPreset,
     describe_format,
 )
 from .registry import RTKPresetRegistry
@@ -100,6 +104,7 @@ class RTKExtension(Extension):
     _statistics: RTKStatistics
     _survey_settings: RTKSurveySettings
     _tx_queue: SendChannel | None = None
+    _config_fixed_position: ECEFCoordinate | None = None
 
     def __init__(self):
         """Constructor."""
@@ -201,6 +206,7 @@ class RTKExtension(Extension):
         if isinstance(fixed, (list, tuple)):
             fixed = {"position": list(fixed)}
 
+        self._config_fixed_position = None
         if isinstance(fixed, dict) and "position" in fixed:
             if "accuracy" not in fixed:
                 self.log.warning(
@@ -224,6 +230,8 @@ class RTKExtension(Extension):
 
             position = self._survey_settings.position
             if position is not None:
+                # Store the fixed position from config so we can restore it when switching RTK sources.
+                self._config_fixed_position = position
                 coord = ECEFToGPSCoordinateTransformation().to_gps(position).format()
                 self.log.info(
                     f"Base station is fixed at {coord} (accuracy: {accuracy}m)"
@@ -370,6 +378,9 @@ class RTKExtension(Extension):
             else:
                 preset_id, desired_preset = None, None
 
+            # Reset fixed position when switching RTK source, but restore from config if available
+            self._survey_settings.position = self._config_fixed_position
+
             self._request_preset_switch_later(desired_preset)
             self._last_preset_request_from_user = (
                 RTKPresetRequest(preset_id=preset_id)
@@ -411,6 +422,10 @@ class RTKExtension(Extension):
                 error = "Settings object missing or invalid"
 
             if error is None:
+                position = self._survey_settings.position
+                if position is not None:
+                    # Populate antenna.position immediately so RTK-STAT reflects it
+                    self._statistics.set_antenna_position_from_ecef(position)
                 self._request_survey()
 
             return hub.acknowledge(message, outcome=error is None, reason=error)
@@ -531,7 +546,7 @@ class RTKExtension(Extension):
             raise RuntimeError("Only user-defined presets can be deleted")
 
         if callable(updates):
-            updates = updates(preset)
+            updates = updates(preset)  # ty:ignore[call-top-callable]
 
         preset.update_from(updates)
         return True
@@ -630,7 +645,9 @@ class RTKExtension(Extension):
         if isinstance(obj, dict):
             for id, spec in obj.items():
                 try:
-                    preset = RTKConfigurationPreset.from_json(spec, id=id, type=type)
+                    preset = RTKConfigurationPreset.from_json(
+                        cast("dict[str, Any]", spec), id=str(id), type=type
+                    )
                 except Exception:
                     self.log.error(f"Ignoring invalid RTK configuration {id!r}")
                     continue
@@ -665,7 +682,6 @@ class RTKExtension(Extension):
                     self.log.error(
                         f"Parse error while reading user presets from {str(user_preset_file)!r}"
                     )
-
         self._load_presets_from(user_presets, type=RTKConfigurationPresetType.USER)
 
     def _save_user_presets(self) -> None:
@@ -679,6 +695,9 @@ class RTKExtension(Extension):
             if self._registry.find_by_id(preset_id).type
             is RTKConfigurationPresetType.USER
         }
+
+        if not user_preset_file.parent.exists():
+            user_preset_file.parent.mkdir(parents=True, exist_ok=True)
 
         with user_preset_file.open("w") as fp:
             try:
@@ -806,6 +825,10 @@ class RTKExtension(Extension):
                             self._statistics.set_to_fixed_with_accuracy(
                                 accuracy_cm / 100.0
                             )
+                            if position is not None:
+                                self._statistics.set_antenna_position_from_ecef(
+                                    position
+                                )
                         else:
                             self.log.error(
                                 f"Failed to configure {preset.title!r}",
@@ -833,7 +856,7 @@ class RTKExtension(Extension):
                     self._clock_sync_validator.sync_state_changed.connected_to(
                         self._on_gps_clock_sync_state_changed,
                         sender=self._clock_sync_validator,
-                    )  # type: ignore
+                    )
                 )
 
                 self._rtk_survey_trigger.value = preset.auto_survey
@@ -864,7 +887,7 @@ class RTKExtension(Extension):
                                 task=partial(
                                     self._run_single_connection_for_preset,
                                     preset=preset,
-                                ),  # type: ignore
+                                ),
                             )
                         )
                     except Exception:
@@ -902,7 +925,7 @@ class RTKExtension(Extension):
         """
         assert self.app is not None
 
-        channel = ParserChannel(connection, parser=preset.create_gps_parser())  # type: ignore
+        channel = ParserChannel(connection, parser=preset.create_gps_parser())
         signal = self.app.import_api("signals", SignalsExtensionAPI).get(
             self.RTK_PACKET_SIGNAL
         )
@@ -1181,6 +1204,11 @@ def get_schema():
             # user to mess with the location of the presets file by default,
             # but it is useful to us in certain deployments. Use it at your
             # own risk.
+            # "presets_file": {
+            #     "type": "string",
+            #     "title": "RTK presets file",
+            #     "description": "Optional JSON file path to store user-defined RTK presets."
+            # },
             "add_serial_ports": {
                 "title": "Use serial ports automatically",
                 "description": (

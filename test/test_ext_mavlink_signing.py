@@ -1,6 +1,7 @@
 import sys
 
 from flockwave.protocols.mavlink.dialects.v20.common import MAVLink, MAVLinkSigning
+
 from flockwave.server.ext.mavlink.signing import SignatureTimestampSynchronizer
 
 
@@ -111,7 +112,7 @@ class TestSignatureTimestampSynchronizer:
         sync = SignatureTimestampSynchronizer()
 
         signer = foo.signing
-        sync.patch(foo)  # type: ignore
+        sync.patch(foo)
         patched_signer = foo.signing
 
         assert signer is not patched_signer

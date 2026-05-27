@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-from blinker import Signal
 from enum import Enum
-from typing import Any, Optional, TypeVar
+from typing import Any, TypeVar
+
+from blinker import Signal
 
 from flockwave.server.tasks.led_lights import LightConfiguration
 from flockwave.server.utils.formatting import (
@@ -79,25 +80,25 @@ class DroneShowConfiguration:
     grant or revoke authorization without changing the scope).
     """
 
-    duration: Optional[float]
+    duration: float | None
     """Duration of the show, if known. ``None`` means unknown duration."""
 
     start_method: StartMethod
     """The start method of the show (RC or automatic with countdown)."""
 
-    start_time_on_clock: Optional[float]
+    start_time_on_clock: float | None
     """The start time of the show, in seconds elapsed since the epoch of the
     associated clock; ``None`` if unscheduled.
     """
 
-    clock: Optional[str]
+    clock: str | None
     """Identifier of the clock that the start time refers to. ``None`` means
     that the start time is a UNIX timestamp, otherwise it must refer to an
     existing clock in the system and the start time is interpreted as
     _seconds_ relative to the epoch of the existing clock.
     """
 
-    uav_ids: list[Optional[str]]
+    uav_ids: list[str | None]
     """The list of UAV IDs participating in the show."""
 
     def __init__(self):

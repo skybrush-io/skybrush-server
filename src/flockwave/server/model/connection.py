@@ -1,13 +1,18 @@
 """Connection-related model objects."""
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from flockwave.spec.schema import get_complex_object_schema, get_enum_from_schema
-from typing import Optional
 
 from .metamagic import ModelMeta
 from .mixins import TimestampLike, TimestampMixin
 
-__all__ = ("ConnectionInfo", "ConnectionPurpose", "ConnectionStatus")
+if TYPE_CHECKING:
+    from flockwave.connections import Connection
 
+__all__ = ("ConnectionInfo", "ConnectionPurpose", "ConnectionStatus")
 
 ConnectionPurpose = get_enum_from_schema("connectionPurpose", "ConnectionPurpose")
 ConnectionStatus = get_enum_from_schema("connectionStatus", "ConnectionStatus")
@@ -21,18 +26,17 @@ class ConnectionInfo(TimestampMixin, metaclass=ModelMeta):
     class __meta__:
         schema = get_complex_object_schema("connectionInfo")
 
-    _STATUS_MAPPING = {
+    _STATUS_MAPPING: dict[str | None, str] = {
         "CONNECTED": "connected",
         "CONNECTING": "connecting",
         "DISCONNECTED": "disconnected",
         "DISCONNECTING": "disconnecting",
     }
 
-    id: Optional[str]
+    id: str | None
+    description: str | None
 
-    def __init__(
-        self, id: Optional[str] = None, timestamp: Optional[TimestampLike] = None
-    ):
+    def __init__(self, id: str | None = None, timestamp: TimestampLike | None = None):
         """Constructor.
 
         Parameters:
@@ -44,10 +48,11 @@ class ConnectionInfo(TimestampMixin, metaclass=ModelMeta):
         """
         TimestampMixin.__init__(self, timestamp)
         self.id = id
-        self.purpose = ConnectionPurpose.other
-        self.status = ConnectionStatus.unknown
+        self.description = None
+        self.purpose = ConnectionPurpose.other  # type: ignore
+        self.status = ConnectionStatus.unknown  # type: ignore
 
-    def update_status_from(self, connection):
+    def update_status_from(self, connection: Connection | None) -> None:
         """Updates the status member of this object from the status of the
         given connection.
 

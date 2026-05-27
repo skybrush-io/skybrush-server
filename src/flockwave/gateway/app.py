@@ -1,22 +1,22 @@
 """Application object for the Skybrush gateway server."""
 
 import logging
-
 from copy import deepcopy
-from trio import current_time, Nursery, open_nursery, sleep
-from typing import Any, Optional, Union
+from typing import Any
 from urllib.parse import urlparse, urlunparse
-
-from hypercorn.config import Config as HyperConfig
-from hypercorn.trio import serve
-from jwt import decode
 
 from flockwave.app_framework import DaemonApp
 from flockwave.app_framework.configurator import AppConfigurator, Configuration
 from flockwave.networking import format_socket_address
+from hypercorn.config import Config as HyperConfig
+from hypercorn.trio import serve
+from jwt import decode
+from trio import current_time, sleep
+
 from flockwave.server.utils.packaging import is_packaged
 
-from .asgi_app import update_api, app as asgi_app
+from .asgi_app import app as asgi_app
+from .asgi_app import update_api
 from .logger import log
 from .workers import WorkerManager
 
@@ -32,7 +32,7 @@ class SkybrushGatewayServer(DaemonApp):
         self.worker_manager = WorkerManager()
 
     @property
-    def base_port(self) -> Optional[int]:
+    def base_port(self) -> int | None:
         """The base port that the gateway is listening on."""
         base_port = self.config.get("PORT")
         if base_port is not None:
@@ -62,12 +62,11 @@ class SkybrushGatewayServer(DaemonApp):
             scheme = "https" if self._is_listening_securely() else "http"
             return f"{scheme}://{host}:{port}"
 
-    async def run(self) -> None:
-        async with open_nursery() as nursery:
-            nursery.start_soon(self.worker_manager.run)
-            await self._serve(nursery)
+    async def ready(self) -> None:
+        self.run_in_background(self.worker_manager.run)
+        self.run_in_background(self._serve)
 
-    def validate_jwt_token(self, token: str) -> None:
+    def validate_jwt_token(self, token: str) -> dict[str, Any]:
         secret = self.config.get("JWT_SECRET")
         if not secret:
             raise ValueError("no JWT secret was configured")
@@ -82,7 +81,7 @@ class SkybrushGatewayServer(DaemonApp):
                 config["EXTENSIONS"]["http_server"]["port"] = port
         return config
 
-    def _get_listening_address(self) -> Optional[tuple[str, int]]:
+    def _get_listening_address(self) -> tuple[str, int] | None:
         """Returns the hostname and port where the server is listening, or
         `None` if the address is not configured in the configuration file.
         """
@@ -93,9 +92,7 @@ class SkybrushGatewayServer(DaemonApp):
         port = int(port)
         return host, port
 
-    def _get_port_for_worker(
-        self, index: int, base: Optional[Union[int, str]] = None
-    ) -> int:
+    def _get_port_for_worker(self, index: int, base: int | str | None = None) -> int:
         if base is None:
             base = self.base_port
             if base is None:
@@ -106,7 +103,7 @@ class SkybrushGatewayServer(DaemonApp):
         """Returns whether the application is listening on a secure socket."""
         return bool(self.config.get("certfile")) and bool(self.config.get("keyfile"))
 
-    def _process_configuration(self, config: Configuration) -> Optional[int]:
+    def _process_configuration(self, config: Configuration) -> int | None:
         self._public_url_parts = (
             urlparse(config["PUBLIC_URL"]) if config.get("PUBLIC_URL") else None
         )
@@ -114,7 +111,7 @@ class SkybrushGatewayServer(DaemonApp):
         self.worker_manager.max_count = config.get("MAX_WORKERS", 1)
         self.worker_manager.worker_config_factory = self._create_worker_config
 
-    async def _serve(self, nursery: Nursery) -> None:
+    async def _serve(self) -> None:
         address = self._get_listening_address()
         if address is None:
             log.warning("HTTP server address is not specified in configuration")
@@ -144,38 +141,35 @@ class SkybrushGatewayServer(DaemonApp):
 
         update_api(self)
 
-        try:
-            while True:
-                log.info(
-                    "Starting {1} server on {0}...".format(
-                        format_socket_address(address), "HTTPS" if secure else "HTTP"
-                    )
+        while True:
+            log.info(
+                "Starting {1} server on {0}...".format(
+                    format_socket_address(address), "HTTPS" if secure else "HTTP"
                 )
+            )
 
-                started_at = current_time()
+            started_at = current_time()
 
-                try:
-                    await serve(asgi_app, config)
-                except Exception:
-                    # Server crashed -- maybe a change in IP address? Let's try
-                    # again if we have not reached the maximum retry count.
-                    if current_time() - started_at >= 5:
-                        retries = 0
+            try:
+                await serve(asgi_app, config)
+            except Exception:
+                # Server crashed -- maybe a change in IP address? Let's try
+                # again if we have not reached the maximum retry count.
+                if current_time() - started_at >= 5:
+                    retries = 0
 
-                    if retries < max_retries:
-                        log.error(
-                            "Server stopped unexpectedly, retrying...",
-                            extra={"telemetry": "ignore"},
-                        )
-                        await sleep(1)
-                        retries += 1
-                    else:
-                        # Re-raise the exception
-                        raise
+                if retries < max_retries:
+                    log.error(
+                        "Server stopped unexpectedly, retrying...",
+                        extra={"telemetry": "ignore"},
+                    )
+                    await sleep(1)
+                    retries += 1
                 else:
-                    break
-        finally:
-            nursery.cancel_scope.cancel()
+                    # Re-raise the exception
+                    raise
+            else:
+                break
 
     def _setup_app_configurator(self, configurator: AppConfigurator) -> None:
         configurator.safe = is_packaged()

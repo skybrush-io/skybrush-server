@@ -1,24 +1,35 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from collections.abc import Iterator
+from contextlib import contextmanager
 from dataclasses import dataclass
 from logging import Logger
 from time import time
+from typing import (
+    Awaitable,
+    Callable,
+    Generic,
+    Iterable,
+    TypeAlias,
+    TypeVar,
+    final,
+)
+from weakref import WeakKeyDictionary
+
 from trio import (
     TASK_STATUS_IGNORED,
     CapacityLimiter,
     MemorySendChannel,
+    TooSlowError,
+    WouldBlock,
     current_time,
     open_memory_channel,
     open_nursery,
     sleep,
-    TooSlowError,
-    WouldBlock,
 )
 from trio.lowlevel import ParkingLot
 from trio_util import periodic
-from typing import Generic, Iterator, Optional, TypeVar
-from weakref import WeakKeyDictionary
 
 from flockwave.server.model import UAV
 
@@ -28,7 +39,12 @@ from .config import (
     StartMethod,
 )
 
-__all__ = ("ScheduledTakeoffManager", "TakeoffConfiguration")
+__all__ = (
+    "ScheduledTakeoffManager",
+    "SimpleScheduledTakeoffManager",
+    "SimpleScheduledTakeoffManagerBase",
+    "TakeoffConfiguration",
+)
 
 
 @dataclass
@@ -46,15 +62,14 @@ class TakeoffConfiguration:
     `takeoff_time` property of this object.
     """
 
-    takeoff_time: Optional[int] = None
-    """The desired takeoff time of the swarm; `None` if the takeoff time should
-    be cleared. Ignored if `should_update_takeoff_time` is set to `False`.
+    takeoff_time: float | None = None
+    """The desired takeoff time of the swarm, in seconds since the UNIX epoch; `None` if
+    the takeoff time should be cleared. Ignored if `should_update_takeoff_time` is set
+    to `False`.
     """
 
     @classmethod
-    def from_show_config(
-        cls, config: DroneShowConfiguration, start_time: Optional[float]
-    ):
+    def from_show_config(cls, config: DroneShowConfiguration, start_time: float | None):
         """Returns the desired start time in seconds and the desired state
         of the takeoff authorization flag on all the UAVs.
         """
@@ -88,7 +103,7 @@ class TakeoffConfiguration:
                 # User has a show clock and the show clock has a scheduled
                 # start time so we want to use that
                 return cls(
-                    takeoff_time=int(start_time), authorization_scope=desired_auth_scope
+                    takeoff_time=start_time, authorization_scope=desired_auth_scope
                 )
             else:
                 # User has no show clock or the show clock is stopped, so we
@@ -125,15 +140,18 @@ class TakeoffConfiguration:
         return self.takeoff_time is not None and self.takeoff_time >= time()
 
     @property
-    def takeoff_time_in_legacy_format(self) -> Optional[int]:
-        """Returns the desired takeoff time in the legacy format we used in
-        earlier versions of the code.
+    def takeoff_time_msec(self) -> int | None:
+        """Returns the desired takeoff time in milliseconds since the UNIX epoch,
+        or `None` if the takeoff time should be cleared.
 
-        Returns:
-            -1 if the takeoff time should not be updated, `None` if the takeoff
-            time should be cleared, or the real takeoff time otherwise
+        When the takeoff time is not an exact millisecond, it will be rounded to the
+        nearest millisecond.
         """
-        return self.takeoff_time if self.should_update_takeoff_time else -1
+        return (
+            int(round(self.takeoff_time * 1000))
+            if self.takeoff_time is not None
+            else None
+        )
 
 
 TUAV = TypeVar("TUAV", bound="UAV")
@@ -156,7 +174,7 @@ class ScheduledTakeoffManager(ABC, Generic[TUAV]):
     the takeoff for that given MAVLink network.
     """
 
-    _config: Optional[DroneShowConfiguration] = None
+    _config: DroneShowConfiguration | None = None
     """The configuration of the show to start, including the start method,
     the clock that the start is synchronized to, the start time according to
     the given clock, and the list of UAVs to start.
@@ -168,7 +186,7 @@ class ScheduledTakeoffManager(ABC, Generic[TUAV]):
     in time.
     """
 
-    _log: Optional[Logger] = None
+    _log: Logger | None = None
     """The logger that the takeoff manager uses to log events."""
 
     _parking_lot: ParkingLot
@@ -176,7 +194,7 @@ class ScheduledTakeoffManager(ABC, Generic[TUAV]):
     background tasks performed by this object.
     """
 
-    _start_time: Optional[float] = None
+    _start_time: float | None = None
     """The start time of the show, expressed as the number of seconds since
     the UNIX epoch.
     """
@@ -199,8 +217,8 @@ class ScheduledTakeoffManager(ABC, Generic[TUAV]):
     def __init__(
         self,
         *,
-        log: Optional[Logger] = None,
-        capacity_limiter: Optional[CapacityLimiter] = None,
+        log: Logger | None = None,
+        capacity_limiter: CapacityLimiter | None = None,
     ):
         """Constructor.
 
@@ -233,12 +251,12 @@ class ScheduledTakeoffManager(ABC, Generic[TUAV]):
         ...
 
     @abstractmethod
-    def iter_uavs_to_schedule(self) -> Iterator[TUAV]:
+    def iter_uavs_to_schedule(self) -> Iterable[TUAV]:
         """Returns an iterator over the UAVs managed by this object that are
         to be updated on an individual basis if they do not receive the
         broadcast configuration packet or do not respond to it.
 
-        May return an empty iterator if you do not want to support individual
+        May return an empty iterable if you do not want to support individual
         configuration for the UAVs.
         """
         ...
@@ -247,6 +265,9 @@ class ScheduledTakeoffManager(ABC, Generic[TUAV]):
     def uav_needs_update(self, uav: TUAV, config: TakeoffConfiguration) -> bool:
         """Returns whether the given UAV needs to be updated if the desired
         takeoff configuration is the one provided as `config`.
+
+        It is guaranteed that this function gets called only for those UAVs that
+        appeared in the results of `iter_uavs_to_schedule()`.
 
         May return False unconditionally if you do not want to support individual
         configuration for the UAVs.
@@ -261,6 +282,9 @@ class ScheduledTakeoffManager(ABC, Generic[TUAV]):
     async def update_uav(self, uav: TUAV, config: TakeoffConfiguration) -> None:
         """Updates the given UAV with the desired takeoff configuration.
 
+        It is guaranteed that this function gets called only for those UAVs that
+        appeared in the results of `iter_uavs_to_schedule()`.
+
         This method is called by the manager when it needs to update a UAV
         individually. It should not block for too long, as it is called from
         a background task that processes multiple UAVs in parallel.
@@ -268,7 +292,7 @@ class ScheduledTakeoffManager(ABC, Generic[TUAV]):
         ...
 
     @property
-    def config(self) -> Optional[DroneShowConfiguration]:
+    def config(self) -> DroneShowConfiguration | None:
         return self._config
 
     def notify_config_changed(self, config: DroneShowConfiguration) -> None:
@@ -279,7 +303,7 @@ class ScheduledTakeoffManager(ABC, Generic[TUAV]):
         self._parking_lot.unpark_all()
         self._trigger_uav_updates_soon()
 
-    def notify_start_time_changed(self, start_time: Optional[float]) -> None:
+    def notify_start_time_changed(self, start_time: float | None) -> None:
         """Notifies the manager that the scheduled start time of the show has
         been changed. This is typically a side effect of the user adjusting the
         start time manually, but it may also be related to the adjustment of
@@ -457,3 +481,95 @@ class ScheduledTakeoffManager(ABC, Generic[TUAV]):
         recently in the last three seconds.
         """
         self._uavs_last_updated_at.clear()
+
+
+TakeoffConfigurationDispatcher: TypeAlias = Callable[
+    [TakeoffConfiguration], Awaitable[None]
+]
+""""Type alias for the type of the function that broadcasts a takeoff configuration to the UAVs."""
+
+
+class SimpleScheduledTakeoffManagerBase(ScheduledTakeoffManager[UAV]):
+    """Base class for a simple implementation of the `ScheduledTakeoffManager` that
+    only supports broadcasting and does not attempt to configure UAVs individually.
+    """
+
+    @final
+    def iter_uavs_to_schedule(self) -> Iterable[UAV]:
+        # This manager does not support individual configuration of UAVs so we
+        # return an empty iterator here
+        return iter(())
+
+    @final
+    def uav_needs_update(self, uav: UAV, config: TakeoffConfiguration) -> bool:
+        # This manager does not support individual configuration of UAVs so we
+        # return False here
+        return False
+
+    @final
+    async def update_uav(self, uav: UAV, config: TakeoffConfiguration) -> None:
+        # This manager does not support individual configuration of UAVs so we do
+        # nothing here
+        pass
+
+
+class SimpleScheduledTakeoffManager(SimpleScheduledTakeoffManagerBase):
+    """A simple implementation of the `ScheduledTakeoffManager` that only supports
+    broadcasting to a function passed at construction time and does not attempt to
+    configure UAVs individually.
+    """
+
+    _func: TakeoffConfigurationDispatcher | None = None
+    """The function to call to broadcast the takeoff configuration to the UAVs.
+    `None` means to do nothing.
+    """
+
+    def __init__(
+        self,
+        func: TakeoffConfigurationDispatcher | None = None,
+        *,
+        log: Logger | None = None,
+        capacity_limiter: CapacityLimiter | None = None,
+    ):
+        """Constructor.
+
+        Parameters:
+            func: the function to call to broadcast the takeoff configuration to
+                the UAVs; this is typically a function that sends a packet to
+                the UAVs via some communication channel
+            log: the logger to use to log messages from this object
+        """
+        super().__init__(log=log, capacity_limiter=capacity_limiter)
+        self._func = func
+
+    async def broadcast_takeoff_configuration(
+        self, config: TakeoffConfiguration
+    ) -> None:
+        if self._func:
+            await self._func(config)
+
+    @contextmanager
+    def use(
+        self, func: TakeoffConfigurationDispatcher, *, log: Logger | None = None
+    ) -> Iterator[None]:
+        """Context manager that overrides the function to call to broadcast the takeoff
+        configuration to the UAVs.
+
+        Parameters:
+            func: the function to call to broadcast the takeoff configuration to
+                the UAVs; this is typically a function that sends a packet to
+                the UAVs via some communication channel
+            log: the logger to use to log messages from this object; if not provided,
+                the existing logger of this object will be used
+        """
+        old_func = self._func
+        self._func = func
+
+        old_log = self._log
+        self._log = log or self._log
+
+        try:
+            yield
+        finally:
+            self._func = old_func
+            self._log = old_log

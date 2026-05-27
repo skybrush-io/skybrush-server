@@ -3,6 +3,7 @@ while the server is running.
 """
 
 from contextlib import ExitStack, nullcontext
+
 from trio import sleep_forever
 
 

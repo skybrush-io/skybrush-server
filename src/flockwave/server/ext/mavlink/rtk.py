@@ -1,7 +1,9 @@
+from collections.abc import Callable, Iterable
 from contextlib import contextmanager
 from itertools import cycle
 from logging import Logger
-from typing import Callable, Iterable, Optional
+
+from flockwave.server.ext.signals import SignalsExtensionAPI
 
 from .types import MAVLinkMessageSpecification, spec
 
@@ -14,7 +16,7 @@ class RTKCorrectionPacketEncoder:
     packets if needed.
     """
 
-    def __init__(self, log: Optional[Logger] = None):
+    def __init__(self, log: Logger | None = None):
         """Constructor."""
         self._log = log
         self._seq_no = cycle(range(32))
@@ -67,10 +69,10 @@ class RTKCorrectionPacketSignalManager:
     into individual MAVLink packets.
     """
 
-    _log: Optional[Logger] = None
+    _log: Logger | None = None
     """Logger to use for logging messages."""
 
-    _sender: Optional[Callable[[Iterable[MAVLinkMessageSpecification]], None]]
+    _sender: Callable[[Iterable[MAVLinkMessageSpecification]], None] | None
 
     def __init__(self):
         """Constructor."""
@@ -101,16 +103,20 @@ class RTKCorrectionPacketSignalManager:
                     )
 
     @contextmanager
-    def use(self, signals, *, log):
+    def use(self, signals: SignalsExtensionAPI, *, log: Logger | None = None):
         rtk_packet_fragments_signal = signals.get("mavlink:rtk_fragments")
         with signals.use({"rtk:packet": self._handle_packet}):
             if rtk_packet_fragments_signal:
-                self._sender = lambda messages: rtk_packet_fragments_signal.send(
-                    self, messages=messages
-                )
-            self._log = log
+
+                def sender(messages: Iterable[MAVLinkMessageSpecification]):
+                    rtk_packet_fragments_signal.send(self, messages=messages)
+
+                self._sender = sender
+
+            old_log = self._log
+            self._log = log or old_log
             try:
                 yield
             finally:
-                self._log = None
+                self._log = old_log
                 self._sender = None

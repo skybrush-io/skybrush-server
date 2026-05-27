@@ -2,20 +2,12 @@
 server knows.
 """
 
-from blinker import Signal
+from collections.abc import Callable, Iterable, Iterator
 from contextlib import contextmanager
 from math import inf
-from typing import (
-    cast,
-    Callable,
-    ClassVar,
-    Iterable,
-    Iterator,
-    Optional,
-    Type,
-    TypeVar,
-    Union,
-)
+from typing import ClassVar, TypeVar, cast
+
+from blinker import Signal
 
 from flockwave.server.model import ModelObject
 
@@ -104,7 +96,7 @@ class ObjectRegistry(RegistryBase[ModelObject]):
             self.add(factory(id))
         return cast(T, self.find_by_id(id))
 
-    def ids_by_type(self, cls: Union[str, Type[ModelObject]]) -> Iterable[str]:
+    def ids_by_type(self, cls: str | type[ModelObject]) -> Iterable[str]:
         """Returns an iterable that iterates over all the identifiers in the
         registry where the associated object is an instance of the given type.
 
@@ -123,9 +115,7 @@ class ObjectRegistry(RegistryBase[ModelObject]):
                 if isinstance(value, resolved_cls)
             )
 
-    def ids_by_types(
-        self, classes: Iterable[Union[Type[ModelObject], str]]
-    ) -> Iterable[str]:
+    def ids_by_types(self, classes: Iterable[type[ModelObject] | str]) -> Iterable[str]:
         """Returns an iterable that iterates over all the identifiers in the
         registry where the associated object matches the given predicate.
 
@@ -148,7 +138,7 @@ class ObjectRegistry(RegistryBase[ModelObject]):
                 key for key, value in self._entries.items() if isinstance(value, filter)
             )
 
-    def remove(self, object: ModelObject) -> Optional[ModelObject]:
+    def remove(self, object: ModelObject) -> ModelObject | None:
         """Removes the given object from the registry.
 
         This function is a no-op if the object is not registered.
@@ -162,7 +152,7 @@ class ObjectRegistry(RegistryBase[ModelObject]):
         """
         return self.remove_by_id(object.id)
 
-    def remove_by_id(self, object_id: str) -> Optional[ModelObject]:
+    def remove_by_id(self, object_id: str) -> ModelObject | None:
         """Removes the object with the given ID from the registry.
 
         This function is a no-op if the object is not registered.
@@ -229,7 +219,7 @@ class ObjectRegistryProxy(RegistryBase[T]):
     ObjectRegistry_ instance.
     """
 
-    _object_registry: Optional[ObjectRegistry] = None
+    _object_registry: ObjectRegistry | None = None
     """Object registry where the addition and removal requests will be proxied
     through; ``None`` if the global object registry has not been assigned
     to this proxy yet.
@@ -263,7 +253,7 @@ class ObjectRegistryProxy(RegistryBase[T]):
 
         return object
 
-    def remove_by_id(self, id: str) -> Optional[T]:
+    def remove_by_id(self, id: str) -> T | None:
         """Removes the object with the given ID from the registry and the object
         registry as well.
 

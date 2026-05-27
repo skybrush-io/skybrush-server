@@ -1,8 +1,9 @@
 from contextlib import aclosing
 from time import monotonic, time
+from typing import TYPE_CHECKING, AsyncGenerator
+
 from trio import sleep
 from trio_util import RepeatedEvent
-from typing import AsyncIterator, Optional, TYPE_CHECKING
 
 from .frame import MotionCaptureFrame, MotionCaptureFrameItem
 from .mapping import NameRemapping
@@ -16,7 +17,7 @@ class FrameRateLimiter:
     given delay has passed since the dispatch of the last frame.
     """
 
-    _delay: Optional[float]
+    _delay: float | None
     """Number of seconds to wait between consecutive dispatches; ``None`` if
     no rate limitation should take place.
     """
@@ -32,7 +33,7 @@ class FrameRateLimiter:
     _has_new_frame: RepeatedEvent
     """Event that signals to the frame limiter that a new frame was posted."""
 
-    def __init__(self, frame_rate: Optional[float] = None):
+    def __init__(self, frame_rate: float | None = None):
         """Constructor."""
         if frame_rate is None:
             self._delay = None
@@ -51,7 +52,7 @@ class FrameRateLimiter:
         self._last_frame = frame
         self._has_new_frame.set()
 
-    async def iter_frames(self) -> AsyncIterator[MotionCaptureFrame]:
+    async def iter_frames(self) -> AsyncGenerator[MotionCaptureFrame]:
         """Iterates over the received frames, ensuring that the iterator does
         not yield a new item more frequently than the number of frames per
         second prescribed in the constructor.
@@ -77,7 +78,7 @@ class FrameRateLimiter:
                 yield self._last_frame
 
 
-limiter: Optional[FrameRateLimiter] = None
+limiter: FrameRateLimiter | None = None
 """Frame rate limiter object that batches incoming motion capture frames to
 ensure that UAVs do not receive them faster than a prescribed frequency.
 """
@@ -86,7 +87,7 @@ ensure that UAVs do not receive them faster than a prescribed frequency.
 async def run(app: "SkybrushServer", configuration):
     global limiter
 
-    fps_limit: Optional[float] = configuration.get("frame_rate", 10)
+    fps_limit: float | None = configuration.get("frame_rate", 10)
     if not isinstance(fps_limit, (int, float)) or fps_limit <= 0:
         fps_limit = None
     else:
@@ -113,7 +114,7 @@ async def run(app: "SkybrushServer", configuration):
         limiter = None
 
 
-def create_frame(timestamp: Optional[float] = None) -> MotionCaptureFrame:
+def create_frame(timestamp: float | None = None) -> MotionCaptureFrame:
     """Creates a new motion capture frame object with the given timestamp.
     This function must be called by concrete mocap system extensions to create
     a new MotionCaptureFrame_ object.

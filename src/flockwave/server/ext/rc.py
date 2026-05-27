@@ -6,10 +6,9 @@ signal that other extensions can subscribe to if they are interested in the
 values of the RC channels.
 """
 
+from collections.abc import Sequence
 from logging import Logger
-
-from typing import Any, ClassVar, Optional, Sequence
-
+from typing import Any, ClassVar, Protocol, overload
 
 rc_changed_signal: Any = None
 """Signal that this extension emits in order to notify subscribers about the
@@ -19,7 +18,7 @@ new channel values.
 debug: bool = False
 """Stores whether the extension is in debug mode"""
 
-logger: Optional[Logger] = None
+logger: Logger | None = None
 """Logger instance used by the extension"""
 
 
@@ -52,9 +51,15 @@ class RCState(Sequence[int]):
         """Constructor."""
         self.reset()
 
-    def __getitem__(self, index: int) -> int:
+    @overload
+    def __getitem__(self, index: int) -> int: ...
+
+    @overload
+    def __getitem__(self, index: slice) -> Sequence[int]: ...
+
+    def __getitem__(self, index: int | slice) -> int | Sequence[int]:
         """Returns the raw, unscaled value of the RC channel with the given
-        index.
+        index or slice.
         """
         return self.channels[index]
 
@@ -171,7 +176,14 @@ def unload():
     logger = None
 
 
-def notify(values: Sequence[int]):
+def create_state() -> RCState:
+    """Function that is to be called by other extensions to create their own instances
+    of an RCState object for RC overrides.
+    """
+    return RCState()
+
+
+def notify(values: Sequence[int]) -> None:
     """Function that is to be called by extensions implementing support for
     a particular RC protocol when they wish to update the values of the RC
     channels.
@@ -181,7 +193,7 @@ def notify(values: Sequence[int]):
     rc_changed_signal.send(rc)
 
 
-def notify_lost():
+def notify_lost() -> None:
     """Function that is to be called by extensions implementing support for
     a particular RC protocol when they wish to report that RC connection was
     lost and all RC channels should be reset to invalid values.
@@ -196,8 +208,16 @@ def print_debug_info(sender: RCState) -> None:
         logger.info(f"RC channels changed: {sender.channels!r}")
 
 
+class RCExtensionAPI(Protocol):
+    """Interface specification for the API exposed by the `rc` extension."""
+
+    def create_state(self) -> RCState: ...
+    def notify(self, values: Sequence[int]) -> None: ...
+    def notify_lost(self) -> None: ...
+
+
 dependencies = ("signals",)
 description = "RC transmitter support"
-exports = {"notify": notify, "notify_lost": notify_lost}
+exports = {"create_state": create_state, "notify": notify, "notify_lost": notify_lost}
 schema = {}
 tags = "experimental"

@@ -4,8 +4,8 @@ the server knows.
 
 __all__ = ("RTKPresetRegistry",)
 
+from collections.abc import Iterator
 from contextlib import contextmanager
-from typing import Iterator, Optional
 
 from flockwave.server.registries.base import RegistryBase
 
@@ -33,9 +33,7 @@ class RTKPresetRegistry(RegistryBase[RTKConfigurationPreset]):
             raise KeyError(f"Preset ID already taken: {preset.id}")
         self._entries[preset.id] = preset
 
-    def remove(
-        self, preset: RTKConfigurationPreset
-    ) -> Optional[RTKConfigurationPreset]:
+    def remove(self, preset: RTKConfigurationPreset) -> RTKConfigurationPreset | None:
         """Removes the given preset from the registry.
 
         This function is a no-op if the preset is not registered.
@@ -49,7 +47,7 @@ class RTKPresetRegistry(RegistryBase[RTKConfigurationPreset]):
         """
         return self.remove_by_id(preset.id)
 
-    def remove_by_id(self, preset_id: str) -> Optional[RTKConfigurationPreset]:
+    def remove_by_id(self, preset_id: str) -> RTKConfigurationPreset | None:
         """Removes the preset with the given ID from the registry.
 
         This function is a no-op if no preset is registered with the given ID.

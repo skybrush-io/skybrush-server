@@ -1,9 +1,9 @@
+from collections.abc import Callable
+from random import getrandbits
+from typing import Generic, TypeVar
+
 from baseconv import base64
 from bidict import bidict
-from random import getrandbits
-
-from typing import Callable, Generic, Optional, Union, TypeVar
-
 from flockwave.spec.ids import make_valid_object_id
 
 __all__ = (
@@ -29,7 +29,7 @@ class UniqueIdGenerator(Generic[T]):
     returns the corresponding string ID.
     """
 
-    _validator: Optional[Callable[[str], str]] = None
+    _validator: Callable[[str], str] | None = None
     """Validator function that takes a generated string ID and possibly returns
     another string that is guaranteed to satisfy some validation criteria.
     Called every time a new ID is generated using the formatter. `None` means
@@ -43,8 +43,8 @@ class UniqueIdGenerator(Generic[T]):
 
     def __init__(
         self,
-        formatter: Union[str, Callable[[T], str]] = "{0}",
-        validator: Optional[Callable[[str], str]] = None,
+        formatter: str | Callable[[T], str] = "{0}",
+        validator: Callable[[str], str] | None = None,
     ):
         """Constructor.
 
@@ -72,13 +72,13 @@ class UniqueIdGenerator(Generic[T]):
             self._value_to_id[value] = result
         return result
 
-    def reverse_lookup(self, id: str) -> Optional[T]:
+    def reverse_lookup(self, id: str) -> T | None:
         """Returns the original value that was mapped to the given ID, or
         `None` if the given ID was never returned from this generator.
         """
         return self._value_to_id.inverse.get(id)
 
-    def set_formatter(self, formatter: Union[str, Callable[[T], str]]):
+    def set_formatter(self, formatter: str | Callable[[T], str]):
         """Sets the formatter used by the unique ID generator.
 
         Changing the formatter while some IDs were already generated is
@@ -97,7 +97,7 @@ class UniqueIdGenerator(Generic[T]):
 
 
 def create_object_id_generator_for_ints(
-    formatter: Union[str, Callable[[int], str]] = "{0}",
+    formatter: str | Callable[[int], str] = "{0}",
 ) -> UniqueIdGenerator[int]:
     """Creates an ID generator object that generates IDs for UAVs given a
     formatter or format string.

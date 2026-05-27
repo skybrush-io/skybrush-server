@@ -2,15 +2,16 @@
 server is currently connected to.
 """
 
-from blinker import Signal
 from collections import defaultdict
+from collections.abc import Iterable, Iterator
 from contextlib import contextmanager
 from time import time
-from typing import Iterable, Iterator
 
+from blinker import Signal
+
+from flockwave.server.logger import log as base_log
 from flockwave.server.model.client import Client
 from flockwave.server.registries.channels import ChannelTypeRegistry
-from flockwave.server.logger import log as base_log
 
 from .base import RegistryBase
 

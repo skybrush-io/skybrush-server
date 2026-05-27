@@ -1,32 +1,33 @@
 """Functions related to handling the dedicated debug port"""
 
 from base64 import b64decode, b64encode
+from collections.abc import Callable
 from functools import partial
 from logging import Logger
 from math import inf
+
+from flockwave.networking import format_socket_address
 from trio import (
     BrokenResourceError,
+    MemorySendChannel,
+    TooSlowError,
     fail_after,
     open_memory_channel,
     open_nursery,
-    TooSlowError,
 )
 from trio.abc import ReceiveChannel, Stream
-from typing import Callable, Optional
 
-from flockwave.networking import format_socket_address
 from flockwave.server.utils import overridden
 from flockwave.server.utils.networking import serve_tcp_and_log_errors
 
 __all__ = ("setup_debugging_server",)
 
 
-#: Buffer in which we assemble debug messages to send to the client. It is
-#: assumed that debug messages are terminated by \n, optionally preceded by
-#: \r
 buffer = []
+"""Buffer in which we assemble debug messages to send to the client. It is
+assumed that debug messages are terminated by \n, optionally preceded by \r."""
 
-connected_client_queue = None
+connected_client_queue: MemorySendChannel[bytes | bytearray] | None = None
 
 
 def setup_debugging_server(app, stack, debug_clients: bool = False):
@@ -83,8 +84,8 @@ def setup_debugging_server(app, stack, debug_clients: bool = False):
 async def run_debug_port(
     host: str,
     port: int,
-    on_message: Callable[[bytes], None],
-    log: Optional[Logger] = None,
+    on_message: Callable[[bytes | bytearray], None],
+    log: Logger | None = None,
 ) -> None:
     """Opens a TCP port that can be used during debugging to inject arbitrary
     data into data streams provided by other extensions if they support this
@@ -117,7 +118,10 @@ async def run_debug_port(
 
 
 async def handle_debug_connection_safely(
-    stream: Stream, *, on_message: Callable[[bytes], None], log: Optional[Logger] = None
+    stream: Stream,
+    *,
+    on_message: Callable[[bytes | bytearray], None],
+    log: Logger | None = None,
 ) -> None:
     """Handles a single debug connection, catching all exceptions so they
     don't propagate out and crash the extension.
@@ -133,7 +137,10 @@ async def handle_debug_connection_safely(
 
 
 async def handle_debug_connection_outbound(
-    stream: Stream, *, on_message: Callable[[bytes], None], log: Optional[Logger] = None
+    stream: Stream,
+    *,
+    on_message: Callable[[bytes | bytearray], None],
+    log: Logger | None = None,
 ) -> None:
     if connected_client_queue is not None:
         # one connection only
@@ -145,7 +152,7 @@ async def handle_debug_connection_outbound(
     # sometimes it's a lot and we don't have a way to communicate backpressure
     # via signals so it's better to use an unbounded queue. It is not to be used
     # in production anyway.
-    tx_queue, rx_queue = open_memory_channel(inf)
+    tx_queue, rx_queue = open_memory_channel[bytes | bytearray](inf)
 
     async with tx_queue:
         with overridden(globals(), connected_client_queue=tx_queue, buffer=[]):
@@ -177,7 +184,7 @@ async def handle_debug_connection_outbound(
 
 
 async def handle_debug_connection_inbound(
-    stream: Stream, queue: ReceiveChannel
+    stream: Stream, queue: ReceiveChannel[bytes | bytearray]
 ) -> None:
     """Handles inbound messages sent from other components in the server that
     should be dispatched to the currently connected client of the debug port.

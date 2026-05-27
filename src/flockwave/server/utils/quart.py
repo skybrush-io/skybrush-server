@@ -1,11 +1,10 @@
 from __future__ import annotations
 
 import os
-
 from datetime import datetime, timedelta, timezone
+from importlib.abc import ResourceReader
 from pathlib import Path
 from sys import executable
-from typing import Optional
 from zlib import adler32
 
 from jinja2 import BaseLoader, ChoiceLoader, FileSystemLoader, TemplateNotFound
@@ -16,7 +15,7 @@ from .generic import constant
 from .packaging import is_oxidized
 
 
-def _get_quart_root_path_of(name: str) -> Optional[str]:
+def _get_quart_root_path_of(name: str) -> str | None:
     if is_oxidized():
         # Running inside PyOxidizer, return the current folder as a dummy
         # root path for Quart
@@ -40,7 +39,9 @@ class PyOxidizerTemplateLoader(BaseLoader):
         self.path = path
 
     def get_source(self, environment, template):
-        reader = __loader__.get_resource_reader(self.package)
+        assert hasattr(__loader__, "get_resource_reader")
+        assert callable(__loader__.get_resource_reader)
+        reader: ResourceReader | None = __loader__.get_resource_reader(self.package)  # ty:ignore[call-top-callable, invalid-assignment]
         if reader is None:
             raise TemplateNotFound(template)
         try:
@@ -90,7 +91,9 @@ class PyOxidizerBlueprint(Blueprint):
 
         # __loader__ points to PyOxidizer's OxidizedFinder
         package, _, _ = self.import_name.rpartition(".")
-        reader = __loader__.get_resource_reader(package)
+        assert hasattr(__loader__, "get_resource_reader")
+        assert callable(__loader__.get_resource_reader)
+        reader: ResourceReader | None = __loader__.get_resource_reader(package)  # ty:ignore[call-top-callable, invalid-assignment]
         resource_path = f"static/{filename}"
 
         try:
@@ -110,7 +113,8 @@ class PyOxidizerBlueprint(Blueprint):
         # Do not use a with block to close data; it must be kept open until
         # the request handler ends
         response: Response = await send_file(
-            data, attachment_filename=Path(filename).name
+            data,  # ty:ignore[invalid-argument-type]
+            attachment_filename=Path(filename).name,
         )
 
         # Check whether the file is represented by a physical file on the disk

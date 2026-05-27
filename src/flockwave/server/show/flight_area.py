@@ -2,13 +2,14 @@
 Skybrush-related flight area specifications, until we find a better place for them.
 """
 
-from typing import Dict, Optional, Sequence, Union
+from collections.abc import Sequence
 
 from flockwave.gps.vectors import (
     FlatEarthCoordinate,
     FlatEarthToGPSCoordinateTransformation,
     GPSCoordinate,
 )
+
 from flockwave.server.model.flight_area import (
     FlightAreaConfigurationRequest,
     FlightAreaPolygon,
@@ -16,6 +17,7 @@ from flockwave.server.model.flight_area import (
 from flockwave.server.utils import optional_float
 
 from .specification import (
+    ShowSpecification,
     get_coordinate_system_from_show_specification,
     is_coordinate_system_in_show_specification_geodetic,
 )
@@ -24,7 +26,7 @@ __all__ = ("get_flight_area_configuration_from_show_specification",)
 
 
 def get_flight_area_configuration_from_show_specification(
-    show: Dict,
+    show: ShowSpecification,
 ) -> FlightAreaConfigurationRequest:
     result = FlightAreaConfigurationRequest()
 
@@ -61,8 +63,8 @@ def get_flight_area_configuration_from_show_specification(
 
 
 def _parse_points(
-    points: Sequence[list[Union[int, float]]],
-    coordinate_system: Optional[FlatEarthToGPSCoordinateTransformation],
+    points: Sequence[list[int | float]],
+    coordinate_system: FlatEarthToGPSCoordinateTransformation | None,
 ) -> list[GPSCoordinate]:
     """Parses a list of points from the flight area specification using the given
     optional local-to-global coordinate system and returns the parsed points.
@@ -83,7 +85,7 @@ def _parse_points(
 
 
 def _parse_polygon(
-    polygon: Dict, coordinate_system: Optional[FlatEarthToGPSCoordinateTransformation]
+    polygon: dict, coordinate_system: FlatEarthToGPSCoordinateTransformation | None
 ) -> FlightAreaPolygon:
     """Parses a polygon from the flight area specification using the given optional
     local-to-global coordinate system and returns the parsed polygon.

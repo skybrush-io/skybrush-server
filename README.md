@@ -1,3 +1,6 @@
+![Tests](https://github.com/skybrush-io/skybrush-server/actions/workflows/tests.yml/badge.svg)
+![Linters](https://github.com/skybrush-io/skybrush-server/actions/workflows/linters.yml/badge.svg)
+
 # Skybrush Server
 
 Skybrush Server is the server component behind the Skybrush ecosystem; it handles

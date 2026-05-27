@@ -1,6 +1,5 @@
 from enum import Enum, IntEnum, IntFlag
 from struct import Struct
-from typing import Union
 
 from flockwave.server.model.gps import GPSFixType as OurGPSFixType
 
@@ -163,6 +162,7 @@ class MAVMessageType(IntEnum):
     SYS_STATUS = 1
     SYSTEM_TIME = 2
     GPS_RAW_INT = 24
+    SCALED_IMU = 26
     GLOBAL_POSITION_INT = 33
     REQUEST_DATA_STREAM = 66
     DATA_STREAM = 67
@@ -170,6 +170,9 @@ class MAVMessageType(IntEnum):
     COMMAND_LONG = 76
     COMMAND_ACK = 77
     SET_POSITION_TARGET_GLOBAL_INT = 86
+    SCALED_IMU2 = 116
+    SCALED_IMU3 = 129
+    BATTERY_STATUS = 147
     AUTOPILOT_VERSION = 148
     MAG_CAL_PROGRESS = 191  # ArduPilot-specific
     MAG_CAL_REPORT = 192
@@ -296,7 +299,7 @@ class MAVParamType(IntEnum):
             encoded = _mav_param_type_structs[self].pack(value)  # type: ignore
             return _mav_param_type_structs[MAVParamType.REAL32].unpack(encoded)[0]  # type: ignore
 
-    def decode_float(self, value: float) -> Union[int, float]:
+    def decode_float(self, value: float) -> int | float:
         """Decodes the given value by interpreting it as this MAVLink parameter
         type.
 

@@ -2,7 +2,9 @@
 keeps track of registered authentication methods.
 """
 
+from collections.abc import Iterator
 from contextlib import contextmanager
+from typing import TYPE_CHECKING, Any, ContextManager, Protocol, Sequence
 
 from flockwave.server.model.authentication import (
     AuthenticationMethod,
@@ -12,8 +14,6 @@ from flockwave.server.model.client import Client
 from flockwave.server.registries.base import RegistryBase
 
 from .base import Extension
-
-from typing import Any, Iterator, Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from flockwave.server.app import SkybrushServer
@@ -27,7 +27,7 @@ class AuthenticationMethodRegistry(RegistryBase[AuthenticationMethod]):
     by its identifier.
     """
 
-    def add(self, method: AuthenticationMethod):
+    def add(self, method: AuthenticationMethod) -> None:
         """Registers an authentication method in the registry.
 
         Parameters:
@@ -41,7 +41,7 @@ class AuthenticationMethodRegistry(RegistryBase[AuthenticationMethod]):
             raise KeyError(f"Authentication method ID already taken: {method.id}")
         self._entries[method.id] = method
 
-    def remove(self, method: AuthenticationMethod) -> Optional[AuthenticationMethod]:
+    def remove(self, method: AuthenticationMethod) -> AuthenticationMethod | None:
         """Removes the given authentication method from the registry.
 
         This function is a no-op if the method is not registered.
@@ -55,7 +55,7 @@ class AuthenticationMethodRegistry(RegistryBase[AuthenticationMethod]):
         """
         return self.remove_by_id(method.id)
 
-    def remove_by_id(self, method_id: str) -> Optional[AuthenticationMethod]:
+    def remove_by_id(self, method_id: str) -> AuthenticationMethod | None:
         """Removes the authentication method with the given ID from the
         registry.
 
@@ -190,6 +190,20 @@ class AuthenticationExtension(Extension):
         on this server.
         """
         return self._required
+
+
+class AuthenticationExtensionAPI(Protocol):
+    """Interface specification for the API exposed by the `auth` extension."""
+
+    def get_supported_methods(self) -> Sequence[str]: ...
+    def is_required(self) -> bool: ...
+    def register(self, method: AuthenticationMethod) -> None: ...
+    def unregister(
+        self, method: AuthenticationMethod
+    ) -> AuthenticationMethod | None: ...
+    def use(
+        self, method: AuthenticationMethod
+    ) -> ContextManager[AuthenticationMethod]: ...
 
 
 construct = AuthenticationExtension

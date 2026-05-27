@@ -4,10 +4,10 @@ UAV and the ground station via some communication link.
 
 from __future__ import annotations
 
-from compose import compose
 from functools import partial
 from typing import Any
 
+from compose import compose
 from flockwave.channels import (
     create_lossy_channel,
 )
@@ -19,7 +19,6 @@ from flockwave.server.comm import CommunicationManager
 from .channel import create_mavlink_message_channel
 from .signing import MAVLinkSigningConfiguration
 from .types import MAVLinkMessageSpecification
-
 
 __all__ = ("create_communication_manager",)
 

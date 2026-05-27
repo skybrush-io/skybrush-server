@@ -5,16 +5,8 @@ string identifiers.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import (
-    Callable,
-    Generic,
-    Iterable,
-    Iterator,
-    Optional,
-    TypeVar,
-    TYPE_CHECKING,
-    Union,
-)
+from collections.abc import Callable, Iterable, Iterator
+from typing import TYPE_CHECKING, Generic, TypeVar
 
 if TYPE_CHECKING:
     from flockwave.server.model.messages import FlockwaveNotification, FlockwaveResponse
@@ -121,7 +113,7 @@ class RegistryBase(Generic[T], Registry[T]):
         """Returns an entry from this registry given its ID.
 
         Parameters:
-            entry_id (str): the ID of the entry to retrieve
+            entry_id: the ID of the entry to retrieve
 
         Returns:
             object: the entry with the given ID
@@ -162,13 +154,13 @@ class RegistryBase(Generic[T], Registry[T]):
 
 
 def find_in_registry(
-    registry: Optional[Registry[T]],
+    registry: Registry[T] | None,
     entry_id: str,
     *,
-    predicate: Optional[Callable[[T], bool]] = None,
-    response: Optional[Union["FlockwaveNotification", "FlockwaveResponse"]] = None,
-    failure_reason: Optional[str] = None,
-) -> Optional[T]:
+    predicate: Callable[[T], bool] | None = None,
+    response: FlockwaveNotification | FlockwaveResponse | None = None,
+    failure_reason: str | None = None,
+) -> T | None:
     """Finds an entry in the given registry with the given ID or
     registers a failure in the given response object if there is no
     such entry in the registry.
@@ -187,7 +179,7 @@ def find_in_registry(
         the entry from the registry with the given ID or ``None`` if there is
         no such entry (or if the registry itself was ``None``)
     """
-    entry = None
+    entry: T | None = None
     exists = False
 
     if registry:
@@ -197,7 +189,9 @@ def find_in_registry(
         except KeyError:
             exists = False
 
-        exists = exists and (not predicate or predicate(entry))
+        if exists:
+            assert entry is not None
+            exists = not predicate or predicate(entry)
 
     if not exists:
         if hasattr(response, "add_error"):

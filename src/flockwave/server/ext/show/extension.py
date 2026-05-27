@@ -3,12 +3,15 @@ from __future__ import annotations
 from contextlib import ExitStack
 from logging import Logger
 from math import inf
-from trio import fail_after, Nursery, open_nursery, sleep_forever, TooSlowError
-from trio_util import periodic
-from typing import Any, Optional
+from typing import Any
 
 from flockwave.concurrency import CancellableTaskGroup
+from trio import Nursery, TooSlowError, fail_after, open_nursery, sleep_forever
+from trio_util import periodic
+
 from flockwave.server.ext.base import Extension
+from flockwave.server.ext.clocks import ClocksExtensionAPI
+from flockwave.server.ext.signals import SignalsExtensionAPI
 from flockwave.server.model.clock import Clock
 from flockwave.server.tasks import wait_for_dict_items, wait_until
 
@@ -32,15 +35,15 @@ class DroneShowExtension(Extension):
 
     log: Logger
 
-    _clock: Optional[ShowClock]
+    _clock: ShowClock | None
     _clock_sync: ClockSynchronizationHandler
-    _end_clock: Optional[ShowEndClock]
+    _end_clock: ShowEndClock | None
     _end_clock_sync: ClockSynchronizationHandler
 
-    _log_middleware: Optional[ShowUploadLoggingMiddleware]
+    _log_middleware: ShowUploadLoggingMiddleware | None
 
-    _nursery: Optional[Nursery]
-    _show_tasks: Optional[CancellableTaskGroup]
+    _nursery: Nursery | None
+    _show_tasks: CancellableTaskGroup | None
 
     def __init__(self):
         super().__init__()
@@ -146,7 +149,7 @@ class DroneShowExtension(Extension):
             )
         except ValueError:
             self.log.warning(
-                "Invalid value for 'default_point_of_no_return_seconds' in configuration, "
+                "Invalid value for 'point_of_no_return_seconds' in configuration, "
                 "using default value of -10 seconds"
             )
             point_of_no_return_seconds = -10
@@ -198,8 +201,9 @@ class DroneShowExtension(Extension):
                         sender=self._clock,
                     )
                 )
-                stack.enter_context(app.import_api("clocks").use_clock(self._clock))
-                stack.enter_context(app.import_api("clocks").use_clock(self._end_clock))
+                clocks = app.import_api("clocks", ClocksExtensionAPI)
+                stack.enter_context(clocks.use_clock(self._clock))
+                stack.enter_context(clocks.use_clock(self._end_clock))
                 stack.enter_context(app.message_hub.use_message_handlers(handlers))
                 stack.enter_context(
                     app.message_hub.use_request_middleware(self._log_middleware)
@@ -210,7 +214,7 @@ class DroneShowExtension(Extension):
                 )
                 await sleep_forever()
 
-    def _get_clock(self) -> Optional[ShowClock]:
+    def _get_clock(self) -> ShowClock | None:
         """Returns a reference to the show clock."""
         return self._clock
 
@@ -246,7 +250,9 @@ class DroneShowExtension(Extension):
         self.log.info(self._config.format())
 
         assert self.app is not None
-        updated_signal = self.app.import_api("signals").get("show:config_updated")
+        updated_signal = self.app.import_api("signals", SignalsExtensionAPI).get(
+            "show:config_updated"
+        )
         updated_signal.send(self, config=self._config.clone())
 
     def _on_lights_updated(self, sender) -> None:
@@ -254,15 +260,19 @@ class DroneShowExtension(Extension):
         updated from any source.
         """
         assert self.app is not None
-        updated_signal = self.app.import_api("signals").get("show:lights_updated")
+        updated_signal = self.app.import_api("signals", SignalsExtensionAPI).get(
+            "show:lights_updated"
+        )
         updated_signal.send(self, config=self._lights.clone())
 
-    def _on_show_clock_changed(self, sender, *, delta: Optional[float] = None) -> None:
+    def _on_show_clock_changed(self, sender, *, delta: float | None = None) -> None:
         """Handler that is called when the show clock is started, stopped or
         adjusted.
         """
         assert self.app is not None
-        changed_signal = self.app.import_api("signals").get("show:clock_changed")
+        changed_signal = self.app.import_api("signals", SignalsExtensionAPI).get(
+            "show:clock_changed"
+        )
         changed_signal.send(self)
 
     @property
@@ -278,7 +288,7 @@ class DroneShowExtension(Extension):
         )
 
     def _sync_show_clocks_to(
-        self, clock_id: Optional[str], time: Optional[float], duration: Optional[float]
+        self, clock_id: str | None, time: float | None, duration: float | None
     ) -> None:
         """Configures the clock synchronization handler such that it syncs the
         show clock to the clock with the given ID, assuming that the show clock
@@ -294,7 +304,7 @@ class DroneShowExtension(Extension):
             time: timestamp to synchronize the start to
             duration: expected duration of the show, in seconds
         """
-        primary_clock: Optional[Clock]
+        primary_clock: Clock | None
 
         end_time = time if time is not None else None
         if end_time is not None and duration is not None:
@@ -313,7 +323,8 @@ class DroneShowExtension(Extension):
                 self._end_clock.reference_time = end_time
 
         else:
-            registry = self.app.import_api("clocks").registry
+            clocks = self.app.import_api("clocks", ClocksExtensionAPI)
+            registry = clocks.registry
             try:
                 primary_clock = registry.find_by_id(clock_id)
             except KeyError:
@@ -331,7 +342,9 @@ class DroneShowExtension(Extension):
 
     async def _start_show_when_needed(self) -> None:
         assert self.app is not None
-        start_signal = self.app.import_api("signals").get("show:start")
+        start_signal = self.app.import_api("signals", SignalsExtensionAPI).get(
+            "show:start"
+        )
 
         assert self._clock is not None
         await wait_until(self._clock, seconds=0, edge_triggered=True)

@@ -1,5 +1,6 @@
-from trio import sleep
 from typing import Any
+
+from trio import sleep
 
 from .model import LocalPositioningSystem, LocalPositioningSystemType
 

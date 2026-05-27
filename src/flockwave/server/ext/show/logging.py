@@ -2,10 +2,12 @@
 
 from logging import Logger
 from time import monotonic
-from typing import Any, Optional
+from typing import Any, cast
 
 from flockwave.gps.vectors import FlatEarthToGPSCoordinateTransformation
+
 from flockwave.server.model import Client, FlockwaveMessage
+from flockwave.server.show import ShowSpecification
 
 from .metadata import ShowMetadata
 
@@ -32,7 +34,7 @@ class ShowUploadLoggingMiddleware:
     messages whenever it detects that a new show upload has started.
     """
 
-    _last_show_metadata: Optional[ShowMetadata] = None
+    _last_show_metadata: ShowMetadata | None = None
     """The metadata of the last show upload that was seen by the
     middleware.
     """
@@ -40,7 +42,7 @@ class ShowUploadLoggingMiddleware:
     _last_show_upload_command_at: float
     """Timestamp when the last show upload command was detected."""
 
-    _last_show_upload_fingerprint: Optional[ShowFingerprint] = None
+    _last_show_upload_fingerprint: ShowFingerprint | None = None
     """Fingerprint containing the basic parameters of the last show upload.
     Used to decide whether it's a new show upload or most likely not.
     """
@@ -54,7 +56,6 @@ class ShowUploadLoggingMiddleware:
         Parameter:
             log: logger that the middleware will write to
         """
-        self._last_show_metadata = None
         self._last_show_upload_command_at = monotonic() - 1000
         self._log = log
 
@@ -83,7 +84,7 @@ class ShowUploadLoggingMiddleware:
 
         return message
 
-    def _extract_show(self, message: FlockwaveMessage) -> Optional[dict[str, Any]]:
+    def _extract_show(self, message: FlockwaveMessage) -> ShowSpecification | None:
         """Checks whether the given message is a show upload and extracts the
         show specification out of the message if it is.
         """
@@ -96,27 +97,28 @@ class ShowUploadLoggingMiddleware:
                     return kwds["show"]
 
     @property
-    def last_show_metadata(self) -> Optional[ShowMetadata]:
+    def last_show_metadata(self) -> ShowMetadata | None:
         """Returns the metadata of the last show upload that was seen by the
         middleware.
         """
         return self._last_show_metadata
 
     @staticmethod
-    def _get_show_fingerprint(show: dict[str, Any]) -> ShowFingerprint:
+    def _get_show_fingerprint(show: ShowSpecification) -> ShowFingerprint:
         """Extracts the basic show parameters like the origin and the orientation
         from the upload. These are used to decide whether an upload attempt is
         probably a continuation of an ongoing sequence of requests from the
         client or a completely new one.
         """
+        show_dict = cast(dict[str, Any], show)
         return [
-            get(show, "mission", "id"),
-            get(show, "coordinateSystem"),
-            get(show, "amslReference"),
+            get(show_dict, "mission", "id"),
+            get(show_dict, "coordinateSystem"),
+            get(show_dict, "amslReference"),
         ]
 
     @staticmethod
-    def _get_metadata_from_upload_request(show: dict[str, Any]) -> ShowMetadata:
+    def _get_metadata_from_upload_request(show: ShowSpecification) -> ShowMetadata:
         """Extracts the metadata of the current show being uploaded. This is
         returned to consumers of the API of the show extension when the caller
         requests the metadata of the last uploaded show.

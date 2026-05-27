@@ -12,32 +12,33 @@ M-SEARCH requests for root devices, and for searches for
 
 from __future__ import annotations
 
-from contextlib import closing
-from datetime import datetime
-from errno import EADDRNOTAVAIL, ENODEV
-from http.server import BaseHTTPRequestHandler
-from logging import Logger
-from io import BytesIO
-from os import getenv
-from random import random
-from time import mktime, monotonic
-from trio import sleep
-from typing import Iterable, TYPE_CHECKING
-from wsgiref.handlers import format_date_time
-
 import platform
 import re
 import socket
 import struct
+from collections.abc import Iterable
+from contextlib import closing
+from datetime import datetime
+from errno import EADDRNOTAVAIL, ENODEV
+from http.server import BaseHTTPRequestHandler
+from io import BytesIO
+from logging import Logger
+from os import getenv
+from random import random
+from time import mktime, monotonic
+from typing import TYPE_CHECKING, Callable, cast
+from wsgiref.handlers import format_date_time
 
 from flockwave.connections import IPAddressAndPort
 from flockwave.networking import create_socket
+from trio import sleep
+
 from flockwave.server.ports import suggest_port_number_for_service, use_port
 from flockwave.server.registries import find_in_registry
 from flockwave.server.utils import overridden
 from flockwave.server.version import __version__ as skybrush_version
 
-from .registry import UPnPServiceRegistry
+from .registry import CallableReturningURI, UPnPServiceRegistry
 from .types import SSDPExtensionAPIDict
 
 if TYPE_CHECKING:
@@ -157,7 +158,7 @@ def get_service_uri(service_id: str, address: IPAddressAndPort) -> str | None:
         uri = find_in_registry(registry, service_id)
         if uri is not None:
             if callable(uri):
-                uri = uri(address)
+                uri = cast(CallableReturningURI, uri)(address)
             return uri
 
     # service_id is not found in the list of registered services in this
@@ -276,8 +277,12 @@ def is_valid_service(service: str) -> bool:
     if registry is not None and registry.contains(service):
         return True
 
-    channel = app.channel_type_registry.find_by_id(service)
-    return channel and channel.get_ssdp_location() is not None
+    try:
+        channel = app.channel_type_registry.find_by_id(service)
+    except KeyError:
+        return False
+
+    return channel.get_ssdp_location() is not None
 
 
 def prepare_response(
@@ -288,15 +293,15 @@ def prepare_response(
     """Prepares a response to send.
 
     Parameters:
-        headers (Iterable[str]): list containing names of standard headers to
+        headers: list containing names of standard headers to
             include in the response. The values of the headers are obtained
             from the global ``_RESPONSE_HEADERS`` dictionary. When the dict
             contains a function for a given header name, the function will be
             executed without arguments and its return value will be added as
             the real value of the header.
-        extra (dict[str,str]): dictionary mapping additional headers to add
+        extra: dictionary mapping additional headers to add
             to the response.
-        prefix (str): prefix line to add in front of the response.
+        prefix: prefix line to add in front of the response.
     """
     response: list[str] = []
     if prefix:
@@ -307,7 +312,7 @@ def prepare_response(
             header_name = header_name.upper()
             header_value = _RESPONSE_HEADERS.get(header_name)
             if callable(header_value):
-                header_value = header_value()
+                header_value = cast(Callable[[], str], header_value)()
             if header_value is None:
                 continue
             response.append("{0}: {1}".format(header_name, header_value))
@@ -396,7 +401,7 @@ async def run(app: SkybrushServer, configuration, logger: Logger):
                     show_warning = False
 
                 if show_warning:
-                    logger.warn("SSDP receiver socket closed: '{}'".format(error))
+                    logger.warning("SSDP receiver socket closed: '{}'".format(error))
 
                 last_error = now
 

@@ -1,21 +1,34 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import timezone
 from enum import IntEnum, IntFlag
 from functools import lru_cache
 from struct import Struct, pack
 from time import time
-from typing import ClassVar, Optional, Sequence
+from typing import TYPE_CHECKING, ClassVar
 
-from flockwave.gps.time import unix_to_gps_time_of_week, gps_time_of_week_to_utc
+from deprecated import deprecated
+from flockwave.gps.time import gps_time_of_week_to_utc, unix_to_gps_time_of_week
+
 from flockwave.server.ext.show.config import AuthorizationScope
+from flockwave.server.ext.show.time import BinaryTimeAxisConfiguration
 from flockwave.server.model.gps import GPSFixType as OurGPSFixType
 
 from .enums import GPSFixType
 from .types import MAVLinkMessage, MAVLinkMessageSpecification, spec
 
-__all__ = ("DroneShowStatus", "create_led_control_packet")
+if TYPE_CHECKING:
+    from flockwave.server.ext.rc import RCState
+
+__all__ = (
+    "DroneShowStatus",
+    "create_led_control_packet",
+    "create_rc_override_packet",
+    "create_start_time_configuration_packet",
+    "create_time_axis_configuration_packet",
+)
 
 
 _EMPTY = b"\x00" * 256
@@ -84,7 +97,7 @@ def create_custom_data_packet(type: int, payload: bytes) -> MAVLinkMessageSpecif
 
 def create_start_time_configuration_packet(
     authorization_scope: AuthorizationScope,
-    start_time: Optional[float] = None,
+    start_time: float | None = None,
     should_update_takeoff_time: bool = True,
 ) -> MAVLinkMessageSpecification:
     """Creates a custom command packet used by our firmware that sets the
@@ -103,25 +116,38 @@ def create_start_time_configuration_packet(
         # on the drone's side.
         start_time = 0x7FFFFFFF
         msec_until_start = 0x7FFFFFFF
+        start_time_msec_offset = 0
     elif start_time is None or start_time < 0:
         # clear start time; this is expressed by a value smaller than -604800
         # seconds on the drone's side
         start_time = -0x80000000
         msec_until_start = -0x80000000
+        start_time_msec_offset = 0
     else:
         # convert from UNIX timestamp to GPS time-of-week
         msec_until_start = int(1000 * (start_time - time()))
         msec_until_start = min(max(msec_until_start, -MSEC_IN_WEEK), MSEC_IN_WEEK)
+        start_time, start_time_msec_offset = divmod(int(start_time * 1000), 1000)
         _, start_time = unix_to_gps_time_of_week(int(start_time))
 
     scope_value = authorization_scope_to_int(authorization_scope)
     return create_custom_data_packet(
-        type=1, payload=pack("<iBi", start_time, scope_value, msec_until_start)
+        type=1,
+        payload=pack(
+            "<iBiH", start_time, scope_value, msec_until_start, start_time_msec_offset
+        ),
     )
 
 
+def create_time_axis_configuration_packet(
+    config: BinaryTimeAxisConfiguration,
+) -> MAVLinkMessageSpecification:
+    """Creates a time axis configuration packet used by our firmware."""
+    return create_custom_data_packet(type=5, payload=config)
+
+
 def create_led_control_packet(
-    data: Optional[Sequence[int]] = None, broadcast: bool = False
+    data: Sequence[int] | None = None, broadcast: bool = False
 ) -> MAVLinkMessageSpecification:
     """Creates a special LED light control packet used by our firmware."""
     kwds = {
@@ -133,6 +159,53 @@ def create_led_control_packet(
     if broadcast:
         kwds.update(target_system=0, target_component=0)
     return spec.led_control(**kwds)
+
+
+def create_rc_override_packet(
+    state: RCState, broadcast: bool = False
+) -> MAVLinkMessageSpecification:
+    """Creates a MAVLink RC override packet based on the given RC state object,
+    mapping from the channel conventions used in the RCState_ instance to the ones used
+    by the MAVLink RC_OVERRIDE packet.
+    """
+    if state.lost:
+        # Cancel all previous RC overrides. For channels <= 8, zero means
+        # "release back to RC radio". For channels > 8, 65534 means
+        # "release back to RC radio" as zero would mean "ignore"
+        channels = [0] * 8 + [65534] * 10
+    else:
+        # Get scaled PWM values to send
+        channels = state.get_scaled_channel_values_int(out_of_range=0)
+        if state.num_channels < 18:
+            # Ignore channels for which the sender has no real value.
+            # 65535 in MAVLink RC_CHANNELS_OVERRIDE packets means "ignore"
+            num_missing = 18 - state.num_channels
+            channels[state.num_channels :] = [65535] * num_missing
+
+    kwds = {
+        "chan1_raw": channels[0],
+        "chan2_raw": channels[1],
+        "chan3_raw": channels[2],
+        "chan4_raw": channels[3],
+        "chan5_raw": channels[4],
+        "chan6_raw": channels[5],
+        "chan7_raw": channels[6],
+        "chan8_raw": channels[7],
+        "chan9_raw": channels[8],
+        "chan10_raw": channels[9],
+        "chan11_raw": channels[10],
+        "chan12_raw": channels[11],
+        "chan13_raw": channels[12],
+        "chan14_raw": channels[13],
+        "chan15_raw": channels[14],
+        "chan16_raw": channels[15],
+        "chan17_raw": channels[16],
+        "chan18_raw": channels[17],
+    }
+    if broadcast:
+        kwds.update(target_system=0, target_component=0)
+
+    return spec.rc_channels_override(**kwds)
 
 
 def format_elapsed_time(value: int) -> str:
@@ -259,9 +332,9 @@ class DroneShowStatus:
     to the `extension` property.
     """
 
-    start_time: int = -1
-    """Scheduled start time of the drone show, in GPS seconds of week, negative
-    if not set.
+    start_time_msec: int | None = None
+    """Scheduled start time of the drone show, in GPS milliseconds of week, `None` if
+    not set.
     """
 
     elapsed_time: int = 0
@@ -285,18 +358,18 @@ class DroneShowStatus:
     authorization_scope: AuthorizationScope = AuthorizationScope.NONE
     """Authorization scope of the scheduled start of the drone show."""
 
-    rtcm_counters: Sequence[Optional[int]] = (None, None)
+    rtcm_counters: Sequence[int | None] = (None, None)
     """Number of RTCM messages received from the primary and secondary channels
     in the last few seconds.
     """
 
-    extension: Optional[DroneShowStatusExtension] = None
+    extension: DroneShowStatusExtension | None = None
     """Extended status information, if provided at construction time."""
 
     TYPE: ClassVar[int] = 0x5B
     """Identifier of Skybrush-specific DATA* show status packets."""
 
-    _struct: ClassVar[Struct] = Struct("<iHBBBBhBB")
+    _struct: ClassVar[Struct] = Struct("<IHBBBBhBB")
     """Structure of Skybrush-specific DATA* show status packets."""
 
     @classmethod
@@ -317,7 +390,7 @@ class DroneShowStatus:
 
         # Unpack the standard section of the packet
         (
-            start_time,
+            encoded_start_time,
             light,
             flags,
             flags2,
@@ -327,6 +400,16 @@ class DroneShowStatus:
             primary_rtcm_count_plus_one,
             secondary_rtcm_count_plus_one,
         ) = cls._struct.unpack(data[:14])
+
+        # encoded_start_time contains the GPS time of week in the lower 20 bits, and the
+        # millisecond part of the start time in the next 10 bits. Except if
+        # encoded_start_time is all 1s, in which case it means "not set yet"
+        if encoded_start_time == 0xFFFFFFFF:
+            start_time_msec = None
+        else:
+            start_time_msec = ((encoded_start_time & 0xFFFFF) * 1000) + (
+                encoded_start_time >> 20
+            )
 
         # Merge flags, flags2 and flags3 into one byte. Lower 4 bits of flags2
         # is the execution stage. Lower 2 bits of flags3 is the boot count
@@ -367,7 +450,7 @@ class DroneShowStatus:
         )
 
         return cls(
-            start_time=start_time,
+            start_time_msec=start_time_msec,
             elapsed_time=elapsed_time,
             light=light,
             flags=flags,
@@ -380,7 +463,7 @@ class DroneShowStatus:
         )
 
     @classmethod
-    def from_mavlink_message(cls, message: MAVLinkMessage):
+    def from_mavlink_message(cls, message: MAVLinkMessage) -> "DroneShowStatus":
         """Constructs a DroneShowStatus_ object from a MAVLink DATA* packet.
 
         Raises:
@@ -406,7 +489,7 @@ class DroneShowStatus:
         """Returns whether there is a valid start time in the drone show status
         message.
         """
-        return self.start_time >= 0
+        return self.start_time_msec is not None and self.start_time_msec >= 0
 
     @property
     def has_takeoff_authorization(self) -> bool:
@@ -452,9 +535,28 @@ class DroneShowStatus:
         if self.stage.probably_airborne or self.elapsed_time >= -30:
             clock = format_elapsed_time(self.elapsed_time)
         else:
-            clock = format_gps_time_of_week(self.start_time)
+            clock = format_gps_time_of_week(
+                self.start_time_msec // 1000 if self.start_time_msec is not None else -1
+            )
         message = self._format_message()
         return f"[{clock}] {message}"
+
+    @property
+    @deprecated(
+        "use `start_time_sec` instead to make the unit explicit", version="2.47.0"
+    )
+    def start_time(self) -> float | None:
+        return self.start_time_sec
+
+    @property
+    def start_time_sec(self) -> float | None:
+        """Scheduled start time of the drone show, in GPS seconds of week, `None`
+        if not set.
+        """
+        if self.start_time_msec is None or self.start_time_msec < 0:
+            return None
+        else:
+            return self.start_time_msec / 1000.0
 
     def _format_message(self) -> str:
         """Formats a status message from the execution stage and flags found in
@@ -558,16 +660,16 @@ class DroneShowStatusExtension:
     heading: float
     """Heading of the drone."""
 
-    h_acc: Optional[float] = None
+    h_acc: float | None = None
     """Horizontal accuracy as reported by the GPS; ``None`` if not provided."""
 
-    v_acc: Optional[float] = None
+    v_acc: float | None = None
     """Vertical accuracy as reported by the GPS; ``None`` if not provided."""
 
-    show_id: Optional[int] = None
+    show_id: int | None = None
     """Unique identifier of the show uploaded to the drone, if known."""
 
-    trajectory_index: Optional[int] = None
+    trajectory_index: int | None = None
     """Index of the trajectory that the drone is going to fly, if known."""
 
     _struct: ClassVar[Struct] = Struct("<iiiihhhHHHIH")

@@ -1,17 +1,19 @@
 from __future__ import annotations
 
-from base64 import b64encode, b64decode
+from base64 import b64decode, b64encode
+from collections.abc import Callable
 from dataclasses import dataclass
 from re import match, sub
-from typing import Callable, ClassVar, TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar, cast
+
 from wrapt import ObjectProxy
 
 from .errors import InvalidSigningKeyError
 
 if TYPE_CHECKING:
     from flockwave.protocols.mavlink.types import (
-        MinimalMAVLinkInterface,
         MAVLinkSigningInterface,
+        MinimalMAVLinkInterface,
     )
 
 __all__ = ("MAVLinkSigningConfiguration", "SignatureTimestampSynchronizer")
@@ -167,6 +169,7 @@ class SignatureTimestampSynchronizer:
         timestamp synchronizer class.
         """
         self._update_timestamp(signing_state.timestamp)
-        return self.TimestampProxy(
+        proxy = self.TimestampProxy(
             signing_state, self._get_timestamp, self._update_timestamp
         )
+        return cast("MAVLinkSigningInterface[MinimalMAVLinkInterface]", proxy)

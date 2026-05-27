@@ -1,20 +1,14 @@
 """Generic utility functions that do not fit elsewhere."""
 
-from colour import Color
+from collections.abc import Callable, Iterable, Iterator, Sequence
 from contextlib import contextmanager
 from datetime import datetime
 from functools import partial
 from itertools import islice
 from operator import mul
-from typing import (
-    Any,
-    Callable,
-    Iterable,
-    Iterator,
-    Optional,
-    Sequence,
-    TypeVar,
-)
+from typing import Any, Generic, ParamSpec, Protocol, TypeVar, cast
+
+from colour import Color
 
 __all__ = (
     "clamp",
@@ -41,6 +35,7 @@ __all__ = (
 )
 
 
+P = ParamSpec("P")
 T = TypeVar("T")
 
 
@@ -85,7 +80,7 @@ def color_to_rgb8_triplet(color: Color) -> tuple[int, int, int]:
     Returns:
         the color in its RGB8 triplet representation
     """
-    return tuple(round(x * 255) for x in color.rgb)  # type: ignore
+    return tuple(round(x * 255) for x in color.rgb)
 
 
 T = TypeVar("T")
@@ -170,7 +165,7 @@ def divide_by(value: float) -> Callable[[float], float]:
     """Returns a function that divides every number received as an input
     with the given value.
     """
-    return partial(mul, 1.0 / value)
+    return cast(Callable[[float], float], partial(mul, 1.0 / value))
 
 
 def identity(obj: Any) -> Any:
@@ -215,7 +210,7 @@ def longest_common_prefix(strings: Sequence[str]) -> str:
     if not strings:
         return ""
 
-    shortest_string = min(strings, key=len)
+    shortest_string: str = min(strings, key=len)  # ty:ignore[invalid-assignment]
     for i, char in enumerate(shortest_string):
         for other in strings:
             if other[i] != char:
@@ -224,7 +219,7 @@ def longest_common_prefix(strings: Sequence[str]) -> str:
     return shortest_string
 
 
-def maybe_round(value: Optional[float], ndigits: int = 0) -> Optional[float]:
+def maybe_round(value: float | None, ndigits: int = 0) -> float | None:
     """Rounds the given value to the given number of digits if it is not
     ``None``; returns ``None`` otherwise.
     """
@@ -235,7 +230,7 @@ def multiply_by(term: float) -> Callable[[float], float]:
     """Returns a function that multiplies every number received as an input
     with the given term.
     """
-    return partial(mul, term)
+    return cast(Callable[[float], float], partial(mul, term))
 
 
 def nop(*args, **kwds):
@@ -245,23 +240,31 @@ def nop(*args, **kwds):
     pass
 
 
-def once(func):
+class OnceCallable(Generic[P, T], Protocol):
+    def __call__(self, *args: P.args, **kwds: P.kwargs) -> T: ...
+
+    called: bool
+
+
+def once(func: Callable[P, T]) -> Callable[P, T]:
     """Decorator that decorates a function and allows it to be called only
     once. Subsequent attempts to call the function will throw an exception.
     """
 
-    def wrapped(*args, **kwds):
-        if wrapped.called:
-            raise RuntimeError("{!r} can be called only once".format(func))
+    wrapped: OnceCallable[P, T]
 
-        wrapped.called = True
+    def wrapped(*args: P.args, **kwds: P.kwargs) -> T:
+        if wrapped.called:  # ty:ignore[unresolved-attribute]
+            raise RuntimeError(f"{func!r} can be called only once")
+
+        wrapped.called = True  # ty:ignore[invalid-assignment]
         return func(*args, **kwds)
 
-    wrapped.called = False
+    wrapped.called = False  # ty:ignore[unresolved-attribute]
     return wrapped
 
 
-def optional_float(x: Any) -> Optional[float]:
+def optional_float(x: Any) -> float | None:
     """Converts the given value into a float, unless it is `None`, in which
     case it is returned intact.
 
@@ -271,7 +274,7 @@ def optional_float(x: Any) -> Optional[float]:
     return float(x) if x is not None else None
 
 
-def optional_int(x: Any) -> Optional[int]:
+def optional_int(x: Any) -> int | None:
     """Converts the given value into an integer, unless it is `None`, in which
     case it is returned intact.
 

@@ -1,13 +1,13 @@
 """Classes representing various Skybrush show file formats."""
 
-from collections.abc import Awaitable, Callable, Iterable, Sequence
+from collections.abc import AsyncGenerator, Awaitable, Callable, Iterable, Sequence
 from contextlib import aclosing
 from enum import IntEnum, IntFlag
 from functools import partial
 from io import SEEK_END, BytesIO
 from math import floor
 from struct import Struct
-from typing import IO, AsyncGenerator, ClassVar, cast
+from typing import IO, ClassVar, cast
 
 from .trajectory import TrajectorySegment, TrajectorySpecification
 from .utils import Point
@@ -347,7 +347,7 @@ class SkybrushBinaryShowFile:
 
     async def blocks(
         self, rewind: bool | None = None, validate: bool | None = None
-    ) -> AsyncGenerator[SkybrushBinaryFileBlock]:
+    ) -> AsyncGenerator[SkybrushBinaryFileBlock, None]:
         """Iterates over the blocks found in the file.
 
         Parameters:

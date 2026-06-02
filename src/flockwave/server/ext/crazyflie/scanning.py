@@ -4,12 +4,12 @@ of a Crazyflie address space for Crazyflie drones.
 
 from __future__ import annotations
 
-from collections.abc import AsyncIterable, Callable, Iterable
+from collections.abc import AsyncGenerator, AsyncIterable, Callable, Iterable
 from contextlib import aclosing
 from errno import ENODEV
 from functools import partial
 from time import monotonic
-from typing import TYPE_CHECKING, AsyncGenerator, ClassVar
+from typing import TYPE_CHECKING, ClassVar
 
 from trio import Event, move_on_after, sleep
 from trio.abc import ReceiveChannel, SendChannel

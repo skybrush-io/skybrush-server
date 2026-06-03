@@ -66,6 +66,7 @@ class DroneShowExtension(Extension):
         return {
             "get_clock": self._get_clock,
             "get_configuration": self._get_configuration,
+            "get_end_clock": self._get_end_clock,
             "get_last_uploaded_show_metadata": self._get_last_uploaded_show_metadata,
             "get_light_configuration": self._get_light_configuration,
         }
@@ -222,6 +223,10 @@ class DroneShowExtension(Extension):
         """Returns a copy of the current drone show configuration."""
         return self._config.clone()
 
+    def _get_end_clock(self) -> ShowEndClock | None:
+        """Returns a reference to the show end clock."""
+        return self._end_clock
+
     def _get_last_uploaded_show_metadata(self):
         """Returns the metadata of the last uploaded show."""
         return self._log_middleware.last_show_metadata if self._log_middleware else None
@@ -310,17 +315,21 @@ class DroneShowExtension(Extension):
         if end_time is not None and duration is not None:
             end_time += duration
 
+        # Note that we always update the show end clock before the show clock
+        # so that event handlers on show clock updates can read the end clock
+        # as well properly
+
         if self.app is None:
-            self._clock_sync.disable_and_stop()
             self._end_clock_sync.disable_and_stop()
+            self._clock_sync.disable_and_stop()
 
         elif clock_id is None:
-            self._clock_sync.disable()
             self._end_clock_sync.disable()
-            if self._clock is not None:
-                self._clock.reference_time = time
+            self._clock_sync.disable()
             if self._end_clock is not None:
                 self._end_clock.reference_time = end_time
+            if self._clock is not None:
+                self._clock.reference_time = time
 
         else:
             clocks = self.app.import_api("clocks", ClocksExtensionAPI)
@@ -331,14 +340,14 @@ class DroneShowExtension(Extension):
                 primary_clock = None
 
             if primary_clock and time is not None:
-                self._clock_sync.synchronize_to(primary_clock, time)
                 if end_time is not None:
                     self._end_clock_sync.synchronize_to(primary_clock, end_time)
                 else:
                     self._end_clock_sync.disable_and_stop()
+                self._clock_sync.synchronize_to(primary_clock, time)
             else:
-                self._clock_sync.disable_and_stop()
                 self._end_clock_sync.disable_and_stop()
+                self._clock_sync.disable_and_stop()
 
     async def _start_show_when_needed(self) -> None:
         assert self.app is not None

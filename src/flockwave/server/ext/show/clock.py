@@ -48,6 +48,19 @@ class ShowEndClock(TimeElapsedSinceReferenceClock):
         """Constructor."""
         super().__init__(id="end_of_show", epoch=None)
 
+    @property
+    def end_time(self) -> float | None:
+        """The scheduled end time, in seconds since the UNIX epoch, or ``None``
+        if no end time has been scheduled yet.
+
+        Same as the reference time; kept for convenience purposes only.
+        """
+        return self.reference_time
+
+    @end_time.setter
+    def end_time(self, value: float | None):
+        self.reference_time = value
+
 
 class ClockSynchronizationHandler:
     """Class that holds references to a primary and a secondary clock and that

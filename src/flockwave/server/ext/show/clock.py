@@ -66,13 +66,27 @@ class ClockSynchronizationHandler:
     """
 
     _enabled: bool = False
+    """Whether the clock synchronization is enabled."""
 
     _primary_clock: Clock | None = None
+    """The primary (main) clock to synchronize the secondary clock _to_. No changes
+    will be made to this clock by the clock synchronization handler.
+    """
+
     _secondary_clock: TimeElapsedSinceReferenceClock | None = None
+    """The secondary clock that is being synchronized to the primary clock. Adjustments
+    to this clock may be made by the clock synchronization handler if needed.
+
+    The clock needs to have a reference time that can be adjusted at will, hence the
+    typing.
+    """
 
     _subscribed_clock: Clock | None = None
     """The clock whose signals the handler is currently subscribed to. Updated
     dynamically when the enabled / disabled state or the primary clock changes.
+
+    It is guaranteed that this clock is identical to the primary clock _or_ ``None``
+    if no event subscriptions are needed at the moment.
     """
 
     _primary_seconds_for_zero_secondary_seconds: float = 0
@@ -233,7 +247,7 @@ class ClockSynchronizationHandler:
             if time_on_secondary_clock >= self.point_of_no_return_seconds:
                 if self.log:
                     self.log.warning(
-                        f"Clock {self._secondary_clock.id!r} clock has reached "
+                        f"Clock {self._secondary_clock.id!r} has reached "
                         f"the point of no return, skipping adjustment"
                     )
                 can_adjust = False

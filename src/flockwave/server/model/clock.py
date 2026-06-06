@@ -60,7 +60,7 @@ class Clock(ABC):
         """Returns the current timestamp of the clock, i.e. the number of
         _seconds_ elapsed since the epoch.
         """
-        return self.ticks_given_time(time()) / self.ticks_per_second
+        return self.seconds_given_time(time())
 
     @property
     def ticks(self) -> float:
@@ -68,6 +68,20 @@ class Clock(ABC):
         _ticks_ elapsed since the epoch.
         """
         return self.ticks_given_time(time())
+
+    def seconds_given_time(self, now: float) -> float:
+        """Returns the timestamp of the clock, i.e. the number of _seconds_
+        elapsed since the epoch, assuming that the internal clock of the server
+        is set to the given time.
+
+        Parameters:
+            now: the current time according to the internal clock of the server,
+                expressed as the number of seconds elapsed since the Unix epoch
+
+        Returns:
+            the timestamp of the clock, in seconds
+        """
+        return self.ticks_given_time(now) / self.ticks_per_second
 
     @abstractmethod
     def ticks_given_time(self, now: float) -> float:

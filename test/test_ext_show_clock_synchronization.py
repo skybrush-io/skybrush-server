@@ -313,3 +313,90 @@ def test_clock_adjustment_beyond_point_of_no_return(
     primary.start_time = now
     assert secondary.running
     assert secondary.ticks_given_time(now + 5) == 100
+
+
+def test_primary_clock_stop_without_point_of_no_return(
+    clocks: ClockPair, handler: ClockSynchronizationHandler, mock_time: MockTime
+):
+    # Set up a synchronized primary/secondary clock pair without a point of no
+    # return so stopping the primary clock should immediately stop the secondary.
+    primary, secondary = clocks
+
+    now = mock_time.value
+    primary.start_time = now
+
+    handler.secondary_clock = secondary
+    handler.synchronize_to(primary, 5)
+
+    # Verify the initial synchronized state to establish that the secondary
+    # clock is running before the primary clock is stopped.
+    assert secondary.running
+    assert secondary.start_time == 105
+    assert secondary.seconds_given_time(now) == -5
+
+    # Stop the primary clock and confirm that the secondary clock also stops,
+    # matching the baseline behavior when no point of no return is configured.
+    primary.start_time = None
+    assert not secondary.running
+    assert secondary.start_time is None
+    assert secondary.ticks_given_time(now) == 0
+
+
+def test_primary_clock_stop_before_point_of_no_return(
+    clocks: ClockPair,
+    handler_with_point_of_no_return: ClockSynchronizationHandler,
+    mock_time: MockTime,
+):
+    # Set up a synchronized primary/secondary clock pair with a point of no
+    # return, but keep the secondary clock before that threshold.
+    handler = handler_with_point_of_no_return
+    primary, secondary = clocks
+
+    now = mock_time.value
+    primary.start_time = now
+
+    handler.secondary_clock = secondary
+    handler.synchronize_to(primary, 15)
+
+    # Verify the initial synchronized state to establish that the secondary
+    # clock is still before the point of no return when the stop happens.
+    assert secondary.running
+    assert secondary.start_time == 115
+    assert secondary.seconds_given_time(now) == -15
+
+    # Stop the primary clock and confirm that the secondary clock also stops,
+    # because stop events are propagated even when a point of no return exists.
+    primary.start_time = None
+    assert not secondary.running
+    assert secondary.start_time is None
+    assert secondary.ticks_given_time(now) == 0
+
+
+def test_primary_clock_stop_after_point_of_no_return(
+    clocks: ClockPair,
+    handler_with_point_of_no_return: ClockSynchronizationHandler,
+    mock_time: MockTime,
+):
+    # Set up a synchronized primary/secondary clock pair with a point of no
+    # return and place the secondary clock beyond that threshold.
+    handler = handler_with_point_of_no_return
+    primary, secondary = clocks
+
+    now = mock_time.value
+    primary.start_time = now
+
+    handler.secondary_clock = secondary
+    handler.synchronize_to(primary, 5)
+
+    # Verify the initial synchronized state to establish that the secondary
+    # clock has already passed the point of no return before stopping.
+    assert secondary.running
+    assert secondary.start_time == 105
+    assert secondary.seconds_given_time(now) == -5
+
+    # Stop the primary clock and confirm the current behavior: the secondary
+    # clock still stops even after the point of no return has been reached.
+    primary.start_time = None
+    assert not secondary.running
+    assert secondary.start_time is None
+    assert secondary.ticks_given_time(now) == 0

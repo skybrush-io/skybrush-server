@@ -2,7 +2,7 @@
 of the show, or the elapsed time into the show if it is already running.
 """
 
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from logging import Logger
 from time import time
@@ -65,6 +65,21 @@ class ClockSynchronizationHandler:
     point of no return.
     """
 
+    log: Logger | None = None
+    """Logger to use for logging messages. If ``None``, no logging will be done
+    by the handler.
+    """
+
+    point_of_no_return_seconds: float | None = None
+    """The number of seconds on the secondary clock that correspond to the
+    so-called "point of no return".
+    """
+
+    _current_time: Callable[[], float]
+    """Getter that returns the current time when called with no arguments.
+    Useful in unit tests.
+    """
+
     _enabled: bool = False
     """Whether the clock synchronization is enabled."""
 
@@ -94,28 +109,22 @@ class ClockSynchronizationHandler:
     seconds on the secondary clock.
     """
 
-    log: Logger | None = None
-    """Logger to use for logging messages. If ``None``, no logging will be done
-    by the handler.
-    """
-
-    point_of_no_return_seconds: float | None = None
-    """The number of seconds on the secondary clock that correspond to the
-    so-called "point of no return".
-    """
-
     def __init__(
         self,
         *,
         point_of_no_return_seconds: float | None = None,
+        current_time: Callable[[], float] = time,
     ):
         """Constructor.
 
         Parameters:
             point_of_no_return_seconds: the number of seconds on the secondary
                 clock that correspond to the so-called "point of no return"
+            current_time: function that can be called with no arguments to get the
+                current time. Useful in unit tests.
         """
         self.point_of_no_return_seconds = point_of_no_return_seconds
+        self._current_time = current_time
 
     @property
     def enabled(self) -> bool:
@@ -243,7 +252,8 @@ class ClockSynchronizationHandler:
         ):
             # If the secondary clock is running, we should not adjust it if it
             # has reached the point of no return
-            time_on_secondary_clock = self._secondary_clock.seconds
+            now = self._current_time()
+            time_on_secondary_clock = self._secondary_clock.seconds_given_time(now)
             if time_on_secondary_clock >= self.point_of_no_return_seconds:
                 if self.log:
                     self.log.warning(
@@ -299,7 +309,7 @@ class ClockSynchronizationHandler:
         if not self._enabled or self._secondary_clock is None:
             return
 
-        now = time()
+        now = self._current_time()
         (
             should_run,
             time_on_secondary_clock,

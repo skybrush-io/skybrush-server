@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [main]
+
+### Fixed
+
+- `ClockSynchronizationHandler` was changed such that it does not stop the secondary
+  clock beyond its point of no return even if the primary clock was stopped. This
+  prevents lost MIDI timecode links from stopping the show clock when the show was
+  started based on MIDI timecode. If you want to stop the show clock in such cases,
+  clear the show start time from Skybrush Live instead. We consider this a bugfix
+  instead of a breaking change because the previous behaviour was undesired and went
+  against user expectations.
+
 ## [2.46.0] - 2026-04-01
 
 ### Added

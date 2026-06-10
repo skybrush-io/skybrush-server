@@ -58,11 +58,8 @@ class ClockSynchronizationHandler:
     The clock synchronization handler has an optional concept called "the point
     of no return". This is a threshold on the number of seconds on the secondary
     clock. When the secondary clock is _running_ and the primary clock is
-    _adjusted_ after the secondary clock has reached this point in seconds, no
-    adjustments will be done on the secondary clock.
-
-    Stopping the primary clock will still stop the secondary clock beyond the
-    point of no return.
+    _adjusted_ or _stopped_ after the secondary clock has reached this point in
+    seconds, no adjustments will be done on the secondary clock.
     """
 
     log: Logger | None = None
@@ -247,8 +244,6 @@ class ClockSynchronizationHandler:
             self.point_of_no_return_seconds is not None
             and self._secondary_clock is not None
             and self._secondary_clock.running
-            and self._primary_clock is not None
-            and self._primary_clock.running
         ):
             # If the secondary clock is running, we should not adjust it if it
             # has reached the point of no return

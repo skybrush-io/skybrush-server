@@ -297,22 +297,10 @@ def test_clock_adjustment_beyond_point_of_no_return(
     # Stop the primary clock -- the secondary clock should also be stopped as
     # it is not an adjustment
     primary.start_time = None
-    assert not secondary.running
-    assert secondary.ticks_given_time(now) == 0
+    assert secondary.running
     assert secondary.ticks_given_time(now + 5) == 0
-    assert not mock_logger.messages
-
-    # Simulate an adjustment to the primary clock again -- now it should work
-    primary.start_time = now - 10
-    assert secondary.running
-    assert secondary.start_time == 95
-    assert secondary.ticks_given_time(now + 5) == 100
-
-    # Disable the synchronization, then adjust the primary clock again
-    handler.disable()
-    primary.start_time = now
-    assert secondary.running
-    assert secondary.ticks_given_time(now + 5) == 100
+    assert len(mock_logger.messages) == 1
+    assert mock_logger.messages[0][0] == "warning"
 
 
 def test_primary_clock_stop_without_point_of_no_return(
@@ -394,9 +382,9 @@ def test_primary_clock_stop_after_point_of_no_return(
     assert secondary.start_time == 105
     assert secondary.seconds_given_time(now) == -5
 
-    # Stop the primary clock and confirm the current behavior: the secondary
-    # clock still stops even after the point of no return has been reached.
+    # Stop the primary clock and confirm that the secondary clock keeps on running
+    # with an unchanged start time
     primary.start_time = None
-    assert not secondary.running
-    assert secondary.start_time is None
-    assert secondary.ticks_given_time(now) == 0
+    assert secondary.running
+    assert secondary.start_time == 105
+    assert secondary.seconds_given_time(now) == -5

@@ -301,8 +301,6 @@ class DroneShowConfiguration:
                     self.authorized_to_start = False
                     changed.add("authorized_to_start")
 
-        print("SHOW: update_from_json() changed", changed)
-
         if changed:
             # Note that the old `updated` signal is deprecated and not used
             # any more, but we keep it for a while as maybe someone uses it

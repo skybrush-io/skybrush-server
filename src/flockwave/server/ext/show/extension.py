@@ -172,7 +172,7 @@ class DroneShowExtension(Extension):
 
             with ExitStack() as stack:
                 stack.enter_context(
-                    self._config.updated.connected_to(
+                    self._config.updated_ext.connected_to(
                         self._on_config_updated,
                         sender=self._config,
                     )
@@ -230,15 +230,22 @@ class DroneShowExtension(Extension):
         """Returns a copy of the current LED lgiht configuration."""
         return self._lights.clone()
 
-    def _on_config_updated(self, sender) -> None:
+    def _on_config_updated(self, sender, changed: set[str]) -> None:
         """Handler that is called when the configuration of the start settings
         of the show was updated from any source.
+
+        Args:
+            changed: set of strings representing the member variables of the
+                show config object which has been actually updated
         """
         assert self.app is not None
 
-        self._sync_show_clocks_to(
-            self._config.clock, self._config.start_time_on_clock, self._config.duration
-        )
+        if {"clock", "start_time_on_clock", "duration"} & changed:
+            self._sync_show_clocks_to(
+                self._config.clock,
+                self._config.start_time_on_clock,
+                self._config.duration,
+            )
 
         if self._show_tasks is not None:
             self._show_tasks.cancel_all()

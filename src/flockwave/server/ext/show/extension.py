@@ -233,6 +233,10 @@ class DroneShowExtension(Extension):
     def _on_config_updated(self, sender, changed: set[str]) -> None:
         """Handler that is called when the configuration of the start settings
         of the show was updated from any source.
+
+        Args:
+            changed: set of strings representing the member variables of the
+                show config object which has been actually updated
         """
         assert self.app is not None
 

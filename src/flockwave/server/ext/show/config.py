@@ -69,14 +69,15 @@ class DroneShowConfiguration:
 
     updated = Signal(
         doc=(
-            "Signal emitted when the configuration is updated "
-            "(deprecated, use `updated_ext` instead!)"
+            "Signal emitted when the configuration is updated. Deprecated, use "
+            "`updated_v2` instead."
         )
     )
-    updated_ext = Signal(
+    updated_v2 = Signal(
         doc=(
-            "Extended signal emitted when the configuration is updated, "
-            "containing all names of member variables that got changed"
+            "Signal emitted when the configuration is updated. Provides a keyword "
+            "argument named `changes` that contains the names of all the affected "
+            "fields in the drone show configuration."
         )
     )
 
@@ -305,4 +306,4 @@ class DroneShowConfiguration:
             # Note that the old `updated` signal is deprecated and not used
             # any more, but we keep it for a while as maybe someone uses it
             self.updated.send(self)
-            self.updated_ext.send(self, changed=changed)
+            self.updated_v2.send(self, changed=changed)

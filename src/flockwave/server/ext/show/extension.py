@@ -172,7 +172,7 @@ class DroneShowExtension(Extension):
 
             with ExitStack() as stack:
                 stack.enter_context(
-                    self._config.updated_ext.connected_to(
+                    self._config.updated_v2.connected_to(
                         self._on_config_updated,
                         sender=self._config,
                     )

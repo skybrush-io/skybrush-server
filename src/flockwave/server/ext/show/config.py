@@ -268,9 +268,9 @@ class DroneShowConfiguration:
                 if isinstance(uav_ids, list) and all(
                     item is None or isinstance(item, str) for item in uav_ids
                 ):
-                    # note that uav_ids is mutable, so we need to check whether we point to a
-                    # different list or whether the content of the same list has changed
-                    if self.uav_ids is not uav_ids or self.uav_ids != uav_ids:
+                    # TODO: If we exploit the mutability of uav_ids anywhere in the code
+                    # then this conditional assignment might cause trouble
+                    if set(self.uav_ids) != set(uav_ids):
                         self.uav_ids = uav_ids
                         changed.add("uav_ids")
 

@@ -23,7 +23,7 @@ search = "__version_info__ = {current_version}"
 
 [[before_commit]]
 name = "Run tests and pre-commit hooks"
-cmd = "uv sync && uv run pytest && pre-commit run --all-files"
+cmd = "uv sync && uv run pytest && prek run --all-files"
 
 [[after_push]]
 name = "Build tarball"

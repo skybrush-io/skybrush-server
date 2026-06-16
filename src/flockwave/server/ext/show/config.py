@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from enum import Enum
-from typing import Any, TypeVar
+from typing import Any, TypeVar, cast
 
 from blinker import Signal
 
@@ -110,7 +111,7 @@ class DroneShowConfiguration:
     _seconds_ relative to the epoch of the existing clock.
     """
 
-    uav_ids: list[str | None]
+    uav_ids: Sequence[str | None]
     """The list of UAV IDs participating in the show."""
 
     def __init__(self):
@@ -265,13 +266,11 @@ class DroneShowConfiguration:
 
             if "uavIds" in start_conditions:
                 uav_ids = start_conditions["uavIds"]
-                if isinstance(uav_ids, list) and all(
+                if isinstance(uav_ids, Sequence) and all(
                     item is None or isinstance(item, str) for item in uav_ids
                 ):
-                    # TODO: If we exploit the mutability of uav_ids anywhere in the code
-                    # then this conditional assignment might cause trouble
-                    if set(self.uav_ids) != set(uav_ids):
-                        self.uav_ids = uav_ids
+                    if self.uav_ids != uav_ids:
+                        self.uav_ids = list(cast(Sequence[str | None], uav_ids))
                         changed.add("uav_ids")
 
             if "clock" in start_conditions:

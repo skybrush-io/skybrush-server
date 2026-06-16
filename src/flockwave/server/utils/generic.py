@@ -39,7 +39,7 @@ P = ParamSpec("P")
 T = TypeVar("T")
 
 
-def chunks(it: Iterable[T], size: int) -> Iterator[tuple[T]]:
+def chunks(it: Iterable[T], size: int) -> Iterator[tuple[T, ...]]:
     """Takes an iterator or iterable and returns an iterator that yields chunks
     of at most the given size from the input.
     """
@@ -210,7 +210,7 @@ def longest_common_prefix(strings: Sequence[str]) -> str:
     if not strings:
         return ""
 
-    shortest_string: str = min(strings, key=len)  # ty:ignore[invalid-assignment]
+    shortest_string: str = min(strings, key=len)
     for i, char in enumerate(shortest_string):
         for other in strings:
             if other[i] != char:

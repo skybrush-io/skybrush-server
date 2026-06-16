@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, TypeVar
 
 from .unknown import UnknownAutopilot
 
@@ -18,9 +18,12 @@ def get_autopilot_factory_by_mavlink_type(type: int) -> type["Autopilot"]:
     return _autopilot_registry.get(type, UnknownAutopilot)
 
 
+T = TypeVar("T", bound="Autopilot")
+
+
 def register_for_mavlink_type(
     mavlink_type: int,
-) -> Callable[[type["Autopilot"]], type["Autopilot"]]:
+) -> Callable[[type[T]], type[T]]:
     """Class decorator to register an Autopilot subclass for a given MAVLink
     autopilot type.
 
@@ -31,7 +34,7 @@ def register_for_mavlink_type(
         The class decorator.
     """
 
-    def decorator(cls: type["Autopilot"]) -> type["Autopilot"]:
+    def decorator(cls: type[T]) -> type[T]:
         if cls in _autopilot_registry:
             raise RuntimeError(f"{cls!r} is already registered")
 

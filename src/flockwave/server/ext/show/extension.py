@@ -240,7 +240,9 @@ class DroneShowExtension(Extension):
         """
         assert self.app is not None
 
-        if {"clock", "start_time_on_clock", "duration"} & changed:
+        if any(
+            prop in changed for prop in ("clock", "start_time_on_clock", "duration")
+        ):
             self._sync_show_clocks_to(
                 self._config.clock,
                 self._config.start_time_on_clock,

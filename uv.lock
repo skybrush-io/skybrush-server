@@ -975,16 +975,16 @@ wheels = [
 
 [[package]]
 name = "flockwave-logger"
-version = "2.1.1"
+version = "3.0.0"
 source = { registry = "https://pypi.fury.io/skybrush/" }
 dependencies = [
     { name = "colorama", marker = "os_name == 'nt'" },
     { name = "colorlog" },
     { name = "python-json-logger" },
 ]
-sdist = { url = "https://pypi.fury.io/skybrush/-/ver_1J0pTg/flockwave-logger-2.1.1.tar.gz", hash = "sha256:160e52be6bc443bcb7e4a069a4244961916bcdb6fb2991c5f391ea28e7be24d5" }
+sdist = { url = "https://pypi.fury.io/skybrush/-/ver_1zLBiQ/flockwave-logger-3.0.0.tar.gz", hash = "sha256:199fda1ff275838943166ae3cd99fb7222770c78302e9a0c9bbd815365eb2215" }
 wheels = [
-    { url = "https://pypi.fury.io/skybrush/-/ver_AERSz/flockwave_logger-2.1.1-py3-none-any.whl", hash = "sha256:5a52905362ce81c2c6a09eccb46003fcf214c31177cc048dfdf0d6509d9fcdf2" },
+    { url = "https://pypi.fury.io/skybrush/-/ver_12lhsd/flockwave_logger-3.0.0-py3-none-any.whl", hash = "sha256:ba949673e863538e711d4b0ff8dbf89aaab2088b4691e80a34292285e8aa420d" },
 ]
 
 [[package]]
@@ -1160,7 +1160,7 @@ requires-dist = [
     { name = "flockwave-ext", specifier = ">=2.0.0,<3.0.0", index = "https://pypi.fury.io/skybrush/" },
     { name = "flockwave-flockctrl", marker = "extra == 'collmot'", specifier = ">=4.0.0", index = "https://pypi.collmot.com/" },
     { name = "flockwave-gps", specifier = ">=5.0.1,<6.0.0", index = "https://pypi.fury.io/skybrush/" },
-    { name = "flockwave-logger", specifier = ">=2.1.1,<3.0.0", index = "https://pypi.fury.io/skybrush/" },
+    { name = "flockwave-logger", specifier = ">=3.0.0,<4.0.0", index = "https://pypi.fury.io/skybrush/" },
     { name = "flockwave-mavlink", specifier = ">=1.0.1,<2.0.0", index = "https://pypi.fury.io/skybrush/" },
     { name = "flockwave-net", extras = ["async"], specifier = ">=8.1.0,<9.0.0", index = "https://pypi.fury.io/skybrush/" },
     { name = "flockwave-parsers", specifier = ">=4.0.1,<5.0.0", index = "https://pypi.fury.io/skybrush/" },

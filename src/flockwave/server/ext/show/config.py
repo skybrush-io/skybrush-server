@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from enum import Enum
-from typing import Any, TypeVar
+from typing import Any, TypeVar, cast
 
 from blinker import Signal
 
@@ -67,7 +68,20 @@ C = TypeVar("C", bound="DroneShowConfiguration")
 class DroneShowConfiguration:
     """Main configuration object for the drone show extension."""
 
-    updated = Signal(doc="Signal emitted when the configuration is updated")
+    updated = Signal(
+        doc=(
+            "Signal emitted when the configuration is updated. Deprecated, use "
+            "`updated_v2` instead."
+        )
+    )
+    updated_v2 = Signal(
+        doc=(
+            "Signal emitted when the configuration is updated. Provides a keyword "
+            "argument named `changes` that contains the names of all the affected "
+            "fields in the drone show configuration. The type of `changes` is "
+            "`Sequence[str]`."
+        )
+    )
 
     authorized_to_start: bool
     """Whether the show is authorized to start (subject to restrictions in
@@ -98,7 +112,7 @@ class DroneShowConfiguration:
     _seconds_ relative to the epoch of the existing clock.
     """
 
-    uav_ids: list[str | None]
+    uav_ids: Sequence[str | None]
     """The list of UAV IDs participating in the show."""
 
     def __init__(self):
@@ -199,7 +213,7 @@ class DroneShowConfiguration:
 
     def update_from_json(self, obj: dict[str, Any]) -> None:
         """Updates the configuration object from its JSON representation."""
-        changed = False
+        changed: set[str] = set()
 
         # Handle start conditions
         start_conditions = obj.get("start")
@@ -207,7 +221,10 @@ class DroneShowConfiguration:
             if "authorized" in start_conditions:
                 # This is intentional; in order to be on the safe side, we only
                 # accept True for authorization, not any other truthy value
-                self.authorized_to_start = start_conditions["authorized"] is True
+                authorized_to_start = start_conditions["authorized"] is True
+                if self.authorized_to_start != authorized_to_start:
+                    self.authorized_to_start = authorized_to_start
+                    changed.add("authorized_to_start")
 
                 # For sake of compatibility with versions that did not have an
                 # authorizationScope member, force the scope to be LIVE if it
@@ -217,62 +234,76 @@ class DroneShowConfiguration:
                     and self.authorization_scope is AuthorizationScope.NONE
                 ):
                     self.authorization_scope = AuthorizationScope.LIVE
-
-                changed = True
+                    changed.add("authorization_scope")
 
             if "authorizationScope" in start_conditions:
                 authorization_scope = start_conditions["authorizationScope"]
                 if isinstance(authorization_scope, str):
                     try:
-                        self.authorization_scope = AuthorizationScope(
-                            authorization_scope
-                        )
-                        changed = True
+                        authorization_scope = AuthorizationScope(authorization_scope)
+                        if self.authorization_scope is not authorization_scope:
+                            self.authorization_scope = authorization_scope
+                            changed.add("authorization_scope")
                     except ValueError:
                         pass
 
             if "time" in start_conditions:
                 start_time = start_conditions["time"]
                 if start_time is None:
-                    self.start_time_on_clock = None
-                    changed = True
+                    if self.start_time_on_clock is not None:
+                        self.start_time_on_clock = None
+                        changed.add("start_time_on_clock")
                 elif isinstance(start_time, (int, float)):
-                    self.start_time_on_clock = float(start_time)
-                    changed = True
+                    start_time = float(start_time)
+                    if self.start_time_on_clock != start_time:
+                        self.start_time_on_clock = start_time
+                        changed.add("start_time_on_clock")
 
             if "method" in start_conditions:
-                self.start_method = StartMethod(start_conditions["method"])
-                changed = True
+                start_method = StartMethod(start_conditions["method"])
+                if self.start_method is not start_method:
+                    self.start_method = start_method
+                    changed.add("start_method")
 
             if "uavIds" in start_conditions:
                 uav_ids = start_conditions["uavIds"]
-                if isinstance(uav_ids, list) and all(
+                if isinstance(uav_ids, Sequence) and all(
                     item is None or isinstance(item, str) for item in uav_ids
                 ):
-                    self.uav_ids = uav_ids
-                    changed = True
+                    if self.uav_ids != uav_ids:
+                        self.uav_ids = list(cast(Sequence[str | None], uav_ids))
+                        changed.add("uav_ids")
 
             if "clock" in start_conditions:
                 clock = start_conditions["clock"]
                 if clock is None or isinstance(clock, str):
                     # Make sure that an empty string is mapped to None
-                    self.clock = clock if clock else None
-                    changed = True
+                    clock = clock if clock else None
+                    if self.clock != clock:
+                        self.clock = clock
+                        changed.add("clock")
 
         # Handle duration
         if "duration" in obj:
             if obj["duration"] is None:
-                self.duration = None
-                changed = True
+                if self.duration is not None:
+                    self.duration = None
+                    changed.add("duration")
             elif isinstance(obj["duration"], (int, float)) and obj["duration"] >= 0:
-                self.duration = float(obj["duration"])
-                changed = True
+                duration = float(obj["duration"])
+                if self.duration != duration:
+                    self.duration = duration
+                    changed.add("duration")
 
         # Enforce consistency of authorized_to_start and authorization_scope
         if self.authorized_to_start:
             if self.authorization_scope is AuthorizationScope.NONE:
-                self.authorized_to_start = False
-                changed = True
+                if self.authorized_to_start is True:
+                    self.authorized_to_start = False
+                    changed.add("authorized_to_start")
 
         if changed:
+            # Note that the old `updated` signal is deprecated and not used
+            # any more, but we keep it for a while as maybe someone uses it
             self.updated.send(self)
+            self.updated_v2.send(self, changed=tuple(changed))

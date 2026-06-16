@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
 from contextlib import ExitStack
 from logging import Logger
 from math import inf
@@ -230,7 +231,7 @@ class DroneShowExtension(Extension):
         """Returns a copy of the current LED lgiht configuration."""
         return self._lights.clone()
 
-    def _on_config_updated(self, sender, changed: set[str]) -> None:
+    def _on_config_updated(self, sender, changed: Sequence[str]) -> None:
         """Handler that is called when the configuration of the start settings
         of the show was updated from any source.
 

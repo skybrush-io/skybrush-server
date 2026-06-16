@@ -78,7 +78,8 @@ class DroneShowConfiguration:
         doc=(
             "Signal emitted when the configuration is updated. Provides a keyword "
             "argument named `changes` that contains the names of all the affected "
-            "fields in the drone show configuration."
+            "fields in the drone show configuration. The type of `changes` is "
+            "`Sequence[str]`."
         )
     )
 
@@ -305,4 +306,4 @@ class DroneShowConfiguration:
             # Note that the old `updated` signal is deprecated and not used
             # any more, but we keep it for a while as maybe someone uses it
             self.updated.send(self)
-            self.updated_v2.send(self, changed=changed)
+            self.updated_v2.send(self, changed=tuple(changed))

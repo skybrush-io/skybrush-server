@@ -34,6 +34,7 @@ from flockwave.server.command_handlers import (
     create_version_command_handler,
 )
 from flockwave.server.errors import NotSupportedError
+from flockwave.server.model.commands import Progress, ProgressEvents
 from flockwave.server.model.preflight import PreflightCheckInfo, PreflightCheckResult
 from flockwave.server.model.transport import TransportOptions
 from flockwave.server.model.uav import BatteryInfo, UAVBase, UAVDriver, VersionInfo
@@ -1006,21 +1007,29 @@ class CrazyflieUAV(UAVBase):
             altitude, relative=relative, velocity=velocity
         )
 
-    async def test_component(self, component: str) -> None:
+    async def test_component(self, component: str) -> ProgressEvents[str]:
         """Tests a component of the UAV.
 
         Parameters:
             component: the component to test; currently we support ``motor``,
                 ``battery`` and ``led``
+
+        Raises:
+            NotSupportedError if the given component test is not supported
         """
         if component == "motor":
+            yield Progress(percentage=0)
             await self.set_parameter("health.startPropTest", 1)
         elif component == "led":
+            yield Progress(percentage=0)
             await self._get_crazyflie().led_ring.test()
         elif component == "battery":
+            yield Progress(percentage=0)
             await self.set_parameter("health.startBatTest", 1)
         else:
             raise NotSupportedError
+
+        yield Progress(percentage=100)
 
     async def upload_show(
         self, show: ShowSpecification, *, remember: bool = True

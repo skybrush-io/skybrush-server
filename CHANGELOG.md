@@ -5,7 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [main]
+## [2.47.1] - 2026-06-20
+
+### Added
+
+- Added more detailed logging to time axis configuration packets (pro edition only).
 
 ### Fixed
 
@@ -16,6 +20,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   clear the show start time from Skybrush Live instead. We consider this a bugfix
   instead of a breaking change because the previous behaviour was undesired and went
   against user expectations.
+
+## [2.47.0] - 2026-06-03
+
+### Added
+
+- Start time of the show can now be set with sub-second precision. Required for
+  accurate show starts based on MIDI timecode.
 
 ## [2.46.0] - 2026-04-01
 

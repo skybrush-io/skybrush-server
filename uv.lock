@@ -1185,7 +1185,7 @@ requires-dist = [
     { name = "skybrush-ext-flight-report", marker = "extra == 'pro'", specifier = ">=1.0.3", index = "https://pypi.collmot.com/" },
     { name = "skybrush-ext-flockctrl", marker = "extra == 'collmot'", specifier = ">=4.0.3", index = "https://pypi.collmot.com/" },
     { name = "skybrush-ext-map-cache", marker = "extra == 'pro'", specifier = ">=1.1.1", index = "https://pypi.collmot.com/" },
-    { name = "skybrush-ext-show-pro", marker = "extra == 'pro'", specifier = ">=0.11.0", index = "https://pypi.collmot.com/" },
+    { name = "skybrush-ext-show-pro", marker = "extra == 'pro'", specifier = ">=0.11.3", index = "https://pypi.collmot.com/" },
     { name = "skybrush-ext-sidekick", marker = "extra == 'pro'", specifier = ">=1.2.1", index = "https://pypi.collmot.com/" },
     { name = "skybrush-ext-skynet", marker = "extra == 'pro'", specifier = ">=0.6.0", index = "https://pypi.collmot.com/" },
     { name = "skybrush-ext-studio", marker = "extra == 'pro'", specifier = ">=1.6.1", index = "https://pypi.collmot.com/" },
@@ -2839,15 +2839,15 @@ wheels = [
 
 [[package]]
 name = "skybrush-ext-show-pro"
-version = "0.11.0"
+version = "0.11.3"
 source = { registry = "https://pypi.collmot.com/" }
 dependencies = [
     { name = "skybrush-opt-rs" },
     { name = "skybrush-studio" },
 ]
-sdist = { url = "https://pypi.collmot.com/packages/skybrush_ext_show_pro-0.11.0.tar.gz", hash = "sha256:b1bb901d8fdeb091cfccc111a7a9d60f8cf000d2e63a523078b472bf0d5cc7be" }
+sdist = { url = "https://pypi.collmot.com/packages/skybrush_ext_show_pro-0.11.3.tar.gz", hash = "sha256:737df91176b34332afed0e9c91315f1b5823ebc2f7f774ee38cd78a51cbc3ec7" }
 wheels = [
-    { url = "https://pypi.collmot.com/packages/skybrush_ext_show_pro-0.11.0-py3-none-any.whl", hash = "sha256:cbfa835284049feeafee5e058fbd84fe1d241ecaf247de9628de753aa7e9094a" },
+    { url = "https://pypi.collmot.com/packages/skybrush_ext_show_pro-0.11.3-py3-none-any.whl", hash = "sha256:f01b354b892c2b9f8e67ea9eb96c723ddbbb254097f8a6f856ea8ea2f49d99fa" },
 ]
 
 [[package]]
@@ -3013,8 +3013,8 @@ name = "taskgroup"
 version = "0.2.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "exceptiongroup" },
-    { name = "typing-extensions" },
+    { name = "exceptiongroup", marker = "python_full_version < '3.11'" },
+    { name = "typing-extensions", marker = "python_full_version < '3.11'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/f0/8d/e218e0160cc1b692e6e0e5ba34e8865dbb171efeb5fc9a704544b3020605/taskgroup-0.2.2.tar.gz", hash = "sha256:078483ac3e78f2e3f973e2edbf6941374fbea81b9c5d0a96f51d297717f4752d", size = 11504, upload-time = "2025-01-03T09:24:13.761Z" }
 wheels = [

@@ -977,21 +977,29 @@ class VirtualUAV(UAVBase):
             )
 
 
-_LOGS: dict[str, FlightLog] = {
-    "1": FlightLog.create(
-        id="1",
-        kind=FlightLogKind.TEXT,
-        body="test flight log 1",
-        timestamp=1688328000,
-    ),
-    "2": FlightLog.create(
-        id="2",
-        kind=FlightLogKind.TEXT,
-        body="test flight log 2",
-        timestamp=1688328900,
-    ),
-}
-"""Fake logs for the virtual UAVs"""
+def _build_logs_for_uav(uav: VirtualUAV, *, num_logs: int = 4) -> dict[str, FlightLog]:
+    """Creates a dictionary of flight logs for the given UAV."""
+    return {
+        f"{i + 1}-{uav.id}": FlightLog.create(
+            id=f"{i + 1}-{uav.id}",
+            kind=FlightLogKind.TEXT,
+            body=f"test flight log {i + 1} for UAV {uav.id}",
+            timestamp=int(monotonic() - (num_logs - i + 1) * 600),
+        )
+        for i in range(num_logs)
+    }
+
+
+_LOGS: dict[str, dict[str, FlightLog]] = {}
+"""Dictionary that maps UAV IDs to fake logs."""
+
+
+def _get_logs_for_uav(uav: VirtualUAV) -> dict[str, FlightLog]:
+    """Returns the logs for the given UAV, creating fake logs if necessary."""
+    if uav.id not in _LOGS:
+        _LOGS[uav.id] = _build_logs_for_uav(uav)
+
+    return _LOGS[uav.id]
 
 
 class VirtualUAVDriver(UAVDriver[VirtualUAV]):
@@ -1185,7 +1193,7 @@ class VirtualUAVDriver(UAVDriver[VirtualUAV]):
         # Simulate a bit of delay to make it more realistic
         await sleep(0.5)
         try:
-            return _LOGS[log_id]
+            return _get_logs_for_uav(uav)[log_id]
         except KeyError:
             raise RuntimeError(f"no such log: {log_id}") from None
 
@@ -1202,7 +1210,7 @@ class VirtualUAVDriver(UAVDriver[VirtualUAV]):
     async def _get_log_list_single(self, uav: VirtualUAV) -> list[FlightLogMetadata]:
         # Simulate a bit of delay to make it more realistic
         await sleep(0.2)
-        return [log.get_metadata() for log in _LOGS.values()]
+        return [log.get_metadata() for log in _get_logs_for_uav(uav).values()]
 
     async def _get_parameter_single(self, uav: VirtualUAV, name: str) -> Any:
         return await uav.get_parameter(name)

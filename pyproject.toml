@@ -136,7 +136,7 @@ dev = [
   "pytest-datadir>=1.8.0",
   "pytest-trio>=0.8.0",
   "ruff>=0.15.5",
-  "ty>=0.0.21",
+  "ty>=0.0.51",
 ]
 
 [tool.poe.tasks]

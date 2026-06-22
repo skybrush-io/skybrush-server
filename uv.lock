@@ -1212,7 +1212,7 @@ dev = [
     { name = "pytest-datadir", specifier = ">=1.8.0" },
     { name = "pytest-trio", specifier = ">=0.8.0" },
     { name = "ruff", specifier = ">=0.15.5" },
-    { name = "ty", specifier = ">=0.0.21" },
+    { name = "ty", specifier = ">=0.0.51" },
 ]
 
 [[package]]

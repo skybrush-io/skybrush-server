@@ -1185,7 +1185,7 @@ requires-dist = [
     { name = "skybrush-ext-flight-report", marker = "extra == 'pro'", specifier = ">=1.0.3", index = "https://pypi.collmot.com/" },
     { name = "skybrush-ext-flockctrl", marker = "extra == 'collmot'", specifier = ">=4.0.3", index = "https://pypi.collmot.com/" },
     { name = "skybrush-ext-map-cache", marker = "extra == 'pro'", specifier = ">=1.1.1", index = "https://pypi.collmot.com/" },
-    { name = "skybrush-ext-show-pro", marker = "extra == 'pro'", specifier = ">=0.11.5", index = "https://pypi.collmot.com/" },
+    { name = "skybrush-ext-show-pro", marker = "extra == 'pro'", specifier = ">=0.11.6", index = "https://pypi.collmot.com/" },
     { name = "skybrush-ext-sidekick", marker = "extra == 'pro'", specifier = ">=1.2.1", index = "https://pypi.collmot.com/" },
     { name = "skybrush-ext-skynet", marker = "extra == 'pro'", specifier = ">=0.6.0", index = "https://pypi.collmot.com/" },
     { name = "skybrush-ext-studio", marker = "extra == 'pro'", specifier = ">=1.6.1", index = "https://pypi.collmot.com/" },
@@ -2839,15 +2839,15 @@ wheels = [
 
 [[package]]
 name = "skybrush-ext-show-pro"
-version = "0.11.5"
+version = "0.11.6"
 source = { registry = "https://pypi.collmot.com/" }
 dependencies = [
     { name = "skybrush-opt-rs" },
     { name = "skybrush-studio" },
 ]
-sdist = { url = "https://pypi.collmot.com/packages/skybrush_ext_show_pro-0.11.5.tar.gz", hash = "sha256:647f08ef7f5a75d7d2f3e237f300d5370f77231cce8fd5cf9df4f4e05324014c" }
+sdist = { url = "https://pypi.collmot.com/packages/skybrush_ext_show_pro-0.11.6.tar.gz", hash = "sha256:818c78f31922ce3c3aaf28ad6d1b93c04d904129920c98c8914ef7de3ef3d653" }
 wheels = [
-    { url = "https://pypi.collmot.com/packages/skybrush_ext_show_pro-0.11.5-py3-none-any.whl", hash = "sha256:bcb4213033b0f6da637a0970f173e371e6d194a1875d1e81f3a8b5ac893656d1" },
+    { url = "https://pypi.collmot.com/packages/skybrush_ext_show_pro-0.11.6-py3-none-any.whl", hash = "sha256:168912e1c23ae9cecdbeb28b8785043fbf4c58129481a0ed3d3357c157256103" },
 ]
 
 [[package]]

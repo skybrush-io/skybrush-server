@@ -38,16 +38,16 @@ wheels = [
 
 [[package]]
 name = "aio-usb-hotplug"
-version = "7.0.1"
+version = "8.0.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "anyio" },
     { name = "pyudev", marker = "sys_platform == 'linux'" },
     { name = "pyusb" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/c8/5c/d5f9eb7c2dad83d9297c53f42ec7b56e7540ffb128073c0a53ca5de1f28f/aio_usb_hotplug-7.0.1.tar.gz", hash = "sha256:1eb3a74262d07de29f5b121437db53ef569d79c586bae7803144e3f0b9ae566f", size = 8129, upload-time = "2026-05-10T17:18:34.938Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/d7/5e/0ddb9c673ff9a34023c012df82c7b4d116bc63cd13df947280e6c92e1b27/aio_usb_hotplug-8.0.0.tar.gz", hash = "sha256:f6dc22e816557d1d8ac053da28b17368410c391d7dd35ec0e2f1889fd3e4a01a", size = 8085, upload-time = "2026-06-23T17:54:30.36Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/b0/4c/28cf8148ef5829f60d51fb38b1a893ca7995b26c33d49388eed6aff2d667/aio_usb_hotplug-7.0.1-py3-none-any.whl", hash = "sha256:1f8dcd83754d17508f94408d4875b9a191b68ad5a28ebe67331178da2ff12331", size = 12053, upload-time = "2026-05-10T17:18:34.079Z" },
+    { url = "https://files.pythonhosted.org/packages/51/9d/e773bf985433db57cf1aaf5df06712581a6ce46e83539373cd6e093b2437/aio_usb_hotplug-8.0.0-py3-none-any.whl", hash = "sha256:a341fa08309863a562450d3302141bd34cd07398efa25eb4ac4a65d4d9197f33", size = 11981, upload-time = "2026-06-23T17:54:29.356Z" },
 ]
 
 [[package]]
@@ -1140,7 +1140,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "adrenaline", specifier = ">=4.0.1,<5.0.0" },
-    { name = "aio-usb-hotplug", specifier = ">=7.0.1,<8.0.0" },
+    { name = "aio-usb-hotplug", specifier = ">=8.0.0,<9.0.0" },
     { name = "aiocflib", specifier = ">=4.1.0,<5.0.0" },
     { name = "bidict", specifier = ">=0.23.1,<0.24.0" },
     { name = "blinker", specifier = ">=1.9.0,<2.0.0" },

@@ -314,12 +314,28 @@ class DroneShowExecutionStage(IntEnum):
 
     @property
     def description(self) -> str:
-        """Returns a human-readable description of the stage."""
+        """Returns a human-readable description of the stage.
+
+        Prefer `describe()` instead because you can feed more information to it to get
+        a more accurate description.
+        """
         description = _stage_descriptions.get(self)
         description = (
             description if description is not None else f"Unknown stage {self}"
         )
         return description
+
+    def describe(self, status: DroneShowStatus) -> str:
+        """Returns a human-readable description of the stage, taking into account
+        additional information from a recent drone show status packet.
+        """
+        if self is DroneShowExecutionStage.WAIT_FOR_START_TIME:
+            elapsed_time = status.elapsed_time
+            if elapsed_time is not None and elapsed_time > 0:
+                return "Waiting for takeoff time"
+
+        # Fallback for all other cases
+        return self.description
 
 
 @dataclass
@@ -575,7 +591,7 @@ class DroneShowStatus:
         # error, then it is more important than any info we could get from the
         # flags so we show that
         if stage.probably_airborne or stage.has_error:
-            return stage.description
+            return stage.describe(status=self)
 
         # Looks like we are on the ground, so show the info that we can gather
         # from the flags
@@ -624,7 +640,7 @@ class DroneShowStatus:
 
         # We are on the ground but there's nothing important to report from the
         # flags so just show the description of the stage
-        return stage.description
+        return stage.describe(status=self)
 
 
 @dataclass

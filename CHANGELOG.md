@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [main]
+
+### Changed
+
+- When MAVLink drones are waiting on the ground before a show, the start time of the
+  show has passed _and_ the current time has not reached the designated takeoff time of
+  the drone, show "Waiting for takeoff time" instead of "Coutdown to start time" in
+  the Details column in Skybrush Live to reassure the operator that the drone will
+  take off when the time comes.
+
 ## [2.47.1] - 2026-06-20
 
 ### Added

@@ -52,20 +52,20 @@ wheels = [
 
 [[package]]
 name = "aiocflib"
-version = "4.1.0"
+version = "5.0.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "anyio" },
     { name = "colorama" },
     { name = "colour" },
-    { name = "exceptiongroup", marker = "python_full_version < '3.11'" },
+    { name = "exceptiongroup" },
     { name = "hexdump" },
     { name = "outcome" },
     { name = "pyusb" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/e3/de/84a64dae84c90e67594fea2b9fb38aeb7a182bb27f65f5b9ae54f8a5e79a/aiocflib-4.1.0.tar.gz", hash = "sha256:86a7d3664e485d6d09b67120492b5e298e956e0485142d51c555fca1a9d5f6ab", size = 100489, upload-time = "2024-12-02T19:57:02.344Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/f5/6e/18a775c17a30631030e593b106097a464647e88de27916c7fecd60321d96/aiocflib-5.0.0.tar.gz", hash = "sha256:9216057c1cccbd094c7232097f092cc5c15e7d481cf0c4e54d9663395ee575b0", size = 87803, upload-time = "2026-06-25T11:29:50.895Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/00/56/ec5cef1d3a4e175cb1172179af2be8fa7393264e5077786014295af89038/aiocflib-4.1.0-py3-none-any.whl", hash = "sha256:2933f10da3a29bd9b2707fb503ab3a64f2a0620d34cb503e4fd431ca0226e4ad", size = 129096, upload-time = "2024-12-02T19:57:00.412Z" },
+    { url = "https://files.pythonhosted.org/packages/e0/76/0460da62d94ea25a32303ce4bfa162132cfaaa9565a8477992c3c36edda1/aiocflib-5.0.0-py3-none-any.whl", hash = "sha256:82b23e2ee632d1553cae2527f60ab7df4f0e0c383bf38a4ef13be38182f365e5", size = 117786, upload-time = "2026-06-25T11:29:49.656Z" },
 ]
 
 [[package]]
@@ -1141,7 +1141,7 @@ dev = [
 requires-dist = [
     { name = "adrenaline", specifier = ">=4.0.1,<5.0.0" },
     { name = "aio-usb-hotplug", specifier = ">=8.0.0,<9.0.0" },
-    { name = "aiocflib", specifier = ">=4.1.0,<5.0.0" },
+    { name = "aiocflib", specifier = ">=5.0.0,<6.0.0" },
     { name = "bidict", specifier = ">=0.23.1,<0.24.0" },
     { name = "blinker", specifier = ">=1.9.0,<2.0.0" },
     { name = "cachetools", specifier = ">=7.0.1,<8.0.0" },

@@ -83,9 +83,6 @@ def color_to_rgb8_triplet(color: Color) -> tuple[int, int, int]:
     return tuple(round(x * 255) for x in color.rgb)
 
 
-T = TypeVar("T")
-
-
 def consecutive_pairs(
     iterable: Iterable[T], cyclic: bool = False
 ) -> Iterable[tuple[T, T]]:

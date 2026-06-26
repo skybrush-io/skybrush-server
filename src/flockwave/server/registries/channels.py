@@ -8,7 +8,7 @@ Note that the registry keeps track of the different *types* of communication
 channels, not each individual channel between a client and the server.
 """
 
-from collections.abc import Callable, Iterator
+from collections.abc import Awaitable, Callable, Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass
 from typing import Generic, TypeVar
@@ -26,6 +26,8 @@ log = base_log.getChild("registries.channels")
 
 T = TypeVar("T")
 
+BroadcasterFunc = Callable[[T], None | Awaitable[None]]
+
 
 @dataclass(frozen=True)
 class ChannelTypeDescriptor(Generic[T]):
@@ -37,7 +39,7 @@ class ChannelTypeDescriptor(Generic[T]):
     when invoked with no arguments.
     """
 
-    broadcaster: Callable[[T], None] | None = None
+    broadcaster: BroadcasterFunc | None = None
     """An optional callable that implements broadcasting a message to all clients
     who are currently connected to the server with this communication channel
     type. The callable will be called with the message to be sent as its only
@@ -88,7 +90,7 @@ class ChannelTypeRegistry(RegistryBase[ChannelTypeDescriptor], Generic[T]):
         self,
         channel_id: str,
         factory: Callable[[], CommunicationChannel[T]],
-        broadcaster: Callable[[T], None] | None = None,
+        broadcaster: BroadcasterFunc | None = None,
         ssdp_location: Callable[[IPAddressAndPort | None], str | None] | None = None,
     ):
         """Adds a new communication channel class to the registry.

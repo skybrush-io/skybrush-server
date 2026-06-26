@@ -57,7 +57,7 @@ class MissionRegistryRelatedTaskBase(ABC):
             stack: an exit stack where you can register cleanup tasks to be
                 performed when the task stops.
         """
-        raise NotImplementedError
+        ...
 
     @contextmanager
     def _subscribed_to_missions(self) -> Iterator[None]:

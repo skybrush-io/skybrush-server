@@ -67,7 +67,11 @@ def load(app: "SkybrushServer", configuration: dict[str, Any], log: Logger):
     if log_dir_exists:
         log_filename = log_dir / LOG_FILENAME
         handler = RotatingFileHandler(
-            log_filename, maxBytes=size_limit, backupCount=backup_count, delay=True
+            log_filename,
+            maxBytes=size_limit,
+            backupCount=backup_count,
+            delay=True,
+            encoding="utf-8",
         )
 
     if handler:

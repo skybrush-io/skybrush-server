@@ -1198,7 +1198,7 @@ class VirtualUAVDriver(UAVDriver[VirtualUAV]):
         except KeyError:
             raise RuntimeError(f"no such log: {log_id}") from None
 
-        # Simulate delayed progress make it more realistic
+        # Simulate delayed progress to make it more realistic
         for i in range(10):
             yield Progress(percentage=i * 10, message="Downloading log...")
             await sleep(1 + random() * 1.5)

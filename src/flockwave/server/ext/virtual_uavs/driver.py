@@ -34,6 +34,7 @@ from flockwave.server.command_handlers import (
 from flockwave.server.errors import NotSupportedError
 from flockwave.server.model.commands import (
     Progress,
+    ProgressEvents,
     ProgressEventsWithSuspension,
     Suspend,
 )
@@ -1189,13 +1190,20 @@ class VirtualUAVDriver(UAVDriver[VirtualUAV]):
     handle_command_param = create_parameter_command_handler()
     handle_command_version = create_version_command_handler()
 
-    async def get_log(self, uav: VirtualUAV, log_id: str) -> FlightLog:
-        # Simulate a bit of delay to make it more realistic
-        await sleep(0.5)
+    async def get_log(
+        self, uav: VirtualUAV, log_id: str
+    ) -> ProgressEvents[FlightLog | None]:
         try:
-            return _get_logs_for_uav(uav)[log_id]
+            log = _get_logs_for_uav(uav)[log_id]
         except KeyError:
             raise RuntimeError(f"no such log: {log_id}") from None
+
+        # Simulate delayed progress make it more realistic
+        for i in range(10):
+            yield Progress(percentage=i * 10, message="Downloading log...")
+            await sleep(1 + random() * 1.5)
+
+        yield log
 
     async def _enter_low_power_mode_single(
         self, uav: VirtualUAV, *, transport: TransportOptions | None = None

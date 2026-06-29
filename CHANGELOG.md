@@ -15,6 +15,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the Details column in Skybrush Live to reassure the operator that the drone will
   take off when the time comes.
 
+### Fixed
+
+- Encoding of log files is now always UTF-8, irrespectively of the native file encoding
+  of the current platform. This is to ensure that UTF-8 characters are printed properly
+  in log files on Windows instead of dumping an error on the console.
+
 ## [2.47.1] - 2026-06-20
 
 ### Added

@@ -1170,7 +1170,7 @@ requires-dist = [
     { name = "skybrush-ext-dock", marker = "extra == 'collmot'", specifier = ">=1.2.0", index = "https://pypi.collmot.com/" },
     { name = "skybrush-ext-firmware-update", marker = "extra == 'pro'", specifier = ">=0.5.0", index = "https://pypi.collmot.com/" },
     { name = "skybrush-ext-flight-report", marker = "extra == 'pro'", specifier = ">=1.0.3", index = "https://pypi.collmot.com/" },
-    { name = "skybrush-ext-flockctrl", marker = "extra == 'collmot'", specifier = ">=4.0.3", index = "https://pypi.collmot.com/" },
+    { name = "skybrush-ext-flockctrl", marker = "extra == 'collmot'", specifier = ">=4.1.2", index = "https://pypi.collmot.com/" },
     { name = "skybrush-ext-map-cache", marker = "extra == 'pro'", specifier = ">=1.1.1", index = "https://pypi.collmot.com/" },
     { name = "skybrush-ext-show-pro", marker = "extra == 'pro'", specifier = ">=0.12.0", index = "https://pypi.collmot.com/" },
     { name = "skybrush-ext-sidekick", marker = "extra == 'pro'", specifier = ">=1.2.1", index = "https://pypi.collmot.com/" },
@@ -2850,7 +2850,7 @@ wheels = [
 
 [[package]]
 name = "skybrush-ext-flockctrl"
-version = "4.1.0"
+version = "4.1.2"
 source = { registry = "https://pypi.collmot.com/" }
 dependencies = [
     { name = "asyncssh" },
@@ -2866,9 +2866,9 @@ dependencies = [
     { name = "trio-asyncio" },
     { name = "trio-parallel" },
 ]
-sdist = { url = "https://pypi.collmot.com/packages/skybrush_ext_flockctrl-4.1.0.tar.gz", hash = "sha256:d5666375aa2eb2de395adcbe49664d55d6eec18025ac1e2b68442caff33da3fa" }
+sdist = { url = "https://pypi.collmot.com/packages/skybrush_ext_flockctrl-4.1.2.tar.gz", hash = "sha256:edd2fa0926208ae087016fdd32db32e5014fa0b36719afa304c193be04b6ef54" }
 wheels = [
-    { url = "https://pypi.collmot.com/packages/skybrush_ext_flockctrl-4.1.0-py3-none-any.whl", hash = "sha256:b7616eceffb24604edfde982ce4462d91d113f3e8a15d516096b851a4c0f17da" },
+    { url = "https://pypi.collmot.com/packages/skybrush_ext_flockctrl-4.1.2-py3-none-any.whl", hash = "sha256:cf5b994790afdb7df409e8b6ee94b2bdd80a11a8abdad081ee26841628573b6e" },
 ]
 
 [[package]]
@@ -3059,8 +3059,8 @@ name = "taskgroup"
 version = "0.2.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "exceptiongroup", marker = "python_full_version < '3.11'" },
-    { name = "typing-extensions", marker = "python_full_version < '3.11'" },
+    { name = "exceptiongroup" },
+    { name = "typing-extensions" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/f0/8d/e218e0160cc1b692e6e0e5ba34e8865dbb171efeb5fc9a704544b3020605/taskgroup-0.2.2.tar.gz", hash = "sha256:078483ac3e78f2e3f973e2edbf6941374fbea81b9c5d0a96f51d297717f4752d", size = 11504, upload-time = "2025-01-03T09:24:13.761Z" }
 wheels = [

@@ -65,7 +65,7 @@ collmot = [
   "flockwave-server[pro]",
   "flockwave-flockctrl>=4.0.0",
   "skybrush-ext-dock>=1.2.0",
-  "skybrush-ext-flockctrl>=4.0.3",
+  "skybrush-ext-flockctrl>=4.1.2",
 ]
 pro = [
   "skybrush-ext-firmware-update>=0.5.0",

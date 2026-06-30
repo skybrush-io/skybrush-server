@@ -1170,7 +1170,7 @@ requires-dist = [
     { name = "skybrush-ext-dock", marker = "extra == 'collmot'", specifier = ">=1.2.0", index = "https://pypi.collmot.com/" },
     { name = "skybrush-ext-firmware-update", marker = "extra == 'pro'", specifier = ">=0.5.0", index = "https://pypi.collmot.com/" },
     { name = "skybrush-ext-flight-report", marker = "extra == 'pro'", specifier = ">=1.0.3", index = "https://pypi.collmot.com/" },
-    { name = "skybrush-ext-flockctrl", marker = "extra == 'collmot'", specifier = ">=4.1.2", index = "https://pypi.collmot.com/" },
+    { name = "skybrush-ext-flockctrl", marker = "extra == 'collmot'", specifier = ">=4.1.3", index = "https://pypi.collmot.com/" },
     { name = "skybrush-ext-map-cache", marker = "extra == 'pro'", specifier = ">=1.1.1", index = "https://pypi.collmot.com/" },
     { name = "skybrush-ext-show-pro", marker = "extra == 'pro'", specifier = ">=0.12.0", index = "https://pypi.collmot.com/" },
     { name = "skybrush-ext-sidekick", marker = "extra == 'pro'", specifier = ">=1.2.1", index = "https://pypi.collmot.com/" },
@@ -2850,7 +2850,7 @@ wheels = [
 
 [[package]]
 name = "skybrush-ext-flockctrl"
-version = "4.1.2"
+version = "4.1.3"
 source = { registry = "https://pypi.collmot.com/" }
 dependencies = [
     { name = "asyncssh" },
@@ -2866,9 +2866,9 @@ dependencies = [
     { name = "trio-asyncio" },
     { name = "trio-parallel" },
 ]
-sdist = { url = "https://pypi.collmot.com/packages/skybrush_ext_flockctrl-4.1.2.tar.gz", hash = "sha256:edd2fa0926208ae087016fdd32db32e5014fa0b36719afa304c193be04b6ef54" }
+sdist = { url = "https://pypi.collmot.com/packages/skybrush_ext_flockctrl-4.1.3.tar.gz", hash = "sha256:a52d6610280a461c07ba883210ca6c285c6dc9c90fc065d6fdafcd8f63cf336c" }
 wheels = [
-    { url = "https://pypi.collmot.com/packages/skybrush_ext_flockctrl-4.1.2-py3-none-any.whl", hash = "sha256:cf5b994790afdb7df409e8b6ee94b2bdd80a11a8abdad081ee26841628573b6e" },
+    { url = "https://pypi.collmot.com/packages/skybrush_ext_flockctrl-4.1.3-py3-none-any.whl", hash = "sha256:0630eae671dd2d0845f8d8bd82f0bf3a4df56cce3f009fe9f3b66f9ef8da80b7" },
 ]
 
 [[package]]

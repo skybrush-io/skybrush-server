@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the drone, show "Waiting for takeoff time" instead of "Coutdown to start time" in
   the Details column in Skybrush Live to reassure the operator that the drone will
   take off when the time comes.
+
 - Increased maximum WebSocket message size to 100 MB by default.
 
 ### Fixed

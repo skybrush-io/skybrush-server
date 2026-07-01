@@ -302,10 +302,10 @@ async def run(app: SkybrushServer, configuration: dict[str, Any], logger: Logger
     config.use_reloader = False
 
     config.websocket_max_message_size = int(
-        configuration.get("websocket_max_message_size", 104857600)
+        configuration.get("websocket_max_message_size", 100 * 1024 * 1024)
     )
-    logger.info(
-        f"WebSocket max message size set to "
+    logger.debug(
+        f"WebSocket maximum message size is set to "
         f"{config.websocket_max_message_size // 1024 // 1024} MB"
     )
 
@@ -411,7 +411,10 @@ schema = {
         "certfile": {
             "type": "string",
             "title": "Certificate file",
-            "description": "Full path to the certificate file that the server should use for HTTPS connections",
+            "description": (
+                "Full path to the certificate file that the server should use for "
+                "HTTPS connections"
+            ),
             "required": False,
         },
         "keyfile": {
@@ -423,7 +426,10 @@ schema = {
         "websocket_max_message_size": {
             "type": "integer",
             "title": "Max WebSocket message size",
-            "description": "Maximum size of a single WebSocket message in bytes.",
+            "description": (
+                "Maximum size of a single WebSocket message in bytes. Used only for "
+                "clients that connect to the server via WebSocket."
+            ),
             "default": 104857600,
             "required": False,
         },

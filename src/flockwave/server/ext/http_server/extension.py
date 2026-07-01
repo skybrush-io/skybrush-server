@@ -301,6 +301,14 @@ async def run(app: SkybrushServer, configuration: dict[str, Any], logger: Logger
     config.keyfile = configuration.get("keyfile") or None
     config.use_reloader = False
 
+    config.websocket_max_message_size = int(
+        configuration.get("websocket_max_message_size", 104857600)
+    )
+    logger.info(
+        f"WebSocket max message size set to "
+        f"{config.websocket_max_message_size // 1024 // 1024} MB"
+    )
+
     secure = bool(config.ssl_enabled)
 
     # Test quickly whether we can bind to the given host and port; if we cannot,
@@ -410,6 +418,17 @@ schema = {
             "type": "string",
             "title": "Private key file",
             "description": "Full path to the private key file corresopnding to the certificate",
+            "required": False,
+        },
+        "websocket_max_message_size": {
+            "type": "integer",
+            "title": "Max WebSocket message size",
+            "description": (
+                "Maximum size of a single WebSocket message in bytes. "
+                "Raise this if large messages (e.g., show files >16 MB) "
+                "are rejected by the server."
+            ),
+            "default": 104857600,
             "required": False,
         },
     }

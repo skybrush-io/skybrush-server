@@ -15,6 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the Details column in Skybrush Live to reassure the operator that the drone will
   take off when the time comes.
 
+- Increased maximum WebSocket message size to 100 MB by default.
+
 ### Fixed
 
 - Encoding of log files is now always UTF-8, irrespectively of the native file encoding

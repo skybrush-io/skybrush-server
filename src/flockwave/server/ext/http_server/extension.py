@@ -423,11 +423,7 @@ schema = {
         "websocket_max_message_size": {
             "type": "integer",
             "title": "Max WebSocket message size",
-            "description": (
-                "Maximum size of a single WebSocket message in bytes. "
-                "Raise this if large messages (e.g., show files >16 MB) "
-                "are rejected by the server."
-            ),
+            "description": "Maximum size of a single WebSocket message in bytes.",
             "default": 104857600,
             "required": False,
         },

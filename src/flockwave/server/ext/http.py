@@ -14,6 +14,7 @@ from typing import TYPE_CHECKING, Any, cast
 
 from flockwave.encoders import Encoder
 from flockwave.encoders.json import create_json_encoder
+from pydantic import BaseModel, Field
 from quart import Response, abort, request
 from trio import Event, TooSlowError, fail_after, sleep_forever
 
@@ -32,6 +33,18 @@ app: SkybrushServer | None = None
 builder: FlockwaveMessageBuilder | None = None
 encoder: Encoder | None = None
 log: Logger | None = None
+
+
+class HTTPConfig(BaseModel):
+    """Configuration model for the HTTP request-response extension."""
+
+    route: str = Field(
+        default="/api/v1",
+        title="URL root",
+        description=(
+            "URL where the extension is mounted within the HTTP namespace of the server"
+        ),
+    )
 
 
 class HTTPChannel(CommunicationChannel):
@@ -244,10 +257,8 @@ async def index():
 ############################################################################
 
 
-async def run(app: SkybrushServer, configuration: dict[str, Any], logger: Logger):
+async def run(app: SkybrushServer, configuration: HTTPConfig, logger: Logger):
     """Background task that is active while the extension is loaded."""
-    route = configuration.get("route", "/api/v1")
-
     http_server = app.import_api("http_server")
     with ExitStack() as stack:
         builder = FlockwaveMessageBuilder()
@@ -257,22 +268,10 @@ async def run(app: SkybrushServer, configuration: dict[str, Any], logger: Logger
             overridden(globals(), app=app, builder=builder, encoder=encoder, log=logger)
         )
         stack.enter_context(app.channel_type_registry.use("http", factory=HTTPChannel))
-        stack.enter_context(http_server.mounted(blueprint, path=route))
+        stack.enter_context(http_server.mounted(blueprint, path=configuration.route))
         await sleep_forever()
 
 
 dependencies = ("auth", "http_server")
 description = "HTTP request-response communication channel"
-schema = {
-    "properties": {
-        "route": {
-            "type": "string",
-            "title": "URL root",
-            "description": (
-                "URL where the extension is mounted within the HTTP namespace "
-                "of the server"
-            ),
-            "default": "/api/v1",
-        }
-    }
-}
+schema = HTTPConfig

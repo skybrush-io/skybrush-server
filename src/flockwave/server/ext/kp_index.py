@@ -7,11 +7,30 @@ from collections.abc import Awaitable, Callable, Iterable, Sequence
 from datetime import datetime, timedelta, timezone
 from math import ceil, floor
 from time import monotonic
-from typing import ClassVar
+from typing import ClassVar, Literal
 
 import httpx
 from flockwave.gps.vectors import GPSCoordinate
+from pydantic import BaseModel, Field
 from trio import Lock, TooSlowError, fail_after, sleep_forever
+
+
+class KpIndexConfig(BaseModel):
+    """Configuration model for the Kp-index extension."""
+
+    source: Literal["potsdam", "noaa"] = Field(
+        default="potsdam",
+        title="Data source to use",
+        json_schema_extra={
+            "options": {
+                "enum_titles": [
+                    "GFZ German Research Centre for Geosciences, Germany",
+                    "NOAA Space Weather Prediction Center, USA",
+                ]
+            }
+        },
+    )
+
 
 from flockwave.server.model.weather import Weather
 
@@ -282,10 +301,10 @@ def set_selected_data_provider(value: str | None) -> None:
     selected_data_provider = value
 
 
-async def run(app, configuration):
+async def run(app, configuration: KpIndexConfig):
     global selected_data_provider
 
-    set_selected_data_provider(configuration.get("source", "potsdam"))
+    set_selected_data_provider(configuration.source)
 
     id = f"kpIndex:{selected_data_provider}"
 
@@ -301,19 +320,4 @@ data_providers.update(
 )
 dependencies = ("weather",)
 description = "Weather provider that provides planetary K-index values"
-schema = {
-    "properties": {
-        "source": {
-            "type": "string",
-            "title": "Data source to use",
-            "default": "potsdam",
-            "enum": ["potsdam", "noaa"],
-            "options": {
-                "enum_titles": [
-                    "GFZ German Research Centre for Geosciences, Germany",
-                    "NOAA Space Weather Prediction Center, USA",
-                ],
-            },
-        }
-    }
-}
+schema = KpIndexConfig

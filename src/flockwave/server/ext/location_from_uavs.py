@@ -4,13 +4,13 @@ of the server in geodetic coordinates.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, cast
 
 from flockwave.gps.vectors import GPSCoordinate
-from flockwave.logger import Logger
+from pydantic import BaseModel, Field
 from trio import CancelScope, sleep, sleep_forever
 
-from flockwave.server.ext.base import Extension
+from flockwave.server.ext.base import TypedConfigExtension
 from flockwave.server.ext.location import Location
 from flockwave.server.model.uav import UAV
 from flockwave.server.utils.generic import use
@@ -29,6 +29,16 @@ MAX_AGE_MSEC = 60000
 """Maximum age of the status information of the UAV, in milliseconds."""
 
 
+class LocationFromUAVSConfig(BaseModel):
+    """Configuration model for the location-from-UAVs extension."""
+
+    priority: float = Field(
+        default=DEFAULT_PRIORITY,
+        title="Priority",
+        description="Priority of the location proposed by this extension",
+    )
+
+
 def is_valid_position(position: GPSCoordinate | None) -> bool:
     return (
         position is not None
@@ -38,10 +48,15 @@ def is_valid_position(position: GPSCoordinate | None) -> bool:
     )
 
 
-class LocationFromUAVSExtension(Extension):
+class LocationFromUAVSExtension(TypedConfigExtension[LocationFromUAVSConfig]):
     """Extension that tracks the location of a UAV and provides it as an
     approximation of the location of the server.
     """
+
+    _priority: float = DEFAULT_PRIORITY
+
+    def configure(self, configuration: LocationFromUAVSConfig) -> None:
+        self._priority = configuration.priority
 
     def _pick_uav_to_track(self) -> UAV | None:
         """Picks a single UAV from the UAV registry of the server whose location
@@ -88,9 +103,7 @@ class LocationFromUAVSExtension(Extension):
 
             await sleep(1)
 
-    async def run(
-        self, app: SkybrushServer, configuration: dict[str, Any], log: Logger
-    ):
+    async def run(self, app: SkybrushServer) -> None:
         while True:
             uav = await self.pick_uav_to_track()
             await self.use_location_of_uav(uav)
@@ -104,7 +117,7 @@ class LocationFromUAVSExtension(Extension):
 
         api = self.app.extension_manager.import_api("location")
         location = Location(uav.status.position)
-        with use(api.provide_location(KEY, location)):
+        with use(api.provide_location(KEY, location, priority=self._priority)):
             while True:
                 status = uav.status
                 to_sleep = MAX_AGE_MSEC - status.age_msec
@@ -136,15 +149,5 @@ class LocationFromUAVSExtension(Extension):
 construct = LocationFromUAVSExtension
 dependencies = ("location",)
 description = "Infers the physical location of the server from managed UAVs"
-schema = {
-    "properties": {
-        "priority": {
-            "title": "Priority",
-            "description": "Priority of the location proposed by this extension",
-            "type": "number",
-            "default": DEFAULT_PRIORITY,
-            "required": True,
-        }
-    }
-}
+schema = LocationFromUAVSConfig
 tags = "experimental"

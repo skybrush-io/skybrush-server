@@ -29,6 +29,7 @@ from flockwave.gps.vectors import GPSCoordinate
 from flockwave.networking import format_socket_address
 from flockwave.parsers import create_line_parser
 from flockwave.spec.ids import make_valid_object_id
+from pydantic import BaseModel, Field
 from pynmea2 import parse as parse_nmea
 
 from flockwave.server.errors import NotSupportedError
@@ -36,7 +37,7 @@ from flockwave.server.model import ConnectionPurpose
 from flockwave.server.registries.errors import RegistryFull
 from flockwave.server.utils.generic import overridden
 
-from .base import UAVExtension
+from .base import TypedConfigExtension
 
 if TYPE_CHECKING:
     from flockwave.server.app import SkybrushServer
@@ -44,6 +45,28 @@ if TYPE_CHECKING:
 
 GPSMessage = dict[str, Any]
 """Type alias for the unified GPS-related message format used by this extension."""
+
+
+class GPSConfig(BaseModel):
+    """Configuration model for the GPS extension."""
+
+    connection: str = Field(
+        default="gpsd",
+        title="Connection URL",
+        description=(
+            "Use gpsd to connect to the local gpsd daemon; alternatively, use "
+            "the full name or path of a local serial port, or any valid "
+            "connection URL for more advanced cases"
+        ),
+    )
+    id_format: str = Field(
+        default="GPS:{0}",
+        title="ID format",
+        description=(
+            "Python format string that determines the format of the IDs of the "
+            "GPS beacons created by this extension."
+        ),
+    )
 
 
 class MessageFormat(Enum):
@@ -201,7 +224,7 @@ def parse_incoming_gpsd_or_nmea_message(message: bytes) -> GPSMessage:
         return parse_incoming_gpsd_message(message)
 
 
-class GPSExtension(UAVExtension):
+class GPSExtension(TypedConfigExtension[GPSConfig]):
     """Extension that tracks position information received from external GPS
     devices and creates UAVs in the UAV registry corresponding to the GPS
     devices.
@@ -234,6 +257,9 @@ class GPSExtension(UAVExtension):
     that may be used as parts of the globally registered beacon IDs.
     """
 
+    _connection: str
+    """Connection specification of the main GPS source."""
+
     _id_format: str
     """Format string that defines how to derive globally registered beacon IDs."""
 
@@ -243,7 +269,8 @@ class GPSExtension(UAVExtension):
     def __init__(self):
         """Constructor."""
         super().__init__()
-        self._id_format = None  # type: ignore
+        self._connection = "gpsd"
+        self._id_format = "GPS:{0}"
 
         self._beacon_context_stack = None
         self._connection_to_beacon_ids = defaultdict(set)
@@ -251,9 +278,10 @@ class GPSExtension(UAVExtension):
         self._device_to_beacon_id = {}
         self._main_connection = None
 
-    def configure(self, configuration):
-        """Loads the extension."""
-        self._id_format = configuration.get("id_format", "GPS:{0}")
+    def configure(self, configuration: GPSConfig) -> None:
+        """Configures the extension."""
+        self._connection = configuration.connection
+        self._id_format = configuration.id_format
 
     async def handle_gps_messages(
         self, connection: RWConnection[bytes, bytes], format: MessageFormat
@@ -382,11 +410,14 @@ class GPSExtension(UAVExtension):
             elif "name" in message:
                 beacon.basic_properties.name = message["name"]
 
-    async def run(self, app: "SkybrushServer", configuration, log):
+    async def run(self, app: SkybrushServer) -> None:
+        assert self.log is not None
+
+        log = self.log
         self._beacon_api = app.import_api("beacon")
 
         connection, format = create_gps_connection_and_format(
-            connection=configuration.get("connection", "gpsd"),
+            connection=self._connection,
         )
 
         address = None
@@ -429,25 +460,4 @@ class GPSExtension(UAVExtension):
 construct = GPSExtension
 dependencies = ("beacon",)
 description = "External GPS receivers as beacons"
-schema = {
-    "properties": {
-        "connection": {
-            "type": "string",
-            "title": "Connection URL",
-            "description": (
-                "Use gpsd to connect to the local gpsd daemon; alternatively, "
-                "use the full name or path of a local serial port, or any "
-                "valid connection URL for more advanced cases"
-            ),
-        },
-        "id_format": {
-            "type": "string",
-            "default": "BEACON:{0}",
-            "title": "ID format",
-            "description": (
-                "Python format string that determines the format of the IDs of "
-                "the GPS beacons created by this extension."
-            ),
-        },
-    }
-}
+schema = GPSConfig

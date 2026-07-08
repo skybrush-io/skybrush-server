@@ -1,6 +1,8 @@
 ---
 name: pydantic-refactor-of-ext-config
 description: Refactors a Skybrush server extension's configuration from a raw dict JSON schema to a Pydantic model. For class-based extensions the base class becomes TypedConfigExtension; for module-level extensions (no class) only the schema is replaced.
+constraints: |
+  - **DO NOT** refactor extensions that have `schema = {}` (empty dict). They expose no user-facing config and the refactor is unnecessary. Some still parse `configuration` internally — those are deliberately opaque and should be left as-is.
 ---
 
 # Skill: Pydantic Refactor of Extension Config
@@ -150,3 +152,4 @@ No class inheritance changes, no `configure()` method, no `TypedConfigExtension`
 - NEVER push.
 - Work on one extension at a time.
 - Ask before making changes that differ from this pattern.
+- **DO NOT** refactor extensions that have `schema = {}` (empty dict). They expose no user-facing config and the refactor is unnecessary. Some still parse `configuration` internally — those are deliberately opaque and should be left as-is.

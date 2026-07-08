@@ -11,10 +11,11 @@ Refactors a Skybrush server extension's configuration from a raw dict JSON schem
 
 Canonical examples of this refactor (view with `git show <hash>`):
 
-- `6fc14264` — `auth` extension: class-based, simple `bool` field
+- `6fc14264` — `auth` extension: class-based, simple `bool` field with `format: checkbox`
 - `d17f6235` — `show` extension: class-based, enum field with `WithJsonSchema` + `Annotated`
 - `5e4be6fe` — `auth_basic` extension: module-level (no class), nested array-of-objects schema
 - `c7a6638e` — `audit_log` extension: class-based, simple `float` field
+- `7893ff43` — batch of 5 extensions (`gps`, `http`, `insomnia`, `kp_index`, `location_from_uavs`) covering: `bool` with `format: checkbox`, `Literal` enum with `json_schema_extra`, `UAVExtension` → `TypedConfigExtension`, keep-config-in-run pattern
 
 Review these for a complete before/after picture.
 
@@ -53,14 +54,14 @@ For each field in the old `schema` dict, I will ask:
 
 ### 3. Convert the schema
 
-Create a `ConfigModel(BaseModel)` with:
+Create a `ConfigModel(BaseModel)` with the appropriate pattern per field type:
 
-- Simple types (`str`, `int`, `float`, `bool`) used as-is
-- Enum types kept as the Python type for validation, with `Annotated[EnumType, WithJsonSchema(...)]` to inline the JSON schema (avoids Pydantic v2's `$defs`/`$ref` which breaks the WebUI's JSONEditor v2.5.4)
-- `enum_titles` and other metadata in `WithJsonSchema` (not in `Field(json_schema_extra=...)` — `WithJsonSchema` replaces the generated schema entirely)
-- All strings derived from the enum class itself (e.g. `[m.value for m in MyEnum]`, `[m.describe() for m in MyEnum]`) to avoid duplication
+- **`str`, `int`, `float`** — used as-is with `Field(default=..., title=..., description=...)`. Simple types never generate `$defs`.
+- **`bool`** — used as-is. For `format: "checkbox"`, add via `Field(json_schema_extra={"format": "checkbox"})`. See `6fc14264` (auth) or `7893ff43` (insomnia).
+- **`Literal["a", "b"]`** — for string enum-like fields using `Literal` instead of an Enum class. Pydantic generates inline `enum` without `$defs`. Add `enum_titles` via `Field(json_schema_extra={"options": {"enum_titles": [...]}})`. See `7893ff43` (kp_index).
+- **Existing Enum class** — keep as the Python type for validation, wrap with `Annotated[EnumType, WithJsonSchema(...)]` to inline the JSON schema and avoid `$defs`/`$ref` (Pydantic v2 generates `$defs` for enum classes, which breaks the WebUI's JSONEditor v2.5.4). Put `enum_titles` and all metadata in `WithJsonSchema`, not in `Field(json_schema_extra=...)`. Derive values from the Enum class (e.g. `[m.value for m in MyEnum]`). See `d17f6235` (show).
 
-See `d17f6235` (show extension) for a full example.
+Key rule: `WithJsonSchema` replaces the field's generated schema entirely; `json_schema_extra` merges into it. Use `WithJsonSchema` only when Pydantic's auto-generated schema contains `$ref` (i.e. for Enum classes). For simple types and `Literal`, `json_schema_extra` is sufficient.
 
 ### 4. Change imports
 
@@ -72,8 +73,10 @@ See `d17f6235` (show extension) for a full example.
 
 The extension class must inherit from `TypedConfigExtension[ConfigModel]` instead of `Extension`.
 
-- Old: `class MyExtension(Extension):`
+- Old: `class MyExtension(Extension):` (or `class MyExtension(UAVExtension):`)
 - New: `class MyExtension(TypedConfigExtension[ConfigModel]):`
+
+When the old class extended `UAVExtension`, the switch to `TypedConfigExtension` means losing UAV-specific helpers (`_create_driver`, `configure_driver`, etc.). Store config values in private fields in `configure()` and pass them explicitly where needed. See `7893ff43` (gps) for an example.
 
 The `TypedConfigExtension` base class (from `flockwave.server.ext.base`) provides:
 - `self.config` — the validated Pydantic model instance, available after `configure()` is called
@@ -92,13 +95,13 @@ def configure(self, configuration: ConfigModel) -> None:
 
 ### 7. Update `run()` method
 
-In the standard pattern:
+In the standard class-based pattern:
 - Remove `configuration` and `logger` parameters
 - Signature becomes `async def run(self, app):`
 - Use `self.log` instead of the `logger` parameter
 - Any config-dependent setup that was in `run` should already be in `configure()`
 
-However, some extensions may still need `configuration` and `logger` as parameters if `run()` is invoked directly by other code rather than solely through the extension manager lifecycle.
+However, some extensions may still need `configuration` and `logger` as parameters if `run()` is invoked directly by other code rather than solely through the extension manager lifecycle. Module-level extensions (no class) always keep `configuration` and `logger` — the function signature stays `async def run(app, configuration: ConfigModel, logger)`. See `7893ff43` (http, insomnia, kp_index) for examples.
 
 ### 8. Update module-level variables
 
@@ -120,6 +123,8 @@ For these, we keep the existing structure and only replace the `schema` dict wit
 3. Replace the `schema` dict with `schema = ConfigModel`
 4. Update `run()` to use attribute access on the typed `configuration` parameter (e.g. `configuration.sources` instead of `configuration.get("sources", ())`)
 5. Remove any validation logic that becomes redundant (Pydantic validates types/defaults)
+
+For simple string enums with no existing Enum class, prefer `Literal["a", "b"]` over creating a new Enum — Pydantic inlines the enum values without `$defs`. See `7893ff43` (kp_index) for an example.
 
 ### Nested schemas (arrays of objects)
 

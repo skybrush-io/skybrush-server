@@ -65,6 +65,8 @@ Create a `ConfigModel(BaseModel)` with the appropriate pattern per field type:
 
 Key rule: `WithJsonSchema` replaces the field's generated schema entirely; `json_schema_extra` merges into it. Use `WithJsonSchema` only when Pydantic's auto-generated schema contains `$ref` (i.e. for Enum classes). For simple types and `Literal`, `json_schema_extra` is sufficient.
 
+**IMPORTANT: Preserve `propertyOrder`** — every field in the old schema may have `"propertyOrder": <int>` which controls the layout order in the WebUI. Add it via `json_schema_extra={"propertyOrder": N}` for simple types, or inside the `WithJsonSchema` dict for Enum types/nested objects. Without it, the WebUI form fields appear in an unpredictable order.
+
 ### 4. Change imports
 
 - Replace `from flockwave.server.ext.base import Extension` with `from flockwave.server.ext.base import TypedConfigExtension`

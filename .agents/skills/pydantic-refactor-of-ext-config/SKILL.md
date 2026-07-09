@@ -67,6 +67,8 @@ Key rule: `WithJsonSchema` replaces the field's generated schema entirely; `json
 
 **IMPORTANT: Preserve `propertyOrder`** — every field in the old schema may have `"propertyOrder": <int>` which controls the layout order in the WebUI. Add it via `json_schema_extra={"propertyOrder": N}` for simple types, or inside the `WithJsonSchema` dict for Enum types/nested objects. Without it, the WebUI form fields appear in an unpredictable order.
 
+**IMPORTANT: Preserve `"required": False`** — some fields have `"required": False` on the property itself. This is **not** standard JSON Schema (where `required` is an object-level array). It is a project convention to mark fields as optional at the UI level. The WebUI uses it to know which fields can be omitted from the config. Add it via `json_schema_extra={"required": False}` for simple types, or inside the `WithJsonSchema` dict for Enum types/nested objects. Without it, fields that were explicitly optional may lose that UI hint.
+
 ### 4. Change imports
 
 - Replace `from flockwave.server.ext.base import Extension` with `from flockwave.server.ext.base import TypedConfigExtension`

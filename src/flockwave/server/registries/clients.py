@@ -11,6 +11,7 @@ from blinker import Signal
 
 from flockwave.server.logger import log as base_log
 from flockwave.server.model.client import Client
+from flockwave.server.model.messages import FlockwaveMessage
 from flockwave.server.registries.channels import ChannelTypeRegistry
 
 from .base import RegistryBase
@@ -49,12 +50,12 @@ class ClientRegistry(RegistryBase[Client]):
     count_changed: Signal = Signal()
     removed: Signal = Signal()
 
-    channel_type_registry: ChannelTypeRegistry
+    channel_type_registry: ChannelTypeRegistry[FlockwaveMessage]
 
     _client_id_to_channel_type: dict[str, str]
     _entries_by_channel_type: dict[str, set[str]]
 
-    def __init__(self, channel_type_registry: ChannelTypeRegistry):
+    def __init__(self, channel_type_registry: ChannelTypeRegistry[FlockwaveMessage]):
         """Constructor."""
         super().__init__()
         self.channel_type_registry = channel_type_registry

@@ -8,6 +8,7 @@ from trio import Event
 from flockwave.server.logger import log as base_log
 
 from .channel import CommunicationChannel
+from .messages import FlockwaveMessage
 from .user import User
 
 __all__ = ("Client",)
@@ -22,7 +23,7 @@ class Client:
     _id: str
     """Unique identifier for the client."""
 
-    _channel: CommunicationChannel
+    _channel: CommunicationChannel[FlockwaveMessage]
     """The communication channel to use when sending messages to the client
     or receiving messages from it.
     """
@@ -41,7 +42,7 @@ class Client:
     """
 
     @property
-    def channel(self) -> CommunicationChannel:
+    def channel(self) -> CommunicationChannel[FlockwaveMessage]:
         """The communication channel that the client uses to connect to
         the server.
         """

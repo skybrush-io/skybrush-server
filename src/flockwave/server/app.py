@@ -110,7 +110,7 @@ NULL_HANDLER = (None, None)
 class SkybrushServer(DaemonApp):
     """Main application object for the Skybrush server."""
 
-    channel_type_registry: ChannelTypeRegistry
+    channel_type_registry: ChannelTypeRegistry[FlockwaveMessage]
     """Central registry for types of communication channels that the server can
     handle and manage. Types of communication channels include Socket.IO
     streams, TCP or UDP sockets and so on.

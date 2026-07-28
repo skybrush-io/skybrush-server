@@ -169,7 +169,7 @@ class MessageHub:
     """
 
     _broadcast_methods: list[FlockwaveMessageDispatcher] | None = None
-    _channel_type_registry: ChannelTypeRegistry | None = None
+    _channel_type_registry: ChannelTypeRegistry[FlockwaveMessage] | None = None
     _client_registry: ClientRegistry | None = None
     _handlers_by_type: defaultdict[str | None, list[MessageHandler]]
     _log_messages: bool = False
@@ -240,7 +240,7 @@ class MessageHub:
         return request
 
     @property
-    def channel_type_registry(self) -> ChannelTypeRegistry | None:
+    def channel_type_registry(self) -> ChannelTypeRegistry[FlockwaveMessage] | None:
         """Registry that keeps track of the different channel types that the
         app can handle. This is used by the message hub to figure out how to
         broadcast messages to all connected clients.
@@ -248,7 +248,9 @@ class MessageHub:
         return self._channel_type_registry
 
     @channel_type_registry.setter
-    def channel_type_registry(self, value: ChannelTypeRegistry | None) -> None:
+    def channel_type_registry(
+        self, value: ChannelTypeRegistry[FlockwaveMessage] | None
+    ) -> None:
         if self._channel_type_registry == value:
             return
 

@@ -3,5 +3,14 @@ on a specific port.
 """
 
 from .extension import description, exports, load, run, schema, unload
+from .types import HTTPServerExtensionAPI
 
-__all__ = ("description", "exports", "load", "run", "schema", "unload")
+__all__ = (
+    "description",
+    "exports",
+    "load",
+    "run",
+    "schema",
+    "unload",
+    "HTTPServerExtensionAPI",
+)

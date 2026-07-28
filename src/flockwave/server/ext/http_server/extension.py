@@ -21,6 +21,7 @@ from flockwave.ext.manager import ExtensionManager
 from flockwave.networking import can_bind_to_tcp_address, format_socket_address
 from hypercorn.config import Config as HyperConfig
 from hypercorn.trio import serve
+from hypercorn.typing import ASGIFramework
 from quart import Blueprint, Quart, abort, redirect, request, url_for
 from quart_trio import QuartTrio
 from trio import current_time, sleep
@@ -31,7 +32,7 @@ from flockwave.server.utils.networking import get_known_apps_for_port
 from flockwave.server.utils.packaging import is_oxidized
 
 from .routing import RoutingMiddleware
-from .types import HTTPServerExtensionAPI
+from .types import HTTPServerExtensionAPIDict
 
 if TYPE_CHECKING:
     from flockwave.server.app import SkybrushServer
@@ -119,7 +120,7 @@ def get_index_url() -> str | None:
 
 
 def mount(
-    app,
+    app: ASGIFramework | Blueprint,
     *,
     path: str,
     scopes: Iterable[str] | None = None,
@@ -160,7 +161,13 @@ def mount(
 
 
 @contextmanager
-def mounted(app, *, path: str, scopes: Iterable[str] | None = None, priority: int = 0):
+def mounted(
+    app: ASGIFramework | Blueprint,
+    *,
+    path: str,
+    scopes: Iterable[str] | None = None,
+    priority: int = 0,
+):
     """Context manager that mounts the given ASGI web application or Quart
     blueprint at the given path, and unmounts it when the context is exited.
 
@@ -373,7 +380,7 @@ description = "HTTP server that listens on a specific port"
 
 # We need the unusual typehint below only for ty
 # to handle `global exports` calls properly
-exports: HTTPServerExtensionAPI = {
+exports: HTTPServerExtensionAPIDict = {
     "address": None,
     "asgi_app": None,
     "mount": mount,

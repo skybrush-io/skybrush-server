@@ -2,7 +2,7 @@
 
 from collections.abc import Iterable, Sequence
 from inspect import isawaitable
-from typing import Any, Awaitable, Callable
+from typing import Any, Awaitable, Callable, Mapping
 
 from flockwave.spec.schema import get_message_schema
 
@@ -39,7 +39,7 @@ class FlockwaveMessage(metaclass=ModelMeta):
             return ""
 
     @staticmethod
-    def is_experimental(message: dict) -> bool:
+    def is_experimental(message: Mapping[str, Any]) -> bool:
         """Returns whether the given raw JSON representation of a Flockwave
         message contains an experimental message type for which no validation
         schema exists.

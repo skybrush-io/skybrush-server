@@ -427,7 +427,7 @@ class MessageHub:
                 log.warning("Outbound queue is full, dropping message")
 
     async def handle_incoming_message(
-        self, message: dict[str, Any], sender: Client
+        self, message: Mapping[str, Any], sender: Client
     ) -> bool:
         """Handles an incoming Flockwave message by calling the appropriate
         message handlers.
@@ -755,7 +755,7 @@ class MessageHub:
 
     def reject(
         self,
-        message: dict[str, Any] | FlockwaveMessage | None = None,
+        message: Mapping[str, Any] | FlockwaveMessage | None = None,
         reason: str | None = None,
     ) -> FlockwaveResponse:
         """Creates a new negative acknowledgment (i.e. rejection) of the given
@@ -979,7 +979,7 @@ class MessageHub:
         finally:
             disposer()
 
-    def _decode_incoming_message(self, message: dict[str, Any]) -> FlockwaveMessage:
+    def _decode_incoming_message(self, message: Mapping[str, Any]) -> FlockwaveMessage:
         """Decodes an incoming, raw JSON message that has already been
         decoded from the string representation into a dictionary on the
         Python side, but that has not been validated against the Flockwave

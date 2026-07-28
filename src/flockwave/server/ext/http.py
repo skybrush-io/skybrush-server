@@ -8,18 +8,31 @@ HTTP authentication headers will be translated to AUTH-REQ requests.
 
 from __future__ import annotations
 
-from contextlib import ExitStack
+from contextlib import ExitStack, aclosing
 from json import loads
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any, Mapping, TypedDict, cast
 
 from flockwave.encoders import Encoder
 from flockwave.encoders.json import create_json_encoder
 from pydantic import BaseModel, Field
 from quart import Response, abort, request
-from trio import Event, TooSlowError, fail_after, sleep_forever
+from trio import (
+    BrokenResourceError,
+    TooSlowError,
+    fail_after,
+    open_memory_channel,
+    sleep_forever,
+)
+from trio.abc import ReceiveChannel, SendChannel
 
 from flockwave.server.ext.auth import AuthenticationExtensionAPI
-from flockwave.server.model import Client, CommunicationChannel, FlockwaveMessageBuilder
+from flockwave.server.ext.http_server import HTTPServerExtensionAPI
+from flockwave.server.model import (
+    Client,
+    CommunicationChannel,
+    FlockwaveMessage,
+    FlockwaveMessageBuilder,
+)
 from flockwave.server.utils import overridden
 from flockwave.server.utils.quart import make_blueprint
 
@@ -47,52 +60,91 @@ class HTTPConfig(BaseModel):
     )
 
 
-class HTTPChannel(CommunicationChannel):
+MessageDict = TypedDict(
+    "MessageDict",
+    {
+        "$fw.version": str,
+        "id": str,
+        "body": dict[str, Any],
+    },
+    total=True,
+)
+
+
+class HTTPChannel(CommunicationChannel[FlockwaveMessage]):
     """Object that represents an HTTP communication channel between a
     server and a single client.
 
-    The communication channel supports a single request-response pair only
-    before it is shut down. Only the response to the submitted request will
-    be delivered. Authentication-related headers are translated on-the-fly to
-    AUTH-REQ messages.
+    The communication channel supports a single in-flight request-response pair only.
+    When the responses for a request are being read from the response queue, only the
+    response to the submitted request and subsequent `ASYNC-RESP` messages will be
+    delivered. Closing the queue frees up the channel to accept a new request and start
+    waiting for its response.
     """
 
-    _event: Event | None
     _message_id: str | None
+    """ID of the message that we are currently expecting a response for."""
+
+    _queue: SendChannel[FlockwaveMessage] | None
+    """Queue via which we can stream the response and any additional `ASYNC-...`
+    messages following the primary response back to the client. `None` if we do not
+    know the ID of the message that we are waiting for yet.
+    """
 
     def __init__(self):
         """Constructor."""
-        self._event = None
         self._message_id = None
-        self._response = None
+        self._queue = None
 
     async def close(self, force: bool = False):
         raise NotImplementedError
 
-    def expect_response_for(self, message):
+    def expect_response_for(
+        self, message: MessageDict
+    ) -> ReceiveChannel[FlockwaveMessage]:
         """Notifies the communication channel that we are about to send the
         given message and it should prepare for capturing its response so it
         can be forwarded back to the client.
         """
-        if self._message_id != message["id"]:
-            self._message_id = message["id"]
-            if self._event:
-                # in case anyone was waiting for the previous message ID
-                self._event.set()
-            self._event = Event()
+        self._message_id = message["id"]
+        self._queue, receive_channel = open_memory_channel[FlockwaveMessage](0)
 
-    async def send(self, message):
-        """Inherited."""
-        refs = getattr(message, "refs", None)
-        if refs is not None and refs == self._message_id:
-            self._response = message
-            if self._event is not None:
-                self._event.set()
+        return receive_channel
 
-    async def wait_for_response(self) -> Any:
-        assert self._event is not None
-        await self._event.wait()
-        return self._response
+    async def send(self, message: FlockwaveMessage):
+        """Handles the delivery of a message sent by the message hub through this
+        channel.
+        """
+        to_enqueue: FlockwaveMessage | None = None
+
+        if self._message_id is not None:
+            # We are waiting for the primary response to the message with the given ID
+            # so check the "refs" field of each incoming message
+            refs = getattr(message, "refs", None)
+            if refs is not None and refs == self._message_id:
+                # Got the response
+                self._message_id = None
+                to_enqueue = message
+
+        elif self._queue is not None:
+            # Receievd the primary response. From this point onwards we only deliver
+            # ASYNC-RESP messages
+            body = message.body
+            if str(body.get("type")).startswith("ASYNC-"):
+                to_enqueue = message
+
+        else:
+            # We are not waiting for any messages yet so do nothing
+            return
+
+        if to_enqueue:
+            if self._queue is not None:
+                try:
+                    await self._queue.send(to_enqueue)
+                except BrokenResourceError:
+                    # Consumer is not interested in further messages any more (closed
+                    # the receiving end) so we can drop our end as well
+                    self._queue = None
 
 
 ############################################################################
@@ -125,7 +177,7 @@ def ensure_authorization_header_is_present_if_needed() -> None:
             abort(response)
 
 
-def wrap_message_in_envelope(message: dict[str, Any]) -> dict[str, Any]:
+def wrap_message_in_envelope(message: dict[str, Any]) -> MessageDict:
     """Ensures that the given message has an envelope and possibly returns a
     new message object that includes the Flockwave envelope.
     """
@@ -133,15 +185,32 @@ def wrap_message_in_envelope(message: dict[str, Any]) -> dict[str, Any]:
 
     assert builder is not None
 
+    # Generate a unique ID for the message if needed
+    if "id" in message:
+        id = str(message["id"])
+    else:
+        id = str(builder.id_generator())
+
     has_envelope = "$fw.version" in message
     if not has_envelope:
-        message = {"$fw.version": "1.0", "body": message}
+        return {"$fw.version": "1.0", "body": message, "id": id}
+    else:
+        return cast(MessageDict, message)
 
-    # Generate a unique ID for the message if needed
-    if "id" not in message:
-        message["id"] = str(builder.id_generator())
 
-    return message
+def extract_receipts_from_response(body: Any) -> Mapping[str, str]:
+    """Extracts the receipt IDs and the corresponding keys from the response body
+    if there are any async operations to wait for, and removes them from the response
+    body itself.
+    """
+    if not isinstance(body, dict):
+        return {}
+
+    receipts = body.pop("receipt", None)
+    if not isinstance(receipts, dict):
+        return {}
+
+    return {str(v): str(k) for k, v in receipts.items()}
 
 
 async def authenticate_client_if_needed(client: Client) -> HTTPChannel:
@@ -180,19 +249,19 @@ async def authenticate_client_if_needed(client: Client) -> HTTPChannel:
         abort(403)  # Forbidden
 
     auth_request = wrap_message_in_envelope(auth_request)
-    channel.expect_response_for(auth_request)
 
-    handled = await app.message_hub.handle_incoming_message(auth_request, client)
-    if not handled:
-        abort(403)  # Forbidden
+    async with aclosing(channel.expect_response_for(auth_request)) as queue:
+        handled = await app.message_hub.handle_incoming_message(auth_request, client)
+        if not handled:
+            abort(403)  # Forbidden
 
-    response = await channel.wait_for_response()
-    if response is None:
-        abort(408)  # Request timeout
+        async for message in queue:
+            body = message.body
+            if body.get("type") != "AUTH-RESP" or body.get("result") is not True:
+                abort(403)  # Forbidden
 
-    body = response["body"]
-    if body.get("type") != "AUTH-RESP" or body.get("result") is not True:
-        abort(403)  # Forbidden
+            # Not interested in further messages
+            break
 
     return channel
 
@@ -227,31 +296,87 @@ async def index():
     except TooSlowError:
         abort(408)  # Request timeout
 
+    # If we did not receive a dict, abort the request
+    if not isinstance(message, dict):
+        abort(400)  # Bad request
+
     # Wrap the message in an envelope if needed
     message = wrap_message_in_envelope(message)
 
     # Create a dummy client in the registry, send the message and wait for the
     # response
+    response: FlockwaveMessage | None = None
+    receipts: dict[str, str] = {}
     client_id = f"http://{request.host}"
     with app.client_registry.use(client_id, "http") as client:
         channel = await authenticate_client_if_needed(client)
-        channel.expect_response_for(message)
 
-        handled = await app.message_hub.handle_incoming_message(message, client)
-        if not handled:
-            abort(400)  # Bad request
+        async with aclosing(channel.expect_response_for(message)) as queue:
+            handled = await app.message_hub.handle_incoming_message(message, client)
+            if not handled:
+                abort(400)  # Bad request
 
-        response = await channel.wait_for_response()
+            async for message in queue:
+                if response is None:
+                    # We have received the primary response to the request
+                    response = message
+                    receipts.update(extract_receipts_from_response(response.body))
+                else:
+                    # We have received an ASYNC-RESP message, check if it is one of the
+                    # receipts we are waiting for
+                    body = message.body
+                    type = body.get("type")
+                    receipt_id = body.get("id")
 
-    # If we did not get a response, indicate a timeout, otherwise send the
-    # response to the client
+                    if type == "ASYNC-ST":
+                        key = receipts.get(receipt_id)
+                    else:
+                        key = receipts.pop(receipt_id, None)
+
+                    if not key:
+                        # This is not one of the receipts we are waiting for, ignore it
+                        continue
+
+                    match type:
+                        case "ASYNC-RESP":
+                            # Merge the result or error into the primary response body
+                            if "result" in body:
+                                response.body.setdefault("result", {})[key] = body[
+                                    "result"
+                                ]
+                            elif "error" in body:
+                                response.body.setdefault("error", {})[key] = body[
+                                    "error"
+                                ]
+                            else:
+                                response.body.setdefault("error", {})[key] = (
+                                    "invalid response"
+                                )
+
+                        case "ASYNC-TIMEOUT":
+                            # Process timeout error
+                            response.body.setdefault("error", {})[key] = "Timeout"
+
+                        case "ASYNC-ST":
+                            suspended = bool(body.get("suspended"))
+                            if suspended:
+                                receipts.pop(receipt_id, None)
+                                response.body.setdefault("error", {})[key] = (
+                                    "Request suspended"
+                                )
+
+                if not receipts:
+                    # No receipts to wait for, we are done
+                    break
+
+    if encoder is None:
+        abort(500)  # Internal server error
+
     if response is None:
         abort(408)  # Request timeout
-    elif encoder is None:
-        abort(500)  # Internal server error
-    else:
-        response = loads(encoder(response))
-        return response.get("body")
+
+    response = loads(encoder(response))
+    return response.get("body")
 
 
 ############################################################################
@@ -259,7 +384,7 @@ async def index():
 
 async def run(app: SkybrushServer, configuration: HTTPConfig, logger: Logger):
     """Background task that is active while the extension is loaded."""
-    http_server = app.import_api("http_server")
+    http_server = app.import_api("http_server", HTTPServerExtensionAPI)
     with ExitStack() as stack:
         builder = FlockwaveMessageBuilder()
         encoder = create_json_encoder()

@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [main]
+
+### Changed
+
+- The HTTP API provided by the `http` extension now waits for multi-object async
+  operations to complete and collects the results in the returned HTTP response. This
+  makes it simpler to handle multi-object async operations as there is no need to
+  chase response receipts any more.
+
 ## [2.49.1] - 2026-07-15
 
 ### Fixed

@@ -3,7 +3,7 @@
 from random import random
 
 from flockwave.server.model.battery import BatteryInfo
-from flockwave.server.model.devices import ObjectNode
+from flockwave.server.model.devices import DeviceTreeMutator, ObjectNode
 from flockwave.server.utils import clamp
 
 __all__ = ("VirtualBattery",)
@@ -126,7 +126,9 @@ class VirtualBattery:
         """Recharges the battery to the maximum voltage."""
         self.voltage = self._max
 
-    def discharge(self, dt: float, load: float, *, mutator=None) -> None:
+    def discharge(
+        self, dt: float, load: float, *, mutator: DeviceTreeMutator | None = None
+    ) -> None:
         """Simulates the discharge of the battery over the given time
         period.
 
@@ -143,7 +145,7 @@ class VirtualBattery:
             new_voltage += self._range
         self.voltage = new_voltage
 
-        if mutator is not None:
+        if mutator is not None and self._voltage_channel is not None:
             mutator.update(self._voltage_channel, self.voltage)
 
     def register_in_device_tree(self, node: ObjectNode) -> None:

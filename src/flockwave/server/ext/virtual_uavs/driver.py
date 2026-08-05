@@ -8,7 +8,7 @@ from hashlib import sha1 as firmware_hash
 from math import atan2, cos, hypot, radians, sin
 from random import choice, randint, random
 from time import monotonic
-from typing import Any, NoReturn
+from typing import Any, ContextManager, NoReturn
 
 from colour import Color
 from flockwave.concurrency import delayed
@@ -38,7 +38,7 @@ from flockwave.server.model.commands import (
     ProgressEventsWithSuspension,
     Suspend,
 )
-from flockwave.server.model.devices import ObjectNode
+from flockwave.server.model.devices import DeviceTreeMutator, ObjectNode
 from flockwave.server.model.gps import GPSFixType
 from flockwave.server.model.log import FlightLog, FlightLogKind, FlightLogMetadata
 from flockwave.server.model.mission import MissionItemBundle
@@ -642,7 +642,7 @@ class VirtualUAV(UAVBase):
         self,
         delay: float,
         *,
-        mutate: Callable,
+        mutate: Callable[[], ContextManager[DeviceTreeMutator]],
         notify: Callable[[], None],
         spawn: Callable,
     ) -> str:
@@ -697,7 +697,7 @@ class VirtualUAV(UAVBase):
         if self.state is VirtualUAVState.LANDED:
             self._motors_running = False
 
-    def step(self, dt: float, mutator=None) -> None:
+    def step(self, dt: float, mutator: DeviceTreeMutator | None = None) -> None:
         """Simulates a single step of the trajectory of the virtual UAV based
         on its state and the amount of time that has passed.
 

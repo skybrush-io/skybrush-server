@@ -4,11 +4,11 @@ from __future__ import annotations
 
 from builtins import str
 from collections import Counter, defaultdict
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from enum import Enum
 from itertools import islice
-from typing import TYPE_CHECKING, Any, Generic, TypeVar, cast, overload
+from typing import TYPE_CHECKING, Any, Generic, TypeAlias, TypeVar, cast, overload
 
 from blinker import Signal
 from flockwave.spec.schema import get_complex_object_schema
@@ -28,6 +28,7 @@ __all__ = (
     "ChannelType",
     "DeviceClass",
     "DeviceTree",
+    "DeviceTreeMutator",
     "DeviceTreePath",
     "DeviceNode",
     "DeviceTreeNodeType",
@@ -825,14 +826,13 @@ class DeviceTree:
                 self._on_object_removed, sender=self._object_registry
             )
 
-    def _on_channel_nodes_updated(self, nodes):
+    def _on_channel_nodes_updated(self, nodes: Iterable[ChannelNode]):
         """Callback method that a DeviceTreeMutator_ will call when a
         mutation session has ended and some channel nodes were updated.
 
         Parameters:
-            nodes (Iterable[ChannelNode]): the set of channel nodes that
-                were updated. It might not be a Python set but it is
-                guaranteed to contain each affected node at most once.
+            nodes: the set of channel nodes that were updated. It might not be a Python
+                set but it is guaranteed to contain each affected node at most once.
         """
         # Just redispatch the set in a channel_nodes_updated signal
         self.channel_nodes_updated.send(self, nodes=nodes)
@@ -861,6 +861,9 @@ class DeviceTree:
             self.structure_changed.send(self)
 
 
+DeviceTreeMutatorCallback: TypeAlias = Callable[set[ChannelNode], None]
+
+
 class DeviceTreeMutator:
     """Context manager that provides methods for modifying the values of the
     channel nodes in a device tree, records the modifications and then
@@ -874,7 +877,9 @@ class DeviceTreeMutator:
             no updated nodes.
     """
 
-    def __init__(self, tree, callback):
+    _updated_nodes: set[ChannelNode]
+
+    def __init__(self, tree: DeviceTree, callback: DeviceTreeMutatorCallback):
         self.tree = tree
         self.callback = callback
         self._updated_nodes = set()
@@ -900,16 +905,18 @@ class DeviceTreeMutator:
                 string or as a DeviceTreePath_), or the channel node itself.
             new_value: the new value of the channel
         """
-        if not isinstance(node, DeviceTreeNodeBase):
-            node = self.tree.resolve(node)
+        if isinstance(node, DeviceTreeNodeBase):
+            resolved_node = node
+        else:
+            resolved_node = self.tree.resolve(node)
 
-        assert isinstance(node, ChannelNode)
+        assert isinstance(resolved_node, ChannelNode)
 
-        if node.value == new_value:
+        if resolved_node.value == new_value:
             return
 
-        node.value = new_value
-        self._updated_nodes.add(node)
+        resolved_node.value = new_value
+        self._updated_nodes.add(resolved_node)
 
 
 class DeviceTreeSubscriptionManager:

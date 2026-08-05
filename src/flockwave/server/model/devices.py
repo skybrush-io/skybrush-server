@@ -861,7 +861,7 @@ class DeviceTree:
             self.structure_changed.send(self)
 
 
-DeviceTreeMutatorCallback: TypeAlias = Callable[set[ChannelNode], None]
+DeviceTreeMutatorCallback: TypeAlias = Callable[[Iterable[ChannelNode]], None]
 
 
 class DeviceTreeMutator:

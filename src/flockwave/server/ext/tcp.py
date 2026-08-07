@@ -19,6 +19,7 @@ from flockwave.connections import IPAddressAndPort
 from flockwave.encoders.json import create_json_encoder
 from flockwave.networking import format_socket_address
 from flockwave.parsers.json import create_json_parser
+from pydantic import BaseModel, Field
 from trio import (
     BrokenResourceError,
     CapacityLimiter,
@@ -199,11 +200,47 @@ async def handle_message(message: Any, client, *, limit: CapacityLimiter) -> Non
 ############################################################################
 
 
-async def run(app: SkybrushServer, configuration, logger: Logger):
+class TcpConfig(BaseModel):
+    """Configuration model for the TCP extension."""
+
+    host: str = Field(
+        default="",
+        title="Host",
+        description=(
+            "IP address of the host that the server should listen on for "
+            "incoming TCP connections. Use an empty string to listen on all "
+            "interfaces, or 127.0.0.1 to listen on localhost only"
+        ),
+        json_schema_extra={"propertyOrder": 10},
+    )
+
+    port: int = Field(
+        default=suggest_port_number_for_service("tcp"),
+        ge=1,
+        le=65535,
+        title="Port",
+        description=(
+            "Port that the server should listen on for incoming TCP connections. "
+            "Untick the checkbox to let the server derive the port number from "
+            "its own base port."
+        ),
+        json_schema_extra={"propertyOrder": 20, "required": False},
+    )
+
+    pool_size: int = Field(
+        default=1000,
+        ge=1,
+        title="Connection pool size",
+        description="Maximum number of concurrent TCP connections to handle.",
+        json_schema_extra={"propertyOrder": 30},
+    )
+
+
+async def run(app: SkybrushServer, configuration: TcpConfig, logger: Logger):
     """Background task that is active while the extension is loaded."""
-    host = str(configuration.get("host", ""))
-    port = int(configuration.get("port", suggest_port_number_for_service("tcp")))
-    pool_size = int(configuration.get("pool_size", 1000))
+    host = configuration.host
+    port = configuration.port
+    pool_size = configuration.pool_size
     address = host, port
 
     with ExitStack() as stack:
@@ -225,40 +262,4 @@ async def run(app: SkybrushServer, configuration, logger: Logger):
 
 
 description = "TCP socket-based communication channel"
-schema = {
-    "properties": {
-        "host": {
-            "type": "string",
-            "title": "Host",
-            "description": (
-                "IP address of the host that the server should listen on for "
-                "incoming TCP connections. Use an empty string to listen on all "
-                "interfaces, or 127.0.0.1 to listen on localhost only"
-            ),
-            "default": "",
-            "propertyOrder": 10,
-        },
-        "port": {
-            "type": "integer",
-            "title": "Port",
-            "description": (
-                "Port that the server should listen on for incoming TCP connections. "
-                "Untick the checkbox to let the server derive the port number from "
-                "its own base port."
-            ),
-            "minimum": 1,
-            "maximum": 65535,
-            "default": suggest_port_number_for_service("tcp"),
-            "required": False,
-            "propertyOrder": 20,
-        },
-        "pool_size": {
-            "type": "integer",
-            "title": "Connection pool size",
-            "minimum": 1,
-            "description": ("Maximum number of concurrent TCP connections to handle."),
-            "default": 1000,
-            "propertyOrder": 30,
-        },
-    }
-}
+schema = TcpConfig

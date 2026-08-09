@@ -14,6 +14,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   makes it simpler to handle multi-object async operations as there is no need to
   chase response receipts any more.
 
+- Crazyflie extension now requires a firmware that is based on Crazyflie firmware
+  2026.04 or later.
+
 ## [2.49.1] - 2026-07-15
 
 ### Fixed

@@ -577,19 +577,19 @@ class CrazyflieUAV(UAVBase):
 
     async def arm(self, force: bool = False) -> None:
         """Arms the motors of the Crazyflie."""
-        await self._get_crazyflie().run_command(
-            port=DRONE_SHOW_PORT,
-            command=DroneShowCommand.ARM_OR_DISARM,
-            data=Struct("<B").pack(3 if force else 1),
-        )
+        if force:
+            self.driver.log.warning(
+                "Force-arming not supported by Crazyflie supervisor"
+            )
+        await self._get_crazyflie().supervisor.arm_or_disarm(True)
 
     async def disarm(self, force: bool = False) -> None:
         """Disarms or force-disarms the motors of the Crazyflie."""
-        await self._get_crazyflie().run_command(
-            port=DRONE_SHOW_PORT,
-            command=DroneShowCommand.ARM_OR_DISARM,
-            data=Struct("<B").pack(2 if force else 0),
-        )
+        cf = self._get_crazyflie()
+        if force:
+            await cf.supervisor.emergency_stop()
+        else:
+            await cf.supervisor.arm_or_disarm(False)
 
     async def emit_light_signal(self) -> None:
         """Asks the UAV to emit a visible light signal from its LED ring to

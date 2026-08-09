@@ -133,7 +133,7 @@ class CrazyflieDriver(UAVDriver["CrazyflieUAV"]):
         self._address_space_by_uav_id = {}
         self._uav_ids_by_address_space = defaultdict(dict)
 
-    def _create_uav(self, formatted_id: str) -> "CrazyflieUAV":
+    def _create_uav(self, formatted_id: str) -> CrazyflieUAV:
         """Creates a new UAV that is to be managed by this driver.
 
         Parameters:
@@ -199,7 +199,7 @@ class CrazyflieDriver(UAVDriver["CrazyflieUAV"]):
 
     async def handle_command_alt(
         self,
-        uav: "CrazyflieUAV",
+        uav: CrazyflieUAV,
         z: str | None = None,
     ):
         """Command that sends the UAV to a given altitude."""
@@ -219,7 +219,7 @@ class CrazyflieDriver(UAVDriver["CrazyflieUAV"]):
 
     async def handle_command_fence(
         self,
-        uav: "CrazyflieUAV",
+        uav: CrazyflieUAV,
         subcommand: str | None = None,
         x_min: str | None = None,
         y_min: str | None = None,
@@ -265,7 +265,7 @@ class CrazyflieDriver(UAVDriver["CrazyflieUAV"]):
 
     async def handle_command_go(
         self,
-        uav: "CrazyflieUAV",
+        uav: CrazyflieUAV,
         x: str | None = None,
         y: str | None = None,
         z: str | None = None,
@@ -285,7 +285,7 @@ class CrazyflieDriver(UAVDriver["CrazyflieUAV"]):
         x_num, y_num, z_num = await uav.go_to(x_num, y_num, z_num)
         return f"Target set to ({x_num:.2f}, {y_num:.2f}, {z_num:.2f}) m"
 
-    async def handle_command_home(self, uav: "CrazyflieUAV"):
+    async def handle_command_home(self, uav: CrazyflieUAV):
         """Command that retrieves the current home position of the UAV."""
         home = await uav.get_home_position()
         if home is None:
@@ -295,7 +295,7 @@ class CrazyflieDriver(UAVDriver["CrazyflieUAV"]):
             return f"Home: [{x:.2f}, {y:.2f}, {z:.2f}] m"
 
     async def handle_command_kalman(
-        self, uav: "CrazyflieUAV", command: str | None = None
+        self, uav: CrazyflieUAV, command: str | None = None
     ) -> str:
         if command is None:
             return "Run 'kalman reset' to reset the Kalman filter"
@@ -305,13 +305,13 @@ class CrazyflieDriver(UAVDriver["CrazyflieUAV"]):
         else:
             raise RuntimeError(f"Unknown command: {command}")
 
-    async def handle_command_land(self, uav: "CrazyflieUAV") -> str:
+    async def handle_command_land(self, uav: CrazyflieUAV) -> str:
         await uav.land()
         return "Land command sent successfully"
 
     async def handle_command_rush(
         self,
-        uav: "CrazyflieUAV",
+        uav: CrazyflieUAV,
         x: str | None = None,
         y: str | None = None,
         z: str | None = None,
@@ -344,7 +344,7 @@ class CrazyflieDriver(UAVDriver["CrazyflieUAV"]):
         return f"Target set to ({x_num:.2f}, {y_num:.2f}, {z_num:.2f}) m"
 
     async def handle_command_show(
-        self, uav: "CrazyflieUAV", command: str | None = None
+        self, uav: CrazyflieUAV, command: str | None = None
     ) -> str:
         if command is None:
             raise RuntimeError(
@@ -360,12 +360,12 @@ class CrazyflieDriver(UAVDriver["CrazyflieUAV"]):
         else:
             raise RuntimeError(f"Unknown subcommand: {command!r}")
 
-    async def handle_command_stop(self, uav: "CrazyflieUAV") -> str:
+    async def handle_command_stop(self, uav: CrazyflieUAV) -> str:
         """Stops the motors of the UAV immediately."""
         await uav.stop()
         return "Motor stop signal sent"
 
-    async def handle_command_trick(self, uav: "CrazyflieUAV", *params: str) -> str:
+    async def handle_command_trick(self, uav: CrazyflieUAV, *params: str) -> str:
         """Non-public command used for Nina's show as a last resort hack to send
         the drone through the ceiling if the high-level commander is not suitable
         for the task.
@@ -392,7 +392,7 @@ class CrazyflieDriver(UAVDriver["CrazyflieUAV"]):
         )
 
     async def handle_command___show_upload(
-        self, uav: "CrazyflieUAV", *, show: ShowSpecification
+        self, uav: CrazyflieUAV, *, show: ShowSpecification
     ):
         """Handles a drone show upload request for the given UAV.
 
@@ -428,25 +428,23 @@ class CrazyflieDriver(UAVDriver["CrazyflieUAV"]):
         return dict(result)
 
     async def _enter_low_power_mode_single(
-        self, uav: "CrazyflieUAV", *, transport: TransportOptions | None = None
+        self, uav: CrazyflieUAV, *, transport: TransportOptions | None = None
     ) -> None:
         await uav.enter_low_power_mode()
 
     async def _resume_from_low_power_mode_single(
-        self, uav: "CrazyflieUAV", *, transport: TransportOptions | None = None
+        self, uav: CrazyflieUAV, *, transport: TransportOptions | None = None
     ) -> None:
         await uav.resume_from_low_power_mode()
 
-    def _request_preflight_report_single(
-        self, uav: "CrazyflieUAV"
-    ) -> PreflightCheckInfo:
+    def _request_preflight_report_single(self, uav: CrazyflieUAV) -> PreflightCheckInfo:
         return uav.preflight_status
 
-    async def _request_version_info_single(self, uav: "CrazyflieUAV") -> VersionInfo:
+    async def _request_version_info_single(self, uav: CrazyflieUAV) -> VersionInfo:
         return await uav.get_version_info()
 
     async def _send_landing_signal_single(
-        self, uav: "CrazyflieUAV", *, transport: TransportOptions | None = None
+        self, uav: CrazyflieUAV, *, transport: TransportOptions | None = None
     ) -> None:
         if uav.is_in_drone_show_mode:
             await uav.stop_drone_show()
@@ -455,7 +453,7 @@ class CrazyflieDriver(UAVDriver["CrazyflieUAV"]):
 
     async def _send_light_or_sound_emission_signal_single(
         self,
-        uav: "CrazyflieUAV",
+        uav: CrazyflieUAV,
         signals,
         duration,
         *,
@@ -466,7 +464,7 @@ class CrazyflieDriver(UAVDriver["CrazyflieUAV"]):
 
     async def _send_motor_start_stop_signal_single(
         self,
-        uav: "CrazyflieUAV",
+        uav: CrazyflieUAV,
         start: bool,
         force: bool = False,
         *,
@@ -479,7 +477,7 @@ class CrazyflieDriver(UAVDriver["CrazyflieUAV"]):
 
     async def _send_reset_signal_single(
         self,
-        uav: "CrazyflieUAV",
+        uav: CrazyflieUAV,
         component: str,
         *,
         transport: TransportOptions | None = None,
@@ -493,7 +491,7 @@ class CrazyflieDriver(UAVDriver["CrazyflieUAV"]):
             raise RuntimeError(f"Resetting {component!r} is not supported")
 
     async def _send_shutdown_signal_single(
-        self, uav: "CrazyflieUAV", *, transport: TransportOptions | None = None
+        self, uav: CrazyflieUAV, *, transport: TransportOptions | None = None
     ) -> None:
         await uav.shutdown()
 
@@ -510,7 +508,7 @@ class CrazyflieDriver(UAVDriver["CrazyflieUAV"]):
             await uav.takeoff(altitude=self.takeoff_altitude, relative=True)
 
     async def _set_parameter_single(
-        self, uav: "CrazyflieUAV", name: str, value: Any
+        self, uav: CrazyflieUAV, name: str, value: Any
     ) -> None:
         try:
             value_as_float = float(value)

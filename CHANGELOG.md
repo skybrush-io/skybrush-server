@@ -17,6 +17,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Crazyflie extension now requires a firmware that is based on Crazyflie firmware
   2026.04 or later.
 
+### Fixed
+
+- Crazyflie drones now return an empty log list instead of bailing out with an error.
+
 ## [2.49.1] - 2026-07-15
 
 ### Fixed

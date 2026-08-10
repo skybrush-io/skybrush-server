@@ -34,6 +34,7 @@ from flockwave.server.command_handlers import (
     create_version_command_handler,
 )
 from flockwave.server.errors import NotSupportedError
+from flockwave.server.model.log import FlightLogMetadata
 from flockwave.server.model.preflight import PreflightCheckInfo, PreflightCheckResult
 from flockwave.server.model.transport import TransportOptions
 from flockwave.server.model.uav import BatteryInfo, UAVBase, UAVDriver, VersionInfo
@@ -444,6 +445,12 @@ class CrazyflieDriver(UAVDriver["CrazyflieUAV"]):
         self, uav: CrazyflieUAV, *, transport: TransportOptions | None = None
     ) -> None:
         await uav.enter_low_power_mode()
+
+    async def _get_log_list_single(self, uav: CrazyflieUAV) -> list[FlightLogMetadata]:
+        return []
+
+    async def _get_parameter_single(self, uav: CrazyflieUAV, name: str) -> float:
+        return await uav.get_parameter(name)
 
     async def _resume_from_low_power_mode_single(
         self, uav: CrazyflieUAV, *, transport: TransportOptions | None = None

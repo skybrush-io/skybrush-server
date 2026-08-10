@@ -73,48 +73,61 @@ class CrazyflieDriver(UAVDriver["CrazyflieUAV"]):
     """Driver class for Crazyflie drones.
 
     Attributes:
-        app (SkybrushServer): the app in which the driver lives
-        fence_config: configuration of the safety fence to apply on drones
-            managed by this driver
-        id_format: Python format string that receives a numeric drone ID in the
-            flock and returns its preferred formatted identifier that is used
-            when the drone is registered in the server, or any other object that
-            has a ``format()`` method accepting a single integer as an argument
-            and returning the preferred UAV identifier
-        preferred_controller: controller type to set on a drone during a show
-            upload; ``None`` if no change is needed
-        status_interval: number of seconds that should pass between consecutive
-            status requests sent to a drone
         takeoff_altitude: altitude that a UAV should take off to when receiving
             a takeoff command
     """
 
-    app: "SkybrushServer"
     debug: bool
+    """Whether to log the incoming and outgoing messages of each drone created by the
+    driver.
+    """
+
     id_format: str
+    """Python format string that receives a numeric drone ID in the
+    flock and returns its preferred formatted identifier that is used
+    when the drone is registered in the server, or any other object that
+    has a ``format()`` method accepting a single integer as an argument
+    and returning the preferred UAV identifier.
+    """
+
     log: Logger
+
     fence_config: FenceConfiguration
+    """Configuration of the safety fence to apply on drones managed by this driver."""
+
     preferred_controller: ControllerType | None
+    """Preferred controller type to set on a drone during a show upload; ``None`` if no
+    change is needed.
+    """
+
     status_interval: float = 0.5
+    """Number of seconds that should pass between consecutive status requests sent to a
+    drone.
+    """
+
     takeoff_altitude: float = 1
+    """Default takeoff altitude for drones managed by this driver, in meters."""
+
     use_test_mode: bool = False
 
     _cache_folder: str | None
+    """Optional path to a folder where the driver can store the parameter and log TOC
+    files of the Crazyflie drones that it sees.
+    """
+
     _address_space_by_uav_id: dict[str, Any]
     _uav_ids_by_address_space: dict[Any, dict[int, str]]
 
     def __init__(
         self,
-        app=None,
+        app: SkybrushServer | None = None,
         id_format: str = "{0:02}",
         cache: Path | None = None,
     ):
         """Constructor.
 
         Parameters:
-            app (SkybrushServer): the app in which the driver lives
-            debug (bool): whether to log the incoming and outgoing messages of
-                each drone created by the driver
+            app: the app in which the driver lives
             id_format: the format of the UAV IDs used by this driver.
                 See the class documentation for more details.
             cache: optional cache folder that the driver can use to store the

@@ -855,8 +855,8 @@ class CrazyflieUAV(UAVBase):
 
             if status:
                 message = status.show_execution_stage.get_short_explanation()
-                if status.testing:
-                    message = f"(test) {message}"
+                if status.locked:
+                    message = f"(lock) {message}"
                 message = message.encode("utf-8")
 
                 self._airborne = status.airborne

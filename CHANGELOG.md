@@ -17,6 +17,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Crazyflie extension now requires a firmware that is based on Crazyflie firmware
   2026.04 or later.
 
+- Deprecated the `DroneShowStatus.testing` property in the Crazyflie extension in
+  favour of `DroneShowStatus.locked`.
+
 ### Fixed
 
 - Crazyflie drones now return an empty log list instead of bailing out with an error.

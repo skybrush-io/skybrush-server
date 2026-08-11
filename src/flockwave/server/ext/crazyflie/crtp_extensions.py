@@ -9,6 +9,7 @@ from enum import IntEnum, IntFlag
 from struct import Struct
 
 from aiocflib.crtp.crtpstack import CRTPPort
+from deprecated import deprecated
 
 from flockwave.server.utils import clamp
 
@@ -132,9 +133,11 @@ class DroneShowStatusFlag(IntFlag):
     HIGH_LEVEL_COMMANDER_ENABLED = 2
     DRONE_SHOW_MODE_ENABLED = 4
     AIRBORNE = 8
-    TESTING_MODE = 16
+    LOCKED = 16
     DISARMED = 32
     FENCE_BREACHED = 64
+
+    TESTING_MODE = 16  # deprecated alias for LOCKED
 
 
 class DroneShowExecutionStage(IntEnum):
@@ -236,7 +239,7 @@ class DroneShowStatus:
     show_execution_stage: DroneShowExecutionStage = DroneShowExecutionStage.UNKNOWN
     yaw: float = 0.0
 
-    _struct = Struct("<HhhhhH")
+    _struct = Struct("<BBHhhhhH")
 
     @property
     def airborne(self) -> bool:
@@ -279,12 +282,14 @@ class DroneShowStatus:
         except Exception:
             stage = DroneShowExecutionStage.ERROR
 
-        checks, x, y, z, yaw, light = cls._struct.unpack(data[3:15])
+        battery_voltage_cv, flags, checks, x, y, z, yaw, light = cls._struct.unpack(
+            data[1:15]
+        )
         checks = tuple((checks >> (index * 2)) & 0x03 for index in range(8))
 
         return cls(
-            battery_voltage=data[1] / 10.0,
-            flags=data[2],
+            battery_voltage=battery_voltage_cv / 10.0,
+            flags=flags,
             preflight_checks=checks,
             position=(x / 1000.0, y / 1000.0, z / 1000.0),
             light=light,
@@ -295,6 +300,11 @@ class DroneShowStatus:
     def has_flag(self, flag: DroneShowStatusFlag) -> bool:
         """Returns whether the status object has the given flag."""
         return bool(self.flags & flag)
+
+    @property
+    def locked(self) -> bool:
+        """Returns whether the drone is locked (i.e. motors are not allowed to spin)."""
+        return bool(self.flags & DroneShowStatusFlag.LOCKED)
 
     @property
     def mode(self) -> str:
@@ -309,6 +319,7 @@ class DroneShowStatus:
             return "----"
 
     @property
+    @deprecated(version="2.49.2", reason="Use `locked` instead of `testing`")
     def testing(self) -> bool:
-        """Returns whether the drone is in testing mode is charging."""
-        return bool(self.flags & DroneShowStatusFlag.TESTING_MODE)
+        """Returns whether the drone is in testing mode; deprecated alias to `locked`."""
+        return bool(self.flags & DroneShowStatusFlag.LOCKED)

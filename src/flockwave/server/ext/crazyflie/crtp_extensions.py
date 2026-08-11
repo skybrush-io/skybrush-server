@@ -2,6 +2,8 @@
 related to our extensions that we added to the Crazyflie firmware.
 """
 
+from __future__ import annotations
+
 from dataclasses import dataclass
 from enum import IntEnum, IntFlag
 from struct import Struct
@@ -263,7 +265,7 @@ class DroneShowStatus:
         return bool(self.flags & DroneShowStatusFlag.FENCE_BREACHED)
 
     @classmethod
-    def from_bytes(cls, data: bytes):
+    def from_bytes(cls, data: bytes) -> DroneShowStatus | None:
         """Constructs a DroneShowStatus_ object from the raw response to the
         `DroneShowCommand.STATUS` command.
         """

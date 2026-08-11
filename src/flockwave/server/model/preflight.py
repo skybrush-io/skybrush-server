@@ -107,6 +107,8 @@ class PreflightCheckInfo(metaclass=ModelMeta):
         schema = get_complex_object_schema("preflightCheckInfo")
         mappers = {"result": enum_to_json(PreflightCheckResult)}
 
+    items: list[PreflightCheckItem]
+
     def __init__(self):
         self._in_progress = False
         self.message = ""

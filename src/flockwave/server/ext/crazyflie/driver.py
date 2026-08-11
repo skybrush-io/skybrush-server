@@ -1158,6 +1158,7 @@ class CrazyflieUAV(UAVBase):
         report.add_item("positioning", "Positioning")
         report.add_item("home", "Home position")
         report.add_item("trajectory", "Trajectory and lights")
+        report.add_item("supervisor", "Supervisor")
         return report
 
     async def _enable_show_mode(self) -> None:

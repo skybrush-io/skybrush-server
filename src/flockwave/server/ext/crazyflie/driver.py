@@ -558,8 +558,15 @@ class CrazyflieUAV(UAVBase):
     send_log_message_to_gcs: GCSLogMessageSender
     uri: str | None
 
-    _airborne: bool
-    _armed: bool
+    _airborne: bool | None
+    """Whether the drone is airborne; ``None`` means "not known yet"."""
+
+    _armed: bool | None
+    """Whether the drone is armed; ``None`` means "not known yet"."""
+
+    _crashed: bool | None
+    """Whether the drone crashed; ``None`` means "not known yet"."""
+
     _crazyflie: Crazyflie | None
     _fence: Fence | None
     _fence_breached: bool
@@ -864,6 +871,7 @@ class CrazyflieUAV(UAVBase):
                 self._battery.charging = status.charging
                 self._battery.voltage = status.battery_voltage
                 self._battery.percentage = status.battery_percentage
+                self._crashed = status.crashed
                 self._fence_breached = status.fence_breached
                 self._position.update(
                     x=status.position[0], y=status.position[1], z=status.position[2]
@@ -1204,8 +1212,9 @@ class CrazyflieUAV(UAVBase):
         to the UAV or after re-establishing a connection.
         """
         self._preflight_status = self._create_empty_preflight_status_report()
-        self._airborne = False
-        self._armed = True  # Crazyflies typically boot in an armed state
+        self._airborne = None
+        self._armed = None
+        self._crashed = None
         self._fence_breached = False
         self._battery = BatteryInfo()
         self._position = PositionXYZ()
@@ -1265,7 +1274,15 @@ class CrazyflieUAV(UAVBase):
             present=self._preflight_status.failed_conclusively,
         )
 
-        self.ensure_error(FlockwaveErrorCode.DISARMED, present=not self._armed)
+        self.ensure_error(
+            FlockwaveErrorCode.DISARMED,
+            present=self._armed is not None and not self._armed,
+        )
+
+        self.ensure_error(
+            FlockwaveErrorCode.CRASH,
+            present=bool(self._crashed),
+        )
 
         # TODO(ntamas): use GEOFENCE_VIOLATION_WARNING if the motors are not
         # running. Currently we have no information about whether the motors are

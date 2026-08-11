@@ -136,6 +136,7 @@ class DroneShowStatusFlag(IntFlag):
     LOCKED = 16
     DISARMED = 32
     FENCE_BREACHED = 64
+    CRASHED = 128
 
     TESTING_MODE = 16  # deprecated alias for LOCKED
 
@@ -261,6 +262,11 @@ class DroneShowStatus:
     def charging(self) -> bool:
         """Returns whether the battery is charging."""
         return bool(self.flags & DroneShowStatusFlag.BATTERY_CHARGING)
+
+    @property
+    def crashed(self) -> bool:
+        """Returns whether the Crazyflie crashed."""
+        return bool(self.flags & DroneShowStatusFlag.CRASHED)
 
     @property
     def fence_breached(self) -> bool:

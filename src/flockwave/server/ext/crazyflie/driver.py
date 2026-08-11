@@ -567,9 +567,14 @@ class CrazyflieUAV(UAVBase):
     _crashed: bool | None
     """Whether the drone crashed; ``None`` means "not known yet"."""
 
+    _fence_breached: bool
+    """Whether the geofence was breached."""
+
+    _motors_running: bool | None
+    """Whether the motors are running; ``None`` means "not known yet"."""
+
     _crazyflie: Crazyflie | None
     _fence: Fence | None
-    _fence_breached: bool
     _log_session: LogSession | None
 
     def __init__(self, *args, **kwds):
@@ -873,6 +878,7 @@ class CrazyflieUAV(UAVBase):
                 self._battery.percentage = status.battery_percentage
                 self._crashed = status.crashed
                 self._fence_breached = status.fence_breached
+                self._motors_running = status.motors_running
                 self._position.update(
                     x=status.position[0], y=status.position[1], z=status.position[2]
                 )
@@ -1216,6 +1222,7 @@ class CrazyflieUAV(UAVBase):
         self._armed = None
         self._crashed = None
         self._fence_breached = False
+        self._motors_running = None
         self._battery = BatteryInfo()
         self._position = PositionXYZ()
         self._show_execution_stage = DroneShowExecutionStage.UNKNOWN
@@ -1255,10 +1262,14 @@ class CrazyflieUAV(UAVBase):
         """Updates the set of error codes based on what we know about the current
         state of the drone.
         """
+        on_ground = (
+            not self._airborne and not self._show_execution_stage.is_likely_airborne
+        )
+
+        self.ensure_error(FlockwaveErrorCode.ON_GROUND, present=on_ground)
         self.ensure_error(
-            FlockwaveErrorCode.ON_GROUND,
-            present=not self._airborne
-            and not self._show_execution_stage.is_likely_airborne,
+            FlockwaveErrorCode.MOTORS_RUNNING_WHILE_ON_GROUND,
+            present=on_ground and bool(self._motors_running),
         )
 
         self.ensure_error(

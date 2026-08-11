@@ -137,6 +137,7 @@ class DroneShowStatusFlag(IntFlag):
     DISARMED = 32
     FENCE_BREACHED = 64
     CRASHED = 128
+    MOTORS_RUNNING = 256
 
     TESTING_MODE = 16  # deprecated alias for LOCKED
 
@@ -273,6 +274,11 @@ class DroneShowStatus:
         """Returns whether the geofence was breached."""
         return bool(self.flags & DroneShowStatusFlag.FENCE_BREACHED)
 
+    @property
+    def motors_running(self) -> bool:
+        """Returns whether the motors are running."""
+        return bool(self.flags & DroneShowStatusFlag.MOTORS_RUNNING)
+
     @classmethod
     def from_bytes(cls, data: bytes) -> DroneShowStatus | None:
         """Constructs a DroneShowStatus_ object from the raw response to the
@@ -292,6 +298,10 @@ class DroneShowStatus:
             data[1:15]
         )
         checks = tuple((checks >> (index * 2)) & 0x03 for index in range(8))
+
+        if len(data) > 15:
+            # Status packet has a second byte containing flags
+            flags |= data[15] << 8
 
         return cls(
             battery_voltage=battery_voltage_cv / 10.0,

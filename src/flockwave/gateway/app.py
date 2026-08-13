@@ -48,7 +48,9 @@ class SkybrushGatewayServer(DaemonApp):
         from the base port. The configuration
         may specify an alternative URL template to use.
         """
-        if self._public_url_parts:
+        if self._worker_url_template:
+            return self._worker_url_template.format(index = index + 1)
+        elif self._public_url_parts:
             host, sep, port = self._public_url_parts.netloc.partition(":")
             if sep:
                 port = self._get_port_for_worker(index, base=port)
@@ -106,6 +108,10 @@ class SkybrushGatewayServer(DaemonApp):
     def _process_configuration(self, config: Configuration) -> int | None:
         self._public_url_parts = (
             urlparse(config["PUBLIC_URL"]) if config.get("PUBLIC_URL") else None
+        )
+
+        self._worker_url_template = (
+            config["WORKER_URL"] if config.get("WORKER_URL") else None
         )
 
         self.worker_manager.max_count = config.get("MAX_WORKERS", 1)

@@ -5,7 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [main]
+## [2.50.0] - 2026-08-14
+
+### Added
+
+- Gateway now allows the generation of worker URLs from a template.
+
+- Crazyflie drones can now indicate whether their motors are running or not. Requires
+  the latest Crazyflie firmware (2026.04 or later).
 
 ### Changed
 

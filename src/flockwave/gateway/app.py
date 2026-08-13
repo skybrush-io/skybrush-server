@@ -49,7 +49,7 @@ class SkybrushGatewayServer(DaemonApp):
         may specify an alternative URL template to use.
         """
         if self._worker_url_template:
-            return self._worker_url_template.format(index = index + 1)
+            return self._worker_url_template.format(index=index + 1)
         elif self._public_url_parts:
             host, sep, port = self._public_url_parts.netloc.partition(":")
             if sep:

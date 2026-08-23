@@ -6,11 +6,12 @@ from __future__ import annotations
 
 from collections.abc import Callable, Sequence
 from logging import Logger
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal
 
 from flockwave.connections import create_connection
 from flockwave.connections.socket import UDPListenerConnection
 from flockwave.networking import format_socket_address
+from pydantic import BaseModel, Field
 from trio import TooSlowError, fail_after
 
 from flockwave.server.ports import suggest_port_number_for_service, use_port
@@ -27,27 +28,91 @@ SERVICE: str = "rcin"
 """Name of the service that we use to derive a default port number."""
 
 
-async def run(app: SkybrushServer, configuration, log):
-    host = configuration.get("host", "127.0.0.1")
-    port = configuration.get("port", suggest_port_number_for_service(SERVICE))
+class RcUdpConfig(BaseModel):
+    """Configuration model for the RC UDP input extension."""
+
+    host: str = Field(
+        default="127.0.0.1",
+        title="Host",
+        description=(
+            "IP address of the host that the server should listen for incoming "
+            "UDP datagrams. Use an empty string to listen on all interfaces, or "
+            "127.0.0.1 to listen on localhost only"
+        ),
+        json_schema_extra={"propertyOrder": 10},
+    )
+
+    port: int = Field(
+        default=suggest_port_number_for_service(SERVICE),
+        ge=1,
+        le=65535,
+        title="Port",
+        description=(
+            "Port that the server should listen on. Untick the checkbox to "
+            "let the server derive the port number from its own base port."
+        ),
+        json_schema_extra={"propertyOrder": 20, "required": False},
+    )
+
+    bytesPerChannel: int = Field(
+        default=2,
+        ge=1,
+        le=2,
+        title="Bytes per channel",
+        description="Number of bytes per channel in each UDP packet",
+    )
+
+    endianness: Literal["big", "little"] = Field(
+        default="little",
+        title="Endianness",
+        description="Endianness of each incoming packet",
+        json_schema_extra={
+            "options": {
+                "enum_titles": [
+                    "Big endian (network byte order, MSB first)",
+                    "Little endian (LSB first)",
+                ]
+            },
+        },
+    )
+
+    range: list[int] | None = Field(
+        default=None,
+        title="Override channel range",
+        json_schema_extra={
+            "format": "table",
+            "minItems": 2,
+            "maxItems": 2,
+            "items": {"type": "integer"},
+            "required": False,
+        },
+    )
+
+    timeout: float = Field(
+        default=1.0,
+        ge=0,
+        title="Timeout",
+        description=(
+            "Number of seconds that must pass without receiving a UDP "
+            "packet to consider the RC connection as lost. Zero means "
+            "to disable the timeout."
+        ),
+    )
+
+
+async def run(app: SkybrushServer, configuration: RcUdpConfig, log):
+    host = configuration.host
+    port = configuration.port
     formatted_address = format_socket_address((host, port))
 
-    endianness = str(configuration.get("endianness", "little")).lower()
-    bytes_per_channel = int(configuration.get("bytesPerChannel", 2))
-    if endianness not in ("big", "little"):
-        log.error("Endianness must be 'big' or 'little', disabling extension")
-        return
-    if bytes_per_channel != 1 and bytes_per_channel != 2:
-        log.error("Bytes per RC channel must be 1 or 2, disabling extension")
-        return
+    endianness = configuration.endianness
+    bytes_per_channel = configuration.bytesPerChannel
 
-    timeout = float(configuration.get("timeout", 1))
-    if timeout < 0:
-        timeout = 0
-    if timeout == 0:
+    timeout = configuration.timeout
+    if timeout <= 0:
         timeout = float("inf")
 
-    value_range = parse_range(configuration.get("range"))
+    value_range = parse_range(configuration.range)
 
     decoder = (
         decode_one_byte_per_channel
@@ -189,72 +254,4 @@ async def handle_udp_datagrams(
 dependencies = ("rc",)
 description = "RC input source using UDP datagrams"
 tags = "experimental"
-schema = {
-    "properties": {
-        "host": {
-            "type": "string",
-            "title": "Host",
-            "description": (
-                "IP address of the host that the server should listen for incoming "
-                "UDP datagrams. Use an empty string to listen on all interfaces, or "
-                "127.0.0.1 to listen on localhost only"
-            ),
-            "default": "127.0.0.1",
-            "propertyOrder": 10,
-        },
-        "port": {
-            "type": "integer",
-            "title": "Port",
-            "description": (
-                "Port that the server should listen on. Untick the checkbox to "
-                "let the server derive the port number from its own base port."
-            ),
-            "minimum": 1,
-            "maximum": 65535,
-            "default": suggest_port_number_for_service(SERVICE),
-            "required": False,
-            "propertyOrder": 20,
-        },
-        "bytesPerChannel": {
-            "type": "integer",
-            "title": "Bytes per channel",
-            "minimum": 1,
-            "maximum": 2,
-            "default": 2,
-            "description": "Number of bytes per channel in each UDP packet",
-        },
-        "endianness": {
-            "type": "string",
-            "title": "Endianness",
-            "description": "Endianness of each incoming packet",
-            "default": "little",
-            "enum": ["big", "little"],
-            "options": {
-                "enum_titles": [
-                    "Big endian (network byte order, MSB first)",
-                    "Little endian (LSB first)",
-                ]
-            },
-        },
-        "range": {
-            "title": "Override channel range",
-            "type": "array",
-            "format": "table",
-            "minItems": 2,
-            "maxItems": 2,
-            "items": {"type": "integer"},
-            "required": False,
-        },
-        "timeout": {
-            "title": "Timeout",
-            "type": "number",
-            "minimum": 0,
-            "default": 1,
-            "description": (
-                "Number of seconds that must pass without receiving a UDP "
-                "packet to consider the RC connection as lost. Zero means "
-                "to disable the timeout."
-            ),
-        },
-    }
-}
+schema = RcUdpConfig

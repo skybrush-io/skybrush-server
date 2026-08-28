@@ -2707,13 +2707,6 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
         async with aclosing(MAVFTP.for_uav(self)) as ftp:
             await ftp.put(data, "/collmot/show.skyb")
 
-        # We give some time for the filesystem to flush caches etc before
-        # asking the drone to reload the show file. There were some reports
-        # that sometimes the show file was read only partially, and I suspect
-        # this could have been because the filesystem was not flushed fully
-        # to the SD card before we tried to reload the show. We could not debug
-        # it properly as it happened very rarely.
-
         # Encode latitude and longitude of show origin
         # TODO(ntamas): this is not entirely accurate due to the back-and-forth
         # conversion happening between floats and ints; sometimes the 7th

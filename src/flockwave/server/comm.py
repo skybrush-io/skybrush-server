@@ -533,7 +533,9 @@ class CommunicationManager(Generic[PacketType, AddressType]):
         except Exception as ex:
             has_error = True
 
-            if not isinstance(ex, (BrokenResourceError, ClosedResourceError)):
+            if not isinstance(
+                ex, (BrokenResourceError, ClosedResourceError, ConnectionResetError)
+            ):
                 self.log.exception(ex)
 
             if channel_created:

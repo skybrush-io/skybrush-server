@@ -4,11 +4,11 @@ from pytest import raises
 from trio import TooSlowError, sleep
 
 from flockwave.server.model.commands import Progress
-from flockwave.server.tasks import ProgressReporter
+from flockwave.server.tasks.progress import ProgressReporter
 
 
 async def test_progress_reporter(nursery, autojump_clock):
-    reporter = ProgressReporter()
+    reporter = ProgressReporter.for_task()
 
     async def generator():
         with closing(reporter):
@@ -62,7 +62,7 @@ async def test_progress_reporter(nursery, autojump_clock):
 
 
 async def test_progress_reporter_auto_close(nursery, autojump_clock):
-    reporter = ProgressReporter(auto_close=True)
+    reporter = ProgressReporter.for_task(auto_close=True)
 
     async def generator():
         reporter.notify(5, "foo")
@@ -92,7 +92,7 @@ async def test_progress_reporter_auto_close(nursery, autojump_clock):
 
 
 async def test_progress_reporter_timeout(nursery, autojump_clock):
-    reporter = ProgressReporter()
+    reporter = ProgressReporter.for_task()
 
     async def generator():
         with closing(reporter):
@@ -132,7 +132,7 @@ async def test_progress_reporter_timeout(nursery, autojump_clock):
 
 
 async def test_progress_reporter_timeout_no_failure(nursery, autojump_clock):
-    reporter = ProgressReporter()
+    reporter = ProgressReporter.for_task()
 
     async def generator():
         with closing(reporter):

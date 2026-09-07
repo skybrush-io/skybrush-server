@@ -12,7 +12,7 @@ from typing import AsyncIterator, Protocol, Sequence, TypeAlias
 from trio_util import periodic
 
 from flockwave.server.model.commands import ProgressEventsWithSuspension
-from flockwave.server.tasks import ProgressReporter
+from flockwave.server.tasks import ProgressReporter, ProgressReporterInterface
 
 from .types import MAVLinkMessage
 
@@ -75,7 +75,7 @@ class CompassMotorInterferenceCalibration:
     _status: CompassMotorInterferenceCalibrationStatus
     """Status of the calibration process."""
 
-    _reporter: ProgressReporter[None, str]
+    _reporter: ProgressReporterInterface[None, str]
     """Progress reporter object corresponding to the calibration."""
 
     _current_samples: list[ScalarSample] = []
@@ -95,7 +95,7 @@ class CompassMotorInterferenceCalibration:
     def reset(self):
         """Resets the state of the compass-motor interference calibration state variable."""
         self._status = CompassMotorInterferenceCalibrationStatus.NOT_RUNNING
-        self._reporter = ProgressReporter(auto_close=True)
+        self._reporter = ProgressReporter.for_task(auto_close=True)
         self._current_samples.clear()
         self._mag_samples_by_instance.clear()
 

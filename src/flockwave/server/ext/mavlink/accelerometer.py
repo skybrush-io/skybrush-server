@@ -6,7 +6,7 @@ from enum import IntEnum
 from math import inf
 
 from flockwave.server.model.commands import ProgressEventsWithSuspension
-from flockwave.server.tasks import ProgressReporter
+from flockwave.server.tasks import ProgressReporter, ProgressReporterInterface
 
 from .enums import AccelCalVehiclePos, MAVCommand
 from .types import MAVLinkMessage
@@ -44,7 +44,7 @@ class AccelerometerCalibration:
     _percentage: int
     """Progress of the calibration, expressed as a percentage."""
 
-    _reporter: ProgressReporter[None, str]
+    _reporter: ProgressReporterInterface[None, str]
     """Progress reporter object corresponding to the calibration."""
 
     def __init__(self):
@@ -86,7 +86,7 @@ class AccelerometerCalibration:
         self._next_step = AccelCalVehiclePos.NOT_STARTED
         self._status = AccelerometerCalibrationStatus.NOT_RUNNING
         self._percentage = 0
-        self._reporter = ProgressReporter(auto_close=True)
+        self._reporter = ProgressReporter.for_task(auto_close=True)
 
     def updates(
         self, timeout: float = inf, fail_on_timeout: bool = True

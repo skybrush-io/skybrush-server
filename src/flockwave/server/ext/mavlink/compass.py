@@ -6,7 +6,7 @@ from enum import IntEnum
 from math import inf
 
 from flockwave.server.model.commands import ProgressEventsWithSuspension
-from flockwave.server.tasks import ProgressReporter
+from flockwave.server.tasks import ProgressReporter, ProgressReporterInterface
 
 from .enums import MagCalStatus
 from .types import MAVLinkMessage
@@ -32,7 +32,7 @@ class CompassCalibration:
     _status: list[CompassCalibrationStatus]
     """Status value for each compass being calibrated."""
 
-    _reporter: ProgressReporter[None, str]
+    _reporter: ProgressReporterInterface[None, str]
     """Progress reporter object corresponding to the calibration."""
 
     def __init__(self):
@@ -59,7 +59,7 @@ class CompassCalibration:
         """Resets the state of the compass calibration state variable."""
         self._status.clear()
         self._percentages.clear()
-        self._reporter = ProgressReporter(auto_close=True)
+        self._reporter = ProgressReporter.for_task(auto_close=True)
 
     @property
     def failed(self) -> bool:

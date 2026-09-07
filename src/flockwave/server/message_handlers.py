@@ -291,7 +291,7 @@ def create_mapper(
                     raise RuntimeError("async getters not supported for notifications")
             else:
                 if add_object_id and getter and isinstance(result, dict):
-                    result["id"] = object_id  # ty:ignore[invalid-assignment]
+                    result["id"] = object_id
                 results[object_id] = result
 
         return response
@@ -427,6 +427,6 @@ def transform_message_body(
             assert isinstance(parameter_name, str)
             assert callable(func)
             value = body[parameter_name]
-            body[parameter_name] = func(value)  # ty:ignore[call-top-callable]
+            body[parameter_name] = func(value)
 
     return body

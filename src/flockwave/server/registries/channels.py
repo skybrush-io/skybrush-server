@@ -26,7 +26,7 @@ log = base_log.getChild("registries.channels")
 
 T = TypeVar("T")
 
-BroadcasterFunc = Callable[[T], None | Awaitable[None]]
+BroadcasterFunc = Callable[[T], Awaitable[None]]
 
 
 @dataclass(frozen=True)
@@ -199,7 +199,7 @@ class ChannelTypeRegistry(RegistryBase[ChannelTypeDescriptor], Generic[T]):
         name: str,
         *,
         factory: Callable[[], CommunicationChannel[T]],
-        broadcaster: Callable[[T], None] | None = None,
+        broadcaster: BroadcasterFunc[T] | None = None,
         ssdp_location: Callable[[IPAddressAndPort | None], str | None] | None = None,
     ) -> Iterator[None]:
         """Context manager that temporarily adds a channel to the channel

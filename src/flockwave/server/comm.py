@@ -41,7 +41,7 @@ from .types import Disposer
 __all__ = ("BROADCAST", "CommunicationManager")
 
 
-AddressType = TypeVar("AddressType", covariant=True)
+AddressType = TypeVar("AddressType")
 """Type variable representing the type of addresses used by a CommunicationManager"""
 
 PacketType = TypeVar("PacketType")

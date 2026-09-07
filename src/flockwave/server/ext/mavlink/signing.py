@@ -161,9 +161,7 @@ class SignatureTimestampSynchronizer:
         """Patches a MAVLink object to use a synchronized signature timestamp."""
         mavlink.signing = self.wrap(mavlink.signing)
 
-    def wrap(
-        self, signing_state: MAVLinkSigningInterface[MinimalMAVLinkInterface]
-    ) -> MAVLinkSigningInterface[MinimalMAVLinkInterface]:
+    def wrap(self, signing_state: MAVLinkSigningInterface) -> MAVLinkSigningInterface:
         """Wraps an existing MAVLinkSigning_ object with an object proxy that
         overrides the timestamp to correspond to the common timestamp in this
         timestamp synchronizer class.
@@ -172,4 +170,4 @@ class SignatureTimestampSynchronizer:
         proxy = self.TimestampProxy(
             signing_state, self._get_timestamp, self._update_timestamp
         )
-        return cast("MAVLinkSigningInterface[MinimalMAVLinkInterface]", proxy)
+        return cast("MAVLinkSigningInterface", proxy)

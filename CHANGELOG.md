@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.51.0] - 2026-09-07
+
+### Added
+
+- Added `ProgressReporter.for_thread()` to create a `ProgressReporter` that is suitable
+  for tasks that are delegated to a separate worker thread not running an event loop.
+
+- Added `ProgressReporter.for_task()` to create a `ProgressReporter` that is suitable
+  for tasks that are delegated to a separate async task running in the same event loop
+  as the main thread.
+
+### Changed
+
+- The plain `ProgressReporter()` constructor is now deprecated in favour of
+  `ProgressReporter.for_thread()` and `ProgressReporter.for_task()`.
+
 ## [2.50.0] - 2026-08-14
 
 ### Added

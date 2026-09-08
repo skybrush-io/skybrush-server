@@ -2,7 +2,7 @@
 
 from collections.abc import Iterable, Sequence
 from inspect import isawaitable
-from typing import Any, Awaitable, Callable, Mapping
+from typing import Any, Awaitable, Callable, Mapping, ParamSpec
 
 from flockwave.spec.schema import get_message_schema
 
@@ -10,6 +10,8 @@ from .commands import CommandExecutionStatus
 from .metamagic import ModelMeta
 
 __all__ = ("FlockwaveMessage", "FlockwaveNotification", "FlockwaveResponse")
+
+P = ParamSpec("P")
 
 
 class FlockwaveMessage(metaclass=ModelMeta):
@@ -188,7 +190,9 @@ class FlockwaveResponse(FlockwaveMessage):
         if isinstance(receipts, dict):
             yield from (receipt_id for receipt_id in receipts.values())
 
-    def when_sent(self, func: Callable[..., None | Awaitable[None]], *args, **kwds):
+    def when_sent(
+        self, func: Callable[P, None | Awaitable[None]], *args: P.args, **kwds: P.kwargs
+    ):
         """Registers a function to be called when the message is sent."""
         self._on_sent.append((func, args, kwds))
 

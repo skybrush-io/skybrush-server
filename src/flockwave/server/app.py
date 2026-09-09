@@ -43,7 +43,13 @@ from .model.log import LogMessage, Severity
 from .model.messages import FlockwaveMessage, FlockwaveNotification, FlockwaveResponse
 from .model.object import ModelObject
 from .model.transport import TransportOptions
-from .model.uav import UAV, UAVDriver, is_uav
+from .model.uav import (
+    UAV,
+    SingleUAVCommandHandler,
+    UAVCommandHandler,
+    UAVDriver,
+    is_uav,
+)
 from .model.world import World
 from .registries import (
     ChannelTypeRegistry,
@@ -61,7 +67,6 @@ __all__ = ("app",)
 PACKAGE_NAME = __name__.rpartition(".")[0]
 
 UAV_COMMAND_HANDLERS: dict[str, tuple[str, MessageBodyTransformationSpec | None]] = {
-    "LOG-DATA": ("get_log", rename_keys({"logId": "log_id"})),
     "LOG-INF": ("get_log_list", None),
     "OBJ-CMD": ("send_command", None),
     "PRM-GET": ("get_parameter", None),
@@ -101,7 +106,22 @@ UAV_COMMAND_HANDLERS: dict[str, tuple[str, MessageBodyTransformationSpec | None]
         {"transport": TransportOptions.from_json},
     ),
 }
-"""Table that describes the handlers of several UAV-related command requests."""
+"""Table that maps UAV-related command requests to the names of their corresponding
+handler functions in the UAVDriver_ class. Each such handler takes multiple UAV IDs
+and returns the results in a standardized format; see UAVCommandHandler_ for more
+details.
+"""
+
+SINGLE_UAV_COMMAND_HANDLERS: dict[
+    str, tuple[str, MessageBodyTransformationSpec | None]
+] = {
+    "LOG-DATA": ("get_log", rename_keys({"logId": "log_id"})),
+}
+"""Table that maps UAV-related command requests to the names of their corresponding
+handler functions in the UAVDriver_ class. Each such handler takes a _single_ UAV ID
+and returns the result in a standardized format; see SingleUAVCommandHandler_ for more
+details.
+"""
 
 NULL_HANDLER = (None, None)
 """Constant for a dummy UAV command handler that does nothing."""
@@ -533,7 +553,7 @@ class SkybrushServer(DaemonApp):
                 raise RuntimeError("no such UAV")
 
             # Find the method to invoke on the driver
-            method_name, transformer = UAV_COMMAND_HANDLERS.get(
+            method_name, transformer = SINGLE_UAV_COMMAND_HANDLERS.get(
                 message_type, NULL_HANDLER
             )
 
@@ -543,7 +563,9 @@ class SkybrushServer(DaemonApp):
 
             # Look up the method in the driver
             try:
-                method = getattr(uav.driver, method_name)  # type: ignore
+                method: SingleUAVCommandHandler[UAV] = getattr(
+                    uav.driver, method_name or "_missing_method_should_not_exist"
+                )
             except (AttributeError, RuntimeError, TypeError):
                 raise RuntimeError("Operation not supported") from None
 
@@ -628,7 +650,9 @@ class SkybrushServer(DaemonApp):
             # Look up the method in the driver
             common_error, results = None, None
             try:
-                method = getattr(driver, method_name)  # type: ignore
+                method: UAVCommandHandler[UAV] | None = getattr(
+                    driver, method_name or "_missing_method_should_not_exist"
+                )
             except (AttributeError, RuntimeError, TypeError):
                 common_error = "Operation not supported"
                 method = None

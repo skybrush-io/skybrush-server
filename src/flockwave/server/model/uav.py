@@ -8,20 +8,23 @@ from inspect import isawaitable
 from typing import (
     TYPE_CHECKING,
     Any,
+    AsyncGenerator,
     Generic,
+    Protocol,
+    Sequence,
     TypedDict,
-    TypeVar,
 )
 
 from flockwave.gps.vectors import GPSCoordinate, PositionXYZ, VelocityNED, VelocityXYZ
 from flockwave.spec.schema import get_complex_object_schema
+from typing_extensions import TypeVar
 
 from flockwave.server.errors import NotSupportedError
 from flockwave.server.logger import log as base_log
 
 from .attitude import Attitude
 from .battery import BatteryInfo
-from .commands import Progress, ProgressEvents
+from .commands import Progress, ProgressEvents, Suspend
 from .devices import ObjectNode
 from .error_set import ErrorSet
 from .gps import GPSFix, GPSFixLike
@@ -41,6 +44,7 @@ __all__ = (
     "PassiveUAVDriver",
     "UAV",
     "UAVBase",
+    "UAVCommandHandler",
     "UAVDriver",
     "UAVStatusInfo",
 )
@@ -59,8 +63,13 @@ TUAV = TypeVar("TUAV", bound="UAV")
 TDriver = TypeVar("TDriver", bound="UAVDriver")
 """Type variable that represents a UAV driver object."""
 
-TResult = TypeVar("TResult")
+TResult = TypeVar("TResult", default=Any)
 """Type variable that represents some unspecified result object."""
+
+TSuspension = TypeVar("TSuspension", default=Any)
+"""Type variable that represents some unspecified suspension object yielded by an
+async command handler that needs more input from the user.
+"""
 
 
 class BulkParameterUploadResponse(TypedDict, total=False):
@@ -438,6 +447,91 @@ class UAVBase(UAV, Generic[TDriver]):
         self._status.update_timestamp()
 
 
+class UAVCommandHandler(Protocol, Generic[TUAV, TResult, TSuspension]):
+    """Interface specification for command handler functions in a UAV driver that can
+    receive a list of UAVs _and_ an arbitrary dict of keyword arguments, and return
+    one of these:
+
+        - a common outcome for the execution of the command on all the UAVs
+        - an exception that represents an error that happened during the execution of
+          the command (note that the exception is _returned_, not _thrown_ -- throwing
+          an exception means an internal logic error in the command handler itself)
+        - an asynchronous generator that yields Progress_ or Suspension_ objects or
+          any of the object types outlined above (common result or exception)
+        - or a dict keyed by UAVs where the values are individual outcomes for the
+          execution of the command or an appropriate exception (again, _returned_, not
+          _thrown_)
+
+    Command handlers _may_ be asynchronous, in which case they return an awaitable that
+    resolves to one of the above. Command handlers should not block until the command
+    finishes on all UAVs; in that case, the handler should return a dict of awaitables,
+    one for each UAV, that the caller can await on its own.
+    """
+
+    def __call__(
+        self, uavs: Sequence[TUAV], **kwds
+    ) -> (
+        # ordinary result object, same for all UAVs
+        TResult
+        # error during execution, same for all UAVs
+        | Exception
+        # dict of results or errors, one for each UAV, possibly async
+        | dict[TUAV, TResult | Exception | Awaitable[TResult | Exception]]
+        # async result, same for all UAVs, or dict of async results or errors, one for
+        # each UAV
+        | Awaitable[
+            TResult
+            | Exception
+            | dict[TUAV, TResult | Exception | Awaitable[TResult | Exception]]
+        ]
+        # async generator that yields progress or suspension objects, and eventually a
+        # result or error
+        | AsyncGenerator[
+            Progress[TResult]
+            | Suspend[TSuspension]
+            | TResult
+            | Exception
+            | dict[TUAV, TResult | Exception],
+            None,
+        ]
+    ): ...
+
+
+class SingleUAVCommandHandler(Protocol, Generic[TUAV, TResult, TSuspension]):
+    """Interface specification for command handler functions in a UAV driver that can
+    receive a _single_ UAV _and_ an arbitrary dict of keyword arguments, and return
+    one of these:
+
+        - the outcome for the execution of the command on the UAV
+        - an exception that represents an error that happened during the execution of
+          the command (note that the exception is _returned_, not _thrown_ -- throwing
+          an exception means an internal logic error in the command handler itself)
+        - an asynchronous generator that yields Progress_ or Suspension_ objects or
+          any of the object types outlined above (result or exception)
+
+    Command handlers _may_ be asynchronous, in which case they return an awaitable that
+    resolves to one of the above (except an async generator, which is already awaitable
+    on its own).
+    """
+
+    def __call__(
+        self, uav: TUAV, **kwds
+    ) -> (
+        # ordinary result object
+        TResult
+        # error during execution
+        | Exception
+        # async result
+        | Awaitable[TResult | Exception]
+        # async generator that yields progress or suspension objects, and eventually a
+        # result or error
+        | AsyncGenerator[
+            Progress[TResult] | Suspend[TSuspension] | TResult | Exception,
+            None,
+        ]
+    ): ...
+
+
 class UAVDriver(Generic[TUAV], ABC):
     """Interface specification for UAV drivers that are responsible for
     handling communication with a given group of UAVs via a common
@@ -483,7 +577,7 @@ class UAVDriver(Generic[TUAV], ABC):
         """Constructor."""
         self.app = None  # type: ignore
 
-    def calibrate_component(self, uavs: list[TUAV], component: str):
+    def calibrate_component(self, uavs: Sequence[TUAV], component: str):
         """Asks the driver to calibrate the given component on the given UAVs.
 
         Typically, you don't need to override this method when implementing
@@ -502,7 +596,7 @@ class UAVDriver(Generic[TUAV], ABC):
         )
 
     def enter_low_power_mode(
-        self, uavs: list[TUAV], transport: TransportOptions | None = None
+        self, uavs: Sequence[TUAV], transport: TransportOptions | None = None
     ):
         """Asks the driver to send a signal to the given UAVs to enter low-power
         mode. Each of the UAVs are assumed to be managed by this driver.
@@ -537,7 +631,7 @@ class UAVDriver(Generic[TUAV], ABC):
         """
         raise NotImplementedError
 
-    def get_log_list(self, uavs: list[TUAV]):
+    def get_log_list(self, uavs: Sequence[TUAV]):
         """Asks the driver to retrieve the list of available logs from the
         given UAVs.
 
@@ -553,7 +647,7 @@ class UAVDriver(Generic[TUAV], ABC):
             uavs, "log listing request", self._get_log_list_single
         )
 
-    def get_parameter(self, uavs: list[TUAV], name: str):
+    def get_parameter(self, uavs: Sequence[TUAV], name: str):
         """Asks the driver to retrieve the current value of a parameter from
         the given UAVs.
 
@@ -569,7 +663,7 @@ class UAVDriver(Generic[TUAV], ABC):
             uavs, "parameter retrieval", self._get_parameter_single, name=name
         )
 
-    def request_preflight_report(self, uavs: list[TUAV]):
+    def request_preflight_report(self, uavs: Sequence[TUAV]):
         """Asks the driver to request a detailed report about the status of
         preflight checks on the given UAVs.
 
@@ -587,7 +681,7 @@ class UAVDriver(Generic[TUAV], ABC):
             self._request_preflight_report_single,
         )
 
-    def request_version_info(self, uavs: list[TUAV]):
+    def request_version_info(self, uavs: Sequence[TUAV]):
         """Asks the driver to request detailed version information from the
         given UAVs.
 
@@ -604,7 +698,7 @@ class UAVDriver(Generic[TUAV], ABC):
         )
 
     def resume_from_low_power_mode(
-        self, uavs: list[TUAV], transport: TransportOptions | None = None
+        self, uavs: Sequence[TUAV], transport: TransportOptions | None = None
     ):
         """Asks the driver to send a signal to the given UAVs to resume normal
         operation from low-power mode. Each of the UAVs are assumed to be
@@ -631,7 +725,7 @@ class UAVDriver(Generic[TUAV], ABC):
             transport=transport,
         )
 
-    def send_command(self, uavs: list[TUAV], command: str, args=None, kwds=None):
+    def send_command(self, uavs: Sequence[TUAV], command: str, args=None, kwds=None):
         """Asks the driver to send a direct command to the given UAVs, each
         of which are assumed to be managed by this driver.
 
@@ -719,7 +813,7 @@ class UAVDriver(Generic[TUAV], ABC):
                 result = {uav: self._execute(func, uav, *args, **kwds) for uav in uavs}
         return result
 
-    def send_fly_to_target_signal(self, uavs: list[TUAV], target: GPSCoordinate):
+    def send_fly_to_target_signal(self, uavs: Sequence[TUAV], target: GPSCoordinate):
         """Asks the driver to send a signal to the given UAVs that makes them
         fly to a given target coordinate. Every UAV passed as an argument is
         assumed to be managed by this driver.
@@ -747,7 +841,7 @@ class UAVDriver(Generic[TUAV], ABC):
 
     def send_hover_signal(
         self,
-        uavs: list[TUAV],
+        uavs: Sequence[TUAV],
         *,
         transport: TransportOptions | None = None,
     ):
@@ -776,7 +870,7 @@ class UAVDriver(Generic[TUAV], ABC):
         )
 
     def send_landing_signal(
-        self, uavs: list[TUAV], transport: TransportOptions | None = None
+        self, uavs: Sequence[TUAV], transport: TransportOptions | None = None
     ):
         """Asks the driver to send a landing signal to the given UAVs, each
         of which are assumed to be managed by this driver.
@@ -804,7 +898,7 @@ class UAVDriver(Generic[TUAV], ABC):
 
     def send_light_or_sound_emission_signal(
         self,
-        uavs: list[TUAV],
+        uavs: Sequence[TUAV],
         signals: list[str],
         duration: int,
         transport: TransportOptions | None = None,
@@ -841,7 +935,7 @@ class UAVDriver(Generic[TUAV], ABC):
 
     def send_motor_start_stop_signal(
         self,
-        uavs: list[TUAV],
+        uavs: Sequence[TUAV],
         start: bool = False,
         force: bool = False,
         transport: TransportOptions | None = None,
@@ -878,7 +972,7 @@ class UAVDriver(Generic[TUAV], ABC):
 
     def send_reset_signal(
         self,
-        uavs: list[TUAV],
+        uavs: Sequence[TUAV],
         *,
         component: str | None = None,
         transport: TransportOptions | None = None,
@@ -911,7 +1005,7 @@ class UAVDriver(Generic[TUAV], ABC):
         )
 
     def send_return_to_home_signal(
-        self, uavs: list[TUAV], transport: TransportOptions | None = None
+        self, uavs: Sequence[TUAV], transport: TransportOptions | None = None
     ):
         """Asks the driver to send a return-to-home signal to the given
         UAVs, each of which are assumed to be managed by this driver.
@@ -938,7 +1032,7 @@ class UAVDriver(Generic[TUAV], ABC):
         )
 
     def send_shutdown_signal(
-        self, uavs: list[TUAV], transport: TransportOptions | None = None
+        self, uavs: Sequence[TUAV], transport: TransportOptions | None = None
     ):
         """Asks the driver to send a shutdown signal to the given UAVs, each
         of which are assumed to be managed by this driver.
@@ -966,7 +1060,7 @@ class UAVDriver(Generic[TUAV], ABC):
 
     def send_takeoff_signal(
         self,
-        uavs: list[TUAV],
+        uavs: Sequence[TUAV],
         *,
         scheduled: bool = False,
         transport: TransportOptions | None = None,
@@ -998,7 +1092,7 @@ class UAVDriver(Generic[TUAV], ABC):
             transport=transport,
         )
 
-    def set_parameter(self, uavs: list[TUAV], name: str, value: Any):
+    def set_parameter(self, uavs: Sequence[TUAV], name: str, value: Any):
         """Asks the driver to set the value of a parameter on the given UAVs.
 
         Typically, you don't need to override this method when implementing
@@ -1017,7 +1111,7 @@ class UAVDriver(Generic[TUAV], ABC):
             value=value,
         )
 
-    def set_parameters(self, uavs: list[TUAV], parameters: dict[str, Any]):
+    def set_parameters(self, uavs: Sequence[TUAV], parameters: dict[str, Any]):
         """Asks the driver to set the value of multiple parameters on the given UAVs.
 
         Typically, you don't need to override this method when implementing
@@ -1035,7 +1129,7 @@ class UAVDriver(Generic[TUAV], ABC):
             parameters=parameters,
         )
 
-    def test_component(self, uavs: list[TUAV], component: str):
+    def test_component(self, uavs: Sequence[TUAV], component: str):
         """Asks the driver to test a specific component of the given UAVs.
 
         Typically, you don't need to override this method when implementing
@@ -1086,7 +1180,7 @@ class UAVDriver(Generic[TUAV], ABC):
 
     def _dispatch_request(
         self,
-        uavs: list[TUAV],
+        uavs: Sequence[TUAV],
         request_name: str,
         handler: Callable[..., TResult],
         broadcaster: Callable[..., TResult] | None = None,

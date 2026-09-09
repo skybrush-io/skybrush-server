@@ -2,9 +2,10 @@
 
 from collections.abc import Iterable, Sequence
 from inspect import isawaitable
-from typing import Any, Awaitable, Callable, Mapping, ParamSpec
+from typing import Any, Awaitable, Callable, Generic, Mapping, MutableMapping, ParamSpec
 
 from flockwave.spec.schema import get_message_schema
+from typing_extensions import TypeVar
 
 from .commands import CommandExecutionStatus
 from .metamagic import ModelMeta
@@ -13,14 +14,19 @@ __all__ = ("FlockwaveMessage", "FlockwaveNotification", "FlockwaveResponse")
 
 P = ParamSpec("P")
 
+TMessageBody = TypeVar("TMessageBody", bound=Mapping[str, Any], covariant=True)
+TMutableMessageBody = TypeVar(
+    "TMutableMessageBody", bound=MutableMapping[str, Any], covariant=True
+)
 
-class FlockwaveMessage(metaclass=ModelMeta):
+
+class FlockwaveMessage(Generic[TMessageBody], metaclass=ModelMeta):
     """Class representing a single Flockwave message, irrespectively of whether
     it is a request, a notification or a response.
     """
 
     id: str
-    body: dict[str, Any]
+    body: TMessageBody
 
     class __meta__:
         schema = get_message_schema()
@@ -51,13 +57,13 @@ class FlockwaveMessage(metaclass=ModelMeta):
         return isinstance(type, str) and type.startswith("X-")
 
 
-class FlockwaveNotification(FlockwaveMessage):
+class FlockwaveNotification(FlockwaveMessage[TMessageBody]):
     """Class representing a single Flockwave notification."""
 
     pass
 
 
-class FlockwaveResponse(FlockwaveMessage):
+class FlockwaveResponse(FlockwaveMessage[TMutableMessageBody]):
     """Specialized Flockwave message that represents a response to some
     other message.
     """
@@ -91,16 +97,16 @@ class FlockwaveResponse(FlockwaveMessage):
         otherwise an empty string is added to the ``error`` key of the message.
 
         Parameters:
-            failed_id (str): the ID for which we want to add a failure
+            failed_id: the ID for which we want to add a failure
                 notification
-            reason (str or None): reason for the failure or ``None`` if not
-                known or not provided.
+            reason: reason for the failure or ``None`` if not known or not provided.
+                Exceptions are converted to strings.
         """
         body = self.body
         errors = body.setdefault("error", {})
         errors[failed_id] = str(reason or "")
 
-    def add_receipt(self, id: str, receipt: CommandExecutionStatus):
+    def add_receipt(self, id: str, receipt: CommandExecutionStatus) -> None:
         """Adds a receipt for an asynchronous operation to the response
         body.
 
@@ -148,8 +154,7 @@ class FlockwaveResponse(FlockwaveMessage):
         does not exist.
 
         Parameters:
-            successful_id: the ID for which we want to add a success
-                notification
+            id: the ID for which we want to add an associated result object
             value: the result object to associate to the given ID
         """
         body = self.body

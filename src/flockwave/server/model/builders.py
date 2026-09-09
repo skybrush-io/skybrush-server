@@ -6,7 +6,12 @@ from typing import Any
 
 from .commands import CommandExecutionStatus
 from .identifiers import default_id_generator
-from .messages import FlockwaveMessage, FlockwaveNotification, FlockwaveResponse
+from .messages import (
+    FlockwaveMessage,
+    FlockwaveNotification,
+    FlockwaveResponse,
+    TMessageBody,
+)
 
 __all__ = ("CommandExecutionStatusBuilder", "FlockwaveMessageBuilder")
 
@@ -38,7 +43,7 @@ class CommandExecutionStatusBuilder:
         return CommandExecutionStatus(id=self.id_generator())
 
 
-class FlockwaveMessageBuilder(object):
+class FlockwaveMessageBuilder:
     """Builder object that can be used to create new Flockwave messages."""
 
     id_generator: Callable[[], str]
@@ -74,7 +79,7 @@ class FlockwaveMessageBuilder(object):
             result["body"] = body
         return result
 
-    def create_message(self, body: Any = None) -> FlockwaveMessage:
+    def create_message(self, body: TMessageBody) -> FlockwaveMessage[TMessageBody]:
         """Creates a new Flockwave message with the given body.
 
         Parameters:
@@ -86,7 +91,9 @@ class FlockwaveMessageBuilder(object):
         result = self._create_message_object(body)
         return FlockwaveMessage.from_json(result, validate=False)  # type: ignore
 
-    def create_notification(self, body: Any = None) -> FlockwaveNotification:
+    def create_notification(
+        self, body: TMessageBody
+    ) -> FlockwaveNotification[TMessageBody]:
         """Creates a new Flockwave notification with the given body.
 
         Parameters:
@@ -98,7 +105,9 @@ class FlockwaveMessageBuilder(object):
         result = self._create_message_object(body)
         return FlockwaveNotification.from_json(result, validate=False)  # type: ignore
 
-    def create_response_to(self, message: Any, body: Any = None) -> FlockwaveResponse:
+    def create_response_to(
+        self, message: Any, body: TMessageBody
+    ) -> FlockwaveResponse[TMessageBody]:
         """Creates a new Flockwave message that is a response to the
         given message.
 

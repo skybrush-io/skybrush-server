@@ -48,6 +48,7 @@ from .model import (
     FlockwaveMessageBuilder,
     FlockwaveNotification,
     FlockwaveResponse,
+    TMessageBody,
 )
 from .registries import ChannelTypeRegistry, ClientRegistry
 from .types import Disposer
@@ -302,7 +303,9 @@ class MessageHub:
                 self._invalidate_broadcast_methods, sender=self._client_registry
             )
 
-    def create_notification(self, body: Any = None) -> FlockwaveNotification:
+    def create_notification(
+        self, body: TMessageBody
+    ) -> FlockwaveNotification[TMessageBody]:
         """Creates a new Flockwave notification to be sent by the server.
 
         Parameters:
@@ -315,17 +318,17 @@ class MessageHub:
 
     @overload
     def create_response_or_notification(
-        self, body: Any, in_response_to: None = None
-    ) -> FlockwaveNotification: ...
+        self, body: TMessageBody, in_response_to: None = None
+    ) -> FlockwaveNotification[TMessageBody]: ...
 
     @overload
     def create_response_or_notification(
-        self, body: Any, in_response_to: FlockwaveMessage
-    ) -> FlockwaveResponse: ...
+        self, body: TMessageBody, in_response_to: FlockwaveMessage
+    ) -> FlockwaveResponse[TMessageBody]: ...
 
     def create_response_or_notification(
-        self, body: Any, in_response_to: FlockwaveMessage | None = None
-    ) -> FlockwaveResponse | FlockwaveNotification:
+        self, body: TMessageBody, in_response_to: FlockwaveMessage | None = None
+    ) -> FlockwaveResponse[TMessageBody] | FlockwaveNotification[TMessageBody]:
         """Creates a new Flockwave response or notification object,
         depending on whether the caller specifies a message to respond to
         or not.
@@ -344,8 +347,8 @@ class MessageHub:
             return self.create_response_to(in_response_to, body)
 
     def create_response_to(
-        self, message: FlockwaveMessage, body: Any = None
-    ) -> FlockwaveResponse:
+        self, message: FlockwaveMessage, body: TMessageBody
+    ) -> FlockwaveResponse[TMessageBody]:
         """Creates a new Flockwave response object that will respond to the
         given message.
 

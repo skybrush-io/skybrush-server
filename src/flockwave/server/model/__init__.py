@@ -21,7 +21,12 @@ from .devices import (
 from .error_set import ErrorSet
 from .errors import ClientNotSubscribedError, NoSuchPathError
 from .identifiers import default_id_generator
-from .messages import FlockwaveMessage, FlockwaveNotification, FlockwaveResponse
+from .messages import (
+    FlockwaveMessage,
+    FlockwaveNotification,
+    FlockwaveResponse,
+    TMessageBody,
+)
 from .object import ModelObject
 from .uav import UAV, PassiveUAVDriver, UAVBase, UAVDriver, UAVStatusInfo
 from .weather import Weather
@@ -33,6 +38,7 @@ __all__ = (
     "FlockwaveMessageBuilder",
     "FlockwaveNotification",
     "FlockwaveResponse",
+    "TMessageBody",
     "UAVStatusInfo",
     "UAVDriver",
     "UAV",

@@ -10,14 +10,16 @@ from typing_extensions import TypeVar
 from .commands import CommandExecutionStatus
 from .metamagic import ModelMeta
 
-__all__ = ("FlockwaveMessage", "FlockwaveNotification", "FlockwaveResponse")
+__all__ = (
+    "FlockwaveMessage",
+    "FlockwaveNotification",
+    "FlockwaveResponse",
+    "TMessageBody",
+)
 
 P = ParamSpec("P")
 
-TMessageBody = TypeVar("TMessageBody", bound=Mapping[str, Any], covariant=True)
-TMutableMessageBody = TypeVar(
-    "TMutableMessageBody", bound=MutableMapping[str, Any], covariant=True
-)
+TMessageBody = TypeVar("TMessageBody", bound=MutableMapping[str, Any], covariant=True)
 
 
 class FlockwaveMessage(Generic[TMessageBody], metaclass=ModelMeta):
@@ -63,7 +65,7 @@ class FlockwaveNotification(FlockwaveMessage[TMessageBody]):
     pass
 
 
-class FlockwaveResponse(FlockwaveMessage[TMutableMessageBody]):
+class FlockwaveResponse(FlockwaveMessage[TMessageBody]):
     """Specialized Flockwave message that represents a response to some
     other message.
     """

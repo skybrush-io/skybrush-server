@@ -2,7 +2,7 @@
 
 from builtins import str
 from collections.abc import Callable
-from typing import Any
+from typing import Any, MutableMapping
 
 from .commands import CommandExecutionStatus
 from .identifiers import default_id_generator
@@ -114,13 +114,13 @@ class FlockwaveMessageBuilder:
         Parameters:
             message: the message that the constructed message will respond to
             body (object): the body of the response. When it is not ``None``
-                and its type is missing, the type will be made equal to the
+                and it is a mutable mapping, the type will be made equal to the
                 type of the incoming message.
 
         Returns:
             FlockwaveMessage: the newly created response
         """
-        if body is not None and "type" not in body:
+        if body is not None and isinstance(body, MutableMapping) and "type" not in body:
             body["type"] = message.body["type"]
 
         if hasattr(message, "id"):

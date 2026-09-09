@@ -5,7 +5,7 @@ from inspect import isawaitable
 from typing import Any, Awaitable, Callable, Generic, Mapping, MutableMapping, ParamSpec
 
 from flockwave.spec.schema import get_message_schema
-from typing_extensions import TypeVar
+from typing_extensions import NotRequired, TypedDict, TypeVar
 
 from .commands import CommandExecutionStatus
 from .metamagic import ModelMeta
@@ -14,12 +14,15 @@ __all__ = (
     "FlockwaveMessage",
     "FlockwaveNotification",
     "FlockwaveResponse",
+    "AsyncResponseBody",
+    "MultiObjectAsyncResponseBody",
     "TMessageBody",
 )
 
 P = ParamSpec("P")
 
-TMessageBody = TypeVar("TMessageBody", bound=MutableMapping[str, Any], covariant=True)
+TMessageBody = TypeVar("TMessageBody", bound=Mapping[str, Any], covariant=True)
+TResult = TypeVar("TResult")
 
 
 class FlockwaveMessage(Generic[TMessageBody], metaclass=ModelMeta):
@@ -105,6 +108,7 @@ class FlockwaveResponse(FlockwaveMessage[TMessageBody]):
                 Exceptions are converted to strings.
         """
         body = self.body
+        assert isinstance(body, MutableMapping)
         errors = body.setdefault("error", {})
         errors[failed_id] = str(reason or "")
 
@@ -137,6 +141,7 @@ class FlockwaveResponse(FlockwaveMessage[TMessageBody]):
                 receipt to return to the client
         """
         body = self.body
+        assert isinstance(body, MutableMapping)
         receipts = body.setdefault("receipt", {})
         receipts[id] = receipt.id
 
@@ -160,6 +165,7 @@ class FlockwaveResponse(FlockwaveMessage[TMessageBody]):
             value: the result object to associate to the given ID
         """
         body = self.body
+        assert isinstance(body, MutableMapping)
         results = body.setdefault("result", {})
         results[id] = value
 
@@ -185,6 +191,7 @@ class FlockwaveResponse(FlockwaveMessage[TMessageBody]):
                 notification
         """
         body = self.body
+        assert isinstance(body, MutableMapping)
         successes = body.setdefault("success", [])
         if successful_id not in successes:
             successes.append(successful_id)
@@ -212,3 +219,41 @@ class FlockwaveResponse(FlockwaveMessage[TMessageBody]):
             result = func(*args, **kwds)
             if isawaitable(result):
                 await result
+
+
+class AsyncResponseBody(Generic[TResult], TypedDict):
+    """TypedDict representing the body of a Flockwave response message for an
+    asynchronous command.
+
+    Requests of this type contain a single ID such that the operation has to be
+    executed on it. The ID is typically a UAV ID but may also refer to other
+    types of objects. The response has a strict form, with keys named `result`, `error`
+    and `receipt`, each of which is either a result object, an error message or a
+    receipt ID. Results and errors are used if the operation was executed immediately
+    and the result (or error) is readily available. Receipt IDs are used if the server
+    started an asynchronous operation for the given ID and the result will be sent later
+    in a separate ASYNC-RESP message.
+    """
+
+    result: NotRequired[TResult]
+    error: NotRequired[str]
+    receipt: NotRequired[str]
+
+
+class MultiObjectAsyncResponseBody(Generic[TResult], TypedDict):
+    """TypedDict representing the body of a Flockwave response message for a
+    multi-object asynchronous command.
+
+    Requests of this type contain a list of IDs such that the same operation has to be
+    executed on each of them. The IDs are typically UAV IDs but may also refer to other
+    types of objects. The response has a strict form, with keys named `result`, `error`
+    and `receipt`, each of which is a mapping from the IDs to the corresponding result,
+    error message or receipt ID. Results and errors are used if the operation was
+    executed immediately and the result (or error) is readily available. Receipt IDs
+    are used if the server started an asynchronous operation for the given ID and the
+    result will be sent later in a separate ASYNC-RESP message.
+    """
+
+    result: NotRequired[dict[str, TResult]]
+    error: NotRequired[dict[str, str]]
+    receipt: NotRequired[dict[str, str]]

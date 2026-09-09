@@ -40,7 +40,13 @@ from .model.client import Client
 from .model.devices import DeviceTree, DeviceTreeSubscriptionManager
 from .model.errors import ClientNotSubscribedError, NoSuchPathError
 from .model.log import LogMessage, Severity
-from .model.messages import FlockwaveMessage, FlockwaveNotification, FlockwaveResponse
+from .model.messages import (
+    AsyncResponseBody,
+    FlockwaveMessage,
+    FlockwaveNotification,
+    FlockwaveResponse,
+    MultiObjectAsyncResponseBody,
+)
 from .model.object import ModelObject
 from .model.transport import TransportOptions
 from .model.uav import (
@@ -531,8 +537,9 @@ class SkybrushServer(DaemonApp):
             awaitable
         """
         # Create the response
+        body: AsyncResponseBody = {}
         response = self.message_hub.create_response_or_notification(
-            body={}, in_response_to=message
+            body, in_response_to=message
         )
 
         # Process the body
@@ -568,8 +575,21 @@ class SkybrushServer(DaemonApp):
                 )
             except (AttributeError, RuntimeError, TypeError):
                 raise RuntimeError("Operation not supported") from None
+        except RuntimeError as ex:
+            error = str(ex)
+        except Exception as ex:
+            error = "Unexpected error: {0}".format(ex)
+            log.exception(ex)
 
-            # Execute the method and catch all runtime errors
+        # Bail out here if we found an error while looking up the handler or transforming
+        # the input
+        if error is not None:
+            response.body["error"] = error
+            return response
+
+        # Execute the method and catch all runtime errors
+        assert uav is not None
+        try:
             result = method(uav, **parameters)
         except NotImplementedError:
             error = "Operation not implemented"
@@ -587,7 +607,6 @@ class SkybrushServer(DaemonApp):
         elif isinstance(result, Exception):
             response.body["error"] = str(result)
         elif isawaitable(result) or isasyncgen(result):
-            assert uav is not None
             cmd_manager = self.command_execution_manager
             receipt = cmd_manager.new(client_to_notify=sender.id)
             response.body["receipt"] = receipt.id
@@ -616,8 +635,9 @@ class SkybrushServer(DaemonApp):
             ``failure`` keys).
         """
         # Create the response
+        body: MultiObjectAsyncResponseBody = {}
         response = self.message_hub.create_response_or_notification(
-            body={}, in_response_to=message
+            body, in_response_to=message
         )
 
         # Process the body

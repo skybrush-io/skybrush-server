@@ -1,6 +1,8 @@
 {% macro inline_list(tags) -%}
     {% for tag in tags %}
-        {% if tag == "experimental" %}
+        {% if tag == "system" %}
+            <span class="badge badge-danger">{{ tag }}</span>
+        {% elif tag == "experimental" %}
             <span class="badge badge-warning">{{ tag }}</span>
         {% elif tag == "restart requested" %}
             <span class="badge badge-warning">{{ tag }}</span>

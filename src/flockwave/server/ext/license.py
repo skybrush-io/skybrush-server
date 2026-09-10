@@ -524,3 +524,4 @@ class LicenseExtensionAPI(Protocol):
 description = "License management"
 exports = {"get_license": get_license, "has_feature": has_feature}
 schema = {}
+tags = ("system",)

@@ -16,14 +16,9 @@ from trio import (
     move_on_after,
 )
 
-from flockwave.server.ports import get_port_map, set_base_port
+from flockwave.server.ports import set_base_port
 from flockwave.server.utils import divide_by, rename_keys
 from flockwave.server.utils.packaging import is_packaged
-from flockwave.server.utils.system_time import (
-    can_set_system_time_detailed_async,
-    get_system_time_msec,
-    set_system_time_msec_async,
-)
 
 from .commands import CommandExecutionManager, CommandExecutionStatus
 from .errors import NotSupportedError
@@ -66,7 +61,6 @@ from .registries import (
     UAVDriverRegistry,
     find_in_registry,
 )
-from .version import __version__ as server_version
 
 __all__ = ("app",)
 
@@ -1334,44 +1328,6 @@ def handle_OBJ_LIST(message: FlockwaveMessage, sender: Client, hub: MessageHub):
     else:
         it = app.object_registry.ids_by_types(filter)
     return {"ids": list(it)}
-
-
-@app.message_hub.on("SYS-PING")
-def handle_SYS_PING(message: FlockwaveMessage, sender: Client, hub: MessageHub):
-    return hub.acknowledge(message)
-
-
-@app.message_hub.on("SYS-PORTS")
-def handle_SYS_PORTS(message: FlockwaveMessage, sender: Client, hub: MessageHub):
-    return {"ports": dict(get_port_map())}
-
-
-@app.message_hub.on("SYS-TIME")
-async def handle_SYS_TIME(message: FlockwaveMessage, sender: Client, hub: MessageHub):
-    adjustment = message.body.get("adjustment")
-    if adjustment is not None:
-        adjustment = float(adjustment)
-        allowed, reason = await can_set_system_time_detailed_async()
-        if not allowed:
-            return hub.acknowledge(
-                message, outcome=False, reason=f"Permission denied. {reason}"
-            )
-
-        if adjustment != 0:
-            # This branch is required so the client can test whether time
-            # adjustments are supported by sending an adjustment with zero delta
-            adjusted_time_msec = get_system_time_msec() + adjustment
-            try:
-                await set_system_time_msec_async(adjusted_time_msec)
-            except Exception as ex:
-                return hub.acknowledge(message, outcome=False, reason=str(ex))
-
-    return {"timestamp": get_system_time_msec()}
-
-
-@app.message_hub.on("SYS-VER")
-def handle_SYS_VER(message: FlockwaveMessage, sender: Client, hub: MessageHub):
-    return {"software": "skybrushd", "version": server_version}
 
 
 @app.message_hub.on("UAV-INF")

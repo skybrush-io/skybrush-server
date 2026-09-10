@@ -121,3 +121,4 @@ class SignalsExtensionAPI(Protocol):
 description = "Signal emission and subscription service for intra-server communication"
 exports = {"get": get_signal, "use": use_signals}
 schema = {}
+tags = ("system",)

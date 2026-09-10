@@ -5,7 +5,7 @@ from collections.abc import Iterable, Sequence
 from functools import partial
 from inspect import isasyncgen, isawaitable
 from os import environ
-from typing import Any, Callable
+from typing import Any, Callable, cast, overload
 
 from flockwave.app_framework import DaemonApp
 from flockwave.app_framework.configurator import AppConfigurator, Configuration
@@ -582,7 +582,7 @@ class SkybrushServer(DaemonApp):
         # Execute the method and catch all runtime errors; this can be delegated to
         # self.run_operation() now that we have resolved the callable.
         assert uav is not None
-        return self.run_operation(
+        return self.run_async_function_and_dispatch_messages(
             partial(method, uav, **parameters), in_response_to=message, sender=sender
         )
 
@@ -844,13 +844,30 @@ class SkybrushServer(DaemonApp):
         """
         self.rate_limiters.request_to_send("UAV-INF", uav_ids)
 
-    def run_operation(
+    @overload
+    def run_async_function_and_dispatch_messages(
         self,
         func: Callable[[], Any],
         *,
         in_response_to: FlockwaveMessage,
-        sender: Client,
-    ) -> FlockwaveResponse[AsyncResponseBody]:
+        sender: Client | None = None,
+    ) -> FlockwaveResponse[AsyncResponseBody]: ...
+
+    @overload
+    def run_async_function_and_dispatch_messages(
+        self,
+        func: Callable[[], Any],
+    ) -> FlockwaveNotification[AsyncResponseBody]: ...
+
+    def run_async_function_and_dispatch_messages(
+        self,
+        func: Callable[[], Any],
+        *,
+        in_response_to: FlockwaveMessage | None = None,
+        sender: Client | None = None,
+    ) -> (
+        FlockwaveResponse[AsyncResponseBody] | FlockwaveNotification[AsyncResponseBody]
+    ):
         """Runs a single callable function in response to a Flockwave message sent to
         the application by a given connected client. The function is expected to return
         one of the following:
@@ -863,6 +880,15 @@ class SkybrushServer(DaemonApp):
               tasks and a receipt ID is returned for them. The same receipt ID can be
               used by clients to track the progress of the operation in the background
               task.
+
+        Args:
+            func: the callable function to run
+            in_response_to: the message that the constructed message will respond to;
+                `None` means that the function was not called in response to a message
+                sent by a client
+            sender: the client that sent the message. `None` means that the function was
+                not called in response to a message sent by a client so there is no need
+                to notify a client about the progress of the operation.
         """
         body: AsyncResponseBody = {}
         error: str | None = None
@@ -889,9 +915,12 @@ class SkybrushServer(DaemonApp):
             body["error"] = str(result)
         elif isawaitable(result) or isasyncgen(result):
             cmd_manager = self.command_execution_manager
-            receipt = cmd_manager.new(client_to_notify=sender.id)
+            receipt = cmd_manager.new(client_to_notify=sender.id if sender else None)
             body["receipt"] = receipt.id
-            response.when_sent(cmd_manager.mark_as_clients_notified, receipt.id, result)
+            if in_response_to is not None:
+                cast(FlockwaveResponse, response).when_sent(
+                    cmd_manager.mark_as_clients_notified, receipt.id, result
+                )
         else:
             body["result"] = result
 

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from base64 import b64decode, b64encode
 from collections.abc import Callable
-from contextlib import AsyncExitStack, ExitStack
+from contextlib import AsyncExitStack
 from functools import partial
 from logging import Logger
 from math import inf
@@ -41,7 +41,7 @@ connected_client_queue: MemorySendChannel[bytes | bytearray] | None = None
 
 
 def setup_debugging_server(
-    app: SkybrushServer, stack: ExitStack, *, debug_clients: bool = False
+    app: SkybrushServer, stack: AsyncExitStack, *, debug_clients: bool = False
 ):
     signals_api = app.import_api("signals", SignalsExtensionAPI)
     debug_request_signal = signals_api.get("debug:request")

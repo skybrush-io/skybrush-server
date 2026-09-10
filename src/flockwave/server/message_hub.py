@@ -309,7 +309,8 @@ class MessageHub:
         """Creates a new Flockwave notification to be sent by the server.
 
         Parameters:
-            body: the body of the notification.
+            body: the body of the response. It will be stored in the returned
+                notification by reference (i.e. it won't be copied).
 
         Returns:
             a notification object
@@ -334,7 +335,8 @@ class MessageHub:
         or not.
 
         Parameters:
-            body: the body of the response.
+            body: the body of the response. It will be stored in the returned response
+                by reference (i.e. it won't be copied).
             message: the message to respond to or ``None`` if we want to create
                 a notification instead.
 
@@ -354,7 +356,8 @@ class MessageHub:
 
         Parameters:
             message: the message to respond to
-            body: the body of the response.
+            body: the body of the response. It will be stored in the returned
+                notification by reference (i.e. it won't be copied).
 
         Returns:
             a response object that will respond to the given message

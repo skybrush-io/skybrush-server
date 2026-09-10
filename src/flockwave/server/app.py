@@ -2,9 +2,10 @@
 
 from collections import Counter, defaultdict
 from collections.abc import Iterable, Sequence
+from functools import partial
 from inspect import isasyncgen, isawaitable
 from os import environ
-from typing import Any
+from typing import Any, Callable
 
 from flockwave.app_framework import DaemonApp
 from flockwave.app_framework.configurator import AppConfigurator, Configuration
@@ -530,19 +531,12 @@ class SkybrushServer(DaemonApp):
             error, or ``receipt`` if calling the message handler returned an
             awaitable
         """
-        # Create the response
-        body: AsyncResponseBody = {}
-        response = self.message_hub.create_response_or_notification(
-            body, in_response_to=message
-        )
-
         # Process the body
         parameters = dict(message.body)
         message_type = parameters.pop("type")
         uav_id: str | None = parameters.pop(id_property, None)
         uav: UAV | None = None
         error: str | None = None
-        result: Any = None
 
         try:
             if uav_id is None:
@@ -572,43 +566,25 @@ class SkybrushServer(DaemonApp):
         except RuntimeError as ex:
             error = str(ex)
         except Exception as ex:
-            error = "Unexpected error: {0}".format(ex)
+            error = f"Unexpected error: {ex}"
             log.exception(ex)
 
         # Bail out here if we found an error while looking up the handler or transforming
         # the input
         if error is not None:
-            response.body["error"] = error
+            body: AsyncResponseBody = {}
+            response = self.message_hub.create_response_or_notification(
+                body, in_response_to=message
+            )
+            body["error"] = error
             return response
 
-        # Execute the method and catch all runtime errors
+        # Execute the method and catch all runtime errors; this can be delegated to
+        # self.run_operation() now that we have resolved the callable.
         assert uav is not None
-        try:
-            result = method(uav, **parameters)
-        except NotImplementedError:
-            error = "Operation not implemented"
-        except NotSupportedError:
-            error = "Operation not supported"
-        except RuntimeError as ex:
-            error = str(ex)
-        except Exception as ex:
-            error = "Unexpected error: {0}".format(ex)
-            log.exception(ex)
-
-        # Update the response
-        if error is not None:
-            response.body["error"] = error
-        elif isinstance(result, Exception):
-            response.body["error"] = str(result)
-        elif isawaitable(result) or isasyncgen(result):
-            cmd_manager = self.command_execution_manager
-            receipt = cmd_manager.new(client_to_notify=sender.id)
-            response.body["receipt"] = receipt.id
-            response.when_sent(cmd_manager.mark_as_clients_notified, receipt.id, result)
-        else:
-            response.body["result"] = result
-
-        return response
+        return self.run_operation(
+            partial(method, uav, **parameters), in_response_to=message, sender=sender
+        )
 
     async def dispatch_to_uavs(
         self, message: FlockwaveMessage, sender: Client
@@ -867,6 +843,59 @@ class SkybrushServer(DaemonApp):
             uav_ids: list of UAV IDs
         """
         self.rate_limiters.request_to_send("UAV-INF", uav_ids)
+
+    def run_operation(
+        self,
+        func: Callable[[], Any],
+        *,
+        in_response_to: FlockwaveMessage,
+        sender: Client,
+    ) -> FlockwaveResponse[AsyncResponseBody]:
+        """Runs a single callable function in response to a Flockwave message sent to
+        the application by a given connected client. The function is expected to return
+        one of the following:
+
+            - a result object, which is then sent back in the `result` key of the
+              response immediately
+            - an exception (directly or by throwing it), which is then converted to a
+              string and sent back in the `error` key of the response immediately
+            - an awaitable or an async generator, which are converted into background
+              tasks and a receipt ID is returned for them. The same receipt ID can be
+              used by clients to track the progress of the operation in the background
+              task.
+        """
+        body: AsyncResponseBody = {}
+        error: str | None = None
+        response = self.message_hub.create_response_or_notification(
+            body, in_response_to=in_response_to
+        )
+
+        try:
+            result = func()
+        except NotImplementedError:
+            error = "Operation not implemented"
+        except NotSupportedError:
+            error = "Operation not supported"
+        except RuntimeError as ex:
+            error = str(ex)
+        except Exception as ex:
+            error = f"Unexpected error: {ex}"
+            log.exception(ex)
+
+        # Update the response
+        if error is not None:
+            body["error"] = error
+        elif isinstance(result, Exception):
+            body["error"] = str(result)
+        elif isawaitable(result) or isasyncgen(result):
+            cmd_manager = self.command_execution_manager
+            receipt = cmd_manager.new(client_to_notify=sender.id)
+            body["receipt"] = receipt.id
+            response.when_sent(cmd_manager.mark_as_clients_notified, receipt.id, result)
+        else:
+            body["result"] = result
+
+        return response
 
     def prepare(self, config: str | None = None, debug: bool = False) -> int | None:
         self._registry_full_error_counts = Counter()

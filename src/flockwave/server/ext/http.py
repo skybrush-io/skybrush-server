@@ -207,10 +207,15 @@ def extract_receipts_from_response(body: Any) -> Mapping[str, str]:
         return {}
 
     receipts = body.pop("receipt", None)
-    if not isinstance(receipts, dict):
+    if isinstance(receipts, str):
+        # Single-object async response
+        return {receipts: ""}
+    elif isinstance(receipts, dict):
+        # Multi-object async response
+        return {str(v): str(k) for k, v in receipts.items()}
+    else:
+        # Something else
         return {}
-
-    return {str(v): str(k) for k, v in receipts.items()}
 
 
 async def authenticate_client_if_needed(client: Client) -> HTTPChannel:
@@ -306,7 +311,7 @@ async def index():
     # Create a dummy client in the registry, send the message and wait for the
     # response
     response: FlockwaveMessage | None = None
-    receipts: dict[str, str] = {}
+    receipts: dict[str, str | None] = {}
     client_id = f"http://{request.host}"
     with app.client_registry.use(client_id, "http") as client:
         channel = await authenticate_client_if_needed(client)
@@ -333,37 +338,63 @@ async def index():
                     else:
                         key = receipts.pop(receipt_id, None)
 
-                    if not key:
+                    if key is None:
                         # This is not one of the receipts we are waiting for, ignore it
                         continue
 
                     match type:
                         case "ASYNC-RESP":
                             # Merge the result or error into the primary response body
-                            if "result" in body:
-                                response.body.setdefault("result", {})[key] = body[
-                                    "result"
-                                ]
-                            elif "error" in body:
-                                response.body.setdefault("error", {})[key] = body[
-                                    "error"
-                                ]
+                            if key == "":
+                                # Single-object async response, merge into the top-level
+                                # result or error
+                                if "result" in body:
+                                    response.body["result"] = body["result"]
+                                elif "error" in body:
+                                    response.body["error"] = body["error"]
+                                else:
+                                    response.body["error"] = "invalid response"
                             else:
-                                response.body.setdefault("error", {})[key] = (
-                                    "invalid response"
-                                )
+                                # Multi-object async response, merge into the corresponding
+                                # key in the result or error dict
+                                if "result" in body:
+                                    response.body.setdefault("result", {})[key] = body[
+                                        "result"
+                                    ]
+                                elif "error" in body:
+                                    response.body.setdefault("error", {})[key] = body[
+                                        "error"
+                                    ]
+                                else:
+                                    response.body.setdefault("error", {})[key] = (
+                                        "invalid response"
+                                    )
 
                         case "ASYNC-TIMEOUT":
                             # Process timeout error
-                            response.body.setdefault("error", {})[key] = "Timeout"
+                            if key == "":
+                                # Single-object async response, merge into the top-level
+                                # error
+                                response.body["error"] = "Timeout"
+                            else:
+                                # Multi-object async response, merge into the corresponding
+                                # key in the error dict
+                                response.body.setdefault("error", {})[key] = "Timeout"
 
                         case "ASYNC-ST":
                             suspended = bool(body.get("suspended"))
                             if suspended:
                                 receipts.pop(receipt_id, None)
-                                response.body.setdefault("error", {})[key] = (
-                                    "Request suspended"
-                                )
+                                if key == "":
+                                    # Single-object async response, merge into the top-level
+                                    # error
+                                    response.body["error"] = "Request suspended"
+                                else:
+                                    # Multi-object async response, merge into the corresponding
+                                    # key in the error dict
+                                    response.body.setdefault("error", {})[key] = (
+                                        "Request suspended"
+                                    )
 
                 if not receipts:
                     # No receipts to wait for, we are done

@@ -1,10 +1,14 @@
 """Functions related to handling the dedicated debug port"""
 
+from __future__ import annotations
+
 from base64 import b64decode, b64encode
 from collections.abc import Callable
+from contextlib import ExitStack
 from functools import partial
 from logging import Logger
 from math import inf
+from typing import TYPE_CHECKING
 
 from flockwave.networking import format_socket_address
 from trio import (
@@ -20,17 +24,22 @@ from trio.abc import ReceiveChannel, Stream
 from flockwave.server.utils import overridden
 from flockwave.server.utils.networking import serve_tcp_and_log_errors
 
+if TYPE_CHECKING:
+    from flockwave.server.app import SkybrushServer
+
 __all__ = ("setup_debugging_server",)
 
 
-buffer = []
+buffer: list[bytes] = []
 """Buffer in which we assemble debug messages to send to the client. It is
 assumed that debug messages are terminated by \n, optionally preceded by \r."""
 
 connected_client_queue: MemorySendChannel[bytes | bytearray] | None = None
 
 
-def setup_debugging_server(app, stack, debug_clients: bool = False):
+def setup_debugging_server(
+    app: SkybrushServer, stack: ExitStack, debug_clients: bool = False
+):
     debug_request_signal = app.import_api("signals").get("debug:request")
     debug_response_signal = app.import_api("signals").get("debug:response")
 

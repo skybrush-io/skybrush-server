@@ -4,6 +4,7 @@ from contextlib import ExitStack
 from logging import Logger
 from typing import TYPE_CHECKING
 
+from pydantic import BaseModel, Field
 from trio import sleep_forever
 
 from flockwave.server.utils import overridden
@@ -17,21 +18,44 @@ app: SkybrushServer | None = None
 log: Logger | None = None
 
 
-async def run(app, configuration, logger):
-    """Runs the extension."""
-    host = configuration.get("host", "localhost")
-    port = configuration.get("port")
+class DebugConfig(BaseModel):
+    """Configuration model for the debug extension."""
 
+    host: str = Field(
+        default="localhost",
+        title="Host",
+        description=(
+            "Hostname or IP address where the debug port should be opened. "
+            "Ignored if no debug port is configured."
+        ),
+    )
+    port: int = Field(
+        default=0,
+        title="Debug port",
+        description=(
+            "Number of the TCP port to open for debugging purposes. Zero or negative "
+            "numbers disable the debug port."
+        ),
+    )
+
+
+async def run(app: SkybrushServer, configuration: DebugConfig, logger: Logger):
+    """Runs the extension."""
     with ExitStack() as stack:
         stack.enter_context(overridden(globals(), app=app, log=logger))
 
-        if port is not None:
+        if configuration.port > 0:
             on_message = setup_debugging_server(app, stack, debug_clients=True)
-            await run_debug_port(host or "", port, on_message=on_message, log=log)
+            await run_debug_port(
+                configuration.host or "",
+                configuration.port,
+                on_message=on_message,
+                log=log,
+            )
         else:
             await sleep_forever()
 
 
 dependencies = ()
 description = "Debugging tools"
-schema = {}
+schema = DebugConfig

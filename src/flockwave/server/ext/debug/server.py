@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from base64 import b64decode, b64encode
 from collections.abc import Callable
-from contextlib import ExitStack
+from contextlib import AsyncExitStack, ExitStack
 from functools import partial
 from logging import Logger
 from math import inf
@@ -21,6 +21,9 @@ from trio import (
 )
 from trio.abc import ReceiveChannel, Stream
 
+from flockwave.server.ext.signals import SignalsExtensionAPI
+from flockwave.server.message_hub import MessageHub
+from flockwave.server.model import Client, FlockwaveMessage
 from flockwave.server.utils import overridden
 from flockwave.server.utils.networking import serve_tcp_and_log_errors
 
@@ -38,10 +41,11 @@ connected_client_queue: MemorySendChannel[bytes | bytearray] | None = None
 
 
 def setup_debugging_server(
-    app: SkybrushServer, stack: ExitStack, debug_clients: bool = False
+    app: SkybrushServer, stack: ExitStack, *, debug_clients: bool = False
 ):
-    debug_request_signal = app.import_api("signals").get("debug:request")
-    debug_response_signal = app.import_api("signals").get("debug:response")
+    signals_api = app.import_api("signals", SignalsExtensionAPI)
+    debug_request_signal = signals_api.get("debug:request")
+    debug_response_signal = signals_api.get("debug:response")
 
     def send_debug_message_to_client(data: bytes) -> None:
         global buffer
@@ -62,7 +66,9 @@ def setup_debugging_server(
                     app.message_hub.enqueue_message(msg)
                 buffer.clear()
 
-    def handle_debug_response_from_client(message, sender, hub) -> bool:
+    def handle_debug_response_from_client(
+        message: FlockwaveMessage, sender: Client, hub: MessageHub
+    ):
         data = message.body.get("data")
         if data:
             try:
@@ -163,33 +169,37 @@ async def handle_debug_connection_outbound(
     # in production anyway.
     tx_queue, rx_queue = open_memory_channel[bytes | bytearray](inf)
 
-    async with tx_queue:
-        with overridden(globals(), connected_client_queue=tx_queue, buffer=[]):
-            async with open_nursery() as nursery:
-                nursery.start_soon(handle_debug_connection_inbound, stream, rx_queue)
+    async with AsyncExitStack() as stack:
+        await stack.enter_async_context(tx_queue)
+        stack.enter_context(
+            overridden(globals(), connected_client_queue=tx_queue, buffer=[])
+        )
+        nursery = await stack.enter_async_context(open_nursery())
 
-                while True:
-                    try:
-                        with fail_after(30):
-                            data = await stream.receive_some()
-                            if not data:
-                                # Connection closed
-                                break
-                    except TooSlowError:
-                        # no data from client in 30 seconds, send a keepalive packet
-                        handle_debug_response(b".")
-                        data = None
+        nursery.start_soon(handle_debug_connection_inbound, stream, rx_queue)
 
-                    if data:
-                        try:
-                            on_message(data)
-                        except Exception:
-                            if log:
-                                log.exception(
-                                    "Unexpected exception while executing debug message handler"
-                                )
+        while True:
+            try:
+                with fail_after(30):
+                    data = await stream.receive_some()
+                    if not data:
+                        # Connection closed
+                        break
+            except TooSlowError:
+                # no data from client in 30 seconds, send a keepalive packet
+                handle_debug_response(b".")
+                data = None
 
-                nursery.cancel_scope.cancel()
+            if data:
+                try:
+                    on_message(data)
+                except Exception:
+                    if log:
+                        log.exception(
+                            "Unexpected exception while executing debug message handler"
+                        )
+
+        nursery.cancel_scope.cancel()
 
 
 async def handle_debug_connection_inbound(

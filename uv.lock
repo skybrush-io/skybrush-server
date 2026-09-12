@@ -1209,7 +1209,7 @@ requires-dist = [
     { name = "flockwave-parsers", specifier = ">=4.0.1,<5.0.0", index = "https://pypi.fury.io/skybrush/" },
     { name = "flockwave-server", extras = ["collmot", "pro"], marker = "extra == 'all'" },
     { name = "flockwave-server", extras = ["pro"], marker = "extra == 'collmot'" },
-    { name = "flockwave-spec", extras = ["validation"], specifier = ">=2.10.0,<3.0.0", index = "https://pypi.fury.io/skybrush/" },
+    { name = "flockwave-spec", extras = ["validation"], specifier = ">=2.11.0,<3.0.0", index = "https://pypi.fury.io/skybrush/" },
     { name = "httpx", specifier = ">=0.28.1,<0.29.0" },
     { name = "hypercorn", extras = ["trio"], specifier = ">=0.18.0,<0.19.0" },
     { name = "igrf-model", specifier = ">=1.1.4,<2.0.0" },
@@ -1235,7 +1235,7 @@ requires-dist = [
     { name = "skybrush-ext-show-pro", marker = "extra == 'pro'", specifier = ">=0.12.0", index = "https://pypi.collmot.com/" },
     { name = "skybrush-ext-sidekick", marker = "extra == 'pro'", specifier = ">=1.2.1", index = "https://pypi.collmot.com/" },
     { name = "skybrush-ext-skynet", marker = "extra == 'pro'", specifier = ">=0.6.0", index = "https://pypi.collmot.com/" },
-    { name = "skybrush-ext-studio", marker = "extra == 'pro'", specifier = ">=1.6.1", index = "https://pypi.collmot.com/" },
+    { name = "skybrush-ext-studio", marker = "extra == 'pro'", specifier = ">=1.7.0", index = "https://pypi.collmot.com/" },
     { name = "skybrush-ext-timecode", marker = "extra == 'pro'", specifier = ">=1.4.1", index = "https://pypi.collmot.com/" },
     { name = "skybrush-lib-mission-planning", marker = "extra == 'pro'", specifier = ">=2.4.1", index = "https://pypi.collmot.com/" },
     { name = "skybrush-opt-rs", marker = "extra == 'pro'", index = "https://pypi.collmot.com/" },
@@ -1264,15 +1264,14 @@ dev = [
 
 [[package]]
 name = "flockwave-spec"
-version = "2.10.1"
+version = "2.11.0"
 source = { registry = "https://pypi.fury.io/skybrush/" }
 dependencies = [
     { name = "jsonpointer" },
     { name = "jsonref" },
 ]
-sdist = { url = "https://pypi.fury.io/skybrush/-/ver_24jcrv/flockwave-spec-2.10.1.tar.gz", hash = "sha256:d828cb6ed006bbcd8a9e63ee88e5cdecbd3b26ccfe623db7eb1977ad594481ad" }
 wheels = [
-    { url = "https://pypi.fury.io/skybrush/-/ver_1wSBym/flockwave_spec-2.10.1-py3-none-any.whl", hash = "sha256:7d9d871c0d45446a1622ba5146570cbbff6c29dfe9cbd8b7697abb6e8eb3c162" },
+    { url = "https://pypi.fury.io/skybrush/-/ver_1jWvTq/flockwave_spec-2.11.0-py3-none-any.whl", hash = "sha256:ee6ecf9439e81c14c75b98365dad5c53a8412d3507a65d89d41b22105735edcb" },
 ]
 
 [package.optional-dependencies]
@@ -2994,15 +2993,16 @@ wheels = [
 
 [[package]]
 name = "skybrush-ext-studio"
-version = "1.6.1"
+version = "1.7.0"
 source = { registry = "https://pypi.collmot.com/" }
 dependencies = [
+    { name = "exceptiongroup" },
     { name = "skybrush-opt-rs" },
     { name = "skybrush-studio" },
 ]
-sdist = { url = "https://pypi.collmot.com/packages/skybrush_ext_studio-1.6.1.tar.gz", hash = "sha256:1626b9a2c5f7f37594eaa82a5d4658487c89ffb791ba706bd5f8d7d5324684af" }
+sdist = { url = "https://pypi.collmot.com/packages/skybrush_ext_studio-1.7.0.tar.gz", hash = "sha256:7bc8e62f456e3b3f2e85963279d811bb73bb3da06da9f2d5c9f4fd18d86db258" }
 wheels = [
-    { url = "https://pypi.collmot.com/packages/skybrush_ext_studio-1.6.1-py3-none-any.whl", hash = "sha256:e00ebc08372b82acb3a011f8bdbbe5d0413aa3515b06367befc9673ea8d5c8b8" },
+    { url = "https://pypi.collmot.com/packages/skybrush_ext_studio-1.7.0-py3-none-any.whl", hash = "sha256:b8a3ed5eed2caf23acdb69c9e9adca1b6770ccbb15a36b87c68cbac44458be36" },
 ]
 
 [[package]]

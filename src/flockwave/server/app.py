@@ -52,7 +52,6 @@ from .model.uav import (
     UAVDriver,
     is_uav,
 )
-from .model.world import World
 from .registries import (
     ChannelTypeRegistry,
     ClientRegistry,
@@ -159,11 +158,6 @@ class SkybrushServer(DaemonApp):
 
     uav_driver_registry: UAVDriverRegistry
     """Registry for UAV drivers that are currently registered in the server."""
-
-    world: World
-    """A representation of the "world" in which the flock of UAVs live. By
-    default, the world is empty but extensions may extend it with objects.
-    """
 
     _registry_full_error_counts: Counter[Any]
     """Object that counts how many times we did report a registry full error
@@ -1043,9 +1037,6 @@ class SkybrushServer(DaemonApp):
         self.object_registry.removed.connect(
             self._on_object_removed, sender=self.object_registry
         )
-
-        # Create the global world object
-        self.world = World()
 
         # Create a global device tree and ensure that new UAVs are
         # registered in it

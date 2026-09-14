@@ -30,7 +30,6 @@ from .messages import (
 from .object import ModelObject
 from .uav import UAV, PassiveUAVDriver, UAVBase, UAVDriver, UAVStatusInfo
 from .weather import Weather
-from .world import World
 
 __all__ = (
     "default_id_generator",
@@ -66,7 +65,6 @@ __all__ = (
     "DeviceTreeSubscriptionManager",
     "NoSuchPathError",
     "ClientNotSubscribedError",
-    "World",
     "CommunicationChannel",
     "PassiveUAVDriver",
     "Weather",

@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.53.0] - 2026-09-14
+
+### Changed
+
+- Updated protocol specification for experimental collective RTH planning messages,
+  no user-facing changes.
+
+## [2.52.0] - 2026-09-11
+
+### Added
+
+- Added `SkybrushServer.run_async_function_and_dispatch_messages()` to provide a
+  central facility for handling async operations with single-object async responses
+  according to the Flockwave protocol specification.
+
+### Fixed
+
+- The `http` extension now handles single-object and multi-object async responses
+  in the same way, waiting for the responses to arrive before returning them.
+
 ## [2.51.0] - 2026-09-07
 
 ### Added

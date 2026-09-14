@@ -293,12 +293,7 @@ class CommandExecutionManager(RegistryBase[CommandExecutionStatus]):
 
             if isawaitable(result) or isasyncgen(result):
                 # Function returned an awaitable or an async generator, so we
-                # will receive a result at some unspecified point in the
-                # future. We need to set up a timeout and wait for it.
-                #
-                # We need to construct the cancel scope here, not inside
-                # self._wait_for, otherwise we would not take into account the
-                # time it takes for the nursery to start the execution
+                # will receive a result at some unspecified point in the future
                 nursery.start_soon(
                     self._wait_for,
                     result,

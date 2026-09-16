@@ -860,7 +860,7 @@ class RTKExtension(Extension):
             timesync = self.app.import_api("timesync", TimeSyncExtensionAPI)
             timesync_source = stack.enter_context(
                 timesync.use_time_source(
-                    "rtk",
+                    f"rtk:{preset.id}",
                     priority=self.TIMESYNC_SOURCE_PRIORITY,
                 )
             )

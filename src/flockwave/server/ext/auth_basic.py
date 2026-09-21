@@ -14,6 +14,7 @@ from enum import Enum
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from pydantic import BaseModel, Field
 from trio import sleep_forever
 
 from flockwave.server.ext.auth import AuthenticationExtensionAPI
@@ -179,6 +180,54 @@ def create_validator_from_config(
 # ############################################################################
 
 
+class AuthBasicConfig(BaseModel):
+    """Configuration model for the auth_basic extension."""
+
+    sources: list[dict[str, str]] = Field(
+        default=[],
+        title="Password data sources",
+        description=(
+            "WARNING: do not use explicit username-password pairs as these "
+            "are stored in plain text in the configuration file. Use another "
+            "data source in production."
+        ),
+        json_schema_extra={
+            "format": "table",
+            "items": {
+                "type": "object",
+                "options": {"disable_properties": False},
+                "properties": {
+                    "type": {
+                        "type": "string",
+                        "title": "Type",
+                        "description": "Type of the data source",
+                        "default": PasswordDataSourceType.HTPASSWD.id,
+                        "enum": [e.id for e in PasswordDataSourceType],
+                        "options": {
+                            "enum_titles": [
+                                e.description for e in PasswordDataSourceType
+                            ]
+                        },
+                    },
+                    "value": {
+                        "type": "string",
+                        "title": "Value",
+                        "description": (
+                            "The data source itself. For Apache htpasswd files, "
+                            "this must be the path to the htpasswd file. For "
+                            "explicit username-password pairs, this must be the "
+                            "username and the password, separated by whitespace."
+                        ),
+                    },
+                },
+            },
+        },
+    )
+
+
+# ############################################################################
+
+
 class BasicAuthentication(AuthenticationMethod):
     """Implementation of a basic username-password-based authentication method."""
 
@@ -217,16 +266,9 @@ class BasicAuthentication(AuthenticationMethod):
         return "basic"
 
 
-async def run(app: SkybrushServer, configuration, logger: Logger):
+async def run(app: SkybrushServer, configuration: AuthBasicConfig, logger: Logger):
     auth = BasicAuthentication()
-    sources = configuration.get("sources", ())
-
-    if not hasattr(sources, "__iter__"):
-        logger.error(
-            "Invalid configuration; password data sources must be stored in an array"
-        )
-
-    for spec in sources:
+    for spec in configuration.sources:
         validator: PasswordValidator | None = None
 
         try:
@@ -250,45 +292,4 @@ async def run(app: SkybrushServer, configuration, logger: Logger):
 
 dependencies = ("auth",)
 description = "Basic username-password based authentication"
-schema = {
-    "properties": {
-        "sources": {
-            "title": "Password data sources",
-            "type": "array",
-            "format": "table",
-            "items": {
-                "type": "object",
-                "options": {"disable_properties": False},
-                "properties": {
-                    "type": {
-                        "type": "string",
-                        "title": "Type",
-                        "description": "Type of the data source",
-                        "default": PasswordDataSourceType.HTPASSWD.id,
-                        "enum": [e.id for e in PasswordDataSourceType],
-                        "options": {
-                            "enum_titles": [
-                                e.description for e in PasswordDataSourceType
-                            ]
-                        },
-                    },
-                    "value": {
-                        "type": "string",
-                        "title": "Value",
-                        "description": (
-                            "The data source itself. For Apache htpasswd files, "
-                            "this must be the path to the htpasswd file. For "
-                            "explicit username-password pairs, this must be the "
-                            "username and the password, separated by whitespace."
-                        ),
-                    },
-                },
-            },
-            "description": (
-                "WARNING: do not use explicit username-password pairs as these "
-                "are stored in plain text in the configuration file. Use another "
-                "data source in production."
-            ),
-        }
-    }
-}
+schema = AuthBasicConfig

@@ -6,6 +6,7 @@ from flockwave.server.errors import NotSupportedError
 from flockwave.server.model.geofence import GeofenceConfigurationRequest, GeofenceStatus
 from flockwave.server.model.safety import SafetyConfigurationRequest
 
+from ..enums import MAVType
 from ..types import MAVLinkFlightModeNumbers, MAVLinkMessage
 from .base import Autopilot
 
@@ -47,7 +48,9 @@ class UnknownAutopilot(Autopilot):
     ) -> bool:
         return False
 
-    def get_flight_mode_numbers(self, mode: str) -> MAVLinkFlightModeNumbers:
+    def get_flight_mode_numbers(
+        self, mode: str, vehicle_type: MAVType | None = None
+    ) -> MAVLinkFlightModeNumbers:
         raise NotSupportedError
 
     async def get_geofence_status(self, uav: MAVLinkUAV) -> GeofenceStatus:

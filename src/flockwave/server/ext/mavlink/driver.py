@@ -2254,7 +2254,10 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
             base_mode, submode = MAVModeFlag.CUSTOM_MODE_ENABLED, 0
         elif isinstance(mode, str):
             try:
-                base_mode, mode, submode = self._autopilot.get_flight_mode_numbers(mode)
+                heartbeat = self.get_last_message(MAVMessageType.HEARTBEAT)
+                base_mode, mode, submode = self._autopilot.get_flight_mode_numbers(
+                    mode, heartbeat.type if heartbeat is not None else None
+                )
             except NotSupportedError:
                 raise ValueError(
                     "setting flight modes by name is not supported"

@@ -132,7 +132,9 @@ class PX4(Autopilot):
     ) -> None:
         raise NotImplementedError
 
-    def get_flight_mode_numbers(self, mode: str) -> MAVLinkFlightModeNumbers:
+    def get_flight_mode_numbers(
+        self, mode: str, vehicle_type: MAVType | None = None
+    ) -> MAVLinkFlightModeNumbers:
         mode = mode.lower().replace(" ", "")
         numbers = self._mode_names_to_numbers.get(mode)
         if numbers is None:

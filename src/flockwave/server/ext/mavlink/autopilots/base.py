@@ -211,9 +211,12 @@ class Autopilot(ABC):
         return encode_param_to_wire_representation(value, type)
 
     @abstractmethod
-    def get_flight_mode_numbers(self, mode: str) -> MAVLinkFlightModeNumbers:
+    def get_flight_mode_numbers(
+        self, mode: str, vehicle_type: MAVType | None = None
+    ) -> MAVLinkFlightModeNumbers:
         """Returns the numeric flight modes (mode, custom mode, custom submode)
-        corresponding to the given mode description as a string.
+        corresponding to the given mode description as a string for the given
+        optional vehicle type.
 
         Raises:
             NotImplementedError: if we have not implemented the conversion from

@@ -99,8 +99,8 @@ class ArduPilot(Autopilot):
         28: ("turtle",),
     }
 
-    # Backwards-compatible alias used elsewhere in the codebase
-    _custom_modes: FlightModeMap = _copter_custom_modes
+    # Default custom modes for unknown vehicle types
+    _default_custom_modes: FlightModeMap = _copter_custom_modes
 
     # ArduPlane custom modes (including VTOL)
     # See ArduPlane/mode.h for reference in the ArduPilot codebase
@@ -181,18 +181,16 @@ class ArduPilot(Autopilot):
     """Maximum allowed duration of a compass-motor interference calibration, in seconds"""
 
     @classmethod
-    def describe_custom_mode(
-        cls, base_mode: int, custom_mode: int, vehicle_type: int | MAVType | None = None
-    ) -> str:
-        """Returns the description of the current custom mode that the autopilot
-        is in, given the base and the custom mode in the heartbeat message.
+    def get_custom_modes(
+        cls, vehicle_type: int | MAVType | None = None
+    ) -> FlightModeMap:
+        """Returns the custom mode map corresponding to a given vehicle type,
+        or a default map if the given vehicle type does not have a specific map.
 
         Args:
-            base_mode: the base mode from the heartbeat message
-            custom_mode: the custom mode from the heartbeat message
             vehicle_type: the vehicle type from the heartbeat message. May be
-                omitted; in this case the legacy/default mapping is used and
-                a warning message is logged.
+                omitted; in this case the legacy/default mapping is returned
+                and a warning message is logged.
         """
         # Determine which mapping to use. Accept both MAVType enum members and ints.
         mapping: FlightModeMap
@@ -207,11 +205,32 @@ class ArduPilot(Autopilot):
             except Exception:
                 vt = None
             if vt is not None:
-                mapping = cls._custom_modes_by_mav_type.get(vt, cls._custom_modes)
+                mapping = cls._custom_modes_by_mav_type.get(
+                    vt, cls._default_custom_modes
+                )
         else:
             # Warn if vehicle type is not provided so the user knows we're using the default
             log.warning("Vehicle type unknown; using default custom mode mapping")
-            mapping = cls._custom_modes
+            mapping = cls._default_custom_modes
+
+        return mapping
+
+    @classmethod
+    def describe_custom_mode(
+        cls, base_mode: int, custom_mode: int, vehicle_type: int | MAVType | None = None
+    ) -> str:
+        """Returns the description of the current custom mode that the autopilot
+        is in, given the base and the custom mode in the heartbeat message.
+
+        Args:
+            base_mode: the base mode from the heartbeat message
+            custom_mode: the custom mode from the heartbeat message
+            vehicle_type: the vehicle type from the heartbeat message. May be
+                omitted; in this case the legacy/default mapping is used and
+                a warning message is logged.
+        """
+        # Determine which mapping to use. Accept both MAVType enum members and ints.
+        mapping = cls.get_custom_modes(vehicle_type)
 
         mode_attrs = mapping.get(custom_mode)
         return mode_attrs[0] if mode_attrs else f"mode {custom_mode}"
@@ -648,9 +667,11 @@ class ArduPilot(Autopilot):
         # floats can accurately represent integers.
         return float(value)
 
-    def get_flight_mode_numbers(self, mode: str) -> MAVLinkFlightModeNumbers:
+    def get_flight_mode_numbers(
+        self, mode: str, vehicle_type: MAVType | None = None
+    ) -> MAVLinkFlightModeNumbers:
         mode = mode.lower().replace(" ", "")
-        for number, names in self._custom_modes.items():
+        for number, names in self.get_custom_modes(vehicle_type).items():
             for name in names:
                 name = name.lower().replace(" ", "")
                 if name == mode:

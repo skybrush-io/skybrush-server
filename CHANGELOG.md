@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [main]
+
+### Added
+
+- Fixed-wing and VTOL aircrafts are now recognized properly and can be 
+  controlled by the ArduPilot autopilot driver in the MAVLink extension.
+  Custom flight modes of ArduPlane are also added and displayed properly
+  on Live UI.
+
+### Fixed
+
+- `mode` messages from Live UI are now handled correctly by the ArduPilot autopilot
+  driver, based on the implemented vehicle types (custom flight modes of ArduCopter,
+  ArduPlane and ArduRover differ, but now they are called properly).
+
 ## [2.53.2] - 2026-09-16
 
 ### Fixed

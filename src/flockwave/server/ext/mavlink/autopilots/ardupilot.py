@@ -68,8 +68,9 @@ class ArduPilot(Autopilot):
 
     name = "ArduPilot"
 
-    # Explicit quadcopter (multirotor) custom modes
-    _quadcopter_custom_modes: FlightModeMap = {
+    # Explicit copter (multirotor) custom modes
+    # See ArduCopter/mode.h for reference in the ArduPilot codebase
+    _copter_custom_modes: FlightModeMap = {
         0: ("stab", "stabilize"),
         1: ("acro",),
         2: ("alt", "alt hold"),
@@ -99,9 +100,41 @@ class ArduPilot(Autopilot):
     }
 
     # Backwards-compatible alias used elsewhere in the codebase
-    _custom_modes: FlightModeMap = _quadcopter_custom_modes
+    _custom_modes: FlightModeMap = _copter_custom_modes
+
+    # ArduPlane custom modes (including VTOL)
+    # See ArduPlane/mode.h for reference in the ArduPilot codebase
+    _plane_custom_modes: FlightModeMap = {
+        0: ("manual",),
+        1: ("circle",),
+        2: ("stab", "stabilize"),
+        3: ("training",),
+        4: ("acro",),
+        5: ("fbwa", "fly by wire a"),
+        6: ("fbwb", "fly by wire b"),
+        7: ("cruise",),
+        8: ("autotune",),
+        10: ("auto",),
+        11: ("rtl", "rth", "return to launch"),
+        12: ("loiter",),
+        13: ("takeoff",),
+        14: ("avoid ADSB", "avoid"),
+        15: ("guided",),
+        16: ("initialising", "init"),
+        17: ("qstab", "qstabilize"),
+        18: ("qhover",),
+        19: ("qloiter",),
+        20: ("qland",),
+        21: ("qrtl",),
+        22: ("qautotune",),
+        23: ("qacro",),
+        24: ("thermal",),
+        25: ("loiter alt qland",),
+        26: ("autoland",),
+    }
 
     # Rover-specific custom modes (used for MAVType.GROUND_ROVER)
+    # See Rover/mode.h for reference in the ArduPilot codebase
     _rover_custom_modes: FlightModeMap = {
         0: ("manual",),
         1: ("learning",),
@@ -117,8 +150,16 @@ class ArduPilot(Autopilot):
 
     # Per-vehicle-type custom modes mapping. Keys are MAVType enum values.
     _custom_modes_by_mav_type: dict[int, FlightModeMap] = {
-        MAVType.QUADROTOR.value: _quadcopter_custom_modes,
+        MAVType.QUADROTOR.value: _copter_custom_modes,
         MAVType.GROUND_ROVER.value: _rover_custom_modes,
+        MAVType.FIXED_WING.value: _plane_custom_modes,
+        MAVType.VTOL_TAILSITTER_DUOROTOR.value: _plane_custom_modes,
+        MAVType.VTOL_TAILSITTER_QUADROTOR.value: _plane_custom_modes,
+        MAVType.VTOL_TILTROTOR.value: _plane_custom_modes,
+        MAVType.VTOL_FIXEDROTOR.value: _plane_custom_modes,
+        MAVType.VTOL_TAILSITTER.value: _plane_custom_modes,
+        MAVType.VTOL_TILTWING.value: _plane_custom_modes,
+        MAVType.VTOL_RESERVED5.value: _plane_custom_modes,
         # other vehicle types may be added here
     }
 

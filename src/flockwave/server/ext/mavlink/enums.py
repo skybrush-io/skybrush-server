@@ -461,6 +461,13 @@ class MAVType(IntEnum):
     OCTOROTOR = 14
     TRICOPTER = 15
     ONBOARD_CONTROLLER = 18
+    VTOL_TAILSITTER_DUOROTOR = 19
+    VTOL_TAILSITTER_QUADROTOR = 20
+    VTOL_TILTROTOR = 21
+    VTOL_FIXEDROTOR = 22
+    VTOL_TAILSITTER = 23
+    VTOL_TILTWING = 24
+    VTOL_RESERVED5 = 25
     GIMBAL = 26
     ADSB = 27
     DODECAROTOR = 29
@@ -487,6 +494,10 @@ class MAVType(IntEnum):
             MAVType.GROUND_ROVER,
         )
 
+    def is_vtol(self) -> bool:
+        """Returns whether the MAVType constant denotes a VTOL vehicle (most likely)."""
+        return 19 <= int(self) <= 25
+
     @property
     def motor_count(self) -> int:
         """Returns the best estimate of the motor count associated with the
@@ -501,6 +512,9 @@ class MAVType(IntEnum):
             return 6
         if self == MAVType.TRICOPTER:
             return 3
+        if self == MAVType.VTOL_TAILSITTER_DUOROTOR:
+            return 2
+
         return 4
 
 

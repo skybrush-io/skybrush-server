@@ -1486,7 +1486,7 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
             # ArduPlane ignores lat/lon in SET_POSITION_TARGET_GLOBAL_INT and
             # only accepts XY fly-to via DO_REPOSITION (unlike ArduCopter).
             await self._fly_to_with_repositioning(
-                target, change_mode=True, resolve_missing_altitude=True
+                target, resolve_missing_altitude=True
             )
         else:
             # Implementation of fly_to() with a guided mode command
@@ -1579,7 +1579,6 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
         self,
         target: GPSCoordinate,
         *,
-        change_mode: bool = False,
         resolve_missing_altitude: bool = False,
     ) -> None:
         """Implementation of `fly_to()` using a MAVLink DO_REPOSITION command
@@ -1587,8 +1586,6 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
 
         Args:
             target: destination coordinate (AMSL or AHL altitude)
-            change_mode: if True, set ``MAV_DO_REPOSITION_FLAGS_CHANGE_MODE`` so
-                ArduPlane/ArduCopter enter GUIDED when not already there
             resolve_missing_altitude: if True and neither AMSL nor AHL is given,
                 use the current AMSL instead of NaN (ArduPilot rejects NaN alt)
         """
@@ -1614,7 +1611,7 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
             MAVCommand.DO_REPOSITION,
             frame=MAVFrame.GLOBAL_INT,
             param1=-1,  # speed (default)
-            param2=1 if change_mode else 0,  # MAV_DO_REPOSITION_FLAGS_CHANGE_MODE
+            param2=0,  # flags
             param3=0,  # reserved
             param4=nan,  # yaw mode
             x=lat,  # latitude

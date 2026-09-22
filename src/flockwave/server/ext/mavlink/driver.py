@@ -1482,9 +1482,27 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
         if self._autopilot.supports_repositioning:
             # Implementation of fly_to() with the MAVLink DO_REPOSITION command
             await self._fly_to_with_repositioning(target)
+        elif self._is_fixed_wing_or_vtol:
+            # ArduPlane ignores lat/lon in SET_POSITION_TARGET_GLOBAL_INT and
+            # only accepts XY fly-to via DO_REPOSITION (unlike ArduCopter).
+            await self._fly_to_with_repositioning(
+                target, change_mode=True, resolve_missing_altitude=True
+            )
         else:
             # Implementation of fly_to() with a guided mode command
             await self._fly_to_in_guided_mode(target)
+
+    @property
+    def _is_fixed_wing_or_vtol(self) -> bool:
+        """Returns whether the last heartbeat reported a fixed-wing or VTOL type."""
+        heartbeat = self.get_last_message(MAVMessageType.HEARTBEAT)
+        if heartbeat is None:
+            return False
+        try:
+            mav_type = MAVType(heartbeat.type)
+        except ValueError:
+            return False
+        return mav_type == MAVType.FIXED_WING or mav_type.is_vtol()
 
     async def _fly_to_in_guided_mode(self, target: GPSCoordinate) -> None:
         """Implementation of `fly_to()` using a MAVLink
@@ -1557,18 +1575,37 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
             # Maybe it's okay anyway, see comment above
             pass
 
-    async def _fly_to_with_repositioning(self, target: GPSCoordinate) -> None:
+    async def _fly_to_with_repositioning(
+        self,
+        target: GPSCoordinate,
+        *,
+        change_mode: bool = False,
+        resolve_missing_altitude: bool = False,
+    ) -> None:
         """Implementation of `fly_to()` using a MAVLink DO_REPOSITION command
         with proper confirmation.
+
+        Args:
+            target: destination coordinate (AMSL or AHL altitude)
+            change_mode: if True, set ``MAV_DO_REPOSITION_FLAGS_CHANGE_MODE`` so
+                ArduPlane/ArduCopter enter GUIDED when not already there
+            resolve_missing_altitude: if True and neither AMSL nor AHL is given,
+                use the current AMSL instead of NaN (ArduPilot rejects NaN alt)
         """
         # PX4 supports AMSL only so we always convert to AMSL; NaN means to
-        # hold the current altitude
+        # hold the current altitude (unless resolve_missing_altitude is set)
         if target.amsl is not None:
             altitude = target.amsl
+        elif target.ahl is not None:
+            altitude = self.convert_ahl_to_amsl(target.ahl)
+        elif resolve_missing_altitude:
+            altitude = self.status.position.amsl if self.status.position else None
+            if altitude is None:
+                raise RuntimeError(
+                    "Cannot fly to target, current altitude not known yet"
+                )
         else:
-            altitude = (
-                self.convert_ahl_to_amsl(target.ahl) if target.ahl is not None else nan
-            )
+            altitude = nan
 
         lat, lon = int(target.lat * 1e7), int(target.lon * 1e7)
 
@@ -1577,7 +1614,7 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
             MAVCommand.DO_REPOSITION,
             frame=MAVFrame.GLOBAL_INT,
             param1=-1,  # speed (default)
-            param2=0,  # flags
+            param2=1 if change_mode else 0,  # MAV_DO_REPOSITION_FLAGS_CHANGE_MODE
             param3=0,  # reserved
             param4=nan,  # yaw mode
             x=lat,  # latitude

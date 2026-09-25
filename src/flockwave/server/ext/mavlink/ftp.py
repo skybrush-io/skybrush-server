@@ -410,6 +410,11 @@ class MAVFTPSession:
 
         Returns:
             the number of bytes written; always equal to ``len(data)``
+
+        Raises:
+            RuntimeError: if the UAV acknowledges the write for a different
+                session (e.g. a stale ACK from a previous transfer on a bad
+                link)
         """
         self._ensure_open()
         message = MAVFTPMessage(
@@ -418,7 +423,12 @@ class MAVFTPSession:
             offset=offset,
             data=data,
         )
-        await self._sender(message)
+        response = await self._sender(message)
+        if response.session_id != self._session_id:
+            raise RuntimeError(
+                f"MAVFTP write acknowledged for wrong session: "
+                f"expected {self._session_id}, got {response.session_id}"
+            )
         return len(data)
 
 

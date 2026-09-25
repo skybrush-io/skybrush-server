@@ -755,6 +755,10 @@ class MAVFTP:
             the FTP message sent by the UAV in response
 
         Raises:
+            OperationNotAcknowledgedError: if the UAV responded with a NAK
+                while it is not allowed.
+            RuntimeError: if the UAV responded with a message that is neither
+                an ACK nor a NAK.
             TooSlowError: if the UAV failed to respond either with an ACK or a
                 NAK in time.
         """
@@ -787,6 +791,7 @@ class MAVFTP:
                 if allow_nak:
                     return reply
                 else:
+                    # raises OperationNotAcknowledgedError
                     reply.raise_error(replies_to=message)
             else:
                 raise RuntimeError("Received reply that is neither ACK nor NAK")

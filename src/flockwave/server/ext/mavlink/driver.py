@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from functools import partial
 from logging import Logger
-from math import inf, isfinite
+from math import inf, isclose, isfinite
 from time import monotonic
 from typing import Any, Sequence
 
@@ -1660,6 +1660,10 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
 
         This function assumes that all sanity checks on the name and the value
         have already been performed by the caller.
+
+        Raises:
+            RuntimeError: if the vehicle rejects the value or echoes back
+                a different value than requested.
         """
         # We need to retrieve the current value of the parameter first because
         # we need its type
@@ -1677,7 +1681,7 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
             # is set for the primary telemetry channel, we will _not_ get
             # PARAM_VALUE messages, at least not in ArduPilot 4.4. In this case,
             # we make one final attempt to read the parameter value explicitly.
-            await self.driver.send_packet_with_retries(
+            response = await self.driver.send_packet_with_retries(
                 spec.param_set(
                     param_id=param_id,
                     param_value=encoded_value,
@@ -1687,15 +1691,21 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
                 wait_for_response=spec.param_value(param_id=param_id),
                 timeout=0.7,
             )
-
         except TooSlowError:
-            # This is where we try to recover
+            # No PARAM_VALUE broadcast received, read the value back explicitly
             observed_value = await self.get_parameter(name)
-            if value != observed_value:
-                raise RuntimeError(
-                    f"Failed to set parameter {name!r}, "
-                    f"tried to set {value!r}, got {observed_value!r}"
-                ) from None
+        else:
+            # The vehicle echoes the applied value in PARAM_VALUE, so verify
+            # that it matches what was requested.
+            observed_value = self._autopilot.decode_param_from_wire_representation(
+                response.param_value, response.param_type
+            )
+
+        if not isclose(observed_value, value):
+            raise RuntimeError(
+                f"Failed to set parameter {name!r}, "
+                f"tried to set {value!r}, got {observed_value!r}"
+            ) from None
 
     async def set_parameter(self, name: str, value: float) -> None:
         """Sets the value of a single parameter on the UAV."""

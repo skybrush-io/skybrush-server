@@ -90,7 +90,7 @@ from .enums import (
     RebootShutdownConditions,
     SkybrushUserCommand,
 )
-from .ftp import MAVFTP
+from .ftp import MAVFTP, MAVFTPError
 from .log_download import MAVLinkLogDownloader
 from .packets import (
     DroneShowExecutionStage,
@@ -1705,6 +1705,10 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
         """Sets the value of multiple parameters on the UAV, preferably in a
         more efficient manner if the autopilot of the drone supports MAVFTP
         parameter uploads.
+
+        Raises:
+            RuntimeError: if a parameter value is not finite or if the bulk
+                upload is rejected by the vehicle
         """
         if not parameters:
             return
@@ -1720,8 +1724,10 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
                 filename, contents = self._autopilot.prepare_mavftp_parameter_upload(
                     parameters
                 )
-                # TODO(ntamas): handle error code when closing the file
-                await ftp.put(contents, filename, skip_crc_check=True)
+                try:
+                    await ftp.put(contents, filename, skip_crc_check=True)
+                except MAVFTPError as ex:
+                    raise RuntimeError(f"Bulk parameter upload failed: {ex}") from ex
 
         else:
             # No support for bulk uploads, or we only have a single parameter,

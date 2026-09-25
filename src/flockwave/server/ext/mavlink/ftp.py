@@ -410,6 +410,11 @@ class MAVFTPSession:
 
         Returns:
             the number of bytes written; always equal to ``len(data)``
+
+        Raises:
+            RuntimeError: if the UAV acknowledges the write for a different
+                session (e.g. a stale ACK from a previous transfer on a bad
+                link)
         """
         self._ensure_open()
         message = MAVFTPMessage(
@@ -418,7 +423,12 @@ class MAVFTPSession:
             offset=offset,
             data=data,
         )
-        await self._sender(message)
+        response = await self._sender(message)
+        if response.session_id != self._session_id:
+            raise RuntimeError(
+                f"MAVFTP write acknowledged for wrong session: "
+                f"expected {self._session_id}, got {response.session_id}"
+            )
         return len(data)
 
 
@@ -745,6 +755,10 @@ class MAVFTP:
             the FTP message sent by the UAV in response
 
         Raises:
+            OperationNotAcknowledgedError: if the UAV responded with a NAK
+                while it is not allowed.
+            RuntimeError: if the UAV responded with a message that is neither
+                an ACK nor a NAK.
             TooSlowError: if the UAV failed to respond either with an ACK or a
                 NAK in time.
         """
@@ -777,6 +791,7 @@ class MAVFTP:
                 if allow_nak:
                     return reply
                 else:
+                    # raises OperationNotAcknowledgedError
                     reply.raise_error(replies_to=message)
             else:
                 raise RuntimeError("Received reply that is neither ACK nor NAK")

@@ -13,6 +13,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   swarm. This allows the operator to validate whether the RTH altitudes are
   high enough at the location where the show will be performed.
 
+- The `mavlink` extension now exposes a function named `broadcast_packet()` that
+  can be used to inject arbitrary MAVLink packets into the output stream of all
+  configured MAVLink networks. This is primarily meant as an ad-hoc escape hatch
+  for other extensions if they need to send extra data to MAVLink drones.
+
 ## [2.53.2] - 2026-09-16
 
 ### Fixed

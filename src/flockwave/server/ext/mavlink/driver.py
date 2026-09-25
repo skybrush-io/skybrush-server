@@ -1729,6 +1729,9 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
                 except MAVFTPError as ex:
                     raise RuntimeError(f"Bulk parameter upload failed: {ex}") from ex
 
+            # TODO: verify that after a successful upload the parameter values
+            # are actually set properly
+
         else:
             # No support for bulk uploads, or we only have a single parameter,
             # so just do it one by one

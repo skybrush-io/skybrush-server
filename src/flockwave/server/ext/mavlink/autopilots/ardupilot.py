@@ -123,8 +123,8 @@ class ArduPilot(Autopilot):
         16: ("initialising", "init"),
         17: ("qstab", "qstabilize"),
         18: ("qhover",),
-        19: ("qloiter", "loiter", "pos", "pos hold"),
-        20: ("qland", "land"),
+        19: ("qloiter",),
+        20: ("qland",),
         21: ("qrtl",),
         22: ("qautotune",),
         23: ("qacro",),
@@ -832,9 +832,6 @@ class ArduPilot(Autopilot):
                 result = ArduPilotWithSkybrush(self)
 
         return result
-
-    async def send_landing_command(self, uav: "MAVLinkUAV", *, channel: str) -> None:
-        await uav.set_mode("land", channel=channel)
 
     @property
     def is_battery_percentage_reliable(self) -> bool:

@@ -4,13 +4,14 @@ from collections.abc import Sequence
 from contextlib import ExitStack
 from logging import Logger
 from math import inf
-from typing import Any
+from typing import Annotated, Any
 
 from flockwave.concurrency import CancellableTaskGroup
+from pydantic import BaseModel, Field, WithJsonSchema
 from trio import Nursery, TooSlowError, fail_after, open_nursery, sleep_forever
 from trio_util import periodic
 
-from flockwave.server.ext.base import Extension
+from flockwave.server.ext.base import TypedConfigExtension
 from flockwave.server.ext.clocks import ClocksExtensionAPI
 from flockwave.server.ext.signals import SignalsExtensionAPI
 from flockwave.server.model.clock import Clock
@@ -23,7 +24,41 @@ from .logging import ShowUploadLoggingMiddleware
 __all__ = ("construct", "dependencies", "description")
 
 
-class DroneShowExtension(Extension):
+class ShowConfig(BaseModel):
+    """Configuration model for the drone show extension."""
+
+    default_start_method: Annotated[
+        StartMethod,
+        WithJsonSchema(
+            {
+                "type": "string",
+                "enum": [m.value for m in StartMethod],
+                "options": {
+                    "enum_titles": [m.describe() for m in StartMethod],
+                },
+            }
+        ),
+    ] = Field(
+        default=StartMethod.RC,
+        title="Default start method for shows",
+    )
+
+    point_of_no_return_seconds: int = Field(
+        default=-10,
+        title="Point of no return for clock synchronization (seconds)",
+        description=(
+            "The number of seconds elapsed on the show clock that acts as "
+            'a "point of no return" threshold. The show clock will not '
+            "be synchronized to an external timecode any more if it is "
+            "running and it is beyond this time (in seconds). Stopping the "
+            "external timecode will still stop the clock even if it is "
+            "beyond the point of no return. Typically you want to set this "
+            "to a negative value."
+        ),
+    )
+
+
+class DroneShowExtension(TypedConfigExtension[ShowConfig]):
     """Extension that prepares the server to be able to manage drone shows.
 
     The extension provides three signals via the `signals` extension; `show:start`
@@ -62,6 +97,19 @@ class DroneShowExtension(Extension):
 
         self._config = DroneShowConfiguration()
         self._lights = LightConfiguration()
+
+    def configure(self, configuration: ShowConfig) -> None:
+        self._config.start_method = StartMethod(configuration.default_start_method)
+        self._clock_sync.point_of_no_return_seconds = (
+            configuration.point_of_no_return_seconds
+        )
+        self.log.info(
+            "Default show start method: %s", self._config.start_method.describe()
+        )
+        self.log.info(
+            "Timecode synchronization suspends at T = %d seconds",
+            configuration.point_of_no_return_seconds,
+        )
 
     def exports(self) -> dict[str, Any]:
         return {
@@ -126,12 +174,12 @@ class DroneShowExtension(Extension):
         except Exception as ex:
             return hub.acknowledge(message, outcome=False, reason=str(ex))
 
-    async def run(self, app, configuration, logger):
+    async def run(self, app):
         self._clock = ShowClock()
         self._end_clock = ShowEndClock()
 
-        self._clock_sync.log = logger
-        self._end_clock_sync.log = logger
+        self._clock_sync.log = self.log
+        self._end_clock_sync.log = self.log
 
         handlers = {
             "SHOW-CFG": self.handle_SHOW_CFG,
@@ -139,31 +187,6 @@ class DroneShowExtension(Extension):
             "SHOW-SETCFG": self.handle_SHOW_SETCFG,
             "SHOW-SETLIGHTS": self.handle_SHOW_SETLIGHTS,
         }
-
-        self._config.start_method = StartMethod(
-            configuration.get("default_start_method", "rc")
-        )
-
-        try:
-            point_of_no_return_seconds = int(
-                configuration.get("point_of_no_return_seconds", -10)
-            )
-        except ValueError:
-            self.log.warning(
-                "Invalid value for 'point_of_no_return_seconds' in configuration, "
-                "using default value of -10 seconds"
-            )
-            point_of_no_return_seconds = -10
-
-        self._clock_sync.point_of_no_return_seconds = point_of_no_return_seconds
-
-        self.log.info(
-            "Default show start method: %s", self._config.start_method.describe()
-        )
-        self.log.info(
-            "Timecode synchronization suspends at T = %d seconds",
-            point_of_no_return_seconds,
-        )
 
         async with open_nursery() as self._nursery:
             assert self._nursery is not None
@@ -433,30 +456,4 @@ class DroneShowExtension(Extension):
 construct = DroneShowExtension
 dependencies = ("clocks", "signals")
 description = "Support for managing drone shows"
-schema = {
-    "properties": {
-        "default_start_method": {
-            "type": "string",
-            "title": "Default start method for shows",
-            "enum": [StartMethod.RC.value, StartMethod.AUTO.value],
-            "default": StartMethod.RC.value,
-            "options": {
-                "enum_titles": [StartMethod.RC.describe(), StartMethod.AUTO.describe()],
-            },
-        },
-        "point_of_no_return_seconds": {
-            "type": "number",
-            "title": "Point of no return for clock synchronization (seconds)",
-            "description": (
-                "The number of seconds elapsed on the show clock that acts as "
-                'a "point of no return" threshold. The show clock will not '
-                "be synchronized to an external timecode any more if it is "
-                "running and it is beyond this time (in seconds). Stopping the "
-                "external timecode will still stop the clock even if it is "
-                "beyond the point of no return. Typically you want to set this "
-                "to a negative value."
-            ),
-            "default": -10,
-        },
-    }
-}
+schema = ShowConfig

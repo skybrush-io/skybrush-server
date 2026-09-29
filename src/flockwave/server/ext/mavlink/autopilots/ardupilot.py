@@ -809,8 +809,23 @@ class ArduPilot(Autopilot):
     def is_prearm_error_message(self, text: str) -> bool:
         return text.startswith("PreArm: ") or text.startswith("Arm: ")
 
-    def is_rth_flight_mode(self, base_mode: int, custom_mode: int) -> bool:
-        return bool(base_mode & 1) and (custom_mode == 6 or custom_mode == 21)
+    def is_rth_flight_mode(
+        self, base_mode: int, custom_mode: int, vehicle_type: MAVType | None = None
+    ) -> bool:
+        if not bool(base_mode & MAVModeFlag.CUSTOM_MODE_ENABLED):
+            return False
+
+        vehicle_type = vehicle_type or MAVType.GENERIC
+
+        rth_custom_modes = (
+            (11, 21)
+            if vehicle_type.is_plane
+            else (11,)
+            if vehicle_type.is_rover
+            else (6, 21)
+        )
+
+        return any(custom_mode == mode for mode in rth_custom_modes)
 
     def prepare_mavftp_parameter_upload(
         self, parameters: dict[str, float]

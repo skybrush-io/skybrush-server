@@ -174,7 +174,9 @@ class PX4(Autopilot):
     def is_prearm_error_message(self, text: str) -> bool:
         return text.startswith("Preflight ")
 
-    def is_rth_flight_mode(self, base_mode: int, custom_mode: int) -> bool:
+    def is_rth_flight_mode(
+        self, base_mode: int, custom_mode: int, vehicle_type: MAVType | None = None
+    ) -> bool:
         # base mode & 1 is "custom mode", 0x04 is the "auto" custom main mode,
         # 0x05 is the "rth" submode of the auto custom main mode
         return bool(base_mode & 1) and custom_mode & 0xFFFF0000 == 0x05040000

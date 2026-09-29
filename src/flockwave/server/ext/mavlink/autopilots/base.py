@@ -307,9 +307,11 @@ class Autopilot(ABC):
         ...
 
     @abstractmethod
-    def is_rth_flight_mode(self, base_mode: int, custom_mode: int) -> bool:
-        """Decides whether the flight mode identified by the given base and
-        custom mode numbers is a return-to-home mode.
+    def is_rth_flight_mode(
+        self, base_mode: int, custom_mode: int, vehicle_type: MAVType | None = None
+    ) -> bool:
+        """Decides whether the flight mode identified by the given base,
+        custom mode numbers and optional vehicle type is a return-to-home mode.
         """
         ...
 

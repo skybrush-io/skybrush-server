@@ -75,7 +75,9 @@ class UnknownAutopilot(Autopilot):
     ) -> bool:
         return False
 
-    def is_rth_flight_mode(self, base_mode: int, custom_mode: int) -> bool:
+    def is_rth_flight_mode(
+        self, base_mode: int, custom_mode: int, vehicle_type: MAVType | None = None
+    ) -> bool:
         return False
 
     @property

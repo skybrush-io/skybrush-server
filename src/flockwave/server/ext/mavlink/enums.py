@@ -508,6 +508,11 @@ class MAVType(IntEnum):
         return self is MAVType.FIXED_WING or self.is_vtol
 
     @property
+    def is_rover(self) -> bool:
+        """Returns whether the MAVType constant denotes a rover (most likely)."""
+        return self is MAVType.GROUND_ROVER
+
+    @property
     def is_vehicle(self) -> bool:
         """Returns whether the MAVType constant denotes a vehicle (most likely)."""
         return (

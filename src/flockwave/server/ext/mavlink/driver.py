@@ -3250,7 +3250,7 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
             heartbeat, sys_status
         )
         is_returning_home = self._autopilot.is_rth_flight_mode(
-            heartbeat.base_mode, heartbeat.custom_mode
+            heartbeat.base_mode, heartbeat.custom_mode, heartbeat.type
         )
         is_in_standby = heartbeat.system_status == MAVState.STANDBY.value
 

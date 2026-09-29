@@ -156,6 +156,7 @@ class MAVLinkDronesExtension(UAVExtension[MAVLinkDriver]):
 
     def exports(self) -> dict[str, Any]:
         return {
+            "broadcast_packet": self._broadcast_packet,
             "find_network_by_id": self._find_network_by_id,
             "use_mavlink_message_channel_factory": use_mavlink_message_channel_factory,
         }
@@ -318,7 +319,7 @@ class MAVLinkDronesExtension(UAVExtension[MAVLinkDriver]):
         self,
         spec: MAVLinkMessageSpecification,
         channel: str | None = None,
-    ):
+    ) -> None:
         """Broadcasts a message to all the UAVs on all the networks managed by
         this extension.
 

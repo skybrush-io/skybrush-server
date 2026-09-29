@@ -445,6 +445,7 @@ class MAVLinkNetworkSpecification:
 class MAVLinkExtensionAPI(Protocol):
     """Interface specification of the API exposed by the `mavlink` extension."""
 
+    async def broadcast_packet(self, spec: MAVLinkMessageSpecification) -> None: ...
     def find_network_by_id(self, id: str) -> MAVLinkNetwork | None: ...
     def use_mavlink_message_channel_factory(
         self,

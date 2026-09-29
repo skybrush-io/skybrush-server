@@ -1235,7 +1235,7 @@ requires-dist = [
     { name = "skybrush-ext-show-pro", marker = "extra == 'pro'", specifier = ">=0.12.0", index = "https://pypi.collmot.com/" },
     { name = "skybrush-ext-sidekick", marker = "extra == 'pro'", specifier = ">=1.2.1", index = "https://pypi.collmot.com/" },
     { name = "skybrush-ext-skynet", marker = "extra == 'pro'", specifier = ">=0.6.0", index = "https://pypi.collmot.com/" },
-    { name = "skybrush-ext-studio", marker = "extra == 'pro'", specifier = ">=1.7.1", index = "https://pypi.collmot.com/" },
+    { name = "skybrush-ext-studio", marker = "extra == 'pro'", specifier = ">=1.8.0", index = "https://pypi.collmot.com/" },
     { name = "skybrush-ext-timecode", marker = "extra == 'pro'", specifier = ">=1.4.1", index = "https://pypi.collmot.com/" },
     { name = "skybrush-lib-mission-planning", marker = "extra == 'pro'", specifier = ">=2.4.1", index = "https://pypi.collmot.com/" },
     { name = "skybrush-opt-rs", marker = "extra == 'pro'", index = "https://pypi.collmot.com/" },
@@ -2993,16 +2993,16 @@ wheels = [
 
 [[package]]
 name = "skybrush-ext-studio"
-version = "1.7.1"
+version = "1.8.0"
 source = { registry = "https://pypi.collmot.com/" }
 dependencies = [
     { name = "exceptiongroup" },
     { name = "skybrush-opt-rs" },
     { name = "skybrush-studio" },
 ]
-sdist = { url = "https://pypi.collmot.com/packages/skybrush_ext_studio-1.7.1.tar.gz", hash = "sha256:0647cce2e15dbb212f38361b9a41b975b0ec15081966e075737dfd2621158bf8" }
+sdist = { url = "https://pypi.collmot.com/packages/skybrush_ext_studio-1.8.0.tar.gz", hash = "sha256:1503add4a3f91a8205688b060a21a28f518b1b581e7824c320062c3a1d4443b7" }
 wheels = [
-    { url = "https://pypi.collmot.com/packages/skybrush_ext_studio-1.7.1-py3-none-any.whl", hash = "sha256:f58967b32c4ba324dd5073f8eb811910dd3164eb87863b666c9c5c379f397119" },
+    { url = "https://pypi.collmot.com/packages/skybrush_ext_studio-1.8.0-py3-none-any.whl", hash = "sha256:d23b2a2b8be6c8d855340d85b15b464a8848281ca641d0e7a517df516098a0e1" },
 ]
 
 [[package]]

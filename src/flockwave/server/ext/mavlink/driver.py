@@ -2296,7 +2296,7 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
             try:
                 heartbeat = self.get_last_message(MAVMessageType.HEARTBEAT)
                 base_mode, mode, submode = self._autopilot.get_flight_mode_numbers(
-                    mode, heartbeat.type if heartbeat is not None else None
+                    mode, MAVType(heartbeat.type) if heartbeat is not None else None
                 )
             except NotSupportedError:
                 raise ValueError(
@@ -3250,7 +3250,7 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
             heartbeat, sys_status
         )
         is_returning_home = self._autopilot.is_rth_flight_mode(
-            heartbeat.base_mode, heartbeat.custom_mode, heartbeat.type
+            heartbeat.base_mode, heartbeat.custom_mode, MAVType(heartbeat.type)
         )
         is_in_standby = heartbeat.system_status == MAVState.STANDBY.value
 

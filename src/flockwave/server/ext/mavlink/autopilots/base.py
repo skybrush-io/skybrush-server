@@ -11,7 +11,7 @@ from flockwave.server.model.geofence import (
 )
 from flockwave.server.model.safety import SafetyConfigurationRequest
 
-from ..enums import MAVParamType, MAVType
+from ..enums import MAVCommand, MAVParamType, MAVType
 from ..types import MAVLinkFlightModeNumbers, MAVLinkMessage
 from ..utils import (
     decode_param_from_wire_representation,
@@ -343,6 +343,14 @@ class Autopilot(ABC):
         """
         self.capabilities = capabilities
         return self
+
+    async def send_landing_command(self, uav: "MAVLinkUAV", *, channel: str) -> None:
+        """Asks the UAV to start landing"""
+        success = await uav.driver.send_command_long(
+            uav, MAVCommand.NAV_LAND, channel=channel
+        )
+        if not success:
+            raise RuntimeError("Landing command failed")
 
     @property
     @abstractmethod

@@ -874,11 +874,7 @@ class MAVLinkDriver(UAVDriver["MAVLinkUAV"]):
         self, uav: "MAVLinkUAV", *, transport=None
     ) -> None:
         channel = transport_options_to_channel(transport)
-        success = await self.send_command_long(
-            uav, MAVCommand.NAV_LAND, channel=channel
-        )
-        if not success:
-            raise RuntimeError("Landing command failed")
+        await uav._autopilot.send_landing_command(uav, channel=channel)
 
     async def _send_light_or_sound_emission_signal_broadcast(
         self, signals: list[str], duration: int, *, transport=None

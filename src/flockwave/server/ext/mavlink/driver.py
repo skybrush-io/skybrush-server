@@ -1594,10 +1594,18 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
         elif target.ahl is not None:
             altitude = self.convert_ahl_to_amsl(target.ahl)
         elif resolve_missing_altitude:
-            altitude = self.status.position.amsl if self.status.position else None
-            if altitude is None:
+            # TODO: so far we store 0 lat/lon/ahl/amsl for invalid position in
+            # `handle_message_global_position_int()`, that is why we need such
+            # a convoluted check here for the time being
+            if self.status.position.amsl is not None and (
+                self.status.position.lat
+                or self.status.position.lon
+                or self.status.position.ahl
+            ):
+                altitude = self.status.position.amsl
+            else:
                 raise RuntimeError(
-                    "Cannot fly to target, current altitude not known yet"
+                    "Cannot fly to target, current AMSL altitude not known yet"
                 )
         else:
             altitude = nan

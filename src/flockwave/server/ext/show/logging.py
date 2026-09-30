@@ -163,8 +163,8 @@ class ShowUploadLoggingMiddleware:
         if fingerprint[1] and isinstance(fingerprint[1], dict):
             try:
                 xform = FlatEarthToGPSCoordinateTransformation.from_json(fingerprint[1])
-            except (TypeError, RuntimeError):
-                # TypeError may be raised if fingerprint[1]["origin"] is None,
+            except (TypeError, KeyError, RuntimeError):
+                # KeyError may be raised if fingerprint[1]["origin"] is None,
                 # which may be the case for indoor shows
                 xform = None
             if xform:

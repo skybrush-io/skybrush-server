@@ -53,7 +53,7 @@ wheels = [
 
 [[package]]
 name = "aiocflib"
-version = "5.0.1"
+version = "5.0.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "anyio" },
@@ -64,9 +64,9 @@ dependencies = [
     { name = "outcome" },
     { name = "pyusb" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/cf/83/af4325dfd4302d22cefb3164f3a1e3e82b1e7feecfb9ec8342126e7132eb/aiocflib-5.0.1.tar.gz", hash = "sha256:fec5cf7b744850caf6a11a911f391f1d9485eaa69a2e8785989931011d9dca49", size = 87876, upload-time = "2026-06-25T11:44:39.754Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/19/a0/5cc03f562646e66dd3338a9ac32317c9b929f7c535260c804bd23d7b6b8e/aiocflib-5.0.2.tar.gz", hash = "sha256:cd501109c6a5f489b350716f670da2ceab9cc3681f12ccb4415e8f24cb8b6f0f", size = 88015, upload-time = "2026-09-29T15:56:46.986Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/3d/cd/8ed9415559be25cdd0c9606f10e846419335d91d8c1ab7ab80f9a453431a/aiocflib-5.0.1-py3-none-any.whl", hash = "sha256:3b98a6d06724f1db059d98fcff3ffc692e42932850a036851c93642a414f484d", size = 117859, upload-time = "2026-06-25T11:44:38.467Z" },
+    { url = "https://files.pythonhosted.org/packages/75/49/45b952daf8993f4ef0c1bcf9fa34164118f2b165dff54af13f1ffca9fca4/aiocflib-5.0.2-py3-none-any.whl", hash = "sha256:bbc05c5ebf87ce863fa1a219ecbb6fc1c9e8c41892ba79d440cd699a60f8d1cc", size = 117879, upload-time = "2026-09-29T15:56:44.876Z" },
 ]
 
 [[package]]
@@ -1187,7 +1187,7 @@ dev = [
 requires-dist = [
     { name = "adrenaline", specifier = ">=4.0.1,<5.0.0" },
     { name = "aio-usb-hotplug", specifier = ">=8.0.0,<9.0.0" },
-    { name = "aiocflib", specifier = ">=5.0.1,<6.0.0" },
+    { name = "aiocflib", specifier = ">=5.0.2,<6.0.0" },
     { name = "bidict", specifier = ">=0.23.1,<0.24.0" },
     { name = "blinker", specifier = ">=1.9.0,<2.0.0" },
     { name = "cachetools", specifier = ">=7.0.1,<8.0.0" },

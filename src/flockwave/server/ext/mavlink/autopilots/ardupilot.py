@@ -756,11 +756,20 @@ class ArduPilot(Autopilot):
 
     @property
     def supports_repositioning(self) -> bool:
-        # ArduCopter supports MAV_CMD_DO_REPOSITION since ArduCopter 4.1.0,
-        # BUT it does not accept NaN in the altitude field. PX4 accepts NaN
-        # and we rely on this to express our intention to use the current
-        # altitude, so we cannot return True here until ArduCopter gains a
-        # similar feature.
+        # All ArduPilot vehicles accept MAV_CMD_DO_REPOSITION since v4.1.0,
+        # but none of them accept NaN in the altitude field: the shared
+        # GCS_MAVLINK::location_from_command_t() helper in GCS_Common.cpp rejects
+        # NaN altitudes outright, and every vehicle's
+        # handle_command_int_do_reposition() turns that into MAV_RESULT_DENIED.
+        # PX4 accepts NaN and we rely on this to express our intention to use the
+        # current altitude, so we cannot return True here until ArduPilot gains
+        # that capability.
+        return False
+
+    @property
+    def supports_repositioning_with_explicit_altitude(self) -> bool:
+        # We set False for the base class, and enable it for ArduPlane only,
+        # as it does not support fly to with guided mode
         return False
 
     @property
@@ -922,6 +931,10 @@ class ArduPlane(ArduPilot):
             11,
             21,
         ]
+
+    @property
+    def supports_repositioning_with_explicit_altitude(self) -> bool:
+        return True
 
 
 class ArduRover(ArduPilot):

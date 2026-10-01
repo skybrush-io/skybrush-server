@@ -67,7 +67,7 @@ from flockwave.server.utils import color_to_rgb8_triplet, to_uppercase_string
 from flockwave.server.utils.generic import nop
 
 from .accelerometer import AccelerometerCalibration
-from .autopilots import ArduPilot, Autopilot, UnknownAutopilot
+from .autopilots import ArduPilot, ArduPlane, Autopilot, UnknownAutopilot
 from .channel import Channel
 from .compass import CompassCalibration
 from .compassmot import CompassMotorInterferenceCalibration
@@ -1482,25 +1482,13 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
         if self._autopilot.supports_repositioning:
             # Implementation of fly_to() with the MAVLink DO_REPOSITION command
             await self._fly_to_with_repositioning(target)
-        elif self._is_plane:
+        elif isinstance(self._autopilot, ArduPlane):
             # ArduPlane ignores lat/lon in SET_POSITION_TARGET_GLOBAL_INT and
             # only accepts XY fly-to via DO_REPOSITION (unlike ArduCopter).
             await self._fly_to_with_repositioning(target, resolve_missing_altitude=True)
         else:
             # Implementation of fly_to() with a guided mode command
             await self._fly_to_in_guided_mode(target)
-
-    @property
-    def _is_plane(self) -> bool:
-        """Returns whether the last heartbeat reported a plane (fixed-wing or VTOL) type."""
-        heartbeat = self.get_last_message(MAVMessageType.HEARTBEAT)
-        if heartbeat is None:
-            return False
-        try:
-            mav_type = MAVType(heartbeat.type)
-        except ValueError:
-            return False
-        return mav_type.is_plane
 
     async def _fly_to_in_guided_mode(self, target: GPSCoordinate) -> None:
         """Implementation of `fly_to()` using a MAVLink

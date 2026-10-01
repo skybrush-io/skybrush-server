@@ -1572,8 +1572,6 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
         Args:
             target: destination coordinate (AMSL or AHL altitude)
         """
-        # PX4 supports AMSL only so we always convert to AMSL; NaN means to
-        # hold the current altitude (unless resolve_missing_altitude is set)
         if target.amsl is not None:
             altitude = target.amsl
         elif target.ahl is not None:

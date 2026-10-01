@@ -863,12 +863,6 @@ class ArduCopterWithSkybrush(ArduCopter):
         return True
 
 
-# deprecated alias, defined for backwards compatibility only,
-# will be removed in next major version, as it causes
-# confusion in naming convention
-ArduPilotWithSkybrush = ArduCopterWithSkybrush
-
-
 class ArduPlane(ArduPilot):
     """Class representing the ArduPlane firmware."""
 

@@ -124,7 +124,20 @@ class ArduPilot(Autopilot):
         try:
             vehicle_type = MAVType(message.type)
         except ValueError:
+            log.warning(
+                f"Unknown heartbeat MAV_TYPE: {message.type}; cannot determine "
+                "ArduPilot variant; falling back to generic ArduPilot"
+            )
             return cls
+
+        if vehicle_type is MAVType.GENERIC:
+            # When you flash a new ArduCopter it does not set FRAME_CLASS for
+            # some reason, so it reports MAV_TYPE_GENERIC at first connection.
+            # This is the only ArduPilot variant which behaves this way, and
+            # GCS_MAVLINK_Copter::frame_type() substitutes a multirotor default
+            # for it. Assume ArduCopter so that flight mode names resolve.
+            log.warning("Heartbeat reports MAV_TYPE_GENERIC; assuming ArduCopter")
+            return ArduCopter
 
         if vehicle_type.is_copter:
             return ArduCopter
@@ -133,6 +146,10 @@ class ArduPilot(Autopilot):
         if vehicle_type.is_rover:
             return ArduRover
 
+        log.warning(
+            f"Heartbeat MAV_TYPE {vehicle_type.name} does not match any known ArduPilot "
+            "variant; falling back to generic ArduPilot"
+        )
         return cls
 
     def are_motor_outputs_disabled(

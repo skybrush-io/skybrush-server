@@ -116,7 +116,7 @@ class ArduPilot(Autopilot):
         instance that is suitable to represent the behaviour of an autopilot
         that sent the given MAVLink heartbeat message.
         """
-        if message.autopilot != 3:
+        if message.autopilot != MAVAutopilot.ARDUPILOTMEGA:
             raise ValueError(
                 f"Cannot construct ArduPilot factory from autopilot class {message.autopilot}"
             )

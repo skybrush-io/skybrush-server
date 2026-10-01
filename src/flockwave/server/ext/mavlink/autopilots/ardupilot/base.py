@@ -3,7 +3,6 @@ from __future__ import annotations
 import logging
 from collections.abc import AsyncIterator, Iterable, Sequence
 from contextlib import AsyncExitStack, aclosing
-from copy import deepcopy
 from dataclasses import dataclass
 from functools import partial
 from io import BytesIO
@@ -31,36 +30,31 @@ from flockwave.server.model.safety import (
 )
 from flockwave.server.utils import clamp
 
-from ..enums import (
+from ...enums import (
     MAVAutopilot,
     MAVCommand,
     MAVMessageType,
     MAVModeFlag,
     MAVParamType,
-    MAVProtocolCapability,
-    MAVState,
     MAVSysStatusSensor,
     MAVType,
 )
-from ..errors import UnknownFlightModeError
-from ..ftp import MAVFTP
-from ..fw_upload import FirmwareUpdateResult, FirmwareUpdateTarget
-from ..geofence import GeofenceManager, GeofenceType
-from ..types import MAVLinkFlightModeNumbers, MAVLinkMessage
-from ..utils import log_id_for_uav
+from ...errors import UnknownFlightModeError
+from ...ftp import MAVFTP
+from ...fw_upload import FirmwareUpdateResult, FirmwareUpdateTarget
+from ...geofence import GeofenceManager, GeofenceType
+from ...types import MAVLinkFlightModeNumbers, MAVLinkMessage
+from ...utils import log_id_for_uav
 
 if TYPE_CHECKING:
-    from ..driver import MAVLinkUAV
+    from ...driver import MAVLinkUAV
 
-from .base import Autopilot
-from .registry import register_for_mavlink_type
+from ..base import Autopilot
+from ..registry import register_for_mavlink_type
 
 __all__ = (
-    "ArduCopter",
-    "ArduCopterWithSkybrush",
     "ArduPilot",
-    "ArduPlane",
-    "ArduRover",
+    "FlightModeMap",
 )
 
 log = logging.getLogger(__name__)
@@ -111,7 +105,7 @@ class ArduPilot(Autopilot):
     @classmethod
     def from_vehicle_type_in_heartbeat(
         cls, message: MAVLinkMessage
-    ) -> type["ArduPilot"]:
+    ) -> type["Autopilot"]:
         """Returns an autopilot factory that can construct an ArduPilot_
         instance that is suitable to represent the behaviour of an autopilot
         that sent the given MAVLink heartbeat message.
@@ -120,6 +114,10 @@ class ArduPilot(Autopilot):
             raise ValueError(
                 f"Cannot construct ArduPilot factory from autopilot class {message.autopilot}"
             )
+
+        # Imported here rather than at module level because the ArduPilot
+        # vehicle subclasses (ArduCopter & co) import this module.
+        from ..registry import get_ardupilot_vehicle_factory_by_mavlink_type
 
         try:
             vehicle_type = MAVType(message.type)
@@ -138,14 +136,9 @@ class ArduPilot(Autopilot):
             # flight mode names still resolve.
             log.info("Heartbeat reports MAV_TYPE_GENERIC; assuming ArduCopter")
 
-            return ArduCopter
-
-        if vehicle_type.is_copter:
-            return ArduCopter
-        if vehicle_type.is_plane:
-            return ArduPlane
-        if vehicle_type.is_rover:
-            return ArduRover
+        result = get_ardupilot_vehicle_factory_by_mavlink_type(vehicle_type)
+        if result is not None:
+            return result
 
         log.warning(
             f"Heartbeat MAV_TYPE {vehicle_type.name} does not match any known ArduPilot "
@@ -777,196 +770,6 @@ class ArduPilot(Autopilot):
         return False
 
 
-class ArduCopter(ArduPilot):
-    """Class representing the ArduCopter firmware."""
-
-    name = "ArduCopter"
-
-    _custom_modes: FlightModeMap = {
-        0: ("stab", "stabilize"),
-        1: ("acro",),
-        2: ("alt", "alt hold"),
-        3: ("auto",),
-        4: ("guided",),
-        5: ("loiter",),
-        6: ("rth",),
-        7: ("circle",),
-        9: ("land",),
-        11: ("drift",),
-        13: ("sport",),
-        14: ("flip",),
-        15: ("tune",),
-        16: ("pos", "pos hold"),
-        17: ("brake",),
-        18: ("throw",),
-        19: ("avoid ADSB", "avoid"),
-        20: ("guided no GPS",),
-        21: ("smart RTH",),
-        22: ("flow", "flow hold"),
-        23: ("follow",),
-        24: ("zigzag",),
-        25: ("system ID",),
-        26: ("heli autorotate", "autorotate"),
-        27: ("auto RTH",),
-        28: ("turtle",),
-    }
-    """ArduCopter custom modes; see ardupilot/ArduCopter/mode.h for reference"""
-
-    def is_rth_flight_mode(self, base_mode: int, custom_mode: int) -> bool:
-        return bool(base_mode & MAVModeFlag.CUSTOM_MODE_ENABLED) and custom_mode in [
-            6,
-            21,
-        ]
-
-    def refine_with_capabilities(self, capabilities: int):
-        result = super().refine_with_capabilities(capabilities)
-
-        if isinstance(result, self.__class__) and not isinstance(
-            result, ArduCopterWithSkybrush
-        ):
-            mask = ArduCopterWithSkybrush.CAPABILITY_MASK
-            if (capabilities & mask) == mask:
-                result = ArduCopterWithSkybrush(self)
-
-        return result
-
-
-def extend_custom_modes(custom_modes: FlightModeMap, new_modes: FlightModeMap):
-    """Helper function to extend custom modes of an ArduPilot_ subclass
-    with new modes.
-    """
-    mode_map = deepcopy(custom_modes)
-    mode_map.update(new_modes)
-    return mode_map
-
-
-class ArduCopterWithSkybrush(ArduCopter):
-    """Class representing the ArduCopter firmware with Skybrush-specific
-    extensions to support drone shows.
-    """
-
-    name = "ArduCopter + Skybrush"
-
-    _custom_modes = extend_custom_modes(ArduCopter._custom_modes, {127: ("show",)})
-
-    CAPABILITY_MASK = (
-        MAVProtocolCapability.PARAM_FLOAT
-        | MAVProtocolCapability.FTP
-        | MAVProtocolCapability.SET_POSITION_TARGET_GLOBAL_INT
-        | MAVProtocolCapability.SET_POSITION_TARGET_LOCAL_NED
-        | MAVProtocolCapability.MAVLINK2
-        | MAVProtocolCapability.DRONE_SHOW_MODE
-    )
-
-    def is_duplicate_message(self, message: MAVLinkMessage) -> bool:
-        # We use the MSB of the compatibility flags to indicate that the message
-        # is semantically equivalent to an earlier message of the same type from
-        # the same source
-        return message.get_header().compat_flags & 0x80
-
-    def is_prearm_check_in_progress(
-        self, heartbeat: MAVLinkMessage, sys_status: MAVLinkMessage
-    ) -> bool:
-        # Our patched firmware (ab)uses the CALIBRATING state in the heartbeat
-        # for this before ArduCopter 4.0.5. From ArduCopter 4.0.5 onwwards,
-        # there is a "preflight check" sensor so we use that
-        mask = MAVSysStatusSensor.PREARM_CHECK.value
-        if sys_status.onboard_control_sensors_present & mask:
-            # ArduCopter version reports prearm check status with this message
-            if sys_status.onboard_control_sensors_enabled & mask:
-                # Prearm checks are enabled so return whether they pass or not
-                return not bool(sys_status.onboard_control_sensors_health & mask)
-            else:
-                # Prearm checks are disabled so they are never in progress
-                return False
-        else:
-            # ArduCopter version does not know about this flag so we assume that
-            # we are running our firmware and that the CALIBRATING status is
-            # used for reporting this
-            return heartbeat.system_status == MAVState.CALIBRATING
-
-    @ArduPilot.supports_scheduled_takeoff.getter
-    def supports_scheduled_takeoff(self):
-        return True
-
-
-class ArduPlane(ArduPilot):
-    """Class representing the ArduPlane firmware."""
-
-    name = "ArduPlane"
-
-    _custom_modes: FlightModeMap = {
-        0: ("manual",),
-        1: ("circle",),
-        2: ("stab", "stabilize"),
-        3: ("training",),
-        4: ("acro",),
-        5: ("fbwa", "fly by wire a"),
-        6: ("fbwb", "fly by wire b"),
-        7: ("cruise",),
-        8: ("autotune",),
-        10: ("auto",),
-        11: ("rtl", "rth", "return to launch"),
-        12: ("loiter",),
-        13: ("takeoff",),
-        14: ("avoid ADSB", "avoid"),
-        15: ("guided",),
-        16: ("initialising", "init"),
-        17: ("qstab", "qstabilize"),
-        18: ("qhover",),
-        19: ("qloiter",),
-        20: ("qland",),
-        21: ("qrtl",),
-        22: ("qautotune",),
-        23: ("qacro",),
-        24: ("thermal",),
-        25: ("loiter alt qland",),
-        26: ("autoland",),
-    }
-    """ArduPlane custom modes (including QuadPlane VTOL modes);
-    see ardupilot/ArduPlane/mode.h for reference"""
-
-    def is_rth_flight_mode(self, base_mode: int, custom_mode: int) -> bool:
-        return bool(base_mode & MAVModeFlag.CUSTOM_MODE_ENABLED) and custom_mode in [
-            11,
-            21,
-        ]
-
-    @property
-    def supports_repositioning_with_explicit_altitude(self) -> bool:
-        return True
-
-
-class ArduRover(ArduPilot):
-    """Class representing the ArduRover firmware."""
-
-    name = "ArduRover"
-
-    _custom_modes: FlightModeMap = {
-        0: ("manual",),
-        1: ("acro",),
-        3: ("steer", "steering"),
-        4: ("hold",),
-        5: ("loiter",),
-        6: ("follow",),
-        7: ("simple",),
-        8: ("dock",),
-        9: ("circle",),
-        10: ("auto",),
-        11: ("rtl", "return"),
-        12: ("smart_rtl",),
-        15: ("guided",),
-        16: ("initialising",),
-    }
-    """ArduRover custom modes; see ardupilot/Rover/mode.h for reference"""
-
-    def is_rth_flight_mode(self, base_mode: int, custom_mode: int) -> bool:
-        return bool(base_mode & MAVModeFlag.CUSTOM_MODE_ENABLED) and custom_mode in [
-            11,
-            12,
-        ]
-
-
 ################################################################################
 ## ArduPilot packed parameter format handling
 ################################################################################
@@ -1188,3 +991,15 @@ def encode_parameters_to_packed_format(
     # Now we can re-encode the header
     buf[0] = _packed_param_header.pack(0x671B, len(parameters), total_length)
     return b"".join(buf)
+
+
+# Imported at the end of the module, once ArduPilot is fully defined, so that
+# the ArduPilot vehicle subclasses are guaranteed to be loaded (and therefore
+# to have registered themselves in the vehicle type registry) before
+# ArduPilot.from_vehicle_type_in_heartbeat() is ever called. This is safe to
+# do at this point because each subclass imports us during our own import, so
+# they see the fully-built ArduPilot rather than a partially-initialized one.
+from . import arducopter, arduplane, ardurover  # noqa: E402
+
+_VEHICLE_CLASS_MODULES = (arducopter, arduplane, ardurover)
+"""Keeps a reference to the imported vehicle modules; see above."""

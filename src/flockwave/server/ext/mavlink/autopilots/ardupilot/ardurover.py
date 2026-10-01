@@ -1,0 +1,48 @@
+from __future__ import annotations
+
+import logging
+
+from ...enums import (
+    MAVModeFlag,
+    MAVType,
+)
+from ..registry import register_for_mavlink_vehicle_type
+from .base import ArduPilot, FlightModeMap
+
+__all__ = ("ArduRover",)
+
+log = logging.getLogger(__name__)
+
+
+@register_for_mavlink_vehicle_type(
+    MAVType.GROUND_ROVER,
+    MAVType.SURFACE_BOAT,
+)
+class ArduRover(ArduPilot):
+    """Class representing the ArduRover firmware."""
+
+    name = "ArduRover"
+
+    _custom_modes: FlightModeMap = {
+        0: ("manual",),
+        1: ("acro",),
+        3: ("steer", "steering"),
+        4: ("hold",),
+        5: ("loiter",),
+        6: ("follow",),
+        7: ("simple",),
+        8: ("dock",),
+        9: ("circle",),
+        10: ("auto",),
+        11: ("rtl", "return"),
+        12: ("smart_rtl",),
+        15: ("guided",),
+        16: ("initialising",),
+    }
+    """ArduRover custom modes; see ardupilot/Rover/mode.h for reference"""
+
+    def is_rth_flight_mode(self, base_mode: int, custom_mode: int) -> bool:
+        return bool(base_mode & MAVModeFlag.CUSTOM_MODE_ENABLED) and custom_mode in [
+            11,
+            12,
+        ]

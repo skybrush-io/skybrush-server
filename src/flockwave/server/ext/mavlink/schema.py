@@ -265,14 +265,25 @@ schema = {
         },
         "autopilot_type": {
             "type": "string",
-            "enum": ["auto", "ardupilot", "skybrush", "px4"],
+            "enum": [
+                "auto",
+                "arducopter",
+                "ardupilot",
+                "arduplane",
+                "ardurover",
+                "skybrush",
+                "px4",
+            ],
             "title": "Flight controller firmware",
             "default": "auto",
             "options": {
                 "enum_titles": [
                     "Autodetected",
+                    "ArduCopter",
                     "ArduPilot",
-                    "ArduPilot with Skybrush",
+                    "ArduPlane",
+                    "ArduRover",
+                    "ArduCopter with Skybrush",
                     "PX4",
                 ]
             },

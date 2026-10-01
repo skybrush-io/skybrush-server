@@ -503,6 +503,20 @@ class MAVType(IntEnum):
     RADIO = 49
 
     @property
+    def is_copter(self) -> bool:
+        """Returns whether the MAVType constant denotes a copter (most likely)."""
+        return self in [
+            MAVType.QUADROTOR,
+            MAVType.COAXIAL,
+            MAVType.HELICOPTER,
+            MAVType.HEXAROTOR,
+            MAVType.OCTOROTOR,
+            MAVType.TRICOPTER,
+            MAVType.DECAROTOR,
+            MAVType.DODECAROTOR,
+        ]
+
+    @property
     def is_plane(self) -> bool:
         """Returns whether the MAVType constant denotes a plane (most likely)."""
         return self is MAVType.FIXED_WING or self.is_vtol
@@ -510,7 +524,7 @@ class MAVType(IntEnum):
     @property
     def is_rover(self) -> bool:
         """Returns whether the MAVType constant denotes a rover (most likely)."""
-        return self is MAVType.GROUND_ROVER
+        return self in [MAVType.GROUND_ROVER, MAVType.SURFACE_BOAT]
 
     @property
     def is_vehicle(self) -> bool:

@@ -11,7 +11,7 @@ from flockwave.server.model.geofence import (
 )
 from flockwave.server.model.safety import SafetyConfigurationRequest
 
-from ..enums import MAVParamType, MAVType
+from ..enums import MAVParamType
 from ..types import MAVLinkFlightModeNumbers, MAVLinkMessage
 from ..utils import (
     decode_param_from_wire_representation,
@@ -58,7 +58,7 @@ class Autopilot(ABC):
         """
         if base_mode & 1:
             # custom mode
-            return cls.describe_custom_mode(base_mode, custom_mode, type)
+            return cls.describe_custom_mode(base_mode, custom_mode)
         elif base_mode & 4:
             # auto mode
             return "auto"
@@ -76,9 +76,7 @@ class Autopilot(ABC):
             return "unknown"
 
     @classmethod
-    def describe_custom_mode(
-        cls, base_mode: int, custom_mode: int, vehicle_type: int | MAVType | None = None
-    ) -> str:
+    def describe_custom_mode(cls, base_mode: int, custom_mode: int) -> str:
         """Returns the description of the current custom mode that the autopilot
         is in, given the base and the custom mode in the heartbeat message.
 
@@ -211,12 +209,9 @@ class Autopilot(ABC):
         return encode_param_to_wire_representation(value, type)
 
     @abstractmethod
-    def get_flight_mode_numbers(
-        self, mode: str, vehicle_type: MAVType | None = None
-    ) -> MAVLinkFlightModeNumbers:
+    def get_flight_mode_numbers(self, mode: str) -> MAVLinkFlightModeNumbers:
         """Returns the numeric flight modes (mode, custom mode, custom submode)
-        corresponding to the given mode description as a string for the given
-        optional vehicle type.
+        corresponding to the given mode description as a string.
 
         Raises:
             NotImplementedError: if we have not implemented the conversion from
@@ -307,11 +302,9 @@ class Autopilot(ABC):
         ...
 
     @abstractmethod
-    def is_rth_flight_mode(
-        self, base_mode: int, custom_mode: int, vehicle_type: MAVType | None = None
-    ) -> bool:
-        """Decides whether the flight mode identified by the given base,
-        custom mode numbers and optional vehicle type is a return-to-home mode.
+    def is_rth_flight_mode(self, base_mode: int, custom_mode: int) -> bool:
+        """Decides whether the flight mode identified by the given base and
+        custom mode numbers is a return-to-home mode.
         """
         ...
 

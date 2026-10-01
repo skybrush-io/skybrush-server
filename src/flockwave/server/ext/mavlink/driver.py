@@ -2294,10 +2294,7 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
             base_mode, submode = MAVModeFlag.CUSTOM_MODE_ENABLED, 0
         elif isinstance(mode, str):
             try:
-                heartbeat = self.get_last_message(MAVMessageType.HEARTBEAT)
-                base_mode, mode, submode = self._autopilot.get_flight_mode_numbers(
-                    mode, MAVType(heartbeat.type) if heartbeat is not None else None
-                )
+                base_mode, mode, submode = self._autopilot.get_flight_mode_numbers(mode)
             except NotSupportedError:
                 raise ValueError(
                     "setting flight modes by name is not supported"
@@ -3075,6 +3072,8 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
             # heartbeat
             if isinstance(self._autopilot, UnknownAutopilot) and heartbeat is not None:
                 autopilot_cls = Autopilot.from_heartbeat(heartbeat)
+                if autopilot_cls is ArduPilot:
+                    autopilot_cls = ArduPilot.from_vehicle_type_in_heartbeat(heartbeat)
                 self._autopilot = autopilot_cls()
 
             if self._was_probably_rebooted_after_reconnection():
@@ -3250,7 +3249,7 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
             heartbeat, sys_status
         )
         is_returning_home = self._autopilot.is_rth_flight_mode(
-            heartbeat.base_mode, heartbeat.custom_mode, MAVType(heartbeat.type)
+            heartbeat.base_mode, heartbeat.custom_mode
         )
         is_in_standby = heartbeat.system_status == MAVState.STANDBY.value
 

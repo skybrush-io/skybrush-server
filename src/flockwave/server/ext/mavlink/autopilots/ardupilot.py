@@ -55,7 +55,13 @@ if TYPE_CHECKING:
 from .base import Autopilot
 from .registry import register_for_mavlink_type
 
-__all__ = ("ArduPilot", "ArduPilotWithSkybrush")
+__all__ = (
+    "ArduCopter",
+    "ArduCopterWithSkybrush",
+    "ArduPilot",
+    "ArduPlane",
+    "ArduRover",
+)
 
 log = logging.getLogger(__name__)
 
@@ -68,100 +74,10 @@ class ArduPilot(Autopilot):
 
     name = "ArduPilot"
 
-    # Explicit copter (multirotor) custom modes
-    # See ArduCopter/mode.h for reference in the ArduPilot codebase
-    _copter_custom_modes: FlightModeMap = {
-        0: ("stab", "stabilize"),
-        1: ("acro",),
-        2: ("alt", "alt hold"),
-        3: ("auto",),
-        4: ("guided",),
-        5: ("loiter",),
-        6: ("rth",),
-        7: ("circle",),
-        9: ("land",),
-        11: ("drift",),
-        13: ("sport",),
-        14: ("flip",),
-        15: ("tune",),
-        16: ("pos", "pos hold"),
-        17: ("brake",),
-        18: ("throw",),
-        19: ("avoid ADSB", "avoid"),
-        20: ("guided no GPS",),
-        21: ("smart RTH",),
-        22: ("flow", "flow hold"),
-        23: ("follow",),
-        24: ("zigzag",),
-        25: ("system ID",),
-        26: ("heli autorotate", "autorotate"),
-        27: ("auto RTH",),
-        28: ("turtle",),
-    }
-
-    # Default custom modes for unknown vehicle types
-    _default_custom_modes: FlightModeMap = _copter_custom_modes
-
-    # ArduPlane custom modes (including VTOL)
-    # See ArduPlane/mode.h for reference in the ArduPilot codebase
-    _plane_custom_modes: FlightModeMap = {
-        0: ("manual",),
-        1: ("circle",),
-        2: ("stab", "stabilize"),
-        3: ("training",),
-        4: ("acro",),
-        5: ("fbwa", "fly by wire a"),
-        6: ("fbwb", "fly by wire b"),
-        7: ("cruise",),
-        8: ("autotune",),
-        10: ("auto",),
-        11: ("rtl", "rth", "return to launch"),
-        12: ("loiter",),
-        13: ("takeoff",),
-        14: ("avoid ADSB", "avoid"),
-        15: ("guided",),
-        16: ("initialising", "init"),
-        17: ("qstab", "qstabilize"),
-        18: ("qhover",),
-        19: ("qloiter",),
-        20: ("qland",),
-        21: ("qrtl",),
-        22: ("qautotune",),
-        23: ("qacro",),
-        24: ("thermal",),
-        25: ("loiter alt qland",),
-        26: ("autoland",),
-    }
-
-    # Rover-specific custom modes (used for MAVType.GROUND_ROVER)
-    # See Rover/mode.h for reference in the ArduPilot codebase
-    _rover_custom_modes: FlightModeMap = {
-        0: ("manual",),
-        1: ("learning",),
-        2: ("steer", "steering"),
-        3: ("hold",),
-        4: ("loiter",),
-        10: ("auto",),
-        11: ("rtl", "return"),
-        15: ("guided",),
-        16: ("pos", "position"),
-        17: ("brake",),
-    }
-
-    # Per-vehicle-type custom modes mapping. Keys are MAVType enum values.
-    _custom_modes_by_mav_type: dict[int, FlightModeMap] = {
-        MAVType.QUADROTOR.value: _copter_custom_modes,
-        MAVType.GROUND_ROVER.value: _rover_custom_modes,
-        MAVType.FIXED_WING.value: _plane_custom_modes,
-        MAVType.VTOL_TAILSITTER_DUOROTOR.value: _plane_custom_modes,
-        MAVType.VTOL_TAILSITTER_QUADROTOR.value: _plane_custom_modes,
-        MAVType.VTOL_TILTROTOR.value: _plane_custom_modes,
-        MAVType.VTOL_FIXEDROTOR.value: _plane_custom_modes,
-        MAVType.VTOL_TAILSITTER.value: _plane_custom_modes,
-        MAVType.VTOL_TILTWING.value: _plane_custom_modes,
-        MAVType.VTOL_RESERVED5.value: _plane_custom_modes,
-        # other vehicle types may be added here
-    }
+    _custom_modes: FlightModeMap = {}
+    """Custom flight modes map, that should be overriden by
+    child classes of ArduPilot to the proper list used in
+    that specific variant of the firmware."""
 
     _geofence_actions: dict[int, tuple[GeofenceAction, ...]] = {
         0: (GeofenceAction.REPORT,),
@@ -181,59 +97,43 @@ class ArduPilot(Autopilot):
     """Maximum allowed duration of a compass-motor interference calibration, in seconds"""
 
     @classmethod
-    def get_custom_modes(
-        cls, vehicle_type: int | MAVType | None = None
-    ) -> FlightModeMap:
-        """Returns the custom mode map corresponding to a given vehicle type,
-        or a default map if the given vehicle type does not have a specific map.
-
-        Args:
-            vehicle_type: the vehicle type from the heartbeat message. May be
-                omitted; in this case the legacy/default mapping is returned
-                and a warning message is logged.
-        """
-        # Determine which mapping to use. Accept both MAVType enum members and ints.
-        mapping: FlightModeMap
-
-        if vehicle_type is not None:
-            try:
-                vt = (
-                    int(cast(MAVType, vehicle_type).value)
-                    if hasattr(vehicle_type, "value")
-                    else int(vehicle_type)
-                )
-            except Exception:
-                vt = None
-            if vt is not None:
-                mapping = cls._custom_modes_by_mav_type.get(
-                    vt, cls._default_custom_modes
-                )
-        else:
-            # Warn if vehicle type is not provided so the user knows we're using the default
-            log.warning("Vehicle type unknown; using default custom mode mapping")
-            mapping = cls._default_custom_modes
-
-        return mapping
-
-    @classmethod
-    def describe_custom_mode(
-        cls, base_mode: int, custom_mode: int, vehicle_type: int | MAVType | None = None
-    ) -> str:
+    def describe_custom_mode(cls, base_mode: int, custom_mode: int) -> str:
         """Returns the description of the current custom mode that the autopilot
         is in, given the base and the custom mode in the heartbeat message.
 
         Args:
             base_mode: the base mode from the heartbeat message
             custom_mode: the custom mode from the heartbeat message
-            vehicle_type: the vehicle type from the heartbeat message. May be
-                omitted; in this case the legacy/default mapping is used and
-                a warning message is logged.
         """
-        # Determine which mapping to use. Accept both MAVType enum members and ints.
-        mapping = cls.get_custom_modes(vehicle_type)
-
-        mode_attrs = mapping.get(custom_mode)
+        mode_attrs = cls._custom_modes.get(custom_mode)
         return mode_attrs[0] if mode_attrs else f"mode {custom_mode}"
+
+    @classmethod
+    def from_vehicle_type_in_heartbeat(
+        cls, message: MAVLinkMessage
+    ) -> type["ArduPilot"]:
+        """Returns an autopilot factory that can construct an ArduPilot_
+        instance that is suitable to represent the behaviour of an autopilot
+        that sent the given MAVLink heartbeat message.
+        """
+        if message.autopilot != 3:
+            raise ValueError(
+                f"Cannot construct ArduPilot factory from autopilot class {message.autopilot}"
+            )
+
+        try:
+            vehicle_type = MAVType(message.type)
+        except ValueError:
+            return cls
+
+        if vehicle_type.is_copter:
+            return ArduCopter
+        if vehicle_type.is_plane:
+            return ArduPlane
+        if vehicle_type.is_rover:
+            return ArduRover
+
+        return cls
 
     def are_motor_outputs_disabled(
         self, heartbeat: MAVLinkMessage, sys_status: MAVLinkMessage
@@ -667,11 +567,9 @@ class ArduPilot(Autopilot):
         # floats can accurately represent integers.
         return float(value)
 
-    def get_flight_mode_numbers(
-        self, mode: str, vehicle_type: MAVType | None = None
-    ) -> MAVLinkFlightModeNumbers:
+    def get_flight_mode_numbers(self, mode: str) -> MAVLinkFlightModeNumbers:
         mode = mode.lower().replace(" ", "")
-        for number, names in self.get_custom_modes(vehicle_type).items():
+        for number, names in self._custom_modes.items():
             for name in names:
                 name = name.lower().replace(" ", "")
                 if name == mode:
@@ -809,23 +707,10 @@ class ArduPilot(Autopilot):
     def is_prearm_error_message(self, text: str) -> bool:
         return text.startswith("PreArm: ") or text.startswith("Arm: ")
 
-    def is_rth_flight_mode(
-        self, base_mode: int, custom_mode: int, vehicle_type: MAVType | None = None
-    ) -> bool:
-        if not bool(base_mode & MAVModeFlag.CUSTOM_MODE_ENABLED):
-            return False
-
-        vehicle_type = vehicle_type or MAVType.GENERIC
-
-        rth_custom_modes = (
-            (11, 21)
-            if vehicle_type.is_plane
-            else (11,)
-            if vehicle_type.is_rover
-            else (6, 21)
-        )
-
-        return any(custom_mode == mode for mode in rth_custom_modes)
+    def is_rth_flight_mode(self, base_mode: int, custom_mode: int) -> bool:
+        # Information not reported by ArduPilot by default, only by its
+        # more specific subclasses with explicit _custom_modes mapping
+        return False
 
     def prepare_mavftp_parameter_upload(
         self, parameters: dict[str, float]
@@ -835,18 +720,6 @@ class ArduPilot(Autopilot):
 
     def process_prearm_error_message(self, text: str) -> str:
         return text[8:]
-
-    def refine_with_capabilities(self, capabilities: int):
-        result = super().refine_with_capabilities(capabilities)
-
-        if isinstance(result, self.__class__) and not isinstance(
-            result, ArduPilotWithSkybrush
-        ):
-            mask = ArduPilotWithSkybrush.CAPABILITY_MASK
-            if (capabilities & mask) == mask:
-                result = ArduPilotWithSkybrush(self)
-
-        return result
 
     @property
     def is_battery_percentage_reliable(self) -> bool:
@@ -877,27 +750,74 @@ class ArduPilot(Autopilot):
         return False
 
 
-def extend_custom_modes(
-    super: type[ArduPilot], vehicle_type: int | MAVType, _new_modes: FlightModeMap
-):
-    """Helper function to extend the custom modes of an Autopilot_ subclass
+class ArduCopter(ArduPilot):
+    """Class representing the ArduCopter firmware."""
+
+    name = "ArduCopter"
+
+    _custom_modes: FlightModeMap = {
+        0: ("stab", "stabilize"),
+        1: ("acro",),
+        2: ("alt", "alt hold"),
+        3: ("auto",),
+        4: ("guided",),
+        5: ("loiter",),
+        6: ("rth",),
+        7: ("circle",),
+        9: ("land",),
+        11: ("drift",),
+        13: ("sport",),
+        14: ("flip",),
+        15: ("tune",),
+        16: ("pos", "pos hold"),
+        17: ("brake",),
+        18: ("throw",),
+        19: ("avoid ADSB", "avoid"),
+        20: ("guided no GPS",),
+        21: ("smart RTH",),
+        22: ("flow", "flow hold"),
+        23: ("follow",),
+        24: ("zigzag",),
+        25: ("system ID",),
+        26: ("heli autorotate", "autorotate"),
+        27: ("auto RTH",),
+        28: ("turtle",),
+    }
+    """ArduCopter custom modes; see ardupilot/ArduCopter/mode.h for reference"""
+
+    def is_rth_flight_mode(self, base_mode: int, custom_mode: int) -> bool:
+        return bool(base_mode & 1) and custom_mode in [6, 21]
+
+    def refine_with_capabilities(self, capabilities: int):
+        result = super().refine_with_capabilities(capabilities)
+
+        if isinstance(result, self.__class__) and not isinstance(
+            result, ArduCopterWithSkybrush
+        ):
+            mask = ArduCopterWithSkybrush.CAPABILITY_MASK
+            if (capabilities & mask) == mask:
+                result = ArduCopterWithSkybrush(self)
+
+        return result
+
+
+def extend_custom_modes(custom_modes: FlightModeMap, new_modes: FlightModeMap):
+    """Helper function to extend custom modes of an ArduPilot_ subclass
     with new modes.
     """
-    result = deepcopy(super._custom_modes_by_mav_type)
-    mode_map = result.setdefault(vehicle_type, {})
-    mode_map.update(_new_modes)
-    return result
+    mode_map = deepcopy(custom_modes)
+    mode_map.update(new_modes)
+    return mode_map
 
 
-class ArduPilotWithSkybrush(ArduPilot):
+class ArduCopterWithSkybrush(ArduCopter):
     """Class representing the ArduCopter firmware with Skybrush-specific
     extensions to support drone shows.
     """
 
-    name = "ArduPilot + Skybrush"
-    _custom_modes_by_mav_type = extend_custom_modes(
-        ArduPilot, MAVType.QUADROTOR, {127: ("show",)}
-    )
+    name = "ArduCopter + Skybrush"
+
+    _custom_modes = extend_custom_modes(ArduCopter._custom_modes, {127: ("show",)})
 
     CAPABILITY_MASK = (
         MAVProtocolCapability.PARAM_FLOAT
@@ -938,6 +858,79 @@ class ArduPilotWithSkybrush(ArduPilot):
     @ArduPilot.supports_scheduled_takeoff.getter
     def supports_scheduled_takeoff(self):
         return True
+
+
+# deprecated alias, defined for backwards compatibility only,
+# will be removed in next major version, as it causes
+# confusion in naming convention
+ArduPilotWithSkybrush = ArduCopterWithSkybrush
+
+
+class ArduPlane(ArduPilot):
+    """Class representing the ArduPlane firmware."""
+
+    name = "ArduPlane"
+
+    _custom_modes: FlightModeMap = {
+        0: ("manual",),
+        1: ("circle",),
+        2: ("stab", "stabilize"),
+        3: ("training",),
+        4: ("acro",),
+        5: ("fbwa", "fly by wire a"),
+        6: ("fbwb", "fly by wire b"),
+        7: ("cruise",),
+        8: ("autotune",),
+        10: ("auto",),
+        11: ("rtl", "rth", "return to launch"),
+        12: ("loiter",),
+        13: ("takeoff",),
+        14: ("avoid ADSB", "avoid"),
+        15: ("guided",),
+        16: ("initialising", "init"),
+        17: ("qstab", "qstabilize"),
+        18: ("qhover",),
+        19: ("qloiter",),
+        20: ("qland",),
+        21: ("qrtl",),
+        22: ("qautotune",),
+        23: ("qacro",),
+        24: ("thermal",),
+        25: ("loiter alt qland",),
+        26: ("autoland",),
+    }
+    """ArduPlane custom modes (including QuadPlane VTOL modes);
+    see ardupilot/ArduPlane/mode.h for reference"""
+
+    def is_rth_flight_mode(self, base_mode: int, custom_mode: int) -> bool:
+        return bool(base_mode & 1) and custom_mode in [11, 21]
+
+
+class ArduRover(ArduPilot):
+    """Class representing the ArduRover firmware."""
+
+    name = "ArduRover"
+
+    _custom_modes: FlightModeMap = {
+        0: ("manual",),
+        1: ("acro",),
+        3: ("steer", "steering"),
+        4: ("hold",),
+        5: ("loiter",),
+        6: ("follow",),
+        7: ("simple",),
+        8: ("dock",),
+        9: ("circle",),
+        10: ("auto",),
+        11: ("rtl", "return"),
+        12: ("smart_rtl",),
+        15: ("guided",),
+        16: ("initialising",),
+    }
+    """ArduRover custom modes; see ardupilot/Rover/mode.h for reference"""
+
+    def is_rth_flight_mode(self, base_mode: int, custom_mode: int) -> bool:
+        return bool(base_mode & 1) and custom_mode == 11
 
 
 ################################################################################

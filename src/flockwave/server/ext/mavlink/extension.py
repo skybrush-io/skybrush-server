@@ -19,7 +19,15 @@ from flockwave.server.model.uav import UAV
 from flockwave.server.registries.errors import RegistryFull
 from flockwave.server.utils import optional_int, overridden
 
-from .autopilots import PX4, ArduPilot, ArduPilotWithSkybrush, Autopilot
+from .autopilots import (
+    PX4,
+    ArduCopter,
+    ArduCopterWithSkybrush,
+    ArduPilot,
+    ArduPlane,
+    ArduRover,
+    Autopilot,
+)
 from .channel import use_mavlink_message_channel_factory
 from .driver import MAVLinkDriver, MAVLinkUAV
 from .errors import InvalidSigningKeyError
@@ -123,15 +131,24 @@ class MAVLinkDronesExtension(UAVExtension[MAVLinkDriver]):
         match autopilot_type:
             case "auto":
                 autopilot_factory = None
+            case "arducopter":
+                autopilot_factory = ArduCopter
+                self.log.info("Flight controller firmware: ArduCopter")
             case "ardupilot":
                 autopilot_factory = ArduPilot
                 self.log.info("Flight controller firmware: ArduPilot")
+            case "arduplane":
+                autopilot_factory = ArduPlane
+                self.log.info("Flight controller firmware: ArduPlane")
+            case "ardurover":
+                autopilot_factory = ArduRover
+                self.log.info("Flight controller firmware: ArduRover")
             case "px4":
                 autopilot_factory = PX4
                 self.log.info("Flight controller firmware: PX4")
             case "skybrush":
-                autopilot_factory = ArduPilotWithSkybrush
-                self.log.info("Flight controller firmware: Skybrush on ArduPilot")
+                autopilot_factory = ArduCopterWithSkybrush
+                self.log.info("Flight controller firmware: Skybrush on ArduCopter")
             case _:
                 autopilot_factory = None
                 self.log.warning(

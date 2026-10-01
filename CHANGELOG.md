@@ -9,16 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Fixed-wing and VTOL aircrafts are now recognized properly and can be 
-  controlled by the ArduPilot autopilot driver in the MAVLink extension.
-  Custom flight modes of ArduPlane are also added and displayed properly
-  on Live UI.
+- The `mavlink` extension got refactored to have explicit subclasses for
+  ArduCopter, ArduPlane and ArduRover based vehicles (for the time being).
+  This refactor induced many bugfixes, like proper `mode ...` command handling
+  for non-copter vehicles, proper custom mode definitions in general, proper
+  recognition of vehicle types into their corresponding autopilot handlers.
+  The `ArduPilotWithSkybrush` class got also renamed to `ArduCopterWithSkybrush`
+  to be consistent with the new autopilot class hierarchy. Basic VTOL support
+  is also tested in simulator with standard ArduPlane 4.7 firmware.
 
 ### Fixed
-
-- `mode` messages from Live UI are now handled correctly by the ArduPilot autopilot
-  driver, based on the implemented vehicle types (custom flight modes of ArduCopter,
-  ArduPlane and ArduRover differ, but now they are called properly).
 
 - The collective RTH plan now contains the minimum RTH altitude of the entire
   swarm. This allows the operator to validate whether the RTH altitudes are

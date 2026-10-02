@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from logging import Logger
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Awaitable, Callable, Iterable, TypeAlias
 
 from flockwave.ext.errors import NoSuchExtension
 
@@ -17,16 +17,35 @@ if TYPE_CHECKING:
     from flockwave.server.app import SkybrushServer
 
 
-__all__ = ("encode_show",)
+__all__ = ("encode_show", "ShowEncodingHook")
+
+ShowEncodingHook: TypeAlias = Callable[
+    [SkybrushBinaryShowFile, ShowSpecification], Awaitable[None]
+]
+"""Type alias for hook functions that can be called during the show encoding process.
+
+These functions take a `ShowSpecification` and a `SkybrushBinaryShowFile` as arguments
+and return an awaitable that completes when the hook has finished processing. The hooks
+can extend or modify the encoding process, for example by adding additional data to the
+show file.
+"""
 
 
 async def encode_show(
-    show: ShowSpecification, app: SkybrushServer, log: Logger
+    show: ShowSpecification,
+    *,
+    app: SkybrushServer,
+    log: Logger,
+    hooks: Iterable[ShowEncodingHook] | None = None,
 ) -> SkybrushBinaryShowFile:
     """Encodes a show specification into Skybrush binary format.
 
     Args:
-        spec: the show specification to encode.
+        show: the show specification to encode.
+        app: the Skybrush server instance, used to access extensions and APIs.
+        log: a logger instance for logging messages during the encoding process.
+        hooks: optional iterable of hook functions to be called during the encoding
+            process.
 
     Returns:
         the encoded show file
@@ -69,7 +88,9 @@ async def encode_show(
             await show_file.add_encoded_rth_plan(rth_plan)
         if yaw_setpoints:
             await show_file.add_encoded_yaw_setpoints(yaw_setpoints)
-        # TODO(ntamas): call any additional hooks
+        if hooks:
+            for hook in hooks:
+                await hook(show_file, show)
         await show_file.finalize()
 
     return show_file

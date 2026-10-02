@@ -16,7 +16,6 @@ from typing import Any, Sequence
 from colour import Color
 from deprecated import deprecated
 from flockwave.concurrency import FutureCancelled, delayed
-from flockwave.ext.errors import NoSuchExtension
 from flockwave.gps.time import datetime_to_gps_time_of_week, gps_time_of_week_to_utc
 from flockwave.gps.vectors import GPSCoordinate, VelocityNED
 from flockwave.spec.errors import FlockwaveErrorCode
@@ -33,6 +32,7 @@ from flockwave.server.command_handlers import (
 from flockwave.server.errors import NotSupportedError
 from flockwave.server.ext.rc import RCExtensionAPI
 from flockwave.server.ext.show.config import AuthorizationScope
+from flockwave.server.ext.show.types import ShowExtensionAPI
 from flockwave.server.model.battery import BatteryInfo
 from flockwave.server.model.commands import (
     Progress,
@@ -58,10 +58,7 @@ from flockwave.server.show import (
     get_altitude_reference_from_show_specification,
     get_coordinate_system_from_show_specification,
     get_geofence_configuration_from_show_specification,
-    get_light_program_from_show_specification,
-    get_trajectory_from_show_specification,
 )
-from flockwave.server.show.formats import SkybrushBinaryShowFile
 from flockwave.server.types import GCSLogMessageSender
 from flockwave.server.utils import color_to_rgb8_triplet, to_uppercase_string
 from flockwave.server.utils.generic import nop
@@ -2660,48 +2657,13 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
             raise RuntimeError("Failed to trigger camera shutter")
 
     async def upload_show(self, show: ShowSpecification) -> None:
+        show_api = self.driver.app.import_api("show", ShowExtensionAPI)
+        show_file = await show_api.encode_show(show)
+        data = show_file.get_contents()
+
         coordinate_system = get_coordinate_system_from_show_specification(show)
-        if coordinate_system.type != "nwu":
-            raise RuntimeError("Only NWU coordinate systems are supported")
-
         altitude_reference = get_altitude_reference_from_show_specification(show)
-        light_program = get_light_program_from_show_specification(show)
-        trajectory = get_trajectory_from_show_specification(show)
         geofence = get_geofence_configuration_from_show_specification(show)
-
-        pyro_program = None
-        rth_plan = None
-        yaw_setpoints = None
-        pro_keys = set(show.keys()).intersection(["pyro", "rthPlan", "yawControl"])
-        if pro_keys:
-            try:
-                api = self.driver.app.import_api("show_pro")
-                if not api.loaded:
-                    raise RuntimeError(
-                        f"Show pro extension is not loaded, neglecting {'and'.join(pro_keys)} from the show"
-                    )
-            except NoSuchExtension:
-                self.driver.log.warning(
-                    f"Show pro extension is not available, neglecting {'and'.join(pro_keys)} from the show"
-                )
-            except RuntimeError as ex:
-                self.driver.log.warning(str(ex))
-            else:
-                pyro_program = api.encode_pyro(show)
-                rth_plan = api.encode_rth_plan(show)
-                yaw_setpoints = api.encode_yaw(show)
-
-        async with SkybrushBinaryShowFile.create_in_memory() as show_file:
-            await show_file.add_trajectory(trajectory)
-            await show_file.add_encoded_light_program(light_program)
-            if pyro_program:
-                await show_file.add_encoded_event_list(pyro_program)
-            if rth_plan:
-                await show_file.add_encoded_rth_plan(rth_plan)
-            if yaw_setpoints:
-                await show_file.add_encoded_yaw_setpoints(yaw_setpoints)
-            await show_file.finalize()
-            data = show_file.get_contents()
 
         # Upload show file
         async with aclosing(MAVFTP.for_uav(self)) as ftp:

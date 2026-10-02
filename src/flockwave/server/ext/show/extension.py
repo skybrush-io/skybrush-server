@@ -14,10 +14,12 @@ from flockwave.server.ext.base import Extension
 from flockwave.server.ext.clocks import ClocksExtensionAPI
 from flockwave.server.ext.signals import SignalsExtensionAPI
 from flockwave.server.model.clock import Clock
+from flockwave.server.show import ShowSpecification, SkybrushBinaryShowFile
 from flockwave.server.tasks import wait_for_dict_items, wait_until
 
 from .clock import ClockSynchronizationHandler, ShowClock, ShowEndClock
 from .config import DroneShowConfiguration, LightConfiguration, StartMethod
+from .encoding import encode_show
 from .logging import ShowUploadLoggingMiddleware
 
 __all__ = ("construct", "dependencies", "description")
@@ -65,6 +67,7 @@ class DroneShowExtension(Extension):
 
     def exports(self) -> dict[str, Any]:
         return {
+            "encode_show": self._encode_show,
             "get_clock": self._get_clock,
             "get_configuration": self._get_configuration,
             "get_last_uploaded_show_metadata": self._get_last_uploaded_show_metadata,
@@ -214,6 +217,18 @@ class DroneShowExtension(Extension):
                     self._end_clock_sync.use_secondary_clock(self._end_clock)
                 )
                 await sleep_forever()
+
+    async def _encode_show(self, show: ShowSpecification) -> SkybrushBinaryShowFile:
+        """Encodes a show specification into Skybrush binary format.
+
+        Args:
+            show: the show specification to encode.
+
+        Returns:
+            the encoded show file
+        """
+        assert self.app is not None
+        return await encode_show(show, self.app, self.log)
 
     def _get_clock(self) -> ShowClock | None:
         """Returns a reference to the show clock."""

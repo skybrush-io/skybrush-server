@@ -9,11 +9,12 @@ from math import floor
 from struct import Struct
 from typing import IO, ClassVar, cast
 
+from .metadata import ShowMetadata
 from .trajectory import TrajectorySegment, TrajectorySpecification
 from .utils import Point
 from .utils import crc32_mavftp as crc32
 
-__all__ = ("SkybrushBinaryShowFile",)
+__all__ = ("SkybrushBinaryShowFile", "TLVEncoder")
 
 
 _SKYBRUSH_BINARY_FILE_MARKER: bytes = b"skyb"
@@ -25,21 +26,6 @@ _SKYBRUSH_BINARY_FILE_HEADER: list[bytes] = [
     # Version 2 header with CRC feature bit
     b"skyb\x02\x01\x00\x00\x00\x00",
 ]
-
-
-# async def _read_exactly(
-#     fp,
-#     length: int,
-#     offset: int | None = None,
-#     *,
-#     message: str = "unexpected end of block in Skybrush file",
-# ):
-#     if offset is not None:
-#         await fp.seek(offset)
-#     data = await fp.read(length)
-#     if len(data) != length:
-#         raise IOError(message)
-#     return data
 
 
 async def _read_exactly(
@@ -66,6 +52,8 @@ class SkybrushBinaryFormatBlockType(IntEnum):
     RTH_PLAN = 4
     YAW_CONTROL = 5
     EVENT_LIST = 6
+    GCS_LIGHT_CONTROL_SETUP = 7
+    METADATA = 8
 
 
 class SkybrushBinaryFileBlock:
@@ -129,6 +117,16 @@ class SkybrushBinaryFileFeatures(IntFlag):
 
     NONE = 0
     CRC32 = 1
+
+
+class ShowMetadataTag(IntEnum):
+    """Enum representing the possible tags in a show metadata block."""
+
+    UID = 0
+    """Unique ID of the show as a whole."""
+
+    DRONE_INDEX = 1
+    """Index of the drone in the show."""
 
 
 class SkybrushBinaryShowFile:
@@ -302,6 +300,16 @@ class SkybrushBinaryShowFile:
         """
         return await self.add_block(SkybrushBinaryFormatBlockType.EVENT_LIST, data)
 
+    async def add_encoded_gcs_light_control_setup(self, data: bytes) -> None:
+        """Adds a new GCS light control setup block to the end of the Skybrush file.
+
+        Parameters:
+            data: the GCS light control setup to add, encoded in Skybrush format
+        """
+        return await self.add_block(
+            SkybrushBinaryFormatBlockType.GCS_LIGHT_CONTROL_SETUP, data
+        )
+
     async def add_encoded_rth_plan(self, data: bytes) -> None:
         """Adds a new return-to-home plan to the end of the Skybrush file.
 
@@ -309,6 +317,23 @@ class SkybrushBinaryShowFile:
             data: the RTH plan to add, encoded in Skybrush format
         """
         return await self.add_block(SkybrushBinaryFormatBlockType.RTH_PLAN, data)
+
+    async def add_metadata(self, metadata: ShowMetadata) -> None:
+        """Adds a new metadata block to the end of the Skybrush file.
+
+        Parameters:
+            metadata: the metadata to add
+        """
+        return await self._add_tlv_block(
+            SkybrushBinaryFormatBlockType.METADATA,
+            [
+                (ShowMetadataTag.UID, metadata.uid),
+                (
+                    ShowMetadataTag.DRONE_INDEX,
+                    metadata.drone_index.to_bytes(2, "little", signed=False),
+                ),
+            ],
+        )
 
     async def add_trajectory(self, trajectory: TrajectorySpecification) -> None:
         """Adds a new trajectory block to the end of the Skybrush file
@@ -509,6 +534,19 @@ class SkybrushBinaryShowFile:
         if self._version is None:
             raise RuntimeError("version header was not read yet")
         return self._version
+
+    async def _add_tlv_block(
+        self, type: SkybrushBinaryFormatBlockType, entries: Iterable[tuple[int, bytes]]
+    ) -> None:
+        """Adds a new tag-length-value (TLV) block to the end of the Skybrush file.
+
+        Parameters:
+            type: the type of the block to add
+            entries: an iterable of (tag, value) pairs to encode in the block
+        """
+        encoder = TLVEncoder()
+        payload = encoder.encode_multiple_entries(entries)
+        return await self.add_block(type, payload)
 
     async def _get_expected_crc32(self) -> bytes:
         """Returns the expected CRC32 checksum of the file as bytes, in little
@@ -739,3 +777,74 @@ class SegmentEncoder:
         # problems as the one outlined in _scale_points()
         yaw = round((yaw % 360) * 10)
         return yaw - 3600 if yaw >= 3600 else yaw
+
+
+class TLVEncoder:
+    """Generic encoder for tag-length-value (TLV) entries in the Skybrush binary
+    show file format.
+
+    TLV entries are used in the bodies of blocks such as the GCS light control
+    setup block and the show metadata block. The generic encoding of an entry is:
+
+    - a single unsigned byte containing the tag of the entry,
+    - an unsigned 16-bit little-endian integer containing the length of the
+      value, in bytes,
+    - the value itself, as raw bytes.
+
+    The encoder is deliberately domain-agnostic; it has no knowledge about the
+    semantics of the tags. The caller is responsible for providing the correct
+    tags and encoding the values appropriately.
+    """
+
+    _header_struct: ClassVar[Struct] = Struct("<BH")
+
+    def encode_entry(self, tag: int, value: bytes) -> bytes:
+        """Encodes a single tag-length-value entry.
+
+        Args:
+            tag: the tag of the entry; an arbitrary integer in the range 0-255
+            value: the value of the entry as raw bytes
+
+        Returns:
+            the encoded representation of the entry
+
+        Raises:
+            ValueError: if the tag is outside the range 0-255 or the value is
+                longer than 65535 bytes
+        """
+        if not 0 <= tag <= 255:
+            raise ValueError(f"TLV tag must be in the range 0-255, got {tag}")
+
+        length = len(value)
+        if length > 65535:
+            raise ValueError(
+                f"TLV value must be at most 65535 bytes, got {length} bytes"
+            )
+
+        return self._header_struct.pack(tag, length) + value
+
+    def encode_multiple_entries(self, entries: Iterable[tuple[int, bytes]]) -> bytes:
+        """Encodes multiple tag-length-value entries.
+
+        Args:
+            entries: an iterable of (tag, value) pairs to encode
+
+        Returns:
+            the encoded representation of the entries, concatenated
+        """
+        return b"".join(self.iter_encode_multiple_entries(entries))
+
+    def iter_encode_multiple_entries(
+        self,
+        entries: Iterable[tuple[int, bytes]],
+    ) -> Iterable[bytes]:
+        """Iteratively encodes an iterable of tag-length-value entries.
+
+        Args:
+            entries: an iterable of (tag, value) pairs to encode
+
+        Yields:
+            the encoded representation of each entry, one at a time
+        """
+        for tag, value in entries:
+            yield self.encode_entry(tag, value)

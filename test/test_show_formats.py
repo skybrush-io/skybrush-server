@@ -1,11 +1,13 @@
-from pytest import raises
+from pytest import fixture, raises
 
 from flockwave.server.show.formats import (
     SegmentEncoder,
     SkybrushBinaryFileFeatures,
     SkybrushBinaryFormatBlockType,
     SkybrushBinaryShowFile,
+    TLVEncoder,
 )
+from flockwave.server.show.metadata import ShowMetadata
 from flockwave.server.show.trajectory import TrajectorySegment
 
 SIMPLE_SKYB_FILE_V1 = (
@@ -144,6 +146,60 @@ class TestSegmentEncoder:
         )
 
 
+@fixture
+def tlv_encoder() -> TLVEncoder:
+    return TLVEncoder()
+
+
+class TestTLVEncoder:
+    def test_encode_entry(self, tlv_encoder: TLVEncoder):
+        # GCS light control setup style: coordinates (tag 0, 4 bytes)
+        assert tlv_encoder.encode_entry(0, b"\x01\x02\x03\x04") == (
+            b"\x00\x04\x00\x01\x02\x03\x04"
+        )
+
+        # Empty value
+        assert tlv_encoder.encode_entry(42, b"") == b"\x2a\x00\x00"
+
+        # Show metadata style: drone index (tag 1, 2 bytes, little-endian)
+        assert tlv_encoder.encode_entry(1, b"\x07\x00") == b"\x01\x02\x00\x07\x00"
+
+    def test_encode_entry_maximum_length(self, tlv_encoder: TLVEncoder):
+        value = b"\xff" * 65535
+        result = tlv_encoder.encode_entry(0, value)
+        assert result == b"\x00\xff\xff" + value
+
+    def test_encode_entry_rejects_invalid_tag(self, tlv_encoder: TLVEncoder):
+        with raises(ValueError, match="range 0-255"):
+            tlv_encoder.encode_entry(256, b"")
+
+        with raises(ValueError, match="range 0-255"):
+            tlv_encoder.encode_entry(-1, b"")
+
+    def test_encode_entry_rejects_too_long_value(self, tlv_encoder: TLVEncoder):
+        with raises(ValueError, match="at most 65535"):
+            tlv_encoder.encode_entry(0, b"x" * 65536)
+
+    def test_encode_multiple_entries(self, tlv_encoder: TLVEncoder):
+        entries = [(0, b"\x01\x02"), (2, b"\x0a\x00\x05\x00")]
+        assert tlv_encoder.encode_multiple_entries(entries) == (
+            b"\x00\x02\x00\x01\x02"  # first entry
+            b"\x02\x04\x00\x0a\x00\x05\x00"  # second entry
+        )
+
+    def test_encode_multiple_entries_empty(self, tlv_encoder: TLVEncoder):
+        assert tlv_encoder.encode_multiple_entries([]) == b""
+
+    def test_iter_encode_multiple_entries(self, tlv_encoder: TLVEncoder):
+        entries = [(0, b"\x01"), (1, b"\x02\x03")]
+        result = list(tlv_encoder.iter_encode_multiple_entries(entries))
+
+        assert result == [b"\x00\x01\x00\x01", b"\x01\x02\x00\x02\x03"]
+
+        # Iterative encoding must yield the same as concatenated encoding
+        assert b"".join(result) == tlv_encoder.encode_multiple_entries(entries)
+
+
 class TestSkybrushBinaryFileFormat:
     async def test_reading_blocks_version_1(self):
         async with SkybrushBinaryShowFile.from_bytes(SIMPLE_SKYB_FILE_V1) as f:
@@ -222,6 +278,59 @@ class TestSkybrushBinaryFileFormat:
             )
             await f.finalize()
             assert f.get_contents() == SIMPLE_SKYB_FILE_V2
+
+    async def test_adding_metadata(self):
+        uid = b"\xde\xad\xbe\xef"
+
+        async with SkybrushBinaryShowFile.create_in_memory(version=1) as f:
+            await f.add_metadata(ShowMetadata(uid=uid, drone_index=7))
+            await f.finalize()
+
+            expected_block = (
+                # Block header: metadata block (type 8), 12 bytes of body
+                b"\x08\x0c\x00"
+                # UID entry: tag 0, 4-byte long value
+                + b"\x00\x04\x00"
+                + uid
+                # Drone index entry: tag 1, 2-byte long little-endian value
+                + b"\x01\x02\x00\x07\x00"
+            )
+            assert f.get_contents() == b"skyb\x01" + expected_block
+
+    async def test_adding_metadata_with_default_values(self):
+        async with SkybrushBinaryShowFile.create_in_memory(version=1) as f:
+            await f.add_metadata(ShowMetadata())
+            await f.finalize()
+
+            assert f.get_contents() == (
+                b"skyb\x01"
+                # Block header: metadata block (type 8), 12 bytes of body
+                + b"\x08\x0c\x00"
+                # UID entry: tag 0, 4-byte long value, all zeros
+                + b"\x00\x04\x00\x00\x00\x00\x00"
+                # Drone index entry: tag 1, 2-byte long value, zero
+                + b"\x01\x02\x00\x00\x00"
+            )
+
+    async def test_adding_metadata_then_reading_it_back(self):
+        uid = b"\x01\x02\x03\x04"
+
+        async with SkybrushBinaryShowFile.create_in_memory(version=1) as f:
+            await f.add_metadata(ShowMetadata(uid=uid, drone_index=258))
+            await f.finalize()
+            data = f.get_contents()
+
+        async with SkybrushBinaryShowFile.from_bytes(data) as f:
+            blocks = await f.read_all_blocks()
+
+            assert len(blocks) == 1
+            assert blocks[0].type == SkybrushBinaryFormatBlockType.METADATA
+            assert await blocks[0].read() == (
+                b"\x00\x04\x00"
+                + uid
+                # Drone index 258 encoded as little-endian u16
+                + b"\x01\x02\x00\x02\x01"
+            )
 
     async def test_adding_block_that_is_too_large(self):
         async with SkybrushBinaryShowFile.create_in_memory() as f:

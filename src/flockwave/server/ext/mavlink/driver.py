@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections import defaultdict
 from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import aclosing, asynccontextmanager
+from copy import deepcopy
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from functools import partial
@@ -1479,6 +1480,10 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
         if self._autopilot.supports_repositioning:
             # Implementation of fly_to() with the MAVLink DO_REPOSITION command
             await self._fly_to_with_repositioning(target)
+        elif self._autopilot.supports_repositioning_with_explicit_altitude:
+            # Implementation of fly_to() with the MAVLink DO_REPOSITION command,
+            # but with an explicit AMSL altitude provided
+            await self._fly_to_with_repositioning_with_explicit_altitude(target)
         else:
             # Implementation of fly_to() with a guided mode command
             await self._fly_to_in_guided_mode(target)
@@ -1554,18 +1559,22 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
             # Maybe it's okay anyway, see comment above
             pass
 
-    async def _fly_to_with_repositioning(self, target: GPSCoordinate) -> None:
+    async def _fly_to_with_repositioning(
+        self,
+        target: GPSCoordinate,
+    ) -> None:
         """Implementation of `fly_to()` using a MAVLink DO_REPOSITION command
         with proper confirmation.
+
+        Args:
+            target: destination coordinate (AMSL or AHL altitude)
         """
-        # PX4 supports AMSL only so we always convert to AMSL; NaN means to
-        # hold the current altitude
         if target.amsl is not None:
             altitude = target.amsl
+        elif target.ahl is not None:
+            altitude = self.convert_ahl_to_amsl(target.ahl)
         else:
-            altitude = (
-                self.convert_ahl_to_amsl(target.ahl) if target.ahl is not None else nan
-            )
+            altitude = nan
 
         lat, lon = int(target.lat * 1e7), int(target.lon * 1e7)
 
@@ -1584,6 +1593,35 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
 
         if not success:
             raise RuntimeError("Fly to waypoint command failed")
+
+    async def _fly_to_with_repositioning_with_explicit_altitude(
+        self,
+        target: GPSCoordinate,
+    ) -> None:
+        """Implementation of `fly_to()` using a MAVLink DO_REPOSITION command
+        with proper confirmation, always providing an explicit altitude.
+
+        This implementation is needed as ArduPilot cannot handle NaN in the
+        altitude param properly yet.
+
+        Args:
+            target: destination coordinate (AMSL or AHL altitude)
+        """
+        new_target = deepcopy(target)
+
+        if target.ahl is None and target.amsl is None:
+            if self.status.position.amsl is not None and (
+                self.status.position.lat
+                or self.status.position.lon
+                or self.status.position.ahl
+            ):
+                new_target.amsl = self.status.position.amsl
+            else:
+                raise RuntimeError(
+                    "Cannot fly to target, current AMSL altitude not known yet"
+                )
+
+        return await self._fly_to_with_repositioning(new_target)
 
     @property
     def scheduled_takeoff_authorization_scope(self) -> AuthorizationScope:
@@ -2994,6 +3032,8 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
             # heartbeat
             if isinstance(self._autopilot, UnknownAutopilot) and heartbeat is not None:
                 autopilot_cls = Autopilot.from_heartbeat(heartbeat)
+                if autopilot_cls is ArduPilot:
+                    autopilot_cls = ArduPilot.from_vehicle_type_in_heartbeat(heartbeat)
                 self._autopilot = autopilot_cls()
 
             if self._was_probably_rebooted_after_reconnection():

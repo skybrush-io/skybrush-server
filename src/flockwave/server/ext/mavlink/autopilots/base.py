@@ -11,7 +11,7 @@ from flockwave.server.model.geofence import (
 )
 from flockwave.server.model.safety import SafetyConfigurationRequest
 
-from ..enums import MAVParamType, MAVType
+from ..enums import MAVModeFlag, MAVParamType
 from ..types import MAVLinkFlightModeNumbers, MAVLinkMessage
 from ..utils import (
     decode_param_from_wire_representation,
@@ -56,19 +56,19 @@ class Autopilot(ABC):
         """Returns the description of the current mode that the autopilot is
         in, given the base and the custom mode in the heartbeat message.
         """
-        if base_mode & 1:
+        if base_mode & MAVModeFlag.CUSTOM_MODE_ENABLED:
             # custom mode
-            return cls.describe_custom_mode(base_mode, custom_mode, type)
-        elif base_mode & 4:
+            return cls.describe_custom_mode(base_mode, custom_mode)
+        elif base_mode & MAVModeFlag.AUTO_ENABLED:
             # auto mode
             return "auto"
-        elif base_mode & 8:
+        elif base_mode & MAVModeFlag.GUIDED_ENABLED:
             # guided mode
             return "guided"
-        elif base_mode & 16:
+        elif base_mode & MAVModeFlag.STABILIZE_ENABLED:
             # stabilize mode
             return "stabilize"
-        elif base_mode & 64:
+        elif base_mode & MAVModeFlag.MANUAL_INPUT_ENABLED:
             # manual mode
             return "manual"
         else:
@@ -76,9 +76,7 @@ class Autopilot(ABC):
             return "unknown"
 
     @classmethod
-    def describe_custom_mode(
-        cls, base_mode: int, custom_mode: int, vehicle_type: int | MAVType | None = None
-    ) -> str:
+    def describe_custom_mode(cls, base_mode: int, custom_mode: int) -> str:
         """Returns the description of the current custom mode that the autopilot
         is in, given the base and the custom mode in the heartbeat message.
 
@@ -361,7 +359,16 @@ class Autopilot(ABC):
     @abstractmethod
     def supports_repositioning(self) -> bool:
         """Returns whether the autopilot understands the MAVLink MAV_CMD_DO_REPOSITION
-        command.
+        command and can use it in its full context, with possible NaN in its altitude
+        parameter, meaning to reposition at the current altitude.
+        """
+        ...
+
+    @property
+    @abstractmethod
+    def supports_repositioning_with_explicit_altitude(self) -> bool:
+        """Returns whether the autopilot understands the MAVLink MAV_CMD_DO_REPOSITION
+        command but needs explicit AMSL altitude to function properly.
         """
         ...
 

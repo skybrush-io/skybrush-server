@@ -18,6 +18,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   configured MAVLink networks. This is primarily meant as an ad-hoc escape hatch
   for other extensions if they need to send extra data to MAVLink drones.
 
+- The `show` extension now exposes a function named `encode_show()` that can take a
+  show specification and encode it into a `.skyb` file. Other extensions using the
+  Skybrush binary file format to upload the show can now use this function instead of
+  re-implementing the encoding logic themselves. The function now also acts as a
+  central gatekeeper for show file features that are limited to pro users only.
+
+- Added support for the new metadata and GCS light control setup blocks in `.skyb`
+  files, to a limited extent. Metadata is not used yet but will be used in the future
+  to let each drone know which show it is flying and which slot it is assigned to
+  in the show. GCS based interactive light control will probably be a pro feature.
+
 ## [2.53.2] - 2026-09-16
 
 ### Fixed

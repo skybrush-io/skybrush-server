@@ -151,6 +151,12 @@ class SkybrushBinaryShowFile:
     _header_struct: ClassVar[Struct] = Struct("<BH")
 
     _fp: IO[bytes]
+    """The file-like object that stores the show data."""
+
+    _autoclose: bool
+    """Whether to automatically close the underlying file-like object when exiting
+    the show file context from a context manager.
+    """
 
     @classmethod
     def create_in_memory(cls, version: int = 2):
@@ -173,14 +179,22 @@ class SkybrushBinaryShowFile:
                 raise RuntimeError(f"Unsupported version number: {version}")
         return cls(BytesIO(data))
 
-    def __init__(self, fp: IO[bytes]):
+    def __init__(self, fp: IO[bytes], *, autoclose: bool | None = None):
         """Constructor.
 
         Parameters:
             fp: the file-like object that stores the show data
+            autoclose: whether to automatically close the underlying file-like object
+                when exiting the show file context from a context manager. `None` means
+                to close automatically, unless the file-like object is a `BytesIO`
+                object, in which case it will not be closed automatically and remains
+                readable.
         """
         if isinstance(fp, BytesIO):
             self._buffer = fp
+            self._autoclose = False if autoclose is None else bool(autoclose)
+        else:
+            self._autoclose = True if autoclose is None else bool(autoclose)
 
         # we go with sync file IO because Trio's async file IO has a significant
         # overhead due to thread switching and we are unlikely to block the main
@@ -193,12 +207,13 @@ class SkybrushBinaryShowFile:
         self._start_of_first_block = None
 
     async def __aenter__(self):
-        self._fp.__enter__()
+        if self._autoclose:
+            self._fp.__enter__()
         return self
 
     async def __aexit__(self, exc_type, exc_value, tb):
-        return self._fp.__exit__(exc_type, exc_value, tb)
-        # return await self._fp.__aexit__(exc_type, exc_value, tb)
+        if self._autoclose:
+            self._fp.__exit__(exc_type, exc_value, tb)
 
     async def _rewind(self) -> None:
         """Rewinds the internal read/write pointer of the underlying file-like
@@ -212,7 +227,6 @@ class SkybrushBinaryShowFile:
                 self._features = SkybrushBinaryFileFeatures.NONE
             elif self._version == 2:
                 feature_flags = self._fp.read(1)
-                # feature_flags = await self._fp.read(1)
                 self._features = SkybrushBinaryFileFeatures(feature_flags[0])
             else:
                 raise RuntimeError("only version 1 files are supported")

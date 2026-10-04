@@ -34,6 +34,7 @@ class ShowSpecification(TypedDict, total=False):
     mission: dict[str, Any]
     group: int
     flightArea: dict[str, Any]
+    extra: dict[str, Any]
 
 
 def get_trajectory_from_show_specification(

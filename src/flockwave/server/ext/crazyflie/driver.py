@@ -1051,7 +1051,14 @@ class CrazyflieUAV(UAVBase):
         if component == "motor":
             await self.set_parameter("health.startPropTest", 1)
         elif component == "led":
-            await self._get_crazyflie().led_ring.test()
+            color_sequence = [
+                Color(name)
+                for name in "red lime blue yellow cyan magenta white".split()
+            ] + [None]  # None = LED off
+            for index, color in enumerate(color_sequence):
+                if index > 0:
+                    await sleep(1)
+                await self.set_led_color(color)
         elif component == "battery":
             await self.set_parameter("health.startBatTest", 1)
         else:

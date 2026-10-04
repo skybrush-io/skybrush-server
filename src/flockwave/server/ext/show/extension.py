@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from contextlib import ExitStack
+from contextlib import ExitStack, contextmanager
 from logging import Logger
 from math import inf
-from typing import Any
+from typing import Any, Iterator
 
 from flockwave.concurrency import CancellableTaskGroup
 from trio import Nursery, TooSlowError, fail_after, open_nursery, sleep_forever
@@ -14,10 +14,12 @@ from flockwave.server.ext.base import Extension
 from flockwave.server.ext.clocks import ClocksExtensionAPI
 from flockwave.server.ext.signals import SignalsExtensionAPI
 from flockwave.server.model.clock import Clock
+from flockwave.server.show import ShowSpecification, SkybrushBinaryShowFile
 from flockwave.server.tasks import wait_for_dict_items, wait_until
 
 from .clock import ClockSynchronizationHandler, ShowClock, ShowEndClock
 from .config import DroneShowConfiguration, LightConfiguration, StartMethod
+from .encoding import ShowEncodingHook, encode_show
 from .logging import ShowUploadLoggingMiddleware
 
 __all__ = ("construct", "dependencies", "description")
@@ -41,6 +43,7 @@ class DroneShowExtension(Extension):
     _end_clock: ShowEndClock | None
     _end_clock_sync: ClockSynchronizationHandler
 
+    _encoding_hooks: list[ShowEncodingHook]
     _log_middleware: ShowUploadLoggingMiddleware | None
 
     _nursery: Nursery | None
@@ -55,6 +58,7 @@ class DroneShowExtension(Extension):
         self._end_clock = None
         self._end_clock_sync = ClockSynchronizationHandler()
 
+        self._encoding_hooks = []
         self._log_middleware = None
 
         self._nursery = None
@@ -65,10 +69,12 @@ class DroneShowExtension(Extension):
 
     def exports(self) -> dict[str, Any]:
         return {
+            "encode_show": self._encode_show,
             "get_clock": self._get_clock,
             "get_configuration": self._get_configuration,
             "get_last_uploaded_show_metadata": self._get_last_uploaded_show_metadata,
             "get_light_configuration": self._get_light_configuration,
+            "use_encoding_hook": self._use_encoding_hook,
         }
 
     def handle_SHOW_CFG(self, message, sender, hub):
@@ -215,6 +221,20 @@ class DroneShowExtension(Extension):
                 )
                 await sleep_forever()
 
+    async def _encode_show(self, show: ShowSpecification) -> SkybrushBinaryShowFile:
+        """Encodes a show specification into Skybrush binary format.
+
+        Args:
+            show: the show specification to encode.
+
+        Returns:
+            the encoded show file
+        """
+        assert self.app is not None
+        return await encode_show(
+            show, app=self.app, log=self.log, hooks=self._encoding_hooks
+        )
+
     def _get_clock(self) -> ShowClock | None:
         """Returns a reference to the show clock."""
         return self._clock
@@ -230,6 +250,25 @@ class DroneShowExtension(Extension):
     def _get_light_configuration(self) -> LightConfiguration:
         """Returns a copy of the current LED lgiht configuration."""
         return self._lights.clone()
+
+    @contextmanager
+    def _use_encoding_hook(self, hook: ShowEncodingHook) -> Iterator[None]:
+        """Context manager that registers a hook function to be called during the show
+        encoding process when the context is entered and unregisters it when the context
+        is exited.
+
+        Args:
+            hook: the hook function to register.
+        """
+        self._encoding_hooks.append(hook)
+        try:
+            yield
+        finally:
+            try:
+                self._encoding_hooks.remove(hook)
+            except ValueError:
+                # should not happen but is not a problem
+                pass
 
     def _on_config_updated(self, sender, changed: Sequence[str]) -> None:
         """Handler that is called when the configuration of the start settings

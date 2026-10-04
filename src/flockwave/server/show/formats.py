@@ -9,11 +9,12 @@ from math import floor
 from struct import Struct
 from typing import IO, ClassVar, cast
 
+from .metadata import ShowMetadata
 from .trajectory import TrajectorySegment, TrajectorySpecification
 from .utils import Point
 from .utils import crc32_mavftp as crc32
 
-__all__ = ("SkybrushBinaryShowFile",)
+__all__ = ("SkybrushBinaryShowFile", "TLVEncoder")
 
 
 _SKYBRUSH_BINARY_FILE_MARKER: bytes = b"skyb"
@@ -25,21 +26,6 @@ _SKYBRUSH_BINARY_FILE_HEADER: list[bytes] = [
     # Version 2 header with CRC feature bit
     b"skyb\x02\x01\x00\x00\x00\x00",
 ]
-
-
-# async def _read_exactly(
-#     fp,
-#     length: int,
-#     offset: int | None = None,
-#     *,
-#     message: str = "unexpected end of block in Skybrush file",
-# ):
-#     if offset is not None:
-#         await fp.seek(offset)
-#     data = await fp.read(length)
-#     if len(data) != length:
-#         raise IOError(message)
-#     return data
 
 
 async def _read_exactly(
@@ -66,6 +52,8 @@ class SkybrushBinaryFormatBlockType(IntEnum):
     RTH_PLAN = 4
     YAW_CONTROL = 5
     EVENT_LIST = 6
+    GCS_LIGHT_CONTROL_SETUP = 7
+    METADATA = 8
 
 
 class SkybrushBinaryFileBlock:
@@ -131,6 +119,16 @@ class SkybrushBinaryFileFeatures(IntFlag):
     CRC32 = 1
 
 
+class ShowMetadataTag(IntEnum):
+    """Enum representing the possible tags in a show metadata block."""
+
+    UID = 0
+    """Unique ID of the show as a whole."""
+
+    DRONE_INDEX = 1
+    """Index of the drone in the show."""
+
+
 class SkybrushBinaryShowFile:
     """Class representing a Skybrush binary show file, backed by a
     file-like object.
@@ -153,6 +151,12 @@ class SkybrushBinaryShowFile:
     _header_struct: ClassVar[Struct] = Struct("<BH")
 
     _fp: IO[bytes]
+    """The file-like object that stores the show data."""
+
+    _autoclose: bool
+    """Whether to automatically close the underlying file-like object when exiting
+    the show file context from a context manager.
+    """
 
     @classmethod
     def create_in_memory(cls, version: int = 2):
@@ -175,14 +179,22 @@ class SkybrushBinaryShowFile:
                 raise RuntimeError(f"Unsupported version number: {version}")
         return cls(BytesIO(data))
 
-    def __init__(self, fp: IO[bytes]):
+    def __init__(self, fp: IO[bytes], *, autoclose: bool | None = None):
         """Constructor.
 
         Parameters:
             fp: the file-like object that stores the show data
+            autoclose: whether to automatically close the underlying file-like object
+                when exiting the show file context from a context manager. `None` means
+                to close automatically, unless the file-like object is a `BytesIO`
+                object, in which case it will not be closed automatically and remains
+                readable.
         """
         if isinstance(fp, BytesIO):
             self._buffer = fp
+            self._autoclose = False if autoclose is None else bool(autoclose)
+        else:
+            self._autoclose = True if autoclose is None else bool(autoclose)
 
         # we go with sync file IO because Trio's async file IO has a significant
         # overhead due to thread switching and we are unlikely to block the main
@@ -195,13 +207,13 @@ class SkybrushBinaryShowFile:
         self._start_of_first_block = None
 
     async def __aenter__(self):
-        self._fp.__enter__()
-        # await self._fp.__aenter__()
+        if self._autoclose:
+            self._fp.__enter__()
         return self
 
     async def __aexit__(self, exc_type, exc_value, tb):
-        return self._fp.__exit__(exc_type, exc_value, tb)
-        # return await self._fp.__aexit__(exc_type, exc_value, tb)
+        if self._autoclose:
+            self._fp.__exit__(exc_type, exc_value, tb)
 
     async def _rewind(self) -> None:
         """Rewinds the internal read/write pointer of the underlying file-like
@@ -209,14 +221,12 @@ class SkybrushBinaryShowFile:
         """
         if self._start_of_first_block is None:
             self._fp.seek(0)
-            # await self._fp.seek(0)
 
             self._version = await self._expect_header()
             if self._version == 1:
                 self._features = SkybrushBinaryFileFeatures.NONE
             elif self._version == 2:
                 feature_flags = self._fp.read(1)
-                # feature_flags = await self._fp.read(1)
                 self._features = SkybrushBinaryFileFeatures(feature_flags[0])
             else:
                 raise RuntimeError("only version 1 files are supported")
@@ -224,16 +234,12 @@ class SkybrushBinaryShowFile:
             if self._features & SkybrushBinaryFileFeatures.CRC32:
                 self._start_of_crc_bytes = self._fp.tell()
                 self._fp.read(4)
-                # self._start_of_crc_bytes = await self._fp.tell()
-                # await self._fp.read(4)
             else:
                 self._start_of_crc_bytes = None
 
             self._start_of_first_block = self._fp.tell()
-            # self._start_of_first_block = await self._fp.tell()
         else:
             self._fp.seek(self._start_of_first_block)
-            # await self._fp.seek(self._start_of_first_block)
 
     async def _expect_header(self) -> int:
         """Reads the beginning of the buffer to check whether the Skybrush binary
@@ -244,11 +250,9 @@ class SkybrushBinaryShowFile:
             the Skybrush binary file schema version
         """
         header = self._fp.read(4)
-        # header = await self._fp.read(4)
         if header != _SKYBRUSH_BINARY_FILE_MARKER:
             raise RuntimeError(f"expected Skybrush binary file header, got {header!r}")
 
-        # version = await self._fp.read(1)
         version = self._fp.read(1)
         return ord(version)
 
@@ -258,7 +262,6 @@ class SkybrushBinaryShowFile:
 
         if seekable:
             self._fp.seek(0, SEEK_END)
-            # await self._fp.seek(0, SEEK_END)
 
         if len(body) >= 65536:
             raise ValueError(
@@ -268,8 +271,6 @@ class SkybrushBinaryShowFile:
         header = self._header_struct.pack(type, len(body))
         self._fp.write(header)
         self._fp.write(body)
-        # await self._fp.write(header)
-        # await self._fp.write(body)
 
     async def add_comment(self, comment: str | bytes, encoding: str = "utf-8") -> None:
         """Adds a new comment block to the end of the Skybrush file.
@@ -302,6 +303,16 @@ class SkybrushBinaryShowFile:
         """
         return await self.add_block(SkybrushBinaryFormatBlockType.EVENT_LIST, data)
 
+    async def add_encoded_gcs_light_control_setup(self, data: bytes) -> None:
+        """Adds a new GCS light control setup block to the end of the Skybrush file.
+
+        Parameters:
+            data: the GCS light control setup to add, encoded in Skybrush format
+        """
+        return await self.add_block(
+            SkybrushBinaryFormatBlockType.GCS_LIGHT_CONTROL_SETUP, data
+        )
+
     async def add_encoded_rth_plan(self, data: bytes) -> None:
         """Adds a new return-to-home plan to the end of the Skybrush file.
 
@@ -309,6 +320,23 @@ class SkybrushBinaryShowFile:
             data: the RTH plan to add, encoded in Skybrush format
         """
         return await self.add_block(SkybrushBinaryFormatBlockType.RTH_PLAN, data)
+
+    async def add_metadata(self, metadata: ShowMetadata) -> None:
+        """Adds a new metadata block to the end of the Skybrush file.
+
+        Parameters:
+            metadata: the metadata to add
+        """
+        return await self._add_tlv_block(
+            SkybrushBinaryFormatBlockType.METADATA,
+            [
+                (ShowMetadataTag.UID, metadata.uid),
+                (
+                    ShowMetadataTag.DRONE_INDEX,
+                    metadata.drone_index.to_bytes(2, "little", signed=False),
+                ),
+            ],
+        )
 
     async def add_trajectory(self, trajectory: TrajectorySpecification) -> None:
         """Adds a new trajectory block to the end of the Skybrush file
@@ -383,7 +411,6 @@ class SkybrushBinaryShowFile:
 
             if seekable:
                 offset = self._fp.tell()
-                # offset = await self._fp.tell()
                 reader = partial(_read_exactly, self._fp, length, offset=offset)
             else:
                 reader = partial(_read_exactly, self._fp, length)
@@ -391,11 +418,9 @@ class SkybrushBinaryShowFile:
             block = SkybrushBinaryFileBlock(block_type, reader)
             if seekable:
                 end_of_block = self._fp.tell()
-                # end_of_block = await self._fp.tell()
                 end_of_block += length
                 yield block
                 self._fp.seek(end_of_block)
-                # await self._fp.seek(end_of_block)
             else:
                 yield block
                 if not block.consumed:
@@ -417,12 +442,10 @@ class SkybrushBinaryShowFile:
                 )
 
             pos = self._fp.tell()
-            # pos = await self._fp.tell()
             try:
                 await self._rewind()
             finally:
                 self._fp.seek(pos)
-                # await self._fp.seek(pos)
 
         await self._update_crc32()
 
@@ -490,11 +513,9 @@ class SkybrushBinaryShowFile:
         # position: int = await self._fp.tell()
         try:
             self._fp.seek(self._start_of_crc_bytes)
-            # await self._fp.seek(self._start_of_crc_bytes)
             observed_crc: bytes = await _read_exactly(self._fp, 4)
         finally:
             self._fp.seek(position)
-            # await self._fp.seek(position)
 
         if observed_crc != expected_crc:
             expected = expected_crc.hex()
@@ -510,6 +531,19 @@ class SkybrushBinaryShowFile:
             raise RuntimeError("version header was not read yet")
         return self._version
 
+    async def _add_tlv_block(
+        self, type: SkybrushBinaryFormatBlockType, entries: Iterable[tuple[int, bytes]]
+    ) -> None:
+        """Adds a new tag-length-value (TLV) block to the end of the Skybrush file.
+
+        Parameters:
+            type: the type of the block to add
+            entries: an iterable of (tag, value) pairs to encode in the block
+        """
+        encoder = TLVEncoder()
+        payload = encoder.encode_multiple_entries(entries)
+        return await self.add_block(type, payload)
+
     async def _get_expected_crc32(self) -> bytes:
         """Returns the expected CRC32 checksum of the file as bytes, in little
         endian format, or all-zeros if the file header declares that the file
@@ -524,7 +558,6 @@ class SkybrushBinaryShowFile:
         assert self._start_of_crc_bytes is not None
 
         position: int = self._fp.tell()
-        # position: int = await self._fp.tell()
         try:
             expected_crc = 0
 
@@ -536,14 +569,12 @@ class SkybrushBinaryShowFile:
 
             while True:
                 block = self._fp.read(4096)
-                # block = await self._fp.read(4096)
                 if block:
                     expected_crc = crc32(block, expected_crc)
                 if len(block) < 4096:
                     break
         finally:
             self._fp.seek(position)
-            # await self._fp.seek(position)
 
         return expected_crc.to_bytes(4, "little", signed=False)
 
@@ -557,15 +588,11 @@ class SkybrushBinaryShowFile:
         assert self._start_of_crc_bytes is not None
 
         position: int = self._fp.tell()
-        # position: int = await self._fp.tell()
         try:
             self._fp.seek(self._start_of_crc_bytes)
             self._fp.write(expected_crc)
-            # await self._fp.seek(self._start_of_crc_bytes)
-            # await self._fp.write(expected_crc)
         finally:
             self._fp.seek(position)
-            # await self._fp.seek(position)
 
 
 class SegmentEncoder:
@@ -739,3 +766,74 @@ class SegmentEncoder:
         # problems as the one outlined in _scale_points()
         yaw = round((yaw % 360) * 10)
         return yaw - 3600 if yaw >= 3600 else yaw
+
+
+class TLVEncoder:
+    """Generic encoder for tag-length-value (TLV) entries in the Skybrush binary
+    show file format.
+
+    TLV entries are used in the bodies of blocks such as the GCS light control
+    setup block and the show metadata block. The generic encoding of an entry is:
+
+    - a single unsigned byte containing the tag of the entry,
+    - an unsigned 16-bit little-endian integer containing the length of the
+      value, in bytes,
+    - the value itself, as raw bytes.
+
+    The encoder is deliberately domain-agnostic; it has no knowledge about the
+    semantics of the tags. The caller is responsible for providing the correct
+    tags and encoding the values appropriately.
+    """
+
+    _header_struct: ClassVar[Struct] = Struct("<BH")
+
+    def encode_entry(self, tag: int, value: bytes) -> bytes:
+        """Encodes a single tag-length-value entry.
+
+        Args:
+            tag: the tag of the entry; an arbitrary integer in the range 0-255
+            value: the value of the entry as raw bytes
+
+        Returns:
+            the encoded representation of the entry
+
+        Raises:
+            ValueError: if the tag is outside the range 0-255 or the value is
+                longer than 65535 bytes
+        """
+        if not 0 <= tag <= 255:
+            raise ValueError(f"TLV tag must be in the range 0-255, got {tag}")
+
+        length = len(value)
+        if length > 65535:
+            raise ValueError(
+                f"TLV value must be at most 65535 bytes, got {length} bytes"
+            )
+
+        return self._header_struct.pack(tag, length) + value
+
+    def encode_multiple_entries(self, entries: Iterable[tuple[int, bytes]]) -> bytes:
+        """Encodes multiple tag-length-value entries.
+
+        Args:
+            entries: an iterable of (tag, value) pairs to encode
+
+        Returns:
+            the encoded representation of the entries, concatenated
+        """
+        return b"".join(self.iter_encode_multiple_entries(entries))
+
+    def iter_encode_multiple_entries(
+        self,
+        entries: Iterable[tuple[int, bytes]],
+    ) -> Iterable[bytes]:
+        """Iteratively encodes an iterable of tag-length-value entries.
+
+        Args:
+            entries: an iterable of (tag, value) pairs to encode
+
+        Yields:
+            the encoded representation of each entry, one at a time
+        """
+        for tag, value in entries:
+            yield self.encode_entry(tag, value)

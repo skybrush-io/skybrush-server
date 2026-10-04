@@ -20,7 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [2.54.0] - 2026-10-02
 
-### Fixed
+### Added
 
 - The collective RTH plan now contains the minimum RTH altitude of the entire
   swarm. This allows the operator to validate whether the RTH altitudes are

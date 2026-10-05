@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - The `mavlink` extension was refactored to have explicit subclasses for
-  ArduCopter, ArduPlane and ArduRover based vehicles (for the time being).
+  ArduCopter-, ArduPlane- and ArduRover-based vehicles (for the time being).
   This refactor includes many enhancements, like proper `mode ...` command handling
   for non-copter vehicles, proper custom mode definitions in general, proper
   recognition of vehicle types into their corresponding autopilot handlers.

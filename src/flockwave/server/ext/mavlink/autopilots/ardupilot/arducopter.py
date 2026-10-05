@@ -3,15 +3,18 @@ from __future__ import annotations
 import logging
 from copy import deepcopy
 
-from ...enums import (
+from flockwave.server.ext.mavlink.autopilots.registry import (
+    register_for_mavlink_vehicle_type,
+)
+from flockwave.server.ext.mavlink.enums import (
     MAVModeFlag,
     MAVProtocolCapability,
     MAVState,
     MAVSysStatusSensor,
     MAVType,
 )
-from ...types import MAVLinkMessage
-from ..registry import register_for_mavlink_vehicle_type
+from flockwave.server.ext.mavlink.types import MAVLinkMessage
+
 from .base import ArduPilot, FlightModeMap
 
 __all__ = (

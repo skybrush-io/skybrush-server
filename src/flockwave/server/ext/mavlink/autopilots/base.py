@@ -4,6 +4,12 @@ from abc import ABC, abstractmethod
 from collections.abc import AsyncIterator
 from typing import TYPE_CHECKING
 
+from flockwave.server.ext.mavlink.enums import MAVModeFlag, MAVParamType
+from flockwave.server.ext.mavlink.types import MAVLinkFlightModeNumbers, MAVLinkMessage
+from flockwave.server.ext.mavlink.utils import (
+    decode_param_from_wire_representation,
+    encode_param_to_wire_representation,
+)
 from flockwave.server.model.commands import Progress, ProgressEventsWithSuspension
 from flockwave.server.model.geofence import (
     GeofenceConfigurationRequest,
@@ -11,15 +17,8 @@ from flockwave.server.model.geofence import (
 )
 from flockwave.server.model.safety import SafetyConfigurationRequest
 
-from ..enums import MAVModeFlag, MAVParamType
-from ..types import MAVLinkFlightModeNumbers, MAVLinkMessage
-from ..utils import (
-    decode_param_from_wire_representation,
-    encode_param_to_wire_representation,
-)
-
 if TYPE_CHECKING:
-    from ..driver import MAVLinkUAV
+    from flockwave.server.ext.mavlink.driver import MAVLinkUAV
 
 __all__ = ("Autopilot",)
 

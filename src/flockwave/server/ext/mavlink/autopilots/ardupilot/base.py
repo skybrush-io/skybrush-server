@@ -14,6 +14,24 @@ from typing import IO, TYPE_CHECKING, cast
 from trio import TooSlowError, open_nursery, sleep
 
 from flockwave.server.errors import NotSupportedError
+from flockwave.server.ext.mavlink.enums import (
+    MAVAutopilot,
+    MAVCommand,
+    MAVMessageType,
+    MAVModeFlag,
+    MAVParamType,
+    MAVSysStatusSensor,
+    MAVType,
+)
+from flockwave.server.ext.mavlink.errors import UnknownFlightModeError
+from flockwave.server.ext.mavlink.ftp import MAVFTP
+from flockwave.server.ext.mavlink.fw_upload import (
+    FirmwareUpdateResult,
+    FirmwareUpdateTarget,
+)
+from flockwave.server.ext.mavlink.geofence import GeofenceManager, GeofenceType
+from flockwave.server.ext.mavlink.types import MAVLinkFlightModeNumbers, MAVLinkMessage
+from flockwave.server.ext.mavlink.utils import log_id_for_uav
 from flockwave.server.model.commands import (
     Progress,
     ProgressEventsWithSuspension,
@@ -30,27 +48,11 @@ from flockwave.server.model.safety import (
 )
 from flockwave.server.utils import clamp
 
-from ...enums import (
-    MAVAutopilot,
-    MAVCommand,
-    MAVMessageType,
-    MAVModeFlag,
-    MAVParamType,
-    MAVSysStatusSensor,
-    MAVType,
-)
-from ...errors import UnknownFlightModeError
-from ...ftp import MAVFTP
-from ...fw_upload import FirmwareUpdateResult, FirmwareUpdateTarget
-from ...geofence import GeofenceManager, GeofenceType
-from ...types import MAVLinkFlightModeNumbers, MAVLinkMessage
-from ...utils import log_id_for_uav
-
 if TYPE_CHECKING:
-    from ...driver import MAVLinkUAV
+    from flockwave.server.ext.mavlink.driver import MAVLinkUAV
 
-from ..base import Autopilot
-from ..registry import register_for_mavlink_type
+from flockwave.server.ext.mavlink.autopilots.base import Autopilot
+from flockwave.server.ext.mavlink.autopilots.registry import register_for_mavlink_type
 
 __all__ = (
     "ArduPilot",
@@ -117,7 +119,9 @@ class ArduPilot(Autopilot):
 
         # Imported here rather than at module level because the ArduPilot
         # vehicle subclasses (ArduCopter & co) import this module.
-        from ..registry import get_ardupilot_vehicle_factory_by_mavlink_type
+        from flockwave.server.ext.mavlink.autopilots.registry import (
+            get_ardupilot_vehicle_factory_by_mavlink_type,
+        )
 
         try:
             vehicle_type = MAVType(message.type)

@@ -6,7 +6,8 @@ from typing import TYPE_CHECKING, TypeVar
 from .unknown import UnknownAutopilot
 
 if TYPE_CHECKING:
-    from ..enums import MAVType
+    from flockwave.server.ext.mavlink.enums import MAVType
+
     from .base import Autopilot
 
 __all__ = (

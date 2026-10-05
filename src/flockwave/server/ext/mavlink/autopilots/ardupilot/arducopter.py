@@ -89,7 +89,7 @@ class ArduCopterWithSkybrush(ArduCopter):
     extensions to support drone shows.
     """
 
-    name = "ArduCopter + Skybrush"
+    name = "ArduCopter with Skybrush"
 
     _custom_modes = extend_custom_modes(ArduCopter._custom_modes, {127: ("show",)})
 

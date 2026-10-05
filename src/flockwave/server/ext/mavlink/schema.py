@@ -1,5 +1,13 @@
 from typing import Any
 
+from .autopilots import (
+    PX4,
+    ArduCopter,
+    ArduCopterWithSkybrush,
+    ArduPilot,
+    ArduPlane,
+    ArduRover,
+)
 from .enums import MAVSeverity
 from .rssi import RSSIMode
 
@@ -279,12 +287,12 @@ schema = {
             "options": {
                 "enum_titles": [
                     "Autodetected",
-                    "ArduCopter",
-                    "ArduPilot",
-                    "ArduPlane",
-                    "ArduRover",
-                    "ArduCopter with Skybrush",
-                    "PX4",
+                    ArduCopter.name,
+                    ArduPilot.name,
+                    ArduPlane.name,
+                    ArduRover.name,
+                    ArduCopterWithSkybrush.name,
+                    PX4.name,
                 ]
             },
             "propertyOrder": 13000,

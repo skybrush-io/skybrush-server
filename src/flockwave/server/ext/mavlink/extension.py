@@ -133,27 +133,23 @@ class MAVLinkDronesExtension(UAVExtension[MAVLinkDriver]):
                 autopilot_factory = None
             case "arducopter":
                 autopilot_factory = ArduCopter
-                self.log.info("Flight controller firmware: ArduCopter")
             case "ardupilot":
                 autopilot_factory = ArduPilot
-                self.log.info("Flight controller firmware: ArduPilot")
             case "arduplane":
                 autopilot_factory = ArduPlane
-                self.log.info("Flight controller firmware: ArduPlane")
             case "ardurover":
                 autopilot_factory = ArduRover
-                self.log.info("Flight controller firmware: ArduRover")
             case "px4":
                 autopilot_factory = PX4
-                self.log.info("Flight controller firmware: PX4")
             case "skybrush":
                 autopilot_factory = ArduCopterWithSkybrush
-                self.log.info("Flight controller firmware: Skybrush on ArduCopter")
             case _:
                 autopilot_factory = None
                 self.log.warning(
                     f'Unknown flight controller firmware: {autopilot_type}, assuming "auto"'
                 )
+        if autopilot_factory is not None:
+            self.log.info(f"Flight controller firmware: {autopilot_factory.name}")
 
         use_bulk_parameter_uploads = bool(
             configuration.get("use_bulk_parameter_uploads", False)

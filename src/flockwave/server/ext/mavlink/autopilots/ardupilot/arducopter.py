@@ -31,10 +31,6 @@ __all__ = (
     MAVType.TRICOPTER,
     MAVType.DECAROTOR,
     MAVType.DODECAROTOR,
-    # GENERIC means unsupported/unconfigured frame class, which only
-    # AP_MotorsMatrix (Copter) can emit in ArduPilot (as of 4.7);
-    # see ArduPilot.from_vehicle_type_in_heartbeat() for more details
-    MAVType.GENERIC,
 )
 class ArduCopter(ArduPilot):
     """Class representing the ArduCopter firmware."""

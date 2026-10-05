@@ -132,14 +132,6 @@ class ArduPilot(Autopilot):
             )
             return cls
 
-        if vehicle_type is MAVType.GENERIC:
-            # AP_MotorsMatrix sets MAV_TYPE_GENERIC when the frame class is
-            # unsupported or unconfigured. GCS_MAVLINK_Copter::frame_type()
-            # substitutes a multirotor default for it, so a healthy ArduCopter
-            # should never report GENERIC; assume ArduCopter if it does, so that
-            # flight mode names still resolve.
-            log.info("Heartbeat reports MAV_TYPE_GENERIC; assuming ArduCopter")
-
         result = get_ardupilot_vehicle_factory_by_mavlink_type(vehicle_type)
         if result is not None:
             return result

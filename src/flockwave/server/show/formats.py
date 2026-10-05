@@ -327,7 +327,7 @@ class SkybrushBinaryShowFile:
         Parameters:
             metadata: the metadata to add
         """
-        return await self._add_tlv_block(
+        return await self.add_tlv_block(
             SkybrushBinaryFormatBlockType.METADATA,
             [
                 (ShowMetadataTag.UID, metadata.uid),
@@ -337,6 +337,19 @@ class SkybrushBinaryShowFile:
                 ),
             ],
         )
+
+    async def add_tlv_block(
+        self, type: SkybrushBinaryFormatBlockType, entries: Iterable[tuple[int, bytes]]
+    ) -> None:
+        """Adds a new tag-length-value (TLV) block to the end of the Skybrush file.
+
+        Parameters:
+            type: the type of the block to add
+            entries: an iterable of (tag, value) pairs to encode in the block
+        """
+        encoder = TLVEncoder()
+        payload = encoder.encode_multiple_entries(entries)
+        return await self.add_block(type, payload)
 
     async def add_trajectory(self, trajectory: TrajectorySpecification) -> None:
         """Adds a new trajectory block to the end of the Skybrush file
@@ -530,19 +543,6 @@ class SkybrushBinaryShowFile:
         if self._version is None:
             raise RuntimeError("version header was not read yet")
         return self._version
-
-    async def _add_tlv_block(
-        self, type: SkybrushBinaryFormatBlockType, entries: Iterable[tuple[int, bytes]]
-    ) -> None:
-        """Adds a new tag-length-value (TLV) block to the end of the Skybrush file.
-
-        Parameters:
-            type: the type of the block to add
-            entries: an iterable of (tag, value) pairs to encode in the block
-        """
-        encoder = TLVEncoder()
-        payload = encoder.encode_multiple_entries(entries)
-        return await self.add_block(type, payload)
 
     async def _get_expected_crc32(self) -> bytes:
         """Returns the expected CRC32 checksum of the file as bytes, in little

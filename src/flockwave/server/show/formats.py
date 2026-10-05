@@ -14,7 +14,7 @@ from .trajectory import TrajectorySegment, TrajectorySpecification
 from .utils import Point
 from .utils import crc32_mavftp as crc32
 
-__all__ = ("SkybrushBinaryShowFile", "TLVEncoder")
+__all__ = ("SkybrushBinaryShowFile", "SkybrushBinaryFormatBlockType", "TLVEncoder")
 
 
 _SKYBRUSH_BINARY_FILE_MARKER: bytes = b"skyb"

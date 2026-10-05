@@ -3,7 +3,7 @@ Skybrush-related file formats, until we find a better place for them.
 """
 
 from .flight_area import get_flight_area_configuration_from_show_specification
-from .formats import SkybrushBinaryShowFile
+from .formats import SkybrushBinaryFormatBlockType, SkybrushBinaryShowFile
 from .geofence import get_geofence_configuration_from_show_specification
 from .lights import get_light_program_from_show_specification
 from .player import LightPlayer, TrajectoryPlayer
@@ -34,6 +34,7 @@ __all__ = (
     "is_coordinate_system_in_show_specification_geodetic",
     "LightPlayer",
     "ShowSpecification",
+    "SkybrushBinaryFormatBlockType",
     "SkybrushBinaryShowFile",
     "TrajectoryPlayer",
     "TrajectorySpecification",

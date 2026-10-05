@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import logging
 from copy import deepcopy
 
 from flockwave.server.ext.mavlink.autopilots.registry import (
@@ -21,8 +20,6 @@ __all__ = (
     "ArduCopter",
     "ArduCopterWithSkybrush",
 )
-
-log = logging.getLogger(__name__)
 
 
 @register_for_mavlink_vehicle_type(

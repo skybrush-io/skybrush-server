@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 from collections.abc import AsyncIterator, Iterable, Sequence
 from contextlib import AsyncExitStack, aclosing
+from copy import deepcopy
 from dataclasses import dataclass
 from functools import partial
 from io import BytesIO
@@ -62,6 +63,15 @@ __all__ = (
 log = logging.getLogger(__name__)
 
 FlightModeMap = dict[int, tuple[str, ...]]
+
+
+def extend_custom_modes(custom_modes: FlightModeMap, new_modes: FlightModeMap):
+    """Helper function to extend custom modes of an ArduPilot_ subclass
+    with new modes.
+    """
+    mode_map = deepcopy(custom_modes)
+    mode_map.update(new_modes)
+    return mode_map
 
 
 @register_for_mavlink_type(MAVAutopilot.ARDUPILOTMEGA)

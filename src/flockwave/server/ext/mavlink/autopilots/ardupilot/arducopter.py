@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from copy import deepcopy
-
 from flockwave.server.ext.mavlink.autopilots.registry import (
     register_for_mavlink_vehicle_type,
 )
@@ -14,7 +12,7 @@ from flockwave.server.ext.mavlink.enums import (
 )
 from flockwave.server.ext.mavlink.types import MAVLinkMessage
 
-from .base import ArduPilot, FlightModeMap
+from .base import ArduPilot, FlightModeMap, extend_custom_modes
 
 __all__ = (
     "ArduCopter",
@@ -84,15 +82,6 @@ class ArduCopter(ArduPilot):
                 result = ArduCopterWithSkybrush(self)
 
         return result
-
-
-def extend_custom_modes(custom_modes: FlightModeMap, new_modes: FlightModeMap):
-    """Helper function to extend custom modes of an ArduPilot_ subclass
-    with new modes.
-    """
-    mode_map = deepcopy(custom_modes)
-    mode_map.update(new_modes)
-    return mode_map
 
 
 class ArduCopterWithSkybrush(ArduCopter):

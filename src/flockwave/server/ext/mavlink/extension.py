@@ -134,7 +134,10 @@ class MAVLinkDronesExtension(UAVExtension[MAVLinkDriver]):
             case "arducopter":
                 autopilot_factory = ArduCopter
             case "ardupilot":
-                autopilot_factory = ArduPilot
+                self.log.warning(
+                    'Setting autopilot_type to "ardupilot" is deprecated, assuming "auto"'
+                )
+                autopilot_factory = None
             case "arduplane":
                 autopilot_factory = ArduPlane
             case "ardurover":

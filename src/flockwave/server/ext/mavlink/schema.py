@@ -276,7 +276,6 @@ schema = {
             "enum": [
                 "auto",
                 "arducopter",
-                "ardupilot",
                 "arduplane",
                 "ardurover",
                 "skybrush",
@@ -288,7 +287,6 @@ schema = {
                 "enum_titles": [
                     "Autodetected",
                     ArduCopter.name,
-                    ArduPilot.name,
                     ArduPlane.name,
                     ArduRover.name,
                     ArduCopterWithSkybrush.name,

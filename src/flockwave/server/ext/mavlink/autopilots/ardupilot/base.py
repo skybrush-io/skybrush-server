@@ -146,10 +146,6 @@ class ArduPilot(Autopilot):
         if result is not None:
             return result
 
-        log.warning(
-            f"Heartbeat MAV_TYPE {vehicle_type.name} does not match any known ArduPilot "
-            "variant; falling back to generic ArduPilot"
-        )
         return cls
 
     def are_motor_outputs_disabled(

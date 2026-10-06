@@ -55,20 +55,20 @@ class Autopilot(ABC):
         """Returns the description of the current mode that the autopilot is
         in, given the base and the custom mode in the heartbeat message.
         """
-        if base_mode & MAVModeFlag.CUSTOM_MODE_ENABLED:
-            # custom mode
+        if base_mode & 1:
+            # custom mode (MAVModeFlag.CUSTOM_MODE_ENABLED)
             return cls.describe_custom_mode(base_mode, custom_mode)
-        elif base_mode & MAVModeFlag.AUTO_ENABLED:
-            # auto mode
+        elif base_mode & 4:
+            # auto mode (MAVModeFlag.AUTO_ENABLED)
             return "auto"
-        elif base_mode & MAVModeFlag.GUIDED_ENABLED:
-            # guided mode
+        elif base_mode & 8:
+            # guided mode (MAVModeFlag.GUIDED_ENABLED)
             return "guided"
-        elif base_mode & MAVModeFlag.STABILIZE_ENABLED:
-            # stabilize mode
+        elif base_mode & 16:
+            # stabilize mode (MAVModeFlag.STABILIZE_ENABLED)
             return "stabilize"
-        elif base_mode & MAVModeFlag.MANUAL_INPUT_ENABLED:
-            # manual mode
+        elif base_mode & 64:
+            # manual mode (MAVModeFlag.MANUAL_INPUT_ENABLED)
             return "manual"
         else:
             # anything else

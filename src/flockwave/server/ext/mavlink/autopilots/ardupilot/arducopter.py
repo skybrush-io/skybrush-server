@@ -66,10 +66,7 @@ class ArduCopter(ArduPilot):
     """ArduCopter custom modes; see ardupilot/ArduCopter/mode.h for reference"""
 
     def is_rth_flight_mode(self, base_mode: int, custom_mode: int) -> bool:
-        return bool(base_mode & MAVModeFlag.CUSTOM_MODE_ENABLED) and custom_mode in [
-            6,
-            21,
-        ]
+        return bool(base_mode & 1) and custom_mode in [6, 21]
 
     def refine_with_capabilities(self, capabilities: int):
         result = super().refine_with_capabilities(capabilities)

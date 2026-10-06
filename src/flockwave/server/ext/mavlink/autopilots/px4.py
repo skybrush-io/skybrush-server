@@ -177,10 +177,7 @@ class PX4(Autopilot):
     def is_rth_flight_mode(self, base_mode: int, custom_mode: int) -> bool:
         # base mode & 1 is "custom mode", 0x04 is the "auto" custom main mode,
         # 0x05 is the "rth" submode of the auto custom main mode
-        return (
-            bool(base_mode & MAVModeFlag.CUSTOM_MODE_ENABLED)
-            and custom_mode & 0xFFFF0000 == 0x05040000
-        )
+        return bool(base_mode & 1) and custom_mode & 0xFFFF0000 == 0x05040000
 
     def process_prearm_error_message(self, text: str) -> str:
         prefix, sep, suffix = text.partition(":")

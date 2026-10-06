@@ -5,7 +5,6 @@ from __future__ import annotations
 from collections import defaultdict
 from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import aclosing, asynccontextmanager
-from copy import deepcopy
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from functools import partial
@@ -1607,7 +1606,7 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
         Args:
             target: destination coordinate (AMSL or AHL altitude)
         """
-        new_target = deepcopy(target)
+        new_target = target.copy()
 
         if target.ahl is None and target.amsl is None:
             if self.status.position.amsl is not None and (

@@ -1280,7 +1280,7 @@ requires-dist = [
     { name = "skybrush-ext-flight-report", marker = "extra == 'pro'", specifier = ">=1.0.3", index = "https://pypi.collmot.com/" },
     { name = "skybrush-ext-flockctrl", marker = "extra == 'collmot'", specifier = ">=4.2.1", index = "https://pypi.collmot.com/" },
     { name = "skybrush-ext-map-cache", marker = "extra == 'pro'", specifier = ">=1.1.1", index = "https://pypi.collmot.com/" },
-    { name = "skybrush-ext-show-pro", marker = "extra == 'pro'", specifier = ">=1.0.0", index = "https://pypi.collmot.com/" },
+    { name = "skybrush-ext-show-pro", marker = "extra == 'pro'", specifier = ">=1.0.1", index = "https://pypi.collmot.com/" },
     { name = "skybrush-ext-sidekick", marker = "extra == 'pro'", specifier = ">=1.2.1", index = "https://pypi.collmot.com/" },
     { name = "skybrush-ext-skynet", marker = "extra == 'pro'", specifier = ">=0.6.0", index = "https://pypi.collmot.com/" },
     { name = "skybrush-ext-studio", marker = "extra == 'pro'", specifier = ">=1.8.0", index = "https://pypi.collmot.com/" },
@@ -3086,15 +3086,16 @@ wheels = [
 
 [[package]]
 name = "skybrush-ext-show-pro"
-version = "1.0.0"
+version = "1.0.1"
 source = { registry = "https://pypi.collmot.com/" }
 dependencies = [
     { name = "skybrush-opt-rs" },
     { name = "skybrush-studio" },
+    { name = "typing-extensions" },
 ]
-sdist = { url = "https://pypi.collmot.com/packages/skybrush_ext_show_pro-1.0.0.tar.gz", hash = "sha256:6395c41dbe6e0d062433e2aab39f86436482c6510cfa8bb3a23ffb2d0aa69dcc" }
+sdist = { url = "https://pypi.collmot.com/packages/skybrush_ext_show_pro-1.0.1.tar.gz", hash = "sha256:c25064a489d0139f93e89f663fb86866f0a95d3ac4d76edf4e4f20d92d6fa081" }
 wheels = [
-    { url = "https://pypi.collmot.com/packages/skybrush_ext_show_pro-1.0.0-py3-none-any.whl", hash = "sha256:e141aa8f0c4fff2a6afddcff671002b54a916f265d01c3c95caa8539493654b9" },
+    { url = "https://pypi.collmot.com/packages/skybrush_ext_show_pro-1.0.1-py3-none-any.whl", hash = "sha256:469705ad1f009134c5e653fd491e2688a0bea8aed8e42a663a78f9b4a4b7a6a6" },
 ]
 
 [[package]]

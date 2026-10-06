@@ -69,7 +69,7 @@ class TestEncodeShow:
 
     async def test_hook_can_add_events_and_blocks(self, caplog):
         async def hook(show, builder):
-            builder.add_event(ShowEvent(1.0, 1, 0, 0))
+            builder.add_event(timestamp=1.0, type=1, subtype=0, payload=0)
             await builder.add_comment("hello world")
 
         with caplog.at_level("WARNING"):

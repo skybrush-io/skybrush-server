@@ -2,9 +2,9 @@
 
 from pytest import fixture, raises
 
-from flockwave.server.ext.show.builder import ShowFileBuilder
 from flockwave.server.show import (
     ShowEvent,
+    ShowFileBuilder,
     SkybrushBinaryFormatBlockType,
     SkybrushBinaryShowFile,
 )
@@ -24,7 +24,7 @@ def builder(show_file: SkybrushBinaryShowFile) -> ShowFileBuilder:
 class TestShowFileBuilder:
     async def test_create_in_memory(self):
         async with ShowFileBuilder.create_in_memory() as builder:
-            builder.add_event(ShowEvent(1.0, 10, 0, 0))
+            builder.add_event(timestamp=1.0, type=10, subtype=0, payload=0)
 
             # The show file property is also usable while the builder is
             # being used; the builder is not closed yet. The pending events
@@ -39,7 +39,7 @@ class TestShowFileBuilder:
         assert blocks[0].type == SkybrushBinaryFormatBlockType.EVENT_LIST
         assert await blocks[0].read() == ShowEvent(1.0, 10, 0, 0).encode()
 
-    async def test_mark_handled(self, builder):
+    async def test_mark_handled(self, builder: ShowFileBuilder):
         assert builder.handled == frozenset()
 
         builder.mark_handled("pyro")
@@ -84,9 +84,9 @@ class TestShowFileBuilder:
 
     async def test_events_are_sorted_and_encoded_at_finalize(self, builder, show_file):
         # Added in reverse chronological order to test sorting
-        builder.add_event(ShowEvent(2.0, 10, 0, 3))
-        builder.add_event(ShowEvent(1.0, 10, 0, 1))
-        builder.add_event(ShowEvent(1.0, 20, 1, 2))
+        builder.add_event(timestamp=2.0, type=10, subtype=0, payload=3)
+        builder.add_event(timestamp=1.0, type=10, subtype=0, payload=1)
+        builder.add_event(timestamp=1.0, type=20, subtype=1, payload=2)
         await builder.finalize()
 
         blocks = await show_file.read_all_blocks()
@@ -110,7 +110,7 @@ class TestShowFileBuilder:
         assert blocks[0].type == SkybrushBinaryFormatBlockType.COMMENT
 
     async def test_finalize_returns_finalized_show_file(self, builder, show_file):
-        builder.add_event(ShowEvent(1.0, 10, 0, 0))
+        builder.add_event(timestamp=1.0, type=10, subtype=0, payload=0)
         finalized = await builder.finalize()
         assert finalized is show_file
 
@@ -126,11 +126,11 @@ class TestShowFileBuilder:
             await builder.finalize()
 
     async def test_modification_after_finalization_is_rejected(self, builder):
-        builder.add_event(ShowEvent(1.0, 10, 0, 0))
+        builder.add_event(timestamp=1.0, type=10, subtype=0, payload=0)
         await builder.finalize()
 
         with raises(RuntimeError, match="closed"):
-            builder.add_event(ShowEvent(2.0, 10, 0, 0))
+            builder.add_event(timestamp=2.0, type=10, subtype=0, payload=0)
 
         with raises(RuntimeError, match="closed"):
             await builder.add_block(100, b"hello")
@@ -140,7 +140,7 @@ class TestShowFileBuilder:
 
     async def test_context_manager_finalizes_on_success(self, builder, show_file):
         async with builder:
-            builder.add_event(ShowEvent(1.0, 10, 0, 0))
+            builder.add_event(timestamp=1.0, type=10, subtype=0, payload=0)
 
         # Reading the blocks also validates the CRC of the file, ensuring
         # that the builder was finalized when the context was exited
@@ -152,7 +152,7 @@ class TestShowFileBuilder:
     async def test_context_manager_does_not_finalize_on_error(self, builder, show_file):
         with raises(ValueError, match="boom"):
             async with builder:
-                builder.add_event(ShowEvent(1.0, 10, 0, 0))
+                builder.add_event(timestamp=1.0, type=10, subtype=0, payload=0)
                 raise ValueError("boom")
 
         # The builder was closed without being finalized when the context
@@ -163,14 +163,14 @@ class TestShowFileBuilder:
 
         # The builder is closed so it may neither be modified nor finalized
         with raises(RuntimeError, match="closed"):
-            builder.add_event(ShowEvent(2.0, 10, 0, 0))
+            builder.add_event(timestamp=2.0, type=10, subtype=0, payload=0)
 
         with raises(RuntimeError, match="closed"):
             await builder.finalize()
 
     async def test_context_manager_does_not_finalize_twice(self, builder, show_file):
         async with builder:
-            builder.add_event(ShowEvent(1.0, 10, 0, 0))
+            builder.add_event(timestamp=1.0, type=10, subtype=0, payload=0)
             await builder.finalize()
 
         # Explicit finalization inside the context manager prevents a second,

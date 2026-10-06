@@ -4,14 +4,13 @@ from typing import Awaitable, Callable, Iterable, TypeAlias
 
 from flockwave.server.logger import log as base_log
 from flockwave.server.show import (
+    ShowFileBuilder,
     ShowSpecification,
     SkybrushBinaryShowFile,
     get_coordinate_system_from_show_specification,
     get_light_program_from_show_specification,
     get_trajectory_from_show_specification,
 )
-
-from .builder import ShowFileBuilder
 
 __all__ = ("encode_show", "ShowEncodingHook", "ShowFileBuilder")
 

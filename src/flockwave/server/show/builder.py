@@ -8,17 +8,19 @@ from __future__ import annotations
 from collections.abc import Iterable
 from typing import TYPE_CHECKING, ClassVar, cast
 
-from flockwave.server.show import (
+from .formats import (
+    ShowEvent,
+    ShowMetadataTag,
     SkybrushBinaryFormatBlockType,
     SkybrushBinaryShowFile,
+    TLVEncoder,
 )
-from flockwave.server.show.formats import ShowMetadataTag, TLVEncoder
 
 if TYPE_CHECKING:
     from types import TracebackType
 
-    from flockwave.server.show import ShowEvent, TrajectorySpecification
-    from flockwave.server.show.metadata import ShowMetadata
+    from .metadata import ShowMetadata
+    from .trajectory import TrajectorySpecification
 
 __all__ = ("ShowFileBuilder",)
 
@@ -218,7 +220,14 @@ class ShowFileBuilder:
         """
         await self.add_block(SkybrushBinaryFormatBlockType.YAW_CONTROL, data)
 
-    def add_event(self, event: ShowEvent) -> None:
+    def add_event(
+        self,
+        *,
+        timestamp: float,
+        type: int,
+        subtype: int,
+        payload: bytes | int | float = b"\x00\x00\x00\x00",
+    ) -> None:
         """Adds a new event to the shared, deferred event list of the builder.
 
         The event list is encoded into a single event list block, sorted by
@@ -226,13 +235,24 @@ class ShowFileBuilder:
         with identical timestamps keep the order in which they were added.
 
         Parameters:
-            event: the event to add
+            timestamp: the timestamp of the event, in seconds, relative to the
+                start of the show; must be non-negative and small enough so
+                that its representation in milliseconds fits into an unsigned
+                32-bit integer
+            type: the type of the event; an integer in the range 0-255
+            subtype: the subtype of the event; an integer in the range 0-255
+            payload: the payload of the event; either a binary blob of
+                exactly four bytes, an unsigned 32-bit integer, or a
+                single-precision float
 
         Raises:
+            ValueError: if the type or the subtype is outside the range 0-255,
+                or if the payload is not a valid four-byte binary blob, an
+                unsigned 32-bit integer, or a single-precision float
             RuntimeError: if the builder is closed
         """
         self._check_not_closed()
-        self._events.append(event)
+        self._events.append(ShowEvent(timestamp, type, subtype, payload))
 
     def mark_handled(self, key: str) -> None:
         """Marks the given key of the show specification as handled.

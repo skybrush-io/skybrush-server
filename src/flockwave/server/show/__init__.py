@@ -2,6 +2,7 @@
 Skybrush-related file formats, until we find a better place for them.
 """
 
+from .builder import ShowFileBuilder
 from .flight_area import get_flight_area_configuration_from_show_specification
 from .formats import (
     ShowEvent,
@@ -40,6 +41,7 @@ __all__ = (
     "ShowEvent",
     "ShowSpecification",
     "SkybrushBinaryFormatBlockType",
+    "ShowFileBuilder",
     "SkybrushBinaryShowFile",
     "TrajectoryPlayer",
     "TrajectorySpecification",

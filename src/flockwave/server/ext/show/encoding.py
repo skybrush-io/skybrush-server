@@ -1,10 +1,8 @@
 from __future__ import annotations
 
-from logging import Logger
-from typing import TYPE_CHECKING, Awaitable, Callable, Iterable, TypeAlias
+from typing import Awaitable, Callable, Iterable, TypeAlias
 
-from flockwave.ext.errors import NoSuchExtension
-
+from flockwave.server.logger import log as base_log
 from flockwave.server.show import (
     ShowSpecification,
     SkybrushBinaryShowFile,
@@ -13,37 +11,42 @@ from flockwave.server.show import (
     get_trajectory_from_show_specification,
 )
 
-if TYPE_CHECKING:
-    from flockwave.server.app import SkybrushServer
+from .builder import ShowFileBuilder
 
+__all__ = ("encode_show", "ShowEncodingHook", "ShowFileBuilder")
 
-__all__ = ("encode_show", "ShowEncodingHook")
+log = base_log.getChild("show.encoding")
+
+_EXTENSION_HANDLED_PROPS = frozenset({"pyro", "rthPlan", "yawControl"})
+"""Props in a show specification that are not handled by the show extension
+itself but by other extensions via encoding hooks. The user is warned during
+the show encoding process if such a prop is present in the show specification
+and no encoding hook marked it as handled."""
 
 ShowEncodingHook: TypeAlias = Callable[
-    [SkybrushBinaryShowFile, ShowSpecification], Awaitable[None]
+    [ShowSpecification, ShowFileBuilder], Awaitable[None]
 ]
 """Type alias for hook functions that can be called during the show encoding process.
 
-These functions take a `ShowSpecification` and a `SkybrushBinaryShowFile` as arguments
-and return an awaitable that completes when the hook has finished processing. The hooks
-can extend or modify the encoding process, for example by adding additional data to the
-show file.
+These functions take the show specification being encoded and a `ShowFileBuilder` as
+their arguments (in this order) and return an awaitable that completes when the hook
+has finished processing. The builder can be used to extend the encoding process, for
+example by adding additional blocks to the show file being constructed or by adding
+events to the shared, deferred event list of the show file. Direct access to the
+underlying show file (`builder.show_file`) is possible but it is a low-level feature
+that should be avoided if possible.
 """
 
 
 async def encode_show(
     show: ShowSpecification,
     *,
-    app: SkybrushServer,
-    log: Logger,
     hooks: Iterable[ShowEncodingHook] | None = None,
 ) -> SkybrushBinaryShowFile:
     """Encodes a show specification into Skybrush binary format.
 
     Args:
         show: the show specification to encode.
-        app: the Skybrush server instance, used to access extensions and APIs.
-        log: a logger instance for logging messages during the encoding process.
         hooks: optional iterable of hook functions to be called during the encoding
             process.
 
@@ -57,40 +60,20 @@ async def encode_show(
     light_program = get_light_program_from_show_specification(show)
     trajectory = get_trajectory_from_show_specification(show)
 
-    pyro_program: bytes | None = None
-    rth_plan: bytes | None = None
-    yaw_setpoints: bytes | None = None
-    pro_keys = set(show.keys()).intersection(["pyro", "rthPlan", "yawControl"])
-    if pro_keys:
-        try:
-            api = app.import_api("show_pro")
-            if not api.loaded:
-                raise RuntimeError(
-                    f"Show pro extension is not loaded, neglecting {'and'.join(pro_keys)} from the show"
-                )
-        except NoSuchExtension:
+    async with ShowFileBuilder.create_in_memory() as builder:
+        await builder.add_trajectory(trajectory)
+        await builder.add_encoded_light_program(light_program)
+        for hook in hooks or ():
+            await hook(show, builder)
+
+        unhandled_props = (
+            set(show.keys()) & _EXTENSION_HANDLED_PROPS
+        ) - builder.handled
+        if unhandled_props:
             log.warning(
-                f"Show pro extension is not available, neglecting {'and'.join(pro_keys)} from the show"
+                "The following parts of the show specification were not "
+                "handled by any extension and will be neglected: "
+                + ", ".join(sorted(unhandled_props))
             )
-        except RuntimeError as ex:
-            log.warning(str(ex))
-        else:
-            pyro_program = api.encode_pyro(show)
-            rth_plan = api.encode_rth_plan(show)
-            yaw_setpoints = api.encode_yaw(show)
 
-    async with SkybrushBinaryShowFile.create_in_memory() as show_file:
-        await show_file.add_trajectory(trajectory)
-        await show_file.add_encoded_light_program(light_program)
-        if pyro_program:
-            await show_file.add_encoded_event_list(pyro_program)
-        if rth_plan:
-            await show_file.add_encoded_rth_plan(rth_plan)
-        if yaw_setpoints:
-            await show_file.add_encoded_yaw_setpoints(yaw_setpoints)
-        if hooks:
-            for hook in hooks:
-                await hook(show_file, show)
-        await show_file.finalize()
-
-    return show_file
+    return builder.show_file

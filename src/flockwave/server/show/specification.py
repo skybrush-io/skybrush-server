@@ -24,7 +24,9 @@ class ShowSpecification(TypedDict, total=False):
     validation: dict[str, Any]
     trajectory: dict[str, Any]
     lights: dict[str, Any]
+    pyro: dict[str, Any]
     rthPlan: dict[str, Any]
+    yawControl: dict[str, Any]
     home: list[float]
     landAt: list[float]
     name: str

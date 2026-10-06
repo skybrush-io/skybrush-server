@@ -230,10 +230,7 @@ class DroneShowExtension(Extension):
         Returns:
             the encoded show file
         """
-        assert self.app is not None
-        return await encode_show(
-            show, app=self.app, log=self.log, hooks=self._encoding_hooks
-        )
+        return await encode_show(show, hooks=self._encoding_hooks)
 
     def _get_clock(self) -> ShowClock | None:
         """Returns a reference to the show clock."""

@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.55.1] - 2026-10-06
+
+### Fixed
+
+- `show_pro` extension now refers to the correct version that should be used with
+  the new show encoding hook API. This version restores the functionality that
+  was broken intentionally in the previous release.
+
 ## [2.55.0] - 2026-10-06
 
 See caveats below regarding the `show_pro` extension and the encoding of pyro,

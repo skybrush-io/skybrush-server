@@ -18,12 +18,13 @@ from textwrap import dedent
 from time import time
 from typing import TYPE_CHECKING, Any, TypeVar
 
+from pydantic import BaseModel, Field
 from trio import move_on_after, sleep, to_thread
 from trio.lowlevel import ParkingLot
 
 from flockwave.server.utils import constant
 
-from .base import Extension
+from .base import TypedConfigExtension
 
 if TYPE_CHECKING:
     from sqlite3 import Connection
@@ -334,7 +335,22 @@ class DbStorage(Storage):
             )
 
 
-class AuditLogExtension(Extension):
+class AuditLogConfig(BaseModel):
+    """Configuration model for the audit log extension."""
+
+    max_age: float = Field(
+        default=365,
+        ge=0,
+        title="Max age (days)",
+        description=(
+            "Maximum age of entries in the audit log, in days. Log entries "
+            "older than the given number of days are periodically removed from "
+            "the audit log. Zero means no limit."
+        ),
+    )
+
+
+class AuditLogExtension(TypedConfigExtension[AuditLogConfig]):
     """Extension that provides other extensions with an append-only audit log
     database where other extensions can register events.
 
@@ -377,21 +393,11 @@ class AuditLogExtension(Extension):
         self._entries.append(Entry(time(), component, type, data))
         self._parking_lot.unpark()
 
-    def configure(self, configuration: dict[str, Any]) -> None:
+    def configure(self, configuration: AuditLogConfig) -> None:
         db_path = self.get_data_dir() / "log.db"
         db_path.parent.mkdir(parents=True, exist_ok=True)
 
-        maybe_max_age = configuration.get("max_age")
-        if maybe_max_age is None:
-            self.max_age_days = 365  # default
-        elif (
-            maybe_max_age
-            and isinstance(maybe_max_age, (int, float))
-            and maybe_max_age > 0
-        ):
-            self.max_age_days = float(maybe_max_age)
-        else:
-            self.max_age_days = 0  # unlimited
+        self.max_age_days = configuration.max_age
 
         self._storage = DbStorage(db_path)
 
@@ -471,18 +477,4 @@ class AuditLogExtension(Extension):
 
 construct = AuditLogExtension
 description = "Audit log provider for other extensions"
-schema = {
-    "properties": {
-        "max_age": {
-            "title": "Max age (days)",
-            "description": (
-                "Maximum age of entries in the audit log, in days. Log entries "
-                "older than the given number of days are periodically removed from "
-                "the audit log. Zero means no limit."
-            ),
-            "type": "number",
-            "minimum": 0,
-            "default": 365,
-        }
-    }
-}
+schema = AuditLogConfig

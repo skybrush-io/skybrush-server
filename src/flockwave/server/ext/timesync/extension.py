@@ -5,17 +5,12 @@ from __future__ import annotations
 from contextlib import ExitStack
 from typing import Any, ContextManager, Protocol
 
-from flockwave.server.ext.base import Extension
+from flockwave.server.ext.base import TypedConfigExtension
 from flockwave.server.message_hub import MessageHub
 from flockwave.server.model.client import Client
 from flockwave.server.model.log import Severity
 from flockwave.server.model.messages import FlockwaveMessage, FlockwaveResponse
 
-from .constants import (
-    DEFAULT_OFFSET_LOG_THRESHOLD,
-    DEFAULT_SOURCE_EXPIRY_THRESHOLD,
-    DEFAULT_SYNC_THRESHOLD,
-)
 from .manager import TimeSource, TimeSyncManager
 from .model import TimeSyncSnapshot
 from .types import TimeSyncState
@@ -29,7 +24,10 @@ __all__ = (
 )
 
 
-class TimeSyncExtension(Extension):
+from .schema import TimeSyncConfig
+
+
+class TimeSyncExtension(TypedConfigExtension[TimeSyncConfig]):
     """Extension that tracks server wall-clock synchronization status."""
 
     _manager: TimeSyncManager
@@ -40,21 +38,13 @@ class TimeSyncExtension(Extension):
         super().__init__()
         self._manager = TimeSyncManager()
 
-    def configure(self, configuration: dict[str, Any]) -> None:
+    def configure(self, configuration: TimeSyncConfig) -> None:
         """Updates the extension configuration from the extension settings."""
         super().configure(configuration)
         self._manager.configure(
-            sync_threshold=float(
-                configuration.get("sync_threshold", DEFAULT_SYNC_THRESHOLD)
-            ),
-            source_expiry_threshold=float(
-                configuration.get(
-                    "source_expiry_threshold", DEFAULT_SOURCE_EXPIRY_THRESHOLD
-                )
-            ),
-            offset_log_threshold=float(
-                configuration.get("offset_log_threshold", DEFAULT_OFFSET_LOG_THRESHOLD)
-            ),
+            sync_threshold=configuration.sync_threshold,
+            source_expiry_threshold=configuration.source_expiry_threshold,
+            offset_log_threshold=configuration.offset_log_threshold,
             log=self.log,
         )
 

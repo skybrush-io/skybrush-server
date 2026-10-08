@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from array import array
 from heapq import heappop, heappush
 from logging import DEBUG, ERROR, INFO, WARNING
 from typing import TYPE_CHECKING, NamedTuple
@@ -8,7 +9,7 @@ from flockwave.gps.vectors import GPSCoordinate
 
 from flockwave.server.model.log import Severity
 
-from .enums import MAVFrame, MAVParamType, MAVState
+from .enums import MAVFrame, MAVParamType, MAVState, MAVType
 from .types import MAVLinkMessage
 
 if TYPE_CHECKING:
@@ -18,6 +19,7 @@ __all__ = (
     "can_communicate_infer_from_heartbeat",
     "decode_param_from_wire_representation",
     "encode_param_to_wire_representation",
+    "is_mavlink_vehicle",
     "log_id_for_uav",
     "log_id_from_message",
     "mavlink_nav_command_to_gps_coordinate",
@@ -47,6 +49,37 @@ _mavlink_severity_to_flockwave_severity = [
     Severity.INFO,  # MAV_SEVERITY_INFO
     Severity.DEBUG,  # MAV_SEVERITY_DEBUG
 ]
+
+
+def _create_mavlink_vehicle_lookup_table() -> array:
+    """Creates a boolean lookup table indexed by MAVLink ``MAV_TYPE`` values
+    that tells whether the given type denotes a vehicle (most likely).
+    """
+    non_vehicle_types = (
+        MAVType.ANTENNA_TRACKER,
+        MAVType.GCS,
+        MAVType.ONBOARD_CONTROLLER,
+        MAVType.GIMBAL,
+        MAVType.ADSB,
+        MAVType.CAMERA,
+        MAVType.CHARGING_STATION,
+        MAVType.FLARM,
+        MAVType.SERVO,
+        MAVType.ODID,
+        MAVType.GROUND_ROVER,
+    )
+    result = array("B", [0] * 256)
+    for value in range(36):
+        result[value] = 1
+    for value in non_vehicle_types:
+        result[value] = 0
+    return result
+
+
+_mavlink_vehicle_lookup_table = _create_mavlink_vehicle_lookup_table()
+"""Lookup table that maps MAVLink ``MAV_TYPE`` values to whether they denote
+a vehicle. Used by `is_mavlink_vehicle()`.
+"""
 
 
 def can_communicate_infer_from_heartbeat(message: MAVLinkMessage | None) -> bool:
@@ -104,6 +137,23 @@ def flockwave_severity_from_mavlink_severity(severity: int) -> Severity:
         return Severity.DEBUG
     else:
         return _mavlink_severity_to_flockwave_severity[severity]
+
+
+def is_mavlink_vehicle(type: int) -> bool:
+    """Returns whether the given MAVLink ``MAV_TYPE`` value (typically from the
+    ``type`` field of a HEARTBEAT message) denotes a vehicle (most likely).
+
+    This function is on a hot code path so it uses a pre-populated lookup
+    table.
+
+    Args:
+        type: the ``MAV_TYPE`` value to check
+
+    Returns:
+        whether the type denotes a vehicle; ``False`` for unknown or
+        out-of-range values
+    """
+    return 0 <= type < 256 and _mavlink_vehicle_lookup_table[type] != 0
 
 
 def log_id_from_message(message: MAVLinkMessage, network_id: str | None = None) -> str:

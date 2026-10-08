@@ -59,6 +59,7 @@ from .types import (
 )
 from .utils import (
     flockwave_severity_from_mavlink_severity,
+    is_mavlink_vehicle,
     log_id_for_uav,
     log_id_from_message,
     python_log_level_from_mavlink_severity,
@@ -940,7 +941,7 @@ class MAVLinkNetwork:
         self, message: MAVLinkMessage, *, connection_id: str, address: Any
     ):
         """Handles an incoming MAVLink HEARTBEAT message."""
-        if not MAVType(message.type).is_vehicle:
+        if not is_mavlink_vehicle(message.type):
             # Ignore non-vehicle heartbeats
             return
 

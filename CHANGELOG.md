@@ -14,6 +14,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   this package so it is still installed and loaded automatically; the configuration
   options of the extension (`route` and `public`) are unchanged.
 
+### Fixed
+
+- MAVLink heartbeat messages are now filtered correctly so that heartbeats from
+  non-vehicle MAVLink components (GCS, gimbals, cameras, ADS-B receivers etc.) are
+  ignored. Heartbeats with `MAV_TYPE` values not known to the server no longer
+  raise an exception in the MAVLink message handler.
+
 ## [2.55.1] - 2026-10-06
 
 ### Fixed

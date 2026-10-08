@@ -472,20 +472,16 @@ class MAVType(IntEnum):
     DECAROTOR = 35
 
     def is_vehicle(self) -> bool:
-        """Returns whether the MAVType constant denotes a vehicle (most likely)."""
-        return int(self) < 36 and self not in (
-            MAVType.ANTENNA_TRACKER,
-            MAVType.GCS,
-            MAVType.ONBOARD_CONTROLLER,
-            MAVType.GIMBAL,
-            MAVType.ADSB,
-            MAVType.CAMERA,
-            MAVType.CHARGING_STATION,
-            MAVType.FLARM,
-            MAVType.SERVO,
-            MAVType.ODID,
-            MAVType.GROUND_ROVER,
-        )
+        """Returns whether the MAVType constant denotes a vehicle (most likely).
+
+        Kept for backward compatibility; see `is_mavlink_vehicle()` in the
+        `utils` module, which also works with raw integers that do not
+        correspond to any member of this enum.
+        """
+        # Imported here to avoid a circular import
+        from .utils import is_mavlink_vehicle
+
+        return is_mavlink_vehicle(int(self))
 
     @property
     def motor_count(self) -> int:

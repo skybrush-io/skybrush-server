@@ -4,7 +4,6 @@ from flockwave.server.ext.mavlink.autopilots.registry import (
     register_for_mavlink_vehicle_type,
 )
 from flockwave.server.ext.mavlink.enums import (
-    MAVModeFlag,
     MAVType,
 )
 

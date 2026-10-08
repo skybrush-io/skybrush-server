@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 from collections.abc import AsyncIterator
 from typing import TYPE_CHECKING
 
-from flockwave.server.ext.mavlink.enums import MAVModeFlag, MAVParamType
+from flockwave.server.ext.mavlink.enums import MAVParamType
 from flockwave.server.ext.mavlink.types import MAVLinkFlightModeNumbers, MAVLinkMessage
 from flockwave.server.ext.mavlink.utils import (
     decode_param_from_wire_representation,

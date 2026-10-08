@@ -23,7 +23,6 @@ from .autopilots import (
     PX4,
     ArduCopter,
     ArduCopterWithSkybrush,
-    ArduPilot,
     ArduPlane,
     ArduRover,
     Autopilot,

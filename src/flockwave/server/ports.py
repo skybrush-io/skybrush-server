@@ -2,7 +2,7 @@
 and related applications.
 """
 
-from collections.abc import Iterator, Mapping
+from collections.abc import Generator, Mapping
 from contextlib import contextmanager
 from types import MappingProxyType
 from typing import Literal
@@ -136,7 +136,7 @@ def set_base_port(value: int) -> None:
 
 
 @contextmanager
-def use_port(service: str, port: int) -> Iterator[None]:
+def use_port(service: str, port: int) -> Generator[None, None, None]:
     """Context manager that registers a port as being used by a service."""
     global _registered_ports
 

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from collections.abc import AsyncIterator, Callable, Iterable, Sequence
+from collections.abc import AsyncGenerator, Callable, Iterable, Sequence
 from contextlib import AsyncExitStack, asynccontextmanager
 from errno import EIO
 from functools import partial
@@ -943,7 +943,7 @@ class CrazyflieUAV(UAVBase):
     @asynccontextmanager
     async def set_and_restore_parameter(
         self, name: str, value: float
-    ) -> AsyncIterator[None]:
+    ) -> AsyncGenerator[None, None]:
         """Context manager that sets the value of a parameter on the UAV upon
         entering the context and resets it upon exiting.
         """

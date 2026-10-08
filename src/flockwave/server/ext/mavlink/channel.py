@@ -5,7 +5,7 @@ objects to receive and send MAVLink messages.
 from __future__ import annotations
 
 from collections import defaultdict
-from collections.abc import Iterator
+from collections.abc import Generator
 from contextlib import contextmanager
 from time import time
 from typing import TYPE_CHECKING, Any, ClassVar, Protocol, cast
@@ -184,7 +184,7 @@ class MAVLinkMessageChannelFactory(Protocol):
 @contextmanager
 def use_mavlink_message_channel_factory(
     factory: MAVLinkMessageChannelFactory,
-) -> Iterator[None]:
+) -> Generator[None, None, None]:
     """Context manager that registers a new MAVLink message channel factory that
     will be used by `create_mavlink_message_channel()` to create channels for
     connections.

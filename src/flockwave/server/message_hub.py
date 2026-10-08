@@ -4,7 +4,13 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from collections import defaultdict
-from collections.abc import AsyncIterable, Awaitable, Callable, Iterable, Iterator
+from collections.abc import (
+    AsyncIterable,
+    Awaitable,
+    Callable,
+    Generator,
+    Iterable,
+)
 from contextlib import ExitStack, contextmanager
 from dataclasses import dataclass, field
 from functools import partial
@@ -899,7 +905,7 @@ class MessageHub:
     @contextmanager
     def use_message_handler(
         self, func: MessageHandler, message_types: Iterable[str] | None = None
-    ) -> Iterator[None]:
+    ) -> Generator[None, None, None]:
         """Context manager that registers a handler function that will handle
         incoming messages, and unregisters the function upon exiting the
         context.
@@ -927,7 +933,7 @@ class MessageHub:
         handlers: Mapping[str, MessageHandler],
         *,
         used_to_be_experimental: bool = False,
-    ) -> Iterator[None]:
+    ) -> Generator[None, None, None]:
         """Context manager that registers multiple handler functions, specified
         in a dictionary mapping message types to handlers, and then unregisters
         the functions upon exiting the context.
@@ -960,7 +966,9 @@ class MessageHub:
             yield
 
     @contextmanager
-    def use_request_middleware(self, middleware: RequestMiddleware) -> Iterator[None]:
+    def use_request_middleware(
+        self, middleware: RequestMiddleware
+    ) -> Generator[None, None, None]:
         """Context manager that registers a request middleware when entering
         the context, and unregisters it when exiting the context.
 
@@ -974,7 +982,9 @@ class MessageHub:
             disposer()
 
     @contextmanager
-    def use_response_middleware(self, middleware: ResponseMiddleware) -> Iterator[None]:
+    def use_response_middleware(
+        self, middleware: ResponseMiddleware
+    ) -> Generator[None, None, None]:
         """Context manager that registers a response middleware when entering
         the context, and unregisters it when exiting the context.
 

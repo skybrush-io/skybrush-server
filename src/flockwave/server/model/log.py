@@ -128,7 +128,7 @@ class FlightLog(metaclass=ModelMeta):
     def create_from_metadata(cls, metadata: FlightLogMetadata, body: Any = ""):
         encoded_body = (
             b64encode(body).decode("ascii")
-            if isinstance(body, bytes) and metadata.kind.is_binary
+            if isinstance(body, bytes) and metadata.kind.is_binary()
             else body
         )
         return cls.create(

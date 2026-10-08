@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Generator
 from contextlib import contextmanager
 from functools import partial
 from random import uniform
@@ -193,7 +193,7 @@ class VirtualUAVProviderExtension(UAVExtension[VirtualUAVDriver]):
 
     @staticmethod
     @contextmanager
-    def use_firmware_update_support(api) -> Iterator[None]:
+    def use_firmware_update_support(api) -> Generator[None, None, None]:
         """Enhancer context manager that adds support for remote firmware updates
         to virtual UAVs.
         """

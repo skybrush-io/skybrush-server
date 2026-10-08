@@ -1,4 +1,4 @@
-from collections.abc import Callable, Iterable, Iterator
+from collections.abc import Callable, Generator, Iterable, Iterator
 from contextlib import ExitStack, contextmanager
 from functools import partial
 from itertools import count
@@ -39,7 +39,7 @@ class RTKBeaconManager:
         self._counter = count()
 
     @contextmanager
-    def use(self, ext: "RTKExtension", nursery) -> Iterator[None]:
+    def use(self, ext: "RTKExtension", nursery) -> Generator[None, None, None]:
         if not self.enabled:
             return
 

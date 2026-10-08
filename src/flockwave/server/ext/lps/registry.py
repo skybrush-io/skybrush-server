@@ -3,7 +3,7 @@ instances themselves. Other extensions that provide support for specific types
 of local positioning systems need to register these in the LPS registry.
 """
 
-from collections.abc import Iterator
+from collections.abc import Generator
 from contextlib import contextmanager
 from functools import partial
 
@@ -42,7 +42,7 @@ class LocalPositioningSystemTypeRegistry(RegistryBase[LocalPositioningSystemType
     @contextmanager
     def use(
         self, id: str, type: LocalPositioningSystemType
-    ) -> Iterator[LocalPositioningSystemType]:
+    ) -> Generator[LocalPositioningSystemType, None, None]:
         """Adds a new local positioning system (LPS) type, hands control back to
         the caller in a context, and then removes the LPS type when the caller
         exits the context.
@@ -142,7 +142,7 @@ class LocalPositioningSystemRegistry(ObjectRegistryProxy[LocalPositioningSystem]
     @contextmanager
     def create_and_use(
         self, type: str, id: str | None = None
-    ) -> Iterator[LocalPositioningSystem]:
+    ) -> Generator[LocalPositioningSystem, None, None]:
         """Context manager that creates a new local positioning system (LPS)
         instance of the given type, adds it to the registry and yields the
         LPS instance. Automatically removes the LPS instance when the context

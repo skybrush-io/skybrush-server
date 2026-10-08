@@ -5,7 +5,7 @@ MAVLink protocol.
 from __future__ import annotations
 
 from collections import OrderedDict
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Generator
 from contextlib import ExitStack, contextmanager
 from functools import partial
 from typing import TYPE_CHECKING, Any, overload
@@ -303,7 +303,7 @@ class MAVLinkDronesExtension(UAVExtension[MAVLinkDriver]):
 
     @staticmethod
     @contextmanager
-    def use_firmware_update_support(api) -> Iterator[None]:
+    def use_firmware_update_support(api) -> Generator[None, None, None]:
         """Enhancer context manager that adds support for remote firmware updates
         to virtual UAVs.
         """

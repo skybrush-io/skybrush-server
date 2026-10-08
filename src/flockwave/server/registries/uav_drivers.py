@@ -2,7 +2,7 @@
 knows about.
 """
 
-from collections.abc import Iterator
+from collections.abc import Generator
 from contextlib import contextmanager
 
 from ..logger import log as base_log
@@ -78,7 +78,7 @@ class UAVDriverRegistry(RegistryBase[UAVDriver]):
         return driver
 
     @contextmanager
-    def use(self, driver: UAVDriver) -> Iterator[UAVDriver]:
+    def use(self, driver: UAVDriver) -> Generator[UAVDriver, None, None]:
         """Temporarily associates a driver to an ID, hands control back to the
         caller in a context, and then removes the driver when the caller exits
         the context.

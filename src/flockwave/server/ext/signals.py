@@ -5,7 +5,7 @@ each other's API.
 
 from __future__ import annotations
 
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Generator
 from contextlib import ExitStack, contextmanager
 from logging import Logger
 from typing import ContextManager, Protocol
@@ -86,7 +86,7 @@ def get_signal(name: str) -> Signal:
 
 
 @contextmanager
-def use_signals(map: dict[str, Callable]) -> Iterator[None]:
+def use_signals(map: dict[str, Callable]) -> Generator[None, None, None]:
     """Context manager that registers signal handler functions for multiple
     signals when entering the context and unregisters them when exiting the
     context.

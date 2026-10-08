@@ -2,7 +2,7 @@
 keeps track of registered authentication methods.
 """
 
-from collections.abc import Iterator
+from collections.abc import Generator
 from contextlib import contextmanager
 from typing import TYPE_CHECKING, Any, ContextManager, Protocol, Sequence
 
@@ -73,7 +73,9 @@ class AuthenticationMethodRegistry(RegistryBase[AuthenticationMethod]):
         return self._entries.pop(method_id, None)
 
     @contextmanager
-    def use(self, method: AuthenticationMethod) -> Iterator[AuthenticationMethod]:
+    def use(
+        self, method: AuthenticationMethod
+    ) -> Generator[AuthenticationMethod, None, None]:
         """Temporarily adds a new authentication method to the registry, hands
         control back to the caller in a context, and then removes the method
         when the caller exits the context.

@@ -13,7 +13,7 @@ MAVLink-based drone swarms.
 from __future__ import annotations
 
 from collections import defaultdict
-from collections.abc import Awaitable, Callable, Iterable, Iterator, Sequence
+from collections.abc import Awaitable, Callable, Generator, Iterable, Sequence
 from contextlib import ExitStack, contextmanager
 from logging import Logger
 from time import time_ns
@@ -281,7 +281,7 @@ class MAVLinkNetwork:
         type: int | str | MAVMessageType,
         params: MAVLinkMessageMatcher = None,
         system_id: int | None = None,
-    ) -> Iterator[Future[MAVLinkMessage]]:
+    ) -> Generator[Future[MAVLinkMessage], None, None]:
         """Sets up a handler that waits for a MAVLink packet of a given type,
         optionally matching its content with the given parameter values based
         on strict equality.
@@ -864,7 +864,7 @@ class MAVLinkNetwork:
                     # the future twice
                     continue
                 elif callable(params):
-                    matched = params(message)  # ty:ignore[call-top-callable]
+                    matched = params(message)
                 elif params is None:
                     matched = True
                 else:

@@ -3,7 +3,7 @@ server is currently connected to.
 """
 
 from collections import defaultdict
-from collections.abc import Iterable, Iterator
+from collections.abc import Generator, Iterable
 from contextlib import contextmanager
 from time import time
 
@@ -165,7 +165,7 @@ class ClientRegistry(RegistryBase[Client]):
         self.removed.send(self, client=client)
 
     @contextmanager
-    def use(self, client_id: str, channel_type: str) -> Iterator[Client]:
+    def use(self, client_id: str, channel_type: str) -> Generator[Client, None, None]:
         """Temporarily adds a new client with the given client ID and
         channel type, hands control back to the caller in a context, and
         then removes the client when the caller exits the context.

@@ -4,7 +4,7 @@ register themselves in the mission planner registry so their services can
 be used by clients.
 """
 
-from collections.abc import Iterator
+from collections.abc import Generator
 from contextlib import contextmanager
 from functools import partial
 
@@ -42,7 +42,7 @@ class MissionTypeRegistry(RegistryBase[MissionType]):
         return partial(self._entries.__delitem__, id)
 
     @contextmanager
-    def use(self, id: str, type: MissionType) -> Iterator[MissionType]:
+    def use(self, id: str, type: MissionType) -> Generator[MissionType, None, None]:
         """Adds a new mission type, hands control back to the caller in a
         context, and then removes the mission type when the caller exits the
         context.

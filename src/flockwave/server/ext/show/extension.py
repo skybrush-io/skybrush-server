@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Generator, Sequence
 from contextlib import ExitStack, contextmanager
 from logging import Logger
 from math import inf
-from typing import Any, Iterator
+from typing import Any
 
 from flockwave.concurrency import CancellableTaskGroup
 from trio import Nursery, TooSlowError, fail_after, open_nursery, sleep_forever
@@ -249,7 +249,7 @@ class DroneShowExtension(Extension):
         return self._lights.clone()
 
     @contextmanager
-    def _use_encoding_hook(self, hook: ShowEncodingHook) -> Iterator[None]:
+    def _use_encoding_hook(self, hook: ShowEncodingHook) -> Generator[None, None, None]:
         """Context manager that registers a hook function to be called during the show
         encoding process when the context is entered and unregisters it when the context
         is exited.

@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from collections.abc import AsyncIterator
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from enum import Enum
 from logging import Logger
@@ -231,7 +231,7 @@ class LEDLightConfigurationManagerBase(Generic[TPacket], ABC):
                 self._rapid_mode_triggered = Event()
 
     @asynccontextmanager
-    async def use(self) -> AsyncIterator[None]:
+    async def use(self) -> AsyncGenerator[None, None]:
         """Context manager that runs the tasks related to the show manager while
         the exeecution is in the context.
         """

@@ -2,7 +2,7 @@
 UAVs.
 """
 
-from collections.abc import AsyncGenerator, Iterator
+from collections.abc import AsyncGenerator, Generator
 from contextlib import contextmanager
 from math import inf
 from time import time
@@ -371,7 +371,9 @@ class CommandExecutionStatus(metaclass=ModelMeta):
         self._cancel_scope.deadline = self._deadline
 
     @contextmanager
-    def suspended(self, post_timeout: float | None = None) -> Iterator[Future[Any]]:
+    def suspended(
+        self, post_timeout: float | None = None
+    ) -> Generator[Future[Any], None, None]:
         """Context manager that marks the execution of the command as suspended
         (waiting for user input) upon entering the context and resumes it when
         exiting the context.

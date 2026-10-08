@@ -5,7 +5,7 @@ server.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Generator
 from contextlib import contextmanager
 from typing import TYPE_CHECKING, TypeVar, overload
 
@@ -108,7 +108,7 @@ def unregister(type: str) -> None:
 
 
 @contextmanager
-def registered(type: str, cls: type[ModelObject]) -> Iterator[None]:
+def registered(type: str, cls: type[ModelObject]) -> Generator[None, None, None]:
     """Context manager that temporarily registers the class in the Flockwave
     messaging system with a given type name, and unregisters the class
     when exiting the context.

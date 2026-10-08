@@ -2,7 +2,7 @@
 of the show, or the elapsed time into the show if it is already running.
 """
 
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Generator
 from contextlib import contextmanager
 from logging import Logger
 from time import time
@@ -192,7 +192,7 @@ class ClockSynchronizationHandler:
     @contextmanager
     def use_secondary_clock(
         self, clock: TimeElapsedSinceReferenceClock
-    ) -> Iterator[None]:
+    ) -> Generator[None, None, None]:
         """Context manager that assigns the given clock as a secondary clock
         to the synchronization object when entering the context and that
         detaches the clock when exiting the context.

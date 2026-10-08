@@ -3,13 +3,14 @@ served over HTTP.
 """
 
 from bisect import insort_right
-from collections.abc import Iterator
+from collections.abc import Generator
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from pathlib import Path
 
 from quart import render_template, url_for
 
+from flockwave.server.ext.http_server import HTTPServerExtensionAPI
 from flockwave.server.utils.quart import make_blueprint
 
 __all__ = ("load",)
@@ -76,7 +77,7 @@ def load(app, configuration):
         else:
             return await render_template("index.html.j2", links=front_page_links)
 
-    http_server = app.import_api("http_server")
+    http_server = app.import_api("http_server", HTTPServerExtensionAPI)
     http_server.mount(blueprint, path=route)
     http_server.propose_index_page("frontend.index", priority=0)
 
@@ -84,7 +85,22 @@ def load(app, configuration):
 @contextmanager
 def use_link_on_front_page(
     route: str, title: str, *, priority: int = 0
-) -> Iterator[FrontPageLink]:
+) -> Generator[FrontPageLink]:
+    """Context manager that adds a link to the front page of the server while
+    the execution is within the context, and removes it when the context is
+    exited.
+
+    Args:
+        route: the route that the link leads to; either an absolute URL or
+            a route reference in the form of ``blueprint.route`` (e.g.,
+            ``webui.index``)
+        title: the title of the link
+        priority: the priority of the link; links are ordered on the front
+            page by priority
+
+    Returns:
+        the link that was added to the front page
+    """
     global front_page_links
 
     link = FrontPageLink(title=title, route=route, priority=priority)

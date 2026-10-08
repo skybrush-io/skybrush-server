@@ -22,6 +22,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The `ArduPilotWithSkybrush` class was renamed to `ArduCopterWithSkybrush`
   to be consistent with the new autopilot class hierarchy.
 
+### Fixed
+
+- MAVLink heartbeat messages are now filtered correctly so that heartbeats from
+  non-vehicle MAVLink components (GCS, gimbals, cameras, ADS-B receivers etc.) are
+  ignored. Heartbeats with `MAV_TYPE` values not known to the server no longer
+  raise an exception in the MAVLink message handler.
+
+## [2.56.0] - 2026-10-08
+
+### Changed
+
 - The web-based configuration user interface (the `webui` extension) was moved out of
   the server into its own package named `skybrush-ext-webui`. The server depends on
   this package so it is still installed and loaded automatically; the configuration

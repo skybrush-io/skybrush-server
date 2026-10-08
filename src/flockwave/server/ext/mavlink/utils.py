@@ -71,7 +71,6 @@ def _create_mavlink_vehicle_lookup_table() -> array:
         MAVType.FLARM,
         MAVType.SERVO,
         MAVType.ODID,
-        MAVType.GROUND_ROVER,
     )
     for value in exclusions:
         result[value] = 0

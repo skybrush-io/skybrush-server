@@ -41,7 +41,7 @@ class PyOxidizerTemplateLoader(BaseLoader):
     def get_source(self, environment, template):
         assert hasattr(__loader__, "get_resource_reader")
         assert callable(__loader__.get_resource_reader)
-        reader: ResourceReader | None = __loader__.get_resource_reader(self.package)  # ty:ignore[call-top-callable, invalid-assignment]
+        reader: ResourceReader | None = __loader__.get_resource_reader(self.package)  # ty:ignore[invalid-assignment]
         if reader is None:
             raise TemplateNotFound(template)
         try:
@@ -93,7 +93,7 @@ class PyOxidizerBlueprint(Blueprint):
         package, _, _ = self.import_name.rpartition(".")
         assert hasattr(__loader__, "get_resource_reader")
         assert callable(__loader__.get_resource_reader)
-        reader: ResourceReader | None = __loader__.get_resource_reader(package)  # ty:ignore[call-top-callable, invalid-assignment]
+        reader: ResourceReader | None = __loader__.get_resource_reader(package)  # ty:ignore[invalid-assignment]
         resource_path = f"static/{filename}"
 
         try:

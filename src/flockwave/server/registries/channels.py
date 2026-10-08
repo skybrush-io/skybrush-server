@@ -8,7 +8,7 @@ Note that the registry keeps track of the different *types* of communication
 channels, not each individual channel between a client and the server.
 """
 
-from collections.abc import Awaitable, Callable, Iterator
+from collections.abc import Awaitable, Callable, Generator
 from contextlib import contextmanager
 from dataclasses import dataclass
 from typing import Generic, TypeVar
@@ -201,7 +201,7 @@ class ChannelTypeRegistry(RegistryBase[ChannelTypeDescriptor], Generic[T]):
         factory: Callable[[], CommunicationChannel[T]],
         broadcaster: BroadcasterFunc[T] | None = None,
         ssdp_location: Callable[[IPAddressAndPort | None], str | None] | None = None,
-    ) -> Iterator[None]:
+    ) -> Generator[None, None, None]:
         """Context manager that temporarily adds a channel to the channel
         registry and unregisters it upon exiting the context.
 

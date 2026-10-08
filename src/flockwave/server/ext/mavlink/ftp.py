@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import AsyncGenerator, AsyncIterator, Awaitable, Iterable, Iterator
+from collections.abc import AsyncGenerator, Awaitable, Iterable, Iterator
 from contextlib import aclosing, asynccontextmanager
 from dataclasses import dataclass
 from enum import Enum, IntEnum
@@ -696,7 +696,9 @@ class MAVFTP:
         await self._send_and_wait(message)
 
     @asynccontextmanager
-    async def _open_session(self, session_id: int) -> AsyncIterator[MAVFTPSession]:
+    async def _open_session(
+        self, session_id: int
+    ) -> AsyncGenerator[MAVFTPSession, None]:
         """Context manager that creates a new MAVFTP session for file uploads or
         downloads and closes the session when the context is exited.
         """

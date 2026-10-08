@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Generator
 from contextlib import contextmanager
 from math import inf
 from time import monotonic, time
@@ -230,7 +230,9 @@ class TimeSyncManager:
             pass
 
     @contextmanager
-    def use_time_source(self, id: str, *, priority: int = 0) -> Iterator[TimeSource]:
+    def use_time_source(
+        self, id: str, *, priority: int = 0
+    ) -> Generator[TimeSource, None, None]:
         """Registers a time source for the duration of a context."""
         source = self.register_time_source(id, priority=priority)
         try:

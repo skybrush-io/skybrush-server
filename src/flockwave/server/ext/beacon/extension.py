@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Iterator
+from collections.abc import Generator
 from contextlib import ExitStack, contextmanager
 from operator import attrgetter
 
@@ -53,7 +53,7 @@ class BeaconExtension(Extension):
         self.app.object_registry.remove(beacon)
 
     @contextmanager
-    def _use_beacon(self, beacon_id: str) -> Iterator[Beacon]:
+    def _use_beacon(self, beacon_id: str) -> Generator[Beacon, None, None]:
         assert self.app is not None
 
         beacon = Beacon(id=beacon_id)

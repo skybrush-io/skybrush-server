@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from collections.abc import AsyncIterator, Awaitable, Callable
+from collections.abc import AsyncGenerator, AsyncIterator, Awaitable, Callable
 from contextlib import aclosing, asynccontextmanager
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -2498,7 +2498,7 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
     @asynccontextmanager
     async def temporarily_arm(
         self, *, force: bool = False, channel: str = Channel.PRIMARY
-    ) -> AsyncIterator[None]:
+    ) -> AsyncGenerator[None, None]:
         """Temporarily arms the UAV while the execution is in the context, disarming it
         upon exiting the context. Disarming is done at a best-effort basis; failures
         will be ignored.
@@ -2518,7 +2518,7 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
     @asynccontextmanager
     async def temporarily_override_rc(
         self, channel: str = Channel.RC
-    ) -> AsyncIterator[Callable[[Sequence[int]], Awaitable[None]]]:
+    ) -> AsyncGenerator[Callable[[Sequence[int]], Awaitable[None]], None]:
         """Creates a context that allows the caller to send RC override messages to
         this drone without affecting others. Upon exiting the context, RC control will
         be released back to the UAV at a best-effort basis. There is currently no way
@@ -2554,7 +2554,7 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
     @asynccontextmanager
     async def temporarily_request_messages(
         self, messages: dict[int, float]
-    ) -> AsyncIterator[None]:
+    ) -> AsyncGenerator[None, None]:
         """Temporarily requests the UAV to send a given set of messages while
         the execution is in the context, resetting the messages upon exiting
         the context. Resetting is done at a best-effort basis; failures will be
@@ -2603,7 +2603,7 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
     @asynccontextmanager
     async def temporarily_set_mode(
         self, mode: int | str, *, channel: str = Channel.PRIMARY
-    ) -> AsyncIterator[None]:
+    ) -> AsyncGenerator[None, None]:
         """Temporarily requests the UAV to switch to the given flight mode while the
         execution is in the context, resetting to the previous flight mode upon exiting
         the context. Resetting is done at a best-effort basis; failures will be
@@ -2651,7 +2651,7 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
     @asynccontextmanager
     async def temporarily_set_parameters(
         self, parameters: Sequence[tuple[str, float]]
-    ) -> AsyncIterator[None]:
+    ) -> AsyncGenerator[None, None]:
         """Temporarily sets the given parameters on the UAV while the execution is in
         the context, resetting to the previous values upon exiting the context.
         Resetting is done at a best-effort basis; failures will be ignored.

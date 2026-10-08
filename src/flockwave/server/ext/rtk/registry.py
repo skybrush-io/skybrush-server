@@ -4,7 +4,7 @@ the server knows.
 
 __all__ = ("RTKPresetRegistry",)
 
-from collections.abc import Iterator
+from collections.abc import Generator
 from contextlib import contextmanager
 
 from flockwave.server.registries.base import RegistryBase
@@ -62,7 +62,9 @@ class RTKPresetRegistry(RegistryBase[RTKConfigurationPreset]):
         return self._entries.pop(preset_id, None)
 
     @contextmanager
-    def use(self, preset: RTKConfigurationPreset) -> Iterator[RTKConfigurationPreset]:
+    def use(
+        self, preset: RTKConfigurationPreset
+    ) -> Generator[RTKConfigurationPreset, None, None]:
         """Temporarily adds a new preset, hands control back to the caller in a
         context, and then removes the preset when the caller exits the context.
 

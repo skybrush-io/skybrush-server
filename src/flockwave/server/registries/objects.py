@@ -2,7 +2,7 @@
 server knows.
 """
 
-from collections.abc import Callable, Iterable, Iterator
+from collections.abc import Callable, Generator, Iterable
 from contextlib import contextmanager
 from math import inf
 from typing import ClassVar, TypeVar, cast
@@ -178,7 +178,7 @@ class ObjectRegistry(RegistryBase[ModelObject]):
         self._size_limit = max(value, 0)
 
     @contextmanager
-    def use(self, *args: ModelObject) -> Iterator[None]:
+    def use(self, *args: ModelObject) -> Generator[None, None, None]:
         """Temporarily adds one or more new objects to the registry, hands
         control back to the caller in a context, and then removes the objects
         when the caller exits the context.

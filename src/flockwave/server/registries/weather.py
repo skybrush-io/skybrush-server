@@ -4,7 +4,7 @@ the server knows.
 
 __all__ = ("WeatherProviderRegistry",)
 
-from collections.abc import Iterable, Iterator
+from collections.abc import Generator, Iterable
 from contextlib import contextmanager
 from functools import partial
 
@@ -93,7 +93,7 @@ class WeatherProviderRegistry(RegistryBase[WeatherProvider]):
     @contextmanager
     def use(
         self, provider: WeatherProvider, *, id: str, priority: int = 0
-    ) -> Iterator[WeatherProvider]:
+    ) -> Generator[WeatherProvider, None, None]:
         """Temporarily adds a new weather provider, hands control back to the
         caller in a context, and then removes the weather provider when the
         caller exits the context.

@@ -13,7 +13,7 @@ MAVLink-based drone swarms.
 from __future__ import annotations
 
 from collections import defaultdict
-from collections.abc import Awaitable, Callable, Iterable, Iterator, Sequence
+from collections.abc import Awaitable, Callable, Generator, Iterable, Sequence
 from contextlib import ExitStack, contextmanager
 from logging import Logger
 from time import time_ns
@@ -59,6 +59,7 @@ from .types import (
 )
 from .utils import (
     flockwave_severity_from_mavlink_severity,
+    is_mavlink_vehicle,
     log_id_for_uav,
     log_id_from_message,
     python_log_level_from_mavlink_severity,
@@ -281,7 +282,7 @@ class MAVLinkNetwork:
         type: int | str | MAVMessageType,
         params: MAVLinkMessageMatcher = None,
         system_id: int | None = None,
-    ) -> Iterator[Future[MAVLinkMessage]]:
+    ) -> Generator[Future[MAVLinkMessage], None, None]:
         """Sets up a handler that waits for a MAVLink packet of a given type,
         optionally matching its content with the given parameter values based
         on strict equality.
@@ -864,7 +865,7 @@ class MAVLinkNetwork:
                     # the future twice
                     continue
                 elif callable(params):
-                    matched = params(message)  # ty:ignore[call-top-callable]
+                    matched = params(message)
                 elif params is None:
                     matched = True
                 else:
@@ -940,7 +941,7 @@ class MAVLinkNetwork:
         self, message: MAVLinkMessage, *, connection_id: str, address: Any
     ):
         """Handles an incoming MAVLink HEARTBEAT message."""
-        if not MAVType(message.type).is_vehicle:
+        if not is_mavlink_vehicle(message.type):
             # Ignore non-vehicle heartbeats
             return
 

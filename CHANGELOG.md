@@ -14,7 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   This refactor includes many enhancements, like proper `mode ...` command handling
   for non-copter vehicles, proper custom mode definitions in general, proper
   recognition of vehicle types into their corresponding autopilot handlers.
-  Basic VTOL support is also tested in simulator with standard ArduPlane 4.7 
+  Basic VTOL support is also tested in simulator with standard ArduPlane 4.7
   firmware.
 
 ### Changed

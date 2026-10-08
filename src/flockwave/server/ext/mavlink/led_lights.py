@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+from collections.abc import Generator
 from contextlib import contextmanager
 from logging import Logger
 from struct import Struct
-from typing import TYPE_CHECKING, Iterator
+from typing import TYPE_CHECKING
 
 from blinker import Signal
 
@@ -130,7 +131,7 @@ class LEDLightConfigurationSignalDispatcher(
     @contextmanager
     def use(
         self, signals: SignalsExtensionAPI, *, log: Logger | None = None
-    ) -> Iterator[None]:
+    ) -> Generator[None, None, None]:
         """Context manager that sets up the signal to dispatch and the logger to use for
         the duration of the context.
         """

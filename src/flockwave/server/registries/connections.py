@@ -4,7 +4,7 @@ server knows.
 
 from __future__ import annotations
 
-from collections.abc import Iterator
+from collections.abc import Generator
 from contextlib import contextmanager
 
 from blinker import Signal
@@ -119,7 +119,7 @@ class ConnectionRegistry(RegistryBase["ConnectionRegistryEntry"]):
     @contextmanager
     def use(
         self, connection: Connection, name: str, *args, **kwds
-    ) -> Iterator["ConnectionRegistryEntry"]:
+    ) -> Generator["ConnectionRegistryEntry", None, None]:
         """Temporarily adds a new connection with the given name and
         additional paramters, hands control back to the caller in a
         context, and then removes the connection when the caller exits

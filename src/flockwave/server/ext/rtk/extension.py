@@ -553,7 +553,7 @@ class RTKExtension(Extension):
             raise RuntimeError("Only user-defined presets can be deleted")
 
         if callable(updates):
-            resolved_updates = cast(dict[str, Any], updates(preset))  # ty:ignore[call-top-callable]
+            resolved_updates = cast(dict[str, Any], updates(preset))
         else:
             resolved_updates = updates
 

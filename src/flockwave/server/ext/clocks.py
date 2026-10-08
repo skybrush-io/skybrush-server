@@ -4,7 +4,7 @@ for the ``CLK-...`` commands defined in the Skybrush protocol.
 
 from __future__ import annotations
 
-from collections.abc import Iterable, Iterator
+from collections.abc import Generator, Iterable
 from contextlib import ExitStack, contextmanager
 from typing import TYPE_CHECKING, Any, ContextManager, Protocol
 
@@ -104,7 +104,7 @@ class ClockRegistry(RegistryBase[Clock]):
         return clock
 
     @contextmanager
-    def use(self, clock: Clock) -> Iterator[Clock]:
+    def use(self, clock: Clock) -> Generator[Clock, None, None]:
         """Temporarily adds a new clock, hands control back to the caller in a
         context, and then removes the clock when the caller exits the context.
 

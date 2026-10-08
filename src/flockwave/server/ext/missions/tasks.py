@@ -1,7 +1,7 @@
 """Background tasks managed by the mission extension."""
 
 from abc import ABC, abstractmethod
-from collections.abc import Awaitable, Callable, Iterable, Iterator
+from collections.abc import Awaitable, Callable, Generator, Iterable
 from contextlib import ExitStack, contextmanager
 from logging import Logger
 from typing import Any, cast
@@ -60,7 +60,7 @@ class MissionRegistryRelatedTaskBase(ABC):
         ...
 
     @contextmanager
-    def _subscribed_to_missions(self) -> Iterator[None]:
+    def _subscribed_to_missions(self) -> Generator[None, None, None]:
         """Context manager that subscribes to the events for all missions in the
         current registry when the context is entered and unsubscribes from them
         when the context is exited.

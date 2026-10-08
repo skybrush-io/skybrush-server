@@ -6,7 +6,7 @@ Socket.IO connections.
 
 from __future__ import annotations
 
-from collections.abc import Callable, Iterable, Iterator
+from collections.abc import Callable, Generator, Iterable
 from contextlib import ExitStack, contextmanager
 from enum import Enum
 from functools import partial
@@ -234,7 +234,7 @@ class SocketIOCommunicationHandler:
         await self._app.message_hub.handle_incoming_message(message, client)
 
     @contextmanager
-    def use(self) -> Iterator:
+    def use(self) -> Generator:
         server = self._protocol.server_class(
             json=JSONEncoder(), async_mode="asgi", cors_allowed_origins="*"
         )

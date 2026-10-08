@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from collections import deque
-from collections.abc import AsyncIterator, Callable, Iterable, Sequence
+from collections.abc import AsyncGenerator, Callable, Iterable, Sequence
 from contextlib import asynccontextmanager, closing
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
@@ -105,7 +105,7 @@ class Storage(ABC):
         raise NotImplementedError
 
     @asynccontextmanager
-    async def use(self, log: Logger) -> AsyncIterator[None]:
+    async def use(self, log: Logger) -> AsyncGenerator[None, None]:
         """Establishes a context within which the storage backend can be used."""
         yield
 

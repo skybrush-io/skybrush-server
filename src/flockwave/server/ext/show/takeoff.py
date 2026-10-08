@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from collections.abc import Iterator
+from collections.abc import Generator
 from contextlib import contextmanager
 from dataclasses import dataclass
 from logging import Logger
@@ -551,7 +551,7 @@ class SimpleScheduledTakeoffManager(SimpleScheduledTakeoffManagerBase):
     @contextmanager
     def use(
         self, func: TakeoffConfigurationDispatcher, *, log: Logger | None = None
-    ) -> Iterator[None]:
+    ) -> Generator[None, None, None]:
         """Context manager that overrides the function to call to broadcast the takeoff
         configuration to the UAVs.
 

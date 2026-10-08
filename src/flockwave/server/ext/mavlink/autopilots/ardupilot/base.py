@@ -67,15 +67,16 @@ FlightModeMap = dict[int, tuple[str, ...]]
 def extend_custom_modes(custom_modes: FlightModeMap, new_modes: FlightModeMap):
     """Helper function to extend custom modes of an ArduPilot_ subclass
     with new modes.
+
+    When a mode number already exists, the new names are appended to the
+    existing ones so that the primary (first) name of the mode is preserved.
     """
     result = dict(custom_modes)
     for key, new_names in new_modes.items():
-        if key in result:
-            existing_names = result[key]
-            combined_names = tuple(sorted(set(existing_names) | set(new_names)))
-            result[key] = combined_names
-        else:
-            result[key] = new_names
+        existing_names = result.get(key, ())
+        result[key] = existing_names + tuple(
+            name for name in new_names if name not in existing_names
+        )
     return result
 
 

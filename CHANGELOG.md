@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [main]
+
+### Changed
+
+- The web-based configuration user interface (the `webui` extension) was moved out of
+  the server into its own package named `skybrush-ext-webui`. The server depends on
+  this package so it is still installed and loaded automatically; the configuration
+  options of the extension (`route` and `public`) are unchanged.
+
 ## [2.55.1] - 2026-10-06
 
 ### Fixed

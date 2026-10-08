@@ -112,8 +112,5 @@ EXTENSIONS = {
         "takeoff_area": {"type": "grid", "spacing": 5},
     },
     "weather": {},
-    "webui": {
-        "enabled": True,
-        # "route": "/webui",
-    },
+    "webui": {},
 }

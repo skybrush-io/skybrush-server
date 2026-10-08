@@ -53,6 +53,7 @@ dependencies = [
   "numpy>=2.2.6",
   "typing-extensions>=4.15.0",
   "pydantic>=2.13.4",
+  "skybrush-ext-webui>=1.0.1,<2.0.0",
 ]
 
 [project.scripts]
@@ -120,6 +121,7 @@ skybrush-ext-skynet = { index = "collmot" }
 skybrush-ext-sidekick = { index = "collmot" }
 skybrush-ext-studio = { index = "collmot" }
 skybrush-ext-timecode = { index = "collmot" }
+skybrush-ext-webui = { index = "fury" }
 skybrush-lib-mission-planning = { index = "collmot" }
 skybrush-opt-rs = { index = "collmot" }
 skybrush-studio = { index = "collmot" }

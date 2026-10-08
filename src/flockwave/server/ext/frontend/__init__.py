@@ -3,5 +3,13 @@ served over HTTP.
 """
 
 from .extension import dependencies, description, exports, load, schema
+from .types import FrontendExtensionAPI
 
-__all__ = ("dependencies", "description", "exports", "load", "schema")
+__all__ = (
+    "dependencies",
+    "description",
+    "exports",
+    "load",
+    "schema",
+    "FrontendExtensionAPI",
+)

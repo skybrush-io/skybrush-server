@@ -22,6 +22,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The `ArduPilotWithSkybrush` class was renamed to `ArduCopterWithSkybrush`
   to be consistent with the new autopilot class hierarchy.
 
+- The web-based configuration user interface (the `webui` extension) was moved out of
+  the server into its own package named `skybrush-ext-webui`. The server depends on
+  this package so it is still installed and loaded automatically; the configuration
+  options of the extension (`route` and `public`) are unchanged.
+
+## [2.55.1] - 2026-10-06
+
+### Fixed
+
+- `show_pro` extension now refers to the correct version that should be used with
+  the new show encoding hook API. This version restores the functionality that
+  was broken intentionally in the previous release.
+
+## [2.55.0] - 2026-10-06
+
+See caveats below regarding the `show_pro` extension and the encoding of pyro,
+collective RTH and yaw control. Do not use this server version in production if you rely
+on these features.
+
+### Changed
+
+- `encode_show()` API changed slightly: the hook functions now take the show
+  specification and a show file builder object as parameters. The builder is responsible
+  for collecting the events that will be stored in a common event list of the produced
+  show file.
+
+- Removed `show_pro`-specific code from the show encoding process; it is now the
+  responsibility of the `show_pro` extension to register its own encoding hooks to add
+  support for pyro, collective RTH and yaw control. Since the new version of `show_pro`
+  must depend on _this_ version of the server to make this possible, **the encoding of
+  pyro, collective RTH and yaw control is temporarily broken in this server release**.
+  This is intentional, and it will be fixed in the next release of the `show_pro`
+  extension.
+
 ## [2.54.0] - 2026-10-02
 
 ### Added
@@ -40,6 +74,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Skybrush binary file format to upload the show can now use this function instead of
   re-implementing the encoding logic themselves. The function now also acts as a
   central gatekeeper for show file features that are limited to pro users only.
+  Note: the function API is still evolving and changes to the API will not be considered
+  a breaking change until the next _official_, bundled release of the server.
 
 - Added support for the new metadata and GCS light control setup blocks in `.skyb`
   files, to a limited extent. Metadata is not used yet but will be used in the future

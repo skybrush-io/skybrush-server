@@ -2,12 +2,12 @@ from pytest import fixture, raises
 
 from flockwave.server.show.formats import (
     SegmentEncoder,
+    ShowEvent,
     SkybrushBinaryFileFeatures,
     SkybrushBinaryFormatBlockType,
     SkybrushBinaryShowFile,
     TLVEncoder,
 )
-from flockwave.server.show.metadata import ShowMetadata
 from flockwave.server.show.trajectory import TrajectorySegment
 
 SIMPLE_SKYB_FILE_V1 = (
@@ -200,6 +200,65 @@ class TestTLVEncoder:
         assert b"".join(result) == tlv_encoder.encode_multiple_entries(entries)
 
 
+class TestShowEvent:
+    def test_encode_with_binary_payload(self):
+        event = ShowEvent(1.5, 2, 3, b"\x01\x02\x03\x04")
+        assert event.timestamp == 1.5
+        assert event.type == 2
+        assert event.subtype == 3
+        assert event.payload == b"\x01\x02\x03\x04"
+        assert event.encode() == b"\xdc\x05\x00\x00\x02\x03\x01\x02\x03\x04"
+
+    def test_encode_with_uint32_payload(self):
+        event = ShowEvent(0, 1, 2, 0x04030201)
+        assert event.payload == b"\x01\x02\x03\x04"
+        assert event.encode() == b"\x00\x00\x00\x00\x01\x02\x01\x02\x03\x04"
+
+    def test_encode_with_float_payload(self):
+        event = ShowEvent(0, 1, 2, 1.0)
+        assert event.payload == b"\x00\x00\x80\x3f"
+        assert event.encode() == b"\x00\x00\x00\x00\x01\x02\x00\x00\x80\x3f"
+
+    def test_timestamp_is_rounded_to_whole_milliseconds(self):
+        event = ShowEvent(1.9999, 0, 0, 0)
+        assert event.encode().startswith(b"\xd0\x07\x00\x00")
+
+        # Regression test: naive flooring would yield 1998 here due to
+        # floating point imprecision (1.999 * 1000 = 1998.9999...)
+        event = ShowEvent(1.999, 0, 0, 0)
+        assert event.encode().startswith(b"\xcf\x07\x00\x00")
+
+    def test_timestamp_at_upper_limit(self):
+        event = ShowEvent(4294967.295, 0, 0, 0)
+        assert event.encode().startswith(b"\xff\xff\xff\xff")
+
+    def test_invalid_type(self):
+        with raises(ValueError, match="range 0-255"):
+            ShowEvent(0, 256, 0, 0)
+
+    def test_invalid_subtype(self):
+        with raises(ValueError, match="range 0-255"):
+            ShowEvent(0, 0, -1, 0)
+
+    def test_invalid_binary_payload(self):
+        with raises(ValueError, match="exactly four bytes"):
+            ShowEvent(0, 0, 0, b"\x01\x02\x03")
+
+    def test_invalid_uint32_payload(self):
+        with raises(ValueError, match="range 0-4294967295"):
+            ShowEvent(0, 0, 0, 2**32)
+
+    def test_negative_timestamp(self):
+        event = ShowEvent(-0.001, 0, 0, 0)
+        with raises(ValueError, match="out of range"):
+            event.encode()
+
+    def test_timestamp_too_large(self):
+        event = ShowEvent(4294967.296, 0, 0, 0)
+        with raises(ValueError, match="out of range"):
+            event.encode()
+
+
 class TestSkybrushBinaryFileFormat:
     async def test_reading_blocks_version_1(self):
         async with SkybrushBinaryShowFile.from_bytes(SIMPLE_SKYB_FILE_V1) as f:
@@ -278,59 +337,6 @@ class TestSkybrushBinaryFileFormat:
             )
             await f.finalize()
             assert f.get_contents() == SIMPLE_SKYB_FILE_V2
-
-    async def test_adding_metadata(self):
-        uid = b"\xde\xad\xbe\xef"
-
-        async with SkybrushBinaryShowFile.create_in_memory(version=1) as f:
-            await f.add_metadata(ShowMetadata(uid=uid, drone_index=7))
-            await f.finalize()
-
-            expected_block = (
-                # Block header: metadata block (type 8), 12 bytes of body
-                b"\x08\x0c\x00"
-                # UID entry: tag 0, 4-byte long value
-                + b"\x00\x04\x00"
-                + uid
-                # Drone index entry: tag 1, 2-byte long little-endian value
-                + b"\x01\x02\x00\x07\x00"
-            )
-            assert f.get_contents() == b"skyb\x01" + expected_block
-
-    async def test_adding_metadata_with_default_values(self):
-        async with SkybrushBinaryShowFile.create_in_memory(version=1) as f:
-            await f.add_metadata(ShowMetadata())
-            await f.finalize()
-
-            assert f.get_contents() == (
-                b"skyb\x01"
-                # Block header: metadata block (type 8), 12 bytes of body
-                + b"\x08\x0c\x00"
-                # UID entry: tag 0, 4-byte long value, all zeros
-                + b"\x00\x04\x00\x00\x00\x00\x00"
-                # Drone index entry: tag 1, 2-byte long value, zero
-                + b"\x01\x02\x00\x00\x00"
-            )
-
-    async def test_adding_metadata_then_reading_it_back(self):
-        uid = b"\x01\x02\x03\x04"
-
-        async with SkybrushBinaryShowFile.create_in_memory(version=1) as f:
-            await f.add_metadata(ShowMetadata(uid=uid, drone_index=258))
-            await f.finalize()
-            data = f.get_contents()
-
-        async with SkybrushBinaryShowFile.from_bytes(data) as f:
-            blocks = await f.read_all_blocks()
-
-            assert len(blocks) == 1
-            assert blocks[0].type == SkybrushBinaryFormatBlockType.METADATA
-            assert await blocks[0].read() == (
-                b"\x00\x04\x00"
-                + uid
-                # Drone index 258 encoded as little-endian u16
-                + b"\x01\x02\x00\x02\x01"
-            )
 
     async def test_adding_block_that_is_too_large(self):
         async with SkybrushBinaryShowFile.create_in_memory() as f:

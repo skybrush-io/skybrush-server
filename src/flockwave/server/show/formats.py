@@ -9,12 +9,16 @@ from math import floor
 from struct import Struct
 from typing import IO, ClassVar, cast
 
-from .metadata import ShowMetadata
 from .trajectory import TrajectorySegment, TrajectorySpecification
 from .utils import Point
 from .utils import crc32_mavftp as crc32
 
-__all__ = ("SkybrushBinaryShowFile", "TLVEncoder")
+__all__ = (
+    "ShowEvent",
+    "SkybrushBinaryShowFile",
+    "SkybrushBinaryFormatBlockType",
+    "TLVEncoder",
+)
 
 
 _SKYBRUSH_BINARY_FILE_MARKER: bytes = b"skyb"
@@ -54,6 +58,156 @@ class SkybrushBinaryFormatBlockType(IntEnum):
     EVENT_LIST = 6
     GCS_LIGHT_CONTROL_SETUP = 7
     METADATA = 8
+
+
+class ShowEvent:
+    """Class representing a single event in the event list of a Skybrush
+    binary show file.
+
+    Events are collected by the show file builder during the show encoding
+    process; the builder then encodes the collected events into a single
+    event list block, sorted by their timestamps. Each event is encoded as
+    follows:
+
+    - an unsigned 32-bit little-endian integer containing the timestamp of
+      the event, in milliseconds, relative to the start of the show,
+    - an unsigned byte containing the type of the event,
+    - an unsigned byte containing the subtype of the event,
+    - four bytes containing the payload of the event.
+
+    The payload may be specified as a raw four-byte binary blob, an unsigned
+    32-bit integer or a single-precision float; the latter two are converted
+    to a raw binary blob automatically.
+    """
+
+    _struct: ClassVar[Struct] = Struct("<IBB4s")
+    _uint32_struct: ClassVar[Struct] = Struct("<I")
+    _float32_struct: ClassVar[Struct] = Struct("<f")
+
+    _timestamp: float
+    _type: int
+    _subtype: int
+    _payload: bytes
+
+    def __init__(
+        self,
+        timestamp: float,
+        type: int,
+        subtype: int,
+        payload: bytes | int | float = b"\x00\x00\x00\x00",
+    ):
+        """Constructor.
+
+        Parameters:
+            timestamp: the timestamp of the event, in seconds, relative to the
+                start of the show; must be non-negative and small enough so
+                that its representation in milliseconds fits into an unsigned
+                32-bit integer
+            type: the type of the event; an integer in the range 0-255
+            subtype: the subtype of the event; an integer in the range 0-255
+            payload: the payload of the event; either a binary blob of
+                exactly four bytes, an unsigned 32-bit integer, or a
+                single-precision float
+
+        Raises:
+            ValueError: if the type or the subtype is outside the range 0-255,
+                or if the payload is not a valid four-byte binary blob, an
+                unsigned 32-bit integer, or a single-precision float
+        """
+        if not 0 <= type <= 255:
+            raise ValueError(f"event type must be in the range 0-255, got {type}")
+
+        if not 0 <= subtype <= 255:
+            raise ValueError(f"event subtype must be in the range 0-255, got {subtype}")
+
+        self._timestamp = timestamp
+        self._type = type
+        self._subtype = subtype
+        self._payload = self._encode_payload(payload)
+
+    @property
+    def payload(self) -> bytes:
+        """The payload of the event, as a four-byte binary blob."""
+        return self._payload
+
+    @property
+    def subtype(self) -> int:
+        """The subtype of the event."""
+        return self._subtype
+
+    @property
+    def timestamp(self) -> float:
+        """The timestamp of the event, in seconds, relative to the start of
+        the show.
+        """
+        return self._timestamp
+
+    @property
+    def type(self) -> int:
+        """The type of the event."""
+        return self._type
+
+    @classmethod
+    def _encode_payload(cls, payload: bytes | int | float) -> bytes:
+        """Converts the given payload into a raw four-byte binary blob.
+
+        Parameters:
+            payload: the payload to convert; either a binary blob of exactly
+                four bytes, an unsigned 32-bit integer, or a single-precision
+                float
+
+        Returns:
+            the payload as a raw four-byte binary blob
+
+        Raises:
+            ValueError: if the payload is not convertible to a four-byte
+                binary blob
+        """
+        if isinstance(payload, int):
+            if not 0 <= payload <= 0xFFFFFFFF:
+                raise ValueError(
+                    "integer event payload must be in the range 0-4294967295, "
+                    f"got {payload}"
+                )
+            return cls._uint32_struct.pack(payload)
+        elif isinstance(payload, float):
+            return cls._float32_struct.pack(payload)
+        else:
+            if len(payload) != 4:
+                raise ValueError(
+                    f"binary event payload must be exactly four bytes, "
+                    f"got {len(payload)} bytes"
+                )
+            return payload
+
+    def encode(self) -> bytes:
+        """Encodes the event into its binary representation in the Skybrush
+        binary show file format.
+
+        Returns:
+            the binary representation of the event, as eight bytes
+
+        Raises:
+            ValueError: if the timestamp is negative or too large so that its
+                representation in milliseconds does not fit into an unsigned
+                32-bit integer
+        """
+        timestamp_in_msec = round(self._timestamp * 1000)
+        if not 0 <= timestamp_in_msec <= 0xFFFFFFFF:
+            raise ValueError(
+                f"event timestamp is out of range: {self._timestamp} seconds"
+            )
+
+        return self._struct.pack(
+            timestamp_in_msec, self._type, self._subtype, self._payload
+        )
+
+    def __repr__(self) -> str:
+        return (
+            f"{self.__class__.__name__}(timestamp={self._timestamp!r}, "
+            f"type={self._type!r}, subtype={self._subtype!r}, "
+            f"payload={self._payload!r})"
+        )
 
 
 class SkybrushBinaryFileBlock:
@@ -296,47 +450,15 @@ class SkybrushBinaryShowFile:
 
     async def add_encoded_event_list(self, data: bytes) -> None:
         """Adds a new event list (such as a pyro program) to the end of
-        the Skybrush file.
+        the Skybrush file. The events in the list are _not_ merged with
+        events added to the shared event list of a `ShowFileBuilder`; this
+        method is meant to be used by the show encoding process itself and
+        not by extensions.
 
         Parameters:
             data: the event list to add, encoded in Skybrush format
         """
         return await self.add_block(SkybrushBinaryFormatBlockType.EVENT_LIST, data)
-
-    async def add_encoded_gcs_light_control_setup(self, data: bytes) -> None:
-        """Adds a new GCS light control setup block to the end of the Skybrush file.
-
-        Parameters:
-            data: the GCS light control setup to add, encoded in Skybrush format
-        """
-        return await self.add_block(
-            SkybrushBinaryFormatBlockType.GCS_LIGHT_CONTROL_SETUP, data
-        )
-
-    async def add_encoded_rth_plan(self, data: bytes) -> None:
-        """Adds a new return-to-home plan to the end of the Skybrush file.
-
-        Parameters:
-            data: the RTH plan to add, encoded in Skybrush format
-        """
-        return await self.add_block(SkybrushBinaryFormatBlockType.RTH_PLAN, data)
-
-    async def add_metadata(self, metadata: ShowMetadata) -> None:
-        """Adds a new metadata block to the end of the Skybrush file.
-
-        Parameters:
-            metadata: the metadata to add
-        """
-        return await self._add_tlv_block(
-            SkybrushBinaryFormatBlockType.METADATA,
-            [
-                (ShowMetadataTag.UID, metadata.uid),
-                (
-                    ShowMetadataTag.DRONE_INDEX,
-                    metadata.drone_index.to_bytes(2, "little", signed=False),
-                ),
-            ],
-        )
 
     async def add_trajectory(self, trajectory: TrajectorySpecification) -> None:
         """Adds a new trajectory block to the end of the Skybrush file
@@ -363,15 +485,6 @@ class SkybrushBinaryShowFile:
         return await self.add_block(
             SkybrushBinaryFormatBlockType.TRAJECTORY, b"".join(chunks)
         )
-
-    async def add_encoded_yaw_setpoints(self, data: bytes) -> None:
-        """Adds a yaw control block to the end of the Skybrush file
-        with the given yaw setpoints.
-
-        Parameters:
-            data: the yaw setpoint list to add, encoded in Skybrush format
-        """
-        return await self.add_block(SkybrushBinaryFormatBlockType.YAW_CONTROL, data)
 
     async def blocks(
         self, rewind: bool | None = None, validate: bool | None = None
@@ -530,19 +643,6 @@ class SkybrushBinaryShowFile:
         if self._version is None:
             raise RuntimeError("version header was not read yet")
         return self._version
-
-    async def _add_tlv_block(
-        self, type: SkybrushBinaryFormatBlockType, entries: Iterable[tuple[int, bytes]]
-    ) -> None:
-        """Adds a new tag-length-value (TLV) block to the end of the Skybrush file.
-
-        Parameters:
-            type: the type of the block to add
-            entries: an iterable of (tag, value) pairs to encode in the block
-        """
-        encoder = TLVEncoder()
-        payload = encoder.encode_multiple_entries(entries)
-        return await self.add_block(type, payload)
 
     async def _get_expected_crc32(self) -> bytes:
         """Returns the expected CRC32 checksum of the file as bytes, in little

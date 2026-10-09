@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [main]
 
+### Changed
+
+- Default accuracy threshold in the `timesync` extension was changed from 50 msec to
+  100 msec. Field tests have shown that a threshold of 50 msec often yields false
+  positive warnings even with recently synchronized clocks.
+
 ### Fixed
 
 - MAVLink heartbeat messages are now filtered correctly so that heartbeats from

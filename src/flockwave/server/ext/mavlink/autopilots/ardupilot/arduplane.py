@@ -39,7 +39,7 @@ class ArduPlane(ArduPilot):
         7: ("cruise",),
         8: ("autotune",),
         10: ("auto",),
-        11: ("rtl", "rth", "return to launch"),
+        11: ("rth", "rtl", "return", "return to home", "return to launch"),
         12: ("loiter",),
         13: ("takeoff",),
         14: ("avoid ADSB", "avoid"),
@@ -49,12 +49,12 @@ class ArduPlane(ArduPilot):
         18: ("qhover",),
         19: ("qloiter",),
         20: ("qland",),
-        21: ("qrtl",),
+        21: ("qrth", "qrtl"),
         22: ("qautotune",),
         23: ("qacro",),
         24: ("thermal",),
-        25: ("loiter alt qland",),
-        26: ("autoland",),
+        25: ("laqland", "loiter alt qland"),
+        26: ("aland", "autoland"),
     }
     """ArduPlane custom modes (including QuadPlane VTOL modes);
     see ardupilot/ArduPlane/mode.h for reference"""

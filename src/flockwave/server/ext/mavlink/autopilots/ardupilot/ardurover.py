@@ -30,8 +30,8 @@ class ArduRover(ArduPilot):
         8: ("dock",),
         9: ("circle",),
         10: ("auto",),
-        11: ("rtl", "return"),
-        12: ("smart_rtl",),
+        11: ("rth", "rtl", "return", "return to home", "return to launch"),
+        12: ("srth", "srtl", "smart RTH", "smart RTL"),
         15: ("guided",),
         16: ("initialising",),
     }

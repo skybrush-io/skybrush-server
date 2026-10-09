@@ -21,7 +21,6 @@ from flockwave.server.ext.mavlink.enums import (
     MAVModeFlag,
     MAVParamType,
     MAVSysStatusSensor,
-    MAVType,
 )
 from flockwave.server.ext.mavlink.errors import UnknownFlightModeError
 from flockwave.server.ext.mavlink.ftp import MAVFTP
@@ -119,40 +118,6 @@ class ArduPilot(Autopilot):
         """
         mode_attrs = cls._custom_modes.get(custom_mode)
         return mode_attrs[0] if mode_attrs else f"mode {custom_mode}"
-
-    @classmethod
-    def from_vehicle_type_in_heartbeat(
-        cls, message: MAVLinkMessage
-    ) -> type["Autopilot"]:
-        """Returns an autopilot factory that can construct an ArduPilot_
-        instance that is suitable to represent the behaviour of an autopilot
-        that sent the given MAVLink heartbeat message.
-        """
-        if message.autopilot != MAVAutopilot.ARDUPILOTMEGA:
-            raise ValueError(
-                f"Cannot construct ArduPilot factory from autopilot class {message.autopilot}"
-            )
-
-        # Imported here rather than at module level because the ArduPilot
-        # vehicle subclasses (ArduCopter & co) import this module.
-        from flockwave.server.ext.mavlink.autopilots.registry import (
-            get_ardupilot_vehicle_factory_by_mavlink_type,
-        )
-
-        try:
-            vehicle_type = MAVType(message.type)
-        except ValueError:
-            log.warning(
-                f"Unknown heartbeat MAV_TYPE: {message.type}; cannot determine "
-                "ArduPilot variant; falling back to generic ArduPilot"
-            )
-            return cls
-
-        result = get_ardupilot_vehicle_factory_by_mavlink_type(vehicle_type)
-        if result is not None:
-            return result
-
-        return cls
 
     def are_motor_outputs_disabled(
         self, heartbeat: MAVLinkMessage, sys_status: MAVLinkMessage
@@ -999,15 +964,3 @@ def encode_parameters_to_packed_format(
     # Now we can re-encode the header
     buf[0] = _packed_param_header.pack(0x671B, len(parameters), total_length)
     return b"".join(buf)
-
-
-# Imported at the end of the module, once ArduPilot is fully defined, so that
-# the ArduPilot vehicle subclasses are guaranteed to be loaded (and therefore
-# to have registered themselves in the vehicle type registry) before
-# ArduPilot.from_vehicle_type_in_heartbeat() is ever called. This is safe to
-# do at this point because each subclass imports us during our own import, so
-# they see the fully-built ArduPilot rather than a partially-initialized one.
-from . import arducopter, arduplane, ardurover  # noqa: E402
-
-_VEHICLE_CLASS_MODULES = (arducopter, arduplane, ardurover)
-"""Keeps a reference to the imported vehicle modules; see above."""

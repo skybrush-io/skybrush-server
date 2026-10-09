@@ -6,6 +6,7 @@ from .ardupilot import (
     ArduPilot,
     ArduPlane,
     ArduRover,
+    get_ardupilot_factory_for_heartbeat,
 )
 from .base import Autopilot
 from .px4 import PX4
@@ -20,4 +21,5 @@ __all__ = (
     "ArduRover",
     "PX4",
     "UnknownAutopilot",
+    "get_ardupilot_factory_for_heartbeat",
 )

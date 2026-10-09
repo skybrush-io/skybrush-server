@@ -11,6 +11,7 @@ from .base import (
     decode_parameters_from_packed_format,
     encode_parameters_to_packed_format,
 )
+from .registry import get_ardupilot_factory_for_heartbeat
 
 __all__ = (
     "ArduCopter",
@@ -20,4 +21,5 @@ __all__ = (
     "ArduRover",
     "decode_parameters_from_packed_format",
     "encode_parameters_to_packed_format",
+    "get_ardupilot_factory_for_heartbeat",
 )

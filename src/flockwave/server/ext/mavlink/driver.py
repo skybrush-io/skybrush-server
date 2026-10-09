@@ -64,7 +64,12 @@ from flockwave.server.utils import color_to_rgb8_triplet, to_uppercase_string
 from flockwave.server.utils.generic import nop
 
 from .accelerometer import AccelerometerCalibration
-from .autopilots import ArduPilot, Autopilot, UnknownAutopilot
+from .autopilots import (
+    ArduPilot,
+    Autopilot,
+    UnknownAutopilot,
+    get_ardupilot_factory_for_heartbeat,
+)
 from .channel import Channel
 from .compass import CompassCalibration
 from .compassmot import CompassMotorInterferenceCalibration
@@ -3032,7 +3037,7 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
             if isinstance(self._autopilot, UnknownAutopilot) and heartbeat is not None:
                 autopilot_cls = Autopilot.from_heartbeat(heartbeat)
                 if autopilot_cls is ArduPilot:
-                    autopilot_cls = ArduPilot.from_vehicle_type_in_heartbeat(heartbeat)
+                    autopilot_cls = get_ardupilot_factory_for_heartbeat(heartbeat)
                 self._autopilot = autopilot_cls()
 
             if self._was_probably_rebooted_after_reconnection():

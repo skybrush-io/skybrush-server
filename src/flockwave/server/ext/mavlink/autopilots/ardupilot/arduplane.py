@@ -1,13 +1,11 @@
 from __future__ import annotations
 
-from flockwave.server.ext.mavlink.autopilots.registry import (
-    register_for_mavlink_vehicle_type,
-)
 from flockwave.server.ext.mavlink.enums import (
     MAVType,
 )
 
 from .base import ArduPilot, FlightModeMap
+from .registry import register_for_mavlink_vehicle_type
 
 __all__ = ("ArduPlane",)
 

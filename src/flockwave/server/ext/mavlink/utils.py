@@ -60,21 +60,20 @@ def _create_mavlink_vehicle_lookup_table() -> array:
     for value in range(30):
         result[value] = 1
 
+    # types between 0 and 29 are mostly vehicles
+    # except for these below
     exclusions = (
         MAVType.ANTENNA_TRACKER,
         MAVType.GCS,
         MAVType.ONBOARD_CONTROLLER,
         MAVType.GIMBAL,
         MAVType.ADSB,
-        MAVType.CAMERA,
-        MAVType.CHARGING_STATION,
-        MAVType.FLARM,
-        MAVType.SERVO,
-        MAVType.ODID,
     )
     for value in exclusions:
         result[value] = 0
 
+    # types from 30 and above are mostly _not_ vehicles,
+    # except for these below
     inclusions = (
         MAVType.DECAROTOR,
         MAVType.GENERIC_MULTIROTOR,

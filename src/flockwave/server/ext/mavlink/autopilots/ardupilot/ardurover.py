@@ -38,4 +38,4 @@ class ArduRover(ArduPilot):
     """ArduRover custom modes; see ardupilot/Rover/mode.h for reference"""
 
     def is_rth_flight_mode(self, base_mode: int, custom_mode: int) -> bool:
-        return bool(base_mode & 1) and custom_mode in [11, 12]
+        return bool(base_mode & 1) and (custom_mode == 11 or custom_mode == 12)

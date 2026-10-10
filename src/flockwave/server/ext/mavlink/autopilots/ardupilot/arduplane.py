@@ -60,7 +60,7 @@ class ArduPlane(ArduPilot):
     see ardupilot/ArduPlane/mode.h for reference"""
 
     def is_rth_flight_mode(self, base_mode: int, custom_mode: int) -> bool:
-        return bool(base_mode & 1) and custom_mode in [11, 21]
+        return bool(base_mode & 1) and (custom_mode == 11 or custom_mode == 21)
 
     @property
     def supports_repositioning_with_explicit_altitude(self) -> bool:

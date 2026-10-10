@@ -30,7 +30,7 @@ def get_autopilot_factory_by_mavlink_type(type: int) -> type["Autopilot"]:
     the MAV_AUTOPILOT field of the heartbeat message to an autopilot family
     (e.g. ArduPilot or PX4). For the ArduPilot family this is not the final
     answer, since the concrete vehicle class is refined further from the
-    MAV_TYPE field by `get_ardupilot_factory_for_heartbeat()`.
+    MAV_TYPE field by `get_ardupilot_vehicle_factory_by_mavlink_type()`.
 
     Args:
         type: the MAV_AUTOPILOT value from the heartbeat message.

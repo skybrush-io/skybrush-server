@@ -48,7 +48,14 @@ class Autopilot(ABC):
         instance that is suitable to represent the behaviour of an autopilot
         that sent the given MAVLink heartbeat message.
         """
-        return cls.from_autopilot_type(message.autopilot)
+        # lazy import to avoid circular imports with subclasses
+        from .ardupilot import ArduPilot, get_ardupilot_vehicle_factory_by_mavlink_type
+
+        autopilot_cls = cls.from_autopilot_type(message.autopilot)
+        if autopilot_cls is ArduPilot:
+            autopilot_cls = get_ardupilot_vehicle_factory_by_mavlink_type(message.type)
+
+        return autopilot_cls
 
     @classmethod
     def describe_mode(cls, base_mode: int, custom_mode: int) -> str:

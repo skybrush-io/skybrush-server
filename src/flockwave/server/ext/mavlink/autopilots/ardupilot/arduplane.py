@@ -63,5 +63,10 @@ class ArduPlane(ArduPilot):
         return bool(base_mode & 1) and (custom_mode == 11 or custom_mode == 21)
 
     @property
-    def supports_repositioning_with_explicit_altitude(self) -> bool:
+    def supports_repositioning(self) -> bool:
+        # Note that ArduPlane does not support MAV_CMD_DO_REPOSITION in its
+        # full context as it still cannot handle NaN in its altitude argument
+        # to reposition at the current altitude (4.7). However, ArduPlane does
+        # not support fly to in guided mode either, so we just allow repositioning
+        # to be able to handle fly_to() calls with explicit altitudes at least.
         return True

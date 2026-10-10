@@ -733,12 +733,6 @@ class ArduPilot(Autopilot):
         return False
 
     @property
-    def supports_repositioning_with_explicit_altitude(self) -> bool:
-        # We set False for the base class, and enable it for ArduPlane only,
-        # as it does not support fly to with guided mode
-        return False
-
-    @property
     def supports_scheduled_takeoff(self):
         return False
 

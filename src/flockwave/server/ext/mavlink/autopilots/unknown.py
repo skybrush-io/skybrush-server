@@ -89,9 +89,5 @@ class UnknownAutopilot(Autopilot):
         return False
 
     @property
-    def supports_repositioning_with_explicit_altitude(self) -> bool:
-        return False
-
-    @property
     def supports_scheduled_takeoff(self):
         return False

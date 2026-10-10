@@ -1484,10 +1484,6 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
         if self._autopilot.supports_repositioning:
             # Implementation of fly_to() with the MAVLink DO_REPOSITION command
             await self._fly_to_with_repositioning(target)
-        elif self._autopilot.supports_repositioning_with_explicit_altitude:
-            # Implementation of fly_to() with the MAVLink DO_REPOSITION command,
-            # but with an explicit AMSL altitude provided
-            await self._fly_to_with_repositioning_with_explicit_altitude(target)
         else:
             # Implementation of fly_to() with a guided mode command
             await self._fly_to_in_guided_mode(target)
@@ -1597,35 +1593,6 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
 
         if not success:
             raise RuntimeError("Fly to waypoint command failed")
-
-    async def _fly_to_with_repositioning_with_explicit_altitude(
-        self,
-        target: GPSCoordinate,
-    ) -> None:
-        """Implementation of `fly_to()` using a MAVLink DO_REPOSITION command
-        with proper confirmation, always providing an explicit altitude.
-
-        This implementation is needed as ArduPilot cannot handle NaN in the
-        altitude param properly yet.
-
-        Args:
-            target: destination coordinate (AMSL or AHL altitude)
-        """
-        new_target = target.copy()
-
-        if target.ahl is None and target.amsl is None:
-            if self.status.position.amsl is not None and (
-                self.status.position.lat
-                or self.status.position.lon
-                or self.status.position.ahl
-            ):
-                new_target.amsl = self.status.position.amsl
-            else:
-                raise RuntimeError(
-                    "Cannot fly to target, current AMSL altitude not known yet"
-                )
-
-        return await self._fly_to_with_repositioning(new_target)
 
     @property
     def scheduled_takeoff_authorization_scope(self) -> AuthorizationScope:

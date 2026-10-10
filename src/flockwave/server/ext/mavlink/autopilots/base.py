@@ -358,16 +358,7 @@ class Autopilot(ABC):
     @abstractmethod
     def supports_repositioning(self) -> bool:
         """Returns whether the autopilot understands the MAVLink MAV_CMD_DO_REPOSITION
-        command and can use it in its full context, with possible NaN in its altitude
-        parameter, meaning to reposition at the current altitude.
-        """
-        ...
-
-    @property
-    @abstractmethod
-    def supports_repositioning_with_explicit_altitude(self) -> bool:
-        """Returns whether the autopilot understands the MAVLink MAV_CMD_DO_REPOSITION
-        command but needs explicit AMSL altitude to function properly.
+        command.
         """
         ...
 

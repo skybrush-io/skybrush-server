@@ -197,9 +197,5 @@ class PX4(Autopilot):
         return True
 
     @property
-    def supports_repositioning_with_explicit_altitude(self) -> bool:
-        return True
-
-    @property
     def supports_scheduled_takeoff(self):
         return False

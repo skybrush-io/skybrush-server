@@ -67,6 +67,14 @@ class ArduCopter(ArduPilot):
             custom_mode == 6 or custom_mode == 21 or custom_mode == 27
         )
 
+    @property
+    def supports_local_frame(self) -> bool:
+        # ArduCopter takes the altitude of MAV_CMD_NAV_TAKEOFF as an altitude
+        # relative to the home position: ArduCopter missions use the
+        # MAV_FRAME_GLOBAL_RELATIVE_ALT frame, whose altitude is relative to the
+        # home position.
+        return True
+
     def refine_with_capabilities(self, capabilities: int):
         result = super().refine_with_capabilities(capabilities)
 

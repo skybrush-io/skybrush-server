@@ -2439,9 +2439,13 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
         #
         # The lowest common denominator is to send NaN as the latitude and
         # longitude, and make the takeoff altitude dependent on whether the
-        # autopilot supports the local reference frame. However, the ArduCopter
-        # SITL simulator blows up when we do so -- so for ArduCopter, we send
-        # zeros instead.
+        # autopilot supports the local reference frame: we send it as an AMSL
+        # altitude to the autopilots that expect one (PX4, and every ArduPilot
+        # vehicle except ArduCopter) and as an altitude relative to the current
+        # position to the others (ArduCopter). However, the ArduCopter SITL
+        # simulator blows up when we send NaNs as the coordinates -- so for the
+        # ArduPilot vehicles we send zeros instead. ArduPlane also treats a zero
+        # latitude and longitude as "take off from the current position".
         if not self._autopilot.supports_local_frame:
             try:
                 # We assume that we are at zero meters AHL
@@ -2451,6 +2455,7 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
                 altitude = nan
 
         # set takeoff coordinate. PX4 needs NaN / NaN, ArduPilot needs 0 / 0
+        # TODO: define this also with an autopilot-specific method
         lat, lon = nan, nan
         if isinstance(self._autopilot, ArduPilot):
             lat, lon = 0, 0

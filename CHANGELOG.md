@@ -7,18 +7,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [main]
 
+### Added
+
+- The `mavlink` extension was refactored to have explicit subclasses for
+  ArduCopter-, ArduPlane- and ArduRover-based vehicles (for the time being).
+  This refactor includes many enhancements, like proper `mode ...` command handling
+  for non-copter vehicles, proper custom mode definitions in general, proper
+  recognition of vehicle types into their corresponding autopilot handlers.
+  Basic VTOL support is also tested in simulator with standard ArduPlane 4.7
+  firmware.
+
 ### Changed
 
 - Default accuracy threshold in the `timesync` extension was changed from 50 msec to
   100 msec. Field tests have shown that a threshold of 50 msec often yields false
   positive warnings even with recently synchronized clocks.
 
+- The `ArduPilotWithSkybrush` class was renamed to `ArduCopterWithSkybrush`
+  to be consistent with the new autopilot class hierarchy.
+
+- The `autopilot_type` setting of the `mavlink` extension now accepts
+  `arducopter`, `arduplane` and `ardurover` in addition to `skybrush` and `px4`.
+  `ardupilot` is deprecated and is now equivalent to `auto`.
+
 ### Fixed
 
 - MAVLink heartbeat messages are now filtered correctly so that heartbeats from
   non-vehicle MAVLink components (GCS, gimbals, cameras, ADS-B receivers etc.) are
   ignored. Heartbeats with `MAV_TYPE` values not known to the server no longer
-  raise an exception in the MAVLink message handler.
+  raise an exception in the MAVLink message handler. `MAV_TYPE` values of ground
+  rovers, generic multirotors, spacecraft orbiters, ground quadrupeds and VTOL
+  gyrodynes are now also recognized as vehicles.
+
+- The `ArduRover` autopilot class no longer accepts the `learning`, `pos` and
+  `brake` custom mode aliases; their mode numbers were incorrect.
+
 
 ## [2.56.0] - 2026-10-08
 

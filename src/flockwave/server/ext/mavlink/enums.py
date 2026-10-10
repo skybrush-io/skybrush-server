@@ -448,21 +448,38 @@ class MAVType(IntEnum):
     """Replica of the `MAV_TYPE` enum of the MAVLink protocol, using proper
     Python enums.
 
-    Not all values are listed here, only the ones that we do actually use.
+    Source: https://mavlink.io/en/messages/common.html#MAV_TYPE
     """
 
     GENERIC = 0
     FIXED_WING = 1
     QUADROTOR = 2
+    COAXIAL = 3
+    HELICOPTER = 4
     ANTENNA_TRACKER = 5
     GCS = 6
+    AIRSHIP = 7
+    FREE_BALLOON = 8
+    ROCKET = 9
     GROUND_ROVER = 10
+    SURFACE_BOAT = 11
+    SUBMARINE = 12
     HEXAROTOR = 13
     OCTOROTOR = 14
     TRICOPTER = 15
+    FLAPPING_WING = 16
+    KITE = 17
     ONBOARD_CONTROLLER = 18
+    VTOL_TAILSITTER_DUOROTOR = 19
+    VTOL_TAILSITTER_QUADROTOR = 20
+    VTOL_TILTROTOR = 21
+    VTOL_FIXEDROTOR = 22
+    VTOL_TAILSITTER = 23
+    VTOL_TILTWING = 24
+    VTOL_RESERVED5 = 25
     GIMBAL = 26
     ADSB = 27
+    PARAFOIL = 28
     DODECAROTOR = 29
     CAMERA = 30
     CHARGING_STATION = 31
@@ -470,7 +487,22 @@ class MAVType(IntEnum):
     SERVO = 33
     ODID = 34
     DECAROTOR = 35
+    BATTERY = 36
+    PARACHUTE = 37
+    LOG = 38
+    OSD = 39
+    IMU = 40
+    GPS = 41
+    WINCH = 42
+    GENERIC_MULTIROTOR = 43
+    ILLUMINATOR = 44
+    SPACECRAFT_ORBITER = 45
+    GROUND_QUADRUPED = 46
+    VTOL_GYRODYNE = 47
+    GRIPPER = 48
+    RADIO = 49
 
+    @property
     def is_vehicle(self) -> bool:
         """Returns whether the MAVType constant denotes a vehicle (most likely).
 
@@ -497,6 +529,9 @@ class MAVType(IntEnum):
             return 6
         if self == MAVType.TRICOPTER:
             return 3
+        if self == MAVType.VTOL_TAILSITTER_DUOROTOR:
+            return 2
+
         return 4
 
 

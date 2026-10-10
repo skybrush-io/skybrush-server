@@ -3,7 +3,6 @@ from __future__ import annotations
 import logging
 from collections.abc import AsyncIterator, Iterable, Sequence
 from contextlib import AsyncExitStack, aclosing
-from copy import deepcopy
 from dataclasses import dataclass
 from functools import partial
 from io import BytesIO
@@ -15,6 +14,23 @@ from typing import IO, TYPE_CHECKING, cast
 from trio import TooSlowError, open_nursery, sleep
 
 from flockwave.server.errors import NotSupportedError
+from flockwave.server.ext.mavlink.enums import (
+    MAVAutopilot,
+    MAVCommand,
+    MAVMessageType,
+    MAVModeFlag,
+    MAVParamType,
+    MAVSysStatusSensor,
+)
+from flockwave.server.ext.mavlink.errors import UnknownFlightModeError
+from flockwave.server.ext.mavlink.ftp import MAVFTP
+from flockwave.server.ext.mavlink.fw_upload import (
+    FirmwareUpdateResult,
+    FirmwareUpdateTarget,
+)
+from flockwave.server.ext.mavlink.geofence import GeofenceManager, GeofenceType
+from flockwave.server.ext.mavlink.types import MAVLinkFlightModeNumbers, MAVLinkMessage
+from flockwave.server.ext.mavlink.utils import log_id_for_uav
 from flockwave.server.model.commands import (
     Progress,
     ProgressEventsWithSuspension,
@@ -31,35 +47,36 @@ from flockwave.server.model.safety import (
 )
 from flockwave.server.utils import clamp
 
-from ..enums import (
-    MAVAutopilot,
-    MAVCommand,
-    MAVMessageType,
-    MAVModeFlag,
-    MAVParamType,
-    MAVProtocolCapability,
-    MAVState,
-    MAVSysStatusSensor,
-    MAVType,
-)
-from ..errors import UnknownFlightModeError
-from ..ftp import MAVFTP
-from ..fw_upload import FirmwareUpdateResult, FirmwareUpdateTarget
-from ..geofence import GeofenceManager, GeofenceType
-from ..types import MAVLinkFlightModeNumbers, MAVLinkMessage
-from ..utils import log_id_for_uav
-
 if TYPE_CHECKING:
-    from ..driver import MAVLinkUAV
+    from flockwave.server.ext.mavlink.driver import MAVLinkUAV
 
-from .base import Autopilot
-from .registry import register_for_mavlink_type
+from flockwave.server.ext.mavlink.autopilots.base import Autopilot
+from flockwave.server.ext.mavlink.autopilots.registry import register_for_mavlink_type
 
-__all__ = ("ArduPilot", "ArduPilotWithSkybrush")
+__all__ = (
+    "ArduPilot",
+    "FlightModeMap",
+)
 
 log = logging.getLogger(__name__)
 
 FlightModeMap = dict[int, tuple[str, ...]]
+
+
+def extend_custom_modes(custom_modes: FlightModeMap, new_modes: FlightModeMap):
+    """Helper function to extend custom modes of an ArduPilot_ subclass
+    with new modes.
+
+    When a mode number already exists, the new names are appended to the
+    existing ones so that the primary (first) name of the mode is preserved.
+    """
+    result = dict(custom_modes)
+    for key, new_names in new_modes.items():
+        existing_names = result.get(key, ())
+        result[key] = existing_names + tuple(
+            name for name in new_names if name not in existing_names
+        )
+    return result
 
 
 @register_for_mavlink_type(MAVAutopilot.ARDUPILOTMEGA)
@@ -68,59 +85,10 @@ class ArduPilot(Autopilot):
 
     name = "ArduPilot"
 
-    # Explicit quadcopter (multirotor) custom modes
-    _quadcopter_custom_modes: FlightModeMap = {
-        0: ("stab", "stabilize"),
-        1: ("acro",),
-        2: ("alt", "alt hold"),
-        3: ("auto",),
-        4: ("guided",),
-        5: ("loiter",),
-        6: ("rth",),
-        7: ("circle",),
-        9: ("land",),
-        11: ("drift",),
-        13: ("sport",),
-        14: ("flip",),
-        15: ("tune",),
-        16: ("pos", "pos hold"),
-        17: ("brake",),
-        18: ("throw",),
-        19: ("avoid ADSB", "avoid"),
-        20: ("guided no GPS",),
-        21: ("smart RTH",),
-        22: ("flow", "flow hold"),
-        23: ("follow",),
-        24: ("zigzag",),
-        25: ("system ID",),
-        26: ("heli autorotate", "autorotate"),
-        27: ("auto RTH",),
-        28: ("turtle",),
-    }
-
-    # Backwards-compatible alias used elsewhere in the codebase
-    _custom_modes: FlightModeMap = _quadcopter_custom_modes
-
-    # Rover-specific custom modes (used for MAVType.GROUND_ROVER)
-    _rover_custom_modes: FlightModeMap = {
-        0: ("manual",),
-        1: ("learning",),
-        2: ("steer", "steering"),
-        3: ("hold",),
-        4: ("loiter",),
-        10: ("auto",),
-        11: ("rtl", "return"),
-        15: ("guided",),
-        16: ("pos", "position"),
-        17: ("brake",),
-    }
-
-    # Per-vehicle-type custom modes mapping. Keys are MAVType enum values.
-    _custom_modes_by_mav_type: dict[int, FlightModeMap] = {
-        MAVType.QUADROTOR.value: _quadcopter_custom_modes,
-        MAVType.GROUND_ROVER.value: _rover_custom_modes,
-        # other vehicle types may be added here
-    }
+    _custom_modes: FlightModeMap = {}
+    """Custom flight modes map, that should be overriden by
+    child classes of ArduPilot to the proper list used in
+    that specific variant of the firmware."""
 
     _geofence_actions: dict[int, tuple[GeofenceAction, ...]] = {
         0: (GeofenceAction.REPORT,),
@@ -140,39 +108,15 @@ class ArduPilot(Autopilot):
     """Maximum allowed duration of a compass-motor interference calibration, in seconds"""
 
     @classmethod
-    def describe_custom_mode(
-        cls, base_mode: int, custom_mode: int, vehicle_type: int | MAVType | None = None
-    ) -> str:
+    def describe_custom_mode(cls, base_mode: int, custom_mode: int) -> str:
         """Returns the description of the current custom mode that the autopilot
         is in, given the base and the custom mode in the heartbeat message.
 
         Args:
             base_mode: the base mode from the heartbeat message
             custom_mode: the custom mode from the heartbeat message
-            vehicle_type: the vehicle type from the heartbeat message. May be
-                omitted; in this case the legacy/default mapping is used and
-                a warning message is logged.
         """
-        # Determine which mapping to use. Accept both MAVType enum members and ints.
-        mapping: FlightModeMap
-
-        if vehicle_type is not None:
-            try:
-                vt = (
-                    int(cast(MAVType, vehicle_type).value)
-                    if hasattr(vehicle_type, "value")
-                    else int(vehicle_type)
-                )
-            except Exception:
-                vt = None
-            if vt is not None:
-                mapping = cls._custom_modes_by_mav_type.get(vt, cls._custom_modes)
-        else:
-            # Warn if vehicle type is not provided so the user knows we're using the default
-            log.warning("Vehicle type unknown; using default custom mode mapping")
-            mapping = cls._custom_modes
-
-        mode_attrs = mapping.get(custom_mode)
+        mode_attrs = cls._custom_modes.get(custom_mode)
         return mode_attrs[0] if mode_attrs else f"mode {custom_mode}"
 
     def are_motor_outputs_disabled(
@@ -748,7 +692,9 @@ class ArduPilot(Autopilot):
         return text.startswith("PreArm: ") or text.startswith("Arm: ")
 
     def is_rth_flight_mode(self, base_mode: int, custom_mode: int) -> bool:
-        return bool(base_mode & 1) and (custom_mode == 6 or custom_mode == 21)
+        # Information not reported by ArduPilot by default, only by its
+        # more specific subclasses with explicit _custom_modes mapping
+        return False
 
     def prepare_mavftp_parameter_upload(
         self, parameters: dict[str, float]
@@ -758,18 +704,6 @@ class ArduPilot(Autopilot):
 
     def process_prearm_error_message(self, text: str) -> str:
         return text[8:]
-
-    def refine_with_capabilities(self, capabilities: int):
-        result = super().refine_with_capabilities(capabilities)
-
-        if isinstance(result, self.__class__) and not isinstance(
-            result, ArduPilotWithSkybrush
-        ):
-            mask = ArduPilotWithSkybrush.CAPABILITY_MASK
-            if (capabilities & mask) == mask:
-                result = ArduPilotWithSkybrush(self)
-
-        return result
 
     @property
     def is_battery_percentage_reliable(self) -> bool:
@@ -788,79 +722,19 @@ class ArduPilot(Autopilot):
 
     @property
     def supports_repositioning(self) -> bool:
-        # ArduCopter supports MAV_CMD_DO_REPOSITION since ArduCopter 4.1.0,
-        # BUT it does not accept NaN in the altitude field. PX4 accepts NaN
-        # and we rely on this to express our intention to use the current
-        # altitude, so we cannot return True here until ArduCopter gains a
-        # similar feature.
+        # All ArduPilot vehicles accept MAV_CMD_DO_REPOSITION since v4.1.0,
+        # but none of them accept NaN in the altitude field: the shared
+        # GCS_MAVLINK::location_from_command_t() helper in GCS_Common.cpp rejects
+        # NaN altitudes outright, and every vehicle's
+        # handle_command_int_do_reposition() turns that into MAV_RESULT_DENIED.
+        # PX4 accepts NaN and we rely on this to express our intention to use the
+        # current altitude, so we cannot return True here until ArduPilot gains
+        # that capability.
         return False
 
     @property
     def supports_scheduled_takeoff(self):
         return False
-
-
-def extend_custom_modes(
-    super: type[ArduPilot], vehicle_type: int | MAVType, _new_modes: FlightModeMap
-):
-    """Helper function to extend the custom modes of an Autopilot_ subclass
-    with new modes.
-    """
-    result = deepcopy(super._custom_modes_by_mav_type)
-    mode_map = result.setdefault(vehicle_type, {})
-    mode_map.update(_new_modes)
-    return result
-
-
-class ArduPilotWithSkybrush(ArduPilot):
-    """Class representing the ArduCopter firmware with Skybrush-specific
-    extensions to support drone shows.
-    """
-
-    name = "ArduPilot + Skybrush"
-    _custom_modes_by_mav_type = extend_custom_modes(
-        ArduPilot, MAVType.QUADROTOR, {127: ("show",)}
-    )
-
-    CAPABILITY_MASK = (
-        MAVProtocolCapability.PARAM_FLOAT
-        | MAVProtocolCapability.FTP
-        | MAVProtocolCapability.SET_POSITION_TARGET_GLOBAL_INT
-        | MAVProtocolCapability.SET_POSITION_TARGET_LOCAL_NED
-        | MAVProtocolCapability.MAVLINK2
-        | MAVProtocolCapability.DRONE_SHOW_MODE
-    )
-
-    def is_duplicate_message(self, message: MAVLinkMessage) -> bool:
-        # We use the MSB of the compatibility flags to indicate that the message
-        # is semantically equivalent to an earlier message of the same type from
-        # the same source
-        return message.get_header().compat_flags & 0x80
-
-    def is_prearm_check_in_progress(
-        self, heartbeat: MAVLinkMessage, sys_status: MAVLinkMessage
-    ) -> bool:
-        # Our patched firmware (ab)uses the CALIBRATING state in the heartbeat
-        # for this before ArduCopter 4.0.5. From ArduCopter 4.0.5 onwwards,
-        # there is a "preflight check" sensor so we use that
-        mask = MAVSysStatusSensor.PREARM_CHECK.value
-        if sys_status.onboard_control_sensors_present & mask:
-            # ArduCopter version reports prearm check status with this message
-            if sys_status.onboard_control_sensors_enabled & mask:
-                # Prearm checks are enabled so return whether they pass or not
-                return not bool(sys_status.onboard_control_sensors_health & mask)
-            else:
-                # Prearm checks are disabled so they are never in progress
-                return False
-        else:
-            # ArduCopter version does not know about this flag so we assume that
-            # we are running our firmware and that the CALIBRATING status is
-            # used for reporting this
-            return heartbeat.system_status == MAVState.CALIBRATING
-
-    @ArduPilot.supports_scheduled_takeoff.getter
-    def supports_scheduled_takeoff(self):
-        return True
 
 
 ################################################################################

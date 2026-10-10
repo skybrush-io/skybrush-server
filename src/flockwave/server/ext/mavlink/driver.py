@@ -64,7 +64,11 @@ from flockwave.server.utils import color_to_rgb8_triplet, to_uppercase_string
 from flockwave.server.utils.generic import nop
 
 from .accelerometer import AccelerometerCalibration
-from .autopilots import ArduPilot, Autopilot, UnknownAutopilot
+from .autopilots import (
+    ArduPilot,
+    Autopilot,
+    UnknownAutopilot,
+)
 from .channel import Channel
 from .compass import CompassCalibration
 from .compassmot import CompassMotorInterferenceCalibration
@@ -1554,18 +1558,22 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
             # Maybe it's okay anyway, see comment above
             pass
 
-    async def _fly_to_with_repositioning(self, target: GPSCoordinate) -> None:
+    async def _fly_to_with_repositioning(
+        self,
+        target: GPSCoordinate,
+    ) -> None:
         """Implementation of `fly_to()` using a MAVLink DO_REPOSITION command
         with proper confirmation.
+
+        Args:
+            target: destination coordinate (AMSL or AHL altitude)
         """
-        # PX4 supports AMSL only so we always convert to AMSL; NaN means to
-        # hold the current altitude
         if target.amsl is not None:
             altitude = target.amsl
+        elif target.ahl is not None:
+            altitude = self.convert_ahl_to_amsl(target.ahl)
         else:
-            altitude = (
-                self.convert_ahl_to_amsl(target.ahl) if target.ahl is not None else nan
-            )
+            altitude = nan
 
         lat, lon = int(target.lat * 1e7), int(target.lon * 1e7)
 
@@ -1963,7 +1971,7 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
             self._update_errors_from_sys_status_and_heartbeat()
             self.update_status(
                 mode=self._autopilot.describe_mode(
-                    message.base_mode, message.custom_mode, message.type
+                    message.base_mode, message.custom_mode
                 )
             )
 

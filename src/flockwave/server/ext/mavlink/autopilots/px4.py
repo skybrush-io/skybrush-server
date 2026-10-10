@@ -3,17 +3,21 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from flockwave.server.errors import NotSupportedError
+from flockwave.server.ext.mavlink.enums import (
+    MAVAutopilot,
+    MAVModeFlag,
+    MAVSysStatusSensor,
+)
+from flockwave.server.ext.mavlink.errors import UnknownFlightModeError
+from flockwave.server.ext.mavlink.types import MAVLinkFlightModeNumbers, MAVLinkMessage
 from flockwave.server.model.geofence import GeofenceConfigurationRequest, GeofenceStatus
 from flockwave.server.model.safety import SafetyConfigurationRequest
 
-from ..enums import MAVAutopilot, MAVModeFlag, MAVSysStatusSensor, MAVType
-from ..errors import UnknownFlightModeError
-from ..types import MAVLinkFlightModeNumbers, MAVLinkMessage
 from .base import Autopilot
 from .registry import register_for_mavlink_type
 
 if TYPE_CHECKING:
-    from ..driver import MAVLinkUAV
+    from flockwave.server.ext.mavlink.driver import MAVLinkUAV
 
 __all__ = ("PX4",)
 
@@ -75,9 +79,7 @@ class PX4(Autopilot):
     triplets."""
 
     @classmethod
-    def describe_custom_mode(
-        cls, base_mode: int, custom_mode: int, vehicle_type: int | MAVType | None = None
-    ) -> str:
+    def describe_custom_mode(cls, base_mode: int, custom_mode: int) -> str:
         main_mode = (custom_mode & 0x00FF0000) >> 16
         submode = (custom_mode & 0xFF000000) >> 24
         main_mode_name = cls._main_modes.get(main_mode)

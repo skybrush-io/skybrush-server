@@ -19,7 +19,14 @@ from flockwave.server.model.uav import UAV
 from flockwave.server.registries.errors import RegistryFull
 from flockwave.server.utils import optional_int, overridden
 
-from .autopilots import PX4, ArduPilot, ArduPilotWithSkybrush, Autopilot
+from .autopilots import (
+    PX4,
+    ArduCopter,
+    ArduCopterWithSkybrush,
+    ArduPlane,
+    ArduRover,
+    Autopilot,
+)
 from .channel import use_mavlink_message_channel_factory
 from .driver import MAVLinkDriver, MAVLinkUAV
 from .errors import InvalidSigningKeyError
@@ -123,20 +130,28 @@ class MAVLinkDronesExtension(UAVExtension[MAVLinkDriver]):
         match autopilot_type:
             case "auto":
                 autopilot_factory = None
+            case "arducopter":
+                autopilot_factory = ArduCopter
             case "ardupilot":
-                autopilot_factory = ArduPilot
-                self.log.info("Flight controller firmware: ArduPilot")
+                self.log.warning(
+                    'Setting autopilot_type to "ardupilot" is deprecated, assuming "auto"'
+                )
+                autopilot_factory = None
+            case "arduplane":
+                autopilot_factory = ArduPlane
+            case "ardurover":
+                autopilot_factory = ArduRover
             case "px4":
                 autopilot_factory = PX4
-                self.log.info("Flight controller firmware: PX4")
             case "skybrush":
-                autopilot_factory = ArduPilotWithSkybrush
-                self.log.info("Flight controller firmware: Skybrush on ArduPilot")
+                autopilot_factory = ArduCopterWithSkybrush
             case _:
                 autopilot_factory = None
                 self.log.warning(
                     f'Unknown flight controller firmware: {autopilot_type}, assuming "auto"'
                 )
+        if autopilot_factory is not None:
+            self.log.info(f"Flight controller firmware: {autopilot_factory.name}")
 
         use_bulk_parameter_uploads = bool(
             configuration.get("use_bulk_parameter_uploads", False)

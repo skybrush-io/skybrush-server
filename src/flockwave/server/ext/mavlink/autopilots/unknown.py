@@ -3,14 +3,14 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from flockwave.server.errors import NotSupportedError
+from flockwave.server.ext.mavlink.types import MAVLinkFlightModeNumbers, MAVLinkMessage
 from flockwave.server.model.geofence import GeofenceConfigurationRequest, GeofenceStatus
 from flockwave.server.model.safety import SafetyConfigurationRequest
 
-from ..types import MAVLinkFlightModeNumbers, MAVLinkMessage
 from .base import Autopilot
 
 if TYPE_CHECKING:
-    from ..driver import MAVLinkUAV
+    from flockwave.server.ext.mavlink.driver import MAVLinkUAV
 
 __all__ = ("UnknownAutopilot",)
 

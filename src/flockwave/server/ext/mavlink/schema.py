@@ -1,5 +1,12 @@
 from typing import Any
 
+from .autopilots import (
+    PX4,
+    ArduCopter,
+    ArduCopterWithSkybrush,
+    ArduPlane,
+    ArduRover,
+)
 from .enums import MAVSeverity
 from .rssi import RSSIMode
 
@@ -265,15 +272,24 @@ schema = {
         },
         "autopilot_type": {
             "type": "string",
-            "enum": ["auto", "ardupilot", "skybrush", "px4"],
+            "enum": [
+                "auto",
+                "arducopter",
+                "arduplane",
+                "ardurover",
+                "skybrush",
+                "px4",
+            ],
             "title": "Flight controller firmware",
             "default": "auto",
             "options": {
                 "enum_titles": [
                     "Autodetected",
-                    "ArduPilot",
-                    "ArduPilot with Skybrush",
-                    "PX4",
+                    ArduCopter.name,
+                    ArduPlane.name,
+                    ArduRover.name,
+                    ArduCopterWithSkybrush.name,
+                    PX4.name,
                 ]
             },
             "propertyOrder": 13000,

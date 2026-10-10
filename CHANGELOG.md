@@ -19,6 +19,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Default accuracy threshold in the `timesync` extension was changed from 50 msec to
+  100 msec. Field tests have shown that a threshold of 50 msec often yields false
+  positive warnings even with recently synchronized clocks.
+
 - The `ArduPilotWithSkybrush` class was renamed to `ArduCopterWithSkybrush`
   to be consistent with the new autopilot class hierarchy.
 

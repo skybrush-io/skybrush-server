@@ -185,10 +185,6 @@ class PX4(Autopilot):
 
     @property
     def supports_local_frame(self) -> bool:
-        # PX4 does not support MAV reference frames, therefore we send the altitude
-        # of MAV_CMD_NAV_TAKEOFF to it as an absolute AMSL altitude (PX4 also
-        # treats NaN as "just pick a sensible takeoff altitude").
-        #
         # https://github.com/PX4/PX4-Autopilot/issues/10246
         return False
 

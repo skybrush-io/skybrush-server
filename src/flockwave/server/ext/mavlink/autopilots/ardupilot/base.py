@@ -714,15 +714,7 @@ class ArduPilot(Autopilot):
 
     @property
     def supports_local_frame(self) -> bool:
-        # ArduPilot supports local coordinate frames in general, but the
-        # altitude of MAV_CMD_NAV_TAKEOFF is not necessarily interpreted as an
-        # altitude relative to the home position: ArduPlane converts the altitude
-        # of the takeoff waypoint to an absolute AMSL altitude (see
-        # Plane::set_next_WP() in ArduPilot 4.7), and ArduPilot documents
-        # MAV_CMD_NAV_TAKEOFF as unsupported on Rover. Therefore we send an AMSL
-        # altitude by default, and only the ArduCopter subclass, whose missions
-        # use the MAV_FRAME_GLOBAL_RELATIVE_ALT frame, overrides this with True.
-        return False
+        return True
 
     @property
     def supports_mavftp_parameter_upload(self) -> bool:

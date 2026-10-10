@@ -350,12 +350,6 @@ class Autopilot(ABC):
     def supports_local_frame(self) -> bool:
         """Returns whether the autopilot understands MAVLink commands sent in
         a local coordinate frame.
-
-        This also decides how we send the altitude of MAV_CMD_NAV_TAKEOFF:
-        autopilots that return `True` receive it as an altitude relative to the
-        current position of the UAV (i.e. above home or ground level), whereas
-        for the ones that return `False` we first convert it to an absolute
-        AMSL altitude.
         """
         ...
 

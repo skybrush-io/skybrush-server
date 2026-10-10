@@ -51,7 +51,7 @@ class Autopilot(ABC):
         return cls.from_autopilot_type(message.autopilot)
 
     @classmethod
-    def describe_mode(cls, base_mode: int, custom_mode: int, type: int) -> str:
+    def describe_mode(cls, base_mode: int, custom_mode: int) -> str:
         """Returns the description of the current mode that the autopilot is
         in, given the base and the custom mode in the heartbeat message.
         """

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import logging
 from collections.abc import Callable
 from typing import TypeVar
 
@@ -14,9 +13,6 @@ __all__ = (
     "get_ardupilot_vehicle_factory_by_mavlink_type",
     "register_for_mavlink_vehicle_type",
 )
-
-
-log = logging.getLogger(__name__)
 
 
 _ardupilot_vehicle_registry: dict[int, type[ArduPilot]] = {}

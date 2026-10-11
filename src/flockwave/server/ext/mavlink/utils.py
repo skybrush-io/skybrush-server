@@ -55,24 +55,35 @@ def _create_mavlink_vehicle_lookup_table() -> array:
     """Creates a boolean lookup table indexed by MAVLink ``MAV_TYPE`` values
     that tells whether the given type denotes a vehicle (most likely).
     """
-    non_vehicle_types = (
+    result = array("B", [0] * 256)
+
+    for value in range(30):
+        result[value] = 1
+
+    # types between 0 and 29 are mostly vehicles
+    # except for these below
+    exclusions = (
         MAVType.ANTENNA_TRACKER,
         MAVType.GCS,
         MAVType.ONBOARD_CONTROLLER,
         MAVType.GIMBAL,
         MAVType.ADSB,
-        MAVType.CAMERA,
-        MAVType.CHARGING_STATION,
-        MAVType.FLARM,
-        MAVType.SERVO,
-        MAVType.ODID,
-        MAVType.GROUND_ROVER,
     )
-    result = array("B", [0] * 256)
-    for value in range(36):
-        result[value] = 1
-    for value in non_vehicle_types:
+    for value in exclusions:
         result[value] = 0
+
+    # types from 30 and above are mostly _not_ vehicles,
+    # except for these below
+    inclusions = (
+        MAVType.DECAROTOR,
+        MAVType.GENERIC_MULTIROTOR,
+        MAVType.SPACECRAFT_ORBITER,
+        MAVType.GROUND_QUADRUPED,
+        MAVType.VTOL_GYRODYNE,
+    )
+    for value in inclusions:
+        result[value] = 1
+
     return result
 
 

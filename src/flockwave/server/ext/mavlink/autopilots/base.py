@@ -4,6 +4,12 @@ from abc import ABC, abstractmethod
 from collections.abc import AsyncIterator
 from typing import TYPE_CHECKING
 
+from flockwave.server.ext.mavlink.enums import MAVParamType
+from flockwave.server.ext.mavlink.types import MAVLinkFlightModeNumbers, MAVLinkMessage
+from flockwave.server.ext.mavlink.utils import (
+    decode_param_from_wire_representation,
+    encode_param_to_wire_representation,
+)
 from flockwave.server.model.commands import Progress, ProgressEventsWithSuspension
 from flockwave.server.model.geofence import (
     GeofenceConfigurationRequest,
@@ -11,15 +17,8 @@ from flockwave.server.model.geofence import (
 )
 from flockwave.server.model.safety import SafetyConfigurationRequest
 
-from ..enums import MAVParamType, MAVType
-from ..types import MAVLinkFlightModeNumbers, MAVLinkMessage
-from ..utils import (
-    decode_param_from_wire_representation,
-    encode_param_to_wire_representation,
-)
-
 if TYPE_CHECKING:
-    from ..driver import MAVLinkUAV
+    from flockwave.server.ext.mavlink.driver import MAVLinkUAV
 
 __all__ = ("Autopilot",)
 
@@ -49,36 +48,41 @@ class Autopilot(ABC):
         instance that is suitable to represent the behaviour of an autopilot
         that sent the given MAVLink heartbeat message.
         """
-        return cls.from_autopilot_type(message.autopilot)
+        # lazy import to avoid circular imports with subclasses
+        from .ardupilot import ArduPilot, get_ardupilot_vehicle_factory_by_mavlink_type
+
+        autopilot_cls = cls.from_autopilot_type(message.autopilot)
+        if autopilot_cls is ArduPilot:
+            autopilot_cls = get_ardupilot_vehicle_factory_by_mavlink_type(message.type)
+
+        return autopilot_cls
 
     @classmethod
-    def describe_mode(cls, base_mode: int, custom_mode: int, type: int) -> str:
+    def describe_mode(cls, base_mode: int, custom_mode: int) -> str:
         """Returns the description of the current mode that the autopilot is
         in, given the base and the custom mode in the heartbeat message.
         """
         if base_mode & 1:
-            # custom mode
-            return cls.describe_custom_mode(base_mode, custom_mode, type)
+            # custom mode (MAVModeFlag.CUSTOM_MODE_ENABLED)
+            return cls.describe_custom_mode(base_mode, custom_mode)
         elif base_mode & 4:
-            # auto mode
+            # auto mode (MAVModeFlag.AUTO_ENABLED)
             return "auto"
         elif base_mode & 8:
-            # guided mode
+            # guided mode (MAVModeFlag.GUIDED_ENABLED)
             return "guided"
         elif base_mode & 16:
-            # stabilize mode
+            # stabilize mode (MAVModeFlag.STABILIZE_ENABLED)
             return "stabilize"
         elif base_mode & 64:
-            # manual mode
+            # manual mode (MAVModeFlag.MANUAL_INPUT_ENABLED)
             return "manual"
         else:
             # anything else
             return "unknown"
 
     @classmethod
-    def describe_custom_mode(
-        cls, base_mode: int, custom_mode: int, vehicle_type: int | MAVType | None = None
-    ) -> str:
+    def describe_custom_mode(cls, base_mode: int, custom_mode: int) -> str:
         """Returns the description of the current custom mode that the autopilot
         is in, given the base and the custom mode in the heartbeat message.
 

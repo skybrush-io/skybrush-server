@@ -2689,6 +2689,11 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
             else -32768000
         )
 
+        # Ensure that the orientation is between 0 and 360 degrees even if the user
+        # specified something like -42 degrees. This is because the firmware expects
+        # the orientation to be in this range.
+        orientation = coordinate_system.orientation % 360
+
         # Try configuring with a single USER_2 command first, falling back to
         # the old parameter-based configuration if USER_2 is not supported.
         try:
@@ -2717,7 +2722,6 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
                     "AMSL-based control is not supported in this firmware"
                 )
 
-            orientation = coordinate_system.orientation % 360
             await self.set_parameter("SHOW_ORIGIN_LAT", encoded_lat)
             await self.set_parameter("SHOW_ORIGIN_LNG", encoded_lon)
             await self.set_parameter("SHOW_ORIENTATION", orientation)

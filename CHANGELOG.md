@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.57.1] - 2026-10-14
+
+### Fixed
+
+- Temporarily reverted `skybrush-ext-webui` to 1.0.1 because 1.1.0 seems to have
+  some issues when the app is packaged into an executable. This will be fixed soon.
+
+- Updated `flockwave-gps` to pin `bitstring` to version 4 because version 5 brings
+  in some API-breaking changes.
+
 ## [2.57.0] - 2026-10-14
 
 ### Added

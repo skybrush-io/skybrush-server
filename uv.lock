@@ -1143,7 +1143,7 @@ wheels = [
 
 [[package]]
 name = "flockwave-server"
-version = "2.57.0"
+version = "2.57.1"
 source = { editable = "." }
 dependencies = [
     { name = "adrenaline" },

@@ -2703,7 +2703,7 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
                 0,  # command code
                 0,  # unused
                 0,  # unused
-                coordinate_system.orientation,
+                orientation,
                 encoded_lat,
                 encoded_lon,
                 encoded_amsl,

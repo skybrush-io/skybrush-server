@@ -77,7 +77,7 @@ pro = [
   "skybrush-ext-sidekick>=1.2.1",
   "skybrush-ext-skynet>=0.6.0",
   "skybrush-ext-studio>=1.9.0",
-  "skybrush-ext-timecode>=1.4.1",
+  "skybrush-ext-timecode>=1.4.2",
   "skybrush-lib-mission-planning>=2.4.1",
   "skybrush-opt-rs",
   "skybrush-studio",

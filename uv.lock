@@ -1019,6 +1019,7 @@ dependencies = [
     { name = "python-dotenv" },
     { name = "quart" },
     { name = "quart-trio" },
+    { name = "skybrush-ext-webui" },
     { name = "trio" },
     { name = "trio-util" },
     { name = "typing-extensions" },
@@ -1143,6 +1144,7 @@ requires-dist = [
     { name = "skybrush-ext-skynet", marker = "extra == 'pro'", specifier = ">=0.6.0", index = "https://pypi.collmot.com/" },
     { name = "skybrush-ext-studio", marker = "extra == 'pro'", specifier = ">=1.9.0", index = "https://pypi.collmot.com/" },
     { name = "skybrush-ext-timecode", marker = "extra == 'pro'", specifier = ">=1.4.2", index = "https://pypi.collmot.com/" },
+    { name = "skybrush-ext-webui", specifier = ">=1.1.0", index = "https://pypi.fury.io/skybrush/" },
     { name = "skybrush-lib-mission-planning", marker = "extra == 'pro'", specifier = ">=2.4.1", index = "https://pypi.collmot.com/" },
     { name = "skybrush-opt-rs", marker = "extra == 'pro'", index = "https://pypi.collmot.com/" },
     { name = "skybrush-studio", marker = "extra == 'pro'", index = "https://pypi.collmot.com/" },
@@ -2870,6 +2872,15 @@ dependencies = [
 sdist = { url = "https://pypi.collmot.com/packages/skybrush_ext_timecode-1.4.2.tar.gz", hash = "sha256:756c616533b237b4f1dab519801a803666dcaad56a5a740e06c23ff42a451b48" }
 wheels = [
     { url = "https://pypi.collmot.com/packages/skybrush_ext_timecode-1.4.2-py3-none-any.whl", hash = "sha256:710081c7a301fc88e8648205135bfdab2b2f53ea87c7ac16bb1bc96337604038" },
+]
+
+[[package]]
+name = "skybrush-ext-webui"
+version = "1.1.0"
+source = { registry = "https://pypi.fury.io/skybrush/" }
+sdist = { url = "https://pypi.fury.io/skybrush/-/ver_1mbuD1/skybrush-ext-webui-1.1.0.tar.gz", hash = "sha256:82d300f808747ae755d6ad55d5bf489b584e912dc707acdd3437b74791741df7" }
+wheels = [
+    { url = "https://pypi.fury.io/skybrush/-/ver_gMu57/skybrush_ext_webui-1.1.0-py3-none-any.whl", hash = "sha256:375f1c31be3945748bb886cd278a845f92e5f5373824926a8acc4f80d814c57e" },
 ]
 
 [[package]]

@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.58.0] - 2026-10-20
+
+### Changed
+
+- Dropped support for Python 3.10 as it is now EOL. Not considered a major version
+  bump as the server is meant to be an application, not a library.
+
+- Restored `skybrush-ext-webui` 1.1.0. Packaging issues will be resolved in a
+  separate patch release if needed.
+
 ## [2.57.3] - 2026-10-20
 
 ### Fixed

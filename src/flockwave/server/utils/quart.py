@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 from datetime import datetime, timedelta, timezone
+from importlib.resources import files
 from pathlib import Path
 from sys import executable
 from typing import IO, Protocol
@@ -13,6 +14,8 @@ from werkzeug.utils import cached_property
 
 from .generic import constant
 from .packaging import is_oxidized
+
+__all__ = ("open_package_resource",)
 
 
 def _get_quart_root_path_of(name: str) -> str | None:
@@ -41,6 +44,44 @@ class ResourceReader(Protocol):
     def resource_path(self, resource: str) -> str: ...
 
 
+def _get_oxidized_resource_reader(package: str) -> ResourceReader | None:
+    """Returns the resource reader of PyOxidizer's ``OxidizedFinder`` for the
+    given package, or ``None`` if the package has no embedded resources.
+    """
+    # __loader__ points to PyOxidizer's OxidizedFinder
+    assert hasattr(__loader__, "get_resource_reader")
+    assert callable(__loader__.get_resource_reader)
+    return __loader__.get_resource_reader(package)  # ty:ignore[invalid-return-type]
+
+
+def open_package_resource(package: str, path: str) -> IO[bytes]:
+    """Opens a resource of a Python package for reading in binary mode.
+
+    Unlike ``importlib.resources.files()``, this function also works for
+    resources in nested subfolders of the package when running inside
+    PyOxidizer. ``files()`` falls back to a compatibility adapter there that
+    can only resolve resources at the top level of the package.
+
+    Parameters:
+        package: the name of the package that contains the resource
+        path: the path of the resource relative to the package, using forward
+            slashes as separators
+
+    Raises:
+        OSError: if the resource does not exist or cannot be opened
+    """
+    if is_oxidized():
+        reader = _get_oxidized_resource_reader(package)
+        if reader is not None:
+            try:
+                return reader.open_resource(path)
+            except Exception:
+                # Resource not embedded; fall back to the filesystem
+                pass
+
+    return (files(package) / path).open("rb")
+
+
 class PyOxidizerTemplateLoader(BaseLoader):
     """Jinja2 template loader that looks for a template with the given name in
     a given Python package under a subpath.
@@ -51,13 +92,10 @@ class PyOxidizerTemplateLoader(BaseLoader):
         self.path = path
 
     def get_source(self, environment, template):
-        assert hasattr(__loader__, "get_resource_reader")
-        assert callable(__loader__.get_resource_reader)
-        reader: ResourceReader | None = __loader__.get_resource_reader(self.package)  # ty:ignore[invalid-assignment]
+        reader = _get_oxidized_resource_reader(self.package)
         if reader is None:
             raise TemplateNotFound(template)
         try:
-            # __loader__ points to PyOxidizer's OxidizedFinder
             with reader.open_resource(f"{self.path}/{template}") as fp:
                 data = fp.read().decode("utf-8")
         except Exception:
@@ -101,11 +139,8 @@ class PyOxidizerBlueprint(Blueprint):
         if not self.static_folder:
             raise RuntimeError("No static folder for this object")
 
-        # __loader__ points to PyOxidizer's OxidizedFinder
         package, _, _ = self.import_name.rpartition(".")
-        assert hasattr(__loader__, "get_resource_reader")
-        assert callable(__loader__.get_resource_reader)
-        reader: ResourceReader | None = __loader__.get_resource_reader(package)  # ty:ignore[invalid-assignment]
+        reader = _get_oxidized_resource_reader(package)
         resource_path = f"static/{filename}"
 
         try:

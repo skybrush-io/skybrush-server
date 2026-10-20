@@ -54,6 +54,7 @@ dependencies = [
   "typing-extensions>=4.15.0",
   "pydantic>=2.13.4",
   "skybrush-ext-webui>=1.1.0",
+  "certifi>=2026.10.19",
 ]
 
 [project.scripts]

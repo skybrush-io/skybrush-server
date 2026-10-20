@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- The `http` and `frontend` extensions now work on Python 3.14 and later. They
+  previously failed to load because they relied on `importlib.abc.ResourceReader`,
+  which was removed in Python 3.14.
+
+- Replaced the deprecated `asyncio.iscoroutinefunction()` with
+  `inspect.iscoroutinefunction()` in the vendored Engine.IO ASGI driver.
+
+- User-defined RTK presets are now always read and written as UTF-8, independently
+  of the locale settings of the platform.
+
 ## [2.57.2] - 2026-10-15
 
 ### Fixed

@@ -685,7 +685,7 @@ class RTKExtension(Extension):
         user_presets = {}
         user_preset_file = self.user_presets_file
         if user_preset_file.exists():
-            with user_preset_file.open() as fp:
+            with user_preset_file.open(encoding="utf-8") as fp:
                 try:
                     user_presets = json.load(fp)
                 except Exception:
@@ -709,7 +709,7 @@ class RTKExtension(Extension):
         if not user_preset_file.parent.exists():
             user_preset_file.parent.mkdir(parents=True, exist_ok=True)
 
-        with user_preset_file.open("w") as fp:
+        with user_preset_file.open("w", encoding="utf-8") as fp:
             try:
                 json.dump(user_presets, fp, indent=2, sort_keys=True)
             except Exception:

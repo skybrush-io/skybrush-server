@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import os
 from datetime import datetime, timedelta, timezone
-from importlib.abc import ResourceReader
 from pathlib import Path
 from sys import executable
+from typing import IO, Protocol
 from zlib import adler32
 
 from jinja2 import BaseLoader, ChoiceLoader, FileSystemLoader, TemplateNotFound
@@ -27,6 +27,18 @@ def _get_quart_root_path_of(name: str) -> str | None:
 
 
 _always_true = constant(True)
+
+
+class ResourceReader(Protocol):
+    """Protocol describing the resource reader objects returned by the
+    ``get_resource_reader()`` method of PyOxidizer's ``OxidizedFinder``.
+
+    This used to be covered by ``importlib.abc.ResourceReader``, but that
+    class was removed in Python 3.14.
+    """
+
+    def open_resource(self, resource: str) -> IO[bytes]: ...
+    def resource_path(self, resource: str) -> str: ...
 
 
 class PyOxidizerTemplateLoader(BaseLoader):

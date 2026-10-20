@@ -1,6 +1,6 @@
 import os
 import sys
-import asyncio
+import inspect
 
 from ..static_files import get_static_file
 
@@ -103,7 +103,7 @@ class ASGIApp:
                     try:
                         (
                             await self.on_startup()
-                            if asyncio.iscoroutinefunction(self.on_startup)
+                            if inspect.iscoroutinefunction(self.on_startup)
                             else self.on_startup()
                         )
                     except Exception:
@@ -115,7 +115,7 @@ class ASGIApp:
                     try:
                         (
                             await self.on_shutdown()
-                            if asyncio.iscoroutinefunction(self.on_shutdown)
+                            if inspect.iscoroutinefunction(self.on_shutdown)
                             else self.on_shutdown()
                         )
                     except Exception:

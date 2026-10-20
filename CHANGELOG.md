@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [2.58.1] - 2026-10-20
+## [2.58.2] - 2026-10-20
 
 ### Changed
 
@@ -14,6 +14,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Restored `skybrush-ext-webui` 1.1.0. Packaging issues will be resolved in a
   separate patch release if needed.
+
+- Updated `certifi` to 2026.10.19 in response to the eMudhra security incident.
 
 ## [2.57.3] - 2026-10-20
 

@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from collections.abc import Generator, Sequence
 from contextlib import ExitStack, contextmanager
-from logging import Logger
 from math import inf
 from typing import Any
 
@@ -35,8 +34,6 @@ class DroneShowExtension(Extension):
     latter two receive a keyword argument named `config` that contains the new
     configuration.
     """
-
-    log: Logger
 
     _clock: ShowClock | None
     _clock_sync: ClockSynchronizationHandler
@@ -133,6 +130,8 @@ class DroneShowExtension(Extension):
             return hub.acknowledge(message, outcome=False, reason=str(ex))
 
     async def run(self, app, configuration, logger):
+        assert self.log is not None
+
         self._clock = ShowClock()
         self._end_clock = ShowEndClock()
 
@@ -276,6 +275,7 @@ class DroneShowExtension(Extension):
                 show config object which has been actually updated
         """
         assert self.app is not None
+        assert self.log is not None
 
         if any(
             prop in changed for prop in ("clock", "start_time_on_clock", "duration")
@@ -388,6 +388,7 @@ class DroneShowExtension(Extension):
 
     async def _start_show_when_needed(self) -> None:
         assert self.app is not None
+        assert self.log is not None
         start_signal = self.app.import_api("signals", SignalsExtensionAPI).get(
             "show:start"
         )
@@ -451,6 +452,8 @@ class DroneShowExtension(Extension):
     async def _process_command_results_in_background(
         self, results, what: str = "commands"
     ) -> None:
+        assert self.log is not None
+
         try:
             with fail_after(5):
                 results = await wait_for_dict_items(results)

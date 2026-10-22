@@ -3,7 +3,6 @@
 from contextlib import AsyncExitStack, ExitStack
 from errno import EACCES
 from functools import partial
-from logging import Logger
 from struct import Struct
 from typing import TYPE_CHECKING, Any
 
@@ -33,8 +32,6 @@ __all__ = ("construct", "schema")
 class CrazyflieDronesExtension(UAVExtension[CrazyflieDriver]):
     """Extension that adds support for Crazyflie drones."""
 
-    log: Logger
-
     _driver: CrazyflieDriver
 
     def _create_driver(self) -> CrazyflieDriver:
@@ -51,6 +48,8 @@ class CrazyflieDronesExtension(UAVExtension[CrazyflieDriver]):
         when this function is called, and it is already associated to the
         server application.
         """
+        assert self.log is not None
+
         driver.debug = bool(configuration.get("debug", False))
         driver.fence_config = FenceConfiguration.from_json(configuration.get("fence"))
         driver.id_format = configuration.get("id_format", "{0}")
@@ -70,6 +69,8 @@ class CrazyflieDronesExtension(UAVExtension[CrazyflieDriver]):
             driver.preferred_controller = preferred_controller
 
     async def run(self, app, configuration):
+        assert self.log is not None
+
         from aiocflib.crtp.drivers import init_drivers
         from aiocflib.crtp.drivers.radio import SharedCrazyradio
         from aiocflib.errors import NotFoundError

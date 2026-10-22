@@ -9,7 +9,6 @@ import os
 import platform
 from contextlib import ExitStack
 from json import dumps
-from logging import Logger
 from typing import TYPE_CHECKING, Any
 
 from flockwave.connections import ConnectionState
@@ -42,8 +41,6 @@ class ConsoleStatusExtension(Extension):
     `skybrush-console-frontend` running on a Raspberry Pi or a similar
     device.
     """
-
-    log: Logger
 
     _queue_tx: MemorySendChannel | None
     _stream: FdStream | None
@@ -113,6 +110,7 @@ class ConsoleStatusExtension(Extension):
         try:
             self._queue_tx.send_nowait(info)
         except WouldBlock:
+            assert self.log is not None
             self.log.info("Dropped status information addressed to console frontend")
 
     def _get_full_status_information(self) -> list[tuple[str, Any]]:

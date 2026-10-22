@@ -121,7 +121,7 @@ class PyOxidizerBlueprint(Blueprint):
     # a cached property since Werkzeug 3.x for some reason
 
     @cached_property
-    def jinja_loader(self) -> BaseLoader:
+    def jinja_loader(self) -> BaseLoader | None:
         package, _, _ = self.import_name.rpartition(".")
         oxidized_loader = PyOxidizerTemplateLoader(package)
         if self.template_folder is not None:

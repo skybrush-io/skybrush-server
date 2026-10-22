@@ -32,8 +32,6 @@ __all__ = ("construct", "schema")
 class CrazyflieDronesExtension(UAVExtension[CrazyflieDriver]):
     """Extension that adds support for Crazyflie drones."""
 
-    _driver: CrazyflieDriver
-
     def _create_driver(self) -> CrazyflieDriver:
         assert self.app is not None
         return CrazyflieDriver(cache=self.get_cache_dir())
@@ -120,6 +118,7 @@ class CrazyflieDronesExtension(UAVExtension[CrazyflieDriver]):
 
     async def _run(self, app, configuration):
         assert self.app is not None
+        assert self._driver is not None
 
         signals = self.app.import_api("signals")
 

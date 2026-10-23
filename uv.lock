@@ -1141,7 +1141,7 @@ requires-dist = [
     { name = "skybrush-ext-flight-report", marker = "extra == 'pro'", specifier = ">=1.0.3", index = "https://pypi.collmot.com/" },
     { name = "skybrush-ext-flockctrl", marker = "extra == 'collmot'", specifier = ">=4.2.1", index = "https://pypi.collmot.com/" },
     { name = "skybrush-ext-map-cache", marker = "extra == 'pro'", specifier = ">=1.1.1", index = "https://pypi.collmot.com/" },
-    { name = "skybrush-ext-show-pro", marker = "extra == 'pro'", specifier = ">=1.0.1", index = "https://pypi.collmot.com/" },
+    { name = "skybrush-ext-show-pro", marker = "extra == 'pro'", specifier = ">=1.0.2", index = "https://pypi.collmot.com/" },
     { name = "skybrush-ext-sidekick", marker = "extra == 'pro'", specifier = ">=1.2.1", index = "https://pypi.collmot.com/" },
     { name = "skybrush-ext-skynet", marker = "extra == 'pro'", specifier = ">=0.6.0", index = "https://pypi.collmot.com/" },
     { name = "skybrush-ext-studio", marker = "extra == 'pro'", specifier = ">=1.9.0", index = "https://pypi.collmot.com/" },
@@ -2810,16 +2810,16 @@ wheels = [
 
 [[package]]
 name = "skybrush-ext-show-pro"
-version = "1.0.1"
+version = "1.0.2"
 source = { registry = "https://pypi.collmot.com/" }
 dependencies = [
     { name = "skybrush-opt-rs" },
     { name = "skybrush-studio" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://pypi.collmot.com/packages/skybrush_ext_show_pro-1.0.1.tar.gz", hash = "sha256:c25064a489d0139f93e89f663fb86866f0a95d3ac4d76edf4e4f20d92d6fa081" }
+sdist = { url = "https://pypi.collmot.com/packages/skybrush_ext_show_pro-1.0.2.tar.gz", hash = "sha256:01db1c1a8c27e885b3a436aeecaece2fdbebb33d7f88821df886811beaaee12d" }
 wheels = [
-    { url = "https://pypi.collmot.com/packages/skybrush_ext_show_pro-1.0.1-py3-none-any.whl", hash = "sha256:469705ad1f009134c5e653fd491e2688a0bea8aed8e42a663a78f9b4a4b7a6a6" },
+    { url = "https://pypi.collmot.com/packages/skybrush_ext_show_pro-1.0.2-py3-none-any.whl", hash = "sha256:6d903f8d3970482e409537618f2ac4d69a0edf225da1395916a8849f25484422" },
 ]
 
 [[package]]

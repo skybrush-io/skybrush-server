@@ -1,6 +1,6 @@
 from base64 import b64encode
 from enum import Enum
-from typing import Any
+from typing import Any, Literal, TypeAlias
 
 from flockwave.spec.schema import get_complex_object_schema
 
@@ -8,7 +8,20 @@ from flockwave.server.model.metamagic import ModelMeta
 
 from .utils import enum_to_json
 
-__all__ = ("LogMessage", "FlightLog", "FlightLogKind", "FlightLogMetadata")
+__all__ = (
+    "LogMessage",
+    "LogMessageCode",
+    "FlightLog",
+    "FlightLogKind",
+    "FlightLogMetadata",
+)
+
+
+LogMessageCode: TypeAlias = Literal[
+    # Server reached its limit on the number of UAVs it can manage.
+    "uavs.limit_reached",
+]
+"""Machine-readable codes for log messages."""
 
 
 class Severity(Enum):
@@ -36,6 +49,7 @@ class LogMessage(metaclass=ModelMeta):
         severity: Severity = Severity.INFO,
         sender: str | None = None,
         timestamp: int | None = None,
+        code: LogMessageCode | None = None,
     ):
         self.message = message
         self.severity = severity
@@ -43,6 +57,8 @@ class LogMessage(metaclass=ModelMeta):
             self.sender = sender
         if timestamp is not None:
             self.timestamp = timestamp
+        if code is not None:
+            self.code = code
 
 
 class FlightLogKind(Enum):

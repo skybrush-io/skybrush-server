@@ -7,7 +7,7 @@ authors = [
   { name = "Gabor Vasarhelyi", email = "vasarhelyi@collmot.com" },
 ]
 license = "GPL-3.0-or-later"
-requires-python = ">=3.11,<4.0"
+requires-python = ">=3.11"
 dependencies = [
   "bidict>=0.24.1,<0.25.0",
   "click>=8.2.1,<9.0.0",

@@ -1141,7 +1141,7 @@ requires-dist = [
     { name = "pyserial", specifier = ">=3.5.0,<4.0.0" },
     { name = "python-baseconv", specifier = ">=1.2.2,<2.0.0" },
     { name = "python-dotenv", specifier = ">=1.1.0,<2.0.0" },
-    { name = "quart", specifier = ">=0.20.0,<0.21.0" },
+    { name = "quart", specifier = ">=0.22.0,<0.23.0" },
     { name = "quart-trio", specifier = ">=0.12.0,<0.13.0" },
     { name = "skybrush-ext-dock", marker = "extra == 'collmot'", specifier = ">=1.2.0", index = "https://pypi.collmot.com/" },
     { name = "skybrush-ext-firmware-update", marker = "extra == 'pro'", specifier = ">=0.5.0", index = "https://pypi.collmot.com/" },
@@ -2600,7 +2600,7 @@ wheels = [
 
 [[package]]
 name = "quart"
-version = "0.20.0"
+version = "0.22.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiofiles" },
@@ -2613,9 +2613,9 @@ dependencies = [
     { name = "markupsafe" },
     { name = "werkzeug" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/1d/9d/12e1143a5bd2ccc05c293a6f5ae1df8fd94a8fc1440ecc6c344b2b30ce13/quart-0.20.0.tar.gz", hash = "sha256:08793c206ff832483586f5ae47018c7e40bdd75d886fee3fabbdaa70c2cf505d", size = 63874, upload-time = "2024-12-23T13:53:05.664Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/82/8a/13962df31309fa024b1811102981577b1702916779d3f17067bbf1f7691d/quart-0.22.0.tar.gz", hash = "sha256:6ba567bb29e0ea66f7c0a0297c2b6225bb531e37dbf9b75dbf4a6e1713c4c934", size = 65475, upload-time = "2026-08-19T19:53:30.212Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/7e/e9/cc28f21f52913adf333f653b9e0a3bf9cb223f5083a26422968ba73edd8d/quart-0.20.0-py3-none-any.whl", hash = "sha256:003c08f551746710acb757de49d9b768986fd431517d0eb127380b656b98b8f1", size = 77960, upload-time = "2024-12-23T13:53:02.842Z" },
+    { url = "https://files.pythonhosted.org/packages/81/80/0159d6fe2fc76915f2354e5b9187082987f7d648f0298d49770320c086ef/quart-0.22.0-py3-none-any.whl", hash = "sha256:bb659545f1a8a287a14df9434b9225a3d4738362a3ed170744d0e03bb9447b50", size = 78912, upload-time = "2026-08-19T19:53:28.961Z" },
 ]
 
 [[package]]

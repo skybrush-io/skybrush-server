@@ -9,7 +9,7 @@ authors = [
 license = "GPL-3.0-or-later"
 requires-python = ">=3.11,<4.0"
 dependencies = [
-  "bidict>=0.23.1,<0.24.0",
+  "bidict>=0.23.1,<0.25.0",
   "click>=8.2.1,<9.0.0",
   "blinker>=1.9.0,<2.0.0",
   "python-baseconv>=1.2.2,<2.0.0",

@@ -35,7 +35,7 @@ from .message_hub import (
 from .model.client import Client
 from .model.devices import DeviceTree, DeviceTreeSubscriptionManager
 from .model.errors import ClientNotSubscribedError, NoSuchPathError
-from .model.log import LogMessage, Severity
+from .model.log import LogMessage, LogMessageCode, Severity
 from .model.messages import (
     AsyncResponseBody,
     FlockwaveMessage,
@@ -739,8 +739,10 @@ class SkybrushServer(DaemonApp):
         cnt = self._registry_full_error_counts[source]
         if cnt <= 5:
             self._registry_full_error_counts[source] += 1
-            self.log.warning(
-                f"Error while registering a new {object}: server limits reached",
+            message = f"Error while registering a new {object}: server limits reached"
+            self.log.warning(message)
+            self.request_to_send_SYS_MSG_message(
+                message, severity=Severity.WARNING, code="uavs.limit_reached"
             )
             if cnt == 5:
                 self.log.warning(
@@ -804,9 +806,11 @@ class SkybrushServer(DaemonApp):
         severity: Severity = Severity.INFO,
         sender: str | None = None,
         timestamp: int | None = None,
+        code: LogMessageCode | None = None,
     ):
         """Requests the application to send a SYS-MSG message to the connected
-        clients with the given message body, severity, sender ID and timestamp.
+        clients with the given message body, severity, sender ID, timestamp and
+        code.
         The application may send the message immediately or opt to delay it a
         bit in order to ensure that SYS-MSG notifications are not emitted too
         frequently.
@@ -821,9 +825,15 @@ class SkybrushServer(DaemonApp):
             timestamp: the timestamp of the message; `None` means that the
                 timestamp is not relevant and it will be omitted from the
                 generated message
+            code: machine-readable code identifying the message;
+                `None` if the message has no associated code
         """
         entry = LogMessage(
-            message=message, severity=severity, sender=sender, timestamp=timestamp
+            message=message,
+            severity=severity,
+            sender=sender,
+            timestamp=timestamp,
+            code=code,
         )
         self.rate_limiters.request_to_send("SYS-MSG", entry)
 
@@ -973,6 +983,9 @@ class SkybrushServer(DaemonApp):
         # Create an object to hold information about all the connected
         # clients that the server can talk to
         self.client_registry = ClientRegistry(self.channel_type_registry)
+        self.client_registry.added.connect(
+            self._on_client_added, sender=self.client_registry
+        )
         self.client_registry.count_changed.connect(
             self._on_client_count_changed, sender=self.client_registry
         )
@@ -1101,6 +1114,31 @@ class SkybrushServer(DaemonApp):
             response=response,
             failure_reason="No such object",
         )
+
+    def _on_client_added(self, sender: ClientRegistry, client: Client) -> None:
+        """Handler called when a new client is added to the client registry.
+
+        Parameters:
+            sender: the client registry
+            client: the client that was added
+        """
+        if len(self.object_registry) < self.object_registry.size_limit:
+            return
+
+        notification = self.create_SYS_MSG_message_from(
+            [
+                LogMessage(
+                    message="Server limits reached, new objects cannot be registered",
+                    severity=Severity.WARNING,
+                    code="uavs.limit_reached",
+                )
+            ]
+        )
+        try:
+            self.message_hub.enqueue_message(notification, to=client)
+        except BrokenResourceError:
+            # App is probably shutting down, this is OK.
+            pass
 
     def _on_client_count_changed(self, sender: ClientRegistry) -> None:
         """Handler called when the number of clients attached to the server

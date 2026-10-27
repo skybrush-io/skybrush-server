@@ -5,7 +5,6 @@ from .ardupilot import (
     ArduCopterWithSkybrush,
     ArduPilot,
     ArduPlane,
-    ArduPlaneVTOLQuadrotor,
     ArduRover,
 )
 from .base import Autopilot
@@ -18,7 +17,6 @@ __all__ = (
     "ArduPilot",
     "Autopilot",
     "ArduPlane",
-    "ArduPlaneVTOLQuadrotor",
     "ArduRover",
     "PX4",
     "UnknownAutopilot",

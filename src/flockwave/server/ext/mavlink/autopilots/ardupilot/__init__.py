@@ -4,7 +4,7 @@ from .arducopter import (
     ArduCopter,
     ArduCopterWithSkybrush,
 )
-from .arduplane import ArduPlane, ArduPlaneVTOLQuadrotor
+from .arduplane import ArduPlane
 from .ardurover import ArduRover
 from .base import (
     ArduPilot,
@@ -18,7 +18,6 @@ __all__ = (
     "ArduCopterWithSkybrush",
     "ArduPilot",
     "ArduPlane",
-    "ArduPlaneVTOLQuadrotor",
     "ArduRover",
     "decode_parameters_from_packed_format",
     "encode_parameters_to_packed_format",

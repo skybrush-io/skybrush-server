@@ -78,7 +78,11 @@ class ArduPlane(ArduPilot):
 
 @register_for_mavlink_vehicle_type(MAVType.VTOL_TAILSITTER_QUADROTOR)
 class ArduPlaneVTOLQuadrotor(ArduPlane):
-    """Class representing the ArduPlane firmware on a VTOL quadrotor."""
+    """Class representing the ArduPlane firmware on a VTOL quadrotor.
+
+    Standard QuadPlanes report FIXED_WING by default, so they need Q_MAV_TYPE=20 to
+    be handled by this class.
+    """
 
     name = "ArduPlane VTOL quadrotor"
 

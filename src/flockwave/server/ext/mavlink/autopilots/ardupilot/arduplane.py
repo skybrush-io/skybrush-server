@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from flockwave.server.ext.mavlink.enums import (
     MAVType,
 )
@@ -7,13 +9,15 @@ from flockwave.server.ext.mavlink.enums import (
 from .base import ArduPilot, FlightModeMap
 from .registry import register_for_mavlink_vehicle_type
 
-__all__ = ("ArduPlane",)
+if TYPE_CHECKING:
+    from flockwave.server.ext.mavlink.driver import MAVLinkUAV
+
+__all__ = ("ArduPlane", "ArduPlaneVTOLQuadrotor")
 
 
 @register_for_mavlink_vehicle_type(
     MAVType.FIXED_WING,
     MAVType.VTOL_TAILSITTER_DUOROTOR,
-    MAVType.VTOL_TAILSITTER_QUADROTOR,
     MAVType.VTOL_TILTROTOR,
     # The MAV_TYPE values below are theoretically valid for ArduPlane, but
     # they cannot be set using the Q_MAV_TYPE parameter in ArduPilot 4.7,
@@ -70,3 +74,14 @@ class ArduPlane(ArduPilot):
         # not support fly to in guided mode either, so we just allow repositioning
         # to be able to handle fly_to() calls with explicit altitudes at least.
         return True
+
+
+@register_for_mavlink_vehicle_type(MAVType.VTOL_TAILSITTER_QUADROTOR)
+class ArduPlaneVTOLQuadrotor(ArduPlane):
+    """Class representing the ArduPlane firmware on a VTOL quadrotor."""
+
+    name = "ArduPlane VTOL quadrotor"
+
+    async def takeoff(self, uav: MAVLinkUAV, *, channel: str) -> None:
+        # By default VTOL quadrotors take off to a higher altitude than other UAVs
+        await uav.takeoff_to_relative_altitude(50, channel=channel)

@@ -1013,7 +1013,7 @@ class MAVLinkDriver(UAVDriver["MAVLinkUAV"]):
         await sleep(0.1)
 
         # Send the takeoff command
-        await uav.takeoff_to_relative_altitude(2.5, channel=channel)
+        await uav.takeoff(channel=channel)
 
     async def _set_parameter_single(
         self, uav: "MAVLinkUAV", name: str, value: Any
@@ -2411,6 +2411,12 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
         )
         if not success:
             raise RuntimeError("Failed to start pyro test")
+
+    async def takeoff(self, *, channel: str = Channel.PRIMARY) -> None:
+        """Instructs the UAV to take off from its current position, to an
+        altitude chosen by the autopilot.
+        """
+        await self._autopilot.takeoff(self, channel=channel)
 
     async def takeoff_to_relative_altitude(
         self, altitude: float = 2.5, *, channel: str = Channel.PRIMARY

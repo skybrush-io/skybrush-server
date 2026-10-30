@@ -714,6 +714,8 @@ class VirtualUAV(UAVBase):
             if self._trajectory_player and self._mission_started_at is not None:
                 self._update_target_from_trajectory()
 
+        state = self._state
+
         # Do we have a target?
         if self._target_xyz is not None:
             # We aim for the target in the XY plane only if we are airborne

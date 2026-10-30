@@ -714,6 +714,9 @@ class VirtualUAV(UAVBase):
             if self._trajectory_player and self._mission_started_at is not None:
                 self._update_target_from_trajectory()
 
+        # _update_target_from_trajectory() may have called land(), so refresh
+        # the state; otherwise the stale AIRBORNE state would clear the new
+        # landing target below and the UAV would be stuck in LANDING
         state = self._state
 
         # Do we have a target?

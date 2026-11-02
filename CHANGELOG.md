@@ -12,6 +12,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The server now notifies connected clients when it reaches the drone limit of
   its license.
 
+### Changed
+
+- ArduPlane-based vehicles (e.g., VTOL planes) now take off to 50 meters above
+  their current position when receiving a takeoff command. Other vehicle types
+  still use the default takeoff altitude of 2.5 meters.
+
+- Removed the upper bound on the supported Python version.
+
+### Fixed
+
+- Virtual UAVs no longer get stuck in the landing state when a show ends at
+  ground level.
+
 ## [2.58.2] - 2026-10-20
 
 ### Changed

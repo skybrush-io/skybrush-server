@@ -374,3 +374,7 @@ class Autopilot(ABC):
     def supports_scheduled_takeoff(self) -> bool:
         """Returns whether the autopilot supports scheduled takeoffs."""
         ...
+
+    async def takeoff(self, uav: MAVLinkUAV, *, channel: str) -> None:
+        """Instructs the UAV to take off from its current position."""
+        await uav.takeoff_to_relative_altitude(2.5, channel=channel)

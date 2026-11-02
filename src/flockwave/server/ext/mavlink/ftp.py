@@ -6,7 +6,7 @@ from collections.abc import AsyncGenerator, Awaitable, Iterable, Iterator
 from contextlib import aclosing, asynccontextmanager
 from dataclasses import dataclass
 from enum import Enum, IntEnum
-from errno import ENOSPC
+from errno import EEXIST, ENOSPC
 from functools import partial
 from io import BytesIO
 from itertools import cycle, islice
@@ -182,7 +182,17 @@ class OperationNotAcknowledgedError(MAVFTPError):
 
         super().__init__(message)
         self.code = code
+        self.errno = errno
         self.opcode = operation
+
+    @property
+    def is_file_exists_error(self) -> bool:
+        """Returns whether the error means that the file or directory being
+        created already exists.
+        """
+        return self.code == MAVFTPErrorCode.FILE_EXISTS or (
+            self.code == MAVFTPErrorCode.FAIL_ERRNO and self.errno == EEXIST
+        )
 
 
 class SequenceNumberMismatch(MAVFTPError):
@@ -584,7 +594,7 @@ class MAVFTP:
         try:
             await self._send_and_wait(message)
         except OperationNotAcknowledgedError as ex:
-            if ex.code == MAVFTPErrorCode.FILE_EXISTS and exist_ok:
+            if ex.is_file_exists_error and exist_ok:
                 return
             else:
                 raise
@@ -650,10 +660,10 @@ class MAVFTP:
 
         remote_path = self._resolve(remote_path)
         if parents:
-            await self.mkdir(
-                str(PurePosixPath(remote_path.decode("utf-8"))),
-                parents=True,
-            )
+            # Resolved paths are relative to the root, without a leading slash
+            parent = (PurePosixPath("/") / remote_path.decode("utf-8")).parent
+            if parent != PurePosixPath("/"):
+                await self.mkdir(str(parent), parents=True)
 
         message = MAVFTPMessage(MAVFTPOpCode.CREATE_FILE, data=remote_path)
         reply = await self._send_and_wait(message)
@@ -706,15 +716,25 @@ class MAVFTP:
         async with aclosing(session):
             yield session
 
-    def _parents_of(self, path: FTPPath) -> Iterable[FTPPath]:
+    def _parents_of(self, path: FTPPath) -> Iterable[str]:
+        """Returns the parent directories of a _resolved_ path, i.e. a path
+        returned from `_resolve()`, from the topmost one downwards.
+
+        The root directory is not included. The returned paths are absolute so
+        they can safely be passed back to `_resolve()` again.
+        """
         if isinstance(path, str):
             path_as_str = path
         elif isinstance(path, memoryview):
             path_as_str = path.tobytes().decode("utf-8")
         else:
             path_as_str = path.decode("utf-8")
-        for parent_path in reversed(PurePosixPath(path_as_str).parents):
-            yield self._to_ftp_path(parent_path)
+
+        # Resolved paths are relative to the root, without a leading slash
+        root = PurePosixPath("/")
+        for parent_path in reversed((root / path_as_str).parents):
+            if parent_path != root:
+                yield str(parent_path)
 
     def _resolve(self, name: FTPPath = ".") -> bytes:
         """Resolves a relative or absolute path name with the current path of

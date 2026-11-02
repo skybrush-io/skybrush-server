@@ -91,6 +91,7 @@ from .enums import (
     RebootShutdownConditions,
     SkybrushUserCommand,
 )
+from .file_upload import decode_file_upload_data, validate_remote_file_path
 from .ftp import MAVFTP
 from .log_download import MAVLinkLogDownloader
 from .packets import (
@@ -390,6 +391,39 @@ class MAVLinkDriver(UAVDriver["MAVLinkUAV"]):
             return "Show removed."
         else:
             raise RuntimeError(f"Unknown subcommand: {command!r}")
+
+    async def handle_command___file_upload(
+        self, uav: "MAVLinkUAV", *, path: str, data: str
+    ) -> ProgressEvents[str]:
+        """Handles a generic file upload request for the given UAV via MAVFTP.
+        Parent directories of the file are created if needed and existing
+        files are overwritten.
+
+        Args:
+            path: the absolute path of the file on the UAV
+            data: the contents of the file, encoded in base64
+
+        Yields:
+            progress updates about the upload, followed by a message
+            describing the result
+
+        Raises:
+            CommandInvocationError: if the path or the file contents are invalid
+        """
+        remote_path = validate_remote_file_path(path)
+        contents = decode_file_upload_data(data)
+
+        try:
+            async for progress in uav.upload_file(contents, remote_path):
+                yield progress
+        except Exception as ex:
+            self.log.error(
+                f"Failed to upload {remote_path}: {ex}",
+                extra={"id": log_id_for_uav(uav)},
+            )
+            raise
+
+        yield f"Uploaded {len(contents)} bytes to {remote_path}"
 
     async def handle_command___show_upload(
         self, uav: "MAVLinkUAV", *, show: ShowSpecification

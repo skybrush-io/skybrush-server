@@ -1,12 +1,15 @@
 """Tests for the MAVFTP implementation of the MAVLink extension."""
 
+from base64 import b64encode
 from dataclasses import dataclass
 from errno import EEXIST, ENOENT
 from types import SimpleNamespace
+from unittest.mock import Mock
 
 from pytest import fixture, mark, raises
 
-from flockwave.server.ext.mavlink.driver import MAVLinkUAV
+from flockwave.server.errors import CommandInvocationError
+from flockwave.server.ext.mavlink.driver import MAVLinkDriver, MAVLinkUAV
 from flockwave.server.ext.mavlink.ftp import (
     MAVFTP,
     MAVFTPErrorCode,
@@ -14,6 +17,7 @@ from flockwave.server.ext.mavlink.ftp import (
     MAVFTPOpCode,
     OperationNotAcknowledgedError,
 )
+from flockwave.server.model.commands import Progress
 from flockwave.server.show.utils import crc32_mavftp as crc32
 
 
@@ -229,3 +233,70 @@ async def test_uav_upload_file(server: FakeMAVFTPServer):
         pass
 
     assert server.files["APM/scripts/foo.lua"] == b"print('v2')"
+
+
+@fixture
+def driver_and_uav(server: FakeMAVFTPServer):
+    driver = SimpleNamespace(log=Mock(), send_packet=server)
+    uav = SimpleNamespace(id="42", driver=driver)
+    uav.upload_file = lambda *args: MAVLinkUAV.upload_file(uav, *args)  # ty:ignore[invalid-argument-type]
+    return driver, uav
+
+
+async def test_file_upload_command(server: FakeMAVFTPServer, driver_and_uav):
+    driver, uav = driver_and_uav
+    data = b"-- test script\n" * 100
+
+    events = [
+        event
+        async for event in MAVLinkDriver.handle_command___file_upload(
+            driver,
+            uav,
+            path="/APM/scripts/foo.lua",
+            data=b64encode(data).decode("ascii"),
+        )
+    ]
+
+    assert server.files["APM/scripts/foo.lua"] == data
+    assert events[-1] == f"Uploaded {len(data)} bytes to /APM/scripts/foo.lua"
+    progress = events[:-1]
+    assert all(isinstance(event, Progress) for event in progress)
+    last_progress = progress[-1]
+    assert isinstance(last_progress, Progress)
+    assert last_progress.percentage == 100
+
+
+async def test_file_upload_command_invalid_args(
+    server: FakeMAVFTPServer, driver_and_uav
+):
+    driver, uav = driver_and_uav
+
+    with raises(CommandInvocationError):
+        async for _ in MAVLinkDriver.handle_command___file_upload(
+            driver,
+            uav,
+            path="/APM/../foo.lua",
+            data="",
+        ):
+            pass
+
+    assert server.requests == []
+
+
+async def test_file_upload_command_failure(server: FakeMAVFTPServer, driver_and_uav):
+    driver, uav = driver_and_uav
+
+    # A file where a directory should be makes the upload fail
+    server.files["APM"] = bytearray()
+
+    with raises(OperationNotAcknowledgedError):
+        async for _ in MAVLinkDriver.handle_command___file_upload(
+            driver,
+            uav,
+            path="/APM/scripts/foo.lua",
+            data=b64encode(b"data").decode("ascii"),
+        ):
+            pass
+
+    driver.log.error.assert_called_once()
+    assert driver.log.error.call_args.kwargs["extra"] == {"id": "42"}

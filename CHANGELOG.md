@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Added a `__file_upload` command for MAVLink drones that
+  uploads an arbitrary file to the drone via MAVFTP, creating its parent
+  directories if needed. The command expects the absolute path of the file in
+  `path` and its base64-encoded contents in `data` (max. 256 KB).
+
 ### Fixed
 
 - MAVFTP uploads to MAVLink drones can now create missing parent directories

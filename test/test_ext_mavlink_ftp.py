@@ -2,9 +2,11 @@
 
 from dataclasses import dataclass
 from errno import EEXIST, ENOENT
+from types import SimpleNamespace
 
 from pytest import fixture, mark, raises
 
+from flockwave.server.ext.mavlink.driver import MAVLinkUAV
 from flockwave.server.ext.mavlink.ftp import (
     MAVFTP,
     MAVFTPErrorCode,
@@ -34,7 +36,9 @@ class FakeMAVFTPServer:
         self._next_session_id = 1
         self._report_exists_as_errno = report_exists_as_errno
 
-    async def __call__(self, packet, wait_for_response=None) -> FakeMAVLinkMessage:
+    async def __call__(
+        self, packet, wait_for_response=None, target=None
+    ) -> FakeMAVLinkMessage:
         _, kwds = packet
         payload = kwds["payload"]
         seq_no = payload[0] + (payload[1] << 8)
@@ -192,3 +196,36 @@ async def test_put_with_parents_into_root(ftp: MAVFTP, server: FakeMAVFTPServer)
 async def test_put_without_parents_fails_on_missing_dir(ftp: MAVFTP):
     with raises(OperationNotAcknowledgedError):
         await ftp.put(b"data", "/APM/scripts/foo.lua")
+
+
+async def test_uav_upload_file(server: FakeMAVFTPServer):
+    # MAVFTP.for_uav() needs nothing but uav.driver.send_packet()
+    uav = SimpleNamespace(driver=SimpleNamespace(send_packet=server))
+    data = b"-- test script\n" * 100
+
+    events = [
+        event
+        async for event in MAVLinkUAV.upload_file(
+            uav,  # ty:ignore[invalid-argument-type]
+            data,
+            "/APM/scripts/foo.lua",
+        )
+    ]
+
+    assert server.files["APM/scripts/foo.lua"] == data
+    percentages = [event.percentage for event in events]
+    assert all(percentage is not None for percentage in percentages)
+    percentages = [percentage or 0 for percentage in percentages]
+    assert percentages[0] == 0
+    assert percentages[-1] == 100
+    assert percentages == sorted(percentages)
+
+    # Uploading again overwrites the file
+    async for _ in MAVLinkUAV.upload_file(
+        uav,  # ty:ignore[invalid-argument-type]
+        b"print('v2')",
+        "/APM/scripts/foo.lua",
+    ):
+        pass
+
+    assert server.files["APM/scripts/foo.lua"] == b"print('v2')"

@@ -2670,6 +2670,24 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
         if not success:
             raise RuntimeError("Failed to trigger camera shutter")
 
+    async def upload_file(
+        self, data: bytes, remote_path: str
+    ) -> AsyncIterator[Progress]:
+        """Uploads a file to the UAV via MAVFTP, creating its parent directories
+        if needed. Existing files at the given path are overwritten.
+
+        Args:
+            data: the contents of the file to upload
+            remote_path: the absolute path of the file on the UAV
+
+        Yields:
+            progress updates about the state of the upload process
+        """
+        async with aclosing(MAVFTP.for_uav(self)) as ftp:
+            async with ftp.put_gen(data, remote_path, parents=True) as gen:
+                async for progress in gen:
+                    yield progress
+
     async def upload_show(self, show: ShowSpecification) -> None:
         show_api = self.driver.app.import_api("show", ShowExtensionAPI)
         show_file = await show_api.encode_show(show)

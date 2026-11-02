@@ -1,2 +1,2 @@
-__version_info__ = (2, 59, 0)
+__version_info__ = (2, 60, 0)
 __version__ = ".".join("{0}".format(x) for x in __version_info__)

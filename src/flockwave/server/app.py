@@ -724,29 +724,29 @@ class SkybrushServer(DaemonApp):
         )  # type: ignore
 
     def handle_registry_full_error(self, source: Any, object: str) -> None:
-        """Commomn handler for events when an extension tries to register an
-        object in the object registry and the registry reaches the limits
+        """Common handler for events when an extension tries to register a
+        UAV in the object registry and the registry reached the UAV limit
         dictated by the license.
 
         Args:
             source: the source of the event. This object is simply used by
                 identity to limit the number of warnings we print on the console
                 for a single source.
-            object: the type of the object that the caller attempted to register,
+            object: the type of the UAV that the caller attempted to register,
                 in a human-readable form. This will be used in the warning being
                 printed from this function.
         """
         cnt = self._registry_full_error_counts[source]
         if cnt <= 5:
             self._registry_full_error_counts[source] += 1
-            message = f"Error while registering a new {object}: server limits reached"
+            message = f"Error while registering a new {object}: UAV limit reached"
             self.log.warning(message)
             self.request_to_send_SYS_MSG_message(
                 message, severity=Severity.WARNING, code="uavs.limit_reached"
             )
             if cnt == 5:
                 self.log.warning(
-                    f"Further warnings about limits affecting a new {object} "
+                    f"Further warnings about the UAV limit affecting a new {object} "
                     f"will be suppressed"
                 )
 
@@ -1122,13 +1122,13 @@ class SkybrushServer(DaemonApp):
             sender: the client registry
             client: the client that was added
         """
-        if len(self.object_registry) < self.object_registry.size_limit:
+        if not self.object_registry.uav_limit_reached:
             return
 
         notification = self.create_SYS_MSG_message_from(
             [
                 LogMessage(
-                    message="Server limits reached, new objects cannot be registered",
+                    message="UAV limit reached, new UAVs cannot be registered",
                     severity=Severity.WARNING,
                     code="uavs.limit_reached",
                 )

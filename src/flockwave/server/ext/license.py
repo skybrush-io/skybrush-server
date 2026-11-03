@@ -368,7 +368,7 @@ def has_feature(*args: str) -> bool:
 
 def enforce_license_limits(license: License | None, app) -> None:
     num_drones = license.get_maximum_drone_count() if license else inf
-    app.object_registry.size_limit = num_drones
+    app.object_registry.uav_limit = num_drones
 
 
 def show_license_information(

@@ -2,14 +2,14 @@
 server knows.
 """
 
-from collections.abc import Callable, Generator, Iterable
+from collections.abc import Callable, Generator, Iterable, Sequence
 from contextlib import contextmanager
 from math import inf
 from typing import ClassVar, TypeVar, cast
 
 from blinker import Signal
 
-from flockwave.server.model import ModelObject
+from flockwave.server.model import UAV, ModelObject
 
 from .base import RegistryBase
 from .errors import RegistryFull
@@ -54,7 +54,8 @@ class ObjectRegistry(RegistryBase[ModelObject]):
     )
 
     def __init__(self) -> None:
-        self._size_limit = inf
+        self._uav_limit = inf
+        self._uavs: dict[str, UAV] = {}
         super().__init__()
 
     def add(self, object: ModelObject) -> None:
@@ -71,11 +72,15 @@ class ObjectRegistry(RegistryBase[ModelObject]):
                 the given type can be registered
         """
         old_object = self._entries.get(object.id, None)
-        if old_object is not None and old_object != object:
-            raise KeyError("Object ID already taken: {0!r}".format(object.id))
+        if old_object is not None:
+            if old_object != object:
+                raise KeyError("Object ID already taken: {0!r}".format(object.id))
+            return
 
         self._ensure_has_free_slot_for_object(object)
         self._entries[object.id] = object
+        if isinstance(object, UAV):
+            self._uavs[object.id] = object
         self.added.send(self, object=object)
 
     def add_if_missing(self, id: str, factory: Callable[[str], T]) -> T:
@@ -108,6 +113,8 @@ class ObjectRegistry(RegistryBase[ModelObject]):
         resolved_cls = ModelObject.resolve_type(cls) if isinstance(cls, str) else cls
         if resolved_cls is None:
             return []
+        elif resolved_cls is UAV:
+            return self._uavs.keys()
         else:
             return (
                 key
@@ -115,15 +122,18 @@ class ObjectRegistry(RegistryBase[ModelObject]):
                 if isinstance(value, resolved_cls)
             )
 
-    def ids_by_types(self, classes: Iterable[type[ModelObject] | str]) -> Iterable[str]:
+    def ids_by_types(self, classes: Sequence[type[ModelObject] | str]) -> Iterable[str]:
         """Returns an iterable that iterates over all the identifiers in the
         registry where the associated object matches the given predicate.
 
         Parameters:
-            cls: the model object class to match for each object in the registry,
+            classes: the model object class to match for each object in the registry,
                 or its registered string identifier in the ModelObject_ base
                 class
         """
+        if len(classes) == 1:
+            return self.ids_by_type(classes[0])
+
         filter = []
         for cls in classes:
             cls = ModelObject.resolve_type(cls) if isinstance(cls, str) else cls
@@ -165,17 +175,22 @@ class ObjectRegistry(RegistryBase[ModelObject]):
             registered
         """
         object = self._entries.pop(object_id, None)
+        self._uavs.pop(object_id, None)
         if object is not None:
             self.removed.send(self, object=object)
         return object
 
     @property
-    def size_limit(self) -> float:
-        return self._size_limit
+    def uav_limit(self) -> float:
+        return self._uav_limit
 
-    @size_limit.setter
-    def size_limit(self, value: float) -> None:
-        self._size_limit = max(value, 0)
+    @uav_limit.setter
+    def uav_limit(self, value: float) -> None:
+        self._uav_limit = max(value, 0)
+
+    @property
+    def uav_limit_reached(self) -> bool:
+        return len(self._uavs) >= self._uav_limit
 
     @contextmanager
     def use(self, *args: ModelObject) -> Generator[None, None, None]:
@@ -209,8 +224,8 @@ class ObjectRegistry(RegistryBase[ModelObject]):
             RegistryFull: if the registry is full and no additional objects of
                 the given type can be registered
         """
-        if len(self._entries) >= self._size_limit:
-            raise RegistryFull
+        if isinstance(object, UAV) and self.uav_limit_reached:
+            raise RegistryFull()
 
 
 class ObjectRegistryProxy(RegistryBase[T]):
@@ -245,9 +260,8 @@ class ObjectRegistryProxy(RegistryBase[T]):
         """
         assert self._object_registry is not None
 
-        id = object.id
-        self._entries[id] = object
         self._object_registry.add(object)
+        self._entries[object.id] = object
 
         self.added.send(self, object=object)
 

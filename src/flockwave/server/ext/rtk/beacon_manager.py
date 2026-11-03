@@ -39,11 +39,9 @@ class RTKBeaconManager:
 
     @contextmanager
     def use(self, ext: "RTKExtension", nursery) -> Generator[None, None, None]:
-        if not self.enabled:
-            return
-
         app = ext.app
-        if app is None:
+        if not self.enabled or app is None:
+            yield
             return
 
         beacon_api = app.import_api("beacon")

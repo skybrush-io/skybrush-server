@@ -30,6 +30,7 @@ from trio.abc import SendChannel
 from trio_util import AsyncBool, periodic
 
 from flockwave.server.ext.base import Extension
+from flockwave.server.ext.events import Dispatcher, EventsExtensionAPI
 from flockwave.server.ext.signals import SignalsExtensionAPI
 from flockwave.server.ext.timesync import TimeSource, TimeSyncExtensionAPI
 from flockwave.server.message_handlers import (
@@ -84,6 +85,16 @@ class RTKPresetRequest:
 class RTKExtension(Extension):
     """Extension that connects to one or more data sources for RTK connections
     and forwards the corrections to the UAVs managed by the server.
+
+    The extension dispatches the following events via the `events` extension:
+
+    - `rtk:source` when the currently selected RTK source changes; clients may
+      query the new source with `RTK-SOURCE`.
+    - `rtk:survey` when the RTK survey settings change; clients may query the
+      new settings with `RTK-SURVEY`.
+    - `rtk:presets` when the set of RTK presets or the properties of an RTK
+      preset change; clients may query the presets with `RTK-LIST` and
+      `RTK-INF`.
     """
 
     RTK_PACKET_SIGNAL: ClassVar[str] = "rtk:packet"
@@ -112,6 +123,21 @@ class RTKExtension(Extension):
     _survey_settings: RTKSurveySettings
     _tx_queue: SendChannel | None = None
     _config_fixed_position: ECEFCoordinate | None = None
+
+    _presets_events: Dispatcher | None = None
+    """Dispatcher for the `rtk:presets` event that is dispatched when the set
+    of RTK presets or the properties of an RTK preset change.
+    """
+
+    _source_events: Dispatcher | None = None
+    """Dispatcher for the `rtk:source` event that is dispatched when the
+    currently selected RTK source changes.
+    """
+
+    _survey_events: Dispatcher | None = None
+    """Dispatcher for the `rtk:survey` event that is dispatched when the RTK
+    survey settings change.
+    """
 
     def __init__(self):
         """Constructor."""
@@ -293,6 +319,9 @@ class RTKExtension(Extension):
         if existing is None:
             raise RuntimeError("Preset does not exist")
 
+        if self._presets_events:
+            self._presets_events.dispatch()
+
         return True
 
     def exports(self) -> dict[str, Any]:
@@ -352,6 +381,9 @@ class RTKExtension(Extension):
             except KeyError:
                 raise RuntimeError(f"Preset ID {preset.id} is already taken") from None
 
+            if self._presets_events:
+                self._presets_events.dispatch()
+
             return hub.create_response_to(message, {"id": preset.id})
 
         except Exception as ex:
@@ -386,7 +418,10 @@ class RTKExtension(Extension):
                 preset_id, desired_preset = None, None
 
             # Reset fixed position when switching RTK source, but restore from config if available
-            self._survey_settings.position = self._config_fixed_position
+            if self._survey_settings.position != self._config_fixed_position:
+                self._survey_settings.position = self._config_fixed_position
+                if self._survey_events:
+                    self._survey_events.dispatch()
 
             self._request_preset_switch_later(desired_preset)
             self._last_preset_request_from_user = (
@@ -434,6 +469,8 @@ class RTKExtension(Extension):
                     # Populate antenna.position immediately so RTK-STAT reflects it
                     self._statistics.set_antenna_position_from_ecef(position)
                 self._request_survey()
+                if self._survey_events:
+                    self._survey_events.dispatch()
 
             return hub.acknowledge(message, outcome=error is None, reason=error)
 
@@ -443,6 +480,7 @@ class RTKExtension(Extension):
 
     async def run(self, app, configuration, logger):
         hotplug_event = app.import_api("signals").get("hotplug:event")
+        events = app.import_api("events", EventsExtensionAPI)
 
         self._load_user_presets()
 
@@ -453,6 +491,9 @@ class RTKExtension(Extension):
                 overridden(
                     self,
                     _current_preset=None,
+                    _presets_events=stack.enter_context(events.use("rtk:presets")),
+                    _source_events=stack.enter_context(events.use("rtk:source")),
+                    _survey_events=stack.enter_context(events.use("rtk:survey")),
                     _registry=RTKPresetRegistry(),
                     _rtk_preset_task_cancel_scope=None,
                     _rtk_survey_trigger=AsyncBool(False),
@@ -558,6 +599,9 @@ class RTKExtension(Extension):
             resolved_updates = updates
 
         preset.update_from(resolved_updates)
+
+        if self._presets_events:
+            self._presets_events.dispatch()
 
         return True
 
@@ -766,6 +810,9 @@ class RTKExtension(Extension):
             self._current_preset = None
 
         self._current_preset = value
+
+        if self._source_events:
+            self._source_events.dispatch()
 
         assert self._nursery is not None
 
@@ -1082,6 +1129,9 @@ class RTKExtension(Extension):
                         f"Added new RTK preset {preset.title!r} for serial port"
                     )
 
+        if (to_add or to_remove) and self._presets_events:
+            self._presets_events.dispatch()
+
         current_preset = self.current_preset
 
         if current_preset:
@@ -1115,7 +1165,7 @@ class RTKExtension(Extension):
 
 
 construct = RTKExtension
-dependencies = ("beacon", "location", "ntrip", "signals", "timesync")
+dependencies = ("beacon", "events", "location", "ntrip", "signals", "timesync")
 description = "Support for RTK base stations and external RTK correction sources"
 optional_dependencies = {
     "hotplug": "detects when new USB devices are plugged in and updates the RTK sources automatically",

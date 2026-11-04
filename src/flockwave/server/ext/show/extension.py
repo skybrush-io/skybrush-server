@@ -11,6 +11,7 @@ from trio_util import periodic
 
 from flockwave.server.ext.base import Extension
 from flockwave.server.ext.clocks import ClocksExtensionAPI
+from flockwave.server.ext.events import Dispatcher, EventsExtensionAPI
 from flockwave.server.ext.signals import SignalsExtensionAPI
 from flockwave.server.model.clock import Clock
 from flockwave.server.show import ShowSpecification, SkybrushBinaryShowFile
@@ -33,6 +34,13 @@ class DroneShowExtension(Extension):
     emitted when the configuration of the LED lights on the drones changes. The
     latter two receive a keyword argument named `config` that contains the new
     configuration.
+
+    The extension also dispatches a `show:config` event via the `events`
+    extension when the configuration of the show startup changes and a
+    `show:lights` event when the configuration of the LED lights changes.
+    Clients subscribed to these events with `EVT-SUB` receive them in `EVT-INF`
+    notifications and may then query the new state with `SHOW-CFG` or
+    `SHOW-LIGHTS`.
     """
 
     _clock: ShowClock | None
@@ -45,6 +53,12 @@ class DroneShowExtension(Extension):
 
     _nursery: Nursery | None
     _show_tasks: CancellableTaskGroup | None
+
+    _config_events: Dispatcher | None
+    """Dispatcher for the `show:config` event."""
+
+    _lights_events: Dispatcher | None
+    """Dispatcher for the `show:lights` event."""
 
     def __init__(self):
         super().__init__()
@@ -63,6 +77,9 @@ class DroneShowExtension(Extension):
 
         self._config = DroneShowConfiguration()
         self._lights = LightConfiguration()
+
+        self._config_events = None
+        self._lights_events = None
 
     def exports(self) -> dict[str, Any]:
         return {
@@ -177,6 +194,9 @@ class DroneShowExtension(Extension):
             self._show_tasks = CancellableTaskGroup(self._nursery)
 
             with ExitStack() as stack:
+                events = app.import_api("events", EventsExtensionAPI)
+                self._config_events = stack.enter_context(events.use("show:config"))
+                self._lights_events = stack.enter_context(events.use("show:lights"))
                 stack.enter_context(
                     self._config.updated_v2.connected_to(
                         self._on_config_updated,
@@ -295,6 +315,9 @@ class DroneShowExtension(Extension):
 
         self.log.info(self._config.format())
 
+        if self._config_events:
+            self._config_events.dispatch()
+
         assert self.app is not None
         updated_signal = self.app.import_api("signals", SignalsExtensionAPI).get(
             "show:config_updated"
@@ -305,6 +328,9 @@ class DroneShowExtension(Extension):
         """Handler that is called when the configuration of the LED lights was
         updated from any source.
         """
+        if self._lights_events:
+            self._lights_events.dispatch()
+
         assert self.app is not None
         updated_signal = self.app.import_api("signals", SignalsExtensionAPI).get(
             "show:lights_updated"
@@ -470,7 +496,7 @@ class DroneShowExtension(Extension):
 
 
 construct = DroneShowExtension
-dependencies = ("clocks", "signals")
+dependencies = ("clocks", "events", "signals")
 description = "Support for managing drone shows"
 schema = {
     "properties": {

@@ -289,7 +289,7 @@ class EventsExtensionAPI(Protocol):
     """Interface specification for the API exposed by the `events` extension."""
 
     def use(
-        self, type: str, *, merging_policy: MergingPolicy[T | None] = keep_latest
+        self, type: str, *, merging_policy: MergingPolicy[T] = keep_latest
     ) -> ContextManager[Dispatcher[T]]: ...
 
 

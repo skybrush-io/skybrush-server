@@ -5,6 +5,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- Added an `events` extension that allows clients to subscribe to server-side
+  events with `EVT-SUB` and `EVT-UNSUB`. The server notifies subscribed clients
+  with `EVT-INF` messages when an event occurs, typically to tell them that
+  some shared state has changed and should be queried again. Events dispatched
+  in quick succession are merged into a single notification. Other extensions
+  can dispatch their own events via the API of the `events` extension.
+
+- The server now dispatches the following events when the corresponding shared
+  state changes, regardless of which client (if any) triggered the change:
+
+  - `show:config` and `show:lights` when the drone show configuration or the
+    LED light configuration changes (query with `SHOW-CFG` or `SHOW-LIGHTS`)
+  - `rtk:source`, `rtk:survey` and `rtk:presets` when the selected RTK source,
+    the RTK survey settings or the list of RTK presets changes (query with
+    `RTK-SOURCE`, `RTK-SURVEY`, `RTK-LIST` or `RTK-INF`)
+  - `ext_manager:status` and `ext_manager:config` when extensions are loaded
+    or unloaded, or when their configuration changes (query with `EXT-LIST`,
+    `EXT-INF` or `EXT-CFG`)
+
+### Fixed
+
+- Local positioning systems now notify clients about all status updates with
+  `X-LPS-INF` messages. Previously only the first update was sent.
+
 ## [2.60.0] - 2026-11-02
 
 ### Added

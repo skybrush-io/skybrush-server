@@ -40,6 +40,7 @@ EXTENSIONS = {
     "debug": {
         "enabled": False,
     },
+    "events": {},
     "ext_manager": {},
     "firmware_update": {},  # used to trigger auto-loading when the license is installed
     "frontend": {},

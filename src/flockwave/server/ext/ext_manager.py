@@ -5,17 +5,63 @@ This extension is special in the sense that it provides a mandatory part of
 the Skybrush server protocol. Therefore, this extension is loaded even if it
 is not mentioned explicitly in the server configuration, and it cannot be
 unloaded by the user.
+
+The extension dispatches the following events via the `events` extension:
+
+- `ext_manager:status` when an extension is loaded or unloaded; clients may
+  query the new state with `EXT-LIST` or `EXT-INF`.
+- `ext_manager:config` when the configuration of an extension is changed;
+  clients may query the new configuration with `EXT-CFG`.
+
+The body of both events contains an ``ids`` key that lists the identifiers
+of the extensions that were affected. Multiple events of the same type that are
+dispatched in quick succession are merged into a single event whose ``ids``
+list contains the union of the identifiers.
 """
 
+from collections.abc import Sequence
+from contextlib import ExitStack
 from functools import partial, wraps
 from inspect import iscoroutinefunction
+from typing import Any, TypedDict
 
 from flockwave.ext.manager import ExtensionManager
 from trio import sleep_forever
 
+from flockwave.server.ext.events import Dispatcher, EventsExtensionAPI
+from flockwave.server.utils.generic import overridden
+
 #############################################################################
 
 _, _, _my_name = __name__.rpartition(".")
+
+
+class ExtensionIdsEventBody(TypedDict):
+    """Body of the events dispatched by this extension."""
+
+    ids: list[str]
+
+
+config_events: Dispatcher[ExtensionIdsEventBody] | None = None
+"""Dispatcher for the `ext_manager:config` event."""
+
+status_events: Dispatcher[ExtensionIdsEventBody] | None = None
+"""Dispatcher for the `ext_manager:status` event."""
+
+
+def merge_extension_ids(
+    pending: Sequence[ExtensionIdsEventBody], body: ExtensionIdsEventBody | None
+) -> Sequence[ExtensionIdsEventBody]:
+    """Merging policy for the events of this extension that merges the
+    pending events into a single event whose ``ids`` list contains the union
+    of the extension identifiers of the events.
+    """
+    ids: set[str] = set()
+    for item in pending:
+        ids.update(item["ids"])
+    if body is not None:
+        ids.update(body["ids"])
+    return [{"ids": sorted(ids)}]
 
 
 def for_each_id(func, key="status", has_param=False):
@@ -242,6 +288,8 @@ async def set_configuration_of_extension(
         RuntimeError: if the extension cannot be configured
     """
     ext.configure(identifier, configuration)
+    if config_events:
+        config_events.dispatch({"ids": [identifier]})
     return {}
 
 
@@ -287,7 +335,18 @@ def handle_EXT_LIST(ext, message, sender, hub):
 #############################################################################
 
 
+def on_extension_loaded_or_unloaded(sender, *, name: str, **kwds: Any) -> None:
+    """Handler that is called when an extension is loaded or unloaded by the
+    extension manager, regardless of whether it was triggered by a client.
+    """
+    if status_events and name != _my_name:
+        status_events.dispatch({"ids": [name]})
+
+
 async def run(app, configuration, logger):
+    ext_manager = app.extension_manager
+    events = app.import_api("events", EventsExtensionAPI)
+
     handlers = {
         "EXT-CFG": handle_EXT_CFG,
         "EXT-INF": handle_EXT_INF,
@@ -298,13 +357,35 @@ async def run(app, configuration, logger):
         "EXT-UNLOAD": handle_EXT_UNLOAD,
     }
 
-    handlers = {
-        key: partial(func, app.extension_manager) for key, func in handlers.items()
-    }
-    with app.message_hub.use_message_handlers(handlers):
+    handlers = {key: partial(func, ext_manager) for key, func in handlers.items()}
+
+    with ExitStack() as stack:
+        stack.enter_context(
+            overridden(
+                globals(),
+                config_events=stack.enter_context(
+                    events.use("ext_manager:config", merging_policy=merge_extension_ids)
+                ),
+                status_events=stack.enter_context(
+                    events.use("ext_manager:status", merging_policy=merge_extension_ids)
+                ),
+            )
+        )
+        stack.enter_context(
+            ext_manager.loaded.connected_to(
+                on_extension_loaded_or_unloaded, sender=ext_manager
+            )
+        )
+        stack.enter_context(
+            ext_manager.unloaded.connected_to(
+                on_extension_loaded_or_unloaded, sender=ext_manager
+            )
+        )
+        stack.enter_context(app.message_hub.use_message_handlers(handlers))
         await sleep_forever()
 
 
+dependencies = ("events",)
 description = "Provides support for managing extensions while the server is running"
 schema = {}
 tags = ("system",)

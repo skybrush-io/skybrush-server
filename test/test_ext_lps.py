@@ -2,7 +2,6 @@
 
 from collections.abc import AsyncIterator
 from types import SimpleNamespace
-from typing import Any
 from unittest.mock import MagicMock
 
 from pytest import fixture
@@ -10,26 +9,9 @@ from trio import open_nursery, sleep
 
 from flockwave.server.ext.lps.examples import DummyLocalPositioningSystemType
 from flockwave.server.ext.lps.extension import LocalPositioningSystemsExtension
-from flockwave.server.message_hub import MessageHub
 from flockwave.server.registries import ObjectRegistry
 
-
-class RecordingMessageHub(MessageHub):
-    """Message hub that records broadcast messages instead of sending them."""
-
-    broadcasts: list[dict[str, Any]]
-
-    def __init__(self):
-        super().__init__()
-        self.broadcasts = []
-
-    async def broadcast_message(self, message) -> Any:
-        self.broadcasts.append(dict(message.body))
-
-
-@fixture
-def hub() -> RecordingMessageHub:
-    return RecordingMessageHub()
+from .recording_message_hub import RecordingMessageHub
 
 
 @fixture

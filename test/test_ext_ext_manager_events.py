@@ -3,7 +3,6 @@
 from collections.abc import AsyncIterator
 from logging import getLogger
 from types import SimpleNamespace
-from typing import Any
 from unittest.mock import MagicMock
 
 from blinker import Signal
@@ -12,26 +11,9 @@ from trio import open_nursery, sleep
 
 from flockwave.server.ext import ext_manager
 from flockwave.server.ext.events.extension import EventsExtension
-from flockwave.server.message_hub import MessageHub
 from flockwave.server.model.client import Client
 
-
-class RecordingMessageHub(MessageHub):
-    """Message hub that records outbound messages instead of sending them."""
-
-    sent: list[tuple[Client, dict[str, Any]]]
-
-    def __init__(self):
-        super().__init__()
-        self.sent = []
-
-    def enqueue_message(self, message, to=None, in_response_to=None) -> None:
-        self.sent.append((to, dict(message.body)))  # type: ignore
-
-    def events_sent_to(self, client: Client) -> list[dict[str, Any]]:
-        return [
-            event for to, body in self.sent if to is client for event in body["events"]
-        ]
+from .recording_message_hub import RecordingMessageHub
 
 
 class FakeExtensionManager:
@@ -40,11 +22,6 @@ class FakeExtensionManager:
 
     def __init__(self):
         self.configure = MagicMock()
-
-
-@fixture
-def hub() -> RecordingMessageHub:
-    return RecordingMessageHub()
 
 
 @fixture
@@ -103,7 +80,7 @@ async def test_loading_and_unloading_dispatches_status_event(
     await sleep(1)
 
     assert hub.events_sent_to(client) == [
-        {"type": "ext_manager:status", "body": {"ids": ["gps", "rtk"]}}
+        [{"type": "ext_manager:status", "body": {"ids": ["gps", "rtk"]}}]
     ]
 
 
@@ -123,7 +100,7 @@ async def test_setting_configuration_dispatches_config_event(
 
     manager.configure.assert_called_once_with("rtk", {"presets": {}})
     assert hub.events_sent_to(client) == [
-        {"type": "ext_manager:config", "body": {"ids": ["rtk"]}}
+        [{"type": "ext_manager:config", "body": {"ids": ["rtk"]}}]
     ]
 
 

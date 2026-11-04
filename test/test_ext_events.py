@@ -12,27 +12,9 @@ from trio import open_nursery, sleep
 
 from flockwave.server.ext.events import keep_all, keep_first
 from flockwave.server.ext.events.extension import EventsExtension
-from flockwave.server.message_hub import MessageHub
 from flockwave.server.model.client import Client
-from flockwave.server.model.messages import FlockwaveMessage
 
-
-class RecordingMessageHub(MessageHub):
-    """Message hub that records outbound messages instead of sending them."""
-
-    sent: list[tuple[Client, dict[str, Any]]]
-
-    def __init__(self):
-        super().__init__()
-        self.sent = []
-
-    def enqueue_message(self, message, to=None, in_response_to=None) -> None:
-        assert isinstance(message, FlockwaveMessage)
-        assert isinstance(to, Client)
-        self.sent.append((to, dict(message.body)))
-
-    def events_sent_to(self, client: Client) -> list[list[dict[str, Any]]]:
-        return [body["events"] for to, body in self.sent if to is client]
+from .recording_message_hub import RecordingMessageHub
 
 
 class FakeClientRegistry:
@@ -41,11 +23,6 @@ class FakeClientRegistry:
 
 def create_client(id: str) -> Client:
     return Client(_id=id, _channel=MagicMock())
-
-
-@fixture
-def hub() -> RecordingMessageHub:
-    return RecordingMessageHub()
 
 
 @fixture

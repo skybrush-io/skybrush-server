@@ -15,11 +15,6 @@ from flockwave.server.message_hub import MessageHub
 
 
 @fixture
-def hub() -> MessageHub:
-    return MessageHub()
-
-
-@fixture
 def events() -> SimpleNamespace:
     """Mock dispatchers for the events of the extension."""
     return SimpleNamespace(presets=MagicMock(), source=MagicMock(), survey=MagicMock())

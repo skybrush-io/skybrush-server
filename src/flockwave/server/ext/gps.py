@@ -34,7 +34,6 @@ from pynmea2 import parse as parse_nmea
 
 from flockwave.server.errors import NotSupportedError
 from flockwave.server.model import ConnectionPurpose
-from flockwave.server.registries.errors import RegistryFull
 from flockwave.server.utils.generic import overridden
 
 from .base import TypedConfigExtension
@@ -389,26 +388,20 @@ class GPSExtension(TypedConfigExtension[GPSConfig]):
                 # here. In case we did, let's just exit gracefully.
                 return
 
-            try:
-                beacon = self._beacon_context_stack.enter_context(
-                    self._beacon_api.use(beacon_id)
-                )
-            except RegistryFull:
-                if self.app:
-                    self.app.handle_registry_full_error(self, "GPS beacon")
-                beacon = None
+            beacon = self._beacon_context_stack.enter_context(
+                self._beacon_api.use(beacon_id)
+            )
 
-        if beacon is not None:
-            self._connection_to_beacon_ids[source].add(beacon_id)
+        self._connection_to_beacon_ids[source].add(beacon_id)
 
-            if "position" in message:
-                beacon.update_status(
-                    position=message["position"],
-                    heading=message["heading"],
-                    active=True,
-                )
-            elif "name" in message:
-                beacon.basic_properties.name = message["name"]
+        if "position" in message:
+            beacon.update_status(
+                position=message["position"],
+                heading=message["heading"],
+                active=True,
+            )
+        elif "name" in message:
+            beacon.basic_properties.name = message["name"]
 
     async def run(self, app: SkybrushServer) -> None:
         assert self.log is not None

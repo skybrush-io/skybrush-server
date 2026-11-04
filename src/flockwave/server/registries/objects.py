@@ -53,7 +53,17 @@ class ObjectRegistry(RegistryBase[ModelObject]):
         """
     )
 
-    def __init__(self) -> None:
+    def __init__(
+        self, counts_towards_limit: Callable[[ModelObject], bool] = lambda _: True
+    ) -> None:
+        """Constructor.
+
+        Parameters:
+            counts_towards_limit: predicate that decides whether an object
+                occupies a slot under the size limit of the registry
+        """
+        self._counts_towards_limit = counts_towards_limit
+        self._limited_ids: set[str] = set()
         self._size_limit = inf
         super().__init__()
 
@@ -71,11 +81,15 @@ class ObjectRegistry(RegistryBase[ModelObject]):
                 the given type can be registered
         """
         old_object = self._entries.get(object.id, None)
-        if old_object is not None and old_object != object:
-            raise KeyError("Object ID already taken: {0!r}".format(object.id))
+        if old_object is not None:
+            if old_object != object:
+                raise KeyError("Object ID already taken: {0!r}".format(object.id))
+            return
 
         self._ensure_has_free_slot_for_object(object)
         self._entries[object.id] = object
+        if self._counts_towards_limit(object):
+            self._limited_ids.add(object.id)
         self.added.send(self, object=object)
 
     def add_if_missing(self, id: str, factory: Callable[[str], T]) -> T:
@@ -165,6 +179,7 @@ class ObjectRegistry(RegistryBase[ModelObject]):
             registered
         """
         object = self._entries.pop(object_id, None)
+        self._limited_ids.discard(object_id)
         if object is not None:
             self.removed.send(self, object=object)
         return object
@@ -176,6 +191,10 @@ class ObjectRegistry(RegistryBase[ModelObject]):
     @size_limit.setter
     def size_limit(self, value: float) -> None:
         self._size_limit = max(value, 0)
+
+    @property
+    def size_limit_reached(self) -> bool:
+        return len(self._limited_ids) >= self._size_limit
 
     @contextmanager
     def use(self, *args: ModelObject) -> Generator[None, None, None]:
@@ -197,19 +216,17 @@ class ObjectRegistry(RegistryBase[ModelObject]):
                 self.remove(object)
 
     def _ensure_has_free_slot_for_object(self, object: ModelObject) -> None:
-        """Ensures that there is at least one free slot in the object registry
-        to store the given model object.
+        """Ensures that the registry can accept the given model object under its
+        size limit.
 
-        Technically speaking, an object registry should be able to hold an
-        arbitrary amount of objects. However, we sometimes enforce limits on the
-        number of objects that can be held in the registry due to restrictions
-        from the license manager. These limits are enforced here.
+        The size limit applies only to objects selected by the predicate passed
+        to the constructor; all other objects can always be added.
 
         Raises:
-            RegistryFull: if the registry is full and no additional objects of
-                the given type can be registered
+            RegistryFull: if the size limit is reached and the object counts
+                towards it
         """
-        if len(self._entries) >= self._size_limit:
+        if self._counts_towards_limit(object) and self.size_limit_reached:
             raise RegistryFull
 
 
@@ -245,9 +262,8 @@ class ObjectRegistryProxy(RegistryBase[T]):
         """
         assert self._object_registry is not None
 
-        id = object.id
-        self._entries[id] = object
         self._object_registry.add(object)
+        self._entries[object.id] = object
 
         self.added.send(self, object=object)
 

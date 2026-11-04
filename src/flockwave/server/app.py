@@ -742,7 +742,7 @@ class SkybrushServer(DaemonApp):
             message = f"Error while registering a new {object}: server limits reached"
             self.log.warning(message)
             self.request_to_send_SYS_MSG_message(
-                message, severity=Severity.WARNING, code="uavs.limit_reached"
+                message, severity=Severity.WARNING, code="objects.limit_reached"
             )
             if cnt == 5:
                 self.log.warning(
@@ -1046,7 +1046,9 @@ class SkybrushServer(DaemonApp):
 
         # Create an object to hold information about all the objects that
         # the server knows about
-        self.object_registry = ObjectRegistry()
+        self.object_registry = ObjectRegistry(
+            counts_towards_limit=lambda object: isinstance(object, UAV)
+        )
         self.object_registry.removed.connect(
             self._on_object_removed, sender=self.object_registry
         )
@@ -1122,7 +1124,7 @@ class SkybrushServer(DaemonApp):
             sender: the client registry
             client: the client that was added
         """
-        if len(self.object_registry) < self.object_registry.size_limit:
+        if not self.object_registry.size_limit_reached:
             return
 
         notification = self.create_SYS_MSG_message_from(
@@ -1130,7 +1132,7 @@ class SkybrushServer(DaemonApp):
                 LogMessage(
                     message="Server limits reached, new objects cannot be registered",
                     severity=Severity.WARNING,
-                    code="uavs.limit_reached",
+                    code="objects.limit_reached",
                 )
             ]
         )

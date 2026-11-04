@@ -28,10 +28,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     or unloaded, or when their configuration changes (query with `EXT-LIST`,
     `EXT-INF` or `EXT-CFG`)
 
+### Changed
+
+- The drone limit of the license now applies to UAVs only; other objects such as
+  beacons no longer count towards it.
+
+- Renamed the `uavs.limit_reached` log message code to `objects.limit_reached`.
+
 ### Fixed
 
 - Local positioning systems now notify clients about all status updates with
   `X-LPS-INF` messages. Previously only the first update was sent.
+
+- RTK presets no longer fail to start when `register_beacons` is disabled.
 
 ## [2.60.0] - 2026-11-02
 

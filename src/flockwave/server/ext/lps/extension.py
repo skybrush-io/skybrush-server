@@ -173,7 +173,7 @@ class LocalPositioningSystemsExtension(Extension):
                 )
             )
             stack.enter_context(
-                self._lps_registry.added.connected_to(
+                self._lps_registry.removed.connected_to(
                     self._on_lps_removed, sender=self._lps_registry
                 )
             )

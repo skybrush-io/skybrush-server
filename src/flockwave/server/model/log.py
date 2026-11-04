@@ -18,8 +18,8 @@ __all__ = (
 
 
 LogMessageCode: TypeAlias = Literal[
-    # Server reached its limit on the number of UAVs it can manage.
-    "uavs.limit_reached",
+    # Server reached its limit on the number of objects it can manage.
+    "objects.limit_reached",
 ]
 """Machine-readable codes for log messages."""
 

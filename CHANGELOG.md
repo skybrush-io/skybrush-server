@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [2.61.0] - 2026-11-05
 
 ### Added
 
@@ -18,7 +18,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - The server now dispatches the following events when the corresponding shared
   state changes, regardless of which client (if any) triggered the change:
-
   - `show:config` and `show:lights` when the drone show configuration or the
     LED light configuration changes (query with `SHOW-CFG` or `SHOW-LIGHTS`)
   - `rtk:source`, `rtk:survey` and `rtk:presets` when the selected RTK source,

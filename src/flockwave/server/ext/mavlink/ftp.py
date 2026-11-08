@@ -22,6 +22,7 @@ from flockwave.concurrency import (
 )
 from trio import (
     BrokenResourceError,
+    CancelScope,
     TooSlowError,
     as_safe_channel,
     move_on_after,
@@ -44,6 +45,11 @@ FTPPath = str | bytes
 
 _MAVFTP_CHUNK_SIZE = 239
 """Maximum number of bytes allowed in a single read/write operation."""
+
+_MAVFTP_CLEANUP_TIMEOUT = 0.5
+"""Number of seconds to wait for the UAV to acknowledge a message that closes
+a session or resets all sessions.
+"""
 
 
 class MAVFTPOpCode(IntEnum):
@@ -368,7 +374,11 @@ class MAVFTPSession:
             MAVFTPOpCode.TERMINATE_SESSION,
             session_id=self._session_id,
         )
-        await self._sender(message)
+        # Shielded to close the file handle on the UAV even when the transfer
+        # was cancelled. The deadline keeps a dead link from blocking the
+        # cancellation for long.
+        with CancelScope(shield=True), move_on_after(_MAVFTP_CLEANUP_TIMEOUT):
+            await self._sender(message)
 
     def _ensure_open(self) -> None:
         """Ensures that the session is open.
@@ -497,7 +507,8 @@ class MAVFTP:
 
     async def _aclose(self) -> None:
         message = MAVFTPMessage(MAVFTPOpCode.RESET_SESSIONS)
-        with move_on_after(10):
+        # Shielded for the same reason as in MAVFTPSession._aclose()
+        with CancelScope(shield=True), move_on_after(_MAVFTP_CLEANUP_TIMEOUT):
             await self._send_and_wait(message)
 
     async def crc32(self, path: FTPPath):

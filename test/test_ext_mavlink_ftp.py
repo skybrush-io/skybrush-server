@@ -1,12 +1,16 @@
 """Tests for the MAVFTP implementation of the MAVLink extension."""
 
 from base64 import b64encode
+from collections.abc import Callable
+from contextlib import aclosing
 from dataclasses import dataclass
 from errno import EEXIST, ENOENT
 from types import SimpleNamespace
 from unittest.mock import Mock
 
 from pytest import fixture, mark, raises
+from trio import CancelScope
+from trio.lowlevel import checkpoint
 
 from flockwave.server.errors import CommandInvocationError
 from flockwave.server.ext.mavlink.driver import MAVLinkDriver, MAVLinkUAV
@@ -30,12 +34,17 @@ class FakeMAVFTPServer:
     """Minimal in-memory MAVFTP server that mimics a real filesystem in the
     sense that files and directories can only be created if their parent
     directory exists.
+
+    Like ArduPilot, the server refuses to create a file while another file is
+    still open.
     """
 
     def __init__(self, *, report_exists_as_errno: bool = False):
         self.dirs: set[str] = {""}
         self.files: dict[str, bytearray] = {}
         self.requests: list[tuple[int, str]] = []
+        self.opcodes: list[int] = []
+        self.on_request: Callable[[MAVFTPMessage], None] | None = None
         self._sessions: dict[int, str] = {}
         self._next_session_id = 1
         self._report_exists_as_errno = report_exists_as_errno
@@ -47,6 +56,12 @@ class FakeMAVFTPServer:
         payload = kwds["payload"]
         seq_no = payload[0] + (payload[1] << 8)
         request = MAVFTPMessage.decode(payload)
+
+        # A real link yields to the event loop, and cancellation can strike here
+        await checkpoint()
+        if self.on_request:
+            self.on_request(request)
+
         reply = self._handle(request)
         return FakeMAVLinkMessage(payload=reply.encode((seq_no + 1) % 65536))
 
@@ -77,6 +92,7 @@ class FakeMAVFTPServer:
     def _handle(self, request: MAVFTPMessage) -> MAVFTPMessage:
         opcode = request.opcode
         path = self._normalize(request.data)
+        self.opcodes.append(opcode)
 
         if opcode in (MAVFTPOpCode.CREATE_DIRECTORY, MAVFTPOpCode.CREATE_FILE):
             self.requests.append((opcode, path))
@@ -90,6 +106,8 @@ class FakeMAVFTPServer:
             return self._ack()
 
         elif opcode == MAVFTPOpCode.CREATE_FILE:
+            if self._sessions:
+                return self._nak(MAVFTPErrorCode.FAIL)
             if path in self.dirs or self._parent_of(path) not in self.dirs:
                 return self._nak(MAVFTPErrorCode.FAIL_ERRNO, ENOENT)
             self.files[path] = bytearray()
@@ -200,6 +218,35 @@ async def test_put_with_parents_into_root(ftp: MAVFTP, server: FakeMAVFTPServer)
 async def test_put_without_parents_fails_on_missing_dir(ftp: MAVFTP):
     with raises(OperationNotAcknowledgedError):
         await ftp.put(b"data", "/APM/scripts/foo.lua")
+
+
+async def test_put_cancelled_mid_transfer_releases_file_handle(
+    server: FakeMAVFTPServer,
+):
+    data = b"-- test script\n" * 100  # spans multiple chunks
+
+    with CancelScope() as scope:
+
+        def cancel_on_first_write(request: MAVFTPMessage) -> None:
+            if request.opcode == MAVFTPOpCode.WRITE_FILE:
+                scope.cancel()
+
+        server.on_request = cancel_on_first_write
+
+        # Same setup as in MAVLinkDriver.upload_show()
+        async with aclosing(MAVFTP(server)) as ftp:  # ty:ignore[invalid-argument-type]
+            await ftp.put(data, "/foo.txt")
+
+    assert scope.cancelled_caught
+    server.on_request = None
+
+    # The cancelled upload must still close its file handle on the drone
+    assert MAVFTPOpCode.RESET_SESSIONS in server.opcodes
+
+    # The drone must accept the next upload
+    async with aclosing(MAVFTP(server)) as ftp:  # ty:ignore[invalid-argument-type]
+        await ftp.put(data, "/foo.txt")
+    assert server.files["foo.txt"] == data
 
 
 async def test_uav_upload_file(server: FakeMAVFTPServer):

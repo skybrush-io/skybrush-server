@@ -47,6 +47,7 @@ from .packets import DroneShowStatus
 from .rssi import RSSIMode
 from .rtk import RTKCorrectionPacketEncoder
 from .signing import MAVLinkSigningConfiguration
+from .statustext import StatusTextManager
 from .takeoff import MAVLinkScheduledTakeoffManager
 from .time import MAVLinkTimeAxisConfigurationManager
 from .types import (
@@ -58,11 +59,9 @@ from .types import (
     MAVLinkStatusTextTargetSpecification,
 )
 from .utils import (
-    flockwave_severity_from_mavlink_severity,
     is_mavlink_vehicle,
     log_id_for_uav,
     log_id_from_message,
-    python_log_level_from_mavlink_severity,
 )
 
 if TYPE_CHECKING:
@@ -134,8 +133,9 @@ class MAVLinkNetwork:
     messages (in both the inbound and the outbound directions).
     """
 
-    _statustext_targets: MAVLinkStatusTextTargetSpecification
-    """Object specifying how MAVLink STATUSTEXT messages should be handled."""
+    _statustext_manager: StatusTextManager
+    """Object that handles the MAVLink STATUSTEXT messages received on this
+    network."""
 
     _uav_system_id_offset: int = 0
     """Offset to add to the system ID of each UAV in the network before it is
@@ -249,7 +249,6 @@ class MAVLinkNetwork:
         self._routing = routing or {}
         self._rssi_mode = rssi_mode
         self._signing = signing
-        self._statustext_targets = statustext_targets
         self._system_id = system_id
         self._uav_system_id_offset = int(uav_system_id_offset)
         self._uav_system_id_range = uav_system_id_range
@@ -267,6 +266,7 @@ class MAVLinkNetwork:
             self
         )
         self._rtk_correction_packet_encoder = RTKCorrectionPacketEncoder()
+        self._statustext_manager = StatusTextManager(self, statustext_targets)
 
     def add_connection(self, connection: Connection):
         """Adds the given connection object to this network.
@@ -448,6 +448,7 @@ class MAVLinkNetwork:
                 nursery.start_soon(self._scheduled_takeoff_manager.run)
                 nursery.start_soon(self._led_light_configuration_manager.run)
                 nursery.start_soon(self._time_axis_configuration_manager.run)
+                nursery.start_soon(self._statustext_manager.run)
 
                 # Start the communication manager
                 try:
@@ -1001,33 +1002,9 @@ class MAVLinkNetwork:
     def _handle_message_statustext(
         self, message: MAVLinkMessage, *, connection_id: str, address: Any
     ):
-        """Handles an incoming MAVLink STATUSTEXT message and forwards it to the
-        log console or to the GCS, depending on how the network is set up.
-        """
-        text = message.text
-        if not text:
-            return
-
+        """Handles an incoming MAVLink STATUSTEXT message."""
         uav = self._find_uav_from_message(message, address)
-        if uav and uav._autopilot.is_prearm_error_message(text):
-            uav.notify_prearm_failure(uav._autopilot.process_prearm_error_message(text))
-            if not self._statustext_targets.log_prearm:
-                return
-
-        severity: int = message.severity
-        if severity <= self._statustext_targets.server:
-            extra = self._log_extra_from_message(message, uav)
-            extra["telemetry"] = "ignore"
-            self.log.log(
-                python_log_level_from_mavlink_severity(message.severity),
-                text,
-                extra=extra,
-            )
-        if severity <= self._statustext_targets.client and uav is not None:
-            uav.send_log_message_to_gcs(
-                text,
-                severity=flockwave_severity_from_mavlink_severity(message.severity),
-            )
+        self._statustext_manager.handle_message(message, uav)
 
     def _handle_message_sys_status(
         self, message: MAVLinkMessage, *, connection_id: str, address: Any

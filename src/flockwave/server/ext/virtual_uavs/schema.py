@@ -62,7 +62,7 @@ schema = {
             "title": "Origin",
             "type": "array",
             "description": (
-                "Origin (latitude, longitude, altitude in meters) around which "
+                "Origin (longitude, latitude, altitude AMSL in meters) around which "
                 "virtual UAVs are placed on the map"
             ),
             "minItems": 3,

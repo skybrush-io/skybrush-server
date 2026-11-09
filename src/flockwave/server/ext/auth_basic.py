@@ -99,10 +99,15 @@ def create_htpasswd_validator(filename: Path | str) -> PasswordValidator:
     ht = HtpasswdFile(str(filename))
 
     def validator(username: str, password: str) -> bool:
-        # check_password() returns None if the username does not exist, but we
-        # can only return True or False, hence the cast
         ht.load_if_changed()
-        return bool(ht.check_password(username, password))
+        try:
+            # check_password() returns None if the username does not exist, but
+            # we can only return True or False, hence the cast
+            return bool(ht.check_password(username, password))
+        except ValueError:
+            # bcrypt rejects passwords longer than 72 bytes instead of
+            # truncating them. Such a password cannot match a bcrypt hash.
+            return False
 
     return validator
 

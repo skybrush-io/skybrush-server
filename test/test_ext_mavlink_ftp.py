@@ -347,3 +347,68 @@ async def test_file_upload_command_failure(server: FakeMAVFTPServer, driver_and_
 
     driver.log.error.assert_called_once()
     assert driver.log.error.call_args.kwargs["extra"] == {"id": "42"}
+
+
+@fixture
+def driver_and_uav_for_crc(server: FakeMAVFTPServer):
+    driver = SimpleNamespace(log=Mock(), send_packet=server)
+    uav = SimpleNamespace(id="42", driver=driver)
+    uav.get_file_crc32 = lambda *args: MAVLinkUAV.get_file_crc32(uav, *args)  # ty:ignore[invalid-argument-type]
+    return driver, uav
+
+
+async def test_file_crc_command(server: FakeMAVFTPServer, driver_and_uav_for_crc):
+    driver, uav = driver_and_uav_for_crc
+    data = b"-- test script\n" * 100
+    server.dirs.add("collmot")
+    server.files["collmot/show.skyb"] = bytearray(data)
+
+    result = await MAVLinkDriver.handle_command___file_crc(
+        driver, uav, path="/collmot/show.skyb"
+    )
+
+    assert result == f"{crc32(data):08x}"
+    assert len(result) == 8
+    assert MAVFTPOpCode.RESET_SESSIONS in server.opcodes
+
+
+async def test_file_crc_command_pads_with_zeros(
+    server: FakeMAVFTPServer, driver_and_uav_for_crc
+):
+    driver, uav = driver_and_uav_for_crc
+    server.files["empty.txt"] = bytearray()
+
+    result = await MAVLinkDriver.handle_command___file_crc(
+        driver, uav, path="/empty.txt"
+    )
+
+    assert result == f"{crc32(b''):08x}"
+    assert len(result) == 8
+
+
+async def test_file_crc_command_invalid_args(
+    server: FakeMAVFTPServer, driver_and_uav_for_crc
+):
+    driver, uav = driver_and_uav_for_crc
+
+    with raises(CommandInvocationError):
+        await MAVLinkDriver.handle_command___file_crc(
+            driver, uav, path="/collmot/../show.skyb"
+        )
+
+    assert server.opcodes == []
+
+
+async def test_file_crc_command_missing_file(
+    server: FakeMAVFTPServer, driver_and_uav_for_crc
+):
+    driver, uav = driver_and_uav_for_crc
+
+    with raises(OperationNotAcknowledgedError) as ex:
+        await MAVLinkDriver.handle_command___file_crc(
+            driver, uav, path="/collmot/show.skyb"
+        )
+
+    assert ex.value.code == MAVFTPErrorCode.FILE_NOT_FOUND
+    driver.log.error.assert_called_once()
+    assert driver.log.error.call_args.kwargs["extra"] == {"id": "42"}

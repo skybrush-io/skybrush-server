@@ -48,7 +48,7 @@ def decode_file_upload_data(data: Any) -> bytes:
 
 
 def validate_remote_file_path(path: Any) -> str:
-    """Validates the remote path of a file upload request.
+    """Validates the remote path of a file-related MAVFTP request.
 
     The path must be absolute, must point to a file, must not contain ``..``
     components and must not refer to virtual files of the autopilot (whose
@@ -80,6 +80,6 @@ def validate_remote_file_path(path: Any) -> str:
         raise CommandInvocationError("Remote path must not contain '..'")
 
     if parts[0].startswith("@"):
-        raise CommandInvocationError("Uploading virtual files is not supported")
+        raise CommandInvocationError("Virtual files are not supported")
 
     return "/" + "/".join(parts)

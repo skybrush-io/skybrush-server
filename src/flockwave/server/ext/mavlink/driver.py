@@ -425,6 +425,32 @@ class MAVLinkDriver(UAVDriver["MAVLinkUAV"]):
 
         yield f"Uploaded {len(contents)} bytes to {remote_path}"
 
+    async def handle_command___file_crc(self, uav: "MAVLinkUAV", *, path: str) -> str:
+        """Returns the CRC32 checksum of a file on the UAV, calculated by the
+        UAV itself via MAVFTP.
+
+        Args:
+            path: the absolute path of the file on the UAV
+
+        Returns:
+            the CRC32 checksum of the file
+
+        Raises:
+            CommandInvocationError: if the path is invalid
+        """
+        remote_path = validate_remote_file_path(path)
+
+        try:
+            crc = await uav.get_file_crc32(remote_path)
+        except Exception as ex:
+            self.log.error(
+                f"Failed to calculate CRC32 of {remote_path}: {ex}",
+                extra={"id": log_id_for_uav(uav)},
+            )
+            raise
+
+        return f"{crc:08x}"
+
     async def handle_command___show_upload(
         self, uav: "MAVLinkUAV", *, show: ShowSpecification
     ):
@@ -2703,6 +2729,18 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
         )
         if not success:
             raise RuntimeError("Failed to trigger camera shutter")
+
+    async def get_file_crc32(self, remote_path: str) -> int:
+        """Asks the UAV to calculate the CRC32 checksum of a file via MAVFTP.
+
+        Args:
+            remote_path: the absolute path of the file on the UAV
+
+        Returns:
+            the CRC32 checksum of the file, as an unsigned integer
+        """
+        async with aclosing(MAVFTP.for_uav(self)) as ftp:
+            return await ftp.crc32(remote_path)
 
     async def upload_file(
         self, data: bytes, remote_path: str

@@ -6,6 +6,14 @@ the drone to sleep, wake it up later. After each wake-up it asks the drone for
 the CRC32 of its show file to detect whether the file survived the power cut
 of the flight controller.
 
+Before each upload, the script also picks a random show origin, orientation
+and AMSL reference near the ones in the show specification. The server sends
+them to the drone along with the show, and the drone stores them in the
+``SHOW_ORIGIN_LAT``, ``SHOW_ORIGIN_LNG``, ``SHOW_ORIGIN_AMSL`` and
+``SHOW_ORIENTATION`` parameters. The script reads these parameters before the
+upload, after the upload and after the wake-up, and reports parameter problems
+separately from show file problems.
+
 The script talks to a running Skybrush Server over its TCP extension, the same
 way as Skybrush Live does. Every cycle exercises the production code path:
 ``__show_upload``, MAVFTP, ``UAV-SLEEP`` and ``UAV-WAKEUP``. The CRC is read
@@ -24,13 +32,15 @@ Subcommands:
             "coordinateSystem": {
                 "origin": [18.915125, 47.486305],
                 "orientation": "59",
-                "type": "neu"
+                "type": "nwu"
             },
             "amslReference": null,
             "geofence": null
         }
 
-    Note that ``origin`` is in longitude-latitude order.
+    Note that ``origin`` is in longitude-latitude order, and the server
+    accepts ``nwu`` coordinate systems only. ``amslReference`` is the centre
+    of the random AMSL values; 200 m is used if it is ``null``.
 
 ``run``
     Runs the upload-sleep-wakeup cycles and appends one JSON line per cycle
@@ -50,9 +60,22 @@ Outcomes of a cycle:
 - ``INFRA``: the upload, the sleep, the wake-up or the CRC query failed. These
   cycles do not count towards the statistics.
 
+Parameter outcomes of a cycle:
+
+- ``PARAM_OK``: the parameters after wake-up have the values that were set.
+- ``PARAM_LOST``: the parameters had the new values before sleep, but at least
+  one of them differs after wake-up. The results file tells for each such
+  parameter whether it reverted to its value before the upload.
+- ``PARAM_NOT_APPLIED``: the parameters do not have the new values even
+  before sleep.
+- ``PARAM_INFRA``: the parameters could not be read.
+- ``SKIPPED``: the cycle ended before the parameters could be checked after
+  wake-up, for a reason unrelated to the parameters.
+
 The run stops at the first ``ROLLBACK``, ``CORRUPT`` or ``UPLOAD_MISMATCH``
 and leaves the drone untouched. Power the drone off and image its SD card
-with ``dd`` before doing anything else with it.
+with ``dd`` before doing anything else with it. Parameter problems do not stop
+the run unless ``--stop-on-param-failure`` is given.
 
 Example::
 
@@ -70,6 +93,7 @@ from __future__ import annotations
 
 import json
 import posixpath
+import struct
 import sys
 from argparse import ArgumentParser, Namespace
 from collections import Counter, defaultdict
@@ -99,6 +123,22 @@ POWER_COMMAND_ATTEMPTS = 5
 
 FAILURES = ("ROLLBACK", "CORRUPT", "UPLOAD_MISMATCH")
 """Outcomes that stop the run unless ``--keep-going`` is given."""
+
+PARAM_LAT = "SHOW_ORIGIN_LAT"
+PARAM_LNG = "SHOW_ORIGIN_LNG"
+PARAM_AMSL = "SHOW_ORIGIN_AMSL"
+PARAM_ORIENTATION = "SHOW_ORIENTATION"
+PARAM_NAMES = (PARAM_LAT, PARAM_LNG, PARAM_AMSL, PARAM_ORIENTATION)
+"""Parameters that store the show coordinate system on the drone."""
+
+PARAM_FAILURES = ("PARAM_LOST", "PARAM_NOT_APPLIED")
+"""Parameter outcomes that count as failures."""
+
+PARAM_READ_ATTEMPTS = 5
+"""Number of times to read the parameters before giving up."""
+
+DEFAULT_AMSL = 200.0
+"""Centre of the random AMSL values if the show specification has none."""
 
 
 # ---------------------------------------------------------------------------
@@ -348,6 +388,8 @@ def make_spec(args: Namespace) -> None:
         raise SystemExit(
             "The site file needs a coordinateSystem with origin, orientation and type"
         )
+    if coordinate_system["type"] != "nwu":
+        raise SystemExit("The server supports nwu coordinate systems only")
 
     settings = _load_drone_settings_from_skyc(Path(args.skyc), args.drone)
     if "trajectory" not in settings:
@@ -397,6 +439,72 @@ def _read_results(path: Path) -> list[dict[str, Any]]:
         return []
     with path.open() as fp:
         return [json.loads(line) for line in fp if line.strip()]
+
+
+def _as_float32(value: float) -> float:
+    """Rounds a number to the nearest float32 value.
+
+    ArduPilot sends every parameter value as a float32, even integer ones. The
+    latitude and longitude parameters do not fit into the 24-bit mantissa, so
+    the values read back must be compared with the expected values rounded
+    the same way.
+    """
+    return struct.unpack("<f", struct.pack("<f", value))[0]
+
+
+def _randomize_coordinate_system(
+    spec: dict[str, Any],
+    origin_jitter: float,
+    amsl_jitter: float,
+    avoid: dict[str, float] | None,
+) -> tuple[dict[str, Any], dict[str, float]]:
+    """Returns a copy of the show specification with a random origin,
+    orientation and AMSL reference near the ones in the specification.
+
+    Args:
+        spec: the show specification
+        origin_jitter: maximum change of the latitude and longitude, in degrees
+        amsl_jitter: maximum change of the AMSL reference, in meters
+        avoid: parameter values that none of the new parameter values may
+            match, typically the current values on the drone
+
+    Returns:
+        the new show specification, and the parameter values that the drone
+        should report after the upload
+    """
+    coordinate_system = spec["coordinateSystem"]
+    base_lon, base_lat = coordinate_system["origin"]
+    base_amsl = spec.get("amslReference")
+    if base_amsl is None:
+        base_amsl = DEFAULT_AMSL
+
+    while True:
+        lat = round(base_lat + uniform(-origin_jitter, origin_jitter), 7)
+        lon = round(base_lon + uniform(-origin_jitter, origin_jitter), 7)
+        orientation = round(uniform(0, 360), 1)
+        amsl = round(base_amsl + uniform(-amsl_jitter, amsl_jitter), 1)
+
+        # Same arithmetic as MAVLinkUAV.upload_show() in the server
+        expected = {
+            PARAM_LAT: _as_float32(int(lat * 1e7)),
+            PARAM_LNG: _as_float32(int(lon * 1e7)),
+            PARAM_AMSL: _as_float32(int(amsl * 1e3)),
+            PARAM_ORIENTATION: _as_float32(orientation % 360),
+        }
+
+        # Every parameter must change; otherwise a lost change could not be
+        # told apart from a successful one
+        if avoid is None or all(expected[n] != avoid.get(n) for n in PARAM_NAMES):
+            break
+
+    result = dict(spec)
+    result["coordinateSystem"] = {
+        **coordinate_system,
+        "origin": [lon, lat],
+        "orientation": orientation,
+    }
+    result["amslReference"] = amsl
+    return result, expected
 
 
 async def _wait_until(
@@ -470,6 +578,57 @@ class Bench:
         )
         return str(result)
 
+    async def read_params(self) -> dict[str, float]:
+        """Reads the show coordinate system parameters from the drone."""
+        result = {}
+        for name in PARAM_NAMES:
+            value = await self.client.run_uav_request(
+                "PRM-GET", self.uav_id, timeout=30, name=name
+            )
+            result[name] = float(value)
+        return result
+
+    async def check_params(
+        self, expected: dict[str, float] | None
+    ) -> tuple[dict[str, float] | None, str | None]:
+        """Reads the show coordinate system parameters, retrying if the read
+        fails or if the values differ from the expected ones.
+
+        Args:
+            expected: the expected parameter values; ``None`` to accept any
+                values
+
+        Returns:
+            the values read in the last attempt, or ``None`` if all attempts
+            failed; and the error of the last failed read
+        """
+        values: dict[str, float] | None = None
+        error: str | None = None
+
+        for attempt in range(1, PARAM_READ_ATTEMPTS + 1):
+            try:
+                values = await self.read_params()
+            except CommandError as ex:
+                error = str(ex)
+                self.log(
+                    f"Parameter read failed (attempt {attempt}/"
+                    f"{PARAM_READ_ATTEMPTS}): {ex}"
+                )
+            else:
+                error = None
+                if expected is None or values == expected:
+                    return values, None
+                wrong = ", ".join(n for n in PARAM_NAMES if values[n] != expected[n])
+                self.log(
+                    f"Parameters differ (attempt {attempt}/"
+                    f"{PARAM_READ_ATTEMPTS}): {wrong}"
+                )
+
+            if attempt < PARAM_READ_ATTEMPTS:
+                await trio.sleep(2)
+
+        return values, error
+
     async def is_sleeping(self) -> bool:
         return SLEEPING_ERROR_CODE in await self.client.get_uav_errors(self.uav_id)
 
@@ -533,22 +692,22 @@ class Bench:
 
         return False
 
-    async def upload(self, show: str) -> None:
+    async def upload(self, spec: dict[str, Any]) -> None:
         await self.client.run_uav_command(
             self.uav_id,
             "__show_upload",
             timeout=self.args.upload_timeout,
-            show=self.specs[show],
+            show=spec,
         )
 
-    async def start_and_cancel_upload(self, show: str) -> None:
+    async def start_and_cancel_upload(self, show: str, spec: dict[str, Any]) -> None:
         self.log(f"Starting upload of show {show} (to be cancelled)")
         receipt, _ = await self.client.start_uav_request(
             "OBJ-CMD",
             self.uav_id,
             command="__show_upload",
             args=[],
-            kwds={"show": self.specs[show]},
+            kwds={"show": spec},
         )
         if receipt is None:
             # The command finished immediately; nothing to cancel
@@ -570,6 +729,41 @@ class Bench:
                 outcome = str(ex)
         self.log(f"Cancelled upload ended: {outcome}")
 
+    def check_params_after_wakeup(
+        self,
+        record: dict[str, Any],
+        params_after: dict[str, float] | None,
+        error: str | None,
+    ) -> None:
+        """Stores the parameter outcome of a cycle in its record."""
+        if params_after is None:
+            record["param_result"] = "PARAM_INFRA"
+            record["param_note"] = f"read after wake-up failed: {error}"
+            self.log(f"Could not read parameters after wake-up: {error}")
+            return
+
+        record["params_after"] = params_after
+        expected = record["params_expected"]
+        start = record.get("params_start") or {}
+
+        lost = {}
+        for name in PARAM_NAMES:
+            if params_after[name] != expected[name]:
+                lost[name] = (
+                    "reverted" if params_after[name] == start.get(name) else "other"
+                )
+
+        if lost:
+            record["param_result"] = "PARAM_LOST"
+            record["params_lost"] = lost
+            record["param_note"] = ", ".join(
+                f"{name} {how}" for name, how in lost.items()
+            )
+            self.log(f"Parameters lost after wake-up: {record['param_note']}")
+        else:
+            record["param_result"] = "PARAM_OK"
+            self.log("Parameters after wake-up are correct")
+
     async def run_cycle(self, cycle: int) -> dict[str, Any]:
         args = self.args
         show = "A" if cycle % 2 == 0 else "B"
@@ -590,6 +784,7 @@ class Bench:
             "cancels": args.cancels,
             "tag": args.tag,
             "spec_sha": self.spec_sha,
+            "param_result": "SKIPPED",
         }
 
         def finish(result: str, note: str | None = None) -> dict[str, Any]:
@@ -611,10 +806,29 @@ class Bench:
             ):
                 return finish("INFRA", "drone left asleep earlier did not wake up")
 
+        # Parameters before the upload, to tell whether a lost value reverted
+        # to its earlier value
+        self.log("Reading parameters before upload")
+        params_start, error = await self.check_params(None)
+        if params_start is None:
+            self.log(f"Could not read parameters before upload: {error}")
+        else:
+            record["params_start"] = params_start
+
+        spec, params_expected = _randomize_coordinate_system(
+            self.specs[show], args.origin_jitter, args.amsl_jitter, params_start
+        )
+        record["params_expected"] = params_expected
+        cs = spec["coordinateSystem"]
+        self.log(
+            f"Show origin {cs['origin'][1]:.7f}, {cs['origin'][0]:.7f}, "
+            f"orientation {cs['orientation']}, AMSL {spec['amslReference']} m"
+        )
+
         # Cancelled upload attempts, like the operator did on 2026-11-07
         for _ in range(args.cancels):
             try:
-                await self.start_and_cancel_upload(show)
+                await self.start_and_cancel_upload(show, spec)
             except CommandError as ex:
                 self.log(f"Cancelled upload attempt failed: {ex}")
                 record.setdefault("cancel_errors", []).append(str(ex))
@@ -623,7 +837,7 @@ class Bench:
         self.log(f"Uploading show {show}")
         start = monotonic()
         try:
-            await self.upload(show)
+            await self.upload(spec)
         except CommandError as ex:
             record["upload_s"] = round(monotonic() - start, 3)
             self.log(f"Upload failed after {record['upload_s']}s: {ex}")
@@ -640,6 +854,22 @@ class Bench:
             return finish("INFRA", f"CRC query before sleep failed: {ex}")
         record["crc_before"] = crc_before
         self.log(f"CRC before sleep: {crc_before}")
+
+        # Parameters before sleep
+        self.log("Reading parameters before sleep")
+        params_before, error = await self.check_params(params_expected)
+        if params_before is None:
+            record["param_result"] = "PARAM_INFRA"
+            record["param_note"] = f"read before sleep failed: {error}"
+        else:
+            record["params_before"] = params_before
+            if params_before == params_expected:
+                self.log("Parameters before sleep are correct")
+            else:
+                record["param_result"] = "PARAM_NOT_APPLIED"
+                record["param_note"] = "wrong before sleep: " + ", ".join(
+                    n for n in PARAM_NAMES if params_before[n] != params_expected[n]
+                )
 
         if crc_before == self.crc_by_show.get(other):
             return finish("UPLOAD_MISMATCH", "file is the other show before sleep")
@@ -667,6 +897,13 @@ class Bench:
         # Wake-up
         if not await self.change_power_state("UAV-WAKEUP", record, "wakeup"):
             return finish("INFRA", "drone did not wake up")
+
+        # Parameters after wake-up, checked only if they were right before sleep
+        if params_before == params_expected:
+            self.log("Reading parameters after wake-up")
+            self.check_params_after_wakeup(
+                record, *await self.check_params(params_expected)
+            )
 
         # CRC after wake-up. The flight controller may need a few more seconds
         # after its first heartbeat before MAVFTP works.
@@ -741,9 +978,12 @@ async def _run_cycles(
 
         result = record["result"]
         note = record.get("note", "")
+        param_result = record["param_result"]
+        param_note = record.get("param_note", "")
         print(
             f"[{record['finished_at']}] cycle {cycle} show {record['show']} "
-            f"delay {record['delay']}s: {result} {note}".rstrip()
+            f"delay {record['delay']}s: file {result} {note}".rstrip()
+            + f" | params {param_result} {param_note}".rstrip()
         )
 
         if result in FAILURES and not args.keep_going:
@@ -751,6 +991,11 @@ async def _run_cycles(
             print(f"Stopped at {result}. Do not use the drone any further.")
             print("Power it off and image its SD card with dd right away.")
             return 2
+
+        if param_result in PARAM_FAILURES and args.stop_on_param_failure:
+            print()
+            print(f"Stopped at {param_result}.")
+            return 4
 
         consecutive_infra = consecutive_infra + 1 if result == "INFRA" else 0
         if consecutive_infra >= args.max_infra:
@@ -765,31 +1010,56 @@ async def _run_cycles(
 # ---------------------------------------------------------------------------
 
 
-def summary(args: Namespace) -> None:
-    records = _read_results(Path(args.results))
+def _print_outcome_table(
+    title: str,
+    records: list[dict[str, Any]],
+    field: str,
+    ok: str,
+    failures: tuple[str, ...],
+) -> None:
+    """Prints the counts of one kind of outcome per test setting."""
     groups: defaultdict[tuple, Counter] = defaultdict(Counter)
     for record in records:
+        if field not in record:
+            # Records written before this outcome was introduced
+            continue
         key = (record["tag"], record["delay"], record["sleep"], record["cancels"])
-        groups[key][record["result"]] += 1
+        groups[key][record[field]] += 1
 
+    print(title)
     print(
         f"{'tag':<16} {'delay':>6} {'sleep':>6} {'cancels':>7} {'n':>5} "
-        f"{'OK':>5} {'fail':>5} {'infra':>5}  95% upper bound"
+        f"{'OK':>5} {'fail':>5} {'other':>5}  95% upper bound"
     )
     for (tag, delay, sleep, cancels), counts in sorted(groups.items()):
-        failures = sum(counts[name] for name in FAILURES)
-        n = counts["OK"] + failures
+        failed = sum(counts[name] for name in failures)
+        n = counts[ok] + failed
+        other = sum(counts.values()) - n
         if n == 0:
             bound = "-"
-        elif failures == 0:
+        elif failed == 0:
             # Exact one-sided bound for zero failures in n trials
             bound = f"{1 - 0.05 ** (1 / n):.2%}"
         else:
-            bound = f"observed {failures / n:.2%}"
+            bound = f"observed {failed / n:.2%}"
         print(
             f"{tag or '':<16} {delay:>6} {sleep:>6} {cancels:>7} {n:>5} "
-            f"{counts['OK']:>5} {failures:>5} {counts['INFRA']:>5}  {bound}"
+            f"{counts[ok]:>5} {failed:>5} {other:>5}  {bound}"
         )
+
+
+def summary(args: Namespace) -> None:
+    records = _read_results(Path(args.results))
+    _print_outcome_table("Show file", records, "result", "OK", FAILURES)
+    print()
+    _print_outcome_table(
+        "Parameters", records, "param_result", "PARAM_OK", PARAM_FAILURES
+    )
+    print()
+    print(
+        "'other' counts cycles without a conclusion: INFRA for the show file, "
+        "PARAM_INFRA and SKIPPED for the parameters."
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -867,6 +1137,23 @@ def main() -> None:
         "--keep-going",
         action="store_true",
         help="do not stop at ROLLBACK, CORRUPT or UPLOAD_MISMATCH",
+    )
+    p.add_argument(
+        "--stop-on-param-failure",
+        action="store_true",
+        help="stop at PARAM_LOST or PARAM_NOT_APPLIED",
+    )
+    p.add_argument(
+        "--origin-jitter",
+        type=float,
+        default=0.01,
+        help="maximum random change of the show origin, in degrees",
+    )
+    p.add_argument(
+        "--amsl-jitter",
+        type=float,
+        default=50,
+        help="maximum random change of the AMSL reference, in meters",
     )
     p.add_argument(
         "-v",

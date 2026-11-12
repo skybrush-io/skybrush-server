@@ -833,7 +833,7 @@ def main() -> None:
         default=[10.0],
         help="seconds between upload and sleep; comma-separated list to vary it",
     )
-    p.add_argument("--sleep", type=float, default=30, help="seconds of sleep")
+    p.add_argument("--sleep", type=float, default=10, help="seconds of sleep")
     p.add_argument(
         "--cancels",
         type=int,
@@ -845,13 +845,13 @@ def main() -> None:
     p.add_argument(
         "--sleep-timeout",
         type=float,
-        default=30,
+        default=10,
         help="seconds to wait for sleep after each UAV-SLEEP attempt",
     )
     p.add_argument(
         "--wake-timeout",
         type=float,
-        default=120,
+        default=45,
         help=(
             "seconds to wait for wake-up after each UAV-WAKEUP attempt, and "
             "for the CRC query after wake-up"

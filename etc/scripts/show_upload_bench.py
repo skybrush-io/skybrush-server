@@ -35,6 +35,7 @@ Subcommands:
 ``run``
     Runs the upload-sleep-wakeup cycles and appends one JSON line per cycle
     to the results file. The run resumes from an existing results file.
+    With ``-v``, it also prints each step of a cycle while it happens.
 
 ``summary``
     Prints the outcome counts per test setting from a results file.
@@ -434,6 +435,11 @@ class Bench:
         }
         self.crc_by_show: dict[str, str] = {}
 
+    def log(self, message: str) -> None:
+        """Prints a progress message in verbose mode."""
+        if self.args.verbose:
+            print(f"  [{_now()}] {message}", flush=True)
+
     def resume_from(self, records: list[dict[str, Any]]) -> int:
         """Restores the learned CRCs from earlier records.
 
@@ -476,6 +482,7 @@ class Bench:
         )
 
     async def start_and_cancel_upload(self, show: str) -> None:
+        self.log(f"Starting upload of show {show} (to be cancelled)")
         receipt, _ = await self.client.start_uav_request(
             "OBJ-CMD",
             self.uav_id,
@@ -485,17 +492,23 @@ class Bench:
         )
         if receipt is None:
             # The command finished immediately; nothing to cancel
+            self.log("Upload finished immediately; nothing to cancel")
             return
 
-        await trio.sleep(uniform(0.5, 3))
+        delay = uniform(0.5, 3)
+        await trio.sleep(delay)
+        self.log(f"Cancelling upload after {delay:.1f}s")
         await self.client.cancel(receipt)
 
         # Give the server time to clean up the MAVFTP session on the drone
+        outcome = "no response from server in 5s"
         with trio.move_on_after(5):
             try:
                 await self.client.wait_for_receipt(receipt, timeout=5)
-            except CommandError:
-                pass
+                outcome = "upload had already finished"
+            except CommandError as ex:
+                outcome = str(ex)
+        self.log(f"Cancelled upload ended: {outcome}")
 
     async def run_cycle(self, cycle: int) -> dict[str, Any]:
         args = self.args
@@ -531,23 +544,30 @@ class Bench:
             try:
                 await self.start_and_cancel_upload(show)
             except CommandError as ex:
+                self.log(f"Cancelled upload attempt failed: {ex}")
                 record.setdefault("cancel_errors", []).append(str(ex))
 
         # Full upload
+        self.log(f"Uploading show {show}")
         start = monotonic()
         try:
             await self.upload(show)
         except CommandError as ex:
             record["upload_s"] = round(monotonic() - start, 3)
+            self.log(f"Upload failed after {record['upload_s']}s: {ex}")
             return finish("INFRA", f"upload failed: {ex}")
         record["upload_s"] = round(monotonic() - start, 3)
+        self.log(f"Upload finished in {record['upload_s']}s")
 
         # Reference CRC before sleep
+        self.log("Reading CRC of show file before sleep")
         try:
             crc_before = await self.get_show_crc()
         except CommandError as ex:
+            self.log(f"CRC query failed: {ex}")
             return finish("INFRA", f"CRC query before sleep failed: {ex}")
         record["crc_before"] = crc_before
+        self.log(f"CRC before sleep: {crc_before}")
 
         if crc_before == self.crc_by_show.get(other):
             return finish("UPLOAD_MISMATCH", "file is the other show before sleep")
@@ -564,7 +584,9 @@ class Bench:
             )
 
         # Sleep
+        self.log(f"Waiting {delay}s before sending the drone to sleep")
         await trio.sleep(delay)
+        self.log("Sending UAV-SLEEP")
         record["sleep_sent_at"] = _now()
         try:
             record["sleep_response"] = await self.client.run_uav_request(
@@ -574,35 +596,46 @@ class Bench:
             # The ESP32 handles the command, so an error here is worth
             # recording but not necessarily fatal
             record["sleep_response"] = f"error: {ex}"
+            self.log(f"UAV-SLEEP returned an error: {ex}")
 
+        self.log("Waiting for the drone to report sleeping")
         try:
             record["sleep_detected_s"] = round(
                 await _wait_until(self.is_sleeping, args.sleep_timeout), 3
             )
         except trio.TooSlowError:
+            self.log(f"Drone not sleeping after {args.sleep_timeout}s")
             return finish("INFRA", "drone did not report sleeping in time")
+        self.log(f"Drone is sleeping after {record['sleep_detected_s']}s")
 
+        self.log(f"Keeping the drone asleep for {args.sleep}s")
         await trio.sleep(args.sleep)
 
         # Wake-up
+        self.log("Sending UAV-WAKEUP")
         try:
             record["wakeup_response"] = await self.client.run_uav_request(
                 "UAV-WAKEUP", self.uav_id, timeout=30
             )
         except CommandError as ex:
             record["wakeup_response"] = f"error: {ex}"
+            self.log(f"UAV-WAKEUP returned an error: {ex}")
 
+        self.log("Waiting for the drone to wake up")
         try:
             record["wakeup_detected_s"] = round(
                 await _wait_until(self.is_awake, args.wake_timeout), 3
             )
         except trio.TooSlowError:
+            self.log(f"Drone still sleeping after {args.wake_timeout}s")
             return finish("INFRA", "drone did not wake up in time")
+        self.log(f"Drone is awake after {record['wakeup_detected_s']}s")
 
         # CRC after wake-up. The flight controller may need a few more seconds
         # after its first heartbeat before MAVFTP works.
         crc_after: str | None = None
         last_error: str | None = None
+        self.log("Reading CRC of show file after wake-up")
         with trio.move_on_after(args.wake_timeout):
             while crc_after is None:
                 try:
@@ -610,7 +643,9 @@ class Bench:
                 except CommandError as ex:
                     last_error = str(ex)
                     if "not found" in last_error.lower():
+                        self.log("Show file not found")
                         break
+                    self.log(f"CRC query failed, retrying in 2s: {ex}")
                     await trio.sleep(2)
 
         if crc_after is None:
@@ -619,6 +654,7 @@ class Bench:
             return finish("INFRA", f"CRC query after wake-up failed: {last_error}")
 
         record["crc_after"] = crc_after
+        self.log(f"CRC after wake-up: {crc_after}")
         if crc_after == crc_before:
             return finish("OK")
         elif crc_after == self.crc_by_show.get(other):
@@ -660,6 +696,8 @@ async def _run_cycles(
 
     consecutive_infra = 0
     for cycle in range(first_cycle, args.cycles):
+        if args.verbose:
+            print(f"Cycle {cycle}:")
         record = await bench.run_cycle(cycle)
         with out.open("a") as fp:
             fp.write(json.dumps(record) + "\n")
@@ -779,6 +817,12 @@ def main() -> None:
         "--keep-going",
         action="store_true",
         help="do not stop at ROLLBACK, CORRUPT or UPLOAD_MISMATCH",
+    )
+    p.add_argument(
+        "-v",
+        "--verbose",
+        action="store_true",
+        help="print each step of a cycle while it happens",
     )
     p.add_argument("--out", required=True, help="results file (JSON lines)")
 

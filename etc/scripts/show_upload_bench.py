@@ -94,6 +94,9 @@ SLEEPING_ERROR_CODE = 9
 """Flockwave error code that the server reports while the drone is sleeping
 (``FlockwaveErrorCode.SLEEPING``)."""
 
+POWER_COMMAND_ATTEMPTS = 5
+"""Number of times to send ``UAV-SLEEP`` or ``UAV-WAKEUP`` before giving up."""
+
 FAILURES = ("ROLLBACK", "CORRUPT", "UPLOAD_MISMATCH")
 """Outcomes that stop the run unless ``--keep-going`` is given."""
 
@@ -473,6 +476,63 @@ class Bench:
     async def is_awake(self) -> bool:
         return not await self.is_sleeping()
 
+    async def change_power_state(
+        self, request: str, record: dict[str, Any], key: str
+    ) -> bool:
+        """Sends the drone to sleep or wakes it up, and waits until the server
+        reports the new state.
+
+        The request is sent again if the drone does not reach the new state in
+        time, up to `POWER_COMMAND_ATTEMPTS` attempts in total.
+
+        Args:
+            request: ``UAV-SLEEP`` or ``UAV-WAKEUP``
+            record: the record of the cycle. The method stores the response
+                of the last attempt, the number of attempts and the time it
+                took to reach the new state, under keys starting with `key`.
+            key: prefix of the keys in the record (``sleep`` or ``wakeup``)
+
+        Returns:
+            whether the drone reached the new state
+        """
+        if request == "UAV-SLEEP":
+            predicate, timeout, state = (
+                self.is_sleeping,
+                self.args.sleep_timeout,
+                "sleeping",
+            )
+        else:
+            predicate, timeout, state = self.is_awake, self.args.wake_timeout, "awake"
+
+        start = monotonic()
+        record[f"{key}_sent_at"] = _now()
+
+        for attempt in range(1, POWER_COMMAND_ATTEMPTS + 1):
+            record[f"{key}_attempts"] = attempt
+            self.log(f"Sending {request} (attempt {attempt}/{POWER_COMMAND_ATTEMPTS})")
+            try:
+                record[f"{key}_response"] = await self.client.run_uav_request(
+                    request, self.uav_id, timeout=30
+                )
+            except CommandError as ex:
+                # The ESP32 handles the command, so an error here is worth
+                # recording but not necessarily fatal
+                record[f"{key}_response"] = f"error: {ex}"
+                self.log(f"{request} returned an error: {ex}")
+
+            self.log(f"Waiting for the drone to report {state}")
+            try:
+                await _wait_until(predicate, timeout)
+            except trio.TooSlowError:
+                self.log(f"Drone not {state} after {timeout}s")
+                continue
+
+            record[f"{key}_detected_s"] = round(monotonic() - start, 3)
+            self.log(f"Drone is {state} after {record[f'{key}_detected_s']}s")
+            return True
+
+        return False
+
     async def upload(self, show: str) -> None:
         await self.client.run_uav_command(
             self.uav_id,
@@ -539,6 +599,18 @@ class Bench:
             record["finished_at"] = _now()
             return record
 
+        # A drone left asleep by an earlier cycle cannot accept uploads
+        try:
+            sleeping_at_start = await self.is_sleeping()
+        except CommandError as ex:
+            return finish("INFRA", f"cannot query drone status: {ex}")
+        if sleeping_at_start:
+            self.log("Drone is still sleeping from an earlier cycle; waking it up")
+            if not await self.change_power_state(
+                "UAV-WAKEUP", record, "initial_wakeup"
+            ):
+                return finish("INFRA", "drone left asleep earlier did not wake up")
+
         # Cancelled upload attempts, like the operator did on 2026-11-07
         for _ in range(args.cancels):
             try:
@@ -586,50 +658,15 @@ class Bench:
         # Sleep
         self.log(f"Waiting {delay}s before sending the drone to sleep")
         await trio.sleep(delay)
-        self.log("Sending UAV-SLEEP")
-        record["sleep_sent_at"] = _now()
-        try:
-            record["sleep_response"] = await self.client.run_uav_request(
-                "UAV-SLEEP", self.uav_id, timeout=30
-            )
-        except CommandError as ex:
-            # The ESP32 handles the command, so an error here is worth
-            # recording but not necessarily fatal
-            record["sleep_response"] = f"error: {ex}"
-            self.log(f"UAV-SLEEP returned an error: {ex}")
-
-        self.log("Waiting for the drone to report sleeping")
-        try:
-            record["sleep_detected_s"] = round(
-                await _wait_until(self.is_sleeping, args.sleep_timeout), 3
-            )
-        except trio.TooSlowError:
-            self.log(f"Drone not sleeping after {args.sleep_timeout}s")
-            return finish("INFRA", "drone did not report sleeping in time")
-        self.log(f"Drone is sleeping after {record['sleep_detected_s']}s")
+        if not await self.change_power_state("UAV-SLEEP", record, "sleep"):
+            return finish("INFRA", "drone did not go to sleep")
 
         self.log(f"Keeping the drone asleep for {args.sleep}s")
         await trio.sleep(args.sleep)
 
         # Wake-up
-        self.log("Sending UAV-WAKEUP")
-        try:
-            record["wakeup_response"] = await self.client.run_uav_request(
-                "UAV-WAKEUP", self.uav_id, timeout=30
-            )
-        except CommandError as ex:
-            record["wakeup_response"] = f"error: {ex}"
-            self.log(f"UAV-WAKEUP returned an error: {ex}")
-
-        self.log("Waiting for the drone to wake up")
-        try:
-            record["wakeup_detected_s"] = round(
-                await _wait_until(self.is_awake, args.wake_timeout), 3
-            )
-        except trio.TooSlowError:
-            self.log(f"Drone still sleeping after {args.wake_timeout}s")
-            return finish("INFRA", "drone did not wake up in time")
-        self.log(f"Drone is awake after {record['wakeup_detected_s']}s")
+        if not await self.change_power_state("UAV-WAKEUP", record, "wakeup"):
+            return finish("INFRA", "drone did not wake up")
 
         # CRC after wake-up. The flight controller may need a few more seconds
         # after its first heartbeat before MAVFTP works.
@@ -805,8 +842,21 @@ def main() -> None:
     )
     p.add_argument("--tag", default="", help="free-form label, e.g. 'loss=15%%'")
     p.add_argument("--upload-timeout", type=float, default=120)
-    p.add_argument("--sleep-timeout", type=float, default=30)
-    p.add_argument("--wake-timeout", type=float, default=120)
+    p.add_argument(
+        "--sleep-timeout",
+        type=float,
+        default=30,
+        help="seconds to wait for sleep after each UAV-SLEEP attempt",
+    )
+    p.add_argument(
+        "--wake-timeout",
+        type=float,
+        default=120,
+        help=(
+            "seconds to wait for wake-up after each UAV-WAKEUP attempt, and "
+            "for the CRC query after wake-up"
+        ),
+    )
     p.add_argument(
         "--max-infra",
         type=int,

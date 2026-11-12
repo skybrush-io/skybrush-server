@@ -1,7 +1,12 @@
 from pytest_trio import trio_fixture
 from trio import sleep
 
-from flockwave.server.message_hub import BatchMessageRateLimiter, UAVMessageRateLimiter
+from flockwave.server.message_hub import (
+    BatchMessageRateLimiter,
+    ConnectionStatusMessageRateLimiter,
+    RateLimiters,
+    UAVMessageRateLimiter,
+)
 
 
 @trio_fixture
@@ -21,6 +26,10 @@ def create_rate_limiter(nursery):
 
 def create_message(uav_ids):
     return tuple(uav_ids)
+
+
+async def _noop_dispatcher(message):
+    """Fake dispatcher that does nothing; only its type matters here."""
 
 
 class TestBatchMessageRateLimiter:
@@ -137,3 +146,27 @@ class TestUAVMessageRateLimiter:
         await sleep(1)
 
         assert result == [(1, 2), (1, 2, 3, 4), (3, 4, 5), (3, 4, 6)]
+
+
+class TestRateLimiters:
+    def test_set_delay_changes_delay_of_registered_limiter(self):
+        rate_limiters = RateLimiters(dispatcher=_noop_dispatcher)
+        limiter = UAVMessageRateLimiter(factory=create_message)
+        rate_limiters.register("UAV-INF", limiter)
+
+        assert rate_limiters.set_delay("UAV-INF", 0.05) is True
+        assert limiter.delay == 0.05
+
+    def test_set_delay_returns_false_for_unknown_message_type(self):
+        rate_limiters = RateLimiters(dispatcher=_noop_dispatcher)
+        assert rate_limiters.set_delay("NO-SUCH-TYPE", 0.05) is False
+
+    def test_set_delay_returns_false_for_limiter_without_delay(self):
+        # The CONN-INF limiter has no configurable delay; it waits a
+        # fixed time for transitioning connection states to settle.
+        rate_limiters = RateLimiters(dispatcher=_noop_dispatcher)
+        rate_limiters.register(
+            "CONN-INF", ConnectionStatusMessageRateLimiter(factory=create_message)
+        )
+
+        assert rate_limiters.set_delay("CONN-INF", 0.05) is False

@@ -17,7 +17,18 @@ SERVER_NAME = "Skybrush server"
 PORT = 5000
 
 # Configure the command execution manager
-COMMAND_EXECUTION_MANAGER = {"timeout": 90}
+COMMAND_EXECUTION_MANAGER = {
+    "timeout": 90,
+    # Minimum delays (in seconds) between consecutive dispatches of
+    # rate-limited message types, keyed by message type name. Only types
+    # whose rate limiter supports a delay can be configured here (UAV-INF
+    # and SYS-MSG do; CONN-INF does not). Unknown types are ignored with a
+    # warning. The default of 0.2 s (5 Hz) keeps clients responsive without
+    # flooding the connection; lower it only for local virtual/demo fleets
+    # (e.g. 0.05 for UAV-INF) -- on real shows with 1000+ drones, Live may
+    # not drain the socket fast enough without rate limiting.
+    "rate_limits": {"UAV-INF": 0.2},
+}
 
 # Declare the list of extensions to load
 EXTENSIONS = {

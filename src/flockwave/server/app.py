@@ -1318,6 +1318,27 @@ class SkybrushServer(DaemonApp):
         cfg = config.get("COMMAND_EXECUTION_MANAGER", {})
         self.command_execution_manager.timeout = cfg.get("timeout", 90)
 
+        # Apply configured rate limits for message types whose rate limiter
+        # supports a delay. The rate limiters themselves were created with
+        # their default delays when the components were created (the
+        # configuration is not loaded yet at that point), and their run
+        # loops read the delay on every iteration, so setting it here
+        # takes effect from the next dispatch.
+        rate_limits = cfg.get("rate_limits", {})
+        if isinstance(rate_limits, dict):
+            for name, delay in rate_limits.items():
+                if not self.rate_limiters.set_delay(name, delay):
+                    self.log.warning(
+                        f"Ignoring rate limit for {name!r}: no rate limiter "
+                        "with a configurable delay is registered for this "
+                        "message type"
+                    )
+        else:
+            self.log.warning(
+                "Ignoring COMMAND_EXECUTION_MANAGER.rate_limits: it must be "
+                "an object mapping message type names to delays in seconds"
+            )
+
         # Override the base port if needed
         port_from_env: str | None = environ.get("PORT")
         port: int | None = config.get("PORT")

@@ -18,7 +18,7 @@ from inspect import isawaitable
 from itertools import chain
 from logging import Logger
 from time import monotonic
-from typing import Any, Generic, Mapping, TypeVar, overload
+from typing import Any, Generic, Mapping, Protocol, TypeVar, cast, overload
 
 from flockwave.concurrency import AsyncBundler
 from flockwave.connections import ConnectionState
@@ -1410,6 +1410,13 @@ class ConnectionStatusMessageRateLimiter(RateLimiter):
                     await dispatch_tx_queue.send(connection_id)
 
 
+class _HasConfigurableDelay(Protocol):
+    """Protocol for rate limiters whose delay between consecutive message
+    dispatches can be configured."""
+
+    delay: float
+
+
 class RateLimiters:
     """Helper object for managing the dispatch of rate-limited messages.
 
@@ -1474,6 +1481,25 @@ class RateLimiters:
 
         if hasattr(rate_limiter, "name"):
             rate_limiter.name = name
+
+    def set_delay(self, name: str, delay: float) -> bool:
+        """Sets the delay of the rate limiter registered with the given name.
+
+        The delay is the minimum number of seconds between consecutive
+        message dispatches of the given message type.
+
+        Parameters:
+            name: name of the message group whose rate limiter we are targeting
+            delay: the new delay, in seconds
+
+        Returns:
+            whether the rate limiter exists and has a configurable delay
+        """
+        rate_limiter = self._rate_limiters.get(name)
+        if rate_limiter is None or not hasattr(rate_limiter, "delay"):
+            return False
+        cast(_HasConfigurableDelay, rate_limiter).delay = delay
+        return True
 
     def request_to_send(self, name: str, *args, **kwds) -> None:
         """Requests the rate limiter registered with the given name to send

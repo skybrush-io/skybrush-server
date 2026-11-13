@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [main]
 
+### Added
+
+- Added a `MESSAGE_RATE_LIMITS` configuration key to set the minimum delay
+  between consecutive dispatches of rate-limited message types, e.g.
+  `{"UAV-INF": 0.05}`. `UAV-INF` and `SYS-MSG` can be configured; unlisted
+  types keep the default delay of 0.2 seconds. Invalid entries are ignored
+  with a warning.
+
 ### Fixed
 
 - MAVLink STATUSTEXT messages are now reassembled properly if they arrive in

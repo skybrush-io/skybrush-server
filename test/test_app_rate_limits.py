@@ -1,0 +1,90 @@
+"""Tests for applying the MESSAGE_RATE_LIMITS configuration key."""
+
+from logging import getLogger
+from types import SimpleNamespace
+from typing import cast
+
+from pytest import fixture
+
+from flockwave.server.app import SkybrushServer
+from flockwave.server.message_hub import (
+    BatchMessageRateLimiter,
+    ConnectionStatusMessageRateLimiter,
+    RateLimiters,
+    UAVMessageRateLimiter,
+)
+
+from .utils import async_noop
+
+
+@fixture
+def server():
+    """Stub with only the attributes that ``_process_configuration()`` uses.
+
+    Building a real ``SkybrushServer`` would create every component of the
+    server, while the method under test needs only three of its attributes.
+    ``limiters`` gives the tests direct access to the registered limiters.
+    """
+    limiters = {
+        "CONN-INF": ConnectionStatusMessageRateLimiter(factory=tuple),
+        "SYS-MSG": BatchMessageRateLimiter(factory=tuple),
+        "UAV-INF": UAVMessageRateLimiter(factory=tuple),
+    }
+    rate_limiters = RateLimiters(dispatcher=async_noop)
+    for name, limiter in limiters.items():
+        rate_limiters.register(name, limiter)
+
+    return SimpleNamespace(
+        command_execution_manager=SimpleNamespace(timeout=None),
+        log=getLogger("test_app_rate_limits"),
+        rate_limiters=rate_limiters,
+        limiters=limiters,
+    )
+
+
+def _process(server, config):
+    SkybrushServer._process_configuration(
+        cast(SkybrushServer, server), config, use_env=False
+    )
+
+
+def _delay_of(server, name):
+    return server.limiters[name].delay
+
+
+def test_applies_valid_rate_limits(server):
+    _process(server, {"MESSAGE_RATE_LIMITS": {"UAV-INF": 0.05, "SYS-MSG": 1}})
+
+    assert _delay_of(server, "UAV-INF") == 0.05
+    assert _delay_of(server, "SYS-MSG") == 1
+
+
+def test_keeps_defaults_without_rate_limits(server):
+    _process(server, {})
+
+    assert _delay_of(server, "UAV-INF") == UAVMessageRateLimiter.delay
+    assert _delay_of(server, "SYS-MSG") == BatchMessageRateLimiter.delay
+
+
+def test_ignores_invalid_delay_with_warning(server, caplog):
+    _process(server, {"MESSAGE_RATE_LIMITS": {"UAV-INF": -1, "SYS-MSG": 0.5}})
+
+    assert _delay_of(server, "UAV-INF") == UAVMessageRateLimiter.delay
+    assert _delay_of(server, "SYS-MSG") == 0.5
+    assert "Ignoring rate limit for 'UAV-INF'" in caplog.text
+
+
+def test_ignores_types_without_configurable_delay_with_warning(server, caplog):
+    _process(server, {"MESSAGE_RATE_LIMITS": {"CONN-INF": 0.1, "NO-SUCH-TYPE": 0.1}})
+
+    assert _delay_of(server, "UAV-INF") == UAVMessageRateLimiter.delay
+    assert _delay_of(server, "SYS-MSG") == BatchMessageRateLimiter.delay
+    assert "Ignoring rate limit for 'CONN-INF'" in caplog.text
+    assert "Ignoring rate limit for 'NO-SUCH-TYPE'" in caplog.text
+
+
+def test_ignores_non_dict_rate_limits_with_warning(server, caplog):
+    _process(server, {"MESSAGE_RATE_LIMITS": [0.05]})
+
+    assert _delay_of(server, "UAV-INF") == UAVMessageRateLimiter.delay
+    assert "Ignoring MESSAGE_RATE_LIMITS" in caplog.text

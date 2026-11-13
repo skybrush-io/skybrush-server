@@ -19,6 +19,11 @@ PORT = 5000
 # Configure the command execution manager
 COMMAND_EXECUTION_MANAGER = {"timeout": 90}
 
+# Minimum delays (in seconds) between consecutive dispatches of rate-limited
+# message types, e.g. {"UAV-INF": 0.05}. UAV-INF and SYS-MSG can be configured.
+# Unlisted types use 0.2 s.
+MESSAGE_RATE_LIMITS = {}
+
 # Declare the list of extensions to load
 EXTENSIONS = {
     "audit_log": {"enabled": "avoid"},

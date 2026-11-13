@@ -1313,13 +1313,48 @@ class SkybrushServer(DaemonApp):
             extra={"id": name},
         )
 
-    def _process_configuration(self, config: Configuration) -> int | None:
+    def _process_configuration(
+        self, config: Configuration, *, use_env: bool = True
+    ) -> int | None:
+        """Processes the loaded configuration of the server.
+
+        Args:
+            config: the configuration to process
+            use_env: whether to read overrides from environment variables.
+                Unit tests turn this off to stay independent of the
+                environment of the test runner.
+        """
         # Process the configuration options
         cfg = config.get("COMMAND_EXECUTION_MANAGER", {})
         self.command_execution_manager.timeout = cfg.get("timeout", 90)
 
+        # Apply configured rate limits for message types whose rate limiter
+        # supports a delay. The rate limiters were created with their default
+        # delays before the configuration was loaded. Their run loops read the
+        # delay on every iteration. The new value applies from the next
+        # dispatch.
+        rate_limits = config.get("MESSAGE_RATE_LIMITS", {})
+        if isinstance(rate_limits, dict):
+            for name, delay in rate_limits.items():
+                try:
+                    applied = self.rate_limiters.set_delay(name, delay)
+                except ValueError as ex:
+                    self.log.warning(f"Ignoring rate limit for {name!r}: {ex}")
+                    continue
+                if not applied:
+                    self.log.warning(
+                        f"Ignoring rate limit for {name!r}: no rate limiter "
+                        "with a configurable delay is registered for this "
+                        "message type"
+                    )
+        else:
+            self.log.warning(
+                "Ignoring MESSAGE_RATE_LIMITS: it must be an object mapping "
+                "message type names to delays in seconds"
+            )
+
         # Override the base port if needed
-        port_from_env: str | None = environ.get("PORT")
+        port_from_env: str | None = environ.get("PORT") if use_env else None
         port: int | None = config.get("PORT")
         if port_from_env:
             try:
@@ -1336,7 +1371,7 @@ class SkybrushServer(DaemonApp):
 
     def _setup_app_configurator(self, configurator: AppConfigurator) -> None:
         configurator.key_filter = str.isupper
-        configurator.merge_keys = ["EXTENSIONS"]
+        configurator.merge_keys = ["EXTENSIONS", "MESSAGE_RATE_LIMITS"]
         configurator.safe = is_packaged()
 
 

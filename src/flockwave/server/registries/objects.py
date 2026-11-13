@@ -283,10 +283,11 @@ class ObjectRegistryProxy(RegistryBase[T]):
             registered with the given ID
         """
         item = self._entries.pop(id, None)
-        if item:
+        if item is not None:
             if self._object_registry:
                 self._object_registry.remove(item)
             self.removed.send(self, object=item)
+        return item
 
     @contextmanager
     def use_object_registry(self, registry: ObjectRegistry):

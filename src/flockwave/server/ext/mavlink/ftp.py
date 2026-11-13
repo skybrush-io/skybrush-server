@@ -22,6 +22,7 @@ from flockwave.concurrency import (
 )
 from trio import (
     BrokenResourceError,
+    Cancelled,
     CancelScope,
     TooSlowError,
     as_safe_channel,
@@ -46,9 +47,14 @@ FTPPath = str | bytes
 _MAVFTP_CHUNK_SIZE = 239
 """Maximum number of bytes allowed in a single read/write operation."""
 
-_MAVFTP_CLEANUP_TIMEOUT = 0.5
+_MAVFTP_CLEANUP_TIMEOUT = 3
 """Number of seconds to wait for the UAV to acknowledge a message that closes
-a session or resets all sessions.
+a session or resets all sessions when the transfer was cancelled.
+"""
+
+_MAVFTP_RESET_TIMEOUT = 10
+"""Number of seconds to wait for the UAV to acknowledge a message that resets
+all sessions when the connection is closed normally.
 """
 
 
@@ -374,11 +380,15 @@ class MAVFTPSession:
             MAVFTPOpCode.TERMINATE_SESSION,
             session_id=self._session_id,
         )
-        # Shielded to close the file handle on the UAV even when the transfer
-        # was cancelled. The deadline keeps a dead link from blocking the
-        # cancellation for long.
-        with CancelScope(shield=True), move_on_after(_MAVFTP_CLEANUP_TIMEOUT):
+        try:
             await self._sender(message)
+        except Cancelled:
+            # The transfer was cancelled. Make a short, shielded attempt to
+            # close the file handle on the UAV. The deadline keeps a dead link
+            # from blocking the cancellation for long.
+            with CancelScope(shield=True), move_on_after(_MAVFTP_CLEANUP_TIMEOUT):
+                await self._sender(message)
+            raise
 
     def _ensure_open(self) -> None:
         """Ensures that the session is open.
@@ -507,9 +517,14 @@ class MAVFTP:
 
     async def _aclose(self) -> None:
         message = MAVFTPMessage(MAVFTPOpCode.RESET_SESSIONS)
-        # Shielded for the same reason as in MAVFTPSession._aclose()
-        with CancelScope(shield=True), move_on_after(_MAVFTP_CLEANUP_TIMEOUT):
-            await self._send_and_wait(message)
+        try:
+            with move_on_after(_MAVFTP_RESET_TIMEOUT):
+                await self._send_and_wait(message)
+        except Cancelled:
+            # Shielded for the same reason as in MAVFTPSession._aclose()
+            with CancelScope(shield=True), move_on_after(_MAVFTP_CLEANUP_TIMEOUT):
+                await self._send_and_wait(message)
+            raise
 
     async def crc32(self, path: FTPPath):
         """Calculates the unsigned CRC32 checksum of a file on the PixHawk."""

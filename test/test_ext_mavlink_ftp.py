@@ -9,12 +9,14 @@ from types import SimpleNamespace
 from unittest.mock import Mock
 
 from pytest import fixture, mark, raises
-from trio import CancelScope
+from trio import CancelScope, current_time, sleep_forever
 from trio.lowlevel import checkpoint
 
 from flockwave.server.errors import CommandInvocationError
 from flockwave.server.ext.mavlink.driver import MAVLinkDriver, MAVLinkUAV
 from flockwave.server.ext.mavlink.ftp import (
+    _MAVFTP_CLEANUP_TIMEOUT,
+    _MAVFTP_RESET_TIMEOUT,
     MAVFTP,
     MAVFTPErrorCode,
     MAVFTPMessage,
@@ -45,6 +47,7 @@ class FakeMAVFTPServer:
         self.requests: list[tuple[int, str]] = []
         self.opcodes: list[int] = []
         self.on_request: Callable[[MAVFTPMessage], None] | None = None
+        self.drop_request: Callable[[MAVFTPMessage], bool] | None = None
         self._sessions: dict[int, str] = {}
         self._next_session_id = 1
         self._report_exists_as_errno = report_exists_as_errno
@@ -61,6 +64,10 @@ class FakeMAVFTPServer:
         await checkpoint()
         if self.on_request:
             self.on_request(request)
+
+        # A lost request never gets a reply
+        if self.drop_request and self.drop_request(request):
+            await sleep_forever()
 
         reply = self._handle(request)
         return FakeMAVLinkMessage(payload=reply.encode((seq_no + 1) % 65536))
@@ -247,6 +254,83 @@ async def test_put_cancelled_mid_transfer_releases_file_handle(
     async with aclosing(MAVFTP(server)) as ftp:  # ty:ignore[invalid-argument-type]
         await ftp.put(data, "/foo.txt")
     assert server.files["foo.txt"] == data
+
+
+def drop_for(opcode: int, duration: float) -> Callable[[MAVFTPMessage], bool]:
+    """Returns a packet filter for FakeMAVFTPServer that drops every request
+    with the given opcode until the given number of seconds has passed since
+    the first such request.
+    """
+    started_at: float | None = None
+
+    def drop(request: MAVFTPMessage) -> bool:
+        nonlocal started_at
+        if request.opcode != opcode:
+            return False
+        if started_at is None:
+            started_at = current_time()
+        return current_time() - started_at < duration
+
+    return drop
+
+
+async def test_put_retries_terminate_beyond_cleanup_timeout(
+    server: FakeMAVFTPServer, autojump_clock
+):
+    # A normal upload keeps retrying TERMINATE_SESSION for longer than the
+    # short deadline that applies to cancelled transfers
+    duration = 2 * _MAVFTP_RESET_TIMEOUT
+    server.drop_request = drop_for(MAVFTPOpCode.TERMINATE_SESSION, duration)
+
+    async with aclosing(MAVFTP(server)) as ftp:  # ty:ignore[invalid-argument-type]
+        await ftp.put(b"data", "/foo.txt")
+
+        # The session must be closed by TERMINATE_SESSION, not RESET_SESSIONS
+        assert not server._sessions
+        assert MAVFTPOpCode.RESET_SESSIONS not in server.opcodes
+
+
+async def test_close_retries_reset_beyond_cleanup_timeout(
+    server: FakeMAVFTPServer, autojump_clock
+):
+    # Session left open on the drone by an earlier client
+    server._sessions[42] = "foo.txt"
+
+    duration = (_MAVFTP_CLEANUP_TIMEOUT + _MAVFTP_RESET_TIMEOUT) / 2
+    server.drop_request = drop_for(MAVFTPOpCode.RESET_SESSIONS, duration)
+
+    async with aclosing(MAVFTP(server)):  # ty:ignore[invalid-argument-type]
+        pass
+
+    assert not server._sessions
+
+
+async def test_put_cancelled_on_dead_link_finishes_quickly(
+    server: FakeMAVFTPServer, autojump_clock
+):
+    data = b"-- test script\n" * 100  # spans multiple chunks
+    cancelled_at: float | None = None
+
+    with CancelScope() as scope:
+
+        def cancel_on_first_write(request: MAVFTPMessage) -> None:
+            nonlocal cancelled_at
+            if request.opcode == MAVFTPOpCode.WRITE_FILE and cancelled_at is None:
+                cancelled_at = current_time()
+                scope.cancel()
+                # The link dies together with the cancellation
+                server.drop_request = lambda _: True
+
+        server.on_request = cancel_on_first_write
+
+        async with aclosing(MAVFTP(server)) as ftp:  # ty:ignore[invalid-argument-type]
+            await ftp.put(data, "/foo.txt")
+
+    assert scope.cancelled_caught
+    assert cancelled_at is not None
+
+    # One short attempt for TERMINATE_SESSION and one for RESET_SESSIONS
+    assert current_time() - cancelled_at <= 2 * _MAVFTP_CLEANUP_TIMEOUT + 0.1
 
 
 async def test_uav_upload_file(server: FakeMAVFTPServer):

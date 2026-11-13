@@ -23,6 +23,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   message whose last chunk is lost will suffer a delay of 1s until the server
   realizes that the last part was dropped.
 
+- Cancelled MAVFTP file uploads now close the file on the drone. Previously,
+  the file stayed open after a cancellation, and the next upload attempt
+  failed. The server waits at most 3 seconds per message for the drone to
+  acknowledge the cleanup after a cancellation.
+
 ## [2.61.0] - 2026-11-05
 
 ### Added

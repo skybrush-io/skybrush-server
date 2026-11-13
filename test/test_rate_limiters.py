@@ -2,7 +2,7 @@ from math import inf, nan
 
 from pytest import mark, raises
 from pytest_trio import trio_fixture
-from trio import sleep
+from trio import current_time, sleep
 
 from flockwave.server.message_hub import (
     BatchMessageRateLimiter,
@@ -173,6 +173,38 @@ class TestRateLimiters:
         )
 
         assert rate_limiters.set_delay("CONN-INF", 0.05) is False
+
+    async def test_set_delay_applies_to_running_limiter(self, nursery, autojump_clock):
+        dispatched = []
+
+        async def dispatcher(message):
+            dispatched.append((current_time(), message))
+
+        rate_limiters = RateLimiters(dispatcher=dispatcher)
+        rate_limiters.register(
+            "UAV-INF", UAVMessageRateLimiter(factory=create_message, delay=1)
+        )
+        nursery.start_soon(rate_limiters.run)
+        await sleep(0.1)  # let the nursery start the rate limiter
+        start = current_time()
+
+        # Sent immediately, then the limiter sleeps for the old delay of 1 s
+        rate_limiters.request_to_send("UAV-INF", (1,))
+        await sleep(0.5)
+
+        # The sleep in progress still uses the old delay. The new delay
+        # applies after the next dispatch.
+        rate_limiters.set_delay("UAV-INF", 0.1)
+        rate_limiters.request_to_send("UAV-INF", (2,))
+        await sleep(0.52)
+        rate_limiters.request_to_send("UAV-INF", (3,))
+        await sleep(1)
+
+        assert [(round(t - start, 3), msg) for t, msg in dispatched] == [
+            (0, (1,)),
+            (1, (2,)),
+            (1.1, (3,)),
+        ]
 
     @mark.parametrize("delay", [0, 0.0, 0.05, 1, 2.5])
     def test_set_delay_accepts_valid_delays(self, delay):

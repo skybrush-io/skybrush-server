@@ -1,3 +1,4 @@
+from copy import deepcopy
 from typing import Any
 
 from trio import sleep
@@ -13,11 +14,21 @@ class DummyLocalPositioningSystem(LocalPositioningSystem):
     This LPS instance is mostly for illustrative and testing purposes.
     """
 
+    _configuration: dict[str, Any]
+    """The current configuration of the LPS."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self._configuration = {}
+
     async def calibrate(self) -> None:
         await sleep(3)
 
-    def _configure_inner(self, cfg: dict[str, Any]) -> None:
-        pass
+    async def get_configuration(self) -> dict[str, Any]:
+        return deepcopy(self._configuration)
+
+    async def _configure_inner(self, cfg: dict[str, Any]) -> None:
+        self._configuration = deepcopy(cfg)
 
 
 class DummyLocalPositioningSystemType(

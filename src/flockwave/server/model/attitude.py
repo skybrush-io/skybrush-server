@@ -1,4 +1,10 @@
-__all__ = ("Attitude",)
+__all__ = ("Attitude", "Quaternion")
+
+
+Quaternion = tuple[float, float, float, float]
+"""Type alias for a rotation expressed as a unit quaternion in Hamilton
+conventions; i.e., the order of items is ``(w, x, y, z)``.
+"""
 
 
 class Attitude:

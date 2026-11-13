@@ -1,5 +1,6 @@
 """Model-related classes for the Skybrush server."""
 
+from .attitude import Quaternion
 from .battery import BatteryInfo
 from .builders import CommandExecutionStatusBuilder, FlockwaveMessageBuilder
 from .channel import CommunicationChannel
@@ -67,6 +68,7 @@ __all__ = (
     "ClientNotSubscribedError",
     "CommunicationChannel",
     "PassiveUAVDriver",
+    "Quaternion",
     "Weather",
     "Progress",
 )

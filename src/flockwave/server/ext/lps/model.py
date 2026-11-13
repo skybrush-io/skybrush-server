@@ -1,16 +1,28 @@
 """Types specific to the local positioning system support extension."""
 
 from abc import ABC, abstractmethod
-from collections.abc import Callable
-from dataclasses import dataclass
-from typing import Any, ClassVar, Generic, TypeVar, final
+from collections.abc import Callable, Mapping, Sequence
+from dataclasses import dataclass, field
+from typing import Any, ClassVar, Generic, Literal, cast, final
 
 from blinker import Signal
 from flockwave.gps.vectors import PositionXYZ
+from typing_extensions import TypeVar
 
-from flockwave.server.model import BatteryInfo, ErrorSet, ModelObject
+from flockwave.server.model import BatteryInfo, ErrorSet, ModelObject, Quaternion
 
-__all__ = ("LocalPositioningSystem", "LocalPositioningSystemType")
+__all__ = (
+    "Anchor",
+    "LocalPositioningSystem",
+    "LocalPositioningSystemFeature",
+    "LocalPositioningSystemType",
+)
+
+
+LocalPositioningSystemFeature = Literal["calibrate", "configure"]
+"""Type alias for the optional features that a local positioning system (LPS)
+may support.
+"""
 
 
 @dataclass
@@ -30,9 +42,29 @@ class Anchor:
     positioning system, if known. ``None`` if not known or not applicable.
     """
 
+    attitude: Quaternion | None = None
+    """The attitude of the anchor in the coordinate system of the local
+    positioning system, if known. ``None`` if not known or not applicable.
+
+    The attitude is the rotation from the coordinate system of the anchor to
+    the coordinate system of the local positioning system. In the coordinate
+    system of the anchor, the X axis points forward, out of the front face of
+    the anchor, and the Z axis points up. An anchor with an identity attitude
+    faces the positive X axis of the local positioning system.
+    """
+
     battery: BatteryInfo | None = None
     """The battery information of the anchor; specifies its voltage, percentage
     and whether it is charging or not. ``None`` if the anchor has no battery.
+    """
+
+    errors: ErrorSet = field(default_factory=ErrorSet)
+    """The error codes of the anchor.
+
+    The error codes are the same as the ones used for UAVs and other objects
+    in the Flockwave protocol. Their severity is determined by their value:
+    codes below 64 are informational, codes below 128 are warnings, codes
+    below 192 are errors, and the remaining codes are critical errors.
     """
 
     def activate(self) -> bool:
@@ -79,16 +111,29 @@ class Anchor:
             "id": self.id,
             "active": bool(self.active),
             "position": self.position,
+            "attitude": list(self.attitude) if self.attitude is not None else None,
             "battery": self.battery,
+            "errors": self.errors,
         }
 
 
-class LocalPositioningSystem(ModelObject):
+C = TypeVar("C", bound=Mapping[str, Any], default=dict[str, Any])
+"""Type variable representing the type of the configuration object of a local
+positioning system (LPS).
+"""
+
+
+class LocalPositioningSystem(ModelObject, Generic[C]):
     """Representation of a single local positioning system (LPS) on the server.
 
     A local positioning system consists of a _type_, an associated
     _configuration_, and a set of base stations that provide position information
     to objects using the services of the local positioning system.
+
+    The class is generic over the type of the configuration object. Subclasses
+    should specify a `TypedDict` that matches the JSON schema of the
+    configuration. Code that handles arbitrary local positioning systems should
+    use ``LocalPositioningSystem[Any]``.
     """
 
     _id: str = ""
@@ -127,6 +172,24 @@ class LocalPositioningSystem(ModelObject):
         return None
 
     @property
+    def features(self) -> Sequence[LocalPositioningSystemFeature]:
+        """The optional features supported by the local positioning system.
+
+        The default implementation reports ``calibrate`` if the subclass
+        overrides `calibrate()`, and ``configure`` if the subclass overrides
+        `_configure_inner()`. The ``configure`` feature means that clients may
+        both read and update the configuration. Override this property if the
+        set of supported features depends on the state of the instance.
+        """
+        cls = type(self)
+        features: list[LocalPositioningSystemFeature] = []
+        if cls.calibrate is not LocalPositioningSystem.calibrate:
+            features.append("calibrate")
+        if cls._configure_inner is not LocalPositioningSystem._configure_inner:
+            features.append("configure")
+        return features
+
+    @property
     def id(self) -> str:
         return self._id
 
@@ -139,6 +202,7 @@ class LocalPositioningSystem(ModelObject):
             "type": self.type,
             "errors": self.errors,
             "anchors": self.anchors,
+            "features": self.features,
         }
 
     async def calibrate(self) -> None:
@@ -152,7 +216,7 @@ class LocalPositioningSystem(ModelObject):
         raise NotImplementedError
 
     @final
-    def configure(self, cfg: dict[str, Any]) -> None:
+    async def configure(self, cfg: Mapping[str, Any]) -> None:
         """Configures the local positioning system with the given parameters.
 
         This method is final; subclasses should override the `_configure_inner()`
@@ -169,7 +233,9 @@ class LocalPositioningSystem(ModelObject):
         Raises:
             NotImplementedError: if the local positioning system cannot be
                 configured
-            RuntimeError: when an error happens during configuration.
+            RuntimeError: if the configuration does not match the schema of the
+                type of the local positioning system, or when an error happens
+                during configuration
         """
         import fastjsonschema
 
@@ -184,9 +250,40 @@ class LocalPositioningSystem(ModelObject):
                 f"Invalid configuration for LPS {self.id!r}: {str(e)}"
             ) from e
 
-        return self._configure_inner(cfg)
+        await self._configure_inner(cast(C, cfg))
 
-    def _configure_inner(self, cfg: dict[str, Any]) -> None:
+    async def _configure_inner(self, cfg: C) -> None:
+        """Applies the given, already validated configuration parameters to
+        the local positioning system.
+
+        Parameters:
+            cfg: a dictionary containing the configuration parameters for the
+                local positioning system
+
+        Raises:
+            NotImplementedError: if the local positioning system cannot be
+                configured
+            RuntimeError: when an error happens during configuration.
+        """
+        raise NotImplementedError
+
+    async def get_configuration(self) -> C:
+        """Returns the current configuration of the local positioning system.
+
+        The returned configuration must match the JSON schema returned by the
+        `get_configuration_schema()` method of the type of the local positioning
+        system. Subclasses that override `_configure_inner()` should override
+        this method as well.
+
+        Returns:
+            the current configuration parameters of the local positioning system
+
+        Raises:
+            NotImplementedError: if the configuration of the local positioning
+                system cannot be retrieved
+            RuntimeError: when an error happens while retrieving the
+                configuration
+        """
         raise NotImplementedError
 
     def notify_updated(self) -> None:
@@ -196,7 +293,7 @@ class LocalPositioningSystem(ModelObject):
         self.on_updated.send(self)
 
 
-T = TypeVar("T", bound=LocalPositioningSystem)
+T = TypeVar("T", bound=LocalPositioningSystem[Any])
 """Type variable representing a subclass of LocalPositioningSystem_ that a given
 LocalPositioningSystemType_ creates when asked to create a new instance.
 """
@@ -245,10 +342,9 @@ class LocalPositioningSystemType(Generic[T], ABC):
         """Returns the JSON schema associated with general configuration
         parameters of instances of this LPS type.
 
-        If you do not intend to use a schema, simply return an empty dictionary.
-        Note that an empty dictionary is not a valid JSON schema; if you want to
-        declare that you need no parameters, return ``{ "type": "object" }``
-        instead.
+        If you do not intend to validate the configuration, return an empty
+        dictionary. An empty dictionary is a valid JSON schema that accepts any
+        configuration.
 
         Returns:
             JSON schema of general LPS configuration parameters

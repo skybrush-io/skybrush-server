@@ -6,6 +6,7 @@ of local positioning systems need to register these in the LPS registry.
 from collections.abc import Generator
 from contextlib import contextmanager
 from functools import partial
+from typing import Any
 
 from flockwave.server.model import default_id_generator
 from flockwave.server.registries.base import RegistryBase
@@ -61,7 +62,7 @@ class LocalPositioningSystemTypeRegistry(RegistryBase[LocalPositioningSystemType
             disposer()
 
 
-class LocalPositioningSystemRegistry(ObjectRegistryProxy[LocalPositioningSystem]):
+class LocalPositioningSystemRegistry(ObjectRegistryProxy[LocalPositioningSystem[Any]]):
     """Registry that maps local positioning system (LPS) identifiers to the
     model objects of the local positioning systems themselves.
 
@@ -91,7 +92,7 @@ class LocalPositioningSystemRegistry(ObjectRegistryProxy[LocalPositioningSystem]
         super().__init__()
         self._lps_type_registry = lps_type_registry
 
-    def create(self, type: str, id: str | None = None) -> LocalPositioningSystem:
+    def create(self, type: str, id: str | None = None) -> LocalPositioningSystem[Any]:
         """Creates a new local positioning system (LPS) of the given type, adds
         it to the registry and returns the corresponding state object.
 
@@ -127,7 +128,7 @@ class LocalPositioningSystemRegistry(ObjectRegistryProxy[LocalPositioningSystem]
             if lps_id in self._object_registry:
                 raise ValueError(f"object ID already taken: {id!r}")
 
-        lps: LocalPositioningSystem = lps_type.create()
+        lps: LocalPositioningSystem[Any] = lps_type.create()
         lps._id = lps_id
         lps._schema_validator_getter = lps_type.get_configuration_schema_validator
         lps.type = type
@@ -142,7 +143,7 @@ class LocalPositioningSystemRegistry(ObjectRegistryProxy[LocalPositioningSystem]
     @contextmanager
     def create_and_use(
         self, type: str, id: str | None = None
-    ) -> Generator[LocalPositioningSystem, None, None]:
+    ) -> Generator[LocalPositioningSystem[Any], None, None]:
         """Context manager that creates a new local positioning system (LPS)
         instance of the given type, adds it to the registry and yields the
         LPS instance. Automatically removes the LPS instance when the context

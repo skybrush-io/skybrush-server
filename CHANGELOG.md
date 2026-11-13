@@ -15,7 +15,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   types keep the default delay of 0.2 seconds. Invalid entries are ignored
   with a warning.
 
+- `X-LPS-INF` messages now contain a `features` array that lists the optional
+  operations that the local positioning system supports (`calibrate`,
+  `configure`).
+
+- Anchors of local positioning systems now have an optional `attitude`, a
+  quaternion in `[w, x, y, z]` order, and a list of error codes in `errors`.
+
+- `X-LPS-CFG` now returns the current configuration of local positioning
+  systems. Extensions that implement a local positioning system should
+  override `get_configuration()` along with `_configure_inner()`.
+
+### Changed
+
+- The message that updates the configuration of local positioning systems is
+  now called `X-LPS-SETCFG` instead of `X-LPS-CFG`, in line with `EXT-SETCFG`
+  and `SHOW-SETCFG`.
+
+- Local positioning systems now always apply their configuration
+  asynchronously. `X-LPS-SETCFG` responds with a receipt for each local
+  positioning system, and the outcome is delivered later. This includes the
+  rejection of configurations that do not match the schema of the local
+  positioning system. Extensions that implement a local positioning system
+  must turn their `_configure_inner()` method into an async method.
+
 ### Fixed
+
+- The `lps` extension no longer leaks its update handlers for local
+  positioning systems that are still registered when the extension is
+  unloaded.
 
 - MAVLink STATUSTEXT messages are now reassembled properly if they arrive in
   multiple chunks. When chunks are dropped due to a flaky radio link, the

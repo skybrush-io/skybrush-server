@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Awaitable
 from contextlib import ExitStack
 from operator import attrgetter, methodcaller
 from typing import Any
@@ -64,7 +65,7 @@ class LocalPositioningSystemsExtension(Extension):
 
     def find_lps_by_id(
         self, id: str, response: FlockwaveResponse | None = None
-    ) -> LocalPositioningSystem | None:
+    ) -> LocalPositioningSystem[Any] | None:
         """Finds the local positioning system (LPS) with the given ID in the
         LPS registry or registers a failure in the given response object if
         there is no LPS instance the given ID.
@@ -130,14 +131,24 @@ class LocalPositioningSystemsExtension(Extension):
             create_mapper(
                 "X-LPS-CFG",
                 self._lps_registry,
-                context_getter=self._get_configuration_from_LPS_CFG_message,
-                getter=self._update_configuration_of_lps,
+                key="configuration",
+                getter=methodcaller("get_configuration"),
                 description="local positioning system",
                 cmd_manager=self.app.command_execution_manager,
             )
         )
         handle_LPS_INF = handle_many_with(create_LPS_INF)
         handle_LPS_LIST = create_object_listing_request_handler(self._lps_registry)
+        handle_LPS_SETCFG = handle_many_with(
+            create_mapper(
+                "X-LPS-SETCFG",
+                self._lps_registry,
+                context_getter=self._get_configuration_from_LPS_SETCFG_message,
+                getter=self._update_configuration_of_lps,
+                description="local positioning system",
+                cmd_manager=self.app.command_execution_manager,
+            )
+        )
         handle_LPS_TYPE_INF = handle_many_with(
             create_mapper(
                 "X-LPS-TYPE-INF",
@@ -163,10 +174,12 @@ class LocalPositioningSystemsExtension(Extension):
 
         with ExitStack() as stack:
             self._lps_to_update = AsyncBundler()
+            stack.callback(setattr, self, "_lps_to_update", None)
 
-            stack.enter_context(
-                self._lps_registry.use_object_registry(self.app.object_registry)
-            )
+            # Signal handlers are connected before the object registry is
+            # attached and disconnected after it is detached. Detaching the
+            # object registry removes all remaining LPS instances, and
+            # _on_lps_removed() must see these removals.
             stack.enter_context(
                 self._lps_registry.added.connected_to(
                     self._on_lps_added, sender=self._lps_registry
@@ -177,6 +190,9 @@ class LocalPositioningSystemsExtension(Extension):
                     self._on_lps_removed, sender=self._lps_registry
                 )
             )
+            stack.enter_context(
+                self._lps_registry.use_object_registry(self.app.object_registry)
+            )
             stack.enter_context(registered("lps", LocalPositioningSystem))
 
             stack.enter_context(
@@ -186,6 +202,7 @@ class LocalPositioningSystemsExtension(Extension):
                         "X-LPS-CFG": handle_LPS_CFG,
                         "X-LPS-INF": handle_LPS_INF,
                         "X-LPS-LIST": handle_LPS_LIST,
+                        "X-LPS-SETCFG": handle_LPS_SETCFG,
                         "X-LPS-TYPE-INF": handle_LPS_TYPE_INF,
                         "X-LPS-TYPE-LIST": handle_LPS_TYPE_LIST,
                         "X-LPS-TYPE-SCHEMA": handle_LPS_TYPE_SCHEMA,
@@ -199,50 +216,54 @@ class LocalPositioningSystemsExtension(Extension):
                     await self.app.message_hub.broadcast_message(message)
 
     @staticmethod
-    def _get_configuration_from_LPS_CFG_message(
+    def _get_configuration_from_LPS_SETCFG_message(
         message: FlockwaveMessage | None,
     ) -> dict[str, Any]:
-        """Extracts the configuration parameters from the LPS-CFG message.
+        """Extracts the configuration parameters from the LPS-SETCFG message.
 
         Parameters:
-            message: the LPS-CFG message to extract the configuration from
+            message: the LPS-SETCFG message to extract the configuration from
 
         Returns:
             the configuration parameters extracted from the message
         """
-        assert message is not None, "LPS-CFG message cannot be None"
+        assert message is not None, "LPS-SETCFG message cannot be None"
 
         obj = message.body.get("configuration")
         if obj is None:
             raise ValueError(
-                "LPS-CFG message does not contain configuration parameters"
+                "LPS-SETCFG message does not contain configuration parameters"
             )
         if not isinstance(obj, dict):
             raise ValueError(
-                "LPS-CFG message does not contain a dictionary of configuration parameters"
+                "LPS-SETCFG message does not contain a dictionary of configuration parameters"
             )
         return obj
 
     @staticmethod
     def _update_configuration_of_lps(
-        lps: LocalPositioningSystem, cfg: dict[str, Any]
-    ) -> None:
+        lps: LocalPositioningSystem[Any], cfg: dict[str, Any]
+    ) -> Awaitable[None]:
         """Updates the configuration of the given local positioning system (LPS)
-        with the given configuration object extracted from an LPS-CFG message.
+        with the given configuration object extracted from an LPS-SETCFG message.
 
         Parameters:
             lps: the local positioning system to update
+            cfg: the configuration parameters extracted from the message
+
+        Returns:
+            an awaitable that applies the configuration when awaited
         """
         return lps.configure(cfg)
 
-    def _on_lps_added(self, sender, object: LocalPositioningSystem):
+    def _on_lps_added(self, sender, object: LocalPositioningSystem[Any]):
         object.on_updated.connect(self._on_lps_updated, sender=object)
         object.notify_updated()
 
-    def _on_lps_removed(self, sender, object: LocalPositioningSystem):
+    def _on_lps_removed(self, sender, object: LocalPositioningSystem[Any]):
         object.on_updated.disconnect(self._on_lps_updated, sender=object)
 
-    def _on_lps_updated(self, sender: LocalPositioningSystem):
+    def _on_lps_updated(self, sender: LocalPositioningSystem[Any]):
         if self._lps_to_update:
             self._lps_to_update.add(sender.id)
 

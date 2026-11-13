@@ -1346,7 +1346,7 @@ class SkybrushServer(DaemonApp):
         # configuration is not loaded yet at that point), and their run
         # loops read the delay on every iteration, so setting it here
         # takes effect from the next dispatch.
-        rate_limits = cfg.get("rate_limits", {})
+        rate_limits = config.get("MESSAGE_RATE_LIMITS", {})
         if isinstance(rate_limits, dict):
             for name, delay in rate_limits.items():
                 if not _is_valid_rate_limit_delay(delay):
@@ -1364,8 +1364,8 @@ class SkybrushServer(DaemonApp):
                     )
         else:
             self.log.warning(
-                "Ignoring COMMAND_EXECUTION_MANAGER.rate_limits: it must be "
-                "an object mapping message type names to delays in seconds"
+                "Ignoring MESSAGE_RATE_LIMITS: it must be an object mapping "
+                "message type names to delays in seconds"
             )
 
         # Override the base port if needed
@@ -1386,7 +1386,7 @@ class SkybrushServer(DaemonApp):
 
     def _setup_app_configurator(self, configurator: AppConfigurator) -> None:
         configurator.key_filter = str.isupper
-        configurator.merge_keys = ["EXTENSIONS"]
+        configurator.merge_keys = ["EXTENSIONS", "MESSAGE_RATE_LIMITS"]
         configurator.safe = is_packaged()
 
 

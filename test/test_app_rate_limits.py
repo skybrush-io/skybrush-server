@@ -77,6 +77,8 @@ def test_ignores_invalid_delay_with_warning(server, caplog):
 def test_ignores_types_without_configurable_delay_with_warning(server, caplog):
     _process(server, {"MESSAGE_RATE_LIMITS": {"CONN-INF": 0.1, "NO-SUCH-TYPE": 0.1}})
 
+    assert _delay_of(server, "UAV-INF") == UAVMessageRateLimiter.delay
+    assert _delay_of(server, "SYS-MSG") == BatchMessageRateLimiter.delay
     assert "Ignoring rate limit for 'CONN-INF'" in caplog.text
     assert "Ignoring rate limit for 'NO-SUCH-TYPE'" in caplog.text
 

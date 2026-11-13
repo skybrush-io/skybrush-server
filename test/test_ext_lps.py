@@ -15,7 +15,11 @@ from trio.testing import wait_all_tasks_blocked
 
 from flockwave.server.commands import CommandExecutionManager
 from flockwave.server.ext.lps.extension import LocalPositioningSystemsExtension
-from flockwave.server.ext.lps.model import Anchor, LocalPositioningSystem
+from flockwave.server.ext.lps.model import (
+    Anchor,
+    LocalPositioningSystem,
+    LocalPositioningSystemType,
+)
 from flockwave.server.ext.lps.registry import (
     LocalPositioningSystemRegistry,
     LocalPositioningSystemTypeRegistry,
@@ -316,3 +320,94 @@ def test_anchor_error_codes_are_encoded_as_integers():
     anchor = Anchor(id="a1")
     anchor.errors.ensure(FlockwaveErrorCode.UNSPECIFIED_WARNING)
     assert b'"errors":[127]' in create_json_encoder()(anchor)
+
+
+async def test_lps_calibration_can_be_suspended_and_resumed(
+    ext_with_cmd_manager: LocalPositioningSystemsExtension,
+    hub: RecordingMessageHub,
+    client: Client,
+    cmd_manager: CommandExecutionManager,
+    finished_commands: dict[str, CommandExecutionStatus],
+    autojump_clock,
+):
+    ext = ext_with_cmd_manager
+    suspended: list[str] = []
+
+    def on_suspended(sender, status: CommandExecutionStatus) -> None:
+        suspended.append(status.id)
+
+    with (
+        cmd_manager.suspended.connected_to(on_suspended, sender=cmd_manager),
+        ext._lps_registry.create_and_use("dummy", id="lps1"),
+    ):
+        response = await send_request(
+            hub,
+            client,
+            {
+                "type": "X-LPS-CALIB",
+                "ids": ["lps1"],
+                "parameters": {"sample_duration": 1},
+            },
+        )
+        receipt = response.body["receipt"]["lps1"]
+
+        for step in range(3):
+            assert suspended == [receipt] * (step + 1)
+            assert receipt not in finished_commands
+            cmd_manager.resume(receipt, True)
+            await sleep(5)
+
+        status = finished_commands[receipt]
+        assert status.error is None
+        assert status.progress is not None and status.progress.percentage == 100
+
+
+async def test_lps_calibration_parameters_must_be_an_object(
+    ext_with_cmd_manager: LocalPositioningSystemsExtension,
+    hub: RecordingMessageHub,
+    client: Client,
+    autojump_clock,
+):
+    ext = ext_with_cmd_manager
+    with ext._lps_registry.create_and_use("dummy", id="lps1"):
+        response = await send_request(
+            hub,
+            client,
+            {"type": "X-LPS-CALIB", "ids": ["lps1"], "parameters": [1, 2]},
+        )
+        assert "dictionary of calibration parameters" in response.body["error"]["lps1"]
+        assert "lps1" not in response.body.get("receipt", {})
+
+
+async def test_lps_without_calibration_support_fails_immediately(
+    ext_with_cmd_manager: LocalPositioningSystemsExtension,
+    hub: RecordingMessageHub,
+    client: Client,
+    autojump_clock,
+):
+    class BareLocalPositioningSystem(LocalPositioningSystem):
+        pass
+
+    class BareLocalPositioningSystemType(
+        LocalPositioningSystemType[BareLocalPositioningSystem]
+    ):
+        description = name = "Bare LPS"
+
+        def create(self) -> BareLocalPositioningSystem:
+            return BareLocalPositioningSystem()
+
+        def get_configuration_schema(self) -> dict[str, Any]:
+            return {}
+
+    ext = ext_with_cmd_manager
+    with (
+        ext._lps_type_registry.use("bare", BareLocalPositioningSystemType()),
+        ext._lps_registry.create_and_use("bare", id="lps1"),
+    ):
+        response = await send_request(
+            hub, client, {"type": "X-LPS-CALIB", "ids": ["lps1"]}
+        )
+        assert response.body["error"]["lps1"] == (
+            "This local positioning system cannot be calibrated"
+        )
+        assert "lps1" not in response.body.get("receipt", {})

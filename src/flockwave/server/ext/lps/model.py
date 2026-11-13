@@ -10,6 +10,7 @@ from flockwave.gps.vectors import PositionXYZ
 from typing_extensions import TypeVar
 
 from flockwave.server.model import BatteryInfo, ErrorSet, ModelObject, Quaternion
+from flockwave.server.model.commands import ProgressEventsWithSuspension
 
 __all__ = (
     "Anchor",
@@ -205,15 +206,34 @@ class LocalPositioningSystem(ModelObject, Generic[C]):
             "features": self.features,
         }
 
-    async def calibrate(self) -> None:
+    def calibrate(
+        self, params: Mapping[str, Any]
+    ) -> ProgressEventsWithSuspension[Any, Any]:
         """Performs a calibration of the local positioning system.
+
+        Subclasses that support calibration must implement this method as an
+        async generator. The generator may yield `Progress` objects to report
+        progress, and `Suspend` objects to wait for the user, e.g., to move a
+        drone to the next calibration point. The value that the client sends
+        when it resumes the calibration is returned from the ``yield``
+        expression. Any other object yielded from the generator is considered
+        as the result of the calibration.
+
+        The server cancels the calibration if it does not yield anything for
+        30 seconds while not suspended. Long-running calibrations must yield
+        progress reports regularly.
+
+        Parameters:
+            params: the calibration parameters sent by the client. The
+                implementation is responsible for validating them.
 
         Raises:
             NotImplementedError: if the local positioning system cannot be
                 calibrated
-            RuntimeError: when an error happens during calibration.
+            RuntimeError: when the calibration parameters are invalid or when
+                an error happens during calibration
         """
-        raise NotImplementedError
+        raise NotImplementedError("This local positioning system cannot be calibrated")
 
     @final
     async def configure(self, cfg: Mapping[str, Any]) -> None:
@@ -265,7 +285,7 @@ class LocalPositioningSystem(ModelObject, Generic[C]):
                 configured
             RuntimeError: when an error happens during configuration.
         """
-        raise NotImplementedError
+        raise NotImplementedError("This local positioning system cannot be configured")
 
     async def get_configuration(self) -> C:
         """Returns the current configuration of the local positioning system.
@@ -284,7 +304,9 @@ class LocalPositioningSystem(ModelObject, Generic[C]):
             RuntimeError: when an error happens while retrieving the
                 configuration
         """
-        raise NotImplementedError
+        raise NotImplementedError(
+            "The configuration of this local positioning system cannot be retrieved"
+        )
 
     def notify_updated(self) -> None:
         """Notifies all subscribers to the `on_updated()` event that the state

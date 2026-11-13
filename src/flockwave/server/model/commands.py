@@ -199,9 +199,12 @@ ProgressEvents = AsyncGenerator[Progress[R] | R, None]
 generates progress and result events.
 """
 
-ProgressEventsWithSuspension = AsyncGenerator[R | Progress[R] | Suspend[S], None]
+ProgressEventsWithSuspension = AsyncGenerator[R | Progress[R] | Suspend[S], Any]
 """Type alias for events that can be yielded from an async generator that
 generates progress, suspension and result events.
+
+The value that the client sends when it resumes a suspended operation is
+returned from the ``yield`` expression that yielded the `Suspend` object.
 """
 
 AsyncCommandEvents = ProgressEvents

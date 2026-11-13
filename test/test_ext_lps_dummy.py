@@ -1,20 +1,25 @@
 """Tests for the `lps_dummy` extension."""
 
+from collections.abc import Mapping
+from contextlib import aclosing
 from math import isclose, sqrt
 from types import SimpleNamespace
+from typing import Any
 from unittest.mock import MagicMock
 
-from pytest import raises
-from trio import open_nursery, sleep
+from pytest import mark, raises
+from trio import current_time, open_nursery, sleep
 from trio.testing import wait_all_tasks_blocked
 
 from flockwave.server.ext import lps_dummy
 from flockwave.server.ext.lps.extension import LocalPositioningSystemsExtension
 from flockwave.server.ext.lps_dummy import (
+    CALIBRATION_STEPS,
     DummyLocalPositioningSystem,
     DummyLocalPositioningSystemType,
 )
 from flockwave.server.model import Quaternion
+from flockwave.server.model.commands import Progress, Suspend
 from flockwave.server.registries import ObjectRegistry
 
 from .recording_message_hub import RecordingMessageHub
@@ -166,3 +171,78 @@ async def test_extension_registers_dummy_lps_while_loaded(hub: RecordingMessageH
         assert list(lps_ext._lps_type_registry.ids) == []
 
         nursery.cancel_scope.cancel()
+
+
+async def run_calibration(
+    lps: DummyLocalPositioningSystem, params: Mapping[str, Any], answers: list[Any]
+) -> list[tuple[float, Any]]:
+    """Runs the calibration of the given LPS in the same way as the command
+    execution manager does, answering each suspension with the next item
+    from the given list.
+
+    Returns:
+        the items yielded by the calibration and the times they were yielded at
+    """
+    events: list[tuple[float, Any]] = []
+    remaining_answers = iter(answers)
+    value = None
+    async with aclosing(lps.calibrate(params)) as gen:
+        while True:
+            try:
+                event = await gen.asend(value)
+            except StopAsyncIteration:
+                break
+            events.append((current_time(), event))
+            value = next(remaining_answers) if isinstance(event, Suspend) else None
+    return events
+
+
+async def test_dummy_lps_calibration_walks_through_all_steps(autojump_clock):
+    lps = create_dummy_lps()
+    start = current_time()
+    events = await run_calibration(
+        lps, {"sample_duration": 2.5}, [True] * len(CALIBRATION_STEPS)
+    )
+
+    suspensions = [event for _, event in events if isinstance(event, Suspend)]
+    assert [s.message for s in suspensions] == list(CALIBRATION_STEPS)
+    assert [s.object for s in suspensions] == [
+        {"step": 1, "steps": 3},
+        {"step": 2, "steps": 3},
+        {"step": 3, "steps": 3},
+    ]
+
+    progress = [event for _, event in events if isinstance(event, Progress)]
+    percentages = [p.percentage for p in progress]
+    assert percentages == sorted(percentages)
+    assert percentages[-1] == 100
+    assert progress[-1].message == "Calibration finished"
+
+    assert isclose(current_time() - start, 2.5 * len(CALIBRATION_STEPS))
+
+
+async def test_dummy_lps_calibration_can_be_aborted(autojump_clock):
+    lps = create_dummy_lps()
+    with raises(RuntimeError, match="aborted"):
+        await run_calibration(lps, {"sample_duration": 1}, [True, False])
+
+
+async def test_dummy_lps_calibration_reports_progress_regularly(autojump_clock):
+    lps = create_dummy_lps()
+    events = await run_calibration(
+        lps, {"sample_duration": 100}, [True] * len(CALIBRATION_STEPS)
+    )
+    times = [time for time, _ in events]
+    assert max(b - a for a, b in zip(times, times[1:])) <= 1
+
+
+@mark.parametrize(
+    "params",
+    [{"sample_duration": 0}, {"sample_duration": True}, {"foo": 1}],
+)
+async def test_dummy_lps_calibration_rejects_invalid_parameters(
+    params: dict[str, Any],
+):
+    lps = create_dummy_lps()
+    with raises(RuntimeError):
+        await run_calibration(lps, params, [])

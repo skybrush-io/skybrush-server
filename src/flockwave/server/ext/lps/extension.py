@@ -15,6 +15,7 @@ from flockwave.server.message_handlers import (
     create_multi_object_message_handler,
     create_object_listing_request_handler,
 )
+from flockwave.server.model.commands import ProgressEventsWithSuspension
 from flockwave.server.model.messages import (
     FlockwaveMessage,
     FlockwaveNotification,
@@ -122,7 +123,8 @@ class LocalPositioningSystemsExtension(Extension):
             create_mapper(
                 "X-LPS-CALIB",
                 self._lps_registry,
-                getter=methodcaller("calibrate"),
+                context_getter=self._get_parameters_from_LPS_CALIB_message,
+                getter=self._calibrate_lps,
                 description="local positioning system",
                 cmd_manager=self.app.command_execution_manager,
             )
@@ -214,6 +216,47 @@ class LocalPositioningSystemsExtension(Extension):
                 message = create_LPS_INF(self.app.message_hub, bundle, None, None)
                 if isinstance(message, FlockwaveNotification):
                     await self.app.message_hub.broadcast_message(message)
+
+    @staticmethod
+    def _calibrate_lps(
+        lps: LocalPositioningSystem[Any], params: dict[str, Any]
+    ) -> ProgressEventsWithSuspension[Any, Any]:
+        """Starts the calibration of the given local positioning system (LPS)
+        with the given parameters extracted from an LPS-CALIB message.
+
+        Parameters:
+            lps: the local positioning system to calibrate
+            params: the calibration parameters extracted from the message
+
+        Returns:
+            an async generator that performs the calibration when iterated over
+        """
+        return lps.calibrate(params)
+
+    @staticmethod
+    def _get_parameters_from_LPS_CALIB_message(
+        message: FlockwaveMessage | None,
+    ) -> dict[str, Any]:
+        """Extracts the calibration parameters from the LPS-CALIB message.
+
+        Parameters are optional; an LPS-CALIB message without parameters
+        yields an empty dictionary.
+
+        Parameters:
+            message: the LPS-CALIB message to extract the parameters from
+
+        Returns:
+            the calibration parameters extracted from the message
+        """
+        assert message is not None, "LPS-CALIB message cannot be None"
+
+        obj = message.body.get("parameters", {})
+        if not isinstance(obj, dict):
+            raise ValueError(
+                "LPS-CALIB message does not contain a dictionary of calibration parameters"
+            )
+
+        return obj
 
     @staticmethod
     def _get_configuration_from_LPS_SETCFG_message(

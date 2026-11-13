@@ -44,6 +44,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   positioning system. Extensions that implement a local positioning system
   must turn their `_configure_inner()` method into an async method.
 
+- `X-LPS-CALIB` now accepts calibration parameters in an optional
+  `parameters` object. Calibrations may report progress and may be suspended
+  to wait for the user, e.g., to move a drone to the next calibration point.
+  Clients resume suspended calibrations with `ASYNC-RESUME`. Extensions that
+  implement a local positioning system must turn their `calibrate()` method
+  into an async generator that accepts the calibration parameters.
+
 ### Fixed
 
 - The `lps` extension no longer leaks its update handlers for local

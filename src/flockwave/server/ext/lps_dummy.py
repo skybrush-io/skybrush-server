@@ -8,7 +8,7 @@ the extension is unloaded.
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from math import atan2, cos, hypot, sin
 from typing import TYPE_CHECKING, Any, TypedDict
 
@@ -23,6 +23,11 @@ from flockwave.server.ext.lps.model import (
     LocalPositioningSystemType,
 )
 from flockwave.server.model import Quaternion
+from flockwave.server.model.commands import (
+    Progress,
+    ProgressEventsWithSuspension,
+    Suspend,
+)
 
 if TYPE_CHECKING:
     from flockwave.server.app import SkybrushServer
@@ -100,6 +105,37 @@ system, in the order they are applied when faults are simulated.
 """
 
 
+CALIBRATION_STEPS: tuple[str, ...] = (
+    "Place the drone at the origin",
+    "Place the drone on the positive X axis",
+    "Place the drone in the XY plane, on the positive Y side",
+)
+"""Instructions for the user in each step of the simulated calibration."""
+
+DEFAULT_SAMPLE_DURATION = 3.0
+"""Default number of seconds to spend with collecting samples in each step of
+the simulated calibration.
+"""
+
+
+def _get_sample_duration(params: Mapping[str, Any]) -> float:
+    """Validates the calibration parameters of the dummy local positioning
+    system and returns the sample duration.
+
+    Raises:
+        RuntimeError: if the calibration parameters are invalid
+    """
+    unknown = sorted(set(params) - {"sample_duration"})
+    if unknown:
+        raise RuntimeError(f"Unknown calibration parameters: {', '.join(unknown)}")
+
+    value = params.get("sample_duration", DEFAULT_SAMPLE_DURATION)
+    if isinstance(value, bool) or not isinstance(value, (int, float)) or value <= 0:
+        raise RuntimeError("sample_duration must be a positive number")
+
+    return float(value)
+
+
 def _quaternion_facing(
     source: tuple[float, float, float], target: tuple[float, float, float]
 ) -> Quaternion:
@@ -145,8 +181,41 @@ class DummyLocalPositioningSystem(
         self.anchors = [Anchor(id=str(index + 1)) for index in range(4)]
         self._update_anchor_geometry()
 
-    async def calibrate(self) -> None:
-        await sleep(3)
+    async def calibrate(
+        self, params: Mapping[str, Any]
+    ) -> ProgressEventsWithSuspension[None, Any]:
+        """Simulates a calibration that consists of multiple steps, similarly
+        to the calibration of Lighthouse base stations.
+
+        Each step suspends the calibration with an instruction for the user.
+        Resuming the calibration with a truthy value collects samples for the
+        current step. Resuming it with a falsy value aborts the calibration.
+
+        Parameters:
+            params: the calibration parameters. ``sample_duration`` is the
+                number of seconds to collect samples for in each step;
+                defaults to 3 seconds.
+        """
+        sample_duration = _get_sample_duration(params)
+        num_steps = len(CALIBRATION_STEPS)
+
+        for index, instruction in enumerate(CALIBRATION_STEPS):
+            proceed = yield Suspend(
+                message=instruction, object={"step": index + 1, "steps": num_steps}
+            )
+            if not proceed:
+                raise RuntimeError("Calibration aborted by the user")
+
+            # Report progress every second to keep the calibration alive
+            elapsed = 0.0
+            while elapsed < sample_duration:
+                percentage = int(100 * (index + elapsed / sample_duration) / num_steps)
+                yield Progress(percentage=percentage, message="Collecting samples")
+                delay = min(1.0, sample_duration - elapsed)
+                await sleep(delay)
+                elapsed += delay
+
+        yield Progress(percentage=100, message="Calibration finished")
 
     async def get_configuration(self) -> DummyLocalPositioningSystemConfiguration:
         return self._configuration.copy()

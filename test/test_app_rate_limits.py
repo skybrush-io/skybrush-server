@@ -13,13 +13,7 @@ from flockwave.server.message_hub import (
     UAVMessageRateLimiter,
 )
 
-
-async def _noop_dispatcher(message):
-    """Dispatcher that discards every message."""
-
-
-def _create_message(items):
-    return tuple(items)
+from .rate_limiter_helpers import create_message, noop_dispatcher
 
 
 @fixture
@@ -29,12 +23,12 @@ def server():
     Building a real ``SkybrushServer`` would create every component of the
     server, while the method under test needs only these three.
     """
-    rate_limiters = RateLimiters(dispatcher=_noop_dispatcher)
+    rate_limiters = RateLimiters(dispatcher=noop_dispatcher)
     rate_limiters.register(
-        "CONN-INF", ConnectionStatusMessageRateLimiter(factory=_create_message)
+        "CONN-INF", ConnectionStatusMessageRateLimiter(factory=create_message)
     )
-    rate_limiters.register("SYS-MSG", BatchMessageRateLimiter(factory=_create_message))
-    rate_limiters.register("UAV-INF", UAVMessageRateLimiter(factory=_create_message))
+    rate_limiters.register("SYS-MSG", BatchMessageRateLimiter(factory=create_message))
+    rate_limiters.register("UAV-INF", UAVMessageRateLimiter(factory=create_message))
 
     return SimpleNamespace(
         command_execution_manager=SimpleNamespace(timeout=None),

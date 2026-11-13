@@ -11,6 +11,8 @@ from flockwave.server.message_hub import (
     UAVMessageRateLimiter,
 )
 
+from .rate_limiter_helpers import create_message, noop_dispatcher
+
 
 @trio_fixture
 def create_rate_limiter(nursery):
@@ -25,14 +27,6 @@ def create_rate_limiter(nursery):
         return rate_limiter, result
 
     yield rate_limiter_factory
-
-
-def create_message(uav_ids):
-    return tuple(uav_ids)
-
-
-async def _noop_dispatcher(message):
-    """Dispatcher that discards every message."""
 
 
 class TestBatchMessageRateLimiter:
@@ -153,7 +147,7 @@ class TestUAVMessageRateLimiter:
 
 class TestRateLimiters:
     def test_set_delay_changes_delay_of_registered_limiter(self):
-        rate_limiters = RateLimiters(dispatcher=_noop_dispatcher)
+        rate_limiters = RateLimiters(dispatcher=noop_dispatcher)
         limiter = UAVMessageRateLimiter(factory=create_message)
         rate_limiters.register("UAV-INF", limiter)
 
@@ -161,13 +155,13 @@ class TestRateLimiters:
         assert limiter.delay == 0.05
 
     def test_set_delay_returns_false_for_unknown_message_type(self):
-        rate_limiters = RateLimiters(dispatcher=_noop_dispatcher)
+        rate_limiters = RateLimiters(dispatcher=noop_dispatcher)
         assert rate_limiters.set_delay("NO-SUCH-TYPE", 0.05) is False
 
     def test_set_delay_returns_false_for_limiter_without_delay(self):
         # The CONN-INF limiter has no configurable delay; it waits a
         # fixed time for transitioning connection states to settle.
-        rate_limiters = RateLimiters(dispatcher=_noop_dispatcher)
+        rate_limiters = RateLimiters(dispatcher=noop_dispatcher)
         rate_limiters.register(
             "CONN-INF", ConnectionStatusMessageRateLimiter(factory=create_message)
         )
@@ -208,7 +202,7 @@ class TestRateLimiters:
 
     @mark.parametrize("delay", [0, 0.0, 0.05, 1, 2.5])
     def test_set_delay_accepts_valid_delays(self, delay):
-        rate_limiters = RateLimiters(dispatcher=_noop_dispatcher)
+        rate_limiters = RateLimiters(dispatcher=noop_dispatcher)
         limiter = UAVMessageRateLimiter(factory=create_message)
         rate_limiters.register("UAV-INF", limiter)
 
@@ -220,7 +214,7 @@ class TestRateLimiters:
         [-0.1, -1, nan, inf, -inf, "0.05", None, [0.05], {"delay": 0.05}, True, False],
     )
     def test_set_delay_rejects_invalid_delays(self, delay):
-        rate_limiters = RateLimiters(dispatcher=_noop_dispatcher)
+        rate_limiters = RateLimiters(dispatcher=noop_dispatcher)
         limiter = UAVMessageRateLimiter(factory=create_message)
         rate_limiters.register("UAV-INF", limiter)
 

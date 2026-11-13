@@ -20,13 +20,8 @@ PORT = 5000
 COMMAND_EXECUTION_MANAGER = {"timeout": 90}
 
 # Minimum delays (in seconds) between consecutive dispatches of rate-limited
-# message types, keyed by message type name. Only types whose rate limiter
-# supports a delay can be configured here (UAV-INF and SYS-MSG do; CONN-INF
-# does not). Unknown types are ignored with a warning. Types not listed here
-# use the default of 0.2 s (5 Hz), which keeps clients responsive without flooding the connection; lower it
-# only for local virtual/demo fleets (e.g. 0.05 for UAV-INF) -- on real shows
-# with 1000+ drones, Live may not drain the socket fast enough without rate
-# limiting.
+# message types, e.g. {"UAV-INF": 0.05}. UAV-INF and SYS-MSG can be configured.
+# Unlisted types use 0.2 s.
 MESSAGE_RATE_LIMITS = {}
 
 # Declare the list of extensions to load

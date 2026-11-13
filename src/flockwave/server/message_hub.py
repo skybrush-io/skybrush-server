@@ -17,6 +17,7 @@ from functools import partial
 from inspect import isawaitable
 from itertools import chain
 from logging import Logger
+from math import isfinite
 from time import monotonic
 from typing import Any, Generic, Mapping, Protocol, TypeVar, cast, overload
 
@@ -1486,7 +1487,9 @@ class RateLimiters:
         """Sets the delay of the rate limiter registered with the given name.
 
         The delay is the minimum number of seconds between consecutive
-        message dispatches of the given message type.
+        message dispatches of the given message type. Zero removes the wait
+        between dispatches, but requests that arrive during a dispatch are
+        still batched.
 
         Parameters:
             name: name of the message group whose rate limiter we are targeting
@@ -1494,7 +1497,22 @@ class RateLimiters:
 
         Returns:
             whether the rate limiter exists and has a configurable delay
+
+        Raises:
+            ValueError: if the delay is not a finite, non-negative number.
+                Booleans are rejected even though ``bool`` is a subclass of
+                ``int``.
         """
+        if (
+            not isinstance(delay, (int, float))
+            or isinstance(delay, bool)
+            or not isfinite(delay)
+            or delay < 0
+        ):
+            raise ValueError(
+                f"delay must be a finite, non-negative number of seconds, got {delay!r}"
+            )
+
         rate_limiter = self._rate_limiters.get(name)
         if rate_limiter is None or not hasattr(rate_limiter, "delay"):
             return False

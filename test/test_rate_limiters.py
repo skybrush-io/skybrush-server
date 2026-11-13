@@ -1,3 +1,6 @@
+from math import inf, nan
+
+from pytest import mark, raises
 from pytest_trio import trio_fixture
 from trio import sleep
 
@@ -170,3 +173,25 @@ class TestRateLimiters:
         )
 
         assert rate_limiters.set_delay("CONN-INF", 0.05) is False
+
+    @mark.parametrize("delay", [0, 0.0, 0.05, 1, 2.5])
+    def test_set_delay_accepts_valid_delays(self, delay):
+        rate_limiters = RateLimiters(dispatcher=_noop_dispatcher)
+        limiter = UAVMessageRateLimiter(factory=create_message)
+        rate_limiters.register("UAV-INF", limiter)
+
+        assert rate_limiters.set_delay("UAV-INF", delay) is True
+        assert limiter.delay == delay
+
+    @mark.parametrize(
+        "delay",
+        [-0.1, -1, nan, inf, -inf, "0.05", None, [0.05], {"delay": 0.05}, True, False],
+    )
+    def test_set_delay_rejects_invalid_delays(self, delay):
+        rate_limiters = RateLimiters(dispatcher=_noop_dispatcher)
+        limiter = UAVMessageRateLimiter(factory=create_message)
+        rate_limiters.register("UAV-INF", limiter)
+
+        with raises(ValueError):
+            rate_limiters.set_delay("UAV-INF", delay)
+        assert limiter.delay == 0.2

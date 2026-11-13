@@ -4,7 +4,6 @@ from collections import Counter, defaultdict
 from collections.abc import Iterable, Sequence
 from functools import partial
 from inspect import isasyncgen, isawaitable
-from math import isfinite
 from os import environ
 from typing import Any, Callable, cast, overload
 
@@ -126,27 +125,6 @@ details.
 
 NULL_HANDLER = (None, None)
 """Constant for a dummy UAV command handler that does nothing."""
-
-
-def _is_valid_rate_limit_delay(delay: Any) -> bool:
-    """Returns whether the given value is a valid message rate limit delay.
-
-    A valid delay is a finite, non-negative number of seconds. Zero is
-    allowed and effectively disables rate limiting for the message type.
-    Booleans are not accepted even though ``bool`` is a subclass of ``int``.
-
-    Args:
-        delay: the value to check
-
-    Returns:
-        whether the value may be used as a rate limit delay
-    """
-    return (
-        isinstance(delay, (int, float))
-        and not isinstance(delay, bool)
-        and isfinite(delay)
-        and delay >= 0
-    )
 
 
 class SkybrushServer(DaemonApp):
@@ -1349,14 +1327,12 @@ class SkybrushServer(DaemonApp):
         rate_limits = config.get("MESSAGE_RATE_LIMITS", {})
         if isinstance(rate_limits, dict):
             for name, delay in rate_limits.items():
-                if not _is_valid_rate_limit_delay(delay):
-                    self.log.warning(
-                        f"Ignoring rate limit for {name!r}: delays must be "
-                        f"finite, non-negative numbers of seconds, "
-                        f"got {delay!r}"
-                    )
+                try:
+                    applied = self.rate_limiters.set_delay(name, delay)
+                except ValueError as ex:
+                    self.log.warning(f"Ignoring rate limit for {name!r}: {ex}")
                     continue
-                if not self.rate_limiters.set_delay(name, delay):
+                if not applied:
                     self.log.warning(
                         f"Ignoring rate limit for {name!r}: no rate limiter "
                         "with a configurable delay is registered for this "

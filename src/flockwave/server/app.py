@@ -1319,11 +1319,10 @@ class SkybrushServer(DaemonApp):
         self.command_execution_manager.timeout = cfg.get("timeout", 90)
 
         # Apply configured rate limits for message types whose rate limiter
-        # supports a delay. The rate limiters themselves were created with
-        # their default delays when the components were created (the
-        # configuration is not loaded yet at that point), and their run
-        # loops read the delay on every iteration, so setting it here
-        # takes effect from the next dispatch.
+        # supports a delay. The rate limiters were created with their default
+        # delays before the configuration was loaded. Their run loops read the
+        # delay on every iteration. The new value applies from the next
+        # dispatch.
         rate_limits = config.get("MESSAGE_RATE_LIMITS", {})
         if isinstance(rate_limits, dict):
             for name, delay in rate_limits.items():

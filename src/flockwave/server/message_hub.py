@@ -19,7 +19,15 @@ from itertools import chain
 from logging import Logger
 from math import isfinite
 from time import monotonic
-from typing import Any, Generic, Mapping, Protocol, TypeVar, cast, overload
+from typing import (
+    Any,
+    Generic,
+    Mapping,
+    Protocol,
+    TypeVar,
+    overload,
+    runtime_checkable,
+)
 
 from flockwave.concurrency import AsyncBundler
 from flockwave.connections import ConnectionState
@@ -1411,6 +1419,7 @@ class ConnectionStatusMessageRateLimiter(RateLimiter):
                     await dispatch_tx_queue.send(connection_id)
 
 
+@runtime_checkable
 class _HasConfigurableDelay(Protocol):
     """Protocol for rate limiters whose delay between consecutive message
     dispatches can be configured."""
@@ -1514,9 +1523,10 @@ class RateLimiters:
             )
 
         rate_limiter = self._rate_limiters.get(name)
-        if rate_limiter is None or not hasattr(rate_limiter, "delay"):
+        if not isinstance(rate_limiter, _HasConfigurableDelay):
             return False
-        cast(_HasConfigurableDelay, rate_limiter).delay = delay
+
+        rate_limiter.delay = delay
         return True
 
     def request_to_send(self, name: str, *args, **kwds) -> None:

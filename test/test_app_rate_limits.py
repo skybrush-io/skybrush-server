@@ -21,19 +21,23 @@ def server():
     """Stub with only the attributes that ``_process_configuration()`` uses.
 
     Building a real ``SkybrushServer`` would create every component of the
-    server, while the method under test needs only these three.
+    server, while the method under test needs only three of its attributes.
+    ``limiters`` gives the tests direct access to the registered limiters.
     """
+    limiters = {
+        "CONN-INF": ConnectionStatusMessageRateLimiter(factory=create_message),
+        "SYS-MSG": BatchMessageRateLimiter(factory=create_message),
+        "UAV-INF": UAVMessageRateLimiter(factory=create_message),
+    }
     rate_limiters = RateLimiters(dispatcher=noop_dispatcher)
-    rate_limiters.register(
-        "CONN-INF", ConnectionStatusMessageRateLimiter(factory=create_message)
-    )
-    rate_limiters.register("SYS-MSG", BatchMessageRateLimiter(factory=create_message))
-    rate_limiters.register("UAV-INF", UAVMessageRateLimiter(factory=create_message))
+    for name, limiter in limiters.items():
+        rate_limiters.register(name, limiter)
 
     return SimpleNamespace(
         command_execution_manager=SimpleNamespace(timeout=None),
         log=getLogger("test_app_rate_limits"),
         rate_limiters=rate_limiters,
+        limiters=limiters,
     )
 
 
@@ -42,7 +46,7 @@ def _process(server, config):
 
 
 def _delay_of(server, name):
-    return server.rate_limiters._rate_limiters[name].delay
+    return server.limiters[name].delay
 
 
 def test_applies_valid_rate_limits(server):

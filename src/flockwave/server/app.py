@@ -1313,7 +1313,17 @@ class SkybrushServer(DaemonApp):
             extra={"id": name},
         )
 
-    def _process_configuration(self, config: Configuration) -> int | None:
+    def _process_configuration(
+        self, config: Configuration, *, use_env: bool = True
+    ) -> int | None:
+        """Processes the loaded configuration of the server.
+
+        Args:
+            config: the configuration to process
+            use_env: whether to read overrides from environment variables.
+                Unit tests turn this off to stay independent of the
+                environment of the test runner.
+        """
         # Process the configuration options
         cfg = config.get("COMMAND_EXECUTION_MANAGER", {})
         self.command_execution_manager.timeout = cfg.get("timeout", 90)
@@ -1344,7 +1354,7 @@ class SkybrushServer(DaemonApp):
             )
 
         # Override the base port if needed
-        port_from_env: str | None = environ.get("PORT")
+        port_from_env: str | None = environ.get("PORT") if use_env else None
         port: int | None = config.get("PORT")
         if port_from_env:
             try:

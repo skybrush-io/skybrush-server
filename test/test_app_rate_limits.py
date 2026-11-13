@@ -23,14 +23,12 @@ def _create_message(items):
 
 
 @fixture
-def server(monkeypatch):
+def server():
     """Stub with only the attributes that ``_process_configuration()`` uses.
 
     Building a real ``SkybrushServer`` would create every component of the
     server, while the method under test needs only these three.
     """
-    monkeypatch.delenv("PORT", raising=False)
-
     rate_limiters = RateLimiters(dispatcher=_noop_dispatcher)
     rate_limiters.register(
         "CONN-INF", ConnectionStatusMessageRateLimiter(factory=_create_message)
@@ -46,7 +44,7 @@ def server(monkeypatch):
 
 
 def _process(server, config):
-    SkybrushServer._process_configuration(server, config)  # type: ignore[arg-type]
+    SkybrushServer._process_configuration(server, config, use_env=False)  # type: ignore[arg-type]
 
 
 def _delay_of(server, name):

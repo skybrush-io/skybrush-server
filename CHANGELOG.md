@@ -22,6 +22,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Anchors of local positioning systems now have an optional `attitude`, a
   quaternion in `[w, x, y, z]` order, and a list of error codes in `errors`.
 
+- Added an `lps_dummy` extension that registers a local positioning system
+  with four simulated anchors that face the center of the room. One of the
+  anchors cycles through warning, error and inactive states periodically.
+  Useful for testing user interfaces without real hardware.
+
 - `X-LPS-CFG` now returns the current configuration of local positioning
   systems. Extensions that implement a local positioning system should
   override `get_configuration()` along with `_configure_inner()`.

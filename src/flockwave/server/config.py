@@ -63,6 +63,7 @@ EXTENSIONS = {
     "location": {},
     "location_from_uavs": {"priority": 0},
     "lps": {"enabled": "avoid"},
+    "lps_dummy": {"enabled": False},
     "logging": {"keep": 7, "format": "tabular", "size": 1000000},
     "magnetic_field": {},
     "map_cache": {},  # used to trigger auto-loading when the license is installed

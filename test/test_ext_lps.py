@@ -6,21 +6,23 @@ from typing import Any, TypedDict
 from unittest.mock import MagicMock
 
 import fastjsonschema
+from flockwave.encoders.json import create_json_encoder
 from flockwave.gps.vectors import PositionXYZ
+from flockwave.spec.errors import FlockwaveErrorCode
 from pytest import fixture, raises
 from trio import open_nursery, sleep
 from trio.testing import wait_all_tasks_blocked
 
 from flockwave.server.commands import CommandExecutionManager
-from flockwave.server.ext.lps.examples import (
-    DummyLocalPositioningSystem,
-    DummyLocalPositioningSystemType,
-)
 from flockwave.server.ext.lps.extension import LocalPositioningSystemsExtension
 from flockwave.server.ext.lps.model import Anchor, LocalPositioningSystem
 from flockwave.server.ext.lps.registry import (
     LocalPositioningSystemRegistry,
     LocalPositioningSystemTypeRegistry,
+)
+from flockwave.server.ext.lps_dummy import (
+    DummyLocalPositioningSystem,
+    DummyLocalPositioningSystemType,
 )
 from flockwave.server.model.builders import FlockwaveMessageBuilder
 from flockwave.server.model.client import Client
@@ -259,11 +261,12 @@ async def test_lps_configuration_can_be_written_and_read_back(
     autojump_clock,
 ):
     ext = ext_with_cmd_manager
+    cfg = {"width": 6.0, "depth": 3.0, "height": 2.0, "simulate_faults": False}
     with ext._lps_registry.create_and_use("dummy", id="lps1"):
         response = await send_request(
             hub,
             client,
-            {"type": "X-LPS-SETCFG", "ids": ["lps1"], "configuration": {"x": 1}},
+            {"type": "X-LPS-SETCFG", "ids": ["lps1"], "configuration": cfg},
         )
         receipt = response.body["receipt"]["lps1"]
         assert finished_commands[receipt].error is None
@@ -273,7 +276,25 @@ async def test_lps_configuration_can_be_written_and_read_back(
         )
         assert "nonexistent" in response.body["error"]
         receipt = response.body["receipt"]["lps1"]
-        assert finished_commands[receipt].result == {"x": 1}
+        assert finished_commands[receipt].result == cfg
+
+
+async def test_lps_invalid_configuration_is_rejected_asynchronously(
+    ext_with_cmd_manager: LocalPositioningSystemsExtension,
+    hub: RecordingMessageHub,
+    client: Client,
+    finished_commands: dict[str, CommandExecutionStatus],
+    autojump_clock,
+):
+    ext = ext_with_cmd_manager
+    with ext._lps_registry.create_and_use("dummy", id="lps1"):
+        response = await send_request(
+            hub,
+            client,
+            {"type": "X-LPS-SETCFG", "ids": ["lps1"], "configuration": {"x": 1}},
+        )
+        receipt = response.body["receipt"]["lps1"]
+        assert "Invalid configuration" in str(finished_commands[receipt].error)
 
 
 async def test_lps_configuration_request_without_configuration_fails(
@@ -289,3 +310,9 @@ async def test_lps_configuration_request_without_configuration_fails(
         )
         assert "does not contain configuration" in response.body["error"]["lps1"]
         assert "lps1" not in response.body.get("receipt", {})
+
+
+def test_anchor_error_codes_are_encoded_as_integers():
+    anchor = Anchor(id="a1")
+    anchor.errors.ensure(FlockwaveErrorCode.UNSPECIFIED_WARNING)
+    assert b'"errors":[127]' in create_json_encoder()(anchor)

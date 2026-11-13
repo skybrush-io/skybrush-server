@@ -2,6 +2,7 @@
 
 from logging import getLogger
 from types import SimpleNamespace
+from typing import cast
 
 from pytest import fixture
 
@@ -42,7 +43,9 @@ def server():
 
 
 def _process(server, config):
-    SkybrushServer._process_configuration(server, config, use_env=False)  # type: ignore[arg-type]
+    SkybrushServer._process_configuration(
+        cast(SkybrushServer, server), config, use_env=False
+    )
 
 
 def _delay_of(server, name):

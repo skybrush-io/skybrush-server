@@ -15,7 +15,7 @@ from flockwave.server.message_hub import (
 
 
 async def _noop_dispatcher(message):
-    """Fake dispatcher that does nothing; only its type matters here."""
+    """Dispatcher that discards every message."""
 
 
 def _create_message(items):

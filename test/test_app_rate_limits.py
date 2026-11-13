@@ -59,14 +59,14 @@ def test_applies_valid_rate_limits(server):
 def test_keeps_defaults_without_rate_limits(server):
     _process(server, {})
 
-    assert _delay_of(server, "UAV-INF") == 0.2
-    assert _delay_of(server, "SYS-MSG") == 0.2
+    assert _delay_of(server, "UAV-INF") == UAVMessageRateLimiter.delay
+    assert _delay_of(server, "SYS-MSG") == BatchMessageRateLimiter.delay
 
 
 def test_ignores_invalid_delay_with_warning(server, caplog):
     _process(server, {"MESSAGE_RATE_LIMITS": {"UAV-INF": -1, "SYS-MSG": 0.5}})
 
-    assert _delay_of(server, "UAV-INF") == 0.2
+    assert _delay_of(server, "UAV-INF") == UAVMessageRateLimiter.delay
     assert _delay_of(server, "SYS-MSG") == 0.5
     assert "Ignoring rate limit for 'UAV-INF'" in caplog.text
 
@@ -81,5 +81,5 @@ def test_ignores_types_without_configurable_delay_with_warning(server, caplog):
 def test_ignores_non_dict_rate_limits_with_warning(server, caplog):
     _process(server, {"MESSAGE_RATE_LIMITS": [0.05]})
 
-    assert _delay_of(server, "UAV-INF") == 0.2
+    assert _delay_of(server, "UAV-INF") == UAVMessageRateLimiter.delay
     assert "Ignoring MESSAGE_RATE_LIMITS" in caplog.text

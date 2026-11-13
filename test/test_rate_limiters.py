@@ -220,4 +220,4 @@ class TestRateLimiters:
 
         with raises(ValueError):
             rate_limiters.set_delay("UAV-INF", delay)
-        assert limiter.delay == 0.2
+        assert limiter.delay == UAVMessageRateLimiter.delay

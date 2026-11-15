@@ -253,6 +253,7 @@ class DroneShowStatusFlag(IntFlag):
     # four most significant bits only.
     IS_FAR_FROM_EXPECTED_POSITION = 1 << 17
     HAS_HIGH_ESC_ERROR_RATE = 1 << 16
+    HAS_HIGH_VIBRATION = 1 << 15
 
     # Flags from now on come from the second flag byte in the status packet;
     # four most significant bits only.
@@ -507,6 +508,13 @@ class DroneShowStatus:
         error rate.
         """
         return bool(self.flags & DroneShowStatusFlag.HAS_HIGH_ESC_ERROR_RATE.value)
+
+    @property
+    def has_high_vibration(self) -> bool:
+        """Returns whether the vibration levels measured by the drone exceed
+        the threshold configured on the drone.
+        """
+        return bool(self.flags & DroneShowStatusFlag.HAS_HIGH_VIBRATION.value)
 
     @property
     def has_start_time(self) -> bool:

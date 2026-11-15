@@ -15,6 +15,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   types keep the default delay of 0.2 seconds. Invalid entries are ignored
   with a warning.
 
+- The MAVLink extension now reports a vibration warning (error code 76) when
+  the drone show status packet of the drone has the high vibration flag set.
+
 ### Fixed
 
 - MAVLink STATUSTEXT messages are now reassembled properly if they arrive in

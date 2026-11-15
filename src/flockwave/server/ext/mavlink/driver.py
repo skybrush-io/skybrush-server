@@ -3188,6 +3188,7 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
                 or (not has_geofence_error and status.is_geofence_breached)
             ),
             FlockwaveErrorCode.ESC_ERROR.value: status.has_high_esc_error_rate,
+            FlockwaveErrorCode.VIBRATION_WARNING.value: status.has_high_vibration,
         }
         self.ensure_errors(errors)
 

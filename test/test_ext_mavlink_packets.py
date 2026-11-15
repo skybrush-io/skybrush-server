@@ -76,6 +76,23 @@ def test_drone_show_status_from_bytes():
     assert status.authorization_scope is AuthorizationScope.LIGHTS_ONLY
     assert status.elapsed_time == 2826
     assert status.has_high_esc_error_rate
+    assert not status.has_high_vibration
+
+    # v2 packet, length 12, with the high vibration flag only in the third
+    # flag byte
+    status = DroneShowStatus.from_bytes(
+        b"\x01\x02\x03\x04\x05\x06\x07\x08\x19\x2f\x0a\x0b"
+    )
+    assert status.flags == (
+        DroneShowStatusFlag.GEOFENCE_BREACHED
+        | DroneShowStatusFlag.IS_GPS_TIME_BAD
+        | DroneShowStatusFlag.HAS_AUTHORIZATION_TO_START
+        | DroneShowStatusFlag.HAS_HIGH_VIBRATION
+    )
+    assert status.authorization_scope is AuthorizationScope.LIGHTS_ONLY
+    assert status.has_high_vibration
+    assert not status.has_high_esc_error_rate
+    assert not status.is_far_from_expected_position
 
 
 def test_create_start_time_configuration_packet():

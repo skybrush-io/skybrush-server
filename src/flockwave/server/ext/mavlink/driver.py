@@ -1958,6 +1958,10 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
             updates["velocity"] = self._velocity
             updates["heading"] = extended_part.heading
 
+            # The wind estimate is available only in the extended status
+            # packet. Clear the estimate if the packet has none.
+            updates["wind"] = extended_part.wind or False
+
         self.update_status(**updates)
 
         self.notify_updated()

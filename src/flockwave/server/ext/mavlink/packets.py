@@ -15,6 +15,7 @@ from flockwave.gps.time import gps_time_of_week_to_utc, unix_to_gps_time_of_week
 from flockwave.server.ext.show.config import AuthorizationScope
 from flockwave.server.ext.show.time import BinaryTimeAxisConfiguration
 from flockwave.server.model.gps import GPSFixType as OurGPSFixType
+from flockwave.server.model.wind import WindEstimate
 
 from .enums import GPSFixType
 from .types import MAVLinkMessage, MAVLinkMessageSpecification, spec
@@ -704,8 +705,21 @@ class DroneShowStatusExtension:
     trajectory_index: int | None = None
     """Index of the trajectory that the drone is going to fly, if known."""
 
+    wind: WindEstimate | None = None
+    """Wind speed and direction as estimated by the drone; ``None`` if the
+    drone has no wind estimate or the packet does not contain one.
+    """
+
     _struct: ClassVar[Struct] = Struct("<iiiihhhHHHIH")
     """Structure of the packet."""
+
+    _WIND_OFFSET: ClassVar[int] = 38
+    """Offset of the wind speed and direction bytes in the extended part of the
+    packet. The wind direction byte follows the wind speed byte.
+    """
+
+    _WIND_SPEED_RESOLUTION: ClassVar[float] = 0.2
+    """Resolution of the wind speed in the packet, in m/s."""
 
     @classmethod
     def from_bytes(cls, data: bytes):
@@ -753,5 +767,30 @@ class DroneShowStatusExtension:
         h_acc = h_acc / 1000.0 if h_acc > 0 else None
         v_acc = v_acc / 1000.0 if v_acc > 0 else None
 
+        # wind estimate: zero speed means that the drone has no estimate,
+        # otherwise the speed is one more than the speed in 0.2 m/s units.
+        # The direction is in 360/256 degree units.
+        wind = None
+        if len(data) >= cls._WIND_OFFSET + 2:
+            encoded_speed = data[cls._WIND_OFFSET]
+            encoded_direction = data[cls._WIND_OFFSET + 1]
+            if encoded_speed > 0:
+                wind = WindEstimate(
+                    speed=(encoded_speed - 1) * cls._WIND_SPEED_RESOLUTION,
+                    direction=encoded_direction * 360 / 256,
+                )
+
         # TODO(ntamas): show ID, trajectory index
-        return cls(lat, lng, alt, relative_alt, vx, vy, vz, heading, h_acc, v_acc)
+        return cls(
+            lat,
+            lng,
+            alt,
+            relative_alt,
+            vx,
+            vy,
+            vz,
+            heading,
+            h_acc,
+            v_acc,
+            wind=wind,
+        )

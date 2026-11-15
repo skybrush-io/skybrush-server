@@ -18,6 +18,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The MAVLink extension now reports a vibration warning (error code 76) when
   the drone show status packet of the drone has the high vibration flag set.
 
+- UAV status information now includes the wind speed and direction as
+  estimated by the UAV, if available. The MAVLink extension takes the estimate
+  from the extended drone show status packet.
+
 ### Fixed
 
 - MAVLink STATUSTEXT messages are now reassembled properly if they arrive in

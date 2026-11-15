@@ -11,16 +11,23 @@ from trio import open_memory_channel, open_nursery
 from trio.abc import ReceiveChannel, SendChannel
 
 from flockwave.server.ext.base import UAVExtension
+from flockwave.server.ext.lps import LocalPositioningSystemsExtensionAPI
 from flockwave.server.model import ConnectionPurpose
 
 from .connection import BroadcasterFunction, CrazyradioConnection
 from .crtp_extensions import DRONE_SHOW_PORT, DroneShowCommand, FenceAction
-from .driver import CrazyflieDriver
+from .driver import CrazyflieDriver, CrazyflieUAV
 from .fence import FenceConfiguration
 from .led_lights import CrazyflieLEDLightConfigurationManager, LightConfiguration
+from .lighthouse import (
+    LIGHTHOUSE_LPS_ID,
+    LIGHTHOUSE_LPS_TYPE_ID,
+    LighthouseLocalPositioningSystem,
+    LighthouseLocalPositioningSystemType,
+)
 from .mocap import CrazyflieMocapFrameHandler
 from .scanning import CrazyradioScannerTask, ScannerTaskEvent
-from .types import ControllerType
+from .types import ControllerType, PositioningSystemType
 
 if TYPE_CHECKING:
     from flockwave.server.ext.motion_capture import MotionCaptureFrame
@@ -55,6 +62,18 @@ class CrazyflieDronesExtension(UAVExtension[CrazyflieDriver]):
         driver.status_interval = float(configuration.get("status_interval", 0.5))
         driver.takeoff_altitude = float(configuration.get("takeoff_altitude", 1.0))
         driver.use_test_mode = bool(configuration.get("testing", False))
+
+        positioning_spec = configuration.get("positioning")
+        try:
+            driver.positioning_system_type = PositioningSystemType.from_json(
+                positioning_spec
+            )
+        except ValueError:
+            self.log.warning(
+                f"Unknown positioning system in configuration: {positioning_spec!r}, "
+                f"assuming {PositioningSystemType.UWB.describe()}"
+            )
+            driver.positioning_system_type = PositioningSystemType.UWB
 
         controller_spec = configuration.get("controller")
         try:
@@ -121,6 +140,7 @@ class CrazyflieDronesExtension(UAVExtension[CrazyflieDriver]):
         assert self._driver is not None
 
         signals = self.app.import_api("signals")
+        lps_api = self.app.import_api("lps", LocalPositioningSystemsExtensionAPI)
 
         connection_config = configuration.get("connections", [])
 
@@ -140,6 +160,14 @@ class CrazyflieDronesExtension(UAVExtension[CrazyflieDriver]):
                         CrazyradioConnection, CrazyradioConnection.SCHEME
                     )
                 )
+
+                # Register the local positioning system that the drones use,
+                # if the server needs to manage it
+                if (
+                    self._driver.positioning_system_type
+                    is PositioningSystemType.LIGHTHOUSE
+                ):
+                    self._use_lighthouse_positioning_system(stack, lps_api)
 
                 # Register all the connections and ask the app to supervise them
                 num_connections = len(connection_config)
@@ -220,6 +248,42 @@ class CrazyflieDronesExtension(UAVExtension[CrazyflieDriver]):
                         if uav:
                             nursery.start_soon(uav.run, disposer)
 
+    def _use_lighthouse_positioning_system(
+        self, stack: ExitStack, lps_api: LocalPositioningSystemsExtensionAPI
+    ) -> None:
+        """Registers the Lighthouse local positioning system and its type, and
+        lets the driver keep its configuration in sync on the connected drones.
+        Both are unregistered when the given exit stack is closed.
+        """
+        assert self._driver is not None
+
+        stack.enter_context(
+            lps_api.use_lps_type(
+                LIGHTHOUSE_LPS_TYPE_ID,
+                LighthouseLocalPositioningSystemType(self._find_uav_by_id, self.log),
+            )
+        )
+        lighthouse = stack.enter_context(
+            lps_api.create_and_use_lps(LIGHTHOUSE_LPS_TYPE_ID, id=LIGHTHOUSE_LPS_ID)
+        )
+        assert isinstance(lighthouse, LighthouseLocalPositioningSystem)
+        self._driver.lighthouse = lighthouse
+        stack.callback(setattr, self._driver, "lighthouse", None)
+
+    def _find_uav_by_id(self, uav_id: str) -> CrazyflieUAV | None:
+        """Returns the Crazyflie UAV with the given ID that is managed by this
+        extension, or ``None`` if there is no such UAV.
+        """
+        if self.app is None:
+            return None
+        try:
+            uav = self.app.object_registry.find_by_id(uav_id)
+        except KeyError:
+            return None
+        if isinstance(uav, CrazyflieUAV) and uav.driver is self._driver:
+            return uav
+        return None
+
     def _on_motion_capture_frame_received(
         self,
         sender,
@@ -296,6 +360,19 @@ schema = {
                 "upload. This is an advanced option."
             ),
             "propertyOrder": 2000,
+        },
+        "positioning": {
+            "title": "Positioning system",
+            "type": "string",
+            "default": PositioningSystemType.UWB.value,
+            "enum": [system.value for system in PositioningSystemType],
+            "options": {
+                "enum_titles": [system.describe() for system in PositioningSystemType],
+            },
+            "description": (
+                "Specifies the positioning system that the drones use. All "
+                "drones are assumed to use the same positioning system."
+            ),
         },
         "debug": {
             "type": "boolean",

@@ -31,6 +31,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   systems. Extensions that implement a local positioning system should
   override `get_configuration()` along with `_configure_inner()`.
 
+- The Crazyflie extension has a new `positioning` configuration option that
+  specifies the positioning system of the drones: `uwb` (default),
+  `lighthouse` or `mocap`.
+
+- When the drones use Lighthouse positioning, the Crazyflie extension
+  registers a local positioning system that represents the Lighthouse base
+  stations. Its configuration uses the same
+  format as the Lighthouse configuration files of the Crazyflie client. The
+  configuration can also be imported from a drone with `X-LPS-CALIB`, using
+  the `{"method": "import", "uav": "<id>"}` parameters. Once a configuration
+  is set, the server writes it to every connected drone whose configuration
+  differs from it, but only while the drone is on the ground with its motors
+  stopped. Each drone is checked only once; setting the configuration again
+  checks all drones again. Failed attempts are retried every 30 seconds.
+
 ### Changed
 
 - The message that updates the configuration of local positioning systems is

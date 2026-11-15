@@ -16,6 +16,7 @@ from typing import TYPE_CHECKING, Any, cast
 
 from aiocflib.crazyflie import Crazyflie
 from aiocflib.crazyflie.high_level_commander import TrajectoryType
+from aiocflib.crazyflie.lighthouse import LighthouseConfiguration
 from aiocflib.crazyflie.log import LogSession
 from aiocflib.crazyflie.mem import write_with_checksum
 from aiocflib.crtp.crtpstack import MemoryType
@@ -61,8 +62,13 @@ from .crtp_extensions import (
     PreflightCheckStatus,
 )
 from .fence import Fence, FenceConfiguration
+from .lighthouse import (
+    LighthouseLocalPositioningSystem,
+    read_lighthouse_configuration,
+    write_lighthouse_configuration,
+)
 from .trajectory import TrajectoryEncoding, encode_trajectory
-from .types import ControllerType
+from .types import ControllerType, PositioningSystemType
 
 if TYPE_CHECKING:
     from flockwave.server.app import SkybrushServer
@@ -105,6 +111,15 @@ class CrazyflieDriver(UAVDriver["CrazyflieUAV"]):
     """Number of seconds that should pass between consecutive status requests sent to a
     drone.
     """
+
+    lighthouse: LighthouseLocalPositioningSystem | None = None
+    """The Lighthouse local positioning system whose configuration the driver
+    keeps in sync on the connected drones; ``None`` if the drones do not use
+    Lighthouse positioning.
+    """
+
+    positioning_system_type: PositioningSystemType = PositioningSystemType.UWB
+    """The positioning system that the drones managed by this driver use."""
 
     takeoff_altitude: float = 1
     """Default takeoff altitude for drones managed by this driver, in meters."""
@@ -652,6 +667,16 @@ class CrazyflieUAV(UAVBase):
         else:
             return x, y, z
 
+    async def get_lighthouse_configuration(self) -> LighthouseConfiguration:
+        """Reads the Lighthouse configuration of all base stations from the
+        drone.
+
+        Raises:
+            NotSupportedError: if the drone does not support the Lighthouse
+                system
+        """
+        return await read_lighthouse_configuration(self._get_crazyflie())
+
     async def get_parameter(self, name: str, fetch: bool = False) -> float:
         """Returns the value of a parameter from the Crazyflie."""
         return await self._get_crazyflie().param.get(name, fetch=fetch)
@@ -713,6 +738,17 @@ class CrazyflieUAV(UAVBase):
         to it at least once, possibly during a previous boot.
         """
         return self._last_uploaded_show is not None
+
+    @property
+    def is_idle_on_ground(self) -> bool:
+        """Returns whether the UAV is known to be on the ground with its motors
+        stopped and not armed.
+        """
+        return (
+            self._airborne is False
+            and self._motors_running is False
+            and not self._armed
+        )
 
     @property
     def is_in_drone_show_mode(self) -> bool:
@@ -949,6 +985,18 @@ class CrazyflieUAV(UAVBase):
         """
         async with self._get_crazyflie().param.set_and_restore(name, value):
             yield
+
+    async def set_lighthouse_configuration(
+        self, config: LighthouseConfiguration
+    ) -> None:
+        """Replaces the Lighthouse configuration of the drone and makes the
+        changes permanent.
+
+        Raises:
+            NotSupportedError: if the drone does not support the Lighthouse
+                system
+        """
+        await write_lighthouse_configuration(self._get_crazyflie(), config)
 
     async def set_home_position(self, pos: tuple[float, float, float] | None) -> None:
         """Sets or clears the home position of the UAV.
@@ -1518,6 +1566,10 @@ class CrazyflieHandlerTask:
                     self._uav.process_drone_show_status_messages, self._status_interval
                 )
                 nursery.start_soon(self._uav.process_log_messages)
+
+                lighthouse = self._uav.driver.lighthouse
+                if lighthouse is not None:
+                    nursery.start_soon(lighthouse.keep_uav_in_sync, self._uav)
 
                 await self._reupload_last_show_if_needed()
 

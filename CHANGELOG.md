@@ -44,7 +44,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   is set, the server writes it to every connected drone whose configuration
   differs from it, but only while the drone is on the ground with its motors
   stopped. Each drone is checked only once; setting the configuration again
-  checks all drones again. Failed attempts are retried every 30 seconds.
+  checks all drones again. Failed attempts are retried every 30 seconds. The
+  configuration is saved in the data directory of the extension and restored
+  when the server starts.
 
 ### Changed
 

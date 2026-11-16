@@ -2,6 +2,9 @@
 extension.
 """
 
+import json
+from collections.abc import AsyncGenerator
+from contextlib import asynccontextmanager
 from math import cos, isclose, pi, sin
 from pathlib import Path
 from types import SimpleNamespace
@@ -754,13 +757,15 @@ def test_extension_configures_positioning_system(
     assert ext.log.warning.called == (positioning == "gps")
 
 
-@mark.parametrize(
-    "positioning,registered",
-    [("uwb", False), ("mocap", False), ("lighthouse", True)],
-)
-async def test_extension_registers_lighthouse_lps_only_when_selected(
-    hub: RecordingMessageHub, tmp_path: Path, positioning: str, registered: bool
-):
+@asynccontextmanager
+async def running_crazyflie_extension(
+    hub: RecordingMessageHub, data_dir: Path, positioning: str
+) -> AsyncGenerator[
+    tuple[CrazyflieDronesExtension, LocalPositioningSystemsExtension, CrazyflieDriver]
+]:
+    """Runs the Crazyflie extension with no radio connections, together with
+    the `lps` extension, until the context is exited.
+    """
     lps_ext = LocalPositioningSystemsExtension()
     lps_ext.app = SimpleNamespace(  # type: ignore
         command_execution_manager=MagicMock(),
@@ -771,7 +776,7 @@ async def test_extension_registers_lighthouse_lps_only_when_selected(
     ext = CrazyflieDronesExtension()
     ext.log = MagicMock()
     ext.app = SimpleNamespace(  # type: ignore
-        dirs=SimpleNamespace(user_cache_path=tmp_path, user_data_path=tmp_path),
+        dirs=SimpleNamespace(user_cache_path=data_dir, user_data_path=data_dir),
         uav_driver_registry=MagicMock(),
         import_api=lambda name, *args: (
             SimpleNamespace(**lps_ext.exports()) if name == "lps" else MagicMock()
@@ -789,11 +794,7 @@ async def test_extension_registers_lighthouse_lps_only_when_selected(
         async with open_nursery() as cf_nursery:
             cf_nursery.start_soon(ext._run, ext.app, configuration)
             await wait_all_tasks_blocked()
-
-            expected_ids = [LIGHTHOUSE_LPS_ID] if registered else []
-            assert list(lps_ext._lps_registry.ids) == expected_ids
-            assert (driver.lighthouse is not None) == registered
-
+            yield ext, lps_ext, driver
             cf_nursery.cancel_scope.cancel()
 
         assert list(lps_ext._lps_registry.ids) == []
@@ -801,3 +802,114 @@ async def test_extension_registers_lighthouse_lps_only_when_selected(
         assert driver.lighthouse is None
 
         nursery.cancel_scope.cancel()
+
+
+@mark.parametrize(
+    "positioning,registered",
+    [("uwb", False), ("mocap", False), ("lighthouse", True)],
+)
+async def test_extension_registers_lighthouse_lps_only_when_selected(
+    hub: RecordingMessageHub, tmp_path: Path, positioning: str, registered: bool
+):
+    async with running_crazyflie_extension(hub, tmp_path, positioning) as (
+        _,
+        lps_ext,
+        driver,
+    ):
+        expected_ids = [LIGHTHOUSE_LPS_ID] if registered else []
+        assert list(lps_ext._lps_registry.ids) == expected_ids
+        assert (driver.lighthouse is not None) == registered
+
+
+async def test_extension_saves_and_restores_lighthouse_configuration(
+    hub: RecordingMessageHub, tmp_path: Path
+):
+    async with running_crazyflie_extension(hub, tmp_path, "lighthouse") as (
+        ext,
+        _,
+        driver,
+    ):
+        assert driver.lighthouse is not None
+        path = ext.get_data_dir() / "lighthouse.json"
+        assert driver.lighthouse.configuration_file == path
+        assert path.is_relative_to(tmp_path)
+        assert not path.exists()
+
+        await driver.lighthouse.configure(CFCLIENT_CONFIGURATION)
+        with path.open() as fp:
+            assert json.load(fp) == CFCLIENT_CONFIGURATION
+
+    # The configuration is restored after a restart
+    async with running_crazyflie_extension(hub, tmp_path, "lighthouse") as (
+        ext,
+        _,
+        driver,
+    ):
+        assert driver.lighthouse is not None
+        assert await driver.lighthouse.get_configuration() == CFCLIENT_CONFIGURATION
+        assert [anchor.id for anchor in driver.lighthouse.anchors] == ["1", "4", "6"]
+
+        # Clearing the configuration deletes the file
+        await driver.lighthouse.configure({})
+        assert not path.exists()
+
+    async with running_crazyflie_extension(hub, tmp_path, "lighthouse") as (
+        _,
+        _,
+        driver,
+    ):
+        assert driver.lighthouse is not None
+        assert driver.lighthouse.configuration is None
+
+
+@mark.parametrize("contents", ["not JSON", '{"geos": {"16": {}}}'])
+async def test_extension_ignores_invalid_saved_lighthouse_configuration(
+    hub: RecordingMessageHub, tmp_path: Path, contents: str
+):
+    ext = CrazyflieDronesExtension()
+    ext.app = SimpleNamespace(  # type: ignore
+        dirs=SimpleNamespace(user_cache_path=tmp_path, user_data_path=tmp_path),
+        uav_driver_registry=MagicMock(),
+    )
+    path = ext.get_data_dir() / "lighthouse.json"
+    path.parent.mkdir(parents=True)
+    path.write_text(contents)
+
+    async with running_crazyflie_extension(hub, tmp_path, "lighthouse") as (
+        ext,
+        _,
+        driver,
+    ):
+        assert driver.lighthouse is not None
+        assert driver.lighthouse.configuration is None
+        assert isinstance(ext.log, MagicMock)
+        ext.log.error.assert_called_once()
+        assert (
+            "Ignoring invalid Lighthouse configuration"
+            in (ext.log.error.call_args.args[0])
+        )
+
+    # The file is kept for the user to fix it
+    assert path.read_text() == contents
+
+
+async def test_extension_logs_errors_while_saving_lighthouse_configuration(
+    hub: RecordingMessageHub, tmp_path: Path
+):
+    async with running_crazyflie_extension(hub, tmp_path, "lighthouse") as (
+        ext,
+        _,
+        driver,
+    ):
+        # Make the data directory impossible to create
+        ext.get_data_dir().parent.mkdir(parents=True)
+        ext.get_data_dir().write_text("")
+
+        assert driver.lighthouse is not None
+        await driver.lighthouse.configure(CFCLIENT_CONFIGURATION)
+
+        # Configuration is applied even if it could not be saved
+        assert driver.lighthouse.configuration is not None
+        assert isinstance(ext.log, MagicMock)
+        ext.log.error.assert_called_once()
+        assert "Error while saving" in ext.log.error.call_args.args[0]

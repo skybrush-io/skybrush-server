@@ -167,7 +167,7 @@ class CrazyflieDronesExtension(UAVExtension[CrazyflieDriver]):
                     self._driver.positioning_system_type
                     is PositioningSystemType.LIGHTHOUSE
                 ):
-                    self._use_lighthouse_positioning_system(stack, lps_api)
+                    await self._use_lighthouse_positioning_system(stack, lps_api)
 
                 # Register all the connections and ask the app to supervise them
                 num_connections = len(connection_config)
@@ -248,12 +248,15 @@ class CrazyflieDronesExtension(UAVExtension[CrazyflieDriver]):
                         if uav:
                             nursery.start_soon(uav.run, disposer)
 
-    def _use_lighthouse_positioning_system(
+    async def _use_lighthouse_positioning_system(
         self, stack: ExitStack, lps_api: LocalPositioningSystemsExtensionAPI
     ) -> None:
         """Registers the Lighthouse local positioning system and its type, and
         lets the driver keep its configuration in sync on the connected drones.
         Both are unregistered when the given exit stack is closed.
+
+        The configuration of the Lighthouse system is loaded from the data
+        directory of the extension and saved there every time it changes.
         """
         assert self._driver is not None
 
@@ -267,6 +270,9 @@ class CrazyflieDronesExtension(UAVExtension[CrazyflieDriver]):
             lps_api.create_and_use_lps(LIGHTHOUSE_LPS_TYPE_ID, id=LIGHTHOUSE_LPS_ID)
         )
         assert isinstance(lighthouse, LighthouseLocalPositioningSystem)
+
+        await lighthouse.use_configuration_file(self.get_data_dir() / "lighthouse.json")
+
         self._driver.lighthouse = lighthouse
         stack.callback(setattr, self._driver, "lighthouse", None)
 

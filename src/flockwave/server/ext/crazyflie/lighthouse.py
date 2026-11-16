@@ -13,8 +13,10 @@ configuration differs from it, and keeps doing so as new drones connect.
 
 from __future__ import annotations
 
+import json
 from collections.abc import Callable, Mapping
 from logging import Logger
+from pathlib import Path
 from typing import TYPE_CHECKING, Any, NotRequired, Protocol, TypedDict, cast
 
 from aiocflib.crazyflie.lighthouse import (
@@ -163,6 +165,11 @@ class LighthouseLocalPositioningSystem(
     ``None`` if the user has not provided one yet.
     """
 
+    _configuration_file: Path | None
+    """File that the configuration is saved into every time it is set;
+    ``None`` if the configuration is not saved.
+    """
+
     _synced_uav_ids: set[str]
     """IDs of the UAVs that are known to have the current configuration of
     the server.
@@ -195,6 +202,7 @@ class LighthouseLocalPositioningSystem(
         self.name = "Lighthouse"
         self.log = log
         self._configuration = None
+        self._configuration_file = None
         self._find_uav = find_uav
         self._synced_uav_ids = set()
         self._version = AsyncValue(0)
@@ -205,6 +213,13 @@ class LighthouseLocalPositioningSystem(
         ``None`` if the user has not provided one yet.
         """
         return self._configuration
+
+    @property
+    def configuration_file(self) -> Path | None:
+        """File that the configuration is saved into every time it is set;
+        ``None`` if the configuration is not saved.
+        """
+        return self._configuration_file
 
     async def calibrate(
         self, params: Mapping[str, Any]
@@ -241,6 +256,31 @@ class LighthouseLocalPositioningSystem(
         return lighthouse_configuration_to_json(
             self._configuration or LighthouseConfiguration()
         )
+
+    async def use_configuration_file(self, path: Path) -> None:
+        """Loads the configuration from the given file if the file exists, and
+        saves the configuration into the same file every time it is set from
+        now on. Clearing the configuration deletes the file.
+
+        An invalid file is logged and ignored. It is kept until the
+        configuration is set again, giving the user a chance to fix it.
+
+        Parameters:
+            path: the file to load the configuration from and to save it into
+        """
+        if path.exists():
+            try:
+                with path.open(encoding="utf-8") as fp:
+                    cfg = json.load(fp)
+                await self.configure(cfg)
+            except Exception as ex:
+                if self.log:
+                    self.log.error(
+                        f"Ignoring invalid Lighthouse configuration in "
+                        f"{str(path)!r}: {ex}"
+                    )
+
+        self._configuration_file = path
 
     async def keep_uav_in_sync(self, uav: LighthouseUAV) -> None:
         """Task that writes the Lighthouse configuration of the server to the
@@ -349,6 +389,36 @@ class LighthouseLocalPositioningSystem(
         self._version.value += 1
         self._update_anchors()
         self.notify_updated()
+        self._save_configuration()
+
+    def _save_configuration(self) -> None:
+        """Saves the current configuration into the configuration file, or
+        deletes the file if there is no configuration.
+
+        Errors are logged. The configuration remains in effect even if it
+        could not be saved.
+        """
+        path = self._configuration_file
+        if path is None:
+            return
+
+        try:
+            if self._configuration is None:
+                path.unlink(missing_ok=True)
+            else:
+                path.parent.mkdir(parents=True, exist_ok=True)
+                with path.open("w", encoding="utf-8") as fp:
+                    json.dump(
+                        lighthouse_configuration_to_json(self._configuration),
+                        fp,
+                        indent=2,
+                    )
+        except Exception as ex:
+            if self.log:
+                self.log.error(
+                    f"Error while saving Lighthouse configuration to "
+                    f"{str(path)!r}: {ex}"
+                )
 
     def _update_anchors(self) -> None:
         """Updates the list of anchors from the current configuration."""

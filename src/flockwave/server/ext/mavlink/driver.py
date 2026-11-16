@@ -1958,6 +1958,10 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
             updates["velocity"] = self._velocity
             updates["heading"] = extended_part.heading
 
+            # The wind estimate is available only in the extended status
+            # packet. Clear the estimate if the packet has none.
+            updates["wind"] = extended_part.wind or False
+
         self.update_status(**updates)
 
         self.notify_updated()
@@ -3188,6 +3192,7 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
                 or (not has_geofence_error and status.is_geofence_breached)
             ),
             FlockwaveErrorCode.ESC_ERROR.value: status.has_high_esc_error_rate,
+            FlockwaveErrorCode.VIBRATION_WARNING.value: status.has_high_vibration,
         }
         self.ensure_errors(errors)
 

@@ -15,6 +15,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   types keep the default delay of 0.2 seconds. Invalid entries are ignored
   with a warning.
 
+- The MAVLink extension now reports a vibration warning (error code 76) when
+  the drone show status packet of the drone has the high vibration flag set.
+
+- UAV status information now includes the wind speed and direction as
+  estimated by the UAV, if available. The MAVLink extension takes the estimate
+  from the extended drone show status packet.
+
 - `X-LPS-INF` messages now contain a `features` array that lists the optional
   operations that the local positioning system supports (`calibrate`,
   `configure`).

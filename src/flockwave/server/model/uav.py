@@ -10,6 +10,7 @@ from typing import (
     Any,
     AsyncGenerator,
     Generic,
+    Literal,
     Protocol,
     Sequence,
     TypedDict,
@@ -35,6 +36,7 @@ from .object import ModelObject, register
 from .preflight import PreflightCheckInfo
 from .transport import TransportOptions
 from .utils import as_base64, scaled_by
+from .wind import WindEstimate
 
 if TYPE_CHECKING:
     from flockwave.server.app import SkybrushServer
@@ -110,6 +112,7 @@ class UAVStatusInfo(TimestampMixin, metaclass=ModelMeta):
     velocityXYZ: VelocityXYZ | None
     battery: BatteryInfo
     rssi: list[int]
+    wind: WindEstimate | None
 
     def __init__(self, id: str | None = None, timestamp: TimestampLike | None = None):
         """Constructor.
@@ -136,6 +139,7 @@ class UAVStatusInfo(TimestampMixin, metaclass=ModelMeta):
         self.velocityXYZ = None
         self.battery = BatteryInfo()
         self.rssi = []
+        self.wind = None
 
     @property
     def position_xyz(self) -> PositionXYZ | None:
@@ -367,6 +371,7 @@ class UAVBase(UAV, Generic[TDriver]):
         errors: int | Iterable[int] | None = None,
         debug: bytes | None = None,
         rssi: int | Iterable[int] | None = None,
+        wind: WindEstimate | Literal[False] | None = None,
     ):
         """Updates the status information of the UAV.
 
@@ -399,6 +404,10 @@ class UAVBase(UAV, Generic[TDriver]):
             debug: additional debug information to store
             rssi: the measured RSSI values for each of the channels the UAV is
                 accessible on.
+            wind: the wind speed and direction as estimated by the UAV. It will
+                be cloned to ensure that modifying this object from the caller
+                will not affect the UAV itself. Use ``False`` if the UAV has no
+                wind estimate.
         """
         if position is not None:
             self._status.position.update_from(position, precision=7)
@@ -444,6 +453,13 @@ class UAVBase(UAV, Generic[TDriver]):
             self._status.gps.update_from(gps)
         if debug is not None:
             self._status.debug = debug
+        if wind is not None:
+            if wind is False:
+                self._status.wind = None
+            else:
+                if self._status.wind is None:
+                    self._status.wind = WindEstimate()
+                self._status.wind.update_from(wind)
         self._status.update_timestamp()
 
 

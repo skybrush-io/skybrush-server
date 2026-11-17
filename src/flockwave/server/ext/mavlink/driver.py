@@ -92,7 +92,7 @@ from .enums import (
     SkybrushUserCommand,
 )
 from .file_upload import decode_file_upload_data, validate_remote_file_path
-from .ftp import MAVFTP
+from .ftp import MAVFTP, MAVFTPErrorCode, OperationNotAcknowledgedError
 from .log_download import MAVLinkLogDownloader
 from .packets import (
     DroneShowExecutionStage,
@@ -443,10 +443,17 @@ class MAVLinkDriver(UAVDriver["MAVLinkUAV"]):
         try:
             crc = await uav.get_file_crc32(remote_path)
         except Exception as ex:
-            self.log.error(
-                f"Failed to calculate CRC32 of {remote_path}: {ex}",
-                extra={"id": log_id_for_uav(uav)},
-            )
+            if (
+                isinstance(ex, OperationNotAcknowledgedError)
+                and ex.code == MAVFTPErrorCode.FILE_NOT_FOUND
+            ):
+                # This is fine, no need to log this
+                pass
+            else:
+                self.log.error(
+                    f"Failed to calculate CRC32 of {remote_path}: {ex}",
+                    extra={"id": log_id_for_uav(uav)},
+                )
             raise
 
         return f"{crc:08x}"

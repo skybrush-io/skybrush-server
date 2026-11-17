@@ -443,11 +443,13 @@ class MAVLinkDriver(UAVDriver["MAVLinkUAV"]):
         try:
             crc = await uav.get_file_crc32(remote_path)
         except Exception as ex:
-            if (
-                isinstance(ex, OperationNotAcknowledgedError)
-                and ex.code == MAVFTPErrorCode.FILE_NOT_FOUND
+            if isinstance(ex, OperationNotAcknowledgedError) and ex.code in (
+                0,
+                MAVFTPErrorCode.FILE_NOT_FOUND,
             ):
-                # This is fine, no need to log this
+                # This is fine, no need to log this.
+                # ex.code == 0 can happen if the file is not found _and_ ArduPilot hits
+                # the usual race condition due to errno not being thread-local
                 pass
             else:
                 self.log.error(

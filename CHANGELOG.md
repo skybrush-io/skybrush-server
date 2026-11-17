@@ -24,6 +24,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- MAVFTP uploads that create their parent directories (e.g., the hidden
+  `__file_upload` command) no longer fail randomly with
+  `FTP operation failed (errno = 0)` when a directory already exists. This
+  works around a race condition in the MAVFTP implementation of ArduPilot that
+  sometimes reports an existing directory with errno 0 instead of "file
+  exists".
+
 - MAVLink STATUSTEXT messages are now reassembled properly if they arrive in
   multiple chunks. When chunks are dropped due to a flaky radio link, the
   missing parts are marked with `[...]`. Note that this means that a STATUSTEXT

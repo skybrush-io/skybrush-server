@@ -233,7 +233,7 @@ class ConnectionRegistryEntry:
     @property
     def json(self):
         """Returns the JSON representation of the entry."""
-        return self.info.json  # ty:ignore[unresolved-attribute]
+        return self.info.json  # ty:ignore[missing-attribute]
 
     @property
     def purpose(self):

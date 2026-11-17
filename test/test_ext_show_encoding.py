@@ -20,7 +20,7 @@ def make_show(extra: dict[str, dict] | None = None) -> ShowSpecification:
     }
 
     for key, value in (extra or {}).items():
-        show[key] = value  # ty: ignore[invalid-key]
+        show[key] = value
 
     return show
 

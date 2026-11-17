@@ -251,13 +251,13 @@ def once(func: Callable[P, T]) -> Callable[P, T]:
     wrapped: OnceCallable[P, T]
 
     def wrapped(*args: P.args, **kwds: P.kwargs) -> T:
-        if wrapped.called:  # ty:ignore[unresolved-attribute]
+        if wrapped.called:
             raise RuntimeError(f"{func!r} can be called only once")
 
         wrapped.called = True  # ty:ignore[invalid-assignment]
         return func(*args, **kwds)
 
-    wrapped.called = False  # ty:ignore[unresolved-attribute]
+    wrapped.called = False  # ty:ignore[missing-attribute]
     return wrapped
 
 

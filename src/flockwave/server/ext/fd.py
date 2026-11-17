@@ -7,7 +7,7 @@ from __future__ import annotations
 from contextlib import ExitStack
 
 # not available on Windows
-from fcntl import (  # ty:ignore[unresolved-import, unused-ignore-comment]
+from fcntl import (  # ty:ignore[import-not-found, unused-ignore-comment]
     F_GETFL,
     F_SETFL,
     fcntl,
@@ -15,7 +15,7 @@ from fcntl import (  # ty:ignore[unresolved-import, unused-ignore-comment]
 from functools import partial
 
 # not available on Windows
-from os import O_NONBLOCK  # ty:ignore[unresolved-import, unused-ignore-comment]
+from os import O_NONBLOCK  # ty:ignore[import-not-found, unused-ignore-comment]
 from typing import TYPE_CHECKING, Any, Protocol, TypeVar, cast
 
 from flockwave.channels import ParserChannel
@@ -32,7 +32,7 @@ from trio import (
 
 # not available on Windows
 from trio.lowlevel import (
-    FdStream,  # ty:ignore[unresolved-import, unused-ignore-comment]
+    FdStream,  # ty:ignore[import-not-found, unused-ignore-comment]
 )
 
 from flockwave.server.model import Client, CommunicationChannel

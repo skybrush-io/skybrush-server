@@ -25,6 +25,12 @@ from .lighthouse import (
     LighthouseLocalPositioningSystem,
     LighthouseLocalPositioningSystemType,
 )
+from .loco_lps import (
+    LOCO_LPS_ID,
+    LOCO_LPS_TYPE_ID,
+    LocoLocalPositioningSystem,
+    LocoLocalPositioningSystemType,
+)
 from .mocap import CrazyflieMocapFrameHandler
 from .scanning import CrazyradioScannerTask, ScannerTaskEvent
 from .types import ControllerType, PositioningSystemType
@@ -163,11 +169,11 @@ class CrazyflieDronesExtension(UAVExtension[CrazyflieDriver]):
 
                 # Register the local positioning system that the drones use,
                 # if the server needs to manage it
-                if (
-                    self._driver.positioning_system_type
-                    is PositioningSystemType.LIGHTHOUSE
-                ):
+                positioning_system_type = self._driver.positioning_system_type
+                if positioning_system_type is PositioningSystemType.LIGHTHOUSE:
                     await self._use_lighthouse_positioning_system(stack, lps_api)
+                elif positioning_system_type is PositioningSystemType.UWB:
+                    self._use_loco_positioning_system(stack, lps_api)
 
                 # Register all the connections and ask the app to supervise them
                 num_connections = len(connection_config)
@@ -275,6 +281,42 @@ class CrazyflieDronesExtension(UAVExtension[CrazyflieDriver]):
 
         self._driver.lighthouse = lighthouse
         stack.callback(setattr, self._driver, "lighthouse", None)
+
+    def _use_loco_positioning_system(
+        self, stack: ExitStack, lps_api: LocalPositioningSystemsExtensionAPI
+    ) -> None:
+        """Registers the Loco local positioning system and its type, and lets
+        the driver read the anchors from the drones when they connect. Both
+        are unregistered when the given exit stack is closed.
+        """
+        assert self._driver is not None
+
+        stack.enter_context(
+            lps_api.use_lps_type(
+                LOCO_LPS_TYPE_ID,
+                LocoLocalPositioningSystemType(self._get_connected_uavs, self.log),
+            )
+        )
+        loco = stack.enter_context(
+            lps_api.create_and_use_lps(LOCO_LPS_TYPE_ID, id=LOCO_LPS_ID)
+        )
+        assert isinstance(loco, LocoLocalPositioningSystem)
+
+        self._driver.loco = loco
+        stack.callback(setattr, self._driver, "loco", None)
+
+    def _get_connected_uavs(self) -> list[CrazyflieUAV]:
+        """Returns the Crazyflie UAVs managed by this extension that the server
+        is currently connected to.
+        """
+        if self.app is None:
+            return []
+        result = []
+        for uav_id in self.app.object_registry.ids_by_type(CrazyflieUAV):
+            uav = self._find_uav_by_id(uav_id)
+            if uav is not None and uav.is_connected:
+                result.append(uav)
+        return result
 
     def _find_uav_by_id(self, uav_id: str) -> CrazyflieUAV | None:
         """Returns the Crazyflie UAV with the given ID that is managed by this

@@ -17,6 +17,7 @@ from typing import TYPE_CHECKING, Any, cast
 from aiocflib.crazyflie import Crazyflie
 from aiocflib.crazyflie.high_level_commander import TrajectoryType
 from aiocflib.crazyflie.lighthouse import LighthouseConfiguration
+from aiocflib.crazyflie.loco import Vector3D
 from aiocflib.crazyflie.log import LogSession
 from aiocflib.crazyflie.mem import write_with_checksum
 from aiocflib.crtp.crtpstack import MemoryType
@@ -67,6 +68,11 @@ from .lighthouse import (
     read_lighthouse_configuration,
     write_lighthouse_configuration,
 )
+from .loco_lps import (
+    LocoLocalPositioningSystem,
+    read_loco_anchor_positions,
+    write_loco_anchor_position,
+)
 from .trajectory import TrajectoryEncoding, encode_trajectory
 from .types import ControllerType, PositioningSystemType
 
@@ -116,6 +122,12 @@ class CrazyflieDriver(UAVDriver["CrazyflieUAV"]):
     """The Lighthouse local positioning system whose configuration the driver
     keeps in sync on the connected drones; ``None`` if the drones do not use
     Lighthouse positioning.
+    """
+
+    loco: LocoLocalPositioningSystem | None = None
+    """The Loco local positioning system that reads the anchors from the
+    drones when they connect; ``None`` if the drones do not use Loco
+    positioning.
     """
 
     positioning_system_type: PositioningSystemType = PositioningSystemType.UWB
@@ -677,6 +689,16 @@ class CrazyflieUAV(UAVBase):
         """
         return await read_lighthouse_configuration(self._get_crazyflie())
 
+    async def get_loco_anchor_positions(self) -> dict[int, Vector3D | None]:
+        """Reads the positions of the Loco anchors that the drone has heard
+        from.
+
+        Raises:
+            NotSupportedError: if the drone does not have a Loco positioning
+                deck
+        """
+        return await read_loco_anchor_positions(self._get_crazyflie())
+
     async def get_parameter(self, name: str, fetch: bool = False) -> float:
         """Returns the value of a parameter from the Crazyflie."""
         return await self._get_crazyflie().param.get(name, fetch=fetch)
@@ -738,6 +760,11 @@ class CrazyflieUAV(UAVBase):
         to it at least once, possibly during a previous boot.
         """
         return self._last_uploaded_show is not None
+
+    @property
+    def is_connected(self) -> bool:
+        """Returns whether the server is connected to the UAV."""
+        return self._crazyflie is not None
 
     @property
     def is_idle_on_ground(self) -> bool:
@@ -997,6 +1024,18 @@ class CrazyflieUAV(UAVBase):
                 system
         """
         await write_lighthouse_configuration(self._get_crazyflie(), config)
+
+    async def set_loco_anchor_position(
+        self, anchor_id: int, position: Vector3D
+    ) -> bool:
+        """Asks the drone to send a new position to a Loco anchor.
+
+        Returns:
+            whether the drone accepted the packet for sending
+        """
+        return await write_loco_anchor_position(
+            self._get_crazyflie(), anchor_id, position
+        )
 
     async def set_home_position(self, pos: tuple[float, float, float] | None) -> None:
         """Sets or clears the home position of the UAV.
@@ -1570,6 +1609,10 @@ class CrazyflieHandlerTask:
                 lighthouse = self._uav.driver.lighthouse
                 if lighthouse is not None:
                     nursery.start_soon(lighthouse.keep_uav_in_sync, self._uav)
+
+                loco = self._uav.driver.loco
+                if loco is not None:
+                    nursery.start_soon(loco.handle_uav_connected, self._uav)
 
                 await self._reupload_last_show_if_needed()
 

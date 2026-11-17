@@ -3,8 +3,6 @@ extension.
 """
 
 import json
-from collections.abc import AsyncGenerator
-from contextlib import asynccontextmanager
 from math import cos, isclose, pi, sin
 from pathlib import Path
 from types import SimpleNamespace
@@ -24,10 +22,8 @@ from trio import open_nursery, sleep
 from trio.testing import wait_all_tasks_blocked
 
 from flockwave.server.errors import NotSupportedError
-from flockwave.server.ext.crazyflie.driver import CrazyflieDriver
 from flockwave.server.ext.crazyflie.extension import CrazyflieDronesExtension
 from flockwave.server.ext.crazyflie.lighthouse import (
-    LIGHTHOUSE_LPS_ID,
     RETRY_INTERVAL,
     LighthouseLocalPositioningSystem,
     LighthouseLocalPositioningSystemType,
@@ -42,12 +38,10 @@ from flockwave.server.ext.crazyflie.math import (
     quaternion_from_rotation_matrix,
     rotation_matrix_from_quaternion,
 )
-from flockwave.server.ext.crazyflie.types import PositioningSystemType
-from flockwave.server.ext.lps.extension import LocalPositioningSystemsExtension
 from flockwave.server.model import Quaternion
 from flockwave.server.model.commands import Progress
-from flockwave.server.registries import ObjectRegistry
 
+from .crazyflie_extension import running_crazyflie_extension
 from .recording_message_hub import RecordingMessageHub
 
 
@@ -723,102 +717,6 @@ async def test_lighthouse_functions_report_missing_lighthouse_support():
 
 ###########################################################################
 # Registration in the Crazyflie extension
-
-
-def test_positioning_system_from_json():
-    assert PositioningSystemType.from_json(None) is PositioningSystemType.UWB
-    assert PositioningSystemType.from_json("uwb") is PositioningSystemType.UWB
-    assert (
-        PositioningSystemType.from_json("Lighthouse")
-        is PositioningSystemType.LIGHTHOUSE
-    )
-    assert PositioningSystemType.from_json("mocap") is PositioningSystemType.MOCAP
-    with raises(ValueError):
-        PositioningSystemType.from_json("gps")
-
-
-@mark.parametrize(
-    "positioning,expected",
-    [
-        (None, PositioningSystemType.UWB),
-        ("lighthouse", PositioningSystemType.LIGHTHOUSE),
-        ("gps", PositioningSystemType.UWB),
-    ],
-)
-def test_extension_configures_positioning_system(
-    positioning: str | None, expected: PositioningSystemType
-):
-    ext = CrazyflieDronesExtension()
-    ext.log = MagicMock()
-    driver = CrazyflieDriver()
-    cfg = {} if positioning is None else {"positioning": positioning}
-    ext.configure_driver(driver, cfg)
-    assert driver.positioning_system_type is expected
-    assert ext.log.warning.called == (positioning == "gps")
-
-
-@asynccontextmanager
-async def running_crazyflie_extension(
-    hub: RecordingMessageHub, data_dir: Path, positioning: str
-) -> AsyncGenerator[
-    tuple[CrazyflieDronesExtension, LocalPositioningSystemsExtension, CrazyflieDriver]
-]:
-    """Runs the Crazyflie extension with no radio connections, together with
-    the `lps` extension, until the context is exited.
-    """
-    lps_ext = LocalPositioningSystemsExtension()
-    lps_ext.app = SimpleNamespace(  # type: ignore
-        command_execution_manager=MagicMock(),
-        message_hub=hub,
-        object_registry=ObjectRegistry(),
-    )
-
-    ext = CrazyflieDronesExtension()
-    ext.log = MagicMock()
-    ext.app = SimpleNamespace(  # type: ignore
-        dirs=SimpleNamespace(user_cache_path=data_dir, user_data_path=data_dir),
-        uav_driver_registry=MagicMock(),
-        import_api=lambda name, *args: (
-            SimpleNamespace(**lps_ext.exports()) if name == "lps" else MagicMock()
-        ),
-    )
-    driver = ext._driver
-    assert driver is not None
-    configuration = {"connections": [], "positioning": positioning}
-    ext.configure_driver(driver, configuration)
-
-    async with open_nursery() as nursery:
-        nursery.start_soon(lps_ext.run)
-        await wait_all_tasks_blocked()
-
-        async with open_nursery() as cf_nursery:
-            cf_nursery.start_soon(ext._run, ext.app, configuration)
-            await wait_all_tasks_blocked()
-            yield ext, lps_ext, driver
-            cf_nursery.cancel_scope.cancel()
-
-        assert list(lps_ext._lps_registry.ids) == []
-        assert list(lps_ext._lps_type_registry.ids) == []
-        assert driver.lighthouse is None
-
-        nursery.cancel_scope.cancel()
-
-
-@mark.parametrize(
-    "positioning,registered",
-    [("uwb", False), ("mocap", False), ("lighthouse", True)],
-)
-async def test_extension_registers_lighthouse_lps_only_when_selected(
-    hub: RecordingMessageHub, tmp_path: Path, positioning: str, registered: bool
-):
-    async with running_crazyflie_extension(hub, tmp_path, positioning) as (
-        _,
-        lps_ext,
-        driver,
-    ):
-        expected_ids = [LIGHTHOUSE_LPS_ID] if registered else []
-        assert list(lps_ext._lps_registry.ids) == expected_ids
-        assert (driver.lighthouse is not None) == registered
 
 
 async def test_extension_saves_and_restores_lighthouse_configuration(

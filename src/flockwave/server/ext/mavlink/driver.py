@@ -91,7 +91,11 @@ from .enums import (
     RebootShutdownConditions,
     SkybrushUserCommand,
 )
-from .file_upload import decode_file_upload_data, validate_remote_file_path
+from .file_upload import (
+    DEFAULT_MAX_FILE_UPLOAD_SIZE,
+    decode_file_upload_data,
+    validate_remote_file_path,
+)
 from .ftp import MAVFTP, MAVFTPErrorCode, OperationNotAcknowledgedError
 from .log_download import MAVLinkLogDownloader
 from .packets import (
@@ -171,6 +175,11 @@ class MAVLinkDriver(UAVDriver["MAVLinkUAV"]):
 
     mandatory_custom_mode: int | None
     """Custom mode to switch drones to when they are seen for the first time."""
+
+    max_file_upload_size: int = DEFAULT_MAX_FILE_UPLOAD_SIZE
+    """Maximum size of a file that can be uploaded to a UAV with the
+    ``__file_upload`` command, in bytes.
+    """
 
     run_in_background: Callable[[Callable[[], Awaitable[None]]], None]
     """A function that should be called by the driver whenever it wants to
@@ -411,7 +420,7 @@ class MAVLinkDriver(UAVDriver["MAVLinkUAV"]):
             CommandInvocationError: if the path or the file contents are invalid
         """
         remote_path = validate_remote_file_path(path)
-        contents = decode_file_upload_data(data)
+        contents = decode_file_upload_data(data, self.max_file_upload_size)
 
         try:
             async for progress in uav.upload_file(contents, remote_path):

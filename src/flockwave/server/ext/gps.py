@@ -24,7 +24,6 @@ from flockwave.connections import (
     RWConnection,
     create_connection,
 )
-from flockwave.ext.manager import ExtensionAPIProxy
 from flockwave.gps.vectors import GPSCoordinate
 from flockwave.networking import format_socket_address
 from flockwave.parsers import create_line_parser
@@ -33,6 +32,7 @@ from pydantic import BaseModel, Field
 from pynmea2 import parse as parse_nmea
 
 from flockwave.server.errors import NotSupportedError
+from flockwave.server.ext.beacon import BeaconExtensionAPI
 from flockwave.server.model import ConnectionPurpose
 from flockwave.server.utils.generic import overridden
 
@@ -229,7 +229,7 @@ class GPSExtension(TypedConfigExtension[GPSConfig]):
     devices.
     """
 
-    _beacon_api: ExtensionAPIProxy
+    _beacon_api: BeaconExtensionAPI
     """Object that gives access to the functions provided by the `beacon`
     extension.
     """
@@ -407,7 +407,7 @@ class GPSExtension(TypedConfigExtension[GPSConfig]):
         assert self.log is not None
 
         log = self.log
-        self._beacon_api = app.import_api("beacon")
+        self._beacon_api = app.import_api("beacon", BeaconExtensionAPI)
 
         connection, format = create_gps_connection_and_format(
             connection=self._connection,

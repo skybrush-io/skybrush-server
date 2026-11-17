@@ -8,6 +8,7 @@ from .autopilots import (
     ArduRover,
 )
 from .enums import MAVSeverity
+from .file_upload import DEFAULT_MAX_FILE_UPLOAD_SIZE
 from .rssi import RSSIMode
 
 __all__ = ("schema",)
@@ -307,6 +308,17 @@ schema = {
             "default": False,
             "format": "checkbox",
             "propertyOrder": 14000,
+        },
+        "max_file_upload_size": {
+            "type": "integer",
+            "minimum": 0,
+            "title": "Maximum file upload size",
+            "description": (
+                "Maximum size of a file that can be uploaded to a drone via "
+                "MAVFTP, in bytes."
+            ),
+            "default": DEFAULT_MAX_FILE_UPLOAD_SIZE,
+            "propertyOrder": 15000,
         },
         # packet_loss is an advanced setting and is not included here
     }

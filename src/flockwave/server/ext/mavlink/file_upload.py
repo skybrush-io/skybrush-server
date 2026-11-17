@@ -8,21 +8,24 @@ from typing import Any
 from flockwave.server.errors import CommandInvocationError
 
 __all__ = (
-    "MAX_FILE_UPLOAD_SIZE",
+    "DEFAULT_MAX_FILE_UPLOAD_SIZE",
     "decode_file_upload_data",
     "validate_remote_file_path",
 )
 
 
-MAX_FILE_UPLOAD_SIZE = 256 * 1024
-"""Maximum size of a file that can be uploaded to a UAV, in bytes."""
+DEFAULT_MAX_FILE_UPLOAD_SIZE = 256 * 1024
+"""Default maximum size of a file that can be uploaded to a UAV, in bytes."""
 
 
-def decode_file_upload_data(data: Any) -> bytes:
+def decode_file_upload_data(
+    data: Any, max_size: int = DEFAULT_MAX_FILE_UPLOAD_SIZE
+) -> bytes:
     """Decodes the base64-encoded contents of a file upload request.
 
     Args:
         data: the base64-encoded file contents, as received from the client
+        max_size: the maximum allowed size of the decoded file, in bytes
 
     Returns:
         the decoded file contents
@@ -39,9 +42,9 @@ def decode_file_upload_data(data: Any) -> bytes:
     except BinasciiError:
         raise CommandInvocationError("File contents are not valid base64") from None
 
-    if len(result) > MAX_FILE_UPLOAD_SIZE:
+    if len(result) > max_size:
         raise CommandInvocationError(
-            f"File too large; maximum size is {MAX_FILE_UPLOAD_SIZE} bytes"
+            f"File too large; maximum size is {max_size} bytes"
         )
 
     return result

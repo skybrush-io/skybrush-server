@@ -30,6 +30,7 @@ from .autopilots import (
 from .channel import use_mavlink_message_channel_factory
 from .driver import MAVLinkDriver, MAVLinkUAV
 from .errors import InvalidSigningKeyError
+from .file_upload import DEFAULT_MAX_FILE_UPLOAD_SIZE
 from .led_lights import LEDLightConfigurationSignalDispatcher
 from .network import MAVLinkNetwork
 from .packets import create_rc_override_packet
@@ -159,12 +160,27 @@ class MAVLinkDronesExtension(UAVExtension[MAVLinkDriver]):
         if use_bulk_parameter_uploads:
             self.log.info("Using bulk parameter uploads (experimental)")
 
+        max_file_upload_size = configuration.get(
+            "max_file_upload_size", DEFAULT_MAX_FILE_UPLOAD_SIZE
+        )
+        try:
+            max_file_upload_size = int(max_file_upload_size)
+        except (TypeError, ValueError):
+            max_file_upload_size = -1
+        if max_file_upload_size < 0:
+            self.log.warning(
+                f"Invalid maximum file upload size, using default of "
+                f"{DEFAULT_MAX_FILE_UPLOAD_SIZE} bytes"
+            )
+            max_file_upload_size = DEFAULT_MAX_FILE_UPLOAD_SIZE
+
         driver.assume_data_streams_configured = assume_data_streams_configured
         driver.autopilot_factory = autopilot_factory
         driver.broadcast_packet = self._broadcast_packet
         driver.create_device_tree_mutator = self.create_device_tree_mutation_context
         driver.log = self.log
         driver.mandatory_custom_mode = optional_int(configuration.get("custom_mode"))
+        driver.max_file_upload_size = max_file_upload_size
         driver.run_in_background = self.run_in_background
         driver.send_packet = self._send_packet
         driver.use_bulk_parameter_uploads = use_bulk_parameter_uploads

@@ -75,6 +75,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   implement a local positioning system must turn their `calibrate()` method
   into an async generator that accepts the calibration parameters.
 
+- Added a `max_file_upload_size` configuration key to the MAVLink extension.
+  It sets the maximum size of files uploaded with the hidden `__file_upload`
+  command, in bytes. The default is 256 KiB, the same as the previous
+  hardcoded limit.
+
 ### Fixed
 
 - MAVFTP uploads that create their parent directories (e.g., the hidden

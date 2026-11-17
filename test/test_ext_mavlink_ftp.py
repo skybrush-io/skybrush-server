@@ -14,6 +14,7 @@ from trio.lowlevel import checkpoint
 
 from flockwave.server.errors import CommandInvocationError
 from flockwave.server.ext.mavlink.driver import MAVLinkDriver, MAVLinkUAV
+from flockwave.server.ext.mavlink.file_upload import DEFAULT_MAX_FILE_UPLOAD_SIZE
 from flockwave.server.ext.mavlink.ftp import (
     _MAVFTP_CLEANUP_TIMEOUT,
     _MAVFTP_RESET_TIMEOUT,
@@ -489,7 +490,11 @@ async def test_uav_upload_file(server: FakeMAVFTPServer):
 
 @fixture
 def driver_and_uav(server: FakeMAVFTPServer):
-    driver = SimpleNamespace(log=Mock(), send_packet=server)
+    driver = SimpleNamespace(
+        log=Mock(),
+        max_file_upload_size=DEFAULT_MAX_FILE_UPLOAD_SIZE,
+        send_packet=server,
+    )
     uav = SimpleNamespace(id="42", driver=driver)
     uav.upload_file = lambda *args: MAVLinkUAV.upload_file(uav, *args)  # ty:ignore[invalid-argument-type]
     return driver, uav
@@ -529,6 +534,22 @@ async def test_file_upload_command_invalid_args(
             uav,
             path="/APM/../foo.lua",
             data="",
+        ):
+            pass
+
+    assert server.requests == []
+
+
+async def test_file_upload_command_too_large(server: FakeMAVFTPServer, driver_and_uav):
+    driver, uav = driver_and_uav
+    driver.max_file_upload_size = 16
+
+    with raises(CommandInvocationError):
+        async for _ in MAVLinkDriver.handle_command___file_upload(
+            driver,
+            uav,
+            path="/APM/scripts/foo.lua",
+            data=b64encode(b"x" * 17).decode("ascii"),
         ):
             pass
 
@@ -615,5 +636,6 @@ async def test_file_crc_command_missing_file(
         )
 
     assert ex.value.code == MAVFTPErrorCode.FILE_NOT_FOUND
-    driver.log.error.assert_called_once()
-    assert driver.log.error.call_args.kwargs["extra"] == {"id": "42"}
+
+    # A missing file is an expected outcome and must not be logged as an error
+    driver.log.error.assert_not_called()

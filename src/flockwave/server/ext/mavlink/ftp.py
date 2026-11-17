@@ -353,7 +353,7 @@ class MAVFTPSession:
         Parameters:
             session_id: the session ID to use
             sender: callable that can be called with a single MAVFTPMessage to
-                send it and wait for the reply from the PixHawk
+                send it and wait for the reply from the flight controller
         """
         self._closed = False
         self._closing = False
@@ -453,7 +453,7 @@ class MAVFTPSession:
 
 
 class MAVFTP:
-    """A single MAVFTP connection to a PixHawk over a MAVLink connection."""
+    """A single MAVFTP connection to a flight controller over a MAVLink connection."""
 
     _closed: bool
     """Stores whether the MAVFTP connection is closed already."""
@@ -496,8 +496,8 @@ class MAVFTP:
         self._sender = sender
 
     async def aclose(self) -> None:
-        """Closes the MAVFTP connection and instructs the PixHawk to close
-        all open file handles.
+        """Closes the MAVFTP connection and instructs the flight controller to
+        close all open file handles.
 
         The connection object should not be used after this operation.
         """
@@ -527,7 +527,7 @@ class MAVFTP:
             raise
 
     async def crc32(self, path: FTPPath):
-        """Calculates the unsigned CRC32 checksum of a file on the PixHawk."""
+        """Calculates the unsigned CRC32 checksum of a file on the UAV."""
         posix_path = self._resolve(path)
         message = MAVFTPMessage(MAVFTPOpCode.CALC_FILE_CRC32, data=posix_path)
         reply = await self._send_and_wait(message)
@@ -580,11 +580,11 @@ class MAVFTP:
 
     @as_safe_channel
     async def ls(self, path: FTPPath = ".") -> AsyncGenerator[ListingEntry, None]:
-        """Lists the contents of a directory on the PixHawk.
+        """Lists the contents of a directory on the flight controller.
 
         Yields:
             ListingEntryType: one entry for each file or directory in the given
-                path on the PixHawk
+                path
         """
         path = self._resolve(path)
         offset = 0
@@ -604,8 +604,27 @@ class MAVFTP:
             else:
                 reply.raise_error(replies_to=message)
 
+    async def is_directory(self, path: FTPPath) -> bool:
+        """Returns whether the given path is an existing directory on the
+        flight controller.
+
+        Returns:
+            ``True`` if the path is an existing directory, ``False`` if it does
+            not exist, is not a directory or cannot be listed
+        """
+        message = MAVFTPMessage(
+            MAVFTPOpCode.LIST_DIRECTORY,
+            data=self._to_directory_request_path(self._resolve(path)),
+            offset=0,
+        )
+        reply = await self._send_and_wait(message, allow_nak=True)
+
+        # An empty directory has no entries at offset 0; the FC replies
+        # with an EOF NAK in this case
+        return reply.is_ack or reply.error_code == MAVFTPErrorCode.EOF
+
     async def mkdir(self, path: FTPPath, parents: bool = False, exist_ok: bool = False):
-        """Creates a directory on the PixHawk over a MAVLink connection."""
+        """Creates a directory on the UAV over a MAVLink connection."""
         path = self._resolve(path)
 
         if parents:
@@ -613,17 +632,36 @@ class MAVFTP:
             for parent in self._parents_of(path):
                 await self.mkdir(parent, parents=False, exist_ok=True)
 
-        if not path.startswith(b"@"):
-            path = b"/" + path
-
-        message = MAVFTPMessage(MAVFTPOpCode.CREATE_DIRECTORY, data=path)
+        message = MAVFTPMessage(
+            MAVFTPOpCode.CREATE_DIRECTORY, data=self._to_directory_request_path(path)
+        )
         try:
             await self._send_and_wait(message)
         except OperationNotAcknowledgedError as ex:
-            if ex.is_file_exists_error and exist_ok:
-                return
-            else:
+            if not exist_ok:
                 raise
+            if ex.is_file_exists_error:
+                return
+
+            # Workaround for a race condition in ArduPilot, found in
+            # ArduCopter 4.6.3 and still present in upstream master as of
+            # 2026-10-11 (GCS_FTP::error() in GCS_FTP.cpp, see the "errno's
+            # are not thread-local" FIXME there). When the directory exists,
+            # mkdir() fails with EEXIST, and the FTP thread reads errno to
+            # pick the error code of the NAK. errno is a single global
+            # variable on ChibiOS, and other threads that access the SD card
+            # (e.g., the logger) reset it to 0 in the meanwhile. The NAK
+            # becomes FAIL_ERRNO with errno 0 instead of FILE_EXISTS, and an
+            # upload that creates its parent directories fails randomly.
+            # Revisit this when ArduPilot makes errno thread-local or stops
+            # relying on it in its FTP error replies.
+            if ex.code in (
+                MAVFTPErrorCode.FAIL,
+                MAVFTPErrorCode.FAIL_ERRNO,
+            ) and await self.is_directory(path):
+                return
+
+            raise
 
     async def put(
         self,
@@ -762,6 +800,14 @@ class MAVFTP:
             if parent_path != root:
                 yield str(parent_path)
 
+    @staticmethod
+    def _to_directory_request_path(path: bytes) -> bytes:
+        """Converts a _resolved_ path, i.e. a path returned from `_resolve()`,
+        to the form sent in directory-related requests. Regular paths get a
+        leading slash; virtual paths (starting with ``@``) are left as is.
+        """
+        return path if path.startswith(b"@") else b"/" + path
+
     def _resolve(self, name: FTPPath = ".") -> bytes:
         """Resolves a relative or absolute path name with the current path of
         this connection and returns an appropriate POSIX path object.
@@ -783,7 +829,7 @@ class MAVFTP:
         allow_nak: bool = False,
     ) -> MAVFTPMessage:
         """Sends a raw FTP message over the connection and waits for the response
-        from the PixHawk.
+        from the flight controller.
 
         Parameters:
             message: the MAVFTP message to send

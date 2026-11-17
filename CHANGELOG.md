@@ -77,9 +77,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- The `lps` extension no longer leaks its update handlers for local
-  positioning systems that are still registered when the extension is
-  unloaded.
+- MAVFTP uploads that create their parent directories (e.g., the hidden
+  `__file_upload` command) no longer fail randomly with
+  `FTP operation failed (errno = 0)` when a directory already exists. This
+  works around a race condition in the MAVFTP implementation of ArduPilot that
+  sometimes reports an existing directory with errno 0 instead of "file
+  exists".
 
 - MAVLink STATUSTEXT messages are now reassembled properly if they arrive in
   multiple chunks. When chunks are dropped due to a flaky radio link, the
@@ -91,6 +94,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the file stayed open after a cancellation, and the next upload attempt
   failed. The server waits at most 3 seconds per message for the drone to
   acknowledge the cleanup after a cancellation.
+
+- The `lps` extension no longer leaks its update handlers for local
+  positioning systems that are still registered when the extension is
+  unloaded.
 
 ## [2.61.0] - 2026-11-05
 

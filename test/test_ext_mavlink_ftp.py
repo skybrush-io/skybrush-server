@@ -39,9 +39,18 @@ class FakeMAVFTPServer:
 
     Like ArduPilot, the server refuses to create a file while another file is
     still open.
+
+    With ``clobber_errno``, the server mimics the errno race condition of
+    ArduPilot: every error that ArduPilot derives from errno is reported as
+    FAIL_ERRNO with errno 0.
     """
 
-    def __init__(self, *, report_exists_as_errno: bool = False):
+    #: Maximum size of the entries in a single LIST_DIRECTORY reply
+    MAX_LISTING_SIZE = 239
+
+    def __init__(
+        self, *, report_exists_as_errno: bool = False, clobber_errno: bool = False
+    ):
         self.dirs: set[str] = {""}
         self.files: dict[str, bytearray] = {}
         self.requests: list[tuple[int, str]] = []
@@ -51,6 +60,7 @@ class FakeMAVFTPServer:
         self._sessions: dict[int, str] = {}
         self._next_session_id = 1
         self._report_exists_as_errno = report_exists_as_errno
+        self._clobber_errno = clobber_errno
 
     async def __call__(
         self, packet, wait_for_response=None, target=None
@@ -82,10 +92,46 @@ class FakeMAVFTPServer:
         return path.rpartition("/")[0]
 
     def _exists_error(self) -> MAVFTPMessage:
+        if self._clobber_errno:
+            return self._nak(MAVFTPErrorCode.FAIL_ERRNO, 0)
         if self._report_exists_as_errno:
             return self._nak(MAVFTPErrorCode.FAIL_ERRNO, EEXIST)
         else:
             return self._nak(MAVFTPErrorCode.FILE_EXISTS)
+
+    def _not_found_error(self) -> MAVFTPMessage:
+        if self._clobber_errno:
+            return self._nak(MAVFTPErrorCode.FAIL_ERRNO, 0)
+        return self._nak(MAVFTPErrorCode.FILE_NOT_FOUND)
+
+    def _list(self, path: str, offset: int) -> MAVFTPMessage:
+        if path not in self.dirs:
+            return self._not_found_error()
+
+        prefix = f"{path}/" if path else ""
+        entries = sorted(
+            [
+                f"D{name[len(prefix) :]}"
+                for name in self.dirs
+                if name and self._parent_of(name) == path
+            ]
+            + [
+                f"F{name[len(prefix) :]}\t{len(content)}"
+                for name, content in self.files.items()
+                if self._parent_of(name) == path
+            ]
+        )[offset:]
+        if not entries:
+            return self._nak(MAVFTPErrorCode.EOF)
+
+        # Like ArduPilot, send only as many entries as fit in a single reply
+        data = b""
+        for entry in entries:
+            encoded = entry.encode("utf-8") + b"\x00"
+            if len(data) + len(encoded) > self.MAX_LISTING_SIZE:
+                break
+            data += encoded
+        return self._ack(data=data, offset=offset)
 
     @staticmethod
     def _ack(**kwds) -> MAVFTPMessage:
@@ -111,6 +157,9 @@ class FakeMAVFTPServer:
                 return self._nak(MAVFTPErrorCode.FAIL_ERRNO, ENOENT)
             self.dirs.add(path)
             return self._ack()
+
+        elif opcode == MAVFTPOpCode.LIST_DIRECTORY:
+            return self._list(path, request.offset)
 
         elif opcode == MAVFTPOpCode.CREATE_FILE:
             if self._sessions:
@@ -195,6 +244,78 @@ async def test_mkdir_exist_ok_with_errno_style_error():
     await ftp.mkdir("/APM/scripts", parents=True)
     await ftp.mkdir("/APM/scripts", parents=True)
     assert {"APM", "APM/scripts"} <= server.dirs
+
+
+async def test_is_directory(ftp: MAVFTP, server: FakeMAVFTPServer):
+    server.dirs |= {"APM", "APM/scripts", "APM/empty"}
+    server.files["APM/scripts/foo.lua"] = bytearray(b"-- foo")
+
+    assert await ftp.is_directory("/APM/scripts")
+    assert await ftp.is_directory("/APM/empty")
+    assert await ftp.is_directory("/APM")
+    assert not await ftp.is_directory("/APM/missing")
+    assert not await ftp.is_directory("/APM/scripts/foo.lua")
+
+
+async def test_is_directory_sends_single_request_for_large_directory(
+    ftp: MAVFTP, server: FakeMAVFTPServer
+):
+    server.dirs.add("APM")
+    for index in range(500):
+        server.files[f"APM/file{index:03}.txt"] = bytearray()
+
+    # The listing would take dozens of packets; the check needs one
+    async with ftp.ls("/APM") as entries:
+        assert len([entry async for entry in entries]) == 500
+    assert server.opcodes.count(MAVFTPOpCode.LIST_DIRECTORY) > 20
+    server.opcodes.clear()
+
+    assert await ftp.is_directory("/APM")
+    assert server.opcodes == [MAVFTPOpCode.LIST_DIRECTORY]
+
+
+async def test_mkdir_exist_ok_with_clobbered_errno():
+    server = FakeMAVFTPServer(clobber_errno=True)
+    ftp = MAVFTP(server)  # ty:ignore[invalid-argument-type]
+
+    await ftp.mkdir("/APM/scripts", parents=True)
+    await ftp.mkdir("/APM/scripts", parents=True)
+    assert {"APM", "APM/scripts"} <= server.dirs
+
+
+async def test_mkdir_exist_ok_with_clobbered_errno_on_file():
+    server = FakeMAVFTPServer(clobber_errno=True)
+    ftp = MAVFTP(server)  # ty:ignore[invalid-argument-type]
+    server.files["foo"] = bytearray()
+
+    # A file in place of the directory is still an error
+    with raises(OperationNotAcknowledgedError) as ex:
+        await ftp.mkdir("/foo", exist_ok=True)
+    assert ex.value.code == MAVFTPErrorCode.FAIL_ERRNO
+    assert ex.value.errno == 0
+
+
+async def test_mkdir_existing_with_clobbered_errno_without_exist_ok():
+    server = FakeMAVFTPServer(clobber_errno=True)
+    ftp = MAVFTP(server)  # ty:ignore[invalid-argument-type]
+    server.dirs.add("APM")
+
+    with raises(OperationNotAcknowledgedError):
+        await ftp.mkdir("/APM")
+
+    # No directory check is needed without exist_ok
+    assert MAVFTPOpCode.LIST_DIRECTORY not in server.opcodes
+
+
+async def test_put_with_parents_existing_dirs_with_clobbered_errno():
+    server = FakeMAVFTPServer(clobber_errno=True)
+    ftp = MAVFTP(server)  # ty:ignore[invalid-argument-type]
+    server.dirs |= {"APM", "APM/scripts", "APM/scripts/modules"}
+
+    await ftp.put(
+        b"-- module", "/APM/scripts/modules/ubxflash/common.lua", parents=True
+    )
+    assert server.files["APM/scripts/modules/ubxflash/common.lua"] == b"-- module"
 
 
 async def test_put_with_parents(ftp: MAVFTP, server: FakeMAVFTPServer):

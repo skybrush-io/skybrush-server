@@ -51,7 +51,7 @@ def _get_oxidized_resource_reader(package: str) -> ResourceReader | None:
     # __loader__ points to PyOxidizer's OxidizedFinder
     assert hasattr(__loader__, "get_resource_reader")
     assert callable(__loader__.get_resource_reader)
-    return __loader__.get_resource_reader(package)  # ty:ignore[invalid-return-type]
+    return __loader__.get_resource_reader(package)  # ty:ignore[invalid-explicit-return]
 
 
 def open_package_resource(package: str, path: str) -> IO[bytes]:

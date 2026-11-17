@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections.abc import Generator
 from contextlib import ExitStack, contextmanager
 from operator import attrgetter
+from typing import Any
 
 from flockwave.concurrency import AsyncBundler
 
@@ -61,7 +62,7 @@ class BeaconExtension(Extension):
             with beacon.updated.connected_to(self._on_beacon_updated, sender=beacon):
                 yield beacon
 
-    def exports(self):
+    def exports(self) -> dict[str, Any]:
         return {
             "find_by_id": self._find_beacon_by_id,
             "use": self._use_beacon,

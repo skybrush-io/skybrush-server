@@ -14,7 +14,7 @@ from flockwave.server.message_hub import (
     UAVMessageRateLimiter,
 )
 
-from .utils import async_noop
+from .utils import async_noop, tuple_message_factory
 
 
 @fixture
@@ -26,9 +26,9 @@ def server():
     ``limiters`` gives the tests direct access to the registered limiters.
     """
     limiters = {
-        "CONN-INF": ConnectionStatusMessageRateLimiter(factory=tuple),
-        "SYS-MSG": BatchMessageRateLimiter(factory=tuple),
-        "UAV-INF": UAVMessageRateLimiter(factory=tuple),
+        "CONN-INF": ConnectionStatusMessageRateLimiter(factory=tuple_message_factory),
+        "SYS-MSG": BatchMessageRateLimiter(factory=tuple_message_factory),
+        "UAV-INF": UAVMessageRateLimiter(factory=tuple_message_factory),
     }
     rate_limiters = RateLimiters(dispatcher=async_noop)
     for name, limiter in limiters.items():

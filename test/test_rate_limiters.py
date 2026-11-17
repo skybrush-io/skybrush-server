@@ -11,7 +11,7 @@ from flockwave.server.message_hub import (
     UAVMessageRateLimiter,
 )
 
-from .utils import async_noop
+from .utils import async_noop, tuple_message_factory
 
 
 @trio_fixture
@@ -32,7 +32,10 @@ def create_rate_limiter(nursery):
 class TestBatchMessageRateLimiter:
     async def test_yields_nothing_by_default(self, create_rate_limiter, autojump_clock):
         _, result = create_rate_limiter(
-            BatchMessageRateLimiter, name="Test", factory=tuple, delay=0.1
+            BatchMessageRateLimiter,
+            name="Test",
+            factory=tuple_message_factory,
+            delay=0.1,
         )
         assert result == []
 
@@ -40,7 +43,10 @@ class TestBatchMessageRateLimiter:
         self, create_rate_limiter, autojump_clock
     ):
         rate_limiter, result = create_rate_limiter(
-            BatchMessageRateLimiter, name="Test", factory=tuple, delay=0.1
+            BatchMessageRateLimiter,
+            name="Test",
+            factory=tuple_message_factory,
+            delay=0.1,
         )
         await sleep(0.1)  # let the nursery start the rate limiter
         rate_limiter.add_request(1)
@@ -56,7 +62,10 @@ class TestBatchMessageRateLimiter:
         self, create_rate_limiter, autojump_clock
     ):
         rate_limiter, result = create_rate_limiter(
-            BatchMessageRateLimiter, name="Test", factory=tuple, delay=0.1
+            BatchMessageRateLimiter,
+            name="Test",
+            factory=tuple_message_factory,
+            delay=0.1,
         )
 
         await sleep(0.1)  # let the nursery start the rate limiter
@@ -93,7 +102,7 @@ class TestBatchMessageRateLimiter:
 class TestUAVMessageRateLimiter:
     async def test_yields_nothing_by_default(self, create_rate_limiter, autojump_clock):
         _, result = create_rate_limiter(
-            UAVMessageRateLimiter, name="Test", factory=tuple, delay=0.1
+            UAVMessageRateLimiter, name="Test", factory=tuple_message_factory, delay=0.1
         )
         assert result == []
 
@@ -101,7 +110,7 @@ class TestUAVMessageRateLimiter:
         self, create_rate_limiter, autojump_clock
     ):
         rate_limiter, result = create_rate_limiter(
-            UAVMessageRateLimiter, name="Test", factory=tuple, delay=0.1
+            UAVMessageRateLimiter, name="Test", factory=tuple_message_factory, delay=0.1
         )
         await sleep(0.1)  # let the nursery start the rate limiter
         rate_limiter.add_request((1, 2))
@@ -115,7 +124,7 @@ class TestUAVMessageRateLimiter:
         self, create_rate_limiter, autojump_clock
     ):
         rate_limiter, result = create_rate_limiter(
-            UAVMessageRateLimiter, name="Test", factory=tuple, delay=0.1
+            UAVMessageRateLimiter, name="Test", factory=tuple_message_factory, delay=0.1
         )
 
         await sleep(0.1)  # let the nursery start the rate limiter
@@ -148,7 +157,7 @@ class TestUAVMessageRateLimiter:
 class TestRateLimiters:
     def test_set_delay_changes_delay_of_registered_limiter(self):
         rate_limiters = RateLimiters(dispatcher=async_noop)
-        limiter = UAVMessageRateLimiter(factory=tuple)
+        limiter = UAVMessageRateLimiter(factory=tuple_message_factory)
         rate_limiters.register("UAV-INF", limiter)
 
         assert rate_limiters.set_delay("UAV-INF", 0.05) is True
@@ -163,7 +172,8 @@ class TestRateLimiters:
         # fixed time for transitioning connection states to settle.
         rate_limiters = RateLimiters(dispatcher=async_noop)
         rate_limiters.register(
-            "CONN-INF", ConnectionStatusMessageRateLimiter(factory=tuple)
+            "CONN-INF",
+            ConnectionStatusMessageRateLimiter(factory=tuple_message_factory),
         )
 
         assert rate_limiters.set_delay("CONN-INF", 0.05) is False
@@ -175,7 +185,9 @@ class TestRateLimiters:
             dispatched.append((current_time(), message))
 
         rate_limiters = RateLimiters(dispatcher=dispatcher)
-        rate_limiters.register("UAV-INF", UAVMessageRateLimiter(factory=tuple, delay=1))
+        rate_limiters.register(
+            "UAV-INF", UAVMessageRateLimiter(factory=tuple_message_factory, delay=1)
+        )
         nursery.start_soon(rate_limiters.run)
         await sleep(0.1)  # let the nursery start the rate limiter
         start = current_time()
@@ -201,7 +213,7 @@ class TestRateLimiters:
     @mark.parametrize("delay", [0, 0.0, 0.05, 1, 2.5])
     def test_set_delay_accepts_valid_delays(self, delay):
         rate_limiters = RateLimiters(dispatcher=async_noop)
-        limiter = UAVMessageRateLimiter(factory=tuple)
+        limiter = UAVMessageRateLimiter(factory=tuple_message_factory)
         rate_limiters.register("UAV-INF", limiter)
 
         assert rate_limiters.set_delay("UAV-INF", delay) is True
@@ -213,7 +225,7 @@ class TestRateLimiters:
     )
     def test_set_delay_rejects_invalid_delays(self, delay):
         rate_limiters = RateLimiters(dispatcher=async_noop)
-        limiter = UAVMessageRateLimiter(factory=tuple)
+        limiter = UAVMessageRateLimiter(factory=tuple_message_factory)
         rate_limiters.register("UAV-INF", limiter)
 
         with raises(ValueError):

@@ -66,7 +66,7 @@ def test_uav_update_status_wind():
     class DummyUAV(UAVBase):
         pass
 
-    uav = DummyUAV("1", None)  # type: ignore
+    uav = DummyUAV("1", None)
     assert uav.status.wind is None
 
     estimate = WindEstimate(speed=5.4, direction=90)

@@ -526,7 +526,7 @@ class MAVFTP:
                 await self._send_and_wait(message)
             raise
 
-    async def crc32(self, path: FTPPath):
+    async def crc32(self, path: FTPPath) -> int:
         """Calculates the unsigned CRC32 checksum of a file on the UAV."""
         posix_path = self._resolve(path)
         message = MAVFTPMessage(MAVFTPOpCode.CALC_FILE_CRC32, data=posix_path)

@@ -23,7 +23,7 @@ from .base import Extension
 if TYPE_CHECKING:
     # not available on Windows
     from trio.lowlevel import (
-        FdStream,  # ty:ignore[unresolved-import, unused-ignore-comment]
+        FdStream,  # ty:ignore[import-not-found, unused-ignore-comment]
     )
 
 
@@ -62,7 +62,7 @@ class ConsoleStatusExtension(Extension):
 
         # Lazy import -- FdStream not available on Windows
         from trio.lowlevel import (
-            FdStream,  # ty:ignore[unresolved-import, unused-ignore-comment]
+            FdStream,  # ty:ignore[import-not-found, unused-ignore-comment]
         )
 
         with ExitStack() as stack:

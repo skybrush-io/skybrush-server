@@ -1,3 +1,7 @@
+"""Forwarding of the frames of motion capture systems to Crazyflie drones."""
+
+from __future__ import annotations
+
 from typing import TYPE_CHECKING
 
 from aiocflib.crazyflie.localization import (
@@ -43,7 +47,11 @@ class CrazyflieMocapFrameHandler:
         self._driver = driver
         self.send_pose = bool(send_pose)
 
-    def notify_frame(self, frame: "MotionCaptureFrame") -> None:
+    def on_frame_received(self, sender, *, frame: MotionCaptureFrame) -> None:
+        """Handler for the ``motion_capture:frame`` signal of the server."""
+        self.notify_frame(frame)
+
+    def notify_frame(self, frame: MotionCaptureFrame) -> None:
         # In theory, the signal that calls this function is rate-limited by the
         # mocap extension, so this function is not called "too often" -- that's
         # why there's no rate limiting here. Add rate limiting if this becomes

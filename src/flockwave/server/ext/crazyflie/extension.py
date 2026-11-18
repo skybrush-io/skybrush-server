@@ -4,7 +4,7 @@ from contextlib import AsyncExitStack, ExitStack
 from errno import EACCES
 from functools import partial
 from struct import Struct
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from flockwave.connections.factory import create_connection
 from trio import open_memory_channel, open_nursery
@@ -34,10 +34,6 @@ from .loco_lps import (
 from .mocap import CrazyflieMocapFrameHandler
 from .scanning import CrazyradioScannerTask, ScannerTaskEvent
 from .types import ControllerType, PositioningSystemType
-
-if TYPE_CHECKING:
-    from flockwave.server.ext.motion_capture import MotionCaptureFrame
-
 
 __all__ = ("construct", "schema")
 
@@ -144,6 +140,7 @@ class CrazyflieDronesExtension(UAVExtension[CrazyflieDriver]):
     async def _run(self, app, configuration):
         assert self.app is not None
         assert self._driver is not None
+        assert self.log is not None
 
         signals = self.app.import_api("signals")
         lps_api = self.app.import_api("lps", LocalPositioningSystemsExtensionAPI)
@@ -175,6 +172,10 @@ class CrazyflieDronesExtension(UAVExtension[CrazyflieDriver]):
                 elif positioning_system_type is PositioningSystemType.UWB:
                     self._use_loco_positioning_system(stack, lps_api)
 
+                # Frames of motion capture systems are sent to the drones only
+                # if they use motion capture for positioning
+                uses_mocap = positioning_system_type is PositioningSystemType.MOCAP
+
                 # Register all the connections and ask the app to supervise them
                 num_connections = len(connection_config)
                 for index, spec in enumerate(connection_config):
@@ -189,11 +190,6 @@ class CrazyflieDronesExtension(UAVExtension[CrazyflieDriver]):
                     # Create a dedicated LED manager for the connection
                     led_manager = CrazyflieLEDLightConfigurationManager(broadcaster)
 
-                    # Create a dedicated mocap frame handler for the connection
-                    mocap_frame_handler = CrazyflieMocapFrameHandler(
-                        self._driver, broadcaster
-                    )
-
                     # Register the radio connection in the connection registry
                     stack.enter_context(
                         app.connection_registry.use(
@@ -205,25 +201,28 @@ class CrazyflieDronesExtension(UAVExtension[CrazyflieDriver]):
                     )
 
                     # Subscribe to the signals that we are interested in:
-                    # mocap frames, show countdown and LED configuration changes
-                    stack.enter_context(
-                        signals.use(
-                            {
-                                "motion_capture:frame": partial(
-                                    self._on_motion_capture_frame_received,
-                                    handler=mocap_frame_handler,
-                                ),
-                                "show:countdown": partial(
-                                    self._on_show_countdown_notification,
-                                    broadcaster=broadcaster,
-                                ),
-                                "show:lights_updated": partial(
-                                    self._on_show_light_configuration_changed,
-                                    led_manager=led_manager,
-                                ),
-                            }
+                    # show countdown and LED configuration changes, and mocap
+                    # frames if the drones use motion capture for positioning
+                    handlers = {
+                        "show:countdown": partial(
+                            self._on_show_countdown_notification,
+                            broadcaster=broadcaster,
+                        ),
+                        "show:lights_updated": partial(
+                            self._on_show_light_configuration_changed,
+                            led_manager=led_manager,
+                        ),
+                    }
+                    if uses_mocap:
+                        # Create a dedicated mocap frame handler for the
+                        # connection
+                        mocap_frame_handler = CrazyflieMocapFrameHandler(
+                            self._driver, broadcaster
                         )
-                    )
+                        handlers["motion_capture:frame"] = (
+                            mocap_frame_handler.on_frame_received
+                        )
+                    stack.enter_context(signals.use(handlers))
 
                     # Run a background task that manages the LED lights of the
                     # connected drones
@@ -331,15 +330,6 @@ class CrazyflieDronesExtension(UAVExtension[CrazyflieDriver]):
         if isinstance(uav, CrazyflieUAV) and uav.driver is self._driver:
             return uav
         return None
-
-    def _on_motion_capture_frame_received(
-        self,
-        sender,
-        *,
-        frame: "MotionCaptureFrame",
-        handler: CrazyflieMocapFrameHandler,
-    ) -> None:
-        handler.notify_frame(frame)
 
     def _on_show_countdown_notification(
         self,

@@ -40,7 +40,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - The Crazyflie extension has a new `positioning` configuration option that
   specifies the positioning system of the drones: `uwb` (default),
-  `lighthouse` or `mocap`.
+  `lighthouse` or `mocap`. Motion capture frames are now sent to the drones
+  only if it is set to `mocap`.
 
 ### Changed
 

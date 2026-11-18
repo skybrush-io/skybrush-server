@@ -6,6 +6,7 @@ from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from pathlib import Path
 from types import SimpleNamespace
+from typing import Any
 from unittest.mock import MagicMock
 
 from trio import open_nursery
@@ -38,15 +39,16 @@ async def running_crazyflie_extension(
         object_registry=object_registry,
     )
 
+    # The same mock is returned for each API to let the tests inspect it
+    apis: dict[str, Any] = {"lps": SimpleNamespace(**lps_ext.exports())}
+
     ext = CrazyflieDronesExtension()
     ext.log = MagicMock()
     ext.app = SimpleNamespace(  # type: ignore
         dirs=SimpleNamespace(user_cache_path=data_dir, user_data_path=data_dir),
         object_registry=object_registry,
         uav_driver_registry=MagicMock(),
-        import_api=lambda name, *args: (
-            SimpleNamespace(**lps_ext.exports()) if name == "lps" else MagicMock()
-        ),
+        import_api=lambda name, *args: apis.setdefault(name, MagicMock()),
     )
     driver = ext._driver
     assert driver is not None

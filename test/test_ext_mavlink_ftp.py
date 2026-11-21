@@ -178,6 +178,12 @@ class FakeMAVFTPServer:
             content[request.offset : request.offset + len(request.data)] = request.data
             return self._ack(session_id=request.session_id)
 
+        elif opcode == MAVFTPOpCode.REMOVE_FILE:
+            if path not in self.files:
+                return self._not_found_error()
+            del self.files[path]
+            return self._ack()
+
         elif opcode == MAVFTPOpCode.CALC_FILE_CRC32:
             if path not in self.files:
                 return self._nak(MAVFTPErrorCode.FILE_NOT_FOUND)
@@ -639,3 +645,75 @@ async def test_file_crc_command_missing_file(
 
     # A missing file is an expected outcome and must not be logged as an error
     driver.log.error.assert_not_called()
+
+
+@fixture
+def driver_and_uav_for_remove(server: FakeMAVFTPServer):
+    driver = SimpleNamespace(log=Mock(), send_packet=server)
+    uav = SimpleNamespace(id="42", driver=driver)
+    uav.remove_file = lambda *args: MAVLinkUAV.remove_file(uav, *args)  # ty:ignore[invalid-argument-type]
+    return driver, uav
+
+
+async def test_file_remove_command(server: FakeMAVFTPServer, driver_and_uav_for_remove):
+    driver, uav = driver_and_uav_for_remove
+    server.dirs |= {"APM", "APM/scripts"}
+    server.files["APM/scripts/foo.lua"] = bytearray(b"-- foo")
+    server.files["APM/scripts/bar.lua"] = bytearray(b"-- bar")
+
+    result = await MAVLinkDriver.handle_command___file_remove(
+        driver, uav, path="/APM/scripts/foo.lua"
+    )
+
+    assert result == "Removed /APM/scripts/foo.lua"
+    assert "APM/scripts/foo.lua" not in server.files
+    assert "APM/scripts/bar.lua" in server.files
+    driver.log.error.assert_not_called()
+
+
+async def test_file_remove_command_invalid_args(
+    server: FakeMAVFTPServer, driver_and_uav_for_remove
+):
+    driver, uav = driver_and_uav_for_remove
+
+    for path in ("/APM/../foo.lua", "APM/foo.lua", "/APM/scripts/", "/@PARAM/x"):
+        with raises(CommandInvocationError):
+            await MAVLinkDriver.handle_command___file_remove(driver, uav, path=path)
+
+    assert server.opcodes == []
+
+
+@mark.parametrize("clobber_errno", [False, True])
+async def test_file_remove_command_missing_file(
+    clobber_errno: bool, driver_and_uav_for_remove
+):
+    driver, uav = driver_and_uav_for_remove
+    uav.driver.send_packet = FakeMAVFTPServer(clobber_errno=clobber_errno)
+
+    with raises(OperationNotAcknowledgedError) as ex:
+        await MAVLinkDriver.handle_command___file_remove(
+            driver, uav, path="/APM/scripts/foo.lua"
+        )
+
+    expected = (
+        MAVFTPErrorCode.FAIL_ERRNO if clobber_errno else MAVFTPErrorCode.FILE_NOT_FOUND
+    )
+    assert ex.value.code == expected
+
+    # A missing file is an expected outcome and must not be logged as an error
+    driver.log.error.assert_not_called()
+
+
+async def test_file_remove_command_failure_is_logged(
+    server: FakeMAVFTPServer, driver_and_uav_for_remove
+):
+    driver, uav = driver_and_uav_for_remove
+    server.on_request = Mock(side_effect=RuntimeError("link lost"))
+
+    with raises(RuntimeError):
+        await MAVLinkDriver.handle_command___file_remove(
+            driver, uav, path="/APM/scripts/foo.lua"
+        )
+
+    driver.log.error.assert_called_once()
+    assert driver.log.error.call_args.kwargs["extra"] == {"id": "42"}

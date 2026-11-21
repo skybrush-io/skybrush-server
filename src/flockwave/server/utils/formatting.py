@@ -55,16 +55,16 @@ def format_timedelta_nicely(delta: float | timedelta) -> str:
     """
     dt = delta.total_seconds() if isinstance(delta, timedelta) else delta
     sign = "-" if dt < 0 else ""
-    minutes, seconds = divmod(abs(float(dt)), 60)
-    minutes = int(minutes)
+    # Round to milliseconds first so that e.g. 59.9996 seconds carries over
+    # to the next minute instead of showing up as 60 seconds
+    minutes, millis = divmod(round(abs(float(dt)) * 1000), 60000)
     hours, minutes = divmod(minutes, 60)
-    seconds = float(round(seconds, 3))
-    maybe_zero = "0" if seconds < 10 else ""
-    if seconds.is_integer():
-        seconds = int(seconds)
-        return f"{sign}{hours:02}:{minutes:02}:{maybe_zero}{seconds}"
+    seconds, millis = divmod(millis, 1000)
+    if millis:
+        fraction = f"{millis:03}".rstrip("0")
+        return f"{sign}{hours:02}:{minutes:02}:{seconds:02}.{fraction}"
     else:
-        return f"{sign}{hours:02}:{minutes:02}:{maybe_zero}{seconds:.3}"
+        return f"{sign}{hours:02}:{minutes:02}:{seconds:02}"
 
 
 def format_timestamp_nicely(timestamp: float | datetime) -> str:

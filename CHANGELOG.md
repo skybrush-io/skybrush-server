@@ -50,6 +50,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `lighthouse` or `mocap`. Motion capture frames are now sent to the drones
   only if it is set to `mocap`.
 
+- The geometry of Lighthouse base stations can now be estimated with a single
+  Crazyflie drone. The user places the drone at a few points on the floor and
+  carries it around the room.
+
 ### Changed
 
 - The message that updates the configuration of local positioning systems is

@@ -22,11 +22,12 @@ from aiocflib.crazyflie.log import LogSession
 from aiocflib.crazyflie.mem import write_with_checksum
 from aiocflib.crtp.crtpstack import MemoryType
 from aiocflib.errors import TimeoutError
+from aiocflib.lighthouse import Sample, collect_sample, stream_matched_samples
 from colour import Color
 from flockwave.gps.vectors import PositionXYZ, VelocityXYZ
 from flockwave.spec.errors import FlockwaveErrorCode
 from flockwave.spec.ids import make_valid_object_id
-from trio import Nursery, open_nursery, sleep
+from trio import Nursery, move_on_after, open_nursery, sleep
 from trio_util import periodic
 
 from flockwave.server.command_handlers import (
@@ -655,6 +656,32 @@ class CrazyflieUAV(UAVBase):
         attract attention.
         """
         await self._get_crazyflie().led_ring.flash()
+
+    async def collect_moving_lighthouse_samples(self, duration: float) -> list[Sample]:
+        """Records the sweep angles that the drone measures while it is
+        moving, for the given number of seconds.
+
+        Returns:
+            one sample for each group of measurements that several base
+            stations made at the same time
+        """
+        samples: list[Sample] = []
+        lighthouse = self._get_crazyflie().lighthouse
+        async with stream_matched_samples(lighthouse) as stream:
+            with move_on_after(duration):
+                async for sample in stream:
+                    samples.append(sample)
+        return samples
+
+    async def collect_static_lighthouse_sample(self, duration: float) -> Sample:
+        """Records the sweep angles that the drone measures while it is
+        stationary, for the given number of seconds.
+
+        Returns:
+            the average sweep angles of each base station that the drone saw
+        """
+        lighthouse = self._get_crazyflie().lighthouse
+        return await collect_sample(lighthouse, duration=duration)
 
     async def enter_low_power_mode(self) -> None:
         """Sends the UAV to a low-power mode where only the radio chip is

@@ -6,15 +6,17 @@ and orientation) and the calibration data of each base station to determine
 its own position.
 
 The server keeps its own copy of the Lighthouse configuration once the user
-provides one, either by uploading a configuration file or by importing it from
-a drone. The server writes this configuration to every connected drone whose
-configuration differs from it, and keeps doing so as new drones connect.
+provides one, either by uploading a configuration file, by importing it from a
+drone, or by estimating the geometry of the base stations with a drone. The
+server writes this configuration to every connected drone whose configuration
+differs from it, and keeps doing so as new drones connect.
 """
 
 from __future__ import annotations
 
 import json
 from collections.abc import Callable, Mapping
+from contextlib import aclosing
 from logging import Logger
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, NotRequired, Protocol, TypedDict, cast
@@ -25,6 +27,7 @@ from aiocflib.crazyflie.lighthouse import (
     LighthouseConfiguration,
     LighthouseSystemType,
 )
+from aiocflib.lighthouse import Sample
 from flockwave.gps.vectors import PositionXYZ
 from flockwave.spec.errors import FlockwaveErrorCode
 from trio import move_on_after, sleep
@@ -38,6 +41,10 @@ from flockwave.server.ext.lps.model import (
 )
 from flockwave.server.model.commands import Progress, ProgressEventsWithSuspension
 
+from .lighthouse_calibration import (
+    LighthouseGeometryEstimation,
+    LighthouseGeometryEstimationOptions,
+)
 from .math import quaternion_from_rotation_matrix
 
 if TYPE_CHECKING:
@@ -50,6 +57,7 @@ __all__ = (
     "LighthouseLocalPositioningSystem",
     "LighthouseLocalPositioningSystemType",
     "LighthouseUAV",
+    "create_base_station_anchor",
     "read_lighthouse_configuration",
     "write_lighthouse_configuration",
 )
@@ -143,6 +151,25 @@ class LighthouseUAV(Protocol):
         """
         ...
 
+    async def collect_moving_lighthouse_samples(self, duration: float) -> list[Sample]:
+        """Records the sweep angles that the UAV measures while it is moving,
+        for the given number of seconds.
+
+        Returns:
+            one sample for each group of measurements that several base
+            stations made at the same time
+        """
+        ...
+
+    async def collect_static_lighthouse_sample(self, duration: float) -> Sample:
+        """Records the sweep angles that the UAV measures while it is
+        stationary, for the given number of seconds.
+
+        Returns:
+            the average sweep angles of each base station that the UAV saw
+        """
+        ...
+
     async def get_lighthouse_configuration(self) -> LighthouseConfiguration: ...
 
     async def set_lighthouse_configuration(
@@ -226,17 +253,57 @@ class LighthouseLocalPositioningSystem(
     ) -> ProgressEventsWithSuspension[None, Any]:
         """Establishes the geometry of the base stations.
 
-        The only supported method is ``import``, which reads the geometry and
-        calibration data of the base stations from a drone that was set up
-        with another tool, e.g., the Crazyflie client. The server writes the
-        imported configuration to all the other drones.
+        Two methods are supported:
+
+        - ``import`` reads the geometry and calibration data of the base
+          stations from a drone that was set up with another tool, e.g., the
+          Crazyflie client.
+
+        - ``estimate`` guides the user through placing a drone at a few points
+          on the floor and carrying it around, and estimates the geometry of
+          the base stations from the measurements of the drone. The user
+          reviews the estimated geometry before it is applied. See
+          `LighthouseGeometryEstimation` for the details.
+
+        Either way, the server writes the new configuration to all the other
+        drones.
 
         Parameters:
-            params: the calibration parameters. ``method`` must be ``import``
-                and ``uav`` is the ID of the drone to import the configuration
-                from.
+            params: the calibration parameters. ``method`` is ``import`` or
+                ``estimate``, and ``uav`` is the ID of the drone to use. The
+                ``estimate`` method also accepts ``xAxisPoints``,
+                ``xyPlanePoints`` and ``duration``; see
+                `LighthouseGeometryEstimationOptions`.
         """
-        uav = self._get_source_uav_for_import(params)
+        method = params.get("method")
+        if method == "estimate":
+            uav = self._get_uav_for_calibration(
+                params, {"xAxisPoints", "xyPlanePoints", "duration"}
+            )
+            options = LighthouseGeometryEstimationOptions.from_json(params)
+            estimation = LighthouseGeometryEstimation(
+                uav, options, current=self._configuration
+            )
+
+            # Forward the events of the estimation and the responses of the user
+            async with aclosing(estimation.run()) as events:
+                response = None
+                while True:
+                    try:
+                        event = await events.asend(response)
+                    except StopAsyncIteration:
+                        break
+                    response = yield event
+
+            assert estimation.result is not None
+            self._set_configuration(estimation.result)
+            yield Progress(percentage=100, message="Lighthouse geometry applied")
+            return
+
+        if method != "import":
+            raise RuntimeError(f"Unsupported calibration method: {method!r}")
+
+        uav = self._get_uav_for_calibration(params)
 
         yield Progress(message=f"Reading Lighthouse configuration from {uav.id}")
         config = await uav.get_lighthouse_configuration()
@@ -341,22 +408,27 @@ class LighthouseLocalPositioningSystem(
         config = lighthouse_configuration_from_json(cfg)
         self._set_configuration(config if config.bs_ids else None)
 
-    def _get_source_uav_for_import(self, params: Mapping[str, Any]) -> LighthouseUAV:
-        unknown_keys = set(params.keys()) - {"method", "uav"}
+    def _get_uav_for_calibration(
+        self, params: Mapping[str, Any], extra_keys: set[str] | None = None
+    ) -> LighthouseUAV:
+        """Validates the parameter keys of a calibration request and returns the
+        UAV that it refers to.
+
+        Parameters:
+            params: the calibration parameters
+            extra_keys: the keys that the calibration method accepts besides
+                ``method`` and ``uav``
+        """
+        unknown_keys = set(params.keys()) - {"method", "uav"} - (extra_keys or set())
         if unknown_keys:
             raise RuntimeError(
                 f"Unknown calibration parameters: {', '.join(sorted(unknown_keys))}"
             )
 
-        method = params.get("method")
-        if method != "import":
-            raise RuntimeError(f"Unsupported calibration method: {method!r}")
-
         uav_id = params.get("uav")
         if not isinstance(uav_id, str):
             raise RuntimeError(
-                "Calibration parameters must contain the ID of the UAV to "
-                "import the configuration from"
+                "Calibration parameters must contain the ID of the UAV to use"
             )
 
         uav = self._find_uav(uav_id)
@@ -425,7 +497,7 @@ class LighthouseLocalPositioningSystem(
         config = self._configuration
         self.anchors = (
             [
-                _create_anchor(index, config.geometries.get(index))
+                create_base_station_anchor(index, config.geometries.get(index))
                 for index in sorted(config.bs_ids)
             ]
             if config
@@ -599,7 +671,9 @@ async def write_lighthouse_configuration(
     await lighthouse.persist()
 
 
-def _create_anchor(index: int, geometry: LighthouseBsGeometry | None) -> Anchor:
+def create_base_station_anchor(
+    index: int, geometry: LighthouseBsGeometry | None
+) -> Anchor:
     """Creates an anchor that represents the base station with the given
     zero-based index.
 

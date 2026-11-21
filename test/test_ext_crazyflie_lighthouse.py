@@ -3,7 +3,9 @@ extension.
 """
 
 import json
-from math import cos, isclose, pi, sin
+from collections.abc import Callable
+from contextlib import aclosing
+from math import cos, dist, isclose, pi, sin
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
@@ -16,9 +18,18 @@ from aiocflib.crazyflie.lighthouse import (
     LighthouseConfiguration,
     LighthouseSystemType,
 )
+from aiocflib.lighthouse import (
+    Sample,
+    get_pose_from_position_and_angles,
+    get_pose_from_position_and_target,
+    simulate_sample,
+)
+from aiocflib.lighthouse.model import Pose
 from flockwave.spec.errors import FlockwaveErrorCode
+from numpy import zeros
+from numpy.random import default_rng
 from pytest import mark, raises
-from trio import open_nursery, sleep
+from trio import current_time, open_nursery, sleep
 from trio.testing import wait_all_tasks_blocked
 
 from flockwave.server.errors import NotSupportedError
@@ -39,7 +50,7 @@ from flockwave.server.ext.crazyflie.math import (
     rotation_matrix_from_quaternion,
 )
 from flockwave.server.model import Quaternion
-from flockwave.server.model.commands import Progress
+from flockwave.server.model.commands import Progress, Suspend
 
 from .crazyflie_extension import running_crazyflie_extension
 from .recording_message_hub import RecordingMessageHub
@@ -98,8 +109,33 @@ def create_configuration(
     )
 
 
+# Base stations of the simulated room, keyed by zero-based index, at the upper
+# corners of the room and facing its middle
+SIMULATED_BASE_STATIONS: dict[int, Pose] = {
+    index: get_pose_from_position_and_target((x, y, 2.6), (0.0, 0.0, 0.3))
+    for index, (x, y) in enumerate([(-2.0, -2.5), (2.5, -2.0), (2.0, 2.5), (-2.5, 2.0)])
+}
+
+# Static points of the calibration: origin, two points on the X axis, two in
+# the XY plane
+SIMULATED_STATIC_POINTS: list[tuple[float, float, float]] = [
+    (0.0, 0.0, 0.0),
+    (0.6, 0.0, 0.0),
+    (1.2, 0.0, 0.0),
+    (0.0, 1.0, 0.0),
+    (1.0, 1.0, 0.0),
+]
+
+
 class FakeUAV:
-    """Fake Crazyflie UAV that stores its Lighthouse configuration in memory."""
+    """Fake Crazyflie UAV that stores its Lighthouse configuration in memory
+    and simulates the sweep angles measured in a room with four base stations.
+
+    Static samples are taken at the points in `static_points`, in order; an
+    item that is a sample is returned as is. Moving samples are taken at random
+    poses in the room, eight per second. Base stations in `hidden` are left
+    out from the moving samples.
+    """
 
     def __init__(
         self,
@@ -111,10 +147,43 @@ class FakeUAV:
         self.id = id
         self.config = roundtrip(config or LighthouseConfiguration())
         self.error: Exception | None = None
+        self.hidden: set[int] = set()
         self.is_idle_on_ground = True
         self.reads = 0
+        self.rng = default_rng(1)
+        self.static_points: list[tuple[float, float, float] | Sample] = list(
+            SIMULATED_STATIC_POINTS
+        )
         self.supported = supported
         self.writes = 0
+
+    async def collect_moving_lighthouse_samples(self, duration: float) -> list[Sample]:
+        await sleep(duration)
+        samples: list[Sample] = []
+        for _ in range(int(8 * duration)):
+            pose = get_pose_from_position_and_angles(
+                self.rng.uniform((-1.5, -1.5, 0.2), (1.5, 1.5, 1.8)),
+                yaw=self.rng.uniform(-pi, pi),
+                tilt=self.rng.normal(scale=0.1, size=2),
+            )
+            sample = simulate_sample(SIMULATED_BASE_STATIONS, pose)
+            sample = {
+                index: angles
+                for index, angles in sample.items()
+                if index not in self.hidden
+            }
+            if len(sample) >= 2:
+                samples.append(sample)
+        return samples
+
+    async def collect_static_lighthouse_sample(self, duration: float) -> Sample:
+        await sleep(duration)
+        point = self.static_points.pop(0)
+        if isinstance(point, dict):
+            return point
+        return simulate_sample(
+            SIMULATED_BASE_STATIONS, get_pose_from_position_and_angles(point, yaw=0.3)
+        )
 
     async def get_lighthouse_configuration(self) -> LighthouseConfiguration:
         await sleep(0.1)
@@ -623,9 +692,9 @@ async def test_lighthouse_lps_does_not_import_empty_configuration(autojump_clock
     "params,match",
     [
         ({}, "method"),
-        ({"method": "estimate", "uav": "01"}, "method"),
-        ({"method": "import"}, "ID of the UAV"),
-        ({"method": "import", "uav": 1}, "ID of the UAV"),
+        ({"method": "calibrate", "uav": "01"}, "method"),
+        ({"method": "import"}, "ID of the UAV to use"),
+        ({"method": "import", "uav": 1}, "ID of the UAV to use"),
         ({"method": "import", "uav": "02"}, "No such Crazyflie UAV"),
         ({"method": "import", "uav": "01", "foo": 1}, "Unknown calibration"),
     ],
@@ -636,6 +705,211 @@ async def test_lighthouse_lps_rejects_invalid_calibration_parameters(
     lps = create_lps(FakeUAV("01", create_configuration(0)))
     with raises(RuntimeError, match=match):
         await run_calibration(lps, params)
+
+
+###########################################################################
+# Estimating the geometry with a drone
+
+
+ESTIMATE_PARAMS = {"method": "estimate", "uav": "01"}
+
+
+async def drive_calibration(
+    lps: LighthouseLocalPositioningSystem,
+    params: dict[str, Any],
+    respond: Callable[[Suspend], Any] = lambda _: True,
+) -> tuple[list[Any], list[float]]:
+    """Runs a calibration and resumes every suspension with the value returned
+    by the given function. Returns the events and the times when they were
+    yielded.
+    """
+    events: list[Any] = []
+    times: list[float] = []
+    async with aclosing(lps.calibrate(params)) as gen:
+        response = None
+        while True:
+            try:
+                event = await gen.asend(response)
+            except StopAsyncIteration:
+                break
+            events.append(event)
+            times.append(current_time())
+            response = respond(event) if isinstance(event, Suspend) else None
+    return events, times
+
+
+def get_suspensions(events: list[Any]) -> list[dict[str, Any]]:
+    return [event.object for event in events if isinstance(event, Suspend)]
+
+
+async def test_lighthouse_lps_estimates_geometry(autojump_clock):
+    uav = FakeUAV("01", create_configuration(0, 1, 2, 3))
+    lps = create_lps(uav)
+
+    events, times = await drive_calibration(lps, ESTIMATE_PARAMS)
+
+    suspensions = get_suspensions(events)
+    assert [(s["step"], s.get("index"), s.get("count")) for s in suspensions] == [
+        ("origin", 1, 1),
+        ("x_axis", 1, 2),
+        ("x_axis", 2, 2),
+        ("xy_plane", 1, 2),
+        ("xy_plane", 2, 2),
+        ("free", 1, 1),
+        ("review", None, None),
+    ]
+    assert all(s.get("warning") is None for s in suspensions)
+    assert suspensions[5]["duration"] == 60
+
+    review = suspensions[-1]
+    assert [anchor["id"] for anchor in review["anchors"]] == ["1", "2", "3", "4"]
+    assert review["converged"]
+    assert review["error"] < 1e-6
+    assert "comparison" not in review
+
+    # Progress is reported often enough to keep the calibration alive, and it
+    # never goes backwards
+    assert max(b - a for a, b in zip(times, times[1:])) < 30
+    percentages = [
+        event.percentage
+        for event in events
+        if isinstance(event, Progress) and event.percentage is not None
+    ]
+    assert percentages == sorted(percentages)
+    assert percentages[-1] == 100
+
+    config = lps.configuration
+    assert config is not None
+    assert config.system_type is LighthouseSystemType.V2
+    assert config.calibrations == uav.config.calibrations
+    assert sorted(config.geometries) == sorted(SIMULATED_BASE_STATIONS)
+    for index, pose in SIMULATED_BASE_STATIONS.items():
+        expected = pose.to_bs_geometry()
+        geometry = config.geometries[index]
+        assert all(
+            isclose(a, b, abs_tol=1e-4)
+            for a, b in zip(geometry.origin, expected.origin)
+        )
+        assert all(
+            isclose(a, b, abs_tol=1e-4)
+            for row, expected_row in zip(
+                geometry.rotation_matrix, expected.rotation_matrix
+            )
+            for a, b in zip(row, expected_row)
+        )
+
+    # The drone used for the calibration does not have the new geometry yet
+    assert lps._needs_sync(uav)
+
+
+async def test_lighthouse_lps_compares_estimated_geometry_with_current(
+    autojump_clock,
+):
+    current = create_configuration(0)
+    lps = create_lps(FakeUAV("01", create_configuration(0, 1, 2, 3)))
+    await lps.configure(lighthouse_configuration_to_json(current))
+
+    events, _ = await drive_calibration(lps, ESTIMATE_PARAMS)
+
+    comparison = get_suspensions(events)[-1]["comparison"]
+    assert list(comparison) == ["1"]
+    expected = SIMULATED_BASE_STATIONS[0].to_bs_geometry()
+    assert isclose(
+        comparison["1"]["distance"],
+        dist(expected.origin, current.geometries[0].origin),
+        abs_tol=1e-3,
+    )
+    assert 0 < comparison["1"]["angle"] <= 180
+
+
+@mark.parametrize("step", ["origin", "x_axis", "free", "review"])
+async def test_lighthouse_lps_estimation_can_be_aborted(autojump_clock, step: str):
+    current = create_configuration(0)
+    lps = create_lps(FakeUAV("01", create_configuration(0, 1, 2, 3)))
+    await lps.configure(lighthouse_configuration_to_json(current))
+
+    with raises(RuntimeError, match="aborted"):
+        await drive_calibration(
+            lps, ESTIMATE_PARAMS, lambda event: event.object["step"] != step
+        )
+
+    assert lps.configuration == lighthouse_configuration_from_json(
+        lighthouse_configuration_to_json(current)
+    )
+
+
+@mark.parametrize(
+    "sample,warning",
+    [
+        ({}, "No base station was visible from here"),
+        (
+            {2: zeros((4, 2))},
+            "Only base station 3 was visible from here",
+        ),
+    ],
+)
+async def test_lighthouse_lps_estimation_repeats_poorly_visible_points(
+    autojump_clock, sample: Sample, warning: str
+):
+    uav = FakeUAV("01", create_configuration(0, 1, 2, 3))
+    uav.static_points.insert(1, sample)
+    lps = create_lps(uav)
+
+    events, _ = await drive_calibration(lps, ESTIMATE_PARAMS)
+
+    suspensions = get_suspensions(events)
+    x_axis = [s for s in suspensions if s["step"] == "x_axis"]
+    assert [s["index"] for s in x_axis] == [1, 1, 2]
+    assert x_axis[1]["warning"].startswith(warning)
+    assert lps.configuration is not None
+
+
+async def test_lighthouse_lps_estimation_records_more_for_rare_base_stations(
+    autojump_clock,
+):
+    uav = FakeUAV("01", create_configuration(0, 1, 2, 3))
+    uav.hidden.add(3)
+    lps = create_lps(uav)
+
+    def respond(event: Suspend) -> bool:
+        if event.object.get("warning"):
+            uav.hidden.clear()
+        return True
+
+    events, _ = await drive_calibration(lps, ESTIMATE_PARAMS, respond)
+
+    free = [s for s in get_suspensions(events) if s["step"] == "free"]
+    assert len(free) == 2
+    assert "base station 4" in free[1]["warning"]
+    assert free[1]["duration"] == 30
+    assert lps.configuration is not None
+    assert 3 in lps.configuration.geometries
+
+
+async def test_lighthouse_lps_estimation_needs_lighthouse_support(autojump_clock):
+    lps = create_lps(FakeUAV("01", supported=False))
+    with raises(NotSupportedError):
+        await drive_calibration(lps, ESTIMATE_PARAMS)
+
+
+@mark.parametrize(
+    "params,match",
+    [
+        ({"xAxisPoints": 0}, "xAxisPoints"),
+        ({"xAxisPoints": True}, "xAxisPoints"),
+        ({"xyPlanePoints": -1}, "xyPlanePoints"),
+        ({"duration": 0}, "duration"),
+        ({"duration": "60"}, "duration"),
+        ({"foo": 1}, "Unknown calibration"),
+        ({"uav": None}, "ID of the UAV to use"),
+    ],
+)
+async def test_lighthouse_lps_rejects_invalid_estimation_parameters(
+    params: dict[str, Any], match: str
+):
+    lps = create_lps(FakeUAV("01", create_configuration(0)))
+    with raises(RuntimeError, match=match):
+        await run_calibration(lps, {**ESTIMATE_PARAMS, **params})
 
 
 ###########################################################################

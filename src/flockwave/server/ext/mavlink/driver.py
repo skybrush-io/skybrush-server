@@ -142,6 +142,21 @@ def transport_options_to_channel(options: TransportOptions | None) -> str:
         return Channel.PRIMARY
 
 
+def _is_missing_file_error(ex: Exception) -> bool:
+    """Returns whether the given exception, raised by a MAVFTP operation on a
+    file, means that the file does not exist.
+
+    Besides FILE_NOT_FOUND, FAIL_ERRNO with errno 0 is also accepted. ArduPilot
+    reports a missing file this way when it hits a race condition: errno is
+    not thread-local on ChibiOS, and other threads may reset it to 0 before
+    ArduPilot reads it to build the error reply.
+    """
+    return isinstance(ex, OperationNotAcknowledgedError) and (
+        ex.code == MAVFTPErrorCode.FILE_NOT_FOUND
+        or (ex.code == MAVFTPErrorCode.FAIL_ERRNO and ex.errno == 0)
+    )
+
+
 class MAVLinkDriver(UAVDriver["MAVLinkUAV"]):
     """Driver class for MAVLink-based drones."""
 
@@ -452,15 +467,8 @@ class MAVLinkDriver(UAVDriver["MAVLinkUAV"]):
         try:
             crc = await uav.get_file_crc32(remote_path)
         except Exception as ex:
-            if isinstance(ex, OperationNotAcknowledgedError) and (
-                ex.code == MAVFTPErrorCode.FILE_NOT_FOUND
-                or (ex.code == MAVFTPErrorCode.FAIL_ERRNO and ex.errno == 0)
-            ):
-                # This is fine, no need to log this.
-                # ex.code == 0 can happen if the file is not found _and_ ArduPilot hits
-                # the usual race condition due to errno not being thread-local
-                pass
-            else:
+            # A missing file is an expected outcome; no need to log it
+            if not _is_missing_file_error(ex):
                 self.log.error(
                     f"Failed to calculate CRC32 of {remote_path}: {ex}",
                     extra={"id": log_id_for_uav(uav)},
@@ -468,6 +476,35 @@ class MAVLinkDriver(UAVDriver["MAVLinkUAV"]):
             raise
 
         return f"{crc:08x}"
+
+    async def handle_command___file_remove(
+        self, uav: "MAVLinkUAV", *, path: str
+    ) -> str:
+        """Removes a file from the UAV via MAVFTP.
+
+        Args:
+            path: the absolute path of the file on the UAV
+
+        Returns:
+            a message describing the result
+
+        Raises:
+            CommandInvocationError: if the path is invalid
+        """
+        remote_path = validate_remote_file_path(path)
+
+        try:
+            await uav.remove_file(remote_path)
+        except Exception as ex:
+            # A missing file is an expected outcome; no need to log it
+            if not _is_missing_file_error(ex):
+                self.log.error(
+                    f"Failed to remove {remote_path}: {ex}",
+                    extra={"id": log_id_for_uav(uav)},
+                )
+            raise
+
+        return f"Removed {remote_path}"
 
     async def handle_command___show_upload(
         self, uav: "MAVLinkUAV", *, show: ShowSpecification
@@ -2763,6 +2800,15 @@ class MAVLinkUAV(UAVBase[MAVLinkDriver]):
         """
         async with aclosing(MAVFTP.for_uav(self)) as ftp:
             return await ftp.crc32(remote_path)
+
+    async def remove_file(self, remote_path: str) -> None:
+        """Removes a file from the UAV via MAVFTP.
+
+        Args:
+            remote_path: the absolute path of the file on the UAV
+        """
+        async with aclosing(MAVFTP.for_uav(self)) as ftp:
+            await ftp.rm(remote_path)
 
     async def upload_file(
         self, data: bytes, remote_path: str

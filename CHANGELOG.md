@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Added a hidden `__file_remove` command to the MAVLink extension that removes
+  a file from the UAV via MAVFTP.
+
+## [2.62.0] - 2026-11-21
+
+### Added
+
 - Added a `MESSAGE_RATE_LIMITS` configuration key to set the minimum delay
   between consecutive dispatches of rate-limited message types, e.g.
   `{"UAV-INF": 0.05}`. `UAV-INF` and `SYS-MSG` can be configured; unlisted

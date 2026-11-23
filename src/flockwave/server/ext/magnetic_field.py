@@ -8,7 +8,7 @@ from flockwave.gps.vectors import GPSCoordinate
 from igrf_model import DateBoundIGRFModel, IGRFModel
 from trio import sleep_forever
 
-from flockwave.server.model.weather import Weather
+from flockwave.server.model.weather import PositionNotSupportedError, Weather
 
 last_model: DateBoundIGRFModel | None = None
 """The last model that the extension used."""
@@ -32,7 +32,7 @@ async def provide_magnetic_field(
         return
 
     if position is None:
-        return
+        raise PositionNotSupportedError("Magnetic field model requires a position")
 
     model_valid_from, model_valid_until = model_validity_range
     timestamp = int(weather.timestamp)

@@ -12,6 +12,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added a hidden `__file_remove` command to the MAVLink extension that removes
   a file from the UAV via MAVFTP.
 
+- Weather providers can now raise `WeatherProviderError` to report a failure.
+  `WTH-INF` responses list these failures in the `error` map, per provider.
+  Providers raise `PositionNotSupportedError` when they cannot provide data
+  for the requested position or when they need a position and receive none.
+
+### Changed
+
+- `WTH-AT` requests skip weather providers that raise
+  `PositionNotSupportedError`. Any other error from a provider fails the entire
+  request with the message of the first error.
+
+- The magnetic field weather provider now reports an error in `WTH-INF`
+  responses instead of an empty status because the magnetic field depends on
+  the location.
+
 ## [2.62.0] - 2026-11-21
 
 ### Added

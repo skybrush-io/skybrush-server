@@ -5,12 +5,9 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [main]
+## [2.64.0] - 2026-11-23
 
 ### Added
-
-- Added a hidden `__file_remove` command to the MAVLink extension that removes
-  a file from the UAV via MAVFTP.
 
 - Weather providers can now raise `WeatherProviderError` to report a failure.
   `WTH-INF` responses list these failures in the `error` map, per provider.
@@ -26,6 +23,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The magnetic field weather provider now reports an error in `WTH-INF`
   responses instead of an empty status because the magnetic field depends on
   the location.
+
+## [2.63.0] - 2026-11-22
+
+### Added
+
+- Added a hidden `__file_remove` command to the MAVLink extension that removes
+  a file from the UAV via MAVFTP.
 
 ## [2.62.0] - 2026-11-21
 

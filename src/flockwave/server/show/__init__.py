@@ -20,6 +20,7 @@ from .specification import (
     get_drone_count_from_show_specification,
     get_group_index_from_show_specification,
     get_home_position_from_show_specification,
+    get_show_metadata_from_show_specification,
     get_trajectory_from_show_specification,
     is_coordinate_system_in_show_specification_geodetic,
 )
@@ -35,6 +36,7 @@ __all__ = (
     "get_home_position_from_show_specification",
     "get_light_program_from_show_specification",
     "get_safety_configuration_from_show_specification",
+    "get_show_metadata_from_show_specification",
     "get_trajectory_from_show_specification",
     "is_coordinate_system_in_show_specification_geodetic",
     "LightPlayer",

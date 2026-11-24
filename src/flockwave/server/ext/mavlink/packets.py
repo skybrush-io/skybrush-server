@@ -699,19 +699,31 @@ class DroneShowStatusExtension:
     v_acc: float | None = None
     """Vertical accuracy as reported by the GPS; ``None`` if not provided."""
 
-    show_id: int | None = None
-    """Unique identifier of the show uploaded to the drone, if known."""
+    show_id: bytes | None = None
+    """Unique identifier of the show uploaded to the drone, as the raw 4-byte
+    blob from the metadata block of the show file; ``None`` if not known.
+    """
 
     trajectory_index: int | None = None
     """Index of the trajectory that the drone is going to fly, if known."""
+
+    config_hash: int | None = None
+    """Hash of the show configuration of the drone; ``None`` if not known.
+    The hash must be the same on all drones that fly the same show.
+    """
 
     wind: WindEstimate | None = None
     """Wind speed and direction as estimated by the drone; ``None`` if the
     drone has no wind estimate or the packet does not contain one.
     """
 
-    _struct: ClassVar[Struct] = Struct("<iiiihhhHHHIH")
+    _struct: ClassVar[Struct] = Struct("<iiiihhhHHH4sH")
     """Structure of the packet."""
+
+    _CONFIG_HASH_OFFSET: ClassVar[int] = 34
+    """Offset of the show configuration hash in the extended part of the
+    packet; a little-endian unsigned 32-bit integer.
+    """
 
     _WIND_OFFSET: ClassVar[int] = 38
     """Offset of the wind speed and direction bytes in the extended part of the
@@ -780,7 +792,22 @@ class DroneShowStatusExtension:
                     direction=encoded_direction * 360 / 256,
                 )
 
-        # TODO(ntamas): show ID, trajectory index
+        # show ID: a raw binary blob; older firmware and drones without
+        # show metadata send all zeros
+        show_id = show_id if any(show_id) else None
+
+        # trajectory index: older firmware sends 0xFFFF
+        trajectory_index = trajectory_index if trajectory_index != 0xFFFF else None
+
+        # show configuration hash: zero means that the drone does not know it.
+        # Older firmware versions do not send it at all.
+        config_hash = None
+        if len(data) >= cls._CONFIG_HASH_OFFSET + 4:
+            config_hash = int.from_bytes(
+                data[cls._CONFIG_HASH_OFFSET : cls._CONFIG_HASH_OFFSET + 4], "little"
+            )
+            config_hash = config_hash or None
+
         return cls(
             lat,
             lng,
@@ -792,5 +819,8 @@ class DroneShowStatusExtension:
             heading,
             h_acc,
             v_acc,
+            show_id=show_id,
+            trajectory_index=trajectory_index,
+            config_hash=config_hash,
             wind=wind,
         )

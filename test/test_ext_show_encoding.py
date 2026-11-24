@@ -1,11 +1,17 @@
 """Tests for the show encoding process."""
 
+from zlib import crc32
+
+from pytest import raises
+
 from flockwave.server.ext.show.encoding import encode_show
 from flockwave.server.show import (
     ShowEvent,
     ShowSpecification,
     SkybrushBinaryFormatBlockType,
+    get_show_metadata_from_show_specification,
 )
+from flockwave.server.show.metadata import NO_UID, ShowMetadata
 
 
 def make_show(extra: dict[str, dict] | None = None) -> ShowSpecification:
@@ -87,3 +93,61 @@ class TestEncodeShow:
             SkybrushBinaryFormatBlockType.EVENT_LIST,
         ]
         assert await blocks[3].read() == ShowEvent(1.0, 1, 0, 0).encode()
+
+    async def test_metadata_block_from_mission_info(self):
+        show = make_show({"mission": {"id": "abc123", "index": 258, "numDrones": 300}})
+
+        show_file = await encode_show(show)
+
+        blocks = await show_file.read_all_blocks()
+        assert [block.type for block in blocks] == [
+            SkybrushBinaryFormatBlockType.TRAJECTORY,
+            SkybrushBinaryFormatBlockType.LIGHT_PROGRAM,
+            SkybrushBinaryFormatBlockType.METADATA,
+        ]
+        assert await blocks[2].read() == (
+            b"\x00\x04\x00"
+            + crc32(b"abc123").to_bytes(4, "big")
+            + b"\x01\x02\x00\x02\x01"
+        )
+
+
+class TestGetShowMetadataFromShowSpecification:
+    def test_no_mission_info(self):
+        assert get_show_metadata_from_show_specification(make_show()) is None
+        assert (
+            get_show_metadata_from_show_specification(
+                make_show({"mission": {"title": "foo", "numDrones": 5}})
+            )
+            is None
+        )
+
+    def test_mission_id_and_index(self):
+        show = make_show({"mission": {"id": "abc123", "index": 7}})
+        assert get_show_metadata_from_show_specification(show) == ShowMetadata(
+            uid=crc32(b"abc123").to_bytes(4, "big"), drone_index=7
+        )
+
+    def test_mission_id_is_encoded_as_utf8(self):
+        show = make_show({"mission": {"id": "árvíztűrő", "index": 0}})
+        metadata = get_show_metadata_from_show_specification(show)
+        assert metadata is not None
+        assert metadata.uid == crc32("árvíztűrő".encode("utf-8")).to_bytes(4, "big")
+
+    def test_empty_mission_id(self):
+        show = make_show({"mission": {"id": "", "index": 3}})
+        assert get_show_metadata_from_show_specification(show) == ShowMetadata(
+            uid=NO_UID, drone_index=3
+        )
+
+    def test_missing_index(self):
+        show = make_show({"mission": {"id": "abc123"}})
+        metadata = get_show_metadata_from_show_specification(show)
+        assert metadata is not None
+        assert metadata.drone_index == 0
+
+    def test_index_out_of_range(self):
+        for index in (-1, 65536):
+            show = make_show({"mission": {"id": "abc123", "index": index}})
+            with raises(RuntimeError, match="outside valid range"):
+                get_show_metadata_from_show_specification(show)

@@ -9,6 +9,7 @@ from flockwave.server.show import (
     SkybrushBinaryShowFile,
     get_coordinate_system_from_show_specification,
     get_light_program_from_show_specification,
+    get_show_metadata_from_show_specification,
     get_trajectory_from_show_specification,
 )
 
@@ -58,10 +59,13 @@ async def encode_show(
 
     light_program = get_light_program_from_show_specification(show)
     trajectory = get_trajectory_from_show_specification(show)
+    metadata = get_show_metadata_from_show_specification(show)
 
     async with ShowFileBuilder.create_in_memory() as builder:
         await builder.add_trajectory(trajectory)
         await builder.add_encoded_light_program(light_program)
+        if metadata is not None:
+            await builder.add_metadata(metadata)
         for hook in hooks or ():
             await hook(show, builder)
 

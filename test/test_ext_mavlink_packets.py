@@ -133,6 +133,43 @@ def test_drone_show_status_extension_wind():
     assert status.extension.wind.json == [50800, 3586]
 
 
+def test_drone_show_status_extension_show_metadata():
+    # Status header is 14 bytes; the show ID starts at offset 28 of the
+    # extended part, followed by the trajectory index and the config hash
+    data = bytearray(54)
+    data[42:46] = b"\xcf\x02\xbb\x5c"
+    data[46:48] = (258).to_bytes(2, "little")
+    data[48:52] = (0xDEADBEEF).to_bytes(4, "little")
+
+    status = DroneShowStatus.from_bytes(bytes(data))
+    assert status.extension is not None
+    assert status.extension.show_id == b"\xcf\x02\xbb\x5c"
+    assert status.extension.trajectory_index == 258
+    assert status.extension.config_hash == 0xDEADBEEF
+
+    # Packets from older firmware versions have no config hash
+    status = DroneShowStatus.from_bytes(bytes(data[:48]))
+    assert status.extension is not None
+    assert status.extension.show_id == b"\xcf\x02\xbb\x5c"
+    assert status.extension.config_hash is None
+
+
+def test_drone_show_status_extension_unknown_show_metadata():
+    # All-zero show ID and zero config hash mean "not known"
+    status = DroneShowStatus.from_bytes(_extended_status_packet(54, 0, 0))
+    assert status.extension is not None
+    assert status.extension.show_id is None
+    assert status.extension.trajectory_index == 0
+    assert status.extension.config_hash is None
+
+    # Older firmware sends 0xFFFF as the trajectory index
+    data = bytearray(_extended_status_packet(54, 0, 0))
+    data[46:48] = b"\xff\xff"
+    status = DroneShowStatus.from_bytes(bytes(data))
+    assert status.extension is not None
+    assert status.extension.trajectory_index is None
+
+
 def test_create_start_time_configuration_packet():
     packet_type, kwargs = create_start_time_configuration_packet(
         AuthorizationScope.LIVE, should_update_takeoff_time=False

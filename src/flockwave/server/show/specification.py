@@ -1,7 +1,9 @@
 from typing import Any, TypedDict
+from zlib import crc32
 
 from flockwave.gps.vectors import FlatEarthToGPSCoordinateTransformation
 
+from .metadata import NO_UID, ShowMetadata
 from .trajectory import TrajectorySpecification
 
 __all__ = (
@@ -10,6 +12,7 @@ __all__ = (
     "get_drone_count_from_show_specification",
     "get_group_index_from_show_specification",
     "get_home_position_from_show_specification",
+    "get_show_metadata_from_show_specification",
     "get_trajectory_from_show_specification",
     "is_coordinate_system_in_show_specification_geodetic",
     "ShowSpecification",
@@ -91,6 +94,46 @@ def get_home_position_from_show_specification(
         return home  # type: ignore
     else:
         return None
+
+
+def get_show_metadata_from_show_specification(
+    show: ShowSpecification,
+) -> ShowMetadata | None:
+    """Returns the metadata of the show to be embedded into the Skybrush binary
+    show file, based on the mission information in the show specification.
+
+    The unique ID of the show is the CRC32 checksum of the UTF-8 encoded
+    mission ID, stored in big-endian byte order. A missing or empty mission
+    ID maps to the all-zero "no UID" value. The index of the drone is the
+    index of the trajectory within the mission.
+
+    Returns:
+        the show metadata, or `None` if the show specification contains
+        neither a mission ID nor a trajectory index (which happens with older
+        versions of Skybrush Live)
+
+    Raises:
+        RuntimeError: if the trajectory index is outside its valid bounds
+    """
+    mission_info = show.get("mission")
+    if not mission_info or not isinstance(mission_info, dict):
+        return None
+
+    mission_id = mission_info.get("id")
+    index = mission_info.get("index")
+    if not mission_id and index is None:
+        return None
+
+    if mission_id and isinstance(mission_id, str):
+        uid = crc32(mission_id.encode("utf-8")).to_bytes(4, "big")
+    else:
+        uid = NO_UID
+
+    drone_index = int(index) if index is not None else 0
+    if drone_index < 0 or drone_index > 65535:
+        raise RuntimeError("Trajectory index outside valid range")
+
+    return ShowMetadata(uid=uid, drone_index=drone_index)
 
 
 def get_altitude_reference_from_show_specification(

@@ -26,8 +26,6 @@ __all__ = ("construct", "dependencies")
 class VirtualUAVProviderExtension(UAVExtension[VirtualUAVDriver]):
     """Extension that creates one or more virtual UAVs in the server."""
 
-    _driver: VirtualUAVDriver
-
     _delay: float = 1
     """Number of seconds that must pass between two consecutive
     simulated status updates to the UAVs.
@@ -48,6 +46,7 @@ class VirtualUAVProviderExtension(UAVExtension[VirtualUAVDriver]):
         super().configure(configuration)
 
         assert self.app is not None
+        assert self._driver is not None
 
         # Get the number of UAVs to create and the format of the IDs
         count = configuration.get("count", 0)

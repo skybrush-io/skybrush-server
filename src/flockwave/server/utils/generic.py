@@ -243,7 +243,7 @@ class OnceCallable(Generic[P, T], Protocol):
     called: bool
 
 
-def once(func: Callable[P, T]) -> Callable[P, T]:
+def once(func: Callable[P, T]) -> OnceCallable[P, T]:
     """Decorator that decorates a function and allows it to be called only
     once. Subsequent attempts to call the function will throw an exception.
     """
@@ -251,14 +251,17 @@ def once(func: Callable[P, T]) -> Callable[P, T]:
     wrapped: OnceCallable[P, T]
 
     def wrapped(*args: P.args, **kwds: P.kwargs) -> T:
-        if wrapped.called:
+        this_func = cast(OnceCallable[P, T], wrapped)
+        if this_func.called:
             raise RuntimeError(f"{func!r} can be called only once")
 
-        wrapped.called = True  # ty:ignore[invalid-assignment]
+        this_func.called = True
         return func(*args, **kwds)
 
-    wrapped.called = False  # ty:ignore[missing-attribute]
-    return wrapped
+    this_func = cast(OnceCallable[P, T], wrapped)
+    this_func.called = False
+
+    return this_func
 
 
 def optional_float(x: Any) -> float | None:

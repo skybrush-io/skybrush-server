@@ -31,6 +31,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added a hidden `__file_remove` command to the MAVLink extension that removes
   a file from the UAV via MAVFTP.
 
+### Fixed
+
+- Show start times on synchronized clocks now keep their milliseconds in log
+  messages, and seconds that round up to a full minute carry into the minutes.
+
 ## [2.62.0] - 2026-11-21
 
 ### Added
